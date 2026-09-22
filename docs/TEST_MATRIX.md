@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 怪物状态指纹小集合（2026-09-22）
+
+- `MonsterStateFingerprintChecks` 对真实上游/候选DLL各77项通过，覆盖null/空/单项/多项、排序同键、nullable ID、Unicode及Fork修改/清空。三根ABBA共12次，9对768字段、完整路线、政策、剪枝计数全等，无时间截断。
+- Queen 原生300节点严格增量短搜 Passed，runId `4d75ecf0b26c4f668f081472e3a0ff6e`；首个结果停止，实例清理成功。Release零警告/错误，Bash结构门禁208。微基准和峰值代价分别列在[报告](performance/monster-state-singleton-20260922.md)与[证据](performance/monster-state-singleton-20260922.json)，未测可见Steam/Windows/完整自动部署。
+
 ## PR #123 / #124 / #125 合并验证（2026-09-22）
 
 - 行为基线为计算失败修复 `94254728` 加三个原 PR，合并提交 `0f7d6935`；两处计算失败生产修复文件与 `94254728` 完全一致。Windows Release 构建 0 警告、0 错误（`CopyModOnBuild=false`）；PowerShell 结构门禁 `search_files=208`、108 项组合合同、122505 项循环显示索引断言、12 项循环预算分类与 2 项比较上下文测试通过。

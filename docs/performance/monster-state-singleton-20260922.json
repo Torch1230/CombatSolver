@@ -1,0 +1,1074 @@
+{
+  "baselineCommit": "6922828d",
+  "branch": "perf/bounded-hotpath-20260922",
+  "sourceChange": "AppendMonsterStateFingerprint: skip sorting for empty/singleton maps only",
+  "environment": {
+    "os": "Linux-7.2.4-arch1-2-x86_64-with-glibc2.44",
+    "cpu": "AMD Ryzen 7 7840H w/ Radeon 780M Graphics",
+    "sdk": "9.0.120",
+    "microTieredCompilation": false,
+    "searchTieredCompilation": "runtime default"
+  },
+  "inputs": {
+    "empty": {
+      "schemaVersion": 1,
+      "scenarioId": "MONSTER-FINGERPRINT-EMPTY",
+      "characterId": "IRONCLAD",
+      "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+      "seed": "MONSTERFINGERPRINT20260922",
+      "ascension": 0,
+      "actIndexForTest": 0,
+      "enemyCurrentHp": 35
+    },
+    "queen": {
+      "schemaVersion": 1,
+      "scenarioId": "MONSTER-FINGERPRINT-QUEEN",
+      "characterId": "IRONCLAD",
+      "encounterId": "QUEEN_BOSS",
+      "seed": "MONSTERFINGERPRINT20260922",
+      "ascension": 0,
+      "actIndexForTest": 2,
+      "enemyCurrentHp": 35
+    },
+    "rat": {
+      "schemaVersion": 1,
+      "scenarioId": "MONSTER-FINGERPRINT-RAT",
+      "characterId": "IRONCLAD",
+      "encounterId": "TWO_TAILED_RATS_NORMAL",
+      "seed": "MONSTERFINGERPRINT20260922",
+      "ascension": 0,
+      "actIndexForTest": 0,
+      "enemyCurrentHp": 35
+    }
+  },
+  "calibration": {
+    "queenEnemyHp100": "802 expanded / 3368 transitions / death route; fixture calibration only, excluded from final ABBA",
+    "finalQueenEnemyHp": 35
+  },
+  "order": "For each queen/rat/empty: A1 B1 B2 A2; independent sequential processes; timeout 120s",
+  "measurements": [
+    {
+      "label": "A1-queen",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/queen.json",
+        "--label",
+        "A1-queen",
+        "--out",
+        "./.local/monster-fingerprint/runs/A1-queen",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/baseline/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 2.972611306991894,
+      "wallSeconds": 0.9309019,
+      "peakManagedHeapBytes": 25205376,
+      "peakManagedLiveBytes": 30029352,
+      "peakWorkingSetBytes": 234418176,
+      "totalAllocatedBytes": 449330176,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 276,
+        "totalTransitions": 977,
+        "totalElapsedMilliseconds": 704.8301,
+        "totalWorkerAllocatedBytes": 42225528,
+        "totalGen0Collections": 5,
+        "totalGen1Collections": 1,
+        "totalGen2Collections": 0,
+        "totalGcPauseMilliseconds": 17.902,
+        "projectedBattleHpLost": 26,
+        "onlyDeathRoutes": false,
+        "finalHp": 54,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 2,
+        "boundary": "None"
+      }
+    },
+    {
+      "label": "B1-queen",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/queen.json",
+        "--label",
+        "B1-queen",
+        "--out",
+        "./.local/monster-fingerprint/runs/B1-queen",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/candidate/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 3.0222003439994296,
+      "wallSeconds": 0.9083881,
+      "peakManagedHeapBytes": 24232000,
+      "peakManagedLiveBytes": 29859984,
+      "peakWorkingSetBytes": 238526464,
+      "totalAllocatedBytes": 454656320,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 276,
+        "totalTransitions": 977,
+        "totalElapsedMilliseconds": 689.1315,
+        "totalWorkerAllocatedBytes": 41679792,
+        "totalGen0Collections": 6,
+        "totalGen1Collections": 1,
+        "totalGen2Collections": 0,
+        "totalGcPauseMilliseconds": 19.742,
+        "projectedBattleHpLost": 26,
+        "onlyDeathRoutes": false,
+        "finalHp": 54,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 2,
+        "boundary": "None"
+      }
+    },
+    {
+      "label": "B2-queen",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/queen.json",
+        "--label",
+        "B2-queen",
+        "--out",
+        "./.local/monster-fingerprint/runs/B2-queen",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/candidate/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 3.0208494959952077,
+      "wallSeconds": 0.9170932,
+      "peakManagedHeapBytes": 23155384,
+      "peakManagedLiveBytes": 29603936,
+      "peakWorkingSetBytes": 234561536,
+      "totalAllocatedBytes": 457072768,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 276,
+        "totalTransitions": 977,
+        "totalElapsedMilliseconds": 693.0399,
+        "totalWorkerAllocatedBytes": 41645240,
+        "totalGen0Collections": 5,
+        "totalGen1Collections": 1,
+        "totalGen2Collections": 0,
+        "totalGcPauseMilliseconds": 14.141,
+        "projectedBattleHpLost": 26,
+        "onlyDeathRoutes": false,
+        "finalHp": 54,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 2,
+        "boundary": "None"
+      }
+    },
+    {
+      "label": "A2-queen",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/queen.json",
+        "--label",
+        "A2-queen",
+        "--out",
+        "./.local/monster-fingerprint/runs/A2-queen",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/baseline/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 3.021009169999161,
+      "wallSeconds": 0.9331148,
+      "peakManagedHeapBytes": 28017504,
+      "peakManagedLiveBytes": 34405064,
+      "peakWorkingSetBytes": 238362624,
+      "totalAllocatedBytes": 452093920,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 276,
+        "totalTransitions": 977,
+        "totalElapsedMilliseconds": 710.1788,
+        "totalWorkerAllocatedBytes": 42206600,
+        "totalGen0Collections": 5,
+        "totalGen1Collections": 1,
+        "totalGen2Collections": 0,
+        "totalGcPauseMilliseconds": 18.264,
+        "projectedBattleHpLost": 26,
+        "onlyDeathRoutes": false,
+        "finalHp": 54,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 2,
+        "boundary": "None"
+      }
+    },
+    {
+      "label": "A1-rat",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/rat.json",
+        "--label",
+        "A1-rat",
+        "--out",
+        "./.local/monster-fingerprint/runs/A1-rat",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/baseline/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 5.779267788995639,
+      "wallSeconds": 3.6887148,
+      "peakManagedHeapBytes": 40037928,
+      "peakManagedLiveBytes": 46427944,
+      "peakWorkingSetBytes": 258613248,
+      "totalAllocatedBytes": 830223800,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 3000,
+        "totalTransitions": 10933,
+        "totalElapsedMilliseconds": 3468.441,
+        "totalWorkerAllocatedBytes": 432793824,
+        "totalGen0Collections": 54,
+        "totalGen1Collections": 23,
+        "totalGen2Collections": 2,
+        "totalGcPauseMilliseconds": 163.173,
+        "projectedBattleHpLost": 35,
+        "onlyDeathRoutes": false,
+        "finalHp": 45,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 7,
+        "boundary": "NodeLimit"
+      }
+    },
+    {
+      "label": "B1-rat",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/rat.json",
+        "--label",
+        "B1-rat",
+        "--out",
+        "./.local/monster-fingerprint/runs/B1-rat",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/candidate/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 5.67824697701144,
+      "wallSeconds": 3.6195271,
+      "peakManagedHeapBytes": 43066728,
+      "peakManagedLiveBytes": 44309992,
+      "peakWorkingSetBytes": 262258688,
+      "totalAllocatedBytes": 829437440,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 3000,
+        "totalTransitions": 10933,
+        "totalElapsedMilliseconds": 3397.2036,
+        "totalWorkerAllocatedBytes": 432772944,
+        "totalGen0Collections": 54,
+        "totalGen1Collections": 24,
+        "totalGen2Collections": 2,
+        "totalGcPauseMilliseconds": 161.561,
+        "projectedBattleHpLost": 35,
+        "onlyDeathRoutes": false,
+        "finalHp": 45,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 7,
+        "boundary": "NodeLimit"
+      }
+    },
+    {
+      "label": "B2-rat",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/rat.json",
+        "--label",
+        "B2-rat",
+        "--out",
+        "./.local/monster-fingerprint/runs/B2-rat",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/candidate/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 5.778010668000206,
+      "wallSeconds": 3.69632,
+      "peakManagedHeapBytes": 41738064,
+      "peakManagedLiveBytes": 48923368,
+      "peakWorkingSetBytes": 262885376,
+      "totalAllocatedBytes": 830318968,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 3000,
+        "totalTransitions": 10933,
+        "totalElapsedMilliseconds": 3471.5674,
+        "totalWorkerAllocatedBytes": 433041184,
+        "totalGen0Collections": 54,
+        "totalGen1Collections": 23,
+        "totalGen2Collections": 2,
+        "totalGcPauseMilliseconds": 181.894,
+        "projectedBattleHpLost": 35,
+        "onlyDeathRoutes": false,
+        "finalHp": 45,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 7,
+        "boundary": "NodeLimit"
+      }
+    },
+    {
+      "label": "A2-rat",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/rat.json",
+        "--label",
+        "A2-rat",
+        "--out",
+        "./.local/monster-fingerprint/runs/A2-rat",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/baseline/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 5.679981028995826,
+      "wallSeconds": 3.6887805,
+      "peakManagedHeapBytes": 41451704,
+      "peakManagedLiveBytes": 47284992,
+      "peakWorkingSetBytes": 262131712,
+      "totalAllocatedBytes": 821824504,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 3000,
+        "totalTransitions": 10933,
+        "totalElapsedMilliseconds": 3465.2201,
+        "totalWorkerAllocatedBytes": 432255936,
+        "totalGen0Collections": 54,
+        "totalGen1Collections": 23,
+        "totalGen2Collections": 2,
+        "totalGcPauseMilliseconds": 167.526,
+        "projectedBattleHpLost": 35,
+        "onlyDeathRoutes": false,
+        "finalHp": 45,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 7,
+        "boundary": "NodeLimit"
+      }
+    },
+    {
+      "label": "A1-empty",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/empty.json",
+        "--label",
+        "A1-empty",
+        "--out",
+        "./.local/monster-fingerprint/runs/A1-empty",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/baseline/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 2.721301637997385,
+      "wallSeconds": 0.6746336,
+      "peakManagedHeapBytes": 23717976,
+      "peakManagedLiveBytes": 28123704,
+      "peakWorkingSetBytes": 232792064,
+      "totalAllocatedBytes": 408247480,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 151,
+        "totalTransitions": 383,
+        "totalElapsedMilliseconds": 461.2391,
+        "totalWorkerAllocatedBytes": 15866072,
+        "totalGen0Collections": 2,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "totalGcPauseMilliseconds": 4.255,
+        "projectedBattleHpLost": 4,
+        "onlyDeathRoutes": false,
+        "finalHp": 76,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 2,
+        "boundary": "None"
+      }
+    },
+    {
+      "label": "B1-empty",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/empty.json",
+        "--label",
+        "B1-empty",
+        "--out",
+        "./.local/monster-fingerprint/runs/B1-empty",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/candidate/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 2.770838405995164,
+      "wallSeconds": 0.6848848,
+      "peakManagedHeapBytes": 22500616,
+      "peakManagedLiveBytes": 29156912,
+      "peakWorkingSetBytes": 232738816,
+      "totalAllocatedBytes": 410456112,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 151,
+        "totalTransitions": 383,
+        "totalElapsedMilliseconds": 467.3464,
+        "totalWorkerAllocatedBytes": 15871888,
+        "totalGen0Collections": 2,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "totalGcPauseMilliseconds": 4.575,
+        "projectedBattleHpLost": 4,
+        "onlyDeathRoutes": false,
+        "finalHp": 76,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 2,
+        "boundary": "None"
+      }
+    },
+    {
+      "label": "B2-empty",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/empty.json",
+        "--label",
+        "B2-empty",
+        "--out",
+        "./.local/monster-fingerprint/runs/B2-empty",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/candidate/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 2.770573292989866,
+      "wallSeconds": 0.6984503,
+      "peakManagedHeapBytes": 23736368,
+      "peakManagedLiveBytes": 28085232,
+      "peakWorkingSetBytes": 232853504,
+      "totalAllocatedBytes": 407932608,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 151,
+        "totalTransitions": 383,
+        "totalElapsedMilliseconds": 485.1888,
+        "totalWorkerAllocatedBytes": 15864376,
+        "totalGen0Collections": 2,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "totalGcPauseMilliseconds": 4.519,
+        "projectedBattleHpLost": 4,
+        "onlyDeathRoutes": false,
+        "finalHp": 76,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 2,
+        "boundary": "None"
+      }
+    },
+    {
+      "label": "A2-empty",
+      "command": [
+        "dotnet",
+        "./tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll",
+        "--request",
+        "./.local/monster-fingerprint/inputs/empty.json",
+        "--label",
+        "A2-empty",
+        "--out",
+        "./.local/monster-fingerprint/runs/A2-empty",
+        "--profile",
+        "Low",
+        "--nodes",
+        "3000",
+        "--beam",
+        "30",
+        "--dop",
+        "1",
+        "--budget-ms",
+        "60000",
+        "--search-mode",
+        "Coordinator",
+        "--potion-policy",
+        "Smart"
+      ],
+      "dll": "./.local/monster-fingerprint/baseline/CombatSolver.dll",
+      "exitCode": 0,
+      "processSeconds": 2.8231464760028757,
+      "wallSeconds": 0.6951536,
+      "peakManagedHeapBytes": 23255496,
+      "peakManagedLiveBytes": 28006440,
+      "peakWorkingSetBytes": 232222720,
+      "totalAllocatedBytes": 400230328,
+      "timeBoundaryObserved": false,
+      "metrics": {
+        "totalExpanded": 151,
+        "totalTransitions": 383,
+        "totalElapsedMilliseconds": 482.8026,
+        "totalWorkerAllocatedBytes": 15895168,
+        "totalGen0Collections": 2,
+        "totalGen1Collections": 0,
+        "totalGen2Collections": 0,
+        "totalGcPauseMilliseconds": 5.466,
+        "projectedBattleHpLost": 4,
+        "onlyDeathRoutes": false,
+        "finalHp": 76,
+        "finalEnemyHp": 0,
+        "combatEndedTurn": 2,
+        "boundary": "None"
+      }
+    }
+  ],
+  "summary": {
+    "queen": {
+      "totalElapsedMilliseconds": {
+        "baseline": [
+          704.8301,
+          710.1788
+        ],
+        "candidate": [
+          689.1315,
+          693.0399
+        ],
+        "baselineMean": 707.50445,
+        "candidateMean": 691.0857,
+        "changePercent": -2.3206567817347312
+      },
+      "totalWorkerAllocatedBytes": {
+        "baseline": [
+          42225528,
+          42206600
+        ],
+        "candidate": [
+          41679792,
+          41645240
+        ],
+        "baselineMean": 42216064,
+        "candidateMean": 41662516,
+        "changePercent": -1.3112259826022599
+      },
+      "peakManagedHeapBytes": {
+        "baseline": [
+          25205376,
+          28017504
+        ],
+        "candidate": [
+          24232000,
+          23155384
+        ],
+        "baselineMean": 26611440,
+        "candidateMean": 23693692,
+        "changePercent": -10.964261986574197
+      },
+      "peakWorkingSetBytes": {
+        "baseline": [
+          234418176,
+          238362624
+        ],
+        "candidate": [
+          238526464,
+          234561536
+        ],
+        "baselineMean": 236390400,
+        "candidateMean": 236544000,
+        "changePercent": 0.06497725795970855
+      }
+    },
+    "rat": {
+      "totalElapsedMilliseconds": {
+        "baseline": [
+          3468.441,
+          3465.2201
+        ],
+        "candidate": [
+          3397.2036,
+          3471.5674
+        ],
+        "baselineMean": 3466.8305499999997,
+        "candidateMean": 3434.3855,
+        "changePercent": -0.9358706614605028
+      },
+      "totalWorkerAllocatedBytes": {
+        "baseline": [
+          432793824,
+          432255936
+        ],
+        "candidate": [
+          432772944,
+          433041184
+        ],
+        "baselineMean": 432524880,
+        "candidateMean": 432907064,
+        "changePercent": 0.08836115970947134
+      },
+      "peakManagedHeapBytes": {
+        "baseline": [
+          40037928,
+          41451704
+        ],
+        "candidate": [
+          43066728,
+          41738064
+        ],
+        "baselineMean": 40744816,
+        "candidateMean": 42402396,
+        "changePercent": 4.068198516346233
+      },
+      "peakWorkingSetBytes": {
+        "baseline": [
+          258613248,
+          262131712
+        ],
+        "candidate": [
+          262258688,
+          262885376
+        ],
+        "baselineMean": 260372480,
+        "candidateMean": 262572032,
+        "changePercent": 0.8447713060919515
+      }
+    },
+    "empty": {
+      "totalElapsedMilliseconds": {
+        "baseline": [
+          461.2391,
+          482.8026
+        ],
+        "candidate": [
+          467.3464,
+          485.1888
+        ],
+        "baselineMean": 472.02085,
+        "candidateMean": 476.2676,
+        "changePercent": 0.8996954265897417
+      },
+      "totalWorkerAllocatedBytes": {
+        "baseline": [
+          15866072,
+          15895168
+        ],
+        "candidate": [
+          15871888,
+          15864376
+        ],
+        "baselineMean": 15880620,
+        "candidateMean": 15868132,
+        "changePercent": -0.07863672828894996
+      },
+      "peakManagedHeapBytes": {
+        "baseline": [
+          23717976,
+          23255496
+        ],
+        "candidate": [
+          22500616,
+          23736368
+        ],
+        "baselineMean": 23486736,
+        "candidateMean": 23118492,
+        "changePercent": -1.5678806965769954
+      },
+      "peakWorkingSetBytes": {
+        "baseline": [
+          232792064,
+          232222720
+        ],
+        "candidate": [
+          232738816,
+          232853504
+        ],
+        "baselineMean": 232507392,
+        "candidateMean": 232796160,
+        "changePercent": 0.12419734164839102
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "pair": [
+        "A1-queen",
+        "A2-queen"
+      ],
+      "comparedFields": 80,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    },
+    {
+      "pair": [
+        "A1-queen",
+        "B1-queen"
+      ],
+      "comparedFields": 80,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    },
+    {
+      "pair": [
+        "A1-queen",
+        "B2-queen"
+      ],
+      "comparedFields": 80,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    },
+    {
+      "pair": [
+        "A1-rat",
+        "A2-rat"
+      ],
+      "comparedFields": 96,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    },
+    {
+      "pair": [
+        "A1-rat",
+        "B1-rat"
+      ],
+      "comparedFields": 96,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    },
+    {
+      "pair": [
+        "A1-rat",
+        "B2-rat"
+      ],
+      "comparedFields": 96,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    },
+    {
+      "pair": [
+        "A1-empty",
+        "A2-empty"
+      ],
+      "comparedFields": 80,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    },
+    {
+      "pair": [
+        "A1-empty",
+        "B1-empty"
+      ],
+      "comparedFields": 80,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    },
+    {
+      "pair": [
+        "A1-empty",
+        "B2-empty"
+      ],
+      "comparedFields": 80,
+      "mismatches": [],
+      "fullRouteEqual": true,
+      "policyEqual": true,
+      "pruneCountersEqual": true
+    }
+  ],
+  "contracts": {
+    "baselineChecks": 77,
+    "candidateChecks": 77,
+    "scope": "Production private appender, known enemies empty; both hash words including preexisting prefix; root materialization covered by native search"
+  },
+  "micro": [
+    {
+      "label": "A1",
+      "count": 0,
+      "iterations": 500000,
+      "bytesPerCall": 312,
+      "nanosecondsPerCall": 69.847,
+      "sink": 0
+    },
+    {
+      "label": "A1",
+      "count": 1,
+      "iterations": 500000,
+      "bytesPerCall": 632,
+      "nanosecondsPerCall": 164.0154,
+      "sink": 0
+    },
+    {
+      "label": "A1",
+      "count": 4,
+      "iterations": 500000,
+      "bytesPerCall": 760,
+      "nanosecondsPerCall": 320.6822,
+      "sink": 0
+    },
+    {
+      "label": "B1",
+      "count": 0,
+      "iterations": 500000,
+      "bytesPerCall": 40,
+      "nanosecondsPerCall": 40.102,
+      "sink": 0
+    },
+    {
+      "label": "B1",
+      "count": 1,
+      "iterations": 500000,
+      "bytesPerCall": 40,
+      "nanosecondsPerCall": 39.4632,
+      "sink": 0
+    },
+    {
+      "label": "B1",
+      "count": 4,
+      "iterations": 500000,
+      "bytesPerCall": 760,
+      "nanosecondsPerCall": 328.445,
+      "sink": 0
+    },
+    {
+      "label": "B2",
+      "count": 0,
+      "iterations": 500000,
+      "bytesPerCall": 40,
+      "nanosecondsPerCall": 33.9288,
+      "sink": 0
+    },
+    {
+      "label": "B2",
+      "count": 1,
+      "iterations": 500000,
+      "bytesPerCall": 40,
+      "nanosecondsPerCall": 40.3104,
+      "sink": 0
+    },
+    {
+      "label": "B2",
+      "count": 4,
+      "iterations": 500000,
+      "bytesPerCall": 760,
+      "nanosecondsPerCall": 336.0098,
+      "sink": 0
+    },
+    {
+      "label": "A2",
+      "count": 0,
+      "iterations": 500000,
+      "bytesPerCall": 312,
+      "nanosecondsPerCall": 70.7932,
+      "sink": 0
+    },
+    {
+      "label": "A2",
+      "count": 1,
+      "iterations": 500000,
+      "bytesPerCall": 632,
+      "nanosecondsPerCall": 168.234,
+      "sink": 0
+    },
+    {
+      "label": "A2",
+      "count": 4,
+      "iterations": 500000,
+      "bytesPerCall": 760,
+      "nanosecondsPerCall": 319.6506,
+      "sink": 0
+    }
+  ],
+  "native": {
+    "runId": "4d75ecf0b26c4f668f081472e3a0ff6e",
+    "status": "Passed",
+    "request": {
+      "scenarioId": "MONSTER-FINGERPRINT-QUEEN-NATIVE",
+      "characterId": "IRONCLAD",
+      "encounterId": "QUEEN_BOSS",
+      "seed": "MONSTERFINGERPRINT20260922",
+      "enemyCurrentHp": 35,
+      "verifyIncrementalSearch": true,
+      "searchMaxExpandedNodesForTest": 300,
+      "stopAfterInitialSolverResultAssertion": true,
+      "performancePresetForTest": "Low"
+    },
+    "completedChecks": [
+      "PerformancePreset:Custom:60000ms:Beam=45:Nodes=300:Branches=24:NoGC=False/16000000000",
+      "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+      "PotionOutcomeNamesAndRewardGate",
+      "InitialWorldlineSummary",
+      "InitialPolicy:SoldHp=5;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=2;Shuffles=0;Unmirrored=0;HpLost=26;ProjectedBattleHpLost=26;Block=0/5;Pruned=0;Total=940.8ms/120699168B;Gc=28.6ms/5.4msMax;Frame=255.1msMax/1Over50;CacheHits=0;ChoiceBranches=0;Actions=2;OnlyDeath=False;CombatEndedTurn=2;DeathTurn=-;ActEndingBoss=True;BossHpRelief=RunEnding"
+    ],
+    "instanceRemoved": true
+  },
+  "build": "Release: zero warnings/errors; CopyModOnBuild=false",
+  "boundaries": "REFACTOR_BOUNDARIES_OK search_files=208",
+  "limitations": [
+    "Linux offline short-search ABBA has only two samples per arm and case; no universal speed/peak-memory conclusion",
+    "Four-entry isolated appender about 3.8% slower with unchanged allocation; real multi-entry sentinel timing is within noise",
+    "No strategy or score changes; quality equality only for tested roots and contracts",
+    "No visible Steam / Windows / full automated deployment measurement"
+  ]
+}

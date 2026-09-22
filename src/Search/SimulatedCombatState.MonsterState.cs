@@ -72,8 +72,21 @@ internal sealed partial class SimulatedCombatState
     {
         foreach (Creature creature in KnownEnemies)
             _ = DescribePredictedMonsterState(creature);
-        if (_monsterIntStates == null)
+        if (_monsterIntStates == null || _monsterIntStates.Count == 0)
             return;
+        // A singleton is already ordered. Keep materialization above this check,
+        // and leave the stable nullable-id/name ordering for larger maps intact.
+        if (_monsterIntStates.Count == 1)
+        {
+            foreach (((Creature creature, string name), int value) in _monsterIntStates)
+            {
+                fingerprint.Add('m');
+                fingerprint.Add(creature.CombatId ?? uint.MaxValue);
+                fingerprint.Add(name);
+                fingerprint.Add(value);
+            }
+            return;
+        }
         foreach (((Creature creature, string name), int value) in _monsterIntStates
                      .OrderBy(item => item.Key.Creature.CombatId)
                      .ThenBy(item => item.Key.Name, StringComparer.Ordinal))
