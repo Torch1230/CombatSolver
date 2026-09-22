@@ -1,5 +1,12 @@
 # CombatSolver 测试清单
 
+## 下一版本：玩家回合开始三阶段镜像
+
+- `TurnPhaseMirrorChecks --after-player-start` 40 项、`--after-player-start --seal` 3 项通过；覆盖三表登记拒绝、精确类型、冻结、三阶段监听顺序、轮间成员变动、卡牌 COW、选择暂停与未知覆写拒绝。`--mask <生产 DLL>` 确认 61 个独立 bit。
+- 主 DLL 与离线宿主 Release 0 警告 / 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`。
+- CoverageCatalog 原表两条上游旧证据状态无法解析；仅在隔离副本排除未引用记录后，3035 条通过，无未分类、缺失或非通过引用。生产源码与原证据表未改，详见 [检查摘要](../coverage/equivalence/after-player-turn-start/validation.json)。
+- 对照 `523aea57` 的 EQ 10 / FULL 40 / GA 10：60 对有效、无时间截断，6341 个确定性字段 `IDENTICAL`（1069/4212/1060），一次批次无补跑。口径 High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1，逐根数据与命令见 [等价证据](../coverage/equivalence/after-player-turn-start/README.md)。
+
 ## 下一版本：回合开始前镜像
 
 - `TurnPhaseMirrorChecks --start` 22 项、`--start --seal` 1 项通过：精确类型、空/重复/抽象/未覆写拒绝、首次派发与首根冻结、Power/遗物/Modifier/卡牌混合顺序、参与者、选择暂停、监听者快照。原晚期回合末 25 项通过。

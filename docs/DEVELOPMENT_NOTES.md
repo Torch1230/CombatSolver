@@ -1,5 +1,12 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：玩家回合开始三阶段镜像
+
+- 增加 `AfterPlayerTurnStartMirrors.RegisterEarly/Register/RegisterLate<TModel>`，接收 AbstractModel 与当前 Player；精确类型登记、首根冻结，未知有效覆写记录风险并拒绝。
+- 扩展路径按原生 Early → 普通 → Late 三轮监听顺序派发，复用原版单项结算；零第三方覆写保留原批次与选择续执行帧。第三方选择暂停回到稳定父节点完整重放。
+- 40 项派发合同、3 项冻结合同、61 个独立监听位和结构门禁通过；原生顺序、离线等价与 CoverageCatalog 结果见 [验证证据](../coverage/equivalence/after-player-turn-start/README.md)。
+- 对照 #126 的 `523aea57`：EQ 10 / FULL 40 / GA 10 共 6341 个确定性字段一致，60 对均有效、无时间截断；一次离线批次完成。
+
 ## 下一版本（开发中）：第三方回合开始前镜像
 
 - 增加 `BeforeSideTurnStartMirrors.Register<TModel>`，两侧在清格挡前按监听顺序派发 Power、遗物和 Modifier；共享既有原版单项结算体，无扩展时保留原批次顺序。

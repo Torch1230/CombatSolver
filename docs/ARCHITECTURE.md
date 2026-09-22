@@ -377,6 +377,8 @@ Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕
 
 `MethodMirrorRegistry` 同时实现 `IMethodMirrorRegistryDescriptorProvider`。`MethodMirrorRegistryDescriptor` 描述基础方法、receiver、显式 Handled/Ignored 注册和当前 inferrer；CoverageCatalog 只消费该描述符，不读取 registry 私有字段或 `MirrorMethodSpec` 内部布局。
 
+`AfterPlayerTurnStartMirrors` 使用三张独立登记表覆盖抽牌后的 Early/普通/Late。`HookMirrors.AfterPlayerTurnStart` 在每轮取得分支监听快照，复用 Power/遗物单项结算体；未知有效覆写拒绝，回调挂起后禁止原版局部执行帧复用并完整重放。零第三方有效覆写沿用 `SimulatedCombatState.TriggerAfterPlayerTurnStartVanilla` 的既有批次和帧，不改搜索策略或状态所有权。
+
 ## 5. Prediction 领域补偿
 
 `src/Prediction/` 处理基础命令和单个 mirror 不能独立表达的领域语义：
