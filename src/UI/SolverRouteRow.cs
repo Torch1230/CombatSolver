@@ -13,7 +13,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
     private string? _populatedLanguage;
 
     public Label TurnLabel { get; }
-    public HFlowContainer ActionFlow { get; }
+    public SolverRouteActionFlow ActionFlow { get; }
     public Label EnemyDamageLabel { get; }
     public Label OutcomeLabel { get; }
     public Label EnergyLabel { get; }
@@ -60,7 +60,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
         TurnLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         layout.AddChild(TurnLabel);
 
-        ActionFlow = new HFlowContainer
+        ActionFlow = new SolverRouteActionFlow
         {
             Name = "ActionFlow",
             CustomMinimumSize = new Vector2(0, SolverUiTokens.Size.ActionPillHeight),
@@ -149,9 +149,12 @@ internal sealed partial class SolverRouteRow : PanelContainer
         foreach (SolverActionRun run in SolverActionRuns.Capture(turn.Actions,
                      static (left, right) => left.HasSamePresentation(right)))
         {
-            HFlowContainer destination = ActionFlow;
+            Container destination = ActionFlow;
             if (run.Repetitions > 1)
-                ActionFlow.AddChild(SolverActionPill.CreateCycle(run, out destination));
+            {
+                ActionFlow.AddChild(SolverActionPill.CreateCycle(run, out HFlowContainer loopActions));
+                destination = loopActions;
+            }
             for (int offset = 0; offset < run.Period; offset++)
             {
                 Control pill = SolverActionPill.Create(turn.Actions[run.Start + offset]);

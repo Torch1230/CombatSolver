@@ -433,6 +433,8 @@ Mod 准入，具体契约见[模型状态适配](third-party-model-state.md)。
 - `SolverRouteRow.Populate(SolverOverlayTurnSnapshot)`；
 - `SolverActionPill.Create(SolverOverlayActionSnapshot)`。
 
+`SolverLoopGroup` 只组织循环动作与右侧次数的轻量外框，内部流负责窄宽度换行。`SolverRouteActionFlow` 按普通胶囊最小宽度、循环组自然宽度排布路线，并将循环组限制在当前可用宽度；最小宽度仍来自可换行内容，防止外层面板被整段循环撑宽。布局只响应容器尺寸与内容变化，不轮询、不改部署索引。
+
 renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或 `ModelDb`。部署需要的标量由 Runtime 单独持有，不从控件反向读取。
 
 `SolverRouteRow` 只保留上一份只读回合显示快照，整行成功构建后才发布，失败半行不形成复用资格。同语言下，完整动作显示值、嵌套选牌及遗物的本地化身份相同才复用胶囊；回合指标仍由Overlay逐次更新，Populate重置部署高亮。状态页或变化行清空旧引用并重建；主题沿既有整层重建。语言事件仍每帧合并一次，但即使一帧内切回原语言也通知现有控件，覆盖中途新建的胶囊。

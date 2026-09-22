@@ -33,9 +33,11 @@ internal sealed partial class UnattendedTestRunner
             if (row.DeploymentActionCount != 41 || row.ActionFlow.GetChildCount() != 2)
                 throw new InvalidOperationException("Loop folding lost executable indexes or kill suffix.");
             var group = (Control)row.ActionFlow.GetChild(0);
-            var content = group.GetChild<VBoxContainer>(0);
-            var actions = content.GetChild<HFlowContainer>(1);
-            if (actions.GetChildCount() != 2 || content.GetChild<Label>(0).Text != (english ? "Loop ×20" : "循环 ×20"))
+            var content = group.GetChild<HBoxContainer>(0);
+            var actions = content.GetChild<HFlowContainer>(0);
+            Label count = content.GetChild<Label>(1);
+            if (actions.GetChildCount() != 2 || count.Text != "×20"
+                || !group.TooltipText.Contains(english ? "Repeat" : "重复"))
                 throw new InvalidOperationException("Loop badge localization failed.");
             foreach (int index in new[] { 0, 1, 2, 37, 38, 39 })
             {
@@ -68,11 +70,16 @@ internal sealed partial class UnattendedTestRunner
                 if (wrapped != narrow
                     || !group.GetGlobalRect().Encloses(first.GetGlobalRect())
                     || !group.GetGlobalRect().Encloses(second.GetGlobalRect())
-                    || !group.GetGlobalRect().Encloses(content.GetChild<Label>(0).GetGlobalRect())
+                    || !group.GetGlobalRect().Encloses(count.GetGlobalRect())
                     || group.Size.X > row.ActionFlow.Size.X + 1)
                     throw new InvalidOperationException($"Loop group layout failed: narrow={narrow}, wrapped={wrapped}, group={group.Size}, flow={row.ActionFlow.Size}.");
+                if (!narrow && (group.Size.X >= row.ActionFlow.Size.X - 1
+                    || group.Size.Y > Mathf.Max(first.Size.Y, second.Size.Y) + 5
+                    || count.GlobalPosition.X < second.GetGlobalRect().End.X
+                    || row.ActionFlow.GetChild<Control>(1).Position.Y > group.Position.Y + 1))
+                    throw new InvalidOperationException($"Loop group should fit content on one line with its suffix: group={group.Size}, flow={row.ActionFlow.Size}.");
             }
-            _completedChecks.Add($"LoopDisplay:{(english ? "eng" : "zh")}:41Actions:2OuterControls:EnclosedPeriod:WideNarrowWide:ReplayCount:KillSuffix:Deployment:Reuse");
+            _completedChecks.Add($"LoopDisplay:{(english ? "eng" : "zh")}:41Actions:2OuterControls:CompactInlineCount:EnclosedPeriod:WideNarrowWide:ReplayCount:KillSuffix:Deployment:Reuse");
         }
         finally { row.Free(); }
     }
