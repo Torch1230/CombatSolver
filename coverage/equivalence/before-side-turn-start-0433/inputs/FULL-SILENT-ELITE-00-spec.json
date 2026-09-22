@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "seed": "BIG-20260914-SILENT-ELITE-00",
+  "characterId": "SILENT",
+  "ascension": 10,
+  "encounterKind": "Elite",
+  "includeStartingDeck": true,
+  "includeStartingRelics": true,
+  "includeAscendersBane": true,
+  "characterCards": {
+    "count": 8
+  },
+  "colorlessCards": {
+    "count": 2
+  },
+  "relics": {
+    "count": 5
+  },
+  "potions": {
+    "count": 2
+  },
+  "mode": "Setup"
+}
