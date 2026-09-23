@@ -54,16 +54,20 @@ internal sealed partial class UnattendedTestRunner
             foreach (int index in new[] { 0, 1, 2, 37, 38, 39 })
             {
                 row.SetDeploymentProgress(index, index);
+                row.SettleDeploymentMotionForTesting();
                 if (((CanvasItem)actions.GetChild(index % 2)).Modulate
                     != SolverUiTokens.Palette.ActiveActionModulate)
                     throw new InvalidOperationException("Repeated action highlight lost its modulo mapping.");
             }
             row.SetDeploymentProgress(40, 40);
+            row.SettleDeploymentMotionForTesting();
             if (((CanvasItem)actions.GetChild(0)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
                 || ((CanvasItem)actions.GetChild(1)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
                 || ((CanvasItem)row.ActionFlow.GetChild(1)).Modulate != SolverUiTokens.Palette.ActiveActionModulate)
                 throw new InvalidOperationException("Loop completion or suffix highlight failed.");
             row.SetDeploymentProgress(41, null);
+            if (!SolverRouteRow.ExerciseDeploymentPacingForTesting())
+                throw new InvalidOperationException("Deployment highlight pacing does not follow the step interval.");
             ulong id = row.ActionFlow.GetChild(0).GetInstanceId();
             row.Populate(turn with { Actions = turn.Actions.ToArray() });
             if (id != row.ActionFlow.GetChild(0).GetInstanceId()

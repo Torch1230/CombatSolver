@@ -211,8 +211,13 @@ internal sealed partial class UnattendedTestRunner
                 RequestBudgetMilliseconds: 10_000),
             deployWhenReady: false,
             reviewedWorldlinesBeforeSearch: 5);
-        if (SolverOverlay.SearchSummaryTextForTesting != "已查阅 42 条世界线")
+        // Readouts ease toward the report per frame; settle them before comparing values.
+        SolverOverlay.SettleSearchReadoutsForTesting();
+        if (SolverOverlay.SearchSummaryTextForTesting != "已查阅 42 条世界线"
+            || Math.Abs(SolverOverlay.ShownSearchProgressRatioForTesting - 0.05d) > 0.0001d)
+        {
             throw new InvalidOperationException("搜索进度区没有独立显示累计查阅世界线数量。");
+        }
         double progressRatio = SolverOverlay.SearchProgressRatioForTesting;
         SolverOverlay.ShowProgress(
             new SolverProgress(

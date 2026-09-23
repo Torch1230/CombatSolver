@@ -25,6 +25,7 @@ internal static class SolverOverlay
     private const string LayerName = "CombatSolverOverlay";
     private const long ResizeLayoutIntervalMilliseconds = 16;
     private const double ActiveSearchProgressMaximum = 0.95d;
+    private const double MaxElapsedClockLeadSeconds = 1d;
     private const int SignificantBattleHpLossThreshold = 8;
     private const string NoveltyPortfolioHintText =
         "本场战斗预计出现大战损。若对结果不满意，可前往 设置 > 性能 开启“多策略路线搜索（实验）”后重试；它会在现有预算内探索不同打法，结果可能因战斗而异。点击本消息后不再提示";
@@ -126,6 +127,15 @@ internal static class SolverOverlay
     private static bool _lastSearchDeployWhenReady;
     private static long _lastReviewedWorldlinesBeforeSearch;
     private static double _lastSearchProgressRatio;
+    private static double _shownSearchProgressRatio;
+    private static double _reportedSearchElapsedSeconds;
+    private static double _shownSearchElapsedSeconds;
+    private static double _searchRequestBudgetSeconds;
+    private static long _reviewedWorldlinesTarget;
+    private static double _shownReviewedWorldlines;
+    // Summary text in front of the rolling count; null when the summary is not the search readout.
+    private static string? _reviewedWorldlinesSummaryPrefix;
+    private static string? _renderedReviewedWorldlinesSummary;
     private static SolverOverlayPresentation _presentation = SolverOverlayPresentation.Searching;
     private static int _lastDeploymentTurn;
     private static int _lastDeploymentActionCount;
@@ -234,6 +244,10 @@ internal static class SolverOverlay
     internal static string? ReviewSummaryTextForTesting => _reviewText?.Text;
     internal static string? SearchSummaryTextForTesting => _summaryText?.Text;
     internal static double SearchProgressRatioForTesting => _lastSearchProgressRatio;
+    internal static double ShownSearchProgressRatioForTesting => _shownSearchProgressRatio;
+
+    internal static void SettleSearchReadoutsForTesting()
+        => EaseSearchReadouts(1d);
     internal static bool ExercisePerformanceHintForTesting()
     {
         if (_performanceHintButton == null)
@@ -773,18 +787,32 @@ internal static class SolverOverlay
             deployWhenReady ? SolverText.Format($"{routeContext}    已排队执行") : routeContext);
         if (_routeHeadingLabel != null)
             _routeHeadingLabel.Text = SolverText.Get("求解器当前考虑（尚未验证）");
+        double reportedElapsedSeconds = progress.ElapsedMilliseconds / 1000d;
+        // Elapsed time only runs backwards when a new request reports without ShowSearching first
+        // (turn-setup searches); restart the clock there instead of holding the old request's time.
+        _shownSearchElapsedSeconds = reportedElapsedSeconds < _reportedSearchElapsedSeconds
+            ? reportedElapsedSeconds
+            : Math.Max(_shownSearchElapsedSeconds, reportedElapsedSeconds);
+        _reportedSearchElapsedSeconds = reportedElapsedSeconds;
+        _searchRequestBudgetSeconds = progress.RequestBudgetMilliseconds / 1000d;
         if (_progressText != null)
         {
             _progressText.Visible = true;
-            _progressText.Text = SolverText.Format($"已用 {progress.ElapsedMilliseconds / 1000d:F1} s");
+            RenderSearchElapsed();
         }
         string potionSearchPhase = progress.Phase.StartsWith("正在搜索", StringComparison.Ordinal)
             || reclaimingMemory
             || refiningRoute
                 ? progress.Phase
                 : string.Empty;
-        string reviewedWorldlinesText =
-            SolverText.Format($"已查阅 {reviewedWorldlinesBeforeSearch + progress.ReviewedWorldlines:N0} 条世界线");
+        long reviewedWorldlines = reviewedWorldlinesBeforeSearch + progress.ReviewedWorldlines;
+        _reviewedWorldlinesTarget = reviewedWorldlines;
+        // The rolling count starts at this search's baseline and never runs backwards; a lower total
+        // means a new combat, which snaps instead of rolling down.
+        _shownReviewedWorldlines = Math.Clamp(
+            _shownReviewedWorldlines,
+            Math.Min(reviewedWorldlinesBeforeSearch, reviewedWorldlines),
+            reviewedWorldlines);
         SetReviewText(SolverText.IsEnglish && potionSearchPhase.Length > 0
             ? reclaimingMemory
                 ? SolverText.Get("正在整理内存")
@@ -795,10 +823,10 @@ internal static class SolverOverlay
         if (_summaryText != null)
         {
             _summaryText.Visible = true;
-            _summaryText.Text = _searchBestSnapshot is { } snapshot
-                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) +
-                  $"  │  {reviewedWorldlinesText}"
-                : reviewedWorldlinesText;
+            _reviewedWorldlinesSummaryPrefix = _searchBestSnapshot is { } snapshot
+                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) + "  │  "
+                : string.Empty;
+            RenderReviewedWorldlinesSummary();
         }
         if (_searchProgressBar != null)
         {
@@ -814,9 +842,93 @@ internal static class SolverOverlay
                     1d);
             _lastSearchProgressRatio = Math.Max(_lastSearchProgressRatio, currentRatio);
             _searchProgressBar.MaxValue = 1d;
-            _searchProgressBar.Value = _lastSearchProgressRatio;
+            _searchProgressBar.Value = _shownSearchProgressRatio;
         }
         RefreshControls();
+    }
+
+    internal static void AdvanceSearchReadouts(double delta)
+    {
+        if (!SearchReadoutsActive())
+            return;
+        // Between progress reports the elapsed clock runs on frame time, but never more than a short
+        // lead past the last report: a stalled or throttled search must not look like it kept going.
+        if (_progressText != null && GodotObject.IsInstanceValid(_progressText) && _progressText.Visible)
+        {
+            _shownSearchElapsedSeconds = Math.Max(
+                _shownSearchElapsedSeconds,
+                Math.Min(
+                    _shownSearchElapsedSeconds + Math.Max(0d, delta),
+                    _reportedSearchElapsedSeconds + MaxElapsedClockLeadSeconds));
+            RenderSearchElapsed();
+        }
+        EaseSearchReadouts(SolverUiMotion.Blend(delta, SolverUiMotion.ReadoutTimeConstantSeconds));
+    }
+
+    private static bool SearchReadoutsActive()
+        => _presentation == SolverOverlayPresentation.Searching
+            && _layer != null && GodotObject.IsInstanceValid(_layer) && _layer.Visible;
+
+    private static void RenderSearchElapsed()
+    {
+        if (_progressText == null)
+            return;
+        string text = SolverText.Format($"已用 {_shownSearchElapsedSeconds:F1} s");
+        if (!string.Equals(_progressText.Text, text, StringComparison.Ordinal))
+            _progressText.Text = text;
+    }
+
+    private static void EaseSearchReadouts(double blend)
+    {
+        // With a time budget the bar tracks the running clock, so it keeps creeping forward between
+        // reports instead of stepping; the reported ratio remains the floor.
+        double progressTarget = _searchRequestBudgetSeconds > 0d
+            ? Math.Max(
+                _lastSearchProgressRatio,
+                Math.Clamp(_shownSearchElapsedSeconds / _searchRequestBudgetSeconds, 0d, ActiveSearchProgressMaximum))
+            : _lastSearchProgressRatio;
+        if (_searchProgressBar != null && GodotObject.IsInstanceValid(_searchProgressBar)
+            && _searchProgressBar.Visible && _shownSearchProgressRatio != progressTarget)
+        {
+            _shownSearchProgressRatio = SolverUiMotion.Approach(
+                _shownSearchProgressRatio,
+                progressTarget,
+                blend,
+                0.0005d);
+            _searchProgressBar.Value = _shownSearchProgressRatio;
+        }
+        if (_reviewedWorldlinesSummaryPrefix == null
+            || _shownReviewedWorldlines == _reviewedWorldlinesTarget
+            || _summaryText == null || !GodotObject.IsInstanceValid(_summaryText))
+        {
+            return;
+        }
+        // Another presentation path may have rewritten the summary since the last frame; the count
+        // only animates text it rendered itself.
+        if (!string.Equals(_summaryText.Text, _renderedReviewedWorldlinesSummary, StringComparison.Ordinal))
+        {
+            _reviewedWorldlinesSummaryPrefix = null;
+            return;
+        }
+        long before = (long)Math.Round(_shownReviewedWorldlines);
+        _shownReviewedWorldlines = SolverUiMotion.Approach(
+            _shownReviewedWorldlines,
+            _reviewedWorldlinesTarget,
+            blend,
+            0.5d);
+        if ((long)Math.Round(_shownReviewedWorldlines) != before)
+            RenderReviewedWorldlinesSummary();
+    }
+
+    private static void RenderReviewedWorldlinesSummary()
+    {
+        if (_summaryText == null || _reviewedWorldlinesSummaryPrefix == null)
+            return;
+        long shown = (long)Math.Round(_shownReviewedWorldlines);
+        string text = _reviewedWorldlinesSummaryPrefix
+            + SolverText.Format($"已查阅 {shown:N0} 条世界线");
+        _renderedReviewedWorldlinesSummary = text;
+        _summaryText.Text = text;
     }
 
     public static void ShowSearching(
@@ -837,6 +949,13 @@ internal static class SolverOverlay
         _lastSearchDeployWhenReady = deployWhenReady;
         _lastReviewedWorldlinesBeforeSearch = reviewedWorldlinesBeforeSearch;
         _lastSearchProgressRatio = 0d;
+        _reportedSearchElapsedSeconds = 0d;
+        _shownSearchElapsedSeconds = 0d;
+        _searchRequestBudgetSeconds = 0d;
+        _shownSearchProgressRatio = 0d;
+        _reviewedWorldlinesTarget = reviewedWorldlinesBeforeSearch;
+        _shownReviewedWorldlines = reviewedWorldlinesBeforeSearch;
+        _reviewedWorldlinesSummaryPrefix = null;
         EnsureCreated(host);
         SetSearchLimitHint(null);
         SetCurrentBossHpStrategyHint();
@@ -1751,6 +1870,7 @@ internal static class SolverOverlay
         layer.AddChild(_rightResizeHandle);
         layer.AddChild(_bottomResizeHandle);
         layer.AddChild(_cornerResizeHandle);
+        layer.AddChild(new SolverOverlayMotionDriver { Name = "CombatSolverOverlayMotion" });
         host.AddChild(layer);
         _layer = layer;
         _panel = panel;
@@ -2138,6 +2258,9 @@ internal static class SolverOverlay
             Name = "SearchProgress",
             MinValue = 0,
             MaxValue = SolverSearchProfile.Default.MaxExpandedNodes,
+            // Range rounds to Step (0.01 by default); on the 0..1 ratio that is a 1% grid, about ten
+            // pixels on a wide overlay, which turns the eased fill back into visible steps.
+            Step = 0,
             Value = 0,
             ShowPercentage = false,
             CustomMinimumSize = new Vector2(0, 4),
