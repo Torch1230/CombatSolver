@@ -518,35 +518,8 @@ internal sealed partial class UnattendedTestRunner
         }
 
         // The UI checks above cross several frames. A one-HP fixture can finish its first search
-        // during those awaits, so establish a fresh active session immediately before exercising
-        // the synchronous stop transition.
-        if (!SolverController.IsSearching)
-        {
-            SolverController.RequestSearch(host, combat, SearchReason.Manual);
-            if (!SolverController.IsSearching)
-                throw new InvalidOperationException("停止断言前无法重新建立活动搜索会话。");
-        }
-        int stopNotificationRequestsBefore = SearchCompletionNotifier.RequestCountForTesting;
-        int stopNativeNotificationsBefore = SearchCompletionNotifier.NativeNotificationCountForTesting;
-        SolverController.StopSearchByUser(host);
-        if (SolverController.IsSearching
-            || SolverController.IsDeploying
-            || SolverController.FullAutoEnabled
-            || !SolverController.AutomaticSearchPaused
-            || SolverController.CurrentResultForBugReport != null)
-        {
-            throw new InvalidOperationException("用户停止搜索后仍残留活动会话、路线或自动计算状态。");
-        }
-        if (SearchCompletionNotifier.RequestCountForTesting != stopNotificationRequestsBefore + 1
-            || SearchCompletionNotifier.NativeNotificationCountForTesting
-            != stopNativeNotificationsBefore)
-        {
-            throw new InvalidOperationException("用户停止搜索后没有产生一次受 headless 保护的结束通知。");
-        }
-
-        SolverController.RequestSearch(host, combat, SearchReason.AutoTurnStart);
-        if (SolverController.IsSearching || !SolverController.AutomaticSearchPaused)
-            throw new InvalidOperationException("用户停止后，自动回合入口重新启动了搜索。");
+        // during those awaits, so establish a fresh active session immediately before stopping.
+        AssertControllerStopTransition(combat);
 
         SolverController.RecordManualProjectionComparisonForTesting(7, 3);
         SolverOverlay.RefreshControls();
@@ -783,6 +756,50 @@ internal sealed partial class UnattendedTestRunner
                 $"completed={deploymentLifecycle.ReleasesCompleted} " +
                 $"cts_disposed={deploymentLifecycle.CancellationsDisposed}。");
         }
+    }
+
+    private void AssertControllerStopTransition(CombatState combat)
+    {
+        NGame host = NGame.Instance
+            ?? throw new InvalidOperationException("控制器停止测试找不到 NGame。");
+        if (!SolverController.IsSearching)
+        {
+            SolverController.RequestSearch(host, combat, SearchReason.Manual);
+            if (!SolverController.IsSearching)
+                throw new InvalidOperationException("停止断言前无法建立活动搜索会话。");
+        }
+
+        int stopNotificationRequestsBefore = SearchCompletionNotifier.RequestCountForTesting;
+        int stopNativeNotificationsBefore = SearchCompletionNotifier.NativeNotificationCountForTesting;
+        SolverController.StopSearchByUser(host);
+        if (SolverController.IsSearching
+            || SolverController.IsDeploying
+            || SolverController.FullAutoEnabled
+            || !SolverController.AutomaticSearchPaused
+            || SolverController.CurrentResultForBugReport != null)
+        {
+            throw new InvalidOperationException("用户停止搜索后仍残留活动会话、路线或自动计算状态。");
+        }
+        if (SearchCompletionNotifier.RequestCountForTesting != stopNotificationRequestsBefore + 1
+            || SearchCompletionNotifier.NativeNotificationCountForTesting
+            != stopNativeNotificationsBefore)
+        {
+            throw new InvalidOperationException("用户停止搜索后没有产生一次受 headless 保护的结束通知。");
+        }
+
+        SolverController.RequestSearch(host, combat, SearchReason.AutoTurnStart);
+        if (SolverController.IsSearching || !SolverController.AutomaticSearchPaused)
+            throw new InvalidOperationException("用户停止后，自动回合入口重新启动了搜索。");
+    }
+
+    private void AssertControllerStopLifecycle(CombatState combat)
+    {
+        if (SolverController.SolverDisabled)
+            throw new InvalidOperationException("控制器停止测试要求求解器初始启用。");
+        if (SolverController.IsSearching || SolverController.IsDeploying)
+            throw new InvalidOperationException("控制器停止测试要求没有既有搜索或部署会话。");
+
+        AssertControllerStopTransition(combat);
     }
 
     private static void AssertPotionPresetPolicy()

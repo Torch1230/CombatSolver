@@ -41,6 +41,7 @@ internal sealed partial class UnattendedTestRunner
         simulator.AddToPile(card, PileType.Hand);
         CardPlay firstPlay = CreateHistoryProbePlay(card, player, playIndex: 0, playCount: 2);
         CardPlay replay = CreateHistoryProbePlay(card, player, playIndex: 1, playCount: 2);
+        int firstPlayHistoryIndex = simulator.History.Entries.Count;
         PredictionTraceFrame frame;
         using (simulator.PushActionSource(card.Original, PredictionActionKind.CardPlay))
         {
@@ -101,12 +102,34 @@ internal sealed partial class UnattendedTestRunner
         forkState.RoundNumber++;
         forkState.AdvancePlayerTurn(player);
         CombatPredictionSimulator nextTurn = fork.Fork();
-        if (nextTurn.History.OfType<CombatPredictionCardPlayFinishedEntry>()
-                .Count(entry => entry.WasEthereal && entry.CardPlay.Player == player) != 2
-            || !ReferenceEquals(nextTurn.History[0], started)
-            || state.RoundNumber == forkState.RoundNumber)
+        int carriedEtherealPlayCount = nextTurn.History
+            .OfType<CombatPredictionCardPlayFinishedEntry>()
+            .Count(entry => entry.WasEthereal && entry.CardPlay.Player == player);
+        if (carriedEtherealPlayCount != 2)
         {
-            throw new InvalidOperationException("跨回合 Fork 丢失了历史出牌计数或污染了父回合。");
+            throw new InvalidOperationException(
+                $"跨回合 Fork 的历史出牌计数错误：ethereal_count={carriedEtherealPlayCount} expected=2。");
+        }
+
+        // Constructing the simulator can seed history from the combat root (e.g. afflictions).
+        // Track the probe's own entry without assuming the root history is empty.
+        CombatPredictionHistoryEntry? firstHistoryEntry = nextTurn.History.Entries.Count > firstPlayHistoryIndex
+            ? nextTurn.History[firstPlayHistoryIndex]
+            : null;
+        bool firstHistoryEntryPreserved = ReferenceEquals(firstHistoryEntry, started);
+        if (!firstHistoryEntryPreserved)
+        {
+            throw new InvalidOperationException(
+                $"跨回合 Fork 没有保留探针出牌条目的身份：index={firstPlayHistoryIndex} first_type={firstHistoryEntry?.GetType().Name ?? "<empty>"} " +
+                $"same_as_started={firstHistoryEntryPreserved} expected_type={started.GetType().Name}。");
+        }
+
+        int parentRound = state.RoundNumber;
+        int childRound = forkState.RoundNumber;
+        if (parentRound == childRound)
+        {
+            throw new InvalidOperationException(
+                $"跨回合 Fork 污染了父回合：parent_round={parentRound} child_round={childRound}。");
         }
     }
 

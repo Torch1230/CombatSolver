@@ -249,6 +249,12 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertControllerSessionLifecycleAsync(scenario.CombatState);
                 runner._completedChecks.Add("ControllerSessionLifecycle");
             }
+            if (request.VerifyControllerStopLifecycle)
+            {
+                runner.SetStage("controller_stop_lifecycle");
+                runner.AssertControllerStopLifecycle(scenario.CombatState);
+                runner._completedChecks.Add("ControllerStopLifecycle");
+            }
             if (request.VerifyForkBoundaries)
             {
                 runner.SetStage("fork_boundaries");

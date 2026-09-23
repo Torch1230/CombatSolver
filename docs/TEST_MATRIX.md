@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## PR #129 合入 0.45.0 后复测（2026-09-23）
+
+- 默认 VeryHigh 300秒/500,000节点、DOP8/16：Linux 17根34进程，Windows三代表根6进程，全为Passed/M2。20对完整路线、质量与药水相同；Linux两根触及时限。所有对照均纳入主汇总；同工作/成员且无时间边界的子集分别4对、2对，单列而不替代主集合。输入固定于 `coverage/generated-combat-scenarios/performance-matrix-20260923/`，通用重跑入口 `tools/OfflineSearchHarness/run-matrix.py`。
+- Linux/Windows主项目与宿主Release零警告/错误，GC合同各64项、时间边界观察器各10项通过；Linux另有进度40项、真实DLL指纹77项及最终Bash结构门禁通过。原生Regent严格回放 `33ac18a3518b44e8b7c0098e0eedb4b8` 和独立停止 `36e9d46b1d7448aeab7e888037d70958` Passed，实例清理。
+- 完整控制器仍在UI尺寸持久化断言Failed。历史夹具按真实插入位置修正后越过全部历史检查，完整Fork随后在回合结束Power选择断言Failed（`8365b5067e884546ae2e7b0697cb2b96`）；原封上游独立夹具复现相同失败（`56194e3e060e49cb87dab035dbc8a1cd`）。不把这些完整门禁记为通过。全部数据、额外耗时/RSS反例、退出错误与未测范围见[完整报告](performance/pr129-final-validation-20260923.md)。
+
 ## 极高有界决策筛查（2026-09-22，候选均否决）
 
 - 额度回收3对、连续威胁6对、资源后能力前缀3对；共6个不同根，覆盖五角色和药水，DOP8/16、10,000/50,000节点、完整Coordinator与16 GiB NoGC。新增15次离线进程，复用基线，不把12对说成12个独立根；路线/质量/开局相等，无观测到的时间边界。未达20%速度或显著质量目标。

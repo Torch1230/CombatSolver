@@ -333,8 +333,7 @@ internal static class ModRuntime
         SolverSettingsSnapshot settings,
         int budgetMilliseconds,
         MainLoopContext loop,
-        out object describedPolicy,
-        ref bool timeBoundary)
+        out object describedPolicy)
     {
         SearchRequestWorkTotals totals = new();
         SearchPolicySnapshot policy = basePolicy with
@@ -343,17 +342,8 @@ internal static class ModRuntime
             Profile = basePolicy.Profile with { SoftTimeBudgetMilliseconds = budgetMilliseconds },
         };
         describedPolicy = DescribePolicy(policy);
-        bool observedTimeBoundary = false;
-        SearchDiagnosticsSink diagnostics = new(
-            message =>
-            {
-                if (message.Contains("TURN_LAYER_BUDGET reason=time", StringComparison.Ordinal))
-                    observedTimeBoundary = true;
-                policy.Diagnostics.Info(message);
-            },
-            policy.Diagnostics.Debug, policy.Diagnostics.PathObserver);
         CombatBeamSolver solver = new(
-            root, names, damage, policy with { Diagnostics = diagnostics }, searchProfile: policy.Profile);
+            root, names, damage, policy, searchProfile: policy.Profile);
         // 与参考跑法一致：求解在工作线程上跑，主线程只泵消息循环。
         Task<SolverResult> solve = Task.Run(solver.Solve);
         loop.RunUntilCompleted(solve, TimeSpan.FromSeconds(660), "CombatBeamSolver.Solve");
@@ -369,7 +359,6 @@ internal static class ModRuntime
         result.TotalTransitionCount = work.TransitionCount;
         result.TotalChoiceBranchesEvaluated = work.ChoiceBranchesEvaluated;
         result.TotalSearchElapsed = work.Elapsed;
-        timeBoundary = observedTimeBoundary || result.BoundaryReason == SearchBoundaryReason.TimeLimit;
         return result;
     }
 
@@ -460,6 +449,8 @@ internal static class ModRuntime
             policy = policy with { Interaction = retirementProbe.Interaction };
             diagnosticProgress += retirementProbe.Observe;
         }
+        SearchTimeBoundaryObserver timeBoundaryObserver = new();
+        policy = policy with { Diagnostics = timeBoundaryObserver.Wrap(policy.Diagnostics) };
         bool timeBoundary = false;
         object describedPolicy = DescribePolicy(policy);
         SolverResult result;
@@ -485,7 +476,7 @@ internal static class ModRuntime
                 result = options.SearchMode == "Coordinator"
                     ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                     : SolveEvaluate(root, names, damage, policy, settings,
-                        options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
+                        options.BudgetMilliseconds, loop, out describedPolicy);
             }
             finally
             {
@@ -497,10 +488,12 @@ internal static class ModRuntime
             result = options.SearchMode == "Coordinator"
                 ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                 : SolveEvaluate(root, names, damage, policy, settings,
-                    options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
+                    options.BudgetMilliseconds, loop, out describedPolicy);
         }
         if (retirementProbe != null)
             result = retirementProbe.Finish(result, options.OutputDirectory);
+        timeBoundaryObserver.ObserveSelectedResult(result.BoundaryReason);
+        timeBoundary = timeBoundaryObserver.TimeBoundaryObserved;
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
         orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);

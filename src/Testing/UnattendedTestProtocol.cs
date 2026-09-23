@@ -89,6 +89,7 @@ internal sealed class UnattendedTestRequest
     public bool VerifySearchPolicySnapshot { get; init; }
     public bool VerifyGrowthPolicy { get; init; }
     public bool VerifyControllerSessionLifecycle { get; init; }
+    public bool VerifyControllerStopLifecycle { get; init; }
     public bool VerifyForkBoundaries { get; init; }
     public bool VerifyCombatRootSnapshot { get; init; }
     public bool VerifyPreCombatForecastApi { get; init; }

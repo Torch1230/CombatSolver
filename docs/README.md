@@ -1,5 +1,8 @@
 # CombatSolver 文档导航
 
+- [PR #129 上游整合与极高复测](performance/pr129-final-validation-20260923.md)：当前基线的 DOP8/16 对照、Windows 验证及保留的测试缺口。
+- [游戏 DLL 辅助方法审查](performance/native-helper-audit-20260923.md)：克隆与牌堆查询的采样、语义和补丁边界。
+
 - [GC 完成链修复与优化筛选](performance/gc-completion-allocation-20260921.md)：替代 #116/#120 的窄修复、失败复现与重新实测取舍。
 - [增量历史计数](strategy/incremental-history-counters.md)：生命周期、测试构建与构键计时。
 - [转置表触顶证据](performance/transposition-cap-evidence-20260920.md)：默认条目上限、标签分布与逐根观测。

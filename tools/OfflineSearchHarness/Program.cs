@@ -18,6 +18,11 @@ internal static class Program
 
     private static int Main(string[] rawArgs)
     {
+        if (rawArgs is ["--check-time-boundary-observer"])
+        {
+            SearchTimeBoundaryObserverChecks.Run();
+            return 0;
+        }
         if (rawArgs.Length == 3 && rawArgs[0] == "--compare-quality-batch")
             return QualityComparison.Run(rawArgs[1], rawArgs[2]);
         if (rawArgs.Length == 2 && rawArgs[0] == "--ranking-schema")

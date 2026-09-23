@@ -119,7 +119,7 @@ add_option expected-finished-player-hp-at-least -1 int nonnegative_int
 for name in \
     clear-player-hand clear-player-piles clear-run-deck clear-all-powers \
     verify-prediction-failure-boundaries verify-search-policy-snapshot verify-growth-policy \
-    verify-controller-session-lifecycle verify-fork-boundaries \
+    verify-controller-session-lifecycle verify-controller-stop-lifecycle verify-fork-boundaries \
     verify-combat-root-snapshot verify-pre-combat-forecast-api verify-base-lib-card-modifier-boundary \
     stop-after-combat-root-snapshot-assertion verify-incremental-search \
     force-short-search-only fixed-search-budget measure-search-phases use-novelty-portfolio-for-test hold-after-initial-search; do

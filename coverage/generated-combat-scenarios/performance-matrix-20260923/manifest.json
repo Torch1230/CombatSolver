@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "createdFrom": "Portable copies of the predeclared 17-root matrix; scenario bytes unchanged; request paths are repository-relative.",
+  "profile": "VeryHigh",
+  "nodes": 500000,
+  "budgetMilliseconds": 300000,
+  "searchMode": "Coordinator",
+  "usePortfolio": true,
+  "productionBudget": true,
+  "potionPolicy": "Smart",
+  "enableNoGcRegion": true,
+  "baselineNoGcRegionBudgetGigabytes": 16,
+  "candidateNoGcRegionBudgetGigabytes": 16,
+  "execution": "Serial fresh A/B, alternate AB/BA by case; full default workload; external timeout360s. No profiling or concurrent validation load.",
+  "acceptance": {
+    "potionCount": "must be identical",
+    "potionIdSequence": "must be identical",
+    "quality": "candidate may not regress victory, projectedBattleHpLost, strategicHpDeficit, enemyHp, or outstandingStolenResource",
+    "work": "totalExpanded/totalTransitions and member identity/status/work fields must match",
+    "route": "canonical route equality recorded; changed route requires componentwise quality non-regression and exact potion policy",
+    "performance": "aggregate full-request wallSeconds or peakManagedLiveBytes/peakWorkingSetBytes; compare geom means; report each root and DOP strata"
+  },
+  "cases": [
+    {
+      "id": "dev-00-ironclad-elite",
+      "role": "ironclad",
+      "encounter": "elite",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-00-ironclad-elite.request.json",
+      "requestSha256": "e38aa89bc33e9e668d9d1cd9fccd1e68af24367322113a813da35092d2979908",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-00-ironclad-elite.scenario.json",
+      "scenarioSha256": "eb714f35621be83ea6d23fe3a1075a6f82dbea9ad1aa3e211ff2f986db2f7c5e"
+    },
+    {
+      "id": "dev-01-silent-elite",
+      "role": "silent",
+      "encounter": "elite",
+      "dop": 16,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-01-silent-elite.request.json",
+      "requestSha256": "c4acf8ccf2e4c247ac54207389321f6c7ff11203d7e98e5968776f8531c856c9",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-01-silent-elite.scenario.json",
+      "scenarioSha256": "074cd67a48b0c880df59635185346713d5f21f1cc0ae351ba74ad48a5aaa67bd"
+    },
+    {
+      "id": "dev-02-defect-elite",
+      "role": "defect",
+      "encounter": "elite",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-02-defect-elite.request.json",
+      "requestSha256": "fdcc2af8302286e8e2077625d6f115e19e5d6452c1ce526e957af077a7682a08",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-02-defect-elite.scenario.json",
+      "scenarioSha256": "485a56b3370977a33cc8d978563bf76cab40fb8428ae06a3d1f80737868d950b"
+    },
+    {
+      "id": "dev-03-regent-elite",
+      "role": "regent",
+      "encounter": "elite",
+      "dop": 16,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-03-regent-elite.request.json",
+      "requestSha256": "022d69c23765b6aa788020fd252cecc0d322970dda610047d32570737c7adfec",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-03-regent-elite.scenario.json",
+      "scenarioSha256": "2f314d7d2d7d2decbcb37f7a303c41b8519a49a89990e927ac110b0a9e9455f7"
+    },
+    {
+      "id": "dev-04-necrobinder-elite",
+      "role": "necrobinder",
+      "encounter": "elite",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-04-necrobinder-elite.request.json",
+      "requestSha256": "3e7421880e1e2df6ada75c6c4921cd6f58b71ba468e1e7e4c5662af8b0de879e",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-04-necrobinder-elite.scenario.json",
+      "scenarioSha256": "b019a67e65e43d3ac808adfca7d67b6bcead860604b74a3a75fbd2414ed5156c"
+    },
+    {
+      "id": "dev-05-ironclad-boss",
+      "role": "ironclad",
+      "encounter": "boss",
+      "dop": 16,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-05-ironclad-boss.request.json",
+      "requestSha256": "8629dd33d528da269d7538c878cc482cbedf336f4c30f0c8a2305610efdf7c52",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-05-ironclad-boss.scenario.json",
+      "scenarioSha256": "0d0d6951d7092a31294f0c7d36ed8e89ad8a435534d9cd7f471f3b75bd369a49"
+    },
+    {
+      "id": "dev-06-silent-boss",
+      "role": "silent",
+      "encounter": "boss",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-06-silent-boss.request.json",
+      "requestSha256": "108e99afa5c9ed8e4876d3934a2a663a34578bd04463108052a5647f80abc2ae",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-06-silent-boss.scenario.json",
+      "scenarioSha256": "0d4af22d89a565a18580038ee2a5cede04474e55ecd7de4fc803a4c205133404"
+    },
+    {
+      "id": "dev-07-defect-boss",
+      "role": "defect",
+      "encounter": "boss",
+      "dop": 16,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-07-defect-boss.request.json",
+      "requestSha256": "0f56fc10d63083b4f472df6559d06a46336b761690adb570700fb33aedd9d26f",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-07-defect-boss.scenario.json",
+      "scenarioSha256": "7d27e0fce3dca20c0fae82b593f42e05aa0f9c8d7d628cbdf94dad1c95dd5932"
+    },
+    {
+      "id": "dev-08-regent-boss",
+      "role": "regent",
+      "encounter": "boss",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-08-regent-boss.request.json",
+      "requestSha256": "de36d4a4a78fd6bf75bcc0719e61fa4ea034798abab576dc1a6acda9d70d5201",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-08-regent-boss.scenario.json",
+      "scenarioSha256": "a82b59ef746c75dbcc754dbb5624b2bea50b900e9784aa12ffff976429ae4413"
+    },
+    {
+      "id": "dev-09-necrobinder-boss",
+      "role": "necrobinder",
+      "encounter": "boss",
+      "dop": 16,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-09-necrobinder-boss.request.json",
+      "requestSha256": "a2e4dadc2ad8dc7b45f0b8ab3b23ee7f0eff2a78e6df06682361d29f1aebde3a",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-09-necrobinder-boss.scenario.json",
+      "scenarioSha256": "ed60144ec2a03fa99b7acb8b16e963eae82a94ad90181ff2b3ddee822a669431"
+    },
+    {
+      "id": "dev-10-ironclad-monster",
+      "role": "ironclad",
+      "encounter": "ordinary",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-10-ironclad-monster.request.json",
+      "requestSha256": "6089302334ed31d483b1fdda718ab13ace555ba57ae3d312b97ac90f1c84a7a4",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-10-ironclad-monster.scenario.json",
+      "scenarioSha256": "d108961c476e34e77f5e2ca36961e863360f227d76bfa8b90b45cd90dee26b68"
+    },
+    {
+      "id": "dev-11-silent-monster",
+      "role": "silent",
+      "encounter": "ordinary",
+      "dop": 16,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-11-silent-monster.request.json",
+      "requestSha256": "a4d23484070ded58330ff5edef632890a03acc70198c5255d2533a71df09850a",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-11-silent-monster.scenario.json",
+      "scenarioSha256": "97122393d9fe7911012d0495f23ec513a56b61d2f830f52241d7fa05d4b467e3"
+    },
+    {
+      "id": "dev-12-defect-monster",
+      "role": "defect",
+      "encounter": "monster",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-12-defect-monster.request.json",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-12-defect-monster.scenario.json",
+      "requestSha256": "d0ffb82bdf32e82184320d8c6f6e0cfa9ddc9e4435f15e82c8772524071e0a9d",
+      "scenarioSha256": "70d5d407c5d9229514d23b7a71864ffe7a54040ff46bc172a785e6535ebbc3f6"
+    },
+    {
+      "id": "dev-13-regent-monster",
+      "role": "regent",
+      "encounter": "monster",
+      "dop": 16,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-13-regent-monster.request.json",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-13-regent-monster.scenario.json",
+      "requestSha256": "38329eedd62eb8d72f494a93dc1bfbb397198b16eea7546e4525ec5276833231",
+      "scenarioSha256": "0d58435819cab78e4337c91b561bd0b47987dd550c054a68a1317340a7bd4fcb"
+    },
+    {
+      "id": "dev-14-necrobinder-monster",
+      "role": "necrobinder",
+      "encounter": "monster",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-14-necrobinder-monster.request.json",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/dev-14-necrobinder-monster.scenario.json",
+      "requestSha256": "10f3c3a64b4762195d8d8b9eb5231dccd66aa0bd41eacaa58a90c24ac1cb28b9",
+      "scenarioSha256": "c7e8a4b23c52eb845a56f2de4cdda5a2cbcfa5d845fa2180924d1b87139977e5"
+    },
+    {
+      "id": "pressure-queen-ironclad-boss",
+      "role": "ironclad",
+      "encounter": "boss",
+      "dop": 8,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/pressure-queen-ironclad-boss.request.json",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/pressure-queen-ironclad-boss.scenario.json",
+      "requestSha256": "93cc51a258e08ccf46e9bfe02131c2161300da4ef2b1de92e783bfbeda1e1978",
+      "scenarioSha256": "9f5c150a9b81f8bb9bfa303af1b4df2273a176a99af626588a32b5678bddd0e3"
+    },
+    {
+      "id": "pressure-test-subject-defect-boss",
+      "role": "defect",
+      "encounter": "boss",
+      "dop": 16,
+      "request": "coverage/generated-combat-scenarios/performance-matrix-20260923/pressure-test-subject-defect-boss.request.json",
+      "scenario": "coverage/generated-combat-scenarios/performance-matrix-20260923/pressure-test-subject-defect-boss.scenario.json",
+      "requestSha256": "96e9b7953ea15d3d2b941b993732e0d68f4c6a34eaf534989aca8b9ac5a81514",
+      "scenarioSha256": "a6067762f72bf32f657ffff0826259b7aef1d81bbe7c59a96320032562e7d5d7"
+    }
+  ],
+  "processTimeoutSeconds": 360
+}

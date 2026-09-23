@@ -77,6 +77,29 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 与时间/内存/GC 无关的字段、选中路线每个动作的 `turn/kind/cardId/potionId/targetCombatId/cardStateKey`、
 根 `ContinuationStamp`、生成场景目录指纹），全等返回 0，有差异返回 1 并把明细写进 `--out`。
 
+### 可复跑的 A/B 矩阵
+
+`run-matrix.py` 校验 manifest 中每个请求和生成场景的 SHA256，以独立进程串行运行两版 DLL，
+按场景交替 AB/BA。默认每根一对，可用 `--repetitions` 增加重复。
+
+```bash
+python3 tools/OfflineSearchHarness/run-matrix.py \
+  --baseline-dll /absolute/baseline/CombatSolver.dll \
+  --candidate-dll /absolute/candidate/CombatSolver.dll \
+  --harness /absolute/OfflineSearchHarness.dll \
+  --manifest coverage/generated-combat-scenarios/performance-matrix-20260923/manifest.json \
+  --workspace .local/performance-matrix
+```
+
+输出目录必须为空；保留全部成功、超时和失败记录。`allValidPairs` 聚合所有有效对照，
+`sameWorkNoTimeBoundaryPairs` 另要求药水消耗相同、质量分量不退化、工作量/组合成员一致，
+且无观测到的时间边界。两组必须一起报告；后者不是筛除不利场景的理由。
+返回码 2 表示至少一对未满足严格比较条件，应查阅逐对记录，而不是把全部样本视为运行失败。
+
+时间边界观察器同时检查最终 `TimeLimit` 和搜索内部的明确时间截止日志，包括补充药水、
+回合层及新颖性搜索。最终胜利路线不代表中间成员从未触及时间边界。
+`--check-time-boundary-observer` 可独立运行观察器合同。离线结果不替代原生语义验证。
+
 ## 产物
 
 每根一个目录：
@@ -99,8 +122,9 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 `Evaluate`。要量「一个宽度值到底搜了多少」用 `Evaluate`；要量「玩家实际会等多久、实际选哪条路线」
 用 `Coordinator`。
 
-**固定预算口径。** 宿主总是以 `fixedSearchBudget=true` 起一段离线会话
-（`UnattendedTestRunner.BeginOfflineSession`），`--budget-ms` 落在 `searchBudgetOverrideMilliseconds`
+**固定预算口径。** 宿主默认以 `fixedSearchBudget=true` 起一段离线会话；
+`--production-budget` 切换为生产预算流程（`fixedSearchBudget=false`）。宿主
+通过 `UnattendedTestRunner.BeginOfflineSession` 设置会话，`--budget-ms` 落在 `searchBudgetOverrideMilliseconds`
 上，`--dop` 落在 `searchMaxDegreeOfParallelismForTest` 上——与游戏内无人测试请求里的同名字段走同一段
 代码（`ProtocolHost.ConfigureSearchOverrides`）。默认 `EnableNoGcRegion` 关闭；显式传
 `--enable-no-gc-region` 且目标是验证 Runtime 的内存回收/截断路径时，才由 `SearchGcPolicy` 管理模式

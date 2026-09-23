@@ -105,6 +105,7 @@ param(
     [switch]$VerifySearchPolicySnapshot,
     [switch]$VerifyGrowthPolicy,
     [switch]$VerifyControllerSessionLifecycle,
+    [switch]$VerifyControllerStopLifecycle,
     [switch]$VerifyForkBoundaries,
     [switch]$VerifyCombatRootSnapshot,
     [switch]$VerifyPreCombatForecastApi,
@@ -812,6 +813,7 @@ $request = [ordered]@{
     verifySearchPolicySnapshot = $VerifySearchPolicySnapshot.IsPresent
     verifyGrowthPolicy = $VerifyGrowthPolicy.IsPresent
     verifyControllerSessionLifecycle = $VerifyControllerSessionLifecycle.IsPresent
+    verifyControllerStopLifecycle = $VerifyControllerStopLifecycle.IsPresent
     verifyForkBoundaries = $VerifyForkBoundaries.IsPresent
     verifyCombatRootSnapshot = $VerifyCombatRootSnapshot.IsPresent
     verifyPreCombatForecastApi = $VerifyPreCombatForecastApi.IsPresent
