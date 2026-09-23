@@ -42,16 +42,6 @@ internal sealed partial class CombatBeamSolver
             pure = false;
             break;
         }
-        if (root.StartTurnNumber == 1
-            && node.Action?.Turn == 1
-            && !_run.OpeningTurnComplexCardEffectObserved)
-        {
-            SimPlayerCombatState beforePlayer =
-                ((CombatPredictionSimulator)before.Simulator).State.GetPlayerCombatState(_player);
-            SimPlayerCombatState afterPlayer = simulator.State.GetPlayerCombatState(_player);
-            _run.OpeningTurnComplexCardEffectObserved = !IsPlainOpeningAttack(
-                cardType, pure, beforePlayer, afterPlayer);
-        }
         SimulatedCombatState beforeCombat = (SimulatedCombatState)
             ((CombatPredictionSimulator)before.Simulator).State.CombatState;
         bool declinedExtraTurn = beforeCombat.RelicsOf(_player)
@@ -88,58 +78,6 @@ internal sealed partial class CombatBeamSolver
             pure,
             normalized);
     }
-
-    private static bool IsPlainOpeningAttack(
-        CardType type,
-        bool pureHistory,
-        SimPlayerCombatState before,
-        SimPlayerCombatState after)
-    {
-        if (type != CardType.Attack || !pureHistory
-            || !SameCards(before.DrawPile.Cards, after.DrawPile.Cards)
-            || !SameCards(before.ExhaustPile.Cards, after.ExhaustPile.Cards)
-            || after.DiscardPile.Cards.Count != before.DiscardPile.Cards.Count + 1)
-            return false;
-        for (int index = 0; index < before.DiscardPile.Cards.Count; index++)
-            if (!SameCard(before.DiscardPile.Cards[index], after.DiscardPile.Cards[index]))
-                return false;
-        IReadOnlyList<PredictedCard> oldHand = before.Hand.Cards;
-        IReadOnlyList<PredictedCard> newHand = after.Hand.Cards;
-        if (newHand.Count != oldHand.Count - 1)
-            return false;
-        int next = 0;
-        PredictedCard? removed = null;
-        foreach (PredictedCard card in oldHand)
-        {
-            if (next < newHand.Count && SameCard(card, newHand[next]))
-            {
-                next++;
-                continue;
-            }
-            if (removed != null)
-                return false;
-            removed = card;
-        }
-        return next == newHand.Count
-            && removed != null
-            && SameCard(removed, after.DiscardPile.Cards[^1]);
-    }
-
-    private static bool SameCards(
-        IReadOnlyList<PredictedCard> before,
-        IReadOnlyList<PredictedCard> after)
-    {
-        if (before.Count != after.Count)
-            return false;
-        for (int index = 0; index < before.Count; index++)
-            if (!SameCard(before[index], after[index]))
-                return false;
-        return true;
-    }
-
-    private static bool SameCard(PredictedCard before, PredictedCard after)
-        => ReferenceEquals(before.Original, after.Original)
-            && CardChoiceSupport.ChoiceCardKey(before) == CardChoiceSupport.ChoiceCardKey(after);
 
     private List<ActionCandidate> SelectActionCandidates(
         SearchNode parent,

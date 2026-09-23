@@ -1,13 +1,5 @@
 # CombatSolver 测试清单
 
-## 首回合固定战损早停（2026-09-23）
-
-- `OPENING-TURN-LOSS-STOP` / `235c7db269174c38a4f8a4c9f7e51742` Passed，原生 `IRONCLAD` / `FUZZY_WURM_CRAWLER_WEAK`，敌方首回合固定攻击 10、敌方 35 HP。五张 `STRIKE_IRONCLAD` 开局完整覆盖首回合后确认为必损 10：改动前整场损失 10、请求共 352 展开节点；改动后同为 10、13 节点。四张 `STRIKE_IRONCLAD` 加一张 `TWIN_STRIKE` 在 DOP1/DOP2 下整场战损均为 10，分别展开 9/12 节点，DOP2 实际并行度 2；关闭早停后固定 128 节点，双方动作、评分、展开、309 次转移与非时序剪枝计数一致。
-- 两张 `DEFEND_IRONCLAD` 加三张 `STRIKE_IRONCLAD` 可将首回合与整场战损压到 0，不建立新早停界。敌方 45 HP、抽牌堆带 `HEMOKINESIS` 时，开启新容差得到首回合 10、整场 12 战损，17 节点；关闭战损目标早停得到整场 10 战损，512 节点。该例直接显示最多额外 2 HP 的质量取舍，不能把更少展开说成无损优化。
-- 首回合只有 2 节点额度时不建立最低战损界；手牌分别含 `INFLAME`、`POMMEL_STRIKE`、`ANGER` 时不建立新早停界，保留能力、抽牌、塞牌路线。测试从隔离无头游戏进程运行，实例由启动器清理；上述节点数属于固定夹具，不推断可见实机耗时改善。
-- 复现：`pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId OPENING-TURN-LOSS-STOP -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 35 -InitialPlayerHp 80 -InitialPlayerMaxHp 80 -EnableNoGcRegionForTest 0 -CleanupInstanceOnExit -TimeoutSeconds 120`。
-- 既有 `SEARCH-HP-TARGET-STOP` / `7538b8bae806418bb385732d82867ee4` Passed：零战损早停、关闭开关、治疗来源、成长、强制/智能药水和 DOP2 合同保持。最终 Release 构建 0 警告、0 错误，结构门禁 `REFACTOR_BOUNDARIES_OK search_files=209`。
-
 ## 0.44.1 定版验证范围（2026-09-23）
 
 - 版本号与中英更新日志已同步；本次仅变更版本和文档。最终 Release 构建通过，0 警告、0 错误；行为验证沿用下列回合开始镜像、Power 施加差分和 Loadout 空配置实测结果，未重复运行。

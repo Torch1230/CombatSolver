@@ -1931,20 +1931,10 @@ internal static partial class CombatSearchCoordinator
             && result.Snapshot.ProjectedDeathSaveUseCount == 0
             && result.PotionCount == policy.MinimumRequiredPotionUses(result.BattlePotionsUsedSoFar)
             && policy.PotionStrategy.EvaluateForcedUses(result.BestNode.Actions, renewablePotionShapedRock: false).AllForcedUsesSatisfied
-            && (HasReachedAcceptableBattleHpLoss(
-                    IsCompleteVictory(result),
-                    result.ProjectedBattleHpLost,
-                    policy.AcceptableBattleHpLoss)
-                || result.StartTurnNumber == 1
-                    && policy.Profile.StopPortfolioAtHpTarget
-                    && IsCompleteVictory(result)
-                    && !result.Snapshot.HasRisk
-                    && result.HpLostByTurn.TryGetValue(1, out int firstTurnLoss)
-                    && OpeningTurnLossTarget.IsReached(
-                        result.ExhaustiveOpeningTurnHpLoss,
-                        firstTurnLoss,
-                        result.ProjectedBattleHpLost,
-                        result.Snapshot.RecoveredPlayerHp));
+            && HasReachedAcceptableBattleHpLoss(
+            IsCompleteVictory(result),
+            result.ProjectedBattleHpLost,
+            policy.AcceptableBattleHpLoss);
 
     // This honors an explicitly enabled satisficing policy, not a proof that no
     // alternate route can heal more or finish sooner. Preserve the selected incumbent.
