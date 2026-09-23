@@ -1,5 +1,9 @@
 # CombatSolver 开发笔记与未来构想
 
+## 0.44.1（开发中）
+
+- 本批汇集第三方回合开始适配、战斗 Power 施加预测修正和 Loadout 空怪物能力配置兼容；玩家可见的最终变化见 [0.44.1 更新日志](releases/0.44.1-RELEASE_NOTES.md)。仅记录小版本号和更新日志，尚未发布。
+
 ## 下一版本（开发中）：Loadout 空怪物能力配置兼容（2026-09-23）
 
 - Loadout `v0.5.6` 总是登记 `PowerGiverSummonHook.AfterCreatureAddedToCombat`，此前即使怪物能力配置为空也在根捕获时被拒绝。该 Mod 的清单声明 `affects_gameplay: true`；配置非空时会向新加入的怪物施加能力，并在部分怪物阶段切换后补施加，不能整体按纯界面 Mod 放行。

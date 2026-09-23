@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 0.44.1 版本记录范围（2026-09-23）
+
+- 版本号与中英更新日志已同步；本次仅变更版本和文档。最终 Release 构建通过，0 警告、0 错误；行为验证沿用下列回合开始镜像、Power 施加差分和 Loadout 空配置实测结果，未重复运行。
+- 当前为开发中版本，未创建标签或渠道发布。
+
 ## Loadout 空怪物能力配置（2026-09-23）
 
 - 日志基线：本机最新战斗日志在根捕获拒绝 `Loadout.Services.PowerGiver.PowerGiverSummonHook`；Loadout `v0.5.6` 的公开实现显示其怪物能力计数非空时会在召唤及部分怪物阶段切换时施加 Power。当前跑局侧文件的 `monsterCounters` 和 `combatStartSnapshot.monsterCounters` 均为空。

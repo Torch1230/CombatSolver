@@ -13,6 +13,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 本批第三方回合开始适配、战斗预测修正与 Loadout 兼容的玩家说明 | [0.44.1 更新日志（开发中）](releases/0.44.1-RELEASE_NOTES.md) |
 | 本批计算失败修复、循环优化与搜索组合调整的玩家说明 | [0.44.0 更新日志](releases/0.44.0-RELEASE_NOTES.md) |
 | 小循环的质量（过量格挡/不取斩杀）、动作数上限与展示折叠落点 | [循环质量性能展示调研](research/loop-quality-performance-display-20260921.md) |
 | 循环请求共享额度、安全前缀续搜及历史依赖收尾 | [循环优化收尾](performance/loop-final-20260921.md) |
