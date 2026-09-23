@@ -1,10 +1,13 @@
 # CombatSolver 测试清单
 
-## 覆盖层视觉收敛（2026-09-23）
+## UI 视觉层级重构与去模板化设计（2026-09-23）
 
-- Windows Release 构建通过，0 警告、0 错误。`ROUTE-ROW-REUSE` / `0aa609025f664b918ff521681a86ae6b` Passed：动作块构造、路线行复用、执行状态、语言往返等既有合同通过；无头实例已删除。
-- `UI-LOCALIZATION` / `1d6dddbc448140abaa4c31fb8901acff` 在夹具生成怪物时因 `ConditionalBranchState.GetNextState` 抛出 `No valid next state found`，未跑完该场景。`ROUTE-ROW-REUSE` 首次运行已完成其断言，但缺少必需的 `EvidenceDirectory`，在写测量文件时失败；补齐参数后取得上述 Passed 结果。
-- 本轮只验证构建与无头结构/交互合同；浅色、深色主题的可见画面和实际排版未验收。扫描器仅支持网页文件，对 C# 返回 0 项不视为通过证据。
+- Windows Release 构建通过，0 警告、0 错误。
+- PowerShell 结构门禁 `tools\verify-refactor-boundaries.ps1` 校验通过，`REFACTOR_BOUNDARIES_OK search_files=208`。
+- `git diff --check` 格式门禁通过，无空白行或悬挂空格。
+- `ROUTE-ROW-REUSE` / `3f480bd1bd3c468a8c0d73799ea1486d` Passed：动作块构造、路线行复用、执行状态、语言往返等既有布局与状态合同全部通过；已指定 `EvidenceDirectory`，无头实例由 `CleanupInstanceOnExit` 自动清理删除。
+- `UI-LOCALIZATION`：在基线提交（0c5f677b）夹具生成怪物时即因 `ConditionalBranchState.GetNextState` 抛出 `No valid next state found`，无法在当前夹具环境完整通过，如实记录未标记为通过。
+- 本轮只验证代码编译、结构门禁与无头交互合同；浅色、深色主题的可见画面排版与交互未进行 Steam 实机观感验收。
 
 ## 0.45.0 定版验证范围（2026-09-23）
 

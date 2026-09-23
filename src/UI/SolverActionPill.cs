@@ -45,7 +45,7 @@ internal static class SolverActionPill
         Label titleLabel = SolverUiTokens.CreateLabel(
             action.Title,
             SolverUiTokens.Type.Metric,
-            killed ? SolverUiTokens.Palette.Success : SolverUiTokens.Palette.TextPrimary,
+            SolverUiTokens.Palette.TextPrimary,
             FontType.Bold);
         content.AddChild(titleLabel);
         refreshers.Add(updated => titleLabel.Text = updated.Title);
@@ -128,7 +128,7 @@ internal static class SolverActionPill
         pill.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
             SolverUiTokens.Palette.SurfaceRaised,
             SolverUiTokens.Palette.BorderSubtle,
-            SolverUiTokens.Radius.Pill,
+            SolverUiTokens.Radius.Small,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
         pill.AddChild(SolverUiTokens.CreateLabel(text, SolverUiTokens.Type.Body, color));

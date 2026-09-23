@@ -58,10 +58,10 @@ internal static class SolverUiTokens
 
     public static class Radius
     {
-        public const int Small = 6;
-        public const int Medium = 8;
-        public const int Pill = 10;
-        public const int Large = 12;
+        public const int Small = 4;
+        public const int Medium = 6;
+        public const int Pill = 6;
+        public const int Large = 8;
     }
 
     public static class Type
@@ -163,9 +163,9 @@ internal static class SolverUiTokens
             ContentMarginRight = horizontalPadding,
             ContentMarginBottom = verticalPadding,
             ShadowColor = shadow
-                ? new Color(0f, 0f, 0f, IsLightTheme ? 0.14f : 0.52f)
+                ? new Color(0f, 0f, 0f, IsLightTheme ? 0.08f : 0.38f)
                 : Godot.Colors.Transparent,
-            ShadowSize = shadow ? (IsLightTheme ? 16 : 10) : 0,
+            ShadowSize = shadow ? 8 : 0,
         };
     }
 
@@ -239,32 +239,50 @@ internal static class SolverUiTokens
 
     public static void ApplyButtonStyle(Button button, SolverButtonStyle style)
     {
+        const int radius = Radius.Medium;
+        const int hPad = Spacing.Sm;
+        const int vPad = Spacing.Xs;
+
         if (!IsLightTheme)
         {
-            (Color darkBackground, Color darkBorder, Color darkHover) = style switch
+            (Color darkBackground, Color darkBorder, Color darkHover, Color darkPressed) = style switch
             {
                 SolverButtonStyle.Primary => (
                     Palette.Accent.Darkened(0.12f),
                     Palette.Accent.Lightened(0.08f),
-                    Palette.AccentHover),
-                SolverButtonStyle.Positive => (Palette.Positive, Palette.Success, Palette.PositiveHover),
+                    Palette.AccentHover,
+                    Palette.Accent.Darkened(0.24f)),
+                SolverButtonStyle.Positive => (
+                    Palette.Positive,
+                    Palette.Success,
+                    Palette.PositiveHover,
+                    Palette.Positive.Darkened(0.18f)),
                 SolverButtonStyle.Danger => (
                     Palette.Danger.Darkened(0.22f),
                     Palette.Danger,
-                    Palette.Danger.Lightened(0.08f)),
-                _ => (Palette.SurfaceRaised, Palette.Border, Palette.SurfaceHover),
+                    Palette.Danger.Lightened(0.08f),
+                    Palette.Danger.Darkened(0.32f)),
+                _ => (
+                    Palette.SurfaceRaised,
+                    Palette.BorderSubtle,
+                    Palette.SurfaceHover,
+                    Palette.Surface),
             };
+
             button.AddThemeStyleboxOverride("normal", CreateBox(
-                darkBackground, darkBorder, Radius.Medium, Spacing.Sm, Spacing.Xs));
+                darkBackground, darkBorder, radius, hPad, vPad));
             button.AddThemeStyleboxOverride("hover", CreateBox(
-                darkHover, darkBorder.Lightened(0.12f), Radius.Medium, Spacing.Sm, Spacing.Xs));
+                darkHover, darkBorder.Lightened(0.12f), radius, hPad, vPad));
             button.AddThemeStyleboxOverride("pressed", CreateBox(
-                darkBackground.Darkened(0.16f), darkBorder, Radius.Medium, Spacing.Sm, Spacing.Xs));
+                darkPressed, darkBorder, radius, hPad, vPad));
             button.AddThemeStyleboxOverride("disabled", CreateBox(
-                Palette.Background, Palette.BorderSubtle, Radius.Medium, Spacing.Sm, Spacing.Xs));
+                Palette.Background, Palette.BorderSubtle, radius, hPad, vPad));
+            button.AddThemeStyleboxOverride("focus", CreateBox(
+                darkHover, Palette.Accent, radius, hPad, vPad));
             button.AddThemeColorOverride("font_color", Palette.TextPrimary);
             button.AddThemeColorOverride("font_hover_color", Godot.Colors.White);
             button.AddThemeColorOverride("font_pressed_color", Godot.Colors.White);
+            button.AddThemeColorOverride("font_disabled_color", Palette.TextMuted);
             ApplyButtonFont(button);
             return;
         }
@@ -291,18 +309,20 @@ internal static class SolverUiTokens
                 Godot.Colors.White),
             _ => (
                 Palette.Surface,
-                Color.FromHtml("8a8a8aff"),
-                Palette.SurfaceHover,
                 Palette.Border,
+                Palette.SurfaceHover,
+                Palette.BorderSubtle,
                 Palette.TextPrimary),
         };
-        button.AddThemeStyleboxOverride("normal", CreateBox(background, border, Radius.Small, Spacing.Sm, Spacing.Xs));
-        button.AddThemeStyleboxOverride("hover", CreateBox(hover, border, Radius.Small, Spacing.Sm, Spacing.Xs));
-        button.AddThemeStyleboxOverride("pressed", CreateBox(pressed, border, Radius.Small, Spacing.Sm, Spacing.Xs));
-        button.AddThemeStyleboxOverride("disabled", CreateBox(Palette.Background, Palette.BorderSubtle, Radius.Small, Spacing.Sm, Spacing.Xs));
+        button.AddThemeStyleboxOverride("normal", CreateBox(background, border, radius, hPad, vPad));
+        button.AddThemeStyleboxOverride("hover", CreateBox(hover, border.Darkened(0.12f), radius, hPad, vPad));
+        button.AddThemeStyleboxOverride("pressed", CreateBox(pressed, border, radius, hPad, vPad));
+        button.AddThemeStyleboxOverride("disabled", CreateBox(Palette.Background, Palette.BorderSubtle, radius, hPad, vPad));
+        button.AddThemeStyleboxOverride("focus", CreateBox(hover, Palette.Accent, radius, hPad, vPad));
         button.AddThemeColorOverride("font_color", font);
         button.AddThemeColorOverride("font_hover_color", font);
         button.AddThemeColorOverride("font_pressed_color", font);
+        button.AddThemeColorOverride("font_disabled_color", Palette.TextMuted);
         ApplyButtonFont(button);
     }
 
@@ -323,8 +343,8 @@ internal static class SolverUiTokens
     {
         if (root is Control control && root is Label or Button or LineEdit)
         {
-            int size = root.Name == "StrategyHeading" ? 18 : root is Label label
-                && label.GetThemeFontSize("font_size") == Type.Caption ? 14 : 16;
+            int size = root.Name == "StrategyHeading" ? Type.Title : root is Label label
+                && label.GetThemeFontSize("font_size") == Type.Caption ? Type.Caption : Type.Body;
             control.AddThemeFontSizeOverride("font_size", size);
             ApplyTextOutline(control, 0);
             control.ApplyLocaleFontSubstitution(FontType.Regular, "font");

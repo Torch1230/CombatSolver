@@ -1,9 +1,31 @@
 # CombatSolver 开发笔记与未来构想
 
-## 下一版本（开发中）：覆盖层视觉收敛（2026-09-23）
+## 下一版本（开发中）：UI 视觉层级重构与去模板化设计（2026-09-23）
 
-- 路线动作保留攻击、技能、能力、负面效果、药水和击杀的分类色标，动作底色与描边改为中性表面；当前回合保留左侧色标与标题强调，去掉重复的强调色外框。
-- 状态标记、反馈框及可关闭提示统一使用中性底色与细边框，状态文字继续表达成功、警告或失败。动作块和状态标记改用较小圆角，减少一屏内的彩色卡片感。
+- 全局 Design Tokens 与组件基线 (`SolverUiTokens`)：
+  - 规范圆角体系：`Small = 4px`, `Medium = 6px`, `Pill = 6px`, `Large = 8px`，去除 12–16px 过度膨胀圆角。
+  - 按钮样式 (`ApplyButtonStyle`)：深浅主题统一采用 `Radius.Medium` (6px)；次要按钮在深浅主题下均使用统一的中性边框 (`Palette.BorderSubtle` / `Palette.Border`)，移除浅色主题硬编码灰色 (`8a8a8aff`)；补充统一且克制的 `focus` 外框，统整 hover/pressed/disabled/focus 交互状态。
+  - 阴影弱化：卡片浮层投影范围缩小至 8px，透明度调整为浅色 0.08、深色 0.38，避免大面积脏灰与漂浮感。
+  - 策略面板排版文字统一对齐设计令牌 (`Type.Title` 15px, `Type.Caption` 12px, `Type.Body` 13px)，消除硬编码字号。
+- 设置面板层级扁平化与控件规范 (`SolverSettingsPanel`)：
+  - 移除卡片套卡片的过度嵌套：将每个设置分组原有的 `PanelContainer` 容器解套为纯净的竖向分区布局（标题 + 精细中性分隔线 + 辅助说明 + 网格），消除多层底色叠加与重复边框。
+  - 下拉选择框 (`CreateOptionInput`)：深浅主题均使用规范的下箭头符号覆盖原生粗糙图标，补充 hover 与 pressed 样式。
+  - 文本输入框 (`CreateInput`)：补充 hover 悬浮高亮状态，使输入控件交互反馈完备。
+  - 开关控件 (`CreateToggle`)：统整深浅两套主题下的开关尺寸为标准 `40×22` 胶囊，自绘圆滑轨道 (`trackOff` / `trackOn`) 与圆形滑块，深浅主题风格高度一致，彻底消除原生 CheckButton 在浅色主题下的突兀视觉。
+- 战斗悬浮窗与状态呈现去噪 (`SolverOverlay`)：
+  - 移除标题栏左侧多余的装饰性强调色竖条（Dark 模式）及纯装饰性 App 图标背景盒（Light 模式），减少纯装饰性色块堆砌。
+  - 剔除标题栏设置按钮和折叠按钮在浅色主题下硬编码的强调色/红色字色，保持按钮系统一致性。
+  - 搜索进度条边框收敛为 `BorderSubtle` 1px，保持视觉轻量。
+- 路线、动作胶囊与循环组 (`SolverActionPill`, `SolverLoopGroup`)：
+  - 路线动作保留攻击、技能、能力、负面效果、药水和击杀的分类色标，动作底色与描边改为中性表面；当前回合保留左侧色标与标题强调，去掉重复的强调色外框。
+  - 动作卡片标题恢复使用 `Palette.TextPrimary`，避免怪物被击杀时整张卡片全文字染绿导致对比度降低；击杀状态通过击杀角标及左侧色标清晰传达。
+  - 状态标记、反馈框及可关闭提示统一使用中性底色与细边框，状态文字继续表达成功、警告或失败。动作块和状态标记改用 `Radius.Small` (4px)，减少一屏内的彩色卡片感。
+  - 循环展开卡片外框圆角调整为 `Radius.Medium` (6px)，避免巨型胶囊感。
+- 策略面板与辅助弹窗 (`SolverPotionStrategyPanel`, `SolverRelicStrategyPanel`, `BugReportUploadDialog`, `SolverMemoryUsageBar`)：
+  - 药水指令切换按钮去除“彩色边框+彩色文字+彩色图标”的过度染色，底色与边框保持中性表面 (`SurfaceRaised` / `BorderSubtle`)，通过符号和色调单向指示。
+  - 遗物卡片样式对齐设计令牌 (`SurfaceRaised`, `BorderSubtle`, `Radius.Medium`, `Spacing.Sm`)。
+  - 内存监视条外框边框由高对比 `Border` 改为 `BorderSubtle`，与悬浮窗底部栏融为一体。
+  - 问题反馈弹窗标题栏移除 4×20 纯装饰性强调色小色条；“确认上传”按钮由错误的 `Danger` (红色) 改为正确的 `Primary` (主色)，纠正将非破坏性提交操作标为危险操作的模板化问题。
 - `kill-ai-slop` 自带扫描器只读取网页文件，未覆盖本项目的 Godot/C# UI；本次按其视觉条目人工核对。构建与无头结果见[测试矩阵](TEST_MATRIX.md)，未进行可见 Steam 观感验收。
 
 ## 0.45.0 定版（2026-09-23）

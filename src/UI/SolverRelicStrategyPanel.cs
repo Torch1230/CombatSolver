@@ -60,8 +60,12 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
         {
             RelicModel relic = entry.Canonical();
             PanelContainer card = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            card.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(SolverUiTokens.Palette.Surface,
-                SolverUiTokens.Palette.BorderSubtle, SolverUiTokens.Radius.Medium, 10, 8));
+            card.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+                SolverUiTokens.Palette.SurfaceRaised,
+                SolverUiTokens.Palette.BorderSubtle,
+                SolverUiTokens.Radius.Medium,
+                SolverUiTokens.Spacing.Sm,
+                SolverUiTokens.Spacing.Sm));
             VBoxContainer group = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             group.AddThemeConstantOverride("separation", 10);
             card.AddChild(group);

@@ -270,7 +270,7 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
             MouseDefaultCursorShape = CursorShape.PointingHand,
         };
-        input.AddThemeFontSizeOverride("font_size", 18);
+        input.AddThemeFontSizeOverride("font_size", SolverUiTokens.Type.Body);
         input.ApplyLocaleFontSubstitution(FontType.Bold, "font");
         SolverUiTokens.ApplyTextOutline(input);
         ApplyDirectiveToggle(input, directive);
@@ -287,44 +287,47 @@ internal sealed partial class SolverPotionStrategyPanel : PanelContainer
 
     private static void ApplyDirectiveToggle(Button input, SolverPotionDirective directive)
     {
-        (string text, string description, Color color) = directive switch
+        (string symbol, string description, Color tone) = directive switch
         {
-            SolverPotionDirective.Disabled => ("x", SolverText.Get("禁用 / 保护"), SolverUiTokens.Palette.Danger),
+            SolverPotionDirective.Disabled => ("✕", SolverText.Get("禁用 / 保护"), SolverUiTokens.Palette.Danger),
             SolverPotionDirective.Force => ("✓", SolverText.Get("强制使用"), SolverUiTokens.Palette.Success),
-            _ => ("-", SolverText.Get("智能使用"), SolverUiTokens.Palette.TextSecondary),
+            _ => ("—", SolverText.Get("智能使用"), SolverUiTokens.Palette.TextSecondary),
         };
-        Color background = SolverUiTokens.IsLightTheme
-            ? SolverUiTokens.Palette.Surface
-            : SolverUiTokens.Palette.Background;
-        input.Text = $"{text}  {description}";
+        input.Text = $"{symbol}  {description}";
         input.TooltipText = SolverText.Format($"{description}（点击切换）");
-        input.AddThemeColorOverride("font_color", color);
-        input.AddThemeColorOverride("font_hover_color", color);
-        input.AddThemeColorOverride("font_pressed_color", color);
+        input.AddThemeColorOverride("font_color", tone);
+        input.AddThemeColorOverride("font_hover_color", tone.Lightened(0.12f));
+        input.AddThemeColorOverride("font_pressed_color", tone.Darkened(0.12f));
         input.AddThemeColorOverride("font_disabled_color", SolverUiTokens.Palette.TextMuted);
+
+        Color background = SolverUiTokens.Palette.SurfaceRaised;
+        Color border = SolverUiTokens.Palette.BorderSubtle;
+        Color hoverBg = SolverUiTokens.Palette.SurfaceHover;
+        Color hoverBorder = SolverUiTokens.Palette.Border;
+
         input.AddThemeStyleboxOverride("normal", SolverUiTokens.CreateBox(
             background,
-            color,
+            border,
             SolverUiTokens.Radius.Small,
-            SolverUiTokens.Spacing.Xs,
+            SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
         input.AddThemeStyleboxOverride("hover", SolverUiTokens.CreateBox(
-            SolverUiTokens.Palette.SurfaceHover,
-            color.Lightened(0.12f),
+            hoverBg,
+            hoverBorder,
             SolverUiTokens.Radius.Small,
-            SolverUiTokens.Spacing.Xs,
+            SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
         input.AddThemeStyleboxOverride("pressed", SolverUiTokens.CreateBox(
             background.Darkened(0.12f),
-            color,
+            border,
             SolverUiTokens.Radius.Small,
-            SolverUiTokens.Spacing.Xs,
+            SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
         input.AddThemeStyleboxOverride("disabled", SolverUiTokens.CreateBox(
             SolverUiTokens.Palette.Background,
             SolverUiTokens.Palette.BorderSubtle,
             SolverUiTokens.Radius.Small,
-            SolverUiTokens.Spacing.Xs,
+            SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
     }
 }

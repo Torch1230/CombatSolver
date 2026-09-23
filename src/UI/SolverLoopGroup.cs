@@ -25,7 +25,7 @@ internal sealed partial class SolverLoopGroup : PanelContainer
         MouseFilter = MouseFilterEnum.Pass;
         AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
             SolverUiTokens.Palette.Surface, SolverUiTokens.Palette.BorderSubtle,
-            SolverUiTokens.Radius.Large, 2, 2));
+            SolverUiTokens.Radius.Medium, 2, 2));
         _content = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         _content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xs);
         Actions.AddThemeConstantOverride("h_separation", 6);

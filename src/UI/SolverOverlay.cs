@@ -1913,37 +1913,6 @@ internal static class SolverOverlay
         header.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
         header.GuiInput += OnHeaderGuiInput;
 
-        Control marker;
-        if (SolverUiTokens.IsLightTheme)
-        {
-            PanelContainer icon = new()
-            {
-                Name = "AppIcon",
-                CustomMinimumSize = new Vector2(16, 16),
-                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-                MouseFilter = Control.MouseFilterEnum.Ignore,
-            };
-            icon.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
-                Accent,
-                Accent,
-                SolverUiTokens.Radius.Small,
-                0,
-                0,
-                borderWidth: 0));
-            marker = icon;
-        }
-        else
-        {
-            marker = new ColorRect
-            {
-                Color = Accent,
-                CustomMinimumSize = new Vector2(4, 24),
-                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-                MouseFilter = Control.MouseFilterEnum.Ignore,
-            };
-        }
-        header.AddChild(marker);
-
         Label title = CreateTextLabel(SolverText.Get("战斗路线求解器"), SolverUiTokens.Type.Title, TextPrimary, FontType.Bold);
         title.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
         header.AddChild(title);
@@ -1971,23 +1940,11 @@ internal static class SolverOverlay
 
         _settingsButton = CreateHeaderButton(SolverText.Get("设置"), 54);
         _settingsButton.Pressed += ToggleSettings;
-        if (SolverUiTokens.IsLightTheme)
-        {
-            _settingsButton.AddThemeColorOverride("font_color", Accent);
-            _settingsButton.AddThemeColorOverride("font_hover_color", Accent);
-            _settingsButton.AddThemeColorOverride("font_pressed_color", Accent);
-        }
         header.AddChild(_settingsButton);
 
         _collapseButton = CreateHeaderButton(SolverText.Get("−  收起"), 54);
         _collapseButton.Pressed += ToggleCollapsed;
         _collapseButton.TooltipText = SolverText.Get("收起路线内容；Ctrl＋F9 显示或隐藏整个求解器界面。");
-        if (SolverUiTokens.IsLightTheme)
-        {
-            _collapseButton.AddThemeColorOverride("font_color", Danger);
-            _collapseButton.AddThemeColorOverride("font_hover_color", Danger);
-            _collapseButton.AddThemeColorOverride("font_pressed_color", Danger);
-        }
         header.AddChild(_collapseButton);
 
         return header;
@@ -2239,18 +2196,19 @@ internal static class SolverOverlay
         _searchProgressBar.AddThemeStyleboxOverride("background",
             SolverUiTokens.CreateBox(
                 SolverUiTokens.Palette.ProgressBackground,
-                SolverUiTokens.IsLightTheme ? Colors.Transparent : SolverUiTokens.Palette.BorderSubtle,
+                SolverUiTokens.Palette.BorderSubtle,
                 SolverUiTokens.Radius.Small,
                 0,
                 0,
-                borderWidth: SolverUiTokens.IsLightTheme ? 0 : 1));
+                borderWidth: 1));
         _searchProgressBar.AddThemeStyleboxOverride("fill",
             SolverUiTokens.CreateBox(
                 SolverUiTokens.Palette.ProgressFill,
-                Accent,
+                Colors.Transparent,
                 SolverUiTokens.Radius.Small,
                 0,
-                0));
+                0,
+                borderWidth: 0));
         layout.AddChild(_searchProgressBar);
         _summaryPanel.AddChild(layout);
         return _summaryPanel;
