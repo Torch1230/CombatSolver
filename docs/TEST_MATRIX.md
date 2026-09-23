@@ -2,6 +2,7 @@
 
 ## 搜索读数过渡动画（2026-09-23）
 
+- Windows 集成：Release 构建 0 警告、0 错误，PowerShell 结构门禁 `search_files=208`。控制器会话 `b173172965a4434cb468b87502369aab` Passed；`UI-LOCALIZATION` 在原生 `PHROG_PARASITE_ELITE` 场景首次进入新增节奏合同后指出呼吸峰值断言时刻错误，修正断言后的 `a45dd7eae3274b208d36ebd555f0b19b` Passed，中英简繁的循环高亮、节奏和行复用合同均通过。实例由启动器删除；未做 Windows 可见观感验收。
 - macOS Release 构建 0 警告、0 错误（RitsuLib 0.6.2 工坊引用）；Bash 结构门禁 `search_files=208`。
 - 控制器会话合同 `AssertControllerSessionLifecycleAsync` 在读取世界线摘要和进度比例前先让读数收敛，继续核对“已查阅 42 条世界线”与 `0.05` 进度；该合同本轮未在无头实例中重跑（本机无 Linux 无头入口）。
 - 追加已用时间走表与上传进度缓动后重新构建 0 警告、0 错误，结构门禁 `search_files=208`；测试收敛入口只做缓动、不推进走表，既有 `0.05` 进度断言不受走表影响。

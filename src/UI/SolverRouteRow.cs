@@ -381,7 +381,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
                 && slow == MaxHighlightTimeConstantSeconds
                 && BreathLevel(BreathDelaySeconds) == 0d
                 && BreathLevel(0.2d) == 0d
-                && BreathLevel(BreathDelaySeconds + BreathRampSeconds + BreathPeriodSeconds / 2d) > 0.99d;
+                && BreathLevel(BreathDelaySeconds + BreathPeriodSeconds / 2d) > 0.99d;
         }
         finally
         {
