@@ -3061,11 +3061,13 @@ internal static class SolverOverlay
             preferredWidth,
             Math.Max(0f, viewportSize.X - edge * 2f));
         float height = Math.Min(panelHeight, Math.Max(0f, viewportSize.Y - edge * 2f));
-        float maximumX = Math.Max(edge, viewportSize.X - width - edge);
-        float rightOfPanelX = _panelPosition.X + panelWidth + SolverUiTokens.Spacing.Md;
-        float x = rightOfPanelX <= maximumX
-            ? rightOfPanelX
-            : Math.Clamp(_panelPosition.X + panelWidth - width, edge, maximumX);
+        float x = StrategySidebarX(
+            _panelPosition.X,
+            panelWidth,
+            width,
+            viewportSize.X,
+            edge,
+            SolverUiTokens.Spacing.Md);
         float y = Math.Clamp(
             _panelPosition.Y,
             edge,
@@ -3074,6 +3076,28 @@ internal static class SolverOverlay
         sidebar.OffsetTop = y;
         sidebar.OffsetRight = x + width;
         sidebar.OffsetBottom = y + height;
+    }
+
+    // Prefer the right side, then the left side, so a panel docked near the right screen edge opens
+    // its sidebar outward instead of over its own route list. When neither side fits, the sidebar
+    // sits against the screen edge of the roomier side, which minimizes how much it covers.
+    internal static float StrategySidebarX(
+        float panelX,
+        float panelWidth,
+        float sidebarWidth,
+        float viewportWidth,
+        float edge,
+        float gap)
+    {
+        float maximumX = Math.Max(edge, viewportWidth - sidebarWidth - edge);
+        float rightOfPanelX = panelX + panelWidth + gap;
+        if (rightOfPanelX <= maximumX)
+            return rightOfPanelX;
+        float leftOfPanelX = panelX - gap - sidebarWidth;
+        if (leftOfPanelX >= edge)
+            return leftOfPanelX;
+        float roomRight = viewportWidth - (panelX + panelWidth);
+        return roomRight >= panelX ? maximumX : edge;
     }
 
     private static void OnHeaderGuiInput(InputEvent inputEvent)

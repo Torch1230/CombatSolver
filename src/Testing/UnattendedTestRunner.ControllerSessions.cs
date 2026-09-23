@@ -335,6 +335,15 @@ internal sealed partial class UnattendedTestRunner
                 $"主界面内存占用条没有按搜索 GC 回收边界建立：" +
                 $"configured={memoryUsageBarConfigured} formatting={memoryUsageBarFormatting}。");
         }
+        // 1920 宽视口、360 宽侧栏：右侧放得下放右侧；主面板贴右缘时改放左侧且不压住主面板；
+        // 两侧都放不下时贴到空间较大一侧的屏幕边缘。
+        if (SolverOverlay.StrategySidebarX(100f, 600f, 360f, 1920f, 8f, 12f) != 712f
+            || SolverOverlay.StrategySidebarX(1300f, 600f, 360f, 1920f, 8f, 12f) != 928f
+            || SolverOverlay.StrategySidebarX(50f, 1800f, 360f, 1920f, 8f, 12f) != 1552f
+            || SolverOverlay.StrategySidebarX(100f, 1800f, 360f, 1920f, 8f, 12f) != 8f)
+        {
+            throw new InvalidOperationException("策略侧栏没有优先展开到主面板外侧。");
+        }
         if (!SolverOverlay.ExercisePerformanceHintForTesting())
             throw new InvalidOperationException("战损结果没有可用的性能预设重试胶囊提示。");
         if (!SolverOverlay.ExerciseSearchLimitHintForTesting())
