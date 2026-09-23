@@ -59,7 +59,6 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
             + SolverText.Get("也不再靠它们在搜索里保留路线。白拿的收益照样拿——最终选择里它仍然排在战损之后当平局的分先手。")
             + SolverText.Get("后期没有商店、不需要这些收益时打开它；收益额度暂停生效，最大生命消耗限制仍然有效。");
         ignoreRow.AddChild(_ignoreLongTermRewards);
-        layout.AddChild(ignoreRow);
         VBoxContainer flameRows = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         CardModel flame = ModelDb.Card<BrightestFlame>();
         HBoxContainer flameToggleRow = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -90,6 +89,7 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         VBoxContainer rows = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         rows.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
         flameRows.AddThemeConstantOverride("separation", 8);
+        rows.AddChild(ignoreRow);
         rows.AddChild(flameRows);
         rows.AddChild(new HSeparator());
         rows.AddChild(allowanceLabel);

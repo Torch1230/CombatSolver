@@ -7,6 +7,8 @@ namespace CombatSolver;
 internal sealed partial class SolverRouteRow : PanelContainer
 {
     private readonly List<(CanvasItem Pill, SolverActionRun Run, int Offset)> _deploymentActions = [];
+    private readonly List<Control> _turnStartChoicePills = [];
+    private readonly List<(SolverLoopGroup Loop, SolverActionRun Run)> _loopGroups = [];
     private int _deploymentActionCount;
     private CanvasItem? _endTurnAction;
     private SolverOverlayTurnSnapshot? _populatedTurn;
@@ -26,11 +28,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
         MouseFilter = MouseFilterEnum.Ignore;
         AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
             index == 0 ? SolverUiTokens.Palette.SurfaceRaised : SolverUiTokens.Palette.Surface,
-            index == 0
-                ? SolverUiTokens.IsLightTheme
-                    ? SolverUiTokens.Palette.Border
-                    : SolverUiTokens.Palette.Accent
-                : SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Palette.BorderSubtle,
             SolverUiTokens.Radius.Medium,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Sm));
@@ -90,28 +88,33 @@ internal sealed partial class SolverRouteRow : PanelContainer
             FontType.Bold);
         EnemyDamageLabel.HorizontalAlignment = HorizontalAlignment.Right;
         EnemyDamageLabel.AutowrapMode = TextServer.AutowrapMode.Off;
-        EnemyDamageLabel.CustomMinimumSize = new Vector2(92, SolverUiTokens.Size.ActionPillHeight);
+        EnemyDamageLabel.CustomMinimumSize = new Vector2(
+            SolverUiTokens.Size.MetricsDamageWidth,
+            SolverUiTokens.Size.ActionPillHeight);
         EnemyDamageLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         outcomeLayout.AddChild(EnemyDamageLabel);
         OutcomeLabel = SolverUiTokens.CreateLabel(
             string.Empty,
-            SolverUiTokens.Type.Metric,
+            SolverUiTokens.Type.Body,
             SolverUiTokens.Palette.TextMuted,
             FontType.Bold);
         OutcomeLabel.HorizontalAlignment = HorizontalAlignment.Right;
         OutcomeLabel.AutowrapMode = TextServer.AutowrapMode.Off;
-        OutcomeLabel.CustomMinimumSize = new Vector2(76, SolverUiTokens.Size.ActionPillHeight);
+        OutcomeLabel.CustomMinimumSize = new Vector2(
+            SolverUiTokens.Size.MetricsHpWidth,
+            SolverUiTokens.Size.ActionPillHeight);
         OutcomeLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         outcomeLayout.AddChild(OutcomeLabel);
         EnergyLabel = SolverUiTokens.CreateLabel(
             string.Empty,
-            SolverUiTokens.Type.Caption,
+            SolverUiTokens.Type.Body,
             SolverUiTokens.Palette.TextSecondary,
-            FontType.Bold,
-            outlineSize: SolverUiTokens.IsLightTheme ? 0 : 1);
+            FontType.Bold);
         EnergyLabel.HorizontalAlignment = HorizontalAlignment.Right;
         EnergyLabel.AutowrapMode = TextServer.AutowrapMode.Off;
-        EnergyLabel.CustomMinimumSize = new Vector2(54, SolverUiTokens.Size.ActionPillHeight);
+        EnergyLabel.CustomMinimumSize = new Vector2(
+            SolverUiTokens.Size.MetricsEnergyWidth,
+            SolverUiTokens.Size.ActionPillHeight);
         EnergyLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         outcomeLayout.AddChild(EnergyLabel);
         layout.AddChild(outcomeLayout);
@@ -130,9 +133,9 @@ internal sealed partial class SolverRouteRow : PanelContainer
         ClearActions();
         foreach (string choice in turn.TurnStartChoices)
         {
-            ActionFlow.AddChild(SolverActionPill.CreateStatus(
-                choice,
-                SolverUiTokens.Palette.TextSecondary));
+            Control pill = SolverActionPill.CreateChoice(choice);
+            ActionFlow.AddChild(pill);
+            _turnStartChoicePills.Add(pill);
         }
         if (turn.Actions.Count == 0)
         {
@@ -151,8 +154,10 @@ internal sealed partial class SolverRouteRow : PanelContainer
             Container destination = ActionFlow;
             if (run.Repetitions > 1)
             {
-                ActionFlow.AddChild(SolverActionPill.CreateCycle(run, out HFlowContainer loopActions));
+                SolverLoopGroup loopGroup = SolverActionPill.CreateCycle(run, out HFlowContainer loopActions);
+                ActionFlow.AddChild(loopGroup);
                 destination = loopActions;
+                _loopGroups.Add((loopGroup, run));
             }
             for (int offset = 0; offset < run.Period; offset++)
             {
@@ -214,6 +219,19 @@ internal sealed partial class SolverRouteRow : PanelContainer
         // step, end of turn) arrive back to back and would otherwise read as an instant deployment.
         if (activeActionIndex is { } current)
             NoteDeploymentStep((completedActions, current));
+        bool choiceActive = completedActions == 0 && activeActionIndex == null;
+        bool choiceCompleted = completedActions > 0 || activeActionIndex != null;
+        foreach (Control pill in _turnStartChoicePills)
+        {
+            SetPillTarget(
+                pill,
+                choiceCompleted
+                    ? SolverUiTokens.Palette.CompletedActionModulate
+                    : choiceActive
+                        ? SolverUiTokens.Palette.ActiveActionModulate
+                        : Colors.White,
+                choiceActive);
+        }
         foreach (var (pill, run, offset) in _deploymentActions)
         {
             bool isActive = run.IsActive(offset, activeActionIndex);
@@ -226,10 +244,52 @@ internal sealed partial class SolverRouteRow : PanelContainer
                         : Colors.White,
                 isActive);
         }
+        foreach (var (loop, run) in _loopGroups)
+        {
+            bool isCompleted = completedActions >= run.End;
+            bool isActive = !isCompleted && activeActionIndex is { } activeIndex && activeIndex >= run.Start && activeIndex < run.End;
+            SetPillTarget(
+                loop.Badge,
+                isCompleted
+                    ? SolverUiTokens.Palette.CompletedActionModulate
+                    : isActive
+                        ? SolverUiTokens.Palette.ActiveActionModulate
+                        : Colors.White,
+                isActive);
+            loop.SetCompleted(isCompleted);
+        }
+    }
+
+    public void SetTurnStartChoiceDeploymentState(bool active, bool completed)
+    {
+        if (_turnStartChoicePills.Count == 0)
+            return;
+        if (active && !completed)
+            NoteDeploymentStep((0, -1));
+        foreach (Control pill in _turnStartChoicePills)
+        {
+            SetPillTarget(
+                pill,
+                completed
+                    ? SolverUiTokens.Palette.CompletedActionModulate
+                    : active
+                        ? SolverUiTokens.Palette.ActiveActionModulate
+                        : Colors.White,
+                active && !completed);
+        }
     }
 
     public void SetEndTurnDeploymentState(bool active, bool completed)
     {
+        if (completed)
+        {
+            SetTurnStartChoiceDeploymentState(active: false, completed: true);
+            foreach (var (loop, _) in _loopGroups)
+            {
+                SetPillTarget(loop.Badge, SolverUiTokens.Palette.CompletedActionModulate, active: false);
+                loop.SetCompleted(true);
+            }
+        }
         if (_endTurnAction == null)
             return;
         if (active && !completed)
@@ -358,6 +418,9 @@ internal sealed partial class SolverRouteRow : PanelContainer
             if (GodotObject.IsInstanceValid(pill))
                 pill.Modulate = Colors.White;
         _pillMotion.Clear();
+        foreach (var (loop, _) in _loopGroups)
+            if (GodotObject.IsInstanceValid(loop))
+                loop.SetCompleted(false);
         _lastDeploymentStep = null;
         _deploymentStepSeconds = null;
     }
@@ -422,6 +485,8 @@ internal sealed partial class SolverRouteRow : PanelContainer
         ResetDeploymentMotion();
         _populatedTurn = null;
         _populatedLanguage = null;
+        _turnStartChoicePills.Clear();
+        _loopGroups.Clear();
         _deploymentActions.Clear();
         _deploymentActionCount = 0;
         _endTurnAction = null;

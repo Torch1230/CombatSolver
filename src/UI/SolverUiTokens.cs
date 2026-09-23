@@ -58,19 +58,19 @@ internal static class SolverUiTokens
 
     public static class Radius
     {
-        public const int Small = 6;
-        public const int Medium = 8;
-        public const int Pill = 10;
-        public const int Large = 12;
+        public const int Small = 4;
+        public const int Medium = 6;
+        public const int Pill = 6;
+        public const int Large = 8;
     }
 
     public static class Type
     {
-        public const int Title = 15;
-        public const int Metric = 14;
-        public const int Body = 13;
-        public const int Caption = 12;
-        public const int Outline = 2;
+        public const int Title = 16;
+        public const int Metric = 15;
+        public const int Body = 14;
+        public const int Caption = 13;
+        public const int Outline = 0;
     }
 
     public static class Size
@@ -87,6 +87,9 @@ internal static class SolverUiTokens
         public const float ActionPillHeight = 28f;
         public const float TurnColumnWidth = 88f;
         public const float OutcomeColumnWidth = 238f;
+        public const float MetricsDamageWidth = 92f;
+        public const float MetricsHpWidth = 64f;
+        public const float MetricsEnergyWidth = 52f;
         public const float ButtonHeight = 34f;
         public const float ResizeEdgeThickness = 8f;
         public const int ResizeGripSize = 20;
@@ -113,16 +116,11 @@ internal static class SolverUiTokens
         public static Color PositiveHover => Pick("428d60ff", "0e6e0eff");
 
         public static Color Attack => Pick("d96363ff", "c42b1cff");
-        public static Color AttackBackground => Pick("2b171bf8", "fce9e7ff");
         public static Color Skill => Pick("5b91d1ff", "0067c0ff");
-        public static Color SkillBackground => Pick("172235f8", "eaf2faff");
         public static Color Power => Pick("d7a84fff", "9d5d00ff");
-        public static Color PowerBackground => Pick("2b2417f8", "fbf1dcff");
         public static Color Negative => Pick("9b70c9ff", "6b4fa0ff");
-        public static Color NegativeBackground => Pick("241b30f8", "f1ebf8ff");
         public static Color Potion => Pick("55b9a5ff", "00786cff");
-        public static Color PotionBackground => Pick("152a27f8", "e5f4f1ff");
-        public static Color KillBackground => Pick("14291ffb", "e7f4ecff");
+        public static Color Choice => Pick("ff8533ff", "d45500ff");
         public static Color ProgressBackground => IsLightTheme ? Color.FromHtml("e8e8e8ff") : Background;
         public static Color ProgressFill => IsLightTheme ? Accent : Accent.Darkened(0.12f);
         public static Color CompletedActionModulate => IsLightTheme
@@ -169,9 +167,9 @@ internal static class SolverUiTokens
             ContentMarginRight = horizontalPadding,
             ContentMarginBottom = verticalPadding,
             ShadowColor = shadow
-                ? new Color(0f, 0f, 0f, IsLightTheme ? 0.14f : 0.52f)
+                ? new Color(0f, 0f, 0f, IsLightTheme ? 0.08f : 0.38f)
                 : Godot.Colors.Transparent,
-            ShadowSize = shadow ? (IsLightTheme ? 16 : 10) : 0,
+            ShadowSize = shadow ? 8 : 0,
         };
     }
 
@@ -179,7 +177,7 @@ internal static class SolverUiTokens
         string text,
         int fontSize,
         Color color,
-        FontType fontType = FontType.Regular,
+        FontType fontType = FontType.Bold,
         int outlineSize = -1,
         Color? outlineColor = null)
     {
@@ -218,7 +216,7 @@ internal static class SolverUiTokens
         label.AddThemeFontSizeOverride("mono_font_size", fontSize);
         label.AddThemeColorOverride("default_color", Palette.TextPrimary);
         ApplyTextOutline(label, outlineSize, outlineColor);
-        label.ApplyLocaleFontSubstitution(FontType.Regular, "normal_font");
+        label.ApplyLocaleFontSubstitution(FontType.Bold, "normal_font");
         label.ApplyLocaleFontSubstitution(FontType.Bold, "bold_font");
         label.ApplyLocaleFontSubstitution(FontType.Italic, "italics_font");
         return label;
@@ -245,32 +243,50 @@ internal static class SolverUiTokens
 
     public static void ApplyButtonStyle(Button button, SolverButtonStyle style)
     {
+        const int radius = Radius.Medium;
+        const int hPad = Spacing.Sm;
+        const int vPad = Spacing.Xs;
+
         if (!IsLightTheme)
         {
-            (Color darkBackground, Color darkBorder, Color darkHover) = style switch
+            (Color darkBackground, Color darkBorder, Color darkHover, Color darkPressed) = style switch
             {
                 SolverButtonStyle.Primary => (
                     Palette.Accent.Darkened(0.12f),
                     Palette.Accent.Lightened(0.08f),
-                    Palette.AccentHover),
-                SolverButtonStyle.Positive => (Palette.Positive, Palette.Success, Palette.PositiveHover),
+                    Palette.AccentHover,
+                    Palette.Accent.Darkened(0.24f)),
+                SolverButtonStyle.Positive => (
+                    Palette.Positive,
+                    Palette.Success,
+                    Palette.PositiveHover,
+                    Palette.Positive.Darkened(0.18f)),
                 SolverButtonStyle.Danger => (
                     Palette.Danger.Darkened(0.22f),
                     Palette.Danger,
-                    Palette.Danger.Lightened(0.08f)),
-                _ => (Palette.SurfaceRaised, Palette.Border, Palette.SurfaceHover),
+                    Palette.Danger.Lightened(0.08f),
+                    Palette.Danger.Darkened(0.32f)),
+                _ => (
+                    Palette.SurfaceRaised,
+                    Palette.BorderSubtle,
+                    Palette.SurfaceHover,
+                    Palette.Surface),
             };
+
             button.AddThemeStyleboxOverride("normal", CreateBox(
-                darkBackground, darkBorder, Radius.Medium, Spacing.Sm, Spacing.Xs));
+                darkBackground, darkBorder, radius, hPad, vPad));
             button.AddThemeStyleboxOverride("hover", CreateBox(
-                darkHover, darkBorder.Lightened(0.12f), Radius.Medium, Spacing.Sm, Spacing.Xs));
+                darkHover, darkBorder.Lightened(0.12f), radius, hPad, vPad));
             button.AddThemeStyleboxOverride("pressed", CreateBox(
-                darkBackground.Darkened(0.16f), darkBorder, Radius.Medium, Spacing.Sm, Spacing.Xs));
+                darkPressed, darkBorder, radius, hPad, vPad));
             button.AddThemeStyleboxOverride("disabled", CreateBox(
-                Palette.Background, Palette.BorderSubtle, Radius.Medium, Spacing.Sm, Spacing.Xs));
+                Palette.Background, Palette.BorderSubtle, radius, hPad, vPad));
+            button.AddThemeStyleboxOverride("focus", CreateBox(
+                darkHover, Palette.Accent, radius, hPad, vPad));
             button.AddThemeColorOverride("font_color", Palette.TextPrimary);
             button.AddThemeColorOverride("font_hover_color", Godot.Colors.White);
             button.AddThemeColorOverride("font_pressed_color", Godot.Colors.White);
+            button.AddThemeColorOverride("font_disabled_color", Palette.TextMuted);
             ApplyButtonFont(button);
             return;
         }
@@ -297,18 +313,20 @@ internal static class SolverUiTokens
                 Godot.Colors.White),
             _ => (
                 Palette.Surface,
-                Color.FromHtml("8a8a8aff"),
-                Palette.SurfaceHover,
                 Palette.Border,
+                Palette.SurfaceHover,
+                Palette.BorderSubtle,
                 Palette.TextPrimary),
         };
-        button.AddThemeStyleboxOverride("normal", CreateBox(background, border, Radius.Small, Spacing.Sm, Spacing.Xs));
-        button.AddThemeStyleboxOverride("hover", CreateBox(hover, border, Radius.Small, Spacing.Sm, Spacing.Xs));
-        button.AddThemeStyleboxOverride("pressed", CreateBox(pressed, border, Radius.Small, Spacing.Sm, Spacing.Xs));
-        button.AddThemeStyleboxOverride("disabled", CreateBox(Palette.Background, Palette.BorderSubtle, Radius.Small, Spacing.Sm, Spacing.Xs));
+        button.AddThemeStyleboxOverride("normal", CreateBox(background, border, radius, hPad, vPad));
+        button.AddThemeStyleboxOverride("hover", CreateBox(hover, border.Darkened(0.12f), radius, hPad, vPad));
+        button.AddThemeStyleboxOverride("pressed", CreateBox(pressed, border, radius, hPad, vPad));
+        button.AddThemeStyleboxOverride("disabled", CreateBox(Palette.Background, Palette.BorderSubtle, radius, hPad, vPad));
+        button.AddThemeStyleboxOverride("focus", CreateBox(hover, Palette.Accent, radius, hPad, vPad));
         button.AddThemeColorOverride("font_color", font);
         button.AddThemeColorOverride("font_hover_color", font);
         button.AddThemeColorOverride("font_pressed_color", font);
+        button.AddThemeColorOverride("font_disabled_color", Palette.TextMuted);
         ApplyButtonFont(button);
     }
 
@@ -329,11 +347,18 @@ internal static class SolverUiTokens
     {
         if (root is Control control && root is Label or Button or LineEdit)
         {
-            int size = root.Name == "StrategyHeading" ? 18 : root is Label label
-                && label.GetThemeFontSize("font_size") == Type.Caption ? 14 : 16;
+            int size = root.Name == "StrategyHeading" ? Type.Title : root is Label label
+                && label.GetThemeFontSize("font_size") == Type.Caption ? Type.Caption : Type.Body;
             control.AddThemeFontSizeOverride("font_size", size);
             ApplyTextOutline(control, 0);
-            control.ApplyLocaleFontSubstitution(FontType.Regular, "font");
+            if (control is LineEdit)
+            {
+                control.ApplyLocaleFontSubstitution(FontType.Regular, "font");
+            }
+            else
+            {
+                control.ApplyLocaleFontSubstitution(FontType.Bold, "font");
+            }
         }
         foreach (Node child in root.GetChildren()) StyleStrategyText(child);
     }
@@ -384,6 +409,84 @@ internal static class SolverUiTokens
                 image.SetPixel(x, y, color);
                 if (x > 0)
                     image.SetPixel(x - 1, y, color);
+            }
+        }
+        return ImageTexture.CreateFromImage(image);
+    }
+
+    private static Texture2D? _switchOnDark;
+    private static Texture2D? _switchOffDark;
+    private static Texture2D? _switchOnLight;
+    private static Texture2D? _switchOffLight;
+
+    public static Texture2D GetSwitchTexture(bool isChecked)
+    {
+        bool light = IsLightTheme;
+        if (light)
+        {
+            return isChecked
+                ? (_switchOnLight ??= CreateSwitchTexture(true, true))
+                : (_switchOffLight ??= CreateSwitchTexture(false, true));
+        }
+        return isChecked
+            ? (_switchOnDark ??= CreateSwitchTexture(true, false))
+            : (_switchOffDark ??= CreateSwitchTexture(false, false));
+    }
+
+    public static Texture2D CreateSwitchTexture(bool isChecked, bool isLight)
+    {
+        const int width = 38;
+        const int height = 20;
+        Image image = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
+
+        const float radius = height / 2f;
+        const float cx1 = radius - 0.5f;
+        const float cx2 = width - radius - 0.5f;
+        const float cy = radius - 0.5f;
+
+        Color fill = isChecked
+            ? (isLight ? Color.FromHtml("2570d6ff") : Color.FromHtml("2d7bd4ff"))
+            : (isLight ? Color.FromHtml("e0e4ebff") : Color.FromHtml("222832ff"));
+
+        Color border = isChecked
+            ? (isLight ? Color.FromHtml("1e5cb3ff") : Color.FromHtml("458de6ff"))
+            : (isLight ? Color.FromHtml("b8c0ccff") : Color.FromHtml("3c4656ff"));
+
+        float knobX = isChecked ? cx2 : cx1;
+        float knobY = cy;
+        const float knobRadius = 7.0f;
+
+        for (int y = 0; y < height; y++)
+        {
+            float dy = y - cy;
+            for (int x = 0; x < width; x++)
+            {
+                float dx = x < cx1 ? x - cx1 : (x > cx2 ? x - cx2 : 0f);
+                float dist = MathF.Sqrt(dx * dx + dy * dy);
+                if (dist > radius + 0.5f)
+                    continue;
+
+                float edgeAlpha = Math.Clamp(radius + 0.5f - dist, 0f, 1f);
+                float borderFactor = Math.Clamp(dist - (radius - 1.2f), 0f, 1f);
+                Color track = fill.Lerp(border, borderFactor);
+                track.A *= edgeAlpha;
+
+                float kdx = x - knobX;
+                float kdy = y - knobY;
+                float kdist = MathF.Sqrt(kdx * kdx + kdy * kdy);
+
+                if (kdist <= knobRadius + 0.5f)
+                {
+                    float knobAlpha = Math.Clamp(knobRadius + 0.5f - kdist, 0f, 1f);
+                    Color knobColor = Godot.Colors.White;
+                    Color finalColor = track.Lerp(knobColor, knobAlpha);
+                    finalColor.A = Math.Max(track.A, knobAlpha * edgeAlpha);
+                    image.SetPixel(x, y, finalColor);
+                }
+                else
+                {
+                    image.SetPixel(x, y, track);
+                }
             }
         }
         return ImageTexture.CreateFromImage(image);

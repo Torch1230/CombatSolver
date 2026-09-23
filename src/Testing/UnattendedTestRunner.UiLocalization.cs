@@ -44,11 +44,10 @@ internal sealed partial class UnattendedTestRunner
             row.Populate(turn);
             if (row.DeploymentActionCount != 41 || row.ActionFlow.GetChildCount() != 2)
                 throw new InvalidOperationException("Loop folding lost executable indexes or kill suffix.");
-            var group = (Control)row.ActionFlow.GetChild(0);
-            var content = group.GetChild<HBoxContainer>(0);
-            var actions = content.GetChild<HFlowContainer>(0);
-            Label count = content.GetChild<Label>(1);
-            if (actions.GetChildCount() != 2 || count.Text != "×20"
+            var group = (SolverLoopGroup)row.ActionFlow.GetChild(0);
+            var actions = group.Actions;
+            Label count = group.BadgeLabel;
+            if (actions.GetChildCount() != 3 || !count.Text.Contains("20")
                 || !group.TooltipText.Contains(english ? "Repeat" : "重复"))
                 throw new InvalidOperationException("Loop badge localization failed.");
             foreach (int index in new[] { 0, 1, 2, 37, 38, 39 })
@@ -63,6 +62,7 @@ internal sealed partial class UnattendedTestRunner
             row.SettleDeploymentMotionForTesting();
             if (((CanvasItem)actions.GetChild(0)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
                 || ((CanvasItem)actions.GetChild(1)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
+                || group.Badge.Modulate != SolverUiTokens.Palette.CompletedActionModulate
                 || ((CanvasItem)row.ActionFlow.GetChild(1)).Modulate != SolverUiTokens.Palette.ActiveActionModulate)
                 throw new InvalidOperationException("Loop completion or suffix highlight failed.");
             row.SetDeploymentProgress(41, null);

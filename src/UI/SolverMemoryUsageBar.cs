@@ -61,7 +61,7 @@ internal sealed partial class SolverMemoryUsageBar : PanelContainer
             SolverText.Get("- 系统内存变化时，上限和进度条会自动调整；正在整理或后台清理属于正常释放阶段。");
         AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
             SolverUiTokens.Palette.SurfaceRaised,
-            SolverUiTokens.Palette.Border,
+            SolverUiTokens.Palette.BorderSubtle,
             SolverUiTokens.Radius.Medium,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));

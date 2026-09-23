@@ -14,7 +14,7 @@ internal sealed partial class SolverSettingsPanel
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Pass,
         };
-        content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Md);
+        content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Lg);
         return content;
     }
 
@@ -48,18 +48,17 @@ internal sealed partial class SolverSettingsPanel
 
     private static void AddSettingsSection(VBoxContainer page, string title, string description, Control content)
     {
-        PanelContainer panel = new() { MouseFilter = MouseFilterEnum.Pass, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        panel.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
-            SolverUiTokens.Palette.SurfaceRaised, SolverUiTokens.Palette.BorderSubtle,
-            SolverUiTokens.Radius.Medium, SolverUiTokens.Spacing.Sm, SolverUiTokens.Spacing.Sm));
         VBoxContainer section = CreatePageContent("SettingsSection");
+        section.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
         section.AddChild(CreateSectionHeading(title));
-        Label hint = SolverUiTokens.CreateLabel(description, SolverUiTokens.Type.Caption, SolverUiTokens.Palette.TextMuted);
-        hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        section.AddChild(hint);
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            Label hint = SolverUiTokens.CreateLabel(description, SolverUiTokens.Type.Caption, SolverUiTokens.Palette.TextMuted);
+            hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            section.AddChild(hint);
+        }
         section.AddChild(content);
-        panel.AddChild(section);
-        page.AddChild(panel);
+        page.AddChild(section);
     }
 
     private static OptionButton CreateOptionInput(float minimumWidth = 126)
@@ -85,18 +84,21 @@ internal sealed partial class SolverSettingsPanel
             SolverUiTokens.Spacing.Xs));
         input.AddThemeStyleboxOverride("hover", SolverUiTokens.CreateBox(
             SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.Border,
+            SolverUiTokens.Radius.Small,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Xs));
+        input.AddThemeStyleboxOverride("pressed", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised,
             SolverUiTokens.Palette.Accent,
             SolverUiTokens.Radius.Small,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
-        if (SolverUiTokens.IsLightTheme)
-        {
-            input.AddThemeIconOverride(
-                "arrow",
-                SolverUiTokens.CreateChevronTexture(SolverUiTokens.Palette.TextSecondary));
-        }
+        input.AddThemeIconOverride(
+            "arrow",
+            SolverUiTokens.CreateChevronTexture(SolverUiTokens.Palette.TextSecondary));
         SolverUiTokens.ApplyTextOutline(input);
-        input.ApplyLocaleFontSubstitution(FontType.Regular, "font");
+        input.ApplyLocaleFontSubstitution(FontType.Bold, "font");
         return input;
     }
 
@@ -160,6 +162,12 @@ internal sealed partial class SolverSettingsPanel
             SolverUiTokens.Radius.Small,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
+        input.AddThemeStyleboxOverride("hover", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.Border,
+            SolverUiTokens.Radius.Small,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Xs));
         input.AddThemeStyleboxOverride("focus", SolverUiTokens.CreateBox(
             SolverUiTokens.Palette.SurfaceRaised,
             SolverUiTokens.Palette.Accent,
@@ -192,37 +200,28 @@ internal sealed partial class SolverSettingsPanel
         {
             FocusMode = FocusModeEnum.None,
             MouseDefaultCursorShape = CursorShape.PointingHand,
-            CustomMinimumSize = SolverUiTokens.IsLightTheme
-                ? new Vector2(40, 20)
-                : new Vector2(126, 32),
+            CustomMinimumSize = new Vector2(38, 20),
             SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
         };
         toggle.AddThemeColorOverride("font_color", SolverUiTokens.Palette.TextPrimary);
         toggle.AddThemeColorOverride(
             "font_hover_color",
             SolverUiTokens.IsLightTheme ? SolverUiTokens.Palette.TextPrimary : Colors.White);
-        if (SolverUiTokens.IsLightTheme)
-        {
-            Color trackOff = Color.FromHtml("d9d9d9ff");
-            Color trackOn = SolverUiTokens.Palette.Accent;
-            toggle.AddThemeStyleboxOverride("base", SolverUiTokens.CreateBox(
-                trackOff,
-                trackOff,
-                SolverUiTokens.Radius.Pill,
-                horizontalPadding: 4,
-                verticalPadding: 3));
-            Texture2D knob = SolverUiTokens.CreateCircleTexture(Colors.White);
-            toggle.AddThemeIconOverride("checked", knob);
-            toggle.AddThemeIconOverride("unchecked", knob);
-            toggle.Toggled += enabled => toggle.AddThemeStyleboxOverride(
-                "base",
-                SolverUiTokens.CreateBox(
-                    enabled ? trackOn : trackOff,
-                    enabled ? trackOn : trackOff,
-                    SolverUiTokens.Radius.Pill,
-                    horizontalPadding: 4,
-                    verticalPadding: 3));
-        }
+
+        Texture2D onIcon = SolverUiTokens.GetSwitchTexture(true);
+        Texture2D offIcon = SolverUiTokens.GetSwitchTexture(false);
+        toggle.AddThemeIconOverride("checked", onIcon);
+        toggle.AddThemeIconOverride("unchecked", offIcon);
+        toggle.AddThemeIconOverride("checked_disabled", onIcon);
+        toggle.AddThemeIconOverride("unchecked_disabled", offIcon);
+
+        StyleBoxEmpty empty = new();
+        toggle.AddThemeStyleboxOverride("normal", empty);
+        toggle.AddThemeStyleboxOverride("hover", empty);
+        toggle.AddThemeStyleboxOverride("pressed", empty);
+        toggle.AddThemeStyleboxOverride("focus", empty);
+        toggle.AddThemeStyleboxOverride("disabled", empty);
+
         SolverUiTokens.ApplyTextOutline(toggle);
         return toggle;
     }

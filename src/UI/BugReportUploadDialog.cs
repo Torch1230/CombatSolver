@@ -131,7 +131,7 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
         cancel.CustomMinimumSize = new Vector2(88, SolverUiTokens.Size.ButtonHeight);
         cancel.Pressed += Close;
         buttons.AddChild(cancel);
-        Button confirm = SolverUiTokens.CreateButton(SolverText.Get("确认上传"), SolverButtonStyle.Danger);
+        Button confirm = SolverUiTokens.CreateButton(SolverText.Get("确认上传"), SolverButtonStyle.Primary);
         confirm.CustomMinimumSize = new Vector2(110, SolverUiTokens.Size.ButtonHeight);
         confirm.Pressed += () =>
         {
@@ -208,15 +208,6 @@ internal sealed partial class BugReportUploadDialog : CanvasLayer
         };
         header.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
         header.GuiInput += OnHeaderGuiInput;
-
-        ColorRect marker = new()
-        {
-            Color = SolverUiTokens.Palette.Accent,
-            CustomMinimumSize = new Vector2(4, 20),
-            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        header.AddChild(marker);
 
         Label title = SolverUiTokens.CreateLabel(
             SolverText.Get("上传问题包"),

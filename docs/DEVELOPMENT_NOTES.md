@@ -1,5 +1,52 @@
 # CombatSolver 开发笔记与未来构想
 
+## 0.46.0：UI 视觉层级重构与排版布局优化（2026-09-23）
+
+- 全局 Design Tokens 与组件基线 (`SolverUiTokens`)：
+  - 规范圆角体系：`Small = 4px`, `Medium = 6px`, `Pill = 6px`, `Large = 8px`，去除 12–16px 过度膨胀圆角。
+  - 按钮样式 (`ApplyButtonStyle`)：深浅主题统一采用 `Radius.Medium` (6px)；次要按钮在深浅主题下均使用统一的中性边框 (`Palette.BorderSubtle` / `Palette.Border`)，移除浅色主题硬编码灰色 (`8a8a8aff`)；补充统一且克制的 `focus` 外框，统整 hover/pressed/disabled/focus 交互状态。
+  - 阴影弱化：卡片浮层投影范围缩小至 8px，透明度调整为浅色 0.08、深色 0.38，避免大面积脏灰与漂浮感。
+  - 字阶与字形系统重构 (`Type`)：
+    - 字阶上调：将 `Title` 调整为 16px、`Metric` 调整为 15px、`Body` 调整为 14px、`Caption` 调整为 13px，避免小字号在 1080p/1440p/4K 战斗场景下过于紧缩。
+    - 消除文字描边模糊：深色表面上 2px 人工暗色描边（`Type.Outline`）会在 12–14px 中文字符内部产生严重的笔画交叠发糊；将 `Type.Outline` 归零，由引擎抗锯齿与字体 Hinting 呈现清爽锐利的字形。
+    - 统一衬线体（Serif）体系：结合 STS2 原生字体替换机制，将全局 `CreateLabel` 与 `CreateRichText` 的默认字体统一为 `FontType.Bold`（思源宋体粗体，`Source Han Serif SC Bold`），避免随机混入黑体等宽（`Noto Sans Mono`，即 `FontType.Regular`）；`StyleStrategyText` 仅保留 `LineEdit` 的等宽黑体，按钮与标签统一为宋体粗体。
+    - 列宽安全裕度：指标伤害（92px）、战损（64px）、费用（52px）适度增加列宽，确保 14px 粗体数字与中文舒适容纳。
+- 设置面板层级扁平化与控件规范 (`SolverSettingsPanel`)：
+  - 移除卡片套卡片的过度嵌套：将每个设置分组原有的 `PanelContainer` 容器解套为纯净的竖向分区布局（标题 + 精细中性分隔线 + 辅助说明 + 网格），消除多层底色叠加与重复边框；分节间距提升至 `Spacing.Lg`，增加视线呼吸感。
+  - 下拉选择框 (`CreateOptionInput`)：深浅主题均使用规范的下箭头符号覆盖原生粗糙图标，补充 hover 与 pressed 样式。
+  - 文本输入框 (`CreateInput`)：补充 hover 悬浮高亮状态，使输入控件交互反馈完备。
+  - 开关控件完整重构 (`CreateToggle`)：彻底修复此前 Godot 4 缺失 `"base"` StyleBox 导致仅显示单个白点的严重缺陷。在 `SolverUiTokens` 中增加 `CreateSwitchTexture`，动态生成深浅主题下 38×20 包含胶囊跑道底色、1px 细微抗锯齿边框与平滑内嵌滑块圆点的完整主题图标（`checked` / `unchecked`），设置透明背景 StyleBox，使开关开闭状态分明、交互质感一致。
+- 战斗悬浮窗与状态呈现去噪 (`SolverOverlay`)：
+  - 状态摘要区字阶重构：状态徽标收敛至 13px Badge（高度 24px），状态主文本使用 15px (`Type.Metric`)，世界线计数与回合规划使用 14px (`Type.Body`)，形成清晰舒适的视觉梯队，消除文字发糊与阅读吃力问题。
+  - 战损与回血标签字阶统一收敛为 14px (`Type.Body`)，顶栏右侧指标排版稳整。
+  - 自动开启全自动标签使用 14px (`Type.Body`) 思源宋体粗体，与底部栏按钮风格一致。
+  - 移除标题栏左侧多余的装饰性强调色竖条（Dark 模式）及纯装饰性 App 图标背景盒（Light 模式），减少纯装饰性色块堆砌。
+  - 剔除标题栏设置按钮和折叠按钮在浅色主题下硬编码的强调色/红色字色，保持按钮系统一致性。
+  - 搜索进度条边框收敛为 `BorderSubtle` 1px，保持视觉轻量。
+- 路线、动作胶囊与循环组 (`SolverActionPill`, `SolverLoopGroup`, `SolverRouteActionFlow`, `SolverRouteRow`)：
+  - 循环合并 UI 重构与对齐修复 (`SolverLoopGroup`, `SolverRouteActionFlow`)：
+    - 消除下沉错位（Baseline Alignment）：彻底消除此前外框 padding 与 border 导致循环内卡牌下沉 4px 的问题。`SolverLoopGroup` 面板采用 `ContentMarginTop = 0` / `ContentMarginBottom = 0`，配合 `ExpandMarginTop = 2` / `ExpandMarginBottom = 2` 绘制外框背景与细边，使框内卡牌顶部、底部及文字基线与框外相邻卡牌 100% 像素级对齐。
+    - 紧凑流式自适应与消除大框空隙（Inline Badge & Hug Layout）：移除原先水平撑满的 `HBoxContainer`；将 `_badge`（`循环 ×N`）直接置入内部 `Actions`（`HFlowContainer`）末尾紧随最后一张卡牌流式排版；在 `SolverRouteActionFlow` 中基于 `GetWrappedDimensions` 动态测量折叠后的最长单行宽度及高度，大框根据实际卡牌内容宽度紧凑贴合（不再无端撑满整行留白），徽章紧贴最后一张牌，跨行时作为自然结尾，整行卡片组紧凑舒适。
+    - 循环胶囊部署与熄灭动画（Loop Lifecycle & Dimming）：将 `_badge` 及 `SolverLoopGroup` 纳入路线部署状态跟踪（`_loopGroups`）。当循环处于激活出牌期间，循环胶囊保持激活高亮；当循环内所有轮次的动作全部执行完毕后（`completedActions >= run.End`）或回合结束推进时，循环胶囊与外框通过 `SetPillTarget` 及 `SelfModulate` 平滑过渡至已完成淡化色（`CompletedActionModulate`，即熄灭状态），彻底解决循环结束时胶囊保持高亮未熄灭的断裂感；路线复用与重置时平滑复位。
+  - 回合开始选牌胶囊专属色标与动画优化 (`SolverActionPill.CreateChoice`, `SolverUiTokens`, `SolverRouteRow`)：
+    - 专属色标识别：新增 `SolverUiTokens.Palette.Choice`（温暖珊瑚橙 `#ff8533` / 浅色 `#d45500`），彻底脱离与技能牌（`Palette.Skill` 蓝色）的重叠，一眼区分选牌交互步骤与常规卡牌。
+    - 动画与状态联动：保留 14px 宋体粗体与中性卡片表面；纳入路线行部署状态跟踪（`_turnStartChoicePills`），在等待玩家选牌（`PendingTurnSetup`）时呈现醒目的激活动画与柔和呼吸效果，在执行推进后平滑淡化至已完成色 (`CompletedActionModulate`)。
+  - 回合开始选牌文案中英双语与来源解析 (`SolverOverlaySnapshot`, `English.json`)：全面补全回合开始选牌来源的本地化映射，覆盖选择悖论（`ChoicesParadox`）、工具箱（`Toolbox`）、烘焙手套（`ToastyMittens`）、赌博筹码（`GamblingChip`）、暴政（`TyrannyPower`）、必备工具（`ToolsOfTheTradePower`）、计策（`StratagemPower`）、既定事项（`ForegoneConclusionPower`）、大乱（`MayhemPower`）及动态模型库查表兜底；选牌动作效果及中英文标点全面适配（中文 `工具箱：选择 乱战`，英文 `Toolbox: Choose Brawl`），字典补齐 `弃/耗尽/变换/选择/升级/复制/抽`。
+  - 动作胶囊字形与字阶严格统一：卡牌标题、目标指示（`➔ 蛮兽`）、选牌文本（`选 中和`）、状态标签全部统一为 14px (`Type.Body`) 思源宋体粗体，重放/击杀/遗物角标统一为 13px (`Type.Caption`) 宋体粗体，彻底杜绝黑体与宋体混杂以及 13px/14px 参差不齐的问题。
+  - 回合指标表格级纵向对齐（Tabular Metrics）：为每行右侧伤害（92px）、战损（64px）、费用（52px）三大指标建立固定列宽与右对齐，统一字阶基线为 14px (`Type.Body`) 宋体粗体，移除人工描边，彻底消除了跨回合时数字位数不同引起的左右晃动与错位。
+  - 路线动作保留攻击、技能、能力、负面效果、药水和击杀的分类色标，动作底色与描边改为中性表面；当前回合保留左侧色标与标题强调，去掉重复的强调色外框。
+  - 动作卡片标题恢复使用 `Palette.TextPrimary`，避免怪物被击杀时整张卡片全文字染绿导致对比度降低；击杀状态通过击杀角标及左侧色标清晰传达。
+  - 状态标记、反馈框及可关闭提示统一使用中性底色与细边框，状态文字继续表达成功、警告或失败。动作块和状态标记改用 `Radius.Small` (4px)，减少一屏内的彩色卡片感。
+  - 循环展开卡片外框圆角调整为 `Radius.Medium` (6px)，避免巨型胶囊感。
+- 策略面板与辅助弹窗 (`SolverPotionStrategyPanel`, `SolverGrowthStrategyPanel`, `SolverRelicStrategyPanel`, `BugReportUploadDialog`, `SolverMemoryUsageBar`)：
+  - 成长策略面板开关对齐修复：修复“不考虑局外收益”在 ScrollContainer 外而“限制至亮之焰的最大生命消耗”在内部容器导致的 14px 滚动条槽位水平错位问题；统一归入同一内部容器，实现纵向对齐。
+  - 遗物策略面板开关对齐优化：“显示未持有”行展开填充，使开关与下方各卡片内的开关对齐至统一右边距。
+  - 药水指令切换按钮去除“彩色边框+彩色文字+彩色图标”的过度染色，底色与边框保持中性表面 (`SurfaceRaised` / `BorderSubtle`)，通过符号和色调单向指示。
+  - 遗物卡片样式对齐设计令牌 (`SurfaceRaised`, `BorderSubtle`, `Radius.Medium`, `Spacing.Sm`)。
+  - 内存监视条外框边框由高对比 `Border` 改为 `BorderSubtle`，与悬浮窗底部栏融为一体。
+  - 问题反馈弹窗标题栏移除 4×20 纯装饰性强调色小色条；“确认上传”按钮由错误的 `Danger` (红色) 改为正确的 `Primary` (主色)，纠正将非破坏性提交操作标为危险操作的模板化问题。
+- `kill-ai-slop` 自带扫描器只读取网页文件，未覆盖本项目的 Godot/C# UI；本次按其视觉条目人工核对。构建与无头结果见[测试矩阵](TEST_MATRIX.md)，未进行可见 Steam 观感验收。
+
 ## 0.45.0 定版（2026-09-23）
 
 - 0.45.0 汇集搜索读数与执行高亮过渡、上传进度缓动及求解器窗口位置持久化；玩家可见的最终变化见 [0.45.0 更新日志](releases/0.45.0-RELEASE_NOTES.md)。

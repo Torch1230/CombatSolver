@@ -21,17 +21,47 @@ internal sealed partial class SolverRouteActionFlow : Container
         foreach (Control child in GetChildren().OfType<Control>().Where(child => child.Visible))
         {
             Vector2 minimum = child.GetCombinedMinimumSize();
-            float preferred = child is SolverLoopGroup loop ? loop.NaturalWidth : minimum.X;
-            float width = Mathf.Max(minimum.X, Mathf.Min(preferred, Size.X));
-            if (x > 0 && x + width > Size.X)
+            float preferredWidth;
+            float layoutHeight;
+
+            if (child is SolverLoopGroup loop)
+            {
+                float remainingOnLine = Size.X > 0 ? Size.X - x : float.PositiveInfinity;
+                if (x > 0 && loop.NaturalWidth > remainingOnLine)
+                {
+                    x = 0;
+                    y += lineHeight + vertical;
+                    lineHeight = 0;
+                }
+
+                float availableWidth = Size.X > 0 ? Size.X - x : float.PositiveInfinity;
+                Vector2 dimensions = loop.GetWrappedDimensions(availableWidth);
+                preferredWidth = dimensions.X;
+                layoutHeight = dimensions.Y;
+            }
+            else
+            {
+                preferredWidth = minimum.X;
+                layoutHeight = minimum.Y;
+            }
+
+            float width = Mathf.Max(minimum.X, Mathf.Min(preferredWidth, Size.X > 0 ? Size.X : preferredWidth));
+            if (x > 0 && Size.X > 0 && x + width > Size.X)
             {
                 x = 0;
                 y += lineHeight + vertical;
                 lineHeight = 0;
             }
-            FitChildInRect(child, new Rect2(x, y, width, minimum.Y));
+            FitChildInRect(child, new Rect2(x, y, width, layoutHeight));
             x += width + horizontal;
-            lineHeight = Mathf.Max(lineHeight, minimum.Y);
+            lineHeight = Mathf.Max(lineHeight, layoutHeight);
+
+            if (child is SolverLoopGroup && layoutHeight > SolverUiTokens.Size.ActionPillHeight)
+            {
+                x = 0;
+                y += lineHeight + vertical;
+                lineHeight = 0;
+            }
         }
         float height = y + lineHeight;
         if (!Mathf.IsEqualApprox(_height, height))
