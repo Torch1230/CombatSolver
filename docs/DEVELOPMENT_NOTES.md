@@ -1,6 +1,6 @@
 # CombatSolver 开发笔记与未来构想
 
-## 下一版本（开发中）：UI 视觉层级重构与去模板化设计（2026-09-23）
+## 0.46.0：UI 视觉层级重构与排版布局优化（2026-09-23）
 
 - 全局 Design Tokens 与组件基线 (`SolverUiTokens`)：
   - 规范圆角体系：`Small = 4px`, `Medium = 6px`, `Pill = 6px`, `Large = 8px`，去除 12–16px 过度膨胀圆角。

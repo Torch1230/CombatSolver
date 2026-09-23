@@ -1,6 +1,6 @@
 # CombatSolver 测试清单
 
-## UI 视觉层级重构与去模板化设计（2026-09-23）
+## 0.46.0：UI 视觉层级重构与排版布局优化（2026-09-23）
 
 - Windows Release 构建通过，0 警告、0 错误。
 - PowerShell 结构门禁 `tools\verify-refactor-boundaries.ps1` 校验通过，`REFACTOR_BOUNDARIES_OK search_files=208`。
