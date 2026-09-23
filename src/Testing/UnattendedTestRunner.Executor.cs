@@ -304,6 +304,11 @@ internal sealed partial class UnattendedTestRunner
                     request.ScenarioId == "NOVELTY-HP-TARGET-STOP");
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "OPENING-TURN-LOSS-STOP")
+            {
+                await runner.AssertOpeningTurnLossStopAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "CHOICE-CONTINUATION-STEP-AUDIT")
             {
                 await runner.AssertChoiceContinuationStepAuditAsync(combatState);

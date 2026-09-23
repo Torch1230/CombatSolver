@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
@@ -333,13 +334,26 @@ internal sealed partial class CombatBeamSolver
                     node.Snapshot.ProjectedPlayerHp);
 
         bool MeetsHpTarget(SearchNode node)
-            => policy.GrowthTargetSatisfied(node.Snapshot.GrowthRewards)
-                && policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)
-                && TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, node.Snapshot.OutstandingStolenResource)
-                && IsEligibleCompleteVictory(node)
-                && node.Snapshot.ProjectedDeathSaveUseCount == 0
-                && ExplicitPotionUseCount(node) <= earlyStopPotionUses
-                && battleDamage.HpLostSoFar + node.Snapshot.CumulativePlayerHpLost <= _acceptableBattleHpLoss;
+        {
+            if (!policy.GrowthTargetSatisfied(node.Snapshot.GrowthRewards)
+                || !policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)
+                || !TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, node.Snapshot.OutstandingStolenResource)
+                || !IsEligibleCompleteVictory(node)
+                || node.Snapshot.ProjectedDeathSaveUseCount != 0
+                || ExplicitPotionUseCount(node) > earlyStopPotionUses)
+                return false;
+            int battleLoss = battleDamage.HpLostSoFar + node.Snapshot.CumulativePlayerHpLost;
+            if (battleLoss <= _acceptableBattleHpLoss)
+                return true;
+            if (node.Snapshot.HasRisk)
+                return false;
+            int firstTurnLoss = FindCurrentTurnBoundary(node)?.Outcome?.HpLost ?? -1;
+            return OpeningTurnLossTarget.IsReached(
+                _run.ExhaustiveOpeningTurnHpLoss,
+                firstTurnLoss,
+                battleLoss,
+                node.Snapshot.RecoveredPlayerHp);
+        }
 
         void ConsiderCompleteVictory(SearchNode node)
         {
@@ -350,10 +364,14 @@ internal sealed partial class CombatBeamSolver
             if (MeetsHpTarget(node))
             {
                 acceptableBattleHpLossReached = true;
+                int reachedThreshold = candidate.ProjectedBattleHpLost > _acceptableBattleHpLoss
+                    && _run.ExhaustiveOpeningTurnHpLoss is { } openingLoss
+                    ? openingLoss + OpeningTurnLossTarget.AllowedLaterLoss
+                    : _acceptableBattleHpLoss;
                 policy.Diagnostics.Info(
                     $"[CombatSolver/Test] ACCEPTABLE_BATTLE_HP_LOSS_REACHED " +
                     $"projected_battle_hp_lost={candidate.ProjectedBattleHpLost} " +
-                    $"threshold={_acceptableBattleHpLoss} " +
+                    $"threshold={reachedThreshold} " +
                     $"turn={candidate.CombatEndedTurn?.ToString() ?? "-"}");
             }
             if (currentBestResult != null
@@ -701,6 +719,8 @@ internal sealed partial class CombatBeamSolver
                 PruneMetric = _run.Performance.Snapshot(SearchMetricPhase.Prune),
                 FinalSelectionMetric = _run.Performance.Snapshot(SearchMetricPhase.FinalSelection),
                 StartTurnNumber = _startTurnNumber,
+                ExhaustiveOpeningTurnHpLoss = _run.ExhaustiveOpeningTurnHpLoss,
+                OpeningTurnComplexCardEffectObserved = _run.OpeningTurnComplexCardEffectObserved,
                 TranspositionCount = _run.Transpositions.Count,
                 ExpandedTranspositionCount = _run.ExpandedTranspositions.Count,
                 TranspositionLimitBypasses = _run.TranspositionLimitBypasses,
@@ -1045,6 +1065,15 @@ internal sealed partial class CombatBeamSolver
                 : [([], Replay([]))];
         if (rootCandidates.Count == 0)
             throw new InvalidOperationException("回合准备阶段没有生成可搜索状态。");
+        if (root.StartTurnNumber == 1 && !_includeTurnSetup && rootCandidates.Count == 1)
+        {
+            CombatPredictionSimulator openingSimulator =
+                (CombatPredictionSimulator)rootCandidates[0].Snapshot.Simulator;
+            _run.OpeningTurnComplexCardEffectObserved = openingSimulator.State
+                .GetPlayerCombatState(_player).Hand.Cards
+                .Any(card => card.Preview.Type != CardType.Attack
+                    || card.Preview.DynamicVars.ContainsKey("Cards"));
+        }
         _run.InitialPersistentBuffValue = _includeTurnSetup
             ? 0
             : rootCandidates[0].Snapshot.PersistentBuffValue;
@@ -2012,6 +2041,49 @@ internal sealed partial class CombatBeamSolver
                     _run.NodeLimitSnapshotsReleased++;
                 }
                 active = [];
+            }
+
+            if (searchedTurnLayers == 0
+                && root.StartTurnNumber == 1
+                && !_includeTurnSetup
+                && !policy.UseNoveltyPortfolio
+                && rootCandidates.Count == 1
+                && _fixedPrefixActions.Count == 0
+                && policy.CanStopAtHpTarget
+                && _profile.StopPortfolioAtHpTarget
+                && !root.HasVisibleHealingSource
+                && root.SearchablePotionCount == 0
+                && root.Forecast.IsExactForModeledDamage
+                && battleDamage.HpLostSoFar == 0
+                && !timeBudgetReached
+                && !memoryNoProgressTruncated
+                && _run.Expanded < _profile.MaxExpandedNodes
+                && _run.TurnLayerBudgetStops == 0
+                && !_run.OpeningTurnCandidatesDropped
+                && !_run.OpeningTurnComplexCardEffectObserved
+                && _run.TopQueueActionsDropped == 0
+                && _run.ChoiceBranchesDroppedByBudget == 0
+                && _run.ChoiceReplayBudgetExhaustions == 0
+                && _run.ShuffleBranchesPruned == 0
+                && _run.SoldHpBranchesPruned == 0
+                && _run.RepeatableNoProgressBranchesPruned == 0
+                && _run.CrossTurnContinuationsStopped == 0
+                && _run.CycleRegionCandidatesDropped == 0
+                && _run.CycleContinuationsStopped == 0
+                && _run.PrimaryIncumbentBranchesPruned == 0
+                && ended.Count > 0
+                && ended.All(node => node.Snapshot.BoundaryReason == SearchBoundaryReason.None
+                    && !node.Snapshot.HasRisk
+                    && node.Snapshot.RecoveredPlayerHp == 0))
+            {
+                int openingLoss = ended.Min(node => node.Snapshot.CumulativePlayerHpLost);
+                if (openingLoss >= OpeningTurnLossTarget.MinimumOpeningLoss)
+                {
+                    _run.ExhaustiveOpeningTurnHpLoss = openingLoss;
+                    policy.Diagnostics.Info($"[CombatSolver/Test] OPENING_TURN_LOSS_FLOOR " +
+                        $"loss={openingLoss} allowance={OpeningTurnLossTarget.AllowedLaterLoss} " +
+                        $"end_states={ended.Count}");
+                }
             }
 
             List<SearchNode> unannotatedEnded = ended;

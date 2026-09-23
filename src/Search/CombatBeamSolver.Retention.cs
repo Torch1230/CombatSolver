@@ -236,6 +236,13 @@ internal sealed partial class CombatBeamSolver
                 hasCycleExitWork,
                 cycleRegionTransaction);
             List<SearchNode> bounded = ApplyPrimaryIncumbentBound(finalized);
+            if (root.StartTurnNumber == 1
+                && _run.ExhaustiveOpeningTurnHpLoss == null
+                && pool.Any(node => node.Turn == 1)
+                && (bounded.Count != pool.Count
+                    || !pool.All(new HashSet<SearchNode>(bounded,
+                        ReferenceEqualityComparer.Instance).Contains)))
+                _run.OpeningTurnCandidatesDropped = true;
             // Emit all watched final aliases, after every portfolio and the incumbent.
             // The paired value events avoid equating a `with` clone with a dropped route.
             ObserveSearchPathBoundary(

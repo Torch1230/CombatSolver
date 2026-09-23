@@ -1462,6 +1462,8 @@ internal sealed class SolverResult
     public SearchPhaseMetric PruneMetric { get; internal set; }
     public SearchPhaseMetric FinalSelectionMetric { get; internal set; }
     public required int StartTurnNumber { get; init; }
+    public int? ExhaustiveOpeningTurnHpLoss { get; init; }
+    public bool OpeningTurnComplexCardEffectObserved { get; init; }
     public required IReadOnlyList<PlanCardChoice> TurnSetupChoices { get; init; }
     public ContinuationStamp? TurnSetupPlayState { get; init; }
     public required SelectedSearchPlan BestNode { get; init; }

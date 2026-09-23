@@ -170,6 +170,9 @@ internal sealed partial class CombatBeamSolver
         public int Expanded;
         public int DominatedActionsPruned;
         public int TopQueueActionsDropped;
+        public bool OpeningTurnCandidatesDropped;
+        public bool OpeningTurnComplexCardEffectObserved;
+        public int? ExhaustiveOpeningTurnHpLoss;
         public int ActionAdmissionRepresentativesProtected;
         public int DuplicateCardBranchesPruned;
         public int ChoiceBranchesEvaluated;
