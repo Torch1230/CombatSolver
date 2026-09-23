@@ -33,6 +33,38 @@
 - 循环次数从独占标题行移到动作右侧，动作之间保持原有间距，不新增箭头。外框使用淡边框与更小内边距，宽面板贴合内容且允许后续动作同排，窄面板继续组内换行；执行高亮和完整动作索引不变。
 - UI 容器分别计算循环自然宽度与可换行的最小宽度，避免填满整行或反向撑大面板。验证记录见测试矩阵。
 
+## 未发布：能力驱动的 Power 施加不再继承外层卡牌来源（2026-09-22）
+
+- 问题包 `c4e28f3b`（0.43.2）里同一场战斗的预测与实机分叉：`POISON_POWER` 预测 11／实机 5、
+  `UNSETTLING_LAMP` 预测 1／实机 0、敌方血量 7／13。
+- 根因是「Power 的来源」这半条语义没跟上：实机 `CorrosiveWavePower.AfterCardDrawn` 调的是
+  `PowerCmd.Apply<PoisonPower>(…, cardSource: null)`，来源是能力本身；预测侧那条镜像走的是不带来源的
+  `ApplyPower`，而它正处在**卡牌执行作用域**里（后空翻抽到的牌），于是这层毒被记成「那张牌直接施加的减益」：
+  既被算到那张牌头上，又触发了只认卡牌直接施加的不安油灯。
+- 同一类错误在镜像层还有一批，逐条对着反编译源码核对后一起修正（原版都显式传 `cardSource: null`）：
+  腐蚀波、吸取（Suck）、破甲钻（HandDrill）、军械库（Arsenal）、手里剑（Shuriken）、激怒（Enrage）、
+  湮灭（Oblivion）、撕裂（Rupture，含 `AfterDamageReceived` 那条）、温柔（Tender，两条）、生命火花（VitalSpark）、
+  红头骨、定形黏土、ReaperForm／Underworld 的灾厄，共 16 处调用点改用
+  `ApplyPowerFromSource(…, cardSource: null)`。
+- 影响面同样是通用的：凡是按「卡牌直接施加」判定的遗物与增幅，都会被能力/遗物驱动的减益误触发；
+  这是原版卡牌就能走到的组合，与第三方内容无关。新增严格差分夹具 `LAMP-POWER-SOURCED-DEBUFF`
+  （腐蚀波 + 抽牌），改动后通过；证据与未覆盖范围见 [测试矩阵](TEST_MATRIX.md)。
+
+## 未发布：击杀后不再向已离场个体施加 Power（2026-09-22）
+
+- 问题包 `24b8f299`（0.43.2）里求解器给出 4 回合零战损的路线，但第 2 回合的续用核对报 `state_mismatch`：
+  `field=relicCounters expected={UNSETTLING_LAMP/1/0} actual={UNSETTLING_LAMP/0/0}`。
+- 根因是 Power 可施加判据漏了「个体是否仍在战斗里」这一半。实机 `CreatureCmd.Kill` 在击杀当时就
+  `combatState.RemoveCreature`（`CombatState = null`，只放过正在执行自己行动的怪物），随后那条
+  `PowerCmd.Apply<WeakPower>` 在 `!target.CanReceivePowers` 上直接返回：被同一张牌打死的目标既没吃到
+  虚弱，也没有成为不安油灯的触发牌。求解器把死亡效果推迟到 `ApplyEnemyDeathPowers` 清扫、`_deathPhases`
+  那时才写，于是这个窗口里照常施加了那层虚弱并顺手点亮油灯。
+- `SimulatedCombatState.CanReceivePredictedPowers` 现在同时核对 `CombatPredictionState` 的移除标记
+  （新增只读入口 `IsAttachedToCombat`）；死亡效果清扫本身不受影响。
+- 影响面是通用的：任何「同一张牌先打死目标、再对该目标施加减益」的场景都会误触发按卡牌来源计数的遗物，
+  与第三方内容无关。新增严格差分夹具 `LAMP-DEBUFF-ON-KILL`：改动前失败并逐字复现同一条差异，改动后通过。
+  证据见 [测试矩阵](TEST_MATRIX.md)。
+
 ## 下一版本（开发中）：PR #123 / #124 / #125 集成（2026-09-22）
 
 - 本批中英玩家说明已定稿为 [0.44.0 更新日志](releases/0.44.0-RELEASE_NOTES.md)。

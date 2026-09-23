@@ -37,6 +37,32 @@
 - `UI-LOCALIZATION` / `1ccc7277cdba46279dc5c1e295f496b0` Passed（26.39 秒）：eng/zhs/zht 中 41 个动作折叠为一个双动作循环组与独立末击；次数位于动作右侧，宽布局贴合内容、组高仅增加外框留白、末击同排，窄布局内部换行且动作/次数均被外框包围，宽→窄→宽恢复通过。循环中间/末次/后缀高亮及行复用通过，既有完整本地化合同通过。
 - Windows Release 构建 0 警告、0 错误，PowerShell 结构门禁 `search_files=208`。无头实例 `compact-loop-ui` 已由启动器删除；仅 UI 布局与显示变化，未重跑搜索语义或性能基准，未进行可见 Steam 观感验收。
 
+## 能力驱动的 Power 施加不再继承外层卡牌来源（问题包 c4e28f3b）（2026-09-22）
+
+- 本体 Release 构建通过（0 error）。
+- 新增严格差分夹具 `LAMP-POWER-SOURCED-DEBUFF`：向战斗注入 `CorrosiveWavePower`，手牌给后空翻、
+  并向**抽牌堆注入 2 张**保证抽牌真的发生（第一版夹具只清空牌堆，抽牌不发生、断言空过，已修正）。
+  断言能力驱动的这层毒不按卡牌来源记账——不安油灯不触发、毒不被增幅。
+- 改动前对照：本问题包的实机证据即修改前状态（预测毒 11／实机 5、油灯 1／0）。本次未在改动前的
+  构建上重跑该夹具的反向对照：无头宿主当时被用户的可见游戏进程占用，未排队等待。
+- 结构门禁 `tools/verify-refactor-boundaries.ps1` 通过；受影响的原版组合（腐蚀波 + 后空翻、吸取、
+  手里剑/激怒/湮灭/撕裂/温柔等遗物与 Power 触发）走既有夹具与同一差分路径，未新增逐项夹具。
+
+## 击杀后不再向已离场个体施加 Power（问题包 24b8f299）（2026-09-22）
+
+- 本体 Release 构建通过（0 error）。
+- 新增严格差分夹具 `LAMP-DEBUFF-ON-KILL`（不安油灯 + 中和打在会被这一击打死的目标上；
+  `-EncounterId CULTISTS_NORMAL -CharacterId IRONCLAD`，需要两个敌人，否则一击杀就结束战斗）：
+  - **改动前**（把 `CanReceivePredictedPowers` 还原成只看死亡阶段）**Failed**，错误逐字复现问题包：
+    `Lamp kill mismatch: field=relicCounters expected={UNSETTLING_LAMP/1/0} actual={UNSETTLING_LAMP/0/0}`；
+  - **改动后 Passed**，完成检查
+    `LampDebuffOnKilledTarget:SkipsDebuffOnRemovedTarget:KeepsCharge:FullContinuationState`
+    （预测与实机逐字比较完整 `ContinuationStamp`）。
+- 哨兵（同一构建）：`LAMP-INDIRECT-POISON`、`LAMP-INDIRECT-TEMPORARY-STRENGTH`、`CRAB-RAGE-DEATH-TIMING` 通过。
+- 结构门禁 `tools/verify-refactor-boundaries.ps1` 通过。
+- **未建模**：实机里正在执行自己行动的怪物（`IsPerformingMove`）在死亡当时不离场，这个例外求解器不模拟
+  （怪物行动不在预测范围内），代码注释已记明。
+
 ## PR #123 / #124 / #125 合并验证（2026-09-22）
 
 - 行为基线为计算失败修复 `94254728` 加三个原 PR，合并提交 `0f7d6935`；两处计算失败生产修复文件与 `94254728` 完全一致。Windows Release 构建 0 警告、0 错误（`CopyModOnBuild=false`）；PowerShell 结构门禁 `search_files=208`、108 项组合合同、122505 项循环显示索引断言、12 项循环预算分类与 2 项比较上下文测试通过。

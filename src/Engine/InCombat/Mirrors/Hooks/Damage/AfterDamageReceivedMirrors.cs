@@ -308,7 +308,8 @@ internal static class AfterDamageReceivedMirrors
             }
             else
             {
-                Effects(context).ApplyPower(typeof(StrengthPower), power.Owner, power.Amount, power.Owner);
+                // 原版 RupturePower.AfterDamageReceived 传 cardSource: null。
+                Effects(context).ApplyPowerFromSource(typeof(StrengthPower), power.Owner, power.Amount, power.Owner, cardSource: null);
             }
         }
     }
@@ -317,11 +318,13 @@ internal static class AfterDamageReceivedMirrors
     {
         if (context.Target == relic.Owner.Creature && context.Result.UnblockedDamage > 0)
         {
-            Effects(context).ApplyPower(
+            // 原版 SelfFormingClay 走遗物来源，cardSource 是 null。
+            Effects(context).ApplyPowerFromSource(
                 typeof(SelfFormingClayPower),
                 relic.Owner.Creature,
                 relic.DynamicVars["BlockNextTurn"].IntValue,
-                relic.Owner.Creature);
+                relic.Owner.Creature,
+                cardSource: null);
         }
     }
 
