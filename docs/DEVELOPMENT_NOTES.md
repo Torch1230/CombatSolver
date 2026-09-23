@@ -1,23 +1,23 @@
 # CombatSolver 开发笔记与未来构想
 
-## 0.44.1（开发中）
+## 0.44.1
 
-- 本批汇集第三方回合开始适配、战斗 Power 施加预测修正和 Loadout 空怪物能力配置兼容；玩家可见的最终变化见 [0.44.1 更新日志](releases/0.44.1-RELEASE_NOTES.md)。仅记录小版本号和更新日志，尚未发布。
+- 本版汇集第三方回合开始适配、战斗 Power 施加预测修正和 Loadout 空怪物能力配置兼容；玩家可见的最终变化见 [0.44.1 更新日志](releases/0.44.1-RELEASE_NOTES.md)。
 
-## 下一版本（开发中）：Loadout 空怪物能力配置兼容（2026-09-23）
+## 0.44.1：Loadout 空怪物能力配置兼容（2026-09-23）
 
 - Loadout `v0.5.6` 总是登记 `PowerGiverSummonHook.AfterCreatureAddedToCombat`，此前即使怪物能力配置为空也在根捕获时被拒绝。该 Mod 的清单声明 `affects_gameplay: true`；配置非空时会向新加入的怪物施加能力，并在部分怪物阶段切换后补施加，不能整体按纯界面 Mod 放行。
 - 主线程根捕获通过 Loadout 的公开 `GetCountersSnapshot(AllMonsters)` 核对当前怪物能力计数。仅已核对版本且计数为空时放行；非空或版本变化继续拒绝。空配置进入完整状态戳，搜索后配置变动会使旧结果失效，不在 worker 读取 Loadout 的可变全局状态。
 - 用户最新日志对应的跑局 `power_giver_run_1790087981.json` 中怪物计数为空。隔离无头实例真实加载 Loadout、BaseLib 和求解器后，根捕获/Fork 合同及短搜索通过；未验证启用怪物能力配置后的模拟，仍保持不兼容边界。证据见 [测试矩阵](TEST_MATRIX.md)。
 
-## 下一版本（开发中）：玩家回合开始三阶段镜像
+## 0.44.1：玩家回合开始三阶段镜像
 
 - 增加 `AfterPlayerTurnStartMirrors.RegisterEarly/Register/RegisterLate<TModel>`，接收 AbstractModel 与当前 Player；精确类型登记、首根冻结，未知有效覆写记录风险并拒绝。
 - 扩展路径按原生 Early → 普通 → Late 三轮监听顺序派发，复用原版单项结算；没有外部登记且入口没有第三方覆写时保留原批次与选择续执行帧。已有外部登记即使用三轮派发，使普通阶段新生成的第三方监听者能参与 Late。第三方选择暂停回到稳定父节点完整重放。
 - PR 原有 40 项派发合同、3 项冻结合同与 61 个独立监听位；审计新增 1 项普通阶段生成 Late 监听者合同和 1 项纯原版入口合同。结构门禁、原生顺序、离线等价与 CoverageCatalog 的原始证据见 [验证证据](../coverage/equivalence/after-player-turn-start/README.md)。
 - 对照 #126 的 `523aea57`：EQ 10 / FULL 40 / GA 10 共 6341 个确定性字段一致，60 对均有效、无时间截断；一次离线批次完成。
 
-## 下一版本（开发中）：第三方回合开始前镜像
+## 0.44.1：第三方回合开始前镜像
 
 - 增加 `BeforeSideTurnStartMirrors.Register<TModel>`，两侧在清格挡前按监听顺序派发 Power、遗物和 Modifier；共享既有原版单项结算体，无扩展时保留原批次顺序。
 - 精确类型登记在首根冻结，未知有效覆写按现有晚期表规则记录风险并拒绝；状态仍通过独立的模型状态登记捕获。

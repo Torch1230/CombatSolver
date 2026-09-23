@@ -1,9 +1,8 @@
 # CombatSolver 测试清单
 
-## 0.44.1 版本记录范围（2026-09-23）
+## 0.44.1 定版验证范围（2026-09-23）
 
 - 版本号与中英更新日志已同步；本次仅变更版本和文档。最终 Release 构建通过，0 警告、0 错误；行为验证沿用下列回合开始镜像、Power 施加差分和 Loadout 空配置实测结果，未重复运行。
-- 当前为开发中版本，未创建标签或渠道发布。
 
 ## Loadout 空怪物能力配置（2026-09-23）
 
@@ -11,14 +10,14 @@
 - 使用隔离游戏源载入实际 `Loadout.dll/.pck`、BaseLib 与求解器，`LOADOUT-EMPTY-ROOT` / `c3f95d2453954479aa5ad790691a1c3a` Passed：断言真实订阅者已加载、公开计数快照为空、根状态戳和 Fork 均保留空配置。`LOADOUT-EMPTY-SEARCH` / `cc1a04534280423497ae2db5cc96939d` Passed：固定 5 秒预算的首个搜索得到 1 动作、零损、首回合胜利路线；两个无头实例均由启动器删除。
 - Release 构建 0 警告、0 错误；结构门禁通过。未运行怪物能力计数非空的语义差分；该配置仍明确拒绝。
 
-## 下一版本：玩家回合开始三阶段镜像
+## 0.44.1：玩家回合开始三阶段镜像
 
 - `TurnPhaseMirrorChecks --after-player-start` 原有 40 项，审计补充普通阶段生成 Late 监听者后为 41 项；`--after-player-start --vanilla` 1 项、`--after-player-start --seal` 3 项。覆盖三表登记拒绝、精确类型、冻结、三阶段监听顺序、轮间成员变动、卡牌 COW、选择暂停与未知覆写拒绝；已登记但入口尚无外部监听者时仍进入三轮派发。`--mask <生产 DLL>` 确认 61 个独立 bit。
 - 主 DLL 与离线宿主 Release 0 警告 / 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`。
 - CoverageCatalog 原表两条上游旧证据状态无法解析；仅在隔离副本排除未引用记录后，3035 条通过，无未分类、缺失或非通过引用。生产源码与原证据表未改，详见 [检查摘要](../coverage/equivalence/after-player-turn-start/validation.json)。
 - 对照 `523aea57` 的 EQ 10 / FULL 40 / GA 10：60 对有效、无时间截断，6341 个确定性字段 `IDENTICAL`（1069/4212/1060），一次批次无补跑。口径 High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1，逐根数据与命令见 [等价证据](../coverage/equivalence/after-player-turn-start/README.md)。
 
-## 下一版本：回合开始前镜像
+## 0.44.1：回合开始前镜像
 
 - `TurnPhaseMirrorChecks --start` 22 项、`--start --seal` 1 项通过：精确类型、空/重复/抽象/未覆写拒绝、首次派发与首根冻结、Power/遗物/Modifier/卡牌混合顺序、参与者、选择暂停、监听者快照。原晚期回合末 25 项通过。
 - 变基至 `6922828d` 后，主 DLL、宿主及检查工具 Release 均 0 警告 / 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`。`--mask <生产 DLL>` 确认 58 个单 bit 互不重叠，BeforeSideTurnStart 不复用 AfterEnergyReset 的 bit 56。
