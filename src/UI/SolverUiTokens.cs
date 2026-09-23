@@ -66,11 +66,11 @@ internal static class SolverUiTokens
 
     public static class Type
     {
-        public const int Title = 15;
-        public const int Metric = 14;
-        public const int Body = 13;
-        public const int Caption = 12;
-        public const int Outline = 2;
+        public const int Title = 16;
+        public const int Metric = 15;
+        public const int Body = 14;
+        public const int Caption = 13;
+        public const int Outline = 0;
     }
 
     public static class Size
@@ -87,9 +87,9 @@ internal static class SolverUiTokens
         public const float ActionPillHeight = 28f;
         public const float TurnColumnWidth = 88f;
         public const float OutcomeColumnWidth = 238f;
-        public const float MetricsDamageWidth = 88f;
-        public const float MetricsHpWidth = 60f;
-        public const float MetricsEnergyWidth = 50f;
+        public const float MetricsDamageWidth = 92f;
+        public const float MetricsHpWidth = 64f;
+        public const float MetricsEnergyWidth = 52f;
         public const float ButtonHeight = 34f;
         public const float ResizeEdgeThickness = 8f;
         public const int ResizeGripSize = 20;
@@ -176,7 +176,7 @@ internal static class SolverUiTokens
         string text,
         int fontSize,
         Color color,
-        FontType fontType = FontType.Regular,
+        FontType fontType = FontType.Bold,
         int outlineSize = -1,
         Color? outlineColor = null)
     {
@@ -215,7 +215,7 @@ internal static class SolverUiTokens
         label.AddThemeFontSizeOverride("mono_font_size", fontSize);
         label.AddThemeColorOverride("default_color", Palette.TextPrimary);
         ApplyTextOutline(label, outlineSize, outlineColor);
-        label.ApplyLocaleFontSubstitution(FontType.Regular, "normal_font");
+        label.ApplyLocaleFontSubstitution(FontType.Bold, "normal_font");
         label.ApplyLocaleFontSubstitution(FontType.Bold, "bold_font");
         label.ApplyLocaleFontSubstitution(FontType.Italic, "italics_font");
         return label;
@@ -350,7 +350,14 @@ internal static class SolverUiTokens
                 && label.GetThemeFontSize("font_size") == Type.Caption ? Type.Caption : Type.Body;
             control.AddThemeFontSizeOverride("font_size", size);
             ApplyTextOutline(control, 0);
-            control.ApplyLocaleFontSubstitution(FontType.Regular, "font");
+            if (control is LineEdit)
+            {
+                control.ApplyLocaleFontSubstitution(FontType.Regular, "font");
+            }
+            else
+            {
+                control.ApplyLocaleFontSubstitution(FontType.Bold, "font");
+            }
         }
         foreach (Node child in root.GetChildren()) StyleStrategyText(child);
     }

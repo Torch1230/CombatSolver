@@ -2118,7 +2118,7 @@ internal static class SolverOverlay
         {
             MouseFilter = Control.MouseFilterEnum.Ignore,
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            CustomMinimumSize = new Vector2(0, 22),
+            CustomMinimumSize = new Vector2(0, 24),
             SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
         };
         _summaryStateLabel = CreateTextLabel(
@@ -2130,34 +2130,34 @@ internal static class SolverOverlay
         statusRow.AddChild(_summaryStatusBadge);
         _summaryContextLabel = CreateTextLabel(
             string.Empty,
-            SolverUiTokens.Type.Caption,
+            SolverUiTokens.Type.Body,
             SolverUiTokens.Palette.TextSecondary,
             FontType.Bold);
         _summaryContextLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
-        _summaryContextLabel.CustomMinimumSize = new Vector2(0, 20);
+        _summaryContextLabel.CustomMinimumSize = new Vector2(0, 22);
         _summaryContextLabel.AutowrapMode = TextServer.AutowrapMode.Off;
         _summaryContextLabel.Visible = false;
         statisticsRow.AddChild(_summaryContextLabel);
-        _summaryText = CreateRichText(SolverUiTokens.Type.Body);
+        _summaryText = CreateRichText(SolverUiTokens.Type.Metric);
         _summaryText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _summaryText.FitContent = true;
         _summaryText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        _summaryText.CustomMinimumSize = new Vector2(0, 20);
+        _summaryText.CustomMinimumSize = new Vector2(0, 22);
         _summaryText.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         _summaryText.ApplyLocaleFontSubstitution(FontType.Bold, "normal_font");
-        _progressText = CreateTextLabel(string.Empty, SolverUiTokens.Type.Caption, TextPrimary, FontType.Bold);
+        _progressText = CreateTextLabel(string.Empty, SolverUiTokens.Type.Body, TextPrimary, FontType.Bold);
         _progressText.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
-        _progressText.CustomMinimumSize = new Vector2(0, 20);
+        _progressText.CustomMinimumSize = new Vector2(0, 22);
         _progressText.AutowrapMode = TextServer.AutowrapMode.Off;
         _progressText.Visible = false;
         statisticsRow.AddChild(_progressText);
         _reviewText = CreateTextLabel(
             string.Empty,
-            SolverUiTokens.Type.Caption,
+            SolverUiTokens.Type.Body,
             SolverUiTokens.Palette.TextSecondary,
             FontType.Bold);
         _reviewText.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        _reviewText.CustomMinimumSize = new Vector2(0, 20);
+        _reviewText.CustomMinimumSize = new Vector2(0, 22);
         _reviewText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _reviewText.Visible = false;
         _detailsButton = new SolverDetailsButton
@@ -2267,7 +2267,7 @@ internal static class SolverOverlay
             TooltipText = SolverText.Get("每场战斗开始时自动开启全自动。本场手动停止后保持停止，下场战斗再次开启。"),
         };
         autoStart.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
-        autoStart.AddChild(CreateTextLabel(SolverText.Get("自动开启全自动"), SolverUiTokens.Type.Caption, TextPrimary));
+        autoStart.AddChild(CreateTextLabel(SolverText.Get("自动开启全自动"), SolverUiTokens.Type.Body, TextPrimary, FontType.Bold));
         _autoEnableFullAutoSwitch = SolverSettingsPanel.CreateToggle();
         _autoEnableFullAutoSwitch.CustomMinimumSize = new Vector2(38, 20);
         _autoEnableFullAutoSwitch.TooltipText = autoStart.TooltipText;
@@ -2349,7 +2349,7 @@ internal static class SolverOverlay
         string text,
         int size,
         Color color,
-        FontType fontType = FontType.Regular)
+        FontType fontType = FontType.Bold)
     {
         return SolverUiTokens.CreateLabel(text, size, color, fontType);
     }

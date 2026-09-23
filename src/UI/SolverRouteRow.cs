@@ -107,8 +107,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
             string.Empty,
             SolverUiTokens.Type.Body,
             SolverUiTokens.Palette.TextSecondary,
-            FontType.Bold,
-            outlineSize: SolverUiTokens.IsLightTheme ? 0 : 1);
+            FontType.Bold);
         EnergyLabel.HorizontalAlignment = HorizontalAlignment.Right;
         EnergyLabel.AutowrapMode = TextServer.AutowrapMode.Off;
         EnergyLabel.CustomMinimumSize = new Vector2(

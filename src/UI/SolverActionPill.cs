@@ -44,7 +44,7 @@ internal static class SolverActionPill
         });
         Label titleLabel = SolverUiTokens.CreateLabel(
             action.Title,
-            SolverUiTokens.Type.Metric,
+            SolverUiTokens.Type.Body,
             SolverUiTokens.Palette.TextPrimary,
             FontType.Bold);
         content.AddChild(titleLabel);
@@ -64,14 +64,16 @@ internal static class SolverActionPill
             content.AddChild(SolverUiTokens.CreateLabel(
                 $"➔  {action.TargetName}",
                 SolverUiTokens.Type.Body,
-                SolverUiTokens.Palette.TextPrimary));
+                SolverUiTokens.Palette.TextPrimary,
+                FontType.Bold));
         }
         if (action.ChoiceText != null)
         {
             Label choiceLabel = SolverUiTokens.CreateLabel(
                 action.ChoiceText,
                 SolverUiTokens.Type.Body,
-                SolverUiTokens.Palette.Accent);
+                SolverUiTokens.Palette.Accent,
+                FontType.Bold);
             content.AddChild(choiceLabel);
             refreshers.Add(updated => choiceLabel.Text = updated.ChoiceText);
         }
@@ -131,7 +133,7 @@ internal static class SolverActionPill
             SolverUiTokens.Radius.Small,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
-        pill.AddChild(SolverUiTokens.CreateLabel(text, SolverUiTokens.Type.Body, color));
+        pill.AddChild(SolverUiTokens.CreateLabel(text, SolverUiTokens.Type.Body, color, FontType.Bold));
         return pill;
     }
 

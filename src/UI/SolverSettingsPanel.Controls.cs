@@ -98,7 +98,7 @@ internal sealed partial class SolverSettingsPanel
             "arrow",
             SolverUiTokens.CreateChevronTexture(SolverUiTokens.Palette.TextSecondary));
         SolverUiTokens.ApplyTextOutline(input);
-        input.ApplyLocaleFontSubstitution(FontType.Regular, "font");
+        input.ApplyLocaleFontSubstitution(FontType.Bold, "font");
         return input;
     }
 

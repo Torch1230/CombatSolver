@@ -43,8 +43,10 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
         close.Pressed += () => CloseRequested?.Invoke();
         master.AddChild(close);
         layout.AddChild(master);
-        HBoxContainer filter = new();
-        filter.AddChild(Text("显示未持有"));
+        HBoxContainer filter = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        Label filterText = Text("显示未持有");
+        filterText.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        filter.AddChild(filterText);
         _showUnowned = SolverSettingsPanel.CreateToggle();
         filter.AddChild(_showUnowned);
         layout.AddChild(filter);
