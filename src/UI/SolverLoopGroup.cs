@@ -15,8 +15,18 @@ internal sealed partial class SolverLoopGroup : PanelContainer
         SizeFlagsVertical = SizeFlags.ExpandFill,
         MouseFilter = MouseFilterEnum.Ignore,
     };
+    public PanelContainer Badge => _badge;
+    public Label BadgeLabel => _badgeLabel;
+
     private readonly PanelContainer _badge;
     private readonly Label _badgeLabel;
+
+    public void SetCompleted(bool completed)
+    {
+        SelfModulate = completed
+            ? SolverUiTokens.Palette.CompletedActionModulate
+            : Colors.White;
+    }
 
     public float NaturalWidth
     {

@@ -176,7 +176,7 @@ internal static class SolverActionPill
         return pill;
     }
 
-    public static Control CreateCycle(SolverActionRun run, out HFlowContainer actions)
+    public static SolverLoopGroup CreateCycle(SolverActionRun run, out HFlowContainer actions)
     {
         SolverLoopGroup group = new(run);
         actions = group.Actions;

@@ -27,6 +27,7 @@
   - 循环合并 UI 重构与对齐修复 (`SolverLoopGroup`, `SolverRouteActionFlow`)：
     - 消除下沉错位（Baseline Alignment）：彻底消除此前外框 padding 与 border 导致循环内卡牌下沉 4px 的问题。`SolverLoopGroup` 面板采用 `ContentMarginTop = 0` / `ContentMarginBottom = 0`，配合 `ExpandMarginTop = 2` / `ExpandMarginBottom = 2` 绘制外框背景与细边，使框内卡牌顶部、底部及文字基线与框外相邻卡牌 100% 像素级对齐。
     - 紧凑流式自适应与消除大框空隙（Inline Badge & Hug Layout）：移除原先水平撑满的 `HBoxContainer`；将 `_badge`（`循环 ×N`）直接置入内部 `Actions`（`HFlowContainer`）末尾紧随最后一张卡牌流式排版；在 `SolverRouteActionFlow` 中基于 `GetWrappedDimensions` 动态测量折叠后的最长单行宽度及高度，大框根据实际卡牌内容宽度紧凑贴合（不再无端撑满整行留白），徽章紧贴最后一张牌，跨行时作为自然结尾，整行卡片组紧凑舒适。
+    - 循环胶囊部署与熄灭动画（Loop Lifecycle & Dimming）：将 `_badge` 及 `SolverLoopGroup` 纳入路线部署状态跟踪（`_loopGroups`）。当循环处于激活出牌期间，循环胶囊保持激活高亮；当循环内所有轮次的动作全部执行完毕后（`completedActions >= run.End`）或回合结束推进时，循环胶囊与外框通过 `SetPillTarget` 及 `SelfModulate` 平滑过渡至已完成淡化色（`CompletedActionModulate`，即熄灭状态），彻底解决循环结束时胶囊保持高亮未熄灭的断裂感；路线复用与重置时平滑复位。
   - 回合开始选牌胶囊专属色标与动画优化 (`SolverActionPill.CreateChoice`, `SolverUiTokens`, `SolverRouteRow`)：
     - 专属色标识别：新增 `SolverUiTokens.Palette.Choice`（温暖珊瑚橙 `#ff8533` / 浅色 `#d45500`），彻底脱离与技能牌（`Palette.Skill` 蓝色）的重叠，一眼区分选牌交互步骤与常规卡牌。
     - 动画与状态联动：保留 14px 宋体粗体与中性卡片表面；纳入路线行部署状态跟踪（`_turnStartChoicePills`），在等待玩家选牌（`PendingTurnSetup`）时呈现醒目的激活动画与柔和呼吸效果，在执行推进后平滑淡化至已完成色 (`CompletedActionModulate`)。

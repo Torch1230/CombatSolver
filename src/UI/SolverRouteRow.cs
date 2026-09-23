@@ -8,6 +8,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
 {
     private readonly List<(CanvasItem Pill, SolverActionRun Run, int Offset)> _deploymentActions = [];
     private readonly List<Control> _turnStartChoicePills = [];
+    private readonly List<(SolverLoopGroup Loop, SolverActionRun Run)> _loopGroups = [];
     private int _deploymentActionCount;
     private CanvasItem? _endTurnAction;
     private SolverOverlayTurnSnapshot? _populatedTurn;
@@ -153,8 +154,10 @@ internal sealed partial class SolverRouteRow : PanelContainer
             Container destination = ActionFlow;
             if (run.Repetitions > 1)
             {
-                ActionFlow.AddChild(SolverActionPill.CreateCycle(run, out HFlowContainer loopActions));
+                SolverLoopGroup loopGroup = SolverActionPill.CreateCycle(run, out HFlowContainer loopActions);
+                ActionFlow.AddChild(loopGroup);
                 destination = loopActions;
+                _loopGroups.Add((loopGroup, run));
             }
             for (int offset = 0; offset < run.Period; offset++)
             {
@@ -241,6 +244,20 @@ internal sealed partial class SolverRouteRow : PanelContainer
                         : Colors.White,
                 isActive);
         }
+        foreach (var (loop, run) in _loopGroups)
+        {
+            bool isCompleted = completedActions >= run.End;
+            bool isActive = !isCompleted && activeActionIndex is { } activeIndex && activeIndex >= run.Start && activeIndex < run.End;
+            SetPillTarget(
+                loop.Badge,
+                isCompleted
+                    ? SolverUiTokens.Palette.CompletedActionModulate
+                    : isActive
+                        ? SolverUiTokens.Palette.ActiveActionModulate
+                        : Colors.White,
+                isActive);
+            loop.SetCompleted(isCompleted);
+        }
     }
 
     public void SetTurnStartChoiceDeploymentState(bool active, bool completed)
@@ -265,7 +282,14 @@ internal sealed partial class SolverRouteRow : PanelContainer
     public void SetEndTurnDeploymentState(bool active, bool completed)
     {
         if (completed)
+        {
             SetTurnStartChoiceDeploymentState(active: false, completed: true);
+            foreach (var (loop, _) in _loopGroups)
+            {
+                SetPillTarget(loop.Badge, SolverUiTokens.Palette.CompletedActionModulate, active: false);
+                loop.SetCompleted(true);
+            }
+        }
         if (_endTurnAction == null)
             return;
         if (active && !completed)
@@ -394,6 +418,9 @@ internal sealed partial class SolverRouteRow : PanelContainer
             if (GodotObject.IsInstanceValid(pill))
                 pill.Modulate = Colors.White;
         _pillMotion.Clear();
+        foreach (var (loop, _) in _loopGroups)
+            if (GodotObject.IsInstanceValid(loop))
+                loop.SetCompleted(false);
         _lastDeploymentStep = null;
         _deploymentStepSeconds = null;
     }
@@ -459,6 +486,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
         _populatedTurn = null;
         _populatedLanguage = null;
         _turnStartChoicePills.Clear();
+        _loopGroups.Clear();
         _deploymentActions.Clear();
         _deploymentActionCount = 0;
         _endTurnAction = null;
