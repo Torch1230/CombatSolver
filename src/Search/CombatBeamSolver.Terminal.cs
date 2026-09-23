@@ -177,7 +177,8 @@ internal sealed partial class CombatBeamSolver
 
     private RouteAnnotations BuildRouteAnnotations(
         SearchNode best,
-        ActionRelicTriggerRecorder? killRecorder = null)
+        ActionRelicTriggerRecorder? killRecorder = null,
+        IReadOnlyList<Creature>? annotationEnemies = null)
     {
         List<SearchNode> path = [];
         for (SearchNode? node = best; node?.Parent != null; node = node.Parent)
@@ -247,6 +248,7 @@ internal sealed partial class CombatBeamSolver
         }
         if (killRecorder != null)
         {
+            ArgumentNullException.ThrowIfNull(annotationEnemies);
             Dictionary<int, IReadOnlyList<string>> attributedKills = [];
             foreach (SearchNode node in path)
             {
@@ -257,8 +259,8 @@ internal sealed partial class CombatBeamSolver
                     attributedKills[actionIndex] = recorded
                         .Select(kill =>
                         {
-                            Creature? enemy = root.Enemies.FirstOrDefault(candidate => candidate.CombatId == kill.CombatId);
-                            string targetName = enemy is null ? displayNames.Monster(kill.TargetId) : displayNames.Creature(enemy);
+                            Creature enemy = annotationEnemies.First(candidate => candidate.CombatId == kill.CombatId);
+                            string targetName = displayNames.Creature(enemy, annotationEnemies);
                             if (string.IsNullOrEmpty(targetName))
                                 targetName = kill.TargetId;
                             return $"{targetName}（{displayNames.DamageSource(kill.Source)}）";

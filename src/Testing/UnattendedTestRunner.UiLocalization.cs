@@ -18,6 +18,18 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertLoopDisplayAsync(bool english)
     {
+        PlanAction targeted = new(PlanActionKind.PlayCard, 1, CardId: "STRIKE_IRONCLAD",
+            TargetIndex: 0, TargetCombatId: 10, TargetName: "Enemy");
+        SolverOverlayActionSnapshot targetDisplay = SolverOverlaySnapshot.CaptureAction(targeted, []);
+        SolverOverlayActionSnapshot otherCopy = SolverOverlaySnapshot.CaptureAction(
+            targeted with { CardOccurrence = 1, TargetIndex = 2 }, []);
+        SolverOverlayActionSnapshot otherTarget = SolverOverlaySnapshot.CaptureAction(
+            targeted with { TargetCombatId = 11 }, []);
+        if (!targetDisplay.HasSamePresentation(otherCopy)
+            || targetDisplay.HasSamePresentation(otherTarget)
+            || CombatBeamSolver.BuildCycleActionKey(targeted)
+                == CombatBeamSolver.BuildCycleActionKey(targeted with { CardOccurrence = 1 }))
+            throw new InvalidOperationException("Loop display must ignore physical copy indexes and retain target identity without changing search keys.");
         SolverOverlayActionSnapshot a = SolverOverlaySnapshot.CaptureAction(
             new PlanAction(PlanActionKind.PlayCard, 1, CardId: "IMPATIENCE"), []);
         SolverOverlayActionSnapshot b = SolverOverlaySnapshot.CaptureAction(
@@ -33,23 +45,29 @@ internal sealed partial class UnattendedTestRunner
             if (row.DeploymentActionCount != 41 || row.ActionFlow.GetChildCount() != 2)
                 throw new InvalidOperationException("Loop folding lost executable indexes or kill suffix.");
             var group = (Control)row.ActionFlow.GetChild(0);
-            var content = group.GetChild<VBoxContainer>(0);
-            var actions = content.GetChild<HFlowContainer>(1);
-            if (actions.GetChildCount() != 2 || content.GetChild<Label>(0).Text != (english ? "Loop ×20" : "循环 ×20"))
+            var content = group.GetChild<HBoxContainer>(0);
+            var actions = content.GetChild<HFlowContainer>(0);
+            Label count = content.GetChild<Label>(1);
+            if (actions.GetChildCount() != 2 || count.Text != "×20"
+                || !group.TooltipText.Contains(english ? "Repeat" : "重复"))
                 throw new InvalidOperationException("Loop badge localization failed.");
             foreach (int index in new[] { 0, 1, 2, 37, 38, 39 })
             {
                 row.SetDeploymentProgress(index, index);
+                row.SettleDeploymentMotionForTesting();
                 if (((CanvasItem)actions.GetChild(index % 2)).Modulate
                     != SolverUiTokens.Palette.ActiveActionModulate)
                     throw new InvalidOperationException("Repeated action highlight lost its modulo mapping.");
             }
             row.SetDeploymentProgress(40, 40);
+            row.SettleDeploymentMotionForTesting();
             if (((CanvasItem)actions.GetChild(0)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
                 || ((CanvasItem)actions.GetChild(1)).Modulate != SolverUiTokens.Palette.CompletedActionModulate
                 || ((CanvasItem)row.ActionFlow.GetChild(1)).Modulate != SolverUiTokens.Palette.ActiveActionModulate)
                 throw new InvalidOperationException("Loop completion or suffix highlight failed.");
             row.SetDeploymentProgress(41, null);
+            if (!SolverRouteRow.ExerciseDeploymentPacingForTesting())
+                throw new InvalidOperationException("Deployment highlight pacing does not follow the step interval.");
             ulong id = row.ActionFlow.GetChild(0).GetInstanceId();
             row.Populate(turn with { Actions = turn.Actions.ToArray() });
             if (id != row.ActionFlow.GetChild(0).GetInstanceId()
@@ -68,11 +86,16 @@ internal sealed partial class UnattendedTestRunner
                 if (wrapped != narrow
                     || !group.GetGlobalRect().Encloses(first.GetGlobalRect())
                     || !group.GetGlobalRect().Encloses(second.GetGlobalRect())
-                    || !group.GetGlobalRect().Encloses(content.GetChild<Label>(0).GetGlobalRect())
+                    || !group.GetGlobalRect().Encloses(count.GetGlobalRect())
                     || group.Size.X > row.ActionFlow.Size.X + 1)
                     throw new InvalidOperationException($"Loop group layout failed: narrow={narrow}, wrapped={wrapped}, group={group.Size}, flow={row.ActionFlow.Size}.");
+                if (!narrow && (group.Size.X >= row.ActionFlow.Size.X - 1
+                    || group.Size.Y > Mathf.Max(first.Size.Y, second.Size.Y) + 5
+                    || count.GlobalPosition.X < second.GetGlobalRect().End.X
+                    || row.ActionFlow.GetChild<Control>(1).Position.Y > group.Position.Y + 1))
+                    throw new InvalidOperationException($"Loop group should fit content on one line with its suffix: group={group.Size}, flow={row.ActionFlow.Size}.");
             }
-            _completedChecks.Add($"LoopDisplay:{(english ? "eng" : "zh")}:41Actions:2OuterControls:EnclosedPeriod:WideNarrowWide:ReplayCount:KillSuffix:Deployment:Reuse");
+            _completedChecks.Add($"LoopDisplay:{(english ? "eng" : "zh")}:41Actions:2OuterControls:CompactInlineCount:EnclosedPeriod:WideNarrowWide:ReplayCount:KillSuffix:Deployment:Reuse");
         }
         finally { row.Free(); }
     }
@@ -101,6 +124,42 @@ internal sealed partial class UnattendedTestRunner
                 await _host.ToSignal(_host.GetTree(), SceneTree.SignalName.ProcessFrame);
                 bool english = target == "eng";
                 var displayNames = SolverDisplayNames.Capture(combat);
+                CombatRootSnapshot nameRoot = CombatRootSnapshot.Capture(combat);
+                using (SimulationNotificationIsolation.Enter())
+                {
+                    CombatPredictionSimulator simulator = nameRoot.ForkSimulator();
+                    var simulated = (SimulatedCombatState)simulator.State.CombatState;
+                    bool positionedSpawn = combat.Encounter?.Slots.Contains("wriggler1") == true;
+                    var spawned = Enumerable.Range(1, 4).Reverse().Select(number =>
+                        MonsterSpawnSupport.Spawn<MegaCrit.Sts2.Core.Models.Monsters.Wriggler>(
+                            simulator, simulated, combat.Enemies[0], slot: positionedSpawn ? $"wriggler{number}" : null)).ToArray();
+                    string[] names = spawned.Select(creature => displayNames.Creature(creature, simulated.KnownEnemies)).ToArray();
+                    var child = simulator.Fork();
+                    var childCombat = (SimulatedCombatState)child.State.CombatState;
+                    if (names.Distinct(StringComparer.Ordinal).Count() != 4
+                        || spawned.Where((creature, index) =>
+                            names[index] != displayNames.Creature(
+                                childCombat.KnownEnemies.Single(enemy => enemy.CombatId == creature.CombatId), childCombat.KnownEnemies)
+                            || !names[index].Contains(english ? "from left" : "左起")).Any())
+                        throw new InvalidOperationException("Spawned targets must retain left-to-right labels across Fork.");
+                    if (positionedSpawn)
+                    {
+                        var scene = (Control)typeof(MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom)
+                            .GetProperty("EncounterSlots", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                            .GetValue(MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom.Instance)!;
+                        var ordered = spawned.OrderBy(creature => scene.GetNode<Marker2D>(creature.SlotName!).GlobalPosition.X).ToArray();
+                        for (int index = 0; index < ordered.Length; index++)
+                        {
+                            string expected = english ? $"#{index + 1} from left" : $"左起{index + 1}";
+                            if (!displayNames.Creature(ordered[index], simulated.KnownEnemies).Contains(expected))
+                                throw new InvalidOperationException("Spawn label order differs from native slot coordinates.");
+                        }
+                        simulated.RemoveCreature(ordered[0]);
+                        if (spawned.Where((creature, index) => names[index] != displayNames.Creature(creature, simulated.KnownEnemies)).Any())
+                            throw new InvalidOperationException("Removing a defeated enemy renumbered the remaining targets.");
+                    }
+                    _completedChecks.Add($"SpawnedEntityIdentity:{target}:FourWrigglers:LeftToRight:NativeSlots={positionedSpawn}:ForkStable:DeathStable");
+                }
                 if (combat.Enemies.Select(displayNames.Creature).Distinct().Count() != combat.Enemies.Count)
                     throw new InvalidOperationException("Enemy display names are ambiguous.");
                 var plainShiv = SolverOverlaySnapshot.CaptureAction(new PlanAction(PlanActionKind.PlayCard, 1, CardId: "SHIV"), []);

@@ -35,6 +35,41 @@ description: 用户要求准备或发布 CombatSolver 版本、生成 ZIP、创�
 - 版本创建标签或成功上传创意工坊后即冻结。后续行为改动进入新的“下一版本（开发中）”，不回写已发布版本；用户未指定新版本号时保留待定，不自行猜版本。
 - 普通发布不计算哈希。只有来源冲突、发布渠道争议或用户明确要求时才计算。
 
+### 玩家更新日志定稿规则
+
+1. 以最近已发布版本为基线，描述升级后的最终体验；同一批次的未发布界面不是旧版。
+2. 按玩家功能合并开发记录。新功能的试稿、反复调整、测试发现与修复过程保留在开发笔记，发布说明只介绍完成后的功能。
+3. 修复条目只描述已发布版本中玩家可能遇到的现象及改善。新增功能在发布前修好的问题并入功能说明，不单列“修复”。
+4. 使用游戏场景、操作与结果，避免索引、阈值、像素、容器布局等实现细节；例如写“重复出牌合并显示，标注次数，让长路线更易阅读”，不写“次数从标题行移到右侧，虚线下移两像素”。
+5. 一项最终功能写一次；贡献者和 PR 链接保留在所属条目开头，中英文表达相同变化。用户已经删去的表述保持删除。
+6. 定稿逐条核对已发布基线、最终默认行为和玩家收益，剔除未启用实验、开发过程、重复条目和没有证据的性能承诺，再将同一正文用于全部渠道。
+
+### Steam 更新日志排版合同
+
+此规则适用于 `workshop.json` 的 `changeNote`，GitHub 与仓库更新日志继续使用 Markdown；创意工坊长介绍独立维护。
+
+- 版本标题、简体中文与 English 小标题统一使用 `[b]文字[/b]`，段落使用真实换行，条目使用普通 `- ` 前缀。
+- 链接转换为 `[url=https://…]文字[/url]`，贡献者与 PR 链接全部保留。正文只使用普通文本、换行、`[b]` 和 `[url]` 标签。
+- 标题不得使用 `[h1]`、`[h2]`、`[h3]`；列表不得使用 `[list]`、`[*]` 或 `[olist]`，也不使用 `[quote]`、`[code]`、表格或原始 HTML 等块级排版。
+- 原因与证据：2026-09-22 的 0.44.0 更新日志页面将正文放在带背景的 `<p>` 中，而 `[h1]` / `[h2]` 被转换成 `<div>`，浏览器会提前结束段落，导致正文脱框、上下出现空背景条。旧版的加粗标题与普通换行保持在框内。
+- 上传前检查转换后的完整 `changeNote`：只含上述允许标签、标签成对、换行为真实换行；逐项核对两种语言的正文、条目数量与链接均与 Markdown 来源一致。不能只检查版本字符串或上传器退出码来判断排版正确。
+- 上传成功后沿用既有不重复发布、不打开远端页面复核的规则；用户提供排版异常时按实际页面诊断，不重传二进制来修正文字。
+
+固定格式示例（其中换行是实际换行）：
+
+```text
+[b]CombatSolver <版本号>[/b]
+
+[b]简体中文[/b]
+
+- 完整中文条目。
+
+[b]English[/b]
+
+- Complete English entry.
+```
+
+
 ## 2. 一次 Release 构建
 
 Windows（PowerShell 7）：
@@ -98,14 +133,14 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 
 1. 用当前 release source 的 `CombatSolver.json`、刚完成的 Release DLL、Windows `CombatSolver.MemoryCleaner.exe`、根目录 `LICENSE` 和 `THIRD_PARTY_NOTICES.md` 覆盖 `CombatSolverWorkshop/content/`；
 2. 保留标题、长描述、作者、封面、效果图、标签、依赖和可见性，除非用户明确要求修改或兼容性事实已经变化；
-3. 将该版本玩家更新日志的完整简中和英文正文写入 `workshop.json` 的 `changeNote`，只转换排版语法；逐项核对两个渠道的所有玩家变动、限制和致谢；
+3. 按第 1 节“Steam 更新日志排版合同”将该版本完整简中和英文正文写入 `workshop.json` 的 `changeNote`，完成允许标签、正文与链接核对；
 4. Windows 执行一次 `ModUploader.exe upload -w .\CombatSolverWorkshop`；Linux 执行一次 `"$COMBATSOLVER_MOD_UPLOADER" upload -w "$COMBATSOLVER_WORKSHOP_DIR"`。
 
 创意工坊介绍已有 English / 简体中文两套，正文维护于 `docs/workshop/`。官方 ModUploader 未指定语言时写 English，因此本地 workshop.json 的默认标题和 description 必须保持英文；简中介绍通过明确的 `SetItemUpdateLanguage("schinese")` 独立维护，不能把中文塞回默认 description，或仅改 tags 代替语言字段。只更新介绍时提交元数据，不顺带上传二进制。
 
 英文界面发布时语言 tags 包含 English 与 Simplified Chinese，保留其他标签；tags 用于发现，不能代替上述介绍语言字段。仅发包且介绍未变化时保留既有两种语言，不重复提交介绍。英文介绍和中文介绍各自保留依赖、单人限制、代码来源与许可署名。
 
-官方上传器还会把工作区 `previews/` 当作远端示例图的完整列表，上传缺少的图片并删除目录中不存在的远端图片。通过网页或 API 替换示例图后，同时同步此目录并移出旧文件；当前顺序为中文、英文 1、英文 2、英文 3，对应 `01-cn1.jpg`、`02-en1.jpg`、`03-en2.jpg`、`04-en3.jpg`。不要用旧 previews 目录覆盖玩家刚指定的新图。主封面 image.png 独立于示例图。
+普通发版保留线上展示图：上传工作区不放 `previews/` 目录，本地图片保存在 `previews-preserved/`。官方说明明确，目录不存在时线上展示图保持不变；存在时会同步完整列表，空目录会删除线上展示图，因此不能通过清空目录来跳过上传。只有用户明确要求更新展示图时才准备完整 `previews/`，当前顺序为中文、英文 1、英文 2、英文 3，对应 `01-cn1.jpg`、`02-en1.jpg`、`03-en2.jpg`、`04-en3.jpg`。主封面 `image.png` 独立处理，当前官方上传器要求其存在并每次上传，没有跳过参数；不得把跳过四张展示图说成所有图片都未上传。依据：[官方目录说明](https://github.com/megacrit/sts2-mod-uploader/blob/main/template/README.md) 与 [上传实现](https://github.com/megacrit/sts2-mod-uploader/blob/main/src/UploadCommand.cs)。
 
 更新说明只写新增功能、实战结果修复、路线质量、UI/操作、兼容性和玩家能感知的性能变化。不要写类名、方法名、Beam/Mirror/GC 实现、runId、提交、构建、测试或打包过程。
 

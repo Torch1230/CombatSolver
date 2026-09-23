@@ -1,0 +1,21 @@
+{
+  "releaseBuild": {"warnings": 0, "errors": 0},
+  "offlineHarnessBuild": {"warnings": 0, "errors": 0},
+  "turnPhaseChecks": {"afterPlayerStart": 40, "seal": 3, "productionDistinctMaskBits": 61},
+  "structuralGate": {"result": "REFACTOR_BOUNDARIES_OK", "searchFiles": 208},
+  "coverageCatalog": {
+    "originalInput": "Failed",
+    "reason": "上游旧 test-evidence.json 的两条状态值不属于工具枚举，保留原文件。",
+    "unreferencedRecordsExcludedOnlyFromArchiveCopy": {
+      "LOOP-FINAL-20260921": "PassedWithDocumentedBoundaries",
+      "LOOP-BOUNDARIES-AUDIT-20260921": "PassedWithDocumentedPerformanceRegression"
+    },
+    "isolatedInputVerify": "Passed",
+    "entries": 3035,
+    "unanalyzed": 0,
+    "missingEvidence": 0,
+    "referencedNonPassingTests": 0,
+    "environment": "隔离副本中仅移除上述旧记录；本地工具补齐游戏 SmartFormat 和 RitsuLib 分拆 DLL 引用。生产源码和原证据表未改。"
+  },
+  "scope": "合同工具使用最小模型替身，验证真实链接的注册表和 facade；离线等价验证既有路线，不能替代原生执行对照。"
+}

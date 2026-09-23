@@ -65,6 +65,37 @@ internal static partial class TurnStartPowerSupport
             {
                 continue;
             }
+            ApplyBeforeSideTurnStartPower(simulator, combat, aggression, participants);
+            if (combat.HasPendingChoice)
+                return true;
+        }
+
+        IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
+        for (int powerIndex = 0; powerIndex < effectivePowers.Count; powerIndex++)
+        {
+            PowerModel power = effectivePowers[powerIndex];
+            if (power.Amount <= 0)
+                continue;
+
+            if (power is not PlatingPower and not AggressionPower)
+                ApplyBeforeSideTurnStartPower(simulator, combat, power, participants);
+            if (combat.HasPendingChoice)
+                return true;
+        }
+        return false;
+    }
+
+    internal static void ApplyBeforeSideTurnStartPower(CombatPredictionSimulator simulator,
+        SimulatedCombatState combat, PowerModel power, IReadOnlyList<Creature> participants)
+    {
+        if (power.Amount <= 0)
+            return;
+        if (power is PlatingPower plating && combat.CurrentSide == CombatSide.Player
+            && combat.RoundNumber <= 1 && plating.Owner.IsEnemy)
+            simulator.GainBlock(plating.Owner, plating.Amount, ValueProp.Unpowered);
+        if (power is AggressionPower aggression && participants.Contains(aggression.Owner)
+            && aggression.Owner.Player is { } aggressionPlayer)
+        {
             SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(aggressionPlayer);
             PredictedCard[] selected = playerState.DiscardPile.Cards
                 .Where(static card => card.Preview.Type == CardType.Attack)
@@ -79,42 +110,30 @@ internal static partial class TurnStartPowerSupport
                 // 同样的入场事件），但会额外分配一个单元素数组和一张结果表。
                 simulator.AddToPile(card, PileType.Hand);
                 if (combat.HasPendingChoice)
-                    return true;
+                    return;
                 if (card.Preview.IsUpgradable)
                     card.Upgrade();
             }
         }
-
-        IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
-        for (int powerIndex = 0; powerIndex < effectivePowers.Count; powerIndex++)
+        switch (power)
         {
-            PowerModel power = effectivePowers[powerIndex];
-            if (power.Amount <= 0)
-                continue;
-
-            switch (power)
-            {
-                case HardenedShellPower shell:
-                    simulator.StateStore
-                        .Get(shell, () => new HardenedShellPredictionState(shell))
-                        .DamageReceivedThisTurn = 0;
-                    break;
-                case SlothPower sloth when participants.Contains(sloth.Owner):
-                    simulator.StateStore
-                        .Get(sloth, () => new CounterPredictionState(
-                            combat.GetCardsPlayedThisTurn(sloth.Owner)))
-                        .Value = 0;
-                    break;
-                case VoidFormPower voidForm when participants.Contains(voidForm.Owner):
-                    simulator.StateStore
-                        .Get(voidForm, () => new VoidFormPredictionState(voidForm))
-                        .CardsPlayedThisTurn = 0;
-                    break;
-            }
-            if (combat.HasPendingChoice)
-                return true;
+            case HardenedShellPower shell:
+                simulator.StateStore
+                    .Get(shell, () => new HardenedShellPredictionState(shell))
+                    .DamageReceivedThisTurn = 0;
+                break;
+            case SlothPower sloth when participants.Contains(sloth.Owner):
+                simulator.StateStore
+                    .Get(sloth, () => new CounterPredictionState(
+                        combat.GetCardsPlayedThisTurn(sloth.Owner)))
+                    .Value = 0;
+                break;
+            case VoidFormPower voidForm when participants.Contains(voidForm.Owner):
+                simulator.StateStore
+                    .Get(voidForm, () => new VoidFormPredictionState(voidForm))
+                    .CardsPlayedThisTurn = 0;
+                break;
         }
-        return false;
     }
 
     public static bool TriggerBeforeHandDraw(
@@ -262,6 +281,10 @@ internal static partial class TurnStartPowerSupport
         Player player,
         TurnStartChoiceCursor choices)
         => ContinueAfterPlayerTurnStart(simulator, combat, player, choices, combat.EffectivePowers().ToArray(), 0);
+
+    internal static bool ApplyAfterPlayerTurnStartPower(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        Player player, TurnStartChoiceCursor choices, PowerModel power)
+        => ContinueAfterPlayerTurnStart(simulator, combat, player, choices, [power], 0);
 
     private static bool ContinueAfterPlayerTurnStart(CombatPredictionSimulator simulator, SimulatedCombatState combat,
         Player player, TurnStartChoiceCursor choices, IReadOnlyList<PowerModel> powers, int nextIndex)

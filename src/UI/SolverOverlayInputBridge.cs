@@ -6,6 +6,8 @@ internal sealed partial class SolverOverlayInputBridge : Node
 {
     public override void _Input(InputEvent inputEvent)
     {
+        if (inputEvent is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false })
+            SolverOverlay.CompletePointerGesture();
         if (!Handle(inputEvent))
             return;
         GetViewport().SetInputAsHandled();

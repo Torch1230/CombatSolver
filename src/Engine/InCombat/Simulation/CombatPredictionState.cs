@@ -134,6 +134,19 @@ internal sealed class CombatPredictionState
             : Hook.ShouldAllowHitting(CombatState, creature);
     }
 
+    /// <summary>
+    /// 实机 <c>Creature.CanReceivePowers</c> 里的「个体仍在战斗里」那一半。
+    /// </summary>
+    /// <remarks>
+    /// 实机 <c>CreatureCmd.Kill</c> 在击杀当时就 <c>combatState.RemoveCreature</c>
+    /// （<c>CombatState = null</c>，只放过正在执行自己行动的怪物），于是同一动作里后续对它施加
+    /// Power 是空操作。预测侧同一处也走 <see cref="RemoveCreature"/>，所以「有没有被移除」
+    /// 就是这条判据的等价物；它换来的是「死亡效果被推迟到 ApplyEnemyDeathPowers」那个窗口里的
+    /// 正确行为，见 <c>SimulatedCombatState.CanReceivePredictedPowers</c>。
+    /// </remarks>
+    public bool IsAttachedToCombat(Creature creature)
+        => _removedCreatures?.Contains(creature) != true;
+
     public IReadOnlyList<Creature> GetOpponentsOf(Creature creature)
         => !RequiresRemovedCreatureFiltering
             ? CombatState.GetOpponentsOf(creature)

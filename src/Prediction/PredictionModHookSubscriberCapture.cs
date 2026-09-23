@@ -1,3 +1,4 @@
+using System.Reflection;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -15,6 +16,9 @@ internal sealed class PredictionModHookSubscriberCapture
         "Loadout.Services.TildeKey.LoadoutMaxHandSizeModifier";
     private const string LoadoutEveryCardFreeCombatHookTypeName =
         "Loadout.Services.TildeKey.LoadoutEveryCardFreeCombatHook";
+    private const string LoadoutPowerGiverSummonHookTypeName =
+        "Loadout.Services.PowerGiver.PowerGiverSummonHook";
+    private const string SupportedLoadoutPowerGiverVersion = "v0.5.6";
     private static readonly HashSet<string> KnownPreRootSubscriberTypeNames =
     [
         LoadoutMaxHandSizeModifierTypeName,
@@ -28,6 +32,7 @@ internal sealed class PredictionModHookSubscriberCapture
     public IReadOnlyDictionary<Player, int> MaxHandSizes { get; }
     public IReadOnlySet<Player> EveryCardFreePlayers { get; }
     public bool HasBaseLibCardModifiers { get; }
+    public bool HasInactiveLoadoutSummonPowers { get; }
     public AdaptedOnPlaySnapshot? AdaptedOnPlay { get; private init; }
     public MirroredHookListenerFilter MirroredHookFilter { get; } = MirroredHookListenerFilter.Capture();
 
@@ -36,13 +41,15 @@ internal sealed class PredictionModHookSubscriberCapture
         AbstractModel[] combatSubscribers,
         IReadOnlyDictionary<Player, int> maxHandSizes,
         IReadOnlySet<Player> everyCardFreePlayers,
-        bool hasBaseLibCardModifiers)
+        bool hasBaseLibCardModifiers,
+        bool hasInactiveLoadoutSummonPowers)
     {
         RunSubscribers = runSubscribers;
         CombatSubscribers = combatSubscribers;
         MaxHandSizes = maxHandSizes;
         EveryCardFreePlayers = everyCardFreePlayers;
         HasBaseLibCardModifiers = hasBaseLibCardModifiers;
+        HasInactiveLoadoutSummonPowers = hasInactiveLoadoutSummonPowers;
     }
 
     public static PredictionModHookSubscriberCapture Capture(
@@ -78,7 +85,46 @@ internal sealed class PredictionModHookSubscriberCapture
             combatSubscribers,
             maxHandSizes,
             everyCardFreePlayers,
-            hasBaseLibCardModifiers) { AdaptedOnPlay = onPlay };
+            hasBaseLibCardModifiers,
+            combatSubscribers.Any(subscriber =>
+                subscriber.GetType().FullName == LoadoutPowerGiverSummonHookTypeName))
+            { AdaptedOnPlay = onPlay };
+    }
+
+    public static string? CaptureLiveLoadoutSummonPowerState(CombatState combat)
+    {
+        AbstractModel? hook = ModHelper.IterateAllCombatStateSubscribers(combat)
+            .SingleOrDefault(subscriber =>
+                subscriber.GetType().FullName == LoadoutPowerGiverSummonHookTypeName);
+        if (hook is null)
+            return null;
+
+        Type type = hook.GetType();
+        var mod = AssemblyInfo.ModForType(type, out bool isBaseGame);
+        var manifest = mod?.manifest;
+        if (isBaseGame || manifest is null
+            || !string.Equals(manifest.id, "Loadout", StringComparison.Ordinal))
+            return "unknown_source";
+        if (!string.Equals(manifest.version, SupportedLoadoutPowerGiverVersion, StringComparison.Ordinal))
+            return $"unsupported_version:{manifest.version}";
+        return ReadLoadoutMonsterPowerCounters(type).Count == 0 ? "empty" : "configured";
+    }
+
+    private static IReadOnlyDictionary<string, int> ReadLoadoutMonsterPowerCounters(Type hookType)
+    {
+        Assembly assembly = hookType.Assembly;
+        Type scopeType = assembly.GetType("Loadout.Services.Targets.LoadoutTargetScope", throwOnError: true)!;
+        Type selectionType = assembly.GetType("Loadout.Services.Targets.LoadoutTargetSelection", throwOnError: true)!;
+        Type serviceType = assembly.GetType("Loadout.Services.PowerGiver.PowerGiverStateService", throwOnError: true)!;
+        ConstructorInfo constructor = selectionType.GetConstructor([scopeType, typeof(ulong?)])
+            ?? throw new PredictionUnsupportedException("Loadout PowerGiver target selection contract changed.");
+        MethodInfo snapshotMethod = serviceType.GetMethod(
+            "GetCountersSnapshot", BindingFlags.Public | BindingFlags.Static,
+            binder: null, types: [selectionType], modifiers: null)
+            ?? throw new PredictionUnsupportedException("Loadout PowerGiver counter snapshot contract changed.");
+        object target = constructor.Invoke([Enum.Parse(scopeType, "AllMonsters"), null]);
+        return snapshotMethod.Invoke(null, [target]) as IReadOnlyDictionary<string, int>
+            ?? throw new PredictionUnsupportedException("Loadout PowerGiver returned an unsupported counter snapshot.");
     }
 
     public void AppendCardAttachedListeners(
@@ -152,6 +198,20 @@ internal sealed class PredictionModHookSubscriberCapture
     {
         Type type = subscriber.GetType();
         var mod = AssemblyInfo.ModForType(type, out bool isBaseGame);
+        var manifest = mod?.manifest;
+        if (type.FullName == LoadoutPowerGiverSummonHookTypeName
+            && !isBaseGame
+            && manifest is not null
+            && string.Equals(manifest.id, "Loadout", StringComparison.Ordinal))
+        {
+            if (string.Equals(manifest.version, SupportedLoadoutPowerGiverVersion, StringComparison.Ordinal)
+                && ReadLoadoutMonsterPowerCounters(type).Count == 0)
+                return;
+            throw new IncompatibleGameplayModException(
+                "Loadout", manifest.name ?? string.Empty,
+                "PowerGiver summon powers are configured or this Loadout version is not verified",
+                scope);
+        }
         if (PredictionModModelSupport.IsBaseLibCardModifier(subscriber)
             || KnownPreRootSubscriberTypeNames.Contains(type.FullName ?? string.Empty)
             || (!isBaseGame && mod?.manifest?.affectsGameplay is false))

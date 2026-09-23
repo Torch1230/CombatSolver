@@ -595,7 +595,8 @@ internal sealed partial class CombatBeamSolver
                     $"enemy_hp={finalSnapshot.EnemyHp}/{annotationReplay.EnemyHp} " +
                     $"boundary={finalSnapshot.BoundaryReason}/{annotationReplay.BoundaryReason}。");
             }
-            RouteAnnotations replayAnnotations = BuildRouteAnnotations(best, relicTriggerRecorder);
+            RouteAnnotations replayAnnotations = BuildRouteAnnotations(best, relicTriggerRecorder,
+                ((SimulatedCombatState)annotationReplay.Simulator.State.CombatState).KnownEnemies);
             replayEvidence.Publish(policy.Diagnostics, "selected_route", relicTriggerRecorder);
             annotations = annotations with { KillsAfterAction = replayAnnotations.KillsAfterAction };
             string[] plannedPotionIds = ((SimulatedCombatState)((CombatPredictionSimulator)annotationReplay.Simulator)

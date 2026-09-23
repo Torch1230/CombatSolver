@@ -13,7 +13,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
     private string? _populatedLanguage;
 
     public Label TurnLabel { get; }
-    public HFlowContainer ActionFlow { get; }
+    public SolverRouteActionFlow ActionFlow { get; }
     public Label EnemyDamageLabel { get; }
     public Label OutcomeLabel { get; }
     public Label EnergyLabel { get; }
@@ -60,7 +60,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
         TurnLabel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         layout.AddChild(TurnLabel);
 
-        ActionFlow = new HFlowContainer
+        ActionFlow = new SolverRouteActionFlow
         {
             Name = "ActionFlow",
             CustomMinimumSize = new Vector2(0, SolverUiTokens.Size.ActionPillHeight),
@@ -122,10 +122,9 @@ internal sealed partial class SolverRouteRow : PanelContainer
     {
         if (HasSameActions(turn))
         {
-            // Populate starts a fresh presentation even when its controls survive.
-            // Deployment indexes still refer to this row's executable actions only.
-            SetDeploymentProgress(0, null);
-            SetEndTurnDeploymentState(active: false, completed: false);
+            // Populate starts a fresh presentation even when its controls survive: colors snap
+            // back instead of fading out a previous deployment.
+            ResetDeploymentMotion();
             return;
         }
         ClearActions();
@@ -149,9 +148,12 @@ internal sealed partial class SolverRouteRow : PanelContainer
         foreach (SolverActionRun run in SolverActionRuns.Capture(turn.Actions,
                      static (left, right) => left.HasSamePresentation(right)))
         {
-            HFlowContainer destination = ActionFlow;
+            Container destination = ActionFlow;
             if (run.Repetitions > 1)
-                ActionFlow.AddChild(SolverActionPill.CreateCycle(run, out destination));
+            {
+                ActionFlow.AddChild(SolverActionPill.CreateCycle(run, out HFlowContainer loopActions));
+                destination = loopActions;
+            }
             for (int offset = 0; offset < run.Period; offset++)
             {
                 Control pill = SolverActionPill.Create(turn.Actions[run.Start + offset]);
@@ -208,13 +210,21 @@ internal sealed partial class SolverRouteRow : PanelContainer
                 "当前动作必须是尚未完成的路线动作。");
         }
 
+        // Pace is measured between newly current actions only; completion-only updates (the final
+        // step, end of turn) arrive back to back and would otherwise read as an instant deployment.
+        if (activeActionIndex is { } current)
+            NoteDeploymentStep((completedActions, current));
         foreach (var (pill, run, offset) in _deploymentActions)
         {
-            pill.Modulate = run.IsActive(offset, activeActionIndex)
-                ? SolverUiTokens.Palette.ActiveActionModulate
-                : run.IsCompleted(offset, completedActions)
-                    ? SolverUiTokens.Palette.CompletedActionModulate
-                    : Colors.White;
+            bool isActive = run.IsActive(offset, activeActionIndex);
+            SetPillTarget(
+                pill,
+                isActive
+                    ? SolverUiTokens.Palette.ActiveActionModulate
+                    : run.IsCompleted(offset, completedActions)
+                        ? SolverUiTokens.Palette.CompletedActionModulate
+                        : Colors.White,
+                isActive);
         }
     }
 
@@ -222,11 +232,171 @@ internal sealed partial class SolverRouteRow : PanelContainer
     {
         if (_endTurnAction == null)
             return;
-        _endTurnAction.Modulate = completed
-            ? SolverUiTokens.Palette.CompletedActionModulate
-            : active
-                ? SolverUiTokens.Palette.ActiveActionModulate
-                : Colors.White;
+        if (active && !completed)
+            NoteDeploymentStep((-1, -1));
+        SetPillTarget(
+            _endTurnAction,
+            completed
+                ? SolverUiTokens.Palette.CompletedActionModulate
+                : active
+                    ? SolverUiTokens.Palette.ActiveActionModulate
+                    : Colors.White,
+            active && !completed);
+    }
+
+    // Deployment highlight motion. Steps can arrive faster than any fixed animation (Instant speed
+    // with zero extra delay plays several cards per second), so every duration is derived from the
+    // measured gap between steps: fast deployments collapse to near-instant color changes and never
+    // flash or breathe, slow ones get a visible fade, an activation flash and a breathing highlight.
+    // Motion only touches Modulate after the target is decided; the target itself stays synchronous.
+    private const double MaxHighlightTimeConstantSeconds = 0.08d;
+    private const double HighlightTimeConstantShareOfStep = 0.2d;
+    private const double MinStepForFlashSeconds = 0.3d;
+    private const float ActivationFlashGain = 1.45f;
+    private const double BreathDelaySeconds = 0.45d;
+    private const double BreathRampSeconds = 0.35d;
+    private const double BreathPeriodSeconds = 1.2d;
+    private const float BreathGain = 0.22f;
+
+    private readonly Dictionary<CanvasItem, PillMotion> _pillMotion = [];
+    private (int, int)? _lastDeploymentStep;
+    private ulong _lastDeploymentStepUsec;
+    private double? _deploymentStepSeconds;
+
+    private sealed class PillMotion
+    {
+        public Color Current;
+        public Color Target;
+        public bool Active;
+        public double ActiveSeconds;
+    }
+
+    private void NoteDeploymentStep((int, int) step)
+    {
+        if (_lastDeploymentStep == step)
+            return;
+        ulong now = Time.GetTicksUsec();
+        if (_lastDeploymentStep != null)
+            _deploymentStepSeconds = (now - _lastDeploymentStepUsec) / 1_000_000d;
+        _lastDeploymentStep = step;
+        _lastDeploymentStepUsec = now;
+    }
+
+    // Unknown pace (first step of a deployment) counts as slow so the route start is marked.
+    private double HighlightTimeConstant()
+        => Math.Min(
+            MaxHighlightTimeConstantSeconds,
+            (_deploymentStepSeconds ?? double.PositiveInfinity) * HighlightTimeConstantShareOfStep);
+
+    private void SetPillTarget(CanvasItem pill, Color target, bool active)
+    {
+        if (!_pillMotion.TryGetValue(pill, out PillMotion? motion))
+        {
+            motion = new PillMotion { Current = pill.Modulate };
+            _pillMotion.Add(pill, motion);
+        }
+        if (active && !motion.Active)
+        {
+            motion.ActiveSeconds = 0d;
+            if ((_deploymentStepSeconds ?? double.PositiveInfinity) >= MinStepForFlashSeconds)
+                motion.Current = Brighten(target, ActivationFlashGain);
+        }
+        motion.Target = target;
+        motion.Active = active;
+        SetProcess(true);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_pillMotion.Count == 0)
+        {
+            SetProcess(false);
+            return;
+        }
+        double timeConstant = HighlightTimeConstant();
+        // Below about half a frame an eased step is indistinguishable from a snap.
+        double blend = timeConstant < 0.008d ? 1d : SolverUiMotion.Blend(delta, timeConstant);
+        bool moving = false;
+        foreach (var (pill, motion) in _pillMotion)
+        {
+            if (!GodotObject.IsInstanceValid(pill))
+                continue;
+            motion.Current = SolverUiMotion.Approach(motion.Current, motion.Target, blend);
+            Color shown = motion.Current;
+            if (motion.Active)
+            {
+                motion.ActiveSeconds += delta;
+                double breath = BreathLevel(motion.ActiveSeconds);
+                shown = Brighten(shown, 1f + BreathGain * (float)breath);
+                moving = true;
+            }
+            moving |= motion.Current != motion.Target;
+            if (pill.Modulate != shown)
+                pill.Modulate = shown;
+        }
+        if (!moving)
+            SetProcess(false);
+    }
+
+    // A pill that stays current for a while (slow speed, a choice screen, a long card animation)
+    // starts breathing; at fast paces the next step arrives before the delay and nothing pulses.
+    private static double BreathLevel(double activeSeconds)
+    {
+        if (activeSeconds <= BreathDelaySeconds)
+            return 0d;
+        double sinceDelay = activeSeconds - BreathDelaySeconds;
+        double ramp = Math.Min(1d, sinceDelay / BreathRampSeconds);
+        return ramp * (0.5d - 0.5d * Math.Cos(sinceDelay / BreathPeriodSeconds * Math.Tau));
+    }
+
+    private static Color Brighten(Color color, float gain)
+        => new(color.R * gain, color.G * gain, color.B * gain, color.A);
+
+    private void ResetDeploymentMotion()
+    {
+        foreach (var (pill, _) in _pillMotion)
+            if (GodotObject.IsInstanceValid(pill))
+                pill.Modulate = Colors.White;
+        _pillMotion.Clear();
+        _lastDeploymentStep = null;
+        _deploymentStepSeconds = null;
+    }
+
+    // Instant-speed steps must snap and never breathe; unknown or slow paces keep the full fade.
+    internal static bool ExerciseDeploymentPacingForTesting()
+    {
+        SolverRouteRow row = new(0);
+        try
+        {
+            double unknown = row.HighlightTimeConstant();
+            row._deploymentStepSeconds = 0.02d;
+            double instant = row.HighlightTimeConstant();
+            row._deploymentStepSeconds = 0.2d;
+            double quick = row.HighlightTimeConstant();
+            row._deploymentStepSeconds = 1.5d;
+            double slow = row.HighlightTimeConstant();
+            return unknown == MaxHighlightTimeConstantSeconds
+                && instant < 0.008d
+                && Math.Abs(quick - 0.04d) < 1e-9
+                && slow == MaxHighlightTimeConstantSeconds
+                && BreathLevel(BreathDelaySeconds) == 0d
+                && BreathLevel(0.2d) == 0d
+                && BreathLevel(BreathDelaySeconds + BreathPeriodSeconds / 2d) > 0.99d;
+        }
+        finally
+        {
+            row.Free();
+        }
+    }
+
+    internal void SettleDeploymentMotionForTesting()
+    {
+        foreach (var (pill, motion) in _pillMotion)
+        {
+            motion.Current = motion.Target;
+            if (GodotObject.IsInstanceValid(pill))
+                pill.Modulate = motion.Target;
+        }
     }
 
     public void ShowStatus(string text)
@@ -249,6 +419,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
 
     private void ClearActions()
     {
+        ResetDeploymentMotion();
         _populatedTurn = null;
         _populatedLanguage = null;
         _deploymentActions.Clear();

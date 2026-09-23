@@ -106,7 +106,7 @@ internal sealed partial class CombatBeamSolver
                 // The first action after a partial-route restart still observes the live target gate.
                 if (node.ActionCount == 0 && !card.Original.CanPlayTargeting(target))
                     continue;
-                string targetName = displayNames.Creature(target);
+                string targetName = displayNames.Creature(target, ((SimulatedCombatState)simulator.State.CombatState).KnownEnemies);
                 PlanAction action = new(
                     PlanActionKind.PlayCard,
                     node.Turn,
@@ -333,7 +333,7 @@ internal sealed partial class CombatBeamSolver
                     node.Turn,
                     TargetIndex: targetIndex,
                     TargetCombatId: target?.CombatId,
-                    TargetName: displayNames.Creature(target),
+                    TargetName: displayNames.Creature(target, ((SimulatedCombatState)simulator.State.CombatState).KnownEnemies),
                     PotionSlot: potionSlot,
                     PotionId: potion.Id.Entry,
                     PotionTitle: displayNames.Potion(potion));

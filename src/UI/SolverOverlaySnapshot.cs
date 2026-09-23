@@ -424,7 +424,15 @@ internal sealed record SolverOverlaySnapshot(
                         new SolverCardTextIdentity(card.CardId, card.UpgradeLevel, card.Title)).ToArray()).ToArray(),
                 action.RelicEffects?.Select(effect => new SolverRelicTextIdentity(effect.RelicId, effect.RelicTitle, effect.Summary)).ToArray() ?? [])
                 { CardEnchantmentId = action.CardEnchantmentId })
-        { CycleIdentity = CombatBeamSolver.BuildCycleActionKey(action) };
+        {
+            // Physical hand occurrence is deployment metadata, not visible action
+            // identity. Stable combat IDs remain mandatory grouping boundaries.
+            CycleIdentity = CombatBeamSolver.BuildCycleActionKey(action with
+            {
+                CardOccurrence = 0,
+                TargetIndex = action.TargetCombatId.HasValue ? -1 : action.TargetIndex,
+            }),
+        };
         return SolverActionTextIdentity.Refresh(snapshot);
     }
 

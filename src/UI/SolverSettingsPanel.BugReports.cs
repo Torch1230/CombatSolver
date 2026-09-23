@@ -17,6 +17,7 @@ internal sealed partial class SolverSettingsPanel
     private long _uploadBytesSent;
     private long _uploadTotalBytes;
     private int _lastRenderedUploadPercentage = -1;
+    private double _uploadProgressTarget;
     private string? _uploadSubmissionId;
     private UploadCompletion? _uploadCompletion;
 
@@ -37,8 +38,21 @@ internal sealed partial class SolverSettingsPanel
             return;
         if (TryApplyUploadCompletion())
             return;
-        if (_uploadCancelRequested)
-            return;
+        if (!_uploadCancelRequested)
+            RefreshUploadProgressTarget();
+        // Byte counts arrive in bursts; the bar eases toward the latest percentage between them.
+        if (_uploadProgress.Value != _uploadProgressTarget)
+        {
+            _uploadProgress.Value = SolverUiMotion.Approach(
+                _uploadProgress.Value,
+                _uploadProgressTarget,
+                SolverUiMotion.Blend(delta, SolverUiMotion.ReadoutTimeConstantSeconds),
+                0.05d);
+        }
+    }
+
+    private void RefreshUploadProgressTarget()
+    {
         long total = Interlocked.Read(ref _uploadTotalBytes);
         long sent = Interlocked.Read(ref _uploadBytesSent);
         if (total <= 0)
@@ -47,7 +61,7 @@ internal sealed partial class SolverSettingsPanel
         if (percentage == _lastRenderedUploadPercentage)
             return;
         _lastRenderedUploadPercentage = percentage;
-        _uploadProgress.Value = MapUploadProgressBarValue(percentage);
+        _uploadProgressTarget = MapUploadProgressBarValue(percentage);
         SetStatus(
             FormatUploadProgressStatus(sent, total, percentage),
             SolverUiTokens.Palette.TextSecondary);
@@ -269,6 +283,7 @@ internal sealed partial class SolverSettingsPanel
         Interlocked.Exchange(ref _uploadTotalBytes, 0);
         _lastRenderedUploadPercentage = -1;
         _uploadProgress.Value = 0;
+        _uploadProgressTarget = 0;
         _uploadProgress.Visible = true;
         SetProcess(true);
         RefreshBugReportControls();
@@ -368,6 +383,7 @@ internal sealed partial class SolverSettingsPanel
         completedCancellation?.Dispose();
         SetProcess(false);
         _uploadProgress.Value = 0;
+        _uploadProgressTarget = 0;
         _uploadProgress.Visible = false;
         SetStatus(
             completion.Message,

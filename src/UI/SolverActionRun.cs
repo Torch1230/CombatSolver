@@ -22,7 +22,7 @@ internal static class SolverActionRuns
         {
             SolverActionRun best = new(start, 1, 1);
             int bestSaved = 0;
-            for (int period = 1; period <= 32 && start + 2 * period <= actions.Count; period++)
+            for (int period = 1; period <= 32 && start + 3 * period <= actions.Count; period++)
             {
                 int matched = period;
                 while (start + matched < actions.Count
@@ -30,7 +30,7 @@ internal static class SolverActionRuns
                     matched++;
                 int repeats = matched / period;
                 int saved = period * (repeats - 1) - 1; // include the repetition badge
-                if (repeats >= 2 && saved > bestSaved)
+                if (repeats >= 3 && saved > bestSaved)
                 {
                     best = new(start, period, repeats);
                     bestSaved = saved;

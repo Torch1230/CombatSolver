@@ -1046,17 +1046,8 @@ internal sealed partial class CombatBeamSolver
                     simulatedCombat.BeginSideTurn(enemy);
                 simulatedCombat.SnapshotPowerAmountsAtTurnStart(simulatedCombat.Enemies);
                 // 怪物方开始回合时，上一怪物回合留下的格挡先清除。
-                if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.Enemies))
-                {
-                    return SearchBoundaryReason.PendingChoice;
-                }
-                if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
-                        simulator,
-                        simulatedCombat,
-                        simulatedCombat.Enemies))
+                if (!CombatSolver.Engine.InCombat.Mirrors.HookMirrors.BeforeSideTurnStart(
+                        simulator, simulatedCombat.CurrentSide, simulatedCombat.Enemies))
                 {
                     return SearchBoundaryReason.PendingChoice;
                 }

@@ -25,6 +25,7 @@ internal static class SolverOverlay
     private const string LayerName = "CombatSolverOverlay";
     private const long ResizeLayoutIntervalMilliseconds = 16;
     private const double ActiveSearchProgressMaximum = 0.95d;
+    private const double MaxElapsedClockLeadSeconds = 1d;
     private const int SignificantBattleHpLossThreshold = 8;
     private const string NoveltyPortfolioHintText =
         "本场战斗预计出现大战损。若对结果不满意，可前往 设置 > 性能 开启“多策略路线搜索（实验）”后重试；它会在现有预算内探索不同打法，结果可能因战斗而异。点击本消息后不再提示";
@@ -126,6 +127,15 @@ internal static class SolverOverlay
     private static bool _lastSearchDeployWhenReady;
     private static long _lastReviewedWorldlinesBeforeSearch;
     private static double _lastSearchProgressRatio;
+    private static double _shownSearchProgressRatio;
+    private static double _reportedSearchElapsedSeconds;
+    private static double _shownSearchElapsedSeconds;
+    private static double _searchRequestBudgetSeconds;
+    private static long _reviewedWorldlinesTarget;
+    private static double _shownReviewedWorldlines;
+    // Summary text in front of the rolling count; null when the summary is not the search readout.
+    private static string? _reviewedWorldlinesSummaryPrefix;
+    private static string? _renderedReviewedWorldlinesSummary;
     private static SolverOverlayPresentation _presentation = SolverOverlayPresentation.Searching;
     private static int _lastDeploymentTurn;
     private static int _lastDeploymentActionCount;
@@ -141,6 +151,7 @@ internal static class SolverOverlay
     private static Vector2 _resizeStartPrimarySize;
     private static Vector2? _customPanelSize;
     private static Vector2 _panelPosition = new(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
+    private static Vector2 _requestedPanelPosition = new(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
 
     public static bool IsVisible
         => _layer != null && GodotObject.IsInstanceValid(_layer) && _layer.Visible;
@@ -233,6 +244,10 @@ internal static class SolverOverlay
     internal static string? ReviewSummaryTextForTesting => _reviewText?.Text;
     internal static string? SearchSummaryTextForTesting => _summaryText?.Text;
     internal static double SearchProgressRatioForTesting => _lastSearchProgressRatio;
+    internal static double ShownSearchProgressRatioForTesting => _shownSearchProgressRatio;
+
+    internal static void SettleSearchReadoutsForTesting()
+        => EaseSearchReadouts(1d);
     internal static bool ExercisePerformanceHintForTesting()
     {
         if (_performanceHintButton == null)
@@ -472,6 +487,7 @@ internal static class SolverOverlay
             return false;
         SolverSettingsData originalSettings = SolverSettings.Current;
         Vector2 originalPosition = _panelPosition;
+        Vector2 originalRequestedPosition = _requestedPanelPosition;
         Vector2? originalCustomSize = _customPanelSize;
         bool originalCollapsed = _collapsed;
         bool originalSettingsVisible = _settingsVisible;
@@ -487,12 +503,26 @@ internal static class SolverOverlay
             Vector2 testSize = new(
                 Math.Max(SolverSettings.MinimumOverlayWidth, contentMinimum.X) + 80f,
                 Math.Max(SolverSettings.MinimumOverlayHeight, contentMinimum.Y) + 60f);
-            if (viewportSize.X < testPosition.X + testSize.X + SolverUiTokens.Size.ResizeEdgeThickness
-                || viewportSize.Y < testPosition.Y + testSize.Y + SolverUiTokens.Size.ResizeEdgeThickness)
+            float edge = SolverUiTokens.Size.ResizeEdgeThickness;
+            if (viewportSize.X < testPosition.X + testSize.X + edge
+                || viewportSize.Y < testPosition.Y + testSize.Y + edge)
             {
                 return false;
             }
 
+            Vector2 movedPosition = new(edge + 80f, edge + 80f);
+            SolverSettings.SetOverlayPosition(movedPosition);
+            SolverSettings.Load();
+            bool savedPositionRestored = IsNear(
+                SolverSettings.OverlayPosition ?? Vector2.Zero, movedPosition);
+            _panelPosition = testPosition;
+            _requestedPanelPosition = testPosition;
+            _dragging = true;
+            (_inputBridge ?? throw new InvalidOperationException("Overlay input bridge is missing."))
+                ._Input(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false });
+            SolverSettings.Load();
+            bool releasedPositionSaved = IsNear(
+                SolverSettings.OverlayPosition ?? Vector2.Zero, testPosition);
             SolverSettingsData persisted = SolverSettings.RoundTripForTesting(originalSettings with
             {
                 OverlayPositionX = testPosition.X,
@@ -503,6 +533,7 @@ internal static class SolverOverlay
             SolverSettings.ApplyForTesting(persisted);
             _panelPosition = SolverSettings.OverlayPosition
                 ?? throw new InvalidOperationException("Round-tripped overlay position was not restored.");
+            _requestedPanelPosition = _panelPosition;
             _customPanelSize = SolverSettings.OverlaySize
                 ?? throw new InvalidOperationException("Round-tripped overlay size was not restored.");
             _settingsVisible = false;
@@ -510,6 +541,17 @@ internal static class SolverOverlay
             SetCollapsed(false);
             await WaitForResponsiveLayoutForTestingAsync();
             bool expanded = IsNear(_panel.Size, testSize) && _cornerResizeHandle?.Visible == true;
+            Vector2 roomyViewport = viewportSize + new Vector2(200f, 200f);
+            _panelPosition = movedPosition;
+            _requestedPanelPosition = movedPosition;
+            ApplyPanelBounds(roomyViewport, testSize.X, testSize.Y);
+            bool positionRestored = IsNear(_panelPosition, movedPosition);
+            ApplyPanelBounds(roomyViewport, roomyViewport.X - edge * 2f, roomyViewport.Y - edge * 2f);
+            ApplyPanelBounds(roomyViewport, testSize.X, testSize.Y);
+            bool positionSurvivedClamp = IsNear(_panelPosition, movedPosition);
+            _panelPosition = testPosition;
+            _requestedPanelPosition = testPosition;
+            ApplyResponsiveLayout();
 
             SetCollapsed(true);
             await WaitForResponsiveLayoutForTestingAsync();
@@ -565,12 +607,15 @@ internal static class SolverOverlay
                 && ReferenceEquals(_potionStrategyPanel.GetParent(), _layer)
                 && _customPanelSize == testSize
                 && SolverSettings.OverlaySize == testSize;
-            bool passed = expanded && collapsed && restored && directionsCorrect
+            bool passed = savedPositionRestored && releasedPositionSaved && expanded && positionRestored
+                && positionSurvivedClamp && collapsed && restored && directionsCorrect
                 && floatingPotionKeptPrimaryWidth;
             if (!passed)
             {
                 Entry.Logger.Info(
-                    $"[CombatSolver/Test] UI_RESIZE_ASSERT expanded={expanded} collapsed={collapsed} " +
+                    $"[CombatSolver/Test] UI_RESIZE_ASSERT disk_position={savedPositionRestored} " +
+                    $"release_position={releasedPositionSaved} " +
+                    $"expanded={expanded} position={positionRestored} clamp={positionSurvivedClamp} collapsed={collapsed} " +
                     $"restored={restored} directions={directionsCorrect} " +
                     $"floating_potion={floatingPotionKeptPrimaryWidth} " +
                     $"panel_size={_panel.Size.X:F1}x{_panel.Size.Y:F1} " +
@@ -583,8 +628,9 @@ internal static class SolverOverlay
         }
         finally
         {
-            SolverSettings.ApplyForTesting(originalSettings);
+            SolverSettings.Update(originalSettings);
             _panelPosition = originalPosition;
+            _requestedPanelPosition = originalRequestedPosition;
             _customPanelSize = originalCustomSize;
             _settingsVisible = originalSettingsVisible;
             _potionStrategyVisible = originalPotionStrategyVisible;
@@ -741,18 +787,32 @@ internal static class SolverOverlay
             deployWhenReady ? SolverText.Format($"{routeContext}    已排队执行") : routeContext);
         if (_routeHeadingLabel != null)
             _routeHeadingLabel.Text = SolverText.Get("求解器当前考虑（尚未验证）");
+        double reportedElapsedSeconds = progress.ElapsedMilliseconds / 1000d;
+        // Elapsed time only runs backwards when a new request reports without ShowSearching first
+        // (turn-setup searches); restart the clock there instead of holding the old request's time.
+        _shownSearchElapsedSeconds = reportedElapsedSeconds < _reportedSearchElapsedSeconds
+            ? reportedElapsedSeconds
+            : Math.Max(_shownSearchElapsedSeconds, reportedElapsedSeconds);
+        _reportedSearchElapsedSeconds = reportedElapsedSeconds;
+        _searchRequestBudgetSeconds = progress.RequestBudgetMilliseconds / 1000d;
         if (_progressText != null)
         {
             _progressText.Visible = true;
-            _progressText.Text = SolverText.Format($"已用 {progress.ElapsedMilliseconds / 1000d:F1} s");
+            RenderSearchElapsed();
         }
         string potionSearchPhase = progress.Phase.StartsWith("正在搜索", StringComparison.Ordinal)
             || reclaimingMemory
             || refiningRoute
                 ? progress.Phase
                 : string.Empty;
-        string reviewedWorldlinesText =
-            SolverText.Format($"已查阅 {reviewedWorldlinesBeforeSearch + progress.ReviewedWorldlines:N0} 条世界线");
+        long reviewedWorldlines = reviewedWorldlinesBeforeSearch + progress.ReviewedWorldlines;
+        _reviewedWorldlinesTarget = reviewedWorldlines;
+        // The rolling count starts at this search's baseline and never runs backwards; a lower total
+        // means a new combat, which snaps instead of rolling down.
+        _shownReviewedWorldlines = Math.Clamp(
+            _shownReviewedWorldlines,
+            Math.Min(reviewedWorldlinesBeforeSearch, reviewedWorldlines),
+            reviewedWorldlines);
         SetReviewText(SolverText.IsEnglish && potionSearchPhase.Length > 0
             ? reclaimingMemory
                 ? SolverText.Get("正在整理内存")
@@ -763,10 +823,10 @@ internal static class SolverOverlay
         if (_summaryText != null)
         {
             _summaryText.Visible = true;
-            _summaryText.Text = _searchBestSnapshot is { } snapshot
-                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) +
-                  $"  │  {reviewedWorldlinesText}"
-                : reviewedWorldlinesText;
+            _reviewedWorldlinesSummaryPrefix = _searchBestSnapshot is { } snapshot
+                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) + "  │  "
+                : string.Empty;
+            RenderReviewedWorldlinesSummary();
         }
         if (_searchProgressBar != null)
         {
@@ -782,9 +842,93 @@ internal static class SolverOverlay
                     1d);
             _lastSearchProgressRatio = Math.Max(_lastSearchProgressRatio, currentRatio);
             _searchProgressBar.MaxValue = 1d;
-            _searchProgressBar.Value = _lastSearchProgressRatio;
+            _searchProgressBar.Value = _shownSearchProgressRatio;
         }
         RefreshControls();
+    }
+
+    internal static void AdvanceSearchReadouts(double delta)
+    {
+        if (!SearchReadoutsActive())
+            return;
+        // Between progress reports the elapsed clock runs on frame time, but never more than a short
+        // lead past the last report: a stalled or throttled search must not look like it kept going.
+        if (_progressText != null && GodotObject.IsInstanceValid(_progressText) && _progressText.Visible)
+        {
+            _shownSearchElapsedSeconds = Math.Max(
+                _shownSearchElapsedSeconds,
+                Math.Min(
+                    _shownSearchElapsedSeconds + Math.Max(0d, delta),
+                    _reportedSearchElapsedSeconds + MaxElapsedClockLeadSeconds));
+            RenderSearchElapsed();
+        }
+        EaseSearchReadouts(SolverUiMotion.Blend(delta, SolverUiMotion.ReadoutTimeConstantSeconds));
+    }
+
+    private static bool SearchReadoutsActive()
+        => _presentation == SolverOverlayPresentation.Searching
+            && _layer != null && GodotObject.IsInstanceValid(_layer) && _layer.Visible;
+
+    private static void RenderSearchElapsed()
+    {
+        if (_progressText == null)
+            return;
+        string text = SolverText.Format($"已用 {_shownSearchElapsedSeconds:F1} s");
+        if (!string.Equals(_progressText.Text, text, StringComparison.Ordinal))
+            _progressText.Text = text;
+    }
+
+    private static void EaseSearchReadouts(double blend)
+    {
+        // With a time budget the bar tracks the running clock, so it keeps creeping forward between
+        // reports instead of stepping; the reported ratio remains the floor.
+        double progressTarget = _searchRequestBudgetSeconds > 0d
+            ? Math.Max(
+                _lastSearchProgressRatio,
+                Math.Clamp(_shownSearchElapsedSeconds / _searchRequestBudgetSeconds, 0d, ActiveSearchProgressMaximum))
+            : _lastSearchProgressRatio;
+        if (_searchProgressBar != null && GodotObject.IsInstanceValid(_searchProgressBar)
+            && _searchProgressBar.Visible && _shownSearchProgressRatio != progressTarget)
+        {
+            _shownSearchProgressRatio = SolverUiMotion.Approach(
+                _shownSearchProgressRatio,
+                progressTarget,
+                blend,
+                0.0005d);
+            _searchProgressBar.Value = _shownSearchProgressRatio;
+        }
+        if (_reviewedWorldlinesSummaryPrefix == null
+            || _shownReviewedWorldlines == _reviewedWorldlinesTarget
+            || _summaryText == null || !GodotObject.IsInstanceValid(_summaryText))
+        {
+            return;
+        }
+        // Another presentation path may have rewritten the summary since the last frame; the count
+        // only animates text it rendered itself.
+        if (!string.Equals(_summaryText.Text, _renderedReviewedWorldlinesSummary, StringComparison.Ordinal))
+        {
+            _reviewedWorldlinesSummaryPrefix = null;
+            return;
+        }
+        long before = (long)Math.Round(_shownReviewedWorldlines);
+        _shownReviewedWorldlines = SolverUiMotion.Approach(
+            _shownReviewedWorldlines,
+            _reviewedWorldlinesTarget,
+            blend,
+            0.5d);
+        if ((long)Math.Round(_shownReviewedWorldlines) != before)
+            RenderReviewedWorldlinesSummary();
+    }
+
+    private static void RenderReviewedWorldlinesSummary()
+    {
+        if (_summaryText == null || _reviewedWorldlinesSummaryPrefix == null)
+            return;
+        long shown = (long)Math.Round(_shownReviewedWorldlines);
+        string text = _reviewedWorldlinesSummaryPrefix
+            + SolverText.Format($"已查阅 {shown:N0} 条世界线");
+        _renderedReviewedWorldlinesSummary = text;
+        _summaryText.Text = text;
     }
 
     public static void ShowSearching(
@@ -805,6 +949,13 @@ internal static class SolverOverlay
         _lastSearchDeployWhenReady = deployWhenReady;
         _lastReviewedWorldlinesBeforeSearch = reviewedWorldlinesBeforeSearch;
         _lastSearchProgressRatio = 0d;
+        _reportedSearchElapsedSeconds = 0d;
+        _shownSearchElapsedSeconds = 0d;
+        _searchRequestBudgetSeconds = 0d;
+        _shownSearchProgressRatio = 0d;
+        _reviewedWorldlinesTarget = reviewedWorldlinesBeforeSearch;
+        _shownReviewedWorldlines = reviewedWorldlinesBeforeSearch;
+        _reviewedWorldlinesSummaryPrefix = null;
         EnsureCreated(host);
         SetSearchLimitHint(null);
         SetCurrentBossHpStrategyHint();
@@ -1719,6 +1870,7 @@ internal static class SolverOverlay
         layer.AddChild(_rightResizeHandle);
         layer.AddChild(_bottomResizeHandle);
         layer.AddChild(_cornerResizeHandle);
+        layer.AddChild(new SolverOverlayMotionDriver { Name = "CombatSolverOverlayMotion" });
         host.AddChild(layer);
         _layer = layer;
         _panel = panel;
@@ -1730,6 +1882,7 @@ internal static class SolverOverlay
         panel.MinimumSizeChanged += QueueResponsiveLayout;
         _panelPosition = SolverSettings.OverlayPosition
             ?? new Vector2(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
+        _requestedPanelPosition = _panelPosition;
         _customPanelSize = SolverSettings.OverlaySize;
         Entry.Logger.Info(
             $"[CombatSolver/Test] UI_POSITION_LOADED persisted={SolverSettings.OverlayPosition.HasValue} " +
@@ -2105,6 +2258,9 @@ internal static class SolverOverlay
             Name = "SearchProgress",
             MinValue = 0,
             MaxValue = SolverSearchProfile.Default.MaxExpandedNodes,
+            // Range rounds to Step (0.01 by default); on the 0..1 ratio that is a 1% grid, about ten
+            // pixels on a wide overlay, which turns the eased fill back into visible steps.
+            Step = 0,
             Value = 0,
             ShowPercentage = false,
             CustomMinimumSize = new Vector2(0, 4),
@@ -2835,8 +2991,8 @@ internal static class SolverOverlay
         float maxX = Math.Max(edge, viewportSize.X - width - edge);
         float maxY = Math.Max(edge, viewportSize.Y - height - edge);
         _panelPosition = new Vector2(
-            Math.Clamp(_panelPosition.X, edge, maxX),
-            Math.Clamp(_panelPosition.Y, edge, maxY));
+            Math.Clamp(_requestedPanelPosition.X, edge, maxX),
+            Math.Clamp(_requestedPanelPosition.Y, edge, maxY));
         _panel.OffsetLeft = _panelPosition.X;
         _panel.OffsetTop = _panelPosition.Y;
         _panel.OffsetRight = _panelPosition.X + width;
@@ -2931,19 +3087,13 @@ internal static class SolverOverlay
                 _dragging = true;
                 _dragOffset = _viewport!.GetMousePosition() - _panelPosition;
             }
-            else if (_dragging)
-            {
-                _dragging = false;
-                ApplyResponsiveLayout();
-                SolverSettings.SetOverlayPosition(_panelPosition);
-                Entry.Logger.Info(
-                    $"[CombatSolver/Test] UI_POSITION_SAVED x={_panelPosition.X:F1} y={_panelPosition.Y:F1}");
-            }
+            else
+                CompletePointerGesture();
             return;
         }
         if (!_dragging || inputEvent is not InputEventMouseMotion)
             return;
-        _panelPosition = _viewport!.GetMousePosition() - _dragOffset;
+        _requestedPanelPosition = _viewport!.GetMousePosition() - _dragOffset;
         ApplyPanelBounds(_viewport.GetVisibleRect().Size, _panel.Size.X, _panel.Size.Y);
     }
 
@@ -2965,18 +3115,8 @@ internal static class SolverOverlay
                 _customPanelSize = _resizeStartPrimarySize;
                 _lastResizeLayoutAt = System.Environment.TickCount64 - ResizeLayoutIntervalMilliseconds;
             }
-            else if (_resizing)
-            {
-                ResizeToMousePosition();
-                _resizing = false;
-                ApplyResponsiveLayout();
-                Vector2 customSize = _customPanelSize
-                    ?? throw new InvalidOperationException("Resize completed without a custom panel size.");
-                SolverSettings.SetOverlayBounds(_panelPosition, customSize);
-                Entry.Logger.Info(
-                    $"[CombatSolver/Test] UI_SIZE_SAVED x={_panelPosition.X:F1} y={_panelPosition.Y:F1} " +
-                    $"w={customSize.X:F1} h={customSize.Y:F1}");
-            }
+            else
+                CompletePointerGesture();
             return;
         }
         if (!_resizing || inputEvent is not InputEventMouseMotion)
@@ -2986,6 +3126,32 @@ internal static class SolverOverlay
             return;
         _lastResizeLayoutAt = now;
         ResizeToMousePosition();
+    }
+
+    internal static void CompletePointerGesture()
+    {
+        if (_dragging)
+        {
+            _dragging = false;
+            _requestedPanelPosition = _panelPosition;
+            ApplyResponsiveLayout();
+            SolverSettings.SetOverlayPosition(_requestedPanelPosition);
+            Entry.Logger.Info(
+                $"[CombatSolver/Test] UI_POSITION_SAVED x={_requestedPanelPosition.X:F1} y={_requestedPanelPosition.Y:F1}");
+        }
+        else if (_resizing)
+        {
+            ResizeToMousePosition();
+            _resizing = false;
+            _requestedPanelPosition = _panelPosition;
+            ApplyResponsiveLayout();
+            Vector2 customSize = _customPanelSize
+                ?? throw new InvalidOperationException("Resize completed without a custom panel size.");
+            SolverSettings.SetOverlayBounds(_requestedPanelPosition, customSize);
+            Entry.Logger.Info(
+                $"[CombatSolver/Test] UI_SIZE_SAVED x={_requestedPanelPosition.X:F1} y={_requestedPanelPosition.Y:F1} " +
+                $"w={customSize.X:F1} h={customSize.Y:F1}");
+        }
     }
 
     private static void ResizeToMousePosition()
@@ -3034,7 +3200,8 @@ internal static class SolverOverlay
 
     private static void ResetOverlayPosition()
     {
-        _panelPosition = new Vector2(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
+        _requestedPanelPosition = new Vector2(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
+        _panelPosition = _requestedPanelPosition;
         _customPanelSize = null;
         _resizing = false;
         ApplyResponsiveLayout();

@@ -67,6 +67,7 @@ internal sealed partial class SimulatedCombatState
     private readonly CardMultiplayerConstraint _cardMultiplayerConstraint;
     private readonly PredictionModHookSubscriberCapture _modHookSubscribers;
     internal AdaptedOnPlaySnapshot? AdaptedOnPlay => _modHookSubscribers.AdaptedOnPlay;
+    internal bool HasInactiveLoadoutSummonPowers => _modHookSubscribers.HasInactiveLoadoutSummonPowers;
     private readonly IReadOnlyDictionary<Player, int> _rootMaxHandSizes;
     private readonly RootCombatCardGenerationPoolSnapshot _rootCardGenerationPools;
     private readonly RootCombatTransformationPoolSnapshot _rootTransformationPools;
@@ -1174,6 +1175,12 @@ internal sealed partial class SimulatedCombatState
     {
         Player player = owner.Player
             ?? throw new InvalidOperationException("玩家回合开始钩子的持有者没有 Player。");
+        return !Engine.InCombat.Mirrors.HookMirrors.AfterPlayerTurnStart(simulator, player, choices);
+    }
+
+    internal bool TriggerAfterPlayerTurnStartVanilla(
+        CombatPredictionSimulator simulator, Player player, TurnStartChoiceCursor choices)
+    {
         if (TurnStartPowerSupport.TriggerAfterPlayerTurnStart(simulator, this, player, choices))
         {
             simulator.AppendExecutionContinuation(new AfterPlayerTurnStartFrame(player));

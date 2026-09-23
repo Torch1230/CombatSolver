@@ -47,11 +47,13 @@ internal static class AfterCurrentHpChangedMirrors
         bool applied = effects.GetRedSkullStrengthApplied(relic);
         if (shouldApplyStrength != applied)
         {
-            effects.ApplyPower(
+            // 原版红头骨同样传 cardSource: null（遗物来源）。
+            effects.ApplyPowerFromSource(
                 typeof(StrengthPower),
                 relic.Owner.Creature,
                 shouldApplyStrength ? relic.DynamicVars.Strength.IntValue : -relic.DynamicVars.Strength.IntValue,
-                relic.Owner.Creature);
+                relic.Owner.Creature,
+                cardSource: null);
             effects.SetRedSkullStrengthApplied(relic, shouldApplyStrength);
         }
     }

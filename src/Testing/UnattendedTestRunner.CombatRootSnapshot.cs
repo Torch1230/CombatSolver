@@ -14,7 +14,8 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private static async Task AssertCombatRootSnapshotAsync(CombatState combat, Player player)
+    private static async Task AssertCombatRootSnapshotAsync(
+        CombatState combat, Player player, bool requireInactiveLoadoutSummon = false)
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("根快照测试必须从主线程开始。");
@@ -29,6 +30,16 @@ internal sealed partial class UnattendedTestRunner
         AbstractModel[] liveCombatListeners = combat.IterateHookListeners().ToArray();
         RunState concreteRunState = combat.RunState as RunState
             ?? throw new InvalidOperationException("根快照测试要求具体 RunState。");
+        if (requireInactiveLoadoutSummon)
+        {
+            AbstractModel loadoutHook = ModHelper.IterateAllCombatStateSubscribers(combat)
+                .SingleOrDefault(subscriber => subscriber.GetType().FullName ==
+                    "Loadout.Services.PowerGiver.PowerGiverSummonHook")
+                ?? throw new InvalidOperationException("Loadout PowerGiver summon hook was not loaded.");
+            if (loadoutHook.GetType().Assembly.GetName().Name != "Loadout"
+                || PredictionModHookSubscriberCapture.CaptureLiveLoadoutSummonPowerState(combat) != "empty")
+                throw new InvalidOperationException("Loadout PowerGiver summon powers are not inactive.");
+        }
         AbstractModel[] liveStandardRunListeners = concreteRunState.Players
             .Where(candidate => candidate.IsActiveForHooks)
             .SelectMany(candidate => candidate.Deck.Cards)
@@ -51,6 +62,9 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Loadout 全卡免费 hook 返回了未知费用语义。");
         }
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        if (requireInactiveLoadoutSummon
+            && !root.ContinuationStamp.StateText.Contains(";loadout_summon_powers=empty;", StringComparison.Ordinal))
+            throw new InvalidOperationException("根快照没有冻结 Loadout 召唤能力的空配置。");
 
         bool workerCaptureRejected = await Task.Run(() =>
         {
@@ -92,6 +106,8 @@ internal sealed partial class UnattendedTestRunner
                     $"根快照在实机状态变化后回读了能量：captured={capturedEnergy} predicted={predictedPlayer.Energy}。");
             }
             SimulatedCombatState predictedCombat = (SimulatedCombatState)fork.State.CombatState;
+            if (requireInactiveLoadoutSummon && !predictedCombat.HasInactiveLoadoutSummonPowers)
+                throw new InvalidOperationException("Fork 丢失了 Loadout 召唤能力的空配置。");
             bool capturedEveryCardFree =
                 ((ICombatPredictionPlayerCardRules)predictedCombat).AreCardsFree(player);
             if (capturedEveryCardFree != liveEveryCardFree)
