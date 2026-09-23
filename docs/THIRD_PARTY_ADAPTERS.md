@@ -441,7 +441,7 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 
 `AfterPlayerTurnStartMirrors.RegisterEarly/Register/RegisterLate<TModel>(handler)` 分别登记
 抽牌后的 Early、普通、Late；接收者为 AbstractModel，上下文包含 `Player`。扩展路径逐轮
-重新捕获监听表，轮内保持顺序；零第三方有效覆写保留原 Power/遗物批次与续执行帧。
+重新捕获监听表，轮内保持顺序；已有外部登记时始终按三轮派发，以覆盖普通阶段新增的监听者。没有外部登记且入口没有第三方覆写时保留原 Power/遗物批次与续执行帧。
 三张表共用冻结门；回调挂起时完整重放，不复用未知第三方内部的局部执行帧。
 
 `AfterSideTurnEndLateMirrors.Register<TModel>(handler)` 为精确运行时类型登记

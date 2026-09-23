@@ -146,7 +146,25 @@ namespace CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnStart
 {
     internal static partial class AfterPlayerTurnStartMirrors
     {
-        private static partial void RegisterVanilla(MethodMirrorRegistry<AbstractModel, AfterPlayerTurnStartMirrorContext> registry, string hook) { }
+        private static partial void RegisterVanilla(MethodMirrorRegistry<AbstractModel, AfterPlayerTurnStartMirrorContext> registry, string hook)
+        {
+            if (hook == nameof(AbstractModel.AfterPlayerTurnStart))
+                registry.Register<NativeNormalGenerator>((_, context) =>
+                {
+                    context.Simulator.Events.Add("native normal");
+                    context.Simulator.Listeners.Add(new GeneratedLateListener());
+                });
+        }
+    }
+    class NativeNormalGenerator : RelicModel
+    {
+        public override Task AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choice,
+            MegaCrit.Sts2.Core.Entities.Players.Player player) => throw new Exception("Native hook invoked.");
+    }
+    class GeneratedLateListener : RelicModel
+    {
+        public override Task AfterPlayerTurnStartLate(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choice,
+            MegaCrit.Sts2.Core.Entities.Players.Player player) => throw new Exception("Native hook invoked.");
     }
     internal static partial class BeforeSideTurnStartMirrors
     {

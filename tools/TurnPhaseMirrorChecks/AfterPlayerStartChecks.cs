@@ -19,6 +19,13 @@ static class AfterPlayerStartChecks
         { try { action(); } catch (T) { checks++; return; } throw new Exception(message); }
         Player player = new();
         bool Run(CombatPredictionSimulator simulator) => HookMirrors.AfterPlayerTurnStart(simulator, player, new());
+        if (args.Contains("--vanilla"))
+        {
+            CombatPredictionSimulator vanilla = new();
+            vanilla.State.CombatState = new SimulatedCombatState();
+            Check(Run(vanilla) && vanilla.Events.SequenceEqual(["vanilla"]), "Unregistered vanilla path changed.");
+            Console.WriteLine($"AFTER_PLAYER_START_VANILLA_OK checks={checks}"); return;
+        }
         if (args.Contains("--seal"))
         {
             AfterPlayerTurnStartMirrors.Seal();
@@ -37,6 +44,7 @@ static class AfterPlayerStartChecks
         AfterPlayerTurnStartMirrors.Register<AfterModifier>((_,c) => c.Simulator.Events.Add("modifier"));
         AfterPlayerTurnStartMirrors.Register<AfterPower>((_,c) => c.Simulator.Events.Add("power"));
         AfterPlayerTurnStartMirrors.Register<AfterCard>((r,c) => c.Simulator.Events.Add(r.Label));
+        AfterPlayerTurnStartMirrors.RegisterLate<GeneratedLateListener>((_,c) => c.Simulator.Events.Add("generated late"));
         Throws<ArgumentException>(() => AfterPlayerTurnStartMirrors.Register<AfterRelic>((_,_)=>{}), "Duplicate accepted.");
         foreach (string field in new[]{"EarlyRegistry","Registry","LateRegistry"})
         {
@@ -45,7 +53,7 @@ static class AfterPlayerStartChecks
             string suffix=field=="Registry" ? "" : field.Replace("Registry","");
             Check(descriptor.ReceiverType==typeof(AbstractModel) && descriptor.BaseMethod.Name=="AfterPlayerTurnStart"+suffix,
                 "Wrong coverage metadata.");
-            Check(descriptor.Registrations.Count==(field=="Registry"?4:1), "Lost coverage entries.");
+            Check(descriptor.Registrations.Count==(field=="Registry"?5:field=="LateRegistry"?2:1), "Lost coverage entries.");
         }
         CombatPredictionSimulator s = new() { Listeners=[new AfterRelic("a"),new AfterModifier(),new AfterPower(),new AfterRelic("b")] };
         Check(Run(s) && s.Events.SequenceEqual(["E:a","E:b","N:a","modifier","power","N:b","L:a","L:b"]), "Regrouped receivers or phases.");
@@ -84,7 +92,10 @@ static class AfterPlayerStartChecks
         s=new(){Listeners=[new AfterRelic("cow"){Normal=_=>card.Preview=fresh},old]};s.State.Player.Cards[old]=card;
         Check(Run(s)&&s.Events.Contains("fresh")&&!s.Events.Contains("old"),"Stale card COW receiver.");
         s=new();s.State.CombatState=new SimulatedCombatState();
-        Check(Run(s)&&s.Events.SequenceEqual(["vanilla"]),"No-listener path changed.");
+        Check(Run(s)&&s.Events.Count==0,"Registered handler bypassed native phase dispatch without an initial listener.");
+        s=new(){Listeners=[new NativeNormalGenerator()]};s.State.CombatState=new SimulatedCombatState();
+        Check(Run(s)&&s.Events.SequenceEqual(["native normal","generated late"]),
+            "A normal-phase vanilla effect generated a late external listener that was skipped.");
         Console.WriteLine($"AFTER_PLAYER_START_MIRRORS_OK checks={checks}");
     }
 }

@@ -15,6 +15,7 @@ internal static partial class AfterPlayerTurnStartMirrors
     private static readonly Registry LateRegistry = CreateRegistry(nameof(AbstractModel.AfterPlayerTurnStartLate));
     private static readonly object RegistrationLock = new();
     private static bool _sealed;
+    private static bool _hasExternalRegistrations;
 
     public static void RegisterEarly<TModel>(Action<TModel, AfterPlayerTurnStartMirrorContext> handler)
         where TModel : AbstractModel => Register(EarlyRegistry, handler);
@@ -36,8 +37,11 @@ internal static partial class AfterPlayerTurnStartMirrors
             if (_sealed)
                 throw new InvalidOperationException("Turn-phase mirrors must be registered before root capture or dispatch.");
             registry.Register(handler);
+            Volatile.Write(ref _hasExternalRegistrations, true);
         }
     }
+
+    internal static bool HasExternalRegistrations => Volatile.Read(ref _hasExternalRegistrations);
 
     internal static void Seal()
     {

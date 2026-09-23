@@ -14,7 +14,9 @@ internal static partial class HookMirrors
         AfterPlayerTurnStartMirrors.Seal();
         if (simulator.HasPendingChoice) return false;
 
-        bool hasExternal = false;
+        // 普通阶段可能生成新的第三方监听者，Late 会重新枚举。
+        // 只要存在外部登记，就从阶段入口按原生三轮顺序派发。
+        bool hasExternal = AfterPlayerTurnStartMirrors.HasExternalRegistrations;
         const MirroredHookMask all = MirroredHookMask.AfterPlayerTurnStartEarly
             | MirroredHookMask.AfterPlayerTurnStart | MirroredHookMask.AfterPlayerTurnStartLate;
         foreach (AbstractModel listener in IterateCombatHookListeners(simulator, all))

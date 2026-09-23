@@ -3,8 +3,8 @@
 ## 下一版本（开发中）：玩家回合开始三阶段镜像
 
 - 增加 `AfterPlayerTurnStartMirrors.RegisterEarly/Register/RegisterLate<TModel>`，接收 AbstractModel 与当前 Player；精确类型登记、首根冻结，未知有效覆写记录风险并拒绝。
-- 扩展路径按原生 Early → 普通 → Late 三轮监听顺序派发，复用原版单项结算；零第三方覆写保留原批次与选择续执行帧。第三方选择暂停回到稳定父节点完整重放。
-- 40 项派发合同、3 项冻结合同、61 个独立监听位和结构门禁通过；原生顺序、离线等价与 CoverageCatalog 结果见 [验证证据](../coverage/equivalence/after-player-turn-start/README.md)。
+- 扩展路径按原生 Early → 普通 → Late 三轮监听顺序派发，复用原版单项结算；没有外部登记且入口没有第三方覆写时保留原批次与选择续执行帧。已有外部登记即使用三轮派发，使普通阶段新生成的第三方监听者能参与 Late。第三方选择暂停回到稳定父节点完整重放。
+- PR 原有 40 项派发合同、3 项冻结合同与 61 个独立监听位；审计新增 1 项普通阶段生成 Late 监听者合同和 1 项纯原版入口合同。结构门禁、原生顺序、离线等价与 CoverageCatalog 的原始证据见 [验证证据](../coverage/equivalence/after-player-turn-start/README.md)。
 - 对照 #126 的 `523aea57`：EQ 10 / FULL 40 / GA 10 共 6341 个确定性字段一致，60 对均有效、无时间截断；一次离线批次完成。
 
 ## 下一版本（开发中）：第三方回合开始前镜像
