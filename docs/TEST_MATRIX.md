@@ -5,7 +5,7 @@
 - Windows Release 构建通过，0 警告、0 错误。
 - PowerShell 结构门禁 `tools\verify-refactor-boundaries.ps1` 校验通过，`REFACTOR_BOUNDARIES_OK search_files=208`。
 - `git diff --check` 格式门禁通过，无空白行或悬挂空格。
-- `ROUTE-ROW-REUSE` / `3f480bd1bd3c468a8c0d73799ea1486d`、`e242a10e56dd4ddb8526912435a0c3b8`、`78160d7af1d040f9918539fc22a74f6b` 与 `8b1cf2751de34bf3a772d3f224501704` Passed：动作块构造、路线行复用、执行状态、语言往返等既有布局与状态合同全部通过；已验证回合开始选牌胶囊色标与动画、循环组 `LoopBadge` 徽章与虚线下划线移除；已指定 `EvidenceDirectory`，无头实例由 `CleanupInstanceOnExit` 自动清理删除。
+- `ROUTE-ROW-REUSE` / `3f480bd1bd3c468a8c0d73799ea1486d`、`e242a10e56dd4ddb8526912435a0c3b8`、`78160d7af1d040f9918539fc22a74f6b`、`8b1cf2751de34bf3a772d3f224501704` 与 `e1b78931a6644d0683789afdca4fe5f9` Passed：动作块构造、路线行复用、执行状态、语言往返等既有布局与状态合同全部通过；已验证回合开始选牌胶囊专属色标与动画、循环组 `LoopBadge` 徽章随卡牌流式排版、消除下沉对齐与大框自适应贴合；已指定 `EvidenceDirectory`，无头实例由 `CleanupInstanceOnExit` 自动清理删除。
 - `UI-LOCALIZATION`：在基线提交（0c5f677b）夹具生成怪物时即因 `ConditionalBranchState.GetNextState` 抛出 `No valid next state found`，无法在当前夹具环境完整通过，如实记录未标记为通过。
 - 本轮只验证代码编译、结构门禁与无头交互合同；浅色、深色主题的可见画面排版与交互未进行 Steam 实机观感验收。
 

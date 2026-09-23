@@ -145,7 +145,7 @@ internal static class SolverActionPill
         content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xs);
         content.AddChild(new ColorRect
         {
-            Color = SolverUiTokens.Palette.Skill,
+            Color = SolverUiTokens.Palette.Choice,
             CustomMinimumSize = new Vector2(3, 14),
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             MouseFilter = Control.MouseFilterEnum.Ignore,

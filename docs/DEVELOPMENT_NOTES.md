@@ -23,9 +23,13 @@
   - 移除标题栏左侧多余的装饰性强调色竖条（Dark 模式）及纯装饰性 App 图标背景盒（Light 模式），减少纯装饰性色块堆砌。
   - 剔除标题栏设置按钮和折叠按钮在浅色主题下硬编码的强调色/红色字色，保持按钮系统一致性。
   - 搜索进度条边框收敛为 `BorderSubtle` 1px，保持视觉轻量。
-- 路线、动作胶囊与循环组 (`SolverActionPill`, `SolverLoopGroup`, `SolverRouteRow`)：
-  - 循环合并 UI 重构 (`SolverLoopGroup`)：彻底移除卡牌下方的下划虚线 (`_Draw` / `DrawDashedLine`)，外框采用 `Radius.Medium` (6px) 结合中性表面底色与轻边框 (`Palette.Surface`, `Palette.Border`, 内边距 6×3px) 形成清晰的独立卡片组；右侧重构为专设徽章胶囊 (`LoopBadge`, 4px 圆角、微弱强调色边框与浅淡背景)，呈现 `循环 ×N`（英文 `Loop ×N`，13px 宋体粗体），兼顾折叠信息传达与面板紧凑美感。
-  - 回合开始选牌胶囊视觉与动画优化 (`SolverActionPill.CreateChoice`, `SolverRouteRow`)：为回合开始选牌胶囊引入规范的技能色标小竖条（`Palette.Skill`，3×14）、主文本颜色及 14px 宋体粗体，彻底替代原先未做样式的纯灰标签；纳入路线行部署状态跟踪（`_turnStartChoicePills`），在等待玩家选牌（`PendingTurnSetup`）时呈现醒目的激活动画与柔和呼吸效果，在执行推进后平滑淡化至已完成色 (`CompletedActionModulate`)。
+- 路线、动作胶囊与循环组 (`SolverActionPill`, `SolverLoopGroup`, `SolverRouteActionFlow`, `SolverRouteRow`)：
+  - 循环合并 UI 重构与对齐修复 (`SolverLoopGroup`, `SolverRouteActionFlow`)：
+    - 消除下沉错位（Baseline Alignment）：彻底消除此前外框 padding 与 border 导致循环内卡牌下沉 4px 的问题。`SolverLoopGroup` 面板采用 `ContentMarginTop = 0` / `ContentMarginBottom = 0`，配合 `ExpandMarginTop = 2` / `ExpandMarginBottom = 2` 绘制外框背景与细边，使框内卡牌顶部、底部及文字基线与框外相邻卡牌 100% 像素级对齐。
+    - 紧凑流式自适应与消除大框空隙（Inline Badge & Hug Layout）：移除原先水平撑满的 `HBoxContainer`；将 `_badge`（`循环 ×N`）直接置入内部 `Actions`（`HFlowContainer`）末尾紧随最后一张卡牌流式排版；在 `SolverRouteActionFlow` 中基于 `GetWrappedDimensions` 动态测量折叠后的最长单行宽度及高度，大框根据实际卡牌内容宽度紧凑贴合（不再无端撑满整行留白），徽章紧贴最后一张牌，跨行时作为自然结尾，整行卡片组紧凑舒适。
+  - 回合开始选牌胶囊专属色标与动画优化 (`SolverActionPill.CreateChoice`, `SolverUiTokens`, `SolverRouteRow`)：
+    - 专属色标识别：新增 `SolverUiTokens.Palette.Choice`（温暖珊瑚橙 `#ff8533` / 浅色 `#d45500`），彻底脱离与技能牌（`Palette.Skill` 蓝色）的重叠，一眼区分选牌交互步骤与常规卡牌。
+    - 动画与状态联动：保留 14px 宋体粗体与中性卡片表面；纳入路线行部署状态跟踪（`_turnStartChoicePills`），在等待玩家选牌（`PendingTurnSetup`）时呈现醒目的激活动画与柔和呼吸效果，在执行推进后平滑淡化至已完成色 (`CompletedActionModulate`)。
   - 回合开始选牌文案中英双语与来源解析 (`SolverOverlaySnapshot`, `English.json`)：全面补全回合开始选牌来源的本地化映射，覆盖选择悖论（`ChoicesParadox`）、工具箱（`Toolbox`）、烘焙手套（`ToastyMittens`）、赌博筹码（`GamblingChip`）、暴政（`TyrannyPower`）、必备工具（`ToolsOfTheTradePower`）、计策（`StratagemPower`）、既定事项（`ForegoneConclusionPower`）、大乱（`MayhemPower`）及动态模型库查表兜底；选牌动作效果及中英文标点全面适配（中文 `工具箱：选择 乱战`，英文 `Toolbox: Choose Brawl`），字典补齐 `弃/耗尽/变换/选择/升级/复制/抽`。
   - 动作胶囊字形与字阶严格统一：卡牌标题、目标指示（`➔ 蛮兽`）、选牌文本（`选 中和`）、状态标签全部统一为 14px (`Type.Body`) 思源宋体粗体，重放/击杀/遗物角标统一为 13px (`Type.Caption`) 宋体粗体，彻底杜绝黑体与宋体混杂以及 13px/14px 参差不齐的问题。
   - 回合指标表格级纵向对齐（Tabular Metrics）：为每行右侧伤害（92px）、战损（64px）、费用（52px）三大指标建立固定列宽与右对齐，统一字阶基线为 14px (`Type.Body`) 宋体粗体，移除人工描边，彻底消除了跨回合时数字位数不同引起的左右晃动与错位。

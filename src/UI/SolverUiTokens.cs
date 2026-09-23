@@ -120,6 +120,7 @@ internal static class SolverUiTokens
         public static Color Power => Pick("d7a84fff", "9d5d00ff");
         public static Color Negative => Pick("9b70c9ff", "6b4fa0ff");
         public static Color Potion => Pick("55b9a5ff", "00786cff");
+        public static Color Choice => Pick("ff8533ff", "d45500ff");
         public static Color ProgressBackground => IsLightTheme ? Color.FromHtml("e8e8e8ff") : Background;
         public static Color ProgressFill => IsLightTheme ? Accent : Accent.Darkened(0.12f);
         public static Color CompletedActionModulate => IsLightTheme
