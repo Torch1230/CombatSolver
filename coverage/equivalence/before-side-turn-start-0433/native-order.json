@@ -1,0 +1,15 @@
+{
+  "gameVersion": "0.111.0",
+  "gameAssemblySha256": "9cb4f1ad8c9f284aa8fec3122ffd6d780bbf543d875c817abdd12ff63fbf12b4",
+  "source": "MegaCrit.Sts2.Core.Hooks.Hook.BeforeSideTurnStart / IterateCombatHookListeners 反编译",
+  "order": [
+    "迭代 combatState.IterateHookListeners() 的原顺序",
+    "为当前模型创建 HookPlayerChoiceContext",
+    "调用 model.BeforeSideTurnStart(context, side, participants, combatState)",
+    "等待本回调暂停或完成，然后处理下一个模型"
+  ],
+  "filter": "阶段入口按战斗结束/正在开始状态过滤；没有按 Side 或 Participants 预先重排监听者。",
+  "solverPlayerEntry": "src/Search/CombatBeamSolver.RoundTransition.cs:32",
+  "solverEnemyEntry": "src/Search/CombatBeamSolver.Expansion.Replay.cs:1049",
+  "noExternalPolicy": "保留旧遗物整批→Power整批路径；第三方路径与其互斥，复用单项原版结算体。"
+}

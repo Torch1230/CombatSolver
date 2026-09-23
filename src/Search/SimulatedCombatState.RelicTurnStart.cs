@@ -55,44 +55,50 @@ internal sealed partial class SimulatedCombatState
     {
         foreach (RelicModel relic in RelicsParticipatingInSideTurn(participants))
         {
-            RelicPredictionStateSupport.ResetBeforeSideTurnStart(simulator, relic);
-            switch (relic)
-            {
-                case Pocketwatch:
-                {
-                    StatefulRelicState state = GetStatefulRelicState(relic);
-                    SetStatefulRelicState(relic, new StatefulRelicState(0, state.Current));
-                    break;
-                }
-                case BagOfMarbles:
-                    if (GetPlayerTurnNumber(relic.Owner) <= 1)
-                    {
-                        foreach (Creature enemy in LivingOpponents(simulator, relic.Owner.Creature))
-                            Apply<VulnerablePower>(enemy, relic.DynamicVars.Vulnerable.IntValue, relic.Owner.Creature);
-                    }
-                    break;
-                case CrackedCore:
-                    if (GetPlayerTurnNumber(relic.Owner) <= 1)
-                        simulator.OrbChannel<LightningOrb>(relic.Owner, relic.DynamicVars["Lightning"].IntValue);
-                    break;
-                case MiniRegent:
-                    SetStatefulRelicState(relic, default);
-                    break;
-                case RainbowRing:
-                    SetStatefulRelicState(relic, default);
-                    break;
-                case RedMask:
-                    if (GetPlayerTurnNumber(relic.Owner) <= 1)
-                    {
-                        foreach (Creature enemy in LivingOpponents(simulator, relic.Owner.Creature))
-                            Apply<WeakPower>(enemy, relic.DynamicVars["WeakPower"].IntValue, relic.Owner.Creature);
-                    }
-                    break;
-            }
+            PrepareRelicBeforeSideTurnStart(simulator, relic);
             if (simulator.HasPendingChoice)
                 return false;
         }
         return true;
+    }
+
+    // 单项结算与原有无扩展路径共用，避免两套原版状态写入合同。
+    internal void PrepareRelicBeforeSideTurnStart(CombatPredictionSimulator simulator, RelicModel relic)
+    {
+        RelicPredictionStateSupport.ResetBeforeSideTurnStart(simulator, relic);
+        switch (relic)
+        {
+            case Pocketwatch:
+            {
+                StatefulRelicState state = GetStatefulRelicState(relic);
+                SetStatefulRelicState(relic, new StatefulRelicState(0, state.Current));
+                break;
+            }
+            case BagOfMarbles:
+                if (GetPlayerTurnNumber(relic.Owner) <= 1)
+                {
+                    foreach (Creature enemy in LivingOpponents(simulator, relic.Owner.Creature))
+                        Apply<VulnerablePower>(enemy, relic.DynamicVars.Vulnerable.IntValue, relic.Owner.Creature);
+                }
+                break;
+            case CrackedCore:
+                if (GetPlayerTurnNumber(relic.Owner) <= 1)
+                    simulator.OrbChannel<LightningOrb>(relic.Owner, relic.DynamicVars["Lightning"].IntValue);
+                break;
+            case MiniRegent:
+                SetStatefulRelicState(relic, default);
+                break;
+            case RainbowRing:
+                SetStatefulRelicState(relic, default);
+                break;
+            case RedMask:
+                if (GetPlayerTurnNumber(relic.Owner) <= 1)
+                {
+                    foreach (Creature enemy in LivingOpponents(simulator, relic.Owner.Creature))
+                        Apply<WeakPower>(enemy, relic.DynamicVars["WeakPower"].IntValue, relic.Owner.Creature);
+                }
+                break;
+        }
     }
 
     public void TriggerRelicsAfterEnergyReset(

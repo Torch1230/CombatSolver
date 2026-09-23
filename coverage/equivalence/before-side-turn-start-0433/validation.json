@@ -1,0 +1,23 @@
+{
+  "releaseBuild": {"warnings": 0, "errors": 0},
+  "offlineHarnessBuild": {"warnings": 0, "errors": 0},
+  "structuralGate": {"result": "REFACTOR_BOUNDARIES_OK", "searchFiles": 208},
+  "turnStartChecks": 22,
+  "turnStartSealChecks": 1,
+  "existingLateChecks": 25,
+  "productionDistinctMaskBits": 58,
+  "coverageCatalog": {
+    "originalInput": "Failed",
+    "reason": "上游 test-evidence.json 的两个状态值不在 CoverageCatalog.VerificationStatus 枚举中。",
+    "unreferencedRecordsExcludedOnlyFromArchiveCopy": {
+      "LOOP-FINAL-20260921": "PassedWithDocumentedBoundaries",
+      "LOOP-BOUNDARIES-AUDIT-20260921": "PassedWithDocumentedPerformanceRegression"
+    },
+    "isolatedInputVerify": "Passed",
+    "entries": 3035,
+    "unanalyzed": 0,
+    "missingEvidence": 0,
+    "referencedNonPassingTests": 0,
+    "buildEnvironment": "本地额外引用 RitsuLib 分拆 DLL 与 SmartFormat；生产源码及原始证据表不变。"
+  }
+}
