@@ -1,0 +1,19 @@
+{
+  "gameVersion": "0.111.0",
+  "gameAssemblySha256": "9cb4f1ad8c9f284aa8fec3122ffd6d780bbf543d875c817abdd12ff63fbf12b4",
+  "source": "MegaCrit.Sts2.Core.Hooks.Hook.AfterPlayerTurnStart 状态机与 IterateCombatHookListeners 反编译",
+  "order": [
+    "第一次枚举 IterateCombatHookListeners(combatState)，逐个 await AfterPlayerTurnStartEarly",
+    "第二次重新枚举，逐个 await AfterPlayerTurnStart",
+    "第三次重新枚举，逐个 await AfterPlayerTurnStartLate"
+  ],
+  "decompiledStateMachine": "<AfterPlayerTurnStart>d__56",
+  "transitions": ["Early: IL_00e9 / state 0", "普通: IL_01eb / state 1", "Late: IL_02ed / state 2"],
+  "perListener": "PushModel -> await callback -> InvokeExecutionFinished -> PopModel；无按 Power/遗物/Modifier 重排",
+  "solverEntry": "src/Search/SimulatedCombatState.cs:1170",
+  "sharedPowerBody": "src/Prediction/TurnStartPowerSupport.cs:285",
+  "sharedRelicBody": "src/Search/SimulatedCombatState.RelicTurnStart.cs:140",
+  "vanillaRegistrations": {"early": 0, "normal": 20, "late": 2},
+  "lateTypes": ["BloodVial", "FakeBloodVial"],
+  "noExternalPolicy": "保留原 Power -> 遗物批次和原选择续执行帧；有第三方有效覆写时才切换有序三轮路径。"
+}

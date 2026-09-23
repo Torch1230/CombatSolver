@@ -29,17 +29,8 @@ internal sealed partial class CombatBeamSolver
         simulatedCombat.BeginSideTurn(_player.Creature);
         simulatedCombat.SnapshotPowerAmountsAtTurnStart([_player.Creature]);
 
-        if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
-                simulator,
-                simulatedCombat,
-                [_player.Creature]))
-        {
-            return SearchBoundaryReason.PendingChoice;
-        }
-        if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
-                simulator,
-                simulatedCombat,
-                [_player.Creature]))
+        if (!CombatSolver.Engine.InCombat.Mirrors.HookMirrors.BeforeSideTurnStart(
+                simulator, simulatedCombat.CurrentSide, [_player.Creature]))
         {
             return SearchBoundaryReason.PendingChoice;
         }

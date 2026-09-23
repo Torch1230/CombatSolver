@@ -1,6 +1,6 @@
 # 回合阶段镜像
 
-当前开放 `AbstractModel.AfterSideTurnEndLate`。这是效果登记，与
+当前开放 `AbstractModel.BeforeSideTurnStart`、`AfterPlayerTurnStart`（Early/普通/Late）和 `AfterSideTurnEndLate`。这是效果登记，与
 [模型状态登记](third-party-model-state.md) 分开；不代表其他阶段、ModHelper 订阅者或
 Harmony 补丁已经受支持。外部程序集使用与其他内部镜像相同的 publicizer 接入方式。
 
@@ -40,6 +40,54 @@ writePredicted 与正确 Fork。实际效果用模拟器命令实现，不能调
 
 ## 执行约束
 
+### 回合开始前
+
+`CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnStart.BeforeSideTurnStartMirrors`
+提供 `Register<TModel>(Action<TModel, BeforeSideTurnStartMirrorContext>)`，接收者同样是
+`AbstractModel`，适用于 Power、遗物和 Modifier。精确类型、覆写核验、重复拒绝和首根冻结
+规则与晚期表相同。上下文的 `Side`、`Participants` 来自调用方，原生 `ICombatState` 参数
+对应继承的分支 `CombatState`，禁止读取 live 状态代替它。
+
+玩家和敌方均在 `BeginSideTurn`、回合初 Power 数量快照之后，清除格挡之前进入此阶段。
+有第三方监听者时，以原生战斗监听表顺序冻结本次成员，不按参与方提前筛选；每个回调自行
+判断 Side 和 Participants。原版遗物重置、Plating、Aggression 及回合计数由同一张表调用
+既有单项结算体，无扩展战斗保留原先遗物与 Power 的批次顺序。不会同时执行两条路径。
+未知有效覆写记录风险后抛异常；选择、异常传播、卡牌 COW 和成员快照规则与下述晚期入口相同。
+本阶段不开放回调内的通用可恢复执行帧，挂起选择仍由既有完整重放处理。
+
+顺序依据是游戏 0.111.0 的 `Hook.BeforeSideTurnStart`：枚举
+`IterateCombatHookListeners(combatState)`，逐个调用模型方法，不提前按 Side 筛选。
+求解器的玩家入口位于 `CombatBeamSolver.RoundTransition`，敌方入口位于
+`CombatBeamSolver.Expansion.Replay`。空扩展路径和有扩展路径互斥，避免原版效果重复结算。
+
+### 玩家抽牌后
+
+命名空间 `CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnStart`：
+
+```csharp
+AfterPlayerTurnStartMirrors.RegisterEarly<TModel>(handler);
+AfterPlayerTurnStartMirrors.Register<TModel>(handler);
+AfterPlayerTurnStartMirrors.RegisterLate<TModel>(handler);
+// handler: Action<TModel, AfterPlayerTurnStartMirrorContext>, TModel : AbstractModel
+```
+
+三张独立 MethodMirrorRegistry 对应三个原生方法；每种登记都要求具体类型重写对应时点，
+精确类型、重复/空委托拒绝、首根冻结和未知覆写拒绝规则与上面的入口一致。
+上下文增加 `Player`，分支状态与命令仍由继承的 Simulator/State/CombatState 提供。
+接收者可以是 Power、遗物、Modifier 或其他 AbstractModel，不提前按拥有者分组。
+
+游戏 0.111.0 `Hook.AfterPlayerTurnStart` 的三轮顺序是 Early → 普通 → Late，每轮重新
+调用 `IterateCombatHookListeners`。本入口在常规抽牌后、AfterSideTurnStart 前执行：
+轮内固定成员并跟随 COW Preview，轮间重新取快照；选择立即停止剩余轮，异常直接传播。
+不在同一监听者上穿插三个时点，也不在轮内提前终止已选中的监听者。
+
+没有外部登记且入口没有第三方有效覆写时保留原 Power→遗物硬编码路径及其续执行帧。已有外部登记时从 Early 开始按三轮派发，确保普通阶段生成的第三方监听者进入 Late。
+有扩展时由三张表按监听顺序调用相同原版单项结算体，BloodVial/FakeBloodVial 位于 Late；
+当前正式原版模型没有 Early 覆写。任意适配回调挂起时拒绝原版局部帧复用，从稳定父节点
+完整重放，不能在部分执行的分支上直接重调。本接口不新增选择类型、状态捕获或准入豁免。
+
+### 回合结束晚期
+
 - 玩家流程：常规 Power → 常规遗物 → 本晚期阶段 → 词条规范化与阶段收尾。
   敌方流程在既有常规效果和持续时间处理后进入同一晚期入口。
 - 分发使用当前分支战斗监听表的原序；不预先按拥有者或阵营筛选。
@@ -56,16 +104,22 @@ writePredicted 与正确 Fork。实际效果用模拟器命令实现，不能调
 
 ## 成本与验证
 
-沿用根冻结的 Hook 类型掩码，在类型布局上增加一个 bit；不逐节点反射或扫描程序集。
+沿用根冻结的 Hook 类型掩码，每个时点使用独立 bit；不逐节点反射或扫描程序集。
 没有参与监听器时不分配本阶段上下文或接收者列表。单监听器只建立上下文，接收者保留在局部值中；
 多个监听器才建立剩余接收者列表，以保留成员快照和 COW 引用；不将列表跨阶段或跨 Fork 缓存。
 登记冻结只在首次进入时加锁，后续仅做 volatile 读取；适配者委托自身的成本由其负责。
-这些是实现层面的成本约束，未作性能验证。
+以上局部分配优化适用于 BeforeSideTurnStart/AfterSideTurnEndLate；AfterPlayerTurnStart
+只在扩展路径分配每轮接收者列表，普通战斗保留旧结算体。未作性能验证。
 
 ```sh
 dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release
 dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --seal
 dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --allocation
+dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start
+dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start --seal
+dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --after-player-start
+dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --after-player-start --seal
+dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --mask .godot/mono/temp/bin/Release/CombatSolver.dll
 ```
 
 独立合同链接生产 registry、晚期 facade 和 CardHookReceiver；游戏模型、模拟器命令与

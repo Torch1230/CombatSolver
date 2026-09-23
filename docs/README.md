@@ -13,6 +13,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 本批计算失败修复、循环优化与搜索组合调整的玩家说明 | [0.44.0 更新日志](releases/0.44.0-RELEASE_NOTES.md) |
 | 小循环的质量（过量格挡/不取斩杀）、动作数上限与展示折叠落点 | [循环质量性能展示调研](research/loop-quality-performance-display-20260921.md) |
 | 循环请求共享额度、安全前缀续搜及历史依赖收尾 | [循环优化收尾](performance/loop-final-20260921.md) |
 | 19 个循环边界场景、4096 回放耗尽反例及外部审计复核 | [循环边界扩展](performance/loop-boundaries-20260921.md) |
@@ -95,6 +96,9 @@
 | 遗物与 Modifier 的捕获、Fork 与续用状态 | [模型状态适配](third-party-model-state.md) |
 | 模型状态中的卡牌引用、重映射及集合描述 | [卡牌引用辅助接口](third-party-model-state.md#卡牌引用辅助接口) |
 | 精确 OnPlay 补丁组合及完整预测实现 | [OnPlay 补丁适配](third-party-onplay-patches.md) |
+| 第三方回合阶段登记及冻结合同 | [回合阶段镜像](third-party-turn-phase-mirrors.md) |
+| BeforeSideTurnStart 入口与 0.43.3 六十根等价数据 | [本地 PR 草稿](pr/before-side-turn-start-mirrors-draft.md) |
+| AfterPlayerTurnStart 三轮入口（基于 #126） | [本地 PR 草稿](pr/after-player-turn-start-mirrors-draft.md) |
 | 战斗语义适配与验证方法 | [适配验证](ADAPTATION_VERIFICATION.md) |
 | 原版 Hook 支持和覆盖证据 | [战斗 Hook 覆盖目录](COMBAT_HOOK_COVERAGE.md) |
 

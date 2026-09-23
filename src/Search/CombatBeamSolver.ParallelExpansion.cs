@@ -521,7 +521,7 @@ internal sealed partial class CombatBeamSolver
                     targetIndex,
                     target?.CombatId,
                     displayNames.Card(card.Preview),
-                    displayNames.Creature(target),
+                    displayNames.Creature(target, ((SimulatedCombatState)simulator.State.CombatState).KnownEnemies),
                     ReplayCount: Math.Max(0, card.Preview.GetEnchantedReplayCount()),
                     CardStateKey: cardStateKey,
                     CardStateOccurrence: cardStateOccurrence,
@@ -808,7 +808,7 @@ internal sealed partial class CombatBeamSolver
                     node.Turn,
                     TargetIndex: targetIndex,
                     TargetCombatId: target?.CombatId,
-                    TargetName: displayNames.Creature(target),
+                    TargetName: displayNames.Creature(target, ((SimulatedCombatState)simulator.State.CombatState).KnownEnemies),
                     PotionSlot: potionSlot,
                     PotionId: potion.Id.Entry,
                     PotionTitle: displayNames.Potion(potion));

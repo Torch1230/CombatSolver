@@ -377,6 +377,8 @@ Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕
 
 `MethodMirrorRegistry` 同时实现 `IMethodMirrorRegistryDescriptorProvider`。`MethodMirrorRegistryDescriptor` 描述基础方法、receiver、显式 Handled/Ignored 注册和当前 inferrer；CoverageCatalog 只消费该描述符，不读取 registry 私有字段或 `MirrorMethodSpec` 内部布局。
 
+`AfterPlayerTurnStartMirrors` 使用三张独立登记表覆盖抽牌后的 Early/普通/Late。`HookMirrors.AfterPlayerTurnStart` 在每轮取得分支监听快照，复用 Power/遗物单项结算体；未知有效覆写拒绝，回调挂起后禁止原版局部执行帧复用并完整重放。已有外部登记时始终使用三轮派发，以接纳普通阶段新出现的 Late 监听者；没有外部登记且入口没有第三方覆写时沿用 `SimulatedCombatState.TriggerAfterPlayerTurnStartVanilla` 的既有批次和帧。不改搜索策略或状态所有权。
+
 ## 5. Prediction 领域补偿
 
 `src/Prediction/` 处理基础命令和单个 mirror 不能独立表达的领域语义：
@@ -432,6 +434,10 @@ Mod 准入，具体契约见[模型状态适配](third-party-model-state.md)。
 - `SolverOverlay.ShowResult(Node, SolverOverlaySnapshot)`；
 - `SolverRouteRow.Populate(SolverOverlayTurnSnapshot)`；
 - `SolverActionPill.Create(SolverOverlayActionSnapshot)`。
+
+`SolverLoopGroup` 只组织循环动作与右侧次数的轻量外框，内部流负责窄宽度换行。`SolverRouteActionFlow` 按普通胶囊最小宽度、循环组自然宽度排布路线，并将循环组限制在当前可用宽度；最小宽度仍来自可换行内容，防止外层面板被整段循环撑宽。布局只响应容器尺寸与内容变化，不轮询、不改部署索引。
+
+循环显示身份在 `SolverOverlaySnapshot` 投影时归一化物理手牌序号和已有稳定目标 ID 的阵容索引，Search 原键与平坦动作保持不变；目标 ID、选择与显示值仍区分组。三次以上重复才折叠。`SolverDisplayNames` 在主线程冻结原版场景站位的横向次序，对根外生成实体结合分支 KnownEnemies 生成左起编号；无固定站位时遵循原版入场顺序。目标与击杀注释共用名称入口，最终注释使用同次完整回放的已知阵容，不在 worker 读取场景或修改冻结名称表。
 
 renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或 `ModelDb`。部署需要的标量由 Runtime 单独持有，不从控件反向读取。
 

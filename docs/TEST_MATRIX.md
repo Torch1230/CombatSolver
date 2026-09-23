@@ -1,5 +1,42 @@
 # CombatSolver 测试清单
 
+## 下一版本：玩家回合开始三阶段镜像
+
+- `TurnPhaseMirrorChecks --after-player-start` 原有 40 项，审计补充普通阶段生成 Late 监听者后为 41 项；`--after-player-start --vanilla` 1 项、`--after-player-start --seal` 3 项。覆盖三表登记拒绝、精确类型、冻结、三阶段监听顺序、轮间成员变动、卡牌 COW、选择暂停与未知覆写拒绝；已登记但入口尚无外部监听者时仍进入三轮派发。`--mask <生产 DLL>` 确认 61 个独立 bit。
+- 主 DLL 与离线宿主 Release 0 警告 / 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`。
+- CoverageCatalog 原表两条上游旧证据状态无法解析；仅在隔离副本排除未引用记录后，3035 条通过，无未分类、缺失或非通过引用。生产源码与原证据表未改，详见 [检查摘要](../coverage/equivalence/after-player-turn-start/validation.json)。
+- 对照 `523aea57` 的 EQ 10 / FULL 40 / GA 10：60 对有效、无时间截断，6341 个确定性字段 `IDENTICAL`（1069/4212/1060），一次批次无补跑。口径 High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1，逐根数据与命令见 [等价证据](../coverage/equivalence/after-player-turn-start/README.md)。
+
+## 下一版本：回合开始前镜像
+
+- `TurnPhaseMirrorChecks --start` 22 项、`--start --seal` 1 项通过：精确类型、空/重复/抽象/未覆写拒绝、首次派发与首根冻结、Power/遗物/Modifier/卡牌混合顺序、参与者、选择暂停、监听者快照。原晚期回合末 25 项通过。
+- 变基至 `6922828d` 后，主 DLL、宿主及检查工具 Release 均 0 警告 / 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`。`--mask <生产 DLL>` 确认 58 个单 bit 互不重叠，BeforeSideTurnStart 不复用 AfterEnergyReset 的 bit 56。
+- CoverageCatalog 原始表解析失败：上游两个未被 classifications 引用的 LOOP 证据使用未知枚举状态。仅在 archive 隔离副本排除两项后，3035 条核验通过、无未分类/缺失/非通过引用；没有改动原表。工具的 RitsuLib 分拆与 SmartFormat 引用只在本地构建补齐。
+- `6922828d` 对照本入口：EQ 10 / FULL 40 / GA 10 一次完成，High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1；60 对均 Passed，6341 个确定性字段 `IDENTICAL`，无时间截断。两侧各一个离线宿主，600 秒软预算，未中断或补跑；输入、DLL 哈希、逐根摘要及复算命令见 [0.43.3 等价证据](../coverage/equivalence/before-side-turn-start-0433/README.md)。 变基到 0.44.0（`42e09028`）后重跑 EQ 10 根：`compare_results.py` 1,069 字段 `IDENTICAL`；`TurnPhaseMirrorChecks --start` 22、`--start --seal` 1、`--mask` 58 个单 bit 互不重叠。
+- 历史 `8be1410` 对照：5 角色 × 精英/首领共 10 根，High（90/50000）、Coordinator、Smart、DOP 1，992 个确定性字段 `IDENTICAL`。变基前的历史数字，原始产物未随分支保留；当前基线证据见下一条。
+
+## 0.44.0 发布验证范围（2026-09-22）
+
+- 本次定版仅变更版本与文档，复用下列集成、UI 本地化、左起编号及完整部署的成功证据；由最终提交执行一次 Release 构建并生成最小包，统一脚本记录三个渠道的发布结果。
+- 未追加可见 Steam 验收或性能测试，不将已有无头结果扩展为可见效果或通用性能保证。
+
+## 生成敌人编号与循环分组（2026-09-22）
+
+- 左起编号修正：`UI-LOCALIZATION` / `3f56d808fea54349a12b4d92cc560427` 在原生 `PHROG_PARASITE_ELITE` 场景 Passed（26.40 秒）。eng/zhs/zht 下倒序创建四只扭动虫，编号逐项对齐原版 Marker2D 横坐标顺序；Fork 与移除已死敌人后标签保持。此项替代此前内部战斗 ID 后缀的显示约定，既有根敌人标签保持。
+- `SPAWNED-LEFT-ORDER-DEPLOY` / `ac863c2c1bc1463b99986ce8c535bdc7` Passed（23.45 秒）：原生寄生虫场景，五张打击/五能量/100力量，先杀寄生虫再杀四只扭动虫；严格增量、Instant/0 完整执行，5动作零损T1获胜、0计划外重算。该最小场景经过目标生成与最终击杀注释的生产路径，不代表截图原局面的完整复现。
+- 最终 Windows Release 0 警告、0 错误，PowerShell 结构门禁 `search_files=208`；两个实例均由启动器删除，未进行可见 Steam 验收。
+- `UI-LOCALIZATION` / `d63691bed27a4f8faf9a84ba41a3ac9f` Passed（26.22 秒）：每种 eng/zhs/zht 语言下，从冻结根的模拟器创建四只扭动虫，核对标签各异、含战斗 ID、Creature 与击杀记录名称入口一致。新增显示身份合同核对物理手牌序号/阵容索引归一化、不同 CombatId 即使同名也分开、Search 原键仍区分物理手牌序号；既有高亮、宽窄布局与复用合同通过。
+- 循环展示纯合同 125473 项通过，含两次重复直接展开、三次折叠、完整序列还原与动作索引唯一映射。Windows Release 0 警告、0 错误，PowerShell 结构门禁 `search_files=208`。
+- 首次新增测试 `0aebe0e839d74f599900a260452212d7` 在测试准备中把主线程根捕获放进隔离域，被 Power 惰性物化保护拒绝；仅修正测试的捕获顺序后通过。两次实例均已清理。未获得截图原局面的完整路线日志，未进行该原局面逐动作复现或可见 Steam 验收。
+
+## 紧凑循环动作组（2026-09-22）
+
+- 虚线在上次位置基础上再下移 2 像素：仅调整绘制坐标，Windows Release 构建 0 警告、0 错误；未重跑行为测试，可见观感未验收。
+- 虚线按实机截图下移 1 像素：仅修改绘制坐标，Windows Release 构建 0 警告、0 错误；未重跑行为测试，调整后的可见观感未验收。
+- 蓝色虚线追加：Windows Release 0 警告、0 错误；`UI-LOCALIZATION` / `1299d057871f4c2aac47486b1297c7f1` Passed（26.36 秒），既有中英简繁、紧凑高度、宽窄往返、高亮与复用合同通过。源码仅在现有空间绘制下划线，未改变布局尺寸；未进行可见观感验收。实例 `loop-dashed-underline` 已由启动器删除。
+- `UI-LOCALIZATION` / `1ccc7277cdba46279dc5c1e295f496b0` Passed（26.39 秒）：eng/zhs/zht 中 41 个动作折叠为一个双动作循环组与独立末击；次数位于动作右侧，宽布局贴合内容、组高仅增加外框留白、末击同排，窄布局内部换行且动作/次数均被外框包围，宽→窄→宽恢复通过。循环中间/末次/后缀高亮及行复用通过，既有完整本地化合同通过。
+- Windows Release 构建 0 警告、0 错误，PowerShell 结构门禁 `search_files=208`。无头实例 `compact-loop-ui` 已由启动器删除；仅 UI 布局与显示变化，未重跑搜索语义或性能基准，未进行可见 Steam 观感验收。
+
 ## 能力驱动的 Power 施加不再继承外层卡牌来源（问题包 c4e28f3b）（2026-09-22）
 
 - 本体 Release 构建通过（0 error）。
