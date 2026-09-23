@@ -23,7 +23,8 @@ static class HookMaskChecks
                 throw new InvalidDataException("无效或重复的监听位：" + name);
             names.Add(name);
         }
-        if (!names.Contains("BeforeSideTurnStart") || !names.Contains("AfterEnergyReset"))
+        if (!names.Contains("BeforeSideTurnStart") || !names.Contains("AfterEnergyReset")
+            || !names.Contains("AfterPlayerTurnStartEarly") || !names.Contains("AfterPlayerTurnStart") || !names.Contains("AfterPlayerTurnStartLate"))
             throw new InvalidDataException("生产 DLL 缺少待核对的回合监听位。");
         Console.WriteLine($"TURN_PHASE_MASK_OK distinct_bits={bits.Count}");
     }

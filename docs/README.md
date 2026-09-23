@@ -98,6 +98,7 @@
 | 精确 OnPlay 补丁组合及完整预测实现 | [OnPlay 补丁适配](third-party-onplay-patches.md) |
 | 第三方回合阶段登记及冻结合同 | [回合阶段镜像](third-party-turn-phase-mirrors.md) |
 | BeforeSideTurnStart 入口与 0.43.3 六十根等价数据 | [本地 PR 草稿](pr/before-side-turn-start-mirrors-draft.md) |
+| AfterPlayerTurnStart 三轮入口（基于 #126） | [本地 PR 草稿](pr/after-player-turn-start-mirrors-draft.md) |
 | 战斗语义适配与验证方法 | [适配验证](ADAPTATION_VERIFICATION.md) |
 | 原版 Hook 支持和覆盖证据 | [战斗 Hook 覆盖目录](COMBAT_HOOK_COVERAGE.md) |
 

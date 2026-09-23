@@ -13,11 +13,15 @@ namespace MegaCrit.Sts2.Core.Entities.Creatures
     sealed class Creature { public bool IsAlive = true; }
 }
 namespace MegaCrit.Sts2.Core.GameActions.Multiplayer { class PlayerChoiceContext; }
+namespace MegaCrit.Sts2.Core.Entities.Players { class Player; }
 namespace MegaCrit.Sts2.Core.ValueProps { enum ValueProp { Unpowered } }
 namespace MegaCrit.Sts2.Core.Models
 {
     class AbstractModel
     {
+        public virtual Task AfterPlayerTurnStartEarly(GameActions.Multiplayer.PlayerChoiceContext choice, Entities.Players.Player player) => Task.CompletedTask;
+        public virtual Task AfterPlayerTurnStart(GameActions.Multiplayer.PlayerChoiceContext choice, Entities.Players.Player player) => Task.CompletedTask;
+        public virtual Task AfterPlayerTurnStartLate(GameActions.Multiplayer.PlayerChoiceContext choice, Entities.Players.Player player) => Task.CompletedTask;
         public virtual Task BeforeSideTurnStart(
             GameActions.Multiplayer.PlayerChoiceContext choice, CombatSide side,
             IReadOnlyList<Creature> participants, ICombatState combatState) => Task.CompletedTask;
@@ -57,7 +61,8 @@ namespace CombatSolver
 }
 namespace CombatSolver.Engine.Common
 {
-    enum MirroredHookMask { AfterSideTurnEndLate, BeforeSideTurnStart }
+    [Flags] enum MirroredHookMask { AfterSideTurnEndLate=1, BeforeSideTurnStart=2,
+        AfterPlayerTurnStartEarly=4, AfterPlayerTurnStart=8, AfterPlayerTurnStartLate=16 }
     sealed class PredictedCard { public required CardModel Preview; }
     sealed class PredictionTrace
     {
@@ -81,6 +86,8 @@ namespace CombatSolver.Engine.InCombat.Simulation
         public int Risks;
         public int DamageCalls;
         public int DamageTotal;
+        public bool ContinuationRejected;
+        public void RejectExecutionContinuation() => ContinuationRejected = true;
         public IDisposable PushDamageSource(CombatDamageSource source) => new PredictionTrace.TraceScope();
         public void Damage(Creature owner, int amount, MegaCrit.Sts2.Core.ValueProps.ValueProp props, Creature source)
         { DamageCalls++; DamageTotal += amount; }
@@ -119,7 +126,13 @@ namespace CombatSolver.Engine.InCombat.Mirrors
 
 namespace CombatSolver
 {
-    sealed class SimulatedCombatState : ICombatState;
+    sealed class TurnStartChoiceCursor;
+    sealed class SimulatedCombatState : ICombatState
+    {
+        public bool TriggerAfterPlayerTurnStartVanilla(CombatPredictionSimulator simulator,
+            MegaCrit.Sts2.Core.Entities.Players.Player player, TurnStartChoiceCursor choices)
+        { simulator.Events.Add("vanilla"); return false; }
+    }
     static class TurnStartRelicSupport
     {
         public static bool TriggerBeforeSideTurnStart(CombatPredictionSimulator s, SimulatedCombatState c, IReadOnlyList<Creature> p) => true;
@@ -131,6 +144,28 @@ namespace CombatSolver
 }
 namespace CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnStart
 {
+    internal static partial class AfterPlayerTurnStartMirrors
+    {
+        private static partial void RegisterVanilla(MethodMirrorRegistry<AbstractModel, AfterPlayerTurnStartMirrorContext> registry, string hook)
+        {
+            if (hook == nameof(AbstractModel.AfterPlayerTurnStart))
+                registry.Register<NativeNormalGenerator>((_, context) =>
+                {
+                    context.Simulator.Events.Add("native normal");
+                    context.Simulator.Listeners.Add(new GeneratedLateListener());
+                });
+        }
+    }
+    class NativeNormalGenerator : RelicModel
+    {
+        public override Task AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choice,
+            MegaCrit.Sts2.Core.Entities.Players.Player player) => throw new Exception("Native hook invoked.");
+    }
+    class GeneratedLateListener : RelicModel
+    {
+        public override Task AfterPlayerTurnStartLate(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choice,
+            MegaCrit.Sts2.Core.Entities.Players.Player player) => throw new Exception("Native hook invoked.");
+    }
     internal static partial class BeforeSideTurnStartMirrors
     {
         private static partial void RegisterVanilla(MethodMirrorRegistry<AbstractModel, BeforeSideTurnStartMirrorContext> registry) { }

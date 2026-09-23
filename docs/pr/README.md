@@ -2,6 +2,7 @@
 
 [返回文档导航](../README.md)
 
+- [玩家回合开始三阶段镜像](after-player-turn-start-mirrors-draft.md)：基于 #126 的登记入口、原生顺序与等价对照，尚未推送。
 - [PR #43 战前预测 API](pr43-review.md)：审查、集成修正与验证范围。
 - [PR #39–#47 集成审查](integration-39-47-review.md)：各项直接证据与失败修正。
 - [通用搜索正确性后续修正](generic-search-correctness-followup.md)。

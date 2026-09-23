@@ -14,5 +14,7 @@
     <Compile Include="../../src/Engine/InCombat/Mirrors/CardHookReceiver.cs" Link="CardHookReceiver.cs" />
     <Compile Include="../../src/Engine/InCombat/Mirrors/Hooks/TurnStart/BeforeSideTurnStartMirrors.cs" Link="BeforeSideTurnStartMirrors.cs" />
     <Compile Include="../../src/Engine/InCombat/Mirrors/HookMirrors.TurnStart.cs" Link="HookMirrors.TurnStart.cs" />
+    <Compile Include="../../src/Engine/InCombat/Mirrors/Hooks/TurnStart/AfterPlayerTurnStartMirrors.cs" Link="AfterPlayerTurnStartMirrors.cs" />
+    <Compile Include="../../src/Engine/InCombat/Mirrors/HookMirrors.AfterPlayerTurnStart.cs" Link="HookMirrors.AfterPlayerTurnStart.cs" />
   </ItemGroup>
 </Project>

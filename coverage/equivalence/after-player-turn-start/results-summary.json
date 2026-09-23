@@ -1,0 +1,1202 @@
+[
+  {
+    "root": "EQ-DEFECT-BOSS-00",
+    "comparedFields": 100,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "c87cceac29c98957c73aed233f28329ce30ed3f209bc1833393b5e4beac2a683",
+        "routeSha256": "ef88682e9ba52e10552c55ccc7214f667e25cdde47866e6a0c9bc95a964b775d",
+        "totalExpanded": 13684,
+        "totalTransitions": 49589
+      },
+      "new": {
+        "resultSha256": "6b92c556fc0b069ac92938e2cc7c78dec63c70e26ca5cb939920602958d5ca9a",
+        "routeSha256": "ef88682e9ba52e10552c55ccc7214f667e25cdde47866e6a0c9bc95a964b775d",
+        "totalExpanded": 13684,
+        "totalTransitions": 49589
+      }
+    },
+    "comparedGroupsSha256": "760dc1768ad82f02774f3cbd90c31b50c6787382d7a5e375157ab1a0c5c2fef8"
+  },
+  {
+    "root": "EQ-DEFECT-ELITE-00",
+    "comparedFields": 105,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "56ed963530d4f5f5b701083feb46445b46de7afcde5f54c674358d038624b53a",
+        "routeSha256": "dc88a9fe517f3aced05d9375ac764ea5a1fe518a3e61634428074087c62a906d",
+        "totalExpanded": 11867,
+        "totalTransitions": 51060
+      },
+      "new": {
+        "resultSha256": "ea6bd422f8ff2f2b3804b885b93a81d6f2a163b05f60c2f8059141226d35782a",
+        "routeSha256": "dc88a9fe517f3aced05d9375ac764ea5a1fe518a3e61634428074087c62a906d",
+        "totalExpanded": 11867,
+        "totalTransitions": 51060
+      }
+    },
+    "comparedGroupsSha256": "c412bfb76e381d2985b19e6e3730201dca56dd92d2247e3fa11de67ea944d9ea"
+  },
+  {
+    "root": "EQ-IRONCLAD-BOSS-00",
+    "comparedFields": 122,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "daec6e0c1d920a44456c406fd6881b1cfabb986991bf60ad41195cea2a0b7a07",
+        "routeSha256": "8f85f68d4038f721186f4e4e8050885dcf3a8f066bbb0d5413f49651aea8bfd2",
+        "totalExpanded": 38472,
+        "totalTransitions": 186394
+      },
+      "new": {
+        "resultSha256": "502aecdabceb0e4e5599d89b34749c01fec009388d77aefc7bebcda5b4ec1215",
+        "routeSha256": "8f85f68d4038f721186f4e4e8050885dcf3a8f066bbb0d5413f49651aea8bfd2",
+        "totalExpanded": 38472,
+        "totalTransitions": 186394
+      }
+    },
+    "comparedGroupsSha256": "13c56f478ff26af42d61ad60d952a2f1fe9c7719c411cc9962c9aae6f6974287"
+  },
+  {
+    "root": "EQ-IRONCLAD-ELITE-00",
+    "comparedFields": 111,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "9239f562ad2a6eec2e6373da410d7c7bb605a6df0d32f25d8a5413ca66d303f5",
+        "routeSha256": "8547976cab32098746f87159049410fa9cc1b10ac705a07c7e147ec7fc2324b4",
+        "totalExpanded": 11755,
+        "totalTransitions": 53122
+      },
+      "new": {
+        "resultSha256": "1ea810301e8f62e0b399901956bbfbea67b8748c0d14d7c5963e836dac8ed748",
+        "routeSha256": "8547976cab32098746f87159049410fa9cc1b10ac705a07c7e147ec7fc2324b4",
+        "totalExpanded": 11755,
+        "totalTransitions": 53122
+      }
+    },
+    "comparedGroupsSha256": "862f55586e59f7757a0c4120ee78f4f7afa33971d4ddf58b1070298f7c5d7527"
+  },
+  {
+    "root": "EQ-NECROBINDER-BOSS-00",
+    "comparedFields": 92,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "b73514d5aa0bf296ba073f26ce8f9f7a0df92f0f6432b8c0571706e50349aabb",
+        "routeSha256": "f02ed2d8e49c25433bfd6f8a423b9226269595a94b177bbc7fe47f72f4bc8399",
+        "totalExpanded": 34470,
+        "totalTransitions": 178851
+      },
+      "new": {
+        "resultSha256": "d55c4df8ec7555f7f2639623d1fc13f84915aa1b493e6dee31b307cfc9903a0a",
+        "routeSha256": "f02ed2d8e49c25433bfd6f8a423b9226269595a94b177bbc7fe47f72f4bc8399",
+        "totalExpanded": 34470,
+        "totalTransitions": 178851
+      }
+    },
+    "comparedGroupsSha256": "3d01056955f8230c50603b2b5e9bbe48b905f2099eb6b19c065ec643c661ced2"
+  },
+  {
+    "root": "EQ-NECROBINDER-ELITE-00",
+    "comparedFields": 94,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "d55c4133842cbb8fa1a06910b3cc7bf39b6f993b437a70078afb925c905e6c8d",
+        "routeSha256": "8c1dd6c05edafa113e2fe275abc4a23619863383d8de88bf1c385ee8b5c749e5",
+        "totalExpanded": 29841,
+        "totalTransitions": 238885
+      },
+      "new": {
+        "resultSha256": "ec1fbf4b411acb4be36d4c2597c3b52e1639cd89032065007d7436f730cab488",
+        "routeSha256": "8c1dd6c05edafa113e2fe275abc4a23619863383d8de88bf1c385ee8b5c749e5",
+        "totalExpanded": 29841,
+        "totalTransitions": 238885
+      }
+    },
+    "comparedGroupsSha256": "5a36a94f0e1bb5424e93c3dbe8426783650a7abe605ac283e94efc45fda2f7a2"
+  },
+  {
+    "root": "EQ-REGENT-BOSS-00",
+    "comparedFields": 119,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "514feebe2af239489f4ff3480715979e39c2815d2176f580ee356a815574849f",
+        "routeSha256": "0a08297edde935460a1969bca7ce6c1adacada8fd9c8f4b8f2e114fcd1d9554c",
+        "totalExpanded": 64306,
+        "totalTransitions": 454355
+      },
+      "new": {
+        "resultSha256": "e594e9042d0925f768c3194c6e1726e12b363b73ecfb15951ff53a84f30cd2f5",
+        "routeSha256": "0a08297edde935460a1969bca7ce6c1adacada8fd9c8f4b8f2e114fcd1d9554c",
+        "totalExpanded": 64306,
+        "totalTransitions": 454355
+      }
+    },
+    "comparedGroupsSha256": "f5d3db43b50438d69029a9efffdb697485ba0800d0e97d99a0765bb79293b762"
+  },
+  {
+    "root": "EQ-REGENT-ELITE-00",
+    "comparedFields": 96,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "bb17c1d920faad1f5ca504ca5ebd88fbb770291651dd6f633c7580a80143570c",
+        "routeSha256": "8c78f406333c93b5683b5e27fe9e06c942ce2631e2954afd6be616ab57030213",
+        "totalExpanded": 83805,
+        "totalTransitions": 583841
+      },
+      "new": {
+        "resultSha256": "a549221e7ea8781429cbe761aa6847a9eb4f63313db19730e414f70f0dc6fb58",
+        "routeSha256": "8c78f406333c93b5683b5e27fe9e06c942ce2631e2954afd6be616ab57030213",
+        "totalExpanded": 83805,
+        "totalTransitions": 583841
+      }
+    },
+    "comparedGroupsSha256": "0ede1707f6502df706b198ba94dd04eb3cb84a0b2c97957def848ef1ff015d0e"
+  },
+  {
+    "root": "EQ-SILENT-BOSS-00",
+    "comparedFields": 121,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "49fc39ddc1cdb47dfe3ef14fca6c1959266dbb0a3796b4ce489b4f2a04f8be88",
+        "routeSha256": "d566605628fd5af0e2f649d08b65dc309bbbbc0ef5fee0dac9c5487512a85091",
+        "totalExpanded": 48932,
+        "totalTransitions": 165805
+      },
+      "new": {
+        "resultSha256": "dd7c5d461b80bd151595bb7bb12f719906a489088018d5099b755289ca4ed77b",
+        "routeSha256": "d566605628fd5af0e2f649d08b65dc309bbbbc0ef5fee0dac9c5487512a85091",
+        "totalExpanded": 48932,
+        "totalTransitions": 165805
+      }
+    },
+    "comparedGroupsSha256": "efcd3aa5644817b3a2895443d2166ec2a95ab8e4773861d2be41df2114359cc8"
+  },
+  {
+    "root": "EQ-SILENT-ELITE-00",
+    "comparedFields": 109,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "08a801a471ee343256c4e86ccffd24edb12462f548c4a92ce0a46ce8e3b20b1d",
+        "routeSha256": "f66907acdc2a7806c036ca192b86cb73ac80d218dfabfb00e3e459c0a6a67dcc",
+        "totalExpanded": 41718,
+        "totalTransitions": 155951
+      },
+      "new": {
+        "resultSha256": "0c7c947ee00cfc9646bef1a9c7cec84cfeacb138791dfdbca00354e74d8e3010",
+        "routeSha256": "f66907acdc2a7806c036ca192b86cb73ac80d218dfabfb00e3e459c0a6a67dcc",
+        "totalExpanded": 41718,
+        "totalTransitions": 155951
+      }
+    },
+    "comparedGroupsSha256": "e3711a4f53174537d6650bcfa5e1b49887f00b3a70a3ddd980e0fd937f735bb6"
+  },
+  {
+    "root": "FULL-DEFECT-BOSS-00",
+    "comparedFields": 100,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "1354764f9b788b17e69bb6b7073cc604da905bca5c3582eacc9726785d52e07e",
+        "routeSha256": "63b38c76d81151aec9627b087fef05fa0b15df6bbb5362443f43af38081453d2",
+        "totalExpanded": 24506,
+        "totalTransitions": 92728
+      },
+      "new": {
+        "resultSha256": "35ec87ce8783b6c3363b45a5e64dc095308cca0661ec4de2b4fb3166e20f38e8",
+        "routeSha256": "63b38c76d81151aec9627b087fef05fa0b15df6bbb5362443f43af38081453d2",
+        "totalExpanded": 24506,
+        "totalTransitions": 92728
+      }
+    },
+    "comparedGroupsSha256": "8f25ad38ea82b2215bba9035fb4e50b3521b5ab641f8b7d3d6ae37f9e83b0a4f"
+  },
+  {
+    "root": "FULL-DEFECT-BOSS-01",
+    "comparedFields": 119,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "73c6d72af2d803878e6615804cf7ace1bc449db140b9411b8198cf0e578bfbbf",
+        "routeSha256": "6cc1ad77fccd4bc6a3e08e28e476a29d725458250cd9f9a4b9851aa9b90a8d42",
+        "totalExpanded": 18822,
+        "totalTransitions": 72153
+      },
+      "new": {
+        "resultSha256": "997e03ce27c9397440901105571130714215f82a1db38a0c9a0155d32f328d9d",
+        "routeSha256": "6cc1ad77fccd4bc6a3e08e28e476a29d725458250cd9f9a4b9851aa9b90a8d42",
+        "totalExpanded": 18822,
+        "totalTransitions": 72153
+      }
+    },
+    "comparedGroupsSha256": "279803d340210e8f846dae82f252c048b0a7f955baf1729033b21900dc1d0233"
+  },
+  {
+    "root": "FULL-DEFECT-BOSS-02",
+    "comparedFields": 112,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "a5bc2ac008c00f5ef6338ea19e0dc9268ea53a872ae1b0090a09e5d0691dea21",
+        "routeSha256": "30465353592469132484a964dc68f993fda7a9cebd53e81d3bd397ff1fe30a0d",
+        "totalExpanded": 32445,
+        "totalTransitions": 142354
+      },
+      "new": {
+        "resultSha256": "44f8ac749c992a265118a9a7d1ca6bc9435529f4ed7e348d453aa760ebd841a6",
+        "routeSha256": "30465353592469132484a964dc68f993fda7a9cebd53e81d3bd397ff1fe30a0d",
+        "totalExpanded": 32445,
+        "totalTransitions": 142354
+      }
+    },
+    "comparedGroupsSha256": "f3adcaa3ab2688d8909033219977b854cbe4caf6a9577b83cca10de6dd24fef6"
+  },
+  {
+    "root": "FULL-DEFECT-BOSS-03",
+    "comparedFields": 91,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "b00b7e54a50ee3b48b49602d9e7e3f1bdf85c26fb9bc5620f80a449911d3c3fc",
+        "routeSha256": "219ad4743dac50366869c0af377516ce0abe8ca48125f8ed9495d6c3c4af0471",
+        "totalExpanded": 24727,
+        "totalTransitions": 88245
+      },
+      "new": {
+        "resultSha256": "cf311f5be792abb08bbd4aee02632cb587df791ff9e8a1835b4b509f0fbf1cf0",
+        "routeSha256": "219ad4743dac50366869c0af377516ce0abe8ca48125f8ed9495d6c3c4af0471",
+        "totalExpanded": 24727,
+        "totalTransitions": 88245
+      }
+    },
+    "comparedGroupsSha256": "f3647998ab3a529d2d326997bfa03446087ac1fec1b24a2014fbe66a13d9e480"
+  },
+  {
+    "root": "FULL-DEFECT-ELITE-00",
+    "comparedFields": 105,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "9262be81ae0d7656591ef124902b2529ccb8af44f87cd88230925318ff3cd1e7",
+        "routeSha256": "6cd682cc196c5492947a93f145f82b575aa213e52486496720d442253ebfec68",
+        "totalExpanded": 11855,
+        "totalTransitions": 50239
+      },
+      "new": {
+        "resultSha256": "a4442f43eb75c65edd56820618a739a06f7b41bc2bf23951b4c5bef309b651d5",
+        "routeSha256": "6cd682cc196c5492947a93f145f82b575aa213e52486496720d442253ebfec68",
+        "totalExpanded": 11855,
+        "totalTransitions": 50239
+      }
+    },
+    "comparedGroupsSha256": "5d89cec914bac9fd07f614e7e259adfbd9ab400289df0437196a79061bb9cdb0"
+  },
+  {
+    "root": "FULL-DEFECT-ELITE-01",
+    "comparedFields": 89,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "b51f685218b4726fda00d2fea4915419c20111853ac8e8ec9a770b2b41a91d97",
+        "routeSha256": "181bb1d7d4e33dfb9ce1b9e914c195425dd64e82495a492dcf404c46d08acb7b",
+        "totalExpanded": 19440,
+        "totalTransitions": 71077
+      },
+      "new": {
+        "resultSha256": "0c92e3414a596b6d662fd801899509d8afe7ee74d0f19df7a215bb28cfd42fc6",
+        "routeSha256": "181bb1d7d4e33dfb9ce1b9e914c195425dd64e82495a492dcf404c46d08acb7b",
+        "totalExpanded": 19440,
+        "totalTransitions": 71077
+      }
+    },
+    "comparedGroupsSha256": "cf7d9ca7acc7bc063e909424f176ebf36fd79f1fb33b477e9d1e75ba04ea2d38"
+  },
+  {
+    "root": "FULL-DEFECT-ELITE-02",
+    "comparedFields": 96,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "af83d4882cb1eb7f3f576df65e9302bbc06214354b098fcf73ac7ba5d8d7046b",
+        "routeSha256": "a6fd087d34c27a097d36eb9b88bde6ee3f74a4d9819d9130cb4ce166fff79385",
+        "totalExpanded": 21590,
+        "totalTransitions": 62474
+      },
+      "new": {
+        "resultSha256": "da675b31d02e68e1f3533d912453af8d8ff54fe634e99f6b02d4dc4c039f6a80",
+        "routeSha256": "a6fd087d34c27a097d36eb9b88bde6ee3f74a4d9819d9130cb4ce166fff79385",
+        "totalExpanded": 21590,
+        "totalTransitions": 62474
+      }
+    },
+    "comparedGroupsSha256": "5f5047b6cb1d90a5d251231e082b6fc8a54b633909123971e63391ee08f98f6d"
+  },
+  {
+    "root": "FULL-DEFECT-ELITE-03",
+    "comparedFields": 106,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "42ee99ce1049d5c5c29288e2d42299f5d5b0613cb8825ebb8113118868192398",
+        "routeSha256": "28ca0f0823d02becf0b41cc578eda8f2ea2397dd32bd70d09c5c74529f3a86af",
+        "totalExpanded": 31102,
+        "totalTransitions": 123953
+      },
+      "new": {
+        "resultSha256": "ea9142768bff1537371e87e51e985cff20f8bc346bf953a831d6774bdd2dc994",
+        "routeSha256": "28ca0f0823d02becf0b41cc578eda8f2ea2397dd32bd70d09c5c74529f3a86af",
+        "totalExpanded": 31102,
+        "totalTransitions": 123953
+      }
+    },
+    "comparedGroupsSha256": "cc757a123789962536ae1214f92b74ce106e028b9f6ed4f8016dcf55603d2e7b"
+  },
+  {
+    "root": "FULL-IRONCLAD-BOSS-00",
+    "comparedFields": 112,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "942d37dface8c27d129263383da4314a66ee52e645e793255800bf57b9482fb7",
+        "routeSha256": "9ac24fec31b045e69e4d8d82d81485b1d64b0ac417681f1976086ef1b1768376",
+        "totalExpanded": 39875,
+        "totalTransitions": 188591
+      },
+      "new": {
+        "resultSha256": "fe283bbea9fdd1c72e35c94b3dfa5116c55eb7e5e7962a4ae460eee145d5cbbf",
+        "routeSha256": "9ac24fec31b045e69e4d8d82d81485b1d64b0ac417681f1976086ef1b1768376",
+        "totalExpanded": 39875,
+        "totalTransitions": 188591
+      }
+    },
+    "comparedGroupsSha256": "9c4bb13af42d9b8bf75ae0e25071cdba47a333b76b91ba867666b4b4ccb5e290"
+  },
+  {
+    "root": "FULL-IRONCLAD-BOSS-01",
+    "comparedFields": 109,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "de97a7338be2ec4d81016a57ab056464a41b8ec5c32fb5206ae448073ac15262",
+        "routeSha256": "92ecc80e34e1a8ac8435424dee55255cd44e40004c81e2fe0365d3441508f4e7",
+        "totalExpanded": 20591,
+        "totalTransitions": 84949
+      },
+      "new": {
+        "resultSha256": "3b4b3a9513aeac32b634d4a1ebf1cec58296efb3c12b19a28fac0ffab9394d36",
+        "routeSha256": "92ecc80e34e1a8ac8435424dee55255cd44e40004c81e2fe0365d3441508f4e7",
+        "totalExpanded": 20591,
+        "totalTransitions": 84949
+      }
+    },
+    "comparedGroupsSha256": "bdd4341e5f58a03b54d7e5c40a8260c6d47a4e7d530a2f47037350bfbacb63d6"
+  },
+  {
+    "root": "FULL-IRONCLAD-BOSS-02",
+    "comparedFields": 122,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "3c0b4088b19475cf20cd3ad9769be9ba5deeb5528507cab841e6d5a087157fad",
+        "routeSha256": "0371a964f85fb117af8eb9ac36c18c43a39e0b43306ac1053c840d5e0a8148f8",
+        "totalExpanded": 71698,
+        "totalTransitions": 224071
+      },
+      "new": {
+        "resultSha256": "34e66d81f0609f34f2f07281d531507084a3b97ea232e1ee2de3bb69adaf6c26",
+        "routeSha256": "0371a964f85fb117af8eb9ac36c18c43a39e0b43306ac1053c840d5e0a8148f8",
+        "totalExpanded": 71698,
+        "totalTransitions": 224071
+      }
+    },
+    "comparedGroupsSha256": "e944316d86fc1082cb5d38e16651296a0960de0b627af8c4a2809086b0105377"
+  },
+  {
+    "root": "FULL-IRONCLAD-BOSS-03",
+    "comparedFields": 107,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "c6da0a93b4f45d812597d791fc7e2bb464d602acfc20c3933fa5c0841cf43e3f",
+        "routeSha256": "66b8bf4b39c6611ecac6d3f82177a0fcb8e7da37fd019365ed3e87716a25da07",
+        "totalExpanded": 93183,
+        "totalTransitions": 763924
+      },
+      "new": {
+        "resultSha256": "1fcec0b93771d5f33cf8e841cc13ec64be8849d79cf4f506e0fabb7c61349de8",
+        "routeSha256": "66b8bf4b39c6611ecac6d3f82177a0fcb8e7da37fd019365ed3e87716a25da07",
+        "totalExpanded": 93183,
+        "totalTransitions": 763924
+      }
+    },
+    "comparedGroupsSha256": "be39cac0e9d21225767ead3931c656f73a50f7f226e6a594f36d8d62e7714f88"
+  },
+  {
+    "root": "FULL-IRONCLAD-ELITE-00",
+    "comparedFields": 125,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "782df29a264b2757549ff1a801d5994389d4d1c1e8adc1fa628bfa3480faa3f1",
+        "routeSha256": "1a522f23c46f4fca234e9d6744952c638676115221fc0326b934b53a489e0fa5",
+        "totalExpanded": 17031,
+        "totalTransitions": 80292
+      },
+      "new": {
+        "resultSha256": "d44f5cfa79d2ab468bb9a5f8880e5fc718a6ba966cd43ff0a5502714eb797ae2",
+        "routeSha256": "1a522f23c46f4fca234e9d6744952c638676115221fc0326b934b53a489e0fa5",
+        "totalExpanded": 17031,
+        "totalTransitions": 80292
+      }
+    },
+    "comparedGroupsSha256": "a837ac5b52f73cdbaf18928a7f2fc2b187b6522360d7fb6ce599398dc56de05e"
+  },
+  {
+    "root": "FULL-IRONCLAD-ELITE-01",
+    "comparedFields": 104,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "8f179c07ede73fc79338c3ee020f19d370fdef14b25f37856c1ed175feb5a819",
+        "routeSha256": "3b3384ed60b11b7af9d45dbd724ad1bcb51d5df8023d102d97b89081b3495029",
+        "totalExpanded": 30433,
+        "totalTransitions": 231807
+      },
+      "new": {
+        "resultSha256": "7b3327d25b3651001992c706687bf8a21bb173fac76415ac6935bc43921dfd17",
+        "routeSha256": "3b3384ed60b11b7af9d45dbd724ad1bcb51d5df8023d102d97b89081b3495029",
+        "totalExpanded": 30433,
+        "totalTransitions": 231807
+      }
+    },
+    "comparedGroupsSha256": "23d0d24cddc8bae8c3d2b8a12e618b90ec1827dc2a5f1d99798fed4f2509e5b7"
+  },
+  {
+    "root": "FULL-IRONCLAD-ELITE-02",
+    "comparedFields": 87,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "3ddfe07feae1aba24a3d4e739ae1e2d4dada7fd4dd182e07e144e5bc2a2d9bce",
+        "routeSha256": "06acafbcbf0459f32b128f9605579b36d31ab652a1fd8052035b48d46fbddc31",
+        "totalExpanded": 33178,
+        "totalTransitions": 164866
+      },
+      "new": {
+        "resultSha256": "179540e9fa52b521d21c1259bcb9b536bd1567a5bb59b063520c743892512d04",
+        "routeSha256": "06acafbcbf0459f32b128f9605579b36d31ab652a1fd8052035b48d46fbddc31",
+        "totalExpanded": 33178,
+        "totalTransitions": 164866
+      }
+    },
+    "comparedGroupsSha256": "726108e145de382a7209db6cf88e14c73fa1f1455323f83a25384cb523f7747e"
+  },
+  {
+    "root": "FULL-IRONCLAD-ELITE-03",
+    "comparedFields": 106,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "8bbd4c734a03e93d1c535e8d7caa8a5c7281788df61ca5788684a92f9b9f5e2a",
+        "routeSha256": "fac9f2143ab025dcb01f95d2de340992c935d3748cf979830783ad9f667ad330",
+        "totalExpanded": 20228,
+        "totalTransitions": 71175
+      },
+      "new": {
+        "resultSha256": "35d15665373d345e8743d6bfff67f4e7568ac03458143599581a8f988c656924",
+        "routeSha256": "fac9f2143ab025dcb01f95d2de340992c935d3748cf979830783ad9f667ad330",
+        "totalExpanded": 20228,
+        "totalTransitions": 71175
+      }
+    },
+    "comparedGroupsSha256": "c7bc121393ff2a24f661f6d3f479beb97f06a8b26ab4a62179b08ba510b0faa0"
+  },
+  {
+    "root": "FULL-NECROBINDER-BOSS-00",
+    "comparedFields": 92,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "69a4dc662e338e6c401f9c70556bcd199c5bfe591837a2ad439babb399fe2411",
+        "routeSha256": "6d844fc903b8b1f61758fbbc691aec648de5aa5dab499961f28e36dcebe3ac18",
+        "totalExpanded": 44581,
+        "totalTransitions": 235664
+      },
+      "new": {
+        "resultSha256": "907996d33ce0e03a5162d1e93c3b9c342fb2d56ded34a61f29a8caf2537ca847",
+        "routeSha256": "6d844fc903b8b1f61758fbbc691aec648de5aa5dab499961f28e36dcebe3ac18",
+        "totalExpanded": 44581,
+        "totalTransitions": 235664
+      }
+    },
+    "comparedGroupsSha256": "59c6e94d8677dc968ebb49dbf5706372d0f5c7aeb36c713b193dc49c9d5dba28"
+  },
+  {
+    "root": "FULL-NECROBINDER-BOSS-01",
+    "comparedFields": 93,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "5e0b29a16b49f283fbc67dc5bf8e5dd362e672608ffa2cebd2edda1b95bd6489",
+        "routeSha256": "c073bfdc5eb39284cbc6beaacdcdd03b7ad866303fff832b0b6f4f9a067ed975",
+        "totalExpanded": 10605,
+        "totalTransitions": 55396
+      },
+      "new": {
+        "resultSha256": "86912bb5623a8fc59a49ba7c03c8814bb6782685ff3edf7a991074a6a172a653",
+        "routeSha256": "c073bfdc5eb39284cbc6beaacdcdd03b7ad866303fff832b0b6f4f9a067ed975",
+        "totalExpanded": 10605,
+        "totalTransitions": 55396
+      }
+    },
+    "comparedGroupsSha256": "5a6a712a5ccc6e1f13bf3b244559736270d29e75135dae6ea4a8482443e60f3f"
+  },
+  {
+    "root": "FULL-NECROBINDER-BOSS-02",
+    "comparedFields": 94,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "a4a2e91312c480aedf062e24d408c83fc68c7b95b18167813b8cd82d479c058b",
+        "routeSha256": "a384bdc88663c1a0136d9e22513b766a382a148d6b53b08ae7fee450fa4dba16",
+        "totalExpanded": 22374,
+        "totalTransitions": 97294
+      },
+      "new": {
+        "resultSha256": "fcb968eb8941d7113b614cf05aefe50aa5d081064a3a09baa9c9915de94fbea5",
+        "routeSha256": "a384bdc88663c1a0136d9e22513b766a382a148d6b53b08ae7fee450fa4dba16",
+        "totalExpanded": 22374,
+        "totalTransitions": 97294
+      }
+    },
+    "comparedGroupsSha256": "0eed760198ed9bf974b88f2d31d44e1b374ef13edc2554fb8f01e4871ea17297"
+  },
+  {
+    "root": "FULL-NECROBINDER-BOSS-03",
+    "comparedFields": 95,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "d332b4c70a2e090df218cd2e01b5c83f7de2460ba004462d649d1c9639830f45",
+        "routeSha256": "320c2e037ea0d347151234f9508cd92f8427dcf5a3d5284cc860825d976ba80e",
+        "totalExpanded": 20715,
+        "totalTransitions": 75695
+      },
+      "new": {
+        "resultSha256": "3ae6282e9cb342ccd19e16a44fde4a9d8b1f02c7dc6b7edbb49bafc85fccb5ce",
+        "routeSha256": "320c2e037ea0d347151234f9508cd92f8427dcf5a3d5284cc860825d976ba80e",
+        "totalExpanded": 20715,
+        "totalTransitions": 75695
+      }
+    },
+    "comparedGroupsSha256": "6008762c2caff97571b63e12338f5c17a4fdb268d5bdbf8fd8e324aa068563f8"
+  },
+  {
+    "root": "FULL-NECROBINDER-ELITE-00",
+    "comparedFields": 94,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "012ecec3cd4b950beae40229266cea1988dea92c2fd2c72eb97bae829a071cfc",
+        "routeSha256": "1784fd3748d45233b0939235500d7bf5d06c8f7f8d146216624395c20ef0d4dd",
+        "totalExpanded": 30803,
+        "totalTransitions": 242800
+      },
+      "new": {
+        "resultSha256": "31285e0d8455f9db723bed4102d98c0f3a18904308d4e0e89d8772c44ecd6b91",
+        "routeSha256": "1784fd3748d45233b0939235500d7bf5d06c8f7f8d146216624395c20ef0d4dd",
+        "totalExpanded": 30803,
+        "totalTransitions": 242800
+      }
+    },
+    "comparedGroupsSha256": "c5d4929e0969434aff75d089c247bb7d8c0107ea76c16853bf090fdc72e4f4c2"
+  },
+  {
+    "root": "FULL-NECROBINDER-ELITE-01",
+    "comparedFields": 91,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "d330c179f9d17a6b986492d03bc13679190de8053b8d4f558f887ac2684e4dae",
+        "routeSha256": "d9833d44af16ee595bc76aca20f0861f39d900d3a2fc7a07175f1ae54c31ffc7",
+        "totalExpanded": 61065,
+        "totalTransitions": 315813
+      },
+      "new": {
+        "resultSha256": "24acbc9834550b538431a91141cde914fa786a8e9a1a4fa14bf55f8ca1cfef20",
+        "routeSha256": "d9833d44af16ee595bc76aca20f0861f39d900d3a2fc7a07175f1ae54c31ffc7",
+        "totalExpanded": 61065,
+        "totalTransitions": 315813
+      }
+    },
+    "comparedGroupsSha256": "45d2d6cc04c8122b08c0075a7da0326bdadcdadedfc8a4241c60d5bccffd3898"
+  },
+  {
+    "root": "FULL-NECROBINDER-ELITE-02",
+    "comparedFields": 97,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "7bf2e779e86de9e45e847344cb01f9929d9ec234d14b8109cb8e9adcc1152005",
+        "routeSha256": "298bd237b94c86d33973a9873ad811057707eec3421273f6f126143930431f3a",
+        "totalExpanded": 8103,
+        "totalTransitions": 30620
+      },
+      "new": {
+        "resultSha256": "b2507ba4d217e8fbbcf49ae0c98a9d5d304fcc8bcb10eca2dce9bd57f53f122e",
+        "routeSha256": "298bd237b94c86d33973a9873ad811057707eec3421273f6f126143930431f3a",
+        "totalExpanded": 8103,
+        "totalTransitions": 30620
+      }
+    },
+    "comparedGroupsSha256": "6823b7ce5c96e187a4bcda848f2bf02309c96c9d6804c5dcc20bdaa9cca61e74"
+  },
+  {
+    "root": "FULL-NECROBINDER-ELITE-03",
+    "comparedFields": 100,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "f821d4a6f9f0f9ef7fd4234d55b6eb201f14adfcc4afb10115a8ac16a646fdef",
+        "routeSha256": "b53f7aa3193c192de1baed2ac95c42778f7bf8b5ce5878f44c44430572c23d66",
+        "totalExpanded": 21129,
+        "totalTransitions": 79263
+      },
+      "new": {
+        "resultSha256": "ffadba3dd60d540b6dcf715459940fc44ea3184429533f71f8f4903482701012",
+        "routeSha256": "b53f7aa3193c192de1baed2ac95c42778f7bf8b5ce5878f44c44430572c23d66",
+        "totalExpanded": 21129,
+        "totalTransitions": 79263
+      }
+    },
+    "comparedGroupsSha256": "ea39b3b9d8be1775af49da9541eae11e3f24fe171c79f0796d7e52a13faf45b1"
+  },
+  {
+    "root": "FULL-REGENT-BOSS-00",
+    "comparedFields": 128,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "b42d6ababaa444ab855055a396428c68006792c7c49320978bbd6152775a25fe",
+        "routeSha256": "e92d8b04902314419fad8cf6fb2d1aa78c35977f0c7e9509d6ad0f774ae12231",
+        "totalExpanded": 61891,
+        "totalTransitions": 433133
+      },
+      "new": {
+        "resultSha256": "209dc6649aef134a115d91010f45f1f0ca58f8979c6934d2401d2f4d60c57294",
+        "routeSha256": "e92d8b04902314419fad8cf6fb2d1aa78c35977f0c7e9509d6ad0f774ae12231",
+        "totalExpanded": 61891,
+        "totalTransitions": 433133
+      }
+    },
+    "comparedGroupsSha256": "9face9e4c4a7cc6c54fef2a2013e46f59d1a8464a26252aa647486037b6a1387"
+  },
+  {
+    "root": "FULL-REGENT-BOSS-01",
+    "comparedFields": 116,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "09ab7318cb71d04cfba395b0fa33a977f03aee61948770be81c91afb4c4a9650",
+        "routeSha256": "c908a918e5efcd4d7923b8fa505475b293c5edeea556e19b4494eb5a1af47344",
+        "totalExpanded": 29899,
+        "totalTransitions": 126427
+      },
+      "new": {
+        "resultSha256": "93cb7358ff0bc80949fac028332005dfd5026191a49a367b8be91ed237f5180d",
+        "routeSha256": "c908a918e5efcd4d7923b8fa505475b293c5edeea556e19b4494eb5a1af47344",
+        "totalExpanded": 29899,
+        "totalTransitions": 126427
+      }
+    },
+    "comparedGroupsSha256": "c0d41df1f91f7097ca2b7e70a4abeed64bcd6d676b89da0a81e5ed7e3b54bbcf"
+  },
+  {
+    "root": "FULL-REGENT-BOSS-02",
+    "comparedFields": 115,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "831ec57fcd41e9e502c8dcc39a39185dbad6a2ceee27b0818db93a7a4dbdde9b",
+        "routeSha256": "fdb7e56d71b10016eca6bc79c442f910e4f9fcb68b14c8c84dfd7a70f7b4fc74",
+        "totalExpanded": 26307,
+        "totalTransitions": 127204
+      },
+      "new": {
+        "resultSha256": "2b5e725c931d98e38fbc9c89a40c597d083e687bda63d7dbac03a9a6c9f2cf25",
+        "routeSha256": "fdb7e56d71b10016eca6bc79c442f910e4f9fcb68b14c8c84dfd7a70f7b4fc74",
+        "totalExpanded": 26307,
+        "totalTransitions": 127204
+      }
+    },
+    "comparedGroupsSha256": "cb3ca3e71d3c14627ced21aaab07847c464eb40061f68bb11899c1b8adbf27b9"
+  },
+  {
+    "root": "FULL-REGENT-BOSS-03",
+    "comparedFields": 104,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "10c75298e4a53c87e8a7e0b62dc9937552e16dcf6d41c9913bfdadeac3f4184b",
+        "routeSha256": "9b36424f5c1f435e2445a998abe9eb97094552e29e522d327381d53427e3dc11",
+        "totalExpanded": 21975,
+        "totalTransitions": 97755
+      },
+      "new": {
+        "resultSha256": "ef9b90aee07d262d9e83cc7d42942dd371f808c062eeef32dea4472c749b5c11",
+        "routeSha256": "9b36424f5c1f435e2445a998abe9eb97094552e29e522d327381d53427e3dc11",
+        "totalExpanded": 21975,
+        "totalTransitions": 97755
+      }
+    },
+    "comparedGroupsSha256": "a4afcc3201e6825d51b3d2c8f652e25834e14004b589871581e51836724c36e0"
+  },
+  {
+    "root": "FULL-REGENT-ELITE-00",
+    "comparedFields": 97,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "c0cbd135f770b5198cf3d5afb7e51ff333c65b028d64e5c22042009d7e7c4c45",
+        "routeSha256": "82597abd24dcf9fbee902f4c44dcf7dd2def30b184ad6f035880c4e4520c7100",
+        "totalExpanded": 121010,
+        "totalTransitions": 876613
+      },
+      "new": {
+        "resultSha256": "70998c7fb707650c79a79f47dd21ce3d7475706c1b5b3bf8a2cca82c141b0cad",
+        "routeSha256": "82597abd24dcf9fbee902f4c44dcf7dd2def30b184ad6f035880c4e4520c7100",
+        "totalExpanded": 121010,
+        "totalTransitions": 876613
+      }
+    },
+    "comparedGroupsSha256": "9e55629349501e582026a0a5a7fc51d72b88daa73763b58cdd6327bc74492bb5"
+  },
+  {
+    "root": "FULL-REGENT-ELITE-01",
+    "comparedFields": 96,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "108b2a5f1e226acbd4397a94e234e8f83d3ff1e7d041ecead7a0779027da4010",
+        "routeSha256": "841f6b1b5f8935db19597ef7df314eb5a6b5a6dc355ebecab6fa9094d82fc117",
+        "totalExpanded": 15940,
+        "totalTransitions": 121523
+      },
+      "new": {
+        "resultSha256": "cb9f5e09a31af62152f3323e8d58be65e3067ea4de4ff22db50ff74ef70b468c",
+        "routeSha256": "841f6b1b5f8935db19597ef7df314eb5a6b5a6dc355ebecab6fa9094d82fc117",
+        "totalExpanded": 15940,
+        "totalTransitions": 121523
+      }
+    },
+    "comparedGroupsSha256": "91b0ad57c582de839c6afca0c5dcff6063453fb324541b10e4966557dd10f32b"
+  },
+  {
+    "root": "FULL-REGENT-ELITE-02",
+    "comparedFields": 99,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "e0ae9a840db6ab18acf8d7419e0e9ff9df13bba74bed86e3dd4c5d45be60d17c",
+        "routeSha256": "29eff355254a6f669299f0b388ff032fe27df5b8e4d4e3551e68200003132a28",
+        "totalExpanded": 34311,
+        "totalTransitions": 132609
+      },
+      "new": {
+        "resultSha256": "6e18b2d613adb140ef5df1179a0a51047668596a445f94fd072925f8977a9898",
+        "routeSha256": "29eff355254a6f669299f0b388ff032fe27df5b8e4d4e3551e68200003132a28",
+        "totalExpanded": 34311,
+        "totalTransitions": 132609
+      }
+    },
+    "comparedGroupsSha256": "d618b8cf469125ec7544611fc96938cb0689a4efd7cc6d46af2895be4bdbb853"
+  },
+  {
+    "root": "FULL-REGENT-ELITE-03",
+    "comparedFields": 115,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "7fd0d1cf280ef87d388c92b88b8aa0fccf002dc8bcb330a0613274eae9573a24",
+        "routeSha256": "9c485ce3de217a35af2950ce473555cfb2fea3313a8cb7b88b80612ec5b0f2ad",
+        "totalExpanded": 18497,
+        "totalTransitions": 109093
+      },
+      "new": {
+        "resultSha256": "535b369d8dc5917b280be1279c7848045386706b69c3ce353509018c2894dc78",
+        "routeSha256": "9c485ce3de217a35af2950ce473555cfb2fea3313a8cb7b88b80612ec5b0f2ad",
+        "totalExpanded": 18497,
+        "totalTransitions": 109093
+      }
+    },
+    "comparedGroupsSha256": "b68154a49e384f9838697eca001b8621e9fe205f6447fe56e7f72eacf7474a9c"
+  },
+  {
+    "root": "FULL-SILENT-BOSS-00",
+    "comparedFields": 121,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "382865b8ff7073b3cabd718ff3ade58105fba9385c6ebb40501da2d89b980154",
+        "routeSha256": "29c58827ef40e1ce0d373d8393162845683e17cbe08b2e47f5958ddf6e5f6e2e",
+        "totalExpanded": 48128,
+        "totalTransitions": 162850
+      },
+      "new": {
+        "resultSha256": "0d1dcb7c61a2a2d54cbdaa5d938944c48fef0190adc301e33c2d2ed8cfb6930f",
+        "routeSha256": "29c58827ef40e1ce0d373d8393162845683e17cbe08b2e47f5958ddf6e5f6e2e",
+        "totalExpanded": 48128,
+        "totalTransitions": 162850
+      }
+    },
+    "comparedGroupsSha256": "5650580ee9b934cffd28e239902ce3e895e84384219bfc78f18fcef0ff33a879"
+  },
+  {
+    "root": "FULL-SILENT-BOSS-01",
+    "comparedFields": 125,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "797c3eabc49a7e4930c04b89c4738c6bf574d2bb84c0be69fedbea5f4d330295",
+        "routeSha256": "43f25181b9350ae0d0f976ed39cdb46b48eccb0c25f829523bbdbb5c26cb49df",
+        "totalExpanded": 38317,
+        "totalTransitions": 156702
+      },
+      "new": {
+        "resultSha256": "865903f48fee231604ec101d5af57153fd6bff8733928ae682edd2bd00cb3e87",
+        "routeSha256": "43f25181b9350ae0d0f976ed39cdb46b48eccb0c25f829523bbdbb5c26cb49df",
+        "totalExpanded": 38317,
+        "totalTransitions": 156702
+      }
+    },
+    "comparedGroupsSha256": "77d18cf51e12f702f8a9cd9495bfdf5f0a4df14965a90560c986233053897e42"
+  },
+  {
+    "root": "FULL-SILENT-BOSS-02",
+    "comparedFields": 113,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "2fd10e8e7d31eee8388af6e587a7ca2f95dd26352a6c0c72fa72e777c30b7f9b",
+        "routeSha256": "c8946f03ec817f1736c4379b6a56305f44f87a49358fd4a6dbe89c1d7926fb4e",
+        "totalExpanded": 42647,
+        "totalTransitions": 203796
+      },
+      "new": {
+        "resultSha256": "7fff26fb061dc9e3ca647f7c095dc18b42e3054cb80582813dd7b5bded39f4e6",
+        "routeSha256": "c8946f03ec817f1736c4379b6a56305f44f87a49358fd4a6dbe89c1d7926fb4e",
+        "totalExpanded": 42647,
+        "totalTransitions": 203796
+      }
+    },
+    "comparedGroupsSha256": "9f26f3548bf6d7eac0f35c58d81f89127b1c5dba42c543d8cd55525384d5b800"
+  },
+  {
+    "root": "FULL-SILENT-BOSS-03",
+    "comparedFields": 106,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "8f7e7b97a166e038fb5ad755d4c6a9f0c449a23c17a87de590275cce43ed9bb6",
+        "routeSha256": "6b3c41fadf6efdd5ec5f02d02c87a0bb1c2115b054612ffad25018c364a0e673",
+        "totalExpanded": 11203,
+        "totalTransitions": 42254
+      },
+      "new": {
+        "resultSha256": "424511f5a5c8b5486592f6e0698b6da875ba6648eb579bb2d6c3200816851ba1",
+        "routeSha256": "6b3c41fadf6efdd5ec5f02d02c87a0bb1c2115b054612ffad25018c364a0e673",
+        "totalExpanded": 11203,
+        "totalTransitions": 42254
+      }
+    },
+    "comparedGroupsSha256": "be6e9cf7350957ce6bb80286d216e586e230dbf982fec22547ff2321564aff8c"
+  },
+  {
+    "root": "FULL-SILENT-ELITE-00",
+    "comparedFields": 109,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "ab8f6175158e0d7cf80f4224737c2d088c85bb1b2deab9d42fbecca64c69f383",
+        "routeSha256": "e6a0b1ee763b7f4cb021d89088317a98d4d889356ec6e36cf1df21a00b20834f",
+        "totalExpanded": 51184,
+        "totalTransitions": 193632
+      },
+      "new": {
+        "resultSha256": "9d49eb76d618f65d126b0a0ca890bf6a42f0ece62e76ba39ee213cd610ca69f8",
+        "routeSha256": "e6a0b1ee763b7f4cb021d89088317a98d4d889356ec6e36cf1df21a00b20834f",
+        "totalExpanded": 51184,
+        "totalTransitions": 193632
+      }
+    },
+    "comparedGroupsSha256": "b25e087749a1ce4cfb514d8415c25c990a0a204bb9b045edc101857640e7b68d"
+  },
+  {
+    "root": "FULL-SILENT-ELITE-01",
+    "comparedFields": 109,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "a30098cc67daa9efcf24c1570b48f869299fa980431e54a5b9e353695fcbf488",
+        "routeSha256": "c732e425b1a0cddf82bf1914c188727f8f0f8a4df9e62b9c178aec7907cd05f7",
+        "totalExpanded": 25637,
+        "totalTransitions": 139185
+      },
+      "new": {
+        "resultSha256": "ad014790dbc36aebd36a2e149208435b1655f05d724c4aa445f2cdf59402876b",
+        "routeSha256": "c732e425b1a0cddf82bf1914c188727f8f0f8a4df9e62b9c178aec7907cd05f7",
+        "totalExpanded": 25637,
+        "totalTransitions": 139185
+      }
+    },
+    "comparedGroupsSha256": "437a6a8bfad1f4e15ea1c60d7c6310e201921f9343242ec9b1d3441a07b8d6de"
+  },
+  {
+    "root": "FULL-SILENT-ELITE-02",
+    "comparedFields": 108,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "d1aeffcd1ccdb1c030b6c95102101a1b996b6244e1d0c3305165809416c41ba6",
+        "routeSha256": "5f1a1b470aad6d2a3d35756b277412da913c19488e37b9ac16127b8c7b714a04",
+        "totalExpanded": 63845,
+        "totalTransitions": 395917
+      },
+      "new": {
+        "resultSha256": "c32ffaad65a5a23ba83e41d2d031aba857ece4adbaa8eb464c065b7fe06df874",
+        "routeSha256": "5f1a1b470aad6d2a3d35756b277412da913c19488e37b9ac16127b8c7b714a04",
+        "totalExpanded": 63845,
+        "totalTransitions": 395917
+      }
+    },
+    "comparedGroupsSha256": "3f16bdc0e43b6306c63fd89cd5a3800d1b33b8238b723480f29d4e6255afbb65"
+  },
+  {
+    "root": "FULL-SILENT-ELITE-03",
+    "comparedFields": 105,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "27c0b7b5b649c9f452d651beef8eb218cab4b4c3ed3b6d15fe2a77e41c7a579d",
+        "routeSha256": "5860ca611f61c42edd797651b382fe20652db9635709c7915357e265afdc83f5",
+        "totalExpanded": 156712,
+        "totalTransitions": 1131803
+      },
+      "new": {
+        "resultSha256": "f0996cd5c2bcd876f8bd0b2a2f5804d2d60fe0336126a4a68bfa94538fe1e46d",
+        "routeSha256": "5860ca611f61c42edd797651b382fe20652db9635709c7915357e265afdc83f5",
+        "totalExpanded": 156712,
+        "totalTransitions": 1131803
+      }
+    },
+    "comparedGroupsSha256": "854c5d5b826bb9e5f4d093865b2b3b4df59eaa371c5b9a4a55d23c107adb88d5"
+  },
+  {
+    "root": "GA-DEFECT-BOSS-00",
+    "comparedFields": 104,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "6629069e6a6fb33cf6300d674c64bda4c5ba74bf510fd4c12e62819cda58d3dc",
+        "routeSha256": "0bf7e7b5f494f594ffdaf1dec77bf518b662f5b482f8ae43a107fd06cc619fc0",
+        "totalExpanded": 12526,
+        "totalTransitions": 43259
+      },
+      "new": {
+        "resultSha256": "bb4630901b6f857656cd72f1bda38573e8d99845ab5c71fd7c070964a9ff981b",
+        "routeSha256": "0bf7e7b5f494f594ffdaf1dec77bf518b662f5b482f8ae43a107fd06cc619fc0",
+        "totalExpanded": 12526,
+        "totalTransitions": 43259
+      }
+    },
+    "comparedGroupsSha256": "20935deb720ec160a66738d349d8c82f75133a4875d1bcb7e2fa87c0815ef572"
+  },
+  {
+    "root": "GA-DEFECT-ELITE-00",
+    "comparedFields": 106,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "3f3b115c49c9d4036965ac90792867294e233641a5e5f7c669e4fb4aa2eb0138",
+        "routeSha256": "bb7506d2397aa38465e73e850f5ff4507be415e3332021a7a8d3bd1b76311068",
+        "totalExpanded": 31226,
+        "totalTransitions": 149102
+      },
+      "new": {
+        "resultSha256": "862a548a513edce0b23a28768b84e6db52ef877f2edcf7c55b20af32a6d11565",
+        "routeSha256": "bb7506d2397aa38465e73e850f5ff4507be415e3332021a7a8d3bd1b76311068",
+        "totalExpanded": 31226,
+        "totalTransitions": 149102
+      }
+    },
+    "comparedGroupsSha256": "8eec5917831d5e0d54ec7758750fd75d711f9c4ad362959078e02ed226c401e0"
+  },
+  {
+    "root": "GA-IRONCLAD-BOSS-00",
+    "comparedFields": 117,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "fb4eb9aee2b1709b147f97cfd8501e08bad57a615229eb4bb66399fb355a193a",
+        "routeSha256": "9173ec2427789837048156d03381d360c2ed0f32e796854bfaa369e4dbb00003",
+        "totalExpanded": 65794,
+        "totalTransitions": 328686
+      },
+      "new": {
+        "resultSha256": "bde619af6a2c4595efe9c381adac2649b2bd07b7506e551d1024dd75b308794e",
+        "routeSha256": "9173ec2427789837048156d03381d360c2ed0f32e796854bfaa369e4dbb00003",
+        "totalExpanded": 65794,
+        "totalTransitions": 328686
+      }
+    },
+    "comparedGroupsSha256": "5fba742e95934f380771dc4ebeb5cd1e0ae77726b9f9cb3f1fb3dcc3257cc67d"
+  },
+  {
+    "root": "GA-IRONCLAD-ELITE-00",
+    "comparedFields": 108,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "6f20b7cbd102f46c9fd19b4b16f104c0639012fd8e1b4d24b7ed4396a0995690",
+        "routeSha256": "4447577d377d8cb60df8f2a1ad84065553c3c27ecc00356ded97fcc532bf2a9e",
+        "totalExpanded": 11363,
+        "totalTransitions": 48451
+      },
+      "new": {
+        "resultSha256": "b37c15fd5510a8983fc45b9ff65fdcbff92f1ae3c8c5531107a35dc5518406d9",
+        "routeSha256": "4447577d377d8cb60df8f2a1ad84065553c3c27ecc00356ded97fcc532bf2a9e",
+        "totalExpanded": 11363,
+        "totalTransitions": 48451
+      }
+    },
+    "comparedGroupsSha256": "b6cb1f42b1b678bdc2508e549721f1deca73e4eeaad4dfc504aa50e0f6bc78e3"
+  },
+  {
+    "root": "GA-NECROBINDER-BOSS-00",
+    "comparedFields": 96,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "8f696c85c2abdc1a7b7a56d1e9f089b44df9050f54fc2afd1a371075761c5185",
+        "routeSha256": "4346f659a16381d1e2bc81ccac6cd4cf33e53bf1615dfa942933c1c33eba4001",
+        "totalExpanded": 18461,
+        "totalTransitions": 72233
+      },
+      "new": {
+        "resultSha256": "f36ca71c9a420a27a3bc71ea080fb58b3498d0e4fe3c76537501885e6f4a8cf6",
+        "routeSha256": "4346f659a16381d1e2bc81ccac6cd4cf33e53bf1615dfa942933c1c33eba4001",
+        "totalExpanded": 18461,
+        "totalTransitions": 72233
+      }
+    },
+    "comparedGroupsSha256": "2dabd61010f919940110b4e85d6575654e5fdc01d44000aadacc11a611060d9b"
+  },
+  {
+    "root": "GA-NECROBINDER-ELITE-00",
+    "comparedFields": 97,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "37609b3fb631fcaa5c35637c7a670f5960dd737c3d41cb6e1aa810e2076e7e25",
+        "routeSha256": "fe4e98be3dc445db0be344c005f1fbb276a9467695aa67c8f3eb640d65ff4e60",
+        "totalExpanded": 28332,
+        "totalTransitions": 195535
+      },
+      "new": {
+        "resultSha256": "22ad3fc85256ebd795475f6dd66828651a3b1f0b4dab03e44317b6d6a82f0572",
+        "routeSha256": "fe4e98be3dc445db0be344c005f1fbb276a9467695aa67c8f3eb640d65ff4e60",
+        "totalExpanded": 28332,
+        "totalTransitions": 195535
+      }
+    },
+    "comparedGroupsSha256": "d56c5dacd202f5cbde4ab9fccce680919aabb0d5683789fa4fb9195a6d05954a"
+  },
+  {
+    "root": "GA-REGENT-BOSS-00",
+    "comparedFields": 120,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "3a3ab811824906628749a7bfd81195c66a344ee17ceb4e5d1f4aec7661613776",
+        "routeSha256": "121394fa37f35c236c2110b73d511988b13bae2e5448271f20154d8ca18ea1b9",
+        "totalExpanded": 54514,
+        "totalTransitions": 411980
+      },
+      "new": {
+        "resultSha256": "422120ca7b22c024da374f2942421ea3684030b4832e7beb8f0eb73f3dd6c020",
+        "routeSha256": "121394fa37f35c236c2110b73d511988b13bae2e5448271f20154d8ca18ea1b9",
+        "totalExpanded": 54514,
+        "totalTransitions": 411980
+      }
+    },
+    "comparedGroupsSha256": "8a43a9f891f988bef801a155a73bbee8e2ad1540a1dd727779f93048160e007a"
+  },
+  {
+    "root": "GA-REGENT-ELITE-00",
+    "comparedFields": 89,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "33c6fdd29d2f8ab377472a848ab56f954b7e44321579a726a870f142552c505a",
+        "routeSha256": "89c214c8bb84779909cacdeab0ccca31a612ae6359dc0b45ed1dbb7e0d5f61bd",
+        "totalExpanded": 117604,
+        "totalTransitions": 988094
+      },
+      "new": {
+        "resultSha256": "83fb7b1cc585d0576431b60bfe02863cc566bb51e1ccf3a36ad90514a680cac7",
+        "routeSha256": "89c214c8bb84779909cacdeab0ccca31a612ae6359dc0b45ed1dbb7e0d5f61bd",
+        "totalExpanded": 117604,
+        "totalTransitions": 988094
+      }
+    },
+    "comparedGroupsSha256": "ce26f1124856aa3c94ec318625313460c8bd64f060421dce04c3228324f4ad3c"
+  },
+  {
+    "root": "GA-SILENT-BOSS-00",
+    "comparedFields": 123,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "9bcb1c8836ab1be24408eec610323de77706fb3abee3364f5919b2fcfaa3c082",
+        "routeSha256": "b7e248004738dbdb68d83dcbf5f7ccbcf302bbb9084100cf7c8ef62a2e3e3076",
+        "totalExpanded": 44545,
+        "totalTransitions": 144308
+      },
+      "new": {
+        "resultSha256": "7b9bed4c4cf9743688d1c544c891dc04b9ba5aa2625a4fc3d541fc50a2deb4b8",
+        "routeSha256": "b7e248004738dbdb68d83dcbf5f7ccbcf302bbb9084100cf7c8ef62a2e3e3076",
+        "totalExpanded": 44545,
+        "totalTransitions": 144308
+      }
+    },
+    "comparedGroupsSha256": "b4a2180a70e17e8a1fff69a5e6bd59666d6f95d0462aff80489b3af553a11e27"
+  },
+  {
+    "root": "GA-SILENT-ELITE-00",
+    "comparedFields": 100,
+    "mismatches": [],
+    "outputs": {
+      "base": {
+        "resultSha256": "98f5d8b6acb4e6c72ad4e82511bbc57e8a2ee569444483e2f5cb16d524a096c1",
+        "routeSha256": "4dfd3ef3fe9e78c78e9e5de5de548248d415c4976de8cb7c25000f698dbcffac",
+        "totalExpanded": 36189,
+        "totalTransitions": 136705
+      },
+      "new": {
+        "resultSha256": "4afa936f6a6259d8dfaaa4f435076e69ae276fe96eaf1bbcef6a6fb2bddb517b",
+        "routeSha256": "4dfd3ef3fe9e78c78e9e5de5de548248d415c4976de8cb7c25000f698dbcffac",
+        "totalExpanded": 36189,
+        "totalTransitions": 136705
+      }
+    },
+    "comparedGroupsSha256": "2de84a3d848bb28ae3946504fbfca8893108a21b51853a18665b9e9069607f01"
+  }
+]
