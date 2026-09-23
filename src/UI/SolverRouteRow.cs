@@ -7,6 +7,7 @@ namespace CombatSolver;
 internal sealed partial class SolverRouteRow : PanelContainer
 {
     private readonly List<(CanvasItem Pill, SolverActionRun Run, int Offset)> _deploymentActions = [];
+    private readonly List<Control> _turnStartChoicePills = [];
     private int _deploymentActionCount;
     private CanvasItem? _endTurnAction;
     private SolverOverlayTurnSnapshot? _populatedTurn;
@@ -131,9 +132,9 @@ internal sealed partial class SolverRouteRow : PanelContainer
         ClearActions();
         foreach (string choice in turn.TurnStartChoices)
         {
-            ActionFlow.AddChild(SolverActionPill.CreateStatus(
-                choice,
-                SolverUiTokens.Palette.TextSecondary));
+            Control pill = SolverActionPill.CreateChoice(choice);
+            ActionFlow.AddChild(pill);
+            _turnStartChoicePills.Add(pill);
         }
         if (turn.Actions.Count == 0)
         {
@@ -215,6 +216,19 @@ internal sealed partial class SolverRouteRow : PanelContainer
         // step, end of turn) arrive back to back and would otherwise read as an instant deployment.
         if (activeActionIndex is { } current)
             NoteDeploymentStep((completedActions, current));
+        bool choiceActive = completedActions == 0 && activeActionIndex == null;
+        bool choiceCompleted = completedActions > 0 || activeActionIndex != null;
+        foreach (Control pill in _turnStartChoicePills)
+        {
+            SetPillTarget(
+                pill,
+                choiceCompleted
+                    ? SolverUiTokens.Palette.CompletedActionModulate
+                    : choiceActive
+                        ? SolverUiTokens.Palette.ActiveActionModulate
+                        : Colors.White,
+                choiceActive);
+        }
         foreach (var (pill, run, offset) in _deploymentActions)
         {
             bool isActive = run.IsActive(offset, activeActionIndex);
@@ -229,8 +243,29 @@ internal sealed partial class SolverRouteRow : PanelContainer
         }
     }
 
+    public void SetTurnStartChoiceDeploymentState(bool active, bool completed)
+    {
+        if (_turnStartChoicePills.Count == 0)
+            return;
+        if (active && !completed)
+            NoteDeploymentStep((0, -1));
+        foreach (Control pill in _turnStartChoicePills)
+        {
+            SetPillTarget(
+                pill,
+                completed
+                    ? SolverUiTokens.Palette.CompletedActionModulate
+                    : active
+                        ? SolverUiTokens.Palette.ActiveActionModulate
+                        : Colors.White,
+                active && !completed);
+        }
+    }
+
     public void SetEndTurnDeploymentState(bool active, bool completed)
     {
+        if (completed)
+            SetTurnStartChoiceDeploymentState(active: false, completed: true);
         if (_endTurnAction == null)
             return;
         if (active && !completed)
@@ -423,6 +458,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
         ResetDeploymentMotion();
         _populatedTurn = null;
         _populatedLanguage = null;
+        _turnStartChoicePills.Clear();
         _deploymentActions.Clear();
         _deploymentActionCount = 0;
         _endTurnAction = null;

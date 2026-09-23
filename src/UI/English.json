@@ -2,6 +2,13 @@
   "循环 ×{0}": "Loop ×{0}",
   "框内 {0} 个动作按顺序重复 {1} 次，共 {2} 个动作": "Repeat the {0} actions inside this group in order {1} times ({2} actions total)",
   "另有 {0} 回合未展开显示": "{0} more turns not shown",
+  "弃": "Discard",
+  "耗尽": "Exhaust",
+  "变换": "Transform",
+  "选择": "Choose",
+  "升级": "Upgrade",
+  "复制": "Duplicate",
+  "抽": "Draw",
 
   "遗物": "Relics",
   "未持有": "Not owned",

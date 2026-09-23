@@ -120,6 +120,45 @@ internal static class SolverActionPill
         return pill;
     }
 
+    public static Control CreateChoice(string text)
+    {
+        PanelContainer pill = new()
+        {
+            Name = "ChoicePill",
+            CustomMinimumSize = new Vector2(0, SolverUiTokens.Size.ActionPillHeight),
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            TooltipText = text,
+        };
+        pill.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Small,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Xs));
+
+        HBoxContainer content = new()
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            Alignment = BoxContainer.AlignmentMode.Begin,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xs);
+        content.AddChild(new ColorRect
+        {
+            Color = SolverUiTokens.Palette.Skill,
+            CustomMinimumSize = new Vector2(3, 14),
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        });
+        content.AddChild(SolverUiTokens.CreateLabel(
+            text,
+            SolverUiTokens.Type.Body,
+            SolverUiTokens.Palette.TextPrimary,
+            FontType.Bold));
+        pill.AddChild(content);
+        return pill;
+    }
+
     public static Control CreateStatus(string text, Color color)
     {
         PanelContainer pill = new()

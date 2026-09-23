@@ -1150,6 +1150,8 @@ internal static class SolverOverlay
             SolverOverlayTurnSnapshot turn = snapshot.Turns[index];
             RouteRows[index].TurnLabel.Text = SolverText.Format($"第 {turn.Turn} 回合");
             RouteRows[index].Populate(turn);
+            if (index == 0 && snapshot.PendingTurnSetup)
+                RouteRows[0].SetTurnStartChoiceDeploymentState(active: true, completed: false);
             // Damage alone reads wrong on a turn that also heals: the player wants the number the
             // turn actually leaves them at, not the hits they took on the way there.
             int netHpChange = turn.HpRecovered - turn.HpLoss;

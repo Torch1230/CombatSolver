@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
@@ -84,6 +85,7 @@ internal sealed record SolverOverlaySnapshot(
     public string? RewardOutcomeText { get; init; }
     public string? UsedPotionOutcomeText { get; init; }
     public string? PlannedPotionOutcomeText { get; init; }
+    public bool PendingTurnSetup { get; init; }
     public IReadOnlyList<SolverStrategyOutcome> StrategyOutcomes { get; init; } = [];
     public static SolverOverlaySnapshot Capture(SolverResult result, bool unexpectedReplan)
         => CaptureWithReviewedWorldlines(result, unexpectedReplan, reviewedWorldlinesTotal: 0);
@@ -292,6 +294,7 @@ internal sealed record SolverOverlaySnapshot(
             hasRisk,
             BuildSearchLimitWarning(result.BoundaryReason))
         {
+            PendingTurnSetup = pendingTurnSetup,
             RewardOutcomeText = RewardOutcome(result),
             UsedPotionOutcomeText = UsedPotionOutcome(result),
             PlannedPotionOutcomeText = PlannedPotionOutcome(result),
@@ -474,26 +477,75 @@ internal sealed record SolverOverlaySnapshot(
             .Select(FormatTurnStartChoice)
             .ToArray();
 
-    private static string FormatTurnStartChoice(PlanCardChoice choice)
+    private static readonly Dictionary<string, string> ChoiceSourceTitles = new(StringComparer.Ordinal);
+    private static string _choiceSourceTitlesLanguage = string.Empty;
+
+    private static string ResolveChoiceSourceTitle(string sourceId)
     {
-        string source = choice.SourceId switch
+        string language = LocManager.Instance.Language;
+        if (_choiceSourceTitlesLanguage != language)
+        {
+            ChoiceSourceTitles.Clear();
+            _choiceSourceTitlesLanguage = language;
+        }
+
+        if (ChoiceSourceTitles.TryGetValue(sourceId, out string? cached))
+            return cached;
+
+        string title = sourceId switch
         {
             "TOOLS_OF_THE_TRADE_POWER" => ModelDb.Power<ToolsOfTheTradePower>().Title.GetFormattedText(),
             "TYRANNY_POWER" => ModelDb.Power<TyrannyPower>().Title.GetFormattedText(),
             "ENTROPY_POWER" => ModelDb.Power<EntropyPower>().Title.GetFormattedText(),
+            "STRATAGEM_POWER" => ModelDb.Power<StratagemPower>().Title.GetFormattedText(),
+            "FOREGONE_CONCLUSION_POWER" => ModelDb.Power<ForegoneConclusionPower>().Title.GetFormattedText(),
+            "MAYHEM_POWER" => ModelDb.Power<MayhemPower>().Title.GetFormattedText(),
             "TOASTY_MITTENS" => ModelDb.Relic<ToastyMittens>().Title.GetFormattedText(),
             "CHOICES_PARADOX" => ModelDb.Relic<ChoicesParadox>().Title.GetFormattedText(),
-            _ => choice.SourceId,
+            "TOOLBOX" => ModelDb.Relic<Toolbox>().Title.GetFormattedText(),
+            "GAMBLING_CHIP" => ModelDb.Relic<GamblingChip>().Title.GetFormattedText(),
+            _ => ResolveDynamicChoiceSourceTitle(sourceId),
         };
+
+        ChoiceSourceTitles[sourceId] = title;
+        return title;
+    }
+
+    private static string ResolveDynamicChoiceSourceTitle(string sourceId)
+    {
+        RelicModel? relic = ModelDb.AllRelics.FirstOrDefault(r => r.Id.Entry == sourceId || r.GetType().Name == sourceId);
+        if (relic != null)
+            return relic.Title.GetFormattedText();
+
+        PowerModel? power = ModelDb.AllPowers.FirstOrDefault(p => p.Id.Entry == sourceId || p.GetType().Name == sourceId);
+        if (power != null)
+            return power.Title.GetFormattedText();
+
+        CardModel? card = ModelDb.AllCards.FirstOrDefault(c => c.Id.Entry == sourceId || c.GetType().Name == sourceId);
+        if (card != null)
+            return card.Title;
+
+        return sourceId;
+    }
+
+    private static string FormatTurnStartChoice(PlanCardChoice choice)
+    {
+        string source = ResolveChoiceSourceTitle(choice.SourceId);
         string effect = choice.Effect switch
         {
-            PlanChoiceEffect.Discard => SolverText.Get("弃"),
+            PlanChoiceEffect.Discard or PlanChoiceEffect.DiscardAndDraw => SolverText.Get("弃"),
             PlanChoiceEffect.Exhaust => SolverText.Get("耗尽"),
             PlanChoiceEffect.Transform => SolverText.Get("变换"),
+            PlanChoiceEffect.MoveToHand or PlanChoiceEffect.MoveToHandFreeThisTurn => SolverText.Get("选择"),
             PlanChoiceEffect.GenerateToHand or PlanChoiceEffect.ModDefined => SolverText.Get("选择"),
+            PlanChoiceEffect.Upgrade => SolverText.Get("升级"),
+            PlanChoiceEffect.Duplicate => SolverText.Get("复制"),
             _ => choice.Effect.ToString(),
         };
-        return $"{source}：{effect} {string.Join('、', choice.Cards.Select(card => SolverUiModelNames.Card(card.CardId, card.UpgradeLevel, card.Title)))}";
+        string colon = SolverText.IsEnglish ? ": " : "：";
+        string separator = SolverText.IsEnglish ? ", " : "、";
+        string cards = string.Join(separator, choice.Cards.Select(card => SolverUiModelNames.Card(card.CardId, card.UpgradeLevel, card.Title)));
+        return $"{source}{colon}{effect} {cards}";
     }
 
     private static string BuildDetails(
