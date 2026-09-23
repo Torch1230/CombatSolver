@@ -141,6 +141,7 @@ internal static class SolverOverlay
     private static Vector2 _resizeStartPrimarySize;
     private static Vector2? _customPanelSize;
     private static Vector2 _panelPosition = new(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
+    private static Vector2 _requestedPanelPosition = new(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
 
     public static bool IsVisible
         => _layer != null && GodotObject.IsInstanceValid(_layer) && _layer.Visible;
@@ -472,6 +473,7 @@ internal static class SolverOverlay
             return false;
         SolverSettingsData originalSettings = SolverSettings.Current;
         Vector2 originalPosition = _panelPosition;
+        Vector2 originalRequestedPosition = _requestedPanelPosition;
         Vector2? originalCustomSize = _customPanelSize;
         bool originalCollapsed = _collapsed;
         bool originalSettingsVisible = _settingsVisible;
@@ -487,12 +489,26 @@ internal static class SolverOverlay
             Vector2 testSize = new(
                 Math.Max(SolverSettings.MinimumOverlayWidth, contentMinimum.X) + 80f,
                 Math.Max(SolverSettings.MinimumOverlayHeight, contentMinimum.Y) + 60f);
-            if (viewportSize.X < testPosition.X + testSize.X + SolverUiTokens.Size.ResizeEdgeThickness
-                || viewportSize.Y < testPosition.Y + testSize.Y + SolverUiTokens.Size.ResizeEdgeThickness)
+            float edge = SolverUiTokens.Size.ResizeEdgeThickness;
+            if (viewportSize.X < testPosition.X + testSize.X + edge
+                || viewportSize.Y < testPosition.Y + testSize.Y + edge)
             {
                 return false;
             }
 
+            Vector2 movedPosition = new(edge + 80f, edge + 80f);
+            SolverSettings.SetOverlayPosition(movedPosition);
+            SolverSettings.Load();
+            bool savedPositionRestored = IsNear(
+                SolverSettings.OverlayPosition ?? Vector2.Zero, movedPosition);
+            _panelPosition = testPosition;
+            _requestedPanelPosition = testPosition;
+            _dragging = true;
+            (_inputBridge ?? throw new InvalidOperationException("Overlay input bridge is missing."))
+                ._Input(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false });
+            SolverSettings.Load();
+            bool releasedPositionSaved = IsNear(
+                SolverSettings.OverlayPosition ?? Vector2.Zero, testPosition);
             SolverSettingsData persisted = SolverSettings.RoundTripForTesting(originalSettings with
             {
                 OverlayPositionX = testPosition.X,
@@ -503,6 +519,7 @@ internal static class SolverOverlay
             SolverSettings.ApplyForTesting(persisted);
             _panelPosition = SolverSettings.OverlayPosition
                 ?? throw new InvalidOperationException("Round-tripped overlay position was not restored.");
+            _requestedPanelPosition = _panelPosition;
             _customPanelSize = SolverSettings.OverlaySize
                 ?? throw new InvalidOperationException("Round-tripped overlay size was not restored.");
             _settingsVisible = false;
@@ -510,6 +527,17 @@ internal static class SolverOverlay
             SetCollapsed(false);
             await WaitForResponsiveLayoutForTestingAsync();
             bool expanded = IsNear(_panel.Size, testSize) && _cornerResizeHandle?.Visible == true;
+            Vector2 roomyViewport = viewportSize + new Vector2(200f, 200f);
+            _panelPosition = movedPosition;
+            _requestedPanelPosition = movedPosition;
+            ApplyPanelBounds(roomyViewport, testSize.X, testSize.Y);
+            bool positionRestored = IsNear(_panelPosition, movedPosition);
+            ApplyPanelBounds(roomyViewport, roomyViewport.X - edge * 2f, roomyViewport.Y - edge * 2f);
+            ApplyPanelBounds(roomyViewport, testSize.X, testSize.Y);
+            bool positionSurvivedClamp = IsNear(_panelPosition, movedPosition);
+            _panelPosition = testPosition;
+            _requestedPanelPosition = testPosition;
+            ApplyResponsiveLayout();
 
             SetCollapsed(true);
             await WaitForResponsiveLayoutForTestingAsync();
@@ -565,12 +593,15 @@ internal static class SolverOverlay
                 && ReferenceEquals(_potionStrategyPanel.GetParent(), _layer)
                 && _customPanelSize == testSize
                 && SolverSettings.OverlaySize == testSize;
-            bool passed = expanded && collapsed && restored && directionsCorrect
+            bool passed = savedPositionRestored && releasedPositionSaved && expanded && positionRestored
+                && positionSurvivedClamp && collapsed && restored && directionsCorrect
                 && floatingPotionKeptPrimaryWidth;
             if (!passed)
             {
                 Entry.Logger.Info(
-                    $"[CombatSolver/Test] UI_RESIZE_ASSERT expanded={expanded} collapsed={collapsed} " +
+                    $"[CombatSolver/Test] UI_RESIZE_ASSERT disk_position={savedPositionRestored} " +
+                    $"release_position={releasedPositionSaved} " +
+                    $"expanded={expanded} position={positionRestored} clamp={positionSurvivedClamp} collapsed={collapsed} " +
                     $"restored={restored} directions={directionsCorrect} " +
                     $"floating_potion={floatingPotionKeptPrimaryWidth} " +
                     $"panel_size={_panel.Size.X:F1}x{_panel.Size.Y:F1} " +
@@ -583,8 +614,9 @@ internal static class SolverOverlay
         }
         finally
         {
-            SolverSettings.ApplyForTesting(originalSettings);
+            SolverSettings.Update(originalSettings);
             _panelPosition = originalPosition;
+            _requestedPanelPosition = originalRequestedPosition;
             _customPanelSize = originalCustomSize;
             _settingsVisible = originalSettingsVisible;
             _potionStrategyVisible = originalPotionStrategyVisible;
@@ -1730,6 +1762,7 @@ internal static class SolverOverlay
         panel.MinimumSizeChanged += QueueResponsiveLayout;
         _panelPosition = SolverSettings.OverlayPosition
             ?? new Vector2(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
+        _requestedPanelPosition = _panelPosition;
         _customPanelSize = SolverSettings.OverlaySize;
         Entry.Logger.Info(
             $"[CombatSolver/Test] UI_POSITION_LOADED persisted={SolverSettings.OverlayPosition.HasValue} " +
@@ -2835,8 +2868,8 @@ internal static class SolverOverlay
         float maxX = Math.Max(edge, viewportSize.X - width - edge);
         float maxY = Math.Max(edge, viewportSize.Y - height - edge);
         _panelPosition = new Vector2(
-            Math.Clamp(_panelPosition.X, edge, maxX),
-            Math.Clamp(_panelPosition.Y, edge, maxY));
+            Math.Clamp(_requestedPanelPosition.X, edge, maxX),
+            Math.Clamp(_requestedPanelPosition.Y, edge, maxY));
         _panel.OffsetLeft = _panelPosition.X;
         _panel.OffsetTop = _panelPosition.Y;
         _panel.OffsetRight = _panelPosition.X + width;
@@ -2931,19 +2964,13 @@ internal static class SolverOverlay
                 _dragging = true;
                 _dragOffset = _viewport!.GetMousePosition() - _panelPosition;
             }
-            else if (_dragging)
-            {
-                _dragging = false;
-                ApplyResponsiveLayout();
-                SolverSettings.SetOverlayPosition(_panelPosition);
-                Entry.Logger.Info(
-                    $"[CombatSolver/Test] UI_POSITION_SAVED x={_panelPosition.X:F1} y={_panelPosition.Y:F1}");
-            }
+            else
+                CompletePointerGesture();
             return;
         }
         if (!_dragging || inputEvent is not InputEventMouseMotion)
             return;
-        _panelPosition = _viewport!.GetMousePosition() - _dragOffset;
+        _requestedPanelPosition = _viewport!.GetMousePosition() - _dragOffset;
         ApplyPanelBounds(_viewport.GetVisibleRect().Size, _panel.Size.X, _panel.Size.Y);
     }
 
@@ -2965,18 +2992,8 @@ internal static class SolverOverlay
                 _customPanelSize = _resizeStartPrimarySize;
                 _lastResizeLayoutAt = System.Environment.TickCount64 - ResizeLayoutIntervalMilliseconds;
             }
-            else if (_resizing)
-            {
-                ResizeToMousePosition();
-                _resizing = false;
-                ApplyResponsiveLayout();
-                Vector2 customSize = _customPanelSize
-                    ?? throw new InvalidOperationException("Resize completed without a custom panel size.");
-                SolverSettings.SetOverlayBounds(_panelPosition, customSize);
-                Entry.Logger.Info(
-                    $"[CombatSolver/Test] UI_SIZE_SAVED x={_panelPosition.X:F1} y={_panelPosition.Y:F1} " +
-                    $"w={customSize.X:F1} h={customSize.Y:F1}");
-            }
+            else
+                CompletePointerGesture();
             return;
         }
         if (!_resizing || inputEvent is not InputEventMouseMotion)
@@ -2986,6 +3003,32 @@ internal static class SolverOverlay
             return;
         _lastResizeLayoutAt = now;
         ResizeToMousePosition();
+    }
+
+    internal static void CompletePointerGesture()
+    {
+        if (_dragging)
+        {
+            _dragging = false;
+            _requestedPanelPosition = _panelPosition;
+            ApplyResponsiveLayout();
+            SolverSettings.SetOverlayPosition(_requestedPanelPosition);
+            Entry.Logger.Info(
+                $"[CombatSolver/Test] UI_POSITION_SAVED x={_requestedPanelPosition.X:F1} y={_requestedPanelPosition.Y:F1}");
+        }
+        else if (_resizing)
+        {
+            ResizeToMousePosition();
+            _resizing = false;
+            _requestedPanelPosition = _panelPosition;
+            ApplyResponsiveLayout();
+            Vector2 customSize = _customPanelSize
+                ?? throw new InvalidOperationException("Resize completed without a custom panel size.");
+            SolverSettings.SetOverlayBounds(_requestedPanelPosition, customSize);
+            Entry.Logger.Info(
+                $"[CombatSolver/Test] UI_SIZE_SAVED x={_requestedPanelPosition.X:F1} y={_requestedPanelPosition.Y:F1} " +
+                $"w={customSize.X:F1} h={customSize.Y:F1}");
+        }
     }
 
     private static void ResizeToMousePosition()
@@ -3034,7 +3077,8 @@ internal static class SolverOverlay
 
     private static void ResetOverlayPosition()
     {
-        _panelPosition = new Vector2(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
+        _requestedPanelPosition = new Vector2(SolverUiTokens.Size.PanelMargin, SolverUiTokens.Size.PanelMargin);
+        _panelPosition = _requestedPanelPosition;
         _customPanelSize = null;
         _resizing = false;
         ApplyResponsiveLayout();
