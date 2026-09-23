@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## Loadout 空怪物能力配置（2026-09-23）
+
+- 日志基线：本机最新战斗日志在根捕获拒绝 `Loadout.Services.PowerGiver.PowerGiverSummonHook`；Loadout `v0.5.6` 的公开实现显示其怪物能力计数非空时会在召唤及部分怪物阶段切换时施加 Power。当前跑局侧文件的 `monsterCounters` 和 `combatStartSnapshot.monsterCounters` 均为空。
+- 使用隔离游戏源载入实际 `Loadout.dll/.pck`、BaseLib 与求解器，`LOADOUT-EMPTY-ROOT` / `c3f95d2453954479aa5ad790691a1c3a` Passed：断言真实订阅者已加载、公开计数快照为空、根状态戳和 Fork 均保留空配置。`LOADOUT-EMPTY-SEARCH` / `cc1a04534280423497ae2db5cc96939d` Passed：固定 5 秒预算的首个搜索得到 1 动作、零损、首回合胜利路线；两个无头实例均由启动器删除。
+- Release 构建 0 警告、0 错误；结构门禁通过。未运行怪物能力计数非空的语义差分；该配置仍明确拒绝。
+
 ## 下一版本：玩家回合开始三阶段镜像
 
 - `TurnPhaseMirrorChecks --after-player-start` 原有 40 项，审计补充普通阶段生成 Late 监听者后为 41 项；`--after-player-start --vanilla` 1 项、`--after-player-start --seal` 3 项。覆盖三表登记拒绝、精确类型、冻结、三阶段监听顺序、轮间成员变动、卡牌 COW、选择暂停与未知覆写拒绝；已登记但入口尚无外部监听者时仍进入三轮派发。`--mask <生产 DLL>` 确认 61 个独立 bit。

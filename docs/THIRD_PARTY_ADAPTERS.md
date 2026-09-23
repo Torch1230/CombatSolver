@@ -46,15 +46,16 @@ CrabRagePower 的同伴死亡结算由 `AfterDeathMirrors` 独占：力量、格
 
 ### 1.1 门禁：先让 Mod 进得来
 
-求解器扫描所有 ModHelper 战斗 hook 订阅者。放行有三条路：
+求解器扫描所有 ModHelper 战斗 hook 订阅者。放行条件包括：
 
 1. 清单 `affects_gameplay: false`；
 2. `PredictionModHookSubscriberInertness.IsCombatInert` 判定为战斗惰性——只重写了战斗外的
    hook，或者只重写了战斗开始 / 战斗结束 hook（前者的效果已经落在被捕获的根状态里，后者在
    胜负判定之后才分发，求解器搜到战斗结束就停）；
 3. 在 `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` 白名单里。
+4. Loadout `v0.5.6` 的 `PowerGiverSummonHook`：主线程从公开 API 确认怪物能力计数为空，且把空配置写入续用状态戳。配置非空或版本变化时拒绝；这不放行 Loadout 的其他战斗效果。
 
-三条都不满足就抛 `IncompatibleGameplayModException`，整个求解器停摆。
+条件都不满足就抛 `IncompatibleGameplayModException`，整个求解器停摆。
 
 > **当前限制。** 第 3 条那份白名单是私有静态集合，没有公开登记入口。目前只能靠 publicizer
 > 写进去。这是明确要补的扩展点之一，见第 6 节。

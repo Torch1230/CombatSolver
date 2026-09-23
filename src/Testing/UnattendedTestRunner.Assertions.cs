@@ -276,8 +276,12 @@ internal sealed partial class UnattendedTestRunner
             if (request.VerifyCombatRootSnapshot)
             {
                 runner.SetStage("combat_root_snapshot");
-                await AssertCombatRootSnapshotAsync(scenario.CombatState, scenario.Player);
+                bool requireInactiveLoadoutSummon = runner._request.ScenarioId == "LOADOUT-EMPTY-ROOT";
+                await AssertCombatRootSnapshotAsync(
+                    scenario.CombatState, scenario.Player, requireInactiveLoadoutSummon);
                 runner._completedChecks.Add("CombatRootSnapshot");
+                if (requireInactiveLoadoutSummon)
+                    runner._completedChecks.Add("LoadoutInactiveSummonPowers:Loaded:Captured:Forked");
             }
             if (request.VerifyBaseLibCardModifierBoundary)
             {

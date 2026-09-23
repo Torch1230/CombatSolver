@@ -1,5 +1,11 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：Loadout 空怪物能力配置兼容（2026-09-23）
+
+- Loadout `v0.5.6` 总是登记 `PowerGiverSummonHook.AfterCreatureAddedToCombat`，此前即使怪物能力配置为空也在根捕获时被拒绝。该 Mod 的清单声明 `affects_gameplay: true`；配置非空时会向新加入的怪物施加能力，并在部分怪物阶段切换后补施加，不能整体按纯界面 Mod 放行。
+- 主线程根捕获通过 Loadout 的公开 `GetCountersSnapshot(AllMonsters)` 核对当前怪物能力计数。仅已核对版本且计数为空时放行；非空或版本变化继续拒绝。空配置进入完整状态戳，搜索后配置变动会使旧结果失效，不在 worker 读取 Loadout 的可变全局状态。
+- 用户最新日志对应的跑局 `power_giver_run_1790087981.json` 中怪物计数为空。隔离无头实例真实加载 Loadout、BaseLib 和求解器后，根捕获/Fork 合同及短搜索通过；未验证启用怪物能力配置后的模拟，仍保持不兼容边界。证据见 [测试矩阵](TEST_MATRIX.md)。
+
 ## 下一版本（开发中）：玩家回合开始三阶段镜像
 
 - 增加 `AfterPlayerTurnStartMirrors.RegisterEarly/Register/RegisterLate<TModel>`，接收 AbstractModel 与当前 Player；精确类型登记、首根冻结，未知有效覆写记录风险并拒绝。

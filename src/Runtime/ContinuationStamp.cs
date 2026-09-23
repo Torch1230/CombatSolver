@@ -98,6 +98,8 @@ internal sealed record ContinuationStamp(string StateText)
         ModelPredictionStateMirrors.AppendLiveContinuation(text, state);
         if (AdaptedCardOnPlayMirrors.CaptureLiveStamp() is { } onPlayStamp)
             text.Append(";onplay_configuration=").Append(onPlayStamp);
+        if (PredictionModHookSubscriberCapture.CaptureLiveLoadoutSummonPowerState(state) is { } loadoutSummonState)
+            text.Append(";loadout_summon_powers=").Append(loadoutSummonState);
         AppendPowers(text, state.Creatures.SelectMany(creature => creature.Powers));
         AppendRng(text,
             state.RunState.Rng.Shuffle.CaptureState(),
@@ -161,6 +163,8 @@ internal sealed record ContinuationStamp(string StateText)
         ModelPredictionStateMirrors.AppendPredicted(ref adapterFingerprint, text, simulator, combat);
         if (combat.AdaptedOnPlay is { } adaptedOnPlay)
             text.Append(";onplay_configuration=").Append(adaptedOnPlay.Stamp);
+        if (combat.HasInactiveLoadoutSummonPowers)
+            text.Append(";loadout_summon_powers=empty");
         AppendPowers(text, combat.EffectivePowers(), simulator);
         AppendRng(text,
             simulator.Rng.ShuffleState,
