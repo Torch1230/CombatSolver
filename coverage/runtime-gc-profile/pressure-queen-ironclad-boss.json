@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "seed": "HIGH-PRESSURE-20260923-QUEEN-IRONCLAD",
+  "characterId": "IRONCLAD",
+  "ascension": 10,
+  "actIndex": 2,
+  "encounterId": "QUEEN_BOSS",
+  "includeStartingDeck": true,
+  "includeStartingRelics": true,
+  "includeAscendersBane": true,
+  "applyRelicObtainEffects": false,
+  "characterCards": {
+    "count": 32,
+    "ids": [],
+    "upgradeLevels": 1
+  },
+  "colorlessCards": {
+    "count": 2,
+    "ids": [],
+    "upgradeLevels": 0
+  },
+  "relics": {
+    "count": 12,
+    "ids": [
+      "MERCURY_HOURGLASS"
+    ]
+  },
+  "potions": {
+    "count": 3,
+    "ids": []
+  },
+  "potionSlotCount": 3,
+  "mode": "Search",
+  "fixedSearchBudget": false
+}

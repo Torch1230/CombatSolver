@@ -50,6 +50,7 @@ add_option sts2-game-root "$steam_root/steamapps/common/Slay the Spire 2" string
 add_option ritsu-workshop-root "$steam_root/steamapps/workshop/content/2868840/3747602295" string none
 add_option combat-solver-build-dir "" string none
 add_option headless-instance "" string none
+add_option runtime-profile default string none "default|server-generational"
 add_option stop-instance 0 switch none
 add_option headless-execution-mode "${COMBATSOLVER_HEADLESS_EXECUTION_MODE:-exclusive}" string none "exclusive|parallel"
 add_option headless-memory-reservation-mib 4096 int none
@@ -1086,6 +1087,19 @@ combat_solver_manifest_sha256="$(sha256sum -- "$combat_solver_manifest")"
 combat_solver_manifest_sha256="${combat_solver_manifest_sha256%% *}"
 artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source")"
 
+runtime_profile="${option_value[runtime-profile]}"
+profile_environment=""
+dotnet_gc_server="${DOTNET_gcServer:-}"
+complus_gc_server="${COMPlus_gcServer:-}"
+if [[ $runtime_profile == server-generational ]]; then
+    profile_environment=server-generational
+    dotnet_gc_server=1
+    complus_gc_server=1
+fi
+runtime_environment_key=$(jq -cn --arg profile "$profile_environment" \
+    --arg dotnet "$dotnet_gc_server" --arg complus "$complus_gc_server" \
+    '{COMBATSOLVER_RUNTIME_PROFILE:$profile,DOTNET_gcServer:$dotnet,COMPlus_gcServer:$complus}')
+
 process_pid=""
 process_identity_start_time=""
 trap cleanup_owned_launcher EXIT
@@ -1109,10 +1123,11 @@ if [[ -f "$process_marker_path" ]]; then
         arm_owned_cleanup
         if [[ "$marker_dll_sha256" != "$combat_solver_dll_sha256" \
             || "$marker_manifest_sha256" != "$combat_solver_manifest_sha256" \
-            || "$marker_artifact_id" != "$artifact_id" ]] \
+            || "$marker_artifact_id" != "$artifact_id" \
+            || "$(jq -r ' .runtimeEnvironmentKey // empty' "$process_marker_path")" != "$runtime_environment_key" ]] \
             || ! jq -e --arg mode "$HR_MODE" --argjson memory "$HR_MEMORY" --argjson cpu "$HR_CPU" \
                 '.executionMode == $mode and .memoryMiB == $memory and .cpu == $cpu' "$process_marker_path" >/dev/null; then
-            echo "UNATTENDED_RESTART reason=mod_changed pid=$process_pid" >&2
+            echo "UNATTENDED_RESTART reason=mod_or_runtime_changed pid=$process_pid" >&2
             stop_test_process_and_remove_dependency "$process_pid" "$process_identity_start_time"
             process_pid=""
             process_identity_start_time=""
@@ -1188,6 +1203,8 @@ else
             XDG_CONFIG_HOME="$headless_config_home" \
             XDG_CACHE_HOME="$headless_cache_home" \
             COMBATSOLVER_HEADLESS=1 \
+            COMBATSOLVER_RUNTIME_PROFILE="$profile_environment" \
+            DOTNET_gcServer="$dotnet_gc_server" COMPlus_gcServer="$complus_gc_server" \
             setsid "$game_executable" \
                 --headless \
                 --disable-vsync \
@@ -1216,9 +1233,11 @@ else
         --arg procStartTimeTicks "$process_identity_start_time" \
         --arg combatSolverDllSha256 "$combat_solver_dll_sha256" \
         --arg combatSolverManifestSha256 "$combat_solver_manifest_sha256" \
+        --arg runtimeEnvironmentKey "$runtime_environment_key" \
         --arg artifactId "$artifact_id" --arg executionMode "$HR_MODE" --argjson memoryMiB "$HR_MEMORY" --argjson cpu "$HR_CPU" \
         '{
             artifactId: $artifactId, executionMode: $executionMode, memoryMiB: $memoryMiB, cpu: $cpu,
+            runtimeEnvironmentKey: $runtimeEnvironmentKey,
             pid: $pid,
             startedAtUtc: $startedAtUtc,
             dataDir: $dataDir,

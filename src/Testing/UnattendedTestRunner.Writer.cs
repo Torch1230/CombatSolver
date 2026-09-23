@@ -167,6 +167,36 @@ internal sealed partial class UnattendedTestRunner
                 NoGcRegionBudgetBytes = activeNoGcRegionBudgetBytes,
                 NoGcRegionRolloverCount = SearchGcPolicy.RolloverCountForTesting,
             };
+            // Search timing has already stopped. Keep full route/policy/snapshot
+            // evidence outside the timed work and only for explicit test output.
+            if (!string.IsNullOrWhiteSpace(getRequest().EvidenceDirectory))
+            {
+                WriteGeneratedArtifact("search-result.json", new
+                {
+                    actions = result.BestNode.Actions,
+                    snapshot = result.Snapshot,
+                    result.ResultScope,
+                    result.BoundaryReason,
+                    policy = CombatBugReportExporter.LatestEffectivePolicy,
+                    runtime = new
+                    {
+                        clr = Environment.Version.ToString(),
+                        serverGc = GCSettings.IsServerGC,
+                        profile = RuntimeGcProfile.Current.Status.ToString(),
+                        savedNoGcRegionEnabled = SolverSettings.Current.EnableNoGcRegion,
+                        effectiveNoGcRegionEnabled = configuredSettings.EnableNoGcRegion,
+                    },
+                });
+                // The journal buffers file writes. Its FIFO snapshot makes the
+                // already completed worker's timestamps available before exit.
+                CombatLogArchive journal = Entry.Logger.Journal.CaptureAsync().GetAwaiter().GetResult();
+                if (journal.Events.Error != null)
+                    throw new IOException($"Cannot export runtime timing evidence: {journal.Events.Error}");
+                WriteGeneratedArtifact("runtime-events.json", System.Text.Encoding.UTF8
+                    .GetString(journal.Events.JsonLines).Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(static line => JsonSerializer.Deserialize<CombatLogEntry>(line))
+                    .ToArray());
+            }
         }
 
         public RuntimeMemorySnapshot Write(
