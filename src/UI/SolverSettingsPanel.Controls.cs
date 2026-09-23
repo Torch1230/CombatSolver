@@ -14,7 +14,7 @@ internal sealed partial class SolverSettingsPanel
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Pass,
         };
-        content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Md);
+        content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Lg);
         return content;
     }
 
@@ -200,7 +200,7 @@ internal sealed partial class SolverSettingsPanel
         {
             FocusMode = FocusModeEnum.None,
             MouseDefaultCursorShape = CursorShape.PointingHand,
-            CustomMinimumSize = new Vector2(40, 22),
+            CustomMinimumSize = new Vector2(38, 20),
             SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
         };
         toggle.AddThemeColorOverride("font_color", SolverUiTokens.Palette.TextPrimary);
@@ -208,27 +208,19 @@ internal sealed partial class SolverSettingsPanel
             "font_hover_color",
             SolverUiTokens.IsLightTheme ? SolverUiTokens.Palette.TextPrimary : Colors.White);
 
-        Color trackOff = SolverUiTokens.IsLightTheme
-            ? Color.FromHtml("d4d8e0ff")
-            : SolverUiTokens.Palette.SurfaceHover;
-        Color borderOff = SolverUiTokens.IsLightTheme
-            ? Color.FromHtml("b0b6c4ff")
-            : SolverUiTokens.Palette.Border;
-        Color trackOn = SolverUiTokens.Palette.Accent;
-        Color borderOn = SolverUiTokens.Palette.Accent;
+        Texture2D onIcon = SolverUiTokens.GetSwitchTexture(true);
+        Texture2D offIcon = SolverUiTokens.GetSwitchTexture(false);
+        toggle.AddThemeIconOverride("checked", onIcon);
+        toggle.AddThemeIconOverride("unchecked", offIcon);
+        toggle.AddThemeIconOverride("checked_disabled", onIcon);
+        toggle.AddThemeIconOverride("unchecked_disabled", offIcon);
 
-        StyleBoxFlat StyleTrack(bool on) => SolverUiTokens.CreateBox(
-            on ? trackOn : trackOff,
-            on ? borderOn : borderOff,
-            SolverUiTokens.Radius.Pill,
-            horizontalPadding: 4,
-            verticalPadding: 3);
-
-        toggle.AddThemeStyleboxOverride("base", StyleTrack(toggle.ButtonPressed));
-        Texture2D knob = SolverUiTokens.CreateCircleTexture(Colors.White, 14);
-        toggle.AddThemeIconOverride("checked", knob);
-        toggle.AddThemeIconOverride("unchecked", knob);
-        toggle.Toggled += enabled => toggle.AddThemeStyleboxOverride("base", StyleTrack(enabled));
+        StyleBoxEmpty empty = new();
+        toggle.AddThemeStyleboxOverride("normal", empty);
+        toggle.AddThemeStyleboxOverride("hover", empty);
+        toggle.AddThemeStyleboxOverride("pressed", empty);
+        toggle.AddThemeStyleboxOverride("focus", empty);
+        toggle.AddThemeStyleboxOverride("disabled", empty);
 
         SolverUiTokens.ApplyTextOutline(toggle);
         return toggle;

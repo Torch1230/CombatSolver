@@ -87,6 +87,9 @@ internal static class SolverUiTokens
         public const float ActionPillHeight = 28f;
         public const float TurnColumnWidth = 88f;
         public const float OutcomeColumnWidth = 238f;
+        public const float MetricsDamageWidth = 88f;
+        public const float MetricsHpWidth = 60f;
+        public const float MetricsEnergyWidth = 50f;
         public const float ButtonHeight = 34f;
         public const float ResizeEdgeThickness = 8f;
         public const int ResizeGripSize = 20;
@@ -398,6 +401,84 @@ internal static class SolverUiTokens
                 image.SetPixel(x, y, color);
                 if (x > 0)
                     image.SetPixel(x - 1, y, color);
+            }
+        }
+        return ImageTexture.CreateFromImage(image);
+    }
+
+    private static Texture2D? _switchOnDark;
+    private static Texture2D? _switchOffDark;
+    private static Texture2D? _switchOnLight;
+    private static Texture2D? _switchOffLight;
+
+    public static Texture2D GetSwitchTexture(bool isChecked)
+    {
+        bool light = IsLightTheme;
+        if (light)
+        {
+            return isChecked
+                ? (_switchOnLight ??= CreateSwitchTexture(true, true))
+                : (_switchOffLight ??= CreateSwitchTexture(false, true));
+        }
+        return isChecked
+            ? (_switchOnDark ??= CreateSwitchTexture(true, false))
+            : (_switchOffDark ??= CreateSwitchTexture(false, false));
+    }
+
+    public static Texture2D CreateSwitchTexture(bool isChecked, bool isLight)
+    {
+        const int width = 38;
+        const int height = 20;
+        Image image = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
+
+        const float radius = height / 2f;
+        const float cx1 = radius - 0.5f;
+        const float cx2 = width - radius - 0.5f;
+        const float cy = radius - 0.5f;
+
+        Color fill = isChecked
+            ? (isLight ? Color.FromHtml("2570d6ff") : Color.FromHtml("2d7bd4ff"))
+            : (isLight ? Color.FromHtml("e0e4ebff") : Color.FromHtml("222832ff"));
+
+        Color border = isChecked
+            ? (isLight ? Color.FromHtml("1e5cb3ff") : Color.FromHtml("458de6ff"))
+            : (isLight ? Color.FromHtml("b8c0ccff") : Color.FromHtml("3c4656ff"));
+
+        float knobX = isChecked ? cx2 : cx1;
+        float knobY = cy;
+        const float knobRadius = 7.0f;
+
+        for (int y = 0; y < height; y++)
+        {
+            float dy = y - cy;
+            for (int x = 0; x < width; x++)
+            {
+                float dx = x < cx1 ? x - cx1 : (x > cx2 ? x - cx2 : 0f);
+                float dist = MathF.Sqrt(dx * dx + dy * dy);
+                if (dist > radius + 0.5f)
+                    continue;
+
+                float edgeAlpha = Math.Clamp(radius + 0.5f - dist, 0f, 1f);
+                float borderFactor = Math.Clamp(dist - (radius - 1.2f), 0f, 1f);
+                Color track = fill.Lerp(border, borderFactor);
+                track.A *= edgeAlpha;
+
+                float kdx = x - knobX;
+                float kdy = y - knobY;
+                float kdist = MathF.Sqrt(kdx * kdx + kdy * kdy);
+
+                if (kdist <= knobRadius + 0.5f)
+                {
+                    float knobAlpha = Math.Clamp(knobRadius + 0.5f - kdist, 0f, 1f);
+                    Color knobColor = Godot.Colors.White;
+                    Color finalColor = track.Lerp(knobColor, knobAlpha);
+                    finalColor.A = Math.Max(track.A, knobAlpha * edgeAlpha);
+                    image.SetPixel(x, y, finalColor);
+                }
+                else
+                {
+                    image.SetPixel(x, y, track);
+                }
             }
         }
         return ImageTexture.CreateFromImage(image);
