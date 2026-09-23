@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 覆盖层视觉收敛（2026-09-23）
+
+- Windows Release 构建通过，0 警告、0 错误。`ROUTE-ROW-REUSE` / `0aa609025f664b918ff521681a86ae6b` Passed：动作块构造、路线行复用、执行状态、语言往返等既有合同通过；无头实例已删除。
+- `UI-LOCALIZATION` / `1d6dddbc448140abaa4c31fb8901acff` 在夹具生成怪物时因 `ConditionalBranchState.GetNextState` 抛出 `No valid next state found`，未跑完该场景。`ROUTE-ROW-REUSE` 首次运行已完成其断言，但缺少必需的 `EvidenceDirectory`，在写测量文件时失败；补齐参数后取得上述 Passed 结果。
+- 本轮只验证构建与无头结构/交互合同；浅色、深色主题的可见画面和实际排版未验收。扫描器仅支持网页文件，对 C# 返回 0 项不视为通过证据。
+
 ## 0.45.0 定版验证范围（2026-09-23）
 
 - 本次仅同步版本与玩家更新日志，行为源码沿用下列 PR #130 Windows 集成和位置持久化成功证据；发布构建从最终提交执行，不重复相同行为场景。

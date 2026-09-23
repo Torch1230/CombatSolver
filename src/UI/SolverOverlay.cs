@@ -2048,7 +2048,6 @@ internal static class SolverOverlay
     {
         _noveltyPortfolioHintButton = CreateDismissibleGuidanceHint(
             "NoveltyPortfolioHint",
-            Accent,
             DismissNoveltyPortfolioHint);
         return _noveltyPortfolioHintButton;
     }
@@ -2057,14 +2056,12 @@ internal static class SolverOverlay
     {
         _speedXWarningButton = CreateDismissibleGuidanceHint(
             "SpeedXWarning",
-            Warning,
             DismissSpeedXWarning);
         return _speedXWarningButton;
     }
 
     private static Button CreateDismissibleGuidanceHint(
         string name,
-        Color tone,
         Action dismiss)
     {
         Button button = SolverUiTokens.CreateButton(string.Empty, SolverButtonStyle.Secondary);
@@ -2073,21 +2070,19 @@ internal static class SolverOverlay
         button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         button.CustomMinimumSize = new Vector2(0, 44);
         button.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        button.AddThemeStyleboxOverride("normal", SolverUiTokens.CreateBox(
-            SolverUiTokens.IsLightTheme ? tone.Lightened(0.82f) : tone.Darkened(0.78f),
-            tone,
-            SolverUiTokens.Radius.Large,
-            SolverUiTokens.Spacing.Md,
-            SolverUiTokens.Spacing.Xxs));
-        button.AddThemeStyleboxOverride("hover", SolverUiTokens.CreateBox(
-            SolverUiTokens.IsLightTheme ? tone.Lightened(0.72f) : tone.Darkened(0.68f),
-            tone.Lightened(0.12f),
-            SolverUiTokens.Radius.Large,
-            SolverUiTokens.Spacing.Md,
-            SolverUiTokens.Spacing.Xxs));
+        button.AddThemeStyleboxOverride("normal", CreateNoticeBox());
+        button.AddThemeStyleboxOverride("hover", CreateNoticeBox(hover: true));
         button.Pressed += dismiss;
         return button;
     }
+
+    private static StyleBoxFlat CreateNoticeBox(bool hover = false)
+        => SolverUiTokens.CreateBox(
+            hover ? SolverUiTokens.Palette.SurfaceHover : SolverUiTokens.Palette.SurfaceRaised,
+            hover ? SolverUiTokens.Palette.Border : SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Small,
+            SolverUiTokens.Spacing.Md,
+            SolverUiTokens.Spacing.Xxs);
 
     private static Control CreatePerformanceHint()
     {
@@ -2099,18 +2094,8 @@ internal static class SolverOverlay
         _performanceHintButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _performanceHintButton.CustomMinimumSize = new Vector2(0, 44);
         _performanceHintButton.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _performanceHintButton.AddThemeStyleboxOverride("normal", SolverUiTokens.CreateBox(
-            SolverUiTokens.IsLightTheme ? Warning.Lightened(0.82f) : Warning.Darkened(0.78f),
-            Warning,
-            SolverUiTokens.Radius.Large,
-            SolverUiTokens.Spacing.Md,
-            SolverUiTokens.Spacing.Xxs));
-        _performanceHintButton.AddThemeStyleboxOverride("hover", SolverUiTokens.CreateBox(
-            SolverUiTokens.IsLightTheme ? Warning.Lightened(0.72f) : Warning.Darkened(0.68f),
-            Warning.Lightened(0.12f),
-            SolverUiTokens.Radius.Large,
-            SolverUiTokens.Spacing.Md,
-            SolverUiTokens.Spacing.Xxs));
+        _performanceHintButton.AddThemeStyleboxOverride("normal", CreateNoticeBox());
+        _performanceHintButton.AddThemeStyleboxOverride("hover", CreateNoticeBox(hover: true));
         _performanceHintButton.Pressed += DismissPerformanceHint;
         return _performanceHintButton;
     }
@@ -2125,12 +2110,7 @@ internal static class SolverOverlay
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(0, 44),
         };
-        _searchLimitHint.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
-            SolverUiTokens.IsLightTheme ? Warning.Lightened(0.82f) : Warning.Darkened(0.78f),
-            Warning,
-            SolverUiTokens.Radius.Large,
-            SolverUiTokens.Spacing.Md,
-            SolverUiTokens.Spacing.Xxs));
+        _searchLimitHint.AddThemeStyleboxOverride("panel", CreateNoticeBox());
         _searchLimitHintLabel = CreateTextLabel(
             string.Empty,
             SolverUiTokens.Type.Body,
@@ -2152,18 +2132,8 @@ internal static class SolverOverlay
         _bossHpStrategyHintButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         _bossHpStrategyHintButton.CustomMinimumSize = new Vector2(0, 44);
         _bossHpStrategyHintButton.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _bossHpStrategyHintButton.AddThemeStyleboxOverride("normal", SolverUiTokens.CreateBox(
-            SolverUiTokens.IsLightTheme ? Accent.Lightened(0.84f) : Accent.Darkened(0.78f),
-            Accent,
-            SolverUiTokens.Radius.Large,
-            SolverUiTokens.Spacing.Md,
-            SolverUiTokens.Spacing.Xxs));
-        _bossHpStrategyHintButton.AddThemeStyleboxOverride("hover", SolverUiTokens.CreateBox(
-            SolverUiTokens.IsLightTheme ? Accent.Lightened(0.74f) : Accent.Darkened(0.68f),
-            Accent.Lightened(0.12f),
-            SolverUiTokens.Radius.Large,
-            SolverUiTokens.Spacing.Md,
-            SolverUiTokens.Spacing.Xxs));
+        _bossHpStrategyHintButton.AddThemeStyleboxOverride("normal", CreateNoticeBox());
+        _bossHpStrategyHintButton.AddThemeStyleboxOverride("hover", CreateNoticeBox(hover: true));
         _bossHpStrategyHintButton.Pressed += DismissBossHpStrategyHint;
         return _bossHpStrategyHintButton;
     }
@@ -2454,9 +2424,9 @@ internal static class SolverOverlay
         if (_summaryStatusBadge != null)
         {
             _summaryStatusBadge.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
-                SolverUiTokens.IsLightTheme ? color.Lightened(0.86f) : color.Darkened(0.76f),
-                SolverUiTokens.IsLightTheme ? new Color(color, 0.5f) : color.Darkened(0.18f),
-                SolverUiTokens.Radius.Pill,
+                SolverUiTokens.Palette.SurfaceRaised,
+                SolverUiTokens.Palette.BorderSubtle,
+                SolverUiTokens.Radius.Small,
                 horizontalPadding: SolverUiTokens.Spacing.Sm,
                 verticalPadding: 2));
         }
@@ -2535,9 +2505,9 @@ internal static class SolverOverlay
             _feedbackBannerLabel.Text = text;
             _feedbackBannerLabel.AddThemeColorOverride("font_color", tone);
             _feedbackBanner.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
-                SolverUiTokens.IsLightTheme ? tone.Lightened(0.86f) : tone.Darkened(0.78f),
-                SolverUiTokens.IsLightTheme ? new Color(tone, 0.45f) : tone.Darkened(0.12f),
-                SolverUiTokens.Radius.Medium,
+                SolverUiTokens.Palette.SurfaceRaised,
+                SolverUiTokens.Palette.BorderSubtle,
+                SolverUiTokens.Radius.Small,
                 SolverUiTokens.Spacing.Md,
                 SolverUiTokens.Spacing.Sm));
         }

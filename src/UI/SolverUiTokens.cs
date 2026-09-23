@@ -113,16 +113,10 @@ internal static class SolverUiTokens
         public static Color PositiveHover => Pick("428d60ff", "0e6e0eff");
 
         public static Color Attack => Pick("d96363ff", "c42b1cff");
-        public static Color AttackBackground => Pick("2b171bf8", "fce9e7ff");
         public static Color Skill => Pick("5b91d1ff", "0067c0ff");
-        public static Color SkillBackground => Pick("172235f8", "eaf2faff");
         public static Color Power => Pick("d7a84fff", "9d5d00ff");
-        public static Color PowerBackground => Pick("2b2417f8", "fbf1dcff");
         public static Color Negative => Pick("9b70c9ff", "6b4fa0ff");
-        public static Color NegativeBackground => Pick("241b30f8", "f1ebf8ff");
         public static Color Potion => Pick("55b9a5ff", "00786cff");
-        public static Color PotionBackground => Pick("152a27f8", "e5f4f1ff");
-        public static Color KillBackground => Pick("14291ffb", "e7f4ecff");
         public static Color ProgressBackground => IsLightTheme ? Color.FromHtml("e8e8e8ff") : Background;
         public static Color ProgressFill => IsLightTheme ? Accent : Accent.Darkened(0.12f);
         public static Color CompletedActionModulate => IsLightTheme

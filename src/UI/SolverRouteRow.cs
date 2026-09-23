@@ -26,11 +26,7 @@ internal sealed partial class SolverRouteRow : PanelContainer
         MouseFilter = MouseFilterEnum.Ignore;
         AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
             index == 0 ? SolverUiTokens.Palette.SurfaceRaised : SolverUiTokens.Palette.Surface,
-            index == 0
-                ? SolverUiTokens.IsLightTheme
-                    ? SolverUiTokens.Palette.Border
-                    : SolverUiTokens.Palette.Accent
-                : SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Palette.BorderSubtle,
             SolverUiTokens.Radius.Medium,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Sm));

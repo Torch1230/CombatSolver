@@ -10,12 +10,9 @@ internal static class SolverActionPill
         action = SolverActionTextIdentity.Refresh(action);
         List<Action<SolverOverlayActionSnapshot>> refreshers = [];
         bool killed = action.Kills.Count > 0;
-        (Color border, Color background) = ActionColors(action.VisualKind);
+        Color marker = ActionColor(action.VisualKind);
         if (killed)
-        {
-            border = SolverUiTokens.Palette.Success;
-            background = SolverUiTokens.Palette.KillBackground;
-        }
+            marker = SolverUiTokens.Palette.Success;
 
         PanelContainer pill = new()
         {
@@ -25,9 +22,9 @@ internal static class SolverActionPill
             TooltipText = action.Tooltip,
         };
         pill.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
-            background,
-            border,
-            SolverUiTokens.Radius.Pill,
+            SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Small,
             SolverUiTokens.Spacing.Sm,
             SolverUiTokens.Spacing.Xs));
 
@@ -40,7 +37,7 @@ internal static class SolverActionPill
         content.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Xs);
         content.AddChild(new ColorRect
         {
-            Color = border,
+            Color = marker,
             CustomMinimumSize = new Vector2(3, 14),
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -145,14 +142,14 @@ internal static class SolverActionPill
         return group;
     }
 
-    private static (Color Border, Color Background) ActionColors(SolverOverlayActionVisualKind kind)
+    private static Color ActionColor(SolverOverlayActionVisualKind kind)
         => kind switch
         {
-            SolverOverlayActionVisualKind.Attack => (SolverUiTokens.Palette.Attack, SolverUiTokens.Palette.AttackBackground),
-            SolverOverlayActionVisualKind.Skill => (SolverUiTokens.Palette.Skill, SolverUiTokens.Palette.SkillBackground),
-            SolverOverlayActionVisualKind.Power => (SolverUiTokens.Palette.Power, SolverUiTokens.Palette.PowerBackground),
-            SolverOverlayActionVisualKind.Negative => (SolverUiTokens.Palette.Negative, SolverUiTokens.Palette.NegativeBackground),
-            SolverOverlayActionVisualKind.Potion => (SolverUiTokens.Palette.Potion, SolverUiTokens.Palette.PotionBackground),
-            _ => (SolverUiTokens.Palette.Border, SolverUiTokens.Palette.SurfaceRaised),
+            SolverOverlayActionVisualKind.Attack => SolverUiTokens.Palette.Attack,
+            SolverOverlayActionVisualKind.Skill => SolverUiTokens.Palette.Skill,
+            SolverOverlayActionVisualKind.Power => SolverUiTokens.Palette.Power,
+            SolverOverlayActionVisualKind.Negative => SolverUiTokens.Palette.Negative,
+            SolverOverlayActionVisualKind.Potion => SolverUiTokens.Palette.Potion,
+            _ => SolverUiTokens.Palette.Border,
         };
 }
