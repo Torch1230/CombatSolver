@@ -2225,6 +2225,9 @@ internal static class SolverOverlay
             Name = "SearchProgress",
             MinValue = 0,
             MaxValue = SolverSearchProfile.Default.MaxExpandedNodes,
+            // Range rounds to Step (0.01 by default); on the 0..1 ratio that is a 1% grid, about ten
+            // pixels on a wide overlay, which turns the eased fill back into visible steps.
+            Step = 0,
             Value = 0,
             ShowPercentage = false,
             CustomMinimumSize = new Vector2(0, 4),
