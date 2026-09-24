@@ -1,5 +1,12 @@
 # CombatSolver 测试清单
 
+## 0.46.4：有证据的战损下界收紧（2026-09-24）
+
+- 根证书与数值合同：`HEAL-BOUND-SAFE-ROOT` 铁甲战士 `502f0df041fd460d8355dd7fd8102c38`、含精神过载的亡灵契约师 `1aedd4e7daba44fcb81b92e530e6a6db` 均 Passed；带鲜血药水的 `HEAL-BOUND-UNKNOWN-ROOT` `fccb56555b6d41fb9541c85f31a1bc8a` Passed，确认退回完整缺血余量。三次无头实例均由启动器清理。
+- 战斗路径：放血短搜 `HEAL-BOUND-SEARCH` `1df1846a042948229de58f3088e67e5b` Passed，3 回合零战损获胜；该根提前达到可接受战损，剪枝数为 0，不作为提速证据。高灾厄、5 HP、敌 1 HP 的 `HEAL-BOUND-DOOM-TIMING` `39db271e55834aa8bfc23ab2773750ce` Passed，仍能在玩家回合结束前获胜；首次尝试因测试参数要求同时给卡牌 ID 与标题而未进入行为断言，修正输入后通过。实例均已清理。
+- 带鲜血药水的强制用药搜索夹具 `HEAL-BOUND-POTION-ROUTE` `428aad7ece014d2cb40cdc73e3f9410a` 未找到可执行的必用药路线，故没有取得该路线的行为证据；根证书退回宽松界已由上一项独立验证。尚未做同根 A/B、可见 Steam 帧时间或 GC 暂停测量。
+- 最终行为源码的合并哨兵 `HEAL-BOUND-SAFE-ROOT` `50b1cdcc907f424d894010ad48cd7e2f` Passed：亡灵契约师手中有精神过载、玩家 5 HP／10 层灾厄、敌 1 HP，根证书与数值合同通过，搜索仍在玩家回合结束前完成零战损胜利；实例已清理。该源码的 Windows Release 开发构建 0 警告、0 错误，结构门禁 `REFACTOR_BOUNDARIES_OK search_files=209`，`git diff --check` 通过。
+
 ## 0.46.3：搜索速度指标与状态行去噪（2026-09-24）
 
 - Windows Release 构建 0 警告、0 错误；PowerShell 结构门禁 `tools\verify-refactor-boundaries.ps1` 校验通过（`REFACTOR_BOUNDARIES_OK search_files=208`）。

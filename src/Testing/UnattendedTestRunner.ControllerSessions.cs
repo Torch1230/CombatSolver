@@ -1478,6 +1478,20 @@ internal sealed partial class UnattendedTestRunner
 
     private static void AssertPrimaryIncumbentFiltering()
     {
+        int noHeal = ActEndingBossPolicy.StrategicHpDeficit(7, 0,
+            StrategicHpRecoveryBound.OptimisticRecoveredHp(0, 40, 80, 0), BossHpRelief.None);
+        int burningBlood = ActEndingBossPolicy.StrategicHpDeficit(3, 0,
+            StrategicHpRecoveryBound.OptimisticRecoveredHp(0, 47, 80, 6), BossHpRelief.None);
+        int unknownHeal = ActEndingBossPolicy.StrategicHpDeficit(7, 0,
+            StrategicHpRecoveryBound.OptimisticRecoveredHp(0, 40, 80, int.MaxValue), BossHpRelief.None);
+        if (noHeal != 7 || burningBlood != -3 || unknownHeal != -33
+            || !CombatBeamSolver.ShouldPruneByPrimaryIncumbent(noHeal, 2, new(5, 3))
+            || CombatBeamSolver.ShouldPruneByPrimaryIncumbent(burningBlood, 2, new(-2, 3))
+            || CombatBeamSolver.ShouldPruneByPrimaryIncumbent(unknownHeal, 2, new(5, 3)))
+        {
+            throw new InvalidOperationException("回血上界错误地剪掉了遗物回血或未知治疗路线。");
+        }
+
         PrimarySearchIncumbent incumbent = new(StrategicHpDeficit: 0, CombatEndedTurn: 3);
         // All nodes have zero accumulated loss; their turns exercise the second primary key.
         SimulationSnapshot snapshot = new(

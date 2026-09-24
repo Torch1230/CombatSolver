@@ -585,6 +585,9 @@ internal sealed partial class CombatBeamSolver
             GrowthHpCredit = growthHpCredit,
             RelicCounters = relicCounters,
             GrowthRewards = growthRewards,
+            FutureHealPotential = root.HasOnlyPostCombatHealing
+                ? Math.Max(0, root.PostCombatRelicHeal.UnconditionalHeal)
+                : int.MaxValue,
             BrightestFlameMaxHpSpent = combat.BrightestFlameMaxHpSpent,
             UnrecoveredGold = combat.UnrecoveredLoot(simulator).Gold,
             UnrecoveredCards = combat.UnrecoveredLoot(simulator).Cards,

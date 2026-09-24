@@ -277,8 +277,15 @@ internal sealed partial class UnattendedTestRunner
             {
                 runner.SetStage("combat_root_snapshot");
                 bool requireInactiveLoadoutSummon = runner._request.ScenarioId == "LOADOUT-EMPTY-ROOT";
+                bool? expectOnlyPostCombatHealing = runner._request.ScenarioId switch
+                {
+                    "HEAL-BOUND-SAFE-ROOT" => true,
+                    "HEAL-BOUND-UNKNOWN-ROOT" => false,
+                    _ => null,
+                };
                 await AssertCombatRootSnapshotAsync(
-                    scenario.CombatState, scenario.Player, requireInactiveLoadoutSummon);
+                    scenario.CombatState, scenario.Player, requireInactiveLoadoutSummon,
+                    expectOnlyPostCombatHealing);
                 runner._completedChecks.Add("CombatRootSnapshot");
                 if (requireInactiveLoadoutSummon)
                     runner._completedChecks.Add("LoadoutInactiveSummonPowers:Loaded:Captured:Forked");

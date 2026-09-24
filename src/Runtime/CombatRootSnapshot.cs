@@ -52,6 +52,7 @@ internal sealed class CombatRootSnapshot
     public IReadOnlySet<string> PlayerCardIds { get; }
     /// <summary>Conservative recovery metadata for portfolio stopping, not a bound on all future healing.</summary>
     public bool HasVisibleHealingSource { get; }
+    public bool HasOnlyPostCombatHealing { get; }
     public CombatHistoryDependencies HistoryDependencies { get; }
     public int CapturedPowerCount { get; }
     public int CapturedHookListenerCount { get; }
@@ -90,6 +91,7 @@ internal sealed class CombatRootSnapshot
         int capturedCardCount,
         IReadOnlySet<string> playerCardIds,
         bool hasVisibleHealingSource,
+        bool hasOnlyPostCombatHealing,
         CombatHistoryDependencies historyDependencies,
         int capturedPowerCount,
         int capturedHookListenerCount,
@@ -129,6 +131,7 @@ internal sealed class CombatRootSnapshot
         CapturedCardCount = capturedCardCount;
         PlayerCardIds = playerCardIds;
         HasVisibleHealingSource = hasVisibleHealingSource;
+        HasOnlyPostCombatHealing = hasOnlyPostCombatHealing;
         HistoryDependencies = historyDependencies;
         CapturedPowerCount = capturedPowerCount;
         CapturedHookListenerCount = capturedHookListenerCount;
@@ -209,6 +212,8 @@ internal sealed class CombatRootSnapshot
                 || HasHealingVariables(power.DynamicVars))
             || player.PotionSlots.Any(potion => potion != null && PotionOnUseSupport.CanSearch(potion)
                 && HasHealingVariables(potion.DynamicVars));
+        bool hasOnlyPostCombatHealing = StrategicHpRecoveryBound.HasOnlyPostCombatHealing(
+            simulator, player);
         if (!string.Equals(
                 continuationBefore.StateText,
                 projected.StateText,
@@ -277,6 +282,7 @@ internal sealed class CombatRootSnapshot
             cardCount,
             playerCardIds,
             hasVisibleHealingSource,
+            hasOnlyPostCombatHealing,
             historyDependencies,
             powerCount,
             simulatedCombat.RootHookListenerCount,

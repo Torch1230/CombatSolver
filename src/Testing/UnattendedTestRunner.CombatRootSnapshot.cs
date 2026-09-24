@@ -15,7 +15,8 @@ namespace CombatSolver;
 internal sealed partial class UnattendedTestRunner
 {
     private static async Task AssertCombatRootSnapshotAsync(
-        CombatState combat, Player player, bool requireInactiveLoadoutSummon = false)
+        CombatState combat, Player player, bool requireInactiveLoadoutSummon = false,
+        bool? expectOnlyPostCombatHealing = null)
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("根快照测试必须从主线程开始。");
@@ -62,6 +63,13 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Loadout 全卡免费 hook 返回了未知费用语义。");
         }
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        if (expectOnlyPostCombatHealing is { } expectedHealingBound)
+        {
+            AssertPrimaryIncumbentFiltering();
+            if (root.HasOnlyPostCombatHealing != expectedHealingBound)
+                throw new InvalidOperationException(
+                    $"回血上界根证书不符：expected={expectedHealingBound} actual={root.HasOnlyPostCombatHealing}。");
+        }
         if (requireInactiveLoadoutSummon
             && !root.ContinuationStamp.StateText.Contains(";loadout_summon_powers=empty;", StringComparison.Ordinal))
             throw new InvalidOperationException("根快照没有冻结 Loadout 召唤能力的空配置。");

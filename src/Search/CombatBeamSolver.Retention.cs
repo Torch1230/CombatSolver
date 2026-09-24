@@ -336,14 +336,18 @@ internal sealed partial class CombatBeamSolver
     /// it cancels out. What is left is the HP the node is currently missing, which a heal could still restore.
     /// Max HP is deliberately excluded for the same reason the caller excludes it: it may still recover.
     ///
-    /// Post-combat relic healing needs no term of its own here. It can never exceed the HP the route ends up
-    /// missing, and that headroom is already credited in full, so this stays a valid lower bound.
+    /// A root with a certified closed set of non-healing actions only credits its fixed post-combat relic heal.
+    /// Every other root retains the full HP headroom, including future card generation and repeated healing.
     /// </remarks>
     private static int StrategicHpLowerBound(SimulationSnapshot snapshot, BossHpRelief bossHpRelief)
         => ActEndingBossPolicy.StrategicHpDeficit(
             snapshot.CumulativePlayerHpLost,
             maxHpDeficit: 0,
-            snapshot.RecoveredPlayerHp + Math.Max(0, snapshot.PlayerMaxHp - snapshot.PlayerHp),
+            StrategicHpRecoveryBound.OptimisticRecoveredHp(
+                snapshot.RecoveredPlayerHp,
+                snapshot.PlayerHp,
+                snapshot.PlayerMaxHp,
+                snapshot.FutureHealPotential),
             bossHpRelief,
             snapshot.DeathSaveHpRestored);
 

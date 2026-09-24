@@ -176,7 +176,7 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 主 incumbent 只能由满足硬政策、且没有消耗或预计消耗保命资源的完整胜利建立。无主动用药入口要求实际生效政策为 `Disabled` 或 `Smart`、最少用药数为0、候选显式用药数为0；若启用逐槽指令，还必须实际满足全部强制使用要求。正数精确药水层保留原条件：最少与最多药量相等、有已审计无药基线、未启用需另证的逐槽强制指令，且完整胜利严格改善基线主质量。未完成路线、死亡路线或仅满足中间评分的候选不能建界。
 
-完整胜利先按保命资源消耗次数排序，再按统一战略战损计价：累计掉血、最终最大生命缺口、路线治疗、无条件战后遗物回血和保命资源消耗。瓶中精灵与蜥蜴尾巴的复活回复不算路线治疗，最终 Boss 同样保留消耗代价。未完成分支的乐观下界允许当前缺血全部恢复，保留已经发生的保命消耗代价；中间最大生命缺口可能恢复，不进入下界。搜索中的路线展示、主结果剪枝、保留和最终排序共用该口径；消耗保命资源的路线不触发战损早停。诊断日志以 `source=no_explicit_potion` 或 `source=exact_potion_layer` 区分建界来源。
+完整胜利先按保命资源消耗次数排序，再按统一战略战损计价：累计掉血、最终最大生命缺口、路线治疗、无条件战后遗物回血和保命资源消耗。瓶中精灵与蜥蜴尾巴的复活回复不算路线治疗，最终 Boss 同样保留消耗代价。未完成分支的乐观下界默认允许当前缺血全部恢复；仅在根牌组、遗物、Power、药水及扩展来源落入经核对的封闭集合时，才把未来回复限制为固定战后遗物回血。中间最大生命缺口可能恢复，不进入下界。灾厄只在玩家回合结束的原生结算后决定生死，不作为提前扣血。搜索中的路线展示、主结果剪枝、保留和最终排序共用该口径；消耗保命资源的路线不触发战损早停。诊断日志以 `source=no_explicit_potion` 或 `source=exact_potion_layer` 区分建界来源。
 
 Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位估算下一层容量；预测超出余量、样本不完整或区域丢失时回收并重建 NoGC。回收仍遵循原有药水层准入及停止条件。
 
@@ -225,6 +225,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `ParallelExpansionWorkProfile.cs` | coordinator 所有的作业经过时间分布与 wave/等待/提交计时；不代表 CPU 时间 |
 | `CombatBeamSolver.PathDiagnostics.cs` | 可选路径观察的值复制与边界配对；分别记录生成、两类转置、实际展开、动作准入、完整保留及回合注释，不写搜索策略或账本 |
 | `CombatBeamSolver.Retention.cs` | prune/retention 调用边界与相关小型辅助 |
+| `StrategicHpRecoveryBound.cs` | 主结果战损下界的无治疗来源证明与乐观回复量；未知来源保留完整缺血余量 |
 | `CombatBeamSolver.BeamRetentionPolicy.cs` | 保路主构造与字段、既有合同类型、RankFinal/RankBest协调、状态去重、多样性通道及路由分组；初始化顺序保持在此文件 |
 | `CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs` | 有序变异组合的统一准入、服务额度与续接群组结算 |
 | `CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs` | 有序变异代表质量、包/声明公平调度、迟到初始项节奏、租约交接与确定性键 |

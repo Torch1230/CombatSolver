@@ -14,6 +14,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 0.46.4 搜索剪枝改进的玩家说明 | [0.46.4 更新日志](releases/0.46.4-RELEASE_NOTES.md) |
 | 0.46.3 玩家更新内容 | [0.46.3 更新日志](releases/0.46.3-RELEASE_NOTES.md) |
 | 策略侧栏和可选 ServerGC 启动方式的玩家说明 | [0.46.2 更新日志](releases/0.46.2-RELEASE_NOTES.md) |
 | 0.46.0 在线状态上报恢复的玩家说明 | [0.46.1 更新日志](releases/0.46.1-RELEASE_NOTES.md) |
