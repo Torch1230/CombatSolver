@@ -2,12 +2,16 @@
 
 ## 简体中文
 
-- 感谢 [ltlly](https://github.com/ltlly) 提交的 [PR #133](https://github.com/Torch1230/CombatSolver/pull/133)：普通 Steam 启动现在会自动准备多核内存回收，首次加载后再启动一次游戏才会生效。它可能降低搜索时的内存占用，但会影响整个游戏和其他 Mod，也可能增加处理器占用、让部分战斗搜索变慢或改变路线。可在设置中关闭；卸载 Mod 前请先关闭，以恢复原来的启动设置。内存设置现会说明本次是否生效，以及搜索时暂缓回收的选项何时可用。
-- 感谢 [AuroraAeon](https://github.com/AuroraAeon) 提交的 [PR #134](https://github.com/Torch1230/CombatSolver/pull/134)：调整了复杂战斗中的路线探索，部分长搜索的等待时间可能缩短。搜索路线和战损也可能变化，个别战斗可能多损失生命。
-- 搜索时会在已查阅的世界线数量旁显示每秒查阅速度，并精简路线预览中的重复提示。
+- 感谢 [ltlly](https://github.com/ltlly) 提交的 [PR #133](https://github.com/Torch1230/CombatSolver/pull/133)：普通 Steam 启动现已支持自动接入“多核内存回收”（Server GC）。首次加载后再次启动游戏即可生效，后台自动并发清理内存，大幅降低深度搜索时的内存占用并提升长时间游玩的流畅度；设置页同步重写了内存管理文案与状态展示，清晰指示当前运行状态与下次启动配置，也可随时在设置中关闭并一键还原。
+- 感谢 [AuroraAeon](https://github.com/AuroraAeon) 提交的 [PR #134](https://github.com/Torch1230/CombatSolver/pull/134)：优化了复杂战斗与长回合搜索中的候选探索策略，减少冗余探测，深层计算下的等待时间明显缩短。
+- 搜索界面体验优化：
+  - 顶栏实时显示搜索速度指标（如“已查阅 1,234 条世界线（567 条/s）”），并配备平滑滚动与缓动动画，计算节奏一目了然。
+  - 彻底精简搜索期间顶栏的冗余信息，移除前沿预览中的重复战损提示与橙色过渡警告，首行布局更清爽聚焦。
 
 ## English
 
-- [PR #133](https://github.com/Torch1230/CombatSolver/pull/133) by [ltlly](https://github.com/ltlly): Normal Steam launches now prepare multicore memory cleanup automatically. Restart the game once after the mod first loads for it to take effect. It may reduce memory use during search, but affects the whole game and other mods; it may also use more CPU, slow some searches, or change routes. You can turn it off in settings. Do so before uninstalling the mod to restore the previous startup setting. The memory settings now show whether the mode is active this session and when pausing cleanup during search is available.
-- [PR #134](https://github.com/Torch1230/CombatSolver/pull/134) by [AuroraAeon](https://github.com/AuroraAeon): Adjusted route exploration in complex combats. Some long searches may finish sooner. Routes and HP loss may also change, and a few combats may lose more HP.
-- While searching, the number of explored timelines now includes a per-second rate. Repeated notices in route previews have been reduced.
+- [PR #133](https://github.com/Torch1230/CombatSolver/pull/133) by [ltlly](https://github.com/ltlly): Standard Steam launches now support multicore memory cleanup (Server GC) automatically. Restart the game once after installing to enable background concurrent memory cleanup, significantly lowering memory usage during deep searches and improving overall smoothness. Redesigned the memory management settings and status indicators to clearly display session states, and you can easily toggle it off to restore original launch settings at any time.
+- [PR #134](https://github.com/Torch1230/CombatSolver/pull/134) by [AuroraAeon](https://github.com/AuroraAeon): Optimized route exploration in complex, multi-turn combats by streamlining candidate probes, noticeably reducing wait times during deep searches.
+- Search UI improvements:
+  - Added a live search speed indicator in the status bar (e.g. `Explored 1,234 timelines (567 /s)`) with smooth rolling animations to give an intuitive sense of calculation progress.
+  - Cleaned up redundant warnings and candidate notices from the search header, keeping the active view clean, focused, and distraction-free.
