@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/Runtime/RuntimeGcProfile.cs" Link="RuntimeGcProfile.cs" />
+    <Compile Include="../../src/Runtime/RuntimeGcStartupConfig.cs" Link="RuntimeGcStartupConfig.cs" />
   </ItemGroup>
 </Project>

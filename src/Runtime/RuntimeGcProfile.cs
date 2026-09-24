@@ -30,7 +30,11 @@ internal static class RuntimeGcProfile
     // CLR GC mode is fixed at startup. Read the opt-in once as well, so changing
     // the process environment cannot switch policy midway through a search.
     public static RuntimeGcProfileSelection Current { get; } = Resolve(
-        Environment.GetEnvironmentVariable(EnvironmentVariable), GCSettings.IsServerGC);
+        ResolveRequest(Environment.GetEnvironmentVariable(EnvironmentVariable),
+            AppContext.GetData("CombatSolver.RuntimeProfile") as string), GCSettings.IsServerGC);
+
+    internal static string? ResolveRequest(string? environment, string? startup)
+        => string.IsNullOrWhiteSpace(environment) ? startup : environment;
 
     internal static RuntimeGcProfileSelection Resolve(string? requestedProfile, bool isServerGc)
     {

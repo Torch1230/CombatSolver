@@ -45,7 +45,7 @@
   "搜索停止条件": "Search stop conditions",
   "战损阈值按整场累计扣血计算，下次搜索生效。": "The HP loss threshold counts total loss across the combat. Applies to the next search.",
   "内存管理": "Memory management",
-  "本次启动使用多核内存回收；NoGC 已临时关闭，已保存的设置保持不变。恢复普通启动后可修改此项。": "This launch uses multicore garbage collection with NoGC temporarily disabled. Your saved settings are unchanged. Use a normal launch to change this option.",
+  "本次启动使用多核内存回收；NoGC 已临时关闭，已保存的设置保持不变。恢复原启动配置并重启后可修改此项。": "This launch uses multicore garbage collection with NoGC temporarily disabled. Your saved settings are unchanged. Restore the original startup configuration and restart to change this option.",
   "本次启动的内存配置未生效：运行库未启用 ServerGC，继续使用已保存的 NoGC 设置。": "The launch memory profile is inactive because the runtime did not enable ServerGC. Your saved NoGC setting still applies.",
   "无法识别本次启动的内存配置，继续使用已保存的 NoGC 设置。": "The launch memory profile is unknown. Your saved NoGC setting still applies.",
   "设置搜索内存预算；手动释放入口位于主界面内存条右侧。": "Set the search memory budget. Manual release is to the right of the memory bar on the main panel.",
@@ -439,5 +439,12 @@
   "已保存路线（已过期）": "Saved route (outdated)",
   "解除冻结；自动计算开启时，可从当前状态重新计算。": "Unfreeze the route; when auto-calculate is enabled, recalculate from the current state.",
   "保留本场路线，暂停自动重算和全自动；失配路线仅供参考。": "Keep this combat's route and pause automatic recalculation and full auto; mismatched routes are for reference only.",
-  "当前平台不支持 NoGC；设置保留，搜索使用常规 GC。": "NoGC is unavailable on this platform. Your setting is retained; searches use normal GC."
+  "当前平台不支持 NoGC；设置保留，搜索使用常规 GC。": "NoGC is unavailable on this platform. Your setting is retained; searches use normal GC.",
+  "自动配置搜索内存优化": "Automatically configure search memory optimization",
+  "默认开启，下次照常从 Steam 启动时生效，无需脚本。修改游戏的启动配置，影响整个游戏及其他 Mod；可降低搜索内存，但部分场景可能更慢或改变路线。关闭后恢复本 Mod 记录的原值，下次启动生效。直接退订不会恢复，请先关闭再退订。": "Enabled by default; takes effect on the next normal Steam launch, without scripts. Changes the game startup configuration and affects the entire game and other mods. May reduce search memory, but some scenarios can be slower or select different routes. Turning this off restores the recorded original value for the next launch. Unsubscribing alone does not restore it; turn it off first.",
+  "已配置；下次正常启动自动使用优化模式。当前是否生效见下方状态。": "Configured for the next normal launch. See below for the current runtime status.",
+  "未安排自动优化；已恢复的启动配置将在下次启动生效。": "Automatic optimization is not scheduled. Restored startup settings take effect on the next launch.",
+  "本次由专用启动器或测试环境管理，未修改游戏启动配置。": "This launch is managed by a dedicated launcher or test environment. Game startup settings were not modified.",
+  "自动配置失败，游戏仍可正常运行；详情见日志。": "Automatic configuration failed; the game can still run normally. See the log for details.",
+  "本次仍使用原有内存配置。": "This session is still using the original memory configuration."
 }

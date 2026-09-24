@@ -1,8 +1,32 @@
-# 可选 ServerGC 启动配置（2026-09-24）
+# ServerGC 启动配置与 Steam 自动接入（2026-09-24）
 
-本改动基于上游 `3d45d78f`，提供显式选择的 `server-generational` 启动配置：游戏进程请求 ServerGC，Mod 在确认运行库实际启用后，让搜索使用常规分代回收。默认启动和保存的 NoGC 设置保持原有含义；搜索算法、评分、配置的节点／时间上限和药水策略不变。
+本改动基于上游 `3d45d78f`，提供显式选择的 `server-generational` 启动配置：游戏进程请求 ServerGC，Mod 在确认运行库实际启用后，让搜索使用常规分代回收。首轮显式启动实验保留普通启动行为；后续新增的自动接入见下节。保存的 NoGC 设置不改写；搜索算法、评分、配置的节点／时间上限和药水策略不变。
 
-## 使用与恢复
+## Steam 自动接入（后续追加）
+
+包含本次追加的工坊版本加载后，默认开启“自动配置搜索内存优化”：首次启动仅准备文件，当前搜索仍按实际 CLR 模式运行；玩家下次照常点击 Steam“开始游戏”，无需启动参数、脚本、PowerShell 或新的快捷方式。PR 尚未合并和发布到工坊，因此当前订阅版本不会凭空获得该行为。
+
+Mod 定位已加载游戏程序集旁的 `runtimeconfig.json`，设置 `System.GC.Server=true` 和 `CombatSolver.RuntimeProfile=server-generational`，并在 `CombatSolver.PreviousServerGc` 保存该字段原先为缺省／true／false。下一进程通过运行库启动时加载的 `AppContext` 标记及实际 `GCSettings.IsServerGC` 激活；不是读取刚改写的磁盘文件假装本次已生效。显式环境 profile 优先于配置标记。
+
+- 只编辑游戏这一份启动文件；同目录临时文件刷盘后原子替换，不写穿硬链接，不修改注册表、全局环境、Steam 启动项、EXE 或其他 Mod。保留其他 JSON 字段；已配置时不反复写入。
+- 设置页可关闭自动配置：只恢复本 Mod 记录的 GC 原值并移除自身标记，下次正常启动生效。本次已初始化的 GC 模式不变。未知／损坏标记或发现 GC 字段被外部修改时拒绝覆盖；检测到并发文件变化也拒绝写入。
+- 无写权限、缺失或非法配置时记录失败，继续按实际原模式运行，不要求管理员权限、不阻止游戏启动。更新或验证完整性恢复原配置后，Mod 下次加载会重新准备，之后一次启动生效。
+- **直接退订或禁用 Mod 不会自动恢复文件**，因为 Mod 已不能执行清理；应先在设置页关闭自动配置。若已经退订，可恢复该字段或验证游戏文件。该模式影响整个游戏及其他 Mod，也存在下方列出的 CPU、速度和决策取舍。
+- 专用环境 profile 与无头测试默认不自动改配置，保留 A/B 测试隔离。仅在自有隔离实例验证时使用 `COMBATSOLVER_TEST_AUTO_GC_CONFIG=1` 穿过相同初始化路径；它不请求 GC 模式，实际切换仍由下一进程读取文件完成。
+
+实现边界：这是下一次启动自动接入，不能让已经运行的 CLR 热切换。没有启动可见 Steam，因此完整工坊更新、Steam 界面、云存档及可见帧时间仍未验收；不将无头验证称为 Steam 端到端通过。首轮性能数字属于原五场样本，本次不重新声称新的提速幅度。
+
+开发者复现：`dotnet run --project tools/RuntimeGcProfileChecks -c Release` 检查配置字段和三个真实 CLR 启动；Windows 用 `tools/test-runtime-gc-startup.ps1 -GameRoot <游戏目录> -RitsuWorkshopRoot <依赖目录> -Build <构建目录> -Output <新证据目录>` 验证隔离原生进程的三次启动，并自动清理私有实例。测试入口需要 PowerShell，玩家自动接入不需要。
+
+### 自动接入验证
+
+Linux 与 Windows 的 `RuntimeGcProfileChecks` 均通过 54 项检查，包括三个真实 CLR 进程的准备／激活／恢复、空环境优先级、GC 原值缺省／false／true、无关字段保留、幂等与无效／外部变更拒绝。两端最终行为源码 Release 构建无警告／错误，结构门禁与新增中英文键检查通过。
+
+Windows 原生 CLR 9.0.7 三个有效请求分别验证：首次 Default／NoGC=true 并准备配置；下一次 Active／NoGC=false 并恢复原字段；恢复后 Default／NoGC=true。runId 和配置字段见[自动接入证据](server-gc-auto-startup-20260924.json)。正式游戏配置未改，所有私有实例已清理；最终本地 Mod 已部署。
+
+中间失败保留：第一轮暴露空环境屏蔽自动配置，修正后通过；第二轮第三次启动遇到既有 `MainModule.FileName` 读取空值，启动器改用已有进程句柄查询 API，恢复验证在新隔离实例单独补跑，先确认已恢复 JSON 与原配置各字段相等。不把分段验收描述为一轮无失败的三连启动。原生测试通过修改隔离保存设置模拟关闭，未实测可见设置开关交互。
+
+## 专用启动器（开发／显式覆盖）
 
 先安装包含本改动的 Mod，退出已运行的游戏，再从仓库根目录执行。把下面的示例路径替换为实际游戏可执行文件路径。
 
@@ -20,13 +44,13 @@ bash tools/start-server-gc.sh "/path/to/Slay the Spire 2/SlayTheSpire2"
 
 脚本可以在可执行文件路径后附加游戏参数。它们只给新游戏子进程设置 `DOTNET_gcServer=1`、兼容前缀 `COMPlus_gcServer=1` 和 `COMBATSOLVER_RUNTIME_PROFILE=server-generational`，不改全局环境、注册表或游戏 `runtimeconfig.json`，不结束已经运行的游戏。不要用向已运行的 Steam 发送 `-applaunch` 替代这里的直接启动：不能据此认定环境已传入游戏。
 
-设置页“内存管理”显示本次配置状态。生效时 NoGC 开关及预算输入暂不可编辑，并说明保存的设置未改变。退出游戏后用原来的方式普通启动，即重新按原有运行环境与保存设置工作；无需手动改回配置文件。
+设置页“内存管理”显示本次配置状态。生效时 NoGC 开关及预算输入暂不可编辑，并说明保存的设置未改变。若未启用自动配置，退出游戏后恢复普通启动即可恢复原有行为；自动配置已写入时，应先在设置页关闭该选项，再正常重启。
 
 ServerGC 是整个游戏进程共用的回收模式，也影响游戏和其他 Mod 的托管分配。它可能改变 CPU 总用量、暂停频率和内存占用，不能从搜索结束更快推导画面更流畅。本轮没有可见游戏帧时间证据。
 
 ## 激活与回退边界
 
-`RuntimeGcProfile` 在首次读取时冻结环境请求与 `GCSettings.IsServerGC`。只有识别到 `server-generational` 且实际 ServerGC 为真才激活；未请求、未知值或 CLR 未启用时均保留保存的 NoGC 选择。后两种失败状态会写明确警告，并在设置页说明配置未生效。
+`RuntimeGcProfile` 在首次读取时冻结环境请求（无环境请求时读取运行库 AppContext 标记）与 `GCSettings.IsServerGC`。只有识别到 `server-generational` 且实际 ServerGC 为真才激活；未请求、未知值或 CLR 未启用时均保留保存的 NoGC 选择。后两种失败状态会写明确警告，并在设置页说明配置未生效。
 
 生效时，`SolverSettings.Capture()` 仅将不可变搜索快照的有效 NoGC 开关覆盖为 false，不改 `SolverSettings.Current`、设置迁移或保存流程。显式启动配置的本次优先级在界面可见；不能在界面勾选一个会被静默忽略的开关。GC 生命周期继续使用已有的关闭 NoGC 路径，没有修改回收算法或搜索的分配检查点。
 

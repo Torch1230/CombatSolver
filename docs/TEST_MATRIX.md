@@ -1,10 +1,13 @@
 # CombatSolver 测试清单
 
-## 可选 ServerGC 启动配置（2026-09-24）
+## ServerGC 启动配置（2026-09-24）
 
-- `RuntimeGcProfileChecks`：25 项纯值合同通过，覆盖默认／已关闭 NoGC／激活／CLR 未生效／未知值与选择隔离；没有将此工具视作实际设置文件不写回验证。
+- 首轮 `RuntimeGcProfileChecks`：25 项纯值合同通过，覆盖默认／已关闭 NoGC／激活／CLR 未生效／未知值与选择隔离；没有将此工具视作实际设置文件不写回验证。
 - `test-runtime-profile-launchers.sh/.ps1`：两者在 Linux 通过，PowerShell 7.6.6；PowerShell 合同另在 Windows 通过；临时 fixture 验证特殊与空参数、空格路径、子环境隔离、失败退出码、拒绝既有游戏且不终止该进程。实际无人脚本的环境构造和获权后的 marker 分支通过同键复用／异键重启／旧 marker 重启检查，终止函数为记录桩。这些工具合同不启动真实游戏，原生宿主验收单列如下。
 - 三条新增提示中英映射和相关空白检查通过。Linux／Windows Release、结构门禁均通过；Windows 五根十进程正常退出且保存设置字节不变，额外初始牌组严格增量回放 Passed。三对全量等价，死灵一对结果相同但工作增加，静默一对多损失 1 HP；比较器六种变异拒绝通过。Regent 复杂根在两种模式下的严格回放失败单列，未修复。完整数字与边界见[本轮报告](performance/server-gc-launch-profile-20260924.md)；无可见 Steam 帧时间证据。
+
+- 自动启动追加：两平台配置／真实 CLR 合同各 54 项通过，Windows 原生首次准备、下次激活及单独补跑的恢复启动均 Passed，具体 runId、失败与恢复边界见[追加证据](performance/server-gc-auto-startup-20260924.json)。普通 .NET 合同与原生游戏分开记录；未启动可见 Steam，也未把设置文件切换冒充 UI 点击测试。
+- Windows 启动器路径读取从启动早期可能为空的 MainModule 改为已存在的进程句柄 QueryFullProcessImageName，恢复启动通过；`test-runtime-gc-startup.ps1` 导出可复现流程，语法检查通过。
 
 ## 0.46.0 定版验证范围（2026-09-23）
 

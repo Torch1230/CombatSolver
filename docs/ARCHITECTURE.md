@@ -78,7 +78,8 @@ Entry / turn hooks
 | `src/Runtime/PowerDynamicVarMaterializationGuardPatch.cs` | 搜索模拟惰性创建 Power 显示变量时立即报告根捕获缺失 | Power 语义、显示内容与搜索阶段串行化 |
 | `src/Runtime/PowerAmountComparisonPatch.cs` | 将原生 `GetTypeForAmount` 中两处精确匹配的同枚举装箱比较改为整数比较；保留虚 getter、decimal 分支和调用顺序，未知 IL 原样保留 | Power 状态缓存、跳过类型 getter 或改变显示类型规则 |
 | `src/Runtime/ModelDbGetIdCachePatch.cs` | 缓存原生 `ModelDb.GetId(Type)` 的纯类型→`ModelId` 映射（`GetEntry`/`GetCategory` 只由类型名决定）；缓存不可变 `ModelId` 值，不保存模型实例 | `ModelDb` 内容字典、`Inject`/`Remove`/`ResetForTest` 语义、模型实例身份与显示字段 |
-| `src/Runtime/RuntimeGcProfile.cs` | 一次解析显式进程 profile，按实际 ServerGC 状态决定是否覆盖有效 NoGC 开关，并提供激活／未生效状态；不变更已保存设置 | 启动或重启 CLR、GC 生命周期、搜索策略 |
+| `src/Runtime/RuntimeGcProfile.cs` | 一次解析显式环境或启动 AppContext profile，按实际 ServerGC 状态决定是否覆盖有效 NoGC 开关，并提供激活／未生效状态；不变更已保存设置 | 启动或重启 CLR、GC 生命周期、搜索策略 |
+| `src/Runtime/RuntimeGcStartup*.cs` | Mod 初始化时为下次启动准备游戏 runtimeconfig；保留 GC 原值、仅恢复自有字段、报告失败；不以文件写入代替本次实际模式 | CLR 热切换、Steam 启动项、搜索算法 |
 | `src/Runtime/SearchGcPolicy.cs` | 按有效快照管理进程级 GC 模式：开启时按原样预算建立战斗级 NoGC、执行搜索内安全检查点与引用释放后的压力回收；稳定关闭时使用 CLR 常规分代 GC 且不新增自动补账压力，从开启切换时仍结清此前义务；模式切换和手动释放与活动搜索计数共用安全边界 | Beam 剪枝、候选评分、模拟语义与同步阻塞 UI |
 | `src/Runtime/SearchGcPolicy.Recovery.cs` | 在已排空的提交边界评估可恢复 NoGC 回退；拥有完成 Gen2/冷却/次数上限、物理余量、scope 代次与恢复后区域上限 | 强制回收、等待搜索退出、搜索预算或候选策略 |
 | `src/Runtime/SearchGcLifecycleMetrics.cs` | 记录显式回收与 NoGC 启停/丢失；在 Runtime 准入 Gate 内冻结 scope 起止，区分独占搜索与共享进程窗口；暂停最大值仅为观测值 | 线程级 CLR 事件归因与 trace 最大值 |

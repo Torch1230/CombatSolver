@@ -34,6 +34,7 @@ public static class Entry
                 $"[CombatSolver/PreCombatApi] MOD_SOURCE_PINNING_UNAVAILABLE error={ex}");
         }
         SolverSettings.Load();
+        RuntimeGcStartup.Prepare(SolverSettings.Current.AutoConfigureServerGc);
         SolverUiTokens.ConfigureTheme(SolverSettings.Current.OverlayTheme);
         SolverController.ApplyPersistentSettings(SolverSettings.Capture());
         ModTypeDiscoveryHub.RegisterModAssembly(ModId, Assembly.GetExecutingAssembly());

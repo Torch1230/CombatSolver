@@ -495,7 +495,7 @@ function Get-ProcessStartTimeUtc([Diagnostics.Process]$TestProcess) {
 }
 
 function Get-ProcessExecutablePath([Diagnostics.Process]$TestProcess) {
-    $executable = $TestProcess.MainModule.FileName
+    $executable = [CombatSolverUnattendedLauncherCancellation]::GetExecutablePath($TestProcess)
     if ([string]::IsNullOrWhiteSpace($executable)) {
         throw "Process $($TestProcess.Id) did not expose its executable path."
     }

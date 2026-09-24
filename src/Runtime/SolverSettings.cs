@@ -113,6 +113,7 @@ internal sealed record SolverSettingsData
     public bool UseBeamWidthPortfolio { get; init; } = true;
     public bool UseNoveltyPortfolio { get; init; }
     public double? SearchTimeLimitSeconds { get; init; }
+    public bool AutoConfigureServerGc { get; init; } = true;
     public bool EnableNoGcRegion { get; init; } = true;
     public double? NoGcRegionBudgetGigabytes { get; init; } = 16d;
     public int? SearchBeamWidth { get; init; }
