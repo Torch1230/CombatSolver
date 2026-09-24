@@ -4,6 +4,8 @@ set -Eeuo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(cd -- "$script_dir/.." && pwd)"
 configuration="Release"
+for_publication=false
+private_config_directory=""
 
 usage() {
     cat <<'EOF'
@@ -11,6 +13,8 @@ Usage: build-local-stack.sh [options]
 
 Options:
   -c, --configuration NAME  Debug or Release (default: Release)
+      --for-publication     Require embedded online service configuration
+      --private-config-directory PATH  Directory containing presence.props and showcase.props
   -h, --help                Show this help
 EOF
 }
@@ -25,6 +29,15 @@ while (($# > 0)); do
         -c|--configuration)
             (($# >= 2)) || die "missing value for $1"
             configuration="$2"
+            shift 2
+            ;;
+        --for-publication)
+            for_publication=true
+            shift
+            ;;
+        --private-config-directory)
+            (($# >= 2)) || die "missing value for $1"
+            private_config_directory="$2"
             shift 2
             ;;
         -h|--help)
@@ -47,6 +60,23 @@ command -v dotnet >/dev/null 2>&1 || {
     exit 1
 }
 
-dotnet build "$repository_root/CombatSolver.csproj" \
-    --configuration "$configuration" \
+build_arguments=(
+    build "$repository_root/CombatSolver.csproj"
+    --configuration "$configuration"
     --nologo
+)
+if [[ "$for_publication" == true ]]; then
+    build_arguments+=("-p:PublicationBuild=true")
+    if [[ -z "$private_config_directory" ]]; then
+        private_config_directory="$repository_root/.local"
+    fi
+    [[ -f "$private_config_directory/presence.props" ]] || die "missing private connection configuration: presence.props"
+    [[ -f "$private_config_directory/showcase.props" ]] || die "missing private connection configuration: showcase.props"
+    private_config_directory="$(cd -- "$private_config_directory" && pwd)"
+    build_arguments+=(
+        "-p:PresencePropsPath=$private_config_directory/presence.props"
+        "-p:ShowcasePropsPath=$private_config_directory/showcase.props"
+    )
+fi
+
+dotnet "${build_arguments[@]}"

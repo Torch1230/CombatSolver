@@ -20,6 +20,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'quark-release-bundle.ps1')
+. (Join-Path $PSScriptRoot 'verify-release-connection-metadata.ps1')
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 Set-Location -LiteralPath $repoRoot
@@ -58,6 +59,7 @@ $releaseZipPath = Resolve-RequiredFile (Join-Path $repoRoot "releases\CombatSolv
 $quarkReleaseZipPath = Join-Path $repoRoot "releases\CombatSolver-$Version-Quark.zip"
 $releaseNotesPath = Resolve-RequiredFile (Join-Path $repoRoot "docs\releases\$Version-RELEASE_NOTES.md") '玩家更新日志'
 $solverDllPath = Resolve-RequiredFile (Join-Path $repoRoot '.godot\mono\temp\bin\Release\CombatSolver.dll') 'Release DLL'
+Assert-ReleaseConnectionMetadata $solverDllPath
 $memoryCleanerPath = Resolve-RequiredFile (Join-Path $repoRoot 'tools\CombatSolver.MemoryCleaner\bin\Release\net48\CombatSolver.MemoryCleaner.exe') 'MemoryCleaner'
 $licensePath = Resolve-RequiredFile (Join-Path $repoRoot 'LICENSE') 'MIT 许可证'
 $noticesPath = Resolve-RequiredFile (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') '第三方许可'
