@@ -4,7 +4,7 @@
 
 ## Steam 自动接入（后续追加）
 
-包含本次追加的工坊版本加载后，默认开启“自动配置搜索内存优化”：首次启动仅准备文件，当前搜索仍按实际 CLR 模式运行；玩家下次照常点击 Steam“开始游戏”，无需启动参数、脚本、PowerShell 或新的快捷方式。PR 尚未合并和发布到工坊，因此当前订阅版本不会凭空获得该行为。
+包含本次追加的 Mod 加载后，默认开启自动启动配置：首次启动仅准备文件，当前搜索仍按实际 CLR 模式运行；玩家下次照常点击 Steam“开始游戏”，无需启动参数、脚本、PowerShell 或新的快捷方式。PR #133 已合入 `main`，本次设置文案调整未发布到工坊；订阅版本是否包含该行为应以实际已发布版本为准。
 
 Mod 定位已加载游戏程序集旁的 `runtimeconfig.json`，设置 `System.GC.Server=true` 和 `CombatSolver.RuntimeProfile=server-generational`，并在 `CombatSolver.PreviousServerGc` 保存该字段原先为缺省／true／false。下一进程通过运行库启动时加载的 `AppContext` 标记及实际 `GCSettings.IsServerGC` 激活；不是读取刚改写的磁盘文件假装本次已生效。显式环境 profile 优先于配置标记。
 

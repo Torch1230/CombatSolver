@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：内存回收设置说明（2026-09-24）
+
+- 设置页回收相关的 31 个中英键均有映射，面向玩家的这部分文案不再出现 `GC`、`NoGC`、`CLR`。Windows Release 构建 0 警告、0 错误，PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`，`git diff --check` 通过。
+- 仅修改文字，未重跑既有回收生命周期或搜索场景；未启动可见 Steam，真实设置页排版未验证。
+
 ## 下一版本（开发中）：新鲜资源保路通道探测上限（2026-09-24）
 
 - Windows Release 构建 0 警告、0 错误（`-p:CopyModOnBuild=false`，不写实机 Mod 目录）；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`；`git diff --check` 通过。
