@@ -1,17 +1,17 @@
 # CombatSolver 测试清单
 
-## 下一版本（开发中）：搜索速度指标与状态行去噪（2026-09-24）
+## 0.46.3：搜索速度指标与状态行去噪（2026-09-24）
 
 - Windows Release 构建 0 警告、0 错误；PowerShell 结构门禁 `tools\verify-refactor-boundaries.ps1` 校验通过（`REFACTOR_BOUNDARIES_OK search_files=208`）。
 - `English.json` 447 项词条格式与参数占位符校验全部通过。
 - 控制器会话与 UI 状态生命周期无头测试通过：`pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId QOL-CONTROLLER-STOP-172 -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1 -VerifyControllerSessionLifecycle -ExpectedFinishedTurn 1 -TimeoutSeconds 120 -CleanupInstanceOnExit` 执行 Passed，验证了世界线数字、速度读数（xx 条/s）与平滑缓动结算断言，临时测试实例已由启动器清理。未做可见 Steam 实机人工验收。
 
-## 下一版本（开发中）：内存回收设置说明（2026-09-24）
+## 0.46.3：内存回收设置说明（2026-09-24）
 
 - 设置页回收相关的 32 个中英文词条均已精确映射对齐，面向玩家的文案清晰直观、消除术语堆砌。Windows Release 构建 0 警告、0 错误，PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`，`RuntimeGcProfileChecks` 54 项检查全数通过，`git diff --check` 通过。
 - 仅修改 UI 文本与状态显示结构，未修改底层 GC 策略；未启动可见 Steam，真实设置页实机排版由用户验收。
 
-## 下一版本（开发中）：新鲜资源保路通道探测上限（2026-09-24）
+## 0.46.3：新鲜资源保路通道探测上限（2026-09-24）
 
 - Windows Release 构建 0 警告、0 错误（`-p:CopyModOnBuild=false`，不写实机 Mod 目录）；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`；`git diff --check` 通过。
 - 旗舰根 `EQ-IRONCLAD-ELITE-00` 串行 8 次 ABBA（执行前固定 A B B A A B B A，两臂各 4 次，全部样本保留）：墙钟均值 12.448 → 10.488 s（−15.7%），两臂区间不重叠（9.711–11.191 对 11.769–13.005）；`standPatProbes` −41.2%、展开 −22.7%、转移 −27.7%、`forkCount` −27.2%、累计分配 −27.8%；8 次预计战损、分数与终止边界逐项相同（52 / 9999279964 / `None`）。
@@ -20,7 +20,7 @@
 - 未执行：游戏内 `UnattendedTestRunner.StandPatProbes` 契约（双车道探测、注入异常传播、并行与串行等价）、玩家检查点批量回放、DOP>1 与组合（Coordinator/portfolio）路径、可见 Steam 帧时间与 GC 暂停、No-GC 区域行为。`tools/BeamRankSortChecks` 在未改动的 `main` 上即因 `Snapshot.PlayerDead` 报错，本轮未修改。
 - 合并审查追加：PR #134 的 Windows Release 构建和结构门禁通过。`STAND-PAT-PROBE-BATCHES` 在默认小牌组未到达剪枝检查点；改用既有死灵药水输入后，PR head `aaf3ab0ce9124430a554535f232c2aa2` 与未改动 `main` `339d90af220949d8aa49fd8ed861c247` 均因同一 DOP1／DOP2 非时序计数差异失败，路线、评分、预计战损及边界相同。因此该合同未通过，失败不能归因于 PR #134；两次私有实例已清理。未由此取得 DOP>1 质量结论。
 
-## 下一版本（开发中）：ServerGC 普通启动自动接入（2026-09-24）
+## 0.46.3：ServerGC 普通启动自动接入（2026-09-24）
 
 - PR #133 两平台配置／真实 CLR 合同各 54 项通过；Windows 私有实例首次准备、下次激活及另一次恢复启动均 Passed，详见[结构化证据](performance/server-gc-auto-startup-20260924.json)。本轮合并修正了空路径检查顺序，相关配置合同与 Release 构建另以最终合并源码为准。
 - 自动配置默认无头及显式启动器跳过；正式 Steam 设置开关、工坊更新链路和云存档未验证。此前可选 profile 的性能取舍沿用 PR #132 的五根原生宿主证据，不把启动配置合同当作可见性能验收。
