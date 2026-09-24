@@ -259,6 +259,7 @@
   "已恢复本场战斗记录的路线": "Restored the route recorded for this combat",
   "路线已复用，共查阅了 {0:N0} 条世界线": "Plan reused; explored {0:N0} timelines in total",
   "花费了 {0:F1} 秒，共查阅了 {1:N0} 条世界线": "Searched for {0:F1} s; explored {1:N0} timelines",
+  "花费了 {0:F1} 秒，共查阅了 {1:N0} 条世界线（{2:N0} 条/s）": "Searched for {0:F1} s; explored {1:N0} timelines ({2:N0} /s)",
   "本局扣血  已 {0}    预计 {1} HP    重算增加 {2} HP": "HP lost  {0} so far    {1} projected    +{2} recalculated",
   "本局扣血  已 {0}    预计 {1} HP": "HP lost  {0} so far    {1} projected",
   "选 {0}": "Choose {0}",

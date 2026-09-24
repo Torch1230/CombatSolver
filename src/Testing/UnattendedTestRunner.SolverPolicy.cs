@@ -216,8 +216,11 @@ internal sealed partial class UnattendedTestRunner
             : reviewSnapshot.ReviewSummaryText.StartsWith("花费了 ", StringComparison.Ordinal)
                 && reviewSnapshot.ReviewSummaryText.Contains("秒，共查阅了 ", StringComparison.Ordinal);
         bool validCachedSummary = reviewSnapshot.ReviewSummaryText == "已恢复本场战斗记录的路线";
+        bool validEnding = reviewSnapshot.ReviewSummaryText.EndsWith(" 条世界线", StringComparison.Ordinal)
+            || (reviewSnapshot.ReviewSummaryText.Contains(" 条世界线（", StringComparison.Ordinal)
+                && reviewSnapshot.ReviewSummaryText.EndsWith(" 条/s）", StringComparison.Ordinal));
         if (result.WasRestoredFromCache ? !validCachedSummary
-            : !validReviewSummary || !reviewSnapshot.ReviewSummaryText.EndsWith(" 条世界线", StringComparison.Ordinal))
+            : !validReviewSummary || !validEnding)
         {
             throw new InvalidOperationException("搜索完成快照没有生成耗时与世界线汇总。");
         }

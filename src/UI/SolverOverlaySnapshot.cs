@@ -252,10 +252,19 @@ internal sealed record SolverOverlaySnapshot(
         string summaryText = result.CombatEndedTurn == startTurnNumber
             ? SolverText.Format($"[color={SolverUiTokens.Palette.SuccessHex}]本回合结束战斗  │  {confidence}[/color]")
             : SolverText.Format($"[color={SolverUiTokens.Palette.TextSecondaryHex}]预计路线 [b]{searchedTurns}[/b] 回合  │  {confidence}[/color]");
+        double searchElapsedSeconds = result.TotalSearchElapsed.TotalSeconds;
+        long searchWorldlines = result.TotalExpandedNodes > 0
+            ? result.TotalExpandedNodes
+            : (result.ExpandedNodes > 0 ? result.ExpandedNodes : reviewedWorldlinesTotal);
+        long searchSpeed = searchElapsedSeconds > 0d
+            ? (long)Math.Round(searchWorldlines / searchElapsedSeconds)
+            : 0L;
         string reviewSummaryText = result.WasRestoredFromCache
             ? SolverText.Get("已恢复本场战斗记录的路线")
             : result.WasReused
             ? SolverText.Format($"路线已复用，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线")
+            : searchSpeed > 0
+            ? SolverText.Format($"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线（{searchSpeed:N0} 条/s）")
             : SolverText.Format($"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线");
         bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
         int alreadyLost = observedBattleDamage?.HpLostSoFar ?? result.BattleHpLostSoFar;
