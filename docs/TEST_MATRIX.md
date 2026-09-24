@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 下一版本（开发中）：搜索速度指标与状态行去噪（2026-09-24）
+
+- Windows Release 构建 0 警告、0 错误；PowerShell 结构门禁 `tools\verify-refactor-boundaries.ps1` 校验通过（`REFACTOR_BOUNDARIES_OK search_files=208`）。
+- `English.json` 447 项词条格式与参数占位符校验全部通过。
+- 控制器会话与 UI 状态生命周期无头测试通过：`pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId QOL-CONTROLLER-STOP-172 -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1 -VerifyControllerSessionLifecycle -ExpectedFinishedTurn 1 -TimeoutSeconds 120 -CleanupInstanceOnExit` 执行 Passed，验证了世界线数字、速度读数（xx 条/s）与平滑缓动结算断言，临时测试实例已由启动器清理。未做可见 Steam 实机人工验收。
+
 ## 下一版本（开发中）：内存回收设置说明（2026-09-24）
 
 - 设置页回收相关的 32 个中英文词条均已精确映射对齐，面向玩家的文案清晰直观、消除术语堆砌。Windows Release 构建 0 警告、0 错误，PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`，`RuntimeGcProfileChecks` 54 项检查全数通过，`git diff --check` 通过。

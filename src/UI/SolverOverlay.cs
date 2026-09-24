@@ -133,6 +133,10 @@ internal static class SolverOverlay
     private static double _searchRequestBudgetSeconds;
     private static long _reviewedWorldlinesTarget;
     private static double _shownReviewedWorldlines;
+    private static double _targetWorldlinesPerSecond;
+    private static double _shownWorldlinesPerSecond;
+    private static long _lastProgressReviewedWorldlines;
+    private static long _lastProgressElapsedMilliseconds;
     // Summary text in front of the rolling count; null when the summary is not the search readout.
     private static string? _reviewedWorldlinesSummaryPrefix;
     private static string? _renderedReviewedWorldlinesSummary;
@@ -245,6 +249,7 @@ internal static class SolverOverlay
     internal static string? SearchSummaryTextForTesting => _summaryText?.Text;
     internal static double SearchProgressRatioForTesting => _lastSearchProgressRatio;
     internal static double ShownSearchProgressRatioForTesting => _shownSearchProgressRatio;
+    internal static double ShownWorldlinesPerSecondForTesting => _shownWorldlinesPerSecond;
 
     internal static void SettleSearchReadoutsForTesting()
         => EaseSearchReadouts(1d);
@@ -813,6 +818,24 @@ internal static class SolverOverlay
             _shownReviewedWorldlines,
             Math.Min(reviewedWorldlinesBeforeSearch, reviewedWorldlines),
             reviewedWorldlines);
+        if (progress.ElapsedMilliseconds < _lastProgressElapsedMilliseconds)
+        {
+            _shownWorldlinesPerSecond = 0d;
+            _targetWorldlinesPerSecond = 0d;
+            _lastProgressReviewedWorldlines = 0L;
+            _lastProgressElapsedMilliseconds = 0L;
+        }
+        long deltaWorldlines = progress.ReviewedWorldlines - _lastProgressReviewedWorldlines;
+        long deltaMs = progress.ElapsedMilliseconds - _lastProgressElapsedMilliseconds;
+        if (_lastProgressElapsedMilliseconds == 0L || deltaMs >= 100)
+        {
+            double instantSpeed = Math.Max(0d, (double)deltaWorldlines / (Math.Max(50L, deltaMs) / 1000d));
+            _targetWorldlinesPerSecond = _targetWorldlinesPerSecond > 0d && _lastProgressElapsedMilliseconds > 0L
+                ? Math.Max(0d, 0.35d * instantSpeed + 0.65d * _targetWorldlinesPerSecond)
+                : instantSpeed;
+            _lastProgressReviewedWorldlines = progress.ReviewedWorldlines;
+            _lastProgressElapsedMilliseconds = progress.ElapsedMilliseconds;
+        }
         SetReviewText(SolverText.IsEnglish && potionSearchPhase.Length > 0
             ? reclaimingMemory
                 ? SolverText.Get("正在整理内存")
@@ -824,8 +847,9 @@ internal static class SolverOverlay
         {
             _summaryText.Visible = true;
             _reviewedWorldlinesSummaryPrefix = _searchBestSnapshot is { } snapshot
-                ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) + "  │  "
-                : string.Empty;
+                && !string.IsNullOrWhiteSpace(snapshot.SummaryText)
+                    ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) + "  │  "
+                    : string.Empty;
             RenderReviewedWorldlinesSummary();
         }
         if (_searchProgressBar != null)
@@ -898,7 +922,7 @@ internal static class SolverOverlay
             _searchProgressBar.Value = _shownSearchProgressRatio;
         }
         if (_reviewedWorldlinesSummaryPrefix == null
-            || _shownReviewedWorldlines == _reviewedWorldlinesTarget
+            || (_shownReviewedWorldlines == _reviewedWorldlinesTarget && _shownWorldlinesPerSecond == _targetWorldlinesPerSecond)
             || _summaryText == null || !GodotObject.IsInstanceValid(_summaryText))
         {
             return;
@@ -910,14 +934,23 @@ internal static class SolverOverlay
             _reviewedWorldlinesSummaryPrefix = null;
             return;
         }
-        long before = (long)Math.Round(_shownReviewedWorldlines);
+        long beforeWorldlines = (long)Math.Round(_shownReviewedWorldlines);
+        long beforeSpeed = (long)Math.Round(_shownWorldlinesPerSecond);
         _shownReviewedWorldlines = SolverUiMotion.Approach(
             _shownReviewedWorldlines,
             _reviewedWorldlinesTarget,
             blend,
             0.5d);
-        if ((long)Math.Round(_shownReviewedWorldlines) != before)
+        _shownWorldlinesPerSecond = SolverUiMotion.Approach(
+            _shownWorldlinesPerSecond,
+            _targetWorldlinesPerSecond,
+            blend,
+            0.5d);
+        if ((long)Math.Round(_shownReviewedWorldlines) != beforeWorldlines
+            || (long)Math.Round(_shownWorldlinesPerSecond) != beforeSpeed)
+        {
             RenderReviewedWorldlinesSummary();
+        }
     }
 
     private static void RenderReviewedWorldlinesSummary()
@@ -925,8 +958,11 @@ internal static class SolverOverlay
         if (_summaryText == null || _reviewedWorldlinesSummaryPrefix == null)
             return;
         long shown = (long)Math.Round(_shownReviewedWorldlines);
+        long speed = (long)Math.Round(_shownWorldlinesPerSecond);
         string text = _reviewedWorldlinesSummaryPrefix
-            + SolverText.Format($"已查阅 {shown:N0} 条世界线");
+            + (speed > 0
+                ? SolverText.Format($"已查阅 {shown:N0} 条世界线（{speed:N0} 条/s）")
+                : SolverText.Format($"已查阅 {shown:N0} 条世界线"));
         _renderedReviewedWorldlinesSummary = text;
         _summaryText.Text = text;
     }
@@ -955,6 +991,10 @@ internal static class SolverOverlay
         _shownSearchProgressRatio = 0d;
         _reviewedWorldlinesTarget = reviewedWorldlinesBeforeSearch;
         _shownReviewedWorldlines = reviewedWorldlinesBeforeSearch;
+        _targetWorldlinesPerSecond = 0d;
+        _shownWorldlinesPerSecond = 0d;
+        _lastProgressReviewedWorldlines = 0L;
+        _lastProgressElapsedMilliseconds = 0L;
         _reviewedWorldlinesSummaryPrefix = null;
         EnsureCreated(host);
         SetSearchLimitHint(null);

@@ -213,7 +213,7 @@ internal sealed partial class UnattendedTestRunner
             reviewedWorldlinesBeforeSearch: 5);
         // Readouts ease toward the report per frame; settle them before comparing values.
         SolverOverlay.SettleSearchReadoutsForTesting();
-        if (SolverOverlay.SearchSummaryTextForTesting != "已查阅 42 条世界线"
+        if (SolverOverlay.SearchSummaryTextForTesting != "已查阅 42 条世界线（74 条/s）"
             || Math.Abs(SolverOverlay.ShownSearchProgressRatioForTesting - 0.05d) > 0.0001d)
         {
             throw new InvalidOperationException("搜索进度区没有独立显示累计查阅世界线数量。");
@@ -253,7 +253,7 @@ internal sealed partial class UnattendedTestRunner
                 "正在搜索无药路线",
                 StringComparison.Ordinal) != true
             || SolverOverlay.SearchSummaryTextForTesting?.Contains(
-                "求解器当前考虑",
+                "已查阅",
                 StringComparison.Ordinal) != true
             || SolverOverlay.HpOutcomeTextForTesting?.Contains(
                 "预计战损 未知",
