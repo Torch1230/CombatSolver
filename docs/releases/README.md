@@ -6,6 +6,7 @@
 
 | 版本系列 | 更新日志 |
 |---|---|
+| 下一版本（开发中） | [更新日志草案](NEXT-RELEASE_NOTES.md) |
 | 0.46 | [0.46.2](0.46.2-RELEASE_NOTES.md) · [0.46.1](0.46.1-RELEASE_NOTES.md) · [0.46.0](0.46.0-RELEASE_NOTES.md) |
 | 0.45 | [0.45.0](0.45.0-RELEASE_NOTES.md) |
 | 0.44 | [0.44.1](0.44.1-RELEASE_NOTES.md) · [0.44.0](0.44.0-RELEASE_NOTES.md) |

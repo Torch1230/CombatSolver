@@ -14,6 +14,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 下一版本玩家更新内容 | [更新日志草案](releases/NEXT-RELEASE_NOTES.md) |
 | 策略侧栏和可选 ServerGC 启动方式的玩家说明 | [0.46.2 更新日志](releases/0.46.2-RELEASE_NOTES.md) |
 | 0.46.0 在线状态上报恢复的玩家说明 | [0.46.1 更新日志](releases/0.46.1-RELEASE_NOTES.md) |
 | 求解器界面、设置与路线展示的玩家说明 | [0.46.0 更新日志](releases/0.46.0-RELEASE_NOTES.md) |
