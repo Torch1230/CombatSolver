@@ -1,0 +1,106 @@
+{
+  "validation": "Automatic next-launch configuration; not a performance rerun or visible Steam validation",
+  "checks": {
+    "linuxDotnet": 54,
+    "windowsDotnet": 54,
+    "linuxRelease": "0 warnings, 0 errors",
+    "windowsRelease": "0 warnings, 0 errors",
+    "architecture": "REFACTOR_BOUNDARIES_OK search_files=208",
+    "localization": "new Chinese/English keys present"
+  },
+  "nativeRuns": [
+    {
+      "stage": "prepare",
+      "runId": "fc7ec18d3c244514aefb327ce6dfa7ac",
+      "status": "Passed",
+      "runtime": {
+        "clr": "9.0.7",
+        "serverGc": false,
+        "profile": "Default",
+        "savedNoGcRegionEnabled": true,
+        "effectiveNoGcRegionEnabled": true
+      },
+      "nextLaunchConfig": {
+        "runtimeOptions": {
+          "tfm": "net9.0",
+          "includedFrameworks": [
+            {
+              "name": "Microsoft.NETCore.App",
+              "version": "9.0.7"
+            }
+          ],
+          "configProperties": {
+            "System.Reflection.Metadata.MetadataUpdater.IsSupported": false,
+            "System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization": false,
+            "System.GC.Server": true,
+            "CombatSolver.RuntimeProfile": "server-generational",
+            "CombatSolver.PreviousServerGc": "absent"
+          }
+        }
+      }
+    },
+    {
+      "stage": "activate_and_restore",
+      "runId": "d404a757dadd426c8c4c2fde4f123a7a",
+      "status": "Passed",
+      "runtime": {
+        "clr": "9.0.7",
+        "serverGc": true,
+        "profile": "Active",
+        "savedNoGcRegionEnabled": true,
+        "effectiveNoGcRegionEnabled": false
+      },
+      "nextLaunchConfig": {
+        "runtimeOptions": {
+          "tfm": "net9.0",
+          "includedFrameworks": [
+            {
+              "name": "Microsoft.NETCore.App",
+              "version": "9.0.7"
+            }
+          ],
+          "configProperties": {
+            "System.Reflection.Metadata.MetadataUpdater.IsSupported": false,
+            "System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization": false
+          }
+        }
+      }
+    },
+    {
+      "stage": "restored_launch",
+      "runId": "d5eeb25ec2c64d57ac3798acaca692e5",
+      "status": "Passed",
+      "runtime": {
+        "clr": "9.0.7",
+        "serverGc": false,
+        "profile": "Default",
+        "savedNoGcRegionEnabled": true,
+        "effectiveNoGcRegionEnabled": true
+      },
+      "nextLaunchConfig": {
+        "runtimeOptions": {
+          "tfm": "net9.0",
+          "includedFrameworks": [
+            {
+              "name": "Microsoft.NETCore.App",
+              "version": "9.0.7"
+            }
+          ],
+          "configProperties": {
+            "System.Reflection.Metadata.MetadataUpdater.IsSupported": false,
+            "System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization": false
+          }
+        }
+      }
+    }
+  ],
+  "sourceGameConfigUnchanged": true,
+  "ownedInstancesCleaned": true,
+  "limitations": [
+    "Third original native launch interrupted by existing MainModule path acquisition race; fixed launcher to query by process handle. Restored launch was verified separately in a fresh owned instance after proving the restored JSON equals the source configuration.",
+    "Initial native preparation exposed empty environment masking; corrected and retested.",
+    "Actual Steam/workshop update path and visible UI not tested.",
+    "Native test toggled persisted preference between launches; UI click not exercised.",
+    "Direct unsubscribe does not restore game runtime configuration."
+  ]
+}

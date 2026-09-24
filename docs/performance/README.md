@@ -95,3 +95,5 @@
 - [性能与掉帧复盘](PERFORMANCE_AND_STUTTER_DIAGNOSIS.md)：早期版本结论与演进记录。
 - [Fork 性能结果](RF_FORK_PERFORMANCE_RESULTS.md)：历史固定场景的性能与正确性数据。
 - [旧性能样例](PERFORMANCE_FIXTURES.md)：保留复现资料；后续策略批次使用仓库的 strategy-replay-iteration skill，不继续维护此旧样例清单。
+
+- [Steam 自动启动接入证据（2026-09-24）](server-gc-auto-startup-20260924.json)：首次准备、下次激活与恢复验证；非新增性能样本。

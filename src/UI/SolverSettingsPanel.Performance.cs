@@ -10,6 +10,7 @@ internal sealed partial class SolverSettingsPanel
     private CheckButton _noveltyPortfolioEnabled = null!;
     private CheckButton _noGcRegionEnabled = null!;
     private LineEdit _noGcRegionBudget = null!;
+    private Label _gcStartupStatus = null!;
     private Control _advancedParameters = null!;
     private Button _advancedParametersToggle = null!;
     private bool _advancedParametersExpanded;
@@ -174,6 +175,24 @@ internal sealed partial class SolverSettingsPanel
         AddSettingsSection(content, SolverText.Get("搜索预算"),
             SolverText.Get("选择性能预设与并行度；详细参数可在下方展开。"), budgetGrid);
         GridContainer memoryGrid = CreateSettingsGrid();
+        CheckButton automaticGc = CreateToggle();
+        _reloadInputs.Add(data => automaticGc.ButtonPressed = data.AutoConfigureServerGc);
+        automaticGc.Toggled += enabled =>
+        {
+            if (_loading) return;
+            SolverSettings.Update(SolverSettings.Current with { AutoConfigureServerGc = enabled });
+            RuntimeGcStartup.Prepare(enabled);
+            _gcStartupStatus.Text = DescribeGcStartup();
+            SetStatus(DescribeGcStartup(), RuntimeGcStartup.Status == "Failed"
+                ? SolverUiTokens.Palette.TextMuted : SolverUiTokens.Palette.Success);
+        };
+        AddBasicRow(memoryGrid, SolverText.Get("自动配置搜索内存优化"), automaticGc,
+            SolverText.Get("默认开启，下次照常从 Steam 启动时生效，无需脚本。修改游戏的启动配置，影响整个游戏及其他 Mod；可降低搜索内存，但部分场景可能更慢或改变路线。关闭后恢复本 Mod 记录的原值，下次启动生效。直接退订不会恢复，请先关闭再退订。"));
+        _gcStartupStatus = SolverUiTokens.CreateLabel(DescribeGcStartup(),
+            SolverUiTokens.Type.Caption, SolverUiTokens.Palette.TextMuted);
+        _gcStartupStatus.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        memoryGrid.AddChild(_gcStartupStatus);
+        memoryGrid.AddChild(new Control());
         _noGcRegionEnabled.Toggled += OnNoGcRegionEnabledToggled;
         AddBasicRow(
             memoryGrid,
@@ -322,16 +341,25 @@ internal sealed partial class SolverSettingsPanel
             SolverUiTokens.Palette.Success);
     }
 
+    private static string DescribeGcStartup()
+        => RuntimeGcStartup.Status switch
+        {
+            "Prepared" or "AlreadyConfigured" => SolverText.Get("已配置；下次正常启动自动使用优化模式。当前是否生效见下方状态。"),
+            "Restored" or "Unchanged" => SolverText.Get("未安排自动优化；已恢复的启动配置将在下次启动生效。"),
+            "Skipped" => SolverText.Get("本次由专用启动器或测试环境管理，未修改游戏启动配置。"),
+            _ => SolverText.Get("自动配置失败，游戏仍可正常运行；详情见日志。"),
+        };
+
     private static string DescribeRuntimeGcProfile()
         => RuntimeGcProfile.Current.Status switch
         {
             RuntimeGcProfileStatus.Active => SolverText.Get(
-                "本次启动使用多核内存回收；NoGC 已临时关闭，已保存的设置保持不变。恢复普通启动后可修改此项。"),
+                "本次启动使用多核内存回收；NoGC 已临时关闭，已保存的设置保持不变。恢复原启动配置并重启后可修改此项。"),
             RuntimeGcProfileStatus.ServerGcUnavailable => SolverText.Get(
                 "本次启动的内存配置未生效：运行库未启用 ServerGC，继续使用已保存的 NoGC 设置。"),
             RuntimeGcProfileStatus.UnknownProfile => SolverText.Get(
                 "无法识别本次启动的内存配置，继续使用已保存的 NoGC 设置。"),
-            _ => "",
+            _ => SolverText.Get("本次仍使用原有内存配置。"),
         };
 
     private OptionButton CreatePerformancePresetInput()

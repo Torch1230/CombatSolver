@@ -1,12 +1,18 @@
 # CombatSolver 测试清单
 
-## 0.46.2：新鲜资源保路通道探测上限（2026-09-24）
+## 下一版本（开发中）：新鲜资源保路通道探测上限（2026-09-24）
 
 - Windows Release 构建 0 警告、0 错误（`-p:CopyModOnBuild=false`，不写实机 Mod 目录）；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`；`git diff --check` 通过。
 - 旗舰根 `EQ-IRONCLAD-ELITE-00` 串行 8 次 ABBA（执行前固定 A B B A A B B A，两臂各 4 次，全部样本保留）：墙钟均值 12.448 → 10.488 s（−15.7%），两臂区间不重叠（9.711–11.191 对 11.769–13.005）；`standPatProbes` −41.2%、展开 −22.7%、转移 −27.7%、`forkCount` −27.2%、累计分配 −27.8%；8 次预计战损、分数与终止边界逐项相同（52 / 9999279964 / `None`）。
 - 60 根 `coverage/equivalence` 语料的上限扫描（VeryHigh / beam 135 / nodes 60000 / DOP1 / 60 s，workers 4）：8 名额三种预排与 32 档前缀均被否决（0～2 根存活/阵亡翻转、净战损 −45～+20），采用的 64 档在 58 可比根上 0 翻转、净战损 −7、更差 1 根（`EQ-DEFECT-ELITE-00` 0→2）、更好 2 根，探测 −13.7%、展开 −2.7%。`FULL-SILENT-ELITE-03` 两臂与 `FULL-DEFECT-ELITE-00` 候选臂为 `TimeLimit`，不计入判决。
 - `tools/OfflineSearchHarness/compare_results.py` 逐字段对照基线臂与采用臂：60 根对齐、无缺根、6447 个非时间/非内存字段；`rootState` 与 `catalog` 差异 0，`route` 231 处/15 根，`continuations` 15 根，`solverMetrics` 非时间字段 399 处/34 根。结构化样本：[fresh-resource-standpat-probe-cap-20260924.json](performance/fresh-resource-standpat-probe-cap-20260924.json)。
 - 未执行：游戏内 `UnattendedTestRunner.StandPatProbes` 契约（双车道探测、注入异常传播、并行与串行等价）、玩家检查点批量回放、DOP>1 与组合（Coordinator/portfolio）路径、可见 Steam 帧时间与 GC 暂停、No-GC 区域行为。`tools/BeamRankSortChecks` 在未改动的 `main` 上即因 `Snapshot.PlayerDead` 报错，本轮未修改。
+- 合并审查追加：PR #134 的 Windows Release 构建和结构门禁通过。`STAND-PAT-PROBE-BATCHES` 在默认小牌组未到达剪枝检查点；改用既有死灵药水输入后，PR head `aaf3ab0ce9124430a554535f232c2aa2` 与未改动 `main` `339d90af220949d8aa49fd8ed861c247` 均因同一 DOP1／DOP2 非时序计数差异失败，路线、评分、预计战损及边界相同。因此该合同未通过，失败不能归因于 PR #134；两次私有实例已清理。未由此取得 DOP>1 质量结论。
+
+## 下一版本（开发中）：ServerGC 普通启动自动接入（2026-09-24）
+
+- PR #133 两平台配置／真实 CLR 合同各 54 项通过；Windows 私有实例首次准备、下次激活及另一次恢复启动均 Passed，详见[结构化证据](performance/server-gc-auto-startup-20260924.json)。本轮合并修正了空路径检查顺序，相关配置合同与 Release 构建另以最终合并源码为准。
+- 自动配置默认无头及显式启动器跳过；正式 Steam 设置开关、工坊更新链路和云存档未验证。此前可选 profile 的性能取舍沿用 PR #132 的五根原生宿主证据，不把启动配置合同当作可见性能验收。
 
 ## 0.46.2：可选 ServerGC 启动配置（2026-09-24）
 
