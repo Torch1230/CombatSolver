@@ -77,15 +77,17 @@ Windows（PowerShell 7）：
 
 ```powershell
 dotnet clean -c Release
-pwsh -NoProfile -File tools\build-local-stack.ps1 -Configuration Release
+pwsh -NoProfile -File tools\build-local-stack.ps1 -Configuration Release -ForPublication -PrivateConfigDirectory <私有配置目录>
 ```
 
 Linux（Bash）：
 
 ```bash
 dotnet clean -c Release
-./tools/build-local-stack.sh --configuration Release
+./tools/build-local-stack.sh --configuration Release --for-publication --private-config-directory <私有配置目录>
 ```
+
+私有配置目录必须包含 `presence.props` 和 `showcase.props`，可从本机部署定位文件确认；它不进入仓库或发布包。发布构建与统一发布脚本都会检查 DLL 中的在线连接元数据，缺失时停止。不要输出配置值。
 
 从 release source commit 构建，不从游戏 Mods 目录反向复制 DLL，不复用未知来源旧构建。构建成功后不再反射 DLL 版本、重复构建、再次复制部署或重跑已经通过的行为场景。
 

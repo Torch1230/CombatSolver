@@ -1,7 +1,9 @@
 <Project Sdk="Godot.NET.Sdk/4.5.1">
   <Import Project="./local.props" Condition="Exists('./local.props')" />
-  <Import Project="./.local/presence.props" Condition="Exists('./.local/presence.props')" />
-  <Import Project="./.local/showcase.props" Condition="Exists('./.local/showcase.props')" />
+  <Import Project="./.local/presence.props" Condition="'$(PresencePropsPath)' == '' and Exists('./.local/presence.props')" />
+  <Import Project="$(PresencePropsPath)" Condition="'$(PresencePropsPath)' != ''" />
+  <Import Project="./.local/showcase.props" Condition="'$(ShowcasePropsPath)' == '' and Exists('./.local/showcase.props')" />
+  <Import Project="$(ShowcasePropsPath)" Condition="'$(ShowcasePropsPath)' != ''" />
 
   <ItemGroup Condition="'$(PresenceEndpoint)' != ''">
     <AssemblyMetadata Include="PresenceEndpoint" Value="$(PresenceEndpoint)" />
@@ -22,7 +24,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>CombatSolver</RootNamespace>
-    <Version>0.46.0</Version>
+    <Version>0.46.1</Version>
     <DefineConstants Condition="'$(VerifyHistoryCounters)' == 'true'">$(DefineConstants);VERIFY_HISTORY_COUNTERS</DefineConstants>
     <SteamRoot Condition="'$(SteamRoot)' == '' and '$(OS)' == 'Windows_NT' and Exists('D:/Steam')">D:/Steam</SteamRoot>
     <SteamRoot Condition="'$(SteamRoot)' == '' and '$(OS)' == 'Windows_NT'">$(MSBuildProgramFiles32)/Steam</SteamRoot>
@@ -65,6 +67,14 @@
     <Error Condition="!Exists('$(Sts2DataDir)/sts2.dll')" Text="找不到 $(Sts2DataDir)/sts2.dll。请检查 SteamRoot 或 local.props。" />
     <Error Condition="!Exists('$(RitsuLibReferencesProps)') and !Exists('$(RitsuLibDir)/STS2-RitsuLib.dll')"
            Text="找不到当前游戏版本的 RitsuLib。请检查 SteamRoot、RitsuWorkshopRoot 或 local.props。" />
+  </Target>
+
+  <Target Name="ValidatePublicationConnections" BeforeTargets="GenerateAssemblyInfo" Condition="'$(PublicationBuild)' == 'true'">
+    <Error Condition="'$(PresenceEndpoint)' == ''" Text="发布构建缺少 PresenceEndpoint。" />
+    <Error Condition="'$(PresenceCertificateSha256)' == ''" Text="发布构建缺少 PresenceCertificateSha256。" />
+    <Error Condition="'$(ShowcaseEndpoint)' == ''" Text="发布构建缺少 ShowcaseEndpoint。" />
+    <Error Condition="'$(ShowcaseUploadToken)' == ''" Text="发布构建缺少 ShowcaseUploadToken。" />
+    <Error Condition="'$(ShowcaseCertificateSha256)' == ''" Text="发布构建缺少 ShowcaseCertificateSha256。" />
   </Target>
 
   <Target Name="BuildMemoryCleaner" BeforeTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
