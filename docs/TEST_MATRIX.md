@@ -2,8 +2,8 @@
 
 ## 下一版本（开发中）：内存回收设置说明（2026-09-24）
 
-- 设置页回收相关的 31 个中英键均有映射，面向玩家的这部分文案不再出现 `GC`、`NoGC`、`CLR`。Windows Release 构建 0 警告、0 错误，PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`，`git diff --check` 通过。
-- 仅修改文字，未重跑既有回收生命周期或搜索场景；未启动可见 Steam，真实设置页排版未验证。
+- 设置页回收相关的 32 个中英文词条均已精确映射对齐，面向玩家的文案清晰直观、消除术语堆砌。Windows Release 构建 0 警告、0 错误，PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`，`RuntimeGcProfileChecks` 54 项检查全数通过，`git diff --check` 通过。
+- 仅修改 UI 文本与状态显示结构，未修改底层 GC 策略；未启动可见 Steam，真实设置页实机排版由用户验收。
 
 ## 下一版本（开发中）：新鲜资源保路通道探测上限（2026-09-24）
 
