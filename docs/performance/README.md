@@ -17,6 +17,7 @@
 
 ## 专题
 
+- [新鲜资源保路通道的探测上限](fresh-resource-standpat-probe-cap-20260924.md)：`FindBestFreshResourceStandPat` 无上限探测的 beam rank 前缀 64 档、旗舰根 ABBA，以及 8/32/64 档与三种 8 名额预排在 60 根语料上的存活/阵亡对照。
 - [热路径快速通道](hot-path-fast-lanes-20260922.md)：死亡指纹排序和监听位图补齐，离线等价性与计时证据。
 - [GC 完成链修复与优化筛选](gc-completion-allocation-20260921.md)：独立验证卡死修复，撤掉收益不足的改动。
 - [变形池根快照缓存](transform-pool-root-snapshot-20260917.md)：搜索展开中重复计算变形候选池的热点、Mod 侧根级快照实现、2.010 倍 ABBA 与逐字段等价性，以及峰值内存未改善的实测。

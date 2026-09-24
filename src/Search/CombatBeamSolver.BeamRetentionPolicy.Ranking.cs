@@ -717,10 +717,18 @@ internal sealed partial class CombatBeamSolver
 
         private SearchNode? FindBestFreshResourceStandPat(IReadOnlyList<SearchNode> nodes)
         {
+            // 每个探测点要付一次完整的跨回合 roll-out；这一条通道的探测数此前只受同组内通过资源筛选的
+            // 节点数限制，随 beam 宽度增长，而同一个保路循环里的三个 FindBestStandPat 都有上限。
+            // 入参已按 beam rank 排序（GroupBy 保持源序），所以取前缀就是这条通道自身排序下最靠前的
+            // 探测点，不引入新的排序键。上限值来自 60 根 equivalence 语料的扫描：32 会把两根 Boss 的
+            // 存活路线挤出保留集，64 没有存活/阵亡翻转。
+            const int probeLimit = 64;
             List<SearchNode> probes = nodes.Where(node => node.Parent is { } parent
                          && (node.Snapshot.FutureResourceValue > parent.Snapshot.FutureResourceValue
                              || node.Snapshot.StrategicEffects.ResourcePotential
-                                > parent.Snapshot.StrategicEffects.ResourcePotential)).ToList();
+                                > parent.Snapshot.StrategicEffects.ResourcePotential))
+                .Take(probeLimit)
+                .ToList();
             _prepareStandPat?.Invoke(probes);
             SearchNode? best = null;
             StandPatEvaluation bestEvaluation = default;

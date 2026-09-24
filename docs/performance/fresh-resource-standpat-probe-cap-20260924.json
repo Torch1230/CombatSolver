@@ -1,0 +1,4303 @@
+{
+ "baseline": "4bfb4407",
+ "corpus": "coverage/equivalence/*/inputs/*-request.json（60 根）",
+ "configuration": {
+  "profile": "VeryHigh",
+  "beam": 135,
+  "nodes": 60000,
+  "maxDegreeOfParallelism": 1,
+  "potionPolicy": "Smart",
+  "searchBudgetMilliseconds": 60000,
+  "workers": 4
+ },
+ "rootFields": {
+  "comparableRule": "两臂都 valid 且 boundary=None 才计入判决",
+  "totalRoots": 60
+ },
+ "capSweep": [
+  {
+   "arm": "B",
+   "implementation": "上限 8 + 血量键",
+   "comparableRoots": 59,
+   "netHpLostDeltaVsBaseline": 7,
+   "rootsHpLostWorse": 3,
+   "rootsHpLostBetter": 6,
+   "onlyDeathRoutesFlips": 0,
+   "standPatProbesBaseline": 249607,
+   "standPatProbesArm": 165040,
+   "standPatProbesChangePercent": -33.9,
+   "totalExpandedBaseline": 925820,
+   "totalExpandedArm": 866518,
+   "totalExpandedChangePercent": -6.4,
+   "affectedRoots": [
+    {
+     "fixture": "EQ-NECROBINDER-ELITE-00",
+     "kind": "hpLostBetter",
+     "baseline": 8,
+     "candidate": 7
+    },
+    {
+     "fixture": "EQ-REGENT-BOSS-00",
+     "kind": "hpLostBetter",
+     "baseline": 72,
+     "candidate": 68
+    },
+    {
+     "fixture": "FULL-DEFECT-ELITE-00",
+     "kind": "hpLostBetter",
+     "baseline": 2,
+     "candidate": 0
+    },
+    {
+     "fixture": "FULL-REGENT-BOSS-00",
+     "kind": "hpLostWorse",
+     "baseline": 55,
+     "candidate": 67
+    },
+    {
+     "fixture": "FULL-REGENT-BOSS-02",
+     "kind": "hpLostWorse",
+     "baseline": 66,
+     "candidate": 70
+    },
+    {
+     "fixture": "FULL-REGENT-ELITE-03",
+     "kind": "hpLostWorse",
+     "baseline": 59,
+     "candidate": 68
+    },
+    {
+     "fixture": "FULL-SILENT-BOSS-02",
+     "kind": "hpLostBetter",
+     "baseline": 69,
+     "candidate": 67
+    },
+    {
+     "fixture": "FULL-SILENT-ELITE-02",
+     "kind": "hpLostBetter",
+     "baseline": 66,
+     "candidate": 64
+    },
+    {
+     "fixture": "GA-REGENT-BOSS-00",
+     "kind": "hpLostBetter",
+     "baseline": 50,
+     "candidate": 43
+    }
+   ]
+  },
+  {
+   "arm": "C",
+   "implementation": "上限 8 + 资源增量键",
+   "comparableRoots": 58,
+   "netHpLostDeltaVsBaseline": -45,
+   "rootsHpLostWorse": 1,
+   "rootsHpLostBetter": 6,
+   "onlyDeathRoutesFlips": 1,
+   "standPatProbesBaseline": 241850,
+   "standPatProbesArm": 163682,
+   "standPatProbesChangePercent": -32.3,
+   "totalExpandedBaseline": 895624,
+   "totalExpandedArm": 852476,
+   "totalExpandedChangePercent": -4.8,
+   "affectedRoots": [
+    {
+     "fixture": "EQ-NECROBINDER-ELITE-00",
+     "kind": "hpLostBetter",
+     "baseline": 8,
+     "candidate": 7
+    },
+    {
+     "fixture": "EQ-REGENT-BOSS-00",
+     "kind": "hpLostBetter",
+     "baseline": 72,
+     "candidate": 50
+    },
+    {
+     "fixture": "FULL-DEFECT-ELITE-00",
+     "kind": "hpLostBetter",
+     "baseline": 2,
+     "candidate": 0
+    },
+    {
+     "fixture": "FULL-REGENT-BOSS-00",
+     "kind": "hpLostBetter",
+     "baseline": 55,
+     "candidate": 38
+    },
+    {
+     "fixture": "FULL-REGENT-BOSS-02",
+     "kind": "hpLostBetter",
+     "baseline": 66,
+     "candidate": 64
+    },
+    {
+     "fixture": "FULL-SILENT-BOSS-02",
+     "kind": "hpLostWorse",
+     "baseline": 69,
+     "candidate": 70
+    },
+    {
+     "fixture": "FULL-SILENT-BOSS-02",
+     "kind": "onlyDeathRoutesFlip",
+     "baseline": false,
+     "candidate": true,
+     "baselineHpLost": 69,
+     "candidateHpLost": 70
+    },
+    {
+     "fixture": "FULL-SILENT-ELITE-02",
+     "kind": "hpLostBetter",
+     "baseline": 66,
+     "candidate": 64
+    }
+   ]
+  },
+  {
+   "arm": "D",
+   "implementation": "上限 8 + 双配额并集",
+   "comparableRoots": 59,
+   "netHpLostDeltaVsBaseline": 20,
+   "rootsHpLostWorse": 5,
+   "rootsHpLostBetter": 4,
+   "onlyDeathRoutesFlips": 1,
+   "standPatProbesBaseline": 249607,
+   "standPatProbesArm": 171385,
+   "standPatProbesChangePercent": -31.3,
+   "totalExpandedBaseline": 925820,
+   "totalExpandedArm": 875153,
+   "totalExpandedChangePercent": -5.5,
+   "affectedRoots": [
+    {
+     "fixture": "EQ-NECROBINDER-ELITE-00",
+     "kind": "hpLostBetter",
+     "baseline": 8,
+     "candidate": 7
+    },
+    {
+     "fixture": "EQ-REGENT-BOSS-00",
+     "kind": "hpLostBetter",
+     "baseline": 72,
+     "candidate": 68
+    },
+    {
+     "fixture": "FULL-DEFECT-ELITE-00",
+     "kind": "hpLostBetter",
+     "baseline": 2,
+     "candidate": 0
+    },
+    {
+     "fixture": "FULL-REGENT-BOSS-00",
+     "kind": "hpLostWorse",
+     "baseline": 55,
+     "candidate": 68
+    },
+    {
+     "fixture": "FULL-REGENT-BOSS-02",
+     "kind": "hpLostBetter",
+     "baseline": 66,
+     "candidate": 64
+    },
+    {
+     "fixture": "FULL-REGENT-ELITE-03",
+     "kind": "hpLostWorse",
+     "baseline": 59,
+     "candidate": 68
+    },
+    {
+     "fixture": "FULL-SILENT-BOSS-02",
+     "kind": "hpLostWorse",
+     "baseline": 69,
+     "candidate": 70
+    },
+    {
+     "fixture": "FULL-SILENT-BOSS-02",
+     "kind": "onlyDeathRoutesFlip",
+     "baseline": false,
+     "candidate": true,
+     "baselineHpLost": 69,
+     "candidateHpLost": 70
+    },
+    {
+     "fixture": "FULL-SILENT-ELITE-02",
+     "kind": "hpLostWorse",
+     "baseline": 66,
+     "candidate": 69
+    },
+    {
+     "fixture": "GA-REGENT-BOSS-00",
+     "kind": "hpLostWorse",
+     "baseline": 50,
+     "candidate": 53
+    }
+   ]
+  },
+  {
+   "arm": "E",
+   "implementation": "上限 64 前缀（采用）",
+   "comparableRoots": 58,
+   "netHpLostDeltaVsBaseline": -7,
+   "rootsHpLostWorse": 1,
+   "rootsHpLostBetter": 2,
+   "onlyDeathRoutesFlips": 0,
+   "standPatProbesBaseline": 241823,
+   "standPatProbesArm": 208627,
+   "standPatProbesChangePercent": -13.7,
+   "totalExpandedBaseline": 904906,
+   "totalExpandedArm": 880157,
+   "totalExpandedChangePercent": -2.7,
+   "affectedRoots": [
+    {
+     "fixture": "EQ-DEFECT-ELITE-00",
+     "kind": "hpLostWorse",
+     "baseline": 0,
+     "candidate": 2
+    },
+    {
+     "fixture": "EQ-NECROBINDER-BOSS-00",
+     "kind": "hpLostBetter",
+     "baseline": 7,
+     "candidate": 2
+    },
+    {
+     "fixture": "EQ-REGENT-BOSS-00",
+     "kind": "hpLostBetter",
+     "baseline": 72,
+     "candidate": 68
+    }
+   ]
+  },
+  {
+   "arm": "F",
+   "implementation": "上限 32 前缀",
+   "comparableRoots": 58,
+   "netHpLostDeltaVsBaseline": -53,
+   "rootsHpLostWorse": 4,
+   "rootsHpLostBetter": 3,
+   "onlyDeathRoutesFlips": 2,
+   "standPatProbesBaseline": 241885,
+   "standPatProbesArm": 188464,
+   "standPatProbesChangePercent": -22.1,
+   "totalExpandedBaseline": 891336,
+   "totalExpandedArm": 871196,
+   "totalExpandedChangePercent": -2.3,
+   "affectedRoots": [
+    {
+     "fixture": "EQ-REGENT-BOSS-00",
+     "kind": "hpLostBetter",
+     "baseline": 72,
+     "candidate": 7
+    },
+    {
+     "fixture": "EQ-REGENT-BOSS-00",
+     "kind": "onlyDeathRoutesFlip",
+     "baseline": false,
+     "candidate": true,
+     "baselineHpLost": 72,
+     "candidateHpLost": 7
+    },
+    {
+     "fixture": "FULL-DEFECT-ELITE-00",
+     "kind": "hpLostBetter",
+     "baseline": 2,
+     "candidate": 0
+    },
+    {
+     "fixture": "FULL-NECROBINDER-ELITE-01",
+     "kind": "hpLostBetter",
+     "baseline": 52,
+     "candidate": 51
+    },
+    {
+     "fixture": "FULL-REGENT-BOSS-02",
+     "kind": "hpLostWorse",
+     "baseline": 66,
+     "candidate": 68
+    },
+    {
+     "fixture": "FULL-REGENT-ELITE-03",
+     "kind": "hpLostWorse",
+     "baseline": 59,
+     "candidate": 68
+    },
+    {
+     "fixture": "FULL-SILENT-BOSS-02",
+     "kind": "hpLostWorse",
+     "baseline": 69,
+     "candidate": 70
+    },
+    {
+     "fixture": "FULL-SILENT-BOSS-02",
+     "kind": "onlyDeathRoutesFlip",
+     "baseline": false,
+     "candidate": true,
+     "baselineHpLost": 69,
+     "candidateHpLost": 70
+    },
+    {
+     "fixture": "GA-REGENT-BOSS-00",
+     "kind": "hpLostWorse",
+     "baseline": 50,
+     "candidate": 53
+    }
+   ]
+  }
+ ],
+ "perRoot": {
+  "before-side-turn-start-0433/EQ-DEFECT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": -1000005100033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11236,
+    "totalTransitions": 40162,
+    "standPatProbes": 2270
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": -1000005100033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11236,
+    "totalTransitions": 40162,
+    "standPatProbes": 2270
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": -1000005100033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11236,
+    "totalTransitions": 40162,
+    "standPatProbes": 2270
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": -1000005100033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11236,
+    "totalTransitions": 40162,
+    "standPatProbes": 2270
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": -1000005100033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11236,
+    "totalTransitions": 40162,
+    "standPatProbes": 2270
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": -1000005100033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11236,
+    "totalTransitions": 40162,
+    "standPatProbes": 2270
+   }
+  },
+  "before-side-turn-start-0433/EQ-DEFECT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002169968,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 21505,
+    "totalTransitions": 102910,
+    "standPatProbes": 6818
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002161969,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11606,
+    "totalTransitions": 57879,
+    "standPatProbes": 1848
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002161969,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11606,
+    "totalTransitions": 57879,
+    "standPatProbes": 1848
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002161969,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11606,
+    "totalTransitions": 57880,
+    "standPatProbes": 1849
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": 10002081974,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 17820,
+    "totalTransitions": 81302,
+    "standPatProbes": 4547
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002169968,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10147,
+    "totalTransitions": 44390,
+    "standPatProbes": 2030
+   }
+  },
+  "before-side-turn-start-0433/EQ-IRONCLAD-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 62,
+    "score": 9998579967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28900,
+    "totalTransitions": 146064,
+    "standPatProbes": 2669
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 62,
+    "score": 9998579967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28900,
+    "totalTransitions": 146064,
+    "standPatProbes": 2669
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 62,
+    "score": 9998579967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28900,
+    "totalTransitions": 146064,
+    "standPatProbes": 2669
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 62,
+    "score": 9998579967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28900,
+    "totalTransitions": 146064,
+    "standPatProbes": 2669
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 62,
+    "score": 9998579967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28900,
+    "totalTransitions": 146064,
+    "standPatProbes": 2669
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 62,
+    "score": 9998579967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28900,
+    "totalTransitions": 146064,
+    "standPatProbes": 2669
+   }
+  },
+  "before-side-turn-start-0433/EQ-IRONCLAD-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10834,
+    "totalTransitions": 54919,
+    "standPatProbes": 6269
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8313,
+    "totalTransitions": 37774,
+    "standPatProbes": 1651
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": 9999279963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10214,
+    "totalTransitions": 46906,
+    "standPatProbes": 2069
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8402,
+    "totalTransitions": 38225,
+    "standPatProbes": 1863
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8371,
+    "totalTransitions": 39693,
+    "standPatProbes": 3687
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8325,
+    "totalTransitions": 38654,
+    "standPatProbes": 2766
+   }
+  },
+  "before-side-turn-start-0433/EQ-NECROBINDER-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": -1000002835023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 21493,
+    "totalTransitions": 120588,
+    "standPatProbes": 5645
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": -1000002835024,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 21442,
+    "totalTransitions": 118888,
+    "standPatProbes": 4486
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": -1000002835024,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 21814,
+    "totalTransitions": 112756,
+    "standPatProbes": 4450
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": -1000002835024,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 24003,
+    "totalTransitions": 130107,
+    "standPatProbes": 4963
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": -1000002725037,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 18475,
+    "totalTransitions": 107617,
+    "standPatProbes": 5020
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": -1000002865024,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 22298,
+    "totalTransitions": 112563,
+    "standPatProbes": 4958
+   }
+  },
+  "before-side-turn-start-0433/EQ-NECROBINDER-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 8,
+    "score": 10001439981,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10983,
+    "totalTransitions": 90347,
+    "standPatProbes": 4801
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": 10001559978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11214,
+    "totalTransitions": 88308,
+    "standPatProbes": 1511
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": 10001559978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11214,
+    "totalTransitions": 88308,
+    "standPatProbes": 1511
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": 10001559978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11214,
+    "totalTransitions": 88308,
+    "standPatProbes": 1511
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 8,
+    "score": 10001439981,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11569,
+    "totalTransitions": 88263,
+    "standPatProbes": 2772
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 8,
+    "score": 10001439981,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10731,
+    "totalTransitions": 84368,
+    "standPatProbes": 2036
+   }
+  },
+  "before-side-turn-start-0433/EQ-REGENT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 72,
+    "score": 9997409957,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12262,
+    "totalTransitions": 87405,
+    "standPatProbes": 5454
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 68,
+    "score": 9997749946,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12482,
+    "totalTransitions": 93323,
+    "standPatProbes": 2082
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999129960,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14318,
+    "totalTransitions": 102302,
+    "standPatProbes": 2691
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 68,
+    "score": 9997749946,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12216,
+    "totalTransitions": 95998,
+    "standPatProbes": 2258
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 68,
+    "score": 9997689957,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11289,
+    "totalTransitions": 86966,
+    "standPatProbes": 3743
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 7,
+    "score": -1000004210012,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 12645,
+    "totalTransitions": 121430,
+    "standPatProbes": 3568
+   }
+  },
+  "before-side-turn-start-0433/EQ-REGENT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 41,
+    "score": 9999789975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 21111,
+    "totalTransitions": 151263,
+    "standPatProbes": 2118
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 41,
+    "score": 9999789975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 21111,
+    "totalTransitions": 151263,
+    "standPatProbes": 2118
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 41,
+    "score": 9999789975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 21111,
+    "totalTransitions": 151263,
+    "standPatProbes": 2118
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 41,
+    "score": 9999789975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 21111,
+    "totalTransitions": 151263,
+    "standPatProbes": 2118
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 41,
+    "score": 9999789975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 21111,
+    "totalTransitions": 151263,
+    "standPatProbes": 2118
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 41,
+    "score": 9999789975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 21111,
+    "totalTransitions": 151263,
+    "standPatProbes": 2118
+   }
+  },
+  "before-side-turn-start-0433/EQ-SILENT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999099935,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15795,
+    "totalTransitions": 55712,
+    "standPatProbes": 1845
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999099935,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15795,
+    "totalTransitions": 55712,
+    "standPatProbes": 1845
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999099935,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15795,
+    "totalTransitions": 55712,
+    "standPatProbes": 1845
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999099935,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15795,
+    "totalTransitions": 55712,
+    "standPatProbes": 1845
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999099935,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15795,
+    "totalTransitions": 55712,
+    "standPatProbes": 1845
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999099935,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15795,
+    "totalTransitions": 55712,
+    "standPatProbes": 1845
+   }
+  },
+  "before-side-turn-start-0433/EQ-SILENT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004474031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9215,
+    "totalTransitions": 32587,
+    "standPatProbes": 1183
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004474031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9215,
+    "totalTransitions": 32587,
+    "standPatProbes": 1183
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004474031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9215,
+    "totalTransitions": 32587,
+    "standPatProbes": 1183
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004474031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9215,
+    "totalTransitions": 32587,
+    "standPatProbes": 1183
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004474031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9215,
+    "totalTransitions": 32587,
+    "standPatProbes": 1183
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004474031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9215,
+    "totalTransitions": 32587,
+    "standPatProbes": 1183
+   }
+  },
+  "before-side-turn-start-0433/FULL-DEFECT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 61,
+    "score": -1000004340026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14559,
+    "totalTransitions": 54515,
+    "standPatProbes": 4114
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 61,
+    "score": -1000004340026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14559,
+    "totalTransitions": 54515,
+    "standPatProbes": 4114
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 61,
+    "score": -1000004340026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14559,
+    "totalTransitions": 54515,
+    "standPatProbes": 4114
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 61,
+    "score": -1000004340026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14559,
+    "totalTransitions": 54515,
+    "standPatProbes": 4114
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 61,
+    "score": -1000004340026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14559,
+    "totalTransitions": 54515,
+    "standPatProbes": 4114
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 61,
+    "score": -1000004340026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14559,
+    "totalTransitions": 54515,
+    "standPatProbes": 4114
+   }
+  },
+  "before-side-turn-start-0433/FULL-DEFECT-BOSS-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004582044,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9496,
+    "totalTransitions": 37077,
+    "standPatProbes": 1800
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004582044,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9496,
+    "totalTransitions": 37077,
+    "standPatProbes": 1800
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004582044,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9496,
+    "totalTransitions": 37077,
+    "standPatProbes": 1800
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004582044,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9496,
+    "totalTransitions": 37077,
+    "standPatProbes": 1800
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004582044,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9496,
+    "totalTransitions": 37077,
+    "standPatProbes": 1800
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004582044,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9496,
+    "totalTransitions": 37077,
+    "standPatProbes": 1800
+   }
+  },
+  "before-side-turn-start-0433/FULL-DEFECT-BOSS-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 67,
+    "score": 9998147951,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9571,
+    "totalTransitions": 42214,
+    "standPatProbes": 1988
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 67,
+    "score": 9998147951,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9571,
+    "totalTransitions": 42214,
+    "standPatProbes": 1988
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 67,
+    "score": 9998147951,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9571,
+    "totalTransitions": 42214,
+    "standPatProbes": 1988
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 67,
+    "score": 9998147951,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9571,
+    "totalTransitions": 42214,
+    "standPatProbes": 1988
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 67,
+    "score": 9998147951,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9571,
+    "totalTransitions": 42214,
+    "standPatProbes": 1988
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 67,
+    "score": 9998147951,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9571,
+    "totalTransitions": 42214,
+    "standPatProbes": 1988
+   }
+  },
+  "before-side-turn-start-0433/FULL-DEFECT-BOSS-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000008038013,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 8732,
+    "totalTransitions": 33807,
+    "standPatProbes": 2911
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000008038013,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9057,
+    "totalTransitions": 33921,
+    "standPatProbes": 1758
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000008038013,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 8893,
+    "totalTransitions": 33698,
+    "standPatProbes": 1779
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000008038013,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9128,
+    "totalTransitions": 34157,
+    "standPatProbes": 1891
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000008038013,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 8665,
+    "totalTransitions": 33291,
+    "standPatProbes": 2541
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000008038013,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 9040,
+    "totalTransitions": 34581,
+    "standPatProbes": 2387
+   }
+  },
+  "before-side-turn-start-0433/FULL-DEFECT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": 10002049978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 20914,
+    "totalTransitions": 98496,
+    "standPatProbes": 7784
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002209974,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 38176,
+    "totalTransitions": 214169,
+    "standPatProbes": 7229
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002209974,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 42846,
+    "totalTransitions": 225600,
+    "standPatProbes": 7956
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002209974,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 38176,
+    "totalTransitions": 214210,
+    "standPatProbes": 7270
+   },
+   "E": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 1,
+    "score": 10002113979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 42628,
+    "totalTransitions": 216622,
+    "standPatProbes": 9453
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002193973,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 22072,
+    "totalTransitions": 101177,
+    "standPatProbes": 5615
+   }
+  },
+  "before-side-turn-start-0433/FULL-DEFECT-ELITE-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002258984,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13705,
+    "totalTransitions": 52858,
+    "standPatProbes": 3681
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002258984,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13705,
+    "totalTransitions": 52858,
+    "standPatProbes": 3681
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002258984,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13705,
+    "totalTransitions": 52858,
+    "standPatProbes": 3681
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002258984,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13705,
+    "totalTransitions": 52858,
+    "standPatProbes": 3681
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002258984,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13705,
+    "totalTransitions": 52858,
+    "standPatProbes": 3681
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10002258984,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13705,
+    "totalTransitions": 52858,
+    "standPatProbes": 3681
+   }
+  },
+  "before-side-turn-start-0433/FULL-DEFECT-ELITE-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001297979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9370,
+    "totalTransitions": 33881,
+    "standPatProbes": 2290
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001297979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9370,
+    "totalTransitions": 33881,
+    "standPatProbes": 2290
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001297979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9370,
+    "totalTransitions": 33881,
+    "standPatProbes": 2290
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001297979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9370,
+    "totalTransitions": 33881,
+    "standPatProbes": 2290
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001297979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9370,
+    "totalTransitions": 33881,
+    "standPatProbes": 2290
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001297979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 9370,
+    "totalTransitions": 33881,
+    "standPatProbes": 2290
+   }
+  },
+  "before-side-turn-start-0433/FULL-DEFECT-ELITE-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000003012033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 16425,
+    "totalTransitions": 71301,
+    "standPatProbes": 7108
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000002862035,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15736,
+    "totalTransitions": 66184,
+    "standPatProbes": 3887
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000002862035,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 16144,
+    "totalTransitions": 67080,
+    "standPatProbes": 4028
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000002862035,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15727,
+    "totalTransitions": 66211,
+    "standPatProbes": 3963
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000002862035,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15832,
+    "totalTransitions": 69026,
+    "standPatProbes": 6095
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000002862035,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15832,
+    "totalTransitions": 68315,
+    "standPatProbes": 5384
+   }
+  },
+  "before-side-turn-start-0433/FULL-IRONCLAD-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 46,
+    "score": 9999179970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 32559,
+    "totalTransitions": 170536,
+    "standPatProbes": 4509
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 46,
+    "score": 9999179970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 32559,
+    "totalTransitions": 170536,
+    "standPatProbes": 4509
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 46,
+    "score": 9999179970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 32559,
+    "totalTransitions": 170536,
+    "standPatProbes": 4509
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 46,
+    "score": 9999179970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 32559,
+    "totalTransitions": 170536,
+    "standPatProbes": 4509
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 46,
+    "score": 9999179970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 32559,
+    "totalTransitions": 170536,
+    "standPatProbes": 4509
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 46,
+    "score": 9999179970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 32559,
+    "totalTransitions": 170536,
+    "standPatProbes": 4509
+   }
+  },
+  "before-side-turn-start-0433/FULL-IRONCLAD-BOSS-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 73,
+    "score": 9997839967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15333,
+    "totalTransitions": 66370,
+    "standPatProbes": 2097
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 73,
+    "score": 9997839967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15333,
+    "totalTransitions": 66370,
+    "standPatProbes": 2097
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 73,
+    "score": 9997839967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15333,
+    "totalTransitions": 66370,
+    "standPatProbes": 2097
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 73,
+    "score": 9997839967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15333,
+    "totalTransitions": 66370,
+    "standPatProbes": 2097
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 73,
+    "score": 9997839967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15333,
+    "totalTransitions": 66370,
+    "standPatProbes": 2097
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 73,
+    "score": 9997839967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15333,
+    "totalTransitions": 66370,
+    "standPatProbes": 2097
+   }
+  },
+  "before-side-turn-start-0433/FULL-IRONCLAD-BOSS-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001785952,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15304,
+    "totalTransitions": 61405,
+    "standPatProbes": 5187
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001785953,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15289,
+    "totalTransitions": 60722,
+    "standPatProbes": 4664
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001785952,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15061,
+    "totalTransitions": 60218,
+    "standPatProbes": 4550
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001785953,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15273,
+    "totalTransitions": 60818,
+    "standPatProbes": 4797
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001785952,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15304,
+    "totalTransitions": 61401,
+    "standPatProbes": 5183
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001785952,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15304,
+    "totalTransitions": 61184,
+    "standPatProbes": 4966
+   }
+  },
+  "before-side-turn-start-0433/FULL-IRONCLAD-BOSS-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001319970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 30196,
+    "totalTransitions": 264483,
+    "standPatProbes": 7757
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001319970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 25554,
+    "totalTransitions": 223104,
+    "standPatProbes": 4643
+   },
+   "C": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 15,
+    "score": 10001319970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 35277,
+    "totalTransitions": 339053,
+    "standPatProbes": 8696
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001319970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 25554,
+    "totalTransitions": 223213,
+    "standPatProbes": 4752
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001319970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19248,
+    "totalTransitions": 182294,
+    "standPatProbes": 5075
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 15,
+    "score": 10001319970,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 26179,
+    "totalTransitions": 231822,
+    "standPatProbes": 5849
+   }
+  },
+  "before-side-turn-start-0433/FULL-IRONCLAD-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 47,
+    "score": 9999579964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 18587,
+    "totalTransitions": 94844,
+    "standPatProbes": 11869
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 47,
+    "score": 9999579964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 18120,
+    "totalTransitions": 83513,
+    "standPatProbes": 3931
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 47,
+    "score": 9999579964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 17537,
+    "totalTransitions": 79255,
+    "standPatProbes": 3929
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 47,
+    "score": 9999579964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 18927,
+    "totalTransitions": 90634,
+    "standPatProbes": 4768
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 47,
+    "score": 9999579964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 17884,
+    "totalTransitions": 87535,
+    "standPatProbes": 8400
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 47,
+    "score": 9999579964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19059,
+    "totalTransitions": 94169,
+    "standPatProbes": 6522
+   }
+  },
+  "before-side-turn-start-0433/FULL-IRONCLAD-ELITE-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999939975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8697,
+    "totalTransitions": 62565,
+    "standPatProbes": 1578
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999939975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8697,
+    "totalTransitions": 62565,
+    "standPatProbes": 1578
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999939975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8697,
+    "totalTransitions": 62565,
+    "standPatProbes": 1578
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999939975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8697,
+    "totalTransitions": 62565,
+    "standPatProbes": 1578
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999939975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8697,
+    "totalTransitions": 62565,
+    "standPatProbes": 1578
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999939975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 8697,
+    "totalTransitions": 62565,
+    "standPatProbes": 1578
+   }
+  },
+  "before-side-turn-start-0433/FULL-IRONCLAD-ELITE-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 80,
+    "score": -1000004050012,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10056,
+    "totalTransitions": 52733,
+    "standPatProbes": 1483
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 80,
+    "score": -1000004050012,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10056,
+    "totalTransitions": 52733,
+    "standPatProbes": 1483
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 80,
+    "score": -1000004050012,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10056,
+    "totalTransitions": 52733,
+    "standPatProbes": 1483
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 80,
+    "score": -1000004050012,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10056,
+    "totalTransitions": 52733,
+    "standPatProbes": 1483
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 80,
+    "score": -1000004050012,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10056,
+    "totalTransitions": 52733,
+    "standPatProbes": 1483
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 80,
+    "score": -1000004050012,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10056,
+    "totalTransitions": 52733,
+    "standPatProbes": 1483
+   }
+  },
+  "before-side-turn-start-0433/FULL-IRONCLAD-ELITE-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000480967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10822,
+    "totalTransitions": 52077,
+    "standPatProbes": 5523
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000480967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11204,
+    "totalTransitions": 50127,
+    "standPatProbes": 2329
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000480967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10994,
+    "totalTransitions": 50074,
+    "standPatProbes": 2343
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000480967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10324,
+    "totalTransitions": 47199,
+    "standPatProbes": 2375
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000480967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10719,
+    "totalTransitions": 50468,
+    "standPatProbes": 4150
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000480967,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10694,
+    "totalTransitions": 50179,
+    "standPatProbes": 3408
+   }
+  },
+  "before-side-turn-start-0433/FULL-NECROBINDER-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": -1000002535029,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 21697,
+    "totalTransitions": 123460,
+    "standPatProbes": 8083
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": -1000002533026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 21413,
+    "totalTransitions": 119434,
+    "standPatProbes": 5045
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": -1000002525038,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 23807,
+    "totalTransitions": 127943,
+    "standPatProbes": 5392
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": -1000002525038,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 22864,
+    "totalTransitions": 124316,
+    "standPatProbes": 5355
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": -1000002635032,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 19594,
+    "totalTransitions": 112277,
+    "standPatProbes": 4812
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 2,
+    "score": -1000002525037,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 22620,
+    "totalTransitions": 126421,
+    "standPatProbes": 6430
+   }
+  },
+  "before-side-turn-start-0433/FULL-NECROBINDER-BOSS-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": -1000007480015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5295,
+    "totalTransitions": 31737,
+    "standPatProbes": 1073
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": -1000007480015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5295,
+    "totalTransitions": 31737,
+    "standPatProbes": 1073
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": -1000007480015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5295,
+    "totalTransitions": 31737,
+    "standPatProbes": 1073
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": -1000007480015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5295,
+    "totalTransitions": 31737,
+    "standPatProbes": 1073
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": -1000007480015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5295,
+    "totalTransitions": 31737,
+    "standPatProbes": 1073
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": -1000007480015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5295,
+    "totalTransitions": 31737,
+    "standPatProbes": 1073
+   }
+  },
+  "before-side-turn-start-0433/FULL-NECROBINDER-BOSS-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": -1000002908019,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10179,
+    "totalTransitions": 45047,
+    "standPatProbes": 3835
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": -1000002908019,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10122,
+    "totalTransitions": 43343,
+    "standPatProbes": 2118
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": -1000002908019,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10017,
+    "totalTransitions": 42496,
+    "standPatProbes": 2140
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": -1000002908019,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10019,
+    "totalTransitions": 42591,
+    "standPatProbes": 2220
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": -1000002908019,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10098,
+    "totalTransitions": 43911,
+    "standPatProbes": 3108
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": -1000002728022,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10056,
+    "totalTransitions": 43231,
+    "standPatProbes": 2773
+   }
+  },
+  "before-side-turn-start-0433/FULL-NECROBINDER-BOSS-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 13,
+    "score": -1000003428023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5987,
+    "totalTransitions": 23098,
+    "standPatProbes": 2096
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 13,
+    "score": -1000003428023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 6357,
+    "totalTransitions": 23840,
+    "standPatProbes": 1468
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 13,
+    "score": -1000003428023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 6357,
+    "totalTransitions": 23840,
+    "standPatProbes": 1468
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 13,
+    "score": -1000003428023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 6357,
+    "totalTransitions": 23840,
+    "standPatProbes": 1468
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 13,
+    "score": -1000003428023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5987,
+    "totalTransitions": 22977,
+    "standPatProbes": 1975
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 13,
+    "score": -1000003428023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5987,
+    "totalTransitions": 22769,
+    "standPatProbes": 1767
+   }
+  },
+  "before-side-turn-start-0433/FULL-NECROBINDER-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12271,
+    "totalTransitions": 91226,
+    "standPatProbes": 5038
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12028,
+    "totalTransitions": 88221,
+    "standPatProbes": 2514
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12028,
+    "totalTransitions": 88221,
+    "standPatProbes": 2514
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12028,
+    "totalTransitions": 88221,
+    "standPatProbes": 2514
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11793,
+    "totalTransitions": 89842,
+    "standPatProbes": 3663
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12368,
+    "totalTransitions": 92151,
+    "standPatProbes": 3313
+   }
+  },
+  "before-side-turn-start-0433/FULL-NECROBINDER-ELITE-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": -1000002450023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 13342,
+    "totalTransitions": 89029,
+    "standPatProbes": 3897
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": -1000002450023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 13340,
+    "totalTransitions": 87911,
+    "standPatProbes": 2817
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": -1000002450023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 13340,
+    "totalTransitions": 87911,
+    "standPatProbes": 2817
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": -1000002450023,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 13340,
+    "totalTransitions": 87917,
+    "standPatProbes": 2820
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 52,
+    "score": -1000002470021,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15212,
+    "totalTransitions": 93002,
+    "standPatProbes": 4223
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 51,
+    "score": -1000002740025,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 13490,
+    "totalTransitions": 88460,
+    "standPatProbes": 3126
+   }
+  },
+  "before-side-turn-start-0433/FULL-NECROBINDER-ELITE-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10001956975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19278,
+    "totalTransitions": 76487,
+    "standPatProbes": 4795
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10001956974,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19207,
+    "totalTransitions": 74251,
+    "standPatProbes": 3989
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10001956974,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19207,
+    "totalTransitions": 74251,
+    "standPatProbes": 3989
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10001956974,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19207,
+    "totalTransitions": 74251,
+    "standPatProbes": 3989
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10001956975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19278,
+    "totalTransitions": 76387,
+    "standPatProbes": 4695
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 0,
+    "score": 10001964964,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 18712,
+    "totalTransitions": 75997,
+    "standPatProbes": 4395
+   }
+  },
+  "before-side-turn-start-0433/FULL-NECROBINDER-ELITE-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001104978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12454,
+    "totalTransitions": 50401,
+    "standPatProbes": 2655
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001104978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12409,
+    "totalTransitions": 50048,
+    "standPatProbes": 2347
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001104978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12409,
+    "totalTransitions": 50048,
+    "standPatProbes": 2347
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001104978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12409,
+    "totalTransitions": 50048,
+    "standPatProbes": 2347
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001104978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12454,
+    "totalTransitions": 50401,
+    "standPatProbes": 2655
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001104978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12454,
+    "totalTransitions": 50386,
+    "standPatProbes": 2640
+   }
+  },
+  "before-side-turn-start-0433/FULL-REGENT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 55,
+    "score": 9998729955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 20022,
+    "totalTransitions": 201085,
+    "standPatProbes": 10493
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 67,
+    "score": 9997709965,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13274,
+    "totalTransitions": 108873,
+    "standPatProbes": 2873
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999409955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14556,
+    "totalTransitions": 115549,
+    "standPatProbes": 3422
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 68,
+    "score": 9998009953,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 17259,
+    "totalTransitions": 138764,
+    "standPatProbes": 4694
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 55,
+    "score": 9998729955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 16638,
+    "totalTransitions": 153040,
+    "standPatProbes": 7272
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 55,
+    "score": 9998729955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19763,
+    "totalTransitions": 169816,
+    "standPatProbes": 6739
+   }
+  },
+  "before-side-turn-start-0433/FULL-REGENT-BOSS-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004998037,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 8431,
+    "totalTransitions": 41134,
+    "standPatProbes": 3197
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004998037,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7861,
+    "totalTransitions": 37658,
+    "standPatProbes": 1766
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004998037,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7861,
+    "totalTransitions": 37658,
+    "standPatProbes": 1766
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004998037,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7861,
+    "totalTransitions": 37658,
+    "standPatProbes": 1766
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004998037,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7742,
+    "totalTransitions": 38037,
+    "standPatProbes": 2658
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000004998037,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7896,
+    "totalTransitions": 38450,
+    "standPatProbes": 2334
+   }
+  },
+  "before-side-turn-start-0433/FULL-REGENT-BOSS-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": 9998174958,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13180,
+    "totalTransitions": 69677,
+    "standPatProbes": 6327
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": 9997930961,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13177,
+    "totalTransitions": 68767,
+    "standPatProbes": 3160
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": 9998302960,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12866,
+    "totalTransitions": 64253,
+    "standPatProbes": 3322
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": 9998418959,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13587,
+    "totalTransitions": 73108,
+    "standPatProbes": 4052
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": 9998174958,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12406,
+    "totalTransitions": 65977,
+    "standPatProbes": 5617
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 68,
+    "score": 9998154960,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13141,
+    "totalTransitions": 69365,
+    "standPatProbes": 4829
+   }
+  },
+  "before-side-turn-start-0433/FULL-REGENT-BOSS-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000005400030,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 12505,
+    "totalTransitions": 57422,
+    "standPatProbes": 3164
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000005400030,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 12484,
+    "totalTransitions": 56421,
+    "standPatProbes": 2280
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000005400030,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 12484,
+    "totalTransitions": 56421,
+    "standPatProbes": 2280
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000005400030,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 12587,
+    "totalTransitions": 56519,
+    "standPatProbes": 2247
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000005400030,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 12479,
+    "totalTransitions": 56852,
+    "standPatProbes": 2959
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 75,
+    "score": -1000005400030,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 12333,
+    "totalTransitions": 56267,
+    "standPatProbes": 2727
+   }
+  },
+  "before-side-turn-start-0433/FULL-REGENT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000509979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 34484,
+    "totalTransitions": 271116,
+    "standPatProbes": 7722
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000509979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 34484,
+    "totalTransitions": 271116,
+    "standPatProbes": 7722
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000509979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 34484,
+    "totalTransitions": 271116,
+    "standPatProbes": 7722
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000509979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 34484,
+    "totalTransitions": 271116,
+    "standPatProbes": 7722
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 29,
+    "score": 10000509979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 34484,
+    "totalTransitions": 271116,
+    "standPatProbes": 7722
+   },
+   "F": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 29,
+    "score": 10000509979,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 33277,
+    "totalTransitions": 267765,
+    "standPatProbes": 7603
+   }
+  },
+  "before-side-turn-start-0433/FULL-REGENT-ELITE-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001409980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 6212,
+    "totalTransitions": 42814,
+    "standPatProbes": 3112
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001409980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 6321,
+    "totalTransitions": 48782,
+    "standPatProbes": 2283
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001409980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 6026,
+    "totalTransitions": 45333,
+    "standPatProbes": 2057
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001409980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 5985,
+    "totalTransitions": 45099,
+    "standPatProbes": 2112
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001409980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 6310,
+    "totalTransitions": 46251,
+    "standPatProbes": 2886
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 14,
+    "score": 10001409980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 6314,
+    "totalTransitions": 46107,
+    "standPatProbes": 2716
+   }
+  },
+  "before-side-turn-start-0433/FULL-REGENT-ELITE-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": 9998065976,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7649,
+    "totalTransitions": 31152,
+    "standPatProbes": 2138
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": 9998065976,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7504,
+    "totalTransitions": 30888,
+    "standPatProbes": 1848
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": 9998065976,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7508,
+    "totalTransitions": 30893,
+    "standPatProbes": 1850
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": 9998065976,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7508,
+    "totalTransitions": 30902,
+    "standPatProbes": 1859
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": 9998065976,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7649,
+    "totalTransitions": 31151,
+    "standPatProbes": 2137
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 66,
+    "score": 9998065976,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7603,
+    "totalTransitions": 30864,
+    "standPatProbes": 2016
+   }
+  },
+  "before-side-turn-start-0433/FULL-REGENT-ELITE-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 59,
+    "score": 9998709938,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14657,
+    "totalTransitions": 87832,
+    "standPatProbes": 5919
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 68,
+    "score": 9998169949,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14501,
+    "totalTransitions": 84116,
+    "standPatProbes": 4375
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 59,
+    "score": 9998709938,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14543,
+    "totalTransitions": 86507,
+    "standPatProbes": 4509
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 68,
+    "score": 9998169949,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14199,
+    "totalTransitions": 82892,
+    "standPatProbes": 4484
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 59,
+    "score": 9998709938,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14657,
+    "totalTransitions": 87720,
+    "standPatProbes": 5807
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 68,
+    "score": 9998169949,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13733,
+    "totalTransitions": 82070,
+    "standPatProbes": 5276
+   }
+  },
+  "before-side-turn-start-0433/FULL-SILENT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 35,
+    "score": 9999859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19178,
+    "totalTransitions": 84326,
+    "standPatProbes": 3685
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 35,
+    "score": 9999859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19178,
+    "totalTransitions": 84326,
+    "standPatProbes": 3685
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 35,
+    "score": 9999859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19178,
+    "totalTransitions": 84326,
+    "standPatProbes": 3685
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 35,
+    "score": 9999859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19178,
+    "totalTransitions": 84326,
+    "standPatProbes": 3685
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 35,
+    "score": 9999859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19178,
+    "totalTransitions": 84326,
+    "standPatProbes": 3685
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 35,
+    "score": 9999859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 19178,
+    "totalTransitions": 84326,
+    "standPatProbes": 3685
+   }
+  },
+  "before-side-turn-start-0433/FULL-SILENT-BOSS-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999599958,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11749,
+    "totalTransitions": 51745,
+    "standPatProbes": 2530
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999599958,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11749,
+    "totalTransitions": 51745,
+    "standPatProbes": 2530
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999599958,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11749,
+    "totalTransitions": 51745,
+    "standPatProbes": 2530
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999599958,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11749,
+    "totalTransitions": 51745,
+    "standPatProbes": 2530
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999599958,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11749,
+    "totalTransitions": 51745,
+    "standPatProbes": 2530
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999599958,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11749,
+    "totalTransitions": 51745,
+    "standPatProbes": 2530
+   }
+  },
+  "before-side-turn-start-0433/FULL-SILENT-BOSS-02": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": 9997719930,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15031,
+    "totalTransitions": 74561,
+    "standPatProbes": 3746
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 67,
+    "score": 9998059930,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15053,
+    "totalTransitions": 73970,
+    "standPatProbes": 2812
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000005090027,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 13672,
+    "totalTransitions": 66263,
+    "standPatProbes": 2721
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000005140026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14902,
+    "totalTransitions": 72760,
+    "standPatProbes": 2825
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": 9997719930,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15031,
+    "totalTransitions": 74099,
+    "standPatProbes": 3284
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000005140026,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14537,
+    "totalTransitions": 71526,
+    "standPatProbes": 3110
+   }
+  },
+  "before-side-turn-start-0433/FULL-SILENT-BOSS-03": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000006548025,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5798,
+    "totalTransitions": 22049,
+    "standPatProbes": 1293
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000006548025,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5798,
+    "totalTransitions": 22049,
+    "standPatProbes": 1293
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000006548025,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5798,
+    "totalTransitions": 22049,
+    "standPatProbes": 1293
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000006548025,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5798,
+    "totalTransitions": 22049,
+    "standPatProbes": 1293
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000006548025,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5798,
+    "totalTransitions": 22049,
+    "standPatProbes": 1293
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000006548025,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 5798,
+    "totalTransitions": 22049,
+    "standPatProbes": 1293
+   }
+  },
+  "before-side-turn-start-0433/FULL-SILENT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14199,
+    "totalTransitions": 53155,
+    "standPatProbes": 3397
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14199,
+    "totalTransitions": 53155,
+    "standPatProbes": 3397
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14199,
+    "totalTransitions": 53155,
+    "standPatProbes": 3397
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14199,
+    "totalTransitions": 53155,
+    "standPatProbes": 3397
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14199,
+    "totalTransitions": 53155,
+    "standPatProbes": 3397
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 14199,
+    "totalTransitions": 53155,
+    "standPatProbes": 3397
+   }
+  },
+  "before-side-turn-start-0433/FULL-SILENT-ELITE-01": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004064034,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15590,
+    "totalTransitions": 93196,
+    "standPatProbes": 5531
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004064034,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15537,
+    "totalTransitions": 93143,
+    "standPatProbes": 3299
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004144033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 16070,
+    "totalTransitions": 95460,
+    "standPatProbes": 3429
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004064034,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15702,
+    "totalTransitions": 93917,
+    "standPatProbes": 3550
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004064034,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15596,
+    "totalTransitions": 93022,
+    "standPatProbes": 4870
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004144033,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 15933,
+    "totalTransitions": 91527,
+    "standPatProbes": 4342
+   }
+  },
+  "before-side-turn-start-0433/FULL-SILENT-ELITE-02": {
+   "A": {
+    "valid": true,
+    "boundary": "NodeLimit",
+    "hpLost": 66,
+    "score": 9998139938,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 60000,
+    "totalTransitions": 365637,
+    "standPatProbes": 9909
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": 9998159960,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11739,
+    "totalTransitions": 106128,
+    "standPatProbes": 2885
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": 9998159954,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13447,
+    "totalTransitions": 121617,
+    "standPatProbes": 3709
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 69,
+    "score": 9997859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13403,
+    "totalTransitions": 115354,
+    "standPatProbes": 3230
+   },
+   "E": {
+    "valid": true,
+    "boundary": "NodeLimit",
+    "hpLost": 66,
+    "score": 9998139938,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 60000,
+    "totalTransitions": 365447,
+    "standPatProbes": 9719
+   },
+   "F": {
+    "valid": true,
+    "boundary": "NodeLimit",
+    "hpLost": 66,
+    "score": 9998139935,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 60000,
+    "totalTransitions": 350484,
+    "standPatProbes": 8030
+   }
+  },
+  "before-side-turn-start-0433/FULL-SILENT-ELITE-03": {
+   "A": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 29,
+    "score": 10000279969,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 46014,
+    "totalTransitions": 352313,
+    "standPatProbes": 13958
+   },
+   "B": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 27,
+    "score": 10000259973,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 45000,
+    "totalTransitions": 355125,
+    "standPatProbes": 8962
+   },
+   "C": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 27,
+    "score": 10000259973,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 43695,
+    "totalTransitions": 345049,
+    "standPatProbes": 8700
+   },
+   "D": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 27,
+    "score": 10000259973,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 41021,
+    "totalTransitions": 322267,
+    "standPatProbes": 8278
+   },
+   "E": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 29,
+    "score": 10000279969,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 42473,
+    "totalTransitions": 325015,
+    "standPatProbes": 10503
+   },
+   "F": {
+    "valid": false,
+    "boundary": "TimeLimit",
+    "hpLost": 29,
+    "score": 10000279969,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 38291,
+    "totalTransitions": 287461,
+    "standPatProbes": 8667
+   }
+  },
+  "before-side-turn-start-0433/GA-DEFECT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": -1000003516045,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10096,
+    "totalTransitions": 36069,
+    "standPatProbes": 2011
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": -1000003516045,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10096,
+    "totalTransitions": 36069,
+    "standPatProbes": 2011
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": -1000003516045,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10096,
+    "totalTransitions": 36069,
+    "standPatProbes": 2011
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": -1000003516045,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10096,
+    "totalTransitions": 36069,
+    "standPatProbes": 2011
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": -1000003516045,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10096,
+    "totalTransitions": 36069,
+    "standPatProbes": 2011
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 64,
+    "score": -1000003516045,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 10096,
+    "totalTransitions": 36069,
+    "standPatProbes": 2011
+   }
+  },
+  "before-side-turn-start-0433/GA-DEFECT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 12,
+    "score": 10001465975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 16773,
+    "totalTransitions": 74223,
+    "standPatProbes": 5063
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 12,
+    "score": 10001465975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14565,
+    "totalTransitions": 65704,
+    "standPatProbes": 2568
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 12,
+    "score": 10001465975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14565,
+    "totalTransitions": 65704,
+    "standPatProbes": 2568
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 12,
+    "score": 10001465975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14565,
+    "totalTransitions": 65704,
+    "standPatProbes": 2568
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 12,
+    "score": 10001465975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 16771,
+    "totalTransitions": 73537,
+    "standPatProbes": 4428
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 12,
+    "score": 10001465975,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 14296,
+    "totalTransitions": 60677,
+    "standPatProbes": 3106
+   }
+  },
+  "before-side-turn-start-0433/GA-IRONCLAD-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 45,
+    "score": 9999819955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28252,
+    "totalTransitions": 158325,
+    "standPatProbes": 2440
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 45,
+    "score": 9999819955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28252,
+    "totalTransitions": 158325,
+    "standPatProbes": 2440
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 45,
+    "score": 9999819955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28252,
+    "totalTransitions": 158325,
+    "standPatProbes": 2440
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 45,
+    "score": 9999819955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28252,
+    "totalTransitions": 158325,
+    "standPatProbes": 2440
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 45,
+    "score": 9999819955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28252,
+    "totalTransitions": 158325,
+    "standPatProbes": 2440
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 45,
+    "score": 9999819955,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 28252,
+    "totalTransitions": 158325,
+    "standPatProbes": 2440
+   }
+  },
+  "before-side-turn-start-0433/GA-IRONCLAD-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 74,
+    "score": 9997959961,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7084,
+    "totalTransitions": 32694,
+    "standPatProbes": 3123
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 74,
+    "score": 9997959961,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7035,
+    "totalTransitions": 30488,
+    "standPatProbes": 1235
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 74,
+    "score": 9997859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 6984,
+    "totalTransitions": 30001,
+    "standPatProbes": 1290
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 74,
+    "score": 9997859963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7073,
+    "totalTransitions": 30737,
+    "standPatProbes": 1441
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 74,
+    "score": 9997959961,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7111,
+    "totalTransitions": 32091,
+    "standPatProbes": 2515
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 74,
+    "score": 9997959961,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 7101,
+    "totalTransitions": 31513,
+    "standPatProbes": 1938
+   }
+  },
+  "before-side-turn-start-0433/GA-NECROBINDER-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 10,
+    "score": -1000003128018,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11588,
+    "totalTransitions": 49486,
+    "standPatProbes": 3345
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 10,
+    "score": -1000003288015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11346,
+    "totalTransitions": 49263,
+    "standPatProbes": 2894
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 10,
+    "score": -1000003288015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11346,
+    "totalTransitions": 49263,
+    "standPatProbes": 2894
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 10,
+    "score": -1000003288015,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11346,
+    "totalTransitions": 49263,
+    "standPatProbes": 2894
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 10,
+    "score": -1000003128018,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11588,
+    "totalTransitions": 49433,
+    "standPatProbes": 3292
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 10,
+    "score": -1000003128018,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 11588,
+    "totalTransitions": 49199,
+    "standPatProbes": 3058
+   }
+  },
+  "before-side-turn-start-0433/GA-NECROBINDER-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11501,
+    "totalTransitions": 74516,
+    "standPatProbes": 4349
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10989,
+    "totalTransitions": 69444,
+    "standPatProbes": 1574
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10989,
+    "totalTransitions": 69444,
+    "standPatProbes": 1574
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 10989,
+    "totalTransitions": 69444,
+    "standPatProbes": 1574
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11103,
+    "totalTransitions": 70016,
+    "standPatProbes": 2546
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 5,
+    "score": 10001679978,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 11180,
+    "totalTransitions": 70157,
+    "standPatProbes": 2096
+   }
+  },
+  "before-side-turn-start-0433/GA-REGENT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999049963,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13662,
+    "totalTransitions": 108124,
+    "standPatProbes": 6127
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 43,
+    "score": 9999429956,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13393,
+    "totalTransitions": 106182,
+    "standPatProbes": 2332
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9998849956,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13083,
+    "totalTransitions": 107499,
+    "standPatProbes": 1931
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 53,
+    "score": 9998809962,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 12743,
+    "totalTransitions": 97362,
+    "standPatProbes": 2577
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 50,
+    "score": 9999049961,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 16814,
+    "totalTransitions": 152218,
+    "standPatProbes": 5754
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 53,
+    "score": 9998869961,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 13579,
+    "totalTransitions": 110845,
+    "standPatProbes": 3397
+   }
+  },
+  "before-side-turn-start-0433/GA-REGENT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 27,
+    "score": 10000529980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 36416,
+    "totalTransitions": 285072,
+    "standPatProbes": 5937
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 27,
+    "score": 10000529980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 36416,
+    "totalTransitions": 285072,
+    "standPatProbes": 5937
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 27,
+    "score": 10000529980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 36416,
+    "totalTransitions": 285072,
+    "standPatProbes": 5937
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 27,
+    "score": 10000529980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 36416,
+    "totalTransitions": 285072,
+    "standPatProbes": 5937
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 27,
+    "score": 10000529980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 36416,
+    "totalTransitions": 285072,
+    "standPatProbes": 5937
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 27,
+    "score": 10000529980,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 36416,
+    "totalTransitions": 285072,
+    "standPatProbes": 5937
+   }
+  },
+  "before-side-turn-start-0433/GA-SILENT-BOSS-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999799957,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15749,
+    "totalTransitions": 51804,
+    "standPatProbes": 1875
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999799957,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15749,
+    "totalTransitions": 51804,
+    "standPatProbes": 1875
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999799957,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15749,
+    "totalTransitions": 51804,
+    "standPatProbes": 1875
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999799957,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15749,
+    "totalTransitions": 51804,
+    "standPatProbes": 1875
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999799957,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15749,
+    "totalTransitions": 51804,
+    "standPatProbes": 1875
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 38,
+    "score": 9999799957,
+    "onlyDeathRoutes": false,
+    "totalExpanded": 15749,
+    "totalTransitions": 51804,
+    "standPatProbes": 1875
+   }
+  },
+  "before-side-turn-start-0433/GA-SILENT-ELITE-00": {
+   "A": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7851,
+    "totalTransitions": 28421,
+    "standPatProbes": 951
+   },
+   "B": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7851,
+    "totalTransitions": 28421,
+    "standPatProbes": 951
+   },
+   "C": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7851,
+    "totalTransitions": 28421,
+    "standPatProbes": 951
+   },
+   "D": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7851,
+    "totalTransitions": 28421,
+    "standPatProbes": 951
+   },
+   "E": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7851,
+    "totalTransitions": 28421,
+    "standPatProbes": 951
+   },
+   "F": {
+    "valid": true,
+    "boundary": "None",
+    "hpLost": 70,
+    "score": -1000004384031,
+    "onlyDeathRoutes": true,
+    "totalExpanded": 7851,
+    "totalTransitions": 28421,
+    "standPatProbes": 951
+   }
+  }
+ },
+ "flagshipAbba": {
+  "request": "coverage/equivalence/before-side-turn-start-0433/inputs/EQ-IRONCLAD-ELITE-00-request.json",
+  "configuration": {
+   "profile": "VeryHigh",
+   "beam": 135,
+   "nodes": 60000,
+   "maxCardBranchesPerNode": 72,
+   "maxPileChoiceBranchesPerAction": 42,
+   "maxHandChoiceBranchesPerAction": 54,
+   "maxDegreeOfParallelism": 1,
+   "potionPolicy": "Smart",
+   "searchBudgetMilliseconds": 240000,
+   "workers": 1,
+   "order": "A1,B1,B2,A2,A3,B3,B4,A4（执行前固定，全部样本保留）"
+  },
+  "baselineArm": "A = 上游 main 无上限实现",
+  "candidateArm": "B = 上限 64 前缀",
+  "samples": [
+   {
+    "label": "A1",
+    "valid": true,
+    "wallSeconds": 11.769,
+    "boundary": "None",
+    "totalExpanded": 10834,
+    "totalTransitions": 54919,
+    "standPatProbes": 6269,
+    "forkCount": 55860,
+    "workerAllocatedBytes": 2212281912,
+    "projectedBattleHpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false
+   },
+   {
+    "label": "A2",
+    "valid": true,
+    "wallSeconds": 12.92,
+    "boundary": "None",
+    "totalExpanded": 10834,
+    "totalTransitions": 54919,
+    "standPatProbes": 6269,
+    "forkCount": 55860,
+    "workerAllocatedBytes": 2180149072,
+    "projectedBattleHpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false
+   },
+   {
+    "label": "A3",
+    "valid": true,
+    "wallSeconds": 13.005,
+    "boundary": "None",
+    "totalExpanded": 10834,
+    "totalTransitions": 54919,
+    "standPatProbes": 6269,
+    "forkCount": 55860,
+    "workerAllocatedBytes": 2216186384,
+    "projectedBattleHpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false
+   },
+   {
+    "label": "A4",
+    "valid": true,
+    "wallSeconds": 12.097,
+    "boundary": "None",
+    "totalExpanded": 10834,
+    "totalTransitions": 54919,
+    "standPatProbes": 6269,
+    "forkCount": 55860,
+    "workerAllocatedBytes": 2180476336,
+    "projectedBattleHpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false
+   },
+   {
+    "label": "B1",
+    "valid": true,
+    "wallSeconds": 9.711,
+    "boundary": "None",
+    "totalExpanded": 8371,
+    "totalTransitions": 39693,
+    "standPatProbes": 3687,
+    "forkCount": 40645,
+    "workerAllocatedBytes": 1578138176,
+    "projectedBattleHpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false
+   },
+   {
+    "label": "B2",
+    "valid": true,
+    "wallSeconds": 10.697,
+    "boundary": "None",
+    "totalExpanded": 8371,
+    "totalTransitions": 39693,
+    "standPatProbes": 3687,
+    "forkCount": 40645,
+    "workerAllocatedBytes": 1612121064,
+    "projectedBattleHpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false
+   },
+   {
+    "label": "B3",
+    "valid": true,
+    "wallSeconds": 11.191,
+    "boundary": "None",
+    "totalExpanded": 8371,
+    "totalTransitions": 39693,
+    "standPatProbes": 3687,
+    "forkCount": 40645,
+    "workerAllocatedBytes": 1598087952,
+    "projectedBattleHpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false
+   },
+   {
+    "label": "B4",
+    "valid": true,
+    "wallSeconds": 10.351,
+    "boundary": "None",
+    "totalExpanded": 8371,
+    "totalTransitions": 39693,
+    "standPatProbes": 3687,
+    "forkCount": 40645,
+    "workerAllocatedBytes": 1559112120,
+    "projectedBattleHpLost": 52,
+    "score": 9999279964,
+    "onlyDeathRoutes": false
+   }
+  ],
+  "means": {
+   "wallSeconds": {
+    "baseline": 12.448,
+    "candidate": 10.488,
+    "changePercent": -15.7
+   },
+   "totalExpanded": {
+    "baseline": 10834.0,
+    "candidate": 8371.0,
+    "changePercent": -22.7
+   },
+   "totalTransitions": {
+    "baseline": 54919.0,
+    "candidate": 39693.0,
+    "changePercent": -27.7
+   },
+   "standPatProbes": {
+    "baseline": 6269.0,
+    "candidate": 3687.0,
+    "changePercent": -41.2
+   },
+   "forkCount": {
+    "baseline": 55860.0,
+    "candidate": 40645.0,
+    "changePercent": -27.2
+   },
+   "workerAllocatedBytes": {
+    "baseline": 2197273426.0,
+    "candidate": 1586864828.0,
+    "changePercent": -27.8
+   }
+  },
+  "outcomes": {
+   "baseline": [
+    [
+     52,
+     9999279964,
+     "None"
+    ]
+   ],
+   "candidate": [
+    [
+     52,
+     9999279964,
+     "None"
+    ]
+   ]
+  },
+  "wallRanges": {
+   "baseline": [
+    11.769,
+    13.005
+   ],
+   "candidate": [
+    9.711,
+    11.191
+   ]
+  }
+ },
+ "flagshipSingleCapPoints": [
+  {
+   "label": "P0",
+   "valid": true,
+   "wallSeconds": 11.819,
+   "boundary": "None",
+   "totalExpanded": 10834,
+   "totalTransitions": 54919,
+   "standPatProbes": 6269,
+   "forkCount": 55860,
+   "workerAllocatedBytes": 2234154232,
+   "projectedBattleHpLost": 52,
+   "score": 9999279964,
+   "onlyDeathRoutes": false
+  },
+  {
+   "label": "P1",
+   "valid": true,
+   "wallSeconds": 10.246,
+   "boundary": "None",
+   "totalExpanded": 8371,
+   "totalTransitions": 39693,
+   "standPatProbes": 3687,
+   "forkCount": 40645,
+   "workerAllocatedBytes": 1614503344,
+   "projectedBattleHpLost": 52,
+   "score": 9999279964,
+   "onlyDeathRoutes": false
+  },
+  {
+   "label": "P2",
+   "valid": true,
+   "wallSeconds": 9.573,
+   "boundary": "None",
+   "totalExpanded": 8325,
+   "totalTransitions": 38654,
+   "standPatProbes": 2766,
+   "forkCount": 39606,
+   "workerAllocatedBytes": 1527843936,
+   "projectedBattleHpLost": 52,
+   "score": 9999279964,
+   "onlyDeathRoutes": false
+  }
+ ],
+ "flagshipSingleCapPointsNote": "P0=无上限、P1=上限 64、P2=上限 32；各 1 次，只用于给出探测数随上限的形状，计时结论以上面的 ABBA 为准。"
+}
