@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "seed": "GC-PROFILE-STRICT-STARTER-20260924",
+  "characterId": "IRONCLAD",
+  "ascension": 10,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": true,
+  "includeStartingRelics": true,
+  "includeAscendersBane": true,
+  "characterCards": {
+    "count": 0
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true
+}

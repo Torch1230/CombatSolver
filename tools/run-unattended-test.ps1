@@ -9,6 +9,8 @@ param(
     [string]$RitsuWorkshopRoot = "D:\Steam\steamapps\workshop\content\2868840\3747602295",
     [string]$CombatSolverBuildDir = "",
     [string]$HeadlessInstance = "",
+    [ValidateSet("default", "server-generational")]
+    [string]$RuntimeProfile = "default",
     [switch]$StopInstance,
     [ValidateSet("exclusive", "parallel")]
     [string]$HeadlessExecutionMode = "exclusive",
@@ -115,7 +117,7 @@ param(
     [switch]$FixedSearchBudget,
     [int]$SearchBudgetOverrideMilliseconds = -1,
     [switch]$MeasureSearchPhases,
-    [ValidateSet(-1, 1, 2, 3, 4, 5, 6, 7, 8)]
+    [ValidateSet(-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)]
     [int]$SearchMaxDegreeOfParallelismForTest = -1,
     [switch]$UseNoveltyPortfolioForTest,
     [switch]$HoldAfterInitialSearch,
@@ -277,6 +279,15 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# Capture the exact launch environment so an owned process cannot be reused
+# after the requested CLR/profile combination changes. Parent settings stay intact.
+$runtimeEnvironment = [ordered]@{
+    COMBATSOLVER_RUNTIME_PROFILE = if ($RuntimeProfile -eq 'default') { '' } else { $RuntimeProfile }
+    DOTNET_gcServer = if ($RuntimeProfile -eq 'server-generational') { '1' } else { [string]$env:DOTNET_gcServer }
+    COMPlus_gcServer = if ($RuntimeProfile -eq 'server-generational') { '1' } else { [string]$env:COMPlus_gcServer }
+}
+$runtimeEnvironmentKey = $runtimeEnvironment | ConvertTo-Json -Compress
+
 . (Join-Path $PSScriptRoot 'headless-runtime.ps1')
 if ($EvidenceDirectory) { $EvidenceDirectory = [IO.Path]::GetFullPath($EvidenceDirectory) }
 
@@ -1171,8 +1182,9 @@ if (Test-Path -LiteralPath $processMarkerPath -PathType Leaf) {
         Write-Warning "Discarding stale or unowned process marker ($markerProblem): $processMarkerPath"
         Remove-Item -LiteralPath $processMarkerPath -Force
     } elseif (-not [string]::Equals([string]$marker.artifactId,
-            $runtimeContext.ArtifactId, [StringComparison]::OrdinalIgnoreCase)) {
-        Write-Host "UNATTENDED_RESTART reason=frozen_artifact_changed pid=$($process.Id)"
+            $runtimeContext.ArtifactId, [StringComparison]::OrdinalIgnoreCase) -or
+            [string]$marker.runtimeEnvironmentKey -cne $runtimeEnvironmentKey) {
+        Write-Host "UNATTENDED_RESTART reason=frozen_artifact_or_runtime_changed pid=$($process.Id)"
         Stop-ClaimedProcessAndRemoveDependency $process $processIdentityStartTimeUtc
         $cleanupProcessOnExit = $false
         $process = $null
@@ -1236,6 +1248,9 @@ if (-not $reusedProcess) {
                 APPDATA = $headlessRoaming
                 LOCALAPPDATA = $headlessLocal
                 COMBATSOLVER_HEADLESS = "1"
+                COMBATSOLVER_RUNTIME_PROFILE = $runtimeEnvironment.COMBATSOLVER_RUNTIME_PROFILE
+                DOTNET_gcServer = $runtimeEnvironment.DOTNET_gcServer
+                COMPlus_gcServer = $runtimeEnvironment.COMPlus_gcServer
             } `
             -WindowStyle Hidden `
             -RedirectStandardOutput (Join-Path $headlessRoot 'native-stdout.log') `
@@ -1287,6 +1302,7 @@ if (-not $reusedProcess) {
         instance = $runtimeContext.Instance
         runtimeRoot = $runtimeContext.Root
         artifactId = $runtimeContext.ArtifactId
+        runtimeEnvironmentKey = $runtimeEnvironmentKey
         combatSolverDllSha256 = $combatSolverDllSha256
         combatSolverManifestSha256 = $combatSolverManifestSha256
     } | ConvertTo-Json | Set-Content -LiteralPath $processMarkerTempPath -Encoding UTF8

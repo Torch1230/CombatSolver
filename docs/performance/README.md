@@ -1,5 +1,6 @@
 # 性能研究与复现
 
+- [可选 ServerGC 启动配置](server-gc-launch-profile-20260924.md)：游戏宿主接入、设置隔离、原生 Windows 搜索对照及 CPU／暂停取舍。
 - [循环质量、确定性回放与折叠展示](loop-optimization-20260921.md)：设计、适用边界、ABBA 耗时/内存与质量证据。
 
 本批极高场景的优化与证据：[通用分配和重复工作（2026-09-14）](general-allocation-20260914.md)；后续[蟹战延迟优化、完整复测与反例](crab-latency-20260914.md)。

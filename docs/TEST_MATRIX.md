@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 可选 ServerGC 启动配置（2026-09-24）
+
+- PR #132 的 `RuntimeGcProfileChecks` 25 项纯值合同、跨平台启动器合同及五根十个原生宿主请求证据见[专项报告](performance/server-gc-launch-profile-20260924.md)；本轮集成验证另列于下。
+- 合入当前 `main` 后，Windows Release 构建 0 警告、0 错误，PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`，25 项 GC profile 纯值检查与 PowerShell 启动器合同通过。
+- 默认模式 `PR131-SIDEBAR-PR132-UI` / `cdf2a4755c3a4ba4a183e5548445d826` Passed；ServerGC 模式 `PR132-SERVER-GC-UI` / `890a55679cc546b293d4c17c37900fe7` Passed。两次均穿过侧栏四项坐标断言、设置页和控制器生命周期，首回合结束；默认模式有效 NoGC 为 true，ServerGC 模式为 false，私有无头实例均被启动器清理。此项验证不含可见排版或长线性能对照。
+
 ## 策略侧栏展开方向（2026-09-24）
 
 - 控制器会话合同新增四个 1920 宽视口的侧栏横坐标断言：右侧可放、主面板贴右缘改放左侧且不相交、两侧都放不下时分别贴右缘和左缘。

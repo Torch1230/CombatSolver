@@ -240,6 +240,21 @@ internal static class SolverSettings
             if (!persisted || migrated != loaded)
                 SaveLocked(migrated);
         }
+        RuntimeGcProfileSelection runtimeProfile = RuntimeGcProfile.Current;
+        SolverSettingsSnapshot effectiveSettings = Capture();
+        string runtimeProfileDescription =
+            $"[CombatSolver/Test] RUNTIME_GC_PROFILE clr={System.Environment.Version} " +
+            $"server_gc={runtimeProfile.IsServerGc.ToString().ToLowerInvariant()} " +
+            $"requested={JsonSerializer.Serialize(runtimeProfile.RequestedProfile)} " +
+            $"status={runtimeProfile.Status} " +
+            $"saved_no_gc_enabled={migrated.EnableNoGcRegion.ToString().ToLowerInvariant()} " +
+            $"effective_no_gc_enabled={effectiveSettings.EnableNoGcRegion.ToString().ToLowerInvariant()} " +
+            "profile_settings_persisted=false";
+        if (runtimeProfile.Status is RuntimeGcProfileStatus.ServerGcUnavailable
+            or RuntimeGcProfileStatus.UnknownProfile)
+            Entry.Logger.Warn(runtimeProfileDescription);
+        else
+            Entry.Logger.Info(runtimeProfileDescription);
         Entry.Logger.Info(
             $"[CombatSolver/Test] SETTINGS_LOADED persisted={persisted} " +
             $"automatic_calculation={migrated.AutomaticCalculationEnabled.ToString().ToLowerInvariant()} " +
@@ -294,7 +309,7 @@ internal static class SolverSettings
             data.SearchMaxDegreeOfParallelism
                 ?? SolverWeights.DefaultSearchMaxDegreeOfParallelism,
             profile,
-            data.EnableNoGcRegion,
+            RuntimeGcProfile.Current.ResolveEnableNoGcRegion(data.EnableNoGcRegion),
             noGcBytes,
             data.DeploymentFastMode,
             data.DeploymentInterActionDelaySeconds ?? 0d)
