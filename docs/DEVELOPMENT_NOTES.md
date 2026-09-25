@@ -1,5 +1,10 @@
 # CombatSolver 开发笔记与未来构想
 
+## 未发布：搜索热路径分配（2026-09-25）
+
+- 去掉循环准入的重复有序 LINQ 链、单人攻击历史指纹的排序，以及无免费出牌次数和预测状态工厂的常见闭包分配。原比较键、稳定同分顺序、状态键内容和候选政策保持不变。
+- Server GC 离线交错对照覆盖 Medium/High/VeryHigh 与 DOP8/16，累计分配减少 3.59%～4.65%，路线、主要工作量和质量一致；固定预算 DOP1 与循环场景逐字段核对通过。耗时差未超过观测波动，不称为延迟改善；详见[实验报告](performance/search-hotpath-allocation-20260925.md)。
+
 ## 0.46.4：战损路线筛选与 Loadout 兼容（2026-09-25）
 
 - 本机 `godot.log` 确认 Loadout `v0.5.8` 与求解器均已加载；独立战斗日志在首回合根捕获处报 `IncompatibleGameplayModException`。原因是怪物能力召唤订阅者的旧版本门禁，并非当前战斗已配置怪物能力。实际安装的 `v0.5.8` 与保留的 `v0.5.6` 程序集在 `PowerGiverSummonHook`、公开 `GetCountersSnapshot` 及怪物召唤能力施加逻辑上相同。

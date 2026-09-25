@@ -1,5 +1,6 @@
 # 性能研究与复现
 
+- [搜索热路径分配](search-hotpath-allocation-20260925.md)：候选准入、状态指纹与预测工厂的临时对象缩减，以及交错对照。
 - [可选 ServerGC 启动配置](server-gc-launch-profile-20260924.md)：游戏宿主接入、设置隔离、原生 Windows 搜索对照及 CPU／暂停取舍。
 - [循环质量、确定性回放与折叠展示](loop-optimization-20260921.md)：设计、适用边界、ABBA 耗时/内存与质量证据。
 

@@ -797,10 +797,17 @@ internal sealed partial class CombatBeamSolver
         SimPlayerCombatState playerState,
         CardType cardType,
         int freeUses)
-    {
-        if (freeUses <= 0)
-            return 0;
+        // The lambdas below capture parameters, which allocates their closure on method entry.
+        // Keep the common no-free-uses case in a method without captures.
+        => freeUses <= 0 ? 0 : RankedFreeCardOpportunityValue(simulator, combat, playerState, cardType, freeUses);
 
+    private static int RankedFreeCardOpportunityValue(
+        CombatPredictionSimulator simulator,
+        SimulatedCombatState combat,
+        SimPlayerCombatState playerState,
+        CardType cardType,
+        int freeUses)
+    {
         return playerState.Hand.Cards
             .Where(card => card.Preview.Type == cardType
                 && !card.Preview.EnergyCost.CostsX
