@@ -24,7 +24,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>CombatSolver</RootNamespace>
-    <Version>0.46.6</Version>
+    <Version>0.46.4</Version>
     <DefineConstants Condition="'$(VerifyHistoryCounters)' == 'true'">$(DefineConstants);VERIFY_HISTORY_COUNTERS</DefineConstants>
     <SteamRoot Condition="'$(SteamRoot)' == '' and '$(OS)' == 'Windows_NT' and Exists('D:/Steam')">D:/Steam</SteamRoot>
     <SteamRoot Condition="'$(SteamRoot)' == '' and '$(OS)' == 'Windows_NT'">$(MSBuildProgramFiles32)/Steam</SteamRoot>
