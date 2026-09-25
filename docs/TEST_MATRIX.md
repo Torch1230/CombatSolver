@@ -1,5 +1,10 @@
 # CombatSolver 测试清单
 
+## 0.46.6：Loadout 按接口与配置判定（2026-09-25）
+
+- 为验证版本号不会触发兼容拒绝，仅在忽略目录的隔离游戏源把真实 Loadout `v0.5.8` 程序集对应清单临时改为模拟的 `v0.5.9`；并未取得真实的未来版程序集。`LOADOUT-EMPTY-ROOT` / `dd278b11f3f74d63a194e207e4d512fa` Passed：真实订阅者加载、公开怪物能力计数为空、根捕获与 Fork 均通过，5 秒固定预算内取得首回合一动作零战损胜利路线。测试实例由启动器删除，测试清单已恢复 `v0.5.8`。
+- 改动保留接口形状和非空配置的显式失败边界；本轮没有运行未来版本的真实程序集或非空怪物能力配置差分。Windows Release 开发构建 0 警告、0 错误。
+
 ## 0.46.5：Loadout 2 v0.5.8 兼容（2026-09-25）
 
 - 本机最新独立战斗日志：`SEARCH_SETUP_FAILURE stage=combat_root_snapshot`，异常是 `PowerGiver summon powers are configured or this Loadout version is not verified`；`godot.log` 证实求解器 `0.46.4` 与 Loadout `v0.5.8` 均已加载。实际 `v0.5.8` 的召唤钩子和公开怪物能力计数读取，与保留的 `v0.5.6` 程序集反编译结果一致。

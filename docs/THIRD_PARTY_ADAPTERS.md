@@ -53,7 +53,7 @@ CrabRagePower 的同伴死亡结算由 `AfterDeathMirrors` 独占：力量、格
    hook，或者只重写了战斗开始 / 战斗结束 hook（前者的效果已经落在被捕获的根状态里，后者在
    胜负判定之后才分发，求解器搜到战斗结束就停）；
 3. 在 `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` 白名单里。
-4. 已核对的 Loadout `v0.5.6`、`v0.5.8` 的 `PowerGiverSummonHook`：主线程从公开 API 确认怪物能力计数为空，且把空配置写入续用状态戳。配置非空或未核对的版本时拒绝；这不放行 Loadout 的其他战斗效果。
+4. Loadout 的 `PowerGiverSummonHook`：主线程检查实际加载的公开计数快照接口及怪物能力配置，把空配置写入续用状态戳。版本号变化不会阻止搜索；接口变化或配置非空时明确失败。这不放行 Loadout 的其他战斗效果。
 
 条件都不满足就抛 `IncompatibleGameplayModException`，整个求解器停摆。
 
