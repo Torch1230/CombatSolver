@@ -64,7 +64,21 @@
     "wallLowerCount": 15,
     "candidateBelowEveryBaseSampleCount": 17,
     "crossArmMismatchesRepeatWithinAnArmCount": 17,
-    "distinctRootContinuationStamps": 17
+    "distinctRootContinuationStamps": 17,
+    "sumOfBaseWallMediansSeconds": 148.117,
+    "sumOfFinalWallMediansSeconds": 145.715,
+    "weightedWallDeltaPercent": -1.622,
+    "medianScenarioWallDeltaPercent": -1.123,
+    "devWallMedianSumSeconds": [
+      108.529,
+      106.244
+    ],
+    "devWeightedWallDeltaPercent": -2.105,
+    "holdoutWallMedianSumSeconds": [
+      39.588,
+      39.471
+    ],
+    "holdoutWeightedWallDeltaPercent": -0.296
   },
   "scenarios": [
     {
