@@ -298,14 +298,11 @@ async function load(key, path, onSuccess, errorId) {
   }
 }
 function duration(seconds) {
-  const days = Math.floor(seconds / 86400),
-    hours = Math.floor(seconds / 3600) % 24,
+  const hours = Math.floor(seconds / 3600),
     minutes = Math.floor(seconds / 60) % 60;
-  return days
-    ? `${days}天 ${hours}小时`
-    : hours
-      ? `${hours}小时 ${minutes}分`
-      : `${minutes}分 ${seconds % 60}秒`;
+  return hours
+    ? `${hours}小时 ${minutes}分`
+    : `${minutes}分 ${seconds % 60}秒`;
 }
 function rate(value) {
   return value === null ? "暂无胜率" : `${(value * 100).toFixed(1)}%`;
