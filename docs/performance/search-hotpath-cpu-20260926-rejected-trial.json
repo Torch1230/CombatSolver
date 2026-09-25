@@ -1,0 +1,687 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "87c47d45",
+  "pr138DllSha256": "3eb172048c8779fbc851dfd9537388cce148b9f1000503e6c52e9e586c820664",
+  "trialDllSha256": "bc9dbb08781cbe00eb82d774de4ef378182274aea525472e0f60b3d075fd14b7",
+  "trialRetained": false,
+  "trialChange": "Inline the SearchTransitionGuard catch in ReplayAction to avoid its captured delegate; production source restored after the ABBA regression.",
+  "configuration": {
+    "profile": "High",
+    "maxDegreeOfParallelism": 8,
+    "nodes": 5000,
+    "searchBudgetMilliseconds": 120000,
+    "searchMode": "Coordinator",
+    "usePortfolio": true,
+    "potionPolicy": "Smart",
+    "gc": "Server",
+    "order": [
+      "pr138",
+      "trial",
+      "trial",
+      "pr138"
+    ],
+    "processesPerRoot": 4,
+    "workers": 1
+  },
+  "summary": {
+    "rootCount": 12,
+    "runCount": 48,
+    "allocationLowerCount": 11,
+    "wallLowerCount": 6,
+    "sameRouteAndWorkCount": 12,
+    "sumOfBaselineAllocatedMediansBytes": 68213417780,
+    "sumOfTrialAllocatedMediansBytes": 67936156992,
+    "sumOfBaselineWallMediansSeconds": 108.077591,
+    "sumOfTrialWallMediansSeconds": 110.643011
+  },
+  "roots": [
+    {
+      "fixture": "coverage/novelty-search/dev-00-ironclad-elite.json",
+      "fixtureSha256": "eb714f35621be83ea6d23fe3a1075a6f82dbea9ad1aa3e211ff2f986db2f7c5e",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.3393708,
+          "totalAllocatedBytes": 4468091272,
+          "routeSha256": "6d64ab8b9642346947d8affe2b1bd2c335e8c67d8a3313550369cf3ad8052c18",
+          "totalExpanded": 15000,
+          "totalTransitions": 102946,
+          "projectedBattleHpLost": 37,
+          "score": 10000164975
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 10.9918205,
+          "totalAllocatedBytes": 4503925576,
+          "routeSha256": "6d64ab8b9642346947d8affe2b1bd2c335e8c67d8a3313550369cf3ad8052c18",
+          "totalExpanded": 15000,
+          "totalTransitions": 102946,
+          "projectedBattleHpLost": 37,
+          "score": 10000164975
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 10.1924604,
+          "totalAllocatedBytes": 4511232032,
+          "routeSha256": "6d64ab8b9642346947d8affe2b1bd2c335e8c67d8a3313550369cf3ad8052c18",
+          "totalExpanded": 15000,
+          "totalTransitions": 102946,
+          "projectedBattleHpLost": 37,
+          "score": 10000164975
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 8.9833211,
+          "totalAllocatedBytes": 4545506168,
+          "routeSha256": "6d64ab8b9642346947d8affe2b1bd2c335e8c67d8a3313550369cf3ad8052c18",
+          "totalExpanded": 15000,
+          "totalTransitions": 102946,
+          "projectedBattleHpLost": 37,
+          "score": 10000164975
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-01-silent-elite.json",
+      "fixtureSha256": "074cd67a48b0c880df59635185346713d5f21f1cc0ae351ba74ad48a5aaa67bd",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 21.3662755,
+          "totalAllocatedBytes": 21686198696,
+          "routeSha256": "2ed21249bab89d302dca4d55042b5244cbb5420a5c6ae94f9747e689d39ca8ba",
+          "totalExpanded": 91729,
+          "totalTransitions": 547494,
+          "projectedBattleHpLost": 44,
+          "score": 9999299975
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 22.2903075,
+          "totalAllocatedBytes": 21639937352,
+          "routeSha256": "2ed21249bab89d302dca4d55042b5244cbb5420a5c6ae94f9747e689d39ca8ba",
+          "totalExpanded": 91729,
+          "totalTransitions": 547494,
+          "projectedBattleHpLost": 44,
+          "score": 9999299975
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 22.3650055,
+          "totalAllocatedBytes": 21631323776,
+          "routeSha256": "2ed21249bab89d302dca4d55042b5244cbb5420a5c6ae94f9747e689d39ca8ba",
+          "totalExpanded": 91729,
+          "totalTransitions": 547494,
+          "projectedBattleHpLost": 44,
+          "score": 9999299975
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 22.4494382,
+          "totalAllocatedBytes": 21710829688,
+          "routeSha256": "2ed21249bab89d302dca4d55042b5244cbb5420a5c6ae94f9747e689d39ca8ba",
+          "totalExpanded": 91729,
+          "totalTransitions": 547494,
+          "projectedBattleHpLost": 44,
+          "score": 9999299975
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-02-defect-elite.json",
+      "fixtureSha256": "485a56b3370977a33cc8d978563bf76cab40fb8428ae06a3d1f80737868d950b",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 4.7994468,
+          "totalAllocatedBytes": 1897123768,
+          "routeSha256": "859906d748257d12f76f045c7d889270ee9b12e22a172abd7018c2a63adbb8ef",
+          "totalExpanded": 10000,
+          "totalTransitions": 38665,
+          "projectedBattleHpLost": 4,
+          "score": 10002009979
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 5.2319228,
+          "totalAllocatedBytes": 1890838696,
+          "routeSha256": "859906d748257d12f76f045c7d889270ee9b12e22a172abd7018c2a63adbb8ef",
+          "totalExpanded": 10000,
+          "totalTransitions": 38665,
+          "projectedBattleHpLost": 4,
+          "score": 10002009979
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 5.3089297,
+          "totalAllocatedBytes": 1891148632,
+          "routeSha256": "859906d748257d12f76f045c7d889270ee9b12e22a172abd7018c2a63adbb8ef",
+          "totalExpanded": 10000,
+          "totalTransitions": 38665,
+          "projectedBattleHpLost": 4,
+          "score": 10002009979
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 5.0631496,
+          "totalAllocatedBytes": 1897449456,
+          "routeSha256": "859906d748257d12f76f045c7d889270ee9b12e22a172abd7018c2a63adbb8ef",
+          "totalExpanded": 10000,
+          "totalTransitions": 38665,
+          "projectedBattleHpLost": 4,
+          "score": 10002009979
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-03-regent-elite.json",
+      "fixtureSha256": "2f314d7d2d7d2decbcb37f7a303c41b8519a49a89990e927ac110b0a9e9455f7",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 7.6603756,
+          "totalAllocatedBytes": 3362863280,
+          "routeSha256": "54ff0d09781fc5b6243e7ef711bcf55eb15c604f5e49e449db21eec754a207f9",
+          "totalExpanded": 10000,
+          "totalTransitions": 68112,
+          "projectedBattleHpLost": 12,
+          "score": 10001481983
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 7.6212202,
+          "totalAllocatedBytes": 3348822904,
+          "routeSha256": "54ff0d09781fc5b6243e7ef711bcf55eb15c604f5e49e449db21eec754a207f9",
+          "totalExpanded": 10000,
+          "totalTransitions": 68112,
+          "projectedBattleHpLost": 12,
+          "score": 10001481983
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 7.6412666,
+          "totalAllocatedBytes": 3355522176,
+          "routeSha256": "54ff0d09781fc5b6243e7ef711bcf55eb15c604f5e49e449db21eec754a207f9",
+          "totalExpanded": 10000,
+          "totalTransitions": 68112,
+          "projectedBattleHpLost": 12,
+          "score": 10001481983
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 7.6037231,
+          "totalAllocatedBytes": 3363473696,
+          "routeSha256": "54ff0d09781fc5b6243e7ef711bcf55eb15c604f5e49e449db21eec754a207f9",
+          "totalExpanded": 10000,
+          "totalTransitions": 68112,
+          "projectedBattleHpLost": 12,
+          "score": 10001481983
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-04-necrobinder-elite.json",
+      "fixtureSha256": "b019a67e65e43d3ac808adfca7d67b6bcead860604b74a3a75fbd2414ed5156c",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 6.8550083,
+          "totalAllocatedBytes": 3502246968,
+          "routeSha256": "471e14085de52720744f9a74633496b0688a5dc8406646bdfffd6a486e11aefc",
+          "totalExpanded": 8828,
+          "totalTransitions": 83422,
+          "projectedBattleHpLost": 35,
+          "score": 9999784975
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 6.4981678,
+          "totalAllocatedBytes": 3421574496,
+          "routeSha256": "471e14085de52720744f9a74633496b0688a5dc8406646bdfffd6a486e11aefc",
+          "totalExpanded": 8828,
+          "totalTransitions": 83422,
+          "projectedBattleHpLost": 35,
+          "score": 9999784975
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 6.437054,
+          "totalAllocatedBytes": 3462386216,
+          "routeSha256": "471e14085de52720744f9a74633496b0688a5dc8406646bdfffd6a486e11aefc",
+          "totalExpanded": 8828,
+          "totalTransitions": 83422,
+          "projectedBattleHpLost": 35,
+          "score": 9999784975
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 6.3895852,
+          "totalAllocatedBytes": 3450065864,
+          "routeSha256": "471e14085de52720744f9a74633496b0688a5dc8406646bdfffd6a486e11aefc",
+          "totalExpanded": 8828,
+          "totalTransitions": 83422,
+          "projectedBattleHpLost": 35,
+          "score": 9999784975
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-05-ironclad-boss.json",
+      "fixtureSha256": "0d0d6951d7092a31294f0c7d36ed8e89ad8a435534d9cd7f471f3b75bd369a49",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 10.5301685,
+          "totalAllocatedBytes": 6448422552,
+          "routeSha256": "90ddf3fdefd11c3d6aaaa38efc7fd61e99a509b359d6ff2a3a6b0898c713829b",
+          "totalExpanded": 30000,
+          "totalTransitions": 174952,
+          "projectedBattleHpLost": 77,
+          "score": 9997107961
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 10.690038,
+          "totalAllocatedBytes": 6435493824,
+          "routeSha256": "90ddf3fdefd11c3d6aaaa38efc7fd61e99a509b359d6ff2a3a6b0898c713829b",
+          "totalExpanded": 30000,
+          "totalTransitions": 174952,
+          "projectedBattleHpLost": 77,
+          "score": 9997107961
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 11.5406447,
+          "totalAllocatedBytes": 6424178624,
+          "routeSha256": "90ddf3fdefd11c3d6aaaa38efc7fd61e99a509b359d6ff2a3a6b0898c713829b",
+          "totalExpanded": 30000,
+          "totalTransitions": 174952,
+          "projectedBattleHpLost": 77,
+          "score": 9997107961
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 10.316694,
+          "totalAllocatedBytes": 6420689192,
+          "routeSha256": "90ddf3fdefd11c3d6aaaa38efc7fd61e99a509b359d6ff2a3a6b0898c713829b",
+          "totalExpanded": 30000,
+          "totalTransitions": 174952,
+          "projectedBattleHpLost": 77,
+          "score": 9997107961
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-06-silent-boss.json",
+      "fixtureSha256": "0d4af22d89a565a18580038ee2a5cede04474e55ecd7de4fc803a4c205133404",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.4522266,
+          "totalAllocatedBytes": 6069575640,
+          "routeSha256": "0c3babfb3df97a243d99da7c27a7cfab5a3b0429497089e9d98b3c3e2e21eae8",
+          "totalExpanded": 35000,
+          "totalTransitions": 165556,
+          "projectedBattleHpLost": 42,
+          "score": -2928042
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.5092511,
+          "totalAllocatedBytes": 6049071328,
+          "routeSha256": "0c3babfb3df97a243d99da7c27a7cfab5a3b0429497089e9d98b3c3e2e21eae8",
+          "totalExpanded": 35000,
+          "totalTransitions": 165556,
+          "projectedBattleHpLost": 42,
+          "score": -2928042
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.4757614,
+          "totalAllocatedBytes": 6040215112,
+          "routeSha256": "0c3babfb3df97a243d99da7c27a7cfab5a3b0429497089e9d98b3c3e2e21eae8",
+          "totalExpanded": 35000,
+          "totalTransitions": 165556,
+          "projectedBattleHpLost": 42,
+          "score": -2928042
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.6942281,
+          "totalAllocatedBytes": 6078795496,
+          "routeSha256": "0c3babfb3df97a243d99da7c27a7cfab5a3b0429497089e9d98b3c3e2e21eae8",
+          "totalExpanded": 35000,
+          "totalTransitions": 165556,
+          "projectedBattleHpLost": 42,
+          "score": -2928042
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-07-defect-boss.json",
+      "fixtureSha256": "7d27e0fce3dca20c0fae82b593f42e05aa0f9c8d7d628cbdf94dad1c95dd5932",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 4.5834834,
+          "totalAllocatedBytes": 1667254992,
+          "routeSha256": "3e82294f3cf37f38fafc58b85d0377fd78a18cbf789dee931da13396ef665db1",
+          "totalExpanded": 7472,
+          "totalTransitions": 36344,
+          "projectedBattleHpLost": 57,
+          "score": 9998301964
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 4.5877225,
+          "totalAllocatedBytes": 1661032464,
+          "routeSha256": "3e82294f3cf37f38fafc58b85d0377fd78a18cbf789dee931da13396ef665db1",
+          "totalExpanded": 7472,
+          "totalTransitions": 36344,
+          "projectedBattleHpLost": 57,
+          "score": 9998301964
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 4.5713947,
+          "totalAllocatedBytes": 1660674152,
+          "routeSha256": "3e82294f3cf37f38fafc58b85d0377fd78a18cbf789dee931da13396ef665db1",
+          "totalExpanded": 7472,
+          "totalTransitions": 36344,
+          "projectedBattleHpLost": 57,
+          "score": 9998301964
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 4.5970062,
+          "totalAllocatedBytes": 1667177296,
+          "routeSha256": "3e82294f3cf37f38fafc58b85d0377fd78a18cbf789dee931da13396ef665db1",
+          "totalExpanded": 7472,
+          "totalTransitions": 36344,
+          "projectedBattleHpLost": 57,
+          "score": 9998301964
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-08-regent-boss.json",
+      "fixtureSha256": "a82b59ef746c75dbcc754dbb5624b2bea50b900e9784aa12ffff976429ae4413",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 11.4637241,
+          "totalAllocatedBytes": 6846248480,
+          "routeSha256": "a4963e2d5a439d3e6316c33aec151619df393ec9aef151cb766c973625302102",
+          "totalExpanded": 39669,
+          "totalTransitions": 167305,
+          "projectedBattleHpLost": 40,
+          "score": 9999737970
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 11.3220852,
+          "totalAllocatedBytes": 6792039688,
+          "routeSha256": "a4963e2d5a439d3e6316c33aec151619df393ec9aef151cb766c973625302102",
+          "totalExpanded": 39669,
+          "totalTransitions": 167305,
+          "projectedBattleHpLost": 40,
+          "score": 9999737970
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 11.4496697,
+          "totalAllocatedBytes": 6792705328,
+          "routeSha256": "a4963e2d5a439d3e6316c33aec151619df393ec9aef151cb766c973625302102",
+          "totalExpanded": 39669,
+          "totalTransitions": 167305,
+          "projectedBattleHpLost": 40,
+          "score": 9999737970
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 11.59809,
+          "totalAllocatedBytes": 6896625024,
+          "routeSha256": "a4963e2d5a439d3e6316c33aec151619df393ec9aef151cb766c973625302102",
+          "totalExpanded": 39669,
+          "totalTransitions": 167305,
+          "projectedBattleHpLost": 40,
+          "score": 9999737970
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/dev-09-necrobinder-boss.json",
+      "fixtureSha256": "ed60144ec2a03fa99b7acb8b16e963eae82a94ad90181ff2b3ddee822a669431",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.6146854,
+          "totalAllocatedBytes": 4826223328,
+          "routeSha256": "a992e331f88f8ce751d27bf927a2aef31acfcbd1814bf2d074cd647a6b9a87a3",
+          "totalExpanded": 15000,
+          "totalTransitions": 134212,
+          "projectedBattleHpLost": 0,
+          "score": -1000002238030
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.7347486,
+          "totalAllocatedBytes": 4807211520,
+          "routeSha256": "a992e331f88f8ce751d27bf927a2aef31acfcbd1814bf2d074cd647a6b9a87a3",
+          "totalExpanded": 15000,
+          "totalTransitions": 134212,
+          "projectedBattleHpLost": 0,
+          "score": -1000002238030
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.4814037,
+          "totalAllocatedBytes": 4790931504,
+          "routeSha256": "a992e331f88f8ce751d27bf927a2aef31acfcbd1814bf2d074cd647a6b9a87a3",
+          "totalExpanded": 15000,
+          "totalTransitions": 134212,
+          "projectedBattleHpLost": 0,
+          "score": -1000002238030
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 9.5151476,
+          "totalAllocatedBytes": 4823190616,
+          "routeSha256": "a992e331f88f8ce751d27bf927a2aef31acfcbd1814bf2d074cd647a6b9a87a3",
+          "totalExpanded": 15000,
+          "totalTransitions": 134212,
+          "projectedBattleHpLost": 0,
+          "score": -1000002238030
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/holdout-00-ironclad.json",
+      "fixtureSha256": "b6927223adeab3a1d4ff7a5826abcc21aaa8899d3c39effb96265a0bf71f3b57",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 3.2571922,
+          "totalAllocatedBytes": 1334354680,
+          "routeSha256": "30f37649943d0cd08a1bd600388636dcead7c10e8233ecaf65a67c3098a59d05",
+          "totalExpanded": 10380,
+          "totalTransitions": 29297,
+          "projectedBattleHpLost": 2,
+          "score": 10002279994
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 3.2601639,
+          "totalAllocatedBytes": 1329475016,
+          "routeSha256": "30f37649943d0cd08a1bd600388636dcead7c10e8233ecaf65a67c3098a59d05",
+          "totalExpanded": 10380,
+          "totalTransitions": 29297,
+          "projectedBattleHpLost": 2,
+          "score": 10002279994
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 3.2539616,
+          "totalAllocatedBytes": 1329300064,
+          "routeSha256": "30f37649943d0cd08a1bd600388636dcead7c10e8233ecaf65a67c3098a59d05",
+          "totalExpanded": 10380,
+          "totalTransitions": 29297,
+          "projectedBattleHpLost": 2,
+          "score": 10002279994
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 3.2754497,
+          "totalAllocatedBytes": 1334259264,
+          "routeSha256": "30f37649943d0cd08a1bd600388636dcead7c10e8233ecaf65a67c3098a59d05",
+          "totalExpanded": 10380,
+          "totalTransitions": 29297,
+          "projectedBattleHpLost": 2,
+          "score": 10002279994
+        }
+      ]
+    },
+    {
+      "fixture": "coverage/novelty-search/holdout-03-regent.json",
+      "fixtureSha256": "dde642cccddedb0e675929352b7280816594bab59ea2d2ae526c794538de90a4",
+      "observations": [
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 8.8489001,
+          "totalAllocatedBytes": 6064037536,
+          "routeSha256": "b4336b305fc59675904f190ba9c7a0f7a118d19d089e7e6258c96d5af7a159ac",
+          "totalExpanded": 25000,
+          "totalTransitions": 160268,
+          "projectedBattleHpLost": 3,
+          "score": 10002069980
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 8.9405144,
+          "totalAllocatedBytes": 6043381752,
+          "routeSha256": "b4336b305fc59675904f190ba9c7a0f7a118d19d089e7e6258c96d5af7a159ac",
+          "totalExpanded": 25000,
+          "totalTransitions": 160268,
+          "projectedBattleHpLost": 3,
+          "score": 10002069980
+        },
+        {
+          "arm": "trial",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 8.8905069,
+          "totalAllocatedBytes": 6059891752,
+          "routeSha256": "b4336b305fc59675904f190ba9c7a0f7a118d19d089e7e6258c96d5af7a159ac",
+          "totalExpanded": 25000,
+          "totalTransitions": 160268,
+          "projectedBattleHpLost": 3,
+          "score": 10002069980
+        },
+        {
+          "arm": "pr138",
+          "status": "Passed",
+          "timeBoundaryObserved": false,
+          "wallSeconds": 8.8984925,
+          "totalAllocatedBytes": 6066132608,
+          "routeSha256": "b4336b305fc59675904f190ba9c7a0f7a118d19d089e7e6258c96d5af7a159ac",
+          "totalExpanded": 25000,
+          "totalTransitions": 160268,
+          "projectedBattleHpLost": 3,
+          "score": 10002069980
+        }
+      ]
+    }
+  ]
+}
