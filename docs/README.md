@@ -1,6 +1,6 @@
 # CombatSolver 文档导航
 
-- [搜索热路径分配](performance/search-hotpath-allocation-20260925.md)：Server GC 下多预设交错对照、固定工作量等价及未采用实验。
+- [搜索热路径分配](performance/search-hotpath-allocation-20260925.md)：Server GC 多预设与 17 个战斗根的直接交错对照、固定工作量等价及未采用实验。
 - [可选 ServerGC 启动配置](performance/server-gc-launch-profile-20260924.md)：仅本次进程生效的启动方式、保存设置边界与原生宿主验收。
 - [GC 完成链修复与优化筛选](performance/gc-completion-allocation-20260921.md)：替代 #116/#120 的窄修复、失败复现与重新实测取舍。
 - [增量历史计数](strategy/incremental-history-counters.md)：生命周期、测试构建与构键计时。
