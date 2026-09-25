@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 未发布：搜索热路径 CPU 复查（2026-09-26）
+
+- 基于 PR #138 的最终生产 DLL，Linux `perf record` 在静默猎手精英固定预算根得到 84,345 个无丢样 CPU 样本；另对 Regent 首领生产预算根得到 3,107,070 个无丢样样本。采样只用于热点归因，不用于耗时 A/B。
+- 单因素试验将 `ReplayAction` 的捕获委托改为直接异常守卫，12 个五角色固定根各 ABBA（48 次独立进程，High、DOP8、Coordinator/组合、Smart、Server GC、5000 节点、120 秒）全部 Passed、无时间边界；路线哈希、展开、转移、战损、分数逐根一致。分配中位数之和少 0.41%，墙钟中位数之和多 2.37%；试验已撤回，未修改当前生产行为。逐根口径见[性能报告](performance/search-hotpath-allocation-20260925.md#后续-perf-cpu-复查2026-09-26)，[48 份逐次结果](performance/search-hotpath-cpu-20260926-rejected-trial.json)可复算。
+- 本批没有启动可见 Steam 会话，也没有把无头样本当作帧时间或玩家可感知提速证据。
+
 ## 0.46.4：战损路线筛选与 Loadout 兼容（2026-09-25）
 
 - 本机最新独立战斗日志：`SEARCH_SETUP_FAILURE stage=combat_root_snapshot`，异常是 `PowerGiver summon powers are configured or this Loadout version is not verified`；`godot.log` 证实求解器 `0.46.4` 与 Loadout `v0.5.8` 均已加载。实际 `v0.5.8` 的召唤钩子和公开怪物能力计数读取，与保留的 `v0.5.6` 程序集反编译结果一致。

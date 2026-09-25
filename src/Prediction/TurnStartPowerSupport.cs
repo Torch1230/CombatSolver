@@ -119,18 +119,20 @@ internal static partial class TurnStartPowerSupport
         {
             case HardenedShellPower shell:
                 simulator.StateStore
-                    .Get(shell, () => new HardenedShellPredictionState(shell))
+                    .Get(shell, static model => new HardenedShellPredictionState(model))
                     .DamageReceivedThisTurn = 0;
                 break;
             case SlothPower sloth when participants.Contains(sloth.Owner):
+                // Static factories: a lambda capturing `combat` would allocate its closure on
+                // every call of this method, not only for Sloth.
                 simulator.StateStore
-                    .Get(sloth, () => new CounterPredictionState(
-                        combat.GetCardsPlayedThisTurn(sloth.Owner)))
+                    .Get(sloth, (combat, sloth), static state => new CounterPredictionState(
+                        state.combat.GetCardsPlayedThisTurn(state.sloth.Owner)))
                     .Value = 0;
                 break;
             case VoidFormPower voidForm when participants.Contains(voidForm.Owner):
                 simulator.StateStore
-                    .Get(voidForm, () => new VoidFormPredictionState(voidForm))
+                    .Get(voidForm, static model => new VoidFormPredictionState(model))
                     .CardsPlayedThisTurn = 0;
                 break;
         }

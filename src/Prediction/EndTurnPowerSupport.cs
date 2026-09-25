@@ -76,7 +76,7 @@ internal static partial class EndTurnPowerSupport
                     break;
                 case JugglingPower juggling when ownerParticipates:
                     simulator.StateStore
-                        .Get(juggling, () => new JugglingPredictionState(juggling))
+                        .Get(juggling, static model => new JugglingPredictionState(model))
                         .AttacksPlayedThisTurn = 0;
                     break;
                 case TenderPower when ownerParticipates:
@@ -118,7 +118,7 @@ internal static partial class EndTurnPowerSupport
                 case DarkEmbracePower darkEmbrace when ownerParticipates && owner.Player is { } player:
                 {
                     var state = simulator.StateStore.Get(darkEmbrace,
-                        () => new CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.DarkEmbracePredictionState(darkEmbrace));
+                        static model => new CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.DarkEmbracePredictionState(model));
                     simulator.Draw(player, power.Amount * state.EtherealCount);
                     if (simulator.HasPendingChoice)
                         return false;

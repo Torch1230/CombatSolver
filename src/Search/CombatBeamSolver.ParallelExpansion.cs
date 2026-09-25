@@ -1076,7 +1076,8 @@ internal sealed partial class CombatBeamSolver
         ExpansionBatch batch,
         Action<SearchNode> acceptChild)
     {
-        List<ActionCandidate> nonDominated = new(16);
+        // At most one candidate survives per raw card. Small batches need no 16-slot array.
+        List<ActionCandidate> nonDominated = new(Math.Min(16, batch.Cards.Count));
         List<ActionCandidate>? deferredCycleCandidates = null;
         foreach (RawCardCandidate raw in batch.Cards)
         {

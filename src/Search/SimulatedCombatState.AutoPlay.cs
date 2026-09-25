@@ -182,16 +182,31 @@ internal sealed partial class SimulatedCombatState
     private static void AppendTrackedAttack(
         ref StateFingerprintBuilder fingerprint,
         char marker,
-        IReadOnlyDictionary<Player, PredictedCard>? cards)
+        Dictionary<Player, PredictedCard>? cards)
     {
-        if (cards == null)
+        if (cards == null || cards.Count == 0)
             return;
-        foreach ((Player player, PredictedCard card) in cards.OrderBy(entry => entry.Key.NetId))
+        // Every state key visits this. Single-player combat tracks at most one player, and a
+        // single entry is already in NetId order, so only larger tables need the stable sort.
+        if (cards.Count == 1)
         {
-            fingerprint.Add(marker);
-            fingerprint.Add((long)player.NetId);
-            fingerprint.Add(card.Preview.Id.Entry);
-            fingerprint.Add(card.Preview.CurrentUpgradeLevel);
+            foreach ((Player player, PredictedCard card) in cards)
+                AppendTrackedAttackEntry(ref fingerprint, marker, player, card);
+            return;
         }
+        foreach ((Player player, PredictedCard card) in cards.OrderBy(entry => entry.Key.NetId))
+            AppendTrackedAttackEntry(ref fingerprint, marker, player, card);
+    }
+
+    private static void AppendTrackedAttackEntry(
+        ref StateFingerprintBuilder fingerprint,
+        char marker,
+        Player player,
+        PredictedCard card)
+    {
+        fingerprint.Add(marker);
+        fingerprint.Add((long)player.NetId);
+        fingerprint.Add(card.Preview.Id.Entry);
+        fingerprint.Add(card.Preview.CurrentUpgradeLevel);
     }
 }

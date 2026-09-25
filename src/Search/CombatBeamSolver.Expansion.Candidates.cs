@@ -169,11 +169,15 @@ internal sealed partial class CombatBeamSolver
             }
         }
 
-        foreach (IGrouping<uint, ActionCandidate> targetGroup in candidates
-                     .Where(candidate => candidate.TargetCombatId.HasValue && candidate.Damage > 0)
-                     .GroupBy(candidate => candidate.TargetCombatId!.Value))
+        // Candidates are score-sorted. GroupBy yielded the first candidate for
+        // each target in first-seen order; a set retains that order without groups.
+        HashSet<uint> seenDamageTargets = [];
+        foreach (ActionCandidate candidate in candidates)
         {
-            Add(targetGroup.First());
+            if (candidate.TargetCombatId is uint targetCombatId
+                && candidate.Damage > 0
+                && seenDamageTargets.Add(targetCombatId))
+                Add(candidate);
         }
 
         foreach (ActionCandidate candidate in candidates)
