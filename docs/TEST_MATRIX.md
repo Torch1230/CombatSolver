@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 0.46.5：Loadout 2 v0.5.8 兼容（2026-09-25）
+
+- 本机最新独立战斗日志：`SEARCH_SETUP_FAILURE stage=combat_root_snapshot`，异常是 `PowerGiver summon powers are configured or this Loadout version is not verified`；`godot.log` 证实求解器 `0.46.4` 与 Loadout `v0.5.8` 均已加载。实际 `v0.5.8` 的召唤钩子和公开怪物能力计数读取，与保留的 `v0.5.6` 程序集反编译结果一致。
+- 修改前用实际 Loadout `v0.5.8`、BaseLib 和隔离游戏源运行 `LOADOUT-EMPTY-ROOT` / `05c8f3d560324d2aa91baca0a8697ffd`，在根快照断言失败，错误为 `Loadout PowerGiver summon powers are not inactive`。修改后同一场景 / `d571e61d9bbe496fa91379743c140df8` 报 `Passed`：真实订阅者加载、空配置捕获和 Fork 通过，5 秒固定预算内取得首回合一动作零战损胜利路线。测试脚本退出后清理首次遇到文件占用；原生进程退出后通过仓库的所有权校验清理函数删除该实例。
+- 只核对空怪物能力配置；非空配置与未核对的 Loadout 版本仍由现有门禁拒绝。本轮没有运行非空配置的战斗差分或可见 Steam 实机。
+
 ## 0.46.4：有证据的战损下界收紧（2026-09-24）
 
 - 根证书与数值合同：`HEAL-BOUND-SAFE-ROOT` 铁甲战士 `502f0df041fd460d8355dd7fd8102c38`、含精神过载的亡灵契约师 `1aedd4e7daba44fcb81b92e530e6a6db` 均 Passed；带鲜血药水的 `HEAL-BOUND-UNKNOWN-ROOT` `fccb56555b6d41fb9541c85f31a1bc8a` Passed，确认退回完整缺血余量。三次无头实例均由启动器清理。

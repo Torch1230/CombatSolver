@@ -398,7 +398,7 @@ Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕
 
 `PlayerTurnEndLifecycle.RunPhaseTwo` 拥有清空手牌后的玩家回合末顺序：常规 Power、遗物、`HookMirrors.AfterSideTurnEndLate`，最后规范化卡牌词条。Search、风险预估和无人差分共用此入口；每个阶段的挂起选择立即向上传播。敌方晚期入口由 `CorePowerSupport.TriggerEnemySideTurnEndEffects` 调用。晚期阶段按完整分支监听顺序固定成员并跟随卡牌 COW Preview；`AfterSideTurnEndLateMirrors` 独占原版 DisintegrationPower 效果，底层沿用标准 registry/descriptor。登记在首次根捕获或分发后冻结，未知战斗重写明确失败，不扩展状态或 Mod 门禁；见 [回合阶段镜像](third-party-turn-phase-mirrors.md)。
 
-`PredictionModHookSubscriberCapture` 对 Loadout `v0.5.6` 的 `PowerGiverSummonHook` 只接受公开快照中的空怪物能力配置。根保存该条件，`ContinuationStamp` 在 live 与 predicted 两侧记录配置是否仍为空；非空配置会在未来召唤和阶段切换时改变战斗结算，保持拒绝。worker 不读取 Loadout 的全局计数。
+`PredictionModHookSubscriberCapture` 对已核对的 Loadout `v0.5.6`、`v0.5.8` 的 `PowerGiverSummonHook` 只接受公开快照中的空怪物能力配置。根保存该条件，`ContinuationStamp` 在 live 与 predicted 两侧记录配置是否仍为空；非空配置会在未来召唤和阶段切换时改变战斗结算，保持拒绝。worker 不读取 Loadout 的全局计数。
 
 DarkEmbrace 的延迟抽牌数由 AfterCardExhausted 镜像按实际虚无消耗事件写入 `DarkEmbracePredictionState`，根从原生内部计数捕获，StateStore/Fork 按值隔离并纳入指纹；常规 Power 回合末阶段抽牌后归零，稳定下一玩家回合不保留待抽事务。苍蓝星球的已触发标志由主线程从原生 Power 捕获至分支表，避免 Power 克隆重置内部数据后重复触发。
 

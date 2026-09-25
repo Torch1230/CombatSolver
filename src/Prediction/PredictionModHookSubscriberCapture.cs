@@ -18,7 +18,8 @@ internal sealed class PredictionModHookSubscriberCapture
         "Loadout.Services.TildeKey.LoadoutEveryCardFreeCombatHook";
     private const string LoadoutPowerGiverSummonHookTypeName =
         "Loadout.Services.PowerGiver.PowerGiverSummonHook";
-    private const string SupportedLoadoutPowerGiverVersion = "v0.5.6";
+    private static readonly HashSet<string> VerifiedLoadoutPowerGiverVersions =
+        ["v0.5.6", "v0.5.8"];
     private static readonly HashSet<string> KnownPreRootSubscriberTypeNames =
     [
         LoadoutMaxHandSizeModifierTypeName,
@@ -105,7 +106,8 @@ internal sealed class PredictionModHookSubscriberCapture
         if (isBaseGame || manifest is null
             || !string.Equals(manifest.id, "Loadout", StringComparison.Ordinal))
             return "unknown_source";
-        if (!string.Equals(manifest.version, SupportedLoadoutPowerGiverVersion, StringComparison.Ordinal))
+        if (manifest.version is not { } version
+            || !VerifiedLoadoutPowerGiverVersions.Contains(version))
             return $"unsupported_version:{manifest.version}";
         return ReadLoadoutMonsterPowerCounters(type).Count == 0 ? "empty" : "configured";
     }
@@ -204,7 +206,8 @@ internal sealed class PredictionModHookSubscriberCapture
             && manifest is not null
             && string.Equals(manifest.id, "Loadout", StringComparison.Ordinal))
         {
-            if (string.Equals(manifest.version, SupportedLoadoutPowerGiverVersion, StringComparison.Ordinal)
+            if (manifest.version is { } version
+                && VerifiedLoadoutPowerGiverVersions.Contains(version)
                 && ReadLoadoutMonsterPowerCounters(type).Count == 0)
                 return;
             throw new IncompatibleGameplayModException(
