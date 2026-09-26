@@ -1,4 +1,4 @@
-﻿# 第三方 Mod 适配手册
+# 第三方 Mod 适配手册
 
 写给想让战斗路线求解器看懂自家 Mod 的作者。
 
@@ -453,6 +453,9 @@ CardRemovalValueMirrors.Register<YourDefend>(-10d);
 登记必须在首次 `CombatRootSnapshot.Capture` 或本阶段分发之前完成，此后明确拒绝登记。
 与多数旧镜像不同，这些阶段遇到未登记且非纯表现的重写会记录风险并抛出
 `NotSupportedException`，不会只标记风险后继续生成路线。
+**只拿得到 `Type` 的适配器（不引用目标 Mod 程序集、运行期反射找类型）用同一张表的按 `Type`
+重载**：`Register(Type, handler)`／`RegisterEarly`／`RegisterLate` 与 `RegisterIgnored(Type)`，
+判据与泛型入口相同；`RegisterIgnored` 用于已复核的纯表现层覆写。
 完整签名、暂停和状态约束见[回合阶段镜像](third-party-turn-phase-mirrors.md)。
 
 ### 2.11 已适配 OnPlay 补丁组合

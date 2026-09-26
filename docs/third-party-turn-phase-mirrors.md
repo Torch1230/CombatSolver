@@ -38,6 +38,38 @@ writePredicted 与正确 Fork。实际效果用模拟器命令实现，不能调
 接收者仅用于稳定身份、元数据和分支映射；不要在遗物／Modifier 实例上写隐藏状态，
 也不要从 `Owner` 的 live 战斗字段、静态集合或闭包读取可变值。
 
+### 按运行时类型登记（外部适配 Mod）
+
+泛型入口要求调用方在编译期就持有目标类型。**适配另一个 Mod 的适配器通常做不到这一点**——
+它刻意不引用对方程序集，而是运行期用反射（甚至只读 PE 元数据）找到类型，因此只拿得到
+`Type`。这三张表为此各有一个按 `Type` 登记的重载，判据与泛型入口逐字相同
+（具体类型、必须真的重写该阶段、重复登记拒绝、首根冻结）：
+
+```csharp
+BeforeSideTurnStartMirrors.Register(Type modelType, Action<AbstractModel, BeforeSideTurnStartMirrorContext> handler);
+BeforeSideTurnStartMirrors.RegisterIgnored(Type modelType);
+
+AfterPlayerTurnStartMirrors.RegisterEarly(Type modelType, Action<AbstractModel, AfterPlayerTurnStartMirrorContext> handler);
+AfterPlayerTurnStartMirrors.Register(Type modelType, Action<AbstractModel, AfterPlayerTurnStartMirrorContext> handler);
+AfterPlayerTurnStartMirrors.RegisterLate(Type modelType, Action<AbstractModel, AfterPlayerTurnStartMirrorContext> handler);
+AfterPlayerTurnStartMirrors.RegisterIgnored(Type modelType);
+
+AfterSideTurnEndLateMirrors.Register(Type modelType, Action<AbstractModel, AfterSideTurnEndLateMirrorContext> handler);
+AfterSideTurnEndLateMirrors.RegisterIgnored(Type modelType);
+```
+
+`Type` 由 `ThirdPartyMirrorRegistration` 桥回底层注册表的泛型实参；那条桥是**唯一**允许把
+`Type` 变成泛型实参的地方，适配层不要自己写 `MakeGenericMethod`。
+
+`RegisterIgnored(Type)` 是「已复核：这个覆写没有任何预测相关行为」的显式结论，用于只有音效、
+台词、屏幕特效等纯表现层的第三方覆写。`AfterPlayerTurnStart` 那一版按类型**实际重写的那一个**
+阶段写入对应表；三个阶段都没重写的类型会被拒绝，而不是被静默接受。
+
+**这三张表是硬门禁**：战斗监听表里出现未登记的第三方覆写时，派发会抛
+`NotSupportedException` 并中止整次搜索。因此每个重写这些阶段的第三方类型都必须三选一——
+登记处理器、登记忽略，或明确不进这场战斗（例如让适配自检失败）。漏掉一个的表现是整场给不出
+路线，而不是「近似一下继续算」。
+
 ## 执行约束
 
 ### 回合开始前

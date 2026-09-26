@@ -34,6 +34,8 @@ static class BeforeTurnStartChecks
             BeforeSideTurnStartMirrors.Seal();
             Throws<InvalidOperationException>(() => BeforeSideTurnStartMirrors.Register<StartRelic>((_, _) => { }),
                 "Root seal allowed registration before first dispatch.");
+            Throws<InvalidOperationException>(() => BeforeSideTurnStartMirrors.Register(typeof(StartRelic), (_, _) => { }),
+                "Root seal allowed runtime-type registration before first dispatch.");
             Console.WriteLine($"TURN_START_SEAL_OK checks={checks}");
             return;
         }
@@ -52,10 +54,18 @@ static class BeforeTurnStartChecks
         BeforeSideTurnStartMirrors.Register<StartPower>((_, context) => context.Simulator.Events.Add("power"));
         Throws<ArgumentException>(() => BeforeSideTurnStartMirrors.Register<StartRelic>((_, _) => { }), "Duplicate accepted.");
 
+        // Runtime-type entry point: same contract as the generic one, for adapters that only have a Type.
+        Throws<ArgumentNullException>(() => BeforeSideTurnStartMirrors.Register((Type)null!, (_, _) => { }), "Null runtime type accepted.");
+        Throws<ArgumentException>(() => BeforeSideTurnStartMirrors.Register(typeof(AbstractStartRelic), (_, _) => { }), "Abstract runtime type accepted.");
+        Throws<InvalidOperationException>(() => BeforeSideTurnStartMirrors.Register(typeof(RelicModel), (_, _) => { }), "Non-override runtime type accepted.");
+        BeforeSideTurnStartMirrors.Register(typeof(TypeStartRelic), (model, context) =>
+            context.Simulator.Events.Add($"typed:{((TypeStartRelic)model).Label}"));
+        Throws<ArgumentException>(() => BeforeSideTurnStartMirrors.Register(typeof(TypeStartRelic), (_, _) => { }), "Duplicate runtime type accepted.");
+
         var descriptor = ((IMethodMirrorRegistryDescriptorProvider)typeof(BeforeSideTurnStartMirrors)
             .GetField("Registry", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!).DescribeMirrorSupport();
         Check(descriptor.BaseMethod.Name == nameof(AbstractModel.BeforeSideTurnStart), "Wrong method metadata.");
-        Check(descriptor.Registrations.Count == 4 && descriptor.Registrations.All(r => r.Kind == MethodMirrorRegistrationKind.Handled),
+        Check(descriptor.Registrations.Count == 5 && descriptor.Registrations.All(r => r.Kind == MethodMirrorRegistrationKind.Handled),
             "Coverage descriptor lost a handler.");
 
         CombatPredictionSimulator simulator = new() { Listeners = [new StartRelic("first"), new StartModifier(), new StartRelic("last")] };
@@ -64,6 +74,9 @@ static class BeforeTurnStartChecks
         simulator = new() { Listeners = [new StartPower(), new StartRelic("relic"), new StartModifier()] };
         Check(Run(simulator) && simulator.Events.SequenceEqual(["power", "relic", "modifier:Player:0"]),
             "Power, relic and modifier receivers were regrouped.");
+        simulator = new() { Listeners = [new TypeStartRelic("typed")] };
+        Check(Run(simulator) && simulator.Events.SequenceEqual(["typed:typed"]),
+            "Runtime-type handler did not run in listener order.");
         Throws<InvalidOperationException>(() => BeforeSideTurnStartMirrors.Register<StartCard>((_, _) => { }), "Late registration accepted.");
 
         simulator = new() { Listeners = [new AbstractModel()] };
@@ -121,6 +134,13 @@ class StartCard : CardModel
 }
 class StartPower : PowerModel
 {
+    public override Task BeforeSideTurnStart(PlayerChoiceContext choice, CombatSide side,
+        IReadOnlyList<Creature> participants, ICombatState combatState)
+        => throw new Exception("Native hook invoked.");
+}
+class TypeStartRelic(string label = "base") : RelicModel
+{
+    public string Label = label;
     public override Task BeforeSideTurnStart(PlayerChoiceContext choice, CombatSide side,
         IReadOnlyList<Creature> participants, ICombatState combatState)
         => throw new Exception("Native hook invoked.");

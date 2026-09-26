@@ -32,6 +32,8 @@ static class AfterPlayerStartChecks
             Throws<InvalidOperationException>(() => AfterPlayerTurnStartMirrors.Register<AfterRelic>((_, _) => { }), "Root seal missed normal.");
             Throws<InvalidOperationException>(() => AfterPlayerTurnStartMirrors.RegisterEarly<AfterRelic>((_, _) => { }), "Root seal missed early.");
             Throws<InvalidOperationException>(() => AfterPlayerTurnStartMirrors.RegisterLate<AfterRelic>((_, _) => { }), "Root seal missed late.");
+            Throws<InvalidOperationException>(() => AfterPlayerTurnStartMirrors.Register(typeof(AfterRelic), (_, _) => { }), "Root seal missed runtime-type normal.");
+            Throws<InvalidOperationException>(() => AfterPlayerTurnStartMirrors.RegisterIgnored(typeof(AfterRelic)), "Root seal missed runtime-type ignored.");
             Console.WriteLine($"AFTER_PLAYER_START_SEAL_OK checks={checks}"); return;
         }
         Throws<ArgumentNullException>(() => AfterPlayerTurnStartMirrors.Register<AfterRelic>(null!), "Null accepted.");
@@ -46,6 +48,18 @@ static class AfterPlayerStartChecks
         AfterPlayerTurnStartMirrors.Register<AfterCard>((r,c) => c.Simulator.Events.Add(r.Label));
         AfterPlayerTurnStartMirrors.RegisterLate<GeneratedLateListener>((_,c) => c.Simulator.Events.Add("generated late"));
         Throws<ArgumentException>(() => AfterPlayerTurnStartMirrors.Register<AfterRelic>((_,_)=>{}), "Duplicate accepted.");
+
+        // Runtime-type entry points: same contract as the generic ones, plus the ignored escape hatch.
+        Throws<ArgumentNullException>(() => AfterPlayerTurnStartMirrors.Register((Type)null!, (_, _) => { }), "Null runtime type accepted.");
+        Throws<ArgumentException>(() => AfterPlayerTurnStartMirrors.Register(typeof(AbstractAfterRelic), (_, _) => { }), "Abstract runtime type accepted.");
+        Throws<InvalidOperationException>(() => AfterPlayerTurnStartMirrors.Register(typeof(RelicModel), (_, _) => { }), "Non-override runtime type accepted.");
+        AfterPlayerTurnStartMirrors.RegisterLate(typeof(TypeAfterRelic), (model, c) =>
+            c.Simulator.Events.Add("TL:" + ((TypeAfterRelic)model).Label));
+        Throws<ArgumentException>(() => AfterPlayerTurnStartMirrors.RegisterLate(typeof(TypeAfterRelic), (_, _) => { }), "Duplicate runtime type accepted.");
+        // An ignored registration lands in whichever phase the type actually overrides, and a non-override is rejected.
+        AfterPlayerTurnStartMirrors.RegisterIgnored(typeof(IgnoredEarlyAfterRelic));
+        AfterPlayerTurnStartMirrors.RegisterIgnored(typeof(IgnoredNormalAfterRelic));
+        Throws<InvalidOperationException>(() => AfterPlayerTurnStartMirrors.RegisterIgnored(typeof(AbstractModel)), "Ignored accepted a non-override.");
         foreach (string field in new[]{"EarlyRegistry","Registry","LateRegistry"})
         {
             var descriptor = ((IMethodMirrorRegistryDescriptorProvider)typeof(AfterPlayerTurnStartMirrors)
@@ -53,7 +67,7 @@ static class AfterPlayerStartChecks
             string suffix=field=="Registry" ? "" : field.Replace("Registry","");
             Check(descriptor.ReceiverType==typeof(AbstractModel) && descriptor.BaseMethod.Name=="AfterPlayerTurnStart"+suffix,
                 "Wrong coverage metadata.");
-            Check(descriptor.Registrations.Count==(field=="Registry"?5:field=="LateRegistry"?2:1), "Lost coverage entries.");
+            Check(descriptor.Registrations.Count==(field=="Registry"?6:field=="LateRegistry"?3:2), "Lost coverage entries.");
         }
         CombatPredictionSimulator s = new() { Listeners=[new AfterRelic("a"),new AfterModifier(),new AfterPower(),new AfterRelic("b")] };
         Check(Run(s) && s.Events.SequenceEqual(["E:a","E:b","N:a","modifier","power","N:b","L:a","L:b"]), "Regrouped receivers or phases.");
@@ -70,6 +84,13 @@ static class AfterPlayerStartChecks
         }
         s = new() { Listeners=[new DerivedAfterRelic()] };
         Throws<NotSupportedException>(()=>Run(s), "Exact type was inherited.");
+        // Runtime-type handlers dispatch by exact type; ignored registrations pass the gate without running a callback.
+        s = new() { Listeners=[new TypeAfterRelic("t")] };
+        Check(Run(s)&&s.Events.SequenceEqual(["TL:t"]), "Runtime-type late handler did not run.");
+        s = new() { Listeners=[new IgnoredEarlyAfterRelic()] };
+        Check(Run(s)&&s.Events.Count==0, "Ignored early override was rejected or executed.");
+        s = new() { Listeners=[new IgnoredNormalAfterRelic()] };
+        Check(Run(s)&&s.Events.Count==0, "Ignored normal override was rejected or executed.");
         foreach (int phase in new[]{0,1,2})
         {
             AfterRelic pause=new("pause");
@@ -112,6 +133,19 @@ class UnknownAfterRelic:AfterRelic;
 class UnknownNormal:ModifierModel { public override Task AfterPlayerTurnStart(PlayerChoiceContext c,Player p)=>throw new Exception("Native invoked."); }
 class UnknownLate:ModifierModel { public override Task AfterPlayerTurnStartLate(PlayerChoiceContext c,Player p)=>throw new Exception("Native invoked."); }
 abstract class AbstractAfterRelic:AfterRelic;
+class TypeAfterRelic(string label="base"):RelicModel
+{
+    public string Label=label;
+    public override Task AfterPlayerTurnStartLate(PlayerChoiceContext c,Player p)=>throw new Exception("Native invoked.");
+}
+class IgnoredEarlyAfterRelic:RelicModel
+{
+    public override Task AfterPlayerTurnStartEarly(PlayerChoiceContext c,Player p)=>throw new Exception("Native invoked.");
+}
+class IgnoredNormalAfterRelic:RelicModel
+{
+    public override Task AfterPlayerTurnStart(PlayerChoiceContext c,Player p)=>throw new Exception("Native invoked.");
+}
 class AfterPower:PowerModel { public override Task AfterPlayerTurnStart(PlayerChoiceContext c,Player p)=>throw new Exception("Native invoked."); }
 class AfterModifier:ModifierModel { public override Task AfterPlayerTurnStart(PlayerChoiceContext c,Player p)=>throw new Exception("Native invoked."); }
 class AfterCard:CardModel { public string Label=""; public override Task AfterPlayerTurnStart(PlayerChoiceContext c,Player p)=>throw new Exception("Native invoked."); }

@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="../../src/Engine/Common/Mirrors/MethodMirror*.cs" Link="%(Filename)%(Extension)" />
     <Compile Include="../../src/Engine/Common/Mirrors/MirrorMethodSpec.cs" Link="MirrorMethodSpec.cs" />
+    <Compile Include="../../src/Engine/Common/Mirrors/ThirdPartyMirrorRegistration.cs" Link="ThirdPartyMirrorRegistration.cs" />
     <Compile Include="../../src/Engine/InCombat/Mirrors/Hooks/TurnEnd/AfterSideTurnEndLateMirrors.cs" Link="AfterSideTurnEndLateMirrors.cs" />
     <Compile Include="../../src/Engine/InCombat/Mirrors/HookMirrors.TurnEnd.cs" Link="HookMirrors.TurnEnd.cs" />
     <Compile Include="../../src/Engine/InCombat/Mirrors/CardHookReceiver.cs" Link="CardHookReceiver.cs" />

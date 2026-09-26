@@ -109,6 +109,21 @@ internal sealed class MethodMirrorRegistry<TBase, TContext>(MirrorMethodSpec met
     }
 
     /// <summary>
+    /// Registers an override that a reviewer confirmed has no prediction-relevant behavior, addressed by runtime type.
+    /// </summary>
+    /// <remarks>
+    /// External assemblies cannot supply a generic type argument, so a third-party adapter has to address its models by
+    /// runtime <see cref="Type"/>. Registrations must still finish before the first query because resolved type lookups
+    /// are cached.
+    /// </remarks>
+    public void RegisterIgnored(Type type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        ValidateOverride(type);
+        _registrations.Add(type, new LookupResult(MirrorDispatchKind.Ignored, null));
+    }
+
+    /// <summary>
     /// Registers the single type-level fallback used to infer unregistered, gameplay-relevant overrides.
     /// </summary>
     public void RegisterInferrer(MethodMirrorInferrer<TBase, TContext> inferrer)
@@ -172,6 +187,16 @@ internal sealed class MethodMirrorRegistry<TBase, TContext>(MirrorMethodSpec met
     /// prove that a listener the fast lane skipped would have been a no-op on the unfiltered path.
     /// </remarks>
     public MirrorDispatchKind ResolveDispatchKind(TBase receiver) => Lookup(receiver.GetType()).Kind;
+
+    /// <summary>
+    /// Returns whether the exact runtime type overrides the mirrored method.
+    /// </summary>
+    /// <remarks>
+    /// Facades that own several registries for one native hook family (the turn-phase tables) use this to put an
+    /// ignored registration in exactly the registry whose method the type overrides; registering in the others would
+    /// fail validation for a non-override.
+    /// </remarks>
+    public bool OverridesMethod(Type type) => method.TryGetOverride(type, out _);
 
     /// <summary>
     /// Invokes only an explicit exact-type registration, without resolving inference or unsupported fallbacks.

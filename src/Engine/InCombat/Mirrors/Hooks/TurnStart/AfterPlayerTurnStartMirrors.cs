@@ -26,6 +26,75 @@ internal static partial class AfterPlayerTurnStartMirrors
     public static void RegisterLate<TModel>(Action<TModel, AfterPlayerTurnStartMirrorContext> handler)
         where TModel : AbstractModel => Register(LateRegistry, handler);
 
+    /// <summary>
+    /// Registers the Early phase for one runtime type.
+    /// </summary>
+    /// <remarks>
+    /// The entry points for external adapters, which resolve the other mod's types at runtime and therefore cannot
+    /// supply a generic type argument (see <see cref="ThirdPartyMirrorRegistration"/>). All three phases are hard
+    /// gates: a third-party override that is neither registered nor ignored makes <see cref="Invoke"/> throw.
+    /// </remarks>
+    public static void RegisterEarly(Type modelType, Action<AbstractModel, AfterPlayerTurnStartMirrorContext> handler)
+        => Register(EarlyRegistry, modelType, handler);
+
+    /// <summary>Registers the ordinary phase for one runtime type.</summary>
+    public static void Register(Type modelType, Action<AbstractModel, AfterPlayerTurnStartMirrorContext> handler)
+        => Register(Registry, modelType, handler);
+
+    /// <summary>Registers the Late phase for one runtime type.</summary>
+    public static void RegisterLate(Type modelType, Action<AbstractModel, AfterPlayerTurnStartMirrorContext> handler)
+        => Register(LateRegistry, modelType, handler);
+
+    /// <summary>
+    /// Declares that one runtime type's override has no prediction-relevant behavior.
+    /// </summary>
+    /// <remarks>
+    /// Written into whichever of the three registries the type actually overrides; a type that overrides none of them
+    /// is rejected instead of silently accepted. Without it the hard gate above would reject the whole combat.
+    /// </remarks>
+    public static void RegisterIgnored(Type modelType)
+    {
+        ArgumentNullException.ThrowIfNull(modelType);
+        lock (RegistrationLock)
+        {
+            if (_sealed)
+                throw new InvalidOperationException("Turn-phase mirrors must be registered before root capture or dispatch.");
+            bool registered = false;
+            foreach (Registry registry in new[] { EarlyRegistry, Registry, LateRegistry })
+            {
+                if (!registry.OverridesMethod(modelType))
+                    continue;
+                registry.RegisterIgnored(modelType);
+                registered = true;
+            }
+            if (!registered)
+            {
+                throw new InvalidOperationException(
+                    $"{modelType.FullName} overrides none of AfterPlayerTurnStart/Early/Late, so it cannot be ignored.");
+            }
+            Volatile.Write(ref _hasExternalRegistrations, true);
+        }
+    }
+
+    private static void Register(
+        Registry registry,
+        Type modelType,
+        Action<AbstractModel, AfterPlayerTurnStartMirrorContext> handler)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(modelType);
+        ArgumentNullException.ThrowIfNull(handler);
+        if (modelType.IsAbstract)
+            throw new ArgumentException("Turn-phase mirrors require a concrete runtime model type.", nameof(modelType));
+        lock (RegistrationLock)
+        {
+            if (_sealed)
+                throw new InvalidOperationException("Turn-phase mirrors must be registered before root capture or dispatch.");
+            ThirdPartyMirrorRegistration.Register(registry, modelType, handler);
+            Volatile.Write(ref _hasExternalRegistrations, true);
+        }
+    }
+
     private static void Register<TModel>(Registry registry, Action<TModel, AfterPlayerTurnStartMirrorContext> handler)
         where TModel : AbstractModel
     {
