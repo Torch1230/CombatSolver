@@ -46,8 +46,17 @@ internal sealed partial class SolverDispatcher : Node
                 Entry.Logger.Error($"[CombatSolver/Test] MAIN_THREAD_CALLBACK_FAILURE exception={ex}");
             }
         }
-        SolverController.MonitorCombatPresence();
-        SolverController.RefreshSearchProgress();
+        // 隔离 worker 是无头进程：它只跑模拟，不承载玩家可见的战斗 UI。
+        // 缺这道守卫时，worker 里也会走到 MonitorCombatPresence → ShowRetainedOrManualReady
+        // → SolverOverlay.EnsureCreated → Create → new SolverGrowthStrategyPanel()；
+        // 在无头环境里构造 UI 面板会让进程以 exit code 1 退出，父进程随即在
+        // "exited with code 1 before becoming reusable" 上失败，并留下被锁住的镜像 ——
+        // 该父进程此后再也无法做任何预战预报，只能重启游戏。
+        if (!Entry.IsPreCombatWorker)
+        {
+            SolverController.MonitorCombatPresence();
+            SolverController.RefreshSearchProgress();
+        }
         if (PerformanceRecording.Enabled)
             PerformanceRecording.Dispatcher(Stopwatch.GetElapsedTime(now).TotalMilliseconds,
                 GC.GetAllocatedBytesForCurrentThread() - allocated);

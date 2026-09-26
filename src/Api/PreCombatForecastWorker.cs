@@ -43,11 +43,7 @@ internal static class PreCombatForecastWorker
 
     internal static void PinMainProcessModSources()
     {
-        if (!OperatingSystem.IsWindows()
-            || string.Equals(
-                Environment.GetEnvironmentVariable("COMBATSOLVER_PRECOMBAT_WORKER"),
-                "1",
-                StringComparison.Ordinal))
+        if (!OperatingSystem.IsWindows() || Entry.IsPreCombatWorker)
         {
             return;
         }

@@ -21,6 +21,23 @@ public static class Entry
     public static CombatSolverLog Logger { get; private set; } = null!;
     public static bool Enabled { get; private set; } = true;
 
+    /// <summary>
+    /// 本进程是否是预战预报的隔离 worker —— 由 <see cref="PreCombatForecastWorker"/> 启动的
+    /// 无头游戏进程（子进程环境变量 <c>COMBATSOLVER_PRECOMBAT_WORKER=1</c>）。
+    ///
+    /// 该进程只负责在隔离的跑局镜像里跑模拟：它没有可用的战斗 UI，也不允许嵌套发起预报。
+    /// 因此凡是"只对真人玩家有意义"的运行时副作用（战斗覆盖层、UI 监控）都必须用这个开关短路。
+    ///
+    /// 环境变量由父进程在启动子进程时一次性注入、进程生命周期内不变，故读一次即可。
+    /// 这里是该语义的**唯一权威实现**，不要在别处重复解析同一个环境变量。
+    /// </summary>
+    public static bool IsPreCombatWorker { get; } =
+        string.Equals(
+            // 全限定：本文件 using Godot，直接写 Environment 会撞 Godot.Environment。
+            System.Environment.GetEnvironmentVariable("COMBATSOLVER_PRECOMBAT_WORKER"),
+            "1",
+            StringComparison.Ordinal);
+
     public static void Initialize()
     {
         Logger = new CombatSolverLog(Path.Combine(OS.GetUserDataDir(), "logs", "CombatSolver"));

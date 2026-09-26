@@ -25,10 +25,7 @@ public static class PreCombatForecastApi
 
     public static bool IsAvailable => OperatingSystem.IsWindows()
                                       && Entry.Enabled
-                                      && !string.Equals(
-                                          Environment.GetEnvironmentVariable("COMBATSOLVER_PRECOMBAT_WORKER"),
-                                          "1",
-                                          StringComparison.Ordinal);
+                                      && !Entry.IsPreCombatWorker;
 
     /// <summary>Returns an opaque token suitable for caller-side caching while the run remains unchanged.</summary>
     public static string CaptureLiveStateToken(RunState run) => PreCombatLiveStateSnapshot.CaptureToken(run);
