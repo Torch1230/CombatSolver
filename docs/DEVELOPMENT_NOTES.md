@@ -1,5 +1,12 @@
 # CombatSolver 开发笔记与未来构想
 
+## 下一版本（开发中）：预战 worker 的 UI 隔离（2026-09-27）
+
+- 修复隔离 worker 崩溃：`SolverDispatcher._Process` 原先无条件驱动 `SolverController.MonitorCombatPresence()` 与 `RefreshSearchProgress()`。预战 worker 的隔离跑局会真正进入战斗，于是该调用链走到 `SolverOverlay.EnsureCreated` → `Create` → 构造 `SolverGrowthStrategyPanel`，在无头进程里创建 UI 面板导致子进程以 `exit code 1` 退出。
+- 后果不止子进程退出：父进程在 `exited with code 1 before becoming reusable` 上失败，并留下被映像文件锁住的 `.combatsolver-precombat/process-<pid>` 镜像；此后该父进程的所有预战预报都只会失败（`Access to the path 'crashpad_handler.exe' is denied.`），必须重启游戏才能恢复。任何调用预战 API 的伴生 Mod 都会连带失去这项能力。
+- 新增 `Entry.IsPreCombatWorker` 作为「本进程是否是预战隔离 worker」的唯一权威实现；`PreCombatForecastApi.IsAvailable` 与 `PreCombatForecastWorker` 中原先各自解析同一个环境变量的两处判断改为复用它。守卫只短路玩家可见的 UI 监控，worker 的模拟与结果写盘路径不变。
+- 验证：结构门禁 `tools/verify-refactor-boundaries.ps1` 通过（`search_files=209`）；主项目 Release 编译通过（0 警告 0 错误）。本机缺少 .NET Framework 4.8 开发包，因此含 `tools/CombatSolver.MemoryCleaner`（net48）的完整 Release 构建与无人测试入口未执行；可见 Steam 会话与完整发布门禁未执行。
+
 ## 0.46.4：战损路线筛选与 Loadout 兼容（2026-09-25）
 
 - 本机 `godot.log` 确认 Loadout `v0.5.8` 与求解器均已加载；独立战斗日志在首回合根捕获处报 `IncompatibleGameplayModException`。原因是怪物能力召唤订阅者的旧版本门禁，并非当前战斗已配置怪物能力。实际安装的 `v0.5.8` 与保留的 `v0.5.6` 程序集在 `PowerGiverSummonHook`、公开 `GetCountersSnapshot` 及怪物召唤能力施加逻辑上相同。
