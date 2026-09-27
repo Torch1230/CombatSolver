@@ -126,7 +126,6 @@ internal static class OutcomeValueTraining
         string[] excludedFeaturePrefixes = ReadExcludedFeaturePrefixes(entries);
         int maximumRowsPerRoot = 2048;
         string sampling = "rows";
-        bool upgradeEnemyPowers = false;
         if (entries.ValueKind == JsonValueKind.Object)
         {
             if (entries.GetProperty("schemaVersion").GetInt32() != 1)
@@ -138,12 +137,8 @@ internal static class OutcomeValueTraining
                 sampling = method.GetString() ?? throw new InvalidDataException("Missing training sampling method.");
             if (sampling is not ("rows" or "pools"))
                 throw new InvalidDataException("Unsupported training sampling method.");
-            if (entries.TryGetProperty("featureUpgrade", out var upgrade))
-            {
-                if (upgrade.GetString() != "enemy-power-totals-v1")
-                    throw new InvalidDataException("Unsupported observation feature upgrade.");
-                upgradeEnemyPowers = true;
-            }
+            if (entries.TryGetProperty("featureUpgrade", out _))
+                throw new InvalidDataException("Resource-query observations require recollection; legacy feature upgrades are unsupported.");
             entries = entries.GetProperty("roots");
         }
         if (entries.ValueKind != JsonValueKind.Array)
@@ -166,20 +161,6 @@ internal static class OutcomeValueTraining
                 using var stream = File.OpenRead(file);
                 var source = JsonSerializer.Deserialize<SearchOutcomeValueModel.TrainingRow[]>(stream)
                     ?? throw new InvalidDataException("Missing training observations.");
-                if (upgradeEnemyPowers)
-                    for (int i = 0; i < source.Length; i++)
-                    {
-                        var row = source[i];
-                        if (row == null || row.Features == null)
-                            throw new InvalidDataException("Missing witnessed ranking row.");
-                        if (row.FeatureSchema == 6)
-                        {
-                            SearchOutcomeContext.AddLegacyEnemyPowerTotals(row.Features);
-                            source[i] = row with { FeatureSchema = SearchOutcomeValueModel.FeatureSchema };
-                        }
-                        // Already-current rows pass through; all other versions
-                        // and every raw label still fail the validator below.
-                    }
                 // Invalid labels must not disappear merely because the sampler
                 // would omit them. Use the fitter's authoritative validator.
                 SearchOutcomeValueModel.ValidateTrainingRows(source);

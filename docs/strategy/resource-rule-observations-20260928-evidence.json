@@ -1,0 +1,90 @@
+{
+  "phase": "implementation-verified-experiment-running",
+  "protocol": {
+    "hypothesis": "Expose native current-rule energy capacity and hand draw to learn persistent resource effects without per-card utility constants.",
+    "collection": "Recollect all 408 previously fixed training requests with the same classic teacher budget; new resource values cannot be recovered from legacy rows. Do not add development or final trajectories.",
+    "workers": 4,
+    "until": "2026-09-28T08:00:00+08:00",
+    "fitLimitSeconds": 1200,
+    "rowsPerRoot": 512,
+    "partition": "character",
+    "arms": {
+      "resources": [],
+      "control-no-resources": [
+        "resource/"
+      ]
+    },
+    "evaluation": "Predeclared full and linear candidate from both arms, unchanged 15 development cases and 5-case failure screen; final test sealed.",
+    "priorTrainingManifest": ".local/objective-search/v39/training-manifest.json",
+    "priorTrainingManifestSha256": "ceb84d6765b1df9bda0bc326a90b22fdcf9f9a94529c691cfa5e8ad6aa79af4b",
+    "modSha256": "bfc3ac0d02729686dc7f8e014daf0084e65737aa5a5443303c53c7ee5f96cdf9",
+    "harnessSha256": "b019d9939eefa12bd7b2420246b9df862244f4e5ed36d54c904bd4b946164835",
+    "nativeGameSha256": "2b40d2df538db1ceb5fa48d958c80ab730ada1e07db88a870aff01a661768b9f"
+  },
+  "fullProtocolSha256": "4bfa2aaacbd2dbd1893c8d4705e19cdc544d5f4bacf7223383de25e0c4fb055b",
+  "separation": {
+    "schema": 2,
+    "splitCounts": {
+      "train": 408,
+      "validation": 15,
+      "test": 5
+    },
+    "comparisons": [
+      {
+        "left": "train",
+        "right": "validation",
+        "maximumDeckSimilarity": 0.5333333333333333
+      },
+      {
+        "left": "train",
+        "right": "test",
+        "maximumDeckSimilarity": 0.5
+      },
+      {
+        "left": "validation",
+        "right": "test",
+        "maximumDeckSimilarity": 0.4594594594594595
+      }
+    ],
+    "maximumDeckSimilarity": 0.5333333333333333,
+    "passed": true,
+    "datasetSha256": "473073af7ae9288e25a4c9fe7f72d44c446e03bd216839dd65b544ea15200926"
+  },
+  "checks": {
+    "mainBuildSeconds": 13.68,
+    "hostBuildSeconds": 2.65,
+    "modelAssertions": 96,
+    "nativeContext": {
+      "passed": 30,
+      "character": "NECROBINDER",
+      "counter": 8
+    },
+    "legacyModel": {
+      "returnCode": -6,
+      "expectedRejection": true,
+      "producedAudit": false
+    },
+    "pythonTests": 7,
+    "bashBoundary": "REFACTOR_BOUNDARIES_OK search_files=221",
+    "powershellBoundary": "REFACTOR_BOUNDARIES_OK search_files=221",
+    "sameSourceFiveFileDeployment": true,
+    "visibleSteamRun": false,
+    "runtimeLearnedModelEnabled": false
+  },
+  "collectionSnapshot": {
+    "pid": 2,
+    "phase": "collecting",
+    "until": "2026-09-28T08:00:00+08:00",
+    "counts": {
+      "collected": 110
+    },
+    "collected": 110,
+    "eligible": 91,
+    "rows": 56497,
+    "childSeconds": {
+      "collect": 1676.7875924338587
+    },
+    "updatedUtc": "2026-09-27T17:45:01.613125+00:00"
+  },
+  "results": "No fitted candidate or independent battle-quality result yet."
+}

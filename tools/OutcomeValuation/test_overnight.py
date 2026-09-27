@@ -87,6 +87,9 @@ class OvernightContracts(unittest.TestCase):
             self.assertEqual(witnessed_rows(path), (1, False), 'Current raw observations support the same label census')
             row['FeatureSchema'] = 8
             path.write_text(json.dumps([row]))
+            self.assertEqual(witnessed_rows(path), (1, False), 'Resource-query observations retain completed-witness semantics')
+            row['FeatureSchema'] = 9
+            path.write_text(json.dumps([row]))
             with self.assertRaises(ValueError):
                 witnessed_rows(path)
             row['FeatureSchema'] = 7

@@ -8,9 +8,9 @@
 
 实验输入可另指定 `"sampling": "pools"`，按已观察到的比较组而非单行抽样，不按标签优劣选择组；默认 `rows` 保持原行为。过大比较组或未知采样值明确拒绝，512 行/根仍是硬上限。先看[同根单因素实验](../../docs/strategy/pool-sampling-20260927.md)，不能把偏好对增加当作模型已经更强。
 
-训练输入可显式指定 `"partition": "character"`，先统一抽样再按观察到的原生角色拟合；输出仍是 `model.json` / `model.linear.json`，各自内嵌所有角色头。宿主在搜索前按实际根角色选择，所有头校验格式和游戏 MVID，未知角色拒绝；共享文档格式与默认 `partition=shared` 保持支持，模型本身必须满足当前 schema8。夜间 `prepare --fit-partition character` 将选择写入冻结计划，必须使用支持条件容器的新宿主。单次拟合时限覆盖全部角色训练，不能给每个头重新开一份预算。见[角色条件估值](../../docs/strategy/character-conditioned-ranking-20260927.md)。
+训练输入可显式指定 `"partition": "character"`，先统一抽样再按观察到的原生角色拟合；输出仍是 `model.json` / `model.linear.json`，各自内嵌所有角色头。宿主在搜索前按实际根角色选择，所有头校验格式和游戏 MVID，未知角色拒绝；共享文档格式与默认 `partition=shared` 保持支持，模型本身必须满足当前 schema9。夜间 `prepare --fit-partition character` 将选择写入冻结计划，必须使用支持条件容器的新宿主。单次拟合时限覆盖全部角色训练，不能给每个头重新开一份预算。见[角色条件估值](../../docs/strategy/character-conditioned-ranking-20260927.md)。
 
-敌方 Power 汇总与旧观察升级的边界见[本轮报告](../../docs/strategy/shared-enemy-powers-20260928.md)。夜间 r5 继续使用其冻结的旧程序/模型/观察格式；不能直接给冻结服务换 DLL。
+敌方 Power 汇总及当时旧观察升级的历史边界见[本轮报告](../../docs/strategy/shared-enemy-powers-20260928.md)。夜间 r5 继续使用其冻结的旧程序/模型/观察格式；不能直接给冻结服务换 DLL。
 
 可选 `"pairSelection": "highest-policy-tier"` 是离线训练消融：每根若有胜负对照就只学胜负，否则学胜局政策差异，再否则学同政策的剩余动作；默认 `all` 保持原配对。两种方式都先验证全部原始行、每根总权重相同、最多 4096 对。未知值拒绝，输出 `pairKinds` 按胜负/胜局政策/动作顺序计数；这不是玩家搜索模式，也不是已验证的默认改进。
 
@@ -18,7 +18,7 @@
 
 `--audit-outcome-ranking <输入清单> <模型文件> <输出>` 输出每根及 `kinds` 三类排序诊断（胜负、胜局政策、剩余动作），始终审计全部原始偏好，不因训练筛选而删掉困难对照；`rootIndex` 是输入清单中的从 0 开始索引，`root` 仅为目录显示名，不能作为唯一身份。同名 `search` 目录不得合并。数据是否参与拟合由调用方的冻结分组决定，排序损失不代表完整搜索决策质量；见[分组留出选型试验](../../docs/strategy/model-selection-20260928.md)。
 
-当前训练入口 `train.py` 采集同池完整胜利和引擎确认的终局死亡见证，拟合模型schema8的线性基础项与成对残差树；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
+当前训练入口 `train.py` 采集同池完整胜利和引擎确认的终局死亡见证，拟合模型schema9的线性基础项与成对残差树；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
 
 拟合宿主最多使用四路列统计；分裂选择保持原顺序，输出记录 `participatingRoots` / `participatingRows` / `trainingParallelism`。原始行全量校验，未被偏好对引用的行不进入训练数组；两条死亡续局即使敌人剩余血量不同也没有偏好。夜间 `prepare --fit-harness <DLL> --fit-mod <DLL>` 可单独冻结新拟合器，采集和验证继续使用 `--harness/--mod` 指定的原搜索引擎；两项必须同时提供，加载时继续验证模型格式与游戏 MVID。冻结基线同时保存实际原生装备，支持后续任务再次核对并继承；升级只改训练，不借用不兼容的基线身份。详见[吞吐与有效监督](../../docs/strategy/overnight-training-throughput-20260927.md)。
 
@@ -26,7 +26,7 @@
 - `refit.py --prior-training <完整训练目录> --manifest <同训练清单> --evaluation-manifest <验证清单> --evaluation-manifest <封存测试清单> --harness <宿主> --mod <Mod> --out <新目录>`：复用观察，核对底层请求/装备与原采集一致，继承全部历史成本并在余下1800秒总额内拟合；不重开免费训练预算。输出完整模型和纯线性消融产物。
 - `train.py --preparation-budget <准备账本>` 将上述建局成本纳入1800秒。采集不在首个零损胜局提前停止；新颖性观察最多64池，Beam与新颖性总共仍最多256池。正常验证保持零损早停。
 - 线性与残差树只使用至少三个有偏好训练根中出现的特征；按场景统计支持度，不把一场的重复状态当成独立证据。
-- 模型schema8与训练观察schema7分别校验；原观察新增按原生 Power ID 汇总的敌方总层数，保留逐敌字段。旧schema7模型明确拒绝。旧schema6行必须在宿主输入显式指定 `"featureUpgrade": "enemy-power-totals-v1"` 才可从已存字段确定性升级，当前行直接验证；未知版本/转换和坏标签拒绝。默认训练/重拟合入口不会静默迁移旧行。每次搜索仍核对实际完整装备。
+- 模型 schema9 与训练观察 schema8 分别校验；新增当前分支规则下的能量上限、抽牌量，复用引擎查询而非手写效用。这不是保证下回合到账的资源。旧模型与旧行明确拒绝，旧行缺失新量，必须重新采集；任何 `featureUpgrade` 配置都拒绝，不填零伪装新观察。旧聚合投影可由原冻结程序复现。Python 历史标签普查可识别 6/7/8，但不会把旧行转换成可供当前 C# 拟合的行。每次搜索仍核对实际完整装备。
 - `dataset.py --train <训练清单> --evaluation <验证清单> --evaluation <测试清单> --out <审计JSON>` 对三组两两检查模板、实际遭遇家族和牌组隔离；随机根需 `loadout` 指向原生 `generated-scenario.loadout.json`。种子/血量/牌序/升级/遗物计数变体不算新场景。同角色牌组多重集 Jaccard ≥0.85 拒绝；该门槛不是统计独立性的证明。
 - `train.py` / `refit.py` 必须重复提供 `--evaluation-manifest <验证清单> --evaluation-manifest <测试清单>`，只读取清单及建局装备来检查隔离，不读取验证或测试搜索结果，不把这些轨迹加入拟合。同根全部轨迹属于同一组，禁止随机按状态行拆分。
 - `prepare_holdout.py --train <训练清单> --training-results <采集目录> --catalog <原生目录JSON> --harness <宿主DLL> --model <模型> --out <新目录> --seed <冻结种子>` 按目录顺序选五个未见遭遇，原生建局后审计并封存，不运行搜索、不按结果筛选。

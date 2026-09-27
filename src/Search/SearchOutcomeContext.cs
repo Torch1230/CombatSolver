@@ -1,6 +1,7 @@
 using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.InCombat.Mirrors.Orbs;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Combat;
 
 namespace CombatSolver;
 
@@ -9,29 +10,6 @@ namespace CombatSolver;
 internal static class SearchOutcomeContext
 {
     internal const string EnemyPowerTotalPrefix = "power/enemies/";
-
-    // A lossless addition to schema-6 observations: keep every original column
-    // and expose the same power across roster positions to the learner.
-    internal static void AddLegacyEnemyPowerTotals(Dictionary<string, double> values)
-    {
-        Dictionary<string, double> totals = new(StringComparer.Ordinal);
-        foreach (var (name, amount) in values)
-        {
-            if (name.StartsWith(EnemyPowerTotalPrefix, StringComparison.Ordinal))
-                throw new InvalidDataException("Legacy observations already contain enemy power totals.");
-            const string prefix = "power/enemy/";
-            if (!name.StartsWith(prefix, StringComparison.Ordinal)) continue;
-            int separator = name.IndexOf('/', prefix.Length);
-            if (separator < 0 || separator == name.Length - 1
-                || !int.TryParse(name.AsSpan(prefix.Length, separator - prefix.Length),
-                    System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int slot)
-                || slot < 0)
-                throw new InvalidDataException("Invalid legacy enemy power column.");
-            string total = EnemyPowerTotalPrefix + name[(separator + 1)..];
-            totals[total] = totals.GetValueOrDefault(total) + amount;
-        }
-        foreach (var (name, amount) in totals) values.Add(name, amount);
-    }
 
     internal static Dictionary<string, double> Capture(CombatPredictionSimulator simulator, Player player)
     {
@@ -68,6 +46,13 @@ internal static class SearchOutcomeContext
         x["player/block"] = body.Block;
         x["player/energy"] = state.Energy;
         x["player/stars"] = state.Stars;
+        // Derived rule queries at the current branch/turn, not guaranteed future
+        // income. Never consume delayed resources or advance the combat to observe.
+        if (x.Wants("resource/current-max-energy"))
+            x["resource/current-max-energy"] = PersistentPowerSupport.GetModifiedMaxEnergy(combat, player);
+        if (x.Wants("resource/current-hand-draw"))
+            x["resource/current-hand-draw"] = PersistentPowerSupport.GetModifiedHandDraw(
+                combat, player, CombatManager.baseHandDrawCount);
         var osty = combat.GetOsty(player);
         if (x.WantsPrefix("osty/"))
         {

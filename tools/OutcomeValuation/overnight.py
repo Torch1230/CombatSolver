@@ -129,7 +129,7 @@ def witnessed_rows(path):
         defeat = not outcome['Won'] and not outcome['Survives'] and row['CompletedDefeat']
         # This is a label census, not feature conversion. The fitter requires
         # explicit projection before schema-6 vectors can train the current model.
-        if (row['FeatureSchema'] not in (6, 7) or not (victory or defeat) or outcome['Score'] != 0
+        if (row['FeatureSchema'] not in (6, 7, 8) or not (victory or defeat) or outcome['Score'] != 0
                 or not row['Groups'] or row['RemainingActions'] < 0 or not row['Features']
                 or any(not math.isfinite(v) for v in row['Features'].values())):
             raise ValueError('Invalid completed witness; quarantining the entire root')

@@ -7,7 +7,7 @@ namespace CombatSolver;
 // Unlabelled/pruned states stay unknown. All collection and fitting is opt-in offline.
 internal sealed partial class SearchOutcomeValueModel
 {
-    internal const int Schema = 8, FeatureSchema = 7;
+    internal const int Schema = 9, FeatureSchema = 8;
     private const int MaximumStates = 8192, MaximumGroups = 256, MaximumGroupMembers = 32;
     private readonly record struct ObservationKey(StateFingerprint State, int HpCost, int PotionCost);
     private sealed class Observation(Dictionary<string, double> features)

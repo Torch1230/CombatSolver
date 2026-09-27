@@ -5,6 +5,8 @@ using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Hooks;
 
 namespace OfflineSearchHarness;
 
@@ -17,6 +19,31 @@ internal static class OutcomeContextChecks
         var player = root.PlayerIdentity;
         var parent = root.ForkSimulator();
         var before = SearchOutcomeContext.Capture(parent, player);
+        var liveCombat = player.Creature.CombatState!;
+        Check(before["resource/current-max-energy"] == Math.Max(0, (int)Hook.ModifyMaxEnergy(liveCombat, player, player.MaxEnergy))
+            && before["resource/current-hand-draw"] == Math.Max(0, (int)Hook.ModifyHandDraw(liveCombat, player,
+                CombatManager.baseHandDrawCount, out _)), "root resource observations match native rule queries");
+        var resources = parent.Fork();
+        var resourceCombat = (SimulatedCombatState)resources.State.CombatState;
+        resourceCombat.Apply<DemesnePower>(player.Creature, 2);
+        resourceCombat.AddEnergyNextTurn(player, 3);
+        resourceCombat.AddDrawNextTurn(player, 4);
+        var resourceStamp = ContinuationStamp.CapturePredicted(player, resources, root.StartTurnNumber, root.Forecast, root.StartTurnNumber);
+        var capacity = SearchOutcomeContext.Capture(resources, player);
+        Check(capacity["resource/current-max-energy"] == before["resource/current-max-energy"] + 2
+            && capacity["resource/current-hand-draw"] == before["resource/current-hand-draw"] + 2,
+            "branch power effects are exposed as modified rule quantities");
+        Check(resourceStamp == ContinuationStamp.CapturePredicted(player, resources, root.StartTurnNumber, root.Forecast, root.StartTurnNumber),
+            "resource observation preserves full branch continuation state");
+        Check(resourceCombat.GetAmount<EnergyNextTurnPower>(player.Creature) == 3
+            && resourceCombat.ConsumeDrawNextTurn(player) == 4, "observing does not consume delayed resources");
+        Check(Equal(before, SearchOutcomeContext.Capture(parent, player)), "resource modifiers stay in the child branch");
+        Dictionary<string, int> resourceColumns = new() { ["resource/current-max-energy"] = 0, ["resource/current-hand-draw"] = 1 };
+        double[] resourceValues = [double.NaN, double.NaN];
+        SearchOutcomeContext.CaptureSelected(resources, player, resourceColumns, resourceValues,
+            SearchOutcomeContext.RequiredPrefixes(resourceColumns.Keys));
+        Check(resourceColumns.All(p => resourceValues[p.Value] == capacity[p.Key]),
+            "resource-only selected projection matches full observations");
         var fork = parent.Fork();
         Check(Equal(before, SearchOutcomeContext.Capture(fork, player)), "fork starts equal");
         PenNib live = player.Relics.OfType<PenNib>().Single();
@@ -73,10 +100,6 @@ internal static class OutcomeContextChecks
             Check(summoned["power/enemy/0/" + strength] == 4, "enemy powers align with body roster index");
             Check(summoned[SearchOutcomeContext.EnemyPowerTotalPrefix + strength] == 4,
                 "enemy totals exclude the pet's identical power");
-            var legacy = summoned.Where(p => !p.Key.StartsWith(SearchOutcomeContext.EnemyPowerTotalPrefix,
-                StringComparison.Ordinal)).ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
-            SearchOutcomeContext.AddLegacyEnemyPowerTotals(legacy);
-            Check(Equal(legacy, summoned), "legacy row upgrade exactly reproduces native enemy totals");
             string totalName = SearchOutcomeContext.EnemyPowerTotalPrefix + strength;
             Dictionary<string, int> totalColumn = new() { [totalName] = 0 };
             double[] totalValue = [double.NaN];
