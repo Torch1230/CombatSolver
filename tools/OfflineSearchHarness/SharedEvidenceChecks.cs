@@ -30,6 +30,11 @@ internal static class SharedEvidenceChecks
         Require(evidence.OutcomeFor(root) != null && evidence.OutcomeFor(a) != null
             && evidence.OutcomeFor(b) != null, "completed outcome backs up every ancestor");
         Require(evidence.OutcomeFor(b)!.Score == 0, "handwritten terminal score is not evidence");
+        SearchNode alternative = Node(20, root, "alternative");
+        evidence.ObserveVictory(Node(21, alternative) with { IsTerminal = true },
+            quality with { StrategicHpDeficit = 8 });
+        Require(evidence.OutcomeFor(alternative)?.StrategicHpDeficit == 8,
+            "suboptimal complete branches also supply local evidence");
         var copied = b with { Score = -1e30, RetentionRank = 700 };
         Require(evidence.OutcomeFor(copied) != null, "ranking and mutable retention metadata do not split evidence");
         foreach (SearchNode changed in new[]
@@ -70,13 +75,22 @@ internal static class SharedEvidenceChecks
         SharedSearchEvidence ranks = new();
         ranks.StoreOutcome(SearchEvidenceKey.Capture(low), quality);
         ranks.StoreOutcome(SearchEvidenceKey.Capture(high), quality with { StrategicHpDeficit = 2 });
-        List<SearchNode> ranked = [terminal, unknown1, low, unknown2, high];
-        ranks.Rank(ranked);
-        Require(ranked.SequenceEqual([terminal, high, unknown1, low, unknown2]),
-            "real outcomes override score while unknown order and terminal position survive");
+        // Supplied scores are the frozen Beam scores, not the base node scores.
+        List<(SearchNode Node, double Score)> ranked =
+            [(terminal, 200), (unknown1, 100), (low, 100), (unknown2, 100), (high, 100)];
+        ranks.RankTies(ranked);
+        Require(ranked.Select(x => x.Node).SequenceEqual([terminal, unknown1, high, unknown2, low]),
+            "real outcomes break Beam ties while unknown and terminal positions survive");
+        Require(ranks.ReorderedCandidates == 2, "only observed tied candidates exchange positions");
+        ranked = [(low, 101), (high, 100)]; ranks.RankTies(ranked);
+        Require(ranked[0].Node == low, "witness never overrides unequal Beam scores");
+        var longer = high with { ActionCount = high.ActionCount + 1 };
+        ranks.StoreOutcome(SearchEvidenceKey.Capture(longer), quality with { StrategicHpDeficit = 1 });
+        ranked = [(low, 100), (longer, 100)]; ranks.RankTies(ranked);
+        Require(ranked[0].Node == low, "witness never overrides unequal action counts");
         SharedSearchEvidence empty = new();
-        List<SearchNode> untouched = [unknown2, unknown1]; empty.Rank(untouched);
-        Require(untouched.SequenceEqual([unknown2, unknown1]), "no evidence leaves ranking alone");
+        ranked = [(unknown2, 100), (unknown1, 100)]; empty.RankTies(ranked);
+        Require(ranked.Select(x => x.Node).SequenceEqual([unknown2, unknown1]), "no evidence leaves ranking alone");
         for (ulong i = 0; i < SharedSearchEvidence.Capacity * 3; i++)
             evidence.StoreProbe(new(new(i, 0), new(i, 1)), probe);
         Require(evidence.Count <= SharedSearchEvidence.Capacity && evidence.Evictions > 0, "fixed memory and eviction");

@@ -284,6 +284,7 @@ internal static class Program
             options.SearchMode,
             options.UsePortfolio,
             options.UseAutomaticSearch,
+            options.DisableSharedEvidence,
             options.UseNoveltyPortfolio,
             fixedSearchBudget = !options.ProductionBudget,
             enableNoGcRegion = options.EnableNoGcRegion,
@@ -360,6 +361,7 @@ internal sealed record HarnessOptions
           --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
           --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
           --automatic-search    统一自动搜索（Coordinator；不能叠加旧模式或续搜实验）
+          --no-shared-evidence   仅供对照：关闭统一搜索的证据共享与回传
           --novelty-portfolio    旧多策略探索对照（Coordinator；区别于 --adaptive-novelty）
           --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
           --unordered-pile-mask <0..15>  实验：状态键里顺序无关的牌堆（1手牌/2抽牌堆/4弃牌堆/8消耗堆）
@@ -416,6 +418,7 @@ internal sealed record HarnessOptions
     /// <summary>开宽度组合（协调器的组合成员通道）；Evaluate 模式下没有意义。</summary>
     public bool UsePortfolio { get; init; }
     public bool UseAutomaticSearch { get; init; }
+    public bool DisableSharedEvidence { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
     /// <summary>消融：丢掉只带基线宽度、不带排序修饰的组合成员，少跑一次真实搜索。</summary>
     public bool NoPlainBaselineMember { get; init; }
@@ -479,6 +482,7 @@ internal sealed record HarnessOptions
         int outcomeProbes = 0;
         bool selectiveOutcomeProbes = false;
         bool useAutomaticSearch = false;
+        bool disableSharedEvidence = false;
         string? rankingModelPath = null;
         bool continuousThreatRanking = false;
         bool baseScoreTacticalTies = false;
@@ -529,6 +533,7 @@ internal sealed record HarnessOptions
                 case "--search-mode": searchMode = Value(); break;
                 case "--use-portfolio": usePortfolio = true; break;
                 case "--automatic-search": useAutomaticSearch = true; break;
+                case "--no-shared-evidence": disableSharedEvidence = true; break;
                 case "--novelty-portfolio": useNoveltyPortfolio = true; break;
                 case "--no-plain-baseline": noPlainBaseline = true; break;
                 case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
@@ -625,6 +630,8 @@ internal sealed record HarnessOptions
         if (useAutomaticSearch && (searchMode != "Coordinator" || useNoveltyPortfolio
             || adaptiveNoveltyRefinement || outcomeProbes > 0))
             throw new ArgumentException("--automatic-search 需要 Coordinator，不能叠加旧模式或续搜实验。");
+        if (disableSharedEvidence && !useAutomaticSearch)
+            throw new ArgumentException("--no-shared-evidence 仅用于 --automatic-search 对照。");
         if (useNoveltyPortfolio && (searchMode != "Coordinator" || adaptiveNoveltyRefinement))
             throw new ArgumentException("--novelty-portfolio 需要 Coordinator，不能叠加 --adaptive-novelty。");
         if (usePortfolio && searchMode != "Coordinator")
@@ -670,6 +677,7 @@ internal sealed record HarnessOptions
             SearchMode = searchMode,
             UsePortfolio = usePortfolio,
             UseAutomaticSearch = useAutomaticSearch,
+            DisableSharedEvidence = disableSharedEvidence,
             UseNoveltyPortfolio = useNoveltyPortfolio,
             NoPlainBaselineMember = noPlainBaseline,
             UnorderedPileMask = unorderedPileMask,

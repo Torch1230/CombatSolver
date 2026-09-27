@@ -6,12 +6,14 @@ internal sealed class SharedSearchEvidence
 {
     internal const int Capacity = 4096;
     internal const int MaximumPathLength = 256;
+    internal const int MaximumOutcomeEvents = 2048;
     private readonly Entry[] _entries = new Entry[Capacity];
-    private SolverInterimResult? _bestObserved;
+    private int _outcomeEvents;
     public long ProbeHits { get; private set; }
     public long ProbeStores { get; private set; }
     public long OutcomeBackups { get; private set; }
     public long RankedCandidates { get; private set; }
+    public long ReorderedCandidates { get; private set; }
     public long Evictions { get; private set; }
     public int Count { get; private set; }
 
@@ -38,6 +40,14 @@ internal sealed class SharedSearchEvidence
             entry = new Entry { Occupied = true, Key = key };
         }
         return ref entry;
+    }
+
+    // Reject cold states before hashing their full history. The complete identity
+    // must still match in TryProbe; this filter can never authorize reuse.
+    internal bool MayHaveProbe(StateFingerprint state)
+    {
+        ref Entry entry = ref _entries[Slot(state)];
+        return entry.Occupied && entry.Key.State == state && entry.Probe.HasValue;
     }
 
     internal bool TryProbe(SearchEvidenceKey key, out CombatBeamSolver.StandPatEvaluation value)
@@ -81,15 +91,22 @@ internal sealed class SharedSearchEvidence
     internal void ObserveVictory(SearchNode terminal, SolverInterimResult outcome)
     {
         if (terminal.HasPredictionRisk || terminal.BoundaryReason != SearchBoundaryReason.None
-            || terminal.ActionCount > MaximumPathLength || !outcome.Won || !outcome.Survives)
+            || terminal.ActionCount > MaximumPathLength || !outcome.Won || !outcome.Survives
+            || _outcomeEvents >= MaximumOutcomeEvents || terminal.Parent == null)
             return;
-        // Only improving completed witnesses need another parent walk. Observations
-        // are feasible continuations, not bounds or samples of an expected return.
+        _outcomeEvents++;
+        // Learn each observed branch, including those worse than the global incumbent.
+        // An existing better witness at its immediate parent already covered this path.
         outcome = outcome with { Score = 0 };
-        if (_bestObserved != null && !Better(outcome, _bestObserved)) return;
-        _bestObserved = outcome;
+        if (OutcomeFor(terminal.Parent) is { } previous && !Better(outcome, previous)) return;
+        Span<SearchEvidenceKey> keys = stackalloc SearchEvidenceKey[MaximumPathLength + 1];
+        SearchEvidenceKey.CaptureAncestors(terminal.Parent, keys);
+        int index = 0;
         for (SearchNode? node = terminal.Parent; node != null; node = node.Parent)
-            if (IsUsable(node)) StoreOutcome(SearchEvidenceKey.Capture(node), outcome);
+        {
+            if (IsUsable(node)) StoreOutcome(keys[index], outcome);
+            index++;
+        }
     }
 
     internal SolverInterimResult? OutcomeFor(SearchNode node)
@@ -112,37 +129,51 @@ internal sealed class SharedSearchEvidence
             left.Score == 0 ? left : left with { Score = 0 },
             right.Score == 0 ? right : right with { Score = 0 });
 
-    // Alternate empirical and heuristic priorities. Unknown paths keep their original
-    // relative order and exploration opportunities; final routes keep their positions.
-    // This only changes intermediate ordering, never exact dominance or final policy.
-    internal void Rank(List<SearchNode> ranked)
+    // A completed continuation is a feasible witness, not an estimate of all
+    // continuations. Use it only to break existing full Beam ties; promoting it
+    // across unequal ranks can suppress a branch with a better unseen outcome.
+    // Unknown and terminal candidates retain their original positions.
+    internal void RankTies(List<(SearchNode Node, double Score)> ranked)
     {
         if (OutcomeBackups == 0 || ranked.Count < 2) return;
+        for (int start = 0; start < ranked.Count;)
+        {
+            int end = start + 1;
+            var first = ranked[start];
+            while (end < ranked.Count && CombatBeamSolver.CompareBeamRankOrder(
+                first.Score, first.Node.Snapshot.OffensiveProgressValue, first.Node.ActionCount,
+                ranked[end].Score, ranked[end].Node.Snapshot.OffensiveProgressValue,
+                ranked[end].Node.ActionCount) == 0)
+                end++;
+            if (end - start > 1) RankTie(ranked, start, end);
+            start = end;
+        }
+    }
+
+    private void RankTie(List<(SearchNode Node, double Score)> ranked, int start, int end)
+    {
         List<(SearchNode Node, SolverInterimResult Quality, int Rank)>? known = null;
-        for (int i = 0; i < ranked.Count; i++)
-            if (OutcomeFor(ranked[i]) is { } quality)
-                (known ??= []).Add((ranked[i], quality, i));
+        for (int i = start; i < end; i++)
+            if (OutcomeFor(ranked[i].Node) is { } quality)
+                (known ??= []).Add((ranked[i].Node, quality, i));
         if (known == null) return;
         RankedCandidates += known.Count;
+        if (known.Count < 2) return;
+        int[] positions = known.Select(k => k.Rank).ToArray();
         known.Sort(static (a, b) => Better(a.Quality, b.Quality) ? -1
             : Better(b.Quality, a.Quality) ? 1 : a.Rank.CompareTo(b.Rank));
-        HashSet<SearchNode> observed = new(known.Select(k => k.Node), ReferenceEqualityComparer.Instance);
-        Queue<SearchNode> unknown = new(ranked.Where(n => !n.IsTerminal && !observed.Contains(n)));
-        int witness = 0;
-        bool preferWitness = true;
-        for (int i = 0; i < ranked.Count; i++)
+        for (int i = 0; i < known.Count; i++)
         {
-            if (ranked[i].IsTerminal) continue;
-            if (witness < known.Count && (preferWitness || unknown.Count == 0))
-                ranked[i] = known[witness++].Node;
-            else ranked[i] = unknown.Dequeue();
-            preferWitness = !preferWitness;
+            int position = positions[i];
+            if (!ReferenceEquals(ranked[position].Node, known[i].Node)) ReorderedCandidates++;
+            ranked[position] = (known[i].Node, ranked[position].Score);
         }
     }
 
     internal string Describe()
         => $"entries={Count} capacity={Capacity} probe_hits={ProbeHits} probe_stores={ProbeStores} "
-            + $"outcome_backups={OutcomeBackups} ranked_candidates={RankedCandidates} evictions={Evictions}";
+            + $"outcome_backups={OutcomeBackups} ranked_candidates={RankedCandidates} "
+            + $"reordered_candidates={ReorderedCandidates} evictions={Evictions}";
 }
 
 // Stronger than a transposition key: identical state AND full action/choice history,
@@ -152,9 +183,21 @@ internal readonly record struct SearchEvidenceKey(StateFingerprint State, StateF
 {
     internal static SearchEvidenceKey Capture(SearchNode node)
     {
-        StateFingerprintBuilder key = new();
+        Span<SearchEvidenceKey> keys = stackalloc SearchEvidenceKey[SharedSearchEvidence.MaximumPathLength + 1];
+        CaptureAncestors(node, keys);
+        return keys[0];
+    }
+
+    // Build every ancestor identity in one pass, instead of rescanning the whole
+    // history once for each backed-up node. The buffer holds only fixed-size values.
+    internal static void CaptureAncestors(SearchNode node, Span<SearchEvidenceKey> keys)
+    {
+        int count = 0;
         for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
         {
+            if (count == keys.Length)
+                throw new InvalidOperationException("Evidence path exceeds its bounded capture buffer.");
+            StateFingerprintBuilder key = new();
             key.Add(cursor.StateKey.First);
             key.Add(cursor.StateKey.Second);
             key.Add(cursor.ActionCount);
@@ -166,8 +209,19 @@ internal readonly record struct SearchEvidenceKey(StateFingerprint State, StateF
             key.Add(cursor.Snapshot.ShufflesCrossed);
             AppendAction(ref key, cursor.Action);
             AppendChoices(ref key, cursor.TurnSetupChoices);
+            keys[count++] = new(cursor.StateKey, key.Finish());
         }
-        return new(node.StateKey, key.Finish());
+        StateFingerprint prefix = default;
+        for (int i = count - 1; i >= 0; i--)
+        {
+            StateFingerprintBuilder key = new();
+            key.Add(prefix.First);
+            key.Add(prefix.Second);
+            key.Add(keys[i].Path.First);
+            key.Add(keys[i].Path.Second);
+            prefix = key.Finish();
+            keys[i] = keys[i] with { Path = prefix };
+        }
     }
 
     internal static void AppendAction(ref StateFingerprintBuilder key, PlanAction? action)

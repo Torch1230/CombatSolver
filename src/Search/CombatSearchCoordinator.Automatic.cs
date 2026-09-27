@@ -17,7 +17,7 @@ internal static partial class CombatSearchCoordinator
         SearchRequestWorkTotals totals = policy.RequestWorkTotals
             ?? throw new InvalidOperationException("Automatic search requires request work totals.");
         RootOutcomeCache outcomes = new();
-        SharedSearchEvidence evidence = new();
+        SharedSearchEvidence? evidence = policy.DisableSharedEvidenceForTesting ? null : new();
         OpeningActionCollector openings = new();
         SearchDiagnosticsSink original = policy.Diagnostics;
         SearchCompletedOutcomeObserver? external = original.CompletedOutcomeObserver;
@@ -130,7 +130,8 @@ internal static partial class CombatSearchCoordinator
         }
         finally
         {
-            policy.Diagnostics.Info($"[CombatSolver/Test] SHARED_SEARCH_EVIDENCE {evidence.Describe()}");
+            if (evidence != null)
+                policy.Diagnostics.Info($"[CombatSolver/Test] SHARED_SEARCH_EVIDENCE {evidence.Describe()}");
         }
     }
 }

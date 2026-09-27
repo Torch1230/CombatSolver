@@ -194,3 +194,5 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 
 自动调度对照：`--search-mode Coordinator --automatic-search` 运行当前玩家入口，不叠加旧 `--novelty-portfolio`、`--adaptive-novelty` 或 `--outcome-probes`。不指定此参数仍复现历史布局，旧模式开关只存在于测试工具。`python tools/OutcomeValuation/run.py --out <目录> --automatic --seconds 150 --case attack_or_block --case focus_investment --case random-regent` 在相同配置预算下比较旧宽度+新颖性组合与自动入口；旧能力前缀有额外预算，实际工作量不相同。见[报告](strategy/automatic-search-20260927.md)。
+
+共享证据消融：同一 `--search-mode Coordinator --automatic-search` 命令加 `--no-shared-evidence`，仅关闭跨成员跨回合探测复用和终局见证回传。根、节点/时间预算及最终政策不变，开关不出现在玩家设置。配置写入 `searchPolicy.DisableSharedEvidenceForTesting`；日志的 `ranked_candidates` 是见证命中数，`reordered_candidates` 才是实际换位次数。当前反馈只用于既有 Beam 完全平局，未知/终局位置保持。见[合并后验收与失败对照](strategy/shared-search-evidence-20260927.md)。

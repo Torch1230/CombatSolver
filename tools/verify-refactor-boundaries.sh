@@ -1332,7 +1332,7 @@ done
 
 require_fixed "$repository_root/src/Runtime/SolverController.cs" 'UseAutomaticSearch = true' 'player search must use the automatic scheduler'
 require_fixed "$repository_root/src/Runtime/CombatBugReportExporter.cs" 'captured["useAutomaticSearch"] = policy.UseAutomaticSearch;' 'archives must record the scheduler'
-for forbidden in '_beamWidthPortfolioEnabled' '_noveltyPortfolioEnabled'; do
+for forbidden in '_beamWidthPortfolioEnabled' '_noveltyPortfolioEnabled' '_earlyTurnExplorationEnabled'; do
     forbid_fixed "$repository_root/src/UI/SolverSettingsPanel.Performance.cs" "$forbidden" 'separate player search switches returned:'
 done
 forbid_fixed "$repository_root/src/UI/SolverOverlay.cs" 'CreateNoveltyPortfolioHint' 'obsolete mode hint returned:'

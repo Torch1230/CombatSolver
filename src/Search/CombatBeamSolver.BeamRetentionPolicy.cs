@@ -767,9 +767,9 @@ internal sealed partial class CombatBeamSolver
                     left.Score, left.Node.Snapshot.OffensiveProgressValue, left.Node.ActionCount,
                     right.Score, right.Node.Snapshot.OffensiveProgressValue, right.Node.ActionCount);
             });
+            _run.SharedEvidence?.RankTies(scored);
             for (int index = 0; index < ranked.Count; index++)
                 ranked[index] = scored[index].Node;
-            _run.SharedEvidence?.Rank(ranked);
         }
 
         private Comparison<SearchNode> FinalCandidateComparison

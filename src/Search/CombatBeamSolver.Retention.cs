@@ -1947,6 +1947,7 @@ internal sealed partial class CombatBeamSolver
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (_run.SharedEvidence is { } evidence && SharedSearchEvidence.IsUsable(node)
+            && evidence.MayHaveProbe(node.StateKey)
             && evidence.TryProbe(SearchEvidenceKey.Capture(node), out value))
         {
             // Validation must execute the real transition and its full replay comparison;

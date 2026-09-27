@@ -301,6 +301,7 @@ internal static class ModRuntime
         policy.UseBeamWidthPortfolio,
         policy.BeamWidthPortfolioPlainBaselineMember,
         policy.UseAutomaticSearch,
+        policy.DisableSharedEvidenceForTesting,
         policy.UseNoveltyPortfolio,
         policy.BeamWidthPortfolioWidths,
         portfolioSelector = policy.PortfolioExperiment?.Model?.ModelId,
@@ -392,7 +393,8 @@ internal static class ModRuntime
         SolverSettingsSnapshot settings = SolverSettings.Capture();
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
             settings, state, includeTurnSetup: false, theftPolicy: null);
-        policy = policy with { UseAutomaticSearch = options.UseAutomaticSearch, Profile = policy.Profile with
+        policy = policy with { UseAutomaticSearch = options.UseAutomaticSearch,
+            DisableSharedEvidenceForTesting = options.DisableSharedEvidence, Profile = policy.Profile with
         {
             BaseScoreOnly = options.Ordering == "base",
             SecondRankBand = options.Ordering == "band",

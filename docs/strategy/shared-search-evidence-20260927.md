@@ -1,6 +1,8 @@
 # 有界搜索证据共享与回传（2026-09-27）
 
-当前为研究分支，保持玩家单一自动搜索入口，没有新模型、训练或玩家策略开关。
+当前为研究分支，已合入上游 `8915a7c0`（0.47.0）。保持玩家单一自动搜索入口，没有新模型、训练或玩家策略开关。上游的前两回合深搜仍保留显式测试入口，不把最长40分钟的实验变成玩家的第三种模式；旧设置数据保留兼容。
+
+用户已澄清：30分钟是单次模型训练上限，传统算法的探索和验证不受此累计限制。本轮训练时间为零。早期保守账本保留为历史，不再作为测试截止条件。
 
 ## 所有权与算法
 
@@ -8,13 +10,15 @@
 
 前缀身份包含完整祖先状态、动作、逐实例卡牌/目标/药水、嵌套及回合开始选择、根准备选择、动作数、回合和累计政策标签；不包含显示标题、启发式分数及可变保留排名。超过256动作时旁路证据优化，继续原搜索。
 
-跨回合探测只有正常完成且无风险的结果可以共享。串行端查询及发布，worker仍独占模拟；严格增量模式在共享命中后重新执行转移和完整回放，并比较探测数值。未知、挂起选择或风险结果不缓存。
+跨回合探测只有正常完成且无风险的结果可以共享。先检查状态槽是否可能命中，再计算完整历史身份，减少冷查询的哈希开销。串行端查询及发布，worker仍独占模拟；严格增量模式在共享命中后重新执行转移和完整回放，并比较探测数值。未知、挂起选择或风险结果不缓存。
 
-每次改善的完整胜利回传到沿途所有可用前缀。中间排序交替使用按真实终局政策排列的已知前缀与原启发式排列的未知前缀；终局节点位置保持，最终比较及转置支配不使用该证据。它是可行后续的见证，不能作为最优界，也不是统计期望。原手写估值仍服务于缺少证据的候选；未宣称消除了全部权重。
+完整、存活且无风险的胜利（包括不及全局最优的分支）回传到沿途所有可用前缀，每轮最多处理2048次观察。各祖先身份一次扫描生成，避免沿父链反复重算。中间排序仅打破既有 Beam 排名的平局：原 Beam 分数、动作数、进攻进度必须全部相同，再按真实终局政策交换已有见证候选的原位置。未知和终局候选保持原位置，不跨越不同分数；最终比较及转置支配不使用该证据。它是可行后续的见证，不能作为最优界，也不是统计期望。原手写估值仍服务于缺少证据的候选；未宣称消除了全部权重。
 
 这里复用的是跨回合探测的计算结果，并未共享所有卡牌转移或整棵搜索树。
 
-## 合并上游前的验证
+## 撤回方案与反例
+
+### 合并上游前的全局交替排序
 
 基线为 `43f98e46`，固定原有输入、DOP1、Beam24、12000节点、30秒软预算、禁用药水。使用此前保存的同配置自动搜索结果作比较，不是交错重复性能测量。
 
@@ -29,7 +33,46 @@
 - `--check-shared-evidence`：26项纯合同通过，覆盖沿途回传、历史/选择/目标/政策隔离、未知探索、风险/边界、固定容量和替换。
 - 原生 `SHARED-SEARCH-EVIDENCE` 通过：跨宽度真实缓存命中与完整增量回放、实际终局回传、DOP2及缓存命中取消；独立实例由启动器成功清理。
 - Linux 结构门禁通过；两平台规则同步，未在Windows执行。
-- 所有新测试保守计入原半小时账本，目前累计1784.404秒，训练0秒。数据见[结构化证据](shared-search-evidence-20260927-evidence.json)。
+- 当时所有新测试保守计入原半小时账本，累计1784.404秒，训练0秒；随后用户澄清该累计上限不适用于传统算法。数据见[结构化证据](shared-search-evidence-20260927-evidence.json)。
+
+### 合并后的跨分数已知候选排序
+
+第一轮只限制“已知候选彼此换位、未知固定”，仍允许跨越不同 Beam 分数。五个固定根对照中，摄政王的战损在两次独立候选运行中均从13上升到18，尽管耗时和内存更低。该方案撤回，原始14次记录保存在结构化证据中。原因是已找到的胜利只证明可行性，不能证明这个分支的所有未来都优于另一个分支。
+
+最终实现将反馈收紧到完全相同的 Beam 排名。摄政王的针对性复测恢复13战损；专注根仍为0，随后对最终实现执行完整五根成本/质量对照。
+
+## 合并后最终验收
+
+上游为 `8915a7c0`（0.47.0），合并提交 `e2ae0473`。本机 Ryzen 7 7840H，操作系统报告约58.6 GiB内存。基线和候选使用同一个最终程序集及自动调度器，唯一差别是基线加 `--no-shared-evidence`。这不是与旧多模式算法的再次比较。
+
+使用已有五个固定根，不采集新战斗。DOP1、Beam24、12000节点、30秒软预算、禁用药水、达到零损目标可结束。专注和摄政王按ABBA各跑两次，另三根各AB一次，共14个独立进程；比较期间没有其他本任务的构建或原生测试。逐次根身份与目录指纹一致，没有触及时间边界。表中为各组中位数，转移数的小数来自两次运行取中位。
+
+| 场景 | 搜索秒数基线→最终 | 转移基线→最终 | 累计分配 GiB 基线→最终 | 峰值工作集 MiB 基线→最终 | 战损/结束回合（两者相同） |
+|---|---:|---:|---:|---:|---:|
+| focus_investment | 4.427→4.559 | 16083→15282 | 0.551→0.530 | 257.3→257.8 | 0 / 6 |
+| random-regent | 20.519→20.466 | 124236→120302.5 | 4.849→4.693 | 441.5→479.8 | 13 / 6 |
+| attack_or_block | 5.734→5.658 | 35874→35538 | 1.104→1.092 | 274.2→270.7 | 7 / 6 |
+| random-silent | 9.319→9.610 | 42379→41866 | 1.829→1.811 | 322.5→327.6 | 33 / 7 |
+| random-necrobinder | 18.101→18.247 | 80693→80887 | 4.200→4.217 | 387.9→398.6 | 38 / 12 |
+
+生产终局比较器核对7对结果，完整比较与去掉旧Score后的实质比较均为0（相同），包括胜负、存活、战损、药水、成长和结束回合。这证明这些固定根没有质量回退，不证明任意战斗都单调更好，也不等于两条路径的模拟状态相同。
+
+前四根首份候选共享探测命中分别为158、434、338、534，实际平局换位为16、6、11、28；第五根两项均为0。多数根转移与累计分配减少，但总耗时没有稳定收益，各根变化约−1.3%到+3.1%。摄政王峰值工作集中位数从441.5升到479.8 MiB，尽管累计分配下降；峰值工作集是进程占用，不是缓存表大小，也不是累计分配量。固定表只约束新增证据存储，不能保证整搜峰值内存下降。本批不宣称普遍提速、可见帧时间改善或全面替代手写估值。
+
+- 最终Mod与离线宿主Release构建均0警告、0错误。
+- 共享证据纯合同30项通过；根终局缓存34项通过，后续未修改该缓存实现。
+- 原生 `SHARED-SEARCH-EVIDENCE` / `b39db3904bd54ffb8b69d6fcba4e35a5` Passed：真实跨宽度命中、命中后增量及完整回放、实际回传、DOP2、取消。
+- 原生 `AUTOMATIC-SEARCH` / `f312699f4e984323a7bc3798c2aa4f1e` Passed：唯一设置入口、旧字段兼容、冻结政策、增量、独立DOP2、战损/治疗/成长、强制与智能用药。两次实例均由启动器清理。
+- Bash与PowerShell结构门禁均在本机通过，`search_files=217`；未做Windows运行时验证、可见Steam测试或原生整场自动部署。
+
+全部逐次指标、撤回方案和可复现输入见[结构化证据](shared-search-evidence-20260927-evidence.json)。`reproductionInputs` 保存请求及随机场景配置；提取为文件时，把请求的 `generatedScenarioPath` 指向对应场景文件。然后对同一请求运行如下命令，基线追加 `--no-shared-evidence`：
+
+```bash
+dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+  --request <request.json> --out <output> --profile Custom \
+  --beam 24 --nodes 12000 --budget-ms 30000 --dop 1 \
+  --search-mode Coordinator --automatic-search --potion-policy Disabled --stop-at-zero-loss
+```
 
 ## 复现
 
@@ -39,10 +82,10 @@ dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-shared-evidence
 ./tools/run-unattended-test.sh --scenario-id SHARED-SEARCH-EVIDENCE \
   --encounter-id FUZZY_WURM_CRAWLER_WEAK --preserve-native-combat-state-for-test \
-  --headless-instance shared-evidence --timeout-seconds 30 \
+  --headless-instance shared-evidence --timeout-seconds 60 \
   --exit-on-complete --cleanup-instance-on-exit
 ```
 
-PowerShell对应 `-ScenarioId SHARED-SEARCH-EVIDENCE -PreserveNativeCombatStateForTest -HeadlessInstance shared-evidence -TimeoutSeconds 30 -ExitOnComplete -CleanupInstanceOnExit`。
+PowerShell对应 `-ScenarioId SHARED-SEARCH-EVIDENCE -PreserveNativeCombatStateForTest -HeadlessInstance shared-evidence -TimeoutSeconds 60 -ExitOnComplete -CleanupInstanceOnExit`。
 
-用户随后要求合入上游0.47.0。上面的数字和原生结果属于合并前实现，不能当作合并后的验收结果。
+基线开关 `--no-shared-evidence` 仅供离线消融，必须与 `--automatic-search --search-mode Coordinator` 一起使用，其他根、预算和策略保持相同。玩家设置中没有该开关。历史对照与最终合并后验收分别列出，不能混用数字。

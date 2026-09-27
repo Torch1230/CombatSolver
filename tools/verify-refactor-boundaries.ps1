@@ -1720,6 +1720,24 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
     }
 }
 
+# The player has one automatic scheduler; legacy switches are test compatibility only.
+foreach ($contract in @(
+    @{ Path = 'src/Runtime/SolverController.cs'; Text = 'UseAutomaticSearch = true' },
+    @{ Path = 'src/Runtime/CombatBugReportExporter.cs'; Text = 'captured["useAutomaticSearch"] = policy.UseAutomaticSearch;' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $contract.Path) -SimpleMatch $contract.Text -Quiet)) {
+        $violations.Add("Automatic scheduler boundary changed: $($contract.Path)")
+    }
+}
+foreach ($text in @('_beamWidthPortfolioEnabled', '_noveltyPortfolioEnabled', '_earlyTurnExplorationEnabled')) {
+    if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/UI/SolverSettingsPanel.Performance.cs') -SimpleMatch $text -Quiet) {
+        $violations.Add("Separate player search switches returned: $text")
+    }
+}
+if (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/UI/SolverOverlay.cs') -SimpleMatch 'CreateNoveltyPortfolioHint' -Quiet) {
+    $violations.Add('Obsolete mode hint returned')
+}
+
 # Keep equivalent shared-evidence boundaries on both platform entry points.
 foreach ($contract in @(
     @{ Path = 'SharedSearchEvidence.cs'; Text = 'Entry[] _entries = new Entry[Capacity]' },
