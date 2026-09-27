@@ -1755,7 +1755,7 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
 }
 
 foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
-    foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.')) {
+    foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.', 'xgboost')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
         }
@@ -1782,6 +1782,9 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'r.FeatureSchema != FeatureSchema' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'Schema = 9, FeatureSchema = 8' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Linear.cs'); Text = 'pairs[p].Weight * probability' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'var prepared = PrepareTraining(roots, highestPolicyTierOnly);' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs'); Text = 'SearchOutcomeValueModel.PrepareTraining(' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs'); Text = 'SearchOutcomeValueModel.FitLinearFoundation(prepared)' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'Math.Min(3, participatingRoots)' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/ModRuntime.cs'); Text = 'NOVELTY_SEARCH_STOP reason=time_limit' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '_noveltyGroups >= 64' },

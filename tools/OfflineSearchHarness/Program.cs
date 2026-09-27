@@ -20,6 +20,10 @@ internal static class Program
     {
         if (rawArgs.Length == 3 && rawArgs[0] == "--fit-outcome-values")
             return OutcomeValueTraining.Run(rawArgs[1], rawArgs[2]);
+        if (rawArgs.Length == 3 && rawArgs[0] == "--export-outcome-ranking")
+            return OutcomeValueTraining.Export(rawArgs[1], rawArgs[2]);
+        if (rawArgs.Length == 4 && rawArgs[0] == "--predict-outcome-features")
+            return OutcomeValueTraining.Predict(rawArgs[1], rawArgs[2], rawArgs[3]);
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-ranking")
             return OutcomeRankingChecks.Run();
         if (rawArgs.Length == 4 && rawArgs[0] == "--audit-outcome-ranking")

@@ -105,6 +105,17 @@ internal static class OutcomeRankingChecks
         Check(learned.Fit([Enumerable.Range(0, 24).Select(i => Row(i, 24 - i)).ToArray()]), "small pairwise dataset fits");
         Check(learned.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 23 })
             > learned.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 0 }), "gradient learns preferred direction");
+        var prepared = Model.PrepareTraining([Enumerable.Range(0, 24).Select(i => Row(i, 24 - i)).ToArray()]);
+        var foundation = Model.FitLinearFoundation(prepared);
+        Check(prepared.Pairs.Count == learned.FittedPairs && prepared.Rows.Count == learned.FittedRows
+            && prepared.PairKinds.SequenceEqual(learned.FittedPairKinds)
+            && Math.Abs(prepared.Pairs.Sum(p => p.Weight) - 1) < 1e-12,
+            "shared preparation retains exact fitted pair counts and equal root weight");
+        Check(JsonSerializer.Serialize(Model.Load(foundation.Model).ExportModel())
+            == JsonSerializer.Serialize(learned.ExportLinearModel()), "exported foundation equals built-in linear model");
+        Check(foundation.Scores.Select((v, i) => v == Model.Load(foundation.Model)
+            .PredictFeaturesForTesting(prepared.Rows[i].Features)).All(v => v),
+            "exported base margins use production float observations and accumulation");
         var withUnused = new Model();
         Model.TrainingRow[] useful = Enumerable.Range(0, 24).Select(i => Row(i, 24 - i)).ToArray();
         Model.TrainingRow[] onlyDefeats = Enumerable.Range(0, 300).Select(i => loss with
@@ -321,6 +332,27 @@ internal static class OutcomeRankingChecks
                     && kinds["suffix-effort"].GetProperty("correct").GetInt32() == 1,
                     "effort accuracy cannot disguise incorrect final-policy ordering");
             }
+            string exported = Path.Combine(directory, "exported");
+            OutcomeValueTraining.Export(inputs, exported);
+            using var exportedManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(exported, "manifest.json")));
+            var exportedHead = exportedManifest.RootElement.GetProperty("heads")[0];
+            var expected = Model.PrepareTraining(OutcomeValueTraining.ReadRoots(inputs).Select(r => r.Rows).ToArray());
+            Check(exportedHead.GetProperty("pairs").GetInt32() == expected.Pairs.Count
+                && exportedHead.GetProperty("rows").GetInt32() == expected.Rows.Count,
+                "binary export retains sampled graph shape");
+            using (var edges = new BinaryReader(File.OpenRead(Path.Combine(exported,
+                exportedHead.GetProperty("edges").GetString()!))))
+            {
+                Check(expected.Pairs.All(p => edges.ReadInt32() == p.Preferred
+                    && edges.ReadInt32() == p.Other && edges.ReadDouble() == p.Weight)
+                    && edges.BaseStream.Position == edges.BaseStream.Length, "binary edges preserve exact order and weights");
+            }
+            using (var matrix = new BinaryReader(File.OpenRead(Path.Combine(exported,
+                exportedHead.GetProperty("matrix").GetString()!))))
+                Check(expected.Rows.All(r => expected.FeatureNames.All(n =>
+                    matrix.ReadSingle() == (float)r.Features.GetValueOrDefault(n)))
+                    && matrix.BaseStream.Position == matrix.BaseStream.Length, "dense binary matrix uses explicit float zeros");
+            Reject(() => OutcomeValueTraining.Export(inputs, exported), "exports cannot overwrite existing evidence");
         }
         finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine($"Outcome ranking: {checks} assertions passed.");

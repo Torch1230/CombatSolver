@@ -199,7 +199,9 @@ internal sealed partial class SearchOutcomeValueModel
         }
     }
 
-    private readonly record struct Pair(int Preferred, int Other, double Weight);
+    internal readonly record struct Pair(int Preferred, int Other, double Weight);
+    internal sealed record PreparedTraining(List<TrainingRow> Rows, List<Pair> Pairs,
+        string[] FeatureNames, int ParticipatingRoots, int[] PairKinds);
     internal static void ValidateTrainingRows(IEnumerable<TrainingRow> rows)
     {
         if (rows.Any(r => r == null || r.FeatureSchema != FeatureSchema || r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
@@ -210,16 +212,16 @@ internal sealed partial class SearchOutcomeValueModel
             throw new InvalidDataException("Invalid witnessed ranking row.");
     }
 
-    internal bool Fit(IReadOnlyList<TrainingRow[]> roots, int maximumTrainingParallelism = 1,
+    // The built-in and optional offline fitters consume the same authoritative
+    // comparisons, support threshold, ordering, root weights and sampled rows.
+    internal static PreparedTraining PrepareTraining(IReadOnlyList<TrainingRow[]> roots,
         bool highestPolicyTierOnly = false)
     {
-        if (maximumTrainingParallelism is < 1 or > 4)
-            throw new ArgumentOutOfRangeException(nameof(maximumTrainingParallelism));
         List<TrainingRow> rows = [];
         List<Pair> pairs = [];
         Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
         int participatingRoots = 0;
-        FittedPairKinds = new int[3];
+        int[] pairKinds = new int[3];
         Random random = new(0);
         foreach (var root in roots)
         {
@@ -259,13 +261,10 @@ internal sealed partial class SearchOutcomeValueModel
             foreach (var pair in sampled.Take(count))
             {
                 pairs.Add(new(offset + pair.Preferred, offset + pair.Other, 1d / count));
-                FittedPairKinds[pair.Kind]++;
+                pairKinds[pair.Kind]++;
             }
         }
-        FittedPairs = pairs.Count;
-        FittedRoots = participatingRoots;
-        FittedRows = 0;
-        if (pairs.Count < 2) return false;
+        if (pairs.Count < 2) return new([], pairs, [], participatingRoots, pairKinds);
         // Validate every input above, but allocate feature histograms only for
         // witnesses referenced by a sampled preference. Unknown comparisons and
         // all-defeat pools supply no gradient, even if their raw row count is high.
@@ -275,14 +274,40 @@ internal sealed partial class SearchOutcomeValueModel
         for (int i = 0; i < observed.Length; i++) remap[observed[i]] = i;
         rows = observed.Select(i => rows[i]).ToList();
         pairs = pairs.Select(p => new Pair(remap[p.Preferred], remap[p.Other], p.Weight)).ToList();
-        FittedRows = rows.Count;
         // Correlated rows from one battle are not independent support for an
         // identity-specific coefficient or split. Count actual witnessed roots.
         int minimumRoots = Math.Min(3, participatingRoots);
-        _featureNames = featureRoots.Where(p => p.Value >= minimumRoots)
+        string[] names = featureRoots.Where(p => p.Value >= minimumRoots)
             .Select(p => p.Key).Order(StringComparer.Ordinal).ToArray();
+        return new(rows, pairs, names, participatingRoots, pairKinds);
+    }
+
+
+    internal static (Document Model, double[] Scores) FitLinearFoundation(PreparedTraining prepared)
+    {
+        if (prepared.Pairs.Count < 2) throw new InvalidDataException("Insufficient ranking pairs.");
+        var (weights, scores) = FitLinearTerms(prepared.Rows, prepared.Pairs, prepared.FeatureNames);
+        return (new(Schema, prepared.FeatureNames, typeof(Player).Assembly.ManifestModule.ModuleVersionId,
+            [new(-1, 0, 0)], weights), scores);
+    }
+
+    internal bool Fit(IReadOnlyList<TrainingRow[]> roots, int maximumTrainingParallelism = 1,
+        bool highestPolicyTierOnly = false)
+    {
+        if (maximumTrainingParallelism is < 1 or > 4)
+            throw new ArgumentOutOfRangeException(nameof(maximumTrainingParallelism));
+        var prepared = PrepareTraining(roots, highestPolicyTierOnly);
+        FittedPairs = prepared.Pairs.Count;
+        FittedRoots = prepared.ParticipatingRoots;
+        FittedRows = prepared.Rows.Count;
+        FittedPairKinds = prepared.PairKinds;
+        if (FittedPairs < 2) return false;
+        var rows = prepared.Rows;
+        var pairs = prepared.Pairs;
+        _featureNames = prepared.FeatureNames;
         EligibleFeatures = _featureNames.Length;
-        (double[] linearWeights, double[] scores) = FitLinearTerms(rows, pairs, _featureNames);
+        var (foundation, scores) = FitLinearFoundation(prepared);
+        double[] linearWeights = foundation.LinearWeights!;
         int[] indices = Enumerable.Range(0, rows.Count).ToArray();
         // Learn splits from all observed columns. Randomly trying a few sparse
         // identities left most known preferences tied even on the fitting roots.

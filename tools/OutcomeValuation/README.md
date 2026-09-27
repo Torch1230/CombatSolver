@@ -1,5 +1,16 @@
 # 结果估值与小规模训练工具
 
+可选 CPU 树训练器位于 `xgboost_fit.py`，只用于离线研究。Linux 私有 Python 3.12 环境安装 `requirements-xgboost.txt` 中的固定依赖；Mod 没有新增 Python/XGBoost 依赖。流程如下，完整导出加五角色拟合的外层总超时应不超过 1,200 秒，传给 Python 的 `--seconds` 必须扣除导出耗时：
+
+```sh
+dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --export-outcome-ranking inputs.json export-directory
+python tools/OutcomeValuation/xgboost_fit.py export-directory model-directory --seconds 1000
+dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --predict-outcome-features model-directory/model.json model-directory/parity-inputs.json actual.json
+```
+
+输入继续遵守下面的场景隔离规则。导出与原训练共用 C# 配对、根权重、特征支持度及线性基础项，采用显式零的稠密 float32 矩阵。Python 只学习 64 棵深度 6 的残差树，使用耦合配对损失的对角 Hessian 上界；它不是独立行标签模型。导出目录必须为空，拟合输出目录必须尚不存在；出错产物不能用于搜索。核对 `actual.json` 与 `parity-expected.json`，再做独立开发战斗；训练损失降低不等于战斗更强。`test_xgboost_fit.py` 覆盖梯度/上界、边界导入和数值一致性。此试验不增加玩家模式，不自动替换夜间或游戏默认算法。
+
+
 用户明确授权长时间运行时，可用 Linux `overnight.py prepare` 冻结程序与数据，再用生成目录内的 `scripts/overnight.py run <目录>` 启动可恢复监督进程。它不更改下面短训练入口的 1800 秒规则；整夜累计采集/拟合成本单独记录。用 `--until <带时区的截止时间>` 明确终点，`--validation` 与 `--sealed-test` 分别指向开发和封存测试，`--baselines` 是各开发根的已有基线目录和程序集/搜索配置身份，`--screen-id` 重复指定预先选定的筛选子集；`--prior-job <已停止目录>` 可以继承完整数据、失败记录与成本，原训练行摘要和隔离会重新核对；其余必需参数见 `prepare --help`。
 
 最多四路采集，按五角色、非空章节/遭遇类型桶轮换。每批 45 根，默认拟合最多 128 个有偏好根、单次最多 600 秒；线性和完整模型均用独立开发场景筛选，最终测试只做结构排除。状态见生成目录的 `STATUS.md` / `status.json`，创建 `STOP` 文件会终止并回收本任务的子进程；恢复前删除这个停止标记并运行同一冻结脚本。中断记录保留，独占锁拒绝重复启动。历史基线耗时不能证明本轮提速，未核实结局不计可靠胜局，模型不会自动上线。详见[本轮报告](../../docs/strategy/shared-scheduler-20260927.md)。

@@ -1362,7 +1362,7 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
 done
 
 for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs CombatBeamSolver.ObjectiveRetention.cs; do
-    for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.'; do
+    for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.' 'xgboost'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
         fi
@@ -1397,6 +1397,9 @@ require_fixed "$search_root/SearchOutcomeValueModel.cs" 'CombatTerminalOutcome.D
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'r.FeatureSchema != FeatureSchema' 'old training observations must not silently acquire new feature meanings:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'Schema = 9, FeatureSchema = 8' 'model serialization and resource observation schemas must be distinct:'
 require_fixed "$search_root/SearchOutcomeValueModel.Linear.cs" 'pairs[p].Weight * probability' 'linear utility must be learned from root-balanced pair labels:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'var prepared = PrepareTraining(roots, highestPolicyTierOnly);' 'built-in fitting must share authoritative pair preparation:'
+require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs" 'SearchOutcomeValueModel.PrepareTraining(' 'external fitting must export authoritative C# pairs:'
+require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs" 'SearchOutcomeValueModel.FitLinearFoundation(prepared)' 'external fitting must reuse the linear foundation:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'Math.Min(3, participatingRoots)' 'feature support must count actual witnessed roots:'
 require_fixed "$repository_root/tools/OfflineSearchHarness/ModRuntime.cs" 'NOVELTY_SEARCH_STOP reason=time_limit' 'coordinator novelty time limits must be observed by the harness:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" '_noveltyGroups >= 64' 'novelty observation must leave capacity for Beam pools:'

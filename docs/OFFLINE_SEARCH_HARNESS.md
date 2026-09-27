@@ -212,3 +212,7 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 当前观察 schema8 包括分支奥斯蒂身体/最大HP/可受击状态，Power 区分主人、奥斯蒂和与敌人身体一致的 roster 索引，并有同名敌方 Power 总层数。`resource/current-max-energy` 与 `resource/current-hand-draw` 复用引擎查询当前分支的规则量，不消费延迟资源，不代表下一回合保证收入。旧行没有这些量，必须重新采集，不能靠改 schema 或填零混入。新颖性搜索的兄弟子节点池参与观察（最多64个，计入256总池），完成边界使用原权威终局摘要。`outcome-collection.json` 记录总态/池/新颖性池/有标签/导出条数，用于发现“已有胜利却没有监督”的采集缺口。
 
 `search-budget-boundaries.json` 分别记录回合层和新颖性时间停止，以及所选结果的TimeLimit。两种搜索入口统一纳入 `timeBoundaryObserved`。2026-09-27本轮修正之前，Coordinator入口没有更新该标志，新颖性独立时间停止也漏记；历史false只能表示宿主未记录，不能用来证明所有成员没有时间截断。保留历史原始数据，不将诊断修复当作算法提速。
+
+### 外部结果排序训练器（离线研究）
+
+`--export-outcome-ranking <训练输入> <空输出目录>` 导出共用 C# 准备器裁定的偏好图、float32 零值矩阵和线性基础项，带格式与内容摘要。可选 CPU 训练流程见 [OutcomeValuation](../tools/OutcomeValuation/README.md)。`--predict-outcome-features <模型> <输入 JSON> <输出 JSON>` 只通过现有模型读取/推理边界验证转换；输入数组成员为 `Character` 与 `Features`，非有限数值拒绝。它们均不运行战斗，也不替代独立战斗质量验证。

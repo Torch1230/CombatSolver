@@ -4,7 +4,7 @@ using CombatSolver;
 
 namespace OfflineSearchHarness;
 
-internal static class OutcomeValueTraining
+internal static partial class OutcomeValueTraining
 {
     internal static int Audit(string pathsFile, string modelFile, string output)
     {
@@ -62,15 +62,7 @@ internal static class OutcomeValueTraining
     {
         Stopwatch clock = Stopwatch.StartNew();
         using var specification = JsonDocument.Parse(File.ReadAllText(pathsFile));
-        string partition = specification.RootElement.ValueKind == JsonValueKind.Object
-            && specification.RootElement.TryGetProperty("partition", out var part)
-            ? part.GetString() ?? throw new InvalidDataException("Missing training partition.") : "shared";
-        if (partition is not ("shared" or "character")) throw new InvalidDataException("Unknown training partition.");
-        string pairSelection = specification.RootElement.ValueKind == JsonValueKind.Object
-            && specification.RootElement.TryGetProperty("pairSelection", out var selection)
-            ? selection.GetString() ?? throw new InvalidDataException("Missing pair selection.") : "all";
-        if (pairSelection is not ("all" or "highest-policy-tier"))
-            throw new InvalidDataException("Unknown training pair selection.");
+        var (partition, pairSelection) = ReadPolicy(specification.RootElement);
         string[] excludedFeaturePrefixes = ReadExcludedFeaturePrefixes(specification.RootElement);
         // Sample once in the original global root order. Partitioning never
         // restarts the row sampler or resamples a character's observations.
@@ -192,6 +184,20 @@ internal static class OutcomeValueTraining
             roots.Add((Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(files[0])))!, rows.ToArray()));
         }
         return roots;
+    }
+
+    private static (string Partition, string PairSelection) ReadPolicy(JsonElement input)
+    {
+        string partition = input.ValueKind == JsonValueKind.Object
+            && input.TryGetProperty("partition", out var part)
+            ? part.GetString() ?? throw new InvalidDataException("Missing training partition.") : "shared";
+        if (partition is not ("shared" or "character")) throw new InvalidDataException("Unknown training partition.");
+        string pairSelection = input.ValueKind == JsonValueKind.Object
+            && input.TryGetProperty("pairSelection", out var selection)
+            ? selection.GetString() ?? throw new InvalidDataException("Missing pair selection.") : "all";
+        if (pairSelection is not ("all" or "highest-policy-tier"))
+            throw new InvalidDataException("Unknown training pair selection.");
+        return (partition, pairSelection);
     }
 
     private static string[] ReadExcludedFeaturePrefixes(JsonElement input)

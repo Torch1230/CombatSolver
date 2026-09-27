@@ -14,6 +14,8 @@
 
 离线宿主输入可显式指定 `excludedFeaturePrefixes` 做列消融，默认空列表。`ReadRoots` 先完成所有原始观察/标签验证，再在相同抽样行复制时排除按 Ordinal 匹配的列；不更改标签、根/组或抽样序列，不写回源观察。非法前缀、重复前缀和丢失所有列明确失败。被移除的字段只影响这次拟合可使用的信息，模型仍按已有 schema9 稀疏列推理，Search 不解析训练列筛选配置。
 
+`SearchOutcomeValueModel.PrepareTraining` 是内置与可选外部拟合共用的偏好准备入口，独占同池去重、根权重、配对抽样、参与行压缩与跨根特征支持度；`FitLinearFoundation` 共用线性基础项。`OutcomeValueTraining.Export` 只在离线宿主序列化稠密 float32 零值矩阵、精确配对边、基础分与摘要，导出目录必须为空；Python 不重建终局标签。`tools/OutcomeValuation/xgboost_fit.py` 为可选 CPU 研究训练器，使用配对逻辑损失的对角 Hessian 上界，导出普通 schema9 模型；模型使用原 C# 推理，无 Python/原生 XGBoost 运行时依赖。严格 `<` 分裂以 double 前驱阈值适配 C# `<=`；浮点累计误差与开发战斗质量分别验证。外部拟合不能成为额外玩家模式。
+
 `OutcomeModelFile` 只在离线宿主拥有共享/角色条件文件解析及模型选择。条件容器 `CharacterSchema=1` 内嵌普通模型文档，每个头仍验证 schema9 与游戏 MVID；缺失角色、混合/歧义身份和任一坏头显式拒绝。`ModRuntime` 在搜索前按已捕获根的原生角色身份选择一个预测器，Search 不读取容器或文件。`OutcomeValueTraining` 的 `partition=character` 先按全局输入顺序抽样一次，再以观察中的角色分组拟合并输出自包含完整/线性容器；不逐角色重启行抽样。默认 shared 与角色容器均使用当前模型 schema；schema8 旧模型明确拒绝。
 
 
