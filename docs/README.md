@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [基础价值与交互联合拟合](strategy/joint-factor-ranking-20260928.md)：联合梯度和原单位合同通过，两档候选早期排序退化，未进入实战。
+
 - [训练侧模型轨迹的匹配纠正](strategy/training-only-rollin-20260928.md)：120次同根配对搜索，56对增补；候选一场胜利改善、两场退化，未启用。
 
 - [直接树排序消融](strategy/direct-tree-ranking-20260928.md)：去掉已学习线性项后三组留出均退化，未进入实战或启用。

@@ -1,0 +1,429 @@
+{
+  "study": "v60",
+  "sourceCommit": "09d41dab",
+  "runtimeDefaultChanged": false,
+  "finalTestOpened": false,
+  "artifacts": {
+    "protocol.json": {
+      "innerExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/export",
+      "innerExportSha256": "5753f09d7d3e0de37e7f6c28137c16f38fcfc1c97b177c05d7978c2a9a78bb07",
+      "innerExportSeconds": 63.80612820200622,
+      "fullExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/export",
+      "fullExportSha256": "8d1241771cf551f10e5fd63d3f84a8aaec3ba7dd09df09d9b0f8e8a89d05a125",
+      "fullExportSeconds": 81.31428505596705,
+      "innerRoots": 516,
+      "selectionRoots": 100,
+      "fullRoots": 616,
+      "selectionRule": "One global minimum all-turn character->family->root loss; exact tie lower depth then higher Hessian. Must beat reused516-root depth6/Hessian3 candidate for a single full refit, parity and fixed5+10development. No per-role or per-card selection. Finalsealed.",
+      "completeModelLimitSeconds": 1200,
+      "studyLimitSeconds": 1200,
+      "auditEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine",
+      "evaluationEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine",
+      "baselineIndex": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/baseline-index.json",
+      "diagnosticScope": "Split-support calculation used the previous394-root graph, not validation outcomes; thresholds in this grid apply uniformly to all features.",
+      "finalTestOpened": false,
+      "baselineAudit": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/audit.json",
+      "runtimePromotion": false,
+      "selectionHashes": {
+        "selection-inputs.json": "f752f2b8a6461da3af8d4c59c2f1d928ca0812f09df42561cf33cdab6d04cc9b",
+        "selection-records.json": "01f196c430130f04185c6ab749e0e51d6e3a92821b4658301aff6c28bd33cdd6"
+      },
+      "createdUtc": "2026-09-27T22:20:16.314198+00:00",
+      "sourceBase": "833ebbb",
+      "hypothesis": "Learn additive utility and rank8 interactions jointly instead of holding the first-stage linear model fixed. Same observed state graph and labels, no card utility table.",
+      "arms": [
+        {
+          "name": "joint-factor-l0p1",
+          "factorRegularization": 0.1
+        },
+        {
+          "name": "joint-factor-l1",
+          "factorRegularization": 1.0
+        }
+      ],
+      "linearRegularization": 0.001,
+      "rank": 8,
+      "optimizer": {
+        "maxiter": 128,
+        "maxls": 20,
+        "ftol": 1e-09,
+        "gtol": 1e-06
+      },
+      "primaryMetric": "Early (later endpoint turn<=3) pair accuracy; equal role then canonical encounter family then root. Select all heads together, tie by lower early logloss then stronger regularization. Only strictly higher early accuracy than the same-data residual baseline permits one full refit and strict5+10development. Report all-turn metrics unchanged.",
+      "metricRationale": "The search consumes ordering, not calibrated probabilities; previous logloss gains did not imply stronger decisions. This is an explicitly changed development protocol declared before fitting, not a confirmatory or final test.",
+      "reference": "https://www.libfm.org/",
+      "scripts": {
+        "ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+        "research_metrics.py": "4de57f64c042491598f4f8d9b86d5e2e7525d35b2b14b3f9d1a6e3cdad8c7bd2",
+        "evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+        "joint_factor_fit.py": "01e61e549ff0b564b814a2a65c76469b7ec86ce42f7fadae1f887c5509e95d8f",
+        "dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+        "factor_fit.py": "3527c28dbb261e2f4804e4cf299a3995b0db249044d01867a90f8272e244cb14",
+        "overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+      },
+      "contracts": {
+        "file": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v60/contracts.log",
+        "sha256": "c915e59f7fae80c91aa2ab4016e7b8f5fcf7ea21d0acb03c0356d80550d1300b"
+      },
+      "additionalHashes": {
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v60/run.py": "92a1df6316ca291442949a8d61b19bdf176e2c8398d204b8b93929375a4d829f",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v60/early_metrics.py": "2f1eaeb202830a9c6a9ecca7a49929556287380e7896270c4b7cda9d717a6350",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v60/test_joint_factor.py": "43dc45ef873a1e6ee8ba0e20cdb3fd59a5f5ec942d1e872d6093648dbf51e7e5",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/audit.json": "f67673eba9b00f5b439747e93288cbb481c81cc26685e782817d24992541c96e",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v60/selection-inputs.json": "f752f2b8a6461da3af8d4c59c2f1d928ca0812f09df42561cf33cdab6d04cc9b",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v60/selection-records.json": "01f196c430130f04185c6ab749e0e51d6e3a92821b4658301aff6c28bd33cdd6",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine/CombatSolver.dll": "6d732216d35c75a10e6e151b10c9750931fa96d54e406b8692326ab4692fb0e4",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine/harness/OfflineSearchHarness.dll": "8bd7e5f94b687cade5f53f3a698d598c8ccff81510b1e4a3c336a019c1990598",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine/CombatSolver.dll": "a1c767f2e788ada0e3bdbde1830e3fb032fdd42e53dfef34014864971d3d8af2",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine/harness/OfflineSearchHarness.dll": "84fc3a472085162a4a262fcea326bb9e4bbd3389ef495f78add8769dda60ea8b"
+      }
+    },
+    "status.json": {
+      "phase": "completed",
+      "seconds": 80.11947784305084,
+      "updatedUtc": "2026-09-27T22:23:56.979287+00:00",
+      "childSeconds": {
+        "fit": 61.3100689870771,
+        "audit": 18.768752326024696
+      }
+    },
+    "summary.json": {
+      "arm": "joint-factor-l1",
+      "baselineEarlyAccuracy": 0.6919188502675473,
+      "candidateEarlyAccuracy": 0.6719826096448729,
+      "baselineEarlyLoss": 0.5770221992741953,
+      "candidateEarlyLoss": 0.6281324281507055,
+      "candidateAllTurnLoss": 0.45756776359118095,
+      "fullFit": false,
+      "finalTestOpened": false,
+      "runtimeDefaultChanged": false,
+      "reason": "No joint interaction model beats the baseline early-turn pair accuracy; no external games."
+    }
+  },
+  "contracts": "4 joint objective/gradient/unit/weight/context contracts passed; max finite-difference error 1.0355876399470443e-10\n",
+  "candidates": [
+    {
+      "name": "joint-factor-l0p1",
+      "factorRegularization": 0.1,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v60/joint-factor-l0p1/fitted/model.json",
+      "focus": {
+        "loss": 0.6241320427837102,
+        "accuracy": 0.6632489966403169,
+        "roles": {
+          "SILENT": {
+            "loss": 0.6484907346460845,
+            "accuracy": 0.6054845463987685,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.6351513642359472,
+            "accuracy": 0.7099456305131145,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.6520337184747731,
+            "accuracy": 0.603292892037305,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.5171531118124144,
+            "accuracy": 0.7449863975959938,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6678312847493316,
+            "accuracy": 0.6525355166564026,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.4494221741920929,
+      "macroMeanAccuracy": 0.7900298729313376,
+      "zeroPairRoots": 0,
+      "cost": {
+        "fitProcessSeconds": 30.281229816027917,
+        "historicalExportSeconds": 63.80612820200622,
+        "completeModelSeconds": 94.08735801803414,
+        "returnCode": 0
+      },
+      "fitter": {
+        "backend": "joint-factor-ranking",
+        "rank": 8,
+        "linearRegularization": 0.001,
+        "factorRegularization": 0.1,
+        "options": {
+          "maxiter": 128,
+          "maxls": 20,
+          "ftol": 1e-09,
+          "gtol": 1e-06
+        },
+        "heads": [
+          {
+            "character": "DEFECT",
+            "rows": 35183,
+            "pairs": 70406,
+            "features": 3990,
+            "linearActive": 3369,
+            "factorActive": 3522,
+            "initialPairLoss": 47.157397796024334,
+            "finalPairLoss": 32.24530658411096,
+            "initialObjective": 0.6081765471401539,
+            "finalObjective": 0.35779143614638,
+            "iterations": 128,
+            "objectiveCalls": 134,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 6.990136924083345
+          },
+          {
+            "character": "IRONCLAD",
+            "rows": 36821,
+            "pairs": 84208,
+            "features": 4046,
+            "linearActive": 3521,
+            "factorActive": 3652,
+            "initialPairLoss": 54.152311497891304,
+            "finalPairLoss": 37.85369287624972,
+            "initialObjective": 0.6644031701018287,
+            "finalObjective": 0.39524453402544557,
+            "iterations": 128,
+            "objectiveCalls": 133,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 7.248021273990162
+          },
+          {
+            "character": "NECROBINDER",
+            "rows": 21857,
+            "pairs": 41620,
+            "features": 3640,
+            "linearActive": 3113,
+            "factorActive": 3276,
+            "initialPairLoss": 44.50987597224991,
+            "finalPairLoss": 25.428205199715983,
+            "initialObjective": 0.6376055065894032,
+            "finalObjective": 0.35164815823138706,
+            "iterations": 128,
+            "objectiveCalls": 134,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 4.7045414639869705
+          },
+          {
+            "character": "REGENT",
+            "rows": 27337,
+            "pairs": 60893,
+            "features": 4220,
+            "linearActive": 3657,
+            "factorActive": 3825,
+            "initialPairLoss": 46.908876065998875,
+            "finalPairLoss": 29.565253007675338,
+            "initialObjective": 0.6228640771860664,
+            "finalObjective": 0.34328973460261036,
+            "iterations": 128,
+            "objectiveCalls": 134,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 5.640024340944365
+          },
+          {
+            "character": "SILENT",
+            "rows": 28800,
+            "pairs": 59502,
+            "features": 3622,
+            "linearActive": 3026,
+            "factorActive": 3176,
+            "initialPairLoss": 43.36511395939485,
+            "finalPairLoss": 29.887247275466542,
+            "initialObjective": 0.5852076884878008,
+            "finalObjective": 0.3574020475808951,
+            "iterations": 128,
+            "objectiveCalls": 133,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 5.18750962195918
+          }
+        ],
+        "seconds": 29.837929961038753,
+        "peakWorkingSetBytes": 1324589056
+      }
+    },
+    {
+      "name": "joint-factor-l1",
+      "factorRegularization": 1.0,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v60/joint-factor-l1/fitted/model.json",
+      "focus": {
+        "loss": 0.6281324281507055,
+        "accuracy": 0.6719826096448729,
+        "roles": {
+          "SILENT": {
+            "loss": 0.6580001737707957,
+            "accuracy": 0.6312507095117168,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.6319292519218155,
+            "accuracy": 0.7044095704663993,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.6641872213820535,
+            "accuracy": 0.6599326491310197,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.5357955066528057,
+            "accuracy": 0.7234096889602862,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6507499870260568,
+            "accuracy": 0.6409104301549424,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.45756776359118095,
+      "macroMeanAccuracy": 0.7952585577274264,
+      "zeroPairRoots": 0,
+      "cost": {
+        "fitProcessSeconds": 31.028839171049185,
+        "historicalExportSeconds": 63.80612820200622,
+        "completeModelSeconds": 94.8349673730554,
+        "returnCode": 0
+      },
+      "fitter": {
+        "backend": "joint-factor-ranking",
+        "rank": 8,
+        "linearRegularization": 0.001,
+        "factorRegularization": 1.0,
+        "options": {
+          "maxiter": 128,
+          "maxls": 20,
+          "ftol": 1e-09,
+          "gtol": 1e-06
+        },
+        "heads": [
+          {
+            "character": "DEFECT",
+            "rows": 35183,
+            "pairs": 70406,
+            "features": 3990,
+            "linearActive": 3369,
+            "factorActive": 3522,
+            "initialPairLoss": 47.157397796024334,
+            "finalPairLoss": 36.23114614223137,
+            "initialObjective": 1.8714097489804467,
+            "finalObjective": 0.369992351158365,
+            "iterations": 128,
+            "objectiveCalls": 133,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 6.840246564010158
+          },
+          {
+            "character": "IRONCLAD",
+            "rows": 36821,
+            "pairs": 84208,
+            "features": 4046,
+            "linearActive": 3521,
+            "factorActive": 3652,
+            "initialPairLoss": 54.152311497891304,
+            "finalPairLoss": 43.07352711390379,
+            "initialObjective": 1.9723064570664217,
+            "finalObjective": 0.41200492468652733,
+            "iterations": 128,
+            "objectiveCalls": 133,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 7.263893474009819
+          },
+          {
+            "character": "NECROBINDER",
+            "rows": 21857,
+            "pairs": 41620,
+            "features": 3640,
+            "linearActive": 3113,
+            "factorActive": 3276,
+            "initialPairLoss": 44.50987597224991,
+            "finalPairLoss": 31.96959919372224,
+            "initialObjective": 1.803774200673317,
+            "finalObjective": 0.38353182988797596,
+            "iterations": 128,
+            "objectiveCalls": 136,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 4.8242605519481
+          },
+          {
+            "character": "REGENT",
+            "rows": 27337,
+            "pairs": 60893,
+            "features": 4220,
+            "linearActive": 3657,
+            "factorActive": 3825,
+            "initialPairLoss": 46.908876065998875,
+            "finalPairLoss": 35.717728836838226,
+            "initialObjective": 1.995146225419079,
+            "finalObjective": 0.3669046309049905,
+            "iterations": 128,
+            "objectiveCalls": 134,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 5.9842443589586765
+          },
+          {
+            "character": "SILENT",
+            "rows": 28800,
+            "pairs": 59502,
+            "features": 3622,
+            "linearActive": 3026,
+            "factorActive": 3176,
+            "initialPairLoss": 43.36511395939485,
+            "finalPairLoss": 33.98833713715167,
+            "initialObjective": 1.7184047557472533,
+            "finalObjective": 0.3719525976456176,
+            "iterations": 128,
+            "objectiveCalls": 134,
+            "converged": false,
+            "optimizerStatus": 1,
+            "optimizerMessage": "STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT",
+            "seconds": 5.616268076002598
+          }
+        ],
+        "seconds": 30.59609803999774,
+        "peakWorkingSetBytes": 1324728320
+      }
+    }
+  ],
+  "preparationFailure": "Initial source hashing included the Python bytecode cache directory and failed before protocol publication or fitting. Restricted the hash manifest to files."
+}
