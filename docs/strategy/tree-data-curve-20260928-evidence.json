@@ -1,0 +1,949 @@
+{
+  "study": "v54",
+  "sourceCommit": "e9293d9",
+  "sourceChanged": false,
+  "snapshotRecords": 892,
+  "snapshotStates": {
+    "collected": 890,
+    "quarantined": 2
+  },
+  "protocol": {
+    "createdUtc": "2026-09-27T21:16:41.102443+00:00",
+    "hypothesis": "Additional isolated classic-teacher roots may benefit the selected depth6 regularized tree more than earlier linear/FM fits.",
+    "baselineRoots": 394,
+    "selectionRoots": 100,
+    "heldoutFamilies": [
+      "BOWLBUGS",
+      "ENTOMANCER_ELITE",
+      "FABRICATOR",
+      "MYTES",
+      "RUBY_RAIDERS",
+      "SCROLLS_OF_BITING",
+      "SOUL_NEXUS_ELITE",
+      "TEST_SUBJECT_BOSS",
+      "THIEVING_HOPPER"
+    ],
+    "arms": [
+      {
+        "name": "roots-516",
+        "extraRoots": 122,
+        "trainingRoots": 516,
+        "fullTrainingRoots": 616
+      },
+      {
+        "name": "roots-638",
+        "extraRoots": 244,
+        "trainingRoots": 638,
+        "fullTrainingRoots": 738
+      }
+    ],
+    "depth": 6,
+    "minimumLeafHessian": 3,
+    "rounds": 64,
+    "maximumRowsPerRoot": 512,
+    "dataSelection": "One frozen atomic r7 status snapshot; completed classic roots only; exclude all learner roll-ins, inner holdout families, near decks and exact full-root duplicates. Completed raw files must retain their stored hashes.",
+    "comparisonCaveat": "Nested balanced samples with new seeds/builds, not replicated causal estimates of independent family diversity.",
+    "selectionRule": "Minimum all-turn character->family->root loss; exact tie fewer roots. Must beat fixed394-root depth6 baseline to receive exactly one full refit, parity and5+10outergate. Finalsealed.",
+    "baseline": {
+      "depth": 6,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v53/depth-6/fitted/model.json",
+      "macroMeanLoss": 0.41272562095923154,
+      "macroMeanAccuracy": 0.8412234491795805,
+      "zeroPairRoots": 0
+    },
+    "completeModelLimitSeconds": 1200,
+    "studyLimitSeconds": 1200,
+    "fittingEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine",
+    "evaluationEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine",
+    "baselineIndex": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/baseline-index.json",
+    "finalTestOpened": false,
+    "runtimeDefaultChanged": false,
+    "frozenInputs": {
+      "source-status-snapshot.json": "779540e3c216692e4f64496bc7135b2b23f08da8d78fab9ae97c6b8c1dd8f655",
+      "augmentation-records.json": "ae126adcadf797848437b6e2e120fb576f0d9689c16ab8c21c24444947055d93",
+      "selection-inputs.json": "f752f2b8a6461da3af8d4c59c2f1d928ca0812f09df42561cf33cdab6d04cc9b",
+      "eligibility.json": "02ec08434e0110737b88beb0ec2bd022b4b09f6aeb940f3a30b0565cfb2a2218",
+      "selection-records.json": "01f196c430130f04185c6ab749e0e51d6e3a92821b4658301aff6c28bd33cdd6",
+      "roots-638/training-inputs.json": "c76653cc01bdd11294b8c2e865f902937702b098c743a24c91cd9e8775dce951",
+      "roots-638/full-training-records.json": "1ac9ec3786edf379a67ad7239744eecdc8385ffb3b9c78aaec12fc25c6127b15",
+      "roots-638/full-training-inputs.json": "263349c5053091023b03d88e108af7efd7742252be40e1491fa31eaca8fc4276",
+      "roots-638/inner-separation.json": "0d668c5b6b763cb24c04eaab3936ccdde96363621aa41038c7c8a45b092bf3b4",
+      "roots-638/training-records.json": "2fc0a49a435540124f8a80bdcedaf5680378476ec6f01ca783468d0c07d968f3",
+      "roots-638/outer-separation.json": "969e3b55eeb1898bddf72b6be6a2abf2b561adf24a62e9203f8eeb307f5a0a93",
+      "roots-516/training-inputs.json": "37e956c0e7711a4ab193480916432017677a7b18d0cdeb900c1600df4ffc80a3",
+      "roots-516/full-training-records.json": "02c400d94725e7fae1e799c9daab705187541feda3ddc9fda900828a00ac8492",
+      "roots-516/full-training-inputs.json": "4eb48aad4669a1fe28d06e200f138cdca4f956609df83c7479c2fb8539975c33",
+      "roots-516/inner-separation.json": "bf57f6e8c5109bedc2fa1726fcf2856d33935547809335b55772e52fc99892e7",
+      "roots-516/training-records.json": "08174297feb24d00e8f14348d7d49fd84519f931e7d647c1678ae8604ddef2e3",
+      "roots-516/outer-separation.json": "8908cd9f46889c6d2d3e6472e6b86f6ba51cd9c26fca2bd010601687e2dc2524"
+    },
+    "scripts": {
+      "xgboost_fit.py": "73f81682078a0ca5b2e54eb636a992462ea0b9eadf28f986c0f2f9f9f6940774",
+      "ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+      "research_metrics.py": "4de57f64c042491598f4f8d9b86d5e2e7525d35b2b14b3f9d1a6e3cdad8c7bd2",
+      "evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+      "dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+      "overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+    }
+  },
+  "selectionMetrics": [
+    {
+      "arm": "roots-516",
+      "roots": 516,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/fitted/model.json",
+      "macroMeanLoss": 0.41054867492063524,
+      "macroMeanAccuracy": 0.8420619300939634,
+      "zeroPairRoots": 0
+    },
+    {
+      "arm": "roots-638",
+      "roots": 638,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-638/fitted/model.json",
+      "macroMeanLoss": 0.4130285147677331,
+      "macroMeanAccuracy": 0.8310084196689707,
+      "zeroPairRoots": 0
+    }
+  ],
+  "artifacts": {
+    "eligibility.json": {
+      "sourceCounts": {
+        "exact-root-duplicate-excluded": 118,
+        "heldout-family-excluded": 155,
+        "not-preferences": 214,
+        "learner-roll-in-excluded": 161
+      },
+      "eligible": 244,
+      "characters": {
+        "NECROBINDER": 46,
+        "SILENT": 49,
+        "REGENT": 46,
+        "IRONCLAD": 50,
+        "DEFECT": 53
+      },
+      "rootIdentityChecks": "Both full root stamps hashed; no exact duplicate across 494 old and admitted new roots."
+    },
+    "summary.json": {
+      "arm": "roots-516",
+      "baselineLoss": 0.41272562095923154,
+      "candidateLoss": 0.41054867492063524,
+      "fullFit": true,
+      "finalTestOpened": false,
+      "runtimeDefaultChanged": false,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/fitted/model.json",
+      "modelSha256": "e79fbc38801882ae2ebf6fca9aab72747d55a41669ab7000b0ea985ef74b3841",
+      "development": {
+        "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/fitted/model.json",
+        "modelSha256": "e79fbc38801882ae2ebf6fca9aab72747d55a41669ab7000b0ea985ef74b3841",
+        "regressions": [
+          "unseen-necrobinder-kaiser_crab_boss"
+        ],
+        "improvements": [],
+        "unverified": [],
+        "fullDevelopmentCoverage": false,
+        "eligibleForFinalReview": false
+      }
+    },
+    "status.json": {
+      "phase": "completed",
+      "seconds": 406.6617997669382,
+      "updatedUtc": "2026-09-27T21:24:20.676435+00:00",
+      "childSeconds": {
+        "export": 227.69327150203753,
+        "fit": 81.59291386010591,
+        "audit": 12.012210630928166,
+        "parity": 0.5012110350653529,
+        "evaluate": 84.57406455697492,
+        "compare-screen": 0.2506354069337249
+      }
+    },
+    "parity.json": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "full/cost.json": {
+      "fitProcessSeconds": 29.282224354101345,
+      "exportSeconds": 81.31428505596705,
+      "completeModelSeconds": 110.59650941006839,
+      "returnCode": 0
+    },
+    "full/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 43048,
+          "pairs": 87486,
+          "initialLoss": 56.541293743025875,
+          "finalLoss": 50.74203230124816,
+          "float32MaxPredictionDrift": 1.2892004939146773e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 6.842534573981538
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 43585,
+          "pairs": 100610,
+          "initialLoss": 63.234750623110955,
+          "finalLoss": 57.20397605184374,
+          "float32MaxPredictionDrift": 8.579436425293352e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 7.277116964920424
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 27890,
+          "pairs": 57827,
+          "initialLoss": 52.4965960959032,
+          "finalLoss": 46.564018541584076,
+          "float32MaxPredictionDrift": 7.2794815473287144e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.282516904058866
+        },
+        {
+          "character": "REGENT",
+          "rows": 32246,
+          "pairs": 72126,
+          "initialLoss": 56.51919591531349,
+          "finalLoss": 50.827530082741234,
+          "float32MaxPredictionDrift": 7.705968734228463e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.1997184560168535
+        },
+        {
+          "character": "SILENT",
+          "rows": 35247,
+          "pairs": 73111,
+          "initialLoss": 51.43166237479153,
+          "finalLoss": 45.91484854568017,
+          "float32MaxPredictionDrift": 7.502363239098031e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.172086520935409
+        }
+      ],
+      "seconds": 28.878363515948877,
+      "peakWorkingSetBytes": 3584012288
+    },
+    "evaluation/report.json": {
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/fitted/model.json",
+      "modelSha256": "e79fbc38801882ae2ebf6fca9aab72747d55a41669ab7000b0ea985ef74b3841",
+      "records": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000834963,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 15.3853643,
+          "rss": 359948288,
+          "nodes": 12000,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 8.0859842,
+          "rss": 329670656,
+          "nodes": 8003,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 243,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 64,
+            "strategicHpDeficit": 64,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9997819946,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 20.1135036,
+          "rss": 367624192,
+          "nodes": 16568,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 97,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 79,
+            "score": -1000003040040,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 19.4873145,
+          "rss": 371818496,
+          "nodes": 14579,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 193,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 10.0783463,
+          "rss": 347127808,
+          "nodes": 6850,
+          "timeBoundary": true
+        }
+      ],
+      "comparisons": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "materialComparison": 0
+        }
+      ],
+      "completed": true,
+      "historicalBaselineTimingIsSpeedProof": false,
+      "regressions": [
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "stage": "screen",
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    },
+    "evaluation/screen-comparison.json": [
+      {
+        "id": "unseen-defect-the_kin_boss",
+        "comparison": 1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000834963,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        }
+      },
+      {
+        "id": "unseen-ironclad-byrdonis_elite",
+        "comparison": 1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000711993,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-necrobinder-kaiser_crab_boss",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 66,
+          "strategicHpDeficit": 66,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 243,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 64,
+          "strategicHpDeficit": 64,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 9997819946,
+          "combatEndedTurn": 9,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-regent-knowledge_demon_boss",
+        "comparison": -1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 75,
+          "strategicHpDeficit": 75,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 97,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 75,
+          "strategicHpDeficit": 75,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 79,
+          "score": -1000003040040,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-silent-knights_elite",
+        "comparison": -1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 193,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 191,
+          "score": -1000010940027,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      }
+    ],
+    "roots-516/cost.json": {
+      "fitProcessSeconds": 22.027120825019665,
+      "exportSeconds": 63.80612820200622,
+      "completeModelSeconds": 85.83324902702589,
+      "returnCode": 0
+    },
+    "roots-516/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 35183,
+          "pairs": 70406,
+          "initialLoss": 47.157397796024334,
+          "finalLoss": 42.54982710232192,
+          "float32MaxPredictionDrift": 1.2347180359029153e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 5.277648807968944
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 36821,
+          "pairs": 84208,
+          "initialLoss": 54.152311497891304,
+          "finalLoss": 49.25773153017032,
+          "float32MaxPredictionDrift": 5.082398976341551e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.422982191084884
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21857,
+          "pairs": 41620,
+          "initialLoss": 44.50987597224991,
+          "finalLoss": 39.54757961870074,
+          "float32MaxPredictionDrift": 6.802798754534933e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.007116722059436
+        },
+        {
+          "character": "REGENT",
+          "rows": 27337,
+          "pairs": 60893,
+          "initialLoss": 46.908876065998875,
+          "finalLoss": 42.15574984832188,
+          "float32MaxPredictionDrift": 7.590206266172572e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.003270494984463
+        },
+        {
+          "character": "SILENT",
+          "rows": 28800,
+          "pairs": 59502,
+          "initialLoss": 43.36511395939485,
+          "finalLoss": 38.556125355197096,
+          "float32MaxPredictionDrift": 6.675782026732691e-06,
+          "float32PairSignChanges": 1,
+          "seconds": 3.8790466330247
+        }
+      ],
+      "seconds": 21.642882468993776,
+      "peakWorkingSetBytes": 2887327744
+    },
+    "roots-516/inner-separation.json": {
+      "sha256": "bf57f6e8c5109bedc2fa1726fcf2856d33935547809335b55772e52fc99892e7",
+      "schema": 2,
+      "splitCounts": {
+        "train": 516,
+        "validation": 100
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5625
+        }
+      ],
+      "maximumDeckSimilarity": 0.5625,
+      "passed": true,
+      "datasetSha256": "a0db89277639a2633c9c68dc902fcae02239d26332549986f52ef0a7220058f0",
+      "trainingRoots": 516,
+      "evaluationRoots": 100
+    },
+    "roots-516/outer-separation.json": {
+      "sha256": "8908cd9f46889c6d2d3e6472e6b86f6ba51cd9c26fca2bd010601687e2dc2524",
+      "schema": 2,
+      "splitCounts": {
+        "train": 616,
+        "validation": 15,
+        "test": 5
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5333333333333333
+        },
+        {
+          "left": "train",
+          "right": "test",
+          "maximumDeckSimilarity": 0.5135135135135135
+        },
+        {
+          "left": "validation",
+          "right": "test",
+          "maximumDeckSimilarity": 0.4594594594594595
+        }
+      ],
+      "maximumDeckSimilarity": 0.5333333333333333,
+      "passed": true,
+      "datasetSha256": "755a4239c95085a6e4a4415a3ed50db4910887824f9b3aa8ed6982b72bf123c8",
+      "trainingRoots": 616,
+      "evaluationRoots": 20
+    },
+    "roots-638/cost.json": {
+      "fitProcessSeconds": 30.2835686809849,
+      "exportSeconds": 82.57285824406426,
+      "completeModelSeconds": 112.85642692504916,
+      "returnCode": 0
+    },
+    "roots-638/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 43912,
+          "pairs": 87632,
+          "initialLoss": 59.53809890077959,
+          "finalLoss": 53.63085245571485,
+          "float32MaxPredictionDrift": 9.3636246596418e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 7.4767818270483986
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 46125,
+          "pairs": 103527,
+          "initialLoss": 65.80098575358865,
+          "finalLoss": 59.807273826641655,
+          "float32MaxPredictionDrift": 7.804611389161664e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 7.7792651419295
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 27821,
+          "pairs": 51865,
+          "initialLoss": 56.37021488732603,
+          "finalLoss": 49.77785638584227,
+          "float32MaxPredictionDrift": 6.9348759890175415e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.288226507953368
+        },
+        {
+          "character": "REGENT",
+          "rows": 33481,
+          "pairs": 74219,
+          "initialLoss": 56.61575273296511,
+          "finalLoss": 50.70888907971334,
+          "float32MaxPredictionDrift": 6.160813347477756e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.2983607230708
+        },
+        {
+          "character": "SILENT",
+          "rows": 34384,
+          "pairs": 69022,
+          "initialLoss": 54.77443574972435,
+          "finalLoss": 49.008930982177546,
+          "float32MaxPredictionDrift": 8.53727304850338e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.910899999900721
+        }
+      ],
+      "seconds": 29.881271661026403,
+      "peakWorkingSetBytes": 3236376576
+    },
+    "roots-638/inner-separation.json": {
+      "sha256": "0d668c5b6b763cb24c04eaab3936ccdde96363621aa41038c7c8a45b092bf3b4",
+      "schema": 2,
+      "splitCounts": {
+        "train": 638,
+        "validation": 100
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.6153846153846154
+        }
+      ],
+      "maximumDeckSimilarity": 0.6153846153846154,
+      "passed": true,
+      "datasetSha256": "e52da821f667007901504e584cee89207a42a103be2908b2982f1b1dc8a70425",
+      "trainingRoots": 638,
+      "evaluationRoots": 100
+    },
+    "roots-638/outer-separation.json": {
+      "sha256": "969e3b55eeb1898bddf72b6be6a2abf2b561adf24a62e9203f8eeb307f5a0a93",
+      "schema": 2,
+      "splitCounts": {
+        "train": 738,
+        "validation": 15,
+        "test": 5
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5333333333333333
+        },
+        {
+          "left": "train",
+          "right": "test",
+          "maximumDeckSimilarity": 0.5135135135135135
+        },
+        {
+          "left": "validation",
+          "right": "test",
+          "maximumDeckSimilarity": 0.4594594594594595
+        }
+      ],
+      "maximumDeckSimilarity": 0.5333333333333333,
+      "passed": true,
+      "datasetSha256": "c01e89617a56b59cc9279ff4962594dc3e72f9d810bde30d6ac71f74539a1f93",
+      "trainingRoots": 738,
+      "evaluationRoots": 20
+    }
+  },
+  "reusedValidation": "Same source, v52 builds/contracts/gates/deployment. All data eligibility and separation freshly audited; no repeated unchanged build."
+}
