@@ -23,6 +23,7 @@ internal sealed record SearchPolicySnapshot(
     public bool UseAutomaticSearch { get; init; }
     internal bool UseObjectiveSearch { get; init; }
     internal SearchOutcomeValueModel? ObjectiveValueModel { get; init; }
+    internal SearchOutcomeValueModel? OutcomeTrainingCollector { get; init; }
     // Created by the automatic coordinator, isolated per root/potion pass; never persisted.
     internal SharedSearchEvidence? SharedEvidence { get; init; }
     internal bool DisableSharedEvidenceForTesting { get; init; }

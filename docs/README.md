@@ -1,4 +1,6 @@
 # CombatSolver 文档导航
+
+- [直方图结果排序与轨迹纠正](strategy/histogram-outcome-ranking-20260927.md)：完成结局监督、少量补查及跨场景验证。
 - [小规模成对排序与场景隔离](strategy/pairwise-outcome-ranking-20260927.md)：6分钟训练、同模板划分纠正、拒绝上线的开发回归与封存测试集。
 
 - [角色与遗物上下文估值实验](strategy/contextual-outcome-values-20260927.md)：非神经网络森林、成对触发状态、训练成本和未通过的替代验收。

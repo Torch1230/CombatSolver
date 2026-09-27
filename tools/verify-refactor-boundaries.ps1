@@ -1761,6 +1761,20 @@ foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'Co
         }
     }
 }
+foreach ($contract in @(
+    @{ Path = (Join-Path $searchRoot 'SearchPolicySnapshot.cs'); Text = 'SearchOutcomeValueModel? OutcomeTrainingCollector' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'CombatTerminalOutcome.Defeat' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '_correctionDepths.Count >= 3' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'action.EndsPlayerTurn || action.Turn != node.Turn' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeCorrections.cs'); Text = 'ObjectiveValueModel = null' }
+)) {
+    if (-not (Select-String -LiteralPath $contract.Path -SimpleMatch $contract.Text -Quiet)) {
+        $violations.Add("Offline correction ownership/terminal contract changed: $($contract.Path) / $($contract.Text)")
+    }
+}
+if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeValueModel.cs') -SimpleMatch 'new CombatBeamSolver(' -Quiet) {
+    $violations.Add('Training correction searches belong in the offline host.')
+}
 foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.Transpositions.cs')) {
     if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch 'PredictPriority' -Quiet) {
         $violations.Add("Learned priority cannot enter final policy or exact dominance: $file")

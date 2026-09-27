@@ -5,7 +5,7 @@ internal sealed partial class CombatBeamSolver
 {
     private void ObserveCompletedOutcome(SearchNode node, SolverInterimResult quality)
     {
-        policy.ObjectiveValueModel?.ObserveVictory(node, quality);
+        policy.OutcomeTrainingCollector?.ObserveCompleted(node, quality);
         SearchCompletedOutcomeObserver? observer = policy.Diagnostics.CompletedOutcomeObserver;
         if (observer == null || !observer.WantsObservation()) return;
         PlanAction? first = null;
@@ -182,7 +182,7 @@ internal sealed partial class CombatBeamSolver
         node.ActionCount,
         node.Score);
 
-    private static PlanAction CopyObservedAction(PlanAction action) => action with
+    internal static PlanAction CopyObservedAction(PlanAction action) => action with
     {
         Choice = action.Choice is { } choice ? CopyObservedChoice(choice) : null,
         NestedChoices = action.NestedChoices is { } nested ? CopyObservedChoices(nested) : null,

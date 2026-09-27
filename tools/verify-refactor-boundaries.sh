@@ -1368,6 +1368,12 @@ for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs CombatBeamSolver.
         fi
     done
 done
+require_fixed "$search_root/SearchPolicySnapshot.cs" 'SearchOutcomeValueModel? OutcomeTrainingCollector' 'training collector must remain separate from the frozen predictor:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'CombatTerminalOutcome.Defeat' 'failed continuation labels require an actual terminal defeat:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" '_correctionDepths.Count >= 3' 'offline correction prefixes lost their bounded ownership:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'action.EndsPlayerTurn || action.Turn != node.Turn' 'correction prefixes must respect the existing first-turn replay boundary:'
+require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeCorrections.cs" 'ObjectiveValueModel = null' 'offline teacher must not recursively use the learned predictor:'
+forbid_fixed "$search_root/SearchOutcomeValueModel.cs" 'new CombatBeamSolver(' 'training correction searches belong in the offline host:'
 for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transpositions.cs; do
     forbid_fixed "$search_root/$file" 'PredictPriority' 'learned priority must not enter final policy or exact dominance:'
 done

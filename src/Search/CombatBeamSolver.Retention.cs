@@ -152,11 +152,13 @@ internal sealed partial class CombatBeamSolver
         if (policy.UseObjectiveSearch)
         {
             List<SearchNode> objectivePool = nodes.ToList();
-            policy.ObjectiveValueModel?.ObservePool(objectivePool, _player);
+            policy.OutcomeTrainingCollector?.ObservePool(objectivePool, _player);
             int boundary = ObserveSearchPathBoundaryInput(objectivePool,
                 SearchPathObservationStage.PruneInput, "objective_input");
             var observer = CreateGlobalRetentionObserver(objectivePool, boundary);
             var selected = RetainObjectives(objectivePool, _profile.BeamWidth);
+            policy.OutcomeTrainingCollector?.ObserveCorrectionBoundary(
+                objectivePool, selected, _player, policy.ObjectiveValueModel!);
             observer?.Invoke(new(objectivePool, [], [], selected, _profile.BeamWidth,
                 _profile.BeamWidth, null, 0, null, null,
                 node => policy.ObjectiveValueModel!.PredictPriority(node, _player)));
@@ -172,7 +174,7 @@ internal sealed partial class CombatBeamSolver
             // backfills the beam with weaker branches and changes which exact lineages win later
             // transposition races; an incumbent is a bound, not a request to refill every lane.
             List<SearchNode> pool = nodes as List<SearchNode> ?? nodes.ToList();
-            policy.ObjectiveValueModel?.ObservePool(pool, _player);
+            policy.OutcomeTrainingCollector?.ObservePool(pool, _player);
             int pathBoundaryId = ObserveSearchPathBoundaryInput(
                 pool, SearchPathObservationStage.PruneInput, "prune_input");
             Action<GlobalRetentionDecision>? observeGlobalRetention =
@@ -253,7 +255,7 @@ internal sealed partial class CombatBeamSolver
                 hasCycleExitWork,
                 cycleRegionTransaction);
             List<SearchNode> bounded = ApplyPrimaryIncumbentBound(finalized);
-            if (policy.ObjectiveValueModel is { } observerModel)
+            if (policy.OutcomeTrainingCollector is { } observerModel)
                 foreach (var observed in bounded) observerModel.ObserveState(observed, _player);
             // Emit all watched final aliases, after every portfolio and the incumbent.
             // The paired value events avoid equating a `with` clone with a dropped route.

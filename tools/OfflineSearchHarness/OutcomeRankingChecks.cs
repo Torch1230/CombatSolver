@@ -46,8 +46,15 @@ internal static class OutcomeRankingChecks
             a with { Groups = [] }, a with { Features = new() { ["x"] = double.NaN } },
         }) Reject(() => new Model().Fit([[invalid, b]]), "invalid/unknown label rejected");
 
+        var loss = b with { Outcome = b.Outcome with { Won = false, Survives = false }, CompletedDefeat = true };
+        Check(Model.CompareWitnesses(a, loss) < 0, "completed victory outranks an observed defeat");
+        Check(Model.CompareWitnesses(loss, loss with { RemainingActions = 100 }) == 0, "defeat effort does not reward faster death");
+        var mixed = new Model();
+        mixed.Fit([[a, b, loss]]);
+        Check(mixed.FittedPairs == 3, "genuine defeat witnesses add cross-outcome preferences");
+        Reject(() => new Model().Fit([[loss with { CompletedDefeat = false }, a]]), "unfinished loss cannot masquerade as a defeat witness");
         Model.Tree tree = new(2, 0.5, 0, new(-1, 0, -2), new(-1, 0, 3));
-        Model.Document document = new(4, ["unused", "also-unused", "counter"],
+        Model.Document document = new(5, ["unused", "also-unused", "counter"],
             typeof(Player).Assembly.ManifestModule.ModuleVersionId, [tree]);
         var loaded = Model.Load(document);
         Check(loaded.ExportModel().FeatureNames.SequenceEqual(["counter"]), "unused columns removed");
@@ -61,6 +68,10 @@ internal static class OutcomeRankingChecks
         var constant = Model.Load(document with { Forest = [new(-1, 0, 2)] });
         Check(Model.Load(constant.ExportModel()).PredictFeaturesForTesting(new Dictionary<string, double>()) == 0.2,
             "constant forest with no split columns roundtrips");
+        var redundant = Model.Load(document with { Forest = [new(2, 0, 0, new(-1, 0, 2), new(-1, 0, 2))] });
+        Check(redundant.ExportModel().FeatureNames.Length == 0
+            && redundant.PredictFeaturesForTesting(new Dictionary<string, double>()) == 0.2,
+            "neutral splits with equal leaf predictions are removed exactly");
         Reject(() => Model.Load(document with { Schema = 3 }), "old label schema rejected");
         Reject(() => Model.Load(document with { GameMvid = Guid.Empty }), "game version mismatch rejected");
         Reject(() => Model.Load(document with { Forest = [new(2, 0, 0)] }), "incomplete tree rejected");
@@ -68,6 +79,31 @@ internal static class OutcomeRankingChecks
         Check(learned.Fit([Enumerable.Range(0, 24).Select(i => Row(i, 24 - i)).ToArray()]), "small pairwise dataset fits");
         Check(learned.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 23 })
             > learned.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 0 }), "gradient learns preferred direction");
+        var conditional = new Model();
+        var contexts = Enumerable.Range(0, 2).Select(context => Enumerable.Range(0, 24)
+            .Select(i => Row(i, context == 0 ? 24 - i : i) with
+                { Features = new() { ["relic/context"] = context, ["x"] = i } }).ToArray()).ToArray();
+        Check(conditional.Fit(contexts), "opposing context preferences fit");
+        double Preference(int context, int x) => conditional.PredictFeaturesForTesting(
+            new Dictionary<string, double> { ["relic/context"] = context, ["x"] = x });
+        Check(Preference(0, 23) > Preference(0, 0) && Preference(1, 23) < Preference(1, 0),
+            "identical actions reverse priority under different root-constant contexts");
+        string directory = Path.Combine(Path.GetTempPath(), "outcome-ranking-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string one = Path.Combine(directory, "one.json"), two = Path.Combine(directory, "two.json");
+            File.WriteAllText(one, JsonSerializer.Serialize(new[] { a }));
+            File.WriteAllText(two, JsonSerializer.Serialize(new[] { b }));
+            string inputs = Path.Combine(directory, "inputs.json");
+            File.WriteAllText(inputs, JsonSerializer.Serialize(new[] { new[] { one, two } }));
+            var grouped = OutcomeValueTraining.ReadRoots(inputs);
+            var groupedModel = new Model();
+            Check(grouped.Count == 1 && grouped[0].Rows.Length == 2, "collection policies retain one actual root");
+            Check(!groupedModel.Fit(grouped.Select(r => r.Rows).ToArray()) && groupedModel.FittedPairs == 0,
+                "independent roll-in pool numbers cannot create false preferences");
+        }
+        finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine($"Outcome ranking: {checks} assertions passed.");
         return 0;
     }

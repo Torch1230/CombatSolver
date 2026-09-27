@@ -7,7 +7,7 @@ namespace CombatSolver;
 // Unlabelled/pruned states stay unknown. All collection and fitting is opt-in offline.
 internal sealed class SearchOutcomeValueModel
 {
-    private const int Schema = 4;
+    private const int Schema = 5;
     private const int MaximumStates = 8192, MaximumGroups = 256, MaximumGroupMembers = 32;
     private readonly record struct ObservationKey(StateFingerprint State, int HpCost, int PotionCost);
     private sealed class Observation(Dictionary<string, double> features)
@@ -20,12 +20,18 @@ internal sealed class SearchOutcomeValueModel
     private readonly Dictionary<ObservationKey, Observation> _observations = [];
     private readonly Dictionary<ObservationKey, double> _predictions = [];
     private int _groups;
+    private readonly List<CorrectionQuery> _correctionQueries = [];
+    private readonly HashSet<int> _correctionDepths = [];
+    private bool _correcting;
     private bool _frozen;
     private string[] _featureNames = [];
     private Tree[]? _forest;
     private Dictionary<string, int> _columns = new(StringComparer.Ordinal);
+    private HashSet<string> _prefixes = [];
     private double[] _featureScratch = [];
     private float[] _predictionValues = [];
+    private long _predictionCalls, _cacheHits, _featureTicks, _forestTicks;
+    internal bool MeasurePerformance { get; set; }
     private const double LearningRate = 0.1;
     internal bool IsFitted => _forest != null;
     internal int FittedPairs { get; private set; }
@@ -36,7 +42,7 @@ internal sealed class SearchOutcomeValueModel
 
     internal void ObserveState(SearchNode node, Player player)
     {
-        if (_frozen || !node.Snapshot.HasSimulator || node.HasPredictionRisk
+        if (_frozen || _correcting || !node.Snapshot.HasSimulator || node.HasPredictionRisk
             || node.IsTerminal || node.BoundaryReason != SearchBoundaryReason.None) return;
         var key = Key(node);
         if (_observations.Count < MaximumStates && !_observations.ContainsKey(key))
@@ -45,7 +51,7 @@ internal sealed class SearchOutcomeValueModel
 
     internal void ObservePool(IReadOnlyList<SearchNode> nodes, Player player)
     {
-        if (_frozen || _groups >= MaximumGroups || nodes.Count < 2) return;
+        if (_frozen || _correcting || _groups >= MaximumGroups || nodes.Count < 2) return;
         int group = _groups++;
         int count = Math.Min(MaximumGroupMembers, nodes.Count);
         for (int i = 0; i < count; i++)
@@ -58,9 +64,62 @@ internal sealed class SearchOutcomeValueModel
         }
     }
 
-    internal void ObserveVictory(SearchNode node, SolverInterimResult quality)
+    // Detached first-turn prefixes only: the fixed-prefix replay contract does
+    // not accept EndTurn or a root's initial choice transaction. No state graphs
+    // survive this synchronous pruning callback.
+    internal sealed record CorrectionQuery(PlanAction[] Prefix, StateFingerprint State, int HpCost, int PotionCost);
+    internal void ObserveCorrectionBoundary(IReadOnlyList<SearchNode> pool, IReadOnlyList<SearchNode> selected,
+        Player player, SearchOutcomeValueModel predictor)
     {
-        if (_frozen || !quality.Won || !quality.Survives || node.HasPredictionRisk
+        if (_frozen || _correcting || _correctionDepths.Count >= 3 || _groups >= MaximumGroups) return;
+        var retained = selected.LastOrDefault(Eligible);
+        if (retained == null || _correctionDepths.Contains(retained.ActionCount)) return;
+        var selectedKeys = selected.Select(Key).ToHashSet();
+        var dropped = pool.Where(n => Eligible(n) && n.ActionCount == retained.ActionCount
+                && !selectedKeys.Contains(Key(n)))
+            .OrderByDescending(n => predictor.PredictPriority(n, player)).FirstOrDefault();
+        if (dropped == null) return;
+        ObserveState(retained, player); ObserveState(dropped, player);
+        if (!_observations.TryGetValue(Key(retained), out var a) || a.Groups.Count >= 8
+            || !_observations.TryGetValue(Key(dropped), out var b) || b.Groups.Count >= 8) return;
+        int group = _groups++;
+        a.Groups.Add(group); b.Groups.Add(group);
+        _correctionDepths.Add(retained.ActionCount);
+        foreach (var node in new[] { retained, dropped })
+        {
+            List<PlanAction> actions = [];
+            for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
+                if (cursor.Action is { } action) actions.Add(CombatBeamSolver.CopyObservedAction(action));
+            actions.Reverse();
+            var key = Key(node);
+            _correctionQueries.Add(new(actions.ToArray(), key.State, key.HpCost, key.PotionCost));
+        }
+
+        static bool Eligible(SearchNode node)
+        {
+            if (node.ActionCount is < 1 or > 96 || node.IsTerminal || node.HasPredictionRisk
+                || node.BoundaryReason != SearchBoundaryReason.None || !node.Snapshot.HasSimulator) return false;
+            for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
+                if (cursor.TurnSetupChoices is { Count: > 0 }
+                    || cursor.Action is { } action && (action.EndsPlayerTurn || action.Turn != node.Turn)) return false;
+            return true;
+        }
+    }
+
+    internal CorrectionQuery[] BeginCorrections()
+    {
+        _correcting = true; // Teacher adds witnesses, never more collection pools.
+        return _correctionQueries.ToArray();
+    }
+    internal SolverInterimResult? CorrectionWitness(CorrectionQuery query)
+        => _observations[new(query.State, query.HpCost, query.PotionCost)].Outcome;
+
+    internal void ObserveCompleted(SearchNode node, SolverInterimResult quality)
+    {
+        bool victory = quality.Won && quality.Survives;
+        bool defeat = !quality.Won && !quality.Survives && node.Snapshot.PlayerDead
+            && node.Snapshot.TerminalStamp is { Outcome: CombatTerminalOutcome.Defeat };
+        if (_frozen || (!victory && !defeat) || node.HasPredictionRisk
             || node.BoundaryReason != SearchBoundaryReason.None) return;
         // The existing final-policy result includes post-combat healing, max-HP,
         // boss relief, death saves and explicit user goals. The old Score is omitted.
@@ -79,7 +138,7 @@ internal sealed class SearchOutcomeValueModel
     }
 
     internal sealed record TrainingRow(Dictionary<string, double> Features,
-        SolverInterimResult Outcome, int RemainingActions, int[] Groups);
+        SolverInterimResult Outcome, int RemainingActions, int[] Groups, bool CompletedDefeat = false);
     internal sealed record Tree(int Feature, double Threshold, double Mean, Tree? Left = null, Tree? Right = null)
     {
         internal double Predict(float[] values)
@@ -91,7 +150,7 @@ internal sealed class SearchOutcomeValueModel
     }
     internal sealed record Document(int Schema, string[] FeatureNames, Guid GameMvid, Tree[] Forest);
     internal TrainingRow[] ExportRows() => _observations.Values.Where(o => o.Outcome != null && o.Groups.Count != 0)
-        .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray())).ToArray();
+        .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won)).ToArray();
     internal Document ExportModel() => new(Schema, _featureNames, typeof(Player).Assembly.ManifestModule.ModuleVersionId,
         _forest ?? throw new InvalidOperationException("No fitted ranker."));
     internal static SearchOutcomeValueModel Load(Document document)
@@ -125,7 +184,9 @@ internal sealed class SearchOutcomeValueModel
         foreach (var root in roots)
         {
             int offset = rows.Count;
-            if (root.Any(r => r.Features.Count == 0 || !r.Outcome.Won || !r.Outcome.Survives
+            if (root.Any(r => r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
+                || !(r.Outcome.Won && r.Outcome.Survives && !r.CompletedDefeat
+                    || !r.Outcome.Won && !r.Outcome.Survives && r.CompletedDefeat)
                 || r.Outcome.Score != 0 || r.RemainingActions < 0 || r.Groups.Length == 0
                 || r.Features.Any(x => string.IsNullOrWhiteSpace(x.Key) || !double.IsFinite(x.Value))))
                 throw new InvalidDataException("Invalid witnessed ranking row.");
@@ -156,12 +217,29 @@ internal sealed class SearchOutcomeValueModel
         FittedPairs = pairs.Count;
         if (pairs.Count < 2) return false;
         _featureNames = rows.SelectMany(r => r.Features.Keys).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-        float[][] x = rows.Select(r => _featureNames.Select(n => (float)r.Features.GetValueOrDefault(n)).ToArray()).ToArray();
-        int[] active = Enumerable.Range(0, _featureNames.Length).Where(f => x.Any(r => r[f] != x[0][f])).ToArray();
         int[] indices = pairs.SelectMany(p => new[] { p.Preferred, p.Other }).Distinct().Order().ToArray();
+        // Learn splits from all observed columns. Randomly trying a few sparse
+        // identities left most known preferences tied even on the fitting roots.
+        List<(int Feature, double[] Cuts, byte[] Bins)> columns = [];
+        for (int feature = 0; feature < _featureNames.Length; feature++)
+        {
+            float[] values = rows.Select(r => (float)r.Features.GetValueOrDefault(_featureNames[feature])).ToArray();
+            float[] distinct = indices.Select(i => values[i]).Distinct().Order().ToArray();
+            if (distinct.Length < 2) continue;
+            int count = Math.Min(31, distinct.Length - 1);
+            double[] cuts = Enumerable.Range(0, count)
+                .Select(i => (double)distinct[(i + 1) * distinct.Length / (count + 1) - 1]).ToArray();
+            byte[] bins = new byte[rows.Count];
+            foreach (int i in indices)
+            {
+                int bin = Array.BinarySearch(cuts, (double)values[i]);
+                bins[i] = checked((byte)(bin < 0 ? ~bin : bin));
+            }
+            columns.Add((feature, cuts, bins));
+        }
         double[] scores = new double[rows.Count], gradient = new double[rows.Count], hessian = new double[rows.Count];
         List<Tree> trees = [];
-        for (int round = 0; round < 48; round++)
+        for (int round = 0; round < 64; round++)
         {
             Array.Clear(gradient); Array.Clear(hessian);
             foreach (var pair in pairs)
@@ -173,7 +251,6 @@ internal sealed class SearchOutcomeValueModel
             }
             Tree tree = Build(indices, 0);
             trees.Add(tree);
-            foreach (int i in indices) scores[i] += LearningRate * tree.Predict(x[i]);
         }
         Compile(_featureNames, trees.ToArray());
         return true;
@@ -183,28 +260,52 @@ internal sealed class SearchOutcomeValueModel
             double g = selected.Sum(i => gradient[i]), h = selected.Sum(i => hessian[i]);
             const double regularization = 0.001;
             double mean = g / (h + regularization);
-            if (depth >= 4 || selected.Length < 12 || active.Length == 0) return new(-1, 0, mean);
-            double bestGain = g * g / (h + regularization); int feature = -1; double threshold = 0;
-            for (int trial = 0; trial < Math.Max(16, (int)Math.Sqrt(active.Length)); trial++)
+            Tree Leaf()
             {
-                int f = active[random.Next(active.Length)];
-                double min = selected.Min(i => x[i][f]), max = selected.Max(i => x[i][f]);
-                if (min == max) continue;
-                double split = min + random.NextDouble() * (max - min);
-                double lg = 0, lh = 0; int leftCount = 0;
+                foreach (int i in selected) scores[i] += LearningRate * mean;
+                return new(-1, 0, mean);
+            }
+            if (depth >= 6 || selected.Length < 12 || columns.Count == 0) return Leaf();
+            double bestGain = g * g / (h + regularization);
+            int feature = -1, splitBin = -1, bestBalance = -1;
+            double threshold = 0;
+            byte[]? bestBins = null;
+            Span<double> binGradient = stackalloc double[32], binHessian = stackalloc double[32];
+            Span<int> binCount = stackalloc int[32];
+            foreach (var column in columns)
+            {
+                binGradient.Clear(); binHessian.Clear(); binCount.Clear();
                 foreach (int i in selected)
                 {
-                    if (x[i][f] > split) continue;
-                    leftCount++; lg += gradient[i]; lh += hessian[i];
+                    int bin = column.Bins[i];
+                    binGradient[bin] += gradient[i];
+                    binHessian[bin] += hessian[i];
+                    binCount[bin]++;
                 }
-                if (leftCount < 4 || selected.Length - leftCount < 4) continue;
-                double gain = lg * lg / (lh + regularization) + (g - lg) * (g - lg) / (h - lh + regularization);
-                if (gain > bestGain + 1e-12) { bestGain = gain; feature = f; threshold = split; }
+                double lg = 0, lh = 0;
+                int leftCount = 0;
+                for (int bin = 0; bin < column.Cuts.Length; bin++)
+                {
+                    lg += binGradient[bin]; lh += binHessian[bin]; leftCount += binCount[bin];
+                    if (leftCount < 4 || selected.Length - leftCount < 4) continue;
+                    double gain = lg * lg / (lh + regularization) + (g - lg) * (g - lg) / (h - lh + regularization);
+                    int balance = Math.Min(leftCount, selected.Length - leftCount);
+                    // A constant-per-root context has zero marginal pairwise gain:
+                    // each root's gradients sum to zero. A neutral split must be
+                    // allowed to expose a conditional reversal in its children.
+                    bool neutralContext = Math.Abs(bestGain) < 1e-12 && Math.Abs(gain) < 1e-12
+                        && balance > bestBalance;
+                    if (gain > bestGain + 1e-12 || neutralContext)
+                    {
+                        bestGain = gain; feature = column.Feature; threshold = column.Cuts[bin];
+                        bestBins = column.Bins; splitBin = bin; bestBalance = balance;
+                    }
+                }
             }
-            if (feature < 0) return new(-1, 0, mean);
+            if (feature < 0) return Leaf();
             return new(feature, threshold, mean,
-                Build(selected.Where(i => x[i][feature] <= threshold).ToArray(), depth + 1),
-                Build(selected.Where(i => x[i][feature] > threshold).ToArray(), depth + 1));
+                Build(selected.Where(i => bestBins![i] <= splitBin).ToArray(), depth + 1),
+                Build(selected.Where(i => bestBins![i] > splitBin).ToArray(), depth + 1));
         }
     }
 
@@ -212,6 +313,9 @@ internal sealed class SearchOutcomeValueModel
     // observed suffix length, not a handmade conversion between damage and cards.
     internal static int CompareWitnesses(TrainingRow a, TrainingRow b)
     {
+        // Neither defeated continuation achieves the primary goal. Do not teach
+        // the model to die faster via the effort tie-breaker.
+        if (!a.Outcome.Won && !b.Outcome.Won) return 0;
         if (SolverInterimResultOrdering.IsBetter(a.Outcome, b.Outcome)) return -1;
         if (SolverInterimResultOrdering.IsBetter(b.Outcome, a.Outcome)) return 1;
         return a.RemainingActions.CompareTo(b.RemainingActions);
@@ -221,6 +325,14 @@ internal sealed class SearchOutcomeValueModel
     // Scratch is request-local and used only by the enforced DOP1 research path.
     private void Compile(string[] names, Tree[] trees)
     {
+        Tree Trim(Tree tree)
+        {
+            if (tree.Feature < 0) return tree;
+            Tree left = Trim(tree.Left!), right = Trim(tree.Right!);
+            return left.Feature < 0 && right.Feature < 0 && left.Mean == right.Mean
+                ? left : tree with { Left = left, Right = right };
+        }
+        trees = trees.Select(Trim).ToArray();
         HashSet<int> used = [];
         void Visit(Tree tree)
         {
@@ -234,6 +346,7 @@ internal sealed class SearchOutcomeValueModel
         { Feature = remap[tree.Feature], Left = Rewrite(tree.Left!), Right = Rewrite(tree.Right!) };
         _featureNames = original.Select(i => names[i]).ToArray();
         _columns = _featureNames.Select((name, index) => (name, index)).ToDictionary(p => p.name, p => p.index, StringComparer.Ordinal);
+        _prefixes = SearchOutcomeContext.RequiredPrefixes(_featureNames);
         _forest = trees.Select(Rewrite).ToArray();
         _featureScratch = new double[_featureNames.Length];
         _predictionValues = new float[_featureNames.Length];
@@ -242,13 +355,23 @@ internal sealed class SearchOutcomeValueModel
     internal double PredictPriority(SearchNode node, Player player)
     {
         if (_forest == null) throw new InvalidOperationException("Ranker has not been fitted.");
+        _predictionCalls++;
         var key = Key(node);
-        if (_frozen && _predictions.TryGetValue(key, out double cached)) return cached;
+        if (_frozen && _predictions.TryGetValue(key, out double cached)) { _cacheHits++; return cached; }
+        long started = MeasurePerformance ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
         SearchOutcomeContext.CaptureSelected((CombatPredictionSimulator)node.Snapshot.Simulator,
-            player, _columns, _featureScratch);
+            player, _columns, _featureScratch, _prefixes);
         AddPolicyFeatures(node, Set);
         for (int i = 0; i < _predictionValues.Length; i++) _predictionValues[i] = (float)_featureScratch[i];
-        double predicted = LearningRate * _forest.Sum(tree => tree.Predict(_predictionValues));
+        long featuresDone = MeasurePerformance ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
+        double sum = 0;
+        foreach (Tree tree in _forest) sum += tree.Predict(_predictionValues);
+        double predicted = LearningRate * sum;
+        if (MeasurePerformance)
+        {
+            _featureTicks += featuresDone - started;
+            _forestTicks += System.Diagnostics.Stopwatch.GetTimestamp() - featuresDone;
+        }
         if (_frozen && _predictions.Count < 4096) _predictions.TryAdd(key, predicted);
         return predicted;
         void Set(string name, double value)
@@ -256,6 +379,15 @@ internal sealed class SearchOutcomeValueModel
             if (_columns.TryGetValue(name, out int index)) _featureScratch[index] = value;
         }
     }
+
+    internal object DescribePerformance() => new
+    {
+        schema = Schema, predictionCalls = _predictionCalls, cacheHits = _cacheHits,
+        usedFeatures = _featureNames.Length, trees = _forest?.Length ?? 0,
+        featureMilliseconds = _featureTicks * 1000d / System.Diagnostics.Stopwatch.Frequency,
+        forestMilliseconds = _forestTicks * 1000d / System.Diagnostics.Stopwatch.Frequency,
+        measured = MeasurePerformance,
+    };
 
     internal double PredictFeaturesForTesting(IReadOnlyDictionary<string, double> features)
     {

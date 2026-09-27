@@ -26,11 +26,13 @@ def prepare(args):
                                    'generated-scenario.loadout.json').resolve())
     write(args.out / 'training-manifest.json', training)
     used = {describe(c)['encounter'] for c in training['cases'] if c['split'] == 'train'}
+    if args.exclude_manifest:
+        used.update(describe(c)['encounter'] for c in read(args.exclude_manifest)['cases'])
     catalog = read(args.catalog)
     encounters = []
     for entry in sorted(catalog['encounters'], key=lambda e: (e['actIndex'], e['id'])):
         family = entry['id'].removesuffix('_NORMAL').removesuffix('_WEAK')
-        if entry['roomType'] != 'Monster' or family in used:
+        if entry['roomType'] != args.kind or family in used:
             continue
         used.add(family)
         encounters.append(entry)
@@ -61,14 +63,14 @@ def prepare(args):
         write(target / 'setup-command.json', command)
         with (target / 'setup.log').open('w') as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=70, check=True)
-        cases.append({'id': identifier, 'family': 'native-' + encounter['id'], 'split': 'test',
+        cases.append({'id': identifier, 'family': 'native-' + encounter['id'], 'split': args.split,
                       'request': str((target / 'request.json').resolve()),
                       'loadout': str((target / 'setup/evidence/generated-scenario.loadout.json').resolve())})
     evaluation = {'schemaVersion': 1, 'cases': cases}
     report = audit(training, evaluation)
     report['modelSha256'] = hashlib.sha256(args.model.read_bytes()).hexdigest()
     report['status'] = 'sealed: setup only; no baseline or candidate search executed'
-    write(args.out / 'test-manifest.json', evaluation)
+    write(args.out / (args.split + '-manifest.json'), evaluation)
     write(args.out / 'separation.json', report)
 
 
@@ -77,4 +79,7 @@ if __name__ == '__main__':
     for name in ['train', 'training-results', 'catalog', 'harness', 'model', 'out']:
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--seed', required=True)
+    parser.add_argument('--kind', choices=['Monster', 'Elite', 'Boss'], default='Monster')
+    parser.add_argument('--split', choices=['validation', 'test'], default='test')
+    parser.add_argument('--exclude-manifest', type=Path, help='Keep these already-frozen encounter families separate too')
     prepare(parser.parse_args())

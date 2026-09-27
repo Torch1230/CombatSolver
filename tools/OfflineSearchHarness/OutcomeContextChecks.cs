@@ -48,6 +48,21 @@ internal static class OutcomeContextChecks
         Array.Fill(numeric, double.NaN);
         SearchOutcomeContext.CaptureSelected(parent, player, columns, numeric);
         Check(columns.All(p => numeric[p.Value] == before.GetValueOrDefault(p.Key)), "reused feature scratch is cleared");
+        branch.StunNextMove(branch.KnownEnemies[0]);
+        var stunned = SearchOutcomeContext.Capture(fork, player);
+        Check(stunned["enemy/0/skip-next"] == 1, "branch intent suppression is observable");
+        Check(Equal(before, SearchOutcomeContext.Capture(parent, player)), "branch intent observation stays isolated");
+        string[] allNames = before.Keys.Union(stunned.Keys).Append("unknown/absent").ToArray();
+        for (int offset = 0; offset < 3; offset++)
+        {
+            var selected = allNames.Where((_, i) => i % 3 == offset).Select((name, index) => (name, index))
+                .ToDictionary(p => p.name, p => p.index, StringComparer.Ordinal);
+            double[] projected = new double[selected.Count];
+            SearchOutcomeContext.CaptureSelected(fork, player, selected, projected,
+                SearchOutcomeContext.RequiredPrefixes(selected.Keys));
+            Check(selected.All(p => projected[p.Value] == stunned.GetValueOrDefault(p.Key)),
+                "pruned feature program matches full context partition " + offset);
+        }
         File.WriteAllText(Path.Combine(output, "outcome-context-checks.json"),
             JsonSerializer.Serialize(new { passed = checks, character = player.Character.Id.Entry, counter = saved }));
 

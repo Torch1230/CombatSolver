@@ -1,13 +1,19 @@
 # 结果估值与小规模训练工具
 
-当前训练入口 `train.py` 采集同池完整胜利见证，拟合 schema4 成对树排序器；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
+当前训练入口 `train.py` 采集同池完整胜利和引擎确认的终局死亡见证，拟合 schema5 成对树排序器；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
 
 - `dataset.py --train <清单> --evaluation <清单> --out <审计JSON>` 检查模板、实际遭遇家族和牌组隔离；随机根需 `loadout` 指向原生 `generated-scenario.loadout.json`。种子/血量/牌序变体不算新场景。
 - `train.py --evaluation-manifest <清单>` 可在启动采集前执行同一检查；没有该检查的结果不能据文件夹名声称独立泛化。
 - `prepare_holdout.py --train <训练清单> --training-results <采集目录> --catalog <原生目录JSON> --harness <宿主DLL> --model <模型> --out <新目录> --seed <冻结种子>` 按目录顺序选五个未见遭遇，原生建局后审计并封存，不运行搜索、不按结果筛选。
 - `python3 tools/OutcomeValuation/test_dataset.py` 验证防重叠门禁；宿主 `--check-outcome-ranking` 验证成对标签与模型合同。
 
-本轮训练359秒，但开发回归失败，生产尚未移除手写评分；五个独立根保持未开测试。见[报告与证据](../../docs/strategy/pairwise-outcome-ranking-20260927.md)。下文为早期零训练方案的历史复现。
+生产尚未移除手写评分；五个独立最终测试根保持封存。当前结果见[直方图与轨迹纠正](../../docs/strategy/histogram-outcome-ranking-20260927.md)。新增入口：
+
+- `train.py --roll-in-model <已训练模型> --prior-training <其训练目录>`：在同一组根上采集模型轨迹，并进行有界旧Beam纠正；继承全部采集文件和历史训练成本，总成本最多1800秒。必须核对原清单、模型及每根的两个完整状态戳。
+- `prepare_holdout.py --kind Elite --split validation --exclude-manifest <封存测试清单>`：准备独立验证组，排除最终测试遭遇；仍只按目录选择，不看搜索成绩。
+- `evaluate.py --train <训练清单> --manifest <验证/测试清单> --model <模型> --mod <Mod DLL> --harness <宿主 DLL> --out <新目录>`：独立进程交错对照，核对两臂根戳，记录旧Score清零的实质比较。首次打开test写候选身份；换模型或实现须另设最终测试。
+
+采集、拟合和比较进程通过环境变量显式加载 `--mod` 指定的程序集；完整日志不提交。下文为早期零训练方案的历史复现。
 
 # 零训练的动作条件估值实验
 

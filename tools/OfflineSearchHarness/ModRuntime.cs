@@ -417,12 +417,14 @@ internal static class ModRuntime
         SearchOutcomeValueModel? outcomeModel = options.OutcomeValueModelPath != null
             ? SearchOutcomeValueModel.Load(JsonSerializer.Deserialize<SearchOutcomeValueModel.Document>(
                 File.ReadAllText(options.OutcomeValueModelPath))!)
-            : options.CollectOutcomeValues ? new() : null;
-        if (outcomeModel != null)
+            : null;
+        SearchOutcomeValueModel? outcomeCollector = options.CollectOutcomeValues ? new() : null;
+        if (outcomeModel != null || outcomeCollector != null)
         {
+            if (outcomeModel != null) outcomeModel.MeasurePerformance = options.MeasureSearchPhases;
             if (policy.MaxDegreeOfParallelism != 1)
                 throw new InvalidOperationException("Outcome valuation research currently requires --dop 1.");
-            policy = policy with { ObjectiveValueModel = outcomeModel };
+            policy = policy with { ObjectiveValueModel = outcomeModel, OutcomeTrainingCollector = outcomeCollector };
             File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-context.json"),
                 JsonSerializer.Serialize(SearchOutcomeContext.Capture(root.ForkSimulator(), root.PlayerIdentity)));
         }
@@ -513,9 +515,14 @@ internal static class ModRuntime
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
         orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);
-        if (options.CollectOutcomeValues && outcomeModel != null)
+        if (outcomeCollector != null && outcomeModel != null)
+            OutcomeCorrections.Run(root, names, damage, policy, options, loop, outcomeCollector);
+        if (outcomeCollector != null)
             File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-rows.json"),
-                JsonSerializer.Serialize(outcomeModel.ExportRows()));
+                JsonSerializer.Serialize(outcomeCollector.ExportRows()));
+        if (outcomeModel != null)
+            File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-model-diagnostics.json"),
+                JsonSerializer.Serialize(outcomeModel.DescribePerformance()));
         HarnessLog.Trace("solved");
         watch.Stop();
         File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new

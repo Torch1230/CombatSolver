@@ -22,6 +22,8 @@ internal static class Program
             return OutcomeValueTraining.Run(rawArgs[1], rawArgs[2]);
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-ranking")
             return OutcomeRankingChecks.Run();
+        if (rawArgs.Length == 4 && rawArgs[0] == "--audit-outcome-ranking")
+            return OutcomeValueTraining.Audit(rawArgs[1], rawArgs[2], rawArgs[3]);
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-shared-evidence")
             return SharedEvidenceChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-cache")
@@ -367,7 +369,7 @@ internal sealed record HarnessOptions
           --automatic-search    统一自动搜索（Coordinator；不能叠加旧模式或续搜实验）
           --objective-search    研究：使用结果预测排序（需模型、DOP 1；尚未通过替代验收）
           --outcome-value-model <p>  加载与游戏/特征版本匹配的结果预测森林
-          --collect-outcome-values   导出同池完整胜利见证、政策标签与原始上下文（DOP 1）
+          --collect-outcome-values   导出同池完整胜利/真实终局失败见证与原始上下文（DOP 1）
           --verify-outcome-context   笔尖夹具：验证根/分支隔离及费用与计数可观测性
           --no-shared-evidence   仅供对照：关闭统一搜索的证据共享与回传
           --novelty-portfolio    旧多策略探索对照（Coordinator；区别于 --adaptive-novelty）
@@ -601,7 +603,7 @@ internal sealed record HarnessOptions
                 default: throw new ArgumentException($"未知选项 {key}。");
             }
         }
-        if (useObjectiveSearch && (outcomeValueModelPath == null || collectOutcomeValues
+        if (useObjectiveSearch && (outcomeValueModelPath == null
             || potionPolicy != "Disabled" || dop != 1
             || useAutomaticSearch || usePortfolio || useNoveltyPortfolio || rankingModelPath != null
             || ordering != "baseline" || outcomeProbes != 0))

@@ -1,0 +1,3320 @@
+{
+  "schema": 1,
+  "baseCommit": "2fd26bb5",
+  "productionModelEnabled": false,
+  "ultimateObjectiveMet": false,
+  "v22": {
+    "budget": {
+      "seconds": 23.818414896028116,
+      "returncode": 0,
+      "reusedCollectionSeconds": 359.1598932669731,
+      "limitSeconds": 600
+    },
+    "fittedDataAgreementBefore": 0.7017771756541169,
+    "fittedDataAgreementAfter": 0.8988936413788017,
+    "diagnosticOnly": true
+  },
+  "v23": {
+    "budget": {
+      "startedUtc": "2026-09-27T10:49:29.114590+00:00",
+      "limitSeconds": 900,
+      "manifestSha256": "1dd10e9544d146ef5130c11a8928ff9735b0d05be2eab025a932c435afbb266c",
+      "harnessSha256": "3951d389efc862de4098eb8845ab93ad301d5a34f512fa21827784bf21f89dd0",
+      "modSha256": "d43e27c00cce711ca001cc7a0ac6454265d3cf2976475f6d80d4dd7cd68dd818",
+      "elapsedSeconds": 537.506046299939,
+      "completed": true
+    },
+    "fit": {
+      "roots": 43,
+      "rows": 39192,
+      "pairs": 76581,
+      "features": 463,
+      "fitMilliseconds": 176648.8303,
+      "bytes": 511516,
+      "peakWorkingSetBytes": 1615773696
+    },
+    "validation": {
+      "identity": {
+        "model": "3aeae68daad4dab32746c70202b7d05cf1162bfc9f600e06ed27c3ec6d1d799f",
+        "mod": "65e96f7277163423339bf4fab6dc5156d07121ed0a49875db1d933cccdb443a1",
+        "harness": "989faf935169c62b760448f32e7d4ae8a8a96a2db6a8b0503e2e89e64abb0570"
+      },
+      "separation": {
+        "schema": 1,
+        "training": [
+          {
+            "id": "attack_or_block-train-low",
+            "family": "attack_or_block",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 3
+            },
+            "relics": [],
+            "inputSha256": "4d91020a3a3494cc41361c06d76dad1ee7eefe83f3541ab6cd8a22535ddc2e2d"
+          },
+          {
+            "id": "attack_or_block-train-high",
+            "family": "attack_or_block",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 3
+            },
+            "relics": [],
+            "inputSha256": "7a0c929ed8a006681ea12f8cc50aa9df7f7f9dd0e827a031ea3f9b98c9c50cd8"
+          },
+          {
+            "id": "energy_investment-train-low",
+            "family": "energy_investment",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "BLOODLETTING": 1,
+              "DEFEND_IRONCLAD": 2,
+              "OFFERING": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2
+            },
+            "relics": [],
+            "inputSha256": "31e82449bbf9a192c71f91011f823cb023079fa889557d5f66664761ef7908a6"
+          },
+          {
+            "id": "energy_investment-train-high",
+            "family": "energy_investment",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "BLOODLETTING": 1,
+              "DEFEND_IRONCLAD": 2,
+              "OFFERING": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2
+            },
+            "relics": [],
+            "inputSha256": "19e53c99f24441f06568f033a318925d3bf87f1a94b81a2fd08ab7ed291deff6"
+          },
+          {
+            "id": "strength_setup-train-low",
+            "family": "strength_setup",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 1,
+              "DEFEND_IRONCLAD": 2,
+              "INFLAME": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 4
+            },
+            "relics": [],
+            "inputSha256": "223a83e28cad7bec03cd9b85cccadda2d41d2affa17814a0a2d45f98f3471141"
+          },
+          {
+            "id": "strength_setup-train-high",
+            "family": "strength_setup",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 1,
+              "DEFEND_IRONCLAD": 2,
+              "INFLAME": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 4
+            },
+            "relics": [],
+            "inputSha256": "70c4cabdf35f05cd98bc0fe6d749058bf81ad577ab63bc386985cd55e70529a9"
+          },
+          {
+            "id": "exhaust_resources-train-low",
+            "family": "exhaust_resources",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 1,
+              "BURNING_PACT": 1,
+              "DEFEND_IRONCLAD": 2,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2,
+              "TRUE_GRIT": 1,
+              "WOUND": 1
+            },
+            "relics": [],
+            "inputSha256": "db407a74cad2e0fc96d1869aa048825c4871f34ccd45c191540cf14fe98c3a39"
+          },
+          {
+            "id": "exhaust_resources-train-high",
+            "family": "exhaust_resources",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 1,
+              "BURNING_PACT": 1,
+              "DEFEND_IRONCLAD": 2,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2,
+              "TRUE_GRIT": 1,
+              "WOUND": 1
+            },
+            "relics": [],
+            "inputSha256": "1ed305216acdf241fa7b6dcefa5cf339a663596517bdee29b49e0e5b54841e75"
+          },
+          {
+            "id": "poison_or_burst-train-low",
+            "family": "poison_or_burst",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BACKFLIP": 2,
+              "BOUNCING_FLASK": 1,
+              "DEADLY_POISON": 2,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "ac864045d802c7a27d0c97a83f1d5492faea5388727c55dabee5ff5b76248da4"
+          },
+          {
+            "id": "poison_or_burst-train-high",
+            "family": "poison_or_burst",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BACKFLIP": 2,
+              "BOUNCING_FLASK": 1,
+              "DEADLY_POISON": 2,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "8484733faa7ba5f8cbafbcd665d8a4783bd182cfc3edb3131d317a3074fccfa5"
+          },
+          {
+            "id": "defense_engine-train-low",
+            "family": "defense_engine",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "BACKFLIP": 2,
+              "DEFEND_SILENT": 3,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "0f7e725f80635df37642d44aa22954fef9b5e92b268b425720ad1288ff825d54"
+          },
+          {
+            "id": "defense_engine-train-high",
+            "family": "defense_engine",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "BACKFLIP": 2,
+              "DEFEND_SILENT": 3,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "93bd437dd52c900decd11b8c3628581f378955427c76fb9b17d17f3d5c6cba5c"
+          },
+          {
+            "id": "draw_before_spend-train-low",
+            "family": "draw_before_spend",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "ACROBATICS": 1,
+              "BACKFLIP": 2,
+              "DEADLY_POISON": 1,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "PREPARED": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "f463be1e7f430b70f53dc797cb47534936ce122ec3f8a62e96c1967b20b1c605"
+          },
+          {
+            "id": "draw_before_spend-train-high",
+            "family": "draw_before_spend",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "ACROBATICS": 1,
+              "BACKFLIP": 2,
+              "DEADLY_POISON": 1,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "PREPARED": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "c2029150793fdac3e89d7afb935687dd3daa7111d125150dc4483ab60f789fef"
+          },
+          {
+            "id": "orb_defense-train-low",
+            "family": "orb_defense",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DUALCAST": 1,
+              "GLACIER": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [],
+            "inputSha256": "5528a6f98aa1d10a4b5d2d8b2f023b8ef507704794c74d527960c1035a00ffba"
+          },
+          {
+            "id": "orb_defense-train-high",
+            "family": "orb_defense",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DUALCAST": 1,
+              "GLACIER": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [],
+            "inputSha256": "215f8022af4e8f5a00b3eb6312e2dedf7e8002bdefd943026bf212cfd9db6ab0"
+          },
+          {
+            "id": "focus_investment-train-low",
+            "family": "focus_investment",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DEFRAGMENT": 1,
+              "DUALCAST": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [],
+            "inputSha256": "b62237e80de64fcd378cc3b2bd36ca480c45495bf64674cbca8100f87738fe08"
+          },
+          {
+            "id": "focus_investment-train-high",
+            "family": "focus_investment",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DEFRAGMENT": 1,
+              "DUALCAST": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [],
+            "inputSha256": "b1dce3ea71f30c091a1b8bf18b283d9e5db22d2789258dead0ec732294ca48cd"
+          },
+          {
+            "id": "target_order-train-low",
+            "family": "target_order",
+            "character": "IRONCLAD",
+            "encounter": "CORPSE_SLUGS",
+            "cards": {
+              "BASH": 1,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2,
+              "WHIRLWIND": 2
+            },
+            "relics": [],
+            "inputSha256": "9b5aa4f376f7735c7cbdbaeea24a32a7d1f4f7c7c3ba06b705b4e4c3bd1763c1"
+          },
+          {
+            "id": "target_order-train-high",
+            "family": "target_order",
+            "character": "IRONCLAD",
+            "encounter": "CORPSE_SLUGS",
+            "cards": {
+              "BASH": 1,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2,
+              "WHIRLWIND": 2
+            },
+            "relics": [],
+            "inputSha256": "8fa67ccf633d01aa0fb3a45d6a7f97cad9ba010cae56c7e301d06f8f6a2aed9d"
+          },
+          {
+            "id": "random-ironclad-monster-train",
+            "family": "random-IRONCLAD-Monster",
+            "character": "IRONCLAD",
+            "encounter": "BOWLBUGS",
+            "cards": {
+              "ARMAMENTS": 1,
+              "ASCENDERS_BANE": 1,
+              "BASH": 1,
+              "BATTLE_TRANCE": 1,
+              "BREAKTHROUGH": 1,
+              "DEFEND_IRONCLAD": 4,
+              "EXPECT_A_FIGHT": 1,
+              "HAVOC": 1,
+              "INFLAME": 1,
+              "JACK_OF_ALL_TRADES": 1,
+              "PILLAGE": 1,
+              "REND": 1,
+              "SPITE": 2,
+              "STAMPEDE": 1,
+              "STRIKE_IRONCLAD": 5,
+              "TWIN_STRIKE": 1,
+              "VICIOUS": 1
+            },
+            "relics": [
+              "BURNING_BLOOD",
+              "GAMBLING_CHIP",
+              "GORGET",
+              "STURDY_CLAMP"
+            ],
+            "inputSha256": "ef580059158a293507e0fe0638b8bce2c74a3851c6b8f563005af7dd6cd3d6ba"
+          },
+          {
+            "id": "random-ironclad-elite-train",
+            "family": "random-IRONCLAD-Elite",
+            "character": "IRONCLAD",
+            "encounter": "ENTOMANCER_ELITE",
+            "cards": {
+              "ANGER": 1,
+              "ARMAMENTS": 1,
+              "ASCENDERS_BANE": 1,
+              "AUTOMATION": 1,
+              "BASH": 1,
+              "BRAND": 1,
+              "BREAKTHROUGH": 1,
+              "BURNING_PACT": 1,
+              "COLOSSUS": 1,
+              "DEFEND_IRONCLAD": 4,
+              "HELLRAISER": 1,
+              "HEMOKINESIS": 1,
+              "HOWL_FROM_BEYOND": 1,
+              "JACK_OF_ALL_TRADES": 1,
+              "RAMPAGE": 1,
+              "SHRUG_IT_OFF": 1,
+              "SPITE": 1,
+              "STRIKE_IRONCLAD": 5
+            },
+            "relics": [
+              "AKABEKO",
+              "ANCHOR",
+              "BRIMSTONE",
+              "BURNING_BLOOD"
+            ],
+            "inputSha256": "3b8f644c0652b28a0a621f81abe5f1f3718b7ff5c7c6d08fc78b8b152bfe20de"
+          },
+          {
+            "id": "random-ironclad-boss-train",
+            "family": "random-IRONCLAD-Boss",
+            "character": "IRONCLAD",
+            "encounter": "KNOWLEDGE_DEMON_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BASH": 1,
+              "BATTLE_TRANCE": 1,
+              "BODY_SLAM": 1,
+              "DEFEND_IRONCLAD": 4,
+              "DOMINATE": 1,
+              "FLASH_OF_STEEL": 1,
+              "HEMOKINESIS": 1,
+              "HOWL_FROM_BEYOND": 1,
+              "JUGGERNAUT": 1,
+              "RAMPAGE": 3,
+              "STRIKE_IRONCLAD": 5,
+              "TAUNT": 1,
+              "TEAR_ASUNDER": 1,
+              "THE_BOMB": 1,
+              "TWIN_STRIKE": 1
+            },
+            "relics": [
+              "BURNING_BLOOD",
+              "CAPTAINS_WHEEL",
+              "LUCKY_FYSH",
+              "SPARKLING_ROUGE"
+            ],
+            "inputSha256": "ac9b328ef18991f586cf6304ea22f04cec3f6f6822419f975c8145705584336a"
+          },
+          {
+            "id": "random-silent-monster-train",
+            "family": "random-SILENT-Monster",
+            "character": "SILENT",
+            "encounter": "SPINY_TOAD",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "ASCENDERS_BANE": 1,
+              "BACKFLIP": 2,
+              "CORROSIVE_WAVE": 2,
+              "DEFEND_SILENT": 5,
+              "EQUILIBRIUM": 1,
+              "FINISHER": 1,
+              "FLICK_FLACK": 1,
+              "KNIFE_TRAP": 1,
+              "LEG_SWEEP": 1,
+              "MASTER_OF_STRATEGY": 1,
+              "NEUTRALIZE": 1,
+              "SLICE": 1,
+              "SPEEDSTER": 1,
+              "STRIKE_SILENT": 5,
+              "SUCKER_PUNCH": 1,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "BELLOWS",
+              "HELICAL_DART",
+              "MYSTIC_LIGHTER",
+              "RING_OF_THE_SNAKE"
+            ],
+            "inputSha256": "af9e2b0ed45fbb3b33e70e7f3f1c091e6803a9df862f72e022644c9924b887ac"
+          },
+          {
+            "id": "random-silent-elite-train",
+            "family": "random-SILENT-Elite",
+            "character": "SILENT",
+            "encounter": "INFESTED_PRISMS_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BOLAS": 1,
+              "DAGGER_SPRAY": 1,
+              "DEFEND_SILENT": 5,
+              "ENVENOM": 1,
+              "GRAND_FINALE": 1,
+              "HIDDEN_DAGGERS": 1,
+              "INFINITE_BLADES": 1,
+              "LEG_SWEEP": 1,
+              "NEUTRALIZE": 1,
+              "NOXIOUS_FUMES": 2,
+              "PIERCING_WAIL": 1,
+              "SALVO": 1,
+              "SHADOWMELD": 1,
+              "SNAKEBITE": 1,
+              "STRIKE_SILENT": 5,
+              "SUCKER_PUNCH": 1,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "ORICHALCUM",
+              "PEN_NIB",
+              "RED_MASK",
+              "RING_OF_THE_SNAKE"
+            ],
+            "inputSha256": "15b04a16a3ecbc28b773c85b3698be7fe0a8fb0fd0c07bced7816d0a43edf279"
+          },
+          {
+            "id": "random-silent-boss-train",
+            "family": "random-SILENT-Boss",
+            "character": "SILENT",
+            "encounter": "KNOWLEDGE_DEMON_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "DEADLY_POISON": 1,
+              "DEFEND_SILENT": 5,
+              "ECHOING_SLASH": 1,
+              "EXPOSE": 1,
+              "FAN_OF_KNIVES": 1,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "NIGHTMARE": 1,
+              "OMNISLICE": 1,
+              "POUNCE": 1,
+              "PREDATOR": 1,
+              "PREPARED": 1,
+              "RICOCHET": 1,
+              "SECRET_TECHNIQUE": 1,
+              "SKEWER": 2,
+              "STRIKE_SILENT": 5,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "CAPTAINS_WHEEL",
+              "JUZU_BRACELET",
+              "RING_OF_THE_SNAKE",
+              "SNECKO_SKULL"
+            ],
+            "inputSha256": "f0cd517714e4b1ead5efd6bad7c65300beb504231103ac66bebd0fbd3039ea78"
+          },
+          {
+            "id": "random-defect-monster-train",
+            "family": "random-DEFECT-Monster",
+            "character": "DEFECT",
+            "encounter": "SLUMBERING_BEETLE",
+            "cards": {
+              "ADAPTIVE_STRIKE": 1,
+              "ASCENDERS_BANE": 1,
+              "CHAOS": 1,
+              "COLD_SNAP": 1,
+              "COOLANT": 1,
+              "CREATIVE_AI": 1,
+              "DEFEND_DEFECT": 4,
+              "DUALCAST": 1,
+              "FERAL": 1,
+              "FUSION": 1,
+              "GOLD_AXE": 1,
+              "HAILSTORM": 1,
+              "MULTI_CAST": 1,
+              "SCRAPE": 1,
+              "SIGNAL_BOOST": 1,
+              "STRIKE_DEFECT": 4,
+              "TESLA_COIL": 1,
+              "THRUMMING_HATCHET": 1,
+              "ZAP": 1
+            },
+            "relics": [
+              "CLOAK_CLASP",
+              "CRACKED_CORE",
+              "POWER_CELL",
+              "PUNCH_DAGGER"
+            ],
+            "inputSha256": "914b28187fe99996beeed5cac4722d7c33c07ea80740b23772b90b90266e8dcf"
+          },
+          {
+            "id": "random-defect-elite-train",
+            "family": "random-DEFECT-Elite",
+            "character": "DEFECT",
+            "encounter": "ENTOMANCER_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BULK_UP": 1,
+              "CHILL": 1,
+              "COLD_SNAP": 1,
+              "COOLANT": 1,
+              "COOLHEADED": 1,
+              "DARK_SHACKLES": 1,
+              "DEFEND_DEFECT": 4,
+              "DUALCAST": 1,
+              "ECHO_FORM": 1,
+              "GLACIER": 2,
+              "HYPERBEAM": 1,
+              "MIND_BLAST": 1,
+              "STRIKE_DEFECT": 4,
+              "SWEEPING_BEAM": 1,
+              "TURBO": 1,
+              "WHITE_NOISE": 1,
+              "ZAP": 1
+            },
+            "relics": [
+              "CAULDRON",
+              "CRACKED_CORE",
+              "LASTING_CANDY",
+              "SLING_OF_COURAGE"
+            ],
+            "inputSha256": "6071fbbd5e7df6306eac8bc6da2a9da167a4a7e0441adbd19bfe2e9a5f0aac29"
+          },
+          {
+            "id": "random-defect-boss-train",
+            "family": "random-DEFECT-Boss",
+            "character": "DEFECT",
+            "encounter": "KAISER_CRAB_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "COLD_SNAP": 2,
+              "COMPACT": 1,
+              "DEFEND_DEFECT": 4,
+              "DEFRAGMENT": 1,
+              "DUALCAST": 1,
+              "GLASSWORK": 1,
+              "MACHINE_LEARNING": 1,
+              "NULL": 1,
+              "PRODUCTION": 1,
+              "REBOOT": 2,
+              "REFRACT": 1,
+              "ROLLING_BOULDER": 1,
+              "SHATTER": 1,
+              "STRIKE_DEFECT": 4,
+              "SWEEPING_BEAM": 1,
+              "ZAP": 1
+            },
+            "relics": [
+              "CRACKED_CORE",
+              "DATA_DISK",
+              "HAPPY_FLOWER",
+              "TUNGSTEN_ROD"
+            ],
+            "inputSha256": "d3b7fca428cf31ce2fc4ada37d9aad77c85d94abaa8fd7b01927e791a29b79d2"
+          },
+          {
+            "id": "random-regent-monster-train",
+            "family": "random-REGENT-Monster",
+            "character": "REGENT",
+            "encounter": "EXOSKELETONS",
+            "cards": {
+              "ALCHEMIZE": 1,
+              "ASCENDERS_BANE": 1,
+              "BEAT_INTO_SHAPE": 1,
+              "COMET": 1,
+              "CONQUEROR": 1,
+              "DEFEND_REGENT": 4,
+              "DEVASTATE": 1,
+              "DISCOVERY": 1,
+              "FALLING_STAR": 1,
+              "GAMMA_BLAST": 1,
+              "MANIFEST_AUTHORITY": 1,
+              "MONARCHS_GAZE": 1,
+              "MONOLOGUE": 1,
+              "RADIATE": 1,
+              "REFLECT": 1,
+              "STRIKE_REGENT": 4,
+              "THE_SMITH": 1,
+              "TYRANNY": 1,
+              "VENERATE": 1
+            },
+            "relics": [
+              "ANCHOR",
+              "DIVINE_RIGHT",
+              "GHOST_SEED",
+              "LUCKY_FYSH"
+            ],
+            "inputSha256": "b81af7d539aa77183a9b2d545752063ab6a2064e3aa38c26b5a9e798bd651ab5"
+          },
+          {
+            "id": "random-regent-elite-train",
+            "family": "random-REGENT-Elite",
+            "character": "REGENT",
+            "encounter": "ENTOMANCER_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BUNDLE_OF_JOY": 1,
+              "CONQUEROR": 2,
+              "CONVERGENCE": 2,
+              "CRUSH_UNDER": 1,
+              "DEFEND_REGENT": 4,
+              "FALLING_STAR": 1,
+              "FOREGONE_CONCLUSION": 1,
+              "FURNACE": 1,
+              "GUIDING_STAR": 2,
+              "IMPATIENCE": 1,
+              "KINGLY_PUNCH": 1,
+              "MONARCHS_GAZE": 1,
+              "SHOCKWAVE": 1,
+              "STRIKE_REGENT": 4,
+              "VENERATE": 1
+            },
+            "relics": [
+              "CLOAK_CLASP",
+              "DIVINE_RIGHT",
+              "FENCING_MANUAL",
+              "UNCEASING_TOP"
+            ],
+            "inputSha256": "39a1266007b68917ed099d6cf5e94fd3c86686c63a48aee19203ec08bb2b17c8"
+          },
+          {
+            "id": "random-regent-boss-train",
+            "family": "random-REGENT-Boss",
+            "character": "REGENT",
+            "encounter": "KNOWLEDGE_DEMON_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BEAT_DOWN": 1,
+              "CHARGE": 1,
+              "COLLISION_COURSE": 2,
+              "DEFEND_REGENT": 4,
+              "FALLING_STAR": 1,
+              "GLITTERSTREAM": 1,
+              "HEIRLOOM_HAMMER": 1,
+              "HIDDEN_CACHE": 1,
+              "KNOW_THY_PLACE": 1,
+              "MANIFEST_AUTHORITY": 1,
+              "MONOLOGUE": 1,
+              "RADIATE": 1,
+              "ROYALTIES": 1,
+              "SEEKING_EDGE": 1,
+              "STRATAGEM": 1,
+              "STRIKE_REGENT": 4,
+              "VENERATE": 1
+            },
+            "relics": [
+              "BOWLER_HAT",
+              "DIVINE_RIGHT",
+              "GIRYA",
+              "GORGET"
+            ],
+            "inputSha256": "3fa9f32b6f65e0151cffa5e9721d05ed6daa7236f28062cbfc90c864a0762499"
+          },
+          {
+            "id": "random-necrobinder-monster-train",
+            "family": "random-NECROBINDER-Monster",
+            "character": "NECROBINDER",
+            "encounter": "SPINY_TOAD",
+            "cards": {
+              "AFTERLIFE": 1,
+              "ASCENDERS_BANE": 1,
+              "BODYGUARD": 1,
+              "DANSE_MACABRE": 1,
+              "DEFEND_NECROBINDER": 4,
+              "DELAY": 1,
+              "ENFEEBLING_TOUCH": 1,
+              "FETCH": 2,
+              "INVOKE": 1,
+              "MASTER_OF_STRATEGY": 1,
+              "MIND_BLAST": 1,
+              "OBLIVION": 1,
+              "PULL_AGGRO": 1,
+              "RATTLE": 1,
+              "STRIKE_NECROBINDER": 4,
+              "TIMES_UP": 1,
+              "TRANSFIGURE": 1,
+              "UNLEASH": 1
+            },
+            "relics": [
+              "BOUND_PHYLACTERY",
+              "GAME_PIECE",
+              "PERMAFROST",
+              "PETRIFIED_TOAD"
+            ],
+            "inputSha256": "fc1b7956506b4e599d871ec11be096a8d02911959a0ea579a159f21891a7d16f"
+          },
+          {
+            "id": "random-necrobinder-elite-train",
+            "family": "random-NECROBINDER-Elite",
+            "character": "NECROBINDER",
+            "encounter": "ENTOMANCER_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BANSHEES_CRY": 1,
+              "BODYGUARD": 1,
+              "CALCIFY": 1,
+              "CLEANSE": 1,
+              "DEFEND_NECROBINDER": 4,
+              "DRAIN_POWER": 1,
+              "FLATTEN": 1,
+              "HANG": 1,
+              "MELANCHOLY": 1,
+              "REAVE": 1,
+              "RESTLESSNESS": 1,
+              "SACRIFICE": 1,
+              "SECRET_TECHNIQUE": 1,
+              "SOUL_STORM": 1,
+              "SOW": 1,
+              "STRIKE_NECROBINDER": 4,
+              "THE_SCYTHE": 1,
+              "UNLEASH": 1
+            },
+            "relics": [
+              "BOUND_PHYLACTERY",
+              "MINIATURE_CANNON",
+              "VEXING_PUZZLEBOX",
+              "WING_CHARM"
+            ],
+            "inputSha256": "edcf7464b18e5b4e1697ac3bc777a207f0840bfdfa71829bbf840892c5c17740"
+          },
+          {
+            "id": "random-necrobinder-boss-train",
+            "family": "random-NECROBINDER-Boss",
+            "character": "NECROBINDER",
+            "encounter": "KNOWLEDGE_DEMON_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "AUTOMATION": 1,
+              "BODYGUARD": 1,
+              "CALCIFY": 1,
+              "DEATH_MARCH": 1,
+              "DEFEND_NECROBINDER": 4,
+              "DIRGE": 2,
+              "EIDOLON": 1,
+              "FRIENDSHIP": 2,
+              "HIDDEN_GEM": 1,
+              "INVOKE": 1,
+              "PAGESTORM": 1,
+              "REAVE": 2,
+              "RIGHT_HAND_HAND": 1,
+              "STRIKE_NECROBINDER": 4,
+              "UNLEASH": 1
+            },
+            "relics": [
+              "BIG_HAT",
+              "BOUND_PHYLACTERY",
+              "KUNAI",
+              "MINIATURE_TENT"
+            ],
+            "inputSha256": "531cb495444ba1853ad099aaf865875eb3de57e05a64c16733a4cd7e3e49dcbe"
+          },
+          {
+            "id": "attack_or_block-train-high-pen_nib-0",
+            "family": "attack_or_block",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 3
+            },
+            "relics": [
+              "PEN_NIB"
+            ],
+            "inputSha256": "b7e130af7574fc068a27290e60f562085e4a3c4bf117030c48f34a82cb6fd3fb"
+          },
+          {
+            "id": "attack_or_block-train-high-pen_nib-9",
+            "family": "attack_or_block",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 3
+            },
+            "relics": [
+              "PEN_NIB"
+            ],
+            "inputSha256": "ec15c084fe9018f6565a895243db2901ce3b23ec22c69537a22c0c5177d41db5"
+          },
+          {
+            "id": "energy_investment-train-high-nunchaku-0",
+            "family": "energy_investment",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "BLOODLETTING": 1,
+              "DEFEND_IRONCLAD": 2,
+              "OFFERING": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2
+            },
+            "relics": [
+              "NUNCHAKU"
+            ],
+            "inputSha256": "f7a5da76321c826d6ccdde26c5f2a7757a4694f041fc5ed9cd53535e5737a644"
+          },
+          {
+            "id": "energy_investment-train-high-nunchaku-9",
+            "family": "energy_investment",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "BLOODLETTING": 1,
+              "DEFEND_IRONCLAD": 2,
+              "OFFERING": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2
+            },
+            "relics": [
+              "NUNCHAKU"
+            ],
+            "inputSha256": "44abeb4006230e4e647f2166558838e603710bf7c3d4990130358f13e2906109"
+          },
+          {
+            "id": "defense_engine-train-high-tuning_fork-0",
+            "family": "defense_engine",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "BACKFLIP": 2,
+              "DEFEND_SILENT": 3,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "TUNING_FORK"
+            ],
+            "inputSha256": "eb26f0c37f4e5c2274b7146a2d4ace76a784064bf082f7b474007c74cc5a76df"
+          },
+          {
+            "id": "defense_engine-train-high-tuning_fork-9",
+            "family": "defense_engine",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "BACKFLIP": 2,
+              "DEFEND_SILENT": 3,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "TUNING_FORK"
+            ],
+            "inputSha256": "04465eb29cb840d8a62c5ea4949a4ac94ffd93caa721a9ba6654d4bf627e1b83"
+          },
+          {
+            "id": "poison_or_burst-train-high-snecko_skull-0",
+            "family": "poison_or_burst",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BACKFLIP": 2,
+              "BOUNCING_FLASK": 1,
+              "DEADLY_POISON": 2,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "SNECKO_SKULL"
+            ],
+            "inputSha256": "774e2e79f3eb692e75ba231f374e3c21cf314ec4298ef53a5a1c05a711df5dcc"
+          },
+          {
+            "id": "focus_investment-train-high-data_disk-0",
+            "family": "focus_investment",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DEFRAGMENT": 1,
+              "DUALCAST": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [
+              "DATA_DISK"
+            ],
+            "inputSha256": "61dc597c920f329b65a233a5d7e3f376afc3f16b74ed9b4ae74b267ff1085c3d"
+          }
+        ],
+        "evaluation": [
+          {
+            "id": "unseen-defect-bygone_effigy_elite",
+            "family": "native-BYGONE_EFFIGY_ELITE",
+            "character": "DEFECT",
+            "encounter": "BYGONE_EFFIGY_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BEAM_CELL": 1,
+              "CHILL": 1,
+              "DEFEND_DEFECT": 4,
+              "DUALCAST": 1,
+              "ECHO_FORM": 1,
+              "FIGHT_THROUGH": 1,
+              "METEOR_STRIKE": 2,
+              "RAINBOW": 3,
+              "SALVO": 1,
+              "SCRAWL": 1,
+              "SIGNAL_BOOST": 1,
+              "STRIKE_DEFECT": 4,
+              "SWEEPING_BEAM": 1,
+              "VOLTAIC": 1,
+              "ZAP": 1
+            },
+            "relics": [
+              "CRACKED_CORE",
+              "PENDULUM",
+              "WAR_PAINT",
+              "WHETSTONE"
+            ],
+            "inputSha256": "fdf46d1210a54e4bf21bf8a3ad1aa3c1c9c0eb9525b97f37c374e46f7f7e57c8"
+          },
+          {
+            "id": "unseen-ironclad-byrdonis_elite",
+            "family": "native-BYRDONIS_ELITE",
+            "character": "IRONCLAD",
+            "encounter": "BYRDONIS_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BASH": 1,
+              "BLOODLETTING": 1,
+              "CINDER": 1,
+              "CONFLAGRATION": 1,
+              "DEFEND_IRONCLAD": 4,
+              "FEEL_NO_PAIN": 1,
+              "FIGHT_ME": 1,
+              "JUGGLING": 1,
+              "PANACHE": 1,
+              "REND": 1,
+              "SECOND_WIND": 1,
+              "SETUP_STRIKE": 1,
+              "STOKE": 1,
+              "STRIKE_IRONCLAD": 5,
+              "TEAR_ASUNDER": 1,
+              "THRASH": 1,
+              "VICIOUS": 1
+            },
+            "relics": [
+              "BURNING_BLOOD",
+              "PEN_NIB",
+              "PLANISPHERE",
+              "RUINED_HELMET"
+            ],
+            "inputSha256": "e68fe89cf07ff89215d7f017e1be124aaebfca1ec46aa4333b6a7e5020f5f338"
+          },
+          {
+            "id": "unseen-necrobinder-phrog_parasite_elite",
+            "family": "native-PHROG_PARASITE_ELITE",
+            "character": "NECROBINDER",
+            "encounter": "PHROG_PARASITE_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BODYGUARD": 1,
+              "BURY": 1,
+              "COUNTDOWN": 1,
+              "DEFEND_NECROBINDER": 4,
+              "FETCH": 1,
+              "NEGATIVE_PULSE": 1,
+              "PUTREFY": 1,
+              "SACRIFICE": 1,
+              "SALVO": 1,
+              "SCOURGE": 1,
+              "SEANCE": 1,
+              "SENTRY_MODE": 1,
+              "SEVERANCE": 1,
+              "SHOCKWAVE": 1,
+              "SHROUD": 1,
+              "STRIKE_NECROBINDER": 4,
+              "UNLEASH": 1,
+              "VEILPIERCER": 1
+            },
+            "relics": [
+              "BOUND_PHYLACTERY",
+              "GAMBLING_CHIP",
+              "ODDLY_SMOOTH_STONE",
+              "POTION_BELT"
+            ],
+            "inputSha256": "6cb2ef532d70e1cef5c630c0cbb6569fd6740c734a538cad431d63057a20b3c1"
+          },
+          {
+            "id": "unseen-regent-decimillipede_elite",
+            "family": "native-DECIMILLIPEDE_ELITE",
+            "character": "REGENT",
+            "encounter": "DECIMILLIPEDE_ELITE",
+            "cards": {
+              "ALIGNMENT": 1,
+              "ASCENDERS_BANE": 1,
+              "BIG_BANG": 1,
+              "BUNDLE_OF_JOY": 1,
+              "CHARGE": 2,
+              "DARK_SHACKLES": 1,
+              "DEFEND_REGENT": 4,
+              "FALLING_STAR": 1,
+              "FURNACE": 1,
+              "GLOW": 1,
+              "PATTER": 2,
+              "PILLAR_OF_CREATION": 1,
+              "REFLECT": 1,
+              "SOLAR_STRIKE": 1,
+              "STRIKE_REGENT": 4,
+              "THRUMMING_HATCHET": 1,
+              "VENERATE": 1
+            },
+            "relics": [
+              "BELLOWS",
+              "DIVINE_RIGHT",
+              "MINI_REGENT",
+              "TUNING_FORK"
+            ],
+            "inputSha256": "a8536c632be37c3fe254b639a4fa46d3b6453dfe699a86c01fbe322e378094de"
+          },
+          {
+            "id": "unseen-silent-knights_elite",
+            "family": "native-KNIGHTS_ELITE",
+            "character": "SILENT",
+            "encounter": "KNIGHTS_ELITE",
+            "cards": {
+              "ACCELERANT": 1,
+              "ACCURACY": 1,
+              "ASCENDERS_BANE": 1,
+              "BACKSTAB": 1,
+              "BUBBLE_BUBBLE": 2,
+              "DEFEND_SILENT": 5,
+              "DODGE_AND_ROLL": 1,
+              "ESCAPE_PLAN": 1,
+              "FINISHER": 1,
+              "LEADING_STRIKE": 1,
+              "NEUTRALIZE": 1,
+              "PANIC_BUTTON": 1,
+              "SALVO": 1,
+              "SHADOWMELD": 1,
+              "SKEWER": 2,
+              "STRIKE_SILENT": 5,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "JUZU_BRACELET",
+              "NUNCHAKU",
+              "POTION_BELT",
+              "RING_OF_THE_SNAKE"
+            ],
+            "inputSha256": "6725a1516ea8350d8b26451936c8c3ee542ad2be48e8ed30bbc300759e302c1c"
+          }
+        ],
+        "maximumDeckSimilarity": 0.3888888888888889,
+        "passed": true,
+        "datasetSha256": "e9cfe9adfafff24667f0b3ef276ee8fafb1f171d65ff8f3ec2fcb9840ce53a0d"
+      },
+      "records": [
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 27,
+            "strategicHpDeficit": 27,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000629986,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.7924657,
+          "nodes": 12958,
+          "transitions": 46439,
+          "rss": 351113216,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 42,
+            "strategicHpDeficit": 42,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.2005509,
+          "nodes": 12000,
+          "transitions": 38630,
+          "rss": 351760384,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.371059,
+          "nodes": 12000,
+          "transitions": 41021,
+          "rss": 397152256,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 7.2600695,
+          "nodes": 8048,
+          "transitions": 30995,
+          "rss": 336035840,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 4,
+            "strategicHpDeficit": 4,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001699971,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 13.1884891,
+          "nodes": 12000,
+          "transitions": 58054,
+          "rss": 361824256,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 4,
+            "strategicHpDeficit": 4,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 12.1167851,
+          "nodes": 12000,
+          "transitions": 55559,
+          "rss": 353787904,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 62,
+            "strategicHpDeficit": 62,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 8,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 17.0505577,
+          "nodes": 12000,
+          "transitions": 92591,
+          "rss": 420282368,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 26,
+            "strategicHpDeficit": 26,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000689968,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 14.5273839,
+          "nodes": 12000,
+          "transitions": 75571,
+          "rss": 367337472,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.9431724,
+          "nodes": 7169,
+          "transitions": 47864,
+          "rss": 342798336,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 70,
+            "strategicHpDeficit": 259,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 267,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 13.4747607,
+          "nodes": 12000,
+          "transitions": 78457,
+          "rss": 404709376,
+          "timeBoundary": false
+        }
+      ],
+      "completed": true,
+      "elapsedSeconds": 132.6753742499277
+    },
+    "comparison": [
+      {
+        "id": "unseen-defect-bygone_effigy_elite",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 42,
+          "strategicHpDeficit": 42,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 27,
+          "strategicHpDeficit": 27,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000629986,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-ironclad-byrdonis_elite",
+        "comparison": 1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000711993,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-necrobinder-phrog_parasite_elite",
+        "comparison": 1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 4,
+          "strategicHpDeficit": 4,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 4,
+          "strategicHpDeficit": 4,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10001699971,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-regent-decimillipede_elite",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 62,
+          "strategicHpDeficit": 62,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 26,
+          "strategicHpDeficit": 26,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000689968,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-silent-knights_elite",
+        "comparison": -1,
+        "materialComparison": -1,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 70,
+          "strategicHpDeficit": 259,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 267,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 191,
+          "score": -1000010940027,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      }
+    ]
+  },
+  "finalTest": {
+    "manifestSha256": "b9e002278fd73d8f61f3c234109e9bc634a903db1f1e3ad21ddad7435fa45928",
+    "searchOpened": false
+  },
+  "contracts": {
+    "rankingAssertions": 31,
+    "contextAssertions": 70,
+    "bashBoundaries": true,
+    "powershellBoundaries": true,
+    "searchFiles": 221,
+    "releaseBuilds": true,
+    "visibleSteam": false
+  },
+  "v24": {
+    "budget": {
+      "startedUtc": "2026-09-27T11:25:57.866037+00:00",
+      "limitSeconds": 900,
+      "priorTrainingSeconds": 537.506046299939,
+      "manifestSha256": "1dd10e9544d146ef5130c11a8928ff9735b0d05be2eab025a932c435afbb266c",
+      "harnessSha256": "2337fa8253697ccc9bc2f83ddee859afc4f6f4d83be522a0a00052129278aac8",
+      "modSha256": "554cf93a07164fd78d6de52a292da06e776aa2f0ddb519c984d712735e3d3f63",
+      "rollInModelSha256": "3aeae68daad4dab32746c70202b7d05cf1162bfc9f600e06ed27c3ec6d1d799f",
+      "elapsedSeconds": 597.0136751460377,
+      "totalModelTrainingSeconds": 1134.5197214459768,
+      "completed": true
+    },
+    "fit": {
+      "roots": 43,
+      "rows": 54781,
+      "pairs": 92202,
+      "features": 449,
+      "fitMilliseconds": 231048.9472,
+      "bytes": 540897,
+      "peakWorkingSetBytes": 2394320896
+    },
+    "corrections": {
+      "requested": 192,
+      "completed": 192,
+      "seconds": 45.0816788,
+      "newWitnesses": 173,
+      "defeatToVictory": 4,
+      "betterVictory": 4
+    },
+    "collectionPeakWorkingSetBytes": 628486144,
+    "validation": {
+      "identity": {
+        "model": "ef746d95c4cec380f95d6c8357d8d48a517c1a6b3e82cfda9b68964f6b87c997",
+        "mod": "554cf93a07164fd78d6de52a292da06e776aa2f0ddb519c984d712735e3d3f63",
+        "harness": "2337fa8253697ccc9bc2f83ddee859afc4f6f4d83be522a0a00052129278aac8"
+      },
+      "separation": {
+        "schema": 1,
+        "training": [
+          {
+            "id": "attack_or_block-train-low",
+            "family": "attack_or_block",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 3
+            },
+            "relics": [],
+            "inputSha256": "4d91020a3a3494cc41361c06d76dad1ee7eefe83f3541ab6cd8a22535ddc2e2d"
+          },
+          {
+            "id": "attack_or_block-train-high",
+            "family": "attack_or_block",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 3
+            },
+            "relics": [],
+            "inputSha256": "7a0c929ed8a006681ea12f8cc50aa9df7f7f9dd0e827a031ea3f9b98c9c50cd8"
+          },
+          {
+            "id": "energy_investment-train-low",
+            "family": "energy_investment",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "BLOODLETTING": 1,
+              "DEFEND_IRONCLAD": 2,
+              "OFFERING": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2
+            },
+            "relics": [],
+            "inputSha256": "31e82449bbf9a192c71f91011f823cb023079fa889557d5f66664761ef7908a6"
+          },
+          {
+            "id": "energy_investment-train-high",
+            "family": "energy_investment",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "BLOODLETTING": 1,
+              "DEFEND_IRONCLAD": 2,
+              "OFFERING": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2
+            },
+            "relics": [],
+            "inputSha256": "19e53c99f24441f06568f033a318925d3bf87f1a94b81a2fd08ab7ed291deff6"
+          },
+          {
+            "id": "strength_setup-train-low",
+            "family": "strength_setup",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 1,
+              "DEFEND_IRONCLAD": 2,
+              "INFLAME": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 4
+            },
+            "relics": [],
+            "inputSha256": "223a83e28cad7bec03cd9b85cccadda2d41d2affa17814a0a2d45f98f3471141"
+          },
+          {
+            "id": "strength_setup-train-high",
+            "family": "strength_setup",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 1,
+              "DEFEND_IRONCLAD": 2,
+              "INFLAME": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 4
+            },
+            "relics": [],
+            "inputSha256": "70c4cabdf35f05cd98bc0fe6d749058bf81ad577ab63bc386985cd55e70529a9"
+          },
+          {
+            "id": "exhaust_resources-train-low",
+            "family": "exhaust_resources",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 1,
+              "BURNING_PACT": 1,
+              "DEFEND_IRONCLAD": 2,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2,
+              "TRUE_GRIT": 1,
+              "WOUND": 1
+            },
+            "relics": [],
+            "inputSha256": "db407a74cad2e0fc96d1869aa048825c4871f34ccd45c191540cf14fe98c3a39"
+          },
+          {
+            "id": "exhaust_resources-train-high",
+            "family": "exhaust_resources",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 1,
+              "BURNING_PACT": 1,
+              "DEFEND_IRONCLAD": 2,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2,
+              "TRUE_GRIT": 1,
+              "WOUND": 1
+            },
+            "relics": [],
+            "inputSha256": "1ed305216acdf241fa7b6dcefa5cf339a663596517bdee29b49e0e5b54841e75"
+          },
+          {
+            "id": "poison_or_burst-train-low",
+            "family": "poison_or_burst",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BACKFLIP": 2,
+              "BOUNCING_FLASK": 1,
+              "DEADLY_POISON": 2,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "ac864045d802c7a27d0c97a83f1d5492faea5388727c55dabee5ff5b76248da4"
+          },
+          {
+            "id": "poison_or_burst-train-high",
+            "family": "poison_or_burst",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BACKFLIP": 2,
+              "BOUNCING_FLASK": 1,
+              "DEADLY_POISON": 2,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "8484733faa7ba5f8cbafbcd665d8a4783bd182cfc3edb3131d317a3074fccfa5"
+          },
+          {
+            "id": "defense_engine-train-low",
+            "family": "defense_engine",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "BACKFLIP": 2,
+              "DEFEND_SILENT": 3,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "0f7e725f80635df37642d44aa22954fef9b5e92b268b425720ad1288ff825d54"
+          },
+          {
+            "id": "defense_engine-train-high",
+            "family": "defense_engine",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "BACKFLIP": 2,
+              "DEFEND_SILENT": 3,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "93bd437dd52c900decd11b8c3628581f378955427c76fb9b17d17f3d5c6cba5c"
+          },
+          {
+            "id": "draw_before_spend-train-low",
+            "family": "draw_before_spend",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "ACROBATICS": 1,
+              "BACKFLIP": 2,
+              "DEADLY_POISON": 1,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "PREPARED": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "f463be1e7f430b70f53dc797cb47534936ce122ec3f8a62e96c1967b20b1c605"
+          },
+          {
+            "id": "draw_before_spend-train-high",
+            "family": "draw_before_spend",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "ACROBATICS": 1,
+              "BACKFLIP": 2,
+              "DEADLY_POISON": 1,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "PREPARED": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [],
+            "inputSha256": "c2029150793fdac3e89d7afb935687dd3daa7111d125150dc4483ab60f789fef"
+          },
+          {
+            "id": "orb_defense-train-low",
+            "family": "orb_defense",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DUALCAST": 1,
+              "GLACIER": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [],
+            "inputSha256": "5528a6f98aa1d10a4b5d2d8b2f023b8ef507704794c74d527960c1035a00ffba"
+          },
+          {
+            "id": "orb_defense-train-high",
+            "family": "orb_defense",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DUALCAST": 1,
+              "GLACIER": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [],
+            "inputSha256": "215f8022af4e8f5a00b3eb6312e2dedf7e8002bdefd943026bf212cfd9db6ab0"
+          },
+          {
+            "id": "focus_investment-train-low",
+            "family": "focus_investment",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DEFRAGMENT": 1,
+              "DUALCAST": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [],
+            "inputSha256": "b62237e80de64fcd378cc3b2bd36ca480c45495bf64674cbca8100f87738fe08"
+          },
+          {
+            "id": "focus_investment-train-high",
+            "family": "focus_investment",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DEFRAGMENT": 1,
+              "DUALCAST": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [],
+            "inputSha256": "b1dce3ea71f30c091a1b8bf18b283d9e5db22d2789258dead0ec732294ca48cd"
+          },
+          {
+            "id": "target_order-train-low",
+            "family": "target_order",
+            "character": "IRONCLAD",
+            "encounter": "CORPSE_SLUGS",
+            "cards": {
+              "BASH": 1,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2,
+              "WHIRLWIND": 2
+            },
+            "relics": [],
+            "inputSha256": "9b5aa4f376f7735c7cbdbaeea24a32a7d1f4f7c7c3ba06b705b4e4c3bd1763c1"
+          },
+          {
+            "id": "target_order-train-high",
+            "family": "target_order",
+            "character": "IRONCLAD",
+            "encounter": "CORPSE_SLUGS",
+            "cards": {
+              "BASH": 1,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2,
+              "WHIRLWIND": 2
+            },
+            "relics": [],
+            "inputSha256": "8fa67ccf633d01aa0fb3a45d6a7f97cad9ba010cae56c7e301d06f8f6a2aed9d"
+          },
+          {
+            "id": "random-ironclad-monster-train",
+            "family": "random-IRONCLAD-Monster",
+            "character": "IRONCLAD",
+            "encounter": "BOWLBUGS",
+            "cards": {
+              "ARMAMENTS": 1,
+              "ASCENDERS_BANE": 1,
+              "BASH": 1,
+              "BATTLE_TRANCE": 1,
+              "BREAKTHROUGH": 1,
+              "DEFEND_IRONCLAD": 4,
+              "EXPECT_A_FIGHT": 1,
+              "HAVOC": 1,
+              "INFLAME": 1,
+              "JACK_OF_ALL_TRADES": 1,
+              "PILLAGE": 1,
+              "REND": 1,
+              "SPITE": 2,
+              "STAMPEDE": 1,
+              "STRIKE_IRONCLAD": 5,
+              "TWIN_STRIKE": 1,
+              "VICIOUS": 1
+            },
+            "relics": [
+              "BURNING_BLOOD",
+              "GAMBLING_CHIP",
+              "GORGET",
+              "STURDY_CLAMP"
+            ],
+            "inputSha256": "ef580059158a293507e0fe0638b8bce2c74a3851c6b8f563005af7dd6cd3d6ba"
+          },
+          {
+            "id": "random-ironclad-elite-train",
+            "family": "random-IRONCLAD-Elite",
+            "character": "IRONCLAD",
+            "encounter": "ENTOMANCER_ELITE",
+            "cards": {
+              "ANGER": 1,
+              "ARMAMENTS": 1,
+              "ASCENDERS_BANE": 1,
+              "AUTOMATION": 1,
+              "BASH": 1,
+              "BRAND": 1,
+              "BREAKTHROUGH": 1,
+              "BURNING_PACT": 1,
+              "COLOSSUS": 1,
+              "DEFEND_IRONCLAD": 4,
+              "HELLRAISER": 1,
+              "HEMOKINESIS": 1,
+              "HOWL_FROM_BEYOND": 1,
+              "JACK_OF_ALL_TRADES": 1,
+              "RAMPAGE": 1,
+              "SHRUG_IT_OFF": 1,
+              "SPITE": 1,
+              "STRIKE_IRONCLAD": 5
+            },
+            "relics": [
+              "AKABEKO",
+              "ANCHOR",
+              "BRIMSTONE",
+              "BURNING_BLOOD"
+            ],
+            "inputSha256": "3b8f644c0652b28a0a621f81abe5f1f3718b7ff5c7c6d08fc78b8b152bfe20de"
+          },
+          {
+            "id": "random-ironclad-boss-train",
+            "family": "random-IRONCLAD-Boss",
+            "character": "IRONCLAD",
+            "encounter": "KNOWLEDGE_DEMON_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BASH": 1,
+              "BATTLE_TRANCE": 1,
+              "BODY_SLAM": 1,
+              "DEFEND_IRONCLAD": 4,
+              "DOMINATE": 1,
+              "FLASH_OF_STEEL": 1,
+              "HEMOKINESIS": 1,
+              "HOWL_FROM_BEYOND": 1,
+              "JUGGERNAUT": 1,
+              "RAMPAGE": 3,
+              "STRIKE_IRONCLAD": 5,
+              "TAUNT": 1,
+              "TEAR_ASUNDER": 1,
+              "THE_BOMB": 1,
+              "TWIN_STRIKE": 1
+            },
+            "relics": [
+              "BURNING_BLOOD",
+              "CAPTAINS_WHEEL",
+              "LUCKY_FYSH",
+              "SPARKLING_ROUGE"
+            ],
+            "inputSha256": "ac9b328ef18991f586cf6304ea22f04cec3f6f6822419f975c8145705584336a"
+          },
+          {
+            "id": "random-silent-monster-train",
+            "family": "random-SILENT-Monster",
+            "character": "SILENT",
+            "encounter": "SPINY_TOAD",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "ASCENDERS_BANE": 1,
+              "BACKFLIP": 2,
+              "CORROSIVE_WAVE": 2,
+              "DEFEND_SILENT": 5,
+              "EQUILIBRIUM": 1,
+              "FINISHER": 1,
+              "FLICK_FLACK": 1,
+              "KNIFE_TRAP": 1,
+              "LEG_SWEEP": 1,
+              "MASTER_OF_STRATEGY": 1,
+              "NEUTRALIZE": 1,
+              "SLICE": 1,
+              "SPEEDSTER": 1,
+              "STRIKE_SILENT": 5,
+              "SUCKER_PUNCH": 1,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "BELLOWS",
+              "HELICAL_DART",
+              "MYSTIC_LIGHTER",
+              "RING_OF_THE_SNAKE"
+            ],
+            "inputSha256": "af9e2b0ed45fbb3b33e70e7f3f1c091e6803a9df862f72e022644c9924b887ac"
+          },
+          {
+            "id": "random-silent-elite-train",
+            "family": "random-SILENT-Elite",
+            "character": "SILENT",
+            "encounter": "INFESTED_PRISMS_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BOLAS": 1,
+              "DAGGER_SPRAY": 1,
+              "DEFEND_SILENT": 5,
+              "ENVENOM": 1,
+              "GRAND_FINALE": 1,
+              "HIDDEN_DAGGERS": 1,
+              "INFINITE_BLADES": 1,
+              "LEG_SWEEP": 1,
+              "NEUTRALIZE": 1,
+              "NOXIOUS_FUMES": 2,
+              "PIERCING_WAIL": 1,
+              "SALVO": 1,
+              "SHADOWMELD": 1,
+              "SNAKEBITE": 1,
+              "STRIKE_SILENT": 5,
+              "SUCKER_PUNCH": 1,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "ORICHALCUM",
+              "PEN_NIB",
+              "RED_MASK",
+              "RING_OF_THE_SNAKE"
+            ],
+            "inputSha256": "15b04a16a3ecbc28b773c85b3698be7fe0a8fb0fd0c07bced7816d0a43edf279"
+          },
+          {
+            "id": "random-silent-boss-train",
+            "family": "random-SILENT-Boss",
+            "character": "SILENT",
+            "encounter": "KNOWLEDGE_DEMON_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "DEADLY_POISON": 1,
+              "DEFEND_SILENT": 5,
+              "ECHOING_SLASH": 1,
+              "EXPOSE": 1,
+              "FAN_OF_KNIVES": 1,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "NIGHTMARE": 1,
+              "OMNISLICE": 1,
+              "POUNCE": 1,
+              "PREDATOR": 1,
+              "PREPARED": 1,
+              "RICOCHET": 1,
+              "SECRET_TECHNIQUE": 1,
+              "SKEWER": 2,
+              "STRIKE_SILENT": 5,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "CAPTAINS_WHEEL",
+              "JUZU_BRACELET",
+              "RING_OF_THE_SNAKE",
+              "SNECKO_SKULL"
+            ],
+            "inputSha256": "f0cd517714e4b1ead5efd6bad7c65300beb504231103ac66bebd0fbd3039ea78"
+          },
+          {
+            "id": "random-defect-monster-train",
+            "family": "random-DEFECT-Monster",
+            "character": "DEFECT",
+            "encounter": "SLUMBERING_BEETLE",
+            "cards": {
+              "ADAPTIVE_STRIKE": 1,
+              "ASCENDERS_BANE": 1,
+              "CHAOS": 1,
+              "COLD_SNAP": 1,
+              "COOLANT": 1,
+              "CREATIVE_AI": 1,
+              "DEFEND_DEFECT": 4,
+              "DUALCAST": 1,
+              "FERAL": 1,
+              "FUSION": 1,
+              "GOLD_AXE": 1,
+              "HAILSTORM": 1,
+              "MULTI_CAST": 1,
+              "SCRAPE": 1,
+              "SIGNAL_BOOST": 1,
+              "STRIKE_DEFECT": 4,
+              "TESLA_COIL": 1,
+              "THRUMMING_HATCHET": 1,
+              "ZAP": 1
+            },
+            "relics": [
+              "CLOAK_CLASP",
+              "CRACKED_CORE",
+              "POWER_CELL",
+              "PUNCH_DAGGER"
+            ],
+            "inputSha256": "914b28187fe99996beeed5cac4722d7c33c07ea80740b23772b90b90266e8dcf"
+          },
+          {
+            "id": "random-defect-elite-train",
+            "family": "random-DEFECT-Elite",
+            "character": "DEFECT",
+            "encounter": "ENTOMANCER_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BULK_UP": 1,
+              "CHILL": 1,
+              "COLD_SNAP": 1,
+              "COOLANT": 1,
+              "COOLHEADED": 1,
+              "DARK_SHACKLES": 1,
+              "DEFEND_DEFECT": 4,
+              "DUALCAST": 1,
+              "ECHO_FORM": 1,
+              "GLACIER": 2,
+              "HYPERBEAM": 1,
+              "MIND_BLAST": 1,
+              "STRIKE_DEFECT": 4,
+              "SWEEPING_BEAM": 1,
+              "TURBO": 1,
+              "WHITE_NOISE": 1,
+              "ZAP": 1
+            },
+            "relics": [
+              "CAULDRON",
+              "CRACKED_CORE",
+              "LASTING_CANDY",
+              "SLING_OF_COURAGE"
+            ],
+            "inputSha256": "6071fbbd5e7df6306eac8bc6da2a9da167a4a7e0441adbd19bfe2e9a5f0aac29"
+          },
+          {
+            "id": "random-defect-boss-train",
+            "family": "random-DEFECT-Boss",
+            "character": "DEFECT",
+            "encounter": "KAISER_CRAB_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "COLD_SNAP": 2,
+              "COMPACT": 1,
+              "DEFEND_DEFECT": 4,
+              "DEFRAGMENT": 1,
+              "DUALCAST": 1,
+              "GLASSWORK": 1,
+              "MACHINE_LEARNING": 1,
+              "NULL": 1,
+              "PRODUCTION": 1,
+              "REBOOT": 2,
+              "REFRACT": 1,
+              "ROLLING_BOULDER": 1,
+              "SHATTER": 1,
+              "STRIKE_DEFECT": 4,
+              "SWEEPING_BEAM": 1,
+              "ZAP": 1
+            },
+            "relics": [
+              "CRACKED_CORE",
+              "DATA_DISK",
+              "HAPPY_FLOWER",
+              "TUNGSTEN_ROD"
+            ],
+            "inputSha256": "d3b7fca428cf31ce2fc4ada37d9aad77c85d94abaa8fd7b01927e791a29b79d2"
+          },
+          {
+            "id": "random-regent-monster-train",
+            "family": "random-REGENT-Monster",
+            "character": "REGENT",
+            "encounter": "EXOSKELETONS",
+            "cards": {
+              "ALCHEMIZE": 1,
+              "ASCENDERS_BANE": 1,
+              "BEAT_INTO_SHAPE": 1,
+              "COMET": 1,
+              "CONQUEROR": 1,
+              "DEFEND_REGENT": 4,
+              "DEVASTATE": 1,
+              "DISCOVERY": 1,
+              "FALLING_STAR": 1,
+              "GAMMA_BLAST": 1,
+              "MANIFEST_AUTHORITY": 1,
+              "MONARCHS_GAZE": 1,
+              "MONOLOGUE": 1,
+              "RADIATE": 1,
+              "REFLECT": 1,
+              "STRIKE_REGENT": 4,
+              "THE_SMITH": 1,
+              "TYRANNY": 1,
+              "VENERATE": 1
+            },
+            "relics": [
+              "ANCHOR",
+              "DIVINE_RIGHT",
+              "GHOST_SEED",
+              "LUCKY_FYSH"
+            ],
+            "inputSha256": "b81af7d539aa77183a9b2d545752063ab6a2064e3aa38c26b5a9e798bd651ab5"
+          },
+          {
+            "id": "random-regent-elite-train",
+            "family": "random-REGENT-Elite",
+            "character": "REGENT",
+            "encounter": "ENTOMANCER_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BUNDLE_OF_JOY": 1,
+              "CONQUEROR": 2,
+              "CONVERGENCE": 2,
+              "CRUSH_UNDER": 1,
+              "DEFEND_REGENT": 4,
+              "FALLING_STAR": 1,
+              "FOREGONE_CONCLUSION": 1,
+              "FURNACE": 1,
+              "GUIDING_STAR": 2,
+              "IMPATIENCE": 1,
+              "KINGLY_PUNCH": 1,
+              "MONARCHS_GAZE": 1,
+              "SHOCKWAVE": 1,
+              "STRIKE_REGENT": 4,
+              "VENERATE": 1
+            },
+            "relics": [
+              "CLOAK_CLASP",
+              "DIVINE_RIGHT",
+              "FENCING_MANUAL",
+              "UNCEASING_TOP"
+            ],
+            "inputSha256": "39a1266007b68917ed099d6cf5e94fd3c86686c63a48aee19203ec08bb2b17c8"
+          },
+          {
+            "id": "random-regent-boss-train",
+            "family": "random-REGENT-Boss",
+            "character": "REGENT",
+            "encounter": "KNOWLEDGE_DEMON_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BEAT_DOWN": 1,
+              "CHARGE": 1,
+              "COLLISION_COURSE": 2,
+              "DEFEND_REGENT": 4,
+              "FALLING_STAR": 1,
+              "GLITTERSTREAM": 1,
+              "HEIRLOOM_HAMMER": 1,
+              "HIDDEN_CACHE": 1,
+              "KNOW_THY_PLACE": 1,
+              "MANIFEST_AUTHORITY": 1,
+              "MONOLOGUE": 1,
+              "RADIATE": 1,
+              "ROYALTIES": 1,
+              "SEEKING_EDGE": 1,
+              "STRATAGEM": 1,
+              "STRIKE_REGENT": 4,
+              "VENERATE": 1
+            },
+            "relics": [
+              "BOWLER_HAT",
+              "DIVINE_RIGHT",
+              "GIRYA",
+              "GORGET"
+            ],
+            "inputSha256": "3fa9f32b6f65e0151cffa5e9721d05ed6daa7236f28062cbfc90c864a0762499"
+          },
+          {
+            "id": "random-necrobinder-monster-train",
+            "family": "random-NECROBINDER-Monster",
+            "character": "NECROBINDER",
+            "encounter": "SPINY_TOAD",
+            "cards": {
+              "AFTERLIFE": 1,
+              "ASCENDERS_BANE": 1,
+              "BODYGUARD": 1,
+              "DANSE_MACABRE": 1,
+              "DEFEND_NECROBINDER": 4,
+              "DELAY": 1,
+              "ENFEEBLING_TOUCH": 1,
+              "FETCH": 2,
+              "INVOKE": 1,
+              "MASTER_OF_STRATEGY": 1,
+              "MIND_BLAST": 1,
+              "OBLIVION": 1,
+              "PULL_AGGRO": 1,
+              "RATTLE": 1,
+              "STRIKE_NECROBINDER": 4,
+              "TIMES_UP": 1,
+              "TRANSFIGURE": 1,
+              "UNLEASH": 1
+            },
+            "relics": [
+              "BOUND_PHYLACTERY",
+              "GAME_PIECE",
+              "PERMAFROST",
+              "PETRIFIED_TOAD"
+            ],
+            "inputSha256": "fc1b7956506b4e599d871ec11be096a8d02911959a0ea579a159f21891a7d16f"
+          },
+          {
+            "id": "random-necrobinder-elite-train",
+            "family": "random-NECROBINDER-Elite",
+            "character": "NECROBINDER",
+            "encounter": "ENTOMANCER_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BANSHEES_CRY": 1,
+              "BODYGUARD": 1,
+              "CALCIFY": 1,
+              "CLEANSE": 1,
+              "DEFEND_NECROBINDER": 4,
+              "DRAIN_POWER": 1,
+              "FLATTEN": 1,
+              "HANG": 1,
+              "MELANCHOLY": 1,
+              "REAVE": 1,
+              "RESTLESSNESS": 1,
+              "SACRIFICE": 1,
+              "SECRET_TECHNIQUE": 1,
+              "SOUL_STORM": 1,
+              "SOW": 1,
+              "STRIKE_NECROBINDER": 4,
+              "THE_SCYTHE": 1,
+              "UNLEASH": 1
+            },
+            "relics": [
+              "BOUND_PHYLACTERY",
+              "MINIATURE_CANNON",
+              "VEXING_PUZZLEBOX",
+              "WING_CHARM"
+            ],
+            "inputSha256": "edcf7464b18e5b4e1697ac3bc777a207f0840bfdfa71829bbf840892c5c17740"
+          },
+          {
+            "id": "random-necrobinder-boss-train",
+            "family": "random-NECROBINDER-Boss",
+            "character": "NECROBINDER",
+            "encounter": "KNOWLEDGE_DEMON_BOSS",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "AUTOMATION": 1,
+              "BODYGUARD": 1,
+              "CALCIFY": 1,
+              "DEATH_MARCH": 1,
+              "DEFEND_NECROBINDER": 4,
+              "DIRGE": 2,
+              "EIDOLON": 1,
+              "FRIENDSHIP": 2,
+              "HIDDEN_GEM": 1,
+              "INVOKE": 1,
+              "PAGESTORM": 1,
+              "REAVE": 2,
+              "RIGHT_HAND_HAND": 1,
+              "STRIKE_NECROBINDER": 4,
+              "UNLEASH": 1
+            },
+            "relics": [
+              "BIG_HAT",
+              "BOUND_PHYLACTERY",
+              "KUNAI",
+              "MINIATURE_TENT"
+            ],
+            "inputSha256": "531cb495444ba1853ad099aaf865875eb3de57e05a64c16733a4cd7e3e49dcbe"
+          },
+          {
+            "id": "attack_or_block-train-high-pen_nib-0",
+            "family": "attack_or_block",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 3
+            },
+            "relics": [
+              "PEN_NIB"
+            ],
+            "inputSha256": "b7e130af7574fc068a27290e60f562085e4a3c4bf117030c48f34a82cb6fd3fb"
+          },
+          {
+            "id": "attack_or_block-train-high-pen_nib-9",
+            "family": "attack_or_block",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "DEFEND_IRONCLAD": 3,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 3
+            },
+            "relics": [
+              "PEN_NIB"
+            ],
+            "inputSha256": "ec15c084fe9018f6565a895243db2901ce3b23ec22c69537a22c0c5177d41db5"
+          },
+          {
+            "id": "energy_investment-train-high-nunchaku-0",
+            "family": "energy_investment",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "BLOODLETTING": 1,
+              "DEFEND_IRONCLAD": 2,
+              "OFFERING": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2
+            },
+            "relics": [
+              "NUNCHAKU"
+            ],
+            "inputSha256": "f7a5da76321c826d6ccdde26c5f2a7757a4694f041fc5ed9cd53535e5737a644"
+          },
+          {
+            "id": "energy_investment-train-high-nunchaku-9",
+            "family": "energy_investment",
+            "character": "IRONCLAD",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BASH": 2,
+              "BLOODLETTING": 1,
+              "DEFEND_IRONCLAD": 2,
+              "OFFERING": 1,
+              "POMMEL_STRIKE": 2,
+              "SHRUG_IT_OFF": 2,
+              "STRIKE_IRONCLAD": 2
+            },
+            "relics": [
+              "NUNCHAKU"
+            ],
+            "inputSha256": "44abeb4006230e4e647f2166558838e603710bf7c3d4990130358f13e2906109"
+          },
+          {
+            "id": "defense_engine-train-high-tuning_fork-0",
+            "family": "defense_engine",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "BACKFLIP": 2,
+              "DEFEND_SILENT": 3,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "TUNING_FORK"
+            ],
+            "inputSha256": "eb26f0c37f4e5c2274b7146a2d4ace76a784064bf082f7b474007c74cc5a76df"
+          },
+          {
+            "id": "defense_engine-train-high-tuning_fork-9",
+            "family": "defense_engine",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "AFTERIMAGE": 1,
+              "BACKFLIP": 2,
+              "DEFEND_SILENT": 3,
+              "FOOTWORK": 1,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "TUNING_FORK"
+            ],
+            "inputSha256": "04465eb29cb840d8a62c5ea4949a4ac94ffd93caa721a9ba6654d4bf627e1b83"
+          },
+          {
+            "id": "poison_or_burst-train-high-snecko_skull-0",
+            "family": "poison_or_burst",
+            "character": "SILENT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BACKFLIP": 2,
+              "BOUNCING_FLASK": 1,
+              "DEADLY_POISON": 2,
+              "DEFEND_SILENT": 2,
+              "NEUTRALIZE": 1,
+              "STRIKE_SILENT": 3,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "SNECKO_SKULL"
+            ],
+            "inputSha256": "774e2e79f3eb692e75ba231f374e3c21cf314ec4298ef53a5a1c05a711df5dcc"
+          },
+          {
+            "id": "focus_investment-train-high-data_disk-0",
+            "family": "focus_investment",
+            "character": "DEFECT",
+            "encounter": "FUZZY_WURM_CRAWLER",
+            "cards": {
+              "BALL_LIGHTNING": 2,
+              "COLD_SNAP": 2,
+              "DEFEND_DEFECT": 3,
+              "DEFRAGMENT": 1,
+              "DUALCAST": 1,
+              "STRIKE_DEFECT": 2,
+              "ZAP": 1
+            },
+            "relics": [
+              "DATA_DISK"
+            ],
+            "inputSha256": "61dc597c920f329b65a233a5d7e3f376afc3f16b74ed9b4ae74b267ff1085c3d"
+          }
+        ],
+        "evaluation": [
+          {
+            "id": "unseen-defect-bygone_effigy_elite",
+            "family": "native-BYGONE_EFFIGY_ELITE",
+            "character": "DEFECT",
+            "encounter": "BYGONE_EFFIGY_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BEAM_CELL": 1,
+              "CHILL": 1,
+              "DEFEND_DEFECT": 4,
+              "DUALCAST": 1,
+              "ECHO_FORM": 1,
+              "FIGHT_THROUGH": 1,
+              "METEOR_STRIKE": 2,
+              "RAINBOW": 3,
+              "SALVO": 1,
+              "SCRAWL": 1,
+              "SIGNAL_BOOST": 1,
+              "STRIKE_DEFECT": 4,
+              "SWEEPING_BEAM": 1,
+              "VOLTAIC": 1,
+              "ZAP": 1
+            },
+            "relics": [
+              "CRACKED_CORE",
+              "PENDULUM",
+              "WAR_PAINT",
+              "WHETSTONE"
+            ],
+            "inputSha256": "fdf46d1210a54e4bf21bf8a3ad1aa3c1c9c0eb9525b97f37c374e46f7f7e57c8"
+          },
+          {
+            "id": "unseen-ironclad-byrdonis_elite",
+            "family": "native-BYRDONIS_ELITE",
+            "character": "IRONCLAD",
+            "encounter": "BYRDONIS_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BASH": 1,
+              "BLOODLETTING": 1,
+              "CINDER": 1,
+              "CONFLAGRATION": 1,
+              "DEFEND_IRONCLAD": 4,
+              "FEEL_NO_PAIN": 1,
+              "FIGHT_ME": 1,
+              "JUGGLING": 1,
+              "PANACHE": 1,
+              "REND": 1,
+              "SECOND_WIND": 1,
+              "SETUP_STRIKE": 1,
+              "STOKE": 1,
+              "STRIKE_IRONCLAD": 5,
+              "TEAR_ASUNDER": 1,
+              "THRASH": 1,
+              "VICIOUS": 1
+            },
+            "relics": [
+              "BURNING_BLOOD",
+              "PEN_NIB",
+              "PLANISPHERE",
+              "RUINED_HELMET"
+            ],
+            "inputSha256": "e68fe89cf07ff89215d7f017e1be124aaebfca1ec46aa4333b6a7e5020f5f338"
+          },
+          {
+            "id": "unseen-necrobinder-phrog_parasite_elite",
+            "family": "native-PHROG_PARASITE_ELITE",
+            "character": "NECROBINDER",
+            "encounter": "PHROG_PARASITE_ELITE",
+            "cards": {
+              "ASCENDERS_BANE": 1,
+              "BODYGUARD": 1,
+              "BURY": 1,
+              "COUNTDOWN": 1,
+              "DEFEND_NECROBINDER": 4,
+              "FETCH": 1,
+              "NEGATIVE_PULSE": 1,
+              "PUTREFY": 1,
+              "SACRIFICE": 1,
+              "SALVO": 1,
+              "SCOURGE": 1,
+              "SEANCE": 1,
+              "SENTRY_MODE": 1,
+              "SEVERANCE": 1,
+              "SHOCKWAVE": 1,
+              "SHROUD": 1,
+              "STRIKE_NECROBINDER": 4,
+              "UNLEASH": 1,
+              "VEILPIERCER": 1
+            },
+            "relics": [
+              "BOUND_PHYLACTERY",
+              "GAMBLING_CHIP",
+              "ODDLY_SMOOTH_STONE",
+              "POTION_BELT"
+            ],
+            "inputSha256": "6cb2ef532d70e1cef5c630c0cbb6569fd6740c734a538cad431d63057a20b3c1"
+          },
+          {
+            "id": "unseen-regent-decimillipede_elite",
+            "family": "native-DECIMILLIPEDE_ELITE",
+            "character": "REGENT",
+            "encounter": "DECIMILLIPEDE_ELITE",
+            "cards": {
+              "ALIGNMENT": 1,
+              "ASCENDERS_BANE": 1,
+              "BIG_BANG": 1,
+              "BUNDLE_OF_JOY": 1,
+              "CHARGE": 2,
+              "DARK_SHACKLES": 1,
+              "DEFEND_REGENT": 4,
+              "FALLING_STAR": 1,
+              "FURNACE": 1,
+              "GLOW": 1,
+              "PATTER": 2,
+              "PILLAR_OF_CREATION": 1,
+              "REFLECT": 1,
+              "SOLAR_STRIKE": 1,
+              "STRIKE_REGENT": 4,
+              "THRUMMING_HATCHET": 1,
+              "VENERATE": 1
+            },
+            "relics": [
+              "BELLOWS",
+              "DIVINE_RIGHT",
+              "MINI_REGENT",
+              "TUNING_FORK"
+            ],
+            "inputSha256": "a8536c632be37c3fe254b639a4fa46d3b6453dfe699a86c01fbe322e378094de"
+          },
+          {
+            "id": "unseen-silent-knights_elite",
+            "family": "native-KNIGHTS_ELITE",
+            "character": "SILENT",
+            "encounter": "KNIGHTS_ELITE",
+            "cards": {
+              "ACCELERANT": 1,
+              "ACCURACY": 1,
+              "ASCENDERS_BANE": 1,
+              "BACKSTAB": 1,
+              "BUBBLE_BUBBLE": 2,
+              "DEFEND_SILENT": 5,
+              "DODGE_AND_ROLL": 1,
+              "ESCAPE_PLAN": 1,
+              "FINISHER": 1,
+              "LEADING_STRIKE": 1,
+              "NEUTRALIZE": 1,
+              "PANIC_BUTTON": 1,
+              "SALVO": 1,
+              "SHADOWMELD": 1,
+              "SKEWER": 2,
+              "STRIKE_SILENT": 5,
+              "SURVIVOR": 1
+            },
+            "relics": [
+              "JUZU_BRACELET",
+              "NUNCHAKU",
+              "POTION_BELT",
+              "RING_OF_THE_SNAKE"
+            ],
+            "inputSha256": "6725a1516ea8350d8b26451936c8c3ee542ad2be48e8ed30bbc300759e302c1c"
+          }
+        ],
+        "maximumDeckSimilarity": 0.3888888888888889,
+        "passed": true,
+        "datasetSha256": "e9cfe9adfafff24667f0b3ef276ee8fafb1f171d65ff8f3ec2fcb9840ce53a0d"
+      },
+      "records": [
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 27,
+            "strategicHpDeficit": 27,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000629986,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.5423927,
+          "nodes": 12958,
+          "transitions": 46439,
+          "rss": 349114368,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 37,
+            "strategicHpDeficit": 37,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.1401697,
+          "nodes": 12000,
+          "transitions": 36785,
+          "rss": 387162112,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.7351214,
+          "nodes": 12000,
+          "transitions": 46810,
+          "rss": 439947264,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 7.3360511,
+          "nodes": 8048,
+          "transitions": 30995,
+          "rss": 333774848,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 4,
+            "strategicHpDeficit": 4,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001699971,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 13.3031853,
+          "nodes": 12000,
+          "transitions": 58086,
+          "rss": 364576768,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 52,
+            "strategicHpDeficit": 52,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 14,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 13.1360376,
+          "nodes": 12000,
+          "transitions": 51915,
+          "rss": 352358400,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 25,
+            "strategicHpDeficit": 25,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 106,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 17.5339092,
+          "nodes": 12000,
+          "transitions": 100570,
+          "rss": 444190720,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 26,
+            "strategicHpDeficit": 26,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000689968,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 14.6876448,
+          "nodes": 12000,
+          "transitions": 75572,
+          "rss": 367509504,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 9.0421971,
+          "nodes": 7198,
+          "transitions": 48065,
+          "rss": 338415616,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 74,
+            "strategicHpDeficit": 263,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 255,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 13.1688947,
+          "nodes": 12000,
+          "transitions": 77124,
+          "rss": 425324544,
+          "timeBoundary": false
+        }
+      ],
+      "completed": true,
+      "elapsedSeconds": 134.37981613900047
+    },
+    "comparison": [
+      {
+        "id": "unseen-defect-bygone_effigy_elite",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 37,
+          "strategicHpDeficit": 37,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 27,
+          "strategicHpDeficit": 27,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000629986,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-ironclad-byrdonis_elite",
+        "comparison": 1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000711993,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-necrobinder-phrog_parasite_elite",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 52,
+          "strategicHpDeficit": 52,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 14,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 4,
+          "strategicHpDeficit": 4,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10001699971,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-regent-decimillipede_elite",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 25,
+          "strategicHpDeficit": 25,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 106,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 26,
+          "strategicHpDeficit": 26,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000689968,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-silent-knights_elite",
+        "comparison": -1,
+        "materialComparison": -1,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 74,
+          "strategicHpDeficit": 263,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 255,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 191,
+          "score": -1000010940027,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      }
+    ],
+    "accepted": false
+  },
+  "nextResearchFindings": {
+    "trainingRoleImbalance": {
+      "IRONCLAD": 17,
+      "SILENT": 12,
+      "DEFECT": 8,
+      "REGENT": 3,
+      "NECROBINDER": 3
+    },
+    "ostyBodyFeaturesPresent": false,
+    "causalExplanationEstablished": false
+  }
+}

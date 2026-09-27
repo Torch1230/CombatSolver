@@ -16,10 +16,19 @@ internal static class SearchOutcomeContext
     }
 
     internal static void CaptureSelected(CombatPredictionSimulator simulator, Player player,
-        IReadOnlyDictionary<string, int> columns, double[] values)
+        IReadOnlyDictionary<string, int> columns, double[] values, IReadOnlySet<string>? prefixes = null)
     {
         Array.Clear(values);
-        Capture(new FeatureWriter(columns, values), simulator, player);
+        Capture(new FeatureWriter(columns, values, prefixes), simulator, player);
+    }
+
+    internal static HashSet<string> RequiredPrefixes(IEnumerable<string> names)
+    {
+        HashSet<string> prefixes = new(StringComparer.Ordinal);
+        foreach (string name in names)
+            for (int i = 0; i < name.Length; i++)
+                if (name[i] == '/') prefixes.Add(name[..(i + 1)]);
+        return prefixes;
     }
 
     private static void Capture(FeatureWriter x, CombatPredictionSimulator simulator, Player player)
@@ -37,14 +46,19 @@ internal static class SearchOutcomeContext
         foreach (var relic in combat.RelicsOf(player))
         {
             string name = "relic/" + relic.Id.Entry;
+            if (!x.WantsPrefix(name + "/")) continue;
             x[name + "/present"] = 1;
             x[name + "/melted"] = relic.IsMelted ? 1 : 0;
-            var key = combat.CaptureRelicObservation(simulator, relic);
-            x[$"{name}/state/{key.First:X16}{key.Second:X16}"] = 1;
-            if (RelicCounterCatalog.Identify(relic) != null)
+            if (x.WantsPrefix(name + "/state/"))
+            {
+                var key = combat.CaptureRelicObservation(simulator, relic);
+                x[$"{name}/state/{key.First:X16}{key.Second:X16}"] = 1;
+            }
+            if (x.Wants(name + "/counter") && RelicCounterCatalog.Identify(relic) != null)
                 x[name + "/counter"] = combat.ReadRelicCounter(simulator, relic);
         }
-        if (combat.TryGetPocketwatchState(player, out int current, out int previous, out int threshold))
+        if (x.WantsPrefix("relic/POCKETWATCH/")
+            && combat.TryGetPocketwatchState(player, out int current, out int previous, out int threshold))
         {
             x["relic/POCKETWATCH/current"] = current;
             x["relic/POCKETWATCH/previous"] = previous;
@@ -55,6 +69,7 @@ internal static class SearchOutcomeContext
         for (int zone = 0; zone < piles.Length; zone++)
         {
             string pile = "pile/" + zones[zone];
+            if (!x.WantsPrefix(pile + "/")) continue;
             x[pile + "/count"] = piles[zone].Count;
             for (int index = 0; index < piles[zone].Count; index++)
             {
@@ -68,18 +83,29 @@ internal static class SearchOutcomeContext
                 // Hand costs include branch-owned global and local cost modifiers.
                 if (zone == 0)
                 {
-                    int energy = card.GetEnergyCostWithModifiers(simulator, state);
-                    int stars = card.GetStarCostWithModifiers(simulator, state);
-                    Add(id + "/energy", energy); Add(id + "/stars", stars);
-                    Add(type + "/energy", energy); Add(type + "/stars", stars);
+                    if (x.Wants(id + "/energy") || x.Wants(type + "/energy"))
+                    {
+                        int energy = card.GetEnergyCostWithModifiers(simulator, state);
+                        Add(id + "/energy", energy); Add(type + "/energy", energy);
+                    }
+                    if (x.Wants(id + "/stars") || x.Wants(type + "/stars"))
+                    {
+                        int stars = card.GetStarCostWithModifiers(simulator, state);
+                        Add(id + "/stars", stars); Add(type + "/stars", stars);
+                    }
                 }
                 Add(type + "/x-cost", preview.EnergyCost.CostsX ? 1 : 0);
                 Add(type + "/exhaust-next", preview.ExhaustOnNextPlay ? 1 : 0);
                 Add(type + "/retain", preview.ShouldRetainThisTurn ? 1 : 0);
-                foreach (var keyword in preview.Keywords) Add(type + "/keyword/" + keyword, 1);
-                foreach (var (name, value) in preview.DynamicVars)
-                    if (SemanticStateFieldPolicy.IsSemantic(preview, name, value))
-                        Add(type + "/var/" + name, (double)value.BaseValue);
+                if (x.WantsPrefix(type + "/keyword/"))
+                    foreach (var keyword in preview.Keywords) Add(type + "/keyword/" + keyword, 1);
+                if (x.WantsPrefix(type + "/var/") || x.WantsPrefix(id + "/var/"))
+                    foreach (var (name, value) in preview.DynamicVars)
+                        if (SemanticStateFieldPolicy.IsSemantic(preview, name, value))
+                        {
+                            Add(type + "/var/" + name, (double)value.BaseValue);
+                            Add(id + "/var/" + name, (double)value.BaseValue);
+                        }
                 if (preview.Enchantment is { } enchantment)
                     Add(id + "/enchantment/" + enchantment.Id.Entry, enchantment.Amount);
                 if (preview.Affliction is { } affliction)
@@ -88,25 +114,40 @@ internal static class SearchOutcomeContext
                 if (zone == 1 && index < 10) Add($"{pile}/position/{index}/{preview.Id.Entry}", 1);
             }
         }
-        foreach (var power in combat.EffectivePowers())
+        if (x.WantsPrefix("power/")) foreach (var power in combat.EffectivePowers())
         {
             string owner = ReferenceEquals(power.Owner, player.Creature) ? "player" : "enemy/" + power.Owner?.CombatId;
             Add("power/" + owner + "/" + power.Id.Entry, power.Amount);
         }
         for (int index = 0; index < combat.KnownEnemies.Count; index++)
         {
+            string name = "enemy/" + index;
+            if (!x.WantsPrefix(name + "/")) continue;
             var enemy = combat.KnownEnemies[index];
             var predicted = simulator.State.GetCreature(enemy);
-            string name = "enemy/" + index;
             x[name + "/hp"] = combat.EffectiveEnemyHp(enemy, predicted);
             x[name + "/block"] = predicted.Block;
             x[name + "/present"] = combat.ContainsCreature(enemy) ? 1 : 0;
+            x[name + "/max-hp"] = predicted.MaxHp;
+            if (enemy.Monster != null) x[name + "/identity/" + enemy.Monster.Id.Entry] = 1;
+            if (!combat.ContainsCreature(enemy) || !predicted.IsAlive) continue;
+            x[name + "/skip-next"] = combat.WillSkipNextMove(enemy) ? 1 : 0;
+            if (enemy.Monster != null && (x.WantsPrefix(name + "/move/")
+                || x.Wants(name + "/attack-hits") || x.Wants(name + "/attack-damage")))
+            {
+                ForecastMove move = combat.CurrentMonsterMove(enemy);
+                x[name + "/move/" + move.Move.Id] = 1;
+                Add(name + "/attack-hits", move.AttackHits.Count);
+                foreach (ForecastAttackHit hit in move.AttackHits)
+                    Add(name + "/attack-damage", combat.AdjustMonsterMoveDamage(enemy, move.Move.Id, hit.BaseDamage));
+            }
         }
         x["orb/capacity"] = state.OrbQueue.Capacity;
         for (int index = 0; index < state.OrbQueue.Orbs.Count; index++)
         {
             var orb = state.OrbQueue.Orbs[index];
             string name = $"orb/{index}/{orb.Id.Entry}";
+            if (!x.WantsPrefix(name + "/")) continue;
             x[name + "/present"] = 1;
             x[name + "/passive"] = (double)OrbMirrors.GetPassiveValue(simulator, orb);
             x[name + "/evoke"] = (double)OrbMirrors.GetEvokeValue(simulator, orb);
@@ -117,9 +158,12 @@ internal static class SearchOutcomeContext
         private readonly Dictionary<string, double>? _sparse;
         private readonly IReadOnlyDictionary<string, int>? _columns;
         private readonly double[]? _values;
+        private readonly IReadOnlySet<string>? _prefixes;
         internal FeatureWriter(Dictionary<string, double> sparse) => _sparse = sparse;
-        internal FeatureWriter(IReadOnlyDictionary<string, int> columns, double[] values)
-        { _columns = columns; _values = values; }
+        internal FeatureWriter(IReadOnlyDictionary<string, int> columns, double[] values, IReadOnlySet<string>? prefixes)
+        { _columns = columns; _values = values; _prefixes = prefixes; }
+        internal bool Wants(string name) => _columns == null || _columns.ContainsKey(name);
+        internal bool WantsPrefix(string prefix) => _prefixes == null || _prefixes.Contains(prefix);
         internal double this[string name]
         {
             set

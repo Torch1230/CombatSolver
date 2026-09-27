@@ -1,6 +1,6 @@
 # CombatSolver 架构与职责地图
 
-`SearchOutcomeContext` 投影分支原始上下文；训练可写稀疏列，推理只写模型引用的数值列。`SearchOutcomeValueModel` 拥有有界同池观测、完整政策胜利见证、成对树排序与请求内缓存；schema4/游戏 MVID 为模型合同。离线宿主独占文件 I/O、拟合与机制检查，`tools/OutcomeValuation/dataset.py` 独占跨场景划分审计。`ObjectiveRetention` / `CombatSearchCoordinator.ObjectiveSearch` 仍仅离线 DOP1/Disabled 药水，Runtime 不启用；独立 Evaluate 可观察首次裁剪，不能把该诊断当性能样本。见[成对排序与场景隔离](strategy/pairwise-outcome-ranking-20260927.md)。
+`SearchOutcomeContext` 投影分支原始上下文，推理跳过模型未引用的类别。`SearchOutcomeValueModel` 拥有有界同池观测、已完成胜利/真实死亡见证、64棵直方图成对树及请求内缓存；schema5/游戏 MVID 为模型合同。固定预测器与 `OutcomeTrainingCollector` 分离；采集可复制三个首回合动作深度的保留/淘汰前缀，每对独立组、合计至多六条，不保存节点或模拟器。离线宿主 `OutcomeCorrections` 在主搜索后通过原固定前缀 Beam 补查，独立记录训练成本，只更新已有状态的完成见证。`OutcomeValueTraining` 合并同根不同采集策略时重映射组号。`tools/OutcomeValuation/dataset.py` 审计跨场景隔离，`evaluate.py` 独占冻结模型的独立进程对照与测试使用记录。文件 I/O、训练和纠正搜索编排均不在 Search 内环。`ObjectiveRetention` / `CombatSearchCoordinator.ObjectiveSearch` 仍仅离线 DOP1/Disabled 药水，Runtime 不启用。见[直方图排序与轨迹纠正](strategy/histogram-outcome-ranking-20260927.md)。
 
 
 `CombatPredictionHistory` 拥有模拟历史及六项累计值；单人身份在模拟器建立时冻结，三类 Fork 按值继承。`CombatHistoryCounterKey` 消费根冻结的读者依赖掩码，不维护第二份账本。测试构建逐事件核对独立全扫描。

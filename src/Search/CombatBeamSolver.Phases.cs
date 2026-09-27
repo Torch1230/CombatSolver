@@ -20,7 +20,7 @@ internal sealed partial class CombatBeamSolver
 {
     public SolverResult Solve()
     {
-        if (policy.ObjectiveValueModel != null && policy.MaxDegreeOfParallelism != 1)
+        if ((policy.ObjectiveValueModel != null || policy.OutcomeTrainingCollector != null) && policy.MaxDegreeOfParallelism != 1)
             throw new InvalidOperationException("Outcome ranking collection/inference requires DOP 1.");
         if (policy.UseObjectiveSearch)
             policy = policy with { NoveltySearch = null };
@@ -1104,7 +1104,7 @@ internal sealed partial class CombatBeamSolver
             if (compatibleRoot == null)
                 continue;
             root = compatibleRoot;
-            policy.ObjectiveValueModel?.ObserveState(root, _player);
+            policy.OutcomeTrainingCollector?.ObserveState(root, _player);
             frontier.Add(root);
             if (_run.Transpositions.TryGetValue(root.StateKey, out TranspositionFrontier? existing))
                 existing.TryAccept(new TranspositionLabel(
@@ -1669,6 +1669,9 @@ internal sealed partial class CombatBeamSolver
                 void AcceptExpandedChild(SearchNode node, SearchNode child)
                 {
                     ObserveSearchPath(child, SearchPathObservationStage.ActionAdmitted, "expansion_commit");
+                    if (policy.OutcomeTrainingCollector is { } collector && child.Snapshot.TerminalStamp != null)
+                        collector.ObserveCompleted(child,
+                            SummarizeCandidate(child, won: IsEligibleCompleteVictory(child)));
                     if (child.Score > fallback.Score)
                         fallback = child;
                     if (child.IsTerminal || child.Turn > node.Turn)
