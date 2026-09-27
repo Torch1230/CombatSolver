@@ -757,5 +757,82 @@
     "eligibilityRecomputed": true,
     "maximumMemoryBytes": 12884901888,
     "cpuQuotaCores": 8
+  },
+  "canonicalFeatureNamesExperiment": {
+    "returnCode": 0,
+    "seconds": 27.87539197690785,
+    "inputsSha256": "7513e234322bdc13acb9412d005034a051667a69a8772b854f1e0962b12289b1",
+    "model.json": {
+      "sha256": "f330d172784b196d8c58ff6366062f7036fbd0e120d180c701a0393523db261e",
+      "identicalToOriginal": true
+    },
+    "model.linear.json": {
+      "sha256": "812c4869e2171f448c96cac7a931403a08d1ae1a575006e0b60c519ad9e49185",
+      "identicalToOriginal": true
+    },
+    "metrics": {
+      "roots": 45,
+      "rows": 36568,
+      "pairs": 55977,
+      "participatingRoots": 37,
+      "participatingRows": 22569,
+      "trainingParallelism": 4,
+      "features": 411,
+      "eligibleFeatures": 2215,
+      "linearTerms": 27,
+      "linearBytes": 1508,
+      "fitMilliseconds": 27764.7403,
+      "bytes": 361104,
+      "peakWorkingSetBytes": 720994304
+    }
+  },
+  "round128RootScreen": {
+    "number": 3,
+    "directory": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/overnight-20260927-r3/rounds/0003",
+    "state": "completed",
+    "rootCount": 128,
+    "fitMetrics": {
+      "roots": 128,
+      "rows": 102648,
+      "pairs": 219705,
+      "participatingRoots": 128,
+      "participatingRows": 78073,
+      "trainingParallelism": 4,
+      "features": 634,
+      "eligibleFeatures": 10147,
+      "linearTerms": 24,
+      "linearBytes": 1363,
+      "fitMilliseconds": 381897.306,
+      "bytes": 386445,
+      "peakWorkingSetBytes": 5822664704
+    },
+    "candidates": [
+      {
+        "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/overnight-20260927-r3/rounds/0003/model.linear.json",
+        "modelSha256": "9d612b4d81709885cd8ae84d2f18d5fc5d210d1843335d97741789ca0bfc2c93",
+        "regressions": [
+          "unseen-defect-the_kin_boss"
+        ],
+        "improvements": [
+          "unseen-necrobinder-kaiser_crab_boss"
+        ],
+        "unverified": [],
+        "fullDevelopmentCoverage": false,
+        "eligibleForFinalReview": false
+      },
+      {
+        "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/overnight-20260927-r3/rounds/0003/model.json",
+        "modelSha256": "89cf5e150e0a700f7bc74a974ab58b27bbda6f009ee42ee0642c8f0c696e9f6b",
+        "regressions": [
+          "unseen-necrobinder-kaiser_crab_boss"
+        ],
+        "improvements": [
+          "unseen-regent-knowledge_demon_boss"
+        ],
+        "unverified": [],
+        "fullDevelopmentCoverage": false,
+        "eligibleForFinalReview": false
+      }
+    ]
   }
 }

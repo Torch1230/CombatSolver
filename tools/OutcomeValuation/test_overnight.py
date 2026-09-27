@@ -9,11 +9,17 @@ import time
 import unittest
 from unittest.mock import patch
 
-from overnight import Job, StopRequested, balanced_roots, encounter_buckets, freeze_baseline, specification, witnessed_rows
+from overnight import Job, StopRequested, balanced_roots, encounter_buckets, freeze_baseline, specification, training_inputs, witnessed_rows
 from dataset import verify_resolved_loadout
 
 
 class OvernightContracts(unittest.TestCase):
+    def test_training_budget_preserves_actual_roots_and_legacy_inputs(self):
+        records = [{'input': 'first.json'}, {'input': 'second.json'}]
+        self.assertEqual(training_inputs(records, 2048), ['first.json', 'second.json'])
+        self.assertEqual(training_inputs(records, 512), {
+            'schemaVersion': 1, 'maximumRowsPerRoot': 512, 'roots': ['first.json', 'second.json']})
+
     def test_frozen_baseline_preserves_native_equipment_for_the_next_job(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

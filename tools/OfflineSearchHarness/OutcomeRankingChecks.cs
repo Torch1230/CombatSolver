@@ -156,6 +156,33 @@ internal static class OutcomeRankingChecks
             Check(grouped.Count == 1 && grouped[0].Rows.Length == 2, "collection policies retain one actual root");
             Check(!groupedModel.Fit(grouped.Select(r => r.Rows).ToArray()) && groupedModel.FittedPairs == 0,
                 "independent roll-in pool numbers cannot create false preferences");
+            Check(ReferenceEquals(grouped[0].Rows[0].Features.Keys.Single(), grouped[0].Rows[1].Features.Keys.Single()),
+                "repeated feature names share fit-owned immutable storage across files");
+            grouped[0].Rows[0].Features["x"] = 99;
+            Check(grouped[0].Rows[1].Features["x"] == b.Features["x"],
+                "sharing names cannot alias mutable feature values");
+            var observations = Enumerable.Range(0, 2100).Select(i => Row(i, 2100 - i, [i / 8])).ToArray();
+            File.WriteAllText(one, JsonSerializer.Serialize(observations));
+            File.WriteAllText(inputs, JsonSerializer.Serialize(new[] { one }));
+            var legacy = OutcomeValueTraining.ReadRoots(inputs);
+            void WriteBudget(int maximumRowsPerRoot) => File.WriteAllText(inputs,
+                JsonSerializer.Serialize(new { schemaVersion = 1, maximumRowsPerRoot, roots = new[] { one } }));
+            WriteBudget(2048);
+            Check(JsonSerializer.Serialize(legacy[0].Rows) == JsonSerializer.Serialize(OutcomeValueTraining.ReadRoots(inputs)[0].Rows),
+                "explicit default budget preserves legacy sampling and pool remapping");
+            WriteBudget(64);
+            var limited = OutcomeValueTraining.ReadRoots(inputs);
+            Check(limited[0].Rows.Length == 64 && limited[0].Rows.Select(r => r.Features["x"]).Distinct().Count() == 64,
+                "bounded root sampling retains distinct real witnesses");
+            Check(limited[0].Rows.Select(r => r.Features["x"]).SequenceEqual(legacy[0].Rows.Take(64).Select(r => r.Features["x"])),
+                "changing the row budget preserves the deterministic sampling prefix");
+            var retained = limited[0].Rows.Select(r => (int)r.Features["x"]).ToHashSet();
+            int omitted = Enumerable.Range(0, observations.Length).First(i => !retained.Contains(i));
+            observations[omitted] = observations[omitted] with { Outcome = observations[omitted].Outcome with { Score = 10 } };
+            File.WriteAllText(one, JsonSerializer.Serialize(observations));
+            Reject(() => OutcomeValueTraining.ReadRoots(inputs), "invalid raw labels cannot hide outside the sampled rows");
+            WriteBudget(0);
+            Reject(() => OutcomeValueTraining.ReadRoots(inputs), "invalid host row budget is rejected");
         }
         finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine($"Outcome ranking: {checks} assertions passed.");

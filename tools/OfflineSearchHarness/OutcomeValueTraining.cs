@@ -70,10 +70,27 @@ internal static class OutcomeValueTraining
     // files for that same root. Query IDs never join across independent roll-ins.
     internal static List<(string Id, SearchOutcomeValueModel.TrainingRow[] Rows)> ReadRoots(string pathsFile)
     {
-        var entries = JsonSerializer.Deserialize<JsonElement[]>(File.ReadAllText(pathsFile))!;
+        using var input = JsonDocument.Parse(File.ReadAllText(pathsFile));
+        JsonElement entries = input.RootElement;
+        int maximumRowsPerRoot = 2048;
+        if (entries.ValueKind == JsonValueKind.Object)
+        {
+            if (entries.GetProperty("schemaVersion").GetInt32() != 1)
+                throw new InvalidDataException("Unsupported training input schema.");
+            maximumRowsPerRoot = entries.GetProperty("maximumRowsPerRoot").GetInt32();
+            if (maximumRowsPerRoot is < 64 or > 8192)
+                throw new InvalidDataException("Training row limit must be between 64 and 8192.");
+            entries = entries.GetProperty("roots");
+        }
+        if (entries.ValueKind != JsonValueKind.Array)
+            throw new InvalidDataException("Expected training roots array.");
         List<(string, SearchOutcomeValueModel.TrainingRow[])> roots = [];
+        // Fit-owned canonical strings, never process-global String.Intern. Each
+        // observed value and row keeps its own dictionary; only immutable names
+        // share storage across roots. Preserve insertion and sampling order.
+        Dictionary<string, string> featureNames = new(StringComparer.Ordinal);
         Random sampler = new(0);
-        foreach (var entry in entries)
+        foreach (var entry in entries.EnumerateArray())
         {
             string[] files = entry.ValueKind == JsonValueKind.String ? [entry.GetString()!]
                 : entry.Deserialize<string[]>() ?? throw new InvalidDataException("Invalid root files.");
@@ -82,17 +99,29 @@ internal static class OutcomeValueTraining
             int nextGroup = 0;
             foreach (string file in files)
             {
-                var source = JsonSerializer.Deserialize<SearchOutcomeValueModel.TrainingRow[]>(File.ReadAllText(file))!;
+                using var stream = File.OpenRead(file);
+                var source = JsonSerializer.Deserialize<SearchOutcomeValueModel.TrainingRow[]>(stream)
+                    ?? throw new InvalidDataException("Missing training observations.");
+                // Invalid labels must not disappear merely because the sampler
+                // would omit them. Use the fitter's authoritative validator.
+                SearchOutcomeValueModel.ValidateTrainingRows(source);
                 sampler.Shuffle(source);
                 Dictionary<int, int> groups = [];
-                foreach (var row in source.Take(2048 / files.Length))
+                foreach (var row in source.Take(maximumRowsPerRoot / files.Length))
                 {
                     int Remap(int group)
                     {
                         if (!groups.TryGetValue(group, out int id)) groups.Add(group, id = nextGroup++);
                         return id;
                     }
-                    rows.Add(row with { Groups = row.Groups.Select(Remap).ToArray() });
+                    Dictionary<string, double> features = new(row.Features.Count, StringComparer.Ordinal);
+                    foreach (var (name, value) in row.Features)
+                    {
+                        if (!featureNames.TryGetValue(name, out string? canonical))
+                            featureNames.Add(name, canonical = name);
+                        features.Add(canonical, value);
+                    }
+                    rows.Add(row with { Features = features, Groups = row.Groups.Select(Remap).ToArray() });
                 }
             }
             roots.Add((Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(files[0])))!, rows.ToArray()));

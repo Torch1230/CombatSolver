@@ -106,6 +106,14 @@ def balanced_roots(records, maximum, seed):
     return selected
 
 
+def training_inputs(records, maximum_rows_per_root):
+    paths = [r['input'] for r in records]
+    # Default remains compatible with frozen legacy harnesses. Non-default
+    # budgets require the explicit schema, never silently drop the requested cap.
+    return paths if maximum_rows_per_root == 2048 else {
+        'schemaVersion': 1, 'maximumRowsPerRoot': maximum_rows_per_root, 'roots': paths}
+
+
 def witnessed_rows(path):
     rows = read(path)
     outcomes = defaultdict(set)
@@ -233,16 +241,17 @@ def initialize(args):
                 record['rows'], record['hasPreferences'] = witnessed_rows(record['input'])
         write(root / 'prior-status.json', prior)
     plan = {'schema': 1, 'createdUtc': dt.datetime.now(dt.timezone.utc).isoformat(),
-            'until': args.until, 'workers': args.workers, 'batchSize': 45, 'maximumRootsPerFit': 128,
+            'until': args.until, 'workers': args.workers, 'batchSize': 45,
+            'maximumRootsPerFit': args.fit_roots, 'maximumRowsPerRoot': args.fit_rows_per_root,
             'maxCases': args.max_cases, 'maxBytes': args.max_gib * 1024**3,
-            'fitTimeoutSeconds': 600, 'seed': args.seed,
+            'fitTimeoutSeconds': args.fit_seconds, 'seed': args.seed,
             'fittingEngine': 'training-engine' if args.fit_harness else 'engine',
             'priorJob': str(args.prior_job.resolve()) if args.prior_job else None,
             'preparationSeconds': time.monotonic() - began,
             'trainingBuckets': [(b[0]['actIndex'], b[0]['roomType'], len(b)) for b in buckets],
             'screenIds': args.screen_id, 'historicalBaselineTimingIsSpeedProof': False,
             'productionPromotion': False, 'finalTestSearch': False,
-            'costPolicy': 'Overnight collection/training explicitly authorized; each fit capped at 600s',
+            'costPolicy': f'Overnight collection/training explicitly authorized; each fit capped at {args.fit_seconds}s',
             'frozenFiles': {str(p.relative_to(root)): sha(p) for p in root.rglob('*') if p.is_file()}}
     if len(set(plan['screenIds'])) != len(plan['screenIds']) or not set(plan['screenIds']) <= set(baselines):
         raise ValueError('Screen IDs must be distinct validation cases')
@@ -451,7 +460,7 @@ class Job:
         for record in selected:
             if sha(record['input']) != record['inputSha256']:
                 raise ValueError('Training rows changed: ' + record['input'])
-        write(directory / 'training-inputs.json', [r['input'] for r in selected])
+        write(directory / 'training-inputs.json', training_inputs(selected, self.plan.get('maximumRowsPerRoot', 2048)))
         record = {'number': number, 'directory': str(directory), 'state': 'fitting',
                   'rootCount': len(selected), 'inputHashes': {r['case']['id']: r['inputSha256'] for r in selected}}
         self.state['rounds'].append(record)
@@ -546,6 +555,9 @@ def main():
     setup.add_argument('--workers', type=int, choices=range(1, 5), default=4)
     setup.add_argument('--max-cases', type=int, default=3000)
     setup.add_argument('--max-gib', type=int, default=32)
+    setup.add_argument('--fit-roots', type=int, default=128, help='Maximum distinct balanced roots per fit (20..1024)')
+    setup.add_argument('--fit-rows-per-root', type=int, default=2048, help='Maximum observations per actual root (64..8192)')
+    setup.add_argument('--fit-seconds', type=int, default=600, help='Hard wall-clock timeout for one fit (1..1800)')
     setup.add_argument('--screen-id', action='append', required=True)
     setup.add_argument('--prior-job', type=Path, help='Import a stopped job with its full cost and failure ledger')
     setup.add_argument('--fit-harness', type=Path, help='Optional separate frozen fitter; collection/evaluation keep their engine')
@@ -556,6 +568,9 @@ def main():
     if args.command == 'prepare':
         if args.max_cases < 1 or args.max_gib < 1:
             parser.error('Positive case and storage limits required')
+        if not (20 <= args.fit_roots <= 1024 and 64 <= args.fit_rows_per_root <= 8192
+                and 1 <= args.fit_seconds <= 1800):
+            parser.error('Training limits out of bounds')
         if bool(args.fit_harness) != bool(args.fit_mod):
             parser.error('--fit-harness and --fit-mod must be provided together')
         initialize(args)

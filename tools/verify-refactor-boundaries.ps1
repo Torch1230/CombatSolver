@@ -1770,6 +1770,7 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.Phases.cs'); Text = '_ = ObjectiveRankScore(admitted);' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'MaxDegreeOfParallelism = maximumTrainingParallelism' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'splitGains[columnIndex * 32 + bin]' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs'); Text = 'SearchOutcomeValueModel.ValidateTrainingRows(source);' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/train.py'); Text = 'require_final_test=True' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/refit.py'); Text = 'require_final_test=True' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/prepare_training.py'); Text = 'require_final_test=True' },
@@ -1794,6 +1795,9 @@ foreach ($contract in @(
 }
 if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeValueModel.cs') -SimpleMatch 'new CombatBeamSolver(' -Quiet) {
     $violations.Add('Training correction searches belong in the offline host.')
+}
+if (Select-String -LiteralPath (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs') -SimpleMatch 'String.Intern(' -Quiet) {
+    $violations.Add('Training feature names must not become process-global retained state.')
 }
 foreach ($contract in @(
     @{ Path = 'CombatBeamSolver.BeamRetentionPolicy.cs'; Text = '_objectiveRetention' },

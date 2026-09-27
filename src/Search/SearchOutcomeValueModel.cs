@@ -199,6 +199,16 @@ internal sealed partial class SearchOutcomeValueModel
     }
 
     private readonly record struct Pair(int Preferred, int Other, double Weight);
+    internal static void ValidateTrainingRows(IEnumerable<TrainingRow> rows)
+    {
+        if (rows.Any(r => r == null || r.FeatureSchema != FeatureSchema || r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
+            || !(r.Outcome.Won && r.Outcome.Survives && !r.CompletedDefeat
+                || !r.Outcome.Won && !r.Outcome.Survives && r.CompletedDefeat)
+            || r.Outcome.Score != 0 || r.RemainingActions < 0 || r.Groups.Length == 0
+            || r.Features.Any(x => string.IsNullOrWhiteSpace(x.Key) || !double.IsFinite(x.Value))))
+            throw new InvalidDataException("Invalid witnessed ranking row.");
+    }
+
     internal bool Fit(IReadOnlyList<TrainingRow[]> roots, int maximumTrainingParallelism = 1)
     {
         if (maximumTrainingParallelism is < 1 or > 4)
@@ -211,12 +221,7 @@ internal sealed partial class SearchOutcomeValueModel
         foreach (var root in roots)
         {
             int offset = rows.Count;
-            if (root.Any(r => r.FeatureSchema != FeatureSchema || r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
-                || !(r.Outcome.Won && r.Outcome.Survives && !r.CompletedDefeat
-                    || !r.Outcome.Won && !r.Outcome.Survives && r.CompletedDefeat)
-                || r.Outcome.Score != 0 || r.RemainingActions < 0 || r.Groups.Length == 0
-                || r.Features.Any(x => string.IsNullOrWhiteSpace(x.Key) || !double.IsFinite(x.Value))))
-                throw new InvalidDataException("Invalid witnessed ranking row.");
+            ValidateTrainingRows(root);
             rows.AddRange(root);
             List<(int Preferred, int Other)> rootPairs = [];
             HashSet<(int, int)> seen = [];
