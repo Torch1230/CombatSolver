@@ -42,6 +42,8 @@ Python 仅使用标准库。第一批 12 根（10 个定向机制、2 个随机�
 此入口要求 selective 且禁用药水，防止绕过药水反事实审计。原协调器可能因专用成员额度超过节点或软时间配置；
 这时实验原样保留基线、不追加，并单独记录 `baselineNodeAllowanceExceeded`，不能宣称整请求严格符合该节点/时间帽。
 实验仍只在离线宿主显式开启，游戏不会自动启用。
+`--coordinator` 本身不打开游戏设置里的多策略探索；额外加 `--novelty` 才开启该生产路径（宿主参数 `--novelty-portfolio`），
+它与后置探索实验 `--adaptive-novelty` 分开，不能同时使用。双开对照和合并建议见第二版报告的补充章节。
 
 ```bash
 python3 tools/OutcomeValuation/run.py --out .local/outcome/v2-screen --seconds 400 --selective --probes 4

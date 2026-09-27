@@ -281,6 +281,7 @@ internal static class Program
             options.PotionPolicy,
             options.SearchMode,
             options.UsePortfolio,
+            options.UseNoveltyPortfolio,
             fixedSearchBudget = !options.ProductionBudget,
             enableNoGcRegion = options.EnableNoGcRegion,
             noGcRegionBudgetGigabytes = options.EnableNoGcRegion
@@ -355,6 +356,7 @@ internal sealed record HarnessOptions
           --potion-policy <p>    药水政策（默认 Smart）
           --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
           --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
+          --novelty-portfolio    开游戏设置中的多策略探索（Coordinator；区别于 --adaptive-novelty）
           --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
           --unordered-pile-mask <0..15>  实验：状态键里顺序无关的牌堆（1手牌/2抽牌堆/4弃牌堆/8消耗堆）
           --state-key-salt <int> 实验：给状态指纹异或一个常量（双射，只改数值不改相等关系）
@@ -409,6 +411,7 @@ internal sealed record HarnessOptions
     public string SearchMode { get; init; } = "Evaluate";
     /// <summary>开宽度组合（协调器的组合成员通道）；Evaluate 模式下没有意义。</summary>
     public bool UsePortfolio { get; init; }
+    public bool UseNoveltyPortfolio { get; init; }
     /// <summary>消融：丢掉只带基线宽度、不带排序修饰的组合成员，少跑一次真实搜索。</summary>
     public bool NoPlainBaselineMember { get; init; }
     /// <summary>实验：状态键里哪些牌堆改成顺序无关哈希（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）；0 即生产口径。</summary>
@@ -481,7 +484,7 @@ internal sealed record HarnessOptions
         bool? stopPortfolioAtHpTarget = null;
         int signalBallastMegabytes = 0;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
-        bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
+        bool usePortfolio = false, useNoveltyPortfolio = false, observePortfolio = false, noPlainBaseline = false;
         string? portfolioModelPath = null;
         string potionPolicy = "Smart", milestone = "M2", language = "eng";
         string profile = "Custom", searchMode = "Evaluate", label = "offline";
@@ -519,6 +522,7 @@ internal sealed record HarnessOptions
                 case "--potion-policy": potionPolicy = Value(); break;
                 case "--search-mode": searchMode = Value(); break;
                 case "--use-portfolio": usePortfolio = true; break;
+                case "--novelty-portfolio": useNoveltyPortfolio = true; break;
                 case "--no-plain-baseline": noPlainBaseline = true; break;
                 case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
                 case "--state-key-salt": stateKeySalt = int.Parse(Value()); break;
@@ -611,6 +615,8 @@ internal sealed record HarnessOptions
             throw new ArgumentException("有界追加不能叠加其他排序实验。");
         if (stopPortfolioAtHpTarget.HasValue && searchMode != "Coordinator")
             throw new ArgumentException("组合达标早停参数仅用于Coordinator。");
+        if (useNoveltyPortfolio && (searchMode != "Coordinator" || adaptiveNoveltyRefinement))
+            throw new ArgumentException("--novelty-portfolio 需要 Coordinator，不能叠加 --adaptive-novelty。");
         if (usePortfolio && searchMode != "Coordinator")
             throw new ArgumentException("--use-portfolio 只对 --search-mode Coordinator 有效。");
         if ((observePortfolio || portfolioModelPath != null) && (!usePortfolio || searchMode != "Coordinator"))
@@ -653,6 +659,7 @@ internal sealed record HarnessOptions
             PotionPolicy = potionPolicy,
             SearchMode = searchMode,
             UsePortfolio = usePortfolio,
+            UseNoveltyPortfolio = useNoveltyPortfolio,
             NoPlainBaselineMember = noPlainBaseline,
             UnorderedPileMask = unorderedPileMask,
             StateKeySalt = stateKeySalt,

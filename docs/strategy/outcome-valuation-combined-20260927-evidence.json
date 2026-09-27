@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "scope": "Production width + novelty enabled versus the same coordinator plus outcome probes; no adaptive-novelty experiment.",
+  "signature": {
+    "nodes": 12000,
+    "beam": 24,
+    "probes": 4,
+    "suite": "screen",
+    "budgetMs": 30000,
+    "deadlineSeconds": 180.0,
+    "limit": 12,
+    "seedTag": "",
+    "coordinator": true,
+    "novelty": true,
+    "verifyIncremental": false,
+    "selective": true,
+    "case": [
+      "attack_or_block",
+      "focus_investment",
+      "random-regent"
+    ],
+    "harnessSha256": "9a88be4319af53b9f0e7f2f49082bcc4bfd1811a374f6d02b22ae67118589428",
+    "modSha256": "2e169282de8b44da53971b63d68a9b0ea0e735990c4d5845b9e72d7ae2608ab4"
+  },
+  "timeLedger": {
+    "previousConservativeSeconds": 1205.5880844440615,
+    "additionalBatchSeconds": 86.62453972303774,
+    "additionalCheckReserveSeconds": 5,
+    "trainingSeconds": 0,
+    "totalLimitSeconds": 1800,
+    "totalConservativeSeconds": 1297.2126241670992
+  },
+  "completedPairs": 3,
+  "qualityCounts": {
+    "better": 0,
+    "same": 3,
+    "worse": 0
+  },
+  "totals": {
+    "baseline": {
+      "searchWallSeconds": 36.4582671,
+      "expanded": 34050,
+      "transitions": 238398
+    },
+    "rollout": {
+      "searchWallSeconds": 38.665102499999996,
+      "expanded": 35449,
+      "transitions": 243405
+    }
+  },
+  "rows": [
+    {
+      "id": "attack_or_block",
+      "comparison": 0,
+      "materialComparison": 0,
+      "candidate": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 7,
+        "strategicHpDeficit": 1,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10000629981,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "baseline": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 7,
+        "strategicHpDeficit": 1,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10000629981,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "sameRootAsWidthOnlyEvidence": true,
+      "actualPolicies": {
+        "baseline": {
+          "width": true,
+          "novelty": true,
+          "adaptive": false
+        },
+        "rollout": {
+          "width": true,
+          "novelty": true,
+          "adaptive": false
+        }
+      },
+      "runs": {
+        "baseline": {
+          "searchWallSeconds": 5.105225,
+          "metrics": {
+            "totalExpanded": 9102,
+            "totalTransitions": 29844,
+            "totalChoiceBranches": 0,
+            "boundary": "NodeLimit"
+          }
+        },
+        "rollout": {
+          "searchWallSeconds": 5.8316643,
+          "metrics": {
+            "totalExpanded": 10604,
+            "totalTransitions": 35780,
+            "totalChoiceBranches": 0,
+            "boundary": "NodeLimit"
+          }
+        }
+      },
+      "probeSummary": {
+        "baselineExpanded": 9102,
+        "probeNodeLimit": 12000,
+        "observedFirstActions": 5,
+        "cachedEvents": 1801,
+        "targetStopped": false,
+        "baselineNodeAllowanceExceeded": false,
+        "selectedLabel": "baseline-full"
+      },
+      "actualProbes": 4
+    },
+    {
+      "id": "focus_investment",
+      "comparison": 0,
+      "materialComparison": 0,
+      "candidate": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 0,
+        "strategicHpDeficit": 0,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10001049980,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "baseline": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 0,
+        "strategicHpDeficit": 0,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10001049980,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "sameRootAsWidthOnlyEvidence": true,
+      "actualPolicies": {
+        "rollout": {
+          "width": true,
+          "novelty": true,
+          "adaptive": false
+        },
+        "baseline": {
+          "width": true,
+          "novelty": true,
+          "adaptive": false
+        }
+      },
+      "runs": {
+        "rollout": {
+          "searchWallSeconds": 4.783515,
+          "metrics": {
+            "totalExpanded": 4123,
+            "totalTransitions": 16057,
+            "totalChoiceBranches": 0,
+            "boundary": "None"
+          }
+        },
+        "baseline": {
+          "searchWallSeconds": 3.9027185,
+          "metrics": {
+            "totalExpanded": 4123,
+            "totalTransitions": 16057,
+            "totalChoiceBranches": 0,
+            "boundary": "None"
+          }
+        }
+      },
+      "probeSummary": {
+        "baselineExpanded": 4123,
+        "probeNodeLimit": 8246,
+        "observedFirstActions": 7,
+        "cachedEvents": 1839,
+        "targetStopped": true,
+        "baselineNodeAllowanceExceeded": false,
+        "selectedLabel": "baseline-full"
+      },
+      "actualProbes": 0
+    },
+    {
+      "id": "random-regent",
+      "comparison": 0,
+      "materialComparison": 0,
+      "candidate": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 13,
+        "strategicHpDeficit": 13,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10001469976,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "baseline": {
+        "won": true,
+        "outstandingStolenResource": 0,
+        "projectedBattleHpLost": 13,
+        "strategicHpDeficit": 13,
+        "potionStrategicCost": 0,
+        "projectedBattlePotionCount": 0,
+        "enemyHp": 0,
+        "score": 10001469976,
+        "combatEndedTurn": 6,
+        "theftPolicy": null,
+        "survives": true,
+        "deathSaveUseCount": 0,
+        "growthHpCredit": 0,
+        "growthRewardCount": 0
+      },
+      "sameRootAsWidthOnlyEvidence": true,
+      "actualPolicies": {
+        "baseline": {
+          "width": true,
+          "novelty": true,
+          "adaptive": false
+        },
+        "rollout": {
+          "width": true,
+          "novelty": true,
+          "adaptive": false
+        }
+      },
+      "runs": {
+        "baseline": {
+          "searchWallSeconds": 27.4503236,
+          "metrics": {
+            "totalExpanded": 20825,
+            "totalTransitions": 192497,
+            "totalChoiceBranches": 77978,
+            "boundary": "None"
+          }
+        },
+        "rollout": {
+          "searchWallSeconds": 28.0499232,
+          "metrics": {
+            "totalExpanded": 20722,
+            "totalTransitions": 191568,
+            "totalChoiceBranches": 77831,
+            "boundary": "None"
+          }
+        }
+      },
+      "probeSummary": {
+        "baselineExpanded": 20722,
+        "probeNodeLimit": 12000,
+        "observedFirstActions": 6,
+        "cachedEvents": 2048,
+        "targetStopped": false,
+        "baselineNodeAllowanceExceeded": true,
+        "selectedLabel": "baseline-full"
+      },
+      "actualProbes": 0
+    }
+  ]
+}
