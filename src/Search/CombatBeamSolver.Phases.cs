@@ -20,6 +20,8 @@ internal sealed partial class CombatBeamSolver
 {
     public SolverResult Solve()
     {
+        if (policy.ObjectiveValueModel != null && policy.MaxDegreeOfParallelism != 1)
+            throw new InvalidOperationException("Outcome ranking collection/inference requires DOP 1.");
         if (policy.UseObjectiveSearch)
             policy = policy with { NoveltySearch = null };
         SearchRequestWorkTotals? requestWorkTotals = policy.RequestWorkTotals;

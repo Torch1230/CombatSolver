@@ -1,6 +1,6 @@
 # CombatSolver 架构与职责地图
 
-`SearchOutcomeContext` 只投影分支状态，不定义卡/遗物效用。`SearchOutcomeValueModel` 拥有请求内有界观测、已见胜利标签与森林推断；具名稀疏特征和游戏 MVID 属于模型合同。离线宿主独占训练文件 I/O 与诊断夹具。`ObjectiveRetention` / `CombatSearchCoordinator.ObjectiveSearch` 是默认关闭、仅 DOP1/Disabled 药水的替代排序实验，Runtime 不启用；不把训练成功当作默认替代验收。见[上下文估值实验](strategy/contextual-outcome-values-20260927.md)。
+`SearchOutcomeContext` 投影分支原始上下文；训练可写稀疏列，推理只写模型引用的数值列。`SearchOutcomeValueModel` 拥有有界同池观测、完整政策胜利见证、成对树排序与请求内缓存；schema4/游戏 MVID 为模型合同。离线宿主独占文件 I/O、拟合与机制检查，`tools/OutcomeValuation/dataset.py` 独占跨场景划分审计。`ObjectiveRetention` / `CombatSearchCoordinator.ObjectiveSearch` 仍仅离线 DOP1/Disabled 药水，Runtime 不启用；独立 Evaluate 可观察首次裁剪，不能把该诊断当性能样本。见[成对排序与场景隔离](strategy/pairwise-outcome-ranking-20260927.md)。
 
 
 `CombatPredictionHistory` 拥有模拟历史及六项累计值；单人身份在模拟器建立时冻结，三类 Fork 按值继承。`CombatHistoryCounterKey` 消费根冻结的读者依赖掩码，不维护第二份账本。测试构建逐事件核对独立全扫描。

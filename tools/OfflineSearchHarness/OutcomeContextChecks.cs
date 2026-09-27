@@ -40,6 +40,14 @@ internal static class OutcomeContextChecks
         string cost = "pile/hand/card/" + card.Preview.Id.Entry + "/energy";
         Check(reduced[cost] < changed[cost], "branch cost changes are observable");
         Check(Equal(before, SearchOutcomeContext.Capture(parent, player)), "child card cost is isolated");
+        var columns = before.Keys.Append("unknown/absent").Select((name, index) => (name, index))
+            .ToDictionary(p => p.name, p => p.index, StringComparer.Ordinal);
+        double[] numeric = Enumerable.Repeat(double.NaN, columns.Count).ToArray();
+        SearchOutcomeContext.CaptureSelected(fork, player, columns, numeric);
+        Check(columns.All(p => numeric[p.Value] == reduced.GetValueOrDefault(p.Key)), "selected features match sparse projection");
+        Array.Fill(numeric, double.NaN);
+        SearchOutcomeContext.CaptureSelected(parent, player, columns, numeric);
+        Check(columns.All(p => numeric[p.Value] == before.GetValueOrDefault(p.Key)), "reused feature scratch is cleared");
         File.WriteAllText(Path.Combine(output, "outcome-context-checks.json"),
             JsonSerializer.Serialize(new { passed = checks, character = player.Character.Id.Entry, counter = saved }));
 

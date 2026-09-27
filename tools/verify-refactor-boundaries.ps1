@@ -1755,10 +1755,15 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
 }
 
 foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
-    foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current')) {
+    foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
         }
+    }
+}
+foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.Transpositions.cs')) {
+    if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch 'PredictPriority' -Quiet) {
+        $violations.Add("Learned priority cannot enter final policy or exact dominance: $file")
     }
 }
 if (Get-ChildItem (Join-Path $repositoryRoot 'src/Runtime') -Filter '*.cs' -Recurse | Select-String 'UseObjectiveSearch\s*=\s*true' -List) {

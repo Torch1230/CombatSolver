@@ -1362,11 +1362,14 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
 done
 
 for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs CombatBeamSolver.ObjectiveRetention.cs; do
-    for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current'; do
+    for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
         fi
     done
+done
+for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transpositions.cs; do
+    forbid_fixed "$search_root/$file" 'PredictPriority' 'learned priority must not enter final policy or exact dominance:'
 done
 if rg --quiet 'UseObjectiveSearch[[:space:]]*=[[:space:]]*true' "$repository_root/src/Runtime"; then
     add_violation 'Unvalidated outcome valuation must not be enabled by Runtime.'

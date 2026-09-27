@@ -20,6 +20,8 @@ internal static class Program
     {
         if (rawArgs.Length == 3 && rawArgs[0] == "--fit-outcome-values")
             return OutcomeValueTraining.Run(rawArgs[1], rawArgs[2]);
+        if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-ranking")
+            return OutcomeRankingChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-shared-evidence")
             return SharedEvidenceChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-cache")
@@ -365,7 +367,7 @@ internal sealed record HarnessOptions
           --automatic-search    统一自动搜索（Coordinator；不能叠加旧模式或续搜实验）
           --objective-search    研究：使用结果预测排序（需模型、DOP 1；尚未通过替代验收）
           --outcome-value-model <p>  加载与游戏/特征版本匹配的结果预测森林
-          --collect-outcome-values   导出已见胜利的后续战损标签与原始上下文（DOP 1）
+          --collect-outcome-values   导出同池完整胜利见证、政策标签与原始上下文（DOP 1）
           --verify-outcome-context   笔尖夹具：验证根/分支隔离及费用与计数可观测性
           --no-shared-evidence   仅供对照：关闭统一搜索的证据共享与回传
           --novelty-portfolio    旧多策略探索对照（Coordinator；区别于 --adaptive-novelty）
@@ -600,10 +602,10 @@ internal sealed record HarnessOptions
             }
         }
         if (useObjectiveSearch && (outcomeValueModelPath == null || collectOutcomeValues
-            || searchMode != "Coordinator" || potionPolicy != "Disabled" || dop != 1
+            || potionPolicy != "Disabled" || dop != 1
             || useAutomaticSearch || usePortfolio || useNoveltyPortfolio || rankingModelPath != null
             || ordering != "baseline" || outcomeProbes != 0))
-            throw new ArgumentException("--objective-search requires a fitted model, Coordinator, Disabled potions, DOP 1 and no other search experiment.");
+            throw new ArgumentException("--objective-search requires a fitted model, Disabled potions, DOP 1 and no other search experiment.");
         if (outcomeValueModelPath != null && !useObjectiveSearch)
             throw new ArgumentException("--outcome-value-model requires --objective-search.");
         if (collectOutcomeValues && dop != 1)

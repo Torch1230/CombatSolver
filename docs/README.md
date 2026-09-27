@@ -1,4 +1,5 @@
 # CombatSolver 文档导航
+- [小规模成对排序与场景隔离](strategy/pairwise-outcome-ranking-20260927.md)：6分钟训练、同模板划分纠正、拒绝上线的开发回归与封存测试集。
 
 - [角色与遗物上下文估值实验](strategy/contextual-outcome-values-20260927.md)：非神经网络森林、成对触发状态、训练成本和未通过的替代验收。
 - [搜索证据共享与回传](strategy/shared-search-evidence-20260927.md)：有界跨策略探测复用、沿途估值反馈与验证范围。

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Reproducible synthetic ordering corpus. No player saves or claimed optimal labels.
 
-Related pressure variants always share a split. A seed changes native combat/RNG;
-curated families also rotate draw order so held-out roots are not byte-identical.
-The random-deck cohort independently checks all five characters and encounter kinds.
+Legacy splits reuse curated templates with changed seeds/HP/draw order. They are
+within-template development cohorts, NOT evidence of cross-scenario generalization.
+Use OutcomeValuation/dataset.py on native resolved inputs before claiming separation.
 """
 import argparse
 import json

@@ -10,11 +10,24 @@ internal static class SearchOutcomeContext
 {
     internal static Dictionary<string, double> Capture(CombatPredictionSimulator simulator, Player player)
     {
+        Dictionary<string, double> values = new(StringComparer.Ordinal);
+        Capture(new FeatureWriter(values), simulator, player);
+        return values;
+    }
+
+    internal static void CaptureSelected(CombatPredictionSimulator simulator, Player player,
+        IReadOnlyDictionary<string, int> columns, double[] values)
+    {
+        Array.Clear(values);
+        Capture(new FeatureWriter(columns, values), simulator, player);
+    }
+
+    private static void Capture(FeatureWriter x, CombatPredictionSimulator simulator, Player player)
+    {
         var state = simulator.State.GetPlayerCombatState(player);
         var combat = (SimulatedCombatState)simulator.State.CombatState;
         var body = simulator.State.GetCreature(player.Creature);
-        Dictionary<string, double> x = new(StringComparer.Ordinal);
-        void Add(string name, double value) => x[name] = x.GetValueOrDefault(name) + value;
+        void Add(string name, double value) => x.Add(name, value);
         x["character/" + player.Character.Id.Entry] = 1;
         x["player/hp"] = body.CurrentHp;
         x["player/max-hp"] = body.MaxHp;
@@ -98,6 +111,28 @@ internal static class SearchOutcomeContext
             x[name + "/passive"] = (double)OrbMirrors.GetPassiveValue(simulator, orb);
             x[name + "/evoke"] = (double)OrbMirrors.GetEvokeValue(simulator, orb);
         }
-        return x;
     }
+    private readonly struct FeatureWriter
+    {
+        private readonly Dictionary<string, double>? _sparse;
+        private readonly IReadOnlyDictionary<string, int>? _columns;
+        private readonly double[]? _values;
+        internal FeatureWriter(Dictionary<string, double> sparse) => _sparse = sparse;
+        internal FeatureWriter(IReadOnlyDictionary<string, int> columns, double[] values)
+        { _columns = columns; _values = values; }
+        internal double this[string name]
+        {
+            set
+            {
+                if (_sparse != null) _sparse[name] = value;
+                else if (_columns!.TryGetValue(name, out int index)) _values![index] = value;
+            }
+        }
+        internal void Add(string name, double value)
+        {
+            if (_sparse != null) _sparse[name] = _sparse.GetValueOrDefault(name) + value;
+            else if (_columns!.TryGetValue(name, out int index)) _values![index] += value;
+        }
+    }
+
 }

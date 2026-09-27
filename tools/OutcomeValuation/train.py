@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect witnessed victory suffix costs and fit one forest within 30 minutes.
+"""Collect compared victory witnesses and fit a pairwise tree ranker within 30 minutes.
 
 Only manifest cases with split=train are read. Labels come from simulated completed
 victories; an unexplored or pruned node is not a failure/optimality label. The old
@@ -13,12 +13,16 @@ import subprocess
 import time
 from pathlib import Path
 
+from dataset import audit
+
 
 def train(args):
     started = time.monotonic()
     deadline = started + args.seconds
     args.out.mkdir(parents=True, exist_ok=False)
     manifest_bytes = args.manifest.read_bytes()
+    separation = (audit(json.loads(manifest_bytes), json.loads(args.evaluation_manifest.read_text()))
+                  if args.evaluation_manifest else None)
     cases = [c for c in json.loads(manifest_bytes)['cases'] if c['split'] == 'train']
     if not cases:
         raise ValueError('No training roots in manifest')
@@ -26,6 +30,8 @@ def train(args):
               'limitSeconds': args.seconds, 'manifestSha256': hashlib.sha256(manifest_bytes).hexdigest(),
               'harnessSha256': hashlib.sha256(args.harness.read_bytes()).hexdigest(),
               'modSha256': hashlib.sha256(args.mod.read_bytes()).hexdigest(), 'records': []}
+    if separation:
+        report['separation'] = separation
     files = []
 
     def save():
@@ -73,6 +79,8 @@ if __name__ == '__main__':
     for name in ['manifest', 'harness', 'mod', 'out']:
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--seconds', type=int, default=1800)
+    parser.add_argument('--evaluation-manifest', type=Path,
+                        help='Optional frozen evaluation manifest; reject scenario overlap before any process starts')
     options = parser.parse_args()
     if not 60 <= options.seconds <= 1800:
         parser.error('--seconds must be between 60 and 1800')
