@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [训练侧模型轨迹的匹配纠正](strategy/training-only-rollin-20260928.md)：120次同根配对搜索，56对增补；候选一场胜利改善、两场退化，未启用。
+
 - [直接树排序消融](strategy/direct-tree-ranking-20260928.md)：去掉已学习线性项后三组留出均退化，未进入实战或启用。
 
 - [叶子门槛与模型容量](strategy/leaf-support-capacity-20260928.md)：诊断少见状态的分裂证据上界，六组合降低整体留出损失但实战退化增加，未启用。
