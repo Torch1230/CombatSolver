@@ -13,7 +13,7 @@ internal static partial class OutcomeValueTraining
     {
         Stopwatch clock = Stopwatch.StartNew();
         using var specification = JsonDocument.Parse(File.ReadAllText(pathsFile));
-        var (partition, pairSelection) = ReadPolicy(specification.RootElement);
+        var (partition, pairSelection, pairWeighting) = ReadPolicy(specification.RootElement);
         var roots = ReadRoots(pathsFile);
         if (Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any())
             throw new InvalidDataException("Ranking export directory must be empty.");
@@ -26,7 +26,7 @@ internal static partial class OutcomeValueTraining
         foreach (var group in groups)
         {
             var prepared = SearchOutcomeValueModel.PrepareTraining(group.Select(r => r.Rows).ToArray(),
-                highestPolicyTierOnly: pairSelection == "highest-policy-tier");
+                highestPolicyTierOnly: pairSelection == "highest-policy-tier", balanceTrainingTurns: pairWeighting == "turns");
             var (foundation, scores) = SearchOutcomeValueModel.FitLinearFoundation(prepared);
             string stem = "head-" + heads.Count;
             string matrixName = stem + ".f32", pairsName = stem + ".pairs", marginName = stem + ".f64";
@@ -57,7 +57,7 @@ internal static partial class OutcomeValueTraining
                 sha256 = new[] { matrixName, pairsName, marginName }.ToDictionary(n => n, n =>
                     Hash(Path.Combine(directory, n))) });
         }
-        var result = new { exportSchema = 1, partition, pairSelection, heads,
+        var result = new { exportSchema = 1, partition, pairSelection, pairWeighting, heads,
             roots = roots.Count, sampledRows = roots.Sum(r => r.Rows.Length),
             matrixFormat = "row-major-little-endian-float32-explicit-zero",
             edgeFormat = "little-endian-int32-int32-float64",

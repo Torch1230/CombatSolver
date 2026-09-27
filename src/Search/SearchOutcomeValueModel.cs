@@ -220,7 +220,7 @@ internal sealed partial class SearchOutcomeValueModel
     // The built-in and optional offline fitters consume the same authoritative
     // comparisons, support threshold, ordering, root weights and sampled rows.
     internal static PreparedTraining PrepareTraining(IReadOnlyList<TrainingRow[]> roots,
-        bool highestPolicyTierOnly = false)
+        bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false)
     {
         List<TrainingRow> rows = [];
         List<Pair> pairs = [];
@@ -232,6 +232,7 @@ internal sealed partial class SearchOutcomeValueModel
         {
             int offset = rows.Count;
             ValidateTrainingRows(root);
+            int[]? turns = balanceTrainingTurns ? root.Select(TrainingTurn).ToArray() : null;
             rows.AddRange(root);
             List<(int Preferred, int Other, int Kind)> rootPairs = [];
             HashSet<(int, int)> seen = [];
@@ -263,9 +264,18 @@ internal sealed partial class SearchOutcomeValueModel
                 foreach (string name in root.SelectMany(r => r.Features.Keys).Distinct(StringComparer.Ordinal))
                     featureRoots[name] = featureRoots.GetValueOrDefault(name) + 1;
             }
-            foreach (var pair in sampled.Take(count))
+            // Optional offline stratification changes only the weights of the
+            // already sampled edges. Each witnessed turn receives equal mass
+            // within its root; rare cross-turn edges belong to the later turn.
+            int[]? pairTurns = turns == null ? null : sampled.Take(count)
+                .Select(p => Math.Max(turns[p.Preferred], turns[p.Other])).ToArray();
+            var turnCounts = pairTurns?.GroupBy(t => t).ToDictionary(g => g.Key, g => g.Count());
+            for (int i = 0; i < count; i++)
             {
-                pairs.Add(new(offset + pair.Preferred, offset + pair.Other, 1d / count));
+                var pair = sampled[i];
+                double weight = turnCounts == null ? 1d / count
+                    : 1d / (turnCounts.Count * (double)turnCounts[pairTurns![i]]);
+                pairs.Add(new(offset + pair.Preferred, offset + pair.Other, weight));
                 pairKinds[pair.Kind]++;
             }
         }
@@ -287,6 +297,13 @@ internal sealed partial class SearchOutcomeValueModel
         return new(rows, pairs, names, participatingRoots, pairKinds);
     }
 
+    internal static int TrainingTurn(TrainingRow row)
+    {
+        if (!row.Features.TryGetValue("battle/turn", out double value) || !double.IsFinite(value)
+            || value < 1 || value > int.MaxValue || value != Math.Truncate(value))
+            throw new InvalidDataException("Turn-balanced ranking requires an observed positive integer battle turn.");
+        return (int)value;
+    }
 
     internal static (Document Model, double[] Scores) FitLinearFoundation(PreparedTraining prepared)
     {
@@ -297,11 +314,11 @@ internal sealed partial class SearchOutcomeValueModel
     }
 
     internal bool Fit(IReadOnlyList<TrainingRow[]> roots, int maximumTrainingParallelism = 1,
-        bool highestPolicyTierOnly = false)
+        bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false)
     {
         if (maximumTrainingParallelism is < 1 or > 4)
             throw new ArgumentOutOfRangeException(nameof(maximumTrainingParallelism));
-        var prepared = PrepareTraining(roots, highestPolicyTierOnly);
+        var prepared = PrepareTraining(roots, highestPolicyTierOnly, balanceTrainingTurns);
         FittedPairs = prepared.Pairs.Count;
         FittedRoots = prepared.ParticipatingRoots;
         FittedRows = prepared.Rows.Count;

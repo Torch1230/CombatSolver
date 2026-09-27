@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [按回合分层的训练权重](strategy/turn-balanced-ranking-20260928.md)：共享C#偏好图仅调整根内回合权重，前期略好但整体留出变差，未进入实战或启用。
+
 - [长期能力牌定向补采对照](strategy/power-curriculum-20260928.md)：40对单牌替换采集，随机对照略好但实际搜索仍退化；记录回合权重不均的后续线索。
 
 - [联合稀疏线性排序](strategy/joint-sparse-ranking-20260928.md)：共用原偏好图的凸拟合与精确零系数，留出改善但实际搜索仍有退化，未启用。

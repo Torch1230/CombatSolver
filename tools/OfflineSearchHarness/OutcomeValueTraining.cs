@@ -13,6 +13,9 @@ internal static partial class OutcomeValueTraining
         foreach (var root in ReadRoots(pathsFile))
         {
             var rows = root.Rows;
+            int[]? turns = rows.Length > 0 && rows.All(r => r.Features.ContainsKey("battle/turn"))
+                ? rows.Select(SearchOutcomeValueModel.TrainingTurn).ToArray() : null;
+            Dictionary<int, (int Pairs, int Correct, int Wrong, int Ties, double Loss)> turnMetrics = [];
             var model = file.Select(file.IsConditional ? OutcomeModelFile.CharacterOf(rows) : null);
             double[] scores = rows.Select(r => model.PredictFeaturesForTesting(r.Features)).ToArray();
             HashSet<(int, int)> seen = [];
@@ -36,6 +39,13 @@ internal static partial class OutcomeValueTraining
                         kindPairs[kind]++;
                         if (margin > 0) kindCorrect[kind]++; else if (margin < 0) kindWrong[kind]++; else kindTies[kind]++;
                         double pairLoss = Math.Log(1 + Math.Exp(-Math.Clamp(margin, -40, 40)));
+                        if (turns != null)
+                        {
+                            int turn = Math.Max(turns[left], turns[right]);
+                            var prior = turnMetrics.GetValueOrDefault(turn);
+                            turnMetrics[turn] = (prior.Pairs + 1, prior.Correct + (margin > 0 ? 1 : 0),
+                                prior.Wrong + (margin < 0 ? 1 : 0), prior.Ties + (margin == 0 ? 1 : 0), prior.Loss + pairLoss);
+                        }
                         kindLoss[kind] += pairLoss;
                         if (margin > 0) correct++; else if (margin < 0) wrong++; else ties++;
                         loss += pairLoss;
@@ -49,6 +59,9 @@ internal static partial class OutcomeValueTraining
             // folder). Join diagnostics to the ordered input by this index.
             results.Add(new { rootIndex = results.Count, root = root.Id, rows = rows.Length,
                 pairs, correct, wrong, ties, indistinguishable, logLoss = pairs == 0 ? 0 : loss / pairs,
+                turns = turns == null ? null : turnMetrics.OrderBy(p => p.Key).Select(p => new
+                    { turn = p.Key, pairs = p.Value.Pairs, correct = p.Value.Correct, wrong = p.Value.Wrong,
+                        ties = p.Value.Ties, logLoss = p.Value.Loss / p.Value.Pairs }).ToArray(),
                 kinds = Enumerable.Range(0, kindNames.Length).Select(k => new { kind = kindNames[k],
                     pairs = kindPairs[k], correct = kindCorrect[k], wrong = kindWrong[k], ties = kindTies[k],
                     logLoss = kindPairs[k] == 0 ? 0 : kindLoss[k] / kindPairs[k] }).ToArray() });
@@ -62,7 +75,7 @@ internal static partial class OutcomeValueTraining
     {
         Stopwatch clock = Stopwatch.StartNew();
         using var specification = JsonDocument.Parse(File.ReadAllText(pathsFile));
-        var (partition, pairSelection) = ReadPolicy(specification.RootElement);
+        var (partition, pairSelection, pairWeighting) = ReadPolicy(specification.RootElement);
         string[] excludedFeaturePrefixes = ReadExcludedFeaturePrefixes(specification.RootElement);
         // Sample once in the original global root order. Partitioning never
         // restarts the row sampler or resamples a character's observations.
@@ -79,7 +92,7 @@ internal static partial class OutcomeValueTraining
             Stopwatch headClock = Stopwatch.StartNew();
             SearchOutcomeValueModel model = new();
             if (!model.Fit(group.Select(r => r.Rows).ToArray(), trainingParallelism,
-                highestPolicyTierOnly: pairSelection == "highest-policy-tier"))
+                highestPolicyTierOnly: pairSelection == "highest-policy-tier", balanceTrainingTurns: pairWeighting == "turns"))
                 throw new InvalidOperationException("Insufficient witnessed outcomes for partition: " + group.Key);
             models.Add(group.Key, model);
             heads.Add(new { character = group.Key, rootIndices = group.Select(r => r.Index).ToArray(),
@@ -98,7 +111,7 @@ internal static partial class OutcomeValueTraining
         string linearOutput = Path.ChangeExtension(output, "linear.json");
         File.WriteAllText(linearOutput, JsonSerializer.Serialize(Export(linear: true)));
         Console.WriteLine(JsonSerializer.Serialize(new { roots = roots.Length, rows = roots.Sum(r => r.Length),
-            pairs = models.Values.Sum(m => m.FittedPairs), partition, pairSelection, excludedFeaturePrefixes, heads,
+            pairs = models.Values.Sum(m => m.FittedPairs), partition, pairSelection, pairWeighting, excludedFeaturePrefixes, heads,
             pairKinds = Enumerable.Range(0, 3).Select(k => models.Values.Sum(m => m.FittedPairKinds[k])).ToArray(),
             participatingRoots = models.Values.Sum(m => m.FittedRoots), participatingRows = models.Values.Sum(m => m.FittedRows), trainingParallelism,
             features = models.Values.Sum(m => m.ExportModel().FeatureNames.Length),
@@ -115,6 +128,7 @@ internal static partial class OutcomeValueTraining
     {
         using var input = JsonDocument.Parse(File.ReadAllText(pathsFile));
         JsonElement entries = input.RootElement;
+        bool balanceTrainingTurns = ReadPairWeighting(entries) == "turns";
         string[] excludedFeaturePrefixes = ReadExcludedFeaturePrefixes(entries);
         int maximumRowsPerRoot = 2048;
         string sampling = "rows";
@@ -156,6 +170,8 @@ internal static partial class OutcomeValueTraining
                 // Invalid labels must not disappear merely because the sampler
                 // would omit them. Use the fitter's authoritative validator.
                 SearchOutcomeValueModel.ValidateTrainingRows(source);
+                if (balanceTrainingTurns)
+                    foreach (var row in source) _ = SearchOutcomeValueModel.TrainingTurn(row);
                 Dictionary<int, int> groups = [];
                 foreach (var row in Sample(source, maximumRowsPerRoot / files.Length, sampler, sampling))
                 {
@@ -186,7 +202,7 @@ internal static partial class OutcomeValueTraining
         return roots;
     }
 
-    private static (string Partition, string PairSelection) ReadPolicy(JsonElement input)
+    private static (string Partition, string PairSelection, string PairWeighting) ReadPolicy(JsonElement input)
     {
         string partition = input.ValueKind == JsonValueKind.Object
             && input.TryGetProperty("partition", out var part)
@@ -197,7 +213,16 @@ internal static partial class OutcomeValueTraining
             ? selection.GetString() ?? throw new InvalidDataException("Missing pair selection.") : "all";
         if (pairSelection is not ("all" or "highest-policy-tier"))
             throw new InvalidDataException("Unknown training pair selection.");
-        return (partition, pairSelection);
+        return (partition, pairSelection, ReadPairWeighting(input));
+    }
+
+    private static string ReadPairWeighting(JsonElement input)
+    {
+        string value = input.ValueKind == JsonValueKind.Object && input.TryGetProperty("pairWeighting", out var field)
+            ? field.ValueKind == JsonValueKind.String ? field.GetString()!
+                : throw new InvalidDataException("Pair weighting must be a string.") : "pairs";
+        if (value is not ("pairs" or "turns")) throw new InvalidDataException("Unknown training pair weighting.");
+        return value;
     }
 
     private static string[] ReadExcludedFeaturePrefixes(JsonElement input)
