@@ -112,6 +112,7 @@ internal sealed partial class CombatBeamSolver
                         List<SearchNode> annotated = AnnotateTurnOutcomes(boundaries);
                         ReleaseDroppedSnapshots(boundaries, annotated);
                         children = children.Where(n => !n.IsTerminal && n.Turn == parent.Turn).Concat(annotated).ToList();
+                        policy.OutcomeTrainingCollector?.ObservePool(children, _player, novelty: true);
                         foreach (SearchNode child in children)
                         {
                             ObserveNoveltyCandidate(child, clock);

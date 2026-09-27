@@ -500,6 +500,11 @@ internal sealed partial class CombatBeamSolver
                 node.Action is { Kind: PlanActionKind.PlayCard, Turn: var turn }
                 && turn == rootSnapshot.Turn));
             return children
+                // This API supplies a same-turn resource -> defense prefix.
+                // A turn-ending card remains legal in ordinary search, but has
+                // no defensive continuation in this fixed-prefix transaction.
+                .Where(node => node.Action is { EndsPlayerTurn: false } && !node.IsTerminal
+                    && node.Snapshot.Turn == rootSnapshot.Turn)
                 .Where(node => node.Snapshot.Energy > rootSnapshot.Energy
                     || node.Snapshot.Stars > rootSnapshot.Stars
                     || node.Snapshot.HandCount > rootSnapshot.HandCount

@@ -1453,6 +1453,9 @@ internal sealed partial class CombatBeamSolver
             }
             void ObserveNoveltyBoundary(SearchNode node)
             {
+                if (policy.OutcomeTrainingCollector is { } collector && node.Snapshot.TerminalStamp != null)
+                    collector.ObserveCompleted(node,
+                        SummarizeCandidate(node, won: IsEligibleCompleteVictory(node)));
                 ConsiderCompleteVictory(node);
                 ConsiderCurrentTurnCandidate(node);
             }

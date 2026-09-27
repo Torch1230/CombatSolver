@@ -1,17 +1,20 @@
 # 结果估值与小规模训练工具
 
-当前训练入口 `train.py` 采集同池完整胜利和引擎确认的终局死亡见证，拟合 schema5 成对树排序器；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
+当前训练入口 `train.py` 采集同池完整胜利和引擎确认的终局死亡见证，拟合 schema6 成对树排序器；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
 
+- `prepare_training.py --catalog <原生目录> --harness <宿主> --mod <Mod> --exclude-manifest <验证> --exclude-manifest <最终测试> --out <新目录> --seed <预先固定种子>`：按目录固定4普通/3精英/1首领，每个角色各8根，只做原生建局；保留实际装备和准备时间。
+- `train.py --preparation-budget <准备账本>` 将上述建局成本纳入1800秒。采集不在首个零损胜局提前停止；新颖性观察最多64池，Beam与新颖性总共仍最多256池。正常验证保持零损早停。
+- schema6训练行和模型均拒绝旧schema；奥斯蒂及Power归属修正后，须重新采集。训练和验证每次搜索还会核对实际完整装备与清单指向的冻结装备一致。
 - `dataset.py --train <清单> --evaluation <清单> --out <审计JSON>` 检查模板、实际遭遇家族和牌组隔离；随机根需 `loadout` 指向原生 `generated-scenario.loadout.json`。种子/血量/牌序变体不算新场景。
 - `train.py --evaluation-manifest <清单>` 可在启动采集前执行同一检查；没有该检查的结果不能据文件夹名声称独立泛化。
 - `prepare_holdout.py --train <训练清单> --training-results <采集目录> --catalog <原生目录JSON> --harness <宿主DLL> --model <模型> --out <新目录> --seed <冻结种子>` 按目录顺序选五个未见遭遇，原生建局后审计并封存，不运行搜索、不按结果筛选。
 - `python3 tools/OutcomeValuation/test_dataset.py` 验证防重叠门禁；宿主 `--check-outcome-ranking` 验证成对标签与模型合同。
 
-生产尚未移除手写评分；五个独立最终测试根保持封存。当前结果见[直方图与轨迹纠正](../../docs/strategy/histogram-outcome-ranking-20260927.md)。新增入口：
+生产尚未移除手写评分；五个独立最终测试根保持封存。当前结果见[角色状态与训练覆盖](../../docs/strategy/balanced-outcome-ranking-20260927.md)。新增入口：
 
 - `train.py --roll-in-model <已训练模型> --prior-training <其训练目录>`：在同一组根上采集模型轨迹，并进行有界旧Beam纠正；继承全部采集文件和历史训练成本，总成本最多1800秒。必须核对原清单、模型及每根的两个完整状态戳。
 - `prepare_holdout.py --kind Elite --split validation --exclude-manifest <封存测试清单>`：准备独立验证组，排除最终测试遭遇；仍只按目录选择，不看搜索成绩。
-- `evaluate.py --train <训练清单> --manifest <验证/测试清单> --model <模型> --mod <Mod DLL> --harness <宿主 DLL> --out <新目录>`：独立进程交错对照，核对两臂根戳，记录旧Score清零的实质比较。首次打开test写候选身份；换模型或实现须另设最终测试。
+- `evaluate.py --train <训练清单> --manifest <验证/测试清单> --model <模型> --mod <Mod DLL> --harness <宿主 DLL> --out <新目录>`：独立进程交错对照，核对两臂根戳，记录旧Score清零的实质比较。首次打开test锁定模型、程序、搜索配置与数据摘要；改变这些内容后该组只算开发数据，须另设最终测试。
 
 采集、拟合和比较进程通过环境变量显式加载 `--mod` 指定的程序集；完整日志不提交。下文为早期零训练方案的历史复现。
 

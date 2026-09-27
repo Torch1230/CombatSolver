@@ -23,7 +23,7 @@ internal static class OutcomeRankingChecks
         }
         SolverInterimResult quality = new(true, 0, 3, 3, 0, 0, 0, 0, 2) { Survives = true };
         Model.TrainingRow Row(int x, int hp, int[]? groups = null) => new(new() { ["x"] = x },
-            quality with { ProjectedBattleHpLost = hp, StrategicHpDeficit = hp }, 3, groups ?? [0]);
+            quality with { ProjectedBattleHpLost = hp, StrategicHpDeficit = hp }, 3, groups ?? [0], FeatureSchema: Model.Schema);
         var a = Row(0, 2) with { RemainingActions = 50 };
         var b = Row(1, 3) with { RemainingActions = 1 };
         Check(Model.CompareWitnesses(a, b) < 0, "final HP policy outranks suffix length");
@@ -44,6 +44,7 @@ internal static class OutcomeRankingChecks
             a with { Outcome = a.Outcome with { Won = false } },
             a with { Outcome = a.Outcome with { Survives = false } },
             a with { Groups = [] }, a with { Features = new() { ["x"] = double.NaN } },
+            a with { FeatureSchema = 0 }, a with { FeatureSchema = 5 },
         }) Reject(() => new Model().Fit([[invalid, b]]), "invalid/unknown label rejected");
 
         var loss = b with { Outcome = b.Outcome with { Won = false, Survives = false }, CompletedDefeat = true };
@@ -54,7 +55,7 @@ internal static class OutcomeRankingChecks
         Check(mixed.FittedPairs == 3, "genuine defeat witnesses add cross-outcome preferences");
         Reject(() => new Model().Fit([[loss with { CompletedDefeat = false }, a]]), "unfinished loss cannot masquerade as a defeat witness");
         Model.Tree tree = new(2, 0.5, 0, new(-1, 0, -2), new(-1, 0, 3));
-        Model.Document document = new(5, ["unused", "also-unused", "counter"],
+        Model.Document document = new(Model.Schema, ["unused", "also-unused", "counter"],
             typeof(Player).Assembly.ManifestModule.ModuleVersionId, [tree]);
         var loaded = Model.Load(document);
         Check(loaded.ExportModel().FeatureNames.SequenceEqual(["counter"]), "unused columns removed");
@@ -73,6 +74,7 @@ internal static class OutcomeRankingChecks
             && redundant.PredictFeaturesForTesting(new Dictionary<string, double>()) == 0.2,
             "neutral splits with equal leaf predictions are removed exactly");
         Reject(() => Model.Load(document with { Schema = 3 }), "old label schema rejected");
+        Reject(() => Model.Load(document with { Schema = 5 }), "old power-owner schema rejected");
         Reject(() => Model.Load(document with { GameMvid = Guid.Empty }), "game version mismatch rejected");
         Reject(() => Model.Load(document with { Forest = [new(2, 0, 0)] }), "incomplete tree rejected");
         var learned = new Model();

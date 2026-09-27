@@ -43,6 +43,19 @@ internal static class SearchOutcomeContext
         x["player/block"] = body.Block;
         x["player/energy"] = state.Energy;
         x["player/stars"] = state.Stars;
+        var osty = combat.GetOsty(player);
+        if (x.WantsPrefix("osty/"))
+        {
+            x["osty/present"] = osty != null ? 1 : 0;
+            x["osty/hittable"] = combat.IsOstyHittable(simulator, player) ? 1 : 0;
+            x["osty/max-hp"] = combat.GetOstyMaxHp(simulator, player);
+            if (osty != null)
+            {
+                var pet = simulator.State.GetCreature(osty);
+                x["osty/hp"] = pet.CurrentHp;
+                x["osty/block"] = pet.Block;
+            }
+        }
         foreach (var relic in combat.RelicsOf(player))
         {
             string name = "relic/" + relic.Id.Entry;
@@ -116,7 +129,14 @@ internal static class SearchOutcomeContext
         }
         if (x.WantsPrefix("power/")) foreach (var power in combat.EffectivePowers())
         {
-            string owner = ReferenceEquals(power.Owner, player.Creature) ? "player" : "enemy/" + power.Owner?.CombatId;
+            // Align enemy powers with the same roster index as enemy bodies;
+            // a pet's powers are not enemy resources or arbitrary combat IDs.
+            string owner = ReferenceEquals(power.Owner, player.Creature) ? "player"
+                : osty != null && ReferenceEquals(power.Owner, osty) ? "osty"
+                : "other/" + power.Owner?.CombatId;
+            for (int index = 0; index < combat.KnownEnemies.Count; index++)
+                if (ReferenceEquals(power.Owner, combat.KnownEnemies[index]))
+                { owner = "enemy/" + index; break; }
             Add("power/" + owner + "/" + power.Id.Entry, power.Amount);
         }
         for (int index = 0; index < combat.KnownEnemies.Count; index++)

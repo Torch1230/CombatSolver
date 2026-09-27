@@ -15,20 +15,25 @@ import subprocess
 import time
 from pathlib import Path
 
-from dataset import audit
+from dataset import audit, verify_resolved_loadout
 
 
 def train(args):
     started = time.monotonic()
     prior_budget = json.loads((args.prior_training / 'training-budget.json').read_text()) if args.prior_training else None
+    preparation = json.loads(args.preparation_budget.read_text()) if args.preparation_budget else None
+    preparation_seconds = preparation['elapsedSeconds'] if preparation else 0
     prior_seconds = (prior_budget.get('totalModelTrainingSeconds', prior_budget['elapsedSeconds'])
                      if prior_budget else 0)
-    limit = min(args.seconds, 1800 - prior_seconds)
+    limit = min(args.seconds, 1800 - prior_seconds - preparation_seconds)
     if limit < 60:
         raise ValueError('Insufficient remaining budget including previous collection/fitting')
     deadline = started + limit
     args.out.mkdir(parents=True, exist_ok=False)
     manifest_bytes = args.manifest.read_bytes()
+    if preparation and (not preparation.get('completed')
+                        or preparation['manifestSha256'] != hashlib.sha256(manifest_bytes).hexdigest()):
+        raise ValueError('Preparation must be complete and match the training manifest')
     environment = dict(os.environ, OFFLINE_HARNESS_COMBATSOLVER_DLL=str(args.mod.resolve()))
     prior_inputs = None
     if prior_budget:
@@ -46,6 +51,7 @@ def train(args):
         raise ValueError('Prior training inputs do not match root count')
     report = {'startedUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'limitSeconds': limit, 'priorTrainingSeconds': prior_seconds,
+              'preparationSeconds': preparation_seconds,
               'manifestSha256': hashlib.sha256(manifest_bytes).hexdigest(),
               'harnessSha256': hashlib.sha256(args.harness.read_bytes()).hexdigest(),
               'modSha256': hashlib.sha256(args.mod.read_bytes()).hexdigest(), 'records': []}
@@ -57,7 +63,7 @@ def train(args):
 
     def save():
         report['elapsedSeconds'] = time.monotonic() - started
-        report['totalModelTrainingSeconds'] = prior_seconds + report['elapsedSeconds']
+        report['totalModelTrainingSeconds'] = preparation_seconds + prior_seconds + report['elapsedSeconds']
         (args.out / 'training-budget.json').write_text(json.dumps(report, indent=2))
 
     try:
@@ -68,7 +74,7 @@ def train(args):
                        '--label', case['id'], '--out', str(target.resolve()), '--profile', 'Custom',
                        '--beam', '16', '--nodes', '6000', '--budget-ms', '12000', '--dop', '1',
                        '--search-mode', 'Coordinator', '--potion-policy', 'Disabled',
-                       '--stop-at-zero-loss', '--use-portfolio', '--automatic-search', '--collect-outcome-values']
+                       '--use-portfolio', '--automatic-search', '--collect-outcome-values']
             if args.roll_in_model:
                 command.remove('--use-portfolio')
                 command.remove('--automatic-search')
@@ -81,6 +87,7 @@ def train(args):
                 subprocess.run(command, stdout=output, stderr=subprocess.STDOUT,
                                timeout=min(70, remaining), check=True, env=environment)
             path = target / 'outcome-rows.json'
+            verify_resolved_loadout(case, target)
             if args.prior_training:
                 previous = args.prior_training / case['id']
                 old_root, new_root = (json.loads((directory / 'harness-result.json').read_text())['search']
@@ -123,9 +130,13 @@ if __name__ == '__main__':
     parser.add_argument('--roll-in-model', type=Path, help='Collect trajectories from this frozen learned search policy')
     parser.add_argument('--prior-training', type=Path,
                         help='Mix prior observations for identical roots; previous training cost counts toward 1800s')
+    parser.add_argument('--preparation-budget', type=Path,
+                        help='Include native corpus setup cost; only for fresh training')
     options = parser.parse_args()
     if not 60 <= options.seconds <= 1800:
         parser.error('--seconds must be between 60 and 1800')
     if options.prior_training and not options.roll_in_model:
         parser.error('--prior-training requires --roll-in-model')
+    if options.prior_training and options.preparation_budget:
+        parser.error('Prior training already includes preparation cost')
     train(options)

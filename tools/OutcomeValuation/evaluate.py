@@ -13,26 +13,43 @@ from pathlib import Path
 import subprocess
 import time
 
-from dataset import audit, read
+from dataset import audit, read, verify_resolved_loadout
 
 
 def write(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
 
 
+def candidate_identity(args, separation):
+    # Search budgets and dataset edits are model selection too. Freezing only
+    # the binaries would allow repeated tuning against the same final test.
+    return {**{name: hashlib.sha256(getattr(args, name).read_bytes()).hexdigest()
+               for name in ('model', 'mod', 'harness')},
+            'datasetSha256': separation['datasetSha256'],
+            'settings': {'beam': args.beam, 'nodes': args.nodes,
+                         'budgetMilliseconds': 30000, 'dop': 1,
+                         'searchMode': 'Coordinator', 'potionPolicy': 'Disabled',
+                         'stopAtZeroLoss': True, 'batchSeconds': args.seconds}}
+
+
+def claim_final_test(manifest, identity):
+    usage = manifest.parent / 'test-usage.json'
+    if usage.exists() and read(usage)['identity'] != identity:
+        raise ValueError('This test was already opened for another candidate, configuration or dataset; '
+                         'it is now development data')
+    if not usage.exists():
+        write(usage, {'identity': identity,
+                     'openedUtc': datetime.datetime.now(datetime.timezone.utc).isoformat()})
+
+
 def evaluate(args):
     separation = audit(read(args.train), read(args.manifest))
     cases = read(args.manifest)['cases']
-    identity = {name: hashlib.sha256(getattr(args, name).read_bytes()).hexdigest()
-                for name in ('model', 'mod', 'harness')}
+    identity = candidate_identity(args, separation)
     args.out.mkdir(parents=True, exist_ok=False)
     environment = dict(os.environ, OFFLINE_HARNESS_COMBATSOLVER_DLL=str(args.mod.resolve()))
     if any(c['split'] == 'test' for c in cases):
-        usage = args.manifest.parent / 'test-usage.json'
-        if usage.exists() and read(usage)['identity'] != identity:
-            raise ValueError('This test was already opened for another candidate; it is now development data')
-        if not usage.exists():
-            write(usage, {'identity': identity, 'openedUtc': datetime.datetime.now(datetime.timezone.utc).isoformat()})
+        claim_final_test(args.manifest, identity)
     report = {'identity': identity, 'separation': separation, 'records': [], 'completed': False}
     write(args.out / 'report.json', report)
     started = time.monotonic()
@@ -59,6 +76,7 @@ def evaluate(args):
                     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT,
                                    timeout=min(70, remaining), check=True, env=environment)
                 result, quality = read(target / 'result.json'), read(target / 'quality.json')
+                verify_resolved_loadout(case, target)
                 captured = read(target / 'harness-result.json')['search']
                 roots.append((captured['rootContinuationStamp'], captured['rootLiveStamp']))
                 metrics = result['solverMetrics']

@@ -4,6 +4,7 @@ using CombatSolver;
 using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
 using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace OfflineSearchHarness;
 
@@ -52,6 +53,37 @@ internal static class OutcomeContextChecks
         var stunned = SearchOutcomeContext.Capture(fork, player);
         Check(stunned["enemy/0/skip-next"] == 1, "branch intent suppression is observable");
         Check(Equal(before, SearchOutcomeContext.Capture(parent, player)), "branch intent observation stays isolated");
+        if (player.Character.Id.Entry == "NECROBINDER")
+        {
+            var petFork = parent.Fork();
+            var petCombat = (SimulatedCombatState)petFork.State.CombatState;
+            petCombat.SummonOsty(petFork, player, 7);
+            var pet = petCombat.GetOsty(player)!;
+            var petBody = petFork.State.GetCreature(pet);
+            petBody.GainBlock(3);
+            petCombat.Apply<StrengthPower>(pet, 3);
+            petCombat.Apply<StrengthPower>(petCombat.KnownEnemies[0], 4);
+            var summoned = SearchOutcomeContext.Capture(petFork, player);
+            Check(summoned["osty/hp"] > before.GetValueOrDefault("osty/hp"), "pet summon changes observed HP");
+            Check(summoned["osty/max-hp"] > before.GetValueOrDefault("osty/max-hp"), "pet branch maximum is observed");
+            Check(summoned["osty/block"] == 3 && summoned["osty/hittable"] == 1,
+                "pet block and hittability are observed");
+            string strength = petCombat.EffectivePowers().First(p => p is StrengthPower).Id.Entry;
+            Check(summoned["power/osty/" + strength] == 3, "pet powers use pet ownership");
+            Check(summoned["power/enemy/0/" + strength] == 4, "enemy powers align with body roster index");
+            Check(Equal(before, SearchOutcomeContext.Capture(parent, player)), "pet mutations do not change parent");
+            var names = summoned.Keys.ToDictionary(name => name, _ => 0, StringComparer.Ordinal);
+            int column = 0;
+            foreach (string name in names.Keys.ToArray()) names[name] = column++;
+            double[] values = new double[column];
+            SearchOutcomeContext.CaptureSelected(petFork, player, names, values,
+                SearchOutcomeContext.RequiredPrefixes(names.Keys));
+            Check(names.All(p => values[p.Value] == summoned[p.Key]), "pet selected features match sparse capture");
+            petBody.CurrentHp = 0;
+            var deadPet = SearchOutcomeContext.Capture(petFork, player);
+            Check(deadPet["osty/hittable"] == 0 && deadPet["osty/hp"] == 0
+                && deadPet["osty/max-hp"] == summoned["osty/max-hp"], "dead pet preserves maximum but cannot absorb hits");
+        }
         string[] allNames = before.Keys.Union(stunned.Keys).Append("unknown/absent").ToArray();
         for (int offset = 0; offset < 3; offset++)
         {

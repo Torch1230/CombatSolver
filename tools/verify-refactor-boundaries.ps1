@@ -1764,6 +1764,11 @@ foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'Co
 foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchPolicySnapshot.cs'); Text = 'SearchOutcomeValueModel? OutcomeTrainingCollector' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'CombatTerminalOutcome.Defeat' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'r.FeatureSchema != Schema' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '_noveltyGroups >= 64' },
+    @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.NoveltySearch.cs'); Text = 'ObservePool(children, _player, novelty: true)' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeContext.cs'); Text = 'combat.GetOstyMaxHp(simulator, player)' },
+    @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.Expansion.Opening.cs'); Text = '.Where(node => node.Action is { EndsPlayerTurn: false } && !node.IsTerminal' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '_correctionDepths.Count >= 3' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'action.EndsPlayerTurn || action.Turn != node.Turn' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeCorrections.cs'); Text = 'ObjectiveValueModel = null' }
@@ -1774,6 +1779,9 @@ foreach ($contract in @(
 }
 if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeValueModel.cs') -SimpleMatch 'new CombatBeamSolver(' -Quiet) {
     $violations.Add('Training correction searches belong in the offline host.')
+}
+if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeContext.cs') -SimpleMatch 'player.Osty' -Quiet) {
+    $violations.Add('Pet features must not read live pet state.')
 }
 foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.Transpositions.cs')) {
     if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch 'PredictPriority' -Quiet) {

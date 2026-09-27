@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [角色状态与训练覆盖修正](strategy/balanced-outcome-ranking-20260927.md)：奥斯蒂、Power归属、被漏采的新颖性胜局及角色均衡数据；独立验证与同Beam消融仍退化，候选未启用。
+
 - [直方图结果排序与轨迹纠正](strategy/histogram-outcome-ranking-20260927.md)：完成结局监督、少量补查及跨场景验证。
 - [小规模成对排序与场景隔离](strategy/pairwise-outcome-ranking-20260927.md)：6分钟训练、同模板划分纠正、拒绝上线的开发回归与封存测试集。
 

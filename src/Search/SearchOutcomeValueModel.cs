@@ -7,7 +7,7 @@ namespace CombatSolver;
 // Unlabelled/pruned states stay unknown. All collection and fitting is opt-in offline.
 internal sealed class SearchOutcomeValueModel
 {
-    private const int Schema = 5;
+    internal const int Schema = 6;
     private const int MaximumStates = 8192, MaximumGroups = 256, MaximumGroupMembers = 32;
     private readonly record struct ObservationKey(StateFingerprint State, int HpCost, int PotionCost);
     private sealed class Observation(Dictionary<string, double> features)
@@ -20,6 +20,7 @@ internal sealed class SearchOutcomeValueModel
     private readonly Dictionary<ObservationKey, Observation> _observations = [];
     private readonly Dictionary<ObservationKey, double> _predictions = [];
     private int _groups;
+    private int _noveltyGroups;
     private readonly List<CorrectionQuery> _correctionQueries = [];
     private readonly HashSet<int> _correctionDepths = [];
     private bool _correcting;
@@ -49,9 +50,11 @@ internal sealed class SearchOutcomeValueModel
             _observations.Add(key, new(Features(node, player)));
     }
 
-    internal void ObservePool(IReadOnlyList<SearchNode> nodes, Player player)
+    internal void ObservePool(IReadOnlyList<SearchNode> nodes, Player player, bool novelty = false)
     {
-        if (_frozen || _correcting || _groups >= MaximumGroups || nodes.Count < 2) return;
+        if (_frozen || _correcting || _groups >= MaximumGroups || nodes.Count < 2
+            || novelty && _noveltyGroups >= 64) return;
+        if (novelty) _noveltyGroups++;
         int group = _groups++;
         int count = Math.Min(MaximumGroupMembers, nodes.Count);
         for (int i = 0; i < count; i++)
@@ -138,7 +141,8 @@ internal sealed class SearchOutcomeValueModel
     }
 
     internal sealed record TrainingRow(Dictionary<string, double> Features,
-        SolverInterimResult Outcome, int RemainingActions, int[] Groups, bool CompletedDefeat = false);
+        SolverInterimResult Outcome, int RemainingActions, int[] Groups, bool CompletedDefeat = false,
+        int FeatureSchema = 0);
     internal sealed record Tree(int Feature, double Threshold, double Mean, Tree? Left = null, Tree? Right = null)
     {
         internal double Predict(float[] values)
@@ -150,9 +154,14 @@ internal sealed class SearchOutcomeValueModel
     }
     internal sealed record Document(int Schema, string[] FeatureNames, Guid GameMvid, Tree[] Forest);
     internal TrainingRow[] ExportRows() => _observations.Values.Where(o => o.Outcome != null && o.Groups.Count != 0)
-        .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won)).ToArray();
+        .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won, Schema)).ToArray();
     internal Document ExportModel() => new(Schema, _featureNames, typeof(Player).Assembly.ManifestModule.ModuleVersionId,
         _forest ?? throw new InvalidOperationException("No fitted ranker."));
+    internal object DescribeCollection() => new
+    {
+        featureSchema = Schema, states = _observations.Count, pools = _groups, noveltyPools = _noveltyGroups,
+        labelled = Samples, exported = ExportRows().Length,
+    };
     internal static SearchOutcomeValueModel Load(Document document)
     {
         if (document.Schema != Schema || document.FeatureNames == null
@@ -184,7 +193,7 @@ internal sealed class SearchOutcomeValueModel
         foreach (var root in roots)
         {
             int offset = rows.Count;
-            if (root.Any(r => r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
+            if (root.Any(r => r.FeatureSchema != Schema || r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
                 || !(r.Outcome.Won && r.Outcome.Survives && !r.CompletedDefeat
                     || !r.Outcome.Won && !r.Outcome.Survives && r.CompletedDefeat)
                 || r.Outcome.Score != 0 || r.RemainingActions < 0 || r.Groups.Length == 0

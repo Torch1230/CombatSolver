@@ -1,12 +1,34 @@
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 
-from dataset import audit
+from dataset import audit, verify_resolved_loadout
+from evaluate import candidate_identity, claim_final_test
+from prepare_training import select_encounters
 
 
 class SeparationContracts(unittest.TestCase):
+    def test_final_test_cannot_be_reused_to_tune_search_budgets_or_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / 'fixture.bin'
+            binary.write_bytes(b'frozen candidate')
+            args = SimpleNamespace(model=binary, mod=binary, harness=binary,
+                                   beam=24, nodes=12000, seconds=600)
+            identity = candidate_identity(args, {'datasetSha256': 'original-scenes'})
+            manifest = root / 'test.json'
+            claim_final_test(manifest, identity)
+            claim_final_test(manifest, identity)  # Repetitions of the frozen candidate are allowed.
+            args.nodes = 24000
+            with self.assertRaisesRegex(ValueError, 'configuration or dataset'):
+                claim_final_test(manifest, candidate_identity(args, {'datasetSha256': 'original-scenes'}))
+            args.nodes = 12000
+            with self.assertRaisesRegex(ValueError, 'configuration or dataset'):
+                claim_final_test(manifest, candidate_identity(args, {'datasetSha256': 'edited-scenes'}))
+            self.assertEqual(json.loads((root / 'test-usage.json').read_text())['identity'], identity)
+
     def test_structural_leakage_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -44,6 +66,32 @@ class SeparationContracts(unittest.TestCase):
             case = {'id': 'random', 'family': 'random', 'split': 'train', 'request': str(path)}
             with self.assertRaisesRegex(ValueError, 'native resolved loadout'):
                 audit({'cases': [case]}, {'cases': [{**case, 'split': 'test'}]})
+
+    def test_actual_search_equipment_must_match_audited_equipment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'evidence').mkdir()
+            frozen = root / 'frozen.json'
+            value = {'encounterId': 'TRAIN_ENEMY', 'deck': [{'id': 'BLOCK'}]}
+            frozen.write_text(json.dumps(value))
+            actual = root / 'evidence/generated-scenario.loadout.json'
+            actual.write_text(json.dumps(value))
+            case = {'id': 'frozen', 'loadout': str(frozen)}
+            verify_resolved_loadout(case, root)
+            actual.write_text(json.dumps({**value, 'deck': [{'id': 'STRIKE'}]}))
+            with self.assertRaisesRegex(ValueError, 'differs from the frozen native setup'):
+                verify_resolved_loadout(case, root)
+
+    def test_balanced_encounters_exclude_variants_without_outcomes(self):
+        entries = [{'id': f'{kind}_{i}_NORMAL', 'actIndex': 0, 'roomType': kind}
+                   for kind in ('Monster', 'Elite', 'Boss') for i in range(8)]
+        entries += [{'id': 'Monster_1_WEAK', 'actIndex': 0, 'roomType': 'Monster'}]
+        chosen = select_encounters({'encounters': entries}, {'Monster_0', 'Elite_0', 'Boss_0'})
+        self.assertEqual(len(chosen), 8)
+        families = [x['id'].removesuffix('_NORMAL').removesuffix('_WEAK') for x in chosen]
+        self.assertEqual(len(set(families)), 8)
+        self.assertFalse(set(families) & {'Monster_0', 'Elite_0', 'Boss_0'})
+        self.assertEqual([x['roomType'] for x in chosen], ['Monster'] * 4 + ['Elite'] * 3 + ['Boss'])
 
 
 if __name__ == '__main__':

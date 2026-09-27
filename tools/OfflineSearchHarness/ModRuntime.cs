@@ -518,8 +518,12 @@ internal static class ModRuntime
         if (outcomeCollector != null && outcomeModel != null)
             OutcomeCorrections.Run(root, names, damage, policy, options, loop, outcomeCollector);
         if (outcomeCollector != null)
+        {
             File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-rows.json"),
                 JsonSerializer.Serialize(outcomeCollector.ExportRows()));
+            File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-collection.json"),
+                JsonSerializer.Serialize(outcomeCollector.DescribeCollection()));
+        }
         if (outcomeModel != null)
             File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-model-diagnostics.json"),
                 JsonSerializer.Serialize(outcomeModel.DescribePerformance()));

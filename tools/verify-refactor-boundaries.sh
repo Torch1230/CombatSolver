@@ -1370,6 +1370,12 @@ for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs CombatBeamSolver.
 done
 require_fixed "$search_root/SearchPolicySnapshot.cs" 'SearchOutcomeValueModel? OutcomeTrainingCollector' 'training collector must remain separate from the frozen predictor:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'CombatTerminalOutcome.Defeat' 'failed continuation labels require an actual terminal defeat:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'r.FeatureSchema != Schema' 'old training observations must not silently acquire new feature meanings:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" '_noveltyGroups >= 64' 'novelty observation must leave capacity for Beam pools:'
+require_fixed "$search_root/CombatBeamSolver.NoveltySearch.cs" 'ObservePool(children, _player, novelty: true)' 'novelty-only victories must remain observable for training:'
+require_fixed "$search_root/SearchOutcomeContext.cs" 'combat.GetOstyMaxHp(simulator, player)' 'pet features must read branch-owned maximum HP:'
+require_fixed "$search_root/CombatBeamSolver.Expansion.Opening.cs" '.Where(node => node.Action is { EndsPlayerTurn: false } && !node.IsTerminal' 'same-turn resource audits must exclude completed turns and terminals:'
+forbid_fixed "$search_root/SearchOutcomeContext.cs" 'player.Osty' 'pet features must not read live pet state:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" '_correctionDepths.Count >= 3' 'offline correction prefixes lost their bounded ownership:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'action.EndsPlayerTurn || action.Turn != node.Turn' 'correction prefixes must respect the existing first-turn replay boundary:'
 require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeCorrections.cs" 'ObjectiveValueModel = null' 'offline teacher must not recursively use the learned predictor:'

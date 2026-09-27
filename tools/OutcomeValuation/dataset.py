@@ -19,6 +19,14 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+def verify_resolved_loadout(case, output):
+    """Prove the search actually used the native equipment audited before it ran."""
+    if case.get('loadout'):
+        actual = read(Path(output) / 'evidence/generated-scenario.loadout.json')
+        if actual != read(case['loadout']):
+            raise ValueError(f"{case['id']}: search loadout differs from the frozen native setup")
+
+
 def describe(case):
     request = read(case['request'])
     if request.get('generatedScenarioPath'):
