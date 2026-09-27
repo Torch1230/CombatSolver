@@ -1361,7 +1361,7 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
     done
 done
 
-for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs CombatBeamSolver.ObjectiveRetention.cs; do
+for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs CombatBeamSolver.ObjectiveRetention.cs; do
     for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.' 'xgboost'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
@@ -1395,7 +1395,10 @@ done
 require_fixed "$repository_root/tools/OutcomeValuation/evaluate.py" 'args.validation_manifest' 'final evaluation must include development split separation:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'CombatTerminalOutcome.Defeat' 'failed continuation labels require an actual terminal defeat:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'r.FeatureSchema != FeatureSchema' 'old training observations must not silently acquire new feature meanings:'
-require_fixed "$search_root/SearchOutcomeValueModel.cs" 'Schema = 9, FeatureSchema = 8' 'model serialization and resource observation schemas must be distinct:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'Schema = 10, LegacySchema = 9, FeatureSchema = 8' 'model serialization and resource observation schemas must be distinct:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'document.Schema == LegacySchema && document.FactorWeights != null' 'legacy models must not silently discard interactions:'
+require_fixed "$search_root/SearchOutcomeValueModel.Interactions.cs" 'private double AddInteractions(float[] values, double score)' 'factor inference must share float observations and preserve the base score:'
+require_fixed "$repository_root/tools/OutcomeValuation/factor_fit.py" 'from ranking_data import derivatives, loss, read_head, read_manifest' 'interaction fitting must consume the authoritative shared graph:'
 require_fixed "$search_root/SearchOutcomeValueModel.Linear.cs" 'pairs[p].Weight * probability' 'linear utility must be learned from root-balanced pair labels:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'var prepared = PrepareTraining(roots, highestPolicyTierOnly);' 'built-in fitting must share authoritative pair preparation:'
 require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs" 'SearchOutcomeValueModel.PrepareTraining(' 'external fitting must export authoritative C# pairs:'

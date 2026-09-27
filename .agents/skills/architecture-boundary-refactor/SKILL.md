@@ -5,6 +5,8 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 
 # CombatSolver 架构边界重构
 
+结果估值交互项的职责位于 `SearchOutcomeValueModel.Interactions.cs`：只校验和执行数值因子，不读文件、重建政策或调用 Python。外部树/因子训练共用 `ranking_data.py` 的原 C# 偏好图；因子与线性/树共用列编译，schema10 显式兼容无因子的9，观察仍为8。修改相关边界时同步两端结构门禁。
+
 ## 适用边界
 
 本 skill 处理结构和所有权：拆分大类、迁移 run/session state、建立策略对象、隔离 renderer、整理测试编排、为工具提供稳定元数据。

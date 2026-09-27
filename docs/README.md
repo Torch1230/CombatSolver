@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [学习卡牌与局面的二阶交互](strategy/factor-interactions-20260928.md)：五角色完整拟合约19秒，数值实现一致，但独立战斗仍有退化，未启用。
+
 - [树叶子证据量约束](strategy/leaf-evidence-regularization-20260928.md)：固定偏好图约束叶子 Hessian，模型缩小但未解决独立战斗退化。
 
 - [共用偏好图的 CPU 树训练器](strategy/external-ranking-backend-20260928.md)：376 根完整导出与五角色训练约 63 秒，独立开发仍有退化；新格式夜间任务已启动。

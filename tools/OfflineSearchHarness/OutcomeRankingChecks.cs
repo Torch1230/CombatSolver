@@ -355,6 +355,7 @@ internal static class OutcomeRankingChecks
             Reject(() => OutcomeValueTraining.Export(inputs, exported), "exports cannot overwrite existing evidence");
         }
         finally { Directory.Delete(directory, recursive: true); }
+        checks += OutcomeInteractionChecks.Run();
         Console.WriteLine($"Outcome ranking: {checks} assertions passed.");
         return 0;
     }

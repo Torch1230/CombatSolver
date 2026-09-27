@@ -8,7 +8,6 @@ remain the acceptance criterion; fitting loss is only a diagnostic.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import resource
@@ -18,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import xgboost as xgb
 
-EDGE_DTYPE = np.dtype([("preferred", "<i4"), ("other", "<i4"), ("weight", "<f8")])
+from ranking_data import EDGE_DTYPE, derivatives, loss, read_head, read_manifest
 PARAMETERS = dict(tree_method="hist", device="cpu", nthread=4, max_depth=6,
                   max_bin=32, eta=0.1, reg_lambda=0.001, reg_alpha=0,
                   min_child_weight=0, gamma=0, subsample=1, colsample_bytree=1,
@@ -34,26 +33,6 @@ def training_parameters(minimum_leaf_hessian=0.0):
     # A leaf threshold of 3 therefore needs contributions from at least 3
     # roots; this is a conservative bound, not an exact distinct-root count.
     return dict(PARAMETERS, min_child_weight=minimum_leaf_hessian)
-
-
-def derivatives(scores, edges):
-    preferred, other, weight = (edges[k] for k in EDGE_DTYPE.names)
-    margin = scores[preferred].astype(np.float64) - scores[other]
-    # Stable sigmoid(-margin), without changing the loss at extreme margins.
-    probability = np.exp(-np.logaddexp(0, margin))
-    g = weight * probability
-    h = weight * probability * (1 - probability)
-    gradient = (np.bincount(other, weights=g, minlength=len(scores))
-                - np.bincount(preferred, weights=g, minlength=len(scores)))
-    # Per edge H = h[[1,-1],[-1,1]]. 2hI-H = h[[1,1],[1,1]] is PSD.
-    upper = 2 * (np.bincount(preferred, weights=h, minlength=len(scores))
-                 + np.bincount(other, weights=h, minlength=len(scores)))
-    return gradient, upper
-
-
-def loss(scores, edges):
-    margin = scores[edges["preferred"]].astype(np.float64) - scores[edges["other"]]
-    return float(np.sum(edges["weight"] * np.logaddexp(0, -margin)))
 
 
 def convert_tree(node, columns, depth=0):
@@ -107,33 +86,6 @@ def predict_document(document, matrix):
     return 0.1 * forest + linear
 
 
-def read_head(directory, head):
-    rows, columns = head["rows"], len(head["foundation"]["FeatureNames"])
-    if rows < 2 or columns < 1 or head["pairs"] < 2:
-        raise ValueError("Insufficient exported observations")
-    for key, size in (("matrix", rows * columns * 4), ("edges", head["pairs"] * 16),
-                      ("margins", rows * 8)):
-        name = head[key]
-        if Path(name).name != name:
-            raise ValueError("Export names must be local files")
-        path = directory / name
-        with path.open("rb") as stream:
-            digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        if path.stat().st_size != size or digest != head["sha256"][name]:
-            raise ValueError("Export size or hash mismatch: " + name)
-    matrix = np.memmap(directory / head["matrix"], dtype="<f4", mode="r", shape=(rows, columns))
-    edges = np.memmap(directory / head["edges"], dtype=EDGE_DTYPE, mode="r")
-    margins = np.memmap(directory / head["margins"], dtype="<f8", mode="r")
-    if (not np.isfinite(matrix).all() or not np.isfinite(margins).all()
-            or not np.isfinite(edges["weight"]).all() or (edges["weight"] <= 0).any()
-            or (edges["preferred"] == edges["other"]).any()
-            or any((edges[k] < 0).any() or (edges[k] >= rows).any() for k in ("preferred", "other"))):
-        raise ValueError("Invalid exported numerical values or pair endpoints")
-    if not math.isclose(float(edges["weight"].sum()), head["participatingRoots"], rel_tol=1e-12):
-        raise ValueError("Exported root weights do not sum to participating roots")
-    return matrix, edges, margins
-
-
 class Deadline(xgb.callback.TrainingCallback):
     def __init__(self, until):
         self.until = until
@@ -152,18 +104,14 @@ def fit(directory: Path, output: Path, seconds: int, minimum_leaf_hessian=0.0):
     if output.exists():
         raise ValueError("Output directory already exists")
     output.mkdir(parents=True)
-    manifest = json.loads((directory / "manifest.json").read_text())
-    if (manifest["exportSchema"] != 1 or manifest["partition"] not in ("shared", "character")
-            or manifest["matrixFormat"] != "row-major-little-endian-float32-explicit-zero"
-            or manifest["edgeFormat"] != "little-endian-int32-int32-float64"
-            or manifest["marginFormat"] != "little-endian-float64" or not manifest["heads"]):
-        raise ValueError("Unsupported exported ranking format")
+    manifest = read_manifest(directory)
     models, metrics, parity_inputs, parity_expected = {}, [], [], []
     for head in manifest["heads"]:
         head_start = time.monotonic()
         matrix, edges, margins = read_head(directory, head)
         foundation = head["foundation"]
-        if foundation["Schema"] != 9 or head["character"] in models:
+        if (foundation["Schema"] not in (9, 10) or foundation.get("FactorWeights") is not None
+                or head["character"] in models):
             raise ValueError("Unsupported or repeated model head")
         dmatrix = xgb.DMatrix(matrix, base_margin=np.asarray(margins, dtype=np.float32), nthread=4)
         booster = xgb.train(parameters, dmatrix, num_boost_round=64,

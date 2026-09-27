@@ -1,3 +1,2 @@
 xgboost-cpu==3.4.1
-numpy==2.5.3
-scipy==1.18.1
+-r requirements-ranking.txt

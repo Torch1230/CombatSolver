@@ -199,7 +199,9 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 ## 上下文结果估值研究
 
-`--collect-outcome-values --dop 1` 输出 `outcome-context.json` 与同池完整胜利/真实终局死亡见证的 `outcome-rows.json`；未完成/被裁剪状态不标失败。使用 `--fit-outcome-values <路径数组JSON> <模型JSON>` 拟合无需游戏启动的线性基础项和64棵深度6直方图成对残差树（模型schema9，观察schema8）。同时输出 `<模型名>.linear.json`，供同一次拟合的纯线性消融使用。`tools/OutcomeValuation/train.py` 对采集加拟合设置至多1800秒硬进程时限。
+模型推理支持 schema10 的 `FactorWeights` 二阶交互，并明确兼容没有因子的 schema9；原始观察继续为8。外部因子训练及完整预算口径见 [`tools/OutcomeValuation`](../tools/OutcomeValuation/README.md)，不会成为新的玩家搜索模式。
+
+`--collect-outcome-values --dop 1` 输出 `outcome-context.json` 与同池完整胜利/真实终局死亡见证的 `outcome-rows.json`；未完成/被裁剪状态不标失败。使用 `--fit-outcome-values <路径数组JSON> <模型JSON>` 拟合无需游戏启动的线性基础项和64棵深度6直方图成对残差树（模型schema10，观察schema8）。同时输出 `<模型名>.linear.json`，供同一次拟合的纯线性消融使用。`tools/OutcomeValuation/train.py` 对采集加拟合设置至多1800秒硬进程时限。
 
 `--objective-search --outcome-value-model <模型JSON> --search-mode Coordinator --potion-policy Disabled --dop 1` 仅用于替代排序实验，内部共用自动协调器；CLI不叠加自动搜索或旧组合参数。它未通过默认替代验收，Runtime不会启用。笔尖计数8夹具可以追加 `--verify-outcome-context`，验证实机后续变化隔离、Fork独立及分支费用/计数可见性。具体输入、失败回归、内存和泛化限制见[报告](strategy/contextual-outcome-values-20260927.md)。
 

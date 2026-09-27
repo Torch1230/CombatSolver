@@ -1754,7 +1754,7 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
     }
 }
 
-foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
+foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
     foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.', 'xgboost')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
@@ -1780,7 +1780,10 @@ foreach ($contract in @(
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/evaluate.py'); Text = 'args.validation_manifest' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'CombatTerminalOutcome.Defeat' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'r.FeatureSchema != FeatureSchema' },
-    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'Schema = 9, FeatureSchema = 8' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'Schema = 10, LegacySchema = 9, FeatureSchema = 8' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'document.Schema == LegacySchema && document.FactorWeights != null' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Interactions.cs'); Text = 'private double AddInteractions(float[] values, double score)' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/factor_fit.py'); Text = 'from ranking_data import derivatives, loss, read_head, read_manifest' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Linear.cs'); Text = 'pairs[p].Weight * probability' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'var prepared = PrepareTraining(roots, highestPolicyTierOnly);' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs'); Text = 'SearchOutcomeValueModel.PrepareTraining(' },
