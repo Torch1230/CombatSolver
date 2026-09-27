@@ -13,7 +13,7 @@ from pathlib import Path
 import subprocess
 import time
 
-from dataset import audit, read, verify_resolved_loadout
+from dataset import audit, evaluation_manifests, read, verify_resolved_loadout
 
 
 def write(path, value):
@@ -43,8 +43,17 @@ def claim_final_test(manifest, identity):
 
 
 def evaluate(args):
-    separation = audit(read(args.train), read(args.manifest))
     cases = read(args.manifest)['cases']
+    if {c['split'] for c in cases} not in ({'validation'}, {'test'}):
+        raise ValueError('Evaluate one nonempty validation or final test split at a time')
+    manifests = [args.manifest]
+    if any(c['split'] == 'test' for c in cases):
+        if not args.validation_manifest:
+            raise ValueError('Final test requires the development validation manifest for three-way separation')
+        if {c['split'] for c in read(args.validation_manifest)['cases']} != {'validation'}:
+            raise ValueError('Development manifest must contain only validation cases')
+        manifests.insert(0, args.validation_manifest)
+    separation = audit(read(args.train), evaluation_manifests(manifests))
     identity = candidate_identity(args, separation)
     args.out.mkdir(parents=True, exist_ok=False)
     environment = dict(os.environ, OFFLINE_HARNESS_COMBATSOLVER_DLL=str(args.mod.resolve()))
@@ -107,6 +116,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('train', 'manifest', 'model', 'mod', 'harness', 'out'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--validation-manifest', type=Path,
+                        help='Required when opening a final test; used only for structural separation')
     parser.add_argument('--beam', type=int, default=24)
     parser.add_argument('--nodes', type=int, default=12000)
     parser.add_argument('--seconds', type=int, default=600)

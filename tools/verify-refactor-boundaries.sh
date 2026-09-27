@@ -1369,6 +1369,14 @@ for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValu
     done
 done
 require_fixed "$search_root/SearchPolicySnapshot.cs" 'SearchOutcomeValueModel? OutcomeTrainingCollector' 'training collector must remain separate from the frozen predictor:'
+require_fixed "$search_root/CombatBeamSolver.cs" 'policy.UseObjectiveSearch ? ObjectiveRankScore : null' 'learned scalar must use the shared retention policy:'
+forbid_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" '_objectiveRetention' 'learned ranking must not bypass shared retention:'
+forbid_fixed "$search_root/CombatBeamSolver.Retention.cs" 'RetainObjectives(' 'learned ranking must not bypass pruning ownership:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'ConditionalWeakTable<SearchNode, NodePriority>' 'retired parent ranking must retain only a weakly owned scalar:'
+for file in train.py refit.py prepare_training.py; do
+    require_fixed "$repository_root/tools/OutcomeValuation/$file" 'require_final_test=True' 'training must audit both development and sealed test manifests:'
+done
+require_fixed "$repository_root/tools/OutcomeValuation/evaluate.py" 'args.validation_manifest' 'final evaluation must include development split separation:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'CombatTerminalOutcome.Defeat' 'failed continuation labels require an actual terminal defeat:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'r.FeatureSchema != FeatureSchema' 'old training observations must not silently acquire new feature meanings:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'Schema = 7, FeatureSchema = 6' 'model serialization and unchanged observation schemas must be distinct:'

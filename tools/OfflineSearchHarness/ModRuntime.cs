@@ -610,6 +610,8 @@ internal static class ModRuntime
             ["selectedExpanded"] = result.ExpandedNodes,
             ["selectedTransitions"] = result.TransitionCount,
             ["selectedChoiceBranches"] = result.ChoiceBranchesEvaluated,
+            ["selectedPrimaryIncumbentUpdates"] = result.PrimaryIncumbentUpdates,
+            ["selectedPrimaryIncumbentBranchesPruned"] = result.PrimaryIncumbentBranchesPruned,
             ["totalExpanded"] = result.TotalExpandedNodes,
             ["totalTransitions"] = result.TotalTransitionCount,
             ["totalChoiceBranches"] = result.TotalChoiceBranchesEvaluated,

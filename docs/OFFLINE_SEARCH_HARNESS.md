@@ -205,6 +205,8 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 `--check-outcome-ranking` 运行44项纯标签/拟合/加载/多策略分组及线性外推/单位变换合同；`--verify-outcome-context` 另验证选择列数值投影与复用清理。替代排序也允许 `--search-mode Evaluate --observe-ordering <上限>` 做首次裁剪诊断；该数据不能作性能基准。训练/测试须先以 `tools/OutcomeValuation/dataset.py` 检查模板、实际遭遇和牌组隔离，不能只换种子。见[成对排序报告](strategy/pairwise-outcome-ranking-20260927.md)。
 
+训练与重拟合必须重复提供 `--evaluation-manifest <验证清单> --evaluation-manifest <封存测试清单>`，执行三组两两结构隔离。最终评测额外提供 `--validation-manifest <开发验证清单>`；检查装备资料不等于运行测试，最终搜索使用记录仍单独冻结。共用保路实验的 `selectedPrimaryIncumbentUpdates` / `selectedPrimaryIncumbentBranchesPruned` 位于 `harness-result.json` 的 `search.solverMetrics`，仅代表所选 solver，不能当成全协调器总量。
+
 `--collect-outcome-values --objective-search --outcome-value-model <模型>` 使用冻结模型采集自身轨迹，主搜索后离线补查最多6个首回合前缀。`outcome-corrections.json` 单独记录6000ms软额度、各次1000节点/1500ms软额度、真实成本和见证变化；采集运行不能作推理性能基准。根准备选择和跨回合前缀不进入此补查。`--audit-outcome-ranking <路径数组JSON> <模型> <输出>` 只审计被选中的训练输入偏好，不是独立验收。路径数组可将一个实际根的多个采集文件放入子数组，组号按文件重映射。见[本轮研究](strategy/histogram-outcome-ranking-20260927.md)。
 
 观察schema6新增分支奥斯蒂身体/最大HP/可受击状态，Power区分主人、奥斯蒂和与敌人身体一致的roster索引。训练行亦校验schema，旧行拒绝混合。新颖性搜索的兄弟子节点池参与观察（最多64个，计入256总池），完成边界使用原权威终局摘要。`outcome-collection.json` 记录总态/池/新颖性池/有标签/导出条数，用于发现“已有胜利却没有监督”的采集缺口。

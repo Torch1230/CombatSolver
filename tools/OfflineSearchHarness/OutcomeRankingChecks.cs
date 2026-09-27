@@ -9,6 +9,11 @@ internal static class OutcomeRankingChecks
 {
     internal static int Run()
     {
+        // Reuse the existing production-policy contract: unfinished/forced-use
+        // results cannot certify bounds, and later low-loss routes remain open.
+        typeof(UnattendedTestRunner).GetMethod("AssertPrimaryIncumbentEligibility",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(null, null);
         int checks = 0;
         void Check(bool condition, string message)
         {

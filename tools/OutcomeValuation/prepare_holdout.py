@@ -67,7 +67,8 @@ def prepare(args):
                       'request': str((target / 'request.json').resolve()),
                       'loadout': str((target / 'setup/evidence/generated-scenario.loadout.json').resolve())})
     evaluation = {'schemaVersion': 1, 'cases': cases}
-    report = audit(training, evaluation)
+    excluded = read(args.exclude_manifest)['cases'] if args.exclude_manifest else []
+    report = audit(training, {'cases': [*excluded, *cases]})
     report['modelSha256'] = hashlib.sha256(args.model.read_bytes()).hexdigest()
     report['status'] = 'sealed: setup only; no baseline or candidate search executed'
     write(args.out / (args.split + '-manifest.json'), evaluation)

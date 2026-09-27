@@ -457,7 +457,7 @@ internal sealed partial class CombatBeamSolver
                         ? node
                         : best);
 
-        private static SearchNode? FindBestTacticalEnabler(IReadOnlyList<SearchNode> nodes)
+        private SearchNode? FindBestTacticalEnabler(IReadOnlyList<SearchNode> nodes)
         {
             SearchNode? best = null;
             foreach (SearchNode node in nodes)
@@ -841,15 +841,20 @@ internal sealed partial class CombatBeamSolver
             return noWorse && strictlyBetter;
         }
 
-        private static bool IsBetterSearchNode(SearchNode candidate, SearchNode current)
-            => candidate.Score > current.Score
-                || candidate.Score.Equals(current.Score) && candidate.ActionCount < current.ActionCount;
+        private bool IsBetterSearchNode(SearchNode candidate, SearchNode current)
+        {
+            double candidateScore = _objectiveRankScore?.Invoke(candidate) ?? candidate.Score;
+            double currentScore = _objectiveRankScore?.Invoke(current) ?? current.Score;
+            return candidateScore > currentScore
+                || candidateScore.Equals(currentScore) && candidate.ActionCount < current.ActionCount;
+        }
 
         private static bool UsesPotion(SearchNode node)
             => node.PotionCount > 0;
 
         private double BeamRankScore(SearchNode node)
         {
+            if (_objectiveRankScore != null) return _objectiveRankScore(node);
             // 基础分成员（见 SolverSearchProfile.BaseScoreOnly）：中途排序只用基础分；未置位时下面逐位不变。
             if (_profile.BaseScoreOnly)
                 return _developmentStrategy?.Rank(node, node.Score) ?? node.Score;

@@ -429,7 +429,7 @@ internal sealed partial class CombatBeamSolver
         Func<SearchNode, StandPatEvaluation> _evaluateStandPat,
         Action<IEnumerable<SearchNode>>? _prepareStandPat = null,
         DevelopmentSearchStrategy? _developmentStrategy = null,
-        Func<IEnumerable<SearchNode>, int, List<SearchNode>>? _objectiveRetention = null)
+        Func<SearchNode, double>? _objectiveRankScore = null)
     {
         private void ForEachRetentionIndex(
             int count,
@@ -792,8 +792,6 @@ internal sealed partial class CombatBeamSolver
             bool useSecondRankBand = false,
             Action<GlobalRetentionDecision>? observe = null)
         {
-            if (!finalQualityFirst && _objectiveRetention != null)
-                return _objectiveRetention(nodes, limit);
             Dictionary<SearchNode, RoutingChoiceSignature>? observedRoutingSignatures =
                 observe != null && preserveDefensiveRoute
                     ? new(ReferenceEqualityComparer.Instance)

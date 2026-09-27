@@ -1763,6 +1763,12 @@ foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'Se
 }
 foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchPolicySnapshot.cs'); Text = 'SearchOutcomeValueModel? OutcomeTrainingCollector' },
+    @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.cs'); Text = 'policy.UseObjectiveSearch ? ObjectiveRankScore : null' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'ConditionalWeakTable<SearchNode, NodePriority>' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/train.py'); Text = 'require_final_test=True' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/refit.py'); Text = 'require_final_test=True' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/prepare_training.py'); Text = 'require_final_test=True' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/evaluate.py'); Text = 'args.validation_manifest' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'CombatTerminalOutcome.Defeat' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'r.FeatureSchema != FeatureSchema' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'Schema = 7, FeatureSchema = 6' },
@@ -1783,6 +1789,14 @@ foreach ($contract in @(
 }
 if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeValueModel.cs') -SimpleMatch 'new CombatBeamSolver(' -Quiet) {
     $violations.Add('Training correction searches belong in the offline host.')
+}
+foreach ($contract in @(
+    @{ Path = 'CombatBeamSolver.BeamRetentionPolicy.cs'; Text = '_objectiveRetention' },
+    @{ Path = 'CombatBeamSolver.Retention.cs'; Text = 'RetainObjectives(' }
+)) {
+    if (Select-String -LiteralPath (Join-Path $searchRoot $contract.Path) -SimpleMatch $contract.Text -Quiet) {
+        $violations.Add("Learned ranking must not bypass shared retention: $($contract.Path)")
+    }
 }
 if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeContext.cs') -SimpleMatch 'player.Osty' -Quiet) {
     $violations.Add('Pet features must not read live pet state.')

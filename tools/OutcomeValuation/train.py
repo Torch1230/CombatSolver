@@ -15,7 +15,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from dataset import audit, verify_resolved_loadout
+from dataset import audit, evaluation_manifests, verify_resolved_loadout
 
 
 def train(args):
@@ -42,8 +42,8 @@ def train(args):
         if args.roll_in_model.read_bytes() != (args.prior_training / 'model.json').read_bytes():
             raise ValueError('Roll-in model must match the accounted prior training result')
         prior_inputs = json.loads((args.prior_training / 'training-inputs.json').read_text())
-    separation = (audit(json.loads(manifest_bytes), json.loads(args.evaluation_manifest.read_text()))
-                  if args.evaluation_manifest else None)
+    separation = audit(json.loads(manifest_bytes), evaluation_manifests(
+        args.evaluation_manifest, require_final_test=True))
     cases = [c for c in json.loads(manifest_bytes)['cases'] if c['split'] == 'train']
     if not cases:
         raise ValueError('No training roots in manifest')
@@ -125,8 +125,8 @@ if __name__ == '__main__':
     for name in ['manifest', 'harness', 'mod', 'out']:
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--seconds', type=int, default=1800)
-    parser.add_argument('--evaluation-manifest', type=Path,
-                        help='Optional frozen evaluation manifest; reject scenario overlap before any process starts')
+    parser.add_argument('--evaluation-manifest', type=Path, action='append', required=True,
+                        help='Repeat for development validation and sealed final test')
     parser.add_argument('--roll-in-model', type=Path, help='Collect trajectories from this frozen learned search policy')
     parser.add_argument('--prior-training', type=Path,
                         help='Mix prior observations for identical roots; previous training cost counts toward 1800s')

@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 import time
 
-from dataset import audit, read, verify_resolved_loadout
+from dataset import audit, evaluation_manifests, read, verify_resolved_loadout
 
 
 def refit(args):
@@ -22,7 +22,8 @@ def refit(args):
         raise ValueError('Refitting requires complete prior training with the same manifest')
     if not 60 <= limit <= 1800:
         raise ValueError('Insufficient budget after inherited collection and fitting')
-    separation = audit(json.loads(manifest_bytes), read(args.evaluation_manifest))
+    separation = audit(json.loads(manifest_bytes), evaluation_manifests(
+        args.evaluation_manifest, require_final_test=True))
     if previous.get('separation', {}).get('training') != separation['training']:
         raise ValueError('Underlying training requests/loadouts changed since observation collection')
     cases = [c for c in json.loads(manifest_bytes)['cases'] if c['split'] == 'train']
@@ -73,8 +74,10 @@ def refit(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ('prior-training', 'manifest', 'evaluation-manifest', 'harness', 'mod', 'out'):
+    for name in ('prior-training', 'manifest', 'harness', 'mod', 'out'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--evaluation-manifest', type=Path, action='append', required=True,
+                        help='Repeat for development validation and sealed final test')
     parser.add_argument('--seconds', type=int, default=1800)
     options = parser.parse_args()
     if not 60 <= options.seconds <= 1800:

@@ -12,7 +12,7 @@ from pathlib import Path
 import subprocess
 import time
 
-from dataset import audit, describe, read
+from dataset import audit, describe, evaluation_manifests, read
 
 
 def write(path, value):
@@ -42,8 +42,8 @@ def prepare(args):
     started = time.monotonic()
     args.out.mkdir(parents=True, exist_ok=False)
     catalog = read(args.catalog)
-    excluded = [read(path) for path in args.exclude_manifest]
-    used = {describe(c)['encounter'] for manifest in excluded for c in manifest['cases']}
+    excluded = evaluation_manifests(args.exclude_manifest, require_final_test=True)
+    used = {describe(c)['encounter'] for c in excluded['cases']}
     encounters = select_encounters(catalog, used)
     environment = dict(os.environ, OFFLINE_HARNESS_COMBATSOLVER_DLL=str(args.mod.resolve()))
     cases = []
@@ -87,7 +87,7 @@ def prepare(args):
                 print(identifier, flush=True)
         manifest = {'schemaVersion': 1, 'cases': cases}
         write(args.out / 'training-manifest.json', manifest)
-        write(args.out / 'separation.json', [audit(manifest, heldout) for heldout in excluded])
+        write(args.out / 'separation.json', audit(manifest, excluded))
         budget['manifestSha256'] = hashlib.sha256((args.out / 'training-manifest.json').read_bytes()).hexdigest()
         budget['completed'] = True
     finally:

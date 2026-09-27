@@ -23,6 +23,12 @@ internal sealed partial class SearchOutcomeValueModel
     private int _noveltyGroups;
     private readonly List<CorrectionQuery> _correctionQueries = [];
     private readonly HashSet<int> _correctionDepths = [];
+    // Retention can compare an expanded parent's rank after releasing its simulator.
+    // Keep just that immutable scalar for the node's lifetime, without rooting the
+    // node/parent chain or growing the separate state-deduplication cache.
+    private sealed record NodePriority(double Value);
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SearchNode, NodePriority>
+        _nodePriorities = new();
     private bool _correcting;
     private bool _frozen;
     private string[] _featureNames = [];
@@ -388,8 +394,18 @@ internal sealed partial class SearchOutcomeValueModel
     {
         if (_forest == null) throw new InvalidOperationException("Ranker has not been fitted.");
         _predictionCalls++;
+        if (_frozen && _nodePriorities.TryGetValue(node, out NodePriority? prior))
+        {
+            _cacheHits++;
+            return prior.Value;
+        }
         var key = Key(node);
-        if (_frozen && _predictions.TryGetValue(key, out double cached)) { _cacheHits++; return cached; }
+        if (_frozen && _predictions.TryGetValue(key, out double cached))
+        {
+            _cacheHits++;
+            _nodePriorities.Add(node, new(cached));
+            return cached;
+        }
         long started = MeasurePerformance ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
         SearchOutcomeContext.CaptureSelected((CombatPredictionSimulator)node.Snapshot.Simulator,
             player, _columns, _featureScratch, _prefixes);
@@ -404,7 +420,11 @@ internal sealed partial class SearchOutcomeValueModel
             _featureTicks += featuresDone - started;
             _forestTicks += System.Diagnostics.Stopwatch.GetTimestamp() - featuresDone;
         }
-        if (_frozen && _predictions.Count < 4096) _predictions.TryAdd(key, predicted);
+        if (_frozen)
+        {
+            if (_predictions.Count < 4096) _predictions.TryAdd(key, predicted);
+            _nodePriorities.Add(node, new(predicted));
+        }
         return predicted;
         void Set(string name, double value)
         {

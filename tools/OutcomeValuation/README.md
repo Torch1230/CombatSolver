@@ -3,12 +3,12 @@
 当前训练入口 `train.py` 采集同池完整胜利和引擎确认的终局死亡见证，拟合模型schema7的线性基础项与成对残差树；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
 
 - `prepare_training.py --catalog <原生目录> --harness <宿主> --mod <Mod> --exclude-manifest <验证> --exclude-manifest <最终测试> --out <新目录> --seed <预先固定种子>`：按目录固定4普通/3精英/1首领，每个角色各8根，只做原生建局；保留实际装备和准备时间。
-- `refit.py --prior-training <完整训练目录> --manifest <同训练清单> --evaluation-manifest <验证清单> --harness <宿主> --mod <Mod> --out <新目录>`：复用观察，核对底层请求/装备与原采集一致，继承全部历史成本并在余下1800秒总额内拟合；不重开免费训练预算。输出完整模型和纯线性消融产物。
+- `refit.py --prior-training <完整训练目录> --manifest <同训练清单> --evaluation-manifest <验证清单> --evaluation-manifest <封存测试清单> --harness <宿主> --mod <Mod> --out <新目录>`：复用观察，核对底层请求/装备与原采集一致，继承全部历史成本并在余下1800秒总额内拟合；不重开免费训练预算。输出完整模型和纯线性消融产物。
 - `train.py --preparation-budget <准备账本>` 将上述建局成本纳入1800秒。采集不在首个零损胜局提前停止；新颖性观察最多64池，Beam与新颖性总共仍最多256池。正常验证保持零损早停。
 - 线性与残差树只使用至少三个有偏好训练根中出现的特征；按场景统计支持度，不把一场的重复状态当成独立证据。
 - 模型schema7与训练观察schema6分别校验；本轮观察语义未变，可复用schema6数据，旧模型不可由新加载器直接读取。训练和验证每次搜索还会核对实际完整装备与清单指向的冻结装备一致。
-- `dataset.py --train <清单> --evaluation <清单> --out <审计JSON>` 检查模板、实际遭遇家族和牌组隔离；随机根需 `loadout` 指向原生 `generated-scenario.loadout.json`。种子/血量/牌序变体不算新场景。
-- `train.py --evaluation-manifest <清单>` 可在启动采集前执行同一检查；没有该检查的结果不能据文件夹名声称独立泛化。
+- `dataset.py --train <训练清单> --evaluation <验证清单> --evaluation <测试清单> --out <审计JSON>` 对三组两两检查模板、实际遭遇家族和牌组隔离；随机根需 `loadout` 指向原生 `generated-scenario.loadout.json`。种子/血量/牌序/升级/遗物计数变体不算新场景。同角色牌组多重集 Jaccard ≥0.85 拒绝；该门槛不是统计独立性的证明。
+- `train.py` / `refit.py` 必须重复提供 `--evaluation-manifest <验证清单> --evaluation-manifest <测试清单>`，只读取清单及建局装备来检查隔离，不读取验证或测试搜索结果，不把这些轨迹加入拟合。同根全部轨迹属于同一组，禁止随机按状态行拆分。
 - `prepare_holdout.py --train <训练清单> --training-results <采集目录> --catalog <原生目录JSON> --harness <宿主DLL> --model <模型> --out <新目录> --seed <冻结种子>` 按目录顺序选五个未见遭遇，原生建局后审计并封存，不运行搜索、不按结果筛选。
 - `python3 tools/OutcomeValuation/test_dataset.py` 验证防重叠门禁；宿主 `--check-outcome-ranking` 验证成对标签与模型合同。
 
@@ -16,7 +16,9 @@
 
 - `train.py --roll-in-model <已训练模型> --prior-training <其训练目录>`：在同一组根上采集模型轨迹，并进行有界旧Beam纠正；继承全部采集文件和历史训练成本，总成本最多1800秒。必须核对原清单、模型及每根的两个完整状态戳。
 - `prepare_holdout.py --kind Elite --split validation --exclude-manifest <封存测试清单>`：准备独立验证组，排除最终测试遭遇；仍只按目录选择，不看搜索成绩。
-- `evaluate.py --train <训练清单> --manifest <验证/测试清单> --model <模型> --mod <Mod DLL> --harness <宿主 DLL> --out <新目录>`：独立进程交错对照，核对两臂根戳，记录旧Score清零的实质比较。首次打开test锁定模型、程序、搜索配置与数据摘要；改变这些内容后该组只算开发数据，须另设最终测试。
+- `evaluate.py --train <训练清单> --manifest <验证/测试清单> --model <模型> --mod <Mod DLL> --harness <宿主 DLL> --out <新目录>`：独立进程交错对照，核对两臂根戳，记录旧Score清零的实质比较。评测最终测试时还必须提供 `--validation-manifest <开发验证清单>`，防止验证集与测试集相互泄漏；每次只运行一组。首次打开test锁定模型、程序、搜索配置与三组数据摘要；改变这些内容后该组只算开发数据，须另设最终测试。
+
+学习分已通过 `ObjectiveRankScore` 接入共用保路，状态去重、选牌/循环调度和完整结果下界仍由原职责负责。模型用弱引用节点身份保存已算出的标量，使保路可以比较已释放模拟器的父节点；另一个按状态去重的缓存仍上限4096项。弱表随仍存活的节点增长，不是固定4096项内存上限，不保存模拟器或特征向量。辅助路线仍使用旧结构特征，不能称全部手写启发式已消除。
 
 采集、拟合和比较进程通过环境变量显式加载 `--mod` 指定的程序集；完整日志不提交。下文为早期零训练方案的历史复现。
 

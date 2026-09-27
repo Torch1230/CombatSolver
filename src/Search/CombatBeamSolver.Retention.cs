@@ -149,24 +149,6 @@ internal sealed partial class CombatBeamSolver
 
     private List<SearchNode> Prune(IEnumerable<SearchNode> nodes)
     {
-        if (policy.UseObjectiveSearch)
-        {
-            List<SearchNode> objectivePool = nodes.ToList();
-            policy.OutcomeTrainingCollector?.ObservePool(objectivePool, _player);
-            int boundary = ObserveSearchPathBoundaryInput(objectivePool,
-                SearchPathObservationStage.PruneInput, "objective_input");
-            var observer = CreateGlobalRetentionObserver(objectivePool, boundary);
-            var selected = RetainObjectives(objectivePool, _profile.BeamWidth);
-            policy.OutcomeTrainingCollector?.ObserveCorrectionBoundary(
-                objectivePool, selected, _player, policy.ObjectiveValueModel!);
-            observer?.Invoke(new(objectivePool, [], [], selected, _profile.BeamWidth,
-                _profile.BeamWidth, null, 0, null, null,
-                node => policy.ObjectiveValueModel!.PredictPriority(node, _player)));
-            if (observer != null)
-                ObserveSearchPathRetentionPool(selected, SearchPathObservationStage.RetentionPoolFinal,
-                    "objective_final", boundary);
-            return selected;
-        }
         SearchMeasurement measurement = _run.Performance.Begin();
         try
         {
@@ -185,6 +167,9 @@ internal sealed partial class CombatBeamSolver
                 preserveDefensiveRoute: true,
                 useSecondRankBand: true,
                 observe: observeGlobalRetention);
+            if (policy.UseObjectiveSearch)
+                policy.OutcomeTrainingCollector?.ObserveCorrectionBoundary(
+                    pool, global, _player, policy.ObjectiveValueModel!);
             // RankBest has drained its lanes and published its ordered result. The rest of
             // retention is a separate allocation interval while the complete pool stays rooted.
             _run.CheckpointPruneMetadata?.Invoke("resource_routes");

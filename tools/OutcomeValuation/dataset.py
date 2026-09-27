@@ -61,41 +61,64 @@ def describe(case):
             'inputSha256': digest(inputs)}
 
 
+def evaluation_manifests(paths, *, require_final_test=False):
+    """Combine structural manifests only; never read held-out search outcomes."""
+    cases = [case for path in paths for case in read(path)['cases']]
+    if require_final_test and {c['split'] for c in cases} != {'validation', 'test'}:
+        raise ValueError('Training requires both validation and sealed test manifests')
+    return {'cases': cases}
+
+
 def audit(training, evaluation):
     train = [describe(c) for c in training['cases'] if c['split'] == 'train']
     heldout = [describe(c) for c in evaluation['cases']]
     if not train or not heldout or any(c['split'] not in ('validation', 'test') for c in evaluation['cases']):
         raise ValueError('Require nonempty train and validation/test groups')
+    groups = {'train': train}
+    for case, description in zip(evaluation['cases'], heldout, strict=True):
+        groups.setdefault(case['split'], []).append(description)
     overlaps = []
     maximum_similarity = 0.0
-    for a in train:
-        for b in heldout:
-            reasons = []
-            if a['family'] == b['family']:
-                reasons.append('same template family')
-            if a['encounter'] == b['encounter']:
-                reasons.append('same encounter family')
-            if a['character'] == b['character']:
-                left, right = Counter(a['cards']), Counter(b['cards'])
-                similarity = sum((left & right).values()) / sum((left | right).values())
-                maximum_similarity = max(maximum_similarity, similarity)
-                # This is a conservative dataset gate, not a statistical independence proof.
-                if similarity >= 0.85:
-                    reasons.append('same or near-duplicate deck (multiset Jaccard >= 0.85)')
-            if reasons:
-                overlaps.append({'train': a['id'], 'evaluation': b['id'], 'reasons': reasons})
+    comparisons = []
+    names = list(groups)
+    for index, left_name in enumerate(names):
+        for right_name in names[index + 1:]:
+            pair_similarity = 0.0
+            for a in groups[left_name]:
+                for b in groups[right_name]:
+                    reasons = []
+                    if a['id'] == b['id']:
+                        reasons.append('same root identity')
+                    if a['family'] == b['family']:
+                        reasons.append('same template family')
+                    if a['encounter'] == b['encounter']:
+                        reasons.append('same encounter family')
+                    if a['character'] == b['character']:
+                        left, right = Counter(a['cards']), Counter(b['cards'])
+                        similarity = sum((left & right).values()) / sum((left | right).values())
+                        pair_similarity = max(pair_similarity, similarity)
+                        # A conservative duplicate gate, not proof of statistical independence.
+                        if similarity >= 0.85:
+                            reasons.append('same or near-duplicate deck (multiset Jaccard >= 0.85)')
+                    if reasons:
+                        overlaps.append({left_name: a['id'], right_name: b['id'], 'reasons': reasons})
+            maximum_similarity = max(maximum_similarity, pair_similarity)
+            comparisons.append({'left': left_name, 'right': right_name,
+                                'maximumDeckSimilarity': pair_similarity})
     if overlaps:
         raise ValueError('Scenario leakage: ' + json.dumps(overlaps, ensure_ascii=False))
-    return {'schema': 1, 'training': train, 'evaluation': heldout,
+    return {'schema': 2, 'training': train, 'evaluation': heldout,
+            'splitCounts': {name: len(cases) for name, cases in groups.items()},
+            'comparisons': comparisons,
             'maximumDeckSimilarity': maximum_similarity, 'passed': True,
-            'datasetSha256': digest([train, heldout])}
+            'datasetSha256': digest(groups)}
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--train', type=Path, required=True)
-    parser.add_argument('--evaluation', type=Path, required=True)
+    parser.add_argument('--evaluation', type=Path, action='append', required=True)
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
-    report = audit(read(args.train), read(args.evaluation))
+    report = audit(read(args.train), evaluation_manifests(args.evaluation))
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')

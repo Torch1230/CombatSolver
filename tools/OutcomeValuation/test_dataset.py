@@ -5,8 +5,8 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 
-from dataset import audit, verify_resolved_loadout
-from evaluate import candidate_identity, claim_final_test
+from dataset import audit, evaluation_manifests, verify_resolved_loadout
+from evaluate import candidate_identity, claim_final_test, evaluate
 from prepare_training import select_encounters
 from refit import refit
 
@@ -25,6 +25,7 @@ class SeparationContracts(unittest.TestCase):
                 return path, value, request
             train, training, request = manifest('training', 'train', 'BLOCK')
             validation, heldout, _ = manifest('validation', 'validation', 'STRIKE')
+            test, _, _ = manifest('test', 'test', 'POWER')
             budget = {'completed': True, 'elapsedSeconds': 10,
                       'manifestSha256': hashlib.sha256(train.read_bytes()).hexdigest(),
                       'separation': audit(training, heldout)}
@@ -34,7 +35,42 @@ class SeparationContracts(unittest.TestCase):
             request.write_text(json.dumps(changed))
             with self.assertRaisesRegex(ValueError, 'Underlying training requests/loadouts changed'):
                 refit(SimpleNamespace(prior_training=root, seconds=60, manifest=train,
-                                      evaluation_manifest=validation))
+                                      evaluation_manifest=[validation, test]))
+
+    def test_validation_and_test_cannot_share_scenes_or_decks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def case(name, split, card, encounter):
+                path = root / (name + '.json')
+                path.write_text(json.dumps({'characterId': 'A', 'encounterId': encounter,
+                    'clearRunDeck': True, 'clearPlayerPiles': True,
+                    'cards': [{'cardId': card}] * 10}))
+                return {'id': name, 'family': name, 'split': split, 'request': str(path)}
+            training = {'cases': [case('train', 'train', 'BLOCK', 'FIRST')]}
+            validation = case('validation', 'validation', 'STRIKE', 'SECOND_NORMAL')
+            test = case('test', 'test', 'POWER', 'SECOND_WEAK')
+            with self.assertRaisesRegex(ValueError, 'same encounter family'):
+                audit(training, {'cases': [validation, test]})
+            test = case('test', 'test', 'STRIKE', 'THIRD')
+            with self.assertRaisesRegex(ValueError, 'near-duplicate deck'):
+                audit(training, {'cases': [validation, test]})
+            test = case('test', 'test', 'POWER', 'THIRD')
+            report = audit(training, {'cases': [validation, test]})
+            self.assertEqual(report['splitCounts'], {'train': 1, 'validation': 1, 'test': 1})
+            self.assertEqual(len(report['comparisons']), 3)
+            # Moving a root between validation/test changes the frozen identity too.
+            moved = audit(training, {'cases': [{**validation, 'split': 'test'},
+                                               {**test, 'split': 'validation'}]})
+            self.assertNotEqual(report['datasetSha256'], moved['datasetSha256'])
+
+    def test_training_and_final_evaluation_require_development_split(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / 'test.json'
+            manifest.write_text(json.dumps({'cases': [{'split': 'test'}]}))
+            with self.assertRaisesRegex(ValueError, 'both validation and sealed test'):
+                evaluation_manifests([manifest], require_final_test=True)
+            with self.assertRaisesRegex(ValueError, 'development validation manifest'):
+                evaluate(SimpleNamespace(manifest=manifest, validation_manifest=None))
 
     def test_final_test_cannot_be_reused_to_tune_search_budgets_or_data(self):
         with tempfile.TemporaryDirectory() as directory:

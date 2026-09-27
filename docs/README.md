@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [共用保路与数据隔离](strategy/shared-retention-and-split-20260927.md)：学习排序接回原保路职责、父节点标量生命周期、训练/验证/最终测试三组隔离。
+
 - [连续估值与场景支持度](strategy/linear-outcome-ranking-20260927.md)：学习连续基础、残差树及有界重拟合；纠正时间边界观测，候选仍未通过质量验收。
 - [角色状态与训练覆盖修正](strategy/balanced-outcome-ranking-20260927.md)：奥斯蒂、Power归属、被漏采的新颖性胜局及角色均衡数据；独立验证与同Beam消融仍退化，候选未启用。
 
