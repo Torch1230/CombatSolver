@@ -1771,6 +1771,7 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'MaxDegreeOfParallelism = maximumTrainingParallelism' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'splitGains[columnIndex * 32 + bin]' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs'); Text = 'SearchOutcomeValueModel.ValidateTrainingRows(source);' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs'); Text = 'sampling is not ("rows" or "pools")' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/train.py'); Text = 'require_final_test=True' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/refit.py'); Text = 'require_final_test=True' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/prepare_training.py'); Text = 'require_final_test=True' },

@@ -73,6 +73,7 @@ internal static class OutcomeValueTraining
         using var input = JsonDocument.Parse(File.ReadAllText(pathsFile));
         JsonElement entries = input.RootElement;
         int maximumRowsPerRoot = 2048;
+        string sampling = "rows";
         if (entries.ValueKind == JsonValueKind.Object)
         {
             if (entries.GetProperty("schemaVersion").GetInt32() != 1)
@@ -80,6 +81,10 @@ internal static class OutcomeValueTraining
             maximumRowsPerRoot = entries.GetProperty("maximumRowsPerRoot").GetInt32();
             if (maximumRowsPerRoot is < 64 or > 8192)
                 throw new InvalidDataException("Training row limit must be between 64 and 8192.");
+            if (entries.TryGetProperty("sampling", out var method))
+                sampling = method.GetString() ?? throw new InvalidDataException("Missing training sampling method.");
+            if (sampling is not ("rows" or "pools"))
+                throw new InvalidDataException("Unsupported training sampling method.");
             entries = entries.GetProperty("roots");
         }
         if (entries.ValueKind != JsonValueKind.Array)
@@ -105,9 +110,8 @@ internal static class OutcomeValueTraining
                 // Invalid labels must not disappear merely because the sampler
                 // would omit them. Use the fitter's authoritative validator.
                 SearchOutcomeValueModel.ValidateTrainingRows(source);
-                sampler.Shuffle(source);
                 Dictionary<int, int> groups = [];
-                foreach (var row in source.Take(maximumRowsPerRoot / files.Length))
+                foreach (var row in Sample(source, maximumRowsPerRoot / files.Length, sampler, sampling))
                 {
                     int Remap(int group)
                     {
@@ -129,4 +133,42 @@ internal static class OutcomeValueTraining
         return roots;
     }
 
+    private static IEnumerable<SearchOutcomeValueModel.TrainingRow> Sample(
+        SearchOutcomeValueModel.TrainingRow[] source, int maximum, Random sampler, string method)
+    {
+        if (method == "rows")
+        {
+            sampler.Shuffle(source);
+            return source.Take(maximum);
+        }
+        // Sample actual observation pools, without looking at labels or values.
+        // Independent row thinning often keeps only one side of a comparison.
+        // Only witnessed members exist here; unknown/pruned outcomes stay absent.
+        Dictionary<int, List<int>> groups = [];
+        for (int i = 0; i < source.Length; i++)
+            foreach (int group in source[i].Groups.Distinct())
+            {
+                if (!groups.TryGetValue(group, out var members)) groups.Add(group, members = []);
+                members.Add(i);
+            }
+        var pools = groups.Values.Where(members => members.Count >= 2).ToArray();
+        if (pools.Any(members => members.Count > maximum))
+            throw new InvalidDataException("A witnessed comparison pool exceeds the per-roll-in row budget.");
+        sampler.Shuffle(pools);
+        bool[] included = new bool[source.Length];
+        List<SearchOutcomeValueModel.TrainingRow> selected = [];
+        foreach (var pool in pools)
+        {
+            int additional = pool.Count(i => !included[i]);
+            if (selected.Count + additional > maximum) continue;
+            foreach (int i in pool)
+            {
+                if (included[i]) continue;
+                included[i] = true;
+                selected.Add(source[i]);
+            }
+            if (selected.Count == maximum) break;
+        }
+        return selected;
+    }
 }

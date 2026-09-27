@@ -183,6 +183,29 @@ internal static class OutcomeRankingChecks
             Reject(() => OutcomeValueTraining.ReadRoots(inputs), "invalid raw labels cannot hide outside the sampled rows");
             WriteBudget(0);
             Reject(() => OutcomeValueTraining.ReadRoots(inputs), "invalid host row budget is rejected");
+            void WritePoolBudget(string sampling = "pools") => File.WriteAllText(inputs,
+                JsonSerializer.Serialize(new { schemaVersion = 1, maximumRowsPerRoot = 64, sampling, roots = new[] { one } }));
+            File.WriteAllText(one, JsonSerializer.Serialize(Enumerable.Range(0, 128).Select(i => Row(i, 128 - i, [i / 2]))));
+            WritePoolBudget();
+            var pools = OutcomeValueTraining.ReadRoots(inputs)[0].Rows;
+            Check(pools.Length == 64 && pools.SelectMany(r => r.Groups).GroupBy(g => g).All(g => g.Count() == 2),
+                "pool sampling retains both witnesses of every selected disjoint comparison");
+            Check(pools.Select(r => r.Features["x"]).Distinct().Count() == 64,
+                "pool sampling cannot duplicate a state to inflate independent evidence");
+            Check(JsonSerializer.Serialize(pools) == JsonSerializer.Serialize(OutcomeValueTraining.ReadRoots(inputs)[0].Rows),
+                "pool sampling is deterministic under a frozen input");
+            File.WriteAllText(one, JsonSerializer.Serialize(Enumerable.Range(0, 128).Select(i => Row(i, i, [i / 2]))));
+            Check(pools.Select(r => r.Features["x"]).SequenceEqual(
+                OutcomeValueTraining.ReadRoots(inputs)[0].Rows.Select(r => r.Features["x"])),
+                "reversing every preference cannot influence which pools are sampled");
+            File.WriteAllText(one, JsonSerializer.Serialize(Enumerable.Range(0, 100).Select(i => Row(i, 100 - i, [i / 2, i / 4]))));
+            var overlapping = OutcomeValueTraining.ReadRoots(inputs)[0].Rows;
+            Check(overlapping.Length <= 64 && overlapping.Select(r => r.Features["x"]).Distinct().Count() == overlapping.Length,
+                "overlapping observation pools share their real rows within the budget");
+            File.WriteAllText(one, JsonSerializer.Serialize(Enumerable.Range(0, 128).Select(i => Row(i, 128 - i))));
+            Reject(() => OutcomeValueTraining.ReadRoots(inputs), "pool budgets cannot silently truncate a witnessed pool");
+            WritePoolBudget("unknown");
+            Reject(() => OutcomeValueTraining.ReadRoots(inputs), "unknown sampling cannot silently fall back to row thinning");
         }
         finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine($"Outcome ranking: {checks} assertions passed.");

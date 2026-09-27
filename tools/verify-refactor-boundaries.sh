@@ -1383,6 +1383,7 @@ require_fixed "$search_root/CombatBeamSolver.Phases.cs" '_ = ObjectiveRankScore(
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'MaxDegreeOfParallelism = maximumTrainingParallelism' 'offline histogram workers must remain explicitly bounded:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'splitGains[columnIndex * 32 + bin]' 'parallel fitting must reduce column/bin decisions in original order:'
 require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.cs" 'SearchOutcomeValueModel.ValidateTrainingRows(source);' 'raw observations must be validated before offline sampling:'
+require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.cs" 'sampling is not ("rows" or "pools")' 'offline sampling must reject unknown strategies instead of silently substituting:'
 forbid_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.cs" 'String.Intern(' 'training feature names must not become process-global retained state:'
 forbid_fixed "$search_root/SearchOutcomeValueModel.cs" 'Environment.ProcessorCount' 'training resource policy belongs to the offline host:'
 for file in train.py refit.py prepare_training.py; do

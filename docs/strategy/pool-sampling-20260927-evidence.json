@@ -1,0 +1,158 @@
+{
+  "sampling": {
+    "roots": 170,
+    "rows": 72482,
+    "rootsWithPairs": 170,
+    "pairsBeforeFitCap": 170154,
+    "pairsAfterFitCap": 170154,
+    "auditSeconds": 10.84049990598578,
+    "fittedRootDiagnosticsOnly": true
+  },
+  "fitting": {
+    "returnCode": 0,
+    "metrics": {
+      "roots": 170,
+      "rows": 72482,
+      "pairs": 170154,
+      "participatingRoots": 170,
+      "participatingRows": 57879,
+      "trainingParallelism": 4,
+      "features": 658,
+      "eligibleFeatures": 11703,
+      "linearTerms": 25,
+      "linearBytes": 1461,
+      "fitMilliseconds": 341908.6524,
+      "bytes": 390406,
+      "peakWorkingSetBytes": 2196332544
+    },
+    "seconds": 342.10033754399046
+  },
+  "evaluation": [
+    {
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v35/pool-fit/model.linear.json",
+      "modelSha256": "cbc05e74e4eea4c65643eab86e3e23527f42fdc680e457d20ca024f5254b1899",
+      "regressions": [
+        "unseen-defect-the_kin_boss",
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    },
+    {
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v35/pool-fit/model.json",
+      "modelSha256": "38dede03042da5b17fc51a0c5465d0aed1ce3329e730cb1126e4c053d8e82b1d",
+      "regressions": [
+        "unseen-defect-the_kin_boss",
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    }
+  ],
+  "evaluationCost": {
+    "seconds": 168.17866723996121,
+    "childSeconds": {
+      "evaluate": 167.64902782638092,
+      "compare-screen": 0.5014324520016089
+    }
+  },
+  "hardTeacher": {
+    "cost": {
+      "seconds": 89.31659157702234,
+      "childSeconds": {
+        "teacher": 171.2699691398302
+      }
+    },
+    "results": [
+      {
+        "id": "root-000125",
+        "character": "DEFECT",
+        "rows": 909,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      },
+      {
+        "id": "root-000090",
+        "character": "DEFECT",
+        "rows": 1513,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      },
+      {
+        "id": "root-000021",
+        "character": "IRONCLAD",
+        "rows": 1433,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      },
+      {
+        "id": "root-000196",
+        "character": "IRONCLAD",
+        "rows": 1132,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      },
+      {
+        "id": "root-000022",
+        "character": "NECROBINDER",
+        "rows": 840,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      },
+      {
+        "id": "root-000057",
+        "character": "NECROBINDER",
+        "rows": 607,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": [
+          "prediction risk"
+        ]
+      },
+      {
+        "id": "root-000023",
+        "character": "REGENT",
+        "rows": 579,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      },
+      {
+        "id": "root-000058",
+        "character": "REGENT",
+        "rows": 666,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      },
+      {
+        "id": "root-000024",
+        "character": "SILENT",
+        "rows": 1307,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      },
+      {
+        "id": "root-000129",
+        "character": "SILENT",
+        "rows": 829,
+        "hasPreferences": false,
+        "winningRows": 0,
+        "issues": []
+      }
+    ]
+  },
+  "defaultSamplingChanged": false,
+  "productionEnabled": false,
+  "finalTestOpened": false
+}
