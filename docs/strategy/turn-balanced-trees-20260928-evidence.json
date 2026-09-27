@@ -1,0 +1,412 @@
+{
+  "study": "v61",
+  "sourceCommit": "c294ef0",
+  "runtimeDefaultChanged": false,
+  "finalTestOpened": false,
+  "artifacts": {
+    "protocol.json": {
+      "innerRoots": 516,
+      "selectionRoots": 100,
+      "fullRoots": 616,
+      "selectionRule": "One global minimum all-turn character->family->root loss; exact tie lower depth then higher Hessian. Must beat reused516-root depth6/Hessian3 candidate for a single full refit, parity and fixed5+10development. No per-role or per-card selection. Finalsealed.",
+      "completeModelLimitSeconds": 1200,
+      "studyLimitSeconds": 1200,
+      "auditEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine",
+      "evaluationEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine",
+      "baselineIndex": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/baseline-index.json",
+      "diagnosticScope": "Split-support calculation used the previous394-root graph, not validation outcomes; thresholds in this grid apply uniformly to all features.",
+      "finalTestOpened": false,
+      "baselineAudit": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/audit.json",
+      "runtimePromotion": false,
+      "selectionHashes": {
+        "selection-inputs.json": "f752f2b8a6461da3af8d4c59c2f1d928ca0812f09df42561cf33cdab6d04cc9b",
+        "selection-records.json": "01f196c430130f04185c6ab749e0e51d6e3a92821b4658301aff6c28bd33cdd6"
+      },
+      "createdUtc": "2026-09-27T22:29:12.875945+00:00",
+      "sourceBase": "c294ef0",
+      "hypothesis": "Earlier turn-balanced study used a sparse additive model. Test the established depth6 tree model with equal mass per observed turn on the exact same states and preference edges.",
+      "arms": [
+        {
+          "name": "turns-h3",
+          "depth": 6,
+          "minimumLeafHessian": 3.0
+        },
+        {
+          "name": "turns-h1",
+          "depth": 6,
+          "minimumLeafHessian": 1.0
+        }
+      ],
+      "primaryMetric": "Early (later endpoint turn<=3) pair accuracy, equal role/family/root. Tie lower early logloss then stronger Hessian. Require strictly better early accuracy than original unweighted residual baseline to fit one full model; no role splicing. Keep5+10actual gate and sealed final.",
+      "metricRationale": "Continue v60 early ordering selection, explicitly a development criterion. Report original all-turn metrics unchanged.",
+      "weighting": "Existing v52 C# authority: endpoints/groups/labels/supported columns unchanged; equal total mass per nonempty turn and total1perroot. Multi-turn pairs use the later endpoint.",
+      "scripts": {
+        "xgboost_fit.py": "73f81682078a0ca5b2e54eb636a992462ea0b9eadf28f986c0f2f9f9f6940774",
+        "ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+        "research_metrics.py": "4de57f64c042491598f4f8d9b86d5e2e7525d35b2b14b3f9d1a6e3cdad8c7bd2",
+        "evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+        "dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+        "overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+      },
+      "wrapperSha256": "40efad3afd0b9dceb5d00c5fc9edb95db5bb8c9fa795bb3dd4401ba28be54d15",
+      "referenceInnerExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/export",
+      "referenceFullExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/export",
+      "referenceInnerExportSha256": "5753f09d7d3e0de37e7f6c28137c16f38fcfc1c97b177c05d7978c2a9a78bb07",
+      "referenceFullExportSha256": "8d1241771cf551f10e5fd63d3f84a8aaec3ba7dd09df09d9b0f8e8a89d05a125",
+      "innerInput": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/inner-inputs.json",
+      "fullInput": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/full-inputs.json",
+      "additionalHashes": {
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/run.py": "288266fba6aa6b0e91c9117e732db9f8511825c91e0d89b2839ea6cf8d18e59e",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/early_metrics.py": "2f1eaeb202830a9c6a9ecca7a49929556287380e7896270c4b7cda9d717a6350",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/verify_graph.py": "6b5bdc88271dbf530072e08f720b9a2465d961e4f07a3450dd26acbefe5f65f8",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/audit.json": "f67673eba9b00f5b439747e93288cbb481c81cc26685e782817d24992541c96e",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/inner-inputs.json": "c4a93d948a212917d01001dd544f01c8c1ed78038f8676d061961e34a27baeee",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/full-inputs.json": "131a4bd7802f2c0cb884164c844245e49159a2e594209b7925856a6466d82f89",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/selection-inputs.json": "f752f2b8a6461da3af8d4c59c2f1d928ca0812f09df42561cf33cdab6d04cc9b",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/selection-records.json": "01f196c430130f04185c6ab749e0e51d6e3a92821b4658301aff6c28bd33cdd6",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine/CombatSolver.dll": "6d732216d35c75a10e6e151b10c9750931fa96d54e406b8692326ab4692fb0e4",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine/harness/OfflineSearchHarness.dll": "8bd7e5f94b687cade5f53f3a698d598c8ccff81510b1e4a3c336a019c1990598",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine/CombatSolver.dll": "a1c767f2e788ada0e3bdbde1830e3fb032fdd42e53dfef34014864971d3d8af2",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine/harness/OfflineSearchHarness.dll": "84fc3a472085162a4a262fcea326bb9e4bbd3389ef495f78add8769dda60ea8b",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/export/manifest.json": "5753f09d7d3e0de37e7f6c28137c16f38fcfc1c97b177c05d7978c2a9a78bb07",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/export/manifest.json": "8d1241771cf551f10e5fd63d3f84a8aaec3ba7dd09df09d9b0f8e8a89d05a125"
+      }
+    },
+    "status.json": {
+      "phase": "completed",
+      "seconds": 123.93736453494057,
+      "updatedUtc": "2026-09-27T22:31:17.008899+00:00",
+      "childSeconds": {
+        "export": 63.054487415007316,
+        "fit": 45.053190277074464,
+        "audit": 12.762981459032744
+      }
+    },
+    "summary.json": {
+      "arm": "turns-h3",
+      "baselineEarlyAccuracy": 0.6919188502675473,
+      "candidateEarlyAccuracy": 0.6907075614222894,
+      "baselineEarlyLoss": 0.5770221992741953,
+      "candidateEarlyLoss": 0.5725557767135216,
+      "candidateAllTurnLoss": 0.41784004128736835,
+      "fullFit": false,
+      "finalTestOpened": false,
+      "runtimeDefaultChanged": false,
+      "reason": "No turn-balanced tree beats the baseline early pair accuracy; no external games."
+    },
+    "inner-graph/graph-proof.json": {
+      "matrixAndEdgesUnchanged": true,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 35183,
+          "pairs": 70406,
+          "weightsChanged": 70406,
+          "newTotalWeight": 107.0
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 36821,
+          "pairs": 84208,
+          "weightsChanged": 84085,
+          "newTotalWeight": 112.0
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21857,
+          "pairs": 41620,
+          "weightsChanged": 41603,
+          "newTotalWeight": 91.0
+        },
+        {
+          "character": "REGENT",
+          "rows": 27337,
+          "pairs": 60893,
+          "weightsChanged": 60794,
+          "newTotalWeight": 106.0
+        },
+        {
+          "character": "SILENT",
+          "rows": 28800,
+          "pairs": 59502,
+          "weightsChanged": 59460,
+          "newTotalWeight": 100.0
+        }
+      ]
+    },
+    "inner-graph/export-process.json": {
+      "seconds": 63.054487415007316,
+      "returnCode": 0
+    }
+  },
+  "candidates": [
+    {
+      "name": "turns-h3",
+      "depth": 6,
+      "minimumLeafHessian": 3.0,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/turns-h3/fitted/model.json",
+      "focus": {
+        "loss": 0.5725557767135216,
+        "accuracy": 0.6907075614222894,
+        "roles": {
+          "SILENT": {
+            "loss": 0.5750735518084058,
+            "accuracy": 0.6826851725669961,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.559245065659665,
+            "accuracy": 0.7462117241545628,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.6053731010270733,
+            "accuracy": 0.6023673872488354,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.4831698008694107,
+            "accuracy": 0.7900319882400783,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6399173642030532,
+            "accuracy": 0.6322415349009742,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.41784004128736835,
+      "macroMeanAccuracy": 0.8234211175278735,
+      "zeroPairRoots": 0,
+      "cost": {
+        "fitProcessSeconds": 22.776691077044234,
+        "exportSeconds": 63.054487415007316,
+        "completeModelSeconds": 85.83117849205155,
+        "returnCode": 0
+      },
+      "fitter": {
+        "backend": "xgboost-cpu",
+        "version": "3.4.1",
+        "parameters": {
+          "tree_method": "hist",
+          "device": "cpu",
+          "nthread": 4,
+          "max_depth": 6,
+          "max_bin": 32,
+          "eta": 0.1,
+          "reg_lambda": 0.001,
+          "reg_alpha": 0,
+          "min_child_weight": 3.0,
+          "gamma": 0,
+          "subsample": 1,
+          "colsample_bytree": 1,
+          "base_score": 0,
+          "boost_from_average": 0,
+          "seed": 0,
+          "objective": "reg:squarederror",
+          "disable_default_eval_metric": 1
+        },
+        "rounds": 64,
+        "heads": [
+          {
+            "character": "DEFECT",
+            "rows": 35183,
+            "pairs": 70406,
+            "initialLoss": 50.21545074608113,
+            "finalLoss": 46.18477873124238,
+            "float32MaxPredictionDrift": 1.490675771620431e-05,
+            "float32PairSignChanges": 0,
+            "seconds": 4.9225011399248615
+          },
+          {
+            "character": "IRONCLAD",
+            "rows": 36821,
+            "pairs": 84208,
+            "initialLoss": 55.43106001028295,
+            "finalLoss": 51.03779499854744,
+            "float32MaxPredictionDrift": 5.580824680606611e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 5.491824744967744
+          },
+          {
+            "character": "NECROBINDER",
+            "rows": 21857,
+            "pairs": 41620,
+            "initialLoss": 45.644860609894494,
+            "finalLoss": 40.75788256921133,
+            "float32MaxPredictionDrift": 6.101758751597686e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 3.2478211449924856
+          },
+          {
+            "character": "REGENT",
+            "rows": 27337,
+            "pairs": 60893,
+            "initialLoss": 49.87828439397931,
+            "finalLoss": 45.22662298778506,
+            "float32MaxPredictionDrift": 7.311544035104589e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 4.523371729068458
+          },
+          {
+            "character": "SILENT",
+            "rows": 28800,
+            "pairs": 59502,
+            "initialLoss": 45.75214694867446,
+            "finalLoss": 41.08616741046474,
+            "float32MaxPredictionDrift": 5.90735917249674e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 4.082871161983348
+          }
+        ],
+        "seconds": 22.378119211061858,
+        "peakWorkingSetBytes": 2474987520
+      }
+    },
+    {
+      "name": "turns-h1",
+      "depth": 6,
+      "minimumLeafHessian": 1.0,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v61/turns-h1/fitted/model.json",
+      "focus": {
+        "loss": 0.5754307749186932,
+        "accuracy": 0.6890228936293036,
+        "roles": {
+          "SILENT": {
+            "loss": 0.5790491648089007,
+            "accuracy": 0.6641284053658657,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.5651274206472766,
+            "accuracy": 0.7365618049403025,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.608585045217537,
+            "accuracy": 0.604939296356849,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.4850364972673432,
+            "accuracy": 0.7857497739160614,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6393557466524084,
+            "accuracy": 0.6537351875674393,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.41751485448234943,
+      "macroMeanAccuracy": 0.825939748135421,
+      "zeroPairRoots": 0,
+      "cost": {
+        "fitProcessSeconds": 22.27649920003023,
+        "exportSeconds": 63.054487415007316,
+        "completeModelSeconds": 85.33098661503755,
+        "returnCode": 0
+      },
+      "fitter": {
+        "backend": "xgboost-cpu",
+        "version": "3.4.1",
+        "parameters": {
+          "tree_method": "hist",
+          "device": "cpu",
+          "nthread": 4,
+          "max_depth": 6,
+          "max_bin": 32,
+          "eta": 0.1,
+          "reg_lambda": 0.001,
+          "reg_alpha": 0,
+          "min_child_weight": 1.0,
+          "gamma": 0,
+          "subsample": 1,
+          "colsample_bytree": 1,
+          "base_score": 0,
+          "boost_from_average": 0,
+          "seed": 0,
+          "objective": "reg:squarederror",
+          "disable_default_eval_metric": 1
+        },
+        "rounds": 64,
+        "heads": [
+          {
+            "character": "DEFECT",
+            "rows": 35183,
+            "pairs": 70406,
+            "initialLoss": 50.21545074608113,
+            "finalLoss": 44.63034619356881,
+            "float32MaxPredictionDrift": 1.189535793244545e-05,
+            "float32PairSignChanges": 0,
+            "seconds": 4.994874321040697
+          },
+          {
+            "character": "IRONCLAD",
+            "rows": 36821,
+            "pairs": 84208,
+            "initialLoss": 55.43106001028295,
+            "finalLoss": 49.025023797143525,
+            "float32MaxPredictionDrift": 6.483093969222864e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 5.603750445996411
+          },
+          {
+            "character": "NECROBINDER",
+            "rows": 21857,
+            "pairs": 41620,
+            "initialLoss": 45.644860609894494,
+            "finalLoss": 38.4598083864832,
+            "float32MaxPredictionDrift": 7.605183988346198e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 3.1000615580705926
+          },
+          {
+            "character": "REGENT",
+            "rows": 27337,
+            "pairs": 60893,
+            "initialLoss": 49.87828439397931,
+            "finalLoss": 43.34656546116402,
+            "float32MaxPredictionDrift": 5.920639887690982e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 4.271266485913657
+          },
+          {
+            "character": "SILENT",
+            "rows": 28800,
+            "pairs": 59502,
+            "initialLoss": 45.75214694867446,
+            "finalLoss": 39.07014390147832,
+            "float32MaxPredictionDrift": 8.23903634028511e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 3.893285752972588
+          }
+        ],
+        "seconds": 21.92670070694294,
+        "peakWorkingSetBytes": 2476888064
+      }
+    }
+  ]
+}
