@@ -1,0 +1,3573 @@
+{
+  "study": "v55",
+  "sourceCommit": "a12f587",
+  "sourceChanged": false,
+  "protocol": {
+    "createdUtc": "2026-09-27T21:24:21.474327+00:00",
+    "hypothesis": "A lower child-Hessian requirement with bounded tree depth may preserve useful less-frequent mechanisms while limiting conditional complexity. No specific card is assigned a score or privileged training weight.",
+    "innerExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/export",
+    "innerExportSha256": "5753f09d7d3e0de37e7f6c28137c16f38fcfc1c97b177c05d7978c2a9a78bb07",
+    "innerExportSeconds": 63.80612820200622,
+    "fullExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/export",
+    "fullExportSha256": "8d1241771cf551f10e5fd63d3f84a8aaec3ba7dd09df09d9b0f8e8a89d05a125",
+    "fullExportSeconds": 81.31428505596705,
+    "innerRoots": 516,
+    "selectionRoots": 100,
+    "fullRoots": 616,
+    "arms": [
+      {
+        "name": "depth-2-h0p3",
+        "depth": 2,
+        "minimumLeafHessian": 0.3
+      },
+      {
+        "name": "depth-3-h0p3",
+        "depth": 3,
+        "minimumLeafHessian": 0.3
+      },
+      {
+        "name": "depth-6-h0p3",
+        "depth": 6,
+        "minimumLeafHessian": 0.3
+      },
+      {
+        "name": "depth-2-h1p0",
+        "depth": 2,
+        "minimumLeafHessian": 1.0
+      },
+      {
+        "name": "depth-3-h1p0",
+        "depth": 3,
+        "minimumLeafHessian": 1.0
+      },
+      {
+        "name": "depth-6-h1p0",
+        "depth": 6,
+        "minimumLeafHessian": 1.0
+      }
+    ],
+    "baseline": {
+      "arm": "roots-516",
+      "roots": 516,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/fitted/model.json",
+      "macroMeanLoss": 0.41054867492063524,
+      "macroMeanAccuracy": 0.8420619300939634,
+      "zeroPairRoots": 0
+    },
+    "selectionRule": "One global minimum all-turn character->family->root loss; exact tie lower depth then higher Hessian. Must beat reused516-root depth6/Hessian3 candidate for a single full refit, parity and fixed5+10development. No per-role or per-card selection. Finalsealed.",
+    "completeModelLimitSeconds": 1200,
+    "studyLimitSeconds": 1200,
+    "auditEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine",
+    "evaluationEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine",
+    "baselineIndex": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/baseline-index.json",
+    "diagnosticScope": "Split-support calculation used the previous394-root graph, not validation outcomes; thresholds in this grid apply uniformly to all features.",
+    "finalTestOpened": false,
+    "scripts": {
+      "xgboost_fit.py": "73f81682078a0ca5b2e54eb636a992462ea0b9eadf28f986c0f2f9f9f6940774",
+      "ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+      "research_metrics.py": "4de57f64c042491598f4f8d9b86d5e2e7525d35b2b14b3f9d1a6e3cdad8c7bd2",
+      "evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+      "dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+      "overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+    },
+    "wrapperSha256": "40efad3afd0b9dceb5d00c5fc9edb95db5bb8c9fa795bb3dd4401ba28be54d15"
+  },
+  "selectionMetrics": [
+    {
+      "name": "depth-2-h0p3",
+      "depth": 2,
+      "minimumLeafHessian": 0.3,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-2-h0p3/fitted/model.json",
+      "macroMeanLoss": 0.4177757867243574,
+      "macroMeanAccuracy": 0.839800229812522,
+      "zeroPairRoots": 0
+    },
+    {
+      "name": "depth-3-h0p3",
+      "depth": 3,
+      "minimumLeafHessian": 0.3,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-3-h0p3/fitted/model.json",
+      "macroMeanLoss": 0.415344294271515,
+      "macroMeanAccuracy": 0.8411740317708107,
+      "zeroPairRoots": 0
+    },
+    {
+      "name": "depth-6-h0p3",
+      "depth": 6,
+      "minimumLeafHessian": 0.3,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-6-h0p3/fitted/model.json",
+      "macroMeanLoss": 0.4107974138213487,
+      "macroMeanAccuracy": 0.843571650075959,
+      "zeroPairRoots": 0
+    },
+    {
+      "name": "depth-2-h1p0",
+      "depth": 2,
+      "minimumLeafHessian": 1.0,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-2-h1p0/fitted/model.json",
+      "macroMeanLoss": 0.41778305721456616,
+      "macroMeanAccuracy": 0.8415807102548232,
+      "zeroPairRoots": 0
+    },
+    {
+      "name": "depth-3-h1p0",
+      "depth": 3,
+      "minimumLeafHessian": 1.0,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-3-h1p0/fitted/model.json",
+      "macroMeanLoss": 0.41531959406045355,
+      "macroMeanAccuracy": 0.84129285487486,
+      "zeroPairRoots": 0
+    },
+    {
+      "name": "depth-6-h1p0",
+      "depth": 6,
+      "minimumLeafHessian": 1.0,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-6-h1p0/fitted/model.json",
+      "macroMeanLoss": 0.40904674184121276,
+      "macroMeanAccuracy": 0.8388928648721143,
+      "zeroPairRoots": 0
+    }
+  ],
+  "artifacts": {
+    "split-support.json": [
+      {
+        "character": "DEFECT",
+        "roots": 81,
+        "mechanisms": [
+          {
+            "feature": "power/player/AUTOMATION_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.4106340549372085,
+              "initialMinimumChildHessian": 1.5629037474934167
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/BLOCK_NEXT_TURN_POWER",
+            "levels": 13,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 0.08263979245795702,
+              "initialMinimumChildHessian": 0.050574261790632055
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/BUFFER_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.4728921547325564,
+              "initialMinimumChildHessian": 2.533479009632157
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/CALAMITY_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.8639327062651927,
+              "initialMinimumChildHessian": 0.5854359777433755
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/CONSUMING_SHADOW_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.129729963576203,
+              "initialMinimumChildHessian": 3.769061050385419
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/COOLANT_POWER",
+            "levels": 7,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 11.081262877692307,
+              "initialMinimumChildHessian": 6.788142274641439
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/CREATIVE_AI_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.6935134855034,
+              "initialMinimumChildHessian": 2.0727574606090107
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DEXTERITY_POWER",
+            "levels": 23,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 18.725260004939038,
+              "initialMinimumChildHessian": 11.632074613412776
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/ECHO_FORM_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.009908870615461,
+              "initialMinimumChildHessian": 2.8530778411525812
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/ENERGY_NEXT_TURN_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.4481246318614724,
+              "initialMinimumChildHessian": 1.6175224673916677
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/FERAL_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 4.996813262981549,
+              "initialMinimumChildHessian": 3.0661842428465156
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FOCUSED_STRIKE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 2.172042472717845,
+              "initialMinimumChildHessian": 1.3808785825698568
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/FOCUS_POWER",
+            "levels": 13,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 18.46693552663166,
+              "initialMinimumChildHessian": 11.223149579574871
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FRAIL_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 4.17355973030859,
+              "initialMinimumChildHessian": 2.368500313771433
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FREE_POWER_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.0215647741914062,
+              "initialMinimumChildHessian": 1.1028746389870436
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/HAILSTORM_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 5.858042876314334,
+              "initialMinimumChildHessian": 3.844453177031886
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/HOTFIX_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 2.388397513592098,
+              "initialMinimumChildHessian": 1.5928288856220734
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/HYPERBEAM_FOCUS_DOWN_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 0.5564850077881993,
+              "initialMinimumChildHessian": 0.3979047335633078
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ITERATION_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 7.450043861475806,
+              "initialMinimumChildHessian": 5.234821722229003
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/LIGHTNING_ROD_POWER",
+            "levels": 7,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 5.037072765514549,
+              "initialMinimumChildHessian": 3.0385301417377386
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/LOOP_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 13.492973904863632,
+              "initialMinimumChildHessian": 9.076800657160375
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/MACHINE_LEARNING_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 12.425048116416004,
+              "initialMinimumChildHessian": 8.580992192648365
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/NOSTALGIA_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.572828249493512,
+              "initialMinimumChildHessian": 0.9322383841302794
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/PANACHE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 10.0,
+              "upperBoundMinimumChild": 2.9612396119134576,
+              "initialMinimumChildHessian": 1.4596540064721126
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/PLATING_POWER",
+            "levels": 19,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.8439232765030127,
+              "initialMinimumChildHessian": 1.7145430401299002
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/PREP_TIME_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 4.088113519720855,
+              "initialMinimumChildHessian": 2.0632010385842667
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/RETAIN_HAND_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.4458380742101672,
+              "initialMinimumChildHessian": 0.30816474569675906
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/RINGING_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.279068746727198,
+              "initialMinimumChildHessian": 0.9511758323934494
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ROLLING_BOULDER_POWER",
+            "levels": 10,
+            "bestPossibleThreshold": {
+              "boundary": 5.0,
+              "upperBoundMinimumChild": 1.1790469049092267,
+              "initialMinimumChildHessian": 0.9207621417101846
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SHRINK_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 0.0,
+              "upperBoundMinimumChild": 1.1062757480018512,
+              "initialMinimumChildHessian": 0.8040481480725987
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SIGNAL_BOOST_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.1961018107282821,
+              "initialMinimumChildHessian": 0.9736944269033722
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SMOKESTACK_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 7.0,
+              "upperBoundMinimumChild": 6.568211613179117,
+              "initialMinimumChildHessian": 4.358860114884064
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SPINNER_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.65739072937656,
+              "initialMinimumChildHessian": 4.25555933497742
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/STORM_POWER",
+            "levels": 7,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 8.066826004373638,
+              "initialMinimumChildHessian": 5.37851104564588
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/STRATAGEM_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.4535889470512449,
+              "initialMinimumChildHessian": 0.712437137504834
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/STRENGTH_POWER",
+            "levels": 21,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 19.976378359736323,
+              "initialMinimumChildHessian": 12.395367195477629
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SUBROUTINE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 7.900072550415786,
+              "initialMinimumChildHessian": 4.986923101308318
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SYNCHRONIZE_POWER",
+            "levels": 8,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.2330307979105104,
+              "initialMinimumChildHessian": 1.4970445351731594
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/TAINTED_POWER",
+            "levels": 32,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 6.982841894717955,
+              "initialMinimumChildHessian": 4.443363995164926
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TENDER_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.978019905073814,
+              "initialMinimumChildHessian": 1.6992294061834903
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/THORNS_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 7.0,
+              "initialMinimumChildHessian": 5.38265599164297
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/THUNDER_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 8.0,
+              "upperBoundMinimumChild": 3.9047880353388766,
+              "initialMinimumChildHessian": 2.2949468621831546
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TRASH_TO_TREASURE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.639304620330741,
+              "initialMinimumChildHessian": 4.708314252488994
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VIGOR_POWER",
+            "levels": 18,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 3.4666426871773743,
+              "initialMinimumChildHessian": 1.864868394171555
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/WEAK_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.410076345805476,
+              "initialMinimumChildHessian": 1.1949385604362686
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "resource/current-hand-draw",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 13.255097520658955,
+              "initialMinimumChildHessian": 9.26195533123541
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "resource/current-max-energy",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 3.911847340792597,
+              "initialMinimumChildHessian": 2.0837111705213487
+            },
+            "cannotEverSplitAtHessian3": false
+          }
+        ]
+      },
+      {
+        "character": "IRONCLAD",
+        "roots": 88,
+        "mechanisms": [
+          {
+            "feature": "power/player/AGGRESSION_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 8.34705669805748,
+              "initialMinimumChildHessian": 5.7717467334967365
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/AUTOMATION_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.2825489058355433,
+              "initialMinimumChildHessian": 2.560529526061684
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/BARRICADE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 4.476517290942449,
+              "initialMinimumChildHessian": 3.3951239836461196
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/BLOCK_NEXT_TURN_POWER",
+            "levels": 8,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 0.14382479207579624,
+              "initialMinimumChildHessian": 0.1016884463611143
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/COLOSSUS_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.118384486406891,
+              "initialMinimumChildHessian": 0.825983430275014
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/CRIMSON_MANTLE_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 7.0,
+              "upperBoundMinimumChild": 11.61733897356731,
+              "initialMinimumChildHessian": 7.1149205274096134
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/CRUELTY_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 50.0,
+              "upperBoundMinimumChild": 5.916680029374726,
+              "initialMinimumChildHessian": 3.6285841647779145
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DARK_EMBRACE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.335934313870866,
+              "initialMinimumChildHessian": 4.247667827253988
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DEMON_FORM_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 6.370263958153903,
+              "initialMinimumChildHessian": 4.022967266219235
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DEXTERITY_POWER",
+            "levels": 13,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 5.786597729049479,
+              "initialMinimumChildHessian": 4.038852255764636
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/ENTROPY_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.0028738153738157,
+              "initialMinimumChildHessian": 1.4634964389255867
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/FEEL_NO_PAIN_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 5.385882636713824,
+              "initialMinimumChildHessian": 3.7704373780019242
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FLAME_BARRIER_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 1.3435097325999314,
+              "initialMinimumChildHessian": 0.9049214357479717
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/FRAIL_POWER",
+            "levels": 19,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 7.592312457263735,
+              "initialMinimumChildHessian": 5.4132754212941645
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FREE_ATTACK_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.7011817056717544,
+              "initialMinimumChildHessian": 1.2545352605641638
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/HELLRAISER_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.6396325585002507,
+              "initialMinimumChildHessian": 2.9949466482422826
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/INFERNO_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 9.0,
+              "upperBoundMinimumChild": 6.830369287650771,
+              "initialMinimumChildHessian": 5.396291757810391
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/JUGGERNAUT_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 4.277159309969809,
+              "initialMinimumChildHessian": 2.9891963213302546
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/JUGGLING_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 7.850286450073747,
+              "initialMinimumChildHessian": 6.084148072424903
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/MAYHEM_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.4974951774617442,
+              "initialMinimumChildHessian": 1.0957471142469752
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/NO_DRAW_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.671195618380162,
+              "initialMinimumChildHessian": 2.554939335702264
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/ONE_TWO_PUNCH_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.3192933966418623,
+              "initialMinimumChildHessian": 1.0101605123086512
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/PANACHE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 10.0,
+              "upperBoundMinimumChild": 3.254464170910306,
+              "initialMinimumChildHessian": 2.3686025106920088
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PLATING_POWER",
+            "levels": 13,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 5.271285427165445,
+              "initialMinimumChildHessian": 4.098318853817088
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PYRE_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 4.594995523689166,
+              "initialMinimumChildHessian": 3.3429465671013303
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/RAGE_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 1.7040186150314938,
+              "initialMinimumChildHessian": 1.231966515594935
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/RETAIN_HAND_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.3246296269817916,
+              "initialMinimumChildHessian": 0.225613736582087
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/RINGING_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.1142766326899733,
+              "initialMinimumChildHessian": 0.8770863302074703
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ROLLING_BOULDER_POWER",
+            "levels": 9,
+            "bestPossibleThreshold": {
+              "boundary": 5.0,
+              "upperBoundMinimumChild": 1.1329257125049783,
+              "initialMinimumChildHessian": 0.9035244894660317
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/RUPTURE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 8.496012580631465,
+              "initialMinimumChildHessian": 5.723376455446638
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SELF_FORMING_CLAY_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 0.8472256773145528,
+              "initialMinimumChildHessian": 0.7052999283583543
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SETUP_STRIKE_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 1.4748163345026228,
+              "initialMinimumChildHessian": 1.1014829124663241
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SHRINK_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 0.0,
+              "upperBoundMinimumChild": 1.7916074215207758,
+              "initialMinimumChildHessian": 1.4108969841036068
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/STAMPEDE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 8.177769107066563,
+              "initialMinimumChildHessian": 5.5052831334695345
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/STRATAGEM_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.3849483158204197,
+              "initialMinimumChildHessian": 1.775467770787544
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/STRENGTH_POWER",
+            "levels": 87,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 42.248741992374114,
+              "initialMinimumChildHessian": 28.71012173487082
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TAINTED_POWER",
+            "levels": 25,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 6.984992985690496,
+              "initialMinimumChildHessian": 4.8523879463569966
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TENDER_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.8992770388077598,
+              "initialMinimumChildHessian": 2.2836363251064924
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/THE_GAMBIT_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.787230328800077,
+              "initialMinimumChildHessian": 2.667708011013567
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/UNMOVABLE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 5.351575451395905,
+              "initialMinimumChildHessian": 3.9077622156989325
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VICIOUS_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 6.645025103944123,
+              "initialMinimumChildHessian": 5.257135261123791
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VIGOR_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 0.3389627047394337,
+              "initialMinimumChildHessian": 0.24021817851129088
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/VULNERABLE_POWER",
+            "levels": 21,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.243952703071174,
+              "initialMinimumChildHessian": 2.1624321129830824
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/WEAK_POWER",
+            "levels": 20,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.43271402818605,
+              "initialMinimumChildHessian": 1.730584505318868
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "resource/current-hand-draw",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 1.6261177912906755,
+              "initialMinimumChildHessian": 1.4337393647791894
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "resource/current-max-energy",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 4.594995523689166,
+              "initialMinimumChildHessian": 3.3429465671013303
+            },
+            "cannotEverSplitAtHessian3": false
+          }
+        ]
+      },
+      {
+        "character": "NECROBINDER",
+        "roots": 67,
+        "mechanisms": [
+          {
+            "feature": "power/player/BORROWED_TIME_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.5630923860079715,
+              "initialMinimumChildHessian": 1.1184667685498437
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/CALAMITY_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.47060362606581096,
+              "initialMinimumChildHessian": 0.26026633878282257
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/CALCIFY_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 6.30046804356986,
+              "initialMinimumChildHessian": 4.294240255152921
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/CALL_OF_THE_VOID_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 10.029740851546471,
+              "initialMinimumChildHessian": 6.926944176840841
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/COUNTDOWN_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 9.0,
+              "upperBoundMinimumChild": 4.352225713287867,
+              "initialMinimumChildHessian": 3.108862334689971
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DANSE_MACABRE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 3.812366228187087,
+              "initialMinimumChildHessian": 2.3897462775377365
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DEMESNE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 5.111030754878239,
+              "initialMinimumChildHessian": 3.2014149366639106
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DEVOUR_LIFE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 3.4260290335808143,
+              "initialMinimumChildHessian": 2.7417088594523786
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DEXTERITY_POWER",
+            "levels": 16,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.404398696588777,
+              "initialMinimumChildHessian": 2.2481124361873066
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DOOM_POWER",
+            "levels": 17,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 7.730490746631316,
+              "initialMinimumChildHessian": 4.819749663326338
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/ENERGY_NEXT_TURN_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.8717198351392086,
+              "initialMinimumChildHessian": 1.3467885288500558
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ENTROPY_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.4393902257872848,
+              "initialMinimumChildHessian": 0.7908729145496942
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/FASTEN_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 1.760641718106996,
+              "initialMinimumChildHessian": 1.1261269459975096
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/FRAIL_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.5860724875173857,
+              "initialMinimumChildHessian": 2.780409595602556
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FRIENDSHIP_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.54557496546752,
+              "initialMinimumChildHessian": 2.4093161603238937
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/HAUNT_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 7.0,
+              "upperBoundMinimumChild": 5.915937610915971,
+              "initialMinimumChildHessian": 4.42468098830261
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/LETHALITY_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 50.0,
+              "upperBoundMinimumChild": 10.167728290207673,
+              "initialMinimumChildHessian": 7.761539530287656
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/NECRO_MASTERY_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.927980544053071,
+              "initialMinimumChildHessian": 4.175314986124388
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/NEUROSURGE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 9.911786918626989,
+              "initialMinimumChildHessian": 6.595065669297268
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/NOSTALGIA_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.3006006724052979,
+              "initialMinimumChildHessian": 0.8060384170405253
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/NO_BLOCK_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.4675728000435847,
+              "initialMinimumChildHessian": 0.4218426819377888
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/PAGESTORM_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.6861727253715397,
+              "initialMinimumChildHessian": 2.5251158246908645
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PANACHE_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 10.0,
+              "upperBoundMinimumChild": 3.2150605890496955,
+              "initialMinimumChildHessian": 2.3709910900958215
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PLATING_POWER",
+            "levels": 10,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.444955468576908,
+              "initialMinimumChildHessian": 1.6433412576199593
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/PREP_TIME_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 3.0535881601913357,
+              "initialMinimumChildHessian": 2.119358918075103
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/REAPER_FORM_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 4.578017889132176,
+              "initialMinimumChildHessian": 3.068828972920633
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/RINGING_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.18098125720719435,
+              "initialMinimumChildHessian": 0.13328248547918092
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ROLLING_BOULDER_POWER",
+            "levels": 7,
+            "bestPossibleThreshold": {
+              "boundary": 5.0,
+              "upperBoundMinimumChild": 1.2064885857724732,
+              "initialMinimumChildHessian": 0.9382294309015371
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SENTRY_MODE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.6572386260322665,
+              "initialMinimumChildHessian": 2.5708922379717105
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SHRINK_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 0.0,
+              "upperBoundMinimumChild": 1.3414575780892621,
+              "initialMinimumChildHessian": 0.9541666343284859
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SHROUD_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 4.082799602748393,
+              "initialMinimumChildHessian": 2.750147412214072
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SLEIGHT_OF_FLESH_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 9.0,
+              "upperBoundMinimumChild": 4.299511251108805,
+              "initialMinimumChildHessian": 2.482352163436707
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SPIRIT_OF_ASH_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 6.144351236971021,
+              "initialMinimumChildHessian": 4.671380493331913
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/STRENGTH_POWER",
+            "levels": 20,
+            "bestPossibleThreshold": {
+              "boundary": 0.0,
+              "upperBoundMinimumChild": 12.227195363682286,
+              "initialMinimumChildHessian": 8.688642918576768
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SUMMON_NEXT_TURN_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 1.3658533720890575,
+              "initialMinimumChildHessian": 0.9982946492338236
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/TAINTED_POWER",
+            "levels": 26,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 5.66533455317289,
+              "initialMinimumChildHessian": 3.3646140002197527
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/THE_GAMBIT_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.4428957169077394,
+              "initialMinimumChildHessian": 1.1743234109734724
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/THORNS_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 3.0,
+              "initialMinimumChildHessian": 2.251436422231617
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VEILPIERCER_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.169207163858743,
+              "initialMinimumChildHessian": 2.410128681637951
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VIGOR_POWER",
+            "levels": 7,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 2.9281535385333983,
+              "initialMinimumChildHessian": 2.1939470731513397
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/VULNERABLE_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.8588650932400936,
+              "initialMinimumChildHessian": 1.1939300859119015
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/WEAK_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.0557738192558563,
+              "initialMinimumChildHessian": 0.65201830269895
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "resource/current-hand-draw",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 8.220302293511766,
+              "initialMinimumChildHessian": 5.6932050110009165
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "resource/current-max-energy",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 11.4446884699425,
+              "initialMinimumChildHessian": 8.166099474040205
+            },
+            "cannotEverSplitAtHessian3": false
+          }
+        ]
+      },
+      {
+        "character": "REGENT",
+        "roots": 83,
+        "mechanisms": [
+          {
+            "feature": "power/player/ARSENAL_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 8.720701529484874,
+              "initialMinimumChildHessian": 5.3327786730705125
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/AUTOMATION_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.878581164029259,
+              "initialMinimumChildHessian": 1.7462248690172588
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/BLACK_HOLE_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 4.234975058066134,
+              "initialMinimumChildHessian": 2.493401361274299
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/BLOCK_NEXT_TURN_POWER",
+            "levels": 19,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 1.7521531427505121,
+              "initialMinimumChildHessian": 1.0557573956778608
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/CHILD_OF_THE_STARS_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 6.594385572864225,
+              "initialMinimumChildHessian": 3.8903928839681834
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DEXTERITY_POWER",
+            "levels": 14,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 10.526950920996262,
+              "initialMinimumChildHessian": 7.049005137773637
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DRAW_CARDS_NEXT_TURN_POWER",
+            "levels": 8,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.188395521560782,
+              "initialMinimumChildHessian": 1.7916485170857133
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/ENERGY_NEXT_TURN_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 5.9837439455098735,
+              "initialMinimumChildHessian": 4.530789969006712
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FASTEN_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 4.375729013000595,
+              "initialMinimumChildHessian": 2.461010607728704
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FOREGONE_CONCLUSION_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 1.1174861025469212,
+              "initialMinimumChildHessian": 0.6137339277835919
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/FRAIL_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.356717950288319,
+              "initialMinimumChildHessian": 3.948353627203118
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FURNACE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 7.0,
+              "upperBoundMinimumChild": 6.629283997780058,
+              "initialMinimumChildHessian": 4.109265305747892
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/GENESIS_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 4.9134307584279675,
+              "initialMinimumChildHessian": 3.2510760923511923
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/MAYHEM_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.3429972923897293,
+              "initialMinimumChildHessian": 1.742846587614
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/MONARCHS_GAZE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.1348816851956443,
+              "initialMinimumChildHessian": 1.9368951463397712
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/MONOLOGUE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.9612980029926117,
+              "initialMinimumChildHessian": 2.6066279347965944
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/NOSTALGIA_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.0841740875947345,
+              "initialMinimumChildHessian": 1.3217181809936085
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/NO_BLOCK_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.8709132938116138,
+              "initialMinimumChildHessian": 0.47996695818561913
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ORBIT_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 7.673272681083988,
+              "initialMinimumChildHessian": 4.165466539211919
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PALE_BLUE_DOT_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 6.970048759678887,
+              "initialMinimumChildHessian": 4.169072622937186
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PANACHE_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 10.0,
+              "upperBoundMinimumChild": 6.259158395890825,
+              "initialMinimumChildHessian": 3.907432788638703
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PARRY_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 14.0,
+              "upperBoundMinimumChild": 13.011910774905552,
+              "initialMinimumChildHessian": 7.402649022600907
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PILLAR_OF_CREATION_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 7.46137630137228,
+              "initialMinimumChildHessian": 3.9440004403161355
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PLATING_POWER",
+            "levels": 16,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 5.694311393457513,
+              "initialMinimumChildHessian": 3.951432324585907
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PREP_TIME_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 1.4155292986490335,
+              "initialMinimumChildHessian": 0.708833593775874
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/REFLECT_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.559000333459566,
+              "initialMinimumChildHessian": 1.0760635980390885
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/RETAIN_HAND_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.6695614594727033,
+              "initialMinimumChildHessian": 2.5457010488444003
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/RINGING_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.7399124300520377,
+              "initialMinimumChildHessian": 0.3976307535068632
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ROLLING_BOULDER_POWER",
+            "levels": 10,
+            "bestPossibleThreshold": {
+              "boundary": 5.0,
+              "upperBoundMinimumChild": 1.3699201785035624,
+              "initialMinimumChildHessian": 0.6554890051430386
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ROYALTIES_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 40.0,
+              "upperBoundMinimumChild": 12.84984516051749,
+              "initialMinimumChildHessian": 7.725774884963984
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SEEKING_EDGE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 5.509427406641457,
+              "initialMinimumChildHessian": 3.0703739530062766
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SHRINK_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 0.0,
+              "upperBoundMinimumChild": 2.487402601148414,
+              "initialMinimumChildHessian": 1.647525133079717
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SPECTRUM_SHIFT_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 7.566048344134954,
+              "initialMinimumChildHessian": 4.1455788147452655
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/STAR_NEXT_TURN_POWER",
+            "levels": 6,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.932614708725578,
+              "initialMinimumChildHessian": 2.867419756737954
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/STRATAGEM_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.7989951051093866,
+              "initialMinimumChildHessian": 0.9287373989865142
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/STRENGTH_POWER",
+            "levels": 24,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 22.40189689042751,
+              "initialMinimumChildHessian": 14.484981996370646
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/SWORD_SAGE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 7.515098373745403,
+              "initialMinimumChildHessian": 4.081032990171203
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TAINTED_POWER",
+            "levels": 28,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 7.636114814461775,
+              "initialMinimumChildHessian": 5.071689751159464
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TENDER_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.759162836635323,
+              "initialMinimumChildHessian": 2.0132987838303156
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/THE_BOMB_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.9180914542619754,
+              "initialMinimumChildHessian": 0.5324110080911684
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/THE_GAMBIT_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 4.505539374541052,
+              "initialMinimumChildHessian": 3.209440043474439
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/THORNS_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 3.0,
+              "initialMinimumChildHessian": 2.216948675510172
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TYRANNY_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 8.050001062090807,
+              "initialMinimumChildHessian": 4.814735132282131
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VIGOR_POWER",
+            "levels": 28,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 6.1557929488019205,
+              "initialMinimumChildHessian": 4.068305217227932
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VOID_FORM_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 6.236394766178043,
+              "initialMinimumChildHessian": 3.430876928026014
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VULNERABLE_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.7541406194217357,
+              "initialMinimumChildHessian": 1.5029594020361643
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/WEAK_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.77501370827442,
+              "initialMinimumChildHessian": 1.016947295739911
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "resource/current-hand-draw",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 10.369706388227886,
+              "initialMinimumChildHessian": 6.674594796905437
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "resource/current-max-energy",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 3.7899600746351103,
+              "initialMinimumChildHessian": 2.4193373622619907
+            },
+            "cannotEverSplitAtHessian3": false
+          }
+        ]
+      },
+      {
+        "character": "SILENT",
+        "roots": 75,
+        "mechanisms": [
+          {
+            "feature": "power/player/ACCELERANT_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 4.988456268640992,
+              "initialMinimumChildHessian": 2.831205708699084
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/ACCURACY_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 5.418625010925674,
+              "initialMinimumChildHessian": 3.6140440313380853
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/AFTERIMAGE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 13.170607207738666,
+              "initialMinimumChildHessian": 7.701784064507546
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/ANTICIPATE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 1.5106958040316645,
+              "initialMinimumChildHessian": 0.918656722774909
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/AUTOMATION_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 3.1202759777745372,
+              "initialMinimumChildHessian": 2.32384821881796
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/BLOCK_NEXT_TURN_POWER",
+            "levels": 18,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.2793461390266685,
+              "initialMinimumChildHessian": 0.7260000218215625
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/BLUR_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.05879985712513,
+              "initialMinimumChildHessian": 0.9256686333350972
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/BURST_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.7807203416767714,
+              "initialMinimumChildHessian": 1.3352159539501294
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/CORROSIVE_WAVE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 0.8245019560949176,
+              "initialMinimumChildHessian": 0.4069495308823442
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/DEXTERITY_POWER",
+            "levels": 17,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 22.285408808940534,
+              "initialMinimumChildHessian": 12.770769362110382
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/DOUBLE_DAMAGE_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.7367695662030831,
+              "initialMinimumChildHessian": 0.5098026210954199
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/DRAW_CARDS_NEXT_TURN_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 1.8822808299268643,
+              "initialMinimumChildHessian": 1.6754736293664436
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ENERGY_NEXT_TURN_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.4701815571955317,
+              "initialMinimumChildHessian": 1.8539938610403421
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ENVENOM_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 10.714802543411345,
+              "initialMinimumChildHessian": 6.464420212004911
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FAN_OF_KNIVES_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 9.321450142088741,
+              "initialMinimumChildHessian": 5.510109935887776
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FASTEN_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 1.3462852922370212,
+              "initialMinimumChildHessian": 0.7366259562576899
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/FRAIL_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 4.832459937162802,
+              "initialMinimumChildHessian": 3.210151085949128
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/FREE_SKILL_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.040700897197353,
+              "initialMinimumChildHessian": 0.8030741871959476
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/INFINITE_BLADES_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.727563349226932,
+              "initialMinimumChildHessian": 4.511261474258152
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/MASTER_PLANNER_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.2378407543370256,
+              "initialMinimumChildHessian": 1.1424159631425805
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/MAYHEM_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.2360770662162481,
+              "initialMinimumChildHessian": 0.9339264786578044
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/NIGHTMARE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 0.9566822851308031,
+              "initialMinimumChildHessian": 0.788137727342552
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/NOXIOUS_FUMES_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 10.273296215897648,
+              "initialMinimumChildHessian": 5.82725680817166
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/NO_BLOCK_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.0193439066749597,
+              "initialMinimumChildHessian": 0.7164862302208164
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/NO_DRAW_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.3785803706386783,
+              "initialMinimumChildHessian": 1.953165956514333
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/PANACHE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 10.0,
+              "upperBoundMinimumChild": 1.7415239561328097,
+              "initialMinimumChildHessian": 1.1013436687120668
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/PHANTOM_BLADES_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 12.0,
+              "upperBoundMinimumChild": 5.400636882790717,
+              "initialMinimumChildHessian": 2.9048649634556565
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/PLATING_POWER",
+            "levels": 10,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.6440573565648138,
+              "initialMinimumChildHessian": 2.2502919866250872
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/RETAIN_HAND_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.471204692197893,
+              "initialMinimumChildHessian": 0.24882907617700362
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/RINGING_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.9356548523032908,
+              "initialMinimumChildHessian": 0.5949164465832537
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/ROLLING_BOULDER_POWER",
+            "levels": 8,
+            "bestPossibleThreshold": {
+              "boundary": 5.0,
+              "upperBoundMinimumChild": 1.6777368784350009,
+              "initialMinimumChildHessian": 0.919962497342331
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SERPENT_FORM_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 1.506135216509596,
+              "initialMinimumChildHessian": 0.7921390559542483
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SHADOWMELD_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.509587289207199,
+              "initialMinimumChildHessian": 1.9192486616666635
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SHADOW_STEP_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.6433860099968468,
+              "initialMinimumChildHessian": 0.4804078793979524
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SHRINK_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 0.0,
+              "upperBoundMinimumChild": 1.7252857967261386,
+              "initialMinimumChildHessian": 1.2122986002689038
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/SPEEDSTER_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 2.8600233190141346,
+              "initialMinimumChildHessian": 1.7655790578631705
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/STRENGTH_POWER",
+            "levels": 17,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 9.880953601132928,
+              "initialMinimumChildHessian": 5.975099624937803
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TAINTED_POWER",
+            "levels": 21,
+            "bestPossibleThreshold": {
+              "boundary": 2.0,
+              "upperBoundMinimumChild": 6.8863014639547755,
+              "initialMinimumChildHessian": 4.318865693115268
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/THE_BOMB_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.20383844685848507,
+              "initialMinimumChildHessian": 0.09974172870001292
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/THE_GAMBIT_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 0.9438964736318048,
+              "initialMinimumChildHessian": 0.5616808901930199
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/THORNS_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 3.0,
+              "upperBoundMinimumChild": 8.807063770665586,
+              "initialMinimumChildHessian": 5.602473364924106
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TOOLS_OF_THE_TRADE_POWER",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 6.288434653311218,
+              "initialMinimumChildHessian": 4.2335433403426075
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/TRACKING_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 50.0,
+              "upperBoundMinimumChild": 8.534466856825837,
+              "initialMinimumChildHessian": 4.736710287742642
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "power/player/VIGOR_POWER",
+            "levels": 8,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 0.9569826364792968,
+              "initialMinimumChildHessian": 0.7372832658108563
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/VULNERABLE_POWER",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 2.235692001367507,
+              "initialMinimumChildHessian": 0.9348056503241031
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/WEAK_POWER",
+            "levels": 4,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 1.011604988673472,
+              "initialMinimumChildHessian": 0.544414114225029
+            },
+            "cannotEverSplitAtHessian3": true
+          },
+          {
+            "feature": "power/player/WELL_LAID_PLANS_POWER",
+            "levels": 3,
+            "bestPossibleThreshold": {
+              "boundary": 1.0,
+              "upperBoundMinimumChild": 4.042088250314819,
+              "initialMinimumChildHessian": 2.6493569887186417
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "resource/current-hand-draw",
+            "levels": 5,
+            "bestPossibleThreshold": {
+              "boundary": 6.0,
+              "upperBoundMinimumChild": 18.7166982365551,
+              "initialMinimumChildHessian": 16.03842024637862
+            },
+            "cannotEverSplitAtHessian3": false
+          },
+          {
+            "feature": "resource/current-max-energy",
+            "levels": 2,
+            "bestPossibleThreshold": {
+              "boundary": 4.0,
+              "upperBoundMinimumChild": 1.2717836513215472,
+              "initialMinimumChildHessian": 0.7186181475967874
+            },
+            "cannotEverSplitAtHessian3": true
+          }
+        ]
+      }
+    ],
+    "full/cost.json": {
+      "fitProcessSeconds": 32.54227858502418,
+      "historicalExportSeconds": 81.31428505596705,
+      "completeModelSeconds": 113.85656364099123,
+      "returnCode": 0
+    },
+    "full/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 1.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 43048,
+          "pairs": 87486,
+          "initialLoss": 56.541293743025875,
+          "finalLoss": 48.92731711167491,
+          "float32MaxPredictionDrift": 1.6099294342097892e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 7.107891128049232
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 43585,
+          "pairs": 100610,
+          "initialLoss": 63.234750623110955,
+          "finalLoss": 54.8647452802161,
+          "float32MaxPredictionDrift": 7.542807241023297e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 8.130219465936534
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 27890,
+          "pairs": 57827,
+          "initialLoss": 52.4965960959032,
+          "finalLoss": 44.155657418207284,
+          "float32MaxPredictionDrift": 7.454506393500537e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.935320922988467
+        },
+        {
+          "character": "REGENT",
+          "rows": 32246,
+          "pairs": 72126,
+          "initialLoss": 56.51919591531349,
+          "finalLoss": 48.7064845330827,
+          "float32MaxPredictionDrift": 7.29808855481906e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.639110625023022
+        },
+        {
+          "character": "SILENT",
+          "rows": 35247,
+          "pairs": 73111,
+          "initialLoss": 51.43166237479153,
+          "finalLoss": 43.658094866258054,
+          "float32MaxPredictionDrift": 6.6431986258663756e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 6.190608112956397
+        }
+      ],
+      "seconds": 32.09041603899095,
+      "peakWorkingSetBytes": 3585822720
+    },
+    "parity.json": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "evaluation/screen-comparison.json": [
+      {
+        "id": "unseen-defect-the_kin_boss",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 27,
+          "strategicHpDeficit": 27,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000834963,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        }
+      },
+      {
+        "id": "unseen-ironclad-byrdonis_elite",
+        "comparison": 1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000711993,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-necrobinder-kaiser_crab_boss",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 66,
+          "strategicHpDeficit": 66,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 167,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 64,
+          "strategicHpDeficit": 64,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 9997819946,
+          "combatEndedTurn": 9,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-regent-knowledge_demon_boss",
+        "comparison": -1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 75,
+          "strategicHpDeficit": 75,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 143,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 75,
+          "strategicHpDeficit": 75,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 79,
+          "score": -1000003040040,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-silent-knights_elite",
+        "comparison": -1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 197,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 191,
+          "score": -1000010940027,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      }
+    ],
+    "evaluation/report.json": {
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/full/fitted/model.json",
+      "modelSha256": "6b3503268382c75add857d015038d45b6c3641321453e18ba22eefa0ac8771a2",
+      "records": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 27,
+            "strategicHpDeficit": 27,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000834963,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 16.7415539,
+          "rss": 367087616,
+          "nodes": 12000,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 9.1436944,
+          "rss": 307826688,
+          "nodes": 6824,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 167,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 64,
+            "strategicHpDeficit": 64,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9997819946,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 24.0395006,
+          "rss": 382468096,
+          "nodes": 16865,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 143,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 79,
+            "score": -1000003040040,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 19.3754174,
+          "rss": 397053952,
+          "nodes": 14685,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 197,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 10.3680997,
+          "rss": 343113728,
+          "nodes": 6604,
+          "timeBoundary": true
+        }
+      ],
+      "comparisons": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "materialComparison": 0
+        }
+      ],
+      "completed": true,
+      "historicalBaselineTimingIsSpeedProof": false,
+      "regressions": [
+        "unseen-defect-the_kin_boss",
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "stage": "screen",
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    },
+    "summary.json": {
+      "arm": "depth-6-h1p0",
+      "baselineLoss": 0.41054867492063524,
+      "candidateLoss": 0.40904674184121276,
+      "fullFit": true,
+      "finalTestOpened": false,
+      "runtimeDefaultChanged": false,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/full/fitted/model.json",
+      "modelSha256": "6b3503268382c75add857d015038d45b6c3641321453e18ba22eefa0ac8771a2",
+      "development": {
+        "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/full/fitted/model.json",
+        "modelSha256": "6b3503268382c75add857d015038d45b6c3641321453e18ba22eefa0ac8771a2",
+        "regressions": [
+          "unseen-defect-the_kin_boss",
+          "unseen-necrobinder-kaiser_crab_boss"
+        ],
+        "improvements": [],
+        "unverified": [],
+        "fullDevelopmentCoverage": false,
+        "eligibleForFinalReview": false
+      }
+    },
+    "status.json": {
+      "phase": "completed",
+      "seconds": 279.62892508890945,
+      "updatedUtc": "2026-09-27T21:29:22.657114+00:00",
+      "childSeconds": {
+        "fit": 147.44126155914273,
+        "audit": 39.288296006037854,
+        "parity": 0.5009968288941309,
+        "evaluate": 92.08048889623024,
+        "compare-screen": 0.250693800044246
+      }
+    },
+    "depth-2-h0p3/cost.json": {
+      "fitProcessSeconds": 15.270311948028393,
+      "historicalExportSeconds": 63.80612820200622,
+      "completeModelSeconds": 79.07644015003461,
+      "returnCode": 0
+    },
+    "depth-2-h0p3/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 2,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 0.3,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 35183,
+          "pairs": 70406,
+          "initialLoss": 47.157397796024334,
+          "finalLoss": 45.182059063417974,
+          "float32MaxPredictionDrift": 1.0873870692762466e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 3.4961373639525846
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 36821,
+          "pairs": 84208,
+          "initialLoss": 54.152311497891304,
+          "finalLoss": 51.94351671783479,
+          "float32MaxPredictionDrift": 5.376559840897244e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.7150248719844967
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21857,
+          "pairs": 41620,
+          "initialLoss": 44.50987597224991,
+          "finalLoss": 42.46517449555698,
+          "float32MaxPredictionDrift": 3.920815551339274e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.0843949270201847
+        },
+        {
+          "character": "REGENT",
+          "rows": 27337,
+          "pairs": 60893,
+          "initialLoss": 46.908876065998875,
+          "finalLoss": 44.84988345250403,
+          "float32MaxPredictionDrift": 4.579459469411518e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.7494737749220803
+        },
+        {
+          "character": "SILENT",
+          "rows": 28800,
+          "pairs": 59502,
+          "initialLoss": 43.36511395939485,
+          "finalLoss": 41.426268069421184,
+          "float32MaxPredictionDrift": 6.7046433702699915e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.8409445899305865
+        }
+      ],
+      "seconds": 14.911723879980855,
+      "peakWorkingSetBytes": 2550890496
+    },
+    "depth-3-h0p3/cost.json": {
+      "fitProcessSeconds": 15.519867936032824,
+      "historicalExportSeconds": 63.80612820200622,
+      "completeModelSeconds": 79.32599613803905,
+      "returnCode": 0
+    },
+    "depth-3-h0p3/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 3,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 0.3,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 35183,
+          "pairs": 70406,
+          "initialLoss": 47.157397796024334,
+          "finalLoss": 43.790652139848255,
+          "float32MaxPredictionDrift": 1.1643760824853189e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 3.608475421089679
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 36821,
+          "pairs": 84208,
+          "initialLoss": 54.152311497891304,
+          "finalLoss": 50.55478392770068,
+          "float32MaxPredictionDrift": 7.0489880137358796e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.8326864229748026
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21857,
+          "pairs": 41620,
+          "initialLoss": 44.50987597224991,
+          "finalLoss": 40.80536022725758,
+          "float32MaxPredictionDrift": 6.175336771718776e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.1477702140109614
+        },
+        {
+          "character": "REGENT",
+          "rows": 27337,
+          "pairs": 60893,
+          "initialLoss": 46.908876065998875,
+          "finalLoss": 43.530980486056855,
+          "float32MaxPredictionDrift": 5.241853100912408e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.771426451043226
+        },
+        {
+          "character": "SILENT",
+          "rows": 28800,
+          "pairs": 59502,
+          "initialLoss": 43.36511395939485,
+          "finalLoss": 40.045526346590805,
+          "float32MaxPredictionDrift": 6.836300203261203e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.84767224395182
+        }
+      ],
+      "seconds": 15.240881607984193,
+      "peakWorkingSetBytes": 2469150720
+    },
+    "depth-6-h0p3/cost.json": {
+      "fitProcessSeconds": 20.024913459084928,
+      "historicalExportSeconds": 63.80612820200622,
+      "completeModelSeconds": 83.83104166109115,
+      "returnCode": 0
+    },
+    "depth-6-h0p3/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 0.3,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 35183,
+          "pairs": 70406,
+          "initialLoss": 47.157397796024334,
+          "finalLoss": 38.92158900565155,
+          "float32MaxPredictionDrift": 9.93967895723813e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.697928459965624
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 36821,
+          "pairs": 84208,
+          "initialLoss": 54.152311497891304,
+          "finalLoss": 45.78181412439987,
+          "float32MaxPredictionDrift": 7.692932182834511e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.829921285971068
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21857,
+          "pairs": 41620,
+          "initialLoss": 44.50987597224991,
+          "finalLoss": 36.370857045161486,
+          "float32MaxPredictionDrift": 6.574701957973161e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.59325243299827
+        },
+        {
+          "character": "REGENT",
+          "rows": 27337,
+          "pairs": 60893,
+          "initialLoss": 46.908876065998875,
+          "finalLoss": 39.66253132710909,
+          "float32MaxPredictionDrift": 6.473024617648093e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.4802911619190127
+        },
+        {
+          "character": "SILENT",
+          "rows": 28800,
+          "pairs": 59502,
+          "initialLoss": 43.36511395939485,
+          "finalLoss": 34.93951999448512,
+          "float32MaxPredictionDrift": 6.324133977386737e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.877245057024993
+        }
+      ],
+      "seconds": 19.53003342403099,
+      "peakWorkingSetBytes": 2483523584
+    },
+    "depth-2-h1p0/cost.json": {
+      "fitProcessSeconds": 18.274118290981278,
+      "historicalExportSeconds": 63.80612820200622,
+      "completeModelSeconds": 82.0802464929875,
+      "returnCode": 0
+    },
+    "depth-2-h1p0/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 2,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 1.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 35183,
+          "pairs": 70406,
+          "initialLoss": 47.157397796024334,
+          "finalLoss": 45.26485170902549,
+          "float32MaxPredictionDrift": 1.3638332752918814e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 4.272927741985768
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 36821,
+          "pairs": 84208,
+          "initialLoss": 54.152311497891304,
+          "finalLoss": 51.888801543161364,
+          "float32MaxPredictionDrift": 4.643934158110596e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.492382409982383
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21857,
+          "pairs": 41620,
+          "initialLoss": 44.50987597224991,
+          "finalLoss": 42.624519312435794,
+          "float32MaxPredictionDrift": 4.939484632870972e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.531665164977312
+        },
+        {
+          "character": "REGENT",
+          "rows": 27337,
+          "pairs": 60893,
+          "initialLoss": 46.908876065998875,
+          "finalLoss": 45.055897294564254,
+          "float32MaxPredictionDrift": 6.076351805717195e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.3500041880179197
+        },
+        {
+          "character": "SILENT",
+          "rows": 28800,
+          "pairs": 59502,
+          "initialLoss": 43.36511395939485,
+          "finalLoss": 41.487628776565614,
+          "float32MaxPredictionDrift": 7.631361079063481e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.1955991779686883
+        }
+      ],
+      "seconds": 17.86895149992779,
+      "peakWorkingSetBytes": 2881384448
+    },
+    "depth-3-h1p0/cost.json": {
+      "fitProcessSeconds": 20.27706376404967,
+      "historicalExportSeconds": 63.80612820200622,
+      "completeModelSeconds": 84.08319196605589,
+      "returnCode": 0
+    },
+    "depth-3-h1p0/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 3,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 1.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 35183,
+          "pairs": 70406,
+          "initialLoss": 47.157397796024334,
+          "finalLoss": 43.82946420426265,
+          "float32MaxPredictionDrift": 7.902129677717085e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.787591574015096
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 36821,
+          "pairs": 84208,
+          "initialLoss": 54.152311497891304,
+          "finalLoss": 50.69406340782817,
+          "float32MaxPredictionDrift": 6.6997327312634525e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.839641900965944
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21857,
+          "pairs": 41620,
+          "initialLoss": 44.50987597224991,
+          "finalLoss": 40.991578236886454,
+          "float32MaxPredictionDrift": 8.616325839483352e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.0097219250164926
+        },
+        {
+          "character": "REGENT",
+          "rows": 27337,
+          "pairs": 60893,
+          "initialLoss": 46.908876065998875,
+          "finalLoss": 43.66551737273396,
+          "float32MaxPredictionDrift": 6.60429610199742e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.608980798977427
+        },
+        {
+          "character": "SILENT",
+          "rows": 28800,
+          "pairs": 59502,
+          "initialLoss": 43.36511395939485,
+          "finalLoss": 40.48979337363048,
+          "float32MaxPredictionDrift": 5.791907382146633e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.5584919119719416
+        }
+      ],
+      "seconds": 19.840783577994443,
+      "peakWorkingSetBytes": 2468892672
+    },
+    "depth-6-h1p0/cost.json": {
+      "fitProcessSeconds": 25.53270757594146,
+      "historicalExportSeconds": 63.80612820200622,
+      "completeModelSeconds": 89.33883577794768,
+      "returnCode": 0
+    },
+    "depth-6-h1p0/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 1.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 35183,
+          "pairs": 70406,
+          "initialLoss": 47.157397796024334,
+          "finalLoss": 40.676111235294925,
+          "float32MaxPredictionDrift": 1.370570395664572e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 6.126426376053132
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 36821,
+          "pairs": 84208,
+          "initialLoss": 54.152311497891304,
+          "finalLoss": 47.339332173554695,
+          "float32MaxPredictionDrift": 6.8221018416636525e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.818362455931492
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21857,
+          "pairs": 41620,
+          "initialLoss": 44.50987597224991,
+          "finalLoss": 37.42822064025671,
+          "float32MaxPredictionDrift": 6.905730973727486e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.7825507260859013
+        },
+        {
+          "character": "REGENT",
+          "rows": 27337,
+          "pairs": 60893,
+          "initialLoss": 46.908876065998875,
+          "finalLoss": 40.30652576404792,
+          "float32MaxPredictionDrift": 7.2769094536795365e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.407246988965198
+        },
+        {
+          "character": "SILENT",
+          "rows": 28800,
+          "pairs": 59502,
+          "initialLoss": 43.36511395939485,
+          "finalLoss": 36.32729912795311,
+          "float32MaxPredictionDrift": 7.965032891021906e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.82991381501779
+        }
+      ],
+      "seconds": 25.011756081017666,
+      "peakWorkingSetBytes": 2890678272
+    }
+  },
+  "reusedValidation": "Same pinned backend/source; v52 contracts/gates/build/deployment reused."
+}
