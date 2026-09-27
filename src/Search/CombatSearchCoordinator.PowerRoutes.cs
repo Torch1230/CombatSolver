@@ -6,6 +6,88 @@ internal static partial class CombatSearchCoordinator
     private const int MinimumPowerRouteNodes = 25_000;
     private const int MinimumPowerRouteMilliseconds = 10_000;
 
+    private static SolverResult RunOpeningNightmarePortfolio(
+        CombatRootSnapshot root,
+        SolverDisplayNames displayNames,
+        BattleDamageSnapshot battleDamage,
+        SearchPolicySnapshot policy,
+        CancellationToken cancellationToken,
+        Action<SolverProgress>? progressCallback,
+        SolverSearchProfile profile,
+        SolverResult baseline)
+    {
+        CombatBeamSolver builder = new(root, displayNames, battleDamage, policy,
+            cancellationToken, progressCallback, profile,
+            potionPolicyOverride: SolverPotionPolicy.RequireAtLeastOne,
+            maximumPotionUses: 1);
+        IReadOnlyList<PlanAction> resources = builder.BuildOpeningHandSetupActions();
+        List<PlanAction[]> setups = [];
+        foreach (PlanAction resource in resources)
+        {
+            foreach (PlanAction attack in builder.BuildOpeningOffensiveFollowUps([resource]).Take(1))
+                setups.Add([resource, attack]);
+            setups.Add([resource]);
+        }
+        setups.Add([]);
+        SolverResult selected = baseline;
+        int attempts = 0;
+        foreach (PlanAction[] setup in setups)
+        {
+            List<PlanAction[]> openings = builder.BuildPotionActionsAfterPrefix(setup)
+                .GroupBy(action => action.PotionSlot)
+                .Select(group => setup.Append(group.First()).ToArray())
+                .ToList();
+            openings.Add(setup);
+            foreach (PlanAction[] opening in openings)
+            {
+                IReadOnlyList<PlanAction> nightmareActions = builder.BuildOpeningNightmareActionsAfterPrefix(opening);
+                foreach (PlanAction nightmare in nightmareActions)
+                {
+                    long remainingNodes = profile.MaxExpandedNodes
+                        - (policy.RequestWorkTotals?.Snapshot().ExpandedNodes ?? 0L);
+                    if (remainingNodes <= 0)
+                        return selected;
+                    SolverSearchProfile routeProfile = profile with
+                    {
+                        MaxExpandedNodes = (int)Math.Min(30_000L, remainingNodes),
+                        SoftTimeBudgetMilliseconds = Math.Min(profile.SoftTimeBudgetMilliseconds, 15_000),
+                        AggressivePowerCommitment = false,
+                    };
+                    PlanAction[] prefix = [.. opening, nightmare];
+                    bool usesPotion = opening.Any(action => action.Kind == PlanActionKind.UsePotion);
+                    SolverResult? candidate = SolveOptionalPotionPosterior(
+                        new CombatBeamSolver(root, displayNames, battleDamage, policy,
+                            cancellationToken, progressCallback, routeProfile,
+                            potionPolicyOverride: usesPotion
+                                ? SolverPotionPolicy.RequireAtLeastOne
+                                : SolverPotionPolicy.Disabled,
+                            maximumPotionUses: usesPotion ? 1 : 0,
+                            fixedPrefixActions: prefix,
+                            resetFixedPrefixSchedulingBaseline: true),
+                        policy, "NIGHTMARE_COPY_POSTERIOR");
+                    if (candidate != null)
+                    {
+                        if (candidate.ResultScope != SolverResultScope.SearchCompletion)
+                            return candidate;
+                        PopulateSingleSessionTotals(candidate);
+                        bool improved = IsBetterPotionPolicyResult(root, policy, candidate, selected);
+                        if (improved)
+                            selected = candidate;
+                        policy.Diagnostics.Info(
+                            $"[CombatSolver/Test] NIGHTMARE_COPY_POSTERIOR " +
+                            $"setup={string.Join('+', setup.Select(action => action.CardId))} " +
+                            $"potion={opening.FirstOrDefault(action => action.Kind == PlanActionKind.UsePotion)?.PotionId ?? "-"} " +
+                            $"target={nightmare.Choice!.Cards[0].CardId} " +
+                            $"hp_lost={candidate.ProjectedBattleHpLost} potions={candidate.PotionCount} selected={improved}");
+                    }
+                    if (++attempts >= 8 || IsProvenZeroDamageRoute(root, policy, selected))
+                        return selected;
+                }
+            }
+        }
+        return selected;
+    }
+
     /// <summary>
     /// 从同一根为每张当前可打能力建立固定开牌前缀，并继续搜索到完整战斗结果。未满足组合早停时运行单能力路线；
     /// 其后再补有限的双能力前缀。这里直接比较最终真实战损，不把能力估值带进终局排序。
@@ -19,7 +101,8 @@ internal static partial class CombatSearchCoordinator
         Action<SolverProgress>? progressCallback,
         SolverSearchProfile profile,
         SolverPotionPolicy? potionPolicyOverride,
-        SolverResult baseline)
+        SolverResult baseline,
+        bool generatedAfterOpeningPotionsOnly = false)
     {
         if (!root.PlayerCardIds.Any(PowerCardValuationModels.Registry.ContainsCardId))
             return baseline;
@@ -37,18 +120,86 @@ internal static partial class CombatSearchCoordinator
             progressCallback,
             profile,
             potionPolicyOverride: potionPolicyOverride);
-        PlanAction[] openingPowers = prefixBuilder.BuildOpeningPowerActions()
-            .Where(action => PowerCardValuationModels.Registry.ContainsCardId(action.CardId!))
-            .ToArray();
-        if (openingPowers.Length == 0)
-            return baseline;
-
+        PlanAction[] openingPowers = generatedAfterOpeningPotionsOnly
+            ? []
+            : prefixBuilder.BuildOpeningPowerActions()
+                .Where(action => PowerCardValuationModels.Registry.ContainsCardId(action.CardId!))
+                .ToArray();
         List<PlanAction[]> prefixes = openingPowers
             .Select(action => new[] { action })
             .ToList();
         HashSet<string> seen = prefixes
             .Select(PowerPrefixKey)
             .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> powerUpgradePrefixes = [];
+        if (!generatedAfterOpeningPotionsOnly)
+        {
+            foreach (PlanAction fetch in prefixBuilder.BuildOpeningFetchedPowerActions())
+            {
+                foreach (PlanAction power in prefixBuilder.BuildPowerActionsAfterPrefix([fetch]))
+                {
+                    if (!PowerCardValuationModels.Registry.ContainsCardId(power.CardId!))
+                        continue;
+                    PlanAction[] prefix = [fetch, power];
+                    if (seen.Add(PowerPrefixKey(prefix)))
+                        prefixes.Add(prefix);
+                    if (prefixes.Count >= MaximumOpeningPowerPrefixes)
+                        break;
+                }
+                if (prefixes.Count >= MaximumOpeningPowerPrefixes)
+                    break;
+            }
+            foreach (PlanAction upgrade in prefixBuilder.BuildOpeningPowerUpgradeActions())
+            {
+                foreach (PlanAction power in prefixBuilder.BuildPowerActionsAfterPrefix([upgrade]))
+                {
+                    if (!PowerCardValuationModels.Registry.ContainsCardId(power.CardId!))
+                        continue;
+                    PlanAction[] prefix = [upgrade, power];
+                    string key = PowerPrefixKey(prefix);
+                    if (seen.Add(key))
+                    {
+                        prefixes.Add(prefix);
+                        powerUpgradePrefixes.Add(key);
+                    }
+                    if (prefixes.Count >= MaximumOpeningPowerPrefixes)
+                        break;
+                }
+                if (prefixes.Count >= MaximumOpeningPowerPrefixes)
+                    break;
+            }
+        }
+        if (root.PlayerCardIds.Contains("WHITE_NOISE"))
+        {
+            PlanAction[] openingPotions = baseline.BestNode.Actions
+                .TakeWhile(action => action.Kind == PlanActionKind.UsePotion
+                    && action.Turn == baseline.StartTurnNumber)
+                .ToArray();
+            if (generatedAfterOpeningPotionsOnly && openingPotions.Length == 0)
+                return baseline;
+            foreach (PlanAction generator in prefixBuilder.BuildPowerActionsAfterPrefix(
+                         openingPotions, includeWhiteNoise: true)
+                         .Where(action => action.CardId == "WHITE_NOISE"))
+            {
+                PlanAction[] generatorPrefix = [.. openingPotions, generator];
+                foreach (PlanAction generatedPower in prefixBuilder.BuildPowerActionsAfterPrefix(generatorPrefix))
+                {
+                    if (!PowerCardValuationModels.Registry.ContainsCardId(generatedPower.CardId!))
+                        continue;
+                    PlanAction[] prefix = [.. generatorPrefix, generatedPower];
+                    if (seen.Add(PowerPrefixKey(prefix)))
+                        prefixes.Add(prefix);
+                    if (prefixes.Count >= MaximumOpeningPowerPrefixes)
+                        break;
+                }
+                if (prefixes.Count >= MaximumOpeningPowerPrefixes)
+                    break;
+            }
+        }
+        else if (generatedAfterOpeningPotionsOnly)
+            return baseline;
+        if (prefixes.Count == 0)
+            return baseline;
         foreach (PlanAction openingPower in openingPowers)
         {
             if (prefixes.Count >= Math.Max(openingPowers.Length, MaximumOpeningPowerPrefixes))
@@ -101,8 +252,17 @@ internal static partial class CombatSearchCoordinator
         int memberIndex = 0;
         foreach (PlanAction[] prefix in prefixes)
         {
-            foreach (BeamWidthPortfolioMemberSpec variant in variants)
+            bool upgradedPower = powerUpgradePrefixes.Contains(PowerPrefixKey(prefix));
+            foreach (BeamWidthPortfolioMemberSpec configuredVariant in variants)
             {
+                BeamWidthPortfolioMemberSpec variant = upgradedPower && configuredVariant.BaseScoreOnly
+                    ? configuredVariant with
+                    {
+                        BeamWidth = BeamWidthPortfolio.ScaledWidth(
+                            profile.BeamWidth,
+                            BeamWidthPortfolio.WideRefinementRatio),
+                    }
+                    : configuredVariant;
                 cancellationToken.ThrowIfCancellationRequested();
                 if (CanFinishTargetPortfolio(root, policy, profile, selected))
                 {
@@ -156,7 +316,10 @@ internal static partial class CombatSearchCoordinator
                 long allocated = Math.Max(
                     0,
                     GC.GetTotalAllocatedBytes(precise: false) - allocatedBefore);
-                string prefixText = string.Join('+', prefix.Select(action => action.CardId));
+                string prefixText = string.Join('+', prefix.Select(action =>
+                    action.Kind == PlanActionKind.UsePotion
+                        ? $"POTION:{action.PotionId}@{action.PotionSlot}"
+                        : action.CardId));
                 policy.PortfolioTelemetry?.RecordPowerRouteMember(new PowerRoutePortfolioMemberReport(
                     prefixText,
                     variant.BeamWidth,
@@ -191,9 +354,12 @@ internal static partial class CombatSearchCoordinator
         return selected;
     }
 
-    private static string PowerPrefixKey(IEnumerable<PlanAction> prefix)        => string.Join(
+    private static string PowerPrefixKey(IEnumerable<PlanAction> prefix) => string.Join(
             '>',
             prefix.Select(action =>
-                $"{action.CardId}:{action.CardStateKey}:{action.CardStateOccurrence}:" +
-                $"{action.TargetCombatId?.ToString() ?? "-"}"));
+                $"{action.Kind}:{action.CardId}:{action.PotionId}:{action.PotionSlot}:" +
+                $"{action.CardStateKey}:{action.CardStateOccurrence}:" +
+                $"{action.TargetCombatId?.ToString() ?? "-"}:" +
+                $"{action.Choice?.Effect}:" +
+                string.Join(',', action.Choice?.Cards.Select(card => card.StateKey) ?? [])));
 }

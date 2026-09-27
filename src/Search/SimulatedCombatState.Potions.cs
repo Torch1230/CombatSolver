@@ -16,6 +16,7 @@ internal readonly record struct PredictedPotionUse(
 internal sealed partial class SimulatedCombatState
 {
     private ForkableDictionary<(Player Player, int Slot), PotionModel?>? _potionSlots;
+    private ForkableDictionary<(Player Player, int Slot), bool>? _freeEntropicPotions;
     private ForkableList<PredictedPotionUse>? _potionUses;
 
     internal IReadOnlyList<PredictedPotionUse> PotionUses
@@ -54,10 +55,14 @@ internal sealed partial class SimulatedCombatState
         (_potionSlots ??= [])[(player, slot)] = null;
         bool renewablePotionShapedRock = potion is PotionShapedRock
             && RelicsOf(player).OfType<PetrifiedToad>().Any(static relic => !relic.IsMelted);
+        bool freeFromEntropic = _freeEntropicPotions?.TryGetValue((player, slot), out bool free) == true
+            && free;
+        if (freeFromEntropic)
+            _freeEntropicPotions![(player, slot)] = false;
         (_potionUses ??= []).Add(new PredictedPotionUse(
             slot,
             potion.Id.Entry,
-            PotionUsePolicy.StrategicHpCost(potion, renewablePotionShapedRock),
+            freeFromEntropic ? 0 : PotionUsePolicy.StrategicHpCost(potion, renewablePotionShapedRock),
             automatic));
         InvalidateBaseHookListeners();
     }
@@ -95,6 +100,9 @@ internal sealed partial class SimulatedCombatState
     }
 
     public bool TryProcurePotion(Player player, PotionModel canonical)
+        => TryProcurePotion(player, canonical, freeFromEntropic: false);
+
+    internal bool TryProcurePotion(Player player, PotionModel canonical, bool freeFromEntropic)
     {
         PotionModel potion = PredictionUtils.CloneModelForSimulation(canonical);
         potion.Owner = player;
@@ -108,6 +116,8 @@ internal sealed partial class SimulatedCombatState
             if (GetPotionAtSlot(player, slot) != null)
                 continue;
             (_potionSlots ??= [])[(player, slot)] = potion;
+            if (freeFromEntropic || _freeEntropicPotions?.ContainsKey((player, slot)) == true)
+                (_freeEntropicPotions ??= [])[(player, slot)] = freeFromEntropic;
             InvalidateBaseHookListeners();
             TriggerRelicsAfterPotionProcured(player);
             return true;
@@ -134,6 +144,10 @@ internal sealed partial class SimulatedCombatState
         int slotCount = PotionSlotCount(player);
         fingerprint.Add(slotCount);
         for (int slot = 0; slot < slotCount; slot++)
+        {
             fingerprint.Add(GetPotionAtSlot(player, slot)?.Id.Entry ?? "-");
+            fingerprint.Add(_freeEntropicPotions?.TryGetValue((player, slot), out bool free) == true
+                && free);
+        }
     }
 }

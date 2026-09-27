@@ -129,6 +129,22 @@ function Get-HeadlessSnapshotPlan(
 ) {
     # Every payload is bound, including other mods and non-DLL mod assets. No
     # hardlinks/junctions: a build in another worktree must not mutate this image.
+    $planWatch = [Diagnostics.Stopwatch]::StartNew()
+    $cachedFiles = @{}
+    $frozenManifest = Join-Path $Context.GameRoot '.combatsolver-frozen-game.json'
+    if (Test-Path -LiteralPath $frozenManifest -PathType Leaf) {
+        $frozen = Get-Content -LiteralPath $frozenManifest -Raw | ConvertFrom-Json -AsHashtable
+        if ($frozen.schemaVersion -ne 1 -or
+            -not [string]::Equals([string]$frozen.runtimeRoot, $Context.Root, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Frozen game ownership does not match this runtime: $frozenManifest"
+        }
+        foreach ($prior in $frozen.files) {
+            $cachedFiles[[string]$prior.relative] = $prior
+        }
+    }
+    Assert-HeadlessNoReparsePoint $Context.SourceGameRoot
+    Assert-HeadlessNoReparsePoint $RitsuRoot
+    $enumeratedSources = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $sources = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($item in Get-ChildItem -LiteralPath $Context.SourceGameRoot -Recurse -Force) {
         if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
@@ -136,6 +152,7 @@ function Get-HeadlessSnapshotPlan(
         }
         if (-not $item.PSIsContainer) {
             $sources[[IO.Path]::GetRelativePath($Context.SourceGameRoot, $item.FullName)] = $item.FullName
+            [void]$enumeratedSources.Add($item.FullName)
         }
     }
     $sources['mods\CombatSolver\CombatSolver.dll'] = $CombatSolverDll
@@ -153,6 +170,7 @@ function Get-HeadlessSnapshotPlan(
             }
             $relative = [IO.Path]::GetRelativePath($RitsuRoot, $item.FullName)
             $sources[(Join-Path 'mods\.combatsolver-headless-ritsulib' $relative)] = $item.FullName
+            [void]$enumeratedSources.Add($item.FullName)
         }
     } else {
         $legacyDll = Join-Path $RitsuRoot 'lib\0.111.0\STS2-RitsuLib.dll'
@@ -160,16 +178,48 @@ function Get-HeadlessSnapshotPlan(
     }
     $files = [Collections.Generic.List[object]]::new()
     $identity = [Text.StringBuilder]::new()
+    $cacheHits = 0
+    $hashedFiles = 0
     foreach ($relative in @($sources.Keys | Sort-Object -CaseSensitive)) {
         Assert-LauncherNotCancelled
         $source = $sources[$relative]
-        Assert-HeadlessNoReparsePoint $source
-        $fileHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
-        $files.Add(@{ relative = $relative; source = $source; sha256 = $fileHash })
+        if (-not $enumeratedSources.Contains($source)) {
+            Assert-HeadlessNoReparsePoint $source
+        }
+        $info = Get-Item -LiteralPath $source -Force
+        if ($info.PSIsContainer) { throw "Snapshot payload is a directory: $source" }
+        $prior = $cachedFiles[$relative]
+        # The private image already owns the previous content hash. Steam game
+        # assets are immutable between updates, whose file metadata changes;
+        # development Mod payloads are always hashed to catch same-size rebuilds.
+        $reuseHash = -not $relative.StartsWith('mods\', [StringComparison]::OrdinalIgnoreCase) -and
+            $null -ne $prior -and
+            [string]::Equals([string]$prior.source, $source, [StringComparison]::OrdinalIgnoreCase) -and
+            [long]$prior.length -eq $info.Length -and
+            [long]$prior.lastWriteTicks -eq $info.LastWriteTimeUtc.Ticks -and
+            [long]$prior.creationTicks -eq $info.CreationTimeUtc.Ticks -and
+            [string]$prior.sha256 -match '^[A-Fa-f0-9]{64}$'
+        if ($reuseHash) {
+            $fileHash = [string]$prior.sha256
+            $cacheHits++
+        } else {
+            $fileHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+            $hashedFiles++
+        }
+        $files.Add(@{
+            relative = $relative; source = $source; sha256 = $fileHash
+            length = $info.Length; lastWriteTicks = $info.LastWriteTimeUtc.Ticks
+            creationTicks = $info.CreationTimeUtc.Ticks
+        })
         [void]$identity.Append($relative).Append([char]0).Append($fileHash).Append([char]0)
     }
     $bytes = [Text.Encoding]::UTF8.GetBytes($identity.ToString())
-    return @{ id = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)); files = $files }
+    $planWatch.Stop()
+    return @{
+        id = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))
+        files = $files; cacheHits = $cacheHits; hashedFiles = $hashedFiles
+        elapsedMilliseconds = $planWatch.ElapsedMilliseconds
+    }
 }
 
 function Remove-HeadlessOwnedGameTree([hashtable]$Context, [string]$Path) {
@@ -225,8 +275,13 @@ function Remove-HeadlessRuntimeInstance([hashtable]$Context) {
 function Set-HeadlessGameSnapshot([hashtable]$Context, [hashtable]$Plan) {
     Assert-HeadlessNoReparsePoint $Context.GameRoot
     $manifest = Join-Path $Context.GameRoot '.combatsolver-frozen-game.json'
+    $existing = $null
     if (Test-Path -LiteralPath $manifest -PathType Leaf) {
         $existing = Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json -AsHashtable
+        if ($existing.schemaVersion -ne 1 -or
+            -not [string]::Equals([string]$existing.runtimeRoot, $Context.Root, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Private game snapshot ownership does not match this runtime: $manifest"
+        }
         if ($existing.artifactId -eq $Plan.id) { return }
     }
     # The caller has already stopped its old game and holds both the instance
@@ -236,6 +291,72 @@ function Set-HeadlessGameSnapshot([hashtable]$Context, [hashtable]$Plan) {
         if (-not $candidate.HasExited -and [string]::Equals($candidate.MainModule.FileName,
                 (Join-Path $Context.GameRoot 'SlayTheSpire2.exe'), [StringComparison]::OrdinalIgnoreCase)) {
             throw "Cannot replace a private game snapshot while its process is alive."
+        }
+    }
+    if ($null -ne $existing -and -not [string]::IsNullOrWhiteSpace([string]$existing.artifactId) -and
+        $null -ne $existing.files) {
+        $oldFiles = @{}
+        foreach ($file in $existing.files) { $oldFiles[[string]$file.relative] = $file }
+        $newFiles = @{}
+        foreach ($file in $Plan.files) { $newFiles[[string]$file.relative] = $file }
+        $changed = @($Plan.files | Where-Object {
+            $old = $oldFiles[[string]$_.relative]
+            $null -eq $old -or [string]$old.sha256 -cne [string]$_.sha256
+        })
+        $removed = @($existing.files | Where-Object { -not $newFiles.ContainsKey([string]$_.relative) })
+        $patchStage = Join-Path $Context.Root ('.patch-stage-' + [Guid]::NewGuid().ToString('N'))
+        $rootFull = Get-HeadlessCanonicalPath $Context.Root
+        $stageFull = Get-HeadlessCanonicalPath $patchStage
+        if (-not $stageFull.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Snapshot patch staging escaped its runtime: $stageFull"
+        }
+        New-Item -ItemType Directory -Path $patchStage | Out-Null
+        try {
+            foreach ($file in $changed) {
+                Assert-LauncherNotCancelled
+                $stageFile = Join-Path $patchStage $file.relative
+                New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($stageFile)) -Force | Out-Null
+                Copy-Item -LiteralPath $file.source -Destination $stageFile -Force
+                if ((Get-FileHash -LiteralPath $stageFile -Algorithm SHA256).Hash -cne $file.sha256) {
+                    throw "A source payload changed while staging the private snapshot: $($file.source)"
+                }
+            }
+            # An interrupted patch must never advertise the old artifact.
+            Write-HeadlessJson $manifest @{
+                schemaVersion = 1; artifactId = ''; runtimeRoot = $Context.Root; files = $existing.files
+            }
+            foreach ($file in $changed) {
+                $destination = Get-HeadlessCanonicalPath (Join-Path $Context.GameRoot $file.relative)
+                if (-not $destination.StartsWith($Context.GameRoot + [IO.Path]::DirectorySeparatorChar,
+                        [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Snapshot payload escaped its private game: $destination"
+                }
+                Assert-HeadlessNoReparsePoint $destination
+                New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($destination)) -Force | Out-Null
+                [IO.File]::Move((Join-Path $patchStage $file.relative), $destination, $true)
+            }
+            foreach ($file in $removed) {
+                $destination = Get-HeadlessCanonicalPath (Join-Path $Context.GameRoot $file.relative)
+                if (-not $destination.StartsWith($Context.GameRoot + [IO.Path]::DirectorySeparatorChar,
+                        [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Retired snapshot payload escaped its private game: $destination"
+                }
+                Assert-HeadlessNoReparsePoint $destination
+                if (Test-Path -LiteralPath $destination -PathType Leaf) {
+                    Remove-Item -LiteralPath $destination -Force
+                }
+            }
+            Write-HeadlessJson $manifest @{
+                schemaVersion = 1; artifactId = $Plan.id; runtimeRoot = $Context.Root; files = $Plan.files
+            }
+            Write-Host "UNATTENDED_SNAPSHOT_PATCH changed=$($changed.Count) removed=$($removed.Count)"
+            return
+        } finally {
+            if (Test-Path -LiteralPath $patchStage -PathType Container) {
+                Assert-HeadlessNoReparsePoint $patchStage
+                Remove-Item -LiteralPath $patchStage -Recurse -Force
+            }
         }
     }
     $staging = Join-Path $Context.Root ('.game-stage-' + [Guid]::NewGuid().ToString('N'))

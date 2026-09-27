@@ -52,6 +52,7 @@ add_option combat-solver-build-dir "" string none
 add_option headless-instance "" string none
 add_option runtime-profile default string none "default|server-generational"
 add_option stop-instance 0 switch none
+add_option reuse-only 0 switch none
 add_option headless-execution-mode "${COMBATSOLVER_HEADLESS_EXECUTION_MODE:-exclusive}" string none "exclusive|parallel"
 add_option headless-memory-reservation-mib 4096 int none
 default_headless_cpu=2
@@ -69,8 +70,13 @@ add_option pre-combat-intervening-map-points-json "" string none
 add_option replay-state-path "" string none
 add_option checkpoint-archive-path "" string raw_string
 add_option checkpoint-selector "start" string raw_string
-add_option replay-mode "RestoreOnly" string raw_string "Preflight|RestoreOnly|ReplayRecorded|SearchOnly|DeploySolver"
+add_option replay-mode "RestoreOnly" string raw_string "Preflight|RestoreOnly|ReplayRecorded|SearchOnly|DeploySolver|SessionStart"
 add_option replay-policy-override-path "" string raw_string
+add_option development-strategy-assembly-path "" string optional_string
+add_option development-strategy-parameters-path "" string optional_string
+add_option development-strategy-script-hash "" string optional_string
+add_option development-strategy-parameters-hash "" string optional_string
+add_option development-monitor-state-path "" string optional_string
 add_option evidence-directory "" string raw_string
 add_option preserve-native-combat-state-for-test 0 switch bool
 add_option progress-snapshot-path "" string none
@@ -128,6 +134,7 @@ for name in \
 done
 add_option short-search-budget-override-milliseconds -1 int positive_int
 add_option search-budget-override-milliseconds -1 int positive_int
+add_option early-turn-exploration-depth-for-test 0 int positive_int
 add_option deep-search-budget-override-milliseconds -1 int positive_int
 add_option search-max-degree-of-parallelism-for-test -1 int positive_int
 add_option expected-initial-boundary-reason "" string optional_string "None|Shuffle|NoCards|UnsupportedEffect|DynamicResolution|PendingChoice|EventDefeat|TurnLimit|NodeLimit|TimeLimit"
@@ -428,7 +435,7 @@ if ((option_value[stop-after-expected-player-power] == 1)) && is_blank "${option
 fi
 ((option_value[timeout-seconds] > 0)) || die "--timeout-seconds must be a positive integer"
 
-for path_option in replay-policy-override-path evidence-directory; do
+for path_option in replay-policy-override-path evidence-directory development-strategy-assembly-path development-strategy-parameters-path; do
     if [[ -n "${option_value[$path_option]}" ]]; then
         option_value[$path_option]="$(realpath -m -- "${option_value[$path_option]}")"
     fi
@@ -498,7 +505,7 @@ result_path="$data_dir/combat_solver_test_result.json"
 ready_path="$data_dir/combat_solver_test_ready.json"
 lock_path="$headless_root/launcher.lock"
 
-if ((option_value[stop-instance] == 0)); then
+if ((option_value[stop-instance] == 0 && option_value[reuse-only] == 0)); then
 [[ -x "$source_game_root/SlayTheSpire2" ]] || runtime_error "game executable not found: $source_game_root/SlayTheSpire2"
 [[ -f "$combat_solver_dll" && -f "$combat_solver_manifest" ]] || runtime_error \
     "built CombatSolver DLL/manifest not found; build with -p:CopyModOnBuild=false or supply --combat-solver-build-dir"
@@ -1081,11 +1088,19 @@ if ((option_value[stop-instance] == 1)); then
     exit 0
 fi
 
-combat_solver_dll_sha256="$(sha256sum -- "$combat_solver_dll")"
-combat_solver_dll_sha256="${combat_solver_dll_sha256%% *}"
-combat_solver_manifest_sha256="$(sha256sum -- "$combat_solver_manifest")"
-combat_solver_manifest_sha256="${combat_solver_manifest_sha256%% *}"
-artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source")"
+if ((option_value[reuse-only] == 1)); then
+    [[ -f "$process_marker_path" ]] || runtime_error 'reuse-only requires a running owned game process; start the session first'
+    artifact_id="$(jq -er '.artifactId | strings | select(length > 0)' "$process_marker_path")" || runtime_error 'reuse-only marker lacks artifact identity'
+    combat_solver_dll_sha256="$(jq -er '.combatSolverDllSha256 | strings | select(length > 0)' "$process_marker_path")" || runtime_error 'reuse-only marker lacks DLL identity'
+    combat_solver_manifest_sha256="$(jq -er '.combatSolverManifestSha256 | strings | select(length > 0)' "$process_marker_path")" || runtime_error 'reuse-only marker lacks manifest identity'
+    echo "UNATTENDED_REUSE_ONLY instance=$headless_instance snapshot_scan=skipped"
+else
+    combat_solver_dll_sha256="$(sha256sum -- "$combat_solver_dll")"
+    combat_solver_dll_sha256="${combat_solver_dll_sha256%% *}"
+    combat_solver_manifest_sha256="$(sha256sum -- "$combat_solver_manifest")"
+    combat_solver_manifest_sha256="${combat_solver_manifest_sha256%% *}"
+    artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source")"
+fi
 
 runtime_profile="${option_value[runtime-profile]}"
 profile_environment=""
@@ -1127,6 +1142,7 @@ if [[ -f "$process_marker_path" ]]; then
             || "$(jq -r ' .runtimeEnvironmentKey // empty' "$process_marker_path")" != "$runtime_environment_key" ]] \
             || ! jq -e --arg mode "$HR_MODE" --argjson memory "$HR_MEMORY" --argjson cpu "$HR_CPU" \
                 '.executionMode == $mode and .memoryMiB == $memory and .cpu == $cpu' "$process_marker_path" >/dev/null; then
+            ((option_value[reuse-only] == 0)) || runtime_error 'reuse-only runtime profile differs from the running process; start the session first'
             echo "UNATTENDED_RESTART reason=mod_or_runtime_changed pid=$process_pid" >&2
             stop_test_process_and_remove_dependency "$process_pid" "$process_identity_start_time"
             process_pid=""
@@ -1135,6 +1151,7 @@ if [[ -f "$process_marker_path" ]]; then
             && [[ "$(jq -r '.held // false' "$ready_path" 2>/dev/null)" == true ]]; then
             # A held protocol host has returned from its request loop and cannot be reused.
             # Restarting also recovers if its launcher was killed before the release marker.
+            ((option_value[reuse-only] == 0)) || runtime_error 'reuse-only cannot use a held process; start the session first'
             echo "UNATTENDED_RESTART reason=abandoned_held_process pid=$process_pid" >&2
             stop_test_process_and_remove_dependency "$process_pid" "$process_identity_start_time"
             process_pid=""
@@ -1162,6 +1179,9 @@ if [[ -f "$process_marker_path" ]]; then
     fi
 fi
 
+if ((option_value[reuse-only] == 1)) && [[ -z "$process_pid" ]]; then
+    runtime_error 'reuse-only requires a running owned game process; start the session first'
+fi
 hr_acquire "$process_pid" "$process_identity_start_time" || runtime_error 'headless host admission failed'
 if [[ -z $process_pid ]]; then
     hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$artifact_id" || runtime_error 'could not prepare frozen game snapshot'

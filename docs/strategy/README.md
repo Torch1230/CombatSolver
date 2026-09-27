@@ -13,6 +13,7 @@
 - [能力牌逐卡估值与搜索优化计划](power-card-valuation-plan-20260917.md)：用户逐卡定义、统一奖励/惩罚接口、六卡池目录、后续独立搜索成员和清理规定。
 - [Beam 宽度组合](beam-width-portfolio.md)：共享节点预算的多宽度选优、精炼门控四条、开关与请求字段、成员默认值与数据来源。
 - [玩家世界线研究](player-worldlines-20260905.md)：2026-09-05 批次。
+- [日志站更优世界线前 150 包](worldline-top150-20260926.md)：2026-09-26 固定的降序处理清单。
 - [有界搜索恢复研究](SEARCH_RECOVERY_RESEARCH.md)：已否决并撤回的 v54/v55 原型，保留研究证据。
 - [0.17.0 原始需求](0.17.0-raw-requirements.md)。
 - [0.17.0 优化规格](0.17.0-optimization-plan.md)。

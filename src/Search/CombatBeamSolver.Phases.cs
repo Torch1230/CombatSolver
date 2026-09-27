@@ -712,6 +712,8 @@ internal sealed partial class CombatBeamSolver
                 TurnSetupChoices = best.GetTurnSetupChoices().Select(WithDisplayNames).ToArray(),
                 TurnSetupPlayState = best.GetTurnSetupPlayState(),
                 BestNode = selectedPlan,
+                PotionUses = ((SimulatedCombatState)finalSnapshot.Simulator.State.CombatState)
+                    .PotionUses.ToArray(),
                 Snapshot = selectedSnapshot,
                 Forecast = _forecast,
                 ExpandedNodes = _run.Expanded,
@@ -1119,7 +1121,18 @@ internal sealed partial class CombatBeamSolver
                         root.Score)));
         }
         if (frontier.Count == 0)
-            throw new InvalidOperationException("固定搜索前缀与全部回合准备选牌分支都不相容。");
+            throw new InvalidOperationException(
+                $"固定搜索前缀与全部回合准备选牌分支都不相容：" +
+                $"include_turn_setup={_includeTurnSetup} " +
+                $"prefix={string.Join('+', _fixedPrefixActions.Select(action => action.CardId))}。");
+        if (_resetFixedPrefixSchedulingBaseline && !_includeTurnSetup && _fixedPrefixActions.Count > 0)
+        {
+            SimulationSnapshot start = frontier[0].Snapshot;
+            _run.InitialPersistentBuffValue = start.PersistentBuffValue;
+            _run.InitialEnemyStrengthSuppression = start.EnemyStrengthSuppression;
+            _run.InitialEnemyWeakTurns = start.EnemyWeakTurns;
+            _run.InitialRetainedAttackValue = start.RetainedAttackValue;
+        }
 
         List<SearchNode> completed = [];
         SearchNode fallback = frontier.MaxBy(static node => node.Score)!;
@@ -1404,7 +1417,9 @@ internal sealed partial class CombatBeamSolver
             }
         }
 
-        int reservedTurnLayers = root.EncounterRoomType == RoomType.Boss
+        int reservedTurnLayers = _earlyTurnScoutDepth > 0
+            ? _earlyTurnScoutDepth
+            : root.EncounterRoomType == RoomType.Boss
                 ? SolverWeights.BossEnemyStrengthSuppressionHorizon
                 : SolverWeights.StandardEnemyStrengthSuppressionHorizon;
 
@@ -1454,6 +1469,7 @@ internal sealed partial class CombatBeamSolver
         }
 
         while (frontier.Count > 0
+            && (_earlyTurnScoutDepth == 0 || searchedTurnLayers < _earlyTurnScoutDepth)
             && (!policy.VerifyIncrementalSearch
                 || searchedTurnLayers < SolverWeights.IncrementalVerificationMaxTurns)
             && _run.Expanded < _profile.MaxExpandedNodes
@@ -2019,6 +2035,12 @@ internal sealed partial class CombatBeamSolver
             List<SearchNode> unannotatedEnded = ended;
             ended = AnnotateTurnOutcomes(unannotatedEnded);
             ReleaseDroppedSnapshots(unannotatedEnded, ended);
+            if (_earlyTurnScoutObserver != null
+                && searchedTurnLayers < _earlyTurnScoutDepth)
+            {
+                _earlyTurnScoutObserver(searchedTurnLayers + 1,
+                    SelectEarlyTurnFrontier(ended, searchedTurnLayers + 1));
+            }
 
             List<SearchNode> completedCandidates =
                 [.. completed, .. ended.Where(node => node.IsTerminal)];
@@ -2182,31 +2204,36 @@ internal sealed partial class CombatBeamSolver
         }
         List<SearchNode> finalCandidates = Retention.RankFinal(finalPool);
         ReleaseDroppedSnapshots(finalPool, finalCandidates);
-        ValidateHistoricalSimulatorsReleased(finalCandidates);
-        PublishProgress(_startTurnNumber + searchedTurnLayers, searchedTurnLayers, 0,
-            finalCandidates.Count, completed.Count, "复核最终候选", force: true);
-        List<(SearchNode Node, SimulationSnapshot Snapshot)> evaluated = finalCandidates
-            .Select(node => (Node: node, Snapshot: node.Snapshot))
-            .ToList();
-        bool onlyDeathRoutesFound = evaluated.All(candidate =>
-            candidate.Snapshot.PlayerDead || candidate.Snapshot.ProjectedPlayerHp <= 0);
-        _run.ReusedNodeSnapshots += evaluated.Count;
-        FinalPlanSelection ordering = FinalOrdering.Select(
-            evaluated,
-            initialHp,
-            emitDiagnostics: true);
-        SolverResult result = MaterializeSelectedRoute(
-            ordering,
-            onlyDeathRoutesFound,
-            currentTurnAdoptionReached
-                ? SolverResultScope.CurrentTurnAdoption
-                : SolverResultScope.SearchCompletion,
-            searchedTurnLayers,
-            timeBudgetReached,
-            memoryNoProgressTruncated);
-        foreach (SearchNode candidate in finalCandidates)
-            candidate.Snapshot.ReleaseSimulator();
-        return result;
+        try
+        {
+            ValidateHistoricalSimulatorsReleased(finalCandidates);
+            PublishProgress(_startTurnNumber + searchedTurnLayers, searchedTurnLayers, 0,
+                finalCandidates.Count, completed.Count, "复核最终候选", force: true);
+            List<(SearchNode Node, SimulationSnapshot Snapshot)> evaluated = finalCandidates
+                .Select(node => (Node: node, Snapshot: node.Snapshot))
+                .ToList();
+            bool onlyDeathRoutesFound = evaluated.All(candidate =>
+                candidate.Snapshot.PlayerDead || candidate.Snapshot.ProjectedPlayerHp <= 0);
+            _run.ReusedNodeSnapshots += evaluated.Count;
+            FinalPlanSelection ordering = FinalOrdering.Select(
+                evaluated,
+                initialHp,
+                emitDiagnostics: true);
+            return MaterializeSelectedRoute(
+                ordering,
+                onlyDeathRoutesFound,
+                currentTurnAdoptionReached
+                    ? SolverResultScope.CurrentTurnAdoption
+                    : SolverResultScope.SearchCompletion,
+                searchedTurnLayers,
+                timeBudgetReached,
+                memoryNoProgressTruncated);
+        }
+        finally
+        {
+            foreach (SearchNode candidate in finalCandidates)
+                candidate.Snapshot.ReleaseSimulator();
+        }
     }
 
     private SearchNode? ApplyFixedPrefix(SearchNode seed)
@@ -2223,8 +2250,7 @@ internal sealed partial class CombatBeamSolver
         SearchNode node = seed;
         foreach (PlanAction action in prefix)
         {
-            if (action.Kind == PlanActionKind.EndTurn
-                || action.EndsPlayerTurn
+            if (action.EndsPlayerTurn
                 || action.Turn != node.Turn)
             {
                 throw new InvalidOperationException(
@@ -2256,7 +2282,7 @@ internal sealed partial class CombatBeamSolver
                 node.ActionCount + 1,
                 snapshot.PotionUseCount,
                 snapshot.PotionStrategicCost,
-                node.Turn,
+                snapshot.Turn,
                 traits,
                 node.FutureSoldHp,
                 ApplySoldHpPenalty(snapshot.Score, node.FutureSoldHp),
@@ -2295,6 +2321,8 @@ internal sealed partial class CombatBeamSolver
     {
         CombatPredictionSimulator simulator = (CombatPredictionSimulator)node.Snapshot.Simulator;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
+        if (action.Kind == PlanActionKind.EndTurn)
+            return true;
         if (action.Kind == PlanActionKind.UsePotion)
         {
             PotionModel? potion = combat.GetPotionAtSlot(_player, action.PotionSlot);

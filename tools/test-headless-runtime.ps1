@@ -77,6 +77,49 @@ try {
     Assert-HostFixture ([IO.Path]::GetPathRoot($defaultContext.Root) -eq [IO.Path]::GetPathRoot($defaultRepository)) `
         'default instance root crossed filesystem roots'
 
+    $snapshotSource = Join-Path $testRoot 'snapshot-source'
+    $snapshotBuild = Join-Path $testRoot 'snapshot-build'
+    $snapshotRitsu = Join-Path $testRoot 'snapshot-ritsu'
+    New-Item -ItemType Directory -Path (Join-Path $snapshotSource 'mods'), $snapshotBuild, `
+        (Join-Path $snapshotRitsu 'lib/0.111.0') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $snapshotSource 'SlayTheSpire2.exe') -Value 'game'
+    Set-Content -LiteralPath (Join-Path $snapshotSource 'data.pck') -Value 'asset-a'
+    $otherMod = Join-Path $snapshotSource 'mods/Other.dll'
+    Set-Content -LiteralPath $otherMod -Value 'mod-a'
+    Set-Content -LiteralPath (Join-Path $snapshotBuild 'CombatSolver.dll') -Value 'solver'
+    Set-Content -LiteralPath (Join-Path $snapshotBuild 'CombatSolver.json') -Value '{}'
+    Set-Content -LiteralPath (Join-Path $snapshotBuild 'CombatSolver.MemoryCleaner.exe') -Value 'cleaner'
+    Set-Content -LiteralPath (Join-Path $snapshotRitsu 'lib/0.111.0/STS2-RitsuLib.dll') -Value 'ritsu'
+    Set-Content -LiteralPath (Join-Path $snapshotRitsu 'mod_manifest.json') -Value '{}'
+    $snapshotContext = New-HeadlessRuntimeContext $defaultRepository $snapshotSource 'cache-fixture' exclusive 4096 2 1
+    New-Item -ItemType Directory -Path $snapshotContext.Root -Force | Out-Null
+    Initialize-HeadlessRuntimeOwner $snapshotContext
+    $snapshotArgs = @($snapshotContext, (Join-Path $snapshotBuild 'CombatSolver.dll'),
+        (Join-Path $snapshotBuild 'CombatSolver.json'),
+        (Join-Path $snapshotBuild 'CombatSolver.MemoryCleaner.exe'),
+        $snapshotRitsu, (Join-Path $snapshotRitsu 'mod_manifest.json'))
+    $firstPlan = Get-HeadlessSnapshotPlan @snapshotArgs
+    Assert-HostFixture ($firstPlan.cacheHits -eq 0 -and $firstPlan.hashedFiles -gt 0) 'first snapshot reused uncached hashes'
+    Set-HeadlessGameSnapshot $snapshotContext $firstPlan
+    $secondPlan = Get-HeadlessSnapshotPlan @snapshotArgs
+    Assert-HostFixture ($secondPlan.id -eq $firstPlan.id -and $secondPlan.cacheHits -gt 0) 'unchanged game assets missed cache'
+    $modTimestamp = (Get-Item -LiteralPath $otherMod).LastWriteTimeUtc
+    Set-Content -LiteralPath $otherMod -Value 'mod-b'
+    (Get-Item -LiteralPath $otherMod).LastWriteTimeUtc = $modTimestamp
+    $thirdPlan = Get-HeadlessSnapshotPlan @snapshotArgs
+    Assert-HostFixture ($thirdPlan.id -ne $secondPlan.id) 'same-size Mod change was not hashed'
+    Set-HeadlessGameSnapshot $snapshotContext $thirdPlan
+    Assert-HostFixture ((Get-Content -LiteralPath (Join-Path $snapshotContext.GameRoot 'mods/Other.dll') -Raw).Trim() -eq 'mod-b') `
+        'changed Mod was not patched into the fixed game instance'
+    Set-Content -LiteralPath (Join-Path $snapshotSource 'data.pck') -Value 'asset-b'
+    $fourthPlan = Get-HeadlessSnapshotPlan @snapshotArgs
+    Assert-HostFixture ($fourthPlan.id -ne $thirdPlan.id) 'game asset metadata change kept stale hash'
+    Set-HeadlessGameSnapshot $snapshotContext $fourthPlan
+    Assert-HostFixture ((Get-Content -LiteralPath (Join-Path $snapshotContext.GameRoot 'data.pck') -Raw).Trim() -eq 'asset-b') `
+        'changed game asset was not patched into the fixed game instance'
+    Remove-HeadlessRuntimeInstance $snapshotContext
+    Write-Output 'HEADLESS_SNAPSHOT_CACHE_SELFTEST_PASS unchanged-assets/mod-rebuild/game-update'
+
     $a, $b, $c = $contexts
     Enter-HeadlessHostLease $a $null
     Enter-HeadlessHostLease $b $null

@@ -529,6 +529,11 @@ internal static partial class SolverController
         {
             Interaction = interaction,
             UseAutomaticSearch = true,
+            // The former player mode is compatibility data only; explicit offline
+            // requests retain the upstream early-turn experiment.
+            EarlyTurnExplorationDepth = UnattendedTestRunner.EarlyTurnExplorationDepth,
+            EarlyTurnExplorationBudgetMilliseconds = UnattendedTestRunner.EarlyTurnExplorationBudgetMilliseconds,
+            DevelopmentStrategy = UnattendedTestRunner.CurrentDevelopmentStrategy,
             UseNoveltyPortfolio = settings.UseNoveltyPortfolio
                 || UnattendedTestRunner.UseNoveltyPortfolioOverride,
             UseBeamWidthPortfolio = settings.UseBeamWidthPortfolio
@@ -2378,6 +2383,12 @@ internal static partial class SolverController
     {
         if (ReferenceEquals(_search, search))
             search.Interaction.PublishProgress(progress);
+    }
+
+    internal static SolverProgress? CaptureDevelopmentMonitorProgress()
+    {
+        SolverSearchSession? search = Volatile.Read(ref _search);
+        return search == null ? null : Volatile.Read(ref search.Interaction.Progress);
     }
 
     private static string DescribeReplanAudit()

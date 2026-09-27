@@ -852,7 +852,7 @@ internal sealed partial class CombatBeamSolver
         {
             // 基础分成员（见 SolverSearchProfile.BaseScoreOnly）：中途排序只用基础分；未置位时下面逐位不变。
             if (_profile.BaseScoreOnly)
-                return node.Score;
+                return _developmentStrategy?.Rank(node, node.Score) ?? node.Score;
             int persistentBuffCap = _isActEndingBoss
                 ? SolverWeights.PersistentBuffDeltaBeamCap
                 : SolverWeights.StandardPersistentBuffDeltaBeamCap;
@@ -928,7 +928,8 @@ internal sealed partial class CombatBeamSolver
                 };
                 score += (perturbation.Scale - 1d) * term;
             }
-            return _profile.ContextualRanking is { } model ? score + model.Adjustment(node) : score;
+            score = _profile.ContextualRanking is { } model ? score + model.Adjustment(node) : score;
+            return _developmentStrategy?.Rank(node, score) ?? score;
         }
 
         private int RetainedAttackGrowth(SimulationSnapshot snapshot)

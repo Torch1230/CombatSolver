@@ -67,6 +67,29 @@ require_fixed() {
     fi
 }
 
+strategy_search="$search_root/DevelopmentSearchStrategy.cs"
+strategy_loader="$repository_root/src/Testing/DevelopmentStrategyLoader.cs"
+monitor_publisher="$repository_root/src/Testing/DevelopmentMonitorPublisher.cs"
+require_fixed "$monitor_publisher" "PeriodicTimer" "Monitor update cadence missing"
+require_fixed "$monitor_publisher" "CurrentBestResult" "Monitor scalar result projection missing"
+require_fixed "$monitor_publisher" "File.Move(temp, path, true)" "Monitor atomic publication missing"
+for monitor_entry in strategy-monitor.ps1 strategy-monitor.sh strategy-monitor-view.sh; do
+    [[ -f "$repository_root/tools/$monitor_entry" ]] || add_violation "Development monitor entry missing: $monitor_entry"
+done
+require_fixed "$strategy_search" "IDevelopmentSearchStrategy" "Strategy search contract missing"
+require_fixed "$strategy_search" "StrategyNodeFeatures" "Strategy node view missing"
+require_fixed "$strategy_search" "OrganizeMembers(" "Strategy member hook missing"
+for forbidden in AssemblyLoadContext File.ReadAllText SolverSettings.Current; do
+    if contains_fixed "$strategy_search" "$forbidden"; then
+        add_violation "$strategy_search: strategy search contract owns runtime loading: $forbidden"
+    fi
+done
+require_fixed "$strategy_loader" "AssemblyLoadContext(isCollectible: true)" "Collectible loader missing"
+require_fixed "$strategy_loader" "DevelopmentSearchStrategy(script" "Strategy loader handoff missing"
+require_fixed "$strategy_loader" "_context.Unload()" "Strategy unload missing"
+require_fixed "$repository_root/tools/run-unattended-test.ps1" "developmentStrategyAssemblyPath" "Windows strategy request wire missing"
+require_fixed "$repository_root/tools/run-unattended-test.sh" "development-strategy-assembly-path" "Linux strategy request wire missing"
+
 forbid_fixed() {
     local path="$1"
     local text="$2"
@@ -578,6 +601,7 @@ expected_beam_files=(
     CombatBeamSolver.CyclePlanning.cs
     CombatBeamSolver.CycleRegionRetention.cs
     CombatBeamSolver.CycleReplay.cs
+    CombatBeamSolver.EarlyTurnFrontier.cs
     CombatBeamSolver.Expansion.cs
     CombatBeamSolver.Expansion.Candidates.cs
     CombatBeamSolver.Expansion.Choices.cs

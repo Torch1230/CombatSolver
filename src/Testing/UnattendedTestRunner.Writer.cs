@@ -214,6 +214,9 @@ internal sealed partial class UnattendedTestRunner
             WriteResult(new UnattendedTestResult
             {
                 ProcessReusable = ProcessReusable,
+                ReusedProcess = UnattendedTestRunner.ReusedProcess,
+                DevelopmentStrategyScriptHash = request.DevelopmentStrategyScriptHash,
+                DevelopmentStrategyParametersHash = request.DevelopmentStrategyParametersHash,
                 RunId = request.RunId,
                 ScenarioId = request.ScenarioId,
                 Status = status,

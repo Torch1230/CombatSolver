@@ -404,7 +404,8 @@ internal sealed partial class CombatBeamSolver
             searchProfile: _profile,
             potionPolicyOverride: _potionPolicy,
             potionFreePolicyBaseline: _potionFreePolicyBaseline,
-            maximumPotionUses: _maximumPotionUses);
+            maximumPotionUses: _maximumPotionUses,
+            earliestPotionTurn: _earliestPotionTurn);
         worker._run.InitialPersistentBuffValue = _run.InitialPersistentBuffValue;
         worker._run.InitialEnemyStrengthSuppression = _run.InitialEnemyStrengthSuppression;
         worker._run.InitialEnemyWeakTurns = _run.InitialEnemyWeakTurns;
@@ -779,6 +780,7 @@ internal sealed partial class CombatBeamSolver
     {
         SimulationSnapshot snapshot = node.Snapshot;
         if (snapshot.PlayerDead || snapshot.AllEnemiesDead
+            || _earliestPotionTurn is { } earliestTurn && node.Turn < earliestTurn
             || _maximumPotionUses != null
                 && ExplicitPotionUseCount(node) >= _maximumPotionUses.Value)
         {
@@ -794,9 +796,7 @@ internal sealed partial class CombatBeamSolver
             if (potion == null
                 || !simulatedCombat.IsPotionAvailable(_player, potionSlot)
                 || !PotionOnUseSupport.CanSearch(potion)
-                || !AllowsPotionUse(potionSlot, potion.Id.Entry)
-                || PotionUsePolicy.RequiresOpeningUse(potion)
-                    && node.HasNonPotionAction)
+                || !AllowsPotionUse(potionSlot, potion.Id.Entry))
             {
                 continue;
             }

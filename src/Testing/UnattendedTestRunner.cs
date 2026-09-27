@@ -49,12 +49,16 @@ internal sealed partial class UnattendedTestRunner
     private static readonly ProtocolHost Host = new();
 
     public static bool IsActive => Host.IsActive;
+    internal static DevelopmentSearchStrategy? CurrentDevelopmentStrategy => Host.DevelopmentStrategy;
+    internal static bool ReusedProcess => Host.ReusedProcess;
     internal static bool IsReplayingRecordedInputs => CombatReplayRecording.TestObserver != null;
     public static bool AutomaticTurnSearchEnabled => Host.AutomaticTurnSearchEnabled;
     public static bool VerifyIncrementalSearch => Host.VerifyIncrementalSearch;
     public static bool FixedSearchBudget => Host.FixedSearchBudget;
     public static bool MeasureSearchPhases => Host.MeasureSearchPhases;
     public static int? SearchBudgetOverrideMilliseconds => Host.SearchBudgetOverrideMilliseconds;
+    public static int EarlyTurnExplorationDepth => Host.EarlyTurnExplorationDepth;
+    public static int EarlyTurnExplorationBudgetMilliseconds => Host.EarlyTurnExplorationBudgetMilliseconds;
     public static int? SearchMaxDegreeOfParallelismOverride => Host.SearchMaxDegreeOfParallelismOverride;
     public static bool UseNoveltyPortfolioOverride => Host.UseNoveltyPortfolioOverride;
     public static bool UseBeamWidthPortfolioOverride => Host.UseBeamWidthPortfolioOverride;
@@ -136,8 +140,18 @@ internal sealed partial class UnattendedTestRunner
     {
         CombatState? combatState = null;
         int startedTurn = 0;
+        DevelopmentMonitorPublisher? monitor = DevelopmentMonitorPublisher.Start(_request);
         try
         {
+            if (_request.ReplayMode == "SessionStart")
+            {
+                SetStage("passed");
+                _writer.Write("Passed", _stage, _request.CharacterId, _request.EncounterId,
+                    combatEnded: false, startedTurn: 0, finishedTurn: 0);
+                return RunCompletion.Passed;
+            }
+            SetStage("strategy_load");
+            _protocolHost.LoadDevelopmentStrategy(_request);
             ScenarioContext scenario = await _scenarioBuilder.BuildAsync();
             _resetModelStateIntegrationReference?.Invoke();
             combatState = scenario.CombatState;
@@ -264,6 +278,8 @@ internal sealed partial class UnattendedTestRunner
         }
         finally
         {
+            if (monitor != null)
+                await monitor.DisposeAsync();
             _releaseAdaptedOnPlayIntegration?.Invoke();
             ReleaseTurnSetupControlCheck();
             _executor.RestoreSettings();

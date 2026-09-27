@@ -1221,6 +1221,7 @@ internal static class CombatBugReportExporter
             useAutomaticSearch = true,
             useNoveltyPortfolio = settings.UseNoveltyPortfolio
                 || UnattendedTestRunner.UseNoveltyPortfolioOverride,
+            settings.UseEarlyTurnExploration,
             useBeamWidthPortfolio = settings.UseBeamWidthPortfolio
                 || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             searchMaxDegreeOfParallelism = UnattendedTestRunner.SearchMaxDegreeOfParallelismOverride ?? settings.SearchMaxDegreeOfParallelism,
@@ -1269,6 +1270,9 @@ internal static class CombatBugReportExporter
         captured["useBeamWidthPortfolio"] = policy.UseBeamWidthPortfolio;
         captured["portfolioSelector"] = policy.PortfolioExperiment?.Model?.ModelId;
         captured["useNoveltyPortfolio"] = policy.UseNoveltyPortfolio;
+        captured["earlyTurnExplorationDepth"] = policy.EarlyTurnExplorationDepth;
+        captured["earlyTurnExplorationBudgetMilliseconds"] =
+            policy.EarlyTurnExplorationBudgetMilliseconds;
         captured["predictPotionReward"] = policy.PredictPotionReward;
         captured["noveltyBudget"] = JsonSerializer.SerializeToNode(policy.NoveltyBudget, JsonOptions);
         captured["beamWidthPortfolioWidths"] = JsonSerializer.SerializeToNode(

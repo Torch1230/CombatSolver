@@ -83,13 +83,26 @@ internal sealed partial class CombatBeamSolver
         SearchNode parent,
         List<ActionCandidate> candidates)
     {
-        candidates.Sort(static (left, right) =>
-        {
-            int byScore = right.Node.Score.CompareTo(left.Node.Score);
-            return byScore != 0
-                ? byScore
-                : right.NormalizedValue.CompareTo(left.NormalizedValue);
-        });
+        if (_developmentStrategy == null)
+            candidates.Sort(static (left, right) =>
+            {
+                int byScore = right.Node.Score.CompareTo(left.Node.Score);
+                return byScore != 0 ? byScore : right.NormalizedValue.CompareTo(left.NormalizedValue);
+            });
+        else
+            candidates.Sort((left, right) =>
+            {
+                double leftScore = _developmentStrategy.Prioritize(left.Node,
+                    left.Node.Action?.CardId ?? "", left.Damage, left.Block,
+                    left.EnergySpent, left.StarsSpent, left.NormalizedValue, left.Node.Score);
+                double rightScore = _developmentStrategy.Prioritize(right.Node,
+                    right.Node.Action?.CardId ?? "", right.Damage, right.Block,
+                    right.EnergySpent, right.StarsSpent, right.NormalizedValue, right.Node.Score);
+                int byScore = rightScore.CompareTo(leftScore);
+                return byScore != 0
+                    ? byScore
+                    : right.NormalizedValue.CompareTo(left.NormalizedValue);
+            });
         int limit = Math.Min(_profile.MaxCardBranchesPerNode, candidates.Count);
         List<ActionCandidate> selected = new(limit + 2);
 

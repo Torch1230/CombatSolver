@@ -1254,6 +1254,7 @@ internal sealed class SimulationSnapshot(
     public int PlayerMaxHp { get; } = playerMaxHp;
     public int CumulativePlayerHpLost { get; } = cumulativePlayerHpLost;
     public int RecoveredPlayerHp { get; } = recoveredPlayerHp;
+    public int ExplicitPotionStrategicCost { get; init; }
 
     /// <summary>HP a one-shot death-save relic put back on this route.</summary>
     /// <seealso cref="ActEndingBossPolicy.DeathSavePremium"/>
@@ -1466,6 +1467,7 @@ internal sealed class SolverResult
     public required IReadOnlyList<PlanCardChoice> TurnSetupChoices { get; init; }
     public ContinuationStamp? TurnSetupPlayState { get; init; }
     public required SelectedSearchPlan BestNode { get; init; }
+    public IReadOnlyList<PredictedPotionUse> PotionUses { get; init; } = [];
     public required SolverSnapshot Snapshot { get; init; }
     public required IntentForecast Forecast { get; init; }
     public required int ExpandedNodes { get; init; }
@@ -1773,6 +1775,7 @@ internal sealed class SolverResult
             EnergyLeftByTurn = EnergyLeftByTurn,
             PotionCountByTurn = PotionCountByTurn,
             PotionStrategicCostByTurn = PotionStrategicCostByTurn,
+            PotionUses = PotionUses,
             KillsAfterAction = KillsAfterAction,
             CombatEndedTurn = CombatEndedTurn,
             DeathTurn = DeathTurn,

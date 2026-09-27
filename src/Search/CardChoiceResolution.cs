@@ -10,6 +10,8 @@ namespace CombatSolver;
 
 internal static partial class CardChoiceSupport
 {
+    internal const int NightmareCopyCount = 3;
+
     public static bool Apply(
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
@@ -301,7 +303,7 @@ internal static partial class CardChoiceSupport
             return;
         NightmarePower power = combat.AddPowerInstance<NightmarePower>(
             source.Owner.Creature,
-            3,
+            NightmareCopyCount,
             source.Owner.Creature);
         combat.SetNightmareSelection(power, selected[0]);
     }

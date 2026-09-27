@@ -119,6 +119,70 @@ internal sealed class PotionStrategySnapshot
             ambergrisCount);
     }
 
+    public ForcedPotionUseEvaluation EvaluateForcedUses(SearchNode node)
+    {
+        int count = 0;
+        int strategicCost = 0;
+        int ambergrisCount = 0;
+        foreach (PotionSlotDirective directive in Directives)
+        {
+            if (directive.Directive != SolverPotionDirective.Force)
+                continue;
+            SearchNode? useNode = null;
+            for (SearchNode? cursor = node; cursor?.Action is { } action; cursor = cursor.Parent)
+            {
+                if (action.Kind == PlanActionKind.UsePotion
+                    && action.PotionSlot == directive.Slot
+                    && string.Equals(action.PotionId, directive.PotionId, StringComparison.Ordinal))
+                {
+                    useNode = cursor;
+                    break;
+                }
+            }
+            if (useNode == null)
+                continue;
+            count++;
+            strategicCost += useNode.Snapshot.ExplicitPotionStrategicCost
+                - useNode.Parent!.Snapshot.ExplicitPotionStrategicCost;
+            if (directive.PotionId == "AMBERGRIS")
+                ambergrisCount++;
+        }
+        return new ForcedPotionUseEvaluation(count == ForcedDirectiveCount,
+            count, strategicCost, ambergrisCount);
+    }
+
+    public ForcedPotionUseEvaluation EvaluateForcedUses(
+        IReadOnlyList<PredictedPotionUse> potionUses)
+    {
+        int count = 0;
+        int strategicCost = 0;
+        int ambergrisCount = 0;
+        foreach (PotionSlotDirective directive in Directives)
+        {
+            if (directive.Directive != SolverPotionDirective.Force)
+                continue;
+            PredictedPotionUse? use = null;
+            for (int index = potionUses.Count - 1; index >= 0; index--)
+            {
+                PredictedPotionUse candidate = potionUses[index];
+                if (candidate.Automatic || candidate.Slot != directive.Slot
+                    || !string.Equals(candidate.PotionId, directive.PotionId,
+                        StringComparison.Ordinal))
+                    continue;
+                use = candidate;
+                break;
+            }
+            if (use is not { } matched)
+                continue;
+            count++;
+            strategicCost += matched.StrategicHpCost;
+            if (directive.PotionId == "AMBERGRIS")
+                ambergrisCount++;
+        }
+        return new ForcedPotionUseEvaluation(count == ForcedDirectiveCount,
+            count, strategicCost, ambergrisCount);
+    }
+
     public string DescribeForcedUses()
         => string.Join(", ", Directives
             .Where(directive => directive.Directive == SolverPotionDirective.Force)

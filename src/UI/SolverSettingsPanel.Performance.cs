@@ -26,6 +26,7 @@ internal sealed partial class SolverSettingsPanel
                     PerformancePreset = SolverPerformancePreset.VeryHigh,
                     UseBeamWidthPortfolio = true,
                     UseNoveltyPortfolio = true,
+                    UseEarlyTurnExploration = true,
                     ShowNoveltyPortfolioHint = false,
                     EnableNoGcRegion = false,
                     NoGcRegionBudgetGigabytes = 8d,
@@ -35,6 +36,7 @@ internal sealed partial class SolverSettingsPanel
                 && SolverSettings.ResolvePerformancePreset(migrated) == SolverPerformancePreset.Medium
                 && migrated.UseBeamWidthPortfolio
                 && migrated.UseNoveltyPortfolio
+                && migrated.UseEarlyTurnExploration
                 && !migrated.ShowNoveltyPortfolioHint
                 && !migrated.EnableNoGcRegion
                 && migrated.NoGcRegionBudgetGigabytes == SolverSettings.DefaultNoGcRegionBudgetGigabytes;
@@ -46,6 +48,7 @@ internal sealed partial class SolverSettingsPanel
                     SearchMaxExpandedNodes = 1_000_001,
                     UseBeamWidthPortfolio = false,
                     UseNoveltyPortfolio = false,
+                    UseEarlyTurnExploration = false,
                     ShowNoveltyPortfolioHint = true,
                     EnableNoGcRegion = false,
                     NoGcRegionBudgetGigabytes = 64d,
@@ -57,6 +60,7 @@ internal sealed partial class SolverSettingsPanel
                 && SolverSettings.ResolvePerformanceValues(refinementMigrated).Profile.MaxExpandedNodes == 1_000_001
                 && !refinementMigrated.UseBeamWidthPortfolio
                 && !refinementMigrated.UseNoveltyPortfolio
+                && !refinementMigrated.UseEarlyTurnExploration
                 && refinementMigrated.ShowNoveltyPortfolioHint
                 && !refinementMigrated.EnableNoGcRegion
                 && refinementMigrated.NoGcRegionBudgetGigabytes == 64d;
@@ -65,10 +69,12 @@ internal sealed partial class SolverSettingsPanel
                 {
                     UseBeamWidthPortfolio = false,
                     UseNoveltyPortfolio = true,
+                    UseEarlyTurnExploration = true,
                     ShowNoveltyPortfolioHint = false,
                 });
             bool postMigrationPreferencePreserved = !currentPreferences.UseBeamWidthPortfolio
                 && currentPreferences.UseNoveltyPortfolio
+                && currentPreferences.UseEarlyTurnExploration
                 && !currentPreferences.ShowNoveltyPortfolioHint;
             string legacyJson =
                 "{\"performanceMigrationVersion\":" +
@@ -78,6 +84,7 @@ internal sealed partial class SolverSettingsPanel
             bool legacyDefaultApplied = legacy.EnableNoGcRegion
                                         && legacy.NoGcRegionBudgetGigabytes == 32d
                                         && !legacy.UseNoveltyPortfolio
+                                        && !legacy.UseEarlyTurnExploration
                                         && legacy.ShowNoveltyPortfolioHint
                                         && legacy.ShowSpeedXWarning;
             SolverSettingsData preset = SolverSettings.ApplyPerformancePreset(
@@ -85,6 +92,7 @@ internal sealed partial class SolverSettingsPanel
                 {
                     UseBeamWidthPortfolio = true,
                     UseNoveltyPortfolio = true,
+                    UseEarlyTurnExploration = true,
                     EnableNoGcRegion = false,
                     NoGcRegionBudgetGigabytes = 64d,
                 },
@@ -99,6 +107,7 @@ internal sealed partial class SolverSettingsPanel
                    && preset.NoGcRegionBudgetGigabytes == 64d
                    && roundTripped.UseBeamWidthPortfolio
                    && roundTripped.UseNoveltyPortfolio
+                   && roundTripped.UseEarlyTurnExploration
                    && !roundTripped.EnableNoGcRegion
                    && roundTripped.NoGcRegionBudgetGigabytes == 64d
                    && CommitPending()

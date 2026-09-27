@@ -72,6 +72,13 @@ internal static class SolverInterimResultOrdering
             return candidate.GrowthHpCredit > current.GrowthHpCredit;
         if (candidate.GrowthRewardCount != current.GrowthRewardCount)
             return candidate.GrowthRewardCount > current.GrowthRewardCount;
+        if (candidate.StrategicHpDeficit == current.StrategicHpDeficit
+            && candidate.PotionStrategicCost == current.PotionStrategicCost
+            && candidate.ProjectedBattlePotionCount == current.ProjectedBattlePotionCount
+            && candidate.ProjectedBattleHpLost != current.ProjectedBattleHpLost)
+        {
+            return candidate.ProjectedBattleHpLost < current.ProjectedBattleHpLost;
+        }
         comparison = (candidate.CombatEndedTurn ?? int.MaxValue)
             .CompareTo(current.CombatEndedTurn ?? int.MaxValue);
         if (comparison != 0)

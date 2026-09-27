@@ -22,6 +22,27 @@ internal sealed partial class UnattendedTestRunner
         private int _injectedPlayerHpLoss;
         private int _clearPlayerBlockBeforeEndTurn;
         private int _clearedPlayerBlock;
+        private DevelopmentStrategyLoader? _strategyLoader;
+        public DevelopmentSearchStrategy? DevelopmentStrategy => _strategyLoader?.Strategy;
+        public bool ReusedProcess => _acceptedRequestCount > 1;
+
+        public void LoadDevelopmentStrategy(UnattendedTestRequest request)
+        {
+            if (request.DevelopmentStrategyAssemblyPath == null)
+            {
+                if (request.DevelopmentStrategyParametersPath != null)
+                    throw new InvalidDataException("Strategy parameters require a strategy assembly.");
+                return;
+            }
+            if (request.DevelopmentStrategyParametersPath == null
+                || request.DevelopmentStrategyScriptHash == null
+                || request.DevelopmentStrategyParametersHash == null)
+                throw new InvalidDataException("Strategy request is missing frozen inputs or hashes.");
+            _strategyLoader = DevelopmentStrategyLoader.Load(
+                request.DevelopmentStrategyAssemblyPath,
+                request.DevelopmentStrategyParametersPath,
+                request.DevelopmentStrategyParametersHash);
+        }
 
         public bool IsActive { get; private set; }
         public bool AutomaticTurnSearchEnabled { get; private set; } = true;
@@ -42,6 +63,8 @@ internal sealed partial class UnattendedTestRunner
         public int? TranspositionEntryLimitOverride { get; private set; }
         public int MemoryNoProgressRecoveryLimitOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
+        public int EarlyTurnExplorationDepth { get; private set; }
+        public int EarlyTurnExplorationBudgetMilliseconds { get; private set; }
 
         public void TryStart(NGame? host)
         {
@@ -169,7 +192,10 @@ internal sealed partial class UnattendedTestRunner
                         UnattendedAsyncActivityTracker.AbortRequest();
                         return;
                     }
-                    await WaitUntilReusableAsync(host);
+                    if (request.ReplayMode == "SessionStart")
+                        await WaitUntilSessionStartReadyAsync(host);
+                    else
+                        await WaitUntilReusableAsync(host);
                     WriteReady(request.RunId, held: false);
                 }
             }
@@ -191,17 +217,19 @@ internal sealed partial class UnattendedTestRunner
             bool reclaimedAfterQuiescence = false;
             while (System.Environment.TickCount64 < deadline)
             {
-                bool gameIdle = !RunManager.Instance.IsInProgress
-                    && !RunManager.Instance.IsCleaningUp
-                    && !RunManager.Instance.ActionExecutor.IsRunning
-                    && RunManager.Instance.ActionQueueSet.IsEmpty
-                    && !CombatManager.Instance.IsStarting
-                    && !CombatManager.Instance.IsInProgress
-                    && CombatManager.Instance.DebugOnlyGetState() == null
+                bool gameIdle = RunManager.Instance is { ActionExecutor: not null, ActionQueueSet: not null } run
+                    && CombatManager.Instance is { } combat
+                    && !run.IsInProgress
+                    && !run.IsCleaningUp
+                    && !run.ActionExecutor.IsRunning
+                    && run.ActionQueueSet.IsEmpty
+                    && !combat.IsStarting
+                    && !combat.IsInProgress
+                    && combat.DebugOnlyGetState() == null
                     && CardSelectCmd.Selector == null
                     && !SolverController.IsSearching
                     && !SolverController.IsDeploying
-                    && host.RootSceneContainer.CurrentScene is NMainMenu;
+                    && host.RootSceneContainer?.CurrentScene is NMainMenu;
                 bool idle = UnattendedAsyncActivityTracker.IsIdle && gameIdle;
                 if (!idle)
                 {
@@ -248,6 +276,14 @@ internal sealed partial class UnattendedTestRunner
 
             throw new TimeoutException(
                 $"无人测试进程在 {quiescenceTimeoutMilliseconds} ms 内没有完成场景清理。");
+        }
+
+        private static async Task WaitUntilSessionStartReadyAsync(NGame host)
+        {
+            for (int frame = 0; frame < 2; frame++)
+                await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (!UnattendedAsyncActivityTracker.TryEndRequest())
+                throw new InvalidOperationException("Session start left unfinished asynchronous work.");
         }
 
         private static async Task WaitUntilHeldAsync(NGame host)
@@ -325,6 +361,17 @@ internal sealed partial class UnattendedTestRunner
 
         public void ConfigureSearchOverrides(UnattendedTestRequest request)
         {
+            int earlyTurnDepth = request.EarlyTurnExplorationDepthForTest ?? 0;
+            if (earlyTurnDepth is < 0 or > 2)
+                throw new InvalidOperationException("早期回合探索深度必须在 0..2 之间。");
+            if (earlyTurnDepth > 0
+                && (request.ReplayMode != "SearchOnly"
+                    || request.TimeoutSeconds is < 15 or > 2400))
+                throw new InvalidOperationException(
+                    "早期回合探索只支持 15..2400 秒的 SearchOnly 问题包请求。");
+            EarlyTurnExplorationDepth = earlyTurnDepth;
+            EarlyTurnExplorationBudgetMilliseconds = earlyTurnDepth == 0
+                ? 0 : (int)(request.TimeoutSeconds * 1000) - 10_000;
             VerifyIncrementalSearch = request.VerifyIncrementalSearch;
             FixedSearchBudget = request.FixedSearchBudget;
             MeasureSearchPhases = request.MeasureSearchPhases;
@@ -379,6 +426,8 @@ internal sealed partial class UnattendedTestRunner
 
         private void Reset()
         {
+            _strategyLoader?.Dispose();
+            _strategyLoader = null;
             IsActive = false;
             AutomaticTurnSearchEnabled = true;
             VerifyIncrementalSearch = false;
@@ -401,6 +450,8 @@ internal sealed partial class UnattendedTestRunner
             _clearPlayerBlockBeforeEndTurn = 0;
             _clearedPlayerBlock = 0;
             SearchBudgetOverrideMilliseconds = null;
+            EarlyTurnExplorationDepth = 0;
+            EarlyTurnExplorationBudgetMilliseconds = 0;
         }
     }
 }

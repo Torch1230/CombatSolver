@@ -155,7 +155,7 @@ internal static class PotionOnUseSupport
                     PotionModel generated = PotionFactory.CreateRandomPotionOutOfCombat(
                         recipient,
                         simulator.Rng.CombatPotionGeneration);
-                    if (!combat.TryProcurePotion(recipient, generated))
+                    if (!combat.TryProcurePotion(recipient, generated, freeFromEntropic: true))
                         break;
                 }
                 break;

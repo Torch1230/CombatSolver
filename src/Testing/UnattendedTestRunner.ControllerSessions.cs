@@ -17,6 +17,8 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("多宽度路线精炼必须默认开启。");
         if (new SolverSettingsData().UseNoveltyPortfolio)
             throw new InvalidOperationException("多策略搜索必须默认关闭。");
+        if (new SolverSettingsData().UseEarlyTurnExploration)
+            throw new InvalidOperationException("前两回合深入探索必须默认关闭。");
         if (!new SolverSettingsData().ShowNoveltyPortfolioHint
             || !new SolverSettingsData().ShowSpeedXWarning)
         {
@@ -37,17 +39,30 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("大战损性能提示没有遵守 8 HP 触发阈值。");
         SolverSettingsSnapshot portfolioSettings = SolverSettings.Capture();
         SearchPolicySnapshot portfolioEnabled = SolverController.CaptureSearchPolicy(
-            portfolioSettings with { UseBeamWidthPortfolio = true, UseNoveltyPortfolio = true },
+            portfolioSettings with
+            {
+                UseBeamWidthPortfolio = true,
+                UseNoveltyPortfolio = true,
+                UseEarlyTurnExploration = true,
+            },
             combat,
             includeTurnSetup: false,
             theftPolicy: null);
         SearchPolicySnapshot portfolioDisabled = SolverController.CaptureSearchPolicy(
-            portfolioSettings with { UseBeamWidthPortfolio = false, UseNoveltyPortfolio = false },
+            portfolioSettings with
+            {
+                UseBeamWidthPortfolio = false,
+                UseNoveltyPortfolio = false,
+                UseEarlyTurnExploration = false,
+            },
             combat,
             includeTurnSetup: false,
             theftPolicy: null);
         if (!portfolioEnabled.UseBeamWidthPortfolio || portfolioDisabled.UseBeamWidthPortfolio
-            || !portfolioEnabled.UseNoveltyPortfolio || portfolioDisabled.UseNoveltyPortfolio)
+            || !portfolioEnabled.UseNoveltyPortfolio || portfolioDisabled.UseNoveltyPortfolio
+            || portfolioEnabled.EarlyTurnExplorationDepth != UnattendedTestRunner.EarlyTurnExplorationDepth
+            || portfolioEnabled.EarlyTurnExplorationBudgetMilliseconds != UnattendedTestRunner.EarlyTurnExplorationBudgetMilliseconds
+            || portfolioDisabled.EarlyTurnExplorationDepth != UnattendedTestRunner.EarlyTurnExplorationDepth)
             throw new InvalidOperationException("组合搜索设置没有按搜索请求冻结。");
         if (!portfolioEnabled.UseAutomaticSearch || !portfolioDisabled.UseAutomaticSearch
             || !SolverOverlay.AutomaticSearchControlConfiguredForTesting)
@@ -457,6 +472,7 @@ internal sealed partial class UnattendedTestRunner
                 != SolverPerformancePreset.Medium
             || !notificationDefaults.UseBeamWidthPortfolio
             || notificationDefaults.UseNoveltyPortfolio
+            || notificationDefaults.UseEarlyTurnExploration
             || !notificationDefaults.EnableNoGcRegion
             || notificationDefaults.NoGcRegionBudgetGigabytes
                 != SolverSettings.DefaultNoGcRegionBudgetGigabytes)

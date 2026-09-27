@@ -28,6 +28,41 @@ $forbiddenSearchReferences = @(
 )
 
 $violations = [System.Collections.Generic.List[string]]::new()
+$strategySearch = Join-Path $searchRoot 'DevelopmentSearchStrategy.cs'
+$strategyLoader = Join-Path $repositoryRoot 'src/Testing/DevelopmentStrategyLoader.cs'
+$monitorPublisher = Join-Path $repositoryRoot 'src/Testing/DevelopmentMonitorPublisher.cs'
+foreach ($required in @('PeriodicTimer', 'CurrentBestResult', 'File.Move(temp, path, true)')) {
+    if (-not (Select-String -LiteralPath $monitorPublisher -SimpleMatch $required -Quiet)) {
+        $violations.Add("Development monitor publisher missing: $required")
+    }
+}
+foreach ($relative in @('tools/strategy-monitor.ps1', 'tools/strategy-monitor.sh', 'tools/strategy-monitor-view.sh')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $relative) -PathType Leaf)) {
+        $violations.Add("Development monitor entry missing: $relative")
+    }
+}
+foreach ($required in @('IDevelopmentSearchStrategy', 'StrategyNodeFeatures', 'OrganizeMembers(')) {
+    if (-not (Select-String -LiteralPath $strategySearch -SimpleMatch $required -Quiet)) {
+        $violations.Add("Strategy search contract missing: $required")
+    }
+}
+foreach ($forbidden in @('AssemblyLoadContext', 'File.ReadAllText', 'SolverSettings.Current')) {
+    if (Select-String -LiteralPath $strategySearch -SimpleMatch $forbidden -Quiet) {
+        $violations.Add("Strategy search contract owns runtime loading: $forbidden")
+    }
+}
+foreach ($required in @('AssemblyLoadContext(isCollectible: true)', 'DevelopmentSearchStrategy(script', '_context.Unload()')) {
+    if (-not (Select-String -LiteralPath $strategyLoader -SimpleMatch $required -Quiet)) {
+        $violations.Add("Development strategy loader missing: $required")
+    }
+}
+foreach ($script in @('tools/run-unattended-test.ps1', 'tools/run-unattended-test.sh')) {
+    $path = Join-Path $repositoryRoot $script
+    if (-not (Select-String -LiteralPath $path -SimpleMatch 'developmentStrategyAssemblyPath' -Quiet) -and
+        -not (Select-String -LiteralPath $path -SimpleMatch 'development-strategy-assembly-path' -Quiet)) {
+        $violations.Add("Strategy request wire missing: $script")
+    }
+}
 $phasePath = Join-Path $searchRoot 'CombatBeamSolver.Phases.cs'
 $terminalPath = Join-Path $searchRoot 'CombatBeamSolver.Terminal.cs'
 if (Select-String -LiteralPath $phasePath -SimpleMatch 'CaptureContinuation(node)' -Quiet) {
@@ -607,6 +642,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.CyclePlanning.cs",
     "CombatBeamSolver.CycleRegionRetention.cs",
     "CombatBeamSolver.CycleReplay.cs",
+    "CombatBeamSolver.EarlyTurnFrontier.cs",
     "CombatBeamSolver.Expansion.cs",
     "CombatBeamSolver.Expansion.Candidates.cs",
     "CombatBeamSolver.Expansion.Choices.cs",

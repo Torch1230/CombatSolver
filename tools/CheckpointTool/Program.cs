@@ -3,10 +3,12 @@ using CombatSolver.Replay;
 
 if (args is ["self-test"])
     return ArchiveContractTests.Run();
+if (args.Length >= 2 && args[0] == "session")
+    return await StrategySessionRunner.Run(args[1..]);
 
 if (args.Length < 2 || args[0] is not ("preflight" or "prepare" or "batch"))
 {
-    Console.Error.WriteLine("CheckpointTool preflight ARCHIVE [SELECTOR] | prepare ARCHIVE SELECTOR OUTPUT | batch INPUT [--mode RestoreOnly --output DIR --resume]");
+    Console.Error.WriteLine("CheckpointTool preflight ARCHIVE [SELECTOR] | prepare ARCHIVE SELECTOR OUTPUT | batch INPUT | session start|run|status|stop NAME [options]");
     return 2;
 }
 try

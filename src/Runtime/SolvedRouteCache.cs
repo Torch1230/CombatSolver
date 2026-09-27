@@ -71,6 +71,8 @@ internal sealed class SolvedRouteCache(string path)
             policy.UseAutomaticSearch,
             policy.UseBeamWidthPortfolio,
             policy.UseNoveltyPortfolio,
+            policy.EarlyTurnExplorationDepth,
+            policy.EarlyTurnExplorationBudgetMilliseconds,
             policy.PredictPotionReward,
             policy.NoveltyBudget,
             policy.BeamWidthPortfolioWidths,

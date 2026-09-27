@@ -5,6 +5,12 @@
 - [零训练估值第二版](strategy/outcome-valuation-v2-20260927.md)：完整基线、终局见证调度、新种子确认与完整协调器对照，包含两轮累计时间。
 - [半小时预算的零训练估值研究](strategy/outcome-valuation-20260927.md)：17 个局面的动作条件续搜、实际成本、未替换生产评分的原因与复现入口。
 - [搜索热路径分配](performance/search-hotpath-allocation-20260925.md)：Server GC 多预设与 17 个战斗根的直接交错对照、固定工作量等价及未采用实验。
+- [更优世界线逐包策略记录](strategy/strategy-optimization-20260923.md)：逐包同根基线、人工对照和优化结果。
+- [策略优化 Part 1 交接](strategy/strategy-optimization-part1-handoff-20260927.md)：实验开关、已测作用、剩余包与继续排查口径。
+- [日志站更优世界线前 150 包](strategy/worldline-top150-20260926.md)：按站点战损下降值固定的处理顺序。
+
+- [常驻策略迭代会话](strategy/development-session.md)：跨包复用无头游戏、C# 策略脚本与参数热更新。
+
 - [可选 ServerGC 启动配置](performance/server-gc-launch-profile-20260924.md)：仅本次进程生效的启动方式、保存设置边界与原生宿主验收。
 - [GC 完成链修复与优化筛选](performance/gc-completion-allocation-20260921.md)：替代 #116/#120 的窄修复、失败复现与重新实测取舍。
 - [增量历史计数](strategy/incremental-history-counters.md)：生命周期、测试构建与构键计时。
@@ -19,6 +25,7 @@
 
 | 要查什么 | 入口 |
 |---|---|
+| 0.47.0 策略优化 Part 1 | [0.47.0 更新日志](releases/0.47.0-RELEASE_NOTES.md) |
 | 0.46.4 战损路线筛选与 Loadout 兼容的玩家说明 | [0.46.4 更新日志](releases/0.46.4-RELEASE_NOTES.md) |
 | 0.46.3 玩家更新内容 | [0.46.3 更新日志](releases/0.46.3-RELEASE_NOTES.md) |
 | 策略侧栏和可选 ServerGC 启动方式的玩家说明 | [0.46.2 更新日志](releases/0.46.2-RELEASE_NOTES.md) |

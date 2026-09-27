@@ -42,6 +42,11 @@ internal sealed class UnattendedTestRequest
     public string CheckpointSelector { get; init; } = CheckpointArchive.DefaultFixtureSelector;
     public string ReplayMode { get; init; } = "RestoreOnly";
     public string? ReplayPolicyOverridePath { get; init; }
+    public string? DevelopmentStrategyAssemblyPath { get; init; }
+    public string? DevelopmentStrategyParametersPath { get; init; }
+    public string? DevelopmentStrategyScriptHash { get; init; }
+    public string? DevelopmentStrategyParametersHash { get; init; }
+    public string? DevelopmentMonitorStatePath { get; init; }
     public string? EvidenceDirectory { get; init; }
     public bool PreserveNativeCombatStateForTest { get; init; }
     public int Ascension { get; init; }
@@ -104,6 +109,7 @@ internal sealed class UnattendedTestRequest
     public bool MeasureSearchPhases { get; init; }
     public bool HoldAfterInitialSearch { get; init; }
     public int? SearchBudgetOverrideMilliseconds { get; init; }
+    public int? EarlyTurnExplorationDepthForTest { get; init; }
     [System.Text.Json.Serialization.JsonPropertyName("shortSearchBudgetOverrideMilliseconds")]
     public int? LegacyShortSearchBudgetMilliseconds { get; init; }
     [System.Text.Json.Serialization.JsonPropertyName("deepSearchBudgetOverrideMilliseconds")]
@@ -516,6 +522,11 @@ internal sealed class UnattendedTestResult
 {
     public bool ProcessReusable { get; init; }
     public int ProcessId { get; init; } = System.Environment.ProcessId;
+    public bool ReusedProcess { get; init; }
+    public string? DevelopmentStrategyScriptHash { get; init; }
+    public string? DevelopmentStrategyParametersHash { get; init; }
+    public string MainAssemblyHash { get; init; } = Convert.ToHexString(
+        System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(UnattendedTestResult).Assembly.Location)));
     public int SchemaVersion { get; init; } = 1;
     public required string RunId { get; init; }
     public required string ScenarioId { get; init; }

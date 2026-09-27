@@ -113,6 +113,7 @@ internal sealed record SolverSettingsData
     // Legacy JSON compatibility; the player now uses automatic search regardless of these values.
     public bool UseBeamWidthPortfolio { get; init; } = true;
     public bool UseNoveltyPortfolio { get; init; }
+    public bool UseEarlyTurnExploration { get; init; }
     public double? SearchTimeLimitSeconds { get; init; }
     public bool AutoConfigureServerGc { get; init; } = true;
     public bool EnableNoGcRegion { get; init; } = true;
@@ -161,6 +162,7 @@ internal sealed record SolverSettingsSnapshot(
     public bool IgnoreLongTermRewards { get; init; }
     public bool UseBeamWidthPortfolio { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
+    public bool UseEarlyTurnExploration { get; init; }
     public bool PredictPotionReward { get; init; }
 }
 
@@ -278,6 +280,7 @@ internal static class SolverSettings
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"performance_preset={ResolvePerformancePreset(migrated)} " +
             $"beam_width_portfolio={migrated.UseBeamWidthPortfolio.ToString().ToLowerInvariant()} " +
+            $"early_turn_exploration={migrated.UseEarlyTurnExploration.ToString().ToLowerInvariant()} " +
             $"max_dop={Capture().SearchMaxDegreeOfParallelism} " +
             $"search_budget_ms={Capture().Profile.SoftTimeBudgetMilliseconds} " +
             $"no_gc_enabled={Capture().EnableNoGcRegion.ToString().ToLowerInvariant()} " +
@@ -324,6 +327,7 @@ internal static class SolverSettings
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
             UseBeamWidthPortfolio = data.UseBeamWidthPortfolio,
             UseNoveltyPortfolio = data.UseNoveltyPortfolio,
+            UseEarlyTurnExploration = data.UseEarlyTurnExploration,
             PredictPotionReward = data.PredictPotionReward,
         };
     }

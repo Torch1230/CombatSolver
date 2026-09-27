@@ -32,6 +32,8 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - 遗物策略的可控范围由 RelicCounterCatalog 声明，Runtime 冻结本场目标，Search 只读已有分支计数并输出标量评价；UI 独占输入与游戏名称。不要新建第二套可变战斗计数，也不要在 worker 读取设置或原生显示动画计数。
 
 - Search 只接收快照、policy、diagnostics、frame signal 和 cancellation；不引用 Runtime 全局、UI 或 Testing。
+- 本地策略脚本由 CheckpointTool 单独编译、Testing 请求宿主加载和卸载；Search 只读冻结的策略接口与分支数值特征，不承担脚本文件读取或程序集加载。无脚本请求保持生产排序及预算路径。
+- 常驻会话的开发监控由 Testing 最多每秒发布一次纯标量快照，独立窗口进程只读会话文件；Search 不引用监控窗口或文件。关闭窗口不取消请求，stop 由工具层按进程身份清理。
 - `CombatBeamSolver.Transpositions` 独占转置标签及其支配前沿；`Models` 保留运行上下文和搜索特征。纯存储合同通过链接实际partial源码验证，不为测试复制生产判定。
 - 玩家回合末第二阶段由 `PlayerTurnEndLifecycle.RunPhaseTwo` 统一安排常规 Power、遗物及晚期 Power；Search、风险预估和无人差分调用同一入口，阶段内的挂起选择立即返回。
 - `src/Api/PreCombat*` 拥有公开 API v5 的战前请求、状态/设置令牌与独立游戏 worker。主线程捕获，worker 通过无人协议恢复并复核完整跑局；Mod 使用独立副本、当前账号设置映射到 worker，求解设置变化使缓存及 worker 失效。跨请求停止/期限不能只等待繁忙锁；此边界不把 headless 等同操作系统沙箱。

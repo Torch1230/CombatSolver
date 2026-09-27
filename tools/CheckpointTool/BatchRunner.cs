@@ -21,7 +21,7 @@ internal static class BatchRunner
             else if (index + 1 < args.Length) options.Add(name, args[++index]);
             else throw new ArgumentException("missing_option_value:" + name);
         }
-        string[] allowed = ["--output", "--mode", "--selector", "--policy", "--manifest", "--game-root", "--ritsu-root", "--timeout", "--max-items", "--resume", "--retry-failures"];
+        string[] allowed = ["--output", "--mode", "--selector", "--policy", "--manifest", "--game-root", "--ritsu-root", "--timeout", "--max-items", "--resume", "--retry-failures", "--instance"];
         foreach (string name in options.Keys)
             if (!allowed.Contains(name)) throw new ArgumentException("unknown_option:" + name);
         string Option(string name, string fallback) => options.GetValueOrDefault(name, fallback);
@@ -210,8 +210,12 @@ internal static class BatchRunner
         row["betterThanManual"] = Number(row["relativeToManual"]) > 0;
     }
 
-    private static async Task<int> Launch(string project, Dictionary<string, string> options, string evidence,
-        int timeout, string? archive, string selector, string mode, string? policy, bool stop)
+    internal static async Task<int> Launch(string project, Dictionary<string, string> options, string evidence,
+        int timeout, string? archive, string selector, string mode, string? policy, bool stop,
+        string? strategyAssembly = null, string? strategyParameters = null,
+        string? strategyScriptHash = null, string? strategyParametersHash = null,
+        string? monitorStatePath = null, bool reuseOnly = false,
+        int earlyTurnExplorationDepth = 0)
     {
         bool windows = OperatingSystem.IsWindows();
         ProcessStartInfo start = new(windows ? "pwsh" : "bash")
@@ -221,21 +225,45 @@ internal static class BatchRunner
         void Arg(string ps, string sh, string? value = null) { start.ArgumentList.Add(windows ? "-" + ps : "--" + sh); if (value != null) start.ArgumentList.Add(value); }
         if (options.TryGetValue("--game-root", out string? game)) Arg("Sts2GameRoot", "sts2-game-root", Path.GetFullPath(game));
         if (options.TryGetValue("--ritsu-root", out string? ritsu)) Arg("RitsuWorkshopRoot", "ritsu-workshop-root", Path.GetFullPath(ritsu));
+        if (options.TryGetValue("--instance", out string? instance)) Arg("HeadlessInstance", "headless-instance", instance);
+        if (options.TryGetValue("--headless-memory-reservation-mib", out string? hostMemory))
+            Arg("HeadlessMemoryReservationMiB", "headless-memory-reservation-mib", hostMemory);
         if (stop)
         {
             Arg("StopInstance", "stop-instance");
-            Arg("CleanupInstanceOnExit", "cleanup-instance-on-exit");
+            if (!options.ContainsKey("--instance"))
+                Arg("CleanupInstanceOnExit", "cleanup-instance-on-exit");
         }
         else
         {
-            Arg("CheckpointArchivePath", "checkpoint-archive-path", archive!);
+            if (archive != null) Arg("CheckpointArchivePath", "checkpoint-archive-path", archive);
             Arg("CheckpointSelector", "checkpoint-selector", selector);
             Arg("ReplayMode", "replay-mode", mode);
             Arg("EvidenceDirectory", "evidence-directory", evidence);
             Arg("HeadlessFastModeForTest", "headless-fast-mode-for-test", "Instant");
             Arg("TimeoutSeconds", "timeout-seconds", timeout.ToString());
+            if (options.ContainsKey("--instance"))
+            {
+                Arg("PerformancePresetForTest", "performance-preset-for-test", "VeryHigh");
+                Arg("SearchMaxDegreeOfParallelismForTest", "search-max-degree-of-parallelism-for-test", "8");
+                Arg("SearchBudgetOverrideMilliseconds", "search-budget-override-milliseconds", "180000");
+                if (earlyTurnExplorationDepth > 0)
+                    Arg("EarlyTurnExplorationDepthForTest", "early-turn-exploration-depth-for-test",
+                        earlyTurnExplorationDepth.ToString());
+            }
             Arg("KeepGameOpen", "keep-game-open");
             if (policy != null) Arg("ReplayPolicyOverridePath", "replay-policy-override-path", policy);
+            if (strategyAssembly != null)
+            {
+                Arg("DevelopmentStrategyAssemblyPath", "development-strategy-assembly-path", strategyAssembly);
+                Arg("DevelopmentStrategyParametersPath", "development-strategy-parameters-path", strategyParameters!);
+                Arg("DevelopmentStrategyScriptHash", "development-strategy-script-hash", strategyScriptHash!);
+                Arg("DevelopmentStrategyParametersHash", "development-strategy-parameters-hash", strategyParametersHash!);
+            }
+            if (monitorStatePath != null)
+                Arg("DevelopmentMonitorStatePath", "development-monitor-state-path", monitorStatePath);
+            if (reuseOnly)
+                Arg("ReuseOnly", "reuse-only");
         }
         using Process process = Process.Start(start) ?? throw new IOException("launcher_start_failed");
         using StreamWriter stdout = new(Path.Combine(evidence, stop ? "cleanup.log" : "launcher.log"), append: false);
