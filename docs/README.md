@@ -1,5 +1,6 @@
 # CombatSolver 文档导航
 
+- [夜间训练吞吐](strategy/overnight-training-throughput-20260927.md)：区分样本量和有效偏好、无信号行压缩、固定顺序的四路拟合，模型产物一致。
 - [共用自动调度与夜间扩展](strategy/shared-scheduler-20260927.md)：共用协调器、15 根开发验证的退化与风险、可恢复的均衡采集/训练任务。
 - [共用保路与数据隔离](strategy/shared-retention-and-split-20260927.md)：学习排序接回原保路职责、父节点标量生命周期、训练/验证/最终测试三组隔离。
 

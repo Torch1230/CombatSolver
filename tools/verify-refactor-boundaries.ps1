@@ -1768,6 +1768,8 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.NoveltySearch.cs'); Text = '=> policy.UseObjectiveSearch ? ObjectiveRankScore(node) : node.Score;' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'ConditionalWeakTable<SimulationSnapshot,' },
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.Phases.cs'); Text = '_ = ObjectiveRankScore(admitted);' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'MaxDegreeOfParallelism = maximumTrainingParallelism' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'splitGains[columnIndex * 32 + bin]' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/train.py'); Text = 'require_final_test=True' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/refit.py'); Text = 'require_final_test=True' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/prepare_training.py'); Text = 'require_final_test=True' },
@@ -1796,6 +1798,7 @@ if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeValueModel.c
 foreach ($contract in @(
     @{ Path = 'CombatBeamSolver.BeamRetentionPolicy.cs'; Text = '_objectiveRetention' },
     @{ Path = 'CombatBeamSolver.Phases.cs'; Text = 'policy = policy with { NoveltySearch = null };' },
+    @{ Path = 'SearchOutcomeValueModel.cs'; Text = 'Environment.ProcessorCount' },
     @{ Path = 'CombatBeamSolver.Retention.cs'; Text = 'RetainObjectives(' }
 )) {
     if (Select-String -LiteralPath (Join-Path $searchRoot $contract.Path) -SimpleMatch $contract.Text -Quiet) {

@@ -43,6 +43,8 @@ internal sealed partial class SearchOutcomeValueModel
     private const double LearningRate = 0.1;
     internal bool IsFitted => _forest != null;
     internal int FittedPairs { get; private set; }
+    internal int FittedRows { get; private set; }
+    internal int FittedRoots { get; private set; }
     internal int EligibleFeatures { get; private set; }
     internal int Samples => _observations.Values.Count(o => o.Outcome != null);
     private static ObservationKey Key(SearchNode node) => new(node.StateKey,
@@ -197,8 +199,10 @@ internal sealed partial class SearchOutcomeValueModel
     }
 
     private readonly record struct Pair(int Preferred, int Other, double Weight);
-    internal bool Fit(IReadOnlyList<TrainingRow[]> roots)
+    internal bool Fit(IReadOnlyList<TrainingRow[]> roots, int maximumTrainingParallelism = 1)
     {
+        if (maximumTrainingParallelism is < 1 or > 4)
+            throw new ArgumentOutOfRangeException(nameof(maximumTrainingParallelism));
         List<TrainingRow> rows = [];
         List<Pair> pairs = [];
         Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
@@ -244,7 +248,19 @@ internal sealed partial class SearchOutcomeValueModel
                 pairs.Add(new(offset + pair.Preferred, offset + pair.Other, 1d / count));
         }
         FittedPairs = pairs.Count;
+        FittedRoots = participatingRoots;
+        FittedRows = 0;
         if (pairs.Count < 2) return false;
+        // Validate every input above, but allocate feature histograms only for
+        // witnesses referenced by a sampled preference. Unknown comparisons and
+        // all-defeat pools supply no gradient, even if their raw row count is high.
+        // Preserve row/pair order exactly so compacting cannot change the model.
+        int[] observed = pairs.SelectMany(p => new[] { p.Preferred, p.Other }).Distinct().Order().ToArray();
+        int[] remap = new int[rows.Count];
+        for (int i = 0; i < observed.Length; i++) remap[observed[i]] = i;
+        rows = observed.Select(i => rows[i]).ToList();
+        pairs = pairs.Select(p => new Pair(remap[p.Preferred], remap[p.Other], p.Weight)).ToList();
+        FittedRows = rows.Count;
         // Correlated rows from one battle are not independent support for an
         // identity-specific coefficient or split. Count actual witnessed roots.
         int minimumRoots = Math.Min(3, participatingRoots);
@@ -252,7 +268,7 @@ internal sealed partial class SearchOutcomeValueModel
             .Select(p => p.Key).Order(StringComparer.Ordinal).ToArray();
         EligibleFeatures = _featureNames.Length;
         (double[] linearWeights, double[] scores) = FitLinearTerms(rows, pairs, _featureNames);
-        int[] indices = pairs.SelectMany(p => new[] { p.Preferred, p.Other }).Distinct().Order().ToArray();
+        int[] indices = Enumerable.Range(0, rows.Count).ToArray();
         // Learn splits from all observed columns. Randomly trying a few sparse
         // identities left most known preferences tied even on the fitting roots.
         List<(int Feature, double[] Cuts, byte[] Bins)> columns = [];
@@ -273,6 +289,15 @@ internal sealed partial class SearchOutcomeValueModel
             columns.Add((feature, cuts, bins));
         }
         double[] gradient = new double[rows.Count], hessian = new double[rows.Count];
+        // Offline fitting only: workers own disjoint column slots. Their sums
+        // retain the original row order; the winner is reduced in column/bin
+        // order after every worker joins, preserving serial tie semantics.
+        double[] splitGains = new double[columns.Count * 32];
+        int[] splitBalances = new int[splitGains.Length];
+        ParallelOptions fittingWorkers = new()
+        {
+            MaxDegreeOfParallelism = maximumTrainingParallelism,
+        };
         List<Tree> trees = [];
         for (int round = 0; round < 64; round++)
         {
@@ -305,10 +330,12 @@ internal sealed partial class SearchOutcomeValueModel
             int feature = -1, splitBin = -1, bestBalance = -1;
             double threshold = 0;
             byte[]? bestBins = null;
-            Span<double> binGradient = stackalloc double[32], binHessian = stackalloc double[32];
-            Span<int> binCount = stackalloc int[32];
-            foreach (var column in columns)
+            void EvaluateColumn(int columnIndex)
             {
+                var column = columns[columnIndex];
+                int offset = columnIndex * 32;
+                Span<double> binGradient = stackalloc double[32], binHessian = stackalloc double[32];
+                Span<int> binCount = stackalloc int[32];
                 binGradient.Clear(); binHessian.Clear(); binCount.Clear();
                 foreach (int i in selected)
                 {
@@ -322,9 +349,23 @@ internal sealed partial class SearchOutcomeValueModel
                 for (int bin = 0; bin < column.Cuts.Length; bin++)
                 {
                     lg += binGradient[bin]; lh += binHessian[bin]; leftCount += binCount[bin];
-                    if (leftCount < 4 || selected.Length - leftCount < 4) continue;
-                    double gain = lg * lg / (lh + regularization) + (g - lg) * (g - lg) / (h - lh + regularization);
-                    int balance = Math.Min(leftCount, selected.Length - leftCount);
+                    splitGains[offset + bin] = leftCount < 4 || selected.Length - leftCount < 4
+                        ? double.NegativeInfinity
+                        : lg * lg / (lh + regularization) + (g - lg) * (g - lg) / (h - lh + regularization);
+                    splitBalances[offset + bin] = Math.Min(leftCount, selected.Length - leftCount);
+                }
+            }
+            if (fittingWorkers.MaxDegreeOfParallelism > 1 && selected.Length >= 1024 && columns.Count >= 64)
+                Parallel.For(0, columns.Count, fittingWorkers, EvaluateColumn);
+            else
+                for (int i = 0; i < columns.Count; i++) EvaluateColumn(i);
+            for (int columnIndex = 0; columnIndex < columns.Count; columnIndex++)
+            {
+                var column = columns[columnIndex];
+                for (int bin = 0; bin < column.Cuts.Length; bin++)
+                {
+                    double gain = splitGains[columnIndex * 32 + bin];
+                    int balance = splitBalances[columnIndex * 32 + bin];
                     // A constant-per-root context has zero marginal pairwise gain:
                     // each root's gradients sum to zero. A neutral split must be
                     // allowed to expose a conditional reversal in its children.

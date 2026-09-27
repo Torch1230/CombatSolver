@@ -52,11 +52,13 @@ internal static class OutcomeValueTraining
         var inputs = ReadRoots(pathsFile);
         var roots = inputs.Select(r => r.Rows).ToArray();
         SearchOutcomeValueModel model = new();
-        if (!model.Fit(roots)) throw new InvalidOperationException("Insufficient witnessed outcomes.");
+        int trainingParallelism = Math.Min(4, Environment.ProcessorCount);
+        if (!model.Fit(roots, trainingParallelism)) throw new InvalidOperationException("Insufficient witnessed outcomes.");
         File.WriteAllText(output, JsonSerializer.Serialize(model.ExportModel()));
         string linearOutput = Path.ChangeExtension(output, "linear.json");
         File.WriteAllText(linearOutput, JsonSerializer.Serialize(model.ExportLinearModel()));
         Console.WriteLine(JsonSerializer.Serialize(new { roots = roots.Length, rows = roots.Sum(r => r.Length), pairs = model.FittedPairs,
+            participatingRoots = model.FittedRoots, participatingRows = model.FittedRows, trainingParallelism,
             features = model.ExportModel().FeatureNames.Length,
             eligibleFeatures = model.EligibleFeatures,
             linearTerms = model.ExportLinearModel().FeatureNames.Length, linearBytes = new FileInfo(linearOutput).Length,

@@ -52,6 +52,9 @@ class OvernightContracts(unittest.TestCase):
             row['CompletedDefeat'] = True
             self.assertIsNotNone(path.write_text(json.dumps([row])))
             self.assertEqual(witnessed_rows(path), (1, False))
+            different_death = {**row, 'Outcome': {**row['Outcome'], 'EnemyHp': 99}, 'RemainingActions': 25}
+            path.write_text(json.dumps([row, different_death]))
+            self.assertEqual(witnessed_rows(path), (2, False), 'Two deaths do not supply a preference')
             row['Features']['hp'] = float('nan')
             path.write_text(json.dumps([row]))
             with self.assertRaises(ValueError):
@@ -80,6 +83,28 @@ class OvernightContracts(unittest.TestCase):
             self.assertIsNotNone(children[0].poll())
             self.assertLess(job.state['childSeconds']['test'], 5)
             self.assertNotEqual(json.loads((job.root / 'test-process.json').read_text())['returnCode'], 0)
+
+    def test_upgrading_the_fitter_does_not_replace_the_search_engine(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            job = Job.__new__(Job)
+            job.root = Path(temporary)
+            job.harness = job.root / 'search/harness.dll'
+            job.fitting_engine = job.root / 'training'
+            job.environment = dict(os.environ, OFFLINE_HARNESS_COMBATSOLVER_DLL='frozen-search.dll')
+            job.stop, job.lock = threading.Event(), threading.Lock()
+            job.state = {'childSeconds': {}}
+            job.deadline = time.time() + 10
+            actual_popen, observed = subprocess.Popen, []
+            def start_child(command, **kwargs):
+                observed.append((command, kwargs['env']))
+                return actual_popen([sys.executable, '-c', 'pass'], **kwargs)
+            with patch('overnight.subprocess.Popen', side_effect=start_child):
+                job.command([], job.root / 'fit', 'fit', 5)
+                job.command([], job.root / 'search', 'evaluate', 5)
+            self.assertEqual(observed[0][0][1], str(job.fitting_engine / 'harness/OfflineSearchHarness.dll'))
+            self.assertEqual(observed[0][1]['OFFLINE_HARNESS_COMBATSOLVER_DLL'], str(job.fitting_engine / 'CombatSolver.dll'))
+            self.assertEqual(observed[1][0][1], str(job.harness))
+            self.assertEqual(observed[1][1]['OFFLINE_HARNESS_COMBATSOLVER_DLL'], 'frozen-search.dll')
 
 
 if __name__ == '__main__':

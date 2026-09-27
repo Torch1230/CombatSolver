@@ -89,6 +89,18 @@ internal static class OutcomeRankingChecks
         Check(learned.Fit([Enumerable.Range(0, 24).Select(i => Row(i, 24 - i)).ToArray()]), "small pairwise dataset fits");
         Check(learned.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 23 })
             > learned.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 0 }), "gradient learns preferred direction");
+        var withUnused = new Model();
+        Model.TrainingRow[] useful = Enumerable.Range(0, 24).Select(i => Row(i, 24 - i)).ToArray();
+        Model.TrainingRow[] onlyDefeats = Enumerable.Range(0, 300).Select(i => loss with
+            { Features = new() { ["x"] = i * 1000 }, RemainingActions = i }).ToArray();
+        Check(withUnused.Fit([onlyDefeats, [.. useful, Row(1000000, 0, [91])]]),
+            "unpaired completed rows are valid observations");
+        Check(withUnused.FittedRoots == 1 && withUnused.FittedRows == 24,
+            "training storage includes only witnesses referenced by actual preference pairs");
+        Check(JsonSerializer.Serialize(withUnused.ExportModel()) == JsonSerializer.Serialize(learned.ExportModel()),
+            "compacting all-defeat and singleton rows preserves the exact serialized model");
+        Reject(() => new Model().Fit([useful, [loss with { Outcome = loss.Outcome with { Score = 1 } }]]),
+            "unpaired rows still undergo strict label validation");
         var linear = Model.Load(learned.ExportLinearModel());
         Check(linear.ExportModel().FeatureNames.SequenceEqual(["x"]), "linear-only artifact retains its active column");
         Check(linear.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 100 })
@@ -120,6 +132,16 @@ internal static class OutcomeRankingChecks
             "correlated rows in one root do not supply independent feature support");
         Check(!supported.ExportModel().FeatureNames.Contains("one-root-identity"),
             "unsupported identity is excluded from both linear and tree inference");
+        Model.TrainingRow[] parallelRows = Enumerable.Range(0, 1100).Select(i => Row(i, 1100 - i) with
+        {
+            Features = Enumerable.Range(0, 72).ToDictionary(j => "column/" + j, j => (double)((i * (j + 1)) % 1103)),
+        }).ToArray();
+        var serialFit = new Model();
+        var parallelFit = new Model();
+        Check(serialFit.Fit([parallelRows], maximumTrainingParallelism: 1)
+            && parallelFit.Fit([parallelRows], maximumTrainingParallelism: 4), "bounded parallel histogram fitting succeeds");
+        Check(JsonSerializer.Serialize(serialFit.ExportModel()) == JsonSerializer.Serialize(parallelFit.ExportModel()),
+            "parallel column statistics preserve the exact serial model and tie order");
         string directory = Path.Combine(Path.GetTempPath(), "outcome-ranking-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try

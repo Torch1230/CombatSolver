@@ -1,0 +1,742 @@
+{
+  "trainingChanges": {
+    "dropUnpairedRowsAfterValidation": true,
+    "boundedHistogramWorkers": 4,
+    "deterministicColumnBinReduction": true,
+    "pureDefeatPoolsHaveNoPreference": true
+  },
+  "same45RootExperiment": {
+    "compacted": {
+      "process": {
+        "returnCode": 0,
+        "seconds": 61.06123937992379,
+        "inputsSha256": "7513e234322bdc13acb9412d005034a051667a69a8772b854f1e0962b12289b1",
+        "model.json": {
+          "sha256": "f330d172784b196d8c58ff6366062f7036fbd0e120d180c701a0393523db261e",
+          "identicalToOriginal": true
+        },
+        "model.linear.json": {
+          "sha256": "812c4869e2171f448c96cac7a931403a08d1ae1a575006e0b60c519ad9e49185",
+          "identicalToOriginal": true
+        }
+      },
+      "fit": {
+        "roots": 45,
+        "rows": 36568,
+        "pairs": 55977,
+        "participatingRoots": 37,
+        "participatingRows": 22569,
+        "features": 411,
+        "eligibleFeatures": 2215,
+        "linearTerms": 27,
+        "linearBytes": 1508,
+        "fitMilliseconds": 60898.1559,
+        "bytes": 361104,
+        "peakWorkingSetBytes": 1680121856
+      }
+    },
+    "parallel": {
+      "process": {
+        "returnCode": 0,
+        "seconds": 29.18502769607585,
+        "inputsSha256": "7513e234322bdc13acb9412d005034a051667a69a8772b854f1e0962b12289b1",
+        "model.json": {
+          "sha256": "f330d172784b196d8c58ff6366062f7036fbd0e120d180c701a0393523db261e",
+          "identicalToOriginal": true
+        },
+        "model.linear.json": {
+          "sha256": "812c4869e2171f448c96cac7a931403a08d1ae1a575006e0b60c519ad9e49185",
+          "identicalToOriginal": true
+        }
+      },
+      "fit": {
+        "roots": 45,
+        "rows": 36568,
+        "pairs": 55977,
+        "participatingRoots": 37,
+        "participatingRows": 22569,
+        "trainingParallelism": 4,
+        "features": 411,
+        "eligibleFeatures": 2215,
+        "linearTerms": 27,
+        "linearBytes": 1508,
+        "fitMilliseconds": 29053.0037,
+        "bytes": 361104,
+        "peakWorkingSetBytes": 1689227264
+      }
+    },
+    "fittedModelFilesIdenticalToOriginal": true,
+    "performanceScope": "These local offline fits; background collection/training was active, not a game-speed benchmark"
+  },
+  "coverage92": {
+    "roots": 92,
+    "cardsObserved": 449,
+    "relicsObserved": 128,
+    "cardSupportBins": {
+      "3": 275,
+      "1": 70,
+      "2": 104
+    },
+    "relicSupportBins": {
+      "3": 74,
+      "2": 26,
+      "1": 28
+    },
+    "strata": {
+      "IRONCLAD/0/Boss": {
+        "roots": 3,
+        "rows": 1041,
+        "winningRows": 565,
+        "rootsWithWinningRows": 3
+      },
+      "REGENT/0/Boss": {
+        "roots": 3,
+        "rows": 878,
+        "winningRows": 505,
+        "rootsWithWinningRows": 3
+      },
+      "NECROBINDER/0/Boss": {
+        "roots": 3,
+        "rows": 676,
+        "winningRows": 600,
+        "rootsWithWinningRows": 2
+      },
+      "DEFECT/0/Boss": {
+        "roots": 3,
+        "rows": 836,
+        "winningRows": 544,
+        "rootsWithWinningRows": 3
+      },
+      "DEFECT/0/Monster": {
+        "roots": 3,
+        "rows": 3533,
+        "winningRows": 3466,
+        "rootsWithWinningRows": 3
+      },
+      "SILENT/0/Boss": {
+        "roots": 3,
+        "rows": 1190,
+        "winningRows": 99,
+        "rootsWithWinningRows": 2
+      },
+      "NECROBINDER/0/Monster": {
+        "roots": 3,
+        "rows": 3845,
+        "winningRows": 3786,
+        "rootsWithWinningRows": 3
+      },
+      "IRONCLAD/0/Monster": {
+        "roots": 3,
+        "rows": 3709,
+        "winningRows": 3437,
+        "rootsWithWinningRows": 3
+      },
+      "SILENT/0/Monster": {
+        "roots": 3,
+        "rows": 2096,
+        "winningRows": 2061,
+        "rootsWithWinningRows": 3
+      },
+      "DEFECT/1/Elite": {
+        "roots": 3,
+        "rows": 1892,
+        "winningRows": 1381,
+        "rootsWithWinningRows": 3
+      },
+      "REGENT/0/Monster": {
+        "roots": 3,
+        "rows": 1908,
+        "winningRows": 1752,
+        "rootsWithWinningRows": 3
+      },
+      "IRONCLAD/1/Elite": {
+        "roots": 3,
+        "rows": 3099,
+        "winningRows": 1861,
+        "rootsWithWinningRows": 3
+      },
+      "NECROBINDER/1/Elite": {
+        "roots": 2,
+        "rows": 1338,
+        "winningRows": 1061,
+        "rootsWithWinningRows": 2
+      },
+      "SILENT/1/Elite": {
+        "roots": 2,
+        "rows": 1293,
+        "winningRows": 688,
+        "rootsWithWinningRows": 1
+      },
+      "REGENT/1/Elite": {
+        "roots": 2,
+        "rows": 1956,
+        "winningRows": 724,
+        "rootsWithWinningRows": 2
+      },
+      "DEFECT/1/Monster": {
+        "roots": 2,
+        "rows": 3289,
+        "winningRows": 3059,
+        "rootsWithWinningRows": 2
+      },
+      "IRONCLAD/1/Monster": {
+        "roots": 3,
+        "rows": 3890,
+        "winningRows": 3798,
+        "rootsWithWinningRows": 3
+      },
+      "NECROBINDER/1/Monster": {
+        "roots": 3,
+        "rows": 1597,
+        "winningRows": 1431,
+        "rootsWithWinningRows": 3
+      },
+      "REGENT/1/Monster": {
+        "roots": 3,
+        "rows": 2318,
+        "winningRows": 2173,
+        "rootsWithWinningRows": 3
+      },
+      "SILENT/1/Monster": {
+        "roots": 3,
+        "rows": 2869,
+        "winningRows": 2767,
+        "rootsWithWinningRows": 3
+      },
+      "NECROBINDER/2/Boss": {
+        "roots": 3,
+        "rows": 2142,
+        "winningRows": 56,
+        "rootsWithWinningRows": 1
+      },
+      "IRONCLAD/2/Boss": {
+        "roots": 3,
+        "rows": 2618,
+        "winningRows": 294,
+        "rootsWithWinningRows": 1
+      },
+      "DEFECT/2/Boss": {
+        "roots": 3,
+        "rows": 3446,
+        "winningRows": 203,
+        "rootsWithWinningRows": 1
+      },
+      "REGENT/2/Boss": {
+        "roots": 3,
+        "rows": 1815,
+        "winningRows": 0,
+        "rootsWithWinningRows": 0
+      },
+      "IRONCLAD/2/Elite": {
+        "roots": 2,
+        "rows": 2306,
+        "winningRows": 521,
+        "rootsWithWinningRows": 1
+      },
+      "DEFECT/2/Elite": {
+        "roots": 3,
+        "rows": 2619,
+        "winningRows": 130,
+        "rootsWithWinningRows": 1
+      },
+      "SILENT/2/Boss": {
+        "roots": 3,
+        "rows": 2477,
+        "winningRows": 98,
+        "rootsWithWinningRows": 1
+      },
+      "NECROBINDER/2/Elite": {
+        "roots": 2,
+        "rows": 1644,
+        "winningRows": 48,
+        "rootsWithWinningRows": 1
+      },
+      "REGENT/2/Elite": {
+        "roots": 2,
+        "rows": 2936,
+        "winningRows": 176,
+        "rootsWithWinningRows": 2
+      },
+      "SILENT/2/Elite": {
+        "roots": 2,
+        "rows": 1598,
+        "winningRows": 0,
+        "rootsWithWinningRows": 0
+      },
+      "DEFECT/2/Monster": {
+        "roots": 2,
+        "rows": 2868,
+        "winningRows": 2396,
+        "rootsWithWinningRows": 2
+      },
+      "IRONCLAD/2/Monster": {
+        "roots": 2,
+        "rows": 2591,
+        "winningRows": 2103,
+        "rootsWithWinningRows": 2
+      },
+      "NECROBINDER/2/Monster": {
+        "roots": 2,
+        "rows": 1738,
+        "winningRows": 444,
+        "rootsWithWinningRows": 2
+      },
+      "REGENT/2/Monster": {
+        "roots": 2,
+        "rows": 1684,
+        "winningRows": 1211,
+        "rootsWithWinningRows": 2
+      },
+      "SILENT/2/Monster": {
+        "roots": 2,
+        "rows": 1401,
+        "winningRows": 781,
+        "rootsWithWinningRows": 2
+      }
+    }
+  },
+  "development92": [
+    {
+      "model": "model.json.evaluation",
+      "regressions": [
+        "unseen-defect-the_kin_boss",
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "records": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000834963,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 15.5000262,
+          "rss": 356392960,
+          "nodes": 12000,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 8.0954955,
+          "rss": 330035200,
+          "nodes": 7357,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 218,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 64,
+            "strategicHpDeficit": 64,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9997819946,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 19.9945833,
+          "rss": 373194752,
+          "nodes": 16291,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 247,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 79,
+            "score": -1000003040040,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 19.227764,
+          "rss": 406069248,
+          "nodes": 14818,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 187,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 10.1679844,
+          "rss": 316571648,
+          "nodes": 6684,
+          "timeBoundary": true
+        }
+      ]
+    },
+    {
+      "model": "model.linear.json.evaluation",
+      "regressions": [
+        "unseen-defect-the_kin_boss",
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "records": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000834963,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 13.7114928,
+          "rss": 364806144,
+          "nodes": 12000,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 7.5563176,
+          "rss": 315506688,
+          "nodes": 7803,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 139,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 64,
+            "strategicHpDeficit": 64,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9997819946,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 18.3057579,
+          "rss": 377483264,
+          "nodes": 16752,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 84,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 79,
+            "score": -1000003040040,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 16.8564578,
+          "rss": 381390848,
+          "nodes": 14798,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 9.5066,
+          "rss": 334360576,
+          "nodes": 6762,
+          "timeBoundary": true
+        }
+      ]
+    }
+  ],
+  "finalTestOpened": false,
+  "productionModelEnabled": false,
+  "checks": {
+    "releaseMain": true,
+    "releaseHarness": true,
+    "outcomeRankingAssertions": 50,
+    "overnightContracts": 5,
+    "bashBoundarySearchFiles": 221,
+    "powerShellBoundarySearchFiles": 221
+  }
+}

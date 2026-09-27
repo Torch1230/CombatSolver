@@ -1380,6 +1380,9 @@ forbid_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" '_objectiveR
 forbid_fixed "$search_root/CombatBeamSolver.Retention.cs" 'RetainObjectives(' 'learned ranking must not bypass pruning ownership:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'ConditionalWeakTable<SimulationSnapshot,' 'retired/record-copied parent ranking must retain only weakly owned scalar entries:'
 require_fixed "$search_root/CombatBeamSolver.Phases.cs" '_ = ObjectiveRankScore(admitted);' 'admitted learned priorities must survive simulator retirement:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'MaxDegreeOfParallelism = maximumTrainingParallelism' 'offline histogram workers must remain explicitly bounded:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'splitGains[columnIndex * 32 + bin]' 'parallel fitting must reduce column/bin decisions in original order:'
+forbid_fixed "$search_root/SearchOutcomeValueModel.cs" 'Environment.ProcessorCount' 'training resource policy belongs to the offline host:'
 for file in train.py refit.py prepare_training.py; do
     require_fixed "$repository_root/tools/OutcomeValuation/$file" 'require_final_test=True' 'training must audit both development and sealed test manifests:'
 done

@@ -119,7 +119,9 @@ def witnessed_rows(path):
             raise ValueError('Invalid completed witness; quarantining the entire root')
         # This is a conservative eligibility filter, not a replacement comparator.
         # The C# fitter remains the authority on meaningful policy preferences.
-        signature = json.dumps([outcome, row['RemainingActions'] if victory else 0], sort_keys=True)
+        # The fitter deliberately treats two defeats as tied, regardless of
+        # remaining enemy HP or how quickly the player died.
+        signature = json.dumps([outcome, row['RemainingActions']], sort_keys=True) if victory else 'defeat'
         for group in row['Groups']:
             outcomes[group].add(signature)
     return len(rows), any(len(values) > 1 for values in outcomes.values())
@@ -146,13 +148,9 @@ def freeze_manifest(source, target):
     return target / 'manifest.json'
 
 
-def initialize(args):
-    began = time.monotonic()
-    root = args.out.resolve()
-    root.mkdir(parents=True, exist_ok=False)
-    engine = root / 'engine'
-    shutil.copytree(args.harness.resolve().parent, engine / 'harness')
-    shutil.copy2(args.mod, engine / 'CombatSolver.dll')
+def freeze_engine(harness, mod, engine):
+    shutil.copytree(harness.resolve().parent, engine / 'harness')
+    shutil.copy2(mod, engine / 'CombatSolver.dll')
     runtime = engine / 'harness/OfflineSearchHarness.runtimeconfig.json'
     config = read(runtime)
     properties = config['runtimeOptions']['configProperties']
@@ -165,6 +163,15 @@ def initialize(args):
         properties[name] = str(dependency)
     properties['CombatSolverDll'] = str(engine / 'CombatSolver.dll')
     write(runtime, config)
+
+
+def initialize(args):
+    began = time.monotonic()
+    root = args.out.resolve()
+    root.mkdir(parents=True, exist_ok=False)
+    freeze_engine(args.harness, args.mod, root / 'engine')
+    if args.fit_harness:
+        freeze_engine(args.fit_harness, args.fit_mod, root / 'training-engine')
     scripts = root / 'scripts'
     scripts.mkdir()
     for name in ('overnight.py', 'dataset.py', 'evaluate.py'):
@@ -215,11 +222,13 @@ def initialize(args):
                 audit({'cases': [record['case']]}, heldout)
                 if sha(record['input']) != record['inputSha256']:
                     raise ValueError('Prior training rows changed: ' + record['input'])
+                record['rows'], record['hasPreferences'] = witnessed_rows(record['input'])
         write(root / 'prior-status.json', prior)
     plan = {'schema': 1, 'createdUtc': dt.datetime.now(dt.timezone.utc).isoformat(),
             'until': args.until, 'workers': args.workers, 'batchSize': 45, 'maximumRootsPerFit': 128,
             'maxCases': args.max_cases, 'maxBytes': args.max_gib * 1024**3,
             'fitTimeoutSeconds': 600, 'seed': args.seed,
+            'fittingEngine': 'training-engine' if args.fit_harness else 'engine',
             'priorJob': str(args.prior_job.resolve()) if args.prior_job else None,
             'preparationSeconds': time.monotonic() - began,
             'trainingBuckets': [(b[0]['actIndex'], b[0]['roomType'], len(b)) for b in buckets],
@@ -251,6 +260,7 @@ class Job:
         self.environment = dict(os.environ, OFFLINE_HARNESS_COMBATSOLVER_DLL=str(root / 'engine/CombatSolver.dll'),
                                 DOTNET_PROCESSOR_COUNT='4', DOTNET_GCHeapHardLimit='0x200000000')
         self.harness = root / 'engine/harness/OfflineSearchHarness.dll'
+        self.fitting_engine = root / self.plan.get('fittingEngine', 'engine')
         self.heldout = evaluation_manifests([root / 'inputs/validation/manifest.json',
                                             root / 'inputs/sealed-test/manifest.json'], require_final_test=True)
         self.validation = read(root / 'inputs/validation/manifest.json')['cases']
@@ -274,22 +284,28 @@ class Job:
                           updatedUtc=dt.datetime.now(dt.timezone.utc).isoformat())
         write(self.root / 'status.json', self.state)
         counts = Counter(c['state'] for c in self.state['cases'])
+        collected = [c for c in self.state['cases'] if c['state'] == 'collected']
+        eligible = sum(c['hasPreferences'] for c in collected)
         (self.root / 'STATUS.md').write_text(
             f"State: {self.state['state']} / {phase}\n\nPID: {os.getpid()}\n\n"
             f"Deadline: {self.plan['until']}\n\nCases: {dict(counts)}\n\n"
             f"Rounds: {len(self.state['rounds'])}\n\n"
+            f"Collected rows: {sum(c['rows'] for c in collected)}; eligible preference roots: {eligible}\n\n"
             f"Active seconds (including evaluation): {self.state['activeSeconds']:.1f}\n\n"
             "Research only. Final test remains sealed. No production model is enabled.\n")
 
     def command(self, args, directory, kind, timeout):
         self.check_stop()
         directory.mkdir(parents=True, exist_ok=True)
-        command = ['dotnet', str(self.harness), *map(str, args)]
+        harness = self.fitting_engine / 'harness/OfflineSearchHarness.dll' if kind == 'fit' else self.harness
+        environment = (dict(self.environment, OFFLINE_HARNESS_COMBATSOLVER_DLL=str(self.fitting_engine / 'CombatSolver.dll'))
+                       if kind == 'fit' else self.environment)
+        command = ['dotnet', str(harness), *map(str, args)]
         write(directory / f'{kind}-command.json', command)
         began = time.monotonic()
         with (directory / f'{kind}.log').open('w') as output:
             process = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT,
-                                       stdin=subprocess.DEVNULL, env=self.environment, start_new_session=True)
+                                       stdin=subprocess.DEVNULL, env=environment, start_new_session=True)
             try:
                 while process.poll() is None:
                     self.check_stop()
@@ -435,6 +451,7 @@ class Job:
         try:
             self.command(['--fit-outcome-values', directory / 'training-inputs.json', directory / 'model.json'],
                          directory, 'fit', self.plan['fitTimeoutSeconds'])
+            record['fitMetrics'] = json.loads((directory / 'fit.log').read_text().splitlines()[-1])
             record['state'] = 'evaluating'
             self.state['latestRollIn'] = str(directory / 'model.linear.json')
             self.save('evaluating')
@@ -523,12 +540,16 @@ def main():
     setup.add_argument('--max-gib', type=int, default=32)
     setup.add_argument('--screen-id', action='append', required=True)
     setup.add_argument('--prior-job', type=Path, help='Import a stopped job with its full cost and failure ledger')
+    setup.add_argument('--fit-harness', type=Path, help='Optional separate frozen fitter; collection/evaluation keep their engine')
+    setup.add_argument('--fit-mod', type=Path, help='Mod assembly paired with --fit-harness; model schema/MVID remain validated')
     runner = sub.add_parser('run')
     runner.add_argument('directory', type=Path)
     args = parser.parse_args()
     if args.command == 'prepare':
         if args.max_cases < 1 or args.max_gib < 1:
             parser.error('Positive case and storage limits required')
+        if bool(args.fit_harness) != bool(args.fit_mod):
+            parser.error('--fit-harness and --fit-mod must be provided together')
         initialize(args)
     else:
         with (args.directory / 'supervisor.lock').open('a') as lock:
