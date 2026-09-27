@@ -1,0 +1,1852 @@
+{
+  "schema": 1,
+  "baseCommit": "45366d93",
+  "enabledInProduction": false,
+  "goalAchieved": false,
+  "observationSchema": 6,
+  "modelSchema": 7,
+  "methodReference": "https://doi.org/10.1214/aos/1013203451",
+  "methodScope": "Stagewise additive framework; the specific pairwise linear/residual implementation and support threshold are project experiments.",
+  "rawPairDiagnostic": {
+    "total": {
+      "equal": 33530,
+      "effort": 4009,
+      "resourceBurden": 51525,
+      "combatTurn": 3066,
+      "winDefeat": 16439,
+      "bothDefeats": 37491,
+      "growth": 575,
+      "deathSaves": 77
+    },
+    "roots": [
+      {
+        "root": "balanced-defect-fuzzy_wurm_crawler_weak",
+        "equal": 149,
+        "effort": 113,
+        "resourceBurden": 160,
+        "combatTurn": 2
+      },
+      {
+        "root": "balanced-ironclad-fuzzy_wurm_crawler_weak",
+        "equal": 277,
+        "effort": 139,
+        "resourceBurden": 288,
+        "combatTurn": 24
+      },
+      {
+        "root": "balanced-necrobinder-fuzzy_wurm_crawler_weak",
+        "combatTurn": 34,
+        "effort": 27,
+        "resourceBurden": 50,
+        "winDefeat": 3,
+        "equal": 38
+      },
+      {
+        "root": "balanced-regent-fuzzy_wurm_crawler_weak",
+        "resourceBurden": 189,
+        "equal": 199,
+        "effort": 49,
+        "combatTurn": 9
+      },
+      {
+        "root": "balanced-silent-fuzzy_wurm_crawler_weak",
+        "resourceBurden": 107,
+        "combatTurn": 102,
+        "equal": 169,
+        "effort": 155
+      },
+      {
+        "root": "balanced-defect-nibbits_normal",
+        "resourceBurden": 248,
+        "combatTurn": 35,
+        "effort": 20,
+        "equal": 118,
+        "winDefeat": 5,
+        "bothDefeats": 1
+      },
+      {
+        "root": "balanced-ironclad-nibbits_normal",
+        "effort": 151,
+        "resourceBurden": 2314,
+        "equal": 464,
+        "combatTurn": 39,
+        "winDefeat": 186,
+        "bothDefeats": 23
+      },
+      {
+        "root": "balanced-necrobinder-nibbits_normal",
+        "resourceBurden": 2552,
+        "winDefeat": 86,
+        "effort": 73,
+        "growth": 10,
+        "combatTurn": 40,
+        "bothDefeats": 4,
+        "equal": 1168
+      },
+      {
+        "root": "balanced-regent-nibbits_normal",
+        "resourceBurden": 1166,
+        "effort": 70,
+        "winDefeat": 79,
+        "bothDefeats": 4,
+        "equal": 470,
+        "combatTurn": 36
+      },
+      {
+        "root": "balanced-silent-nibbits_normal",
+        "resourceBurden": 6341,
+        "effort": 172,
+        "winDefeat": 119,
+        "bothDefeats": 1,
+        "growth": 194,
+        "combatTurn": 100,
+        "equal": 2294
+      },
+      {
+        "root": "balanced-defect-overgrowth_crawlers",
+        "resourceBurden": 6725,
+        "combatTurn": 80,
+        "effort": 56,
+        "winDefeat": 172,
+        "bothDefeats": 9,
+        "equal": 4295
+      },
+      {
+        "root": "balanced-ironclad-overgrowth_crawlers",
+        "resourceBurden": 8034,
+        "winDefeat": 299,
+        "effort": 260,
+        "bothDefeats": 8,
+        "equal": 4974,
+        "combatTurn": 276,
+        "growth": 25
+      },
+      {
+        "root": "balanced-necrobinder-overgrowth_crawlers",
+        "resourceBurden": 4846,
+        "winDefeat": 1125,
+        "bothDefeats": 174,
+        "effort": 175,
+        "equal": 1425,
+        "combatTurn": 264,
+        "growth": 8
+      },
+      {
+        "root": "balanced-regent-overgrowth_crawlers",
+        "combatTurn": 44,
+        "effort": 51,
+        "resourceBurden": 476,
+        "bothDefeats": 168,
+        "equal": 281,
+        "winDefeat": 159
+      },
+      {
+        "root": "balanced-silent-overgrowth_crawlers",
+        "bothDefeats": 71,
+        "winDefeat": 188,
+        "resourceBurden": 2502,
+        "equal": 3088,
+        "effort": 300,
+        "combatTurn": 90
+      },
+      {
+        "root": "balanced-defect-ruby_raiders_normal",
+        "resourceBurden": 800,
+        "equal": 373,
+        "combatTurn": 50,
+        "winDefeat": 35,
+        "effort": 59,
+        "bothDefeats": 2
+      },
+      {
+        "root": "balanced-ironclad-ruby_raiders_normal",
+        "resourceBurden": 2785,
+        "combatTurn": 64,
+        "winDefeat": 121,
+        "equal": 643,
+        "bothDefeats": 9,
+        "effort": 77
+      },
+      {
+        "root": "balanced-necrobinder-ruby_raiders_normal",
+        "resourceBurden": 2655,
+        "winDefeat": 97,
+        "effort": 27,
+        "bothDefeats": 10,
+        "combatTurn": 97,
+        "equal": 803,
+        "growth": 338
+      },
+      {
+        "root": "balanced-regent-ruby_raiders_normal",
+        "combatTurn": 415,
+        "resourceBurden": 1290,
+        "effort": 45,
+        "equal": 1532,
+        "winDefeat": 39,
+        "bothDefeats": 184
+      },
+      {
+        "root": "balanced-silent-ruby_raiders_normal",
+        "effort": 60,
+        "equal": 52,
+        "resourceBurden": 30,
+        "winDefeat": 4,
+        "bothDefeats": 1,
+        "combatTurn": 2
+      },
+      {
+        "root": "balanced-defect-entomancer_elite",
+        "resourceBurden": 277,
+        "combatTurn": 122,
+        "winDefeat": 171,
+        "equal": 1057,
+        "bothDefeats": 41,
+        "effort": 263
+      },
+      {
+        "root": "balanced-ironclad-entomancer_elite",
+        "resourceBurden": 1264,
+        "equal": 274,
+        "winDefeat": 2685,
+        "bothDefeats": 2767,
+        "combatTurn": 19,
+        "effort": 48
+      },
+      {
+        "root": "balanced-necrobinder-entomancer_elite",
+        "resourceBurden": 1026,
+        "winDefeat": 993,
+        "equal": 1791,
+        "effort": 107,
+        "bothDefeats": 567,
+        "combatTurn": 6
+      },
+      {
+        "root": "balanced-regent-entomancer_elite",
+        "winDefeat": 111,
+        "equal": 18,
+        "resourceBurden": 30,
+        "bothDefeats": 44
+      },
+      {
+        "root": "balanced-silent-entomancer_elite",
+        "resourceBurden": 87,
+        "winDefeat": 225,
+        "effort": 2,
+        "bothDefeats": 2139,
+        "equal": 14
+      },
+      {
+        "root": "balanced-defect-infested_prisms_elite",
+        "winDefeat": 1215,
+        "effort": 195,
+        "resourceBurden": 3054,
+        "bothDefeats": 352,
+        "equal": 956,
+        "combatTurn": 43
+      },
+      {
+        "root": "balanced-ironclad-infested_prisms_elite",
+        "resourceBurden": 82,
+        "winDefeat": 1041,
+        "equal": 162,
+        "bothDefeats": 2222,
+        "effort": 24
+      },
+      {
+        "root": "balanced-necrobinder-infested_prisms_elite",
+        "winDefeat": 1316,
+        "resourceBurden": 14,
+        "bothDefeats": 3963,
+        "equal": 381,
+        "effort": 49
+      },
+      {
+        "root": "balanced-regent-infested_prisms_elite",
+        "resourceBurden": 561,
+        "equal": 74,
+        "winDefeat": 2097,
+        "bothDefeats": 4360,
+        "effort": 10,
+        "combatTurn": 11
+      },
+      {
+        "root": "balanced-silent-infested_prisms_elite",
+        "resourceBurden": 160,
+        "deathSaves": 77,
+        "winDefeat": 49,
+        "bothDefeats": 8,
+        "effort": 28,
+        "equal": 45
+      },
+      {
+        "root": "balanced-defect-mecha_knight_elite",
+        "resourceBurden": 199,
+        "winDefeat": 3036,
+        "effort": 923,
+        "equal": 1779,
+        "bothDefeats": 3050,
+        "combatTurn": 689
+      },
+      {
+        "root": "balanced-ironclad-mecha_knight_elite",
+        "winDefeat": 514,
+        "resourceBurden": 38,
+        "bothDefeats": 3566,
+        "equal": 1
+      },
+      {
+        "root": "balanced-necrobinder-mecha_knight_elite",
+        "bothDefeats": 2710
+      },
+      {
+        "root": "balanced-regent-mecha_knight_elite",
+        "bothDefeats": 1495
+      },
+      {
+        "root": "balanced-silent-mecha_knight_elite",
+        "bothDefeats": 9345
+      },
+      {
+        "root": "balanced-defect-ceremonial_beast_boss",
+        "resourceBurden": 36,
+        "effort": 74,
+        "winDefeat": 56,
+        "bothDefeats": 61,
+        "equal": 1874,
+        "combatTurn": 235
+      },
+      {
+        "root": "balanced-ironclad-ceremonial_beast_boss",
+        "winDefeat": 155,
+        "bothDefeats": 121,
+        "resourceBurden": 62,
+        "equal": 59,
+        "effort": 2,
+        "combatTurn": 1
+      },
+      {
+        "root": "balanced-necrobinder-ceremonial_beast_boss",
+        "winDefeat": 33,
+        "bothDefeats": 8,
+        "combatTurn": 3,
+        "resourceBurden": 15
+      },
+      {
+        "root": "balanced-regent-ceremonial_beast_boss",
+        "resourceBurden": 344,
+        "equal": 917,
+        "combatTurn": 51,
+        "effort": 82,
+        "winDefeat": 25,
+        "bothDefeats": 3
+      },
+      {
+        "root": "balanced-silent-ceremonial_beast_boss",
+        "resourceBurden": 718,
+        "combatTurn": 83,
+        "effort": 123,
+        "equal": 1316
+      }
+    ]
+  },
+  "rawObservedFeatureCount": 9936,
+  "v28": {
+    "training": {
+      "budget": {
+        "startedUtc": "2026-09-27T12:38:56.353702+00:00",
+        "completed": true,
+        "refitOnly": true,
+        "limitSeconds": 380.4516189929973,
+        "priorTrainingSeconds": 1419.5483810070027,
+        "preparationSeconds": 0,
+        "manifestSha256": "04424d368f1e57bac2ddf59f6f0d83469114286db375e13d9088967d3c68e00c",
+        "rootEvidenceDirectory": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training",
+        "modSha256": "779492b900ca2d3834e20edff48c5ad4cf65137c565b12189dcd751a667f7d6c",
+        "harnessSha256": "51d46f380f2dfa6f7d5edd3b4db712ae20ad0f4b1a8a403fe01eec411ee1636c",
+        "elapsedSeconds": 239.1910266049672,
+        "totalModelTrainingSeconds": 1658.73940761197
+      },
+      "fit": {
+        "roots": 40,
+        "rows": 29453,
+        "pairs": 61796,
+        "features": 374,
+        "linearTerms": 35,
+        "linearBytes": 2109,
+        "fitMilliseconds": 238905.2719,
+        "bytes": 224958,
+        "peakWorkingSetBytes": 1779245056
+      },
+      "inheritedObservationHashes": [
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "45c3d4eeebd7f9a6d90b141ef83a2de98f03677c4c507d2738b264617c30ffd7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "4bbcdffae7a4a1c98914d6d3f82a1ec17116b0539a15e89cada521f63209228a"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "0f1ca12a37bf736f981ebef0437577d41506191b04ea8bb1e7db43a63c4c0143"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "f378a0cd6b9ecb2b4ca2d9ce8f73cf046ffd4f66f06e48506b2d74a5d1bbbdb4"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "593eb6202fbee2605dffbcb80c15a6a04616ec0080635e6455ffd07b616ea58a"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-nibbits_normal/outcome-rows.json",
+          "sha256": "9316a69c7a54bcc9a39f2b239b4f0ae1f29bbdfaef3fdf7f31550d7cbbcb1674"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-nibbits_normal/outcome-rows.json",
+          "sha256": "b375789d3a1a245b113fc732d3da4676d47edf8577a4bfe94b59248276d236d5"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-nibbits_normal/outcome-rows.json",
+          "sha256": "b83cec3b93512fd3d880d12a3282e6e3ce247f4c6f8b7e53d6bc557f9c61b244"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-nibbits_normal/outcome-rows.json",
+          "sha256": "52cb352519a7a402ec01d7f9d306d8f08e710952b6c3700af32c7c89caaaa58f"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-nibbits_normal/outcome-rows.json",
+          "sha256": "2bde6c58a521ff2d22396c85b44f869e2073850f280eed469fd99f877e403be7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "772379f7cb62aa20181cd2e55af13ad70ac073c4350932cf051737591b2e30e7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "42f7aacb7bfd5129262ba89633e97c6b13626f0ce711df71c902a1303ae8eda0"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "dbb0800f3e5146f8b1302596bd67e3cd5a6dd12eb1699de030b6910840e46544"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "28072e189dd994f76ad434b968a58a6fd33a01146ffa7b4e3aba8c03657a43d7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "c7e5f757f0a7e1f8eef5eb1531de65e7a79557ede39257e25624c3cb5acd74bf"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "84bc12fd52e2eda0a7ea570ab3c0262e6ebcbddbb5035b78f7afc595c4c1eeb0"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "5c5a828cab1de882192a216ad0f89f570209f22ace201d84651fb80c26b2bf07"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "5692b639dea7a04d91106b2e5eb46491e9366f2b2dbba90745ad895e560708c0"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "c45a50b764302c26a1e8677821d5f97636db011de08b00b2866f1a7a45843d8f"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "6c069080c72d5d0056c922f2de496b70816914c28fafa5146877b703e9f13985"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-entomancer_elite/outcome-rows.json",
+          "sha256": "503ed348937508a2e50ae4b08321cd0b6ae71909651ff3f6f4fb66b341c08d1a"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-entomancer_elite/outcome-rows.json",
+          "sha256": "e3509ad976aed4f546ff88829a882213709ec8347ec332ddab47bf131c2e99bb"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-entomancer_elite/outcome-rows.json",
+          "sha256": "4a230248b282646565587005f059c34f16a686b5a96d29aee01398b5212c3387"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-entomancer_elite/outcome-rows.json",
+          "sha256": "df2a06790909a6cc4f523022ad91f1c9d58dc2765b71ff3b656425e9fd8f1fc2"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-entomancer_elite/outcome-rows.json",
+          "sha256": "0040d12c19e2830718e8194184cfcab19289fe426613f4efc153169165ed16f0"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-infested_prisms_elite/outcome-rows.json",
+          "sha256": "2568825a2177e1aa64e26df5f993b58e6125260d52c5643dedb84f5a94d7ccda"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-infested_prisms_elite/outcome-rows.json",
+          "sha256": "751fd76107656efcc2cd7767ac2b90907abcb7612ed0cb5887a7de51b7430cf3"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-infested_prisms_elite/outcome-rows.json",
+          "sha256": "4e32ee4e373e95ddd435bae9677a6f9dd2a0864b2766a2c0a4c0843f3a83bfe9"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-infested_prisms_elite/outcome-rows.json",
+          "sha256": "a14177b20fd494f73703225c078b6f34de0f7d11d74450fb496d6cccfb95d105"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-infested_prisms_elite/outcome-rows.json",
+          "sha256": "923a33677b79b06d92f9d44b89123076f7ae547e921fbb9ca1aef9f0c9bd8fd7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-mecha_knight_elite/outcome-rows.json",
+          "sha256": "d8a8444365d6d9d0a7c8387bb13fbb6e21bab7450642a8c4759d0ed2f1009830"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-mecha_knight_elite/outcome-rows.json",
+          "sha256": "8b8cbdd09e917cf9080ded9906365eb6287723479191f7c6838cccc7dcdfc49b"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-mecha_knight_elite/outcome-rows.json",
+          "sha256": "9cebf340c56b13e9b4738061e32d84346fad117012dabb19d26390b9be0381f4"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-mecha_knight_elite/outcome-rows.json",
+          "sha256": "12fd1b427e6790020c0638b954aea46afb0ca771abbadc0f502f22f1b98954c3"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-mecha_knight_elite/outcome-rows.json",
+          "sha256": "5d8e1c451753c87904725f1f8f59a6d640fe79bc18c5537ac92c1fb0b7275372"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "996f9997f7594ad50d78d0af03f29ca071fda27e966bad693a1055ccc9a48bdd"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "bb40bc0ab9be97e824fc2550fd08952e4ed3b04369aaa406c30b1354c05f1be7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "baf8ea661d8697135d0132916aefb25c0a84ae636892d6ce4808a9785f5e6b9b"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "e519fba64f93423dc291256b76537916cdac02a2d6fbf8a74938f6f7a20810ca"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "f1735e02ee3fbd128f8d9d348f120dd1309fd8a4b18100b726186a1159d777c8"
+        }
+      ]
+    },
+    "validation": {
+      "completed": true,
+      "identity": {
+        "mod": "779492b900ca2d3834e20edff48c5ad4cf65137c565b12189dcd751a667f7d6c",
+        "harness": "51d46f380f2dfa6f7d5edd3b4db712ae20ad0f4b1a8a403fe01eec411ee1636c",
+        "linear": "ab60334949a62ab34aa3a0e5aa9de683a651c462d662866d3cf3e7f2b7a7f9ac",
+        "hybrid": "1a456dc8b827db812461e1baf391660ff1187a24cca7679c5a9e826684e3f6f9"
+      },
+      "records": [
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 27,
+            "strategicHpDeficit": 27,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000629986,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 8.6400066,
+          "rss": 349335552,
+          "nodes": 12958,
+          "transitions": 46439,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "linear",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 29,
+            "strategicHpDeficit": 29,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 7.5933496,
+          "rss": 351551488,
+          "nodes": 12000,
+          "transitions": 38459,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "hybrid",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 28,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 8.0117376,
+          "rss": 345702400,
+          "nodes": 12000,
+          "transitions": 39723,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "linear",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 7.8630714,
+          "rss": 408166400,
+          "nodes": 12000,
+          "transitions": 41456,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "hybrid",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 8.1910283,
+          "rss": 434970624,
+          "nodes": 12000,
+          "transitions": 41487,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 7.1408802,
+          "rss": 336220160,
+          "nodes": 8048,
+          "transitions": 30995,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "hybrid",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 16,
+            "strategicHpDeficit": 16,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 11,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 12.4766882,
+          "rss": 369917952,
+          "nodes": 12000,
+          "transitions": 52320,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 4,
+            "strategicHpDeficit": 4,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001699971,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 12.689499,
+          "rss": 363069440,
+          "nodes": 12000,
+          "transitions": 57393,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "linear",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 7,
+            "strategicHpDeficit": 7,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 11,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 11.5075671,
+          "rss": 337637376,
+          "nodes": 12000,
+          "transitions": 50846,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 26,
+            "strategicHpDeficit": 26,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000689968,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 14.4904268,
+          "rss": 360108032,
+          "nodes": 12000,
+          "transitions": 75542,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "linear",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 68,
+            "strategicHpDeficit": 68,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 16.1490089,
+          "rss": 391561216,
+          "nodes": 12000,
+          "transitions": 94739,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "hybrid",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 62,
+            "strategicHpDeficit": 62,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 17.5712599,
+          "rss": 407076864,
+          "nodes": 12000,
+          "transitions": 97190,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "linear",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 82,
+            "strategicHpDeficit": 271,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 225,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 12.0359314,
+          "rss": 397836288,
+          "nodes": 12000,
+          "transitions": 74023,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "hybrid",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 82,
+            "strategicHpDeficit": 271,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 225,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 12.8143059,
+          "rss": 412266496,
+          "nodes": 12000,
+          "transitions": 77114,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "seconds": 9.0476464,
+          "rss": 338829312,
+          "nodes": 7164,
+          "transitions": 47841,
+          "timeBoundary": false,
+          "snapshotRisk": false,
+          "snapshotBoundary": "None"
+        }
+      ],
+      "aggregates": {
+        "baseline": {
+          "seconds": 52.008459,
+          "peakWorkingSetBytes": 363069440,
+          "nodes": 52170,
+          "transitions": 258210,
+          "wins": 4,
+          "reportedTimeBoundaries": 0
+        },
+        "hybrid": {
+          "seconds": 59.0650199,
+          "peakWorkingSetBytes": 434970624,
+          "nodes": 60000,
+          "transitions": 307834,
+          "wins": 4,
+          "reportedTimeBoundaries": 0
+        },
+        "linear": {
+          "seconds": 55.148928399999996,
+          "peakWorkingSetBytes": 408166400,
+          "nodes": 60000,
+          "transitions": 299523,
+          "wins": 4,
+          "reportedTimeBoundaries": 0
+        }
+      },
+      "materialComparisons": [
+        {
+          "id": "unseen-defect-bygone_effigy_elite-linear",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-defect-bygone_effigy_elite-hybrid",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite-linear",
+          "comparison": 0
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite-hybrid",
+          "comparison": 0
+        },
+        {
+          "id": "unseen-necrobinder-phrog_parasite_elite-linear",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-necrobinder-phrog_parasite_elite-hybrid",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-regent-decimillipede_elite-linear",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-regent-decimillipede_elite-hybrid",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-silent-knights_elite-linear",
+          "comparison": -1
+        },
+        {
+          "id": "unseen-silent-knights_elite-hybrid",
+          "comparison": -1
+        }
+      ],
+      "sameNativeAndPredictedRoots": true,
+      "sameFrozenLoadouts": true,
+      "timeObservationReliable": false
+    },
+    "linearRootSupport": {
+      "terms": 35,
+      "termsSeenInAtMostTwoRoots": 26,
+      "rootSupport": {
+        "battle/enemy-hp": 40,
+        "battle/projected-hp": 40,
+        "orb/3/PLASMA_ORB/evoke": 1,
+        "pile/discard/card/ANTICIPATE/count": 1,
+        "pile/discard/card/BOOT_SEQUENCE/count": 1,
+        "pile/discard/card/DRAMATIC_ENTRANCE/count": 2,
+        "pile/discard/card/ENTROPY/count": 2,
+        "pile/discard/card/GUNK_UP/affliction/RINGING": 1,
+        "pile/discard/card/OUTBREAK/count": 1,
+        "pile/discard/card/REFLECT/count": 1,
+        "pile/discard/card/SHROUD/count": 2,
+        "pile/discard/card/SURVIVOR/affliction/TAINTED": 1,
+        "pile/discard/card/TERRAFORMING/var/VigorPower": 2,
+        "pile/draw/card/BACKFLIP/affliction/TAINTED": 1,
+        "pile/draw/card/EXPERTISE/count": 2,
+        "pile/draw/card/HEIRLOOM_HAMMER/count": 1,
+        "pile/draw/card/SENTRY_MODE/count": 3,
+        "pile/draw/card/SHRUG_IT_OFF/affliction/TAINTED": 1,
+        "pile/draw/position/5/GRAVEBLAST": 2,
+        "pile/draw/position/7/HEIRLOOM_HAMMER": 1,
+        "pile/draw/position/9/BODY_SLAM": 1,
+        "pile/draw/position/9/COSMIC_INDIFFERENCE": 2,
+        "pile/draw/position/9/MAKE_IT_SO": 1,
+        "pile/exhaust/card/HIDDEN_CACHE/count": 1,
+        "pile/exhaust/card/SOUL/affliction/TAINTED": 1,
+        "pile/exhaust/type/Skill/keyword/Exhaust": 33,
+        "pile/exhaust/type/Skill/var/Summon": 4,
+        "pile/hand/card/AFTERIMAGE/count": 1,
+        "pile/hand/type/Attack/count": 40,
+        "player/energy": 40,
+        "player/hp": 40,
+        "power/enemy/0/VULNERABLE_POWER": 23,
+        "power/player/ACCURACY_POWER": 2,
+        "power/player/REFLECT_POWER": 1,
+        "power/player/SHROUD_POWER": 2
+      }
+    }
+  },
+  "v29": {
+    "training": {
+      "budget": {
+        "startedUtc": "2026-09-27T12:54:17.912362+00:00",
+        "completed": true,
+        "refitOnly": true,
+        "limitSeconds": 141.2605923880301,
+        "priorTrainingSeconds": 1658.73940761197,
+        "preparationSeconds": 0,
+        "manifestSha256": "04424d368f1e57bac2ddf59f6f0d83469114286db375e13d9088967d3c68e00c",
+        "rootEvidenceDirectory": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training",
+        "modSha256": "52e3508ce795854a8256a5ea252341d207282e4ef7814eee7070c742826d67ca",
+        "harnessSha256": "134b29716ea15802a5376cb5eaab199ab1d20ca7fdcc3fbc4b4f0bab70296d1d",
+        "elapsedSeconds": 52.85561392700765,
+        "totalModelTrainingSeconds": 1711.5950215389776
+      },
+      "fit": {
+        "roots": 40,
+        "rows": 29453,
+        "pairs": 61796,
+        "features": 360,
+        "eligibleFeatures": 1914,
+        "linearTerms": 29,
+        "linearBytes": 1701,
+        "fitMilliseconds": 52582.0376,
+        "bytes": 307096,
+        "peakWorkingSetBytes": 1436454912
+      },
+      "inheritedObservationHashes": [
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "45c3d4eeebd7f9a6d90b141ef83a2de98f03677c4c507d2738b264617c30ffd7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "4bbcdffae7a4a1c98914d6d3f82a1ec17116b0539a15e89cada521f63209228a"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "0f1ca12a37bf736f981ebef0437577d41506191b04ea8bb1e7db43a63c4c0143"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "f378a0cd6b9ecb2b4ca2d9ce8f73cf046ffd4f66f06e48506b2d74a5d1bbbdb4"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-fuzzy_wurm_crawler_weak/outcome-rows.json",
+          "sha256": "593eb6202fbee2605dffbcb80c15a6a04616ec0080635e6455ffd07b616ea58a"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-nibbits_normal/outcome-rows.json",
+          "sha256": "9316a69c7a54bcc9a39f2b239b4f0ae1f29bbdfaef3fdf7f31550d7cbbcb1674"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-nibbits_normal/outcome-rows.json",
+          "sha256": "b375789d3a1a245b113fc732d3da4676d47edf8577a4bfe94b59248276d236d5"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-nibbits_normal/outcome-rows.json",
+          "sha256": "b83cec3b93512fd3d880d12a3282e6e3ce247f4c6f8b7e53d6bc557f9c61b244"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-nibbits_normal/outcome-rows.json",
+          "sha256": "52cb352519a7a402ec01d7f9d306d8f08e710952b6c3700af32c7c89caaaa58f"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-nibbits_normal/outcome-rows.json",
+          "sha256": "2bde6c58a521ff2d22396c85b44f869e2073850f280eed469fd99f877e403be7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "772379f7cb62aa20181cd2e55af13ad70ac073c4350932cf051737591b2e30e7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "42f7aacb7bfd5129262ba89633e97c6b13626f0ce711df71c902a1303ae8eda0"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "dbb0800f3e5146f8b1302596bd67e3cd5a6dd12eb1699de030b6910840e46544"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "28072e189dd994f76ad434b968a58a6fd33a01146ffa7b4e3aba8c03657a43d7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-overgrowth_crawlers/outcome-rows.json",
+          "sha256": "c7e5f757f0a7e1f8eef5eb1531de65e7a79557ede39257e25624c3cb5acd74bf"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "84bc12fd52e2eda0a7ea570ab3c0262e6ebcbddbb5035b78f7afc595c4c1eeb0"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "5c5a828cab1de882192a216ad0f89f570209f22ace201d84651fb80c26b2bf07"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "5692b639dea7a04d91106b2e5eb46491e9366f2b2dbba90745ad895e560708c0"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "c45a50b764302c26a1e8677821d5f97636db011de08b00b2866f1a7a45843d8f"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-ruby_raiders_normal/outcome-rows.json",
+          "sha256": "6c069080c72d5d0056c922f2de496b70816914c28fafa5146877b703e9f13985"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-entomancer_elite/outcome-rows.json",
+          "sha256": "503ed348937508a2e50ae4b08321cd0b6ae71909651ff3f6f4fb66b341c08d1a"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-entomancer_elite/outcome-rows.json",
+          "sha256": "e3509ad976aed4f546ff88829a882213709ec8347ec332ddab47bf131c2e99bb"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-entomancer_elite/outcome-rows.json",
+          "sha256": "4a230248b282646565587005f059c34f16a686b5a96d29aee01398b5212c3387"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-entomancer_elite/outcome-rows.json",
+          "sha256": "df2a06790909a6cc4f523022ad91f1c9d58dc2765b71ff3b656425e9fd8f1fc2"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-entomancer_elite/outcome-rows.json",
+          "sha256": "0040d12c19e2830718e8194184cfcab19289fe426613f4efc153169165ed16f0"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-infested_prisms_elite/outcome-rows.json",
+          "sha256": "2568825a2177e1aa64e26df5f993b58e6125260d52c5643dedb84f5a94d7ccda"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-infested_prisms_elite/outcome-rows.json",
+          "sha256": "751fd76107656efcc2cd7767ac2b90907abcb7612ed0cb5887a7de51b7430cf3"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-infested_prisms_elite/outcome-rows.json",
+          "sha256": "4e32ee4e373e95ddd435bae9677a6f9dd2a0864b2766a2c0a4c0843f3a83bfe9"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-infested_prisms_elite/outcome-rows.json",
+          "sha256": "a14177b20fd494f73703225c078b6f34de0f7d11d74450fb496d6cccfb95d105"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-infested_prisms_elite/outcome-rows.json",
+          "sha256": "923a33677b79b06d92f9d44b89123076f7ae547e921fbb9ca1aef9f0c9bd8fd7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-mecha_knight_elite/outcome-rows.json",
+          "sha256": "d8a8444365d6d9d0a7c8387bb13fbb6e21bab7450642a8c4759d0ed2f1009830"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-mecha_knight_elite/outcome-rows.json",
+          "sha256": "8b8cbdd09e917cf9080ded9906365eb6287723479191f7c6838cccc7dcdfc49b"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-mecha_knight_elite/outcome-rows.json",
+          "sha256": "9cebf340c56b13e9b4738061e32d84346fad117012dabb19d26390b9be0381f4"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-mecha_knight_elite/outcome-rows.json",
+          "sha256": "12fd1b427e6790020c0638b954aea46afb0ca771abbadc0f502f22f1b98954c3"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-mecha_knight_elite/outcome-rows.json",
+          "sha256": "5d8e1c451753c87904725f1f8f59a6d640fe79bc18c5537ac92c1fb0b7275372"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-defect-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "996f9997f7594ad50d78d0af03f29ca071fda27e966bad693a1055ccc9a48bdd"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-ironclad-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "bb40bc0ab9be97e824fc2550fd08952e4ed3b04369aaa406c30b1354c05f1be7"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-necrobinder-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "baf8ea661d8697135d0132916aefb25c0a84ae636892d6ce4808a9785f5e6b9b"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-regent-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "e519fba64f93423dc291256b76537916cdac02a2d6fbf8a74938f6f7a20810ca"
+        },
+        {
+          "path": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v27/training/balanced-silent-ceremonial_beast_boss/outcome-rows.json",
+          "sha256": "f1735e02ee3fbd128f8d9d348f120dd1309fd8a4b18100b726186a1159d777c8"
+        }
+      ]
+    },
+    "validation": {
+      "completed": true,
+      "identity": {
+        "model": "f5af0da0e26e63977e43a02bea99d484717ef862423a64ad76de1c4b058293b4",
+        "mod": "52e3508ce795854a8256a5ea252341d207282e4ef7814eee7070c742826d67ca",
+        "harness": "134b29716ea15802a5376cb5eaab199ab1d20ca7fdcc3fbc4b4f0bab70296d1d",
+        "datasetSha256": "6d11204f4040726d4e1448762682aa8d7ffa6dbd18cea6fb61cc9d6a51463807",
+        "settings": {
+          "beam": 24,
+          "nodes": 12000,
+          "budgetMilliseconds": 30000,
+          "dop": 1,
+          "searchMode": "Coordinator",
+          "potionPolicy": "Disabled",
+          "stopAtZeroLoss": true,
+          "batchSeconds": 600
+        }
+      },
+      "records": [
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 27,
+            "strategicHpDeficit": 27,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000629986,
+            "combatEndedTurn": 5,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.5261304,
+          "nodes": 12958,
+          "transitions": 46439,
+          "rss": 347308032,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-defect-bygone_effigy_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 28,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.0384865,
+          "nodes": 12000,
+          "transitions": 38697,
+          "rss": 354091008,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 8.4057521,
+          "nodes": 12000,
+          "transitions": 42467,
+          "rss": 429510656,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-ironclad-byrdonis_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 7.2174517,
+          "nodes": 8048,
+          "transitions": 30995,
+          "rss": 335749120,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 4,
+            "strategicHpDeficit": 4,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10001699971,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 12.9563715,
+          "nodes": 12000,
+          "transitions": 57954,
+          "rss": 367505408,
+          "timeBoundary": true
+        },
+        {
+          "case": "unseen-necrobinder-phrog_parasite_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 27,
+            "strategicHpDeficit": 27,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 11,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 12.5686614,
+          "nodes": 12000,
+          "transitions": 53126,
+          "rss": 336465920,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 28,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 36,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 16.9556428,
+          "nodes": 12000,
+          "transitions": 89055,
+          "rss": 437407744,
+          "timeBoundary": false
+        },
+        {
+          "case": "unseen-regent-decimillipede_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 26,
+            "strategicHpDeficit": 26,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000689968,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 14.6785317,
+          "nodes": 12000,
+          "transitions": 75505,
+          "rss": 370425856,
+          "timeBoundary": true
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "baseline",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 9.0368794,
+          "nodes": 7183,
+          "transitions": 47974,
+          "rss": 339185664,
+          "timeBoundary": true
+        },
+        {
+          "case": "unseen-silent-knights_elite",
+          "arm": "candidate",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 82,
+            "strategicHpDeficit": 271,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 225,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "snapshotRisk": false,
+          "snapshotBoundary": "None",
+          "seconds": 13.0684265,
+          "nodes": 12000,
+          "transitions": 77645,
+          "rss": 409124864,
+          "timeBoundary": false
+        }
+      ],
+      "aggregates": {
+        "baseline": {
+          "seconds": 52.4153647,
+          "peakWorkingSetBytes": 370425856,
+          "nodes": 52189,
+          "transitions": 258867,
+          "wins": 4,
+          "reportedTimeBoundaries": 3
+        },
+        "candidate": {
+          "seconds": 59.036969299999996,
+          "peakWorkingSetBytes": 437407744,
+          "nodes": 60000,
+          "transitions": 300990,
+          "wins": 3,
+          "reportedTimeBoundaries": 0
+        }
+      },
+      "materialComparisons": [
+        {
+          "id": "unseen-defect-bygone_effigy_elite",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "comparison": 0
+        },
+        {
+          "id": "unseen-necrobinder-phrog_parasite_elite",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-regent-decimillipede_elite",
+          "comparison": 1
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "comparison": -1
+        }
+      ],
+      "sameNativeAndPredictedRoots": true,
+      "sameFrozenLoadouts": true,
+      "timeObservationReliable": true
+    },
+    "minimumRootSupport": 3,
+    "linearOnlyValidationPerformed": false
+  },
+  "refitInputVerification": {
+    "underlyingTrainingRequestsAndLoadoutsUnchanged": true,
+    "roots": 40
+  },
+  "timeObservationChecks": {
+    "time-boundary": {
+      "counts": {
+        "turnLayerTimeStops": 1,
+        "noveltyTimeStops": 0,
+        "selectedResultTimeLimit": true
+      },
+      "observed": true
+    },
+    "novelty-time-boundary": {
+      "counts": {
+        "turnLayerTimeStops": 0,
+        "noveltyTimeStops": 1,
+        "selectedResultTimeLimit": false
+      },
+      "observed": true
+    },
+    "retention": {
+      "counts": {
+        "turnLayerTimeStops": 0,
+        "noveltyTimeStops": 0,
+        "selectedResultTimeLimit": false
+      },
+      "observed": false
+    }
+  },
+  "retentionDiagnostic": {
+    "recordLimit": 3000,
+    "boundaries": [
+      {
+        "boundary": 1,
+        "observed": 7,
+        "expectedRaw": 7,
+        "complete": true,
+        "selected": 7,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 2,
+        "observed": 38,
+        "expectedRaw": 38,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 3,
+        "observed": 131,
+        "expectedRaw": 131,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 4,
+        "observed": 149,
+        "expectedRaw": 149,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 5,
+        "observed": 84,
+        "expectedRaw": 84,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 6,
+        "observed": 48,
+        "expectedRaw": 48,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 7,
+        "observed": 192,
+        "expectedRaw": 192,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 8,
+        "observed": 63,
+        "expectedRaw": 63,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 11,
+        "observed": 165,
+        "expectedRaw": 165,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 12,
+        "observed": 288,
+        "expectedRaw": 288,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 13,
+        "observed": 283,
+        "expectedRaw": 283,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 14,
+        "observed": 233,
+        "expectedRaw": 233,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 15,
+        "observed": 291,
+        "expectedRaw": 291,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 16,
+        "observed": 144,
+        "expectedRaw": 144,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 17,
+        "observed": 63,
+        "expectedRaw": 63,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 18,
+        "observed": 39,
+        "expectedRaw": 39,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 19,
+        "observed": 22,
+        "expectedRaw": 22,
+        "complete": true,
+        "selected": 22,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 22,
+        "observed": 214,
+        "expectedRaw": 214,
+        "complete": true,
+        "selected": 24,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      },
+      {
+        "boundary": 23,
+        "observed": 133,
+        "expectedRaw": 168,
+        "complete": false,
+        "selected": 21,
+        "duplicateRawStates": 0,
+        "duplicateSelectedStates": 0,
+        "duplicateSelectedStatesAndLabels": 0
+      }
+    ],
+    "completeBoundaries": 18,
+    "duplicateSelectedInCompleteBoundaries": 0
+  },
+  "contracts": {
+    "outcomeRankingAssertions": 44,
+    "pythonDatasetTests": 6,
+    "releaseBuilds": [
+      "CombatSolver",
+      "OfflineSearchHarness"
+    ],
+    "boundaryGates": [
+      "Bash",
+      "PowerShell"
+    ],
+    "boundarySearchFiles": 222
+  },
+  "finalTestSearchOpened": false,
+  "limitations": [
+    "All candidate selection used development validation; final test stays sealed.",
+    "The old Coordinator timeBoundaryObserved=false did not rule out internal time stops; historical raw records are preserved.",
+    "v28 models lose HP; v29 loses a baseline victory. No candidate is enabled.",
+    "Training acceleration does not establish faster search.",
+    "Only one bounded prefix was checked for duplicate selected states; no general absence claim.",
+    "Objective pruning currently bypasses additional retention structures and incumbent bounds; the model is not the only changed component.",
+    "No native full auto-deployment, combat differential, or visible Steam performance in this batch."
+  ]
+}

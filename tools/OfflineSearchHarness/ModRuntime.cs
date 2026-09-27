@@ -449,6 +449,17 @@ internal static class ModRuntime
                 }),
             };
         }
+        int observedTurnTimeStops = 0, observedNoveltyTimeStops = 0;
+        SearchDiagnosticsSink budgetDiagnostics = policy.Diagnostics;
+        policy = policy with { Diagnostics = new SearchDiagnosticsSink(message =>
+        {
+            if (message.Contains("TURN_LAYER_BUDGET reason=time", StringComparison.Ordinal))
+                Interlocked.Increment(ref observedTurnTimeStops);
+            if (message.Contains("NOVELTY_SEARCH_STOP reason=time_limit", StringComparison.Ordinal))
+                Interlocked.Increment(ref observedNoveltyTimeStops);
+            budgetDiagnostics.Info(message);
+        }, budgetDiagnostics.Debug, budgetDiagnostics.PathObserver,
+            budgetDiagnostics.CompletedOutcomeObserver, budgetDiagnostics.OpeningActionObserver) };
         HarnessLog.Trace("search_policy");
         Action<SolverProgress>? diagnosticProgress = null;
         if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_STREAM_DIAGNOSTICS") == "1")
@@ -512,6 +523,13 @@ internal static class ModRuntime
                 : SolveEvaluate(root, names, damage, policy, settings,
                     options, loop, out describedPolicy, ref timeBoundary);
         }
+        timeBoundary |= Volatile.Read(ref observedTurnTimeStops) != 0
+            || Volatile.Read(ref observedNoveltyTimeStops) != 0
+            || result.BoundaryReason == SearchBoundaryReason.TimeLimit;
+        File.WriteAllText(Path.Combine(options.OutputDirectory, "search-budget-boundaries.json"),
+            JsonSerializer.Serialize(new { turnLayerTimeStops = observedTurnTimeStops,
+                noveltyTimeStops = observedNoveltyTimeStops,
+                selectedResultTimeLimit = result.BoundaryReason == SearchBoundaryReason.TimeLimit }));
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
         orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);

@@ -1361,7 +1361,7 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
     done
 done
 
-for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs CombatBeamSolver.ObjectiveRetention.cs; do
+for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs CombatBeamSolver.ObjectiveRetention.cs; do
     for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
@@ -1370,7 +1370,11 @@ for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs CombatBeamSolver.
 done
 require_fixed "$search_root/SearchPolicySnapshot.cs" 'SearchOutcomeValueModel? OutcomeTrainingCollector' 'training collector must remain separate from the frozen predictor:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'CombatTerminalOutcome.Defeat' 'failed continuation labels require an actual terminal defeat:'
-require_fixed "$search_root/SearchOutcomeValueModel.cs" 'r.FeatureSchema != Schema' 'old training observations must not silently acquire new feature meanings:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'r.FeatureSchema != FeatureSchema' 'old training observations must not silently acquire new feature meanings:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'Schema = 7, FeatureSchema = 6' 'model serialization and unchanged observation schemas must be distinct:'
+require_fixed "$search_root/SearchOutcomeValueModel.Linear.cs" 'pairs[p].Weight * probability' 'linear utility must be learned from root-balanced pair labels:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'Math.Min(3, participatingRoots)' 'feature support must count actual witnessed roots:'
+require_fixed "$repository_root/tools/OfflineSearchHarness/ModRuntime.cs" 'NOVELTY_SEARCH_STOP reason=time_limit' 'coordinator novelty time limits must be observed by the harness:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" '_noveltyGroups >= 64' 'novelty observation must leave capacity for Beam pools:'
 require_fixed "$search_root/CombatBeamSolver.NoveltySearch.cs" 'ObservePool(children, _player, novelty: true)' 'novelty-only victories must remain observable for training:'
 require_fixed "$search_root/SearchOutcomeContext.cs" 'combat.GetOstyMaxHp(simulator, player)' 'pet features must read branch-owned maximum HP:'

@@ -199,12 +199,14 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 ## 上下文结果估值研究
 
-`--collect-outcome-values --dop 1` 输出 `outcome-context.json` 与同池完整胜利/真实终局死亡见证的 `outcome-rows.json`；未完成/被裁剪状态不标失败。使用 `--fit-outcome-values <路径数组JSON> <模型JSON>` 拟合无需游戏启动的64棵深度6直方图成对排序树（schema6）。`tools/OutcomeValuation/train.py` 对采集加拟合设置至多1800秒硬进程时限。
+`--collect-outcome-values --dop 1` 输出 `outcome-context.json` 与同池完整胜利/真实终局死亡见证的 `outcome-rows.json`；未完成/被裁剪状态不标失败。使用 `--fit-outcome-values <路径数组JSON> <模型JSON>` 拟合无需游戏启动的线性基础项和64棵深度6直方图成对残差树（模型schema7，观察schema6）。同时输出 `<模型名>.linear.json`，供同一次拟合的纯线性消融使用。`tools/OutcomeValuation/train.py` 对采集加拟合设置至多1800秒硬进程时限。
 
 `--objective-search --outcome-value-model <模型JSON> --search-mode Coordinator --potion-policy Disabled --dop 1` 仅用于替代排序实验，不叠加自动搜索或旧组合参数。它未通过默认替代验收，Runtime不会启用。笔尖计数8夹具可以追加 `--verify-outcome-context`，验证实机后续变化隔离、Fork独立及分支费用/计数可见性。具体输入、失败回归、内存和泛化限制见[报告](strategy/contextual-outcome-values-20260927.md)。
 
-`--check-outcome-ranking` 运行34项纯标签/拟合/加载/多策略分组合同；`--verify-outcome-context` 另验证选择列数值投影与复用清理。替代排序也允许 `--search-mode Evaluate --observe-ordering <上限>` 做首次裁剪诊断；该数据不能作性能基准。训练/测试须先以 `tools/OutcomeValuation/dataset.py` 检查模板、实际遭遇和牌组隔离，不能只换种子。见[成对排序报告](strategy/pairwise-outcome-ranking-20260927.md)。
+`--check-outcome-ranking` 运行44项纯标签/拟合/加载/多策略分组及线性外推/单位变换合同；`--verify-outcome-context` 另验证选择列数值投影与复用清理。替代排序也允许 `--search-mode Evaluate --observe-ordering <上限>` 做首次裁剪诊断；该数据不能作性能基准。训练/测试须先以 `tools/OutcomeValuation/dataset.py` 检查模板、实际遭遇和牌组隔离，不能只换种子。见[成对排序报告](strategy/pairwise-outcome-ranking-20260927.md)。
 
 `--collect-outcome-values --objective-search --outcome-value-model <模型>` 使用冻结模型采集自身轨迹，主搜索后离线补查最多6个首回合前缀。`outcome-corrections.json` 单独记录6000ms软额度、各次1000节点/1500ms软额度、真实成本和见证变化；采集运行不能作推理性能基准。根准备选择和跨回合前缀不进入此补查。`--audit-outcome-ranking <路径数组JSON> <模型> <输出>` 只审计被选中的训练输入偏好，不是独立验收。路径数组可将一个实际根的多个采集文件放入子数组，组号按文件重映射。见[本轮研究](strategy/histogram-outcome-ranking-20260927.md)。
 
 观察schema6新增分支奥斯蒂身体/最大HP/可受击状态，Power区分主人、奥斯蒂和与敌人身体一致的roster索引。训练行亦校验schema，旧行拒绝混合。新颖性搜索的兄弟子节点池参与观察（最多64个，计入256总池），完成边界使用原权威终局摘要。`outcome-collection.json` 记录总态/池/新颖性池/有标签/导出条数，用于发现“已有胜利却没有监督”的采集缺口。
+
+`search-budget-boundaries.json` 分别记录回合层和新颖性时间停止，以及所选结果的TimeLimit。两种搜索入口统一纳入 `timeBoundaryObserved`。2026-09-27本轮修正之前，Coordinator入口没有更新该标志，新颖性独立时间停止也漏记；历史false只能表示宿主未记录，不能用来证明所有成员没有时间截断。保留历史原始数据，不将诊断修复当作算法提速。

@@ -5,9 +5,9 @@ namespace CombatSolver;
 
 // Search-state ranking learned only from compared, completed continuation witnesses.
 // Unlabelled/pruned states stay unknown. All collection and fitting is opt-in offline.
-internal sealed class SearchOutcomeValueModel
+internal sealed partial class SearchOutcomeValueModel
 {
-    internal const int Schema = 6;
+    internal const int Schema = 7, FeatureSchema = 6;
     private const int MaximumStates = 8192, MaximumGroups = 256, MaximumGroupMembers = 32;
     private readonly record struct ObservationKey(StateFingerprint State, int HpCost, int PotionCost);
     private sealed class Observation(Dictionary<string, double> features)
@@ -27,6 +27,7 @@ internal sealed class SearchOutcomeValueModel
     private bool _frozen;
     private string[] _featureNames = [];
     private Tree[]? _forest;
+    private double[] _linearWeights = [];
     private Dictionary<string, int> _columns = new(StringComparer.Ordinal);
     private HashSet<string> _prefixes = [];
     private double[] _featureScratch = [];
@@ -36,6 +37,7 @@ internal sealed class SearchOutcomeValueModel
     private const double LearningRate = 0.1;
     internal bool IsFitted => _forest != null;
     internal int FittedPairs { get; private set; }
+    internal int EligibleFeatures { get; private set; }
     internal int Samples => _observations.Values.Count(o => o.Outcome != null);
     private static ObservationKey Key(SearchNode node) => new(node.StateKey,
         node.Snapshot.CumulativePlayerHpLost - node.Snapshot.RecoveredPlayerHp - node.Snapshot.StrategicHpCredit,
@@ -152,14 +154,16 @@ internal sealed class SearchOutcomeValueModel
             return node.Mean;
         }
     }
-    internal sealed record Document(int Schema, string[] FeatureNames, Guid GameMvid, Tree[] Forest);
+    internal sealed record Document(int Schema, string[] FeatureNames, Guid GameMvid, Tree[] Forest,
+        double[]? LinearWeights = null);
     internal TrainingRow[] ExportRows() => _observations.Values.Where(o => o.Outcome != null && o.Groups.Count != 0)
-        .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won, Schema)).ToArray();
+        .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won, FeatureSchema)).ToArray();
     internal Document ExportModel() => new(Schema, _featureNames, typeof(Player).Assembly.ManifestModule.ModuleVersionId,
-        _forest ?? throw new InvalidOperationException("No fitted ranker."));
+        _forest ?? throw new InvalidOperationException("No fitted ranker."), _linearWeights);
+    internal Document ExportLinearModel() => Load(ExportModel() with { Forest = [new(-1, 0, 0)] }).ExportModel();
     internal object DescribeCollection() => new
     {
-        featureSchema = Schema, states = _observations.Count, pools = _groups, noveltyPools = _noveltyGroups,
+        featureSchema = FeatureSchema, states = _observations.Count, pools = _groups, noveltyPools = _noveltyGroups,
         labelled = Samples, exported = ExportRows().Length,
     };
     internal static SearchOutcomeValueModel Load(Document document)
@@ -168,11 +172,13 @@ internal sealed class SearchOutcomeValueModel
             || document.FeatureNames.Any(string.IsNullOrWhiteSpace)
             || document.FeatureNames.Distinct(StringComparer.Ordinal).Count() != document.FeatureNames.Length
             || document.GameMvid != typeof(Player).Assembly.ManifestModule.ModuleVersionId
-            || document.Forest is not { Length: > 0 and <= 64 })
+            || document.Forest is not { Length: > 0 and <= 64 }
+            || document.LinearWeights is { } weights && (weights.Length != document.FeatureNames.Length
+                || weights.Any(w => !double.IsFinite(w))))
             throw new InvalidDataException("Incompatible outcome ranking model.");
         foreach (var tree in document.Forest) Validate(tree, 0);
         SearchOutcomeValueModel model = new() { _frozen = true };
-        model.Compile(document.FeatureNames, document.Forest);
+        model.Compile(document.FeatureNames, document.Forest, document.LinearWeights ?? new double[document.FeatureNames.Length]);
         return model;
         void Validate(Tree? tree, int depth)
         {
@@ -189,11 +195,13 @@ internal sealed class SearchOutcomeValueModel
     {
         List<TrainingRow> rows = [];
         List<Pair> pairs = [];
+        Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
+        int participatingRoots = 0;
         Random random = new(0);
         foreach (var root in roots)
         {
             int offset = rows.Count;
-            if (root.Any(r => r.FeatureSchema != Schema || r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
+            if (root.Any(r => r.FeatureSchema != FeatureSchema || r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
                 || !(r.Outcome.Won && r.Outcome.Survives && !r.CompletedDefeat
                     || !r.Outcome.Won && !r.Outcome.Survives && r.CompletedDefeat)
                 || r.Outcome.Score != 0 || r.RemainingActions < 0 || r.Groups.Length == 0
@@ -220,12 +228,24 @@ internal sealed class SearchOutcomeValueModel
             // Equal total weight per root; repeated states/pools cannot multiply a pair.
             var sampled = rootPairs.ToArray(); random.Shuffle(sampled);
             int count = Math.Min(4096, sampled.Length);
+            if (count > 0)
+            {
+                participatingRoots++;
+                foreach (string name in root.SelectMany(r => r.Features.Keys).Distinct(StringComparer.Ordinal))
+                    featureRoots[name] = featureRoots.GetValueOrDefault(name) + 1;
+            }
             foreach (var pair in sampled.Take(count))
                 pairs.Add(new(offset + pair.Preferred, offset + pair.Other, 1d / count));
         }
         FittedPairs = pairs.Count;
         if (pairs.Count < 2) return false;
-        _featureNames = rows.SelectMany(r => r.Features.Keys).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        // Correlated rows from one battle are not independent support for an
+        // identity-specific coefficient or split. Count actual witnessed roots.
+        int minimumRoots = Math.Min(3, participatingRoots);
+        _featureNames = featureRoots.Where(p => p.Value >= minimumRoots)
+            .Select(p => p.Key).Order(StringComparer.Ordinal).ToArray();
+        EligibleFeatures = _featureNames.Length;
+        (double[] linearWeights, double[] scores) = FitLinearTerms(rows, pairs, _featureNames);
         int[] indices = pairs.SelectMany(p => new[] { p.Preferred, p.Other }).Distinct().Order().ToArray();
         // Learn splits from all observed columns. Randomly trying a few sparse
         // identities left most known preferences tied even on the fitting roots.
@@ -246,7 +266,7 @@ internal sealed class SearchOutcomeValueModel
             }
             columns.Add((feature, cuts, bins));
         }
-        double[] scores = new double[rows.Count], gradient = new double[rows.Count], hessian = new double[rows.Count];
+        double[] gradient = new double[rows.Count], hessian = new double[rows.Count];
         List<Tree> trees = [];
         for (int round = 0; round < 64; round++)
         {
@@ -261,7 +281,7 @@ internal sealed class SearchOutcomeValueModel
             Tree tree = Build(indices, 0);
             trees.Add(tree);
         }
-        Compile(_featureNames, trees.ToArray());
+        Compile(_featureNames, trees.ToArray(), linearWeights);
         return true;
 
         Tree Build(int[] selected, int depth)
@@ -332,7 +352,7 @@ internal sealed class SearchOutcomeValueModel
 
     // A compact numeric program references only columns actually used by a split.
     // Scratch is request-local and used only by the enforced DOP1 research path.
-    private void Compile(string[] names, Tree[] trees)
+    private void Compile(string[] names, Tree[] trees, double[] linearWeights)
     {
         Tree Trim(Tree tree)
         {
@@ -343,6 +363,8 @@ internal sealed class SearchOutcomeValueModel
         }
         trees = trees.Select(Trim).ToArray();
         HashSet<int> used = [];
+        for (int i = 0; i < linearWeights.Length; i++)
+            if (linearWeights[i] != 0) used.Add(i);
         void Visit(Tree tree)
         {
             if (tree.Feature < 0) return;
@@ -357,6 +379,7 @@ internal sealed class SearchOutcomeValueModel
         _columns = _featureNames.Select((name, index) => (name, index)).ToDictionary(p => p.name, p => p.index, StringComparer.Ordinal);
         _prefixes = SearchOutcomeContext.RequiredPrefixes(_featureNames);
         _forest = trees.Select(Rewrite).ToArray();
+        _linearWeights = original.Select(i => linearWeights[i]).ToArray();
         _featureScratch = new double[_featureNames.Length];
         _predictionValues = new float[_featureNames.Length];
     }
@@ -375,7 +398,7 @@ internal sealed class SearchOutcomeValueModel
         long featuresDone = MeasurePerformance ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
         double sum = 0;
         foreach (Tree tree in _forest) sum += tree.Predict(_predictionValues);
-        double predicted = LearningRate * sum;
+        double predicted = LearningRate * sum + LinearPrediction(_predictionValues);
         if (MeasurePerformance)
         {
             _featureTicks += featuresDone - started;
@@ -402,7 +425,14 @@ internal sealed class SearchOutcomeValueModel
     {
         if (_forest == null) throw new InvalidOperationException("Ranker has not been fitted.");
         float[] values = _featureNames.Select(name => (float)features.GetValueOrDefault(name)).ToArray();
-        return LearningRate * _forest.Sum(tree => tree.Predict(values));
+        return LearningRate * _forest.Sum(tree => tree.Predict(values)) + LinearPrediction(values);
+    }
+
+    private double LinearPrediction(float[] values)
+    {
+        double sum = 0;
+        for (int i = 0; i < _linearWeights.Length; i++) sum += _linearWeights[i] * values[i];
+        return sum;
     }
 
     private static Dictionary<string, double> Features(SearchNode node, Player player)

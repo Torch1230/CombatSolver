@@ -89,7 +89,7 @@ def train(args):
             path = target / 'outcome-rows.json'
             verify_resolved_loadout(case, target)
             if args.prior_training:
-                previous = args.prior_training / case['id']
+                previous = Path(prior_budget.get('rootEvidenceDirectory', args.prior_training)) / case['id']
                 old_root, new_root = (json.loads((directory / 'harness-result.json').read_text())['search']
                                       for directory in (previous, target))
                 for stamp in ('rootContinuationStamp', 'rootLiveStamp'):

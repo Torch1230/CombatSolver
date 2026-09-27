@@ -54,8 +54,12 @@ internal static class OutcomeValueTraining
         SearchOutcomeValueModel model = new();
         if (!model.Fit(roots)) throw new InvalidOperationException("Insufficient witnessed outcomes.");
         File.WriteAllText(output, JsonSerializer.Serialize(model.ExportModel()));
+        string linearOutput = Path.ChangeExtension(output, "linear.json");
+        File.WriteAllText(linearOutput, JsonSerializer.Serialize(model.ExportLinearModel()));
         Console.WriteLine(JsonSerializer.Serialize(new { roots = roots.Length, rows = roots.Sum(r => r.Length), pairs = model.FittedPairs,
             features = model.ExportModel().FeatureNames.Length,
+            eligibleFeatures = model.EligibleFeatures,
+            linearTerms = model.ExportLinearModel().FeatureNames.Length, linearBytes = new FileInfo(linearOutput).Length,
             fitMilliseconds = clock.Elapsed.TotalMilliseconds, bytes = new FileInfo(output).Length,
             peakWorkingSetBytes = Process.GetCurrentProcess().PeakWorkingSet64 }));
         return 0;

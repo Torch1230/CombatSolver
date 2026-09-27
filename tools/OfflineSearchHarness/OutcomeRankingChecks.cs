@@ -23,7 +23,7 @@ internal static class OutcomeRankingChecks
         }
         SolverInterimResult quality = new(true, 0, 3, 3, 0, 0, 0, 0, 2) { Survives = true };
         Model.TrainingRow Row(int x, int hp, int[]? groups = null) => new(new() { ["x"] = x },
-            quality with { ProjectedBattleHpLost = hp, StrategicHpDeficit = hp }, 3, groups ?? [0], FeatureSchema: Model.Schema);
+            quality with { ProjectedBattleHpLost = hp, StrategicHpDeficit = hp }, 3, groups ?? [0], FeatureSchema: Model.FeatureSchema);
         var a = Row(0, 2) with { RemainingActions = 50 };
         var b = Row(1, 3) with { RemainingActions = 1 };
         Check(Model.CompareWitnesses(a, b) < 0, "final HP policy outranks suffix length");
@@ -75,12 +75,26 @@ internal static class OutcomeRankingChecks
             "neutral splits with equal leaf predictions are removed exactly");
         Reject(() => Model.Load(document with { Schema = 3 }), "old label schema rejected");
         Reject(() => Model.Load(document with { Schema = 5 }), "old power-owner schema rejected");
+        Reject(() => Model.Load(document with { Schema = 6 }), "old forest-only model schema rejected");
+        Reject(() => Model.Load(document with { LinearWeights = [1] }), "misaligned linear weights rejected");
+        Reject(() => Model.Load(document with { LinearWeights = [0, 0, double.NaN] }), "non-finite linear weights rejected");
         Reject(() => Model.Load(document with { GameMvid = Guid.Empty }), "game version mismatch rejected");
         Reject(() => Model.Load(document with { Forest = [new(2, 0, 0)] }), "incomplete tree rejected");
         var learned = new Model();
         Check(learned.Fit([Enumerable.Range(0, 24).Select(i => Row(i, 24 - i)).ToArray()]), "small pairwise dataset fits");
         Check(learned.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 23 })
             > learned.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 0 }), "gradient learns preferred direction");
+        var linear = Model.Load(learned.ExportLinearModel());
+        Check(linear.ExportModel().FeatureNames.SequenceEqual(["x"]), "linear-only artifact retains its active column");
+        Check(linear.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 100 })
+            > linear.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 24 }),
+            "linear utility extrapolates beyond training thresholds");
+        var rescaled = new Model();
+        Check(rescaled.Fit([Enumerable.Range(0, 24).Select(i => Row(i, 24 - i) with
+            { Features = new() { ["x"] = i * 1000 } }).ToArray()]), "rescaled observations fit");
+        Check(Math.Abs(Model.Load(rescaled.ExportLinearModel()).PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 17000 })
+            - linear.PredictFeaturesForTesting(new Dictionary<string, double> { ["x"] = 17 })) < 1e-8,
+            "pair normalization preserves utility under a change of units");
         var conditional = new Model();
         var contexts = Enumerable.Range(0, 2).Select(context => Enumerable.Range(0, 24)
             .Select(i => Row(i, context == 0 ? 24 - i : i) with
@@ -90,6 +104,17 @@ internal static class OutcomeRankingChecks
             new Dictionary<string, double> { ["relic/context"] = context, ["x"] = x });
         Check(Preference(0, 23) > Preference(0, 0) && Preference(1, 23) < Preference(1, 0),
             "identical actions reverse priority under different root-constant contexts");
+        Check(!conditional.ExportLinearModel().FeatureNames.Contains("relic/context"),
+            "constant-per-root identities cannot acquire marginal linear utility");
+        var supported = new Model();
+        var sparseRoots = Enumerable.Range(0, 3).Select(root => Enumerable.Range(0, 24)
+            .Select(i => Row(i, root == 0 ? i : 24 - i) with
+            { Features = root == 0 ? new() { ["x"] = i, ["one-root-identity"] = i }
+                : new() { ["x"] = i } }).ToArray()).ToArray();
+        Check(supported.Fit(sparseRoots) && supported.EligibleFeatures == 1,
+            "correlated rows in one root do not supply independent feature support");
+        Check(!supported.ExportModel().FeatureNames.Contains("one-root-identity"),
+            "unsupported identity is excluded from both linear and tree inference");
         string directory = Path.Combine(Path.GetTempPath(), "outcome-ranking-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try

@@ -1754,7 +1754,7 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
     }
 }
 
-foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
+foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
     foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
@@ -1764,7 +1764,11 @@ foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'Co
 foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchPolicySnapshot.cs'); Text = 'SearchOutcomeValueModel? OutcomeTrainingCollector' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'CombatTerminalOutcome.Defeat' },
-    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'r.FeatureSchema != Schema' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'r.FeatureSchema != FeatureSchema' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'Schema = 7, FeatureSchema = 6' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Linear.cs'); Text = 'pairs[p].Weight * probability' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'Math.Min(3, participatingRoots)' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/ModRuntime.cs'); Text = 'NOVELTY_SEARCH_STOP reason=time_limit' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '_noveltyGroups >= 64' },
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.NoveltySearch.cs'); Text = 'ObservePool(children, _player, novelty: true)' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeContext.cs'); Text = 'combat.GetOstyMaxHp(simulator, player)' },

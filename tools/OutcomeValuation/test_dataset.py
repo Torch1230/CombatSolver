@@ -1,4 +1,5 @@
 import json
+import hashlib
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -7,9 +8,34 @@ import unittest
 from dataset import audit, verify_resolved_loadout
 from evaluate import candidate_identity, claim_final_test
 from prepare_training import select_encounters
+from refit import refit
 
 
 class SeparationContracts(unittest.TestCase):
+    def test_refit_rejects_changed_request_behind_an_unchanged_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def manifest(name, split, card):
+                request = root / (name + '-request.json')
+                request.write_text(json.dumps({'characterId': 'A', 'encounterId': name,
+                    'clearRunDeck': True, 'clearPlayerPiles': True, 'cards': [{'cardId': card}]}))
+                value = {'cases': [{'id': name, 'family': name, 'split': split, 'request': str(request)}]}
+                path = root / (name + '-manifest.json')
+                path.write_text(json.dumps(value))
+                return path, value, request
+            train, training, request = manifest('training', 'train', 'BLOCK')
+            validation, heldout, _ = manifest('validation', 'validation', 'STRIKE')
+            budget = {'completed': True, 'elapsedSeconds': 10,
+                      'manifestSha256': hashlib.sha256(train.read_bytes()).hexdigest(),
+                      'separation': audit(training, heldout)}
+            (root / 'training-budget.json').write_text(json.dumps(budget))
+            changed = json.loads(request.read_text())
+            changed['initialPlayerHp'] = 1
+            request.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(ValueError, 'Underlying training requests/loadouts changed'):
+                refit(SimpleNamespace(prior_training=root, seconds=60, manifest=train,
+                                      evaluation_manifest=validation))
+
     def test_final_test_cannot_be_reused_to_tune_search_budgets_or_data(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
