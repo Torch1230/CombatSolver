@@ -302,6 +302,7 @@ internal static class ModRuntime
         policy.BeamWidthPortfolioPlainBaselineMember,
         policy.UseAutomaticSearch,
         policy.UseObjectiveSearch,
+        CoordinatorAutomaticSearch = policy.UseAutomaticSearch || policy.UseObjectiveSearch,
         policy.DisableSharedEvidenceForTesting,
         policy.UseNoveltyPortfolio,
         policy.BeamWidthPortfolioWidths,

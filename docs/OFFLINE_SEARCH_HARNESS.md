@@ -201,7 +201,7 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 `--collect-outcome-values --dop 1` 输出 `outcome-context.json` 与同池完整胜利/真实终局死亡见证的 `outcome-rows.json`；未完成/被裁剪状态不标失败。使用 `--fit-outcome-values <路径数组JSON> <模型JSON>` 拟合无需游戏启动的线性基础项和64棵深度6直方图成对残差树（模型schema7，观察schema6）。同时输出 `<模型名>.linear.json`，供同一次拟合的纯线性消融使用。`tools/OutcomeValuation/train.py` 对采集加拟合设置至多1800秒硬进程时限。
 
-`--objective-search --outcome-value-model <模型JSON> --search-mode Coordinator --potion-policy Disabled --dop 1` 仅用于替代排序实验，不叠加自动搜索或旧组合参数。它未通过默认替代验收，Runtime不会启用。笔尖计数8夹具可以追加 `--verify-outcome-context`，验证实机后续变化隔离、Fork独立及分支费用/计数可见性。具体输入、失败回归、内存和泛化限制见[报告](strategy/contextual-outcome-values-20260927.md)。
+`--objective-search --outcome-value-model <模型JSON> --search-mode Coordinator --potion-policy Disabled --dop 1` 仅用于替代排序实验，内部共用自动协调器；CLI不叠加自动搜索或旧组合参数。它未通过默认替代验收，Runtime不会启用。笔尖计数8夹具可以追加 `--verify-outcome-context`，验证实机后续变化隔离、Fork独立及分支费用/计数可见性。具体输入、失败回归、内存和泛化限制见[报告](strategy/contextual-outcome-values-20260927.md)。
 
 `--check-outcome-ranking` 运行44项纯标签/拟合/加载/多策略分组及线性外推/单位变换合同；`--verify-outcome-context` 另验证选择列数值投影与复用清理。替代排序也允许 `--search-mode Evaluate --observe-ordering <上限>` 做首次裁剪诊断；该数据不能作性能基准。训练/测试须先以 `tools/OutcomeValuation/dataset.py` 检查模板、实际遭遇和牌组隔离，不能只换种子。见[成对排序报告](strategy/pairwise-outcome-ranking-20260927.md)。
 

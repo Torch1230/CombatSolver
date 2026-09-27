@@ -22,8 +22,9 @@ internal sealed partial class CombatBeamSolver
     {
         if ((policy.ObjectiveValueModel != null || policy.OutcomeTrainingCollector != null) && policy.MaxDegreeOfParallelism != 1)
             throw new InvalidOperationException("Outcome ranking collection/inference requires DOP 1.");
-        if (policy.UseObjectiveSearch)
-            policy = policy with { NoveltySearch = null };
+        if (policy.UseObjectiveSearch && (policy.ObjectiveValueModel is not { IsFitted: true }
+            || policy.PotionPolicy != SolverPotionPolicy.Disabled))
+            throw new InvalidOperationException("Outcome ranking research requires a fitted model and Disabled potions.");
         SearchRequestWorkTotals? requestWorkTotals = policy.RequestWorkTotals;
         long startedTimestamp = requestWorkTotals == null ? 0 : Stopwatch.GetTimestamp();
         long allocatedBytesAtStart = requestWorkTotals == null
@@ -1527,6 +1528,12 @@ internal sealed partial class CombatBeamSolver
                  playDepth++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // A singleton or structural seat need not pass through a score
+                // comparator. Capture its rank before expansion can retire the
+                // simulator; later routing may still compare this ancestor.
+                if (policy.UseObjectiveSearch)
+                    foreach (SearchNode admitted in active)
+                        _ = ObjectiveRankScore(admitted);
                 if (memoryNoProgressTruncated)
                 {
                     // 和时间预算同一条收尾路径：把当前前沿推进到回合末，再由既有终局发布；
@@ -2308,6 +2315,8 @@ internal sealed partial class CombatBeamSolver
                 CumulativeEnemyHpLost = AccumulateEnemyHpLost(node, snapshot),
             };
             node = AttachOrderedMutationLineage(node);
+            if (policy.UseObjectiveSearch)
+                _ = ObjectiveRankScore(node.Parent!);
             node.Parent!.Snapshot.ReleaseSimulator();
         }
         if (resetSchedulingBaseline && prefix.Count > 0)

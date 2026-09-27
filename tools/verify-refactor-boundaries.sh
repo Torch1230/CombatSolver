@@ -1370,9 +1370,16 @@ for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValu
 done
 require_fixed "$search_root/SearchPolicySnapshot.cs" 'SearchOutcomeValueModel? OutcomeTrainingCollector' 'training collector must remain separate from the frozen predictor:'
 require_fixed "$search_root/CombatBeamSolver.cs" 'policy.UseObjectiveSearch ? ObjectiveRankScore : null' 'learned scalar must use the shared retention policy:'
+require_fixed "$search_root/CombatSearchCoordinator.cs" 'UseAutomaticSearch = policy.UseAutomaticSearch || policy.UseObjectiveSearch' 'learned ranking must use the shared automatic scheduler:'
+require_fixed "$search_root/CombatBeamSolver.NoveltySearch.cs" '=> policy.UseObjectiveSearch ? ObjectiveRankScore(node) : node.Score;' 'novelty ordering must use the selected estimator:'
+forbid_fixed "$search_root/CombatBeamSolver.Phases.cs" 'policy = policy with { NoveltySearch = null };' 'learned ranking must not silently disable novelty exploration:'
+if [[ -e "$search_root/CombatSearchCoordinator.ObjectiveSearch.cs" ]]; then
+    add_violation 'Learned ranking must not recreate a separate width/budget scheduler.'
+fi
 forbid_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" '_objectiveRetention' 'learned ranking must not bypass shared retention:'
 forbid_fixed "$search_root/CombatBeamSolver.Retention.cs" 'RetainObjectives(' 'learned ranking must not bypass pruning ownership:'
-require_fixed "$search_root/SearchOutcomeValueModel.cs" 'ConditionalWeakTable<SearchNode, NodePriority>' 'retired parent ranking must retain only a weakly owned scalar:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" 'ConditionalWeakTable<SimulationSnapshot,' 'retired/record-copied parent ranking must retain only weakly owned scalar entries:'
+require_fixed "$search_root/CombatBeamSolver.Phases.cs" '_ = ObjectiveRankScore(admitted);' 'admitted learned priorities must survive simulator retirement:'
 for file in train.py refit.py prepare_training.py; do
     require_fixed "$repository_root/tools/OutcomeValuation/$file" 'require_final_test=True' 'training must audit both development and sealed test manifests:'
 done

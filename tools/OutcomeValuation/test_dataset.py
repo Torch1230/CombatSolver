@@ -6,12 +6,37 @@ from types import SimpleNamespace
 import unittest
 
 from dataset import audit, evaluation_manifests, verify_resolved_loadout
-from evaluate import candidate_identity, claim_final_test, evaluate
+from evaluate import candidate_identity, claim_final_test, evaluate, quality_evidence_issues
 from prepare_training import select_encounters
 from refit import refit
 
 
 class SeparationContracts(unittest.TestCase):
+    def test_completed_outcome_requires_no_prediction_or_snapshot_boundary(self):
+        result = {'resultScope': 'SearchCompletion', 'boundaryReason': 'NodeLimit',
+                  'quality': {'won': True, 'survives': True, 'combatEndedTurn': 3},
+                  'snapshot': {'hasRisk': False, 'boundaryReason': 'None',
+                               'playerDead': False, 'allEnemiesDead': True}}
+        self.assertEqual(quality_evidence_issues(result), [])
+        for field, value, expected in [('hasRisk', True, 'prediction risk'),
+                                        ('boundaryReason', 'PendingChoice', 'unresolved snapshot boundary')]:
+            changed = {**result, 'snapshot': {**result['snapshot'], field: value}}
+            self.assertIn(expected, quality_evidence_issues(changed))
+        self.assertIn('partial result scope', quality_evidence_issues(
+            {**result, 'resultScope': 'CurrentTurnAdoption'}))
+        self.assertIn('memory-truncated search', quality_evidence_issues(
+            {**result, 'boundaryReason': 'MemoryNoProgress'}))
+
+    def test_unfinished_search_is_not_a_terminal_defeat(self):
+        result = {'resultScope': 'SearchCompletion', 'boundaryReason': 'NodeLimit',
+                  'quality': {'won': False, 'survives': False, 'combatEndedTurn': None},
+                  'snapshot': {'hasRisk': False, 'boundaryReason': 'None',
+                               'playerDead': True, 'allEnemiesDead': False}}
+        self.assertEqual(quality_evidence_issues(result), [])
+        unfinished = {**result, 'snapshot': {**result['snapshot'], 'playerDead': False}}
+        self.assertIn('no completed victory or engine-confirmed terminal defeat',
+                      quality_evidence_issues(unfinished))
+
     def test_refit_rejects_changed_request_behind_an_unchanged_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

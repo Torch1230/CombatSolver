@@ -42,6 +42,26 @@ def claim_final_test(manifest, identity):
                      'openedUtc': datetime.datetime.now(datetime.timezone.utc).isoformat()})
 
 
+def quality_evidence_issues(result):
+    """A process success or scalar comparator result does not certify an outcome."""
+    snapshot, quality = result['snapshot'], result['quality']
+    issues = []
+    if result['resultScope'] != 'SearchCompletion':
+        issues.append('partial result scope')
+    if result['boundaryReason'] == 'MemoryNoProgress':
+        issues.append('memory-truncated search')
+    if snapshot['hasRisk']:
+        issues.append('prediction risk')
+    if snapshot['boundaryReason'] != 'None':
+        issues.append('unresolved snapshot boundary')
+    victory = (quality['won'] and quality['survives'] and snapshot['allEnemiesDead']
+               and not snapshot['playerDead'] and quality['combatEndedTurn'] is not None)
+    defeat = not quality['won'] and not quality['survives'] and snapshot['playerDead']
+    if not (victory or defeat):
+        issues.append('no completed victory or engine-confirmed terminal defeat')
+    return issues
+
+
 def evaluate(args):
     cases = read(args.manifest)['cases']
     if {c['split'] for c in cases} not in ({'validation'}, {'test'}):
@@ -92,6 +112,7 @@ def evaluate(args):
                 record = {'case': case['id'], 'arm': arm, 'quality': quality['quality'],
                           'snapshotRisk': quality['snapshot']['hasRisk'],
                           'snapshotBoundary': quality['snapshot']['boundaryReason'],
+                          'qualityEvidenceIssues': quality_evidence_issues(quality),
                           'seconds': result['wallSeconds'], 'nodes': metrics['totalExpanded'],
                           'transitions': metrics['totalTransitions'], 'rss': result['peakWorkingSetBytes'],
                           'timeBoundary': result['timeBoundaryObserved']}
@@ -108,6 +129,7 @@ def evaluate(args):
                        timeout=30, check=True, env=environment)
         report['completed'] = True
     finally:
+        report['unverifiedOutcomeCount'] = sum(bool(r['qualityEvidenceIssues']) for r in report['records'])
         report['elapsedSeconds'] = time.monotonic() - started
         write(args.out / 'report.json', report)
 

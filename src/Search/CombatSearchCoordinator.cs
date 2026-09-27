@@ -23,6 +23,9 @@ internal static partial class CombatSearchCoordinator
         {
             RequestWorkTotals = requestWorkTotals,
             PortfolioTelemetry = portfolioTelemetry,
+            // A learned priority is an alternative estimator within the same
+            // automatic scheduler, not another width/budget implementation.
+            UseAutomaticSearch = policy.UseAutomaticSearch || policy.UseObjectiveSearch,
         };
         SearchInteractionState? interaction = policy.Interaction;
         SolverResult? currentCompleteAdoptableResult = null;
@@ -977,10 +980,6 @@ internal static partial class CombatSearchCoordinator
                     : RunBaseline(passProfile);
             SolverResult RunPrimary()
             {
-                if (policy.UseObjectiveSearch)
-                    return RunObjectiveSearch(root, displayNames, battleDamage, passPolicy,
-                        passProfile, passClock, initialPotionPolicyOverride, cancellationToken,
-                        progressCallback, interimResultCallback);
                 if (!policy.UseAutomaticSearch)
                     return RunLegacyPrimary();
                 SearchPolicySnapshot originalBeamPolicy = beamPolicy;
@@ -1013,8 +1012,6 @@ internal static partial class CombatSearchCoordinator
                     ? policy : policy with { NoveltySearch = null };
                 passResult = RunPrimary();
             }
-            if (!policy.UseObjectiveSearch)
-            {
             if (!policy.UseAutomaticSearch && passResult.ResultScope == SolverResultScope.SearchCompletion)
             {
                 passResult = RunOpeningPowerRoutePortfolio(
@@ -1255,7 +1252,6 @@ internal static partial class CombatSearchCoordinator
                     }
                 }
             }
-            }
             NoveltyPortfolioTelemetry? noveltyPass = passResult.NoveltyPortfolio;
             ObserveSmartLayerMemory(
                 policy, memoryForecast, passAllocatedAtStart, passTransitionsAtStart,
@@ -1272,8 +1268,6 @@ internal static partial class CombatSearchCoordinator
                 takeoverResult = passTakeover;
                 return passResult;
             }
-            if (policy.UseObjectiveSearch && policy.PotionPolicy == SolverPotionPolicy.Disabled)
-                return passResult;
             if (passResult.DeterministicBlockPotionInserted)
             {
                 SearchPolicySnapshot potionFreePolicy = beamPolicy with

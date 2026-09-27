@@ -1764,7 +1764,10 @@ foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'Se
 foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchPolicySnapshot.cs'); Text = 'SearchOutcomeValueModel? OutcomeTrainingCollector' },
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.cs'); Text = 'policy.UseObjectiveSearch ? ObjectiveRankScore : null' },
-    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'ConditionalWeakTable<SearchNode, NodePriority>' },
+    @{ Path = (Join-Path $searchRoot 'CombatSearchCoordinator.cs'); Text = 'UseAutomaticSearch = policy.UseAutomaticSearch || policy.UseObjectiveSearch' },
+    @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.NoveltySearch.cs'); Text = '=> policy.UseObjectiveSearch ? ObjectiveRankScore(node) : node.Score;' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'ConditionalWeakTable<SimulationSnapshot,' },
+    @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.Phases.cs'); Text = '_ = ObjectiveRankScore(admitted);' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/train.py'); Text = 'require_final_test=True' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/refit.py'); Text = 'require_final_test=True' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/prepare_training.py'); Text = 'require_final_test=True' },
@@ -1792,11 +1795,15 @@ if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeValueModel.c
 }
 foreach ($contract in @(
     @{ Path = 'CombatBeamSolver.BeamRetentionPolicy.cs'; Text = '_objectiveRetention' },
+    @{ Path = 'CombatBeamSolver.Phases.cs'; Text = 'policy = policy with { NoveltySearch = null };' },
     @{ Path = 'CombatBeamSolver.Retention.cs'; Text = 'RetainObjectives(' }
 )) {
     if (Select-String -LiteralPath (Join-Path $searchRoot $contract.Path) -SimpleMatch $contract.Text -Quiet) {
         $violations.Add("Learned ranking must not bypass shared retention: $($contract.Path)")
     }
+}
+if (Test-Path -LiteralPath (Join-Path $searchRoot 'CombatSearchCoordinator.ObjectiveSearch.cs')) {
+    $violations.Add('Learned ranking must not recreate a separate width/budget scheduler.')
 }
 if (Select-String -LiteralPath (Join-Path $searchRoot 'SearchOutcomeContext.cs') -SimpleMatch 'player.Osty' -Quiet) {
     $violations.Add('Pet features must not read live pet state.')

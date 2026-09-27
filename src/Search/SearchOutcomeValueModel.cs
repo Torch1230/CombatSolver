@@ -24,11 +24,11 @@ internal sealed partial class SearchOutcomeValueModel
     private readonly List<CorrectionQuery> _correctionQueries = [];
     private readonly HashSet<int> _correctionDepths = [];
     // Retention can compare an expanded parent's rank after releasing its simulator.
-    // Keep just that immutable scalar for the node's lifetime, without rooting the
-    // node/parent chain or growing the separate state-deduplication cache.
-    private sealed record NodePriority(double Value);
-    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SearchNode, NodePriority>
-        _nodePriorities = new();
+    // Record copies can share a snapshot after the original node is expanded.
+    // Keep only scalars, keyed by the exact state/policy identity, for that weak
+    // snapshot lifetime. Never retain its simulator or a node/parent chain.
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SimulationSnapshot,
+        Dictionary<ObservationKey, double>> _snapshotPriorities = new();
     private bool _correcting;
     private bool _frozen;
     private string[] _featureNames = [];
@@ -394,16 +394,17 @@ internal sealed partial class SearchOutcomeValueModel
     {
         if (_forest == null) throw new InvalidOperationException("Ranker has not been fitted.");
         _predictionCalls++;
-        if (_frozen && _nodePriorities.TryGetValue(node, out NodePriority? prior))
+        var key = Key(node);
+        if (_frozen && _snapshotPriorities.TryGetValue(node.Snapshot, out var priorities)
+            && priorities.TryGetValue(key, out double prior))
         {
             _cacheHits++;
-            return prior.Value;
+            return prior;
         }
-        var key = Key(node);
         if (_frozen && _predictions.TryGetValue(key, out double cached))
         {
             _cacheHits++;
-            _nodePriorities.Add(node, new(cached));
+            _snapshotPriorities.GetOrCreateValue(node.Snapshot)[key] = cached;
             return cached;
         }
         long started = MeasurePerformance ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
@@ -423,7 +424,7 @@ internal sealed partial class SearchOutcomeValueModel
         if (_frozen)
         {
             if (_predictions.Count < 4096) _predictions.TryAdd(key, predicted);
-            _nodePriorities.Add(node, new(predicted));
+            _snapshotPriorities.GetOrCreateValue(node.Snapshot)[key] = predicted;
         }
         return predicted;
         void Set(string name, double value)
