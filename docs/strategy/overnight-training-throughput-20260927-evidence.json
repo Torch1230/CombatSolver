@@ -834,5 +834,132 @@
         "eligibleForFinalReview": false
       }
     ]
+  },
+  "broaderRootExperiment": {
+    "fit": {
+      "returnCode": 0,
+      "seconds": 313.82816344790626,
+      "metrics": {
+        "roots": 170,
+        "rows": 74219,
+        "pairs": 99019,
+        "participatingRoots": 170,
+        "participatingRows": 51255,
+        "trainingParallelism": 4,
+        "features": 627,
+        "eligibleFeatures": 11814,
+        "linearTerms": 25,
+        "linearBytes": 1484,
+        "fitMilliseconds": 313617.5282,
+        "bytes": 379662,
+        "peakWorkingSetBytes": 2139729920
+      }
+    },
+    "evaluations": [
+      {
+        "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v34/broad-fit/model.linear.json",
+        "modelSha256": "93666086a9d749ebc96cdb50195e9d672a0e9ff6ffef6a738988707f953732b6",
+        "regressions": [
+          "unseen-defect-the_kin_boss",
+          "unseen-necrobinder-kaiser_crab_boss"
+        ],
+        "improvements": [
+          "unseen-regent-knowledge_demon_boss"
+        ],
+        "unverified": [],
+        "fullDevelopmentCoverage": false,
+        "eligibleForFinalReview": false
+      },
+      {
+        "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v34/broad-fit/model.json",
+        "modelSha256": "c492d7273037d82772d9209add9a9cd46ab4ab5684c9595ec0b7720cf7124797",
+        "regressions": [
+          "unseen-necrobinder-kaiser_crab_boss"
+        ],
+        "improvements": [
+          "unseen-regent-knowledge_demon_boss"
+        ],
+        "unverified": [],
+        "fullDevelopmentCoverage": false,
+        "eligibleForFinalReview": false
+      }
+    ],
+    "evaluationCost": {
+      "seconds": 172.4313343380345,
+      "childSeconds": {
+        "evaluate": 171.89941927790642,
+        "compare-screen": 0.5016301589785144
+      }
+    },
+    "coverage": {
+      "128-dense": {
+        "roots": 128,
+        "roles": {
+          "REGENT": 27,
+          "NECROBINDER": 26,
+          "SILENT": 23,
+          "DEFECT": 25,
+          "IRONCLAD": 27
+        },
+        "uniqueCards": 468,
+        "cardsAtLeast3Roots": 387,
+        "cardsOnly1Or2Roots": 81,
+        "uniqueRelics": 141,
+        "relicsAtLeast3Roots": 90
+      },
+      "170-broad": {
+        "roots": 170,
+        "roles": {
+          "DEFECT": 35,
+          "IRONCLAD": 37,
+          "NECROBINDER": 34,
+          "SILENT": 30,
+          "REGENT": 34
+        },
+        "uniqueCards": 472,
+        "cardsAtLeast3Roots": 438,
+        "cardsOnly1Or2Roots": 34,
+        "uniqueRelics": 142,
+        "relicsAtLeast3Roots": 110
+      }
+    },
+    "finalTestOpened": false
+  },
+  "fittedRootDiagnostics": [
+    {
+      "model": "model.linear.json",
+      "seconds": 12.136663070996292,
+      "roots": 128,
+      "meanRootAccuracy": 0.7653957725150945,
+      "meanRootTies": 0.03294444226998856,
+      "meanRootLogLoss": 0.47915411797381097,
+      "pairs": 254968,
+      "indistinguishable": 1497,
+      "fittedDataOnly": true
+    },
+    {
+      "model": "model.json",
+      "seconds": 12.936941977939568,
+      "roots": 128,
+      "meanRootAccuracy": 0.8436931803308254,
+      "meanRootTies": 0.02315069787346911,
+      "meanRootLogLoss": 0.37378643504854714,
+      "pairs": 254968,
+      "indistinguishable": 1497,
+      "fittedDataOnly": true
+    }
+  ],
+  "continuedService": {
+    "unit": "combatsolver-outcome-20260927-r4.service",
+    "pidAtStart": 3331645,
+    "confirmedActiveAtStart": true,
+    "maximumRoots": 256,
+    "rowsPerRoot": 512,
+    "fitSeconds": 1200,
+    "memoryLimitBytes": 12884901888,
+    "cpuQuotaCores": 8,
+    "until": "2026-09-28T08:00:00+08:00",
+    "oldUnitInactiveWithExitCode": 0,
+    "productionModelEnabled": false
   }
 }
