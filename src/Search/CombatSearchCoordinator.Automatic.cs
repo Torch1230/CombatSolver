@@ -17,6 +17,7 @@ internal static partial class CombatSearchCoordinator
         SearchRequestWorkTotals totals = policy.RequestWorkTotals
             ?? throw new InvalidOperationException("Automatic search requires request work totals.");
         RootOutcomeCache outcomes = new();
+        SharedSearchEvidence evidence = new();
         OpeningActionCollector openings = new();
         SearchDiagnosticsSink original = policy.Diagnostics;
         SearchCompletedOutcomeObserver? external = original.CompletedOutcomeObserver;
@@ -37,92 +38,100 @@ internal static partial class CombatSearchCoordinator
             BeamWidthPortfolioPlainBaselineMember = true,
             PortfolioExperiment = null,
             Diagnostics = diagnostics,
+            SharedEvidence = evidence,
         };
-        SolverSearchProfile? Remaining(long? nodeLimit = null, int divisor = 1)
-            => AutomaticSearchBudget.Remaining(profile,
-                clock.ElapsedMilliseconds, totals.Snapshot().ExpandedNodes - expandedAtStart,
-                nodeLimit, divisor);
-        SolverSearchProfile available = Remaining()
-            ?? throw new PotionPolicyUnsatisfiedException("Automatic search exhausted its pass budget.");
-        PlanAction? SelectPowerPrefix()
+        try
         {
-            PlanAction[] powers = openings.Actions.Values.Where(a => a.CardId != null
-                && PowerCardValuationModels.Registry.ContainsCardId(a.CardId)).ToArray();
-            // The baseline already reached the known continuations. Give an
-            // unobserved power a chance before replaying the same known opening.
-            PlanAction[] unknown = powers.Where(a => !outcomes.Best.ContainsKey(RootOutcomeCache.ActionKey(a))).ToArray();
-            return outcomes.Schedule(unknown, 1).FirstOrDefault();
-        }
-        SolverResult selected = RunNoveltyPortfolioPass(root, names, damage, policy, available,
-            Stopwatch.StartNew(), potionOverride, cancellation, progress, publish,
-            beamProfile => solveBeam(policy, beamProfile, SelectPowerPrefix));
-        if (selected.ResultScope != SolverResultScope.SearchCompletion
-            || ResolveTakeoverResult(selected, policy.Interaction) is { })
-            return ResolveTakeoverResult(selected, policy.Interaction) ?? selected;
-        if (CanFinishTargetPortfolio(root, policy, profile, selected)) return selected;
-
-        long primaryExpanded = totals.Snapshot().ExpandedNodes - expandedAtStart;
-        long refinementLimit = Math.Min(profile.MaxExpandedNodes, primaryExpanded * 2);
-        PlanAction[] scheduled = outcomes.Schedule(openings.Actions.Values, 4);
-        // Keep an opening power represented without multiplying every power prefix
-        // by every width. Choices/targets still retain their exact action identity.
-        PlanAction? power = scheduled.FirstOrDefault(a => a.CardId != null
-            && PowerCardValuationModels.Registry.ContainsCardId(a.CardId))
-            ?? openings.Actions.Values.FirstOrDefault(a => a.CardId != null
-                && PowerCardValuationModels.Registry.ContainsCardId(a.CardId));
-        if (power != null)
-            scheduled = new[] { power }.Concat(scheduled)
-                .DistinctBy(RootOutcomeCache.ActionKey).Take(4).ToArray();
-        NoveltyPortfolioTelemetry? novelty = selected.NoveltyPortfolio;
-        for (int i = 0; i < scheduled.Length; i++)
-        {
-            cancellation.ThrowIfCancellationRequested();
-            if (ResolveTakeoverResult(selected, policy.Interaction) is { } adopted) return adopted;
-            if (CanFinishTargetPortfolio(root, policy, profile, selected)) break;
-            SolverSearchProfile? remaining = Remaining(refinementLimit, scheduled.Length - i);
-            if (remaining == null) break;
-            SolverSearchProfile member = remaining with
+            SolverSearchProfile? Remaining(long? nodeLimit = null, int divisor = 1)
+                => AutomaticSearchBudget.Remaining(profile,
+                    clock.ElapsedMilliseconds, totals.Snapshot().ExpandedNodes - expandedAtStart,
+                    nodeLimit, divisor);
+            SolverSearchProfile available = Remaining()
+                ?? throw new PotionPolicyUnsatisfiedException("Automatic search exhausted its pass budget.");
+            PlanAction? SelectPowerPrefix()
             {
-                BeamWidth = Math.Min(8, profile.BeamWidth),
-                AggressivePowerCommitment = false,
-                SecondRankBand = false,
-                BaseScoreOnly = false,
-            };
-            SearchRequestWorkSnapshot before = totals.Snapshot();
-            long start = clock.ElapsedMilliseconds;
-            // Fixed prefixes are ordinary legal replay. An unfulfilled mandatory
-            // potion route is unknown; simulation errors and cancellation propagate.
-            SolverResult? candidate = SolveOptionalPotionPosterior(new CombatBeamSolver(
-                root, names, damage, policy with { NoveltySearch = null,
-                    Diagnostics = new(original.Info, original.Debug, original.PathObserver) },
-                cancellation, progress == null ? null
-                    : p => progress(p with { Phase = "正在精炼路线" }),
-                member, potionPolicyOverride: potionOverride,
-                fixedPrefixActions: [scheduled[i]], resetFixedPrefixSchedulingBaseline: true),
-                policy, "automatic_prefix");
-            if (candidate != null && ResolveTakeoverResult(candidate, policy.Interaction) is { } takeover)
-                return takeover;
-            if (candidate != null && candidate.ResultScope != SolverResultScope.SearchCompletion)
-                return candidate;
-            bool improved = candidate != null && IsCompleteVictory(candidate)
-                && !candidate.Snapshot.HasRisk
-                && candidate.Snapshot.BoundaryReason == SearchBoundaryReason.None
-                && IsBetterPotionPolicyResult(root, policy, candidate, selected);
-            if (improved)
-            {
-                selected = candidate!;
-                selected.NoveltyPortfolio = novelty;
-                publish?.Invoke(selected);
+                PlanAction[] powers = openings.Actions.Values.Where(a => a.CardId != null
+                    && PowerCardValuationModels.Registry.ContainsCardId(a.CardId)).ToArray();
+                // The baseline already reached the known continuations. Give an
+                // unobserved power a chance before replaying the same known opening.
+                PlanAction[] unknown = powers.Where(a => !outcomes.Best.ContainsKey(RootOutcomeCache.ActionKey(a))).ToArray();
+                return outcomes.Schedule(unknown, 1).FirstOrDefault();
             }
-            policy.Diagnostics.Info($"[CombatSolver/Test] AUTOMATIC_PREFIX index={i} " +
-                $"card={scheduled[i].CardId} nodes={member.MaxExpandedNodes} time_ms={member.SoftTimeBudgetMilliseconds} " +
-                $"expanded={totals.Snapshot().ExpandedNodes - before.ExpandedNodes} " +
-                $"elapsed_ms={clock.ElapsedMilliseconds - start} improved={improved}");
+            SolverResult selected = RunNoveltyPortfolioPass(root, names, damage, policy, available,
+                Stopwatch.StartNew(), potionOverride, cancellation, progress, publish,
+                beamProfile => solveBeam(policy, beamProfile, SelectPowerPrefix));
+            if (selected.ResultScope != SolverResultScope.SearchCompletion
+                || ResolveTakeoverResult(selected, policy.Interaction) is { })
+                return ResolveTakeoverResult(selected, policy.Interaction) ?? selected;
+            if (CanFinishTargetPortfolio(root, policy, profile, selected)) return selected;
+
+            long primaryExpanded = totals.Snapshot().ExpandedNodes - expandedAtStart;
+            long refinementLimit = Math.Min(profile.MaxExpandedNodes, primaryExpanded * 2);
+            PlanAction[] scheduled = outcomes.Schedule(openings.Actions.Values, 4);
+            // Keep an opening power represented without multiplying every power prefix
+            // by every width. Choices/targets still retain their exact action identity.
+            PlanAction? power = scheduled.FirstOrDefault(a => a.CardId != null
+                && PowerCardValuationModels.Registry.ContainsCardId(a.CardId))
+                ?? openings.Actions.Values.FirstOrDefault(a => a.CardId != null
+                    && PowerCardValuationModels.Registry.ContainsCardId(a.CardId));
+            if (power != null)
+                scheduled = new[] { power }.Concat(scheduled)
+                    .DistinctBy(RootOutcomeCache.ActionKey).Take(4).ToArray();
+            NoveltyPortfolioTelemetry? novelty = selected.NoveltyPortfolio;
+            for (int i = 0; i < scheduled.Length; i++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                if (ResolveTakeoverResult(selected, policy.Interaction) is { } adopted) return adopted;
+                if (CanFinishTargetPortfolio(root, policy, profile, selected)) break;
+                SolverSearchProfile? remaining = Remaining(refinementLimit, scheduled.Length - i);
+                if (remaining == null) break;
+                SolverSearchProfile member = remaining with
+                {
+                    BeamWidth = Math.Min(8, profile.BeamWidth),
+                    AggressivePowerCommitment = false,
+                    SecondRankBand = false,
+                    BaseScoreOnly = false,
+                };
+                SearchRequestWorkSnapshot before = totals.Snapshot();
+                long start = clock.ElapsedMilliseconds;
+                // Fixed prefixes are ordinary legal replay. An unfulfilled mandatory
+                // potion route is unknown; simulation errors and cancellation propagate.
+                SolverResult? candidate = SolveOptionalPotionPosterior(new CombatBeamSolver(
+                    root, names, damage, policy with { NoveltySearch = null,
+                        Diagnostics = new(original.Info, original.Debug, original.PathObserver) },
+                    cancellation, progress == null ? null
+                        : p => progress(p with { Phase = "正在精炼路线" }),
+                    member, potionPolicyOverride: potionOverride,
+                    fixedPrefixActions: [scheduled[i]], resetFixedPrefixSchedulingBaseline: true),
+                    policy, "automatic_prefix");
+                if (candidate != null && ResolveTakeoverResult(candidate, policy.Interaction) is { } takeover)
+                    return takeover;
+                if (candidate != null && candidate.ResultScope != SolverResultScope.SearchCompletion)
+                    return candidate;
+                bool improved = candidate != null && IsCompleteVictory(candidate)
+                    && !candidate.Snapshot.HasRisk
+                    && candidate.Snapshot.BoundaryReason == SearchBoundaryReason.None
+                    && IsBetterPotionPolicyResult(root, policy, candidate, selected);
+                if (improved)
+                {
+                    selected = candidate!;
+                    selected.NoveltyPortfolio = novelty;
+                    publish?.Invoke(selected);
+                }
+                policy.Diagnostics.Info($"[CombatSolver/Test] AUTOMATIC_PREFIX index={i} " +
+                    $"card={scheduled[i].CardId} nodes={member.MaxExpandedNodes} time_ms={member.SoftTimeBudgetMilliseconds} " +
+                    $"expanded={totals.Snapshot().ExpandedNodes - before.ExpandedNodes} " +
+                    $"elapsed_ms={clock.ElapsedMilliseconds - start} improved={improved}");
+            }
+            policy.Diagnostics.Info($"[CombatSolver/Test] AUTOMATIC_SEARCH " +
+                $"openings={openings.Actions.Count} witnesses={outcomes.Best.Count} " +
+                $"expanded={totals.Snapshot().ExpandedNodes - expandedAtStart} elapsed_ms={clock.ElapsedMilliseconds}");
+            return selected;
         }
-        policy.Diagnostics.Info($"[CombatSolver/Test] AUTOMATIC_SEARCH " +
-            $"openings={openings.Actions.Count} witnesses={outcomes.Best.Count} " +
-            $"expanded={totals.Snapshot().ExpandedNodes - expandedAtStart} elapsed_ms={clock.ElapsedMilliseconds}");
-        return selected;
+        finally
+        {
+            policy.Diagnostics.Info($"[CombatSolver/Test] SHARED_SEARCH_EVIDENCE {evidence.Describe()}");
+        }
     }
 }
 

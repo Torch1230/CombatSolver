@@ -1,4 +1,5 @@
 # CombatSolver 文档导航
+- [搜索证据共享与回传](strategy/shared-search-evidence-20260927.md)：有界跨策略探测复用、沿途估值反馈与验证范围。
 
 - [统一自动搜索](strategy/automatic-search-20260927.md)：合并玩家入口、共享主搜索预算、复用终局见证及固定根成本取舍。
 - [零训练估值第二版](strategy/outcome-valuation-v2-20260927.md)：完整基线、终局见证调度、新种子确认与完整协调器对照，包含两轮累计时间。

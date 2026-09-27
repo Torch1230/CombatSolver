@@ -807,6 +807,7 @@ internal sealed partial class CombatBeamSolver
             });
             for (int index = 0; index < ranked.Count; index++)
                 ranked[index] = scored[index].Node;
+            _run.SharedEvidence?.Rank(ranked);
         }
 
         private Comparison<SearchNode> FinalCandidateComparison

@@ -595,6 +595,7 @@ expected_beam_files=(
     CombatBeamSolver.Retention.cs
     CombatBeamSolver.RetentionJobs.cs
     CombatBeamSolver.StateEvaluation.cs
+    CombatBeamSolver.SharedEvidence.Testing.cs
     CombatBeamSolver.StandPatJobs.cs
     CombatBeamSolver.Terminal.cs
 )
@@ -1296,6 +1297,13 @@ src/Search/SimulatedCombatState.CardContinuation.cs	_cardExecutionScopeDepth != 
 EOF
 for forbidden in 'Task<' 'Func<' 'Action<'; do
     forbid_fixed "$repository_root/src/Prediction/CardChoiceContinuation.cs" "$forbidden" 'continuation retained an executable closure:'
+done
+
+# Shared evidence is bounded value storage; final policy and exact dominance stay independent.
+require_fixed "$search_root/SharedSearchEvidence.cs" 'Entry[] _entries = new Entry[Capacity]' 'shared evidence must remain bounded'
+require_fixed "$search_root/CombatBeamSolver.Retention.cs" 'policy.VerifyIncrementalSearch && ComputeStandPat(node) != value' 'shared hits must retain replay verification'
+for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transpositions.cs; do
+    forbid_fixed "$search_root/$file" 'SharedEvidence' 'shared evidence cannot become final policy or exact dominance:'
 done
 
 require_fixed "$repository_root/src/Runtime/SolverController.cs" 'UseAutomaticSearch = true' 'player search must use the automatic scheduler'

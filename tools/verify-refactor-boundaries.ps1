@@ -624,6 +624,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.Retention.cs",
     "CombatBeamSolver.RetentionJobs.cs",
     "CombatBeamSolver.StateEvaluation.cs",
+    "CombatBeamSolver.SharedEvidence.Testing.cs",
     "CombatBeamSolver.StandPatJobs.cs",
     "CombatBeamSolver.Terminal.cs"
 )
@@ -1680,6 +1681,21 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $text -Quiet) {
             $violations.Add("Intermediate estimate must not become final policy or exact dominance: $file")
         }
+    }
+}
+
+# Keep equivalent shared-evidence boundaries on both platform entry points.
+foreach ($contract in @(
+    @{ Path = 'SharedSearchEvidence.cs'; Text = 'Entry[] _entries = new Entry[Capacity]' },
+    @{ Path = 'CombatBeamSolver.Retention.cs'; Text = 'policy.VerifyIncrementalSearch && ComputeStandPat(node) != value' }
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $searchRoot $contract.Path) -SimpleMatch $contract.Text -Quiet)) {
+        $violations.Add("Shared evidence ownership/verification changed: $($contract.Path)")
+    }
+}
+foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.Transpositions.cs')) {
+    if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch 'SharedEvidence' -Quiet) {
+        $violations.Add("Shared evidence cannot become final policy or exact dominance: $file")
     }
 }
 

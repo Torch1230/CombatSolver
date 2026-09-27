@@ -18,6 +18,8 @@ internal static class Program
 
     private static int Main(string[] rawArgs)
     {
+        if (rawArgs.Length == 1 && rawArgs[0] == "--check-shared-evidence")
+            return SharedEvidenceChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-cache")
             return OutcomeCacheChecks.Run();
         if (rawArgs.Length == 3 && rawArgs[0] == "--compare-quality-batch")

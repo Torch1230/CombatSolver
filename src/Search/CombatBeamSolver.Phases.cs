@@ -347,6 +347,7 @@ internal sealed partial class CombatBeamSolver
                 return;
 
             SolverInterimResult candidate = SummarizeCandidate(node, won: true);
+            _run.SharedEvidence?.ObserveVictory(node, candidate);
             ObserveCompletedOutcome(node, candidate);
             if (MeetsHpTarget(node))
             {

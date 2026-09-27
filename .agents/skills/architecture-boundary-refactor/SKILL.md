@@ -113,3 +113,5 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - `CombatRootSnapshot.HistoryDependencies` 在主线程按全牌堆、监听者及药水冻结，Search 不读 live 来源；随机生成/变牌及第三方来源保守保留六类历史。`SearchRequestWorkTotals` 拥有请求共享的额外循环回放额度，子 solver/worker 不得重新领额；独立 Evaluate 才创建私有额度。结果区分所选 solver 回放数与请求回放总数，普通 Expanded/Transitions 口径保持。
 
 - 自动搜索的预算分配和根级终局见证属于 Search；Runtime 只冻结统一入口并把标志写入路线缓存/问题包，UI 只保留性能档位、目标和自动说明。旧模式字段仅兼容/测试用途；不得重新接回玩家可组合开关。缓存只持有有界动作值/终局标量，不持有节点或模拟状态。
+
+- `SharedSearchEvidence` 仅在自动主搜索的同根/同药水政策轮次内共享；4096 槽有界替换，只保存前缀/状态键与标量。首个改善完整胜利回传沿途前缀，未知路线仍按原启发式交替获得排名；证据不进入最终政策、状态键或转置支配。StandPat 只复用完整正常无风险探测，完整动作/选牌/初始准备/祖先状态及累计政策标签必须匹配；worker 不修改共享表，串行端按原序发布。VerifyIncrementalSearch 命中也必须真实回放核对。长路径旁路只关闭优化，不能丢弃候选。不得把该表扩大成无界模拟器缓存；验证跨宽度复用、历史/选择分离、风险/边界、取消、DOP2 和实际分配，诊断命中不当作整搜提速证据。

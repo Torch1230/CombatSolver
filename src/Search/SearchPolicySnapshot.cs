@@ -21,6 +21,8 @@ internal sealed record SearchPolicySnapshot(
 {
     // Runtime always enables the unified scheduler. False is for historical test ablations.
     public bool UseAutomaticSearch { get; init; }
+    // Created by the automatic coordinator, isolated per root/potion pass; never persisted.
+    internal SharedSearchEvidence? SharedEvidence { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
     public bool PredictPotionReward { get; init; }
     public NoveltySearchOptions? NoveltySearch { get; init; }

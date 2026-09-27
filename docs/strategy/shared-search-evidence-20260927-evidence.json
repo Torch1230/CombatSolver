@@ -1,0 +1,80 @@
+{
+  "phase": "before upstream integration",
+  "baselineCommit": "43f98e46",
+  "cases": [
+    {
+      "case": "focus_investment",
+      "baseline": {
+        "source": ".local/outcome-valuation/v4/combined/focus_investment/rollout",
+        "wallSeconds": 4.5630518,
+        "peakWorkingSetBytes": 269254656,
+        "peakManagedHeapBytes": 47868192,
+        "totalExpanded": 4123,
+        "totalTransitions": 16057,
+        "totalWorkerAllocatedBytes": 592559320,
+        "totalGcPauseMilliseconds": 161.465
+      },
+      "candidate": {
+        "source": ".local/outcome-valuation/v5/focus_investment",
+        "wallSeconds": 3.9693567,
+        "peakWorkingSetBytes": 270995456,
+        "peakManagedHeapBytes": 44752976,
+        "totalExpanded": 3904,
+        "totalTransitions": 14966,
+        "totalWorkerAllocatedBytes": 558355888,
+        "totalGcPauseMilliseconds": 144.976
+      }
+    },
+    {
+      "case": "random-regent",
+      "baseline": {
+        "source": ".local/outcome-valuation/v4/final/random-regent",
+        "wallSeconds": 17.5808353,
+        "peakWorkingSetBytes": 424734720,
+        "peakManagedHeapBytes": 175793296,
+        "totalExpanded": 12000,
+        "totalTransitions": 106204,
+        "totalWorkerAllocatedBytes": 4354202384,
+        "totalGcPauseMilliseconds": 2744.324
+      },
+      "candidate": {
+        "source": ".local/outcome-valuation/v5/random-regent",
+        "wallSeconds": 24.4985659,
+        "peakWorkingSetBytes": 468836352,
+        "peakManagedHeapBytes": 219998160,
+        "totalExpanded": 12000,
+        "totalTransitions": 159193,
+        "totalWorkerAllocatedBytes": 6714206192,
+        "totalGcPauseMilliseconds": 4780.261
+      }
+    }
+  ],
+  "timeLedger": {
+    "previousConservativeSeconds": 1718.972261600087,
+    "charges": [
+      {
+        "name": "contracts",
+        "seconds": 0.11401719803689048,
+        "returnCode": 0
+      },
+      {
+        "name": "native",
+        "seconds": 33.05964457499795,
+        "returnCode": 0
+      },
+      {
+        "name": "focus_investment",
+        "seconds": 5.778526826004963,
+        "returnCode": 0
+      },
+      {
+        "name": "random-regent",
+        "seconds": 26.47964385303203,
+        "returnCode": 0
+      }
+    ],
+    "trainingSeconds": 0,
+    "totalLimitSeconds": 1800,
+    "totalConservativeSeconds": 1784.4040940521588
+  }
+}

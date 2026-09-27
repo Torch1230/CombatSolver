@@ -17,7 +17,11 @@ internal sealed partial class CombatBeamSolver
             // Preserve the first original cache representative. The caller will consume these
             // exact nodes in the same order and perform the same selection after preparation.
             if (!_run.StandPatCache.ContainsKey(node.StateKey) && seen.Add(node.StateKey))
-                pending.Add(node);
+            {
+                if (TrySharedStandPat(node, out StandPatEvaluation shared))
+                    _run.StandPatCache.Add(node.StateKey, shared);
+                else pending.Add(node);
+            }
         }
         if (pending.Count < 2)
             return;
@@ -45,6 +49,7 @@ internal sealed partial class CombatBeamSolver
             for (int index = 0; index < batch.Count; index++)
             {
                 _run.StandPatCache.Add(batch[index].StateKey, evaluations[index]);
+                StoreSharedStandPat(batch[index], evaluations[index]);
                 _run.StandPatProbes++;
             }
             // EvaluateStandPatProbes waits for every lane's completion signal before returning.

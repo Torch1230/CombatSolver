@@ -19,11 +19,12 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
-    private readonly record struct StandPatEvaluation(
+    internal readonly record struct StandPatEvaluation(
         bool AllEnemiesDead,
         int DelayedDamage,
         int ProjectedPlayerHp,
-        int ResourceValue);
+        int ResourceValue,
+        bool Reusable = false);
 
     internal readonly record struct CanonicalCycleFamilyKey(
         int Turn,
@@ -88,8 +89,10 @@ internal sealed partial class CombatBeamSolver
 
     private sealed class SearchRunContext(
         bool measurePhasePerformance,
-        SearchFramePressureSignal framePressureSignal)
+        SearchFramePressureSignal framePressureSignal,
+        SharedSearchEvidence? sharedEvidence = null)
     {
+        public SharedSearchEvidence? SharedEvidence { get; } = sharedEvidence;
         public NoveltySearchRun? Novelty;
         public Guid PathDiagnosticsSolverId;
         public int PathDiagnosticsBoundaryId;

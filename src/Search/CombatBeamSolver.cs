@@ -42,7 +42,8 @@ internal sealed partial class CombatBeamSolver(
     private readonly SolverSearchProfile _profile = searchProfile ?? SolverSearchProfile.Default;
     private readonly SearchRunContext _run = new(
         policy.MeasurePhasePerformance,
-        policy.FramePressureSignal);
+        policy.FramePressureSignal,
+        policy.SharedEvidence);
     private readonly bool _includeTurnSetup = policy.IncludeTurnSetup;
     private readonly Player _player = root.PlayerIdentity;
     private readonly IntentForecast _forecast = root.Forecast;

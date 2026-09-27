@@ -1896,6 +1896,11 @@ internal sealed partial class CombatBeamSolver
     {
         if (_run.StandPatCache.TryGetValue(node.StateKey, out StandPatEvaluation cached))
             return cached;
+        if (TrySharedStandPat(node, out cached))
+        {
+            _run.StandPatCache.Add(node.StateKey, cached);
+            return cached;
+        }
         _run.CheckpointPruneMetadata?.Invoke("stand_pat_single");
         _run.EnsurePruneMemory?.Invoke(StandPatProbeAllocationReserve());
         long allocatedBefore = OwnedSearchAllocatedBytes();
@@ -1907,6 +1912,7 @@ internal sealed partial class CombatBeamSolver
             _run.StandPatProbeAllocatedHighWater,
             GC.GetAllocatedBytesForCurrentThread() - threadAllocatedBefore);
         _run.StandPatCache.Add(node.StateKey, evaluation);
+        StoreSharedStandPat(node, evaluation);
         _run.StandPatProbes++;
         _run.CheckpointPruneMetadata?.Invoke("rank_after_stand_pat_single");
         return evaluation;
@@ -1928,12 +1934,35 @@ internal sealed partial class CombatBeamSolver
                     + end.ReachableHandValue
                     + end.FutureResourceValue
                     + end.OstyHp * 16
-                    + end.OstyMaxHp * 4);
+                    + end.OstyMaxHp * 4,
+                Reusable: !end.HasRisk && end.BoundaryReason == SearchBoundaryReason.None);
         }
         finally
         {
             end.ReleaseSimulator();
         }
+    }
+
+    private bool TrySharedStandPat(SearchNode node, out StandPatEvaluation value)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_run.SharedEvidence is { } evidence && SharedSearchEvidence.IsUsable(node)
+            && evidence.TryProbe(SearchEvidenceKey.Capture(node), out value))
+        {
+            // Validation must execute the real transition and its full replay comparison;
+            // a cache hit cannot hide an incremental simulation discrepancy.
+            if (policy.VerifyIncrementalSearch && ComputeStandPat(node) != value)
+                throw new InvalidOperationException("Shared stand-pat evidence differs from replay.");
+            return true;
+        }
+        value = default;
+        return false;
+    }
+
+    private void StoreSharedStandPat(SearchNode node, StandPatEvaluation value)
+    {
+        if (value.Reusable && _run.SharedEvidence is { } evidence && SharedSearchEvidence.IsUsable(node))
+            evidence.StoreProbe(SearchEvidenceKey.Capture(node), value);
     }
 
     private static int PolicyBoundaryRank(SearchBoundaryReason reason)

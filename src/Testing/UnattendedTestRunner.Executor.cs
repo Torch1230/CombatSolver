@@ -298,6 +298,11 @@ internal sealed partial class UnattendedTestRunner
                 await AssertTheftRecoveryPolicyAsync(combatState);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "SHARED-SEARCH-EVIDENCE")
+            {
+                await runner.AssertSharedSearchEvidenceAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "AUTOMATIC-SEARCH")
             {
                 runner.AssertSearchPortfolioSettings(combatState);
