@@ -371,6 +371,7 @@ internal sealed record HarnessOptions
           --observe-ordering <N> 最多导出 N 个真实剪枝候选；仅供采集，不能用于性能数据
           --observe-ordering-states <p>  追加观察给定状态键的生成/准入/回合筛选事件
           --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
+          --outcome-probes <n>  Evaluate 实验：0..16 个首动作续搜，共享原节点/时间额度，无训练
           --ranking-model <p>   实验：有界上下文排序修正；只与 baseline 排序同时使用
           --bounded-offensive-refinement  组合实验：保留原成员，有界追加进攻成员
           --disable-bounded-offensive-refinement  显式关闭有界追加
@@ -431,6 +432,7 @@ internal sealed record HarnessOptions
     public int OrderingObservationLimit { get; init; }
     public string? OrderingWatchedStatesPath { get; init; }
     public string Ordering { get; init; } = "baseline";
+    public int OutcomeProbes { get; init; }
     public string? RankingModelPath { get; init; }
     public bool ContinuousThreatRanking { get; init; }
     public bool BaseScoreTacticalTies { get; init; }
@@ -462,6 +464,7 @@ internal sealed record HarnessOptions
         int orderingObservationLimit = 0;
         string? orderingWatchedStatesPath = null;
         string ordering = "baseline";
+        int outcomeProbes = 0;
         string? rankingModelPath = null;
         bool continuousThreatRanking = false;
         bool baseScoreTacticalTies = false;
@@ -527,6 +530,7 @@ internal sealed record HarnessOptions
                 case "--observe-ordering": orderingObservationLimit = int.Parse(Value()); break;
                 case "--observe-ordering-states": orderingWatchedStatesPath = Path.GetFullPath(Value()); break;
                 case "--ordering": ordering = Value(); break;
+                case "--outcome-probes": outcomeProbes = int.Parse(Value()); break;
                 case "--ranking-model": rankingModelPath = Path.GetFullPath(Value()); break;
                 case "--bounded-offensive-refinement": boundedOffensiveRefinementPortfolio = true; break;
                 case "--disable-bounded-offensive-refinement": boundedOffensiveRefinementPortfolio = false; break;
@@ -561,6 +565,10 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--profile 只接受 Low|Medium|High|VeryHigh|Custom。");
         if (searchMode is not ("Evaluate" or "Coordinator"))
             throw new ArgumentException("--search-mode 只接受 Evaluate 或 Coordinator。");
+        if (outcomeProbes is < 0 or > 16 || outcomeProbes > 0 &&
+            (searchMode != "Evaluate" || orderingObservationLimit != 0 || ordering != "baseline"
+                || rankingModelPath != null || continuousThreatRanking || beamWeightPerturbation != null))
+            throw new ArgumentException("--outcome-probes 需要 Evaluate、原排序且无其他排序/观察实验，范围 0..16。");
         if (orderingObservationLimit is < 0 or > 100000 || orderingObservationLimit > 0 && searchMode != "Evaluate")
             throw new ArgumentException("--observe-ordering 仅支持 Evaluate，范围 0..100000。");
         if (orderingWatchedStatesPath != null && orderingObservationLimit == 0)
@@ -650,6 +658,7 @@ internal sealed record HarnessOptions
             OrderingObservationLimit = orderingObservationLimit,
             OrderingWatchedStatesPath = orderingWatchedStatesPath,
             Ordering = ordering,
+            OutcomeProbes = outcomeProbes,
             RankingModelPath = rankingModelPath,
             ContinuousThreatRanking = continuousThreatRanking,
             BaseScoreTacticalTies = baseScoreTacticalTies,

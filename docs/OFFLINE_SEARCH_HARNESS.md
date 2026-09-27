@@ -27,6 +27,10 @@ dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 
 ## 单根用法
 
+零训练估值原型可在 `Evaluate` 下显式加 `--outcome-probes 8`，将同一请求额度分给基线与有限首动作续搜，
+输出逐动作的完整结果见证及总成本到 `outcome-probes.json`；正常 Runtime 不启用。
+复现、覆盖限制与整批时间上限见 [OutcomeValuation](../tools/OutcomeValuation/README.md)。
+
 ```
 dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
     --request <无人测试请求.json> --label R1 --out <产物目录> \

@@ -331,7 +331,7 @@ internal static class ModRuntime
         BattleDamageSnapshot damage,
         SearchPolicySnapshot basePolicy,
         SolverSettingsSnapshot settings,
-        int budgetMilliseconds,
+        HarnessOptions options,
         MainLoopContext loop,
         out object describedPolicy,
         ref bool timeBoundary)
@@ -340,9 +340,11 @@ internal static class ModRuntime
         SearchPolicySnapshot policy = basePolicy with
         {
             RequestWorkTotals = totals,
-            Profile = basePolicy.Profile with { SoftTimeBudgetMilliseconds = budgetMilliseconds },
+            Profile = basePolicy.Profile with { SoftTimeBudgetMilliseconds = options.BudgetMilliseconds },
         };
         describedPolicy = DescribePolicy(policy);
+        if (options.OutcomeProbes > 0)
+            return OutcomeProbes.Run(root, names, damage, policy, options, loop, ref timeBoundary);
         bool observedTimeBoundary = false;
         SearchDiagnosticsSink diagnostics = new(
             message =>
@@ -476,7 +478,7 @@ internal static class ModRuntime
                 result = options.SearchMode == "Coordinator"
                     ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                     : SolveEvaluate(root, names, damage, policy, settings,
-                        options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
+                        options, loop, out describedPolicy, ref timeBoundary);
             }
             finally
             {
@@ -488,7 +490,7 @@ internal static class ModRuntime
             result = options.SearchMode == "Coordinator"
                 ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                 : SolveEvaluate(root, names, damage, policy, settings,
-                    options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
+                    options, loop, out describedPolicy, ref timeBoundary);
         }
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);

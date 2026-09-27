@@ -1,5 +1,8 @@
 # 离线搜索宿主
 
+`--outcome-probes N` 是仅用于 Evaluate 的零训练动作条件续搜实验；
+共享原请求额度并输出逐探针结果。见 [OutcomeValuation](../OutcomeValuation/README.md)。
+
 不启动 Godot、在普通 .NET 9 进程里跑 CombatSolver 搜索的宿主。
 
 完整说明（构建、单根与批量用法、plan 字段、产物、`Evaluate` 与 `Coordinator` 的口径差别、

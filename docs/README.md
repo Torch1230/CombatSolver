@@ -1,5 +1,6 @@
 # CombatSolver 文档导航
 
+- [半小时预算的零训练估值研究](strategy/outcome-valuation-20260927.md)：17 个局面的动作条件续搜、实际成本、未替换生产评分的原因与复现入口。
 - [搜索热路径分配](performance/search-hotpath-allocation-20260925.md)：Server GC 多预设与 17 个战斗根的直接交错对照、固定工作量等价及未采用实验。
 - [可选 ServerGC 启动配置](performance/server-gc-launch-profile-20260924.md)：仅本次进程生效的启动方式、保存设置边界与原生宿主验收。
 - [GC 完成链修复与优化筛选](performance/gc-completion-allocation-20260921.md)：替代 #116/#120 的窄修复、失败复现与重新实测取舍。

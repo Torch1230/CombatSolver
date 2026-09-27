@@ -1,5 +1,14 @@
 # CombatSolver 测试清单
 
+## 研究：零训练动作条件估值（2026-09-27）
+
+- Mod 与 OfflineSearchHarness Release 构建均 0 警告、0 错误；Bash 结构门禁通过，`search_files=209`。
+- `python3 tools/OutcomeValuation/test_run.py`：3 项预算/进程终止/场景划分合同通过。
+- 新种子 12 根筛选 + 五角色随机精英 5 根留出，合计 34 次进程 A/B；主目标战损 3 好、14 同，另有 1 根同战损早一回合。无胜负翻转、时间截断或实验请求节点超额。实际成本不同，不称为固定工作量提速。
+- 独立含选牌短搜开启 `--verify-incremental`：9 次求解，455 展开、4282 转移、1443 选牌分支，零损完成。验证开销不混入 A/B 耗时。
+- 无可出牌动作的独立根通过：观察到 0 个可探测动作、只运行 1 次基线求解，无节点超额。
+- 未做 Coordinator 或原生整场自动部署；默认生产评分未改变。命令、失败调试与逐根数值见[报告](strategy/outcome-valuation-20260927.md)和[证据](strategy/outcome-valuation-20260927-evidence.json)。
+
 ## 未发布：搜索热路径 CPU 复查（2026-09-26）
 
 - 基于 PR #138 的最终生产 DLL，Linux `perf record` 在静默猎手精英固定预算根得到 84,345 个无丢样 CPU 样本；另对 Regent 首领生产预算根得到 3,107,070 个无丢样样本。采样只用于热点归因，不用于耗时 A/B。
