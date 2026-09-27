@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [跨角色共享交互模型](strategy/shared-factor-ranking-20260928.md)：同一留出划分略有改善，完整训练约127秒；实战仍有退化，另定位选牌风险标记的待验证线索。
+
 - [交互模型的家族留出选型](strategy/factor-regularization-selection-20260928.md)：明确基础项与词表的隔离，弱正则泛化退化，唯一选中配置仍未通过实战门槛。
 
 - [学习卡牌与局面的二阶交互](strategy/factor-interactions-20260928.md)：五角色完整拟合约19秒，数值实现一致，但独立战斗仍有退化，未启用。
