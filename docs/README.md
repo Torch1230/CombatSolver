@@ -1,5 +1,6 @@
 # CombatSolver 文档导航
 
+- [按遭遇留出的模型选型](strategy/model-selection-20260928.md)：223 场拟合、72 场内部选型；减少树数未改善外部搜索，定位困难战斗有效监督缺口。
 - [夜间训练吞吐](strategy/overnight-training-throughput-20260927.md)：区分样本量和有效偏好、无信号行压缩、固定顺序的四路拟合，模型产物一致。
 - [保留比较关系的训练抽样](strategy/pool-sampling-20260927.md)：固定训练根/行预算，验证抽样关系对有效监督与开发质量的影响。
 - [角色条件估值试验](strategy/character-conditioned-ranking-20260927.md)：顺序训练成本、固定开发筛选与抽样混杂说明。

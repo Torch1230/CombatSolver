@@ -1,0 +1,1617 @@
+{
+  "schema": 1,
+  "scope": "Research only; internal grouped selection; no final-test search; no production promotion",
+  "protocol": {
+    "seed": "complexity-20260928-v1",
+    "trainingRoots": 223,
+    "selectionRoots": 72,
+    "trainingCharacters": {
+      "IRONCLAD": 44,
+      "REGENT": 46,
+      "NECROBINDER": 40,
+      "DEFECT": 48,
+      "SILENT": 45
+    },
+    "selectionCharacters": {
+      "REGENT": 15,
+      "IRONCLAD": 17,
+      "DEFECT": 14,
+      "NECROBINDER": 14,
+      "SILENT": 12
+    },
+    "heldoutEncounterFamilies": [
+      "AXEBOTS",
+      "DEVOTED_SCULPTOR",
+      "INFESTED_PRISMS_ELITE",
+      "MECHA_KNIGHT_ELITE",
+      "MYTES",
+      "OVICOPTER",
+      "QUEEN_BOSS",
+      "RUBY_RAIDERS",
+      "SPINY_TOAD"
+    ],
+    "counts": [
+      0,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "selectionRule": "Per native character: minimum mean of encounter-family mean of root pair log loss; exact tie picks fewer residual trees. Exclude zero-pair roots from loss, retain counts. No fit/refit on selection families.",
+    "candidateScreen": "Selected bank and full bank as ablation (skip if byte-identical), same frozen outer 5-case screen then existing extended gate. No final test.",
+    "labelSource": "Only original classic-search collected complete witnesses; no learner roll-in ancestors.",
+    "fitTimeoutSeconds": 1200,
+    "experimentTimeoutSeconds": 1800,
+    "fitter": {
+      "harness": ".local/objective-search/v36/engine/harness/OfflineSearchHarness.dll",
+      "harnessSha256": "0c8c09de018165528226b23178a5f88e8cbb9c5d753e63d0b8cbe7992352b266",
+      "mod": ".local/objective-search/v36/engine/CombatSolver.dll",
+      "modSha256": "2e52f2a89f2d74c819a599841d7de40c00fefc33c3d60652234220a31ca75b3c"
+    },
+    "evaluationModSha256": "c945080ace2548f5bad784b1343132ae1a6904467dda074dbd802e8ab6eac242",
+    "createdUtc": "2026-09-27T16:06:24.518916+00:00"
+  },
+  "selection": {
+    "choices": {
+      "DEFECT": {
+        "trees": 16,
+        "familyMeanLoss": 0.4419256456455239,
+        "families": 7,
+        "rootCount": 14,
+        "pairCount": 8671,
+        "familyMeanAccuracy": 0.80591657585513,
+        "familyLosses": {
+          "MECHA_KNIGHT_ELITE": 0.3888587135598458,
+          "AXEBOTS": 0.34032578832885046,
+          "INFESTED_PRISMS_ELITE": 0.5247531067716439,
+          "DEVOTED_SCULPTOR": 0.5197219534237957,
+          "RUBY_RAIDERS": 0.3257193257341358,
+          "MYTES": 0.579921737851786,
+          "OVICOPTER": 0.4141788938486096
+        }
+      },
+      "IRONCLAD": {
+        "trees": 16,
+        "familyMeanLoss": 0.4836838238653625,
+        "families": 8,
+        "rootCount": 17,
+        "pairCount": 11231,
+        "familyMeanAccuracy": 0.7620445203428039,
+        "familyLosses": {
+          "INFESTED_PRISMS_ELITE": 0.425542467539212,
+          "MECHA_KNIGHT_ELITE": 0.4836240692401917,
+          "DEVOTED_SCULPTOR": 0.44432453868517,
+          "RUBY_RAIDERS": 0.4329862121666679,
+          "QUEEN_BOSS": 0.6921272248363797,
+          "MYTES": 0.43455303619389435,
+          "SPINY_TOAD": 0.4295799938544107,
+          "AXEBOTS": 0.5267330484069737
+        }
+      },
+      "NECROBINDER": {
+        "trees": 16,
+        "familyMeanLoss": 0.4299453049463717,
+        "families": 7,
+        "rootCount": 14,
+        "pairCount": 5995,
+        "familyMeanAccuracy": 0.7694187102265326,
+        "familyLosses": {
+          "MECHA_KNIGHT_ELITE": 0.42599293723617077,
+          "DEVOTED_SCULPTOR": 0.599762267105142,
+          "RUBY_RAIDERS": 0.2890684949939332,
+          "QUEEN_BOSS": 0.6155239546147557,
+          "INFESTED_PRISMS_ELITE": 0.39874169510615975,
+          "MYTES": 0.3520556301421581,
+          "OVICOPTER": 0.32847215542628205
+        }
+      },
+      "REGENT": {
+        "trees": 32,
+        "familyMeanLoss": 0.5145319333916322,
+        "families": 7,
+        "rootCount": 15,
+        "pairCount": 7754,
+        "familyMeanAccuracy": 0.7611962387191576,
+        "familyLosses": {
+          "RUBY_RAIDERS": 0.39984427132897393,
+          "INFESTED_PRISMS_ELITE": 0.6766631055010225,
+          "MYTES": 0.28018652127260246,
+          "MECHA_KNIGHT_ELITE": 0.6964003076402545,
+          "SPINY_TOAD": 0.34538783608749324,
+          "AXEBOTS": 0.5930549750243896,
+          "QUEEN_BOSS": 0.6101865168866891
+        }
+      },
+      "SILENT": {
+        "trees": 64,
+        "familyMeanLoss": 0.4615957732347773,
+        "families": 6,
+        "rootCount": 12,
+        "pairCount": 6733,
+        "familyMeanAccuracy": 0.7687836823341108,
+        "familyLosses": {
+          "MYTES": 0.5014420419217791,
+          "OVICOPTER": 0.281476736897734,
+          "RUBY_RAIDERS": 0.43316349185033776,
+          "INFESTED_PRISMS_ELITE": 0.5074668704663563,
+          "DEVOTED_SCULPTOR": 0.5695323855692447,
+          "MECHA_KNIGHT_ELITE": 0.476493112703212
+        }
+      }
+    },
+    "selectedSha256": "a86c1f6a2c5703cd52faadcaa85baa336b3a1da12c626892bbe1dc7ba2c0979a",
+    "fitMetrics": {
+      "roots": 223,
+      "rows": 95594,
+      "pairs": 138669,
+      "partition": "character",
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rootIndices": [
+            3,
+            4,
+            9,
+            11,
+            16,
+            21,
+            25,
+            32,
+            35,
+            40,
+            43,
+            48,
+            56,
+            62,
+            63,
+            66,
+            77,
+            84,
+            87,
+            93,
+            102,
+            108,
+            110,
+            116,
+            120,
+            123,
+            130,
+            136,
+            141,
+            145,
+            148,
+            153,
+            157,
+            161,
+            163,
+            173,
+            176,
+            179,
+            183,
+            185,
+            191,
+            193,
+            199,
+            204,
+            207,
+            212,
+            218,
+            220
+          ],
+          "roots": 48,
+          "rows": 21754,
+          "pairs": 32725,
+          "participatingRoots": 48,
+          "participatingRows": 15871,
+          "features": 398,
+          "fitMilliseconds": 22972.5851
+        },
+        {
+          "character": "IRONCLAD",
+          "rootIndices": [
+            0,
+            7,
+            12,
+            18,
+            22,
+            27,
+            29,
+            44,
+            46,
+            49,
+            54,
+            57,
+            59,
+            64,
+            70,
+            74,
+            78,
+            80,
+            85,
+            98,
+            99,
+            103,
+            113,
+            117,
+            121,
+            127,
+            129,
+            133,
+            137,
+            139,
+            146,
+            158,
+            165,
+            170,
+            172,
+            178,
+            181,
+            182,
+            188,
+            196,
+            200,
+            202,
+            210,
+            222
+          ],
+          "roots": 44,
+          "rows": 19861,
+          "pairs": 32637,
+          "participatingRoots": 44,
+          "participatingRows": 15329,
+          "features": 426,
+          "fitMilliseconds": 21830.6631
+        },
+        {
+          "character": "NECROBINDER",
+          "rootIndices": [
+            2,
+            6,
+            10,
+            13,
+            23,
+            30,
+            38,
+            41,
+            47,
+            52,
+            60,
+            67,
+            71,
+            75,
+            82,
+            88,
+            91,
+            94,
+            100,
+            106,
+            114,
+            118,
+            124,
+            126,
+            131,
+            134,
+            142,
+            149,
+            152,
+            156,
+            168,
+            174,
+            177,
+            186,
+            190,
+            198,
+            206,
+            213,
+            216,
+            219
+          ],
+          "roots": 40,
+          "rows": 16056,
+          "pairs": 21754,
+          "participatingRoots": 40,
+          "participatingRows": 10754,
+          "features": 383,
+          "fitMilliseconds": 15176.0823
+        },
+        {
+          "character": "REGENT",
+          "rootIndices": [
+            1,
+            14,
+            17,
+            19,
+            24,
+            26,
+            31,
+            33,
+            36,
+            39,
+            50,
+            53,
+            55,
+            61,
+            69,
+            73,
+            76,
+            81,
+            90,
+            92,
+            97,
+            104,
+            107,
+            115,
+            128,
+            135,
+            140,
+            143,
+            147,
+            151,
+            154,
+            159,
+            162,
+            166,
+            169,
+            171,
+            180,
+            189,
+            192,
+            195,
+            197,
+            203,
+            205,
+            209,
+            214,
+            217
+          ],
+          "roots": 46,
+          "rows": 19258,
+          "pairs": 27146,
+          "participatingRoots": 46,
+          "participatingRows": 13293,
+          "features": 386,
+          "fitMilliseconds": 22139.276
+        },
+        {
+          "character": "SILENT",
+          "rootIndices": [
+            5,
+            8,
+            15,
+            20,
+            28,
+            34,
+            37,
+            42,
+            45,
+            51,
+            58,
+            65,
+            68,
+            72,
+            79,
+            83,
+            86,
+            89,
+            95,
+            96,
+            101,
+            105,
+            109,
+            111,
+            112,
+            119,
+            122,
+            125,
+            132,
+            138,
+            144,
+            150,
+            155,
+            160,
+            164,
+            167,
+            175,
+            184,
+            187,
+            194,
+            201,
+            208,
+            211,
+            215,
+            221
+          ],
+          "roots": 45,
+          "rows": 18665,
+          "pairs": 24407,
+          "participatingRoots": 45,
+          "participatingRows": 12117,
+          "features": 399,
+          "fitMilliseconds": 16097.4718
+        }
+      ],
+      "participatingRoots": 223,
+      "participatingRows": 67364,
+      "trainingParallelism": 4,
+      "features": 1992,
+      "maximumHeadFeatures": 426,
+      "eligibleFeatures": 13988,
+      "linearTerms": 142,
+      "linearBytes": 8240,
+      "fitMilliseconds": 111061.2973,
+      "bytes": 1585626,
+      "peakWorkingSetBytes": 1596694528
+    },
+    "protocolSha256": "09da2eda52c8ee310301b67497aeb7c3647317ab2e9a89542b95b344021d34f6"
+  },
+  "metrics": [
+    {
+      "trees": 0,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.44728264389954187,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 8671,
+          "familyMeanAccuracy": 0.8019062051100905,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.4009277725302,
+            "AXEBOTS": 0.3418532439079664,
+            "INFESTED_PRISMS_ELITE": 0.5207841051373162,
+            "DEVOTED_SCULPTOR": 0.5429330125693965,
+            "RUBY_RAIDERS": 0.3295469068965902,
+            "MYTES": 0.5856532722318991,
+            "OVICOPTER": 0.40928019402342475
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.5052038953744633,
+          "families": 8,
+          "rootCount": 17,
+          "pairCount": 11231,
+          "familyMeanAccuracy": 0.7497524292604453,
+          "familyLosses": {
+            "INFESTED_PRISMS_ELITE": 0.45844113495374733,
+            "MECHA_KNIGHT_ELITE": 0.4926944914741714,
+            "DEVOTED_SCULPTOR": 0.47176079089321454,
+            "RUBY_RAIDERS": 0.4473160314660774,
+            "QUEEN_BOSS": 0.7448567215065908,
+            "MYTES": 0.4515801460489028,
+            "SPINY_TOAD": 0.4300113373902987,
+            "AXEBOTS": 0.5449705092627032
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.44008595414355123,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 5995,
+          "familyMeanAccuracy": 0.7640672215778068,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.4386073250865745,
+            "DEVOTED_SCULPTOR": 0.6654084489281902,
+            "RUBY_RAIDERS": 0.29592298823193375,
+            "QUEEN_BOSS": 0.6157541271714584,
+            "INFESTED_PRISMS_ELITE": 0.40019224533485365,
+            "MYTES": 0.330721793822728,
+            "OVICOPTER": 0.33399475042912025
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.5239406481656459,
+          "families": 7,
+          "rootCount": 15,
+          "pairCount": 7754,
+          "familyMeanAccuracy": 0.7834415609364093,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.4041237172915447,
+            "INFESTED_PRISMS_ELITE": 0.6446641091479923,
+            "MYTES": 0.29848196587097603,
+            "MECHA_KNIGHT_ELITE": 0.7485117473747247,
+            "SPINY_TOAD": 0.37325639959388013,
+            "AXEBOTS": 0.5707303475281851,
+            "QUEEN_BOSS": 0.6278162503522183
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.48935948517499905,
+          "families": 6,
+          "rootCount": 12,
+          "pairCount": 6733,
+          "familyMeanAccuracy": 0.7285136095118753,
+          "familyLosses": {
+            "MYTES": 0.49268509925579906,
+            "OVICOPTER": 0.293198832187276,
+            "RUBY_RAIDERS": 0.4348409323096552,
+            "INFESTED_PRISMS_ELITE": 0.6026598256846007,
+            "DEVOTED_SCULPTOR": 0.6166233718781782,
+            "MECHA_KNIGHT_ELITE": 0.4961488497344851
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    },
+    {
+      "trees": 4,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.4447194494200699,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 8671,
+          "familyMeanAccuracy": 0.8041091731948948,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.39078843736830815,
+            "AXEBOTS": 0.3399012956323334,
+            "INFESTED_PRISMS_ELITE": 0.5216593887123059,
+            "DEVOTED_SCULPTOR": 0.5329410465839459,
+            "RUBY_RAIDERS": 0.32747508006989806,
+            "MYTES": 0.584886745536793,
+            "OVICOPTER": 0.4153841520369051
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.49941172250731547,
+          "families": 8,
+          "rootCount": 17,
+          "pairCount": 11231,
+          "familyMeanAccuracy": 0.7649091051475431,
+          "familyLosses": {
+            "INFESTED_PRISMS_ELITE": 0.4419967484198329,
+            "MECHA_KNIGHT_ELITE": 0.49051344819937925,
+            "DEVOTED_SCULPTOR": 0.45380517578115837,
+            "RUBY_RAIDERS": 0.4465466725494021,
+            "QUEEN_BOSS": 0.7535204961125687,
+            "MYTES": 0.44652502686814244,
+            "SPINY_TOAD": 0.4306425259242875,
+            "AXEBOTS": 0.5317436862037525
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.4360781734195226,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 5995,
+          "familyMeanAccuracy": 0.7698240149552106,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.4338438655628057,
+            "DEVOTED_SCULPTOR": 0.6207527338596488,
+            "RUBY_RAIDERS": 0.29196223637477403,
+            "QUEEN_BOSS": 0.620888187581084,
+            "INFESTED_PRISMS_ELITE": 0.4077814702109044,
+            "MYTES": 0.34429083206792727,
+            "OVICOPTER": 0.33302788827951396
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.5214424696748433,
+          "families": 7,
+          "rootCount": 15,
+          "pairCount": 7754,
+          "familyMeanAccuracy": 0.7747173183943545,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.40453621726964384,
+            "INFESTED_PRISMS_ELITE": 0.6521613315674843,
+            "MYTES": 0.2966464633892768,
+            "MECHA_KNIGHT_ELITE": 0.7341118753138005,
+            "SPINY_TOAD": 0.37090036266260223,
+            "AXEBOTS": 0.573940422308363,
+            "QUEEN_BOSS": 0.6178006152127323
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.4835730588991042,
+          "families": 6,
+          "rootCount": 12,
+          "pairCount": 6733,
+          "familyMeanAccuracy": 0.7377922601078012,
+          "familyLosses": {
+            "MYTES": 0.4948917734879381,
+            "OVICOPTER": 0.2926338803422208,
+            "RUBY_RAIDERS": 0.43297682893393796,
+            "INFESTED_PRISMS_ELITE": 0.5780912699311375,
+            "DEVOTED_SCULPTOR": 0.609298923757938,
+            "MECHA_KNIGHT_ELITE": 0.4935456769414526
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    },
+    {
+      "trees": 8,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.4421282638053997,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 8671,
+          "familyMeanAccuracy": 0.8041772144576746,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.38990194632750325,
+            "AXEBOTS": 0.3391147137508753,
+            "INFESTED_PRISMS_ELITE": 0.5167304929177022,
+            "DEVOTED_SCULPTOR": 0.5261994679987353,
+            "RUBY_RAIDERS": 0.32559365857390427,
+            "MYTES": 0.5846133171781338,
+            "OVICOPTER": 0.41274424989094366
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.49099118272934117,
+          "families": 8,
+          "rootCount": 17,
+          "pairCount": 11231,
+          "familyMeanAccuracy": 0.7672920924108563,
+          "familyLosses": {
+            "INFESTED_PRISMS_ELITE": 0.43234084082425456,
+            "MECHA_KNIGHT_ELITE": 0.4882577778637732,
+            "DEVOTED_SCULPTOR": 0.4490893045109379,
+            "RUBY_RAIDERS": 0.44037114370037256,
+            "QUEEN_BOSS": 0.7237834213576039,
+            "MYTES": 0.4385527188593831,
+            "SPINY_TOAD": 0.42856943253844426,
+            "AXEBOTS": 0.5269648221799599
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.4330241499643553,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 5995,
+          "familyMeanAccuracy": 0.7704182904295297,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.428850365635897,
+            "DEVOTED_SCULPTOR": 0.6047908693706718,
+            "RUBY_RAIDERS": 0.29077728957172166,
+            "QUEEN_BOSS": 0.6202964312743847,
+            "INFESTED_PRISMS_ELITE": 0.4065312134200968,
+            "MYTES": 0.34864677162431545,
+            "OVICOPTER": 0.3312761088533994
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.5236768232410031,
+          "families": 7,
+          "rootCount": 15,
+          "pairCount": 7754,
+          "familyMeanAccuracy": 0.7635534202889122,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.404697179437942,
+            "INFESTED_PRISMS_ELITE": 0.665585978425026,
+            "MYTES": 0.29460218772543023,
+            "MECHA_KNIGHT_ELITE": 0.7308150345523095,
+            "SPINY_TOAD": 0.36815264211583376,
+            "AXEBOTS": 0.5768777189397889,
+            "QUEEN_BOSS": 0.6250070214906912
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.4782155798302205,
+          "families": 6,
+          "rootCount": 12,
+          "pairCount": 6733,
+          "familyMeanAccuracy": 0.7526026839713474,
+          "familyLosses": {
+            "MYTES": 0.49664989360929634,
+            "OVICOPTER": 0.29100363485011377,
+            "RUBY_RAIDERS": 0.42509294422373206,
+            "INFESTED_PRISMS_ELITE": 0.5609135082501425,
+            "DEVOTED_SCULPTOR": 0.6065698729677454,
+            "MECHA_KNIGHT_ELITE": 0.4890636250802928
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    },
+    {
+      "trees": 16,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.4419256456455239,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 8671,
+          "familyMeanAccuracy": 0.80591657585513,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.3888587135598458,
+            "AXEBOTS": 0.34032578832885046,
+            "INFESTED_PRISMS_ELITE": 0.5247531067716439,
+            "DEVOTED_SCULPTOR": 0.5197219534237957,
+            "RUBY_RAIDERS": 0.3257193257341358,
+            "MYTES": 0.579921737851786,
+            "OVICOPTER": 0.4141788938486096
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.4836838238653625,
+          "families": 8,
+          "rootCount": 17,
+          "pairCount": 11231,
+          "familyMeanAccuracy": 0.7620445203428039,
+          "familyLosses": {
+            "INFESTED_PRISMS_ELITE": 0.425542467539212,
+            "MECHA_KNIGHT_ELITE": 0.4836240692401917,
+            "DEVOTED_SCULPTOR": 0.44432453868517,
+            "RUBY_RAIDERS": 0.4329862121666679,
+            "QUEEN_BOSS": 0.6921272248363797,
+            "MYTES": 0.43455303619389435,
+            "SPINY_TOAD": 0.4295799938544107,
+            "AXEBOTS": 0.5267330484069737
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.4299453049463717,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 5995,
+          "familyMeanAccuracy": 0.7694187102265326,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.42599293723617077,
+            "DEVOTED_SCULPTOR": 0.599762267105142,
+            "RUBY_RAIDERS": 0.2890684949939332,
+            "QUEEN_BOSS": 0.6155239546147557,
+            "INFESTED_PRISMS_ELITE": 0.39874169510615975,
+            "MYTES": 0.3520556301421581,
+            "OVICOPTER": 0.32847215542628205
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.5223704119170313,
+          "families": 7,
+          "rootCount": 15,
+          "pairCount": 7754,
+          "familyMeanAccuracy": 0.7496345113103242,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.4021430408735309,
+            "INFESTED_PRISMS_ELITE": 0.6861781306982078,
+            "MYTES": 0.2865166070894142,
+            "MECHA_KNIGHT_ELITE": 0.707333432023438,
+            "SPINY_TOAD": 0.35720306190247086,
+            "AXEBOTS": 0.5931616943706848,
+            "QUEEN_BOSS": 0.6240569164614725
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.4723506886522866,
+          "families": 6,
+          "rootCount": 12,
+          "pairCount": 6733,
+          "familyMeanAccuracy": 0.7626636967929327,
+          "familyLosses": {
+            "MYTES": 0.49880757194438907,
+            "OVICOPTER": 0.28712130125335944,
+            "RUBY_RAIDERS": 0.4256551233160033,
+            "INFESTED_PRISMS_ELITE": 0.5394363849276755,
+            "DEVOTED_SCULPTOR": 0.5967071311822737,
+            "MECHA_KNIGHT_ELITE": 0.48637661929001835
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    },
+    {
+      "trees": 32,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.4435462574773694,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 8671,
+          "familyMeanAccuracy": 0.8051633533065985,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.3918709431396128,
+            "AXEBOTS": 0.3416641755195266,
+            "INFESTED_PRISMS_ELITE": 0.5317974276342857,
+            "DEVOTED_SCULPTOR": 0.5180799807718031,
+            "RUBY_RAIDERS": 0.32536790846183045,
+            "MYTES": 0.579543761438794,
+            "OVICOPTER": 0.4164996053757331
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.48369337469050927,
+          "families": 8,
+          "rootCount": 17,
+          "pairCount": 11231,
+          "familyMeanAccuracy": 0.7605069784784146,
+          "familyLosses": {
+            "INFESTED_PRISMS_ELITE": 0.42329452894262126,
+            "MECHA_KNIGHT_ELITE": 0.4949787017647087,
+            "DEVOTED_SCULPTOR": 0.4453943230999143,
+            "RUBY_RAIDERS": 0.4223856152059761,
+            "QUEEN_BOSS": 0.6883297266403077,
+            "MYTES": 0.4385061836652563,
+            "SPINY_TOAD": 0.4319013349117321,
+            "AXEBOTS": 0.5247565832935578
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.43013696505158344,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 5995,
+          "familyMeanAccuracy": 0.7728359092273349,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.41492644734430884,
+            "DEVOTED_SCULPTOR": 0.5933164824559616,
+            "RUBY_RAIDERS": 0.28830083018654645,
+            "QUEEN_BOSS": 0.6224457906917652,
+            "INFESTED_PRISMS_ELITE": 0.39908577263361633,
+            "MYTES": 0.3615601549453429,
+            "OVICOPTER": 0.331323277103543
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.5145319333916322,
+          "families": 7,
+          "rootCount": 15,
+          "pairCount": 7754,
+          "familyMeanAccuracy": 0.7611962387191576,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.39984427132897393,
+            "INFESTED_PRISMS_ELITE": 0.6766631055010225,
+            "MYTES": 0.28018652127260246,
+            "MECHA_KNIGHT_ELITE": 0.6964003076402545,
+            "SPINY_TOAD": 0.34538783608749324,
+            "AXEBOTS": 0.5930549750243896,
+            "QUEEN_BOSS": 0.6101865168866891
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.46875931446070307,
+          "families": 6,
+          "rootCount": 12,
+          "pairCount": 6733,
+          "familyMeanAccuracy": 0.7578639649234231,
+          "familyLosses": {
+            "MYTES": 0.5024858671291965,
+            "OVICOPTER": 0.2884779255374935,
+            "RUBY_RAIDERS": 0.43204481408889955,
+            "INFESTED_PRISMS_ELITE": 0.5236130468174375,
+            "DEVOTED_SCULPTOR": 0.582049163730801,
+            "MECHA_KNIGHT_ELITE": 0.4838850694603903
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    },
+    {
+      "trees": 64,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.4427869050322817,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 8671,
+          "familyMeanAccuracy": 0.8017618790708244,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.3795462049796299,
+            "AXEBOTS": 0.34249496568404264,
+            "INFESTED_PRISMS_ELITE": 0.5407152231066343,
+            "DEVOTED_SCULPTOR": 0.5153637656274928,
+            "RUBY_RAIDERS": 0.3252667724311231,
+            "MYTES": 0.5713935325161792,
+            "OVICOPTER": 0.4247278708808699
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.48681837040649295,
+          "families": 8,
+          "rootCount": 17,
+          "pairCount": 11231,
+          "familyMeanAccuracy": 0.7604299176522354,
+          "familyLosses": {
+            "INFESTED_PRISMS_ELITE": 0.41927920633024196,
+            "MECHA_KNIGHT_ELITE": 0.509528765777135,
+            "DEVOTED_SCULPTOR": 0.44248311774086113,
+            "RUBY_RAIDERS": 0.40655458813465245,
+            "QUEEN_BOSS": 0.7336189311707858,
+            "MYTES": 0.4325118675165293,
+            "SPINY_TOAD": 0.43947032909131856,
+            "AXEBOTS": 0.5111001574904193
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.4306110111835617,
+          "families": 7,
+          "rootCount": 14,
+          "pairCount": 5995,
+          "familyMeanAccuracy": 0.7882685527409815,
+          "familyLosses": {
+            "MECHA_KNIGHT_ELITE": 0.41422690145919094,
+            "DEVOTED_SCULPTOR": 0.5744311164840001,
+            "RUBY_RAIDERS": 0.2878391120906593,
+            "QUEEN_BOSS": 0.6523263187979434,
+            "INFESTED_PRISMS_ELITE": 0.393824706701971,
+            "MYTES": 0.36141216690699934,
+            "OVICOPTER": 0.33021675584416776
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.5146944227057807,
+          "families": 7,
+          "rootCount": 15,
+          "pairCount": 7754,
+          "familyMeanAccuracy": 0.744077171413054,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.39755023113759297,
+            "INFESTED_PRISMS_ELITE": 0.6786798557149905,
+            "MYTES": 0.2811470458930448,
+            "MECHA_KNIGHT_ELITE": 0.6881180656385644,
+            "SPINY_TOAD": 0.34725027357882576,
+            "AXEBOTS": 0.5892246294395327,
+            "QUEEN_BOSS": 0.6208908575379137
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.4615957732347773,
+          "families": 6,
+          "rootCount": 12,
+          "pairCount": 6733,
+          "familyMeanAccuracy": 0.7687836823341108,
+          "familyLosses": {
+            "MYTES": 0.5014420419217791,
+            "OVICOPTER": 0.281476736897734,
+            "RUBY_RAIDERS": 0.43316349185033776,
+            "INFESTED_PRISMS_ELITE": 0.5074668704663563,
+            "DEVOTED_SCULPTOR": 0.5695323855692447,
+            "MECHA_KNIGHT_ELITE": 0.476493112703212
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    }
+  ],
+  "fitProcess": {
+    "seconds": 111.36003121000249,
+    "returnCode": 0
+  },
+  "diagnosticsSeconds": 36.77177180291619,
+  "separation": {
+    "inner": {
+      "schema": 2,
+      "splitCounts": {
+        "train": 223,
+        "validation": 72
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5625
+        }
+      ],
+      "maximumDeckSimilarity": 0.5625,
+      "passed": true,
+      "datasetSha256": "9f3def46790dbbe9e135261c326ff76cc935e382b13a40755f4891f88a2f34c2"
+    },
+    "outer": {
+      "schema": 2,
+      "splitCounts": {
+        "train": 295,
+        "validation": 15,
+        "test": 5
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5151515151515151
+        },
+        {
+          "left": "train",
+          "right": "test",
+          "maximumDeckSimilarity": 0.4838709677419355
+        },
+        {
+          "left": "validation",
+          "right": "test",
+          "maximumDeckSimilarity": 0.4594594594594595
+        }
+      ],
+      "maximumDeckSimilarity": 0.5151515151515151,
+      "passed": true,
+      "datasetSha256": "90b59777e89d100bdac32027b031e3c9b0ae41414bc02602304142c599c9ac51"
+    }
+  },
+  "coverageSnapshot": {
+    "snapshotUtc": "2026-09-27T16:04:43.304146+00:00",
+    "strata": {
+      "(0, 'Boss')": {
+        "collected": 68,
+        "preferenceRoots": 66,
+        "rows": 28421,
+        "selectedRiskOrBoundary": 2,
+        "selectedVerifiedWin": 65,
+        "classicRoots": 54
+      },
+      "(0, 'Monster')": {
+        "collected": 75,
+        "preferenceRoots": 75,
+        "rows": 67952,
+        "selectedRiskOrBoundary": 3,
+        "selectedVerifiedWin": 72,
+        "classicRoots": 58
+      },
+      "(1, 'Elite')": {
+        "collected": 68,
+        "preferenceRoots": 67,
+        "rows": 54707,
+        "selectedRiskOrBoundary": 0,
+        "selectedVerifiedWin": 66,
+        "classicRoots": 53
+      },
+      "(1, 'Monster')": {
+        "collected": 74,
+        "preferenceRoots": 72,
+        "rows": 67771,
+        "selectedRiskOrBoundary": 2,
+        "selectedVerifiedWin": 71,
+        "classicRoots": 57
+      },
+      "(2, 'Boss')": {
+        "collected": 75,
+        "preferenceRoots": 11,
+        "rows": 62331,
+        "selectedRiskOrBoundary": 6,
+        "selectedVerifiedWin": 11,
+        "classicRoots": 57
+      },
+      "(2, 'Elite')": {
+        "collected": 70,
+        "preferenceRoots": 24,
+        "rows": 60744,
+        "selectedRiskOrBoundary": 9,
+        "selectedVerifiedWin": 22,
+        "classicRoots": 54
+      },
+      "(2, 'Monster')": {
+        "collected": 69,
+        "preferenceRoots": 59,
+        "rows": 60459,
+        "selectedRiskOrBoundary": 6,
+        "selectedVerifiedWin": 57,
+        "classicRoots": 54
+      }
+    },
+    "roles": {
+      "IRONCLAD": {
+        "collected": 101,
+        "preferenceRoots": 81,
+        "rows": 85381,
+        "selectedRiskOrBoundary": 6,
+        "selectedVerifiedWin": 80,
+        "classicRoots": 77
+      },
+      "REGENT": {
+        "collected": 99,
+        "preferenceRoots": 77,
+        "rows": 72731,
+        "selectedRiskOrBoundary": 6,
+        "selectedVerifiedWin": 72,
+        "classicRoots": 78
+      },
+      "NECROBINDER": {
+        "collected": 99,
+        "preferenceRoots": 69,
+        "rows": 78170,
+        "selectedRiskOrBoundary": 5,
+        "selectedVerifiedWin": 68,
+        "classicRoots": 76
+      },
+      "DEFECT": {
+        "collected": 101,
+        "preferenceRoots": 76,
+        "rows": 94399,
+        "selectedRiskOrBoundary": 5,
+        "selectedVerifiedWin": 76,
+        "classicRoots": 79
+      },
+      "SILENT": {
+        "collected": 99,
+        "preferenceRoots": 71,
+        "rows": 71704,
+        "selectedRiskOrBoundary": 6,
+        "selectedVerifiedWin": 68,
+        "classicRoots": 77
+      }
+    }
+  },
+  "evaluations": {
+    "model.selected.json": {
+      "model": "model.selected.json",
+      "modelSha256": "a86c1f6a2c5703cd52faadcaa85baa336b3a1da12c626892bbe1dc7ba2c0979a",
+      "records": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 27,
+            "strategicHpDeficit": 27,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000834963,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 13.9967488,
+          "rss": 368218112,
+          "nodes": 12000,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 8.1279304,
+          "rss": 333611008,
+          "nodes": 7614,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 196,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 64,
+            "strategicHpDeficit": 64,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9997819946,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 20.1563586,
+          "rss": 374235136,
+          "nodes": 16553,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 182,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 79,
+            "score": -1000003040040,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 16.8091552,
+          "rss": 357875712,
+          "nodes": 14493,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 199,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 10.3768357,
+          "rss": 334491648,
+          "nodes": 6924,
+          "timeBoundary": true
+        }
+      ],
+      "comparisons": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "materialComparison": 0
+        }
+      ],
+      "completed": true,
+      "historicalBaselineTimingIsSpeedProof": false,
+      "regressions": [
+        "unseen-defect-the_kin_boss",
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "stage": "screen",
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    },
+    "model.json": {
+      "model": "model.json",
+      "modelSha256": "0cba9c59edbe3de39e4b1d5cced0d9cef8b15010d5899fa4c83db1663e29373f",
+      "records": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 27,
+            "strategicHpDeficit": 27,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 6,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000834963,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 14.1620032,
+          "rss": 379449344,
+          "nodes": 12000,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 8.8236933,
+          "rss": 312799232,
+          "nodes": 7164,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 181,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 64,
+            "strategicHpDeficit": 64,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9997819946,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 22.7181396,
+          "rss": 370798592,
+          "nodes": 16659,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 79,
+            "score": -1000003040040,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 19.853905,
+          "rss": 354480128,
+          "nodes": 14562,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 199,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 11.2649266,
+          "rss": 327729152,
+          "nodes": 6591,
+          "timeBoundary": true
+        }
+      ],
+      "comparisons": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "materialComparison": -1
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "materialComparison": 0
+        }
+      ],
+      "completed": true,
+      "historicalBaselineTimingIsSpeedProof": false,
+      "regressions": [
+        "unseen-defect-the_kin_boss",
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [
+        "unseen-regent-knowledge_demon_boss"
+      ],
+      "unverified": [],
+      "stage": "screen",
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    }
+  },
+  "aggregationFailure": "Initial mapping by diagnostic directory label raised KeyError(search); fit and first audit reused. Ordered inputs mapped strictly on recovery. Host now emits explicit zero-based rootIndex; 77 assertions passed.",
+  "build": "Offline harness Release succeeded in 2.84 s; production main source unchanged, reuse prior same-source build/deployment.",
+  "speedEvidence": false,
+  "finalTestOpened": false
+}

@@ -10,6 +10,8 @@
 
 训练输入可显式指定 `"partition": "character"`，先统一抽样再按观察到的原生角色拟合；输出仍是 `model.json` / `model.linear.json`，各自内嵌所有角色头。宿主在搜索前按实际根角色选择，所有头校验格式和游戏 MVID，未知角色拒绝；旧共享模型与默认 `partition=shared` 保持兼容。夜间 `prepare --fit-partition character` 将选择写入冻结计划，必须使用支持条件容器的新宿主。单次拟合时限覆盖全部角色训练，不能给每个头重新开一份预算。见[角色条件估值](../../docs/strategy/character-conditioned-ranking-20260927.md)。
 
+`--audit-outcome-ranking <输入清单> <模型文件> <输出>` 输出每根排序诊断；`rootIndex` 是输入清单中的从 0 开始索引，`root` 仅为目录显示名，不能作为唯一身份。同名 `search` 目录不得合并。数据是否参与拟合由调用方的冻结分组决定，排序损失不代表完整搜索决策质量；见[分组留出选型试验](../../docs/strategy/model-selection-20260928.md)。
+
 当前训练入口 `train.py` 采集同池完整胜利和引擎确认的终局死亡见证，拟合模型schema7的线性基础项与成对残差树；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
 
 拟合宿主最多使用四路列统计；分裂选择保持原顺序，输出记录 `participatingRoots` / `participatingRows` / `trainingParallelism`。原始行全量校验，未被偏好对引用的行不进入训练数组；两条死亡续局即使敌人剩余血量不同也没有偏好。夜间 `prepare --fit-harness <DLL> --fit-mod <DLL>` 可单独冻结新拟合器，采集和验证继续使用 `--harness/--mod` 指定的原搜索引擎；两项必须同时提供，加载时继续验证模型格式与游戏 MVID。冻结基线同时保存实际原生装备，支持后续任务再次核对并继承；升级只改训练，不借用不兼容的基线身份。详见[吞吐与有效监督](../../docs/strategy/overnight-training-throughput-20260927.md)。

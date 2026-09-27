@@ -38,11 +38,13 @@ internal static class OutcomeValueTraining
                     }
             }
             int pairs = correct + wrong + ties;
-            results.Add(new { root = root.Id, rows = rows.Length,
+            // Directory labels can repeat (for example, every root's "search"
+            // folder). Join diagnostics to the ordered input by this index.
+            results.Add(new { rootIndex = results.Count, root = root.Id, rows = rows.Length,
                 pairs, correct, wrong, ties, indistinguishable, logLoss = pairs == 0 ? 0 : loss / pairs });
         }
         File.WriteAllText(output, JsonSerializer.Serialize(results));
-        Console.WriteLine($"Audited {results.Count} roots; this is fitted-data diagnostics, not independent evaluation.");
+        Console.WriteLine($"Audited {results.Count} supplied roots; ranking diagnostics do not measure search decision quality.");
         return 0;
     }
 

@@ -225,6 +225,17 @@ internal static class OutcomeRankingChecks
             Check(bank.Select("A").PredictFeaturesForTesting(high) > bank.Select("A").PredictFeaturesForTesting(low)
                 && bank.Select("B").PredictFeaturesForTesting(high) < bank.Select("B").PredictFeaturesForTesting(low),
                 "native character selection preserves opposing learned preferences");
+            string auditOutput = Path.Combine(directory, "audit.json");
+            OutcomeValueTraining.Audit(inputs, bundled, auditOutput);
+            using (var diagnostics = JsonDocument.Parse(File.ReadAllText(auditOutput)))
+            {
+                var records = diagnostics.RootElement.EnumerateArray().ToArray();
+                Check(records.Length == 2 && records[0].GetProperty("root").GetString() == records[1].GetProperty("root").GetString()
+                    && records.Select(r => r.GetProperty("rootIndex").GetInt32()).SequenceEqual([0, 1]),
+                    "audit indices distinguish ordered roots even when their directory labels coincide");
+                Check(records.All(r => r.GetProperty("pairs").GetInt32() > 0 && r.GetProperty("wrong").GetInt32() == 0),
+                    "audit keeps each root paired with its observed character model");
+            }
             Reject(() => bank.Select("missing"), "missing character head cannot silently use another character");
             var corrupt = new OutcomeModelFile.CharacterDocument(1, new()
                 { ["A"] = expectedA.ExportModel(), ["B"] = expectedB.ExportModel() with { GameMvid = Guid.Empty } });
