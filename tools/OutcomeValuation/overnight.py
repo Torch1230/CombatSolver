@@ -165,6 +165,17 @@ def freeze_engine(harness, mod, engine):
     write(runtime, config)
 
 
+def freeze_baseline(case, source, target):
+    verify_resolved_loadout(case, source)
+    target.mkdir(parents=True)
+    for name in ('quality.json', 'result.json', 'harness-result.json'):
+        shutil.copy2(source / name, target / name)
+    if case.get('loadout'):
+        (target / 'evidence').mkdir()
+        shutil.copy2(source / 'evidence/generated-scenario.loadout.json',
+                     target / 'evidence/generated-scenario.loadout.json')
+
+
 def initialize(args):
     began = time.monotonic()
     root = args.out.resolve()
@@ -192,11 +203,8 @@ def initialize(args):
         if any(entry['identity']['settings'][k] != v for k, v in expected.items()):
             raise ValueError('Historical baseline has incompatible search settings')
         source = Path(entry['directory'])
-        verify_resolved_loadout(case, source)
         target = root / 'baselines' / case['id']
-        target.mkdir(parents=True)
-        for name in ('quality.json', 'result.json', 'harness-result.json'):
-            shutil.copy2(source / name, target / name)
+        freeze_baseline(case, source, target)
         baselines[case['id']] = {**entry, 'directory': str(target)}
     write(root / 'baseline-index.json', baselines)
     shutil.copy2(args.catalog, root / 'catalog.json')

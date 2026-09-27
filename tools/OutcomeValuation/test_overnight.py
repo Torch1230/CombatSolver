@@ -9,10 +9,26 @@ import time
 import unittest
 from unittest.mock import patch
 
-from overnight import Job, StopRequested, balanced_roots, encounter_buckets, specification, witnessed_rows
+from overnight import Job, StopRequested, balanced_roots, encounter_buckets, freeze_baseline, specification, witnessed_rows
+from dataset import verify_resolved_loadout
 
 
 class OvernightContracts(unittest.TestCase):
+    def test_frozen_baseline_preserves_native_equipment_for_the_next_job(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / 'original'
+            (source / 'evidence').mkdir(parents=True)
+            loadout = source / 'evidence/generated-scenario.loadout.json'
+            loadout.write_text(json.dumps({'deck': ['A', 'B'], 'relics': ['C']}))
+            for name in ('quality.json', 'result.json', 'harness-result.json'):
+                (source / name).write_text('{}')
+            case = {'loadout': str(loadout), 'id': 'native-case'}
+            freeze_baseline(case, source, root / 'first')
+            freeze_baseline(case, root / 'first', root / 'second')
+            verify_resolved_loadout(case, root / 'second')
+            self.assertEqual(loadout.read_bytes(), (root / 'second/evidence/generated-scenario.loadout.json').read_bytes())
+
     def test_all_role_act_kind_strata_are_scheduled_without_heldout_families(self):
         with tempfile.TemporaryDirectory() as temporary:
             request = Path(temporary) / 'request.json'

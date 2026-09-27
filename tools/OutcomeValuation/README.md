@@ -6,7 +6,7 @@
 
 当前训练入口 `train.py` 采集同池完整胜利和引擎确认的终局死亡见证，拟合模型schema7的线性基础项与成对残差树；采集加拟合由 `--seconds` 限制，最大1800秒。传统搜索探索与验证不受此前误解的“所有工作共30分钟”限制。
 
-拟合宿主最多使用四路列统计；分裂选择保持原顺序，输出记录 `participatingRoots` / `participatingRows` / `trainingParallelism`。原始行全量校验，未被偏好对引用的行不进入训练数组；两条死亡续局即使敌人剩余血量不同也没有偏好。夜间 `prepare --fit-harness <DLL> --fit-mod <DLL>` 可单独冻结新拟合器，采集和验证继续使用 `--harness/--mod` 指定的原搜索引擎；两项必须同时提供，加载时继续验证模型格式与游戏 MVID。升级只改训练，不借用不兼容的基线身份。详见[吞吐与有效监督](../../docs/strategy/overnight-training-throughput-20260927.md)。
+拟合宿主最多使用四路列统计；分裂选择保持原顺序，输出记录 `participatingRoots` / `participatingRows` / `trainingParallelism`。原始行全量校验，未被偏好对引用的行不进入训练数组；两条死亡续局即使敌人剩余血量不同也没有偏好。夜间 `prepare --fit-harness <DLL> --fit-mod <DLL>` 可单独冻结新拟合器，采集和验证继续使用 `--harness/--mod` 指定的原搜索引擎；两项必须同时提供，加载时继续验证模型格式与游戏 MVID。冻结基线同时保存实际原生装备，支持后续任务再次核对并继承；升级只改训练，不借用不兼容的基线身份。详见[吞吐与有效监督](../../docs/strategy/overnight-training-throughput-20260927.md)。
 
 - `prepare_training.py --catalog <原生目录> --harness <宿主> --mod <Mod> --exclude-manifest <验证> --exclude-manifest <最终测试> --out <新目录> --seed <预先固定种子>`：按目录固定4普通/3精英/1首领，每个角色各8根，只做原生建局；保留实际装备和准备时间。
 - `refit.py --prior-training <完整训练目录> --manifest <同训练清单> --evaluation-manifest <验证清单> --evaluation-manifest <封存测试清单> --harness <宿主> --mod <Mod> --out <新目录>`：复用观察，核对底层请求/装备与原采集一致，继承全部历史成本并在余下1800秒总额内拟合；不重开免费训练预算。输出完整模型和纯线性消融产物。

@@ -735,8 +735,27 @@
     "releaseMain": true,
     "releaseHarness": true,
     "outcomeRankingAssertions": 50,
-    "overnightContracts": 5,
+    "overnightContracts": 6,
     "bashBoundarySearchFiles": 221,
     "powerShellBoundarySearchFiles": 221
+  },
+  "supervisorUpgrade": {
+    "observedUtc": "2026-09-27T14:42:22.918009+00:00",
+    "priorService": "combatsolver-outcome-20260927.service",
+    "priorExited": true,
+    "priorExitCode": 0,
+    "prior128RootFit": "TimeoutExpired at 600 seconds, retained as failed",
+    "preparationFailure": "First migration attempt found a missing frozen baseline loadout before any search started; original native baseline reused and future freezes preserve equipment",
+    "service": "combatsolver-outcome-20260927-r3.service",
+    "pid": 3313305,
+    "active": true,
+    "jobDirectory": ".local/objective-search/overnight-20260927-r3",
+    "deadline": "2026-09-28T08:00:00+08:00",
+    "searchModSha256": "c945080ace2548f5bad784b1343132ae1a6904467dda074dbd802e8ab6eac242",
+    "trainingModSha256": "9e0b532ed4d0aa4e7bf7cc00857a3f5ed92fe9b262792123ef8d39db51719fc0",
+    "inheritedRowsAndCosts": true,
+    "eligibilityRecomputed": true,
+    "maximumMemoryBytes": 12884901888,
+    "cpuQuotaCores": 8
   }
 }
