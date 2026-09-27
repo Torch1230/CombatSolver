@@ -154,7 +154,7 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 ### 3.1 请求级编排
 
 - `SearchPolicySnapshot.cs`：主线程捕获的不可变搜索设置、逐槽药水策略，以及第一/二幕与最终 Boss 各自的血量取舍；后台不读取 UI 或玩家设置。
-- `SearchDiagnosticsSink.cs`：搜索日志和可选纯值路径观察出口。观察默认关闭，先按状态键过滤，命中后才复制完整动作/选择路径与政策标签；另可显式筛选外层 Prune 池，记录完整输入、真实 RankBest 的原排名/必保/路由/选中索引、当时的战术估值标量及最终仲裁集合。RankBest 内部同步借用列表，立即转成值副本；不向注入方暴露节点、模拟器或闭包，不重算估值或选择器，也不参与候选裁决。注入方负责并发和输出容量。另可显式观察已经完成的胜利：在串行协调端先检查接收容量，再沿父链复制首动作与终局标量；不填充节点动作缓存。`RootOutcomeCache` 与探测调度属于离线宿主，最多接收 2048 次回调/128 个动作，结果只用于安排后续探测，不作可采纳剪枝界。
+- `SearchDiagnosticsSink.cs`：搜索日志和可选纯值路径观察出口。观察默认关闭，先按状态键过滤，命中后才复制完整动作/选择路径与政策标签；另可显式筛选外层 Prune 池，记录完整输入、真实 RankBest 的原排名/必保/路由/选中索引、当时的战术估值标量及最终仲裁集合。RankBest 内部同步借用列表，立即转成值副本；不向注入方暴露节点、模拟器或闭包，不重算估值或选择器，也不参与候选裁决。注入方负责并发和输出容量。另可显式观察已经完成的胜利：在串行协调端先检查接收容量，再沿父链复制首动作与终局标量；不填充节点动作缓存。`RootOutcomeCache` 属于 Search 的自动编排，每个根、政策和主搜索轮次独占，最多接收 2048 次回调/128 个动作。`SearchOpeningActionObserver` 只在首个保路池复制最多 128 个首动作，含根选牌时旁路，不开启完整路径诊断；结果只用于安排后续探测，不作可采纳剪枝界。离线宿主复用同一缓存实现。
 - `SearchFramePressureSignal.cs`：Runtime 向 worker 提供的帧压力信号；以最近 `31` 个非搜索帧中位数建立基线，压力阈值为 `max(33 ms, baseline × 1.5)`，无显示服务的 headless 请求旁路帧恢复等待。
 - `SearchRequestWorkTotals.cs`：一次请求内所有正常、失败和取消 solver 的工作区间均精确记账一次，包括取消前已发生的展开、转移、选牌、耗时、分配和 GC；Smart 有限药水层之间由 coordinator 主动执行的内存整理也单独计入耗时、分配和 GC，但不伪装成额外 solver。请求总值不是完整 coordinator 外层墙钟或进程峰值，也不承担结果质量排序。该对象同时拥有请求级额外循环回放额度：所有子策略共享一次 4096 动作上限，原子消费；独立 Evaluate 创建私有实例。额度不能随 worker 或新 solver 重置。`TotalCycleReplayActions` 从请求账本输出，`CycleReplayActions` 仍是所选 solver 值。 离线探测可通过 coordinator 的测试参数显式注入同一账本，把完整基线与追加 solver 一起计费；Runtime 默认仍每请求新建。
 - `CombatSearchCoordinator.cs`：一次请求的搜索编排；Smart 先搜索无药基线，有逐瓶强制指令时先搜索仅用强制药的基线，再按额外智能药瓶数和相对该基线的战损收益进入“恰好 `N` 瓶”层。强制基线无可执行路线时回到允许可选药的救命搜索。按瓶数递增搜索，同层药水共同竞争；第一层完整获胜且满足救命、节省生命或保全被盗资源条件时立即采用并停止增加药量。达到设置的可接受战损阈值也可提前结束请求，不保证遍历全部药水层或取得所有药量中的全局最优。进入下一梯度前回收上一层搜索图并重建 NoGC 区域；截止时保留已完成且符合政策的选择。跨 solver 只发布符合政策的严格改善完整路线，并透传当前 solver 已完成回合的候选。玩家可采用已显示路线或只执行当前回合。Disabled/RequireAtLeastOne 保持各自政策；实际运行的各层共享请求级时间余量并合并总指标。
@@ -164,11 +164,13 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 `ActionRelicTriggerRecorder` 仅存在于最终路线回放，附带 Damage/Heal 的来源、请求/修正数值和 HP 前后值；普通 Beam 分支保持 null，不分配取证列表。直接字段赋值等绕过 Damage/Heal 的变更尚无来源事件，不能把这份记录宣称为所有语义写点的完整追踪。
 
-`BeamWidthPortfolio.cs` 是一个与 Beam 算法无关的组合器：按顺序在同一个根上跑若干宽度或中途保留策略不同的成员。普通成员共享节点预算；根牌区存在已登记能力牌时，基线之后的同宽度能力成员至少取得请求节点上限的五分之一专用预留，因此组合总展开允许超过普通共享上限。撞节点上限又没到终局的成员不参与比较，其余按调用方传入的既有比较规则整条取最优，同分保留先出现的基线成员。`SolverSettings.UseBeamWidthPortfolio` 只控制后续宽度/次段/基础分成员，关闭时仍运行能力成员。组合器不含比较规则、状态键或终局排序；展开数、转移数和终止原因都由调用方按各自既有口径给出。做法与数据来源见[宽度组合](strategy/beam-width-portfolio.md)及[静默猎手能力牌第二版方案](strategy/power-card-valuation/silent-v2-valuation-and-retention-plan-20260917.md)。
+`CombatSearchCoordinator.Automatic.cs` 是玩家唯一的搜索调度入口。Runtime 固定捕获 `UseAutomaticSearch=true`；旧宽度/新颖性设置只保留 JSON 兼容和离线历史消融，不再提供玩家开关或开启提示。自动入口先做原有有界新颖性探索，再把实际余量交给 Beam/宽度组合，保留完整终局政策、目标早停、治疗保护、取消和玩家接管。各成员不合并 frontier 或转置表。
 
-`BeamWidthPortfolioGate.cs` 只管理普通精炼成员；基线必须已经搜干净、不是零损最优，且节点、时间和内存估算都有余量才运行。`PowerCommitmentPortfolioGate.cs` 只检查根牌区是否有已登记能力，不再用累计分配量拒绝整条能力成员；能力成员至少取得五分之一节点预留和最多30秒的时间预留。成员开始前若连256 MiB单次提交都容不下，Coordinator 在已排空边界调用 Runtime 注入的回收信号，后续硬内存安全仍由搜索波次预约和检查点负责。`BeamWidthPortfolioTelemetry.cs` 记录首条路线、普通/能力成员、逐能力固定前缀成员及托管堆峰值。
+`BeamWidthPortfolio.cs` 仍按原序组合普通、能力承诺、窄/宽、次段及基础分成员。自动入口固定保留普通基线，不启用旧默认再分配或学习门控；关闭能力成员的额外节点/时间预留。若普通搜索尚未覆盖某个可打能力首动作，该能力成员的原额度改为该前缀的普通 Beam 后验；优先未知前缀，已有覆盖时仍用原能力承诺策略。能力槽身份保留在成员表，实际固定前缀另记 `AUTOMATIC_POWER_PREFIX`。`BeamWidthPortfolioGate` 继续检查普通精炼的完成情况、预测成本、余量与内存；能力成员需要根上有可达能力且预算未耗尽。已有回收/硬内存安全与结果比较规则不变。
 
-`CombatSearchCoordinator.PowerRoutes.cs` 在主搜索后、可接受战损提前返回之前，为当前可打的每张已登记能力运行固定前缀完整搜索，并有限补充双能力前缀。前缀结束后重建 `CombatProgressState`、清除临时承诺与有序变异调度元数据，后续按普通 Beam 搜索；能力已经真实在场，不继续套激进承诺。最多三个前缀时分别运行普通宽度、1.5倍宽度、次排名段和基础分四种后验，更多前缀时运行普通与宽 Beam。所有成员只以完整终局和既有战损政策选优。
+自动入口替代 `CombatSearchCoordinator.PowerRoutes.cs` 的能力前缀×多变体笛卡尔积补搜。它根据当前根的真实终局见证排列最多四个首动作，已知/未知交替并按牌和目标分散；保留一个可打能力前缀。窄 Beam 逐个续搜，每次扣实际时间和展开，追加节点不超过主搜索已用量且不超过本轮配置总额，固定前缀重建调度基线，完整结果继续按现有政策选优。未知、截断和失败均不能作为负训练标签或可采纳界；没有模型训练或跨战斗缓存。`AUTOMATIC_PREFIX` 日志记录每次额度、实际展开、耗时和是否改善。
+
+`AutomaticSearchBudget` 只分配同一主搜索轮次内的剩余节点和软时间；不承诺操作系统硬截止。药水审计仍按原政策和请求剩余时间执行，无胜利时的原有升级仍可增大节点帽，故不能把主搜索额度声称为所有药水层/救命重搜的全请求硬节点上限。旧 `PowerRoutes` 和专用预留仅用于显式关闭自动入口的历史离线对照；记录仍由 `BeamWidthPortfolioTelemetry` 持有。
 
 `BeamPortfolioSelector.cs` 是实验用的组合成员选择器（默认不启用）：Runtime 只有在显式给出模型文件时才注入，Search 只收到解析后的不可变实例。它只在 `BeamWidthPortfolioGate` 已经放行之后决定“这一位成员不跑”，不改评分、状态键、保路通道、必保候选或终局排序；模型缺失、求解器或游戏程序集 MVID 不一致、特征长度不符、特征非有限，或状态与配置超出训练范围时一律运行成员，计时与剩余预算字段不设范围约束，避免把负载漂移当成分布外。判定只用模型自带的常量树，不做 IO、不持有搜索对象。离线宿主用 `--observe-portfolio` 经同一路径导出特征与真实政策标签、用 `--portfolio-model` 应用模型；采集、划分、训练与对照见 [PortfolioSelector 工具](../tools/PortfolioSelector/README.md)，实测取舍见[学习型组合门控](strategy/learned-portfolio-gate-20260917.md)。
 
@@ -184,7 +186,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 ### 多策略路线搜索
 
-`SolverSettings.UseNoveltyPortfolio` 默认关闭，由 Runtime 冻结到 `SearchPolicySnapshot`；设置、路线缓存和问题包均记录该值，玩家可在性能设置中开启。关闭状态下仅当完整结果预计损失至少 8 HP 时，主界面显示一次可永久隐藏的开启引导；7 HP 及以下、搜索中和功能已开启时不显示。`CombatSearchCoordinator.NoveltyPortfolio` 在主搜索内先做有界新颖性探索，再把实际剩余时间和节点交给既有 Beam／多宽度入口，之后照常执行药水审计。只在原有战损／成长／遗物／用药条件达标或玩家接管时提前返回；完整候选沿 `IsBetterPotionPolicyResult` 比较，不合并两个搜索的 frontier 或转置表。必要用药未满足是明确的搜索边界，仍可用剩余预算运行 Beam；模拟错误和取消继续传播。
+`CombatSearchCoordinator.NoveltyPortfolio` 是自动入口内部的探索成员：先做有界新颖性探索，再把实际剩余时间和节点交给 Beam／多宽度入口。之后由自动入口按余量安排首步后验，协调器照常执行药水审计。自动路径的达标早停共用含治疗、成长、遗物和用药条件的 `CanFinishTargetPortfolio`。完整候选沿 `IsBetterPotionPolicyResult` 比较。必要用药未满足是明确的搜索边界；模拟错误和取消继续传播。旧 `UseNoveltyPortfolio`、`AdaptiveNoveltyRefinement` 只供历史对照，玩家无需选择。
 
 离线 `AdaptiveNoveltyRefinement` 实验保持默认关闭：复用同一入口，但先完整运行原 Beam 组合，完整政策达标则跳过探索；否则取原组合实际展开/时间各至多1/8并限制在原请求余量内，再用原终局政策选优。原算法、队列和终局比较保持；追加耗时仍可能影响后续能力/药水审计，不承诺完整请求无退化。`ADAPTIVE_NOVELTY_START/END` 成对记录展开/转移与额度；`NOVELTY_SEARCH_STOP` 独立报告停止原因，离线分类器不得漏掉新颖性时间截断。剩余额度遥测仍表示主搜索原预算扣实际工作后的余量，不充当整个 Coordinator 的节点硬上限。
 

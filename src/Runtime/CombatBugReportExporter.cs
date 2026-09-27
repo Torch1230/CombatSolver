@@ -1218,6 +1218,7 @@ internal static class CombatBugReportExporter
             settings.BrightestFlameMaxHpLossLimit,
             settings.IgnoreLongTermRewards,
             settings.PredictPotionReward,
+            useAutomaticSearch = true,
             useNoveltyPortfolio = settings.UseNoveltyPortfolio
                 || UnattendedTestRunner.UseNoveltyPortfolioOverride,
             useBeamWidthPortfolio = settings.UseBeamWidthPortfolio
@@ -1264,6 +1265,7 @@ internal static class CombatBugReportExporter
         captured["searchMaxDegreeOfParallelism"] = policy.MaxDegreeOfParallelism;
         captured["includeTurnSetup"] = policy.IncludeTurnSetup;
         captured["act3BossStrategy"] = policy.Act3BossStrategy;
+        captured["useAutomaticSearch"] = policy.UseAutomaticSearch;
         captured["useBeamWidthPortfolio"] = policy.UseBeamWidthPortfolio;
         captured["portfolioSelector"] = policy.PortfolioExperiment?.Model?.ModelId;
         captured["useNoveltyPortfolio"] = policy.UseNoveltyPortfolio;

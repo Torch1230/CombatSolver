@@ -619,6 +619,15 @@ CombatBeamSolver.cs	internal sealed partial class CombatBeamSolver(
 GrowthPolicy.cs	internal readonly record struct GrowthValues(
 SearchPolicySnapshot.cs	public GrowthValues GrowthBudgets { get; init; }
 SearchPolicySnapshot.cs	public bool UseNoveltyPortfolio { get; init; }
+SearchPolicySnapshot.cs	public bool UseAutomaticSearch { get; init; }
+CombatSearchCoordinator.cs	allowDedicatedPowerReserve: !policy.UseAutomaticSearch
+CombatSearchCoordinator.cs	if (!policy.UseAutomaticSearch && passResult.ResultScope
+CombatSearchCoordinator.Automatic.cs	AutomaticSearchBudget.Remaining(profile,
+CombatSearchCoordinator.Automatic.cs	IsBetterPotionPolicyResult(root, policy, candidate, selected)
+RootOutcomeCache.cs	internal const int MaximumEvents = 2048;
+RootOutcomeCache.cs	internal const int MaximumActions = 128;
+OpeningActionCollector.cs	Actions.TryAdd(RootOutcomeCache.ActionKey(action), action);
+CombatBeamSolver.PathDiagnostics.cs	ObserveOpeningActions(pool);
 CombatBeamSolver.Models.cs	public NoveltySearchRun? Novelty;
 CombatBeamSolver.NoveltySearch.cs	private bool RunNoveltyOpen(
 CombatBeamSolver.NoveltySearch.cs	CaptureNoveltyFacts(SearchNode node)
@@ -1288,6 +1297,13 @@ EOF
 for forbidden in 'Task<' 'Func<' 'Action<'; do
     forbid_fixed "$repository_root/src/Prediction/CardChoiceContinuation.cs" "$forbidden" 'continuation retained an executable closure:'
 done
+
+require_fixed "$repository_root/src/Runtime/SolverController.cs" 'UseAutomaticSearch = true' 'player search must use the automatic scheduler'
+require_fixed "$repository_root/src/Runtime/CombatBugReportExporter.cs" 'captured["useAutomaticSearch"] = policy.UseAutomaticSearch;' 'archives must record the scheduler'
+for forbidden in '_beamWidthPortfolioEnabled' '_noveltyPortfolioEnabled'; do
+    forbid_fixed "$repository_root/src/UI/SolverSettingsPanel.Performance.cs" "$forbidden" 'separate player search switches returned:'
+done
+forbid_fixed "$repository_root/src/UI/SolverOverlay.cs" 'CreateNoveltyPortfolioHint' 'obsolete mode hint returned:'
 
 require_fixed "$repository_root/src/Search/CombatBeamSolver.cs" 'policy.RequestWorkTotals ?? new()' 'loop budget/history ownership changed'
 require_fixed "$repository_root/src/Search/CombatBeamSolver.CycleReplay.cs" '_replayWork.TryConsumeCycleReplayAction()' 'loop budget/history ownership changed'

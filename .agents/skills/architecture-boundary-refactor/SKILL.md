@@ -111,3 +111,5 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - 嵌套执行检查点保存纯数据帧与明确程序阶段/下一循环序号。所有CLR作用域退出后，核对领域事务、StateStore、活动CardPlay及延迟抽牌/生成历史的精确配对；普通Fork继续拒绝捕获/挂起/已准备种子。一次PredictionForkContext重映射状态、帧、候选、历史、CardPlay、Power来源及共享死亡集合，保留trace来源身份和抽牌深度限制；外层列表所持但已离开所有牌堆的wrapper也必须显式Fork，不能假设State已登记。未知派发必须拒绝整次捕获，继续原完整回放，不能默认缺失尾部已执行。已确认的抽牌、弃牌、Hook、重复子出牌与回合来源循环复用唯一普通执行体，恢复可以再次挂起。Search匹配同父完整动作及已消费选择前缀，只追加下一选择；选择层/frontier排空后释放全部图引用。不保存Task/闭包，不跨搜索缓存；严格增量基线禁用捕获。ExecutionChoiceCaptures/Reuses不扣选择预算，reuse替代一次原转移Fork，不能作为额外物理Fork从比较器扣除。源循环、深层选牌、DOP/取消/异常、有限预算耗尽与原生完整状态分别验证。
 
 - `CombatRootSnapshot.HistoryDependencies` 在主线程按全牌堆、监听者及药水冻结，Search 不读 live 来源；随机生成/变牌及第三方来源保守保留六类历史。`SearchRequestWorkTotals` 拥有请求共享的额外循环回放额度，子 solver/worker 不得重新领额；独立 Evaluate 才创建私有额度。结果区分所选 solver 回放数与请求回放总数，普通 Expanded/Transitions 口径保持。
+
+- 自动搜索的预算分配和根级终局见证属于 Search；Runtime 只冻结统一入口并把标志写入路线缓存/问题包，UI 只保留性能档位、目标和自动说明。旧模式字段仅兼容/测试用途；不得重新接回玩家可组合开关。缓存只持有有界动作值/终局标量，不持有节点或模拟状态。

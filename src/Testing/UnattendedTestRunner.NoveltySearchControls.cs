@@ -14,7 +14,7 @@ internal sealed partial class UnattendedTestRunner
         var shadow = CaptureKnownRouteRootStates(root, player, enemies);
         var profile = captured.Profile with { MaxExpandedNodes = 4000, SoftTimeBudgetMilliseconds = 30000 };
         var common = captured with { Profile = profile, BudgetOverrideMilliseconds = 30000,
-            FixedBudget = true, UseNoveltyPortfolio = true, StopAtAcceptableBattleHpLoss = false,
+            FixedBudget = true, UseAutomaticSearch = false, UseNoveltyPortfolio = true, StopAtAcceptableBattleHpLoss = false,
             MaxDegreeOfParallelism = 2 };
         foreach (bool route in new[] { false, true })
         {

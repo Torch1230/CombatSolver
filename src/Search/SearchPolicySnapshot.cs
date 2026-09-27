@@ -19,6 +19,8 @@ internal sealed record SearchPolicySnapshot(
     SearchFramePressureSignal FramePressureSignal,
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
+    // Runtime always enables the unified scheduler. False is for historical test ablations.
+    public bool UseAutomaticSearch { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
     public bool PredictPotionReward { get; init; }
     public NoveltySearchOptions? NoveltySearch { get; init; }

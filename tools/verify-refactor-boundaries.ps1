@@ -679,10 +679,34 @@ if (($actualBeamFiles -join "|") -ne (($expectedBeamFiles | Sort-Object) -join "
         "CombatBeamSolver partial file set differs: actual=$($actualBeamFiles -join ',') " +
         "expected=$(($expectedBeamFiles | Sort-Object) -join ',')")
 }
+foreach ($required in @(
+    @{ Path = (Join-Path $repositoryRoot "src/Runtime/SolverController.cs"); Text = 'UseAutomaticSearch = true' },
+    @{ Path = (Join-Path $repositoryRoot "src/Runtime/CombatBugReportExporter.cs"); Text = 'captured["useAutomaticSearch"] = policy.UseAutomaticSearch;' })) {
+    if (-not (Select-String -LiteralPath $required.Path -SimpleMatch $required.Text -Quiet)) {
+        $violations.Add("$($required.Path): automatic search ownership missing '$($required.Text)'")
+    }
+}
+foreach ($forbidden in @(
+    @{ Path = (Join-Path $repositoryRoot "src/UI/SolverSettingsPanel.Performance.cs"); Text = '_beamWidthPortfolioEnabled' },
+    @{ Path = (Join-Path $repositoryRoot "src/UI/SolverSettingsPanel.Performance.cs"); Text = '_noveltyPortfolioEnabled' },
+    @{ Path = (Join-Path $repositoryRoot "src/UI/SolverOverlay.cs"); Text = 'CreateNoveltyPortfolioHint' })) {
+    if (Select-String -LiteralPath $forbidden.Path -SimpleMatch $forbidden.Text -Quiet) {
+        $violations.Add("$($forbidden.Path): obsolete player search mode returned '$($forbidden.Text)'")
+    }
+}
 $beamStructureChecks = @(
     @{ File = "GrowthPolicy.cs"; Text = "internal readonly record struct GrowthValues(" },
     @{ File = "SearchPolicySnapshot.cs"; Text = "public GrowthValues GrowthBudgets { get; init; }" },
     @{ File = "SearchPolicySnapshot.cs"; Text = "public bool UseNoveltyPortfolio { get; init; }" },
+    @{ File = "SearchPolicySnapshot.cs"; Text = "public bool UseAutomaticSearch { get; init; }" },
+    @{ File = "CombatSearchCoordinator.cs"; Text = "allowDedicatedPowerReserve: !policy.UseAutomaticSearch" },
+    @{ File = "CombatSearchCoordinator.cs"; Text = "if (!policy.UseAutomaticSearch && passResult.ResultScope" },
+    @{ File = "CombatSearchCoordinator.Automatic.cs"; Text = "AutomaticSearchBudget.Remaining(profile," },
+    @{ File = "CombatSearchCoordinator.Automatic.cs"; Text = "IsBetterPotionPolicyResult(root, policy, candidate, selected)" },
+    @{ File = "RootOutcomeCache.cs"; Text = "internal const int MaximumEvents = 2048;" },
+    @{ File = "RootOutcomeCache.cs"; Text = "internal const int MaximumActions = 128;" },
+    @{ File = "OpeningActionCollector.cs"; Text = "Actions.TryAdd(RootOutcomeCache.ActionKey(action), action);" },
+    @{ File = "CombatBeamSolver.PathDiagnostics.cs"; Text = "ObserveOpeningActions(pool);" },
     @{ File = "CombatBeamSolver.Models.cs"; Text = "public NoveltySearchRun? Novelty;" },
     @{ File = "CombatBeamSolver.NoveltySearch.cs"; Text = "private bool RunNoveltyOpen(" },
     @{ File = "CombatBeamSolver.NoveltySearch.cs"; Text = "CaptureNoveltyFacts(SearchNode node)" },

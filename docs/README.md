@@ -1,5 +1,6 @@
 # CombatSolver 文档导航
 
+- [统一自动搜索](strategy/automatic-search-20260927.md)：合并玩家入口、共享主搜索预算、复用终局见证及固定根成本取舍。
 - [零训练估值第二版](strategy/outcome-valuation-v2-20260927.md)：完整基线、终局见证调度、新种子确认与完整协调器对照，包含两轮累计时间。
 - [半小时预算的零训练估值研究](strategy/outcome-valuation-20260927.md)：17 个局面的动作条件续搜、实际成本、未替换生产评分的原因与复现入口。
 - [搜索热路径分配](performance/search-hotpath-allocation-20260925.md)：Server GC 多预设与 17 个战斗根的直接交错对照、固定工作量等价及未采用实验。

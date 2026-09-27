@@ -1,7 +1,6 @@
 using System.Text.Json;
-using CombatSolver;
 
-namespace OfflineSearchHarness;
+namespace CombatSolver;
 
 /// <summary>One frozen root and policy only. Stores feasible outcome witnesses, never bounds.</summary>
 internal sealed class RootOutcomeCache
@@ -99,7 +98,7 @@ internal sealed class RootOutcomeCache
             Choice = CanonicalChoice(action.Choice),
             NestedChoices = action.NestedChoices?.Select(c => CanonicalChoice(c)!).ToArray(),
             TurnStartChoices = action.TurnStartChoices?.Select(c => CanonicalChoice(c)!).ToArray(),
-        }, UnattendedTestFiles.JsonOptions);
+        });
 
     private static PlanCardChoice? CanonicalChoice(PlanCardChoice? choice)
         => choice == null ? null : choice with

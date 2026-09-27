@@ -27,8 +27,6 @@ internal static class SolverOverlay
     private const double ActiveSearchProgressMaximum = 0.95d;
     private const double MaxElapsedClockLeadSeconds = 1d;
     private const int SignificantBattleHpLossThreshold = 8;
-    private const string NoveltyPortfolioHintText =
-        "本场战斗预计出现大战损。若对结果不满意，可前往 设置 > 性能 开启“多策略路线搜索（实验）”后重试；它会在现有预算内探索不同打法，结果可能因战斗而异。点击本消息后不再提示";
     private const string SpeedXWarningText =
         "检测到皮皮极速（SpeedX）：其悬浮显示可能持续产生大量临时内存，触发频繁回收，加重长时间游玩时的卡顿。\n需要战斗加速时，建议使用求解器自带的“瞬间”：设置 > 常规 > 自动执行，将“自动出牌速度”设为“瞬间”，“牌间额外停顿（秒）”设为 0。玩家和怪物回合均加速，局外保持原速。点击本消息后不再提示";
     private static Color Background => SolverUiTokens.Palette.Background;
@@ -95,7 +93,6 @@ internal static class SolverOverlay
     private static Label? _searchLimitHintLabel;
     private static Button? _performanceHintButton;
     private static Button? _bossHpStrategyHintButton;
-    private static Button? _noveltyPortfolioHintButton;
     private static Button? _speedXWarningButton;
     private static SolverMemoryUsageBar? _memoryUsageBar;
     private static Button? _systemMemoryReleaseButton;
@@ -206,8 +203,8 @@ internal static class SolverOverlay
             && button.GetIndex() > bar.GetIndex();
     internal static bool NoGcControlsConfiguredForTesting
         => _settingsPanel?.NoGcControlsConfiguredForTesting == true;
-    internal static bool BeamWidthPortfolioControlConfiguredForTesting
-        => _settingsPanel?.BeamWidthPortfolioControlConfiguredForTesting == true;
+    internal static bool AutomaticSearchControlConfiguredForTesting
+        => _settingsPanel?.AutomaticSearchControlConfiguredForTesting == true;
     internal static bool MemoryUsageBarConfiguredForTesting
         => _memoryUsageBar != null
             && GodotObject.IsInstanceValid(_memoryUsageBar)
@@ -238,8 +235,6 @@ internal static class SolverOverlay
                 HasPresetControlsForTesting: true,
             };
     internal static bool PerformanceHintVisibleForTesting => _performanceHintButton?.Visible == true;
-    internal static bool NoveltyPortfolioHintVisibleForTesting
-        => _noveltyPortfolioHintButton?.Visible == true;
     internal static bool SpeedXWarningVisibleForTesting => _speedXWarningButton?.Visible == true;
     internal static bool SearchLimitHintVisibleForTesting => _searchLimitHint?.Visible == true;
     internal static bool BossHpStrategyHintVisibleForTesting
@@ -290,55 +285,17 @@ internal static class SolverOverlay
 
     internal static bool ExerciseGuidanceHintsForTesting()
     {
-        if (_noveltyPortfolioHintButton == null || _speedXWarningButton == null)
-            return false;
+        if (_speedXWarningButton == null) return false;
         SolverSettingsData originalSettings = SolverSettings.Current;
         try
         {
-            SolverSettings.Update(SolverSettings.RoundTripForTesting(originalSettings with
-            {
-                UseNoveltyPortfolio = false,
-                ShowNoveltyPortfolioHint = true,
-                ShowSpeedXWarning = true,
-            }));
-            RefreshGuidanceHints(
-                speedXPresentForTesting: true,
-                projectedBattleHpLostForTesting: 7);
-            bool hiddenBelowThreshold = !NoveltyPortfolioHintVisibleForTesting;
-            RefreshGuidanceHints(
-                speedXPresentForTesting: true,
-                projectedBattleHpLostForTesting: 8);
-            bool visibleAtThreshold = NoveltyPortfolioHintVisibleForTesting
-                && SpeedXWarningVisibleForTesting
-                && _noveltyPortfolioHintButton.Text == SolverText.Get(NoveltyPortfolioHintText)
+            SolverSettings.Update(originalSettings with { ShowSpeedXWarning = true });
+            RefreshGuidanceHints(speedXPresentForTesting: true);
+            bool visible = SpeedXWarningVisibleForTesting
                 && _speedXWarningButton.Text == SolverText.Get(SpeedXWarningText);
-
-            SolverSettings.Update(SolverSettings.Current with { UseNoveltyPortfolio = true });
-            RefreshGuidanceHints(
-                speedXPresentForTesting: true,
-                projectedBattleHpLostForTesting: 8);
-            bool hiddenWhenEnabled = !NoveltyPortfolioHintVisibleForTesting;
-            SolverSettings.Update(SolverSettings.Current with
-            {
-                UseNoveltyPortfolio = false,
-                ShowNoveltyPortfolioHint = true,
-            });
-            RefreshGuidanceHints(
-                speedXPresentForTesting: true,
-                projectedBattleHpLostForTesting: 8);
-            _noveltyPortfolioHintButton.EmitSignal(Button.SignalName.Pressed);
-            bool noveltyDismissed = !SolverSettings.Current.UseNoveltyPortfolio
-                && !SolverSettings.Current.ShowNoveltyPortfolioHint
-                && !NoveltyPortfolioHintVisibleForTesting;
             _speedXWarningButton.EmitSignal(Button.SignalName.Pressed);
-            bool speedXDismissed = !SolverSettings.Current.ShowSpeedXWarning
-                && !SpeedXWarningVisibleForTesting;
-            SolverSettingsData roundTripped = SolverSettings.RoundTripForTesting(SolverSettings.Current);
-            return hiddenBelowThreshold && visibleAtThreshold && hiddenWhenEnabled
-                && noveltyDismissed && speedXDismissed
-                && !roundTripped.UseNoveltyPortfolio
-                && !roundTripped.ShowNoveltyPortfolioHint
-                && !roundTripped.ShowSpeedXWarning;
+            return visible && !SpeedXWarningVisibleForTesting
+                && !SolverSettings.RoundTripForTesting(SolverSettings.Current).ShowSpeedXWarning;
         }
         finally
         {
@@ -1722,7 +1679,6 @@ internal static class SolverOverlay
 
         root.AddChild(CreateHeader());
         root.AddChild(CreateSpeedXWarning());
-        root.AddChild(CreateNoveltyPortfolioHint());
         root.AddChild(CreateSearchLimitHint());
         root.AddChild(CreatePerformanceHint());
         root.AddChild(CreateBossHpStrategyHint());
@@ -2040,14 +1996,6 @@ internal static class SolverOverlay
         button.CustomMinimumSize = new Vector2(minimumWidth, SolverUiTokens.Size.ButtonHeight);
         button.ApplyLocaleFontSubstitution(FontType.Bold, "font");
         return button;
-    }
-
-    private static Control CreateNoveltyPortfolioHint()
-    {
-        _noveltyPortfolioHintButton = CreateDismissibleGuidanceHint(
-            "NoveltyPortfolioHint",
-            DismissNoveltyPortfolioHint);
-        return _noveltyPortfolioHintButton;
     }
 
     private static Control CreateSpeedXWarning()
@@ -2514,19 +2462,9 @@ internal static class SolverOverlay
     }
 
     internal static void RefreshGuidanceHints(
-        bool? speedXPresentForTesting = null,
-        int? projectedBattleHpLostForTesting = null)
+        bool? speedXPresentForTesting = null)
     {
         SolverSettingsData settings = SolverSettings.Current;
-        bool projectedBattleDamage = projectedBattleHpLostForTesting is { } projectedBattleHpLost
-            ? IsSignificantBattleHpLoss(true, projectedBattleHpLost)
-            : HasSignificantBattleHpLoss(_lastSnapshot);
-        SetGuidanceHint(
-            _noveltyPortfolioHintButton,
-            settings.ShowNoveltyPortfolioHint
-                && !settings.UseNoveltyPortfolio
-                && projectedBattleDamage,
-            NoveltyPortfolioHintText);
         SetGuidanceHint(
             _speedXWarningButton,
             settings.ShowSpeedXWarning
@@ -2643,16 +2581,6 @@ internal static class SolverOverlay
         });
         SetPerformanceHintVisible(false);
         Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=performance_hint_dismissed");
-    }
-
-    private static void DismissNoveltyPortfolioHint()
-    {
-        SolverSettings.Update(SolverSettings.Current with
-        {
-            ShowNoveltyPortfolioHint = false,
-        });
-        RefreshGuidanceHints();
-        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=novelty_portfolio_hint_dismissed");
     }
 
     private static void DismissSpeedXWarning()

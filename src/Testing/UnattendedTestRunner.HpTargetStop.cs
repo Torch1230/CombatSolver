@@ -6,7 +6,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private async Task AssertHpTargetStopAsync(CombatState combat, Player player, bool noveltyPortfolio = false)
+    private async Task AssertHpTargetStopAsync(CombatState combat, Player player, bool noveltyPortfolio = false, bool automatic = false)
     {
         static void Check(bool value, string message)
         {
@@ -30,10 +30,11 @@ internal sealed partial class UnattendedTestRunner
             SetEnergy(player, 3);
             SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null) with
             {
+                UseAutomaticSearch = automatic,
                 Act3BossStrategy = true,
                 FixedBudget = true, BudgetOverrideMilliseconds = noveltyPortfolio ? 10000 : 1500,
                 PotionPolicy = SolverPotionPolicy.Disabled, MaxDegreeOfParallelism = 1,
-                DetailedDiagnostics = false, VerifyIncrementalSearch = false,
+                DetailedDiagnostics = false, VerifyIncrementalSearch = automatic,
                 Profile = SolverSearchProfile.Default with
                 {
                     MaxExpandedNodes = noveltyPortfolio ? 4000 : 128,
@@ -60,7 +61,10 @@ internal sealed partial class UnattendedTestRunner
             SolverResult continued = await Search(policy with { StopAtAcceptableBattleHpLoss = false });
             Check(continued.Snapshot.AllEnemiesDead && continued.ProjectedBattleHpLost == 0
                 && stopped.TotalExpandedNodes < continued.TotalExpandedNodes, "switch stops before remaining combinations");
-            Check(continued.PortfolioTelemetry!.PowerRouteMembers.Count > 0,
+            Check(automatic
+                    ? continued.TotalExpandedNodes <= policy.Profile.MaxExpandedNodes
+                        && continued.PortfolioTelemetry!.PowerRouteMembers.Count == 0
+                    : continued.PortfolioTelemetry!.PowerRouteMembers.Count > 0,
                 "disabling HP-target stopping preserves opening-power audits");
             if (!noveltyPortfolio)
             {
@@ -71,7 +75,8 @@ internal sealed partial class UnattendedTestRunner
                 Check(root.HasVisibleHealingSource, "unplayed draw-pile healing is captured");
                 SolverResult healing = await Search(policy);
                 Check(healing.Snapshot.RecoveredPlayerHp == 0
-                    && healing.PortfolioTelemetry!.PowerRouteMembers.Count > 0,
+                    && (automatic ? healing.TotalExpandedNodes > stopped.TotalExpandedNodes
+                        : healing.PortfolioTelemetry!.PowerRouteMembers.Count > 0),
                     "potential healing preserves audits before the selected route actually heals");
                 await CardPileCmd.RemoveFromCombat(healingCards, skipVisuals: true);
                 root = CombatRootSnapshot.Capture(combat);
@@ -84,10 +89,15 @@ internal sealed partial class UnattendedTestRunner
                 "total battle threshold and toggle boundaries");
             await CreatureCmd.SetCurrentHp(combat.Enemies[0], 12);
             root = CombatRootSnapshot.Capture(combat);
-            SolverResult parallel = await Search(policy with { MaxDegreeOfParallelism = 2 });
+            // Incremental replay verification intentionally serializes expansion;
+            // validate real DOP2 separately from the surrounding incremental checks.
+            SolverResult parallel = await Search(policy with
+                { MaxDegreeOfParallelism = 2, VerifyIncrementalSearch = false });
             Check(parallel.Snapshot.AllEnemiesDead && parallel.ProjectedBattleHpLost == 0
                 && (noveltyPortfolio ? parallel.NoveltyPortfolio?.ExplorationDetails != null
-                    : parallel.MaxParallelExpansionConcurrency == 2), "parallel policy returns winner");
+                    : parallel.MaxParallelExpansionConcurrency == 2),
+                $"parallel policy returns winner: won={parallel.Snapshot.AllEnemiesDead} " +
+                $"hp={parallel.ProjectedBattleHpLost} dop={parallel.MaxParallelExpansionConcurrency}");
             await CreatureCmd.SetCurrentHp(combat.Enemies[0], 1);
             await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "FORBIDDEN_GRIMOIRE", Pile = "Hand" });
             player.PlayerCombatState!.Hand.Cards.Single(card => card.Id.Entry == "FORBIDDEN_GRIMOIRE").BaseReplayCount = 1;

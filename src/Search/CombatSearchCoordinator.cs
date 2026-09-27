@@ -258,16 +258,26 @@ internal static partial class CombatSearchCoordinator
         bool passSettled = false;
         SolverResult RunSearchPass(SolverSearchProfile passProfile, Stopwatch passClock)
         {
+            long passExpandedAtStart = policy.RequestWorkTotals!.Snapshot().ExpandedNodes;
             long passAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
             long passTransitionsAtStart = policy.RequestWorkTotals?.Snapshot().TransitionCount ?? 0;
             SearchPolicySnapshot passPolicy = forcedBaselinePolicy;
             SearchPolicySnapshot beamPolicy = passPolicy.NoveltySearch == null
                 ? passPolicy : passPolicy with { NoveltySearch = null };
+            Func<PlanAction?>? automaticPowerPrefix = null;
             SolverResult SolveMember(SolverSearchProfile memberProfile, bool refinement)
             {
                 Action<SolverProgress>? memberProgressCallback = refinement && progressCallback != null
                     ? progress => progressCallback(progress with { Phase = "正在精炼路线" })
                     : progressCallback;
+                PlanAction? prefix = memberProfile.AggressivePowerCommitment
+                    ? automaticPowerPrefix?.Invoke() : null;
+                if (prefix != null)
+                {
+                    memberProfile = memberProfile with { AggressivePowerCommitment = false };
+                    beamPolicy.Diagnostics.Info($"[CombatSolver/Test] AUTOMATIC_POWER_PREFIX card={prefix.CardId} " +
+                        $"nodes={memberProfile.MaxExpandedNodes} time_ms={memberProfile.SoftTimeBudgetMilliseconds}");
+                }
                 return new CombatBeamSolver(
                     root,
                     displayNames,
@@ -276,14 +286,16 @@ internal static partial class CombatSearchCoordinator
                     cancellationToken,
                     memberProgressCallback,
                     memberProfile,
-                    potionPolicyOverride: initialPotionPolicyOverride).Solve();
+                    potionPolicyOverride: initialPotionPolicyOverride,
+                    fixedPrefixActions: prefix == null ? null : [prefix],
+                    resetFixedPrefixSchedulingBaseline: prefix != null).Solve();
             }
             // 基线成员一跑完就按今天的方式把完整结果发布给覆盖层（覆盖层的中途路线走
             // SolverProgress，见 RunBeamWidthPortfolioPass 的注释）；精炼成员只有更优时才会
             // 在本轮末尾再发布一次，所以同一份结果不会发布两遍。
             SolverResult? publishedBaseline = null;
             Action<SolverResult>? publishBaseline =
-                (policy.UseBeamWidthPortfolio
+                (policy.UseAutomaticSearch || policy.UseBeamWidthPortfolio
                     || root.PlayerCardIds.Any(PowerCardValuationModels.Registry.ContainsCardId))
                 && interimResultCallback != null
                     ? baseline =>
@@ -296,12 +308,31 @@ internal static partial class CombatSearchCoordinator
                 => RunBeamWidthPortfolioPass(root, beamPolicy, baselineProfile,
                     ReferenceEquals(baselineProfile, passProfile) ? passClock : Stopwatch.StartNew(),
                     cancellationToken, SolveMember, publishBaseline);
-            SolverResult RunPrimary()
+            SolverResult RunLegacyPrimary()
                 => policy.UseNoveltyPortfolio
                     ? RunNoveltyPortfolioPass(root, displayNames, battleDamage, passPolicy, passProfile,
                         passClock, initialPotionPolicyOverride, cancellationToken, progressCallback,
                         interimResultCallback, RunBaseline)
                     : RunBaseline(passProfile);
+            SolverResult RunPrimary()
+            {
+                if (!policy.UseAutomaticSearch)
+                    return RunLegacyPrimary();
+                SearchPolicySnapshot originalBeamPolicy = beamPolicy;
+                try
+                {
+                    return RunAutomaticSearch(root, displayNames, battleDamage, passPolicy,
+                        passProfile, passClock, initialPotionPolicyOverride, cancellationToken,
+                        progressCallback, interimResultCallback,
+                        (automaticPolicy, automaticProfile, selectPowerPrefix) =>
+                        {
+                            automaticPowerPrefix = selectPowerPrefix;
+                            beamPolicy = automaticPolicy with { NoveltySearch = null };
+                            return RunBaseline(automaticProfile);
+                        }, passExpandedAtStart);
+                }
+                finally { beamPolicy = originalBeamPolicy; automaticPowerPrefix = null; }
+            }
             bool hasForcedBaseline = forcedSmartGradient;
             SolverResult passResult;
             try
@@ -317,7 +348,7 @@ internal static partial class CombatSearchCoordinator
                     ? policy : policy with { NoveltySearch = null };
                 passResult = RunPrimary();
             }
-            if (passResult.ResultScope == SolverResultScope.SearchCompletion)
+            if (!policy.UseAutomaticSearch && passResult.ResultScope == SolverResultScope.SearchCompletion)
             {
                 passResult = RunOpeningPowerRoutePortfolio(
                     root,
@@ -484,6 +515,7 @@ internal static partial class CombatSearchCoordinator
                 {
                     SoftTimeBudgetMilliseconds = (int)Math.Clamp(
                         memberProfile.AggressivePowerCommitment
+                            && !policy.UseAutomaticSearch
                             ? Math.Max(remainingMilliseconds, dedicatedPowerMilliseconds)
                             : remainingMilliseconds,
                         1,
@@ -578,6 +610,9 @@ internal static partial class CombatSearchCoordinator
                 return null;
             if (incumbent != null && CanFinishTargetPortfolio(root, policy, profile, incumbent))
                 return "AcceptableBattleHpLoss";
+            if (policy.UseAutomaticSearch
+                && (RemainingMilliseconds() <= 0 || expandedByMembers >= profile.MaxExpandedNodes))
+                return BeamWidthPortfolio.SkippedBudgetExhausted;
             // 能力牌成员走自己的门控（它只要求确实存在可达的能力牌），其余成员走宽度余量门控。
             string? rejection = member.AggressivePowerCommitment
                 ? PowerCommitmentPortfolioGate.Reject(hasReachablePower)
@@ -647,7 +682,8 @@ internal static partial class CombatSearchCoordinator
                 RunMember,
                 (candidate, current) => IsBetterPotionPolicyResult(root, policy, candidate, current),
                 RejectMember,
-                policy.Diagnostics.Info)
+                policy.Diagnostics.Info,
+                allowDedicatedPowerReserve: !policy.UseAutomaticSearch)
             : SingleMemberOutcome(profile, RunMember);
         RecordPortfolioMembers(policy, telemetry, outcome, costs);
         // 组合路径也要出阶段表：novelty 分支那条打印覆盖不到这里，于是开了 MeasurePhasePerformance

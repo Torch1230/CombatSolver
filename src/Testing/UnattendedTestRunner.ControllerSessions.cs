@@ -49,7 +49,12 @@ internal sealed partial class UnattendedTestRunner
         if (!portfolioEnabled.UseBeamWidthPortfolio || portfolioDisabled.UseBeamWidthPortfolio
             || !portfolioEnabled.UseNoveltyPortfolio || portfolioDisabled.UseNoveltyPortfolio)
             throw new InvalidOperationException("组合搜索设置没有按搜索请求冻结。");
-        _completedChecks.Add("SearchPortfolios:RefinementDefaultOn:NoveltyDefaultOff:DamageGuidanceThreshold8:SettingsRoundTrip:UiControl:PolicySnapshot");
+        if (!portfolioEnabled.UseAutomaticSearch || !portfolioDisabled.UseAutomaticSearch
+            || !SolverOverlay.AutomaticSearchControlConfiguredForTesting)
+            throw new InvalidOperationException("自动搜索必须独立于旧开关，且性能页仅提供自动择优说明。");
+        if (!SolverOverlay.ExerciseGuidanceHintsForTesting())
+            throw new InvalidOperationException("保留的引导提示持久化失败。");
+        _completedChecks.Add("AutomaticSearch:LegacySettingsRoundTrip:SingleUiControl:PolicyIgnoresLegacySwitches:Guidance");
     }
 
     private async Task AssertControllerSessionLifecycleAsync(CombatState combat)
@@ -325,7 +330,7 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("强制释放内存按钮没有位于主界面内存条右侧。");
         if (!SolverOverlay.NoGcControlsConfiguredForTesting)
             throw new InvalidOperationException("NoGC 开关或预算输入没有归属性能设置页。");
-        if (!SolverOverlay.BeamWidthPortfolioControlConfiguredForTesting)
+        if (!SolverOverlay.AutomaticSearchControlConfiguredForTesting)
             throw new InvalidOperationException("多宽度路线精炼开关没有归属性能设置页或状态未同步。");
         bool memoryUsageBarConfigured = SolverOverlay.MemoryUsageBarConfiguredForTesting;
         bool memoryUsageBarFormatting = SolverOverlay.ExerciseMemoryUsageBarForTesting();

@@ -298,6 +298,12 @@ internal sealed partial class UnattendedTestRunner
                 await AssertTheftRecoveryPolicyAsync(combatState);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "AUTOMATIC-SEARCH")
+            {
+                runner.AssertSearchPortfolioSettings(combatState);
+                await runner.AssertHpTargetStopAsync(combatState, player, automatic: true);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "SEARCH-HP-TARGET-STOP" or "NOVELTY-HP-TARGET-STOP")
             {
                 await runner.AssertHpTargetStopAsync(combatState, player,

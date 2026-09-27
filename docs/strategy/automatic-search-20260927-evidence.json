@@ -1,0 +1,308 @@
+{
+  "date": "2026-09-27",
+  "configuration": {
+    "beam": 24,
+    "nodes": 12000,
+    "softTimeMilliseconds": 30000,
+    "dop": 1,
+    "potionPolicy": "Disabled",
+    "stopAtZeroLoss": true
+  },
+  "baseline": "Legacy width + novelty + independent opening power routes",
+  "candidate": "Unified automatic search, unseen power prefix uses existing power member allowance",
+  "rows": [
+    {
+      "id": "attack_or_block",
+      "baseline": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 7,
+          "strategicHpDeficit": 1,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000629981,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 5.1969218,
+        "totalExpanded": 9102,
+        "totalTransitions": 29844,
+        "timeBoundaryObserved": false,
+        "boundary": "NodeLimit",
+        "source": ".local/outcome-valuation/v4/combined/attack_or_block/baseline"
+      },
+      "automatic": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 7,
+          "strategicHpDeficit": 1,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000629981,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 6.0048445,
+        "totalExpanded": 10626,
+        "totalTransitions": 35861,
+        "timeBoundaryObserved": false,
+        "boundary": "NodeLimit",
+        "source": ".local/outcome-valuation/v4/combined/attack_or_block/rollout"
+      },
+      "reusedUnaffectedTargetStoppedOrNoPowerCase": true,
+      "rootAndCatalogIdentical": true
+    },
+    {
+      "id": "focus_investment",
+      "baseline": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10001049980,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 4.576184,
+        "totalExpanded": 4123,
+        "totalTransitions": 16057,
+        "timeBoundaryObserved": false,
+        "boundary": "None",
+        "source": ".local/outcome-valuation/v4/combined/focus_investment/baseline"
+      },
+      "automatic": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10001049980,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 4.5630518,
+        "totalExpanded": 4123,
+        "totalTransitions": 16057,
+        "timeBoundaryObserved": false,
+        "boundary": "None",
+        "source": ".local/outcome-valuation/v4/combined/focus_investment/rollout"
+      },
+      "reusedUnaffectedTargetStoppedOrNoPowerCase": true,
+      "rootAndCatalogIdentical": true
+    },
+    {
+      "id": "random-regent",
+      "baseline": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 13,
+          "strategicHpDeficit": 13,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10001469976,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 26.9293384,
+        "totalExpanded": 20822,
+        "totalTransitions": 192470,
+        "timeBoundaryObserved": false,
+        "boundary": "None",
+        "source": ".local/outcome-valuation/v4/combined/random-regent/baseline"
+      },
+      "automatic": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 13,
+          "strategicHpDeficit": 13,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10001469970,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 17.5808353,
+        "totalExpanded": 12000,
+        "totalTransitions": 106204,
+        "timeBoundaryObserved": false,
+        "boundary": "None",
+        "source": ".local/outcome-valuation/v4/final/random-regent"
+      },
+      "reusedUnaffectedTargetStoppedOrNoPowerCase": false,
+      "rootAndCatalogIdentical": true
+    },
+    {
+      "id": "random-silent",
+      "baseline": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 34,
+          "strategicHpDeficit": 34,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 9999823973,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 11.795673,
+        "totalExpanded": 18492,
+        "totalTransitions": 64351,
+        "timeBoundaryObserved": false,
+        "boundary": "None",
+        "source": ".local/outcome-valuation/v4/confirmation/random-silent/baseline"
+      },
+      "automatic": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 33,
+          "strategicHpDeficit": 33,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 9999971972,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 9.2135268,
+        "totalExpanded": 12000,
+        "totalTransitions": 42246,
+        "timeBoundaryObserved": false,
+        "boundary": "NodeLimit",
+        "source": ".local/outcome-valuation/v4/final/random-silent"
+      },
+      "reusedUnaffectedTargetStoppedOrNoPowerCase": false,
+      "rootAndCatalogIdentical": true
+    },
+    {
+      "id": "random-necrobinder",
+      "baseline": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 38,
+          "strategicHpDeficit": 38,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 9999699951,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 116.1680495,
+        "totalExpanded": 92540,
+        "totalTransitions": 677440,
+        "timeBoundaryObserved": false,
+        "boundary": "TimeLimit",
+        "source": ".local/outcome-valuation/v4/confirmation/random-necrobinder/baseline"
+      },
+      "automatic": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 38,
+          "strategicHpDeficit": 38,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 9999699951,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "searchWallSeconds": 17.091481,
+        "totalExpanded": 12000,
+        "totalTransitions": 82031,
+        "timeBoundaryObserved": false,
+        "boundary": "NodeLimit",
+        "source": ".local/outcome-valuation/v4/final/random-necrobinder"
+      },
+      "reusedUnaffectedTargetStoppedOrNoPowerCase": false,
+      "rootAndCatalogIdentical": true
+    }
+  ],
+  "ledger": {
+    "previousConservativeSeconds": 1297.2126241670992,
+    "chargesSeconds": {
+      "checks-budget": 0.12827812199248,
+      "combined/summary": 76.49466337199556,
+      "confirmation/summary": 163.9764799050172,
+      "revised/summary": 52.33398132404545,
+      "final/summary": 50.03294528299011,
+      "native-budget": 2.0182684379979037,
+      "native-authorized-budget": 37.521349530958105,
+      "native-final-budget": 34.253671457991004
+    },
+    "finalStaticChecksAndComparisonReserveSeconds": 5,
+    "trainingSeconds": 0,
+    "totalLimitSeconds": 1800,
+    "totalConservativeSeconds": 1718.972261600087
+  },
+  "totals": {
+    "baseline": 164.6661667,
+    "automatic": 54.4537394
+  },
+  "limitations": [
+    "Five previously examined roots; revised candidates are follow-up measurements, not an independent holdout or ABBA.",
+    "Legacy power routes exceed configured primary budget; actual work differs.",
+    "Soft time limits affect novelty and power results; no visible Steam/FPS evidence.",
+    "Regent ends one turn later; manual beam scores still exist.",
+    "The two reused candidate outputs precede the power-slot revision, which their settled/no-power paths do not execute."
+  ]
+}

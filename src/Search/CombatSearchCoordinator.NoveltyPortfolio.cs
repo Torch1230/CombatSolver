@@ -44,7 +44,9 @@ internal static partial class CombatSearchCoordinator
             return adopted;
         }
         bool settled = exploration != null && (exploration.ResultScope != SolverResultScope.SearchCompletion
-            || !policy.PotionStrategy.HasForcedDirectives && HasReachedAcceptableBattleHpLoss(policy, exploration));
+            || !policy.PotionStrategy.HasForcedDirectives && (policy.UseAutomaticSearch
+                ? CanFinishTargetPortfolio(root, policy, profile, exploration)
+                : HasReachedAcceptableBattleHpLoss(policy, exploration)));
         SolverSearchProfile? remaining = NoveltyPortfolioBudget.Remaining(profile,
             clock.ElapsedMilliseconds, explorationExpanded);
         if (settled || remaining == null)

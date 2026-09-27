@@ -78,6 +78,32 @@ internal static class OutcomeCacheChecks
             bounded.Observe(witness with { FirstAction = action with { CardOccurrence = i } });
         Require(bounded.Events == RootOutcomeCache.MaximumEvents && !bounded.Observer.WantsObservation(), "event bound");
         Require(bounded.Best.Count == RootOutcomeCache.MaximumActions, "entry bound");
+        SolverSearchProfile profile = SolverSearchProfile.Default with
+            { MaxExpandedNodes = 100, SoftTimeBudgetMilliseconds = 1000 };
+        Require(AutomaticSearchBudget.Remaining(profile, 0, 100) == null, "exhausted nodes cannot get a reserve");
+        Require(AutomaticSearchBudget.Remaining(profile, 1000, 0) == null, "exhausted time cannot get a reserve");
+        Require(AutomaticSearchBudget.Remaining(profile, 1200, 120) == null, "soft deadline overrun does not restart a member");
+        var shared = AutomaticSearchBudget.Remaining(profile, 100, 40, 80, 4)!;
+        Require(shared.MaxExpandedNodes == 10 && shared.SoftTimeBudgetMilliseconds == 225,
+            "actual work, refinement limit and remaining members share allowance");
+        var clamped = AutomaticSearchBudget.Remaining(profile, 0, 40, 10000)!;
+        Require(clamped.MaxExpandedNodes == 60, "optional refinement cap cannot enlarge request");
+        int calls = 0;
+        var cappedPower = BeamWidthPortfolio.Run(
+            new BeamWidthPortfolioMemberSpec[] { new(24), new(24, AggressivePowerCommitment: true) },
+            100, profile, member =>
+            {
+                calls++;
+                return new BeamWidthPortfolioRun<int>(1, 100, 200, "NodeLimit", true, true, 5, 0);
+            }, (a, b) => false, allowDedicatedPowerReserve: false);
+        Require(calls == 1 && cappedPower.TotalExpandedNodes == 100,
+            "power member cannot restart exhausted automatic node budget");
+        bool invalidAuto = false;
+        try { HarnessOptions.Parse(["--automatic-search", "--search-mode", "Coordinator", "--novelty-portfolio"]); }
+        catch (ArgumentException) { invalidAuto = true; }
+        Require(invalidAuto, "automatic scheduler cannot stack old novelty mode");
+        Require(HarnessOptions.Parse(["--automatic-search", "--search-mode", "Coordinator"]).UseAutomaticSearch,
+            "automatic coordinator accepted without old switches");
         Console.WriteLine($"Outcome cache: {checks} assertions passed.");
         return 0;
     }

@@ -240,7 +240,8 @@ internal static class BeamWidthPortfolio
         Func<SolverSearchProfile, BeamWidthPortfolioRun<TResult>> solve,
         Func<TResult, TResult, bool> isBetter,
         Func<BeamWidthPortfolioMemberSpec, string?>? rejectMember = null,
-        Action<string>? log = null)
+        Action<string>? log = null,
+        bool allowDedicatedPowerReserve = true)
     {
         ArgumentNullException.ThrowIfNull(memberSpecs);
         ArgumentNullException.ThrowIfNull(baseProfile);
@@ -278,7 +279,7 @@ internal static class BeamWidthPortfolio
                 members.Add(Skipped(spec, rejection));
                 continue;
             }
-            long memberNodeBudget = spec.AggressivePowerCommitment
+            long memberNodeBudget = spec.AggressivePowerCommitment && allowDedicatedPowerReserve
                 ? Math.Max(remainingNodes, DedicatedPowerNodeReserve(sharedMaxExpandedNodes))
                 : remainingNodes;
             if (spec.BoundedRefinement)

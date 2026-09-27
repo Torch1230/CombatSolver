@@ -451,5 +451,8 @@
   "已恢复原有启动配置，重启游戏后生效。本次使用备用回收。": "Original startup config restored; takes effect after restart. Fallback cleanup active this session.",
   "未启用多核回收；当前使用备用的暂缓回收策略。": "Multicore cleanup is off; currently using fallback pause-during-search strategy.",
   "未能修改游戏启动配置，详情见日志；本次继续使用备用回收。": "Failed to modify startup config (see logs); continuing with fallback mode.",
-  "本次未启用多核内存回收，搜索按下方暂缓回收设置运行。": "Multicore cleanup is not active this session; search runs with the pause-during-search setting below."
+  "本次未启用多核内存回收，搜索按下方暂缓回收设置运行。": "Multicore cleanup is not active this session; search runs with the pause-during-search setting below.",
+  "自动择优": "Automatic",
+  "路线搜索": "Route search",
+  "自动探索不同打法，并在预算有余量时精炼路线；共用搜索预算，保留符合当前战损、成长和药水规则的最佳结果，无需选择搜索模式。": "Automatically explores different approaches and refines routes when budget remains. Searches share a budget and retain the best result under your damage, growth and potion rules. No search mode selection needed."
 }

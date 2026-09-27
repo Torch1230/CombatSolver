@@ -281,6 +281,7 @@ internal static class Program
             options.PotionPolicy,
             options.SearchMode,
             options.UsePortfolio,
+            options.UseAutomaticSearch,
             options.UseNoveltyPortfolio,
             fixedSearchBudget = !options.ProductionBudget,
             enableNoGcRegion = options.EnableNoGcRegion,
@@ -356,7 +357,8 @@ internal sealed record HarnessOptions
           --potion-policy <p>    药水政策（默认 Smart）
           --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
           --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
-          --novelty-portfolio    开游戏设置中的多策略探索（Coordinator；区别于 --adaptive-novelty）
+          --automatic-search    统一自动搜索（Coordinator；不能叠加旧模式或续搜实验）
+          --novelty-portfolio    旧多策略探索对照（Coordinator；区别于 --adaptive-novelty）
           --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
           --unordered-pile-mask <0..15>  实验：状态键里顺序无关的牌堆（1手牌/2抽牌堆/4弃牌堆/8消耗堆）
           --state-key-salt <int> 实验：给状态指纹异或一个常量（双射，只改数值不改相等关系）
@@ -411,6 +413,7 @@ internal sealed record HarnessOptions
     public string SearchMode { get; init; } = "Evaluate";
     /// <summary>开宽度组合（协调器的组合成员通道）；Evaluate 模式下没有意义。</summary>
     public bool UsePortfolio { get; init; }
+    public bool UseAutomaticSearch { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
     /// <summary>消融：丢掉只带基线宽度、不带排序修饰的组合成员，少跑一次真实搜索。</summary>
     public bool NoPlainBaselineMember { get; init; }
@@ -473,6 +476,7 @@ internal sealed record HarnessOptions
         string ordering = "baseline";
         int outcomeProbes = 0;
         bool selectiveOutcomeProbes = false;
+        bool useAutomaticSearch = false;
         string? rankingModelPath = null;
         bool continuousThreatRanking = false;
         bool baseScoreTacticalTies = false;
@@ -522,6 +526,7 @@ internal sealed record HarnessOptions
                 case "--potion-policy": potionPolicy = Value(); break;
                 case "--search-mode": searchMode = Value(); break;
                 case "--use-portfolio": usePortfolio = true; break;
+                case "--automatic-search": useAutomaticSearch = true; break;
                 case "--novelty-portfolio": useNoveltyPortfolio = true; break;
                 case "--no-plain-baseline": noPlainBaseline = true; break;
                 case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
@@ -615,6 +620,9 @@ internal sealed record HarnessOptions
             throw new ArgumentException("有界追加不能叠加其他排序实验。");
         if (stopPortfolioAtHpTarget.HasValue && searchMode != "Coordinator")
             throw new ArgumentException("组合达标早停参数仅用于Coordinator。");
+        if (useAutomaticSearch && (searchMode != "Coordinator" || useNoveltyPortfolio
+            || adaptiveNoveltyRefinement || outcomeProbes > 0))
+            throw new ArgumentException("--automatic-search 需要 Coordinator，不能叠加旧模式或续搜实验。");
         if (useNoveltyPortfolio && (searchMode != "Coordinator" || adaptiveNoveltyRefinement))
             throw new ArgumentException("--novelty-portfolio 需要 Coordinator，不能叠加 --adaptive-novelty。");
         if (usePortfolio && searchMode != "Coordinator")
@@ -659,6 +667,7 @@ internal sealed record HarnessOptions
             PotionPolicy = potionPolicy,
             SearchMode = searchMode,
             UsePortfolio = usePortfolio,
+            UseAutomaticSearch = useAutomaticSearch,
             UseNoveltyPortfolio = useNoveltyPortfolio,
             NoPlainBaselineMember = noPlainBaseline,
             UnorderedPileMask = unorderedPileMask,

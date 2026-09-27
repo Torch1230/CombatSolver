@@ -19,6 +19,28 @@ internal sealed partial class CombatBeamSolver
             hasRootChoices, node.HasPredictionRisk, node.BoundaryReason));
     }
 
+    private void ObserveOpeningActions(IReadOnlyList<SearchNode> pool)
+    {
+        SearchOpeningActionObserver? observer = policy.Diagnostics.OpeningActionObserver;
+        if (observer == null || !observer.WantsObservation()) return;
+        List<PlanAction> actions = [];
+        foreach (SearchNode node in pool)
+        {
+            if (node.ActionCount != 1 || node.Action is not { Kind: PlanActionKind.PlayCard, EndsPlayerTurn: false } action)
+                continue;
+            for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
+            {
+                if (cursor.TurnSetupChoices is not { Count: > 0 }) continue;
+                // Prefixes currently replay from the unchosen root; do not mix roots.
+                observer.Observe([]);
+                return;
+            }
+            actions.Add(CopyObservedAction(action));
+            if (actions.Count >= RootOutcomeCache.MaximumActions) break;
+        }
+        observer.Observe(actions);
+    }
+
     // This transient, synchronous callback payload never crosses the Search boundary.
     // Its node lists are borrowed only until the callback returns; the sink receives copies.
     private readonly record struct GlobalRetentionDecision(
@@ -182,6 +204,7 @@ internal sealed partial class CombatBeamSolver
         IReadOnlyList<SearchNode> pool,
         int boundaryId)
     {
+        ObserveOpeningActions(pool);
         SearchPathObserver? observer = policy.Diagnostics.PathObserver;
         if (observer == null || !observer.ObservesRetentionPools)
             return null;

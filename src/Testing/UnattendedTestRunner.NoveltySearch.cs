@@ -39,7 +39,7 @@ internal sealed partial class UnattendedTestRunner
         {
             if (options.Scheduler is not ("beam" or "bfws" or "portfolio"))
                 throw new InvalidDataException("Expected beam, bfws or portfolio.");
-            var policy = captured with { UseNoveltyPortfolio = options.Scheduler == "portfolio",
+            var policy = captured with { UseAutomaticSearch = false, UseNoveltyPortfolio = options.Scheduler == "portfolio",
                 NoveltySearch = options.Scheduler == "bfws" ? new() : null, FixedBudget = true,
                 Profile = captured.Profile with { SoftTimeBudgetMilliseconds = captured.BudgetOverrideMilliseconds ?? captured.Profile.SoftTimeBudgetMilliseconds } };
             if (options.Scheduler == "portfolio" && !smart)

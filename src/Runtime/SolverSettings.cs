@@ -110,6 +110,7 @@ internal sealed record SolverSettingsData
     public int PerformanceMigrationVersion { get; init; }
     public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
     public int? SearchMaxDegreeOfParallelism { get; init; }
+    // Legacy JSON compatibility; the player now uses automatic search regardless of these values.
     public bool UseBeamWidthPortfolio { get; init; } = true;
     public bool UseNoveltyPortfolio { get; init; }
     public double? SearchTimeLimitSeconds { get; init; }

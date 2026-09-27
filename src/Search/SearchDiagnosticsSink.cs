@@ -4,8 +4,10 @@ internal sealed class SearchDiagnosticsSink(
     Action<string> info,
     Action<string> debug,
     SearchPathObserver? pathObserver = null,
-    SearchCompletedOutcomeObserver? completedOutcomeObserver = null)
+    SearchCompletedOutcomeObserver? completedOutcomeObserver = null,
+    SearchOpeningActionObserver? openingActionObserver = null)
 {
+    public SearchOpeningActionObserver? OpeningActionObserver { get; } = openingActionObserver;
     public SearchPathObserver? PathObserver { get; } = pathObserver;
     public SearchCompletedOutcomeObserver? CompletedOutcomeObserver { get; } = completedOutcomeObserver;
 
@@ -175,4 +177,12 @@ internal sealed record SearchPathObservation(
     public int FutureSoldHp => PolicyLabel.FutureSoldHp;
     public int CumulativePlayerHpLost => PolicyLabel.CumulativePlayerHpLost;
     public double Score => PolicyLabel.Score;
+}
+
+// Serial, once per automatic pass, bounded detached first actions only.
+internal sealed class SearchOpeningActionObserver(
+    Func<bool> wantsObservation, Action<IReadOnlyList<PlanAction>> observe)
+{
+    public bool WantsObservation() => wantsObservation();
+    public void Observe(IReadOnlyList<PlanAction> actions) => observe(actions);
 }
