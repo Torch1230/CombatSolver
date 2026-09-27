@@ -19,6 +19,11 @@ class OvernightContracts(unittest.TestCase):
         self.assertEqual(training_inputs(records, 2048), ['first.json', 'second.json'])
         self.assertEqual(training_inputs(records, 512), {
             'schemaVersion': 1, 'maximumRowsPerRoot': 512, 'roots': ['first.json', 'second.json']})
+        self.assertEqual(training_inputs(records, 2048, 'character'), {
+            'schemaVersion': 1, 'maximumRowsPerRoot': 2048, 'roots': ['first.json', 'second.json'],
+            'partition': 'character'})
+        with self.assertRaisesRegex(ValueError, 'Unknown training partition'):
+            training_inputs(records, 512, 'unknown')
 
     def test_frozen_baseline_preserves_native_equipment_for_the_next_job(self):
         with tempfile.TemporaryDirectory() as temporary:

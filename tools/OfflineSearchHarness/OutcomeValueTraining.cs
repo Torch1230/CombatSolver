@@ -8,12 +8,12 @@ internal static class OutcomeValueTraining
 {
     internal static int Audit(string pathsFile, string modelFile, string output)
     {
-        var document = JsonSerializer.Deserialize<SearchOutcomeValueModel.Document>(File.ReadAllText(modelFile))!;
-        var model = SearchOutcomeValueModel.Load(document);
+        var file = OutcomeModelFile.Read(modelFile);
         List<object> results = [];
         foreach (var root in ReadRoots(pathsFile))
         {
             var rows = root.Rows;
+            var model = file.Select(file.IsConditional ? OutcomeModelFile.CharacterOf(rows) : null);
             double[] scores = rows.Select(r => model.PredictFeaturesForTesting(r.Features)).ToArray();
             HashSet<(int, int)> seen = [];
             int correct = 0, wrong = 0, ties = 0, indistinguishable = 0;
@@ -49,19 +49,49 @@ internal static class OutcomeValueTraining
     internal static int Run(string pathsFile, string output)
     {
         Stopwatch clock = Stopwatch.StartNew();
+        using var specification = JsonDocument.Parse(File.ReadAllText(pathsFile));
+        string partition = specification.RootElement.ValueKind == JsonValueKind.Object
+            && specification.RootElement.TryGetProperty("partition", out var part)
+            ? part.GetString() ?? throw new InvalidDataException("Missing training partition.") : "shared";
+        if (partition is not ("shared" or "character")) throw new InvalidDataException("Unknown training partition.");
+        // Sample once in the original global root order. Partitioning never
+        // restarts the row sampler or resamples a character's observations.
         var inputs = ReadRoots(pathsFile);
         var roots = inputs.Select(r => r.Rows).ToArray();
-        SearchOutcomeValueModel model = new();
         int trainingParallelism = Math.Min(4, Environment.ProcessorCount);
-        if (!model.Fit(roots, trainingParallelism)) throw new InvalidOperationException("Insufficient witnessed outcomes.");
-        File.WriteAllText(output, JsonSerializer.Serialize(model.ExportModel()));
+        var groups = roots.Select((rows, index) => new { Rows = rows, Index = index,
+                Character = partition == "character" ? OutcomeModelFile.CharacterOf(rows) : "" })
+            .GroupBy(r => r.Character, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal);
+        Dictionary<string, SearchOutcomeValueModel> models = new(StringComparer.Ordinal);
+        List<object> heads = [];
+        foreach (var group in groups)
+        {
+            Stopwatch headClock = Stopwatch.StartNew();
+            SearchOutcomeValueModel model = new();
+            if (!model.Fit(group.Select(r => r.Rows).ToArray(), trainingParallelism))
+                throw new InvalidOperationException("Insufficient witnessed outcomes for partition: " + group.Key);
+            models.Add(group.Key, model);
+            heads.Add(new { character = group.Key, rootIndices = group.Select(r => r.Index).ToArray(),
+                roots = group.Count(), rows = group.Sum(r => r.Rows.Length), pairs = model.FittedPairs,
+                participatingRoots = model.FittedRoots, participatingRows = model.FittedRows,
+                features = model.ExportModel().FeatureNames.Length, fitMilliseconds = headClock.Elapsed.TotalMilliseconds });
+        }
+        object Export(bool linear)
+        {
+            var documents = models.ToDictionary(p => p.Key,
+                p => linear ? p.Value.ExportLinearModel() : p.Value.ExportModel(), StringComparer.Ordinal);
+            return partition == "shared" ? documents[""] : new OutcomeModelFile.CharacterDocument(1, documents);
+        }
+        File.WriteAllText(output, JsonSerializer.Serialize(Export(linear: false)));
         string linearOutput = Path.ChangeExtension(output, "linear.json");
-        File.WriteAllText(linearOutput, JsonSerializer.Serialize(model.ExportLinearModel()));
-        Console.WriteLine(JsonSerializer.Serialize(new { roots = roots.Length, rows = roots.Sum(r => r.Length), pairs = model.FittedPairs,
-            participatingRoots = model.FittedRoots, participatingRows = model.FittedRows, trainingParallelism,
-            features = model.ExportModel().FeatureNames.Length,
-            eligibleFeatures = model.EligibleFeatures,
-            linearTerms = model.ExportLinearModel().FeatureNames.Length, linearBytes = new FileInfo(linearOutput).Length,
+        File.WriteAllText(linearOutput, JsonSerializer.Serialize(Export(linear: true)));
+        Console.WriteLine(JsonSerializer.Serialize(new { roots = roots.Length, rows = roots.Sum(r => r.Length),
+            pairs = models.Values.Sum(m => m.FittedPairs), partition, heads,
+            participatingRoots = models.Values.Sum(m => m.FittedRoots), participatingRows = models.Values.Sum(m => m.FittedRows), trainingParallelism,
+            features = models.Values.Sum(m => m.ExportModel().FeatureNames.Length),
+            maximumHeadFeatures = models.Values.Max(m => m.ExportModel().FeatureNames.Length),
+            eligibleFeatures = models.Values.Sum(m => m.EligibleFeatures),
+            linearTerms = models.Values.Sum(m => m.ExportLinearModel().FeatureNames.Length), linearBytes = new FileInfo(linearOutput).Length,
             fitMilliseconds = clock.Elapsed.TotalMilliseconds, bytes = new FileInfo(output).Length,
             peakWorkingSetBytes = Process.GetCurrentProcess().PeakWorkingSet64 }));
         return 0;

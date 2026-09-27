@@ -416,8 +416,7 @@ internal static class ModRuntime
             StopPortfolioAtHpTarget = options.StopPortfolioAtHpTarget ?? policy.Profile.StopPortfolioAtHpTarget,
         } };
         SearchOutcomeValueModel? outcomeModel = options.OutcomeValueModelPath != null
-            ? SearchOutcomeValueModel.Load(JsonSerializer.Deserialize<SearchOutcomeValueModel.Document>(
-                File.ReadAllText(options.OutcomeValueModelPath))!)
+            ? OutcomeModelFile.Read(options.OutcomeValueModelPath).Select(root.PlayerIdentity.Character.Id.Entry)
             : null;
         SearchOutcomeValueModel? outcomeCollector = options.CollectOutcomeValues ? new() : null;
         if (outcomeModel != null || outcomeCollector != null)

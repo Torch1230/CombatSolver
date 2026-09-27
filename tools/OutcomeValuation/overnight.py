@@ -106,12 +106,18 @@ def balanced_roots(records, maximum, seed):
     return selected
 
 
-def training_inputs(records, maximum_rows_per_root):
+def training_inputs(records, maximum_rows_per_root, partition='shared'):
+    if partition not in ('shared', 'character'):
+        raise ValueError('Unknown training partition')
     paths = [r['input'] for r in records]
     # Default remains compatible with frozen legacy harnesses. Non-default
     # budgets require the explicit schema, never silently drop the requested cap.
-    return paths if maximum_rows_per_root == 2048 else {
-        'schemaVersion': 1, 'maximumRowsPerRoot': maximum_rows_per_root, 'roots': paths}
+    if maximum_rows_per_root == 2048 and partition == 'shared':
+        return paths
+    specification = {'schemaVersion': 1, 'maximumRowsPerRoot': maximum_rows_per_root, 'roots': paths}
+    if partition != 'shared':
+        specification['partition'] = partition
+    return specification
 
 
 def witnessed_rows(path):
@@ -243,6 +249,7 @@ def initialize(args):
     plan = {'schema': 1, 'createdUtc': dt.datetime.now(dt.timezone.utc).isoformat(),
             'until': args.until, 'workers': args.workers, 'batchSize': 45,
             'maximumRootsPerFit': args.fit_roots, 'maximumRowsPerRoot': args.fit_rows_per_root,
+            'fitPartition': args.fit_partition,
             'maxCases': args.max_cases, 'maxBytes': args.max_gib * 1024**3,
             'fitTimeoutSeconds': args.fit_seconds, 'seed': args.seed,
             'fittingEngine': 'training-engine' if args.fit_harness else 'engine',
@@ -460,7 +467,8 @@ class Job:
         for record in selected:
             if sha(record['input']) != record['inputSha256']:
                 raise ValueError('Training rows changed: ' + record['input'])
-        write(directory / 'training-inputs.json', training_inputs(selected, self.plan.get('maximumRowsPerRoot', 2048)))
+        write(directory / 'training-inputs.json', training_inputs(selected, self.plan.get('maximumRowsPerRoot', 2048),
+                                                               self.plan.get('fitPartition', 'shared')))
         record = {'number': number, 'directory': str(directory), 'state': 'fitting',
                   'rootCount': len(selected), 'inputHashes': {r['case']['id']: r['inputSha256'] for r in selected}}
         self.state['rounds'].append(record)
@@ -558,6 +566,8 @@ def main():
     setup.add_argument('--fit-roots', type=int, default=128, help='Maximum distinct balanced roots per fit (20..1024)')
     setup.add_argument('--fit-rows-per-root', type=int, default=2048, help='Maximum observations per actual root (64..8192)')
     setup.add_argument('--fit-seconds', type=int, default=600, help='Hard wall-clock timeout for one fit (1..1800)')
+    setup.add_argument('--fit-partition', choices=['shared', 'character'], default='shared',
+                       help='Fit one shared predictor or a self-contained native-character conditional predictor')
     setup.add_argument('--screen-id', action='append', required=True)
     setup.add_argument('--prior-job', type=Path, help='Import a stopped job with its full cost and failure ledger')
     setup.add_argument('--fit-harness', type=Path, help='Optional separate frozen fitter; collection/evaluation keep their engine')

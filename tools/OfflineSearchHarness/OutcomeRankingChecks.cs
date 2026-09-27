@@ -206,6 +206,39 @@ internal static class OutcomeRankingChecks
             Reject(() => OutcomeValueTraining.ReadRoots(inputs), "pool budgets cannot silently truncate a witnessed pool");
             WritePoolBudget("unknown");
             Reject(() => OutcomeValueTraining.ReadRoots(inputs), "unknown sampling cannot silently fall back to row thinning");
+            File.WriteAllText(one, JsonSerializer.Serialize(Enumerable.Range(0, 128).Select(i => Row(i, 128 - i, [i / 2]) with
+                { Features = new() { ["x"] = i, ["character/A"] = 1 } })));
+            File.WriteAllText(two, JsonSerializer.Serialize(Enumerable.Range(0, 128).Select(i => Row(i, i, [i / 2]) with
+                { Features = new() { ["x"] = i, ["character/B"] = 1 } })));
+            File.WriteAllText(inputs, JsonSerializer.Serialize(new { schemaVersion = 1, maximumRowsPerRoot = 64,
+                partition = "character", roots = new[] { one, two } }));
+            var once = OutcomeValueTraining.ReadRoots(inputs);
+            var expectedA = new Model(); var expectedB = new Model();
+            Check(expectedA.Fit([once[0].Rows]) && expectedB.Fit([once[1].Rows]), "fixed character samples fit independently");
+            string bundled = Path.Combine(directory, "conditional.json");
+            Check(OutcomeValueTraining.Run(inputs, bundled) == 0, "one command produces a self-contained character model");
+            var bank = OutcomeModelFile.Read(bundled);
+            Check(bank.IsConditional && JsonSerializer.Serialize(bank.Select("A").ExportModel()) == JsonSerializer.Serialize(expectedA.ExportModel())
+                && JsonSerializer.Serialize(bank.Select("B").ExportModel()) == JsonSerializer.Serialize(expectedB.ExportModel()),
+                "partitioning fits the exact global row sample without restarting the sampler");
+            Dictionary<string, double> high = new() { ["x"] = 100 }, low = new() { ["x"] = 0 };
+            Check(bank.Select("A").PredictFeaturesForTesting(high) > bank.Select("A").PredictFeaturesForTesting(low)
+                && bank.Select("B").PredictFeaturesForTesting(high) < bank.Select("B").PredictFeaturesForTesting(low),
+                "native character selection preserves opposing learned preferences");
+            Reject(() => bank.Select("missing"), "missing character head cannot silently use another character");
+            var corrupt = new OutcomeModelFile.CharacterDocument(1, new()
+                { ["A"] = expectedA.ExportModel(), ["B"] = expectedB.ExportModel() with { GameMvid = Guid.Empty } });
+            Reject(() => OutcomeModelFile.Parse(JsonSerializer.Serialize(corrupt)), "an incompatible unused head rejects the entire bundle");
+            Reject(() => OutcomeModelFile.CharacterOf([once[0].Rows[0], once[1].Rows[0]]), "one actual root cannot mix character identities");
+            Reject(() => OutcomeModelFile.CharacterOf([a]), "conditional fitting requires an observed character identity");
+            Reject(() => OutcomeModelFile.CharacterOf([a with { Features = new() { ["character/A"] = 1, ["character/B"] = 1 } }]),
+                "ambiguous observed character identities are rejected");
+            var sharedFile = OutcomeModelFile.Parse(JsonSerializer.Serialize(expectedA.ExportModel()));
+            Check(!sharedFile.IsConditional && JsonSerializer.Serialize(sharedFile.Select(null).ExportModel()) == JsonSerializer.Serialize(expectedA.ExportModel()),
+                "legacy shared documents remain loadable without character metadata");
+            File.WriteAllText(inputs, JsonSerializer.Serialize(new { schemaVersion = 1, maximumRowsPerRoot = 64,
+                partition = "unknown", roots = new[] { one, two } }));
+            Reject(() => OutcomeValueTraining.Run(inputs, bundled), "unknown partitions are rejected before fitting");
         }
         finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine($"Outcome ranking: {checks} assertions passed.");
