@@ -1,0 +1,753 @@
+{
+  "study": "v58",
+  "sourceCommit": "8b2d964b",
+  "runtimeDefaultChanged": false,
+  "finalTestOpened": false,
+  "artifacts": {
+    "protocol.json": {
+      "innerExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/export",
+      "innerExportSha256": "5753f09d7d3e0de37e7f6c28137c16f38fcfc1c97b177c05d7978c2a9a78bb07",
+      "innerExportSeconds": 63.80612820200622,
+      "fullExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/export",
+      "fullExportSha256": "8d1241771cf551f10e5fd63d3f84a8aaec3ba7dd09df09d9b0f8e8a89d05a125",
+      "fullExportSeconds": 81.31428505596705,
+      "innerRoots": 516,
+      "selectionRoots": 100,
+      "fullRoots": 616,
+      "selectionRule": "One global minimum all-turn character->family->root loss; exact tie lower depth then higher Hessian. Must beat reused516-root depth6/Hessian3 candidate for a single full refit, parity and fixed5+10development. No per-role or per-card selection. Finalsealed.",
+      "completeModelLimitSeconds": 1200,
+      "studyLimitSeconds": 1200,
+      "auditEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine",
+      "evaluationEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine",
+      "baselineIndex": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/baseline-index.json",
+      "diagnosticScope": "Split-support calculation used the previous394-root graph, not validation outcomes; thresholds in this grid apply uniformly to all features.",
+      "finalTestOpened": false,
+      "createdUtc": "2026-09-27T21:58:52.025883+00:00",
+      "sourceBase": "8b2d964b",
+      "hypothesis": "The fixed learned linear offset may constrain residual models or distort early-resource ranking. Test direct nonlinear pairwise ranking with zero offset on exactly the same C# pair graph; no hand scoring.",
+      "arms": [
+        {
+          "name": "zero-h3",
+          "depth": 6,
+          "minimumLeafHessian": 3.0
+        },
+        {
+          "name": "zero-h1",
+          "depth": 6,
+          "minimumLeafHessian": 1.0
+        },
+        {
+          "name": "zero-h0p3",
+          "depth": 6,
+          "minimumLeafHessian": 0.3
+        }
+      ],
+      "baselineAudit": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/audit.json",
+      "primaryMetric": "Early (later endpoint turn<=3) loss, equal role then canonical encounter family then root. All five heads selected together. Tie higher Hessian. Baseline is the same-data residual64 depth6 H3 model; only a lower primary loss permits one full refit and strict5+10development.",
+      "comparisonControls": [
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-6-h1p0/audit.json",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-6-h0p3/audit.json"
+      ],
+      "reference": "https://xgboost.readthedocs.io/en/stable/tutorials/intercept.html",
+      "runtimePromotion": false,
+      "scripts": {
+        "xgboost_fit.py": "55b5381f2b09e78d7be3ab13836794b598c2f928aca79e2b815225d8cc450f74",
+        "ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+        "research_metrics.py": "4de57f64c042491598f4f8d9b86d5e2e7525d35b2b14b3f9d1a6e3cdad8c7bd2",
+        "evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+        "dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+        "overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+      },
+      "selectionHashes": {
+        "selection-inputs.json": "f752f2b8a6461da3af8d4c59c2f1d928ca0812f09df42561cf33cdab6d04cc9b",
+        "selection-records.json": "01f196c430130f04185c6ab749e0e51d6e3a92821b4658301aff6c28bd33cdd6"
+      },
+      "wrapperSha256": "40efad3afd0b9dceb5d00c5fc9edb95db5bb8c9fa795bb3dd4401ba28be54d15",
+      "additionalHashes": {
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v58/run.py": "59200debcb03963f9bc08fe08c02e6aeee8a3aa6c86e4717361269916d9e7797",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v58/early_metrics.py": "2f1eaeb202830a9c6a9ecca7a49929556287380e7896270c4b7cda9d717a6350",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/audit.json": "f67673eba9b00f5b439747e93288cbb481c81cc26685e782817d24992541c96e",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-6-h1p0/audit.json": "d94c69a43f282fb35dff4956eca9c04b536050098d6de78c04c1eb5f4b0d0e2f",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v55/depth-6-h0p3/audit.json": "2d4f6b46bb7b252760ab44b3df705a584013de06618ca3f19c1a4f227a3ddab2",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v58/selection-inputs.json": "f752f2b8a6461da3af8d4c59c2f1d928ca0812f09df42561cf33cdab6d04cc9b",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v58/selection-records.json": "01f196c430130f04185c6ab749e0e51d6e3a92821b4658301aff6c28bd33cdd6",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine/CombatSolver.dll": "6d732216d35c75a10e6e151b10c9750931fa96d54e406b8692326ab4692fb0e4",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine/harness/OfflineSearchHarness.dll": "8bd7e5f94b687cade5f53f3a698d598c8ccff81510b1e4a3c336a019c1990598",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine/CombatSolver.dll": "a1c767f2e788ada0e3bdbde1830e3fb032fdd42e53dfef34014864971d3d8af2",
+        "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine/harness/OfflineSearchHarness.dll": "84fc3a472085162a4a262fcea326bb9e4bbd3389ef495f78add8769dda60ea8b"
+      }
+    },
+    "status.json": {
+      "phase": "completed",
+      "seconds": 92.1749648010591,
+      "updatedUtc": "2026-09-27T22:01:07.917267+00:00",
+      "childSeconds": {
+        "fit": 73.34209255792666,
+        "audit": 18.770341991912574
+      }
+    },
+    "summary.json": {
+      "arm": "zero-h3",
+      "baselineLoss": 0.5770221992741953,
+      "candidateLoss": 0.6373000407099497,
+      "candidateAllTurnLoss": 0.5401530145241445,
+      "fullFit": false,
+      "finalTestOpened": false,
+      "runtimeDefaultChanged": false,
+      "reason": "No zero-offset model beats the baseline early-turn loss; no external games."
+    },
+    "baseline-metrics.json": {
+      "focus": {
+        "loss": 0.5770221992741953,
+        "accuracy": 0.6919188502675473,
+        "roles": {
+          "SILENT": {
+            "loss": 0.5817234953207335,
+            "accuracy": 0.6579102130510991,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.5744188234446048,
+            "accuracy": 0.7230366704965349,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.5964790394578909,
+            "accuracy": 0.6759203400074398,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.48323257541739933,
+            "accuracy": 0.7686651347449814,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6492570627303476,
+            "accuracy": 0.6340618930376811,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.41054867492063524,
+      "macroMeanAccuracy": 0.8420619300939634,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.342324689837342,
+          "familyMeanAccuracy": 0.8952017731033104,
+          "families": 8,
+          "roots": 23,
+          "pairs": 16479,
+          "familyLosses": {
+            "BOWLBUGS": 0.20027036329576414,
+            "RUBY_RAIDERS": 0.26393393426403705,
+            "FABRICATOR": 0.29089639872680817,
+            "SOUL_NEXUS_ELITE": 0.33496788018278845,
+            "ENTOMANCER_ELITE": 0.5678097902164703,
+            "SCROLLS_OF_BITING": 0.2495118263045119,
+            "THIEVING_HOPPER": 0.33912036209029905,
+            "MYTES": 0.4920869636180571
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 3878,
+              "familyMeanLoss": 0.2805792758096311,
+              "familyMeanAccuracy": 0.913205097096237
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 21,
+              "pairs": 11364,
+              "familyMeanLoss": 0.3070080788461318,
+              "familyMeanAccuracy": 0.8946878507687984
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 1237,
+              "familyMeanLoss": 0.6279068188378906,
+              "familyMeanAccuracy": 0.6902878972218718
+            }
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.4648114567009716,
+          "familyMeanAccuracy": 0.8178189625398037,
+          "families": 9,
+          "roots": 19,
+          "pairs": 16247,
+          "familyLosses": {
+            "SOUL_NEXUS_ELITE": 0.6876138688632043,
+            "RUBY_RAIDERS": 0.42210554604572875,
+            "ENTOMANCER_ELITE": 0.47222189041130597,
+            "TEST_SUBJECT_BOSS": 0.5558720782196016,
+            "THIEVING_HOPPER": 0.33847715511595894,
+            "FABRICATOR": 0.38012469997184345,
+            "MYTES": 0.5424247763310526,
+            "SCROLLS_OF_BITING": 0.3978459997401318,
+            "BOWLBUGS": 0.3866170956099173
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 8,
+              "roots": 16,
+              "pairs": 4968,
+              "familyMeanLoss": 0.39645315444373974,
+              "familyMeanAccuracy": 0.815778693316151
+            },
+            "victory-policy": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 10560,
+              "familyMeanLoss": 0.4302193377251815,
+              "familyMeanAccuracy": 0.851456862974046
+            },
+            "suffix-effort": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 719,
+              "familyMeanLoss": 0.6418336133582758,
+              "familyMeanAccuracy": 0.6663956087035471
+            }
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.4234153443275652,
+          "familyMeanAccuracy": 0.8435413025401187,
+          "families": 8,
+          "roots": 19,
+          "pairs": 16604,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.3042487336310761,
+            "MYTES": 0.27073512729813476,
+            "SOUL_NEXUS_ELITE": 0.4650660966875991,
+            "ENTOMANCER_ELITE": 0.48284606548434666,
+            "FABRICATOR": 0.5356258848240187,
+            "BOWLBUGS": 0.35151402451679487,
+            "THIEVING_HOPPER": 0.474714604557898,
+            "SCROLLS_OF_BITING": 0.5025722176206536
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3936,
+              "familyMeanLoss": 0.3801667590133223,
+              "familyMeanAccuracy": 0.8392962017664798
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 11864,
+              "familyMeanLoss": 0.37131382919327993,
+              "familyMeanAccuracy": 0.8791476999952992
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 804,
+              "familyMeanLoss": 0.5941867669912272,
+              "familyMeanAccuracy": 0.7524817095327536
+            }
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.43952205755200646,
+          "familyMeanAccuracy": 0.8213285208363725,
+          "families": 8,
+          "roots": 20,
+          "pairs": 11622,
+          "familyLosses": {
+            "MYTES": 0.23990980343500404,
+            "ENTOMANCER_ELITE": 0.5167547940322791,
+            "SOUL_NEXUS_ELITE": 0.48245893670468626,
+            "FABRICATOR": 0.5497304546950332,
+            "RUBY_RAIDERS": 0.4764768195568618,
+            "BOWLBUGS": 0.39124586056528715,
+            "SCROLLS_OF_BITING": 0.45278879228343577,
+            "THIEVING_HOPPER": 0.4068109991434645
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3558,
+              "familyMeanLoss": 0.4381216915262125,
+              "familyMeanAccuracy": 0.7672358580900782
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 7552,
+              "familyMeanLoss": 0.432050983582283,
+              "familyMeanAccuracy": 0.817603083779712
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 17,
+              "pairs": 512,
+              "familyMeanLoss": 0.6125351441773743,
+              "familyMeanAccuracy": 0.6642305565046042
+            }
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.3826698261852908,
+          "familyMeanAccuracy": 0.8324190914502112,
+          "families": 8,
+          "roots": 19,
+          "pairs": 14124,
+          "familyLosses": {
+            "ENTOMANCER_ELITE": 0.4385027357437443,
+            "MYTES": 0.4748174028249065,
+            "SOUL_NEXUS_ELITE": 0.2717323000229077,
+            "SCROLLS_OF_BITING": 0.3719672309323928,
+            "RUBY_RAIDERS": 0.3873726953384635,
+            "FABRICATOR": 0.5601370644069464,
+            "BOWLBUGS": 0.14412625852152597,
+            "THIEVING_HOPPER": 0.41270292169143874
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 4949,
+              "familyMeanLoss": 0.3490357649072179,
+              "familyMeanAccuracy": 0.8089909819615178
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 8362,
+              "familyMeanLoss": 0.42491478336210353,
+              "familyMeanAccuracy": 0.8167110562306352
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 813,
+              "familyMeanLoss": 0.5660420894917062,
+              "familyMeanAccuracy": 0.8144847895146134
+            }
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    }
+  },
+  "candidates": [
+    {
+      "name": "zero-h3",
+      "depth": 6,
+      "minimumLeafHessian": 3.0,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v58/zero-h3/fitted/model.json",
+      "focus": {
+        "loss": 0.6373000407099497,
+        "accuracy": 0.6366496673256762,
+        "roles": {
+          "SILENT": {
+            "loss": 0.6459006071734948,
+            "accuracy": 0.6063847791742476,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.6270492018170507,
+            "accuracy": 0.7065571067748326,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.6562409257006809,
+            "accuracy": 0.5548469512643802,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.5941162317092554,
+            "accuracy": 0.7388742519848872,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6631932371492667,
+            "accuracy": 0.5765852474300335,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.5401530145241445,
+      "macroMeanAccuracy": 0.7689286690727749,
+      "zeroPairRoots": 0,
+      "cost": {
+        "fitProcessSeconds": 26.531200938974507,
+        "historicalExportSeconds": 63.80612820200622,
+        "completeModelSeconds": 90.33732914098073,
+        "returnCode": 0
+      },
+      "fitter": {
+        "backend": "xgboost-cpu",
+        "version": "3.4.1",
+        "parameters": {
+          "tree_method": "hist",
+          "device": "cpu",
+          "nthread": 4,
+          "max_depth": 6,
+          "max_bin": 32,
+          "eta": 0.1,
+          "reg_lambda": 0.001,
+          "reg_alpha": 0,
+          "min_child_weight": 3.0,
+          "gamma": 0,
+          "subsample": 1,
+          "colsample_bytree": 1,
+          "base_score": 0,
+          "boost_from_average": 0,
+          "seed": 0,
+          "objective": "reg:squarederror",
+          "disable_default_eval_metric": 1
+        },
+        "rounds": 64,
+        "heads": [
+          {
+            "character": "DEFECT",
+            "rows": 35183,
+            "pairs": 70406,
+            "initialLoss": 74.16674831991415,
+            "finalLoss": 53.74799222901713,
+            "float32MaxPredictionDrift": 1.0391231626272202e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 6.182025304995477
+          },
+          {
+            "character": "IRONCLAD",
+            "rows": 36821,
+            "pairs": 84208,
+            "initialLoss": 77.63248422271387,
+            "finalLoss": 58.22079904316945,
+            "float32MaxPredictionDrift": 8.577480912208557e-07,
+            "float32PairSignChanges": 0,
+            "seconds": 6.527918125037104
+          },
+          {
+            "character": "NECROBINDER",
+            "rows": 21857,
+            "pairs": 41620,
+            "initialLoss": 63.07639343095502,
+            "finalLoss": 46.8041310632003,
+            "float32MaxPredictionDrift": 9.57399606704712e-07,
+            "float32PairSignChanges": 0,
+            "seconds": 3.5222371160052717
+          },
+          {
+            "character": "REGENT",
+            "rows": 27337,
+            "pairs": 60893,
+            "initialLoss": 73.47360113935419,
+            "finalLoss": 50.884254257005566,
+            "float32MaxPredictionDrift": 7.282942533493042e-07,
+            "float32PairSignChanges": 0,
+            "seconds": 5.023932434036396
+          },
+          {
+            "character": "SILENT",
+            "rows": 28800,
+            "pairs": 59502,
+            "initialLoss": 69.31471805599452,
+            "finalLoss": 48.45318728407044,
+            "float32MaxPredictionDrift": 1.210719347000122e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 4.574268085998483
+          }
+        ],
+        "seconds": 26.080734793911688,
+        "peakWorkingSetBytes": 2885308416
+      }
+    },
+    {
+      "name": "zero-h1",
+      "depth": 6,
+      "minimumLeafHessian": 1.0,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v58/zero-h1/fitted/model.json",
+      "focus": {
+        "loss": 0.6384798213704709,
+        "accuracy": 0.6172135333584011,
+        "roles": {
+          "SILENT": {
+            "loss": 0.6338063266939689,
+            "accuracy": 0.6013857479268253,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.6397063570675927,
+            "accuracy": 0.6232260127462401,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.6654762439860961,
+            "accuracy": 0.5692509687087174,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.5880385930972103,
+            "accuracy": 0.740574042733508,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6653715860074865,
+            "accuracy": 0.551630894676715,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.5327050267311702,
+      "macroMeanAccuracy": 0.7616808877811632,
+      "zeroPairRoots": 0,
+      "cost": {
+        "fitProcessSeconds": 23.53245118597988,
+        "historicalExportSeconds": 63.80612820200622,
+        "completeModelSeconds": 87.3385793879861,
+        "returnCode": 0
+      },
+      "fitter": {
+        "backend": "xgboost-cpu",
+        "version": "3.4.1",
+        "parameters": {
+          "tree_method": "hist",
+          "device": "cpu",
+          "nthread": 4,
+          "max_depth": 6,
+          "max_bin": 32,
+          "eta": 0.1,
+          "reg_lambda": 0.001,
+          "reg_alpha": 0,
+          "min_child_weight": 1.0,
+          "gamma": 0,
+          "subsample": 1,
+          "colsample_bytree": 1,
+          "base_score": 0,
+          "boost_from_average": 0,
+          "seed": 0,
+          "objective": "reg:squarederror",
+          "disable_default_eval_metric": 1
+        },
+        "rounds": 64,
+        "heads": [
+          {
+            "character": "DEFECT",
+            "rows": 35183,
+            "pairs": 70406,
+            "initialLoss": 74.16674831991415,
+            "finalLoss": 49.60270522082316,
+            "float32MaxPredictionDrift": 1.0709045454859734e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 5.5987683340208605
+          },
+          {
+            "character": "IRONCLAD",
+            "rows": 36821,
+            "pairs": 84208,
+            "initialLoss": 77.63248422271387,
+            "finalLoss": 54.867044676165804,
+            "float32MaxPredictionDrift": 1.5050172805786133e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 5.669961337000132
+          },
+          {
+            "character": "NECROBINDER",
+            "rows": 21857,
+            "pairs": 41620,
+            "initialLoss": 63.07639343095502,
+            "finalLoss": 42.75342700988788,
+            "float32MaxPredictionDrift": 1.0062940418720245e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 3.1186726180603728
+          },
+          {
+            "character": "REGENT",
+            "rows": 27337,
+            "pairs": 60893,
+            "initialLoss": 73.47360113935419,
+            "finalLoss": 46.84989536613682,
+            "float32MaxPredictionDrift": 1.2200325727462769e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 4.438281832961366
+          },
+          {
+            "character": "SILENT",
+            "rows": 28800,
+            "pairs": 59502,
+            "initialLoss": 69.31471805599452,
+            "finalLoss": 44.03019047877054,
+            "float32MaxPredictionDrift": 9.587965905666351e-07,
+            "float32PairSignChanges": 0,
+            "seconds": 4.335176200955175
+          }
+        ],
+        "seconds": 23.198791460948996,
+        "peakWorkingSetBytes": 2891165696
+      }
+    },
+    {
+      "name": "zero-h0p3",
+      "depth": 6,
+      "minimumLeafHessian": 0.3,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v58/zero-h0p3/fitted/model.json",
+      "focus": {
+        "loss": 0.6397888176747755,
+        "accuracy": 0.6093366056216195,
+        "roles": {
+          "SILENT": {
+            "loss": 0.6527656918218752,
+            "accuracy": 0.5818665321400274,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.640939581420518,
+            "accuracy": 0.5995675442925413,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.6558255792475224,
+            "accuracy": 0.5932163657041275,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.5904857579950886,
+            "accuracy": 0.6824739687293837,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6589274778888734,
+            "accuracy": 0.5895586172420174,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.5308853608444022,
+      "macroMeanAccuracy": 0.7570695835138321,
+      "zeroPairRoots": 0,
+      "cost": {
+        "fitProcessSeconds": 23.278440432972275,
+        "historicalExportSeconds": 63.80612820200622,
+        "completeModelSeconds": 87.0845686349785,
+        "returnCode": 0
+      },
+      "fitter": {
+        "backend": "xgboost-cpu",
+        "version": "3.4.1",
+        "parameters": {
+          "tree_method": "hist",
+          "device": "cpu",
+          "nthread": 4,
+          "max_depth": 6,
+          "max_bin": 32,
+          "eta": 0.1,
+          "reg_lambda": 0.001,
+          "reg_alpha": 0,
+          "min_child_weight": 0.3,
+          "gamma": 0,
+          "subsample": 1,
+          "colsample_bytree": 1,
+          "base_score": 0,
+          "boost_from_average": 0,
+          "seed": 0,
+          "objective": "reg:squarederror",
+          "disable_default_eval_metric": 1
+        },
+        "rounds": 64,
+        "heads": [
+          {
+            "character": "DEFECT",
+            "rows": 35183,
+            "pairs": 70406,
+            "initialLoss": 74.16674831991415,
+            "finalLoss": 47.295396080651,
+            "float32MaxPredictionDrift": 1.3005919754505157e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 5.22255693806801
+          },
+          {
+            "character": "IRONCLAD",
+            "rows": 36821,
+            "pairs": 84208,
+            "initialLoss": 77.63248422271387,
+            "finalLoss": 52.653560686263944,
+            "float32MaxPredictionDrift": 1.4957040548324585e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 5.733984912047163
+          },
+          {
+            "character": "NECROBINDER",
+            "rows": 21857,
+            "pairs": 41620,
+            "initialLoss": 63.07639343095502,
+            "finalLoss": 40.28864892185796,
+            "float32MaxPredictionDrift": 1.2735836207866669e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 3.0019926259992644
+          },
+          {
+            "character": "REGENT",
+            "rows": 27337,
+            "pairs": 60893,
+            "initialLoss": 73.47360113935419,
+            "finalLoss": 44.11150458372212,
+            "float32MaxPredictionDrift": 1.4808028936386108e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 4.6637710210634395
+          },
+          {
+            "character": "SILENT",
+            "rows": 28800,
+            "pairs": 59502,
+            "initialLoss": 69.31471805599452,
+            "finalLoss": 41.905442575712925,
+            "float32MaxPredictionDrift": 1.2335367500782013e-06,
+            "float32PairSignChanges": 0,
+            "seconds": 4.216700986027718
+          }
+        ],
+        "seconds": 22.91191876900848,
+        "peakWorkingSetBytes": 2482851840
+      }
+    }
+  ]
+}
