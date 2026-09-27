@@ -1788,6 +1788,8 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.NoveltySearch.cs'); Text = 'ObservePool(children, _player, novelty: true)' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs'); Text = 'upgrade.GetString() != "enemy-power-totals-v1"' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs'); Text = 'pairSelection is not ("all" or "highest-policy-tier")' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs'); Text = 'ReadExcludedFeaturePrefixes(entries)' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs'); Text = 'if (features.Count == 0) throw new InvalidDataException' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.cs'); Text = 'CompareWitnesses(rows[left], rows[right], out int kind)' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeContext.cs'); Text = 'EnemyPowerTotalPrefix + power.Id.Entry' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeContext.cs'); Text = 'combat.GetOstyMaxHp(simulator, player)' },

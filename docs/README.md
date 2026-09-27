@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [具体卡牌身份列消融](strategy/identity-ablation-20260928.md)：固定 408 根隐藏身份列后拟合约 77 秒，实战仍丢失旧胜局；记录长期资源监督线索。
+
 - [终局偏好分层诊断与监督选择](strategy/policy-tier-training-20260928.md)：固定 408 根的标签分类审计与最高政策类别消融。
 
 - [困难构筑补采与敌方状态共享](strategy/shared-enemy-powers-20260928.md)：两组各 20 场原生补采，以及保持原样本的跨敌人序号特征试验。

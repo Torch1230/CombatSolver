@@ -222,8 +222,28 @@ internal static class OutcomeRankingChecks
                 "changing the row budget preserves the deterministic sampling prefix");
             var retained = limited[0].Rows.Select(r => (int)r.Features["x"]).ToHashSet();
             int omitted = Enumerable.Range(0, observations.Length).First(i => !retained.Contains(i));
+            File.WriteAllText(one, JsonSerializer.Serialize(observations.Select(r => r with
+                { Features = new(r.Features) { ["card/id"] = 3, ["relic/context"] = 7 } })));
+            void WriteExclusions(string[] prefixes) => File.WriteAllText(inputs, JsonSerializer.Serialize(new
+                { schemaVersion = 1, maximumRowsPerRoot = 64, excludedFeaturePrefixes = prefixes, roots = new[] { one } }));
+            WriteExclusions(["card/"]);
+            var projected = OutcomeValueTraining.ReadRoots(inputs)[0].Rows;
+            Check(projected.All(r => !r.Features.ContainsKey("card/id") && r.Features["relic/context"] == 7)
+                && projected.Select(r => r.Features["x"]).SequenceEqual(limited[0].Rows.Select(r => r.Features["x"]))
+                && projected.Select(r => JsonSerializer.Serialize(new { r.Outcome, r.RemainingActions, r.Groups }))
+                    .SequenceEqual(limited[0].Rows.Select(r => JsonSerializer.Serialize(new { r.Outcome, r.RemainingActions, r.Groups }))),
+                "column ablation preserves sampled witnesses, labels, groups and retained context values");
+            WriteExclusions([""]);
+            Reject(() => OutcomeValueTraining.ReadRoots(inputs), "an empty prefix cannot silently remove all features");
+            WriteExclusions(["card/", "card/"]);
+            Reject(() => OutcomeValueTraining.ReadRoots(inputs), "duplicate exclusion prefixes are rejected");
+            WriteExclusions(["card/", "relic/", "x"]);
+            Reject(() => OutcomeValueTraining.ReadRoots(inputs), "removing every observed feature is explicit failure");
+            WriteExclusions(["card/"]);
             observations[omitted] = observations[omitted] with { Outcome = observations[omitted].Outcome with { Score = 10 } };
             File.WriteAllText(one, JsonSerializer.Serialize(observations));
+            Reject(() => OutcomeValueTraining.ReadRoots(inputs), "column ablation cannot hide an invalid unsampled raw label");
+            WriteBudget(64);
             Reject(() => OutcomeValueTraining.ReadRoots(inputs), "invalid raw labels cannot hide outside the sampled rows");
             WriteBudget(0);
             Reject(() => OutcomeValueTraining.ReadRoots(inputs), "invalid host row budget is rejected");

@@ -71,6 +71,7 @@ internal static class OutcomeValueTraining
             ? selection.GetString() ?? throw new InvalidDataException("Missing pair selection.") : "all";
         if (pairSelection is not ("all" or "highest-policy-tier"))
             throw new InvalidDataException("Unknown training pair selection.");
+        string[] excludedFeaturePrefixes = ReadExcludedFeaturePrefixes(specification.RootElement);
         // Sample once in the original global root order. Partitioning never
         // restarts the row sampler or resamples a character's observations.
         var inputs = ReadRoots(pathsFile);
@@ -105,7 +106,7 @@ internal static class OutcomeValueTraining
         string linearOutput = Path.ChangeExtension(output, "linear.json");
         File.WriteAllText(linearOutput, JsonSerializer.Serialize(Export(linear: true)));
         Console.WriteLine(JsonSerializer.Serialize(new { roots = roots.Length, rows = roots.Sum(r => r.Length),
-            pairs = models.Values.Sum(m => m.FittedPairs), partition, pairSelection, heads,
+            pairs = models.Values.Sum(m => m.FittedPairs), partition, pairSelection, excludedFeaturePrefixes, heads,
             pairKinds = Enumerable.Range(0, 3).Select(k => models.Values.Sum(m => m.FittedPairKinds[k])).ToArray(),
             participatingRoots = models.Values.Sum(m => m.FittedRoots), participatingRows = models.Values.Sum(m => m.FittedRows), trainingParallelism,
             features = models.Values.Sum(m => m.ExportModel().FeatureNames.Length),
@@ -122,6 +123,7 @@ internal static class OutcomeValueTraining
     {
         using var input = JsonDocument.Parse(File.ReadAllText(pathsFile));
         JsonElement entries = input.RootElement;
+        string[] excludedFeaturePrefixes = ReadExcludedFeaturePrefixes(entries);
         int maximumRowsPerRoot = 2048;
         string sampling = "rows";
         bool upgradeEnemyPowers = false;
@@ -192,16 +194,35 @@ internal static class OutcomeValueTraining
                     Dictionary<string, double> features = new(row.Features.Count, StringComparer.Ordinal);
                     foreach (var (name, value) in row.Features)
                     {
+                        // Explicit offline column ablation, after validating all
+                        // raw rows. Sampling, labels and group remapping stay fixed.
+                        bool excluded = false;
+                        foreach (string prefix in excludedFeaturePrefixes)
+                            if (name.StartsWith(prefix, StringComparison.Ordinal)) { excluded = true; break; }
+                        if (excluded) continue;
                         if (!featureNames.TryGetValue(name, out string? canonical))
                             featureNames.Add(name, canonical = name);
                         features.Add(canonical, value);
                     }
+                    if (features.Count == 0) throw new InvalidDataException("Feature selection removed every observation column.");
                     rows.Add(row with { Features = features, Groups = row.Groups.Select(Remap).ToArray() });
                 }
             }
             roots.Add((Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(files[0])))!, rows.ToArray()));
         }
         return roots;
+    }
+
+    private static string[] ReadExcludedFeaturePrefixes(JsonElement input)
+    {
+        if (input.ValueKind != JsonValueKind.Object || !input.TryGetProperty("excludedFeaturePrefixes", out var field)) return [];
+        if (field.ValueKind != JsonValueKind.Array)
+            throw new InvalidDataException("Excluded feature prefixes must be an array.");
+        string[] prefixes = field.EnumerateArray().Select(p => p.ValueKind == JsonValueKind.String
+            ? p.GetString()! : throw new InvalidDataException("Excluded feature prefixes must be strings.")).ToArray();
+        if (prefixes.Any(string.IsNullOrWhiteSpace) || prefixes.Distinct(StringComparer.Ordinal).Count() != prefixes.Length)
+            throw new InvalidDataException("Excluded feature prefixes must be nonempty and unique.");
+        return prefixes;
     }
 
     private static IEnumerable<SearchOutcomeValueModel.TrainingRow> Sample(

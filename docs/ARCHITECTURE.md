@@ -12,6 +12,8 @@
 
 离线偏好类别由 `SearchOutcomeValueModel.CompareWitnesses` 同时返回权威终局顺序和类别：胜负、胜局政策、政策完全相同后的剩余动作。训练与宿主诊断共用此入口；两条死亡仍无偏好。宿主可显式选择 `pairSelection=highest-policy-tier`，拟合器仅使用每根存在的最高类别，根总权重和偏好对上限不变；默认 `all` 保持原行为。该消融不增加玩家模式、不承诺整个预测器满足字典序。全部原始标签仍先验证，审计报告始终统计所有类别并用 `rootIndex` 对应输入。
 
+离线宿主输入可显式指定 `excludedFeaturePrefixes` 做列消融，默认空列表。`ReadRoots` 先完成所有原始观察/标签验证，再在相同抽样行复制时排除按 Ordinal 匹配的列；不更改标签、根/组或抽样序列，不写回源观察。非法前缀、重复前缀和丢失所有列明确失败。被移除的字段只影响这次拟合可使用的信息，模型仍按已有 schema8 稀疏列推理，Search 不解析训练列筛选配置。
+
 `OutcomeModelFile` 只在离线宿主拥有共享/角色条件文件解析及模型选择。条件容器 `CharacterSchema=1` 内嵌普通模型文档，每个头仍验证 schema8 与游戏 MVID；缺失角色、混合/歧义身份和任一坏头显式拒绝。`ModRuntime` 在搜索前按已捕获根的原生角色身份选择一个预测器，Search 不读取容器或文件。`OutcomeValueTraining` 的 `partition=character` 先按全局输入顺序抽样一次，再以观察中的角色分组拟合并输出自包含完整/线性容器；不逐角色重启行抽样。默认 shared 与角色容器均使用当前模型 schema；schema7 旧模型明确拒绝。
 
 
