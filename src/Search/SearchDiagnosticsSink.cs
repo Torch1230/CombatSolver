@@ -3,13 +3,28 @@ namespace CombatSolver;
 internal sealed class SearchDiagnosticsSink(
     Action<string> info,
     Action<string> debug,
-    SearchPathObserver? pathObserver = null)
+    SearchPathObserver? pathObserver = null,
+    SearchCompletedOutcomeObserver? completedOutcomeObserver = null)
 {
     public SearchPathObserver? PathObserver { get; } = pathObserver;
+    public SearchCompletedOutcomeObserver? CompletedOutcomeObserver { get; } = completedOutcomeObserver;
 
     public void Info(string message) => info(message);
 
     public void Debug(string message) => debug(message);
+}
+
+// Pure values from already-completed paths; no nodes, snapshots or simulators escape.
+// Called serially on the solver coordinator. The receiver bounds its own observations.
+internal sealed record SearchCompletedOutcome(
+    PlanAction FirstAction, SolverInterimResult Quality,
+    bool HasRootChoices, bool HasPredictionRisk, SearchBoundaryReason BoundaryReason);
+
+internal sealed class SearchCompletedOutcomeObserver(
+    Func<bool> wantsObservation, Action<SearchCompletedOutcome> observe)
+{
+    public bool WantsObservation() => wantsObservation();
+    public void Observe(SearchCompletedOutcome outcome) => observe(outcome);
 }
 
 // Observation is opt-in and never participates in candidate acceptance. Both delegates may

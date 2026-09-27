@@ -29,6 +29,7 @@ dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 
 零训练估值原型可在 `Evaluate` 下显式加 `--outcome-probes 8`，将同一请求额度分给基线与有限首动作续搜，
 输出逐动作的完整结果见证及总成本到 `outcome-probes.json`；正常 Runtime 不启用。
+加 `--selective-outcome-probes` 保留全预算基线、复用终局见证排序并限制额外节点；也支持禁用药水的 Coordinator 基线。见[第二版研究](strategy/outcome-valuation-v2-20260927.md)，实验不是正式评分开关。
 复现、覆盖限制与整批时间上限见 [OutcomeValuation](../tools/OutcomeValuation/README.md)。
 
 ```

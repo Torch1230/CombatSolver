@@ -38,5 +38,16 @@ class CollectionContracts(unittest.TestCase):
             self.assertTrue(all(s['encounterKind'] == 'Elite' for s in scenarios))
 
 
+    def test_confirmation_seeds_are_disjoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = generate(root / 'old', 'heldout')
+            second = generate(root / 'new', 'heldout', '-v2-confirmation')
+            def seeds(cases):
+                return {read(Path(read(Path(c['request']))['generatedScenarioPath']))['seed'] for c in cases}
+            self.assertFalse(seeds(first) & seeds(second))
+            self.assertEqual(len(seeds(second)), 5)
+
+
 if __name__ == '__main__':
     unittest.main()

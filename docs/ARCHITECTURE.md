@@ -154,9 +154,9 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 ### 3.1 请求级编排
 
 - `SearchPolicySnapshot.cs`：主线程捕获的不可变搜索设置、逐槽药水策略，以及第一/二幕与最终 Boss 各自的血量取舍；后台不读取 UI 或玩家设置。
-- `SearchDiagnosticsSink.cs`：搜索日志和可选纯值路径观察出口。观察默认关闭，先按状态键过滤，命中后才复制完整动作/选择路径与政策标签；另可显式筛选外层 Prune 池，记录完整输入、真实 RankBest 的原排名/必保/路由/选中索引、当时的战术估值标量及最终仲裁集合。RankBest 内部同步借用列表，立即转成值副本；不向注入方暴露节点、模拟器或闭包，不重算估值或选择器，也不参与候选裁决。注入方负责并发和输出容量。
+- `SearchDiagnosticsSink.cs`：搜索日志和可选纯值路径观察出口。观察默认关闭，先按状态键过滤，命中后才复制完整动作/选择路径与政策标签；另可显式筛选外层 Prune 池，记录完整输入、真实 RankBest 的原排名/必保/路由/选中索引、当时的战术估值标量及最终仲裁集合。RankBest 内部同步借用列表，立即转成值副本；不向注入方暴露节点、模拟器或闭包，不重算估值或选择器，也不参与候选裁决。注入方负责并发和输出容量。另可显式观察已经完成的胜利：在串行协调端先检查接收容量，再沿父链复制首动作与终局标量；不填充节点动作缓存。`RootOutcomeCache` 与探测调度属于离线宿主，最多接收 2048 次回调/128 个动作，结果只用于安排后续探测，不作可采纳剪枝界。
 - `SearchFramePressureSignal.cs`：Runtime 向 worker 提供的帧压力信号；以最近 `31` 个非搜索帧中位数建立基线，压力阈值为 `max(33 ms, baseline × 1.5)`，无显示服务的 headless 请求旁路帧恢复等待。
-- `SearchRequestWorkTotals.cs`：一次请求内所有正常、失败和取消 solver 的工作区间均精确记账一次，包括取消前已发生的展开、转移、选牌、耗时、分配和 GC；Smart 有限药水层之间由 coordinator 主动执行的内存整理也单独计入耗时、分配和 GC，但不伪装成额外 solver。请求总值不是完整 coordinator 外层墙钟或进程峰值，也不承担结果质量排序。该对象同时拥有请求级额外循环回放额度：所有子策略共享一次 4096 动作上限，原子消费；独立 Evaluate 创建私有实例。额度不能随 worker 或新 solver 重置。`TotalCycleReplayActions` 从请求账本输出，`CycleReplayActions` 仍是所选 solver 值。
+- `SearchRequestWorkTotals.cs`：一次请求内所有正常、失败和取消 solver 的工作区间均精确记账一次，包括取消前已发生的展开、转移、选牌、耗时、分配和 GC；Smart 有限药水层之间由 coordinator 主动执行的内存整理也单独计入耗时、分配和 GC，但不伪装成额外 solver。请求总值不是完整 coordinator 外层墙钟或进程峰值，也不承担结果质量排序。该对象同时拥有请求级额外循环回放额度：所有子策略共享一次 4096 动作上限，原子消费；独立 Evaluate 创建私有实例。额度不能随 worker 或新 solver 重置。`TotalCycleReplayActions` 从请求账本输出，`CycleReplayActions` 仍是所选 solver 值。 离线探测可通过 coordinator 的测试参数显式注入同一账本，把完整基线与追加 solver 一起计费；Runtime 默认仍每请求新建。
 - `CombatSearchCoordinator.cs`：一次请求的搜索编排；Smart 先搜索无药基线，有逐瓶强制指令时先搜索仅用强制药的基线，再按额外智能药瓶数和相对该基线的战损收益进入“恰好 `N` 瓶”层。强制基线无可执行路线时回到允许可选药的救命搜索。按瓶数递增搜索，同层药水共同竞争；第一层完整获胜且满足救命、节省生命或保全被盗资源条件时立即采用并停止增加药量。达到设置的可接受战损阈值也可提前结束请求，不保证遍历全部药水层或取得所有药量中的全局最优。进入下一梯度前回收上一层搜索图并重建 NoGC 区域；截止时保留已完成且符合政策的选择。跨 solver 只发布符合政策的严格改善完整路线，并透传当前 solver 已完成回合的候选。玩家可采用已显示路线或只执行当前回合。Disabled/RequireAtLeastOne 保持各自政策；实际运行的各层共享请求级时间余量并合并总指标。
 - `CombatBeamSolver.BlockPotionInsertion.cs`：Smart 无药主搜索选出完整胜利后，针对首个预计掉血至少 `PotionMinimumHpSaved` 的回合，把可用且未保护的格挡药插在结束回合或强制交回合动作之前。修改后的动作链必须由模拟器逐动作精确重放并重建逐回合标注及 continuation；只有实际省血达到门槛、仍获胜且不增加保命资源消耗时才替换结果。该路径不进入 Beam、转置或药水候选展开，成功后 Coordinator 直接结束请求。
 - `CombatPlan.cs`：Runtime 消费的计划、结果和续用数据。结果不得保留历史 Simulator 对象图。
@@ -223,7 +223,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.StandPatJobs.cs` | 对原保路规则必经的 EndTurn 探针批量求值，复用固定 lane、回传标量，缓存和选择仍由 coordinator 原序完成 |
 | `CombatBeamSolver.RetentionJobs.cs` | 剪枝只读索引作业；复用空闲固定 lane，按原索引收集输出，排空后统一记账并传播取消/错误 |
 | `ParallelExpansionWorkProfile.cs` | coordinator 所有的作业经过时间分布与 wave/等待/提交计时；不代表 CPU 时间 |
-| `CombatBeamSolver.PathDiagnostics.cs` | 可选路径观察的值复制与边界配对；分别记录生成、两类转置、实际展开、动作准入、完整保留及回合注释，不写搜索策略或账本 |
+| `CombatBeamSolver.PathDiagnostics.cs` | 可选路径/已完成终局观察的值复制与边界配对；分别记录生成、两类转置、实际展开、动作准入、完整保留及回合注释，不写搜索策略或账本 |
 | `CombatBeamSolver.Retention.cs` | prune/retention 调用边界与相关小型辅助 |
 | `StrategicHpRecoveryBound.cs` | 主结果战损下界的无治疗来源证明与乐观回复量；未知来源保留完整缺血余量 |
 | `CombatBeamSolver.BeamRetentionPolicy.cs` | 保路主构造与字段、既有合同类型、RankFinal/RankBest协调、状态去重、多样性通道及路由分组；初始化顺序保持在此文件 |

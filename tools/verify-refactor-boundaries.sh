@@ -797,6 +797,11 @@ require_fixed \
     'repeated card choices are missing their whole-action branch quota:'
 
 path_diagnostics_path="$search_root/CombatBeamSolver.PathDiagnostics.cs"
+require_fixed "$path_diagnostics_path" 'observer == null || !observer.WantsObservation()' 'completed outcome observer no longer checks capacity before copying:'
+require_fixed "$path_diagnostics_path" 'CopyObservedAction(first)' 'completed outcome observer no longer detaches action values:'
+require_fixed "$search_root/CombatBeamSolver.Phases.cs" 'ObserveCompletedOutcome(node, candidate);' 'completed outcome observation left the victory boundary:'
+require_fixed "$search_root/SearchDiagnosticsSink.cs" 'SearchCompletedOutcomeObserver? completedOutcomeObserver = null' 'completed outcome observation must remain opt-in:'
+require_fixed "$search_root/CombatSearchCoordinator.cs" 'requestWorkTotalsForTesting ?? new()' 'normal coordinator requests must own fresh work totals:'
 require_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" 'HasRetainedRoutingChoice: RetainedRoutingChoice(node) != null' 'ordinary tactical ties must use the existing retained routing semantics:'
 require_fixed "$search_root/CombatBeamSolver.BeamRetentionPolicy.cs" 'if (values.HasRetainedRoutingChoice)' 'ordinary tactical ties must leave routing positions unchanged:'
 require_fixed "$repository_root/src/Testing/UnattendedTestRunner.SearchPolicy.cs" 'seven, [], [0, 7, 1, 4, 2, 5, 6], useTacticalOrder: true);' 'ordinary tactical ties lost the interleaved routing-position contract:'

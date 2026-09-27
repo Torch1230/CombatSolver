@@ -11,9 +11,10 @@ internal static partial class CombatSearchCoordinator
         BattleDamageSnapshot battleDamage,
         SearchPolicySnapshot policy,
         CancellationToken cancellationToken,
-        Action<SolverProgress>? progressCallback)
+        Action<SolverProgress>? progressCallback,
+        SearchRequestWorkTotals? requestWorkTotalsForTesting = null)
     {
-        SearchRequestWorkTotals requestWorkTotals = new();
+        SearchRequestWorkTotals requestWorkTotals = requestWorkTotalsForTesting ?? new();
         BeamWidthPortfolioTelemetry portfolioTelemetry = new();
         policy = policy with
         {
@@ -1938,7 +1939,7 @@ internal static partial class CombatSearchCoordinator
 
     // This honors an explicitly enabled satisficing policy, not a proof that no
     // alternate route can heal more or finish sooner. Preserve the selected incumbent.
-    private static bool CanFinishTargetPortfolio(
+    internal static bool CanFinishTargetPortfolio(
         CombatRootSnapshot root, SearchPolicySnapshot policy, SolverSearchProfile profile, SolverResult result)
         => profile.StopPortfolioAtHpTarget
             && !root.HasVisibleHealingSource

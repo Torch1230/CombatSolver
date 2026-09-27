@@ -323,7 +323,7 @@ internal static class ModRuntime
     /// <summary>
     /// Evaluate 口径：单次求解，不经协调器——直接建一个 <c>CombatBeamSolver</c>，用
     /// <c>SearchRequestWorkTotals</c> 回填 Total* 字段，profile 的软时间预算换成 <c>--budget-ms</c>。
-    /// 组合成员、协调器的审计通道都不参与，所以它量的是「一棵树自己」的搜索量。
+    /// 普通 Evaluate 不包含组合或审计。显式 OutcomeProbes 则按 options 选择普通/协调器基线。
     /// </summary>
     private static SolverResult SolveEvaluate(
         CombatRootSnapshot root,
@@ -475,7 +475,7 @@ internal static class ModRuntime
                 : null;
             try
             {
-                result = options.SearchMode == "Coordinator"
+                result = options.SearchMode == "Coordinator" && options.OutcomeProbes == 0
                     ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                     : SolveEvaluate(root, names, damage, policy, settings,
                         options, loop, out describedPolicy, ref timeBoundary);
@@ -487,7 +487,7 @@ internal static class ModRuntime
         }
         else
         {
-            result = options.SearchMode == "Coordinator"
+            result = options.SearchMode == "Coordinator" && options.OutcomeProbes == 0
                 ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                 : SolveEvaluate(root, names, damage, policy, settings,
                     options, loop, out describedPolicy, ref timeBoundary);

@@ -3,6 +3,22 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
+    private void ObserveCompletedOutcome(SearchNode node, SolverInterimResult quality)
+    {
+        SearchCompletedOutcomeObserver? observer = policy.Diagnostics.CompletedOutcomeObserver;
+        if (observer == null || !observer.WantsObservation()) return;
+        PlanAction? first = null;
+        bool hasRootChoices = false;
+        for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
+        {
+            if (cursor.Action is { } action) first = action;
+            hasRootChoices |= cursor.TurnSetupChoices is { Count: > 0 };
+        }
+        if (first == null) return; // A victory already present at the root has no prefix to value.
+        observer.Observe(new SearchCompletedOutcome(CopyObservedAction(first), quality with { },
+            hasRootChoices, node.HasPredictionRisk, node.BoundaryReason));
+    }
+
     // This transient, synchronous callback payload never crosses the Search boundary.
     // Its node lists are borrowed only until the callback returns; the sink receives copies.
     private readonly record struct GlobalRetentionDecision(

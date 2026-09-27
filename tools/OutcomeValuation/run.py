@@ -22,7 +22,7 @@ def write(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
 
 
-def generate(out, suite='screen'):
+def generate(out, suite='screen', seed_tag=''):
     cases = []
     # Ten known mechanism families, but new seeds. This is a screening cohort,
     # not independent mechanism generalization and not an optimality dataset.
@@ -33,7 +33,7 @@ def generate(out, suite='screen'):
             'schemaVersion': 1, 'scenarioId': 'OUTCOME-' + family.upper(),
             'characterId': character,
             'encounterId': 'CORPSE_SLUGS_NORMAL' if multi else 'FUZZY_WURM_CRAWLER_WEAK',
-            'seed': 'OUTCOME-20260927-' + family,
+            'seed': 'OUTCOME-20260927-' + family + seed_tag,
             'enemyCurrentHp': hp, 'initialEnemyMaxHps': [hp] * (3 if multi else 1),
             'initialEnemyCurrentHps': [hp] * (3 if multi else 1),
             'initialPlayerHp': 35, 'initialPlayerMaxHp': 80, 'initialPlayerEnergy': 3,
@@ -55,7 +55,7 @@ def generate(out, suite='screen'):
         label = 'random-' + character.lower()
         scenario = {
             'schemaVersion': 1, 'seed': ('OUTCOME-20260927-' if suite == 'screen'
-                                        else 'OUTCOME-20260927-heldout-') + character,
+                                        else 'OUTCOME-20260927-heldout-') + character + seed_tag,
             'characterId': character, 'encounterKind': 'Monster' if suite == 'screen' else 'Elite', 'ascension': 10,
             'actIndex': 1, 'includeStartingDeck': True, 'includeStartingRelics': True,
             'includeAscendersBane': True, 'applyRelicObtainEffects': False,
@@ -98,7 +98,11 @@ def main():
     parser.add_argument('--nodes', type=int, default=12000)
     parser.add_argument('--budget-ms', type=int, default=30000)
     parser.add_argument('--probes', type=int, default=8)
+    parser.add_argument('--selective', action='store_true')
+    parser.add_argument('--coordinator', action='store_true', help='Use the full coordinator/portfolio as baseline.')
+    parser.add_argument('--case', action='append', help='Only these frozen case IDs.')
     parser.add_argument('--limit', type=int, default=12)
+    parser.add_argument('--seed-tag', default='', help='Freeze a distinct confirmation cohort before running it.')
     parser.add_argument('--suite', choices=('screen', 'heldout'), default='screen')
     parser.add_argument('--verify-incremental', action='store_true')
     parser.add_argument('--resume', action='store_true', help='Reuse completed outputs with identical commands.')
@@ -107,13 +111,15 @@ def main():
         parser.error('Batch seconds must be in (0, 1800], limit in 1..12.')
     if args.nodes < 2 or not 1 <= args.probes <= 16 or args.budget_ms <= 0:
         parser.error('Invalid search budget/probe count.')
+    if args.coordinator and not args.selective:
+        parser.error('--coordinator requires --selective.')
     args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=args.resume)
     harness = REPO / 'tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll'
     mod = REPO / '.godot/mono/temp/bin/Release/CombatSolver.dll'
     signature = {'nodes': args.nodes, 'beam': 24, 'probes': args.probes, 'suite': args.suite,
                  'budgetMs': args.budget_ms, 'deadlineSeconds': args.seconds, 'limit': args.limit,
-                 'verifyIncremental': args.verify_incremental,
+                 'seedTag': args.seed_tag, 'coordinator': args.coordinator, 'verifyIncremental': args.verify_incremental, 'selective': args.selective, 'case': args.case,
                  'harnessSha256': hashlib.sha256(harness.read_bytes()).hexdigest(),
                  'modSha256': hashlib.sha256(mod.read_bytes()).hexdigest()}
     clock_path = args.out / 'budget.json'
@@ -131,7 +137,11 @@ def main():
     started = time.monotonic()
     deadline = started + args.seconds - prior_seconds
     write(clock_path, {'signature': signature, 'spentSeconds': prior_seconds, 'activeSince': time.time()})
-    cases = (read(args.out / 'manifest.json')['cases'] if args.resume else generate(args.out, args.suite))[:args.limit]
+    cases = (read(args.out / 'manifest.json')['cases'] if args.resume else generate(args.out, args.suite, args.seed_tag))[:args.limit]
+    if args.case:
+        cases = [case for case in cases if case['id'] in args.case]
+        if {case['id'] for case in cases} != set(args.case):
+            raise ValueError('Unknown/filtered case IDs.')
     inputs = hashlib.sha256(json.dumps(cases, sort_keys=True).encode())
     for case in cases:
         request = Path(case['request'])
@@ -158,10 +168,15 @@ def main():
             command = ['dotnet', str(harness), '--request', case['request'], '--label', case['id'],
                        '--out', str(out), '--profile', 'Custom', '--beam', '24',
                        '--nodes', str(args.nodes), '--budget-ms', str(args.budget_ms),
-                       '--dop', '1', '--search-mode', 'Evaluate', '--potion-policy', 'Disabled',
+                       '--dop', '1', '--search-mode', 'Coordinator' if args.coordinator else 'Evaluate',
+                       '--potion-policy', 'Disabled',
                        '--stop-at-zero-loss']
+            if args.coordinator:
+                command += ['--use-portfolio']
             if variant == 'rollout':
                 command += ['--outcome-probes', str(args.probes)]
+                if args.selective:
+                    command += ['--selective-outcome-probes']
             if args.verify_incremental:
                 command += ['--verify-incremental']
             begin = time.monotonic()
