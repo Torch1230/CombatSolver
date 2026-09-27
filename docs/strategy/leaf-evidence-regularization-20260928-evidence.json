@@ -1,0 +1,342 @@
+{
+  "status": "candidate rejected; production and nightly defaults unchanged",
+  "protocol": {
+    "createdUtc": "2026-09-27T18:36:06.905285+00:00",
+    "hypothesis": "Regularize the amount of independent battle evidence available to a leaf; many correlated rows from one battle cannot satisfy a three-unit Hessian threshold.",
+    "minimumLeafHessian": 3.0,
+    "onlyTrainingChange": "min_child_weight 0 -> 3; the exact C# pair graph, rows, root weights, feature support, learned linear foundation, tree count, depth, bins, eta, lambda and seed are reused.",
+    "bound": "Per actual root, sum(edge weight)=1 and sum(endpoint diagonal Hessian)<=1 under the 2h upper bound. A split child with Hessian>=3 needs contributions from at least 3 actual roots. This is more conservative than simply counting roots.",
+    "parameters": {
+      "tree_method": "hist",
+      "device": "cpu",
+      "nthread": 4,
+      "max_depth": 6,
+      "max_bin": 32,
+      "eta": 0.1,
+      "reg_lambda": 0.001,
+      "reg_alpha": 0,
+      "min_child_weight": 3.0,
+      "gamma": 0,
+      "subsample": 1,
+      "colsample_bytree": 1,
+      "base_score": 0,
+      "boost_from_average": 0,
+      "seed": 0,
+      "objective": "reg:squarederror",
+      "disable_default_eval_metric": 1
+    },
+    "fitLimitSeconds": 1200,
+    "historicalExportSeconds": 44.230857199999996,
+    "sourceExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v43/export",
+    "sourceExportManifestSha256": "16651b10952a615a5bcaf7bb8a4a68860688463ce5c5b76e5d41846cd26b1211",
+    "scriptSha256": "b1654a9b6c08f6c094e2afe26b322aa8814b3dfa47eed207fced6ca434d6b5d4",
+    "sourceEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v43/engine",
+    "sourceModSha256": "f3a33f847fd936a51f41cca965d76a612b78f4e509681e9fe744bac6f73e95eb",
+    "sourceHarnessSha256": "98ccdefd93edb3b579d4dea9aaa68103de78d424c504613f707abcef31ffd5f7",
+    "dataRoots": 376,
+    "dataSampledRows": 141734,
+    "dataPairs": 250229,
+    "selection": "One predeclared candidate, no role-head mixing. Fixed development five-case screen, then remaining ten only if no regression or unverified result; final test remains sealed.",
+    "baselineIndex": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v42/baseline-index.json",
+    "until": "2026-09-28T08:00:00+08:00"
+  },
+  "fitCost": {
+    "newFitSeconds": 13.76394456194248,
+    "historicalExportSeconds": 44.230857199999996,
+    "completeIncludingHistoricalExportSeconds": 57.994801761942476
+  },
+  "fitMetrics": {
+    "backend": "xgboost-cpu",
+    "version": "3.4.1",
+    "parameters": {
+      "tree_method": "hist",
+      "device": "cpu",
+      "nthread": 4,
+      "max_depth": 6,
+      "max_bin": 32,
+      "eta": 0.1,
+      "reg_lambda": 0.001,
+      "reg_alpha": 0,
+      "min_child_weight": 3.0,
+      "gamma": 0,
+      "subsample": 1,
+      "colsample_bytree": 1,
+      "base_score": 0,
+      "boost_from_average": 0,
+      "seed": 0,
+      "objective": "reg:squarederror",
+      "disable_default_eval_metric": 1
+    },
+    "rounds": 64,
+    "heads": [
+      {
+        "character": "DEFECT",
+        "rows": 26585,
+        "pairs": 55565,
+        "initialLoss": 32.65918313964449,
+        "finalLoss": 29.966112646687023,
+        "float32MaxPredictionDrift": 7.180812499285594e-06,
+        "float32PairSignChanges": 0,
+        "seconds": 3.2255263900151476
+      },
+      {
+        "character": "IRONCLAD",
+        "rows": 27525,
+        "pairs": 69234,
+        "initialLoss": 39.83952838259175,
+        "finalLoss": 36.10794170274096,
+        "float32MaxPredictionDrift": 6.95656010663015e-06,
+        "float32PairSignChanges": 0,
+        "seconds": 3.5346296209609136
+      },
+      {
+        "character": "NECROBINDER",
+        "rows": 16593,
+        "pairs": 37198,
+        "initialLoss": 30.774647575331358,
+        "finalLoss": 27.16396620387727,
+        "float32MaxPredictionDrift": 5.997822508874151e-06,
+        "float32PairSignChanges": 0,
+        "seconds": 2.04540139506571
+      },
+      {
+        "character": "REGENT",
+        "rows": 17955,
+        "pairs": 43973,
+        "initialLoss": 34.550230294926344,
+        "finalLoss": 30.795414872598652,
+        "float32MaxPredictionDrift": 8.376401657628207e-06,
+        "float32PairSignChanges": 0,
+        "seconds": 2.301703098928556
+      },
+      {
+        "character": "SILENT",
+        "rows": 19533,
+        "pairs": 44259,
+        "initialLoss": 32.757735757153526,
+        "finalLoss": 29.590600016564032,
+        "float32MaxPredictionDrift": 7.336952744907421e-06,
+        "float32PairSignChanges": 0,
+        "seconds": 2.3257418499561027
+      }
+    ],
+    "seconds": 13.478963739005849,
+    "peakWorkingSetBytes": 1690087424
+  },
+  "parity": {
+    "rows": 1280,
+    "maximumAbsoluteDifference": 0.0
+  },
+  "pythonChecksPassed": 8,
+  "leafSupportBefore": {
+    "head-0": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 2867,
+      "minimumLeafHessian": 6.4447613e-07,
+      "leavesBelowThree": 2661
+    },
+    "head-1": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 2931,
+      "minimumLeafHessian": 1.4255347e-05,
+      "leavesBelowThree": 2654
+    },
+    "head-2": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 2847,
+      "minimumLeafHessian": 2.7284502e-06,
+      "leavesBelowThree": 2639
+    },
+    "head-3": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 2486,
+      "minimumLeafHessian": 2.1746241e-06,
+      "leavesBelowThree": 2325
+    },
+    "head-4": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 2928,
+      "minimumLeafHessian": 1.347467e-05,
+      "leavesBelowThree": 2707
+    }
+  },
+  "leafSupportAfter": {
+    "head-0": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 665,
+      "minimumLeafHessian": 3.0007288,
+      "leavesBelowThree": 0
+    },
+    "head-1": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 825,
+      "minimumLeafHessian": 3.002015,
+      "leavesBelowThree": 0
+    },
+    "head-2": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 717,
+      "minimumLeafHessian": 3.0035808,
+      "leavesBelowThree": 0
+    },
+    "head-3": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 712,
+      "minimumLeafHessian": 3.0011144,
+      "leavesBelowThree": 0
+    },
+    "head-4": {
+      "trees": 64,
+      "splitTrees": 64,
+      "leavesInSplitTrees": 739,
+      "minimumLeafHessian": 3.0007484,
+      "leavesBelowThree": 0
+    }
+  },
+  "summary": {
+    "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v44/fitted/model.json",
+    "modelSha256": "6b5bca6252c8bf232fb5d32ee1360bfb02417fca49ffbaf7772fd8d265d09cc8",
+    "regressions": [
+      "unseen-necrobinder-kaiser_crab_boss"
+    ],
+    "improvements": [],
+    "unverified": [],
+    "fullDevelopmentCoverage": false,
+    "eligibleForFinalReview": false
+  },
+  "development": [
+    {
+      "id": "unseen-defect-the_kin_boss",
+      "candidate": {
+        "won": true,
+        "projectedBattleHpLost": 24,
+        "combatEndedTurn": 7,
+        "growthRewardCount": 1
+      },
+      "baseline": {
+        "won": true,
+        "projectedBattleHpLost": 24,
+        "combatEndedTurn": 7,
+        "growthRewardCount": 1
+      },
+      "issues": [],
+      "baselineIssues": [],
+      "seconds": 14.7037351,
+      "rss": 346558464,
+      "timeBoundary": true
+    },
+    {
+      "id": "unseen-ironclad-byrdonis_elite",
+      "candidate": {
+        "won": true,
+        "projectedBattleHpLost": 28,
+        "combatEndedTurn": 3,
+        "growthRewardCount": 0
+      },
+      "baseline": {
+        "won": true,
+        "projectedBattleHpLost": 28,
+        "combatEndedTurn": 3,
+        "growthRewardCount": 0
+      },
+      "issues": [],
+      "baselineIssues": [],
+      "seconds": 8.1927334,
+      "rss": 324136960,
+      "timeBoundary": true
+    },
+    {
+      "id": "unseen-necrobinder-kaiser_crab_boss",
+      "candidate": {
+        "won": false,
+        "projectedBattleHpLost": 66,
+        "combatEndedTurn": null,
+        "growthRewardCount": 0
+      },
+      "baseline": {
+        "won": true,
+        "projectedBattleHpLost": 64,
+        "combatEndedTurn": 9,
+        "growthRewardCount": 0
+      },
+      "issues": [],
+      "baselineIssues": [],
+      "seconds": 20.7842111,
+      "rss": 386953216,
+      "timeBoundary": true
+    },
+    {
+      "id": "unseen-regent-knowledge_demon_boss",
+      "candidate": {
+        "won": false,
+        "projectedBattleHpLost": 75,
+        "combatEndedTurn": null,
+        "growthRewardCount": 0
+      },
+      "baseline": {
+        "won": false,
+        "projectedBattleHpLost": 75,
+        "combatEndedTurn": null,
+        "growthRewardCount": 0
+      },
+      "issues": [],
+      "baselineIssues": [],
+      "seconds": 22.0620835,
+      "rss": 364142592,
+      "timeBoundary": true
+    },
+    {
+      "id": "unseen-silent-knights_elite",
+      "candidate": {
+        "won": false,
+        "projectedBattleHpLost": 91,
+        "combatEndedTurn": null,
+        "growthRewardCount": 0
+      },
+      "baseline": {
+        "won": false,
+        "projectedBattleHpLost": 91,
+        "combatEndedTurn": null,
+        "growthRewardCount": 0
+      },
+      "issues": [],
+      "baselineIssues": [],
+      "seconds": 11.2993545,
+      "rss": 332173312,
+      "timeBoundary": true
+    }
+  ],
+  "comparisons": [
+    {
+      "id": "unseen-defect-the_kin_boss",
+      "materialComparison": 0
+    },
+    {
+      "id": "unseen-ironclad-byrdonis_elite",
+      "materialComparison": 0
+    },
+    {
+      "id": "unseen-necrobinder-kaiser_crab_boss",
+      "materialComparison": 1
+    },
+    {
+      "id": "unseen-regent-knowledge_demon_boss",
+      "materialComparison": 0
+    },
+    {
+      "id": "unseen-silent-knights_elite",
+      "materialComparison": 0
+    }
+  ],
+  "finalTestOpened": false,
+  "sameSourceBuildAndDeploymentReused": true
+}

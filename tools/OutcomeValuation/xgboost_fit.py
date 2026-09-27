@@ -26,6 +26,16 @@ PARAMETERS = dict(tree_method="hist", device="cpu", nthread=4, max_depth=6,
                   objective="reg:squarederror", disable_default_eval_metric=1)
 
 
+def training_parameters(minimum_leaf_hessian=0.0):
+    if not math.isfinite(minimum_leaf_hessian) or minimum_leaf_hessian < 0:
+        raise ValueError("Minimum leaf Hessian must be finite and nonnegative")
+    # Each actual root contributes total edge weight 1. With the 2h diagonal
+    # upper bound, its total Hessian over both endpoints is at most 1.
+    # A leaf threshold of 3 therefore needs contributions from at least 3
+    # roots; this is a conservative bound, not an exact distinct-root count.
+    return dict(PARAMETERS, min_child_weight=minimum_leaf_hessian)
+
+
 def derivatives(scores, edges):
     preferred, other, weight = (edges[k] for k in EDGE_DTYPE.names)
     margin = scores[preferred].astype(np.float64) - scores[other]
@@ -134,8 +144,9 @@ class Deadline(xgb.callback.TrainingCallback):
         return False
 
 
-def fit(directory: Path, output: Path, seconds: int):
+def fit(directory: Path, output: Path, seconds: int, minimum_leaf_hessian=0.0):
     start = time.monotonic()
+    parameters = training_parameters(minimum_leaf_hessian)
     if xgb.__version__ != "3.4.1" or not 1 <= seconds <= 1200:
         raise ValueError("Expected pinned CPU XGBoost 3.4.1 and at most 1200 seconds")
     if output.exists():
@@ -155,7 +166,7 @@ def fit(directory: Path, output: Path, seconds: int):
         if foundation["Schema"] != 9 or head["character"] in models:
             raise ValueError("Unsupported or repeated model head")
         dmatrix = xgb.DMatrix(matrix, base_margin=np.asarray(margins, dtype=np.float32), nthread=4)
-        booster = xgb.train(PARAMETERS, dmatrix, num_boost_round=64,
+        booster = xgb.train(parameters, dmatrix, num_boost_round=64,
                             obj=lambda scores, _: derivatives(scores, edges),
                             callbacks=[Deadline(start + seconds)])
         trees = [convert_tree(json.loads(tree), matrix.shape[1])
@@ -191,7 +202,7 @@ def fit(directory: Path, output: Path, seconds: int):
     model = models[""] if manifest["partition"] == "shared" else dict(CharacterSchema=1, CharacterModels=models)
     for name, value in (("model.json", model), ("parity-inputs.json", parity_inputs),
                         ("parity-expected.json", parity_expected), ("metrics.json", dict(
-                            backend="xgboost-cpu", version=xgb.__version__, parameters=PARAMETERS,
+                            backend="xgboost-cpu", version=xgb.__version__, parameters=parameters,
                             rounds=64, heads=metrics, seconds=time.monotonic() - start,
                             peakWorkingSetBytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024))):
         (output / name).write_text(json.dumps(value, allow_nan=False))
@@ -202,5 +213,7 @@ if __name__ == "__main__":
     parser.add_argument("export", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--seconds", type=int, default=1200)
+    parser.add_argument("--minimum-leaf-hessian", type=float, default=0.0,
+                        help="Minimum child Hessian; root-balanced pairs bound each root contribution by 1")
     args = parser.parse_args()
-    fit(args.export, args.output, args.seconds)
+    fit(args.export, args.output, args.seconds, args.minimum_leaf_hessian)

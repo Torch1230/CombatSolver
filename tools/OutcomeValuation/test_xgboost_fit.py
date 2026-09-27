@@ -5,7 +5,7 @@ import unittest
 try:
     import numpy as np
     import xgboost as xgb
-    from xgboost_fit import EDGE_DTYPE, PARAMETERS, convert_tree, derivatives, loss, predict_document
+    from xgboost_fit import EDGE_DTYPE, PARAMETERS, convert_tree, derivatives, loss, predict_document, training_parameters
     AVAILABLE = True
 except ModuleNotFoundError as error:
     if error.name not in ("numpy", "xgboost"):
@@ -66,6 +66,37 @@ class RankingBackendChecks(unittest.TestCase):
         np.testing.assert_allclose(predicted, model.predict(data, output_margin=True), atol=1e-6, rtol=1e-6)
         self.assertLess(loss(predicted, edges), loss(np.zeros(40), edges))
         self.assertGreater(predicted[-1], predicted[0])
+
+    def test_leaf_regularization_uses_root_weight_not_repeated_rows(self):
+        # 200 correlated rows from one root still supply at most one unit of
+        # Hessian. A three-unit leaf cannot be fabricated by a large row count.
+        edges = np.array([(i + 1, i, 1 / 199) for i in range(199)], dtype=EDGE_DTYPE)
+        scores = np.zeros(200)
+        self.assertAlmostEqual(float(derivatives(scores, edges)[1].sum()), 1)
+        matrix = np.arange(200, dtype=np.float32).reshape(-1, 1)
+        data = xgb.DMatrix(matrix, base_margin=scores.astype(np.float32), nthread=4)
+        model = xgb.train(training_parameters(3), data, num_boost_round=8,
+                          obj=lambda predicted, _: derivatives(predicted, edges))
+        self.assertTrue(all("leaf" in json.loads(t) for t in model.get_dump(dump_format="json")))
+
+    def test_regularized_tree_can_learn_with_sufficient_root_weight(self):
+        matrix = np.tile(np.arange(40, dtype=np.float32), 12).reshape(-1, 1)
+        edges = np.array([(root * 40 + i + 1, root * 40 + i, 1 / 39)
+                          for root in range(12) for i in range(39)], dtype=EDGE_DTYPE)
+        data = xgb.DMatrix(matrix, base_margin=np.zeros(480, dtype=np.float32), nthread=4)
+        model = xgb.train(training_parameters(3), data, num_boost_round=16,
+                          obj=lambda predicted, _: derivatives(predicted, edges))
+        self.assertLess(loss(model.predict(data, output_margin=True), edges), loss(np.zeros(480), edges))
+        self.assertTrue(any("children" in json.loads(t) for t in model.get_dump(dump_format="json")))
+
+    def test_invalid_regularization_and_default_preservation(self):
+        self.assertEqual(training_parameters(), PARAMETERS)
+        for invalid in (-1, float("inf"), float("nan")):
+            with self.assertRaises(ValueError):
+                training_parameters(invalid)
+        configured = training_parameters(3)
+        self.assertEqual(configured["min_child_weight"], 3)
+        self.assertEqual(PARAMETERS["min_child_weight"], 0)
 
     def test_missing_values_and_unsupported_split_fail(self):
         with self.assertRaises(ValueError):

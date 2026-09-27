@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [树叶子证据量约束](strategy/leaf-evidence-regularization-20260928.md)：固定偏好图约束叶子 Hessian，模型缩小但未解决独立战斗退化。
+
 - [共用偏好图的 CPU 树训练器](strategy/external-ranking-backend-20260928.md)：376 根完整导出与五角色训练约 63 秒，独立开发仍有退化；新格式夜间任务已启动。
 
 - [引擎资源规则量观察](strategy/resource-rule-observations-20260928.md)：固定 408 场重采和双组消融完成；隐藏资源的完整模型保住五场初筛，扩展开发仍有退化。
