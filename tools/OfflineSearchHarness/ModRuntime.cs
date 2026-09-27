@@ -301,6 +301,7 @@ internal static class ModRuntime
         policy.UseBeamWidthPortfolio,
         policy.BeamWidthPortfolioPlainBaselineMember,
         policy.UseAutomaticSearch,
+        policy.UseObjectiveSearch,
         policy.DisableSharedEvidenceForTesting,
         policy.UseNoveltyPortfolio,
         policy.BeamWidthPortfolioWidths,
@@ -387,6 +388,7 @@ internal static class ModRuntime
             ProbeRootCapture(state);
         System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
         CombatRootSnapshot root = CombatRootSnapshot.Capture(state);
+        if (options.VerifyOutcomeContext) OutcomeContextChecks.Run(root, options.OutputDirectory);
         HarnessLog.Trace("root_captured");
         SolverDisplayNames names = SolverDisplayNames.Capture(state);
         BattleDamageSnapshot damage = BattleDamageTracker.Observe(state);
@@ -394,6 +396,7 @@ internal static class ModRuntime
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
             settings, state, includeTurnSetup: false, theftPolicy: null);
         policy = policy with { UseAutomaticSearch = options.UseAutomaticSearch,
+            UseObjectiveSearch = options.UseObjectiveSearch,
             DisableSharedEvidenceForTesting = options.DisableSharedEvidence, Profile = policy.Profile with
         {
             BaseScoreOnly = options.Ordering == "base",
@@ -411,6 +414,18 @@ internal static class ModRuntime
                 ?? policy.Profile.BoundedOffensiveRefinementPortfolio,
             StopPortfolioAtHpTarget = options.StopPortfolioAtHpTarget ?? policy.Profile.StopPortfolioAtHpTarget,
         } };
+        SearchOutcomeValueModel? outcomeModel = options.OutcomeValueModelPath != null
+            ? SearchOutcomeValueModel.Load(JsonSerializer.Deserialize<SearchOutcomeValueModel.Document>(
+                File.ReadAllText(options.OutcomeValueModelPath))!)
+            : options.CollectOutcomeValues ? new() : null;
+        if (outcomeModel != null)
+        {
+            if (policy.MaxDegreeOfParallelism != 1)
+                throw new InvalidOperationException("Outcome valuation research currently requires --dop 1.");
+            policy = policy with { ObjectiveValueModel = outcomeModel };
+            File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-context.json"),
+                JsonSerializer.Serialize(SearchOutcomeContext.Capture(root.ForkSimulator(), root.PlayerIdentity)));
+        }
         using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0
             ? new OrderingObservations(options.OutputDirectory, options.OrderingObservationLimit,
                 options.OrderingWatchedStatesPath) : null;
@@ -498,6 +513,9 @@ internal static class ModRuntime
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
         orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);
+        if (options.CollectOutcomeValues && outcomeModel != null)
+            File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-rows.json"),
+                JsonSerializer.Serialize(outcomeModel.ExportRows()));
         HarnessLog.Trace("solved");
         watch.Stop();
         File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new

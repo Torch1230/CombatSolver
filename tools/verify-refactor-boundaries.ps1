@@ -651,6 +651,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",
     "CombatBeamSolver.NoveltySearch.cs",
+    "CombatBeamSolver.ObjectiveRetention.cs",
     "CombatBeamSolver.Transpositions.cs",
     "CombatBeamSolver.OrderedMutationRetention.cs",
     "CombatBeamSolver.ParallelExpansion.cs",
@@ -1751,6 +1752,17 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
     if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch 'SharedEvidence' -Quiet) {
         $violations.Add("Shared evidence cannot become final policy or exact dominance: $file")
     }
+}
+
+foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
+    foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current')) {
+        if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
+            $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
+        }
+    }
+}
+if (Get-ChildItem (Join-Path $repositoryRoot 'src/Runtime') -Filter '*.cs' -Recurse | Select-String 'UseObjectiveSearch\s*=\s*true' -List) {
+    $violations.Add('Unvalidated outcome valuation must not be enabled by Runtime.')
 }
 
 if ($violations.Count -gt 0) {

@@ -18,6 +18,8 @@ internal static class Program
 
     private static int Main(string[] rawArgs)
     {
+        if (rawArgs.Length == 3 && rawArgs[0] == "--fit-outcome-values")
+            return OutcomeValueTraining.Run(rawArgs[1], rawArgs[2]);
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-shared-evidence")
             return SharedEvidenceChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-cache")
@@ -361,6 +363,10 @@ internal sealed record HarnessOptions
           --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
           --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
           --automatic-search    统一自动搜索（Coordinator；不能叠加旧模式或续搜实验）
+          --objective-search    研究：使用结果预测排序（需模型、DOP 1；尚未通过替代验收）
+          --outcome-value-model <p>  加载与游戏/特征版本匹配的结果预测森林
+          --collect-outcome-values   导出已见胜利的后续战损标签与原始上下文（DOP 1）
+          --verify-outcome-context   笔尖夹具：验证根/分支隔离及费用与计数可观测性
           --no-shared-evidence   仅供对照：关闭统一搜索的证据共享与回传
           --novelty-portfolio    旧多策略探索对照（Coordinator；区别于 --adaptive-novelty）
           --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
@@ -418,6 +424,10 @@ internal sealed record HarnessOptions
     /// <summary>开宽度组合（协调器的组合成员通道）；Evaluate 模式下没有意义。</summary>
     public bool UsePortfolio { get; init; }
     public bool UseAutomaticSearch { get; init; }
+    public bool UseObjectiveSearch { get; init; }
+    public bool CollectOutcomeValues { get; init; }
+    public bool VerifyOutcomeContext { get; init; }
+    public string? OutcomeValueModelPath { get; init; }
     public bool DisableSharedEvidence { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
     /// <summary>消融：丢掉只带基线宽度、不带排序修饰的组合成员，少跑一次真实搜索。</summary>
@@ -481,7 +491,11 @@ internal sealed record HarnessOptions
         string ordering = "baseline";
         int outcomeProbes = 0;
         bool selectiveOutcomeProbes = false;
+        bool collectOutcomeValues = false;
+        bool verifyOutcomeContext = false;
+        string? outcomeValueModelPath = null;
         bool useAutomaticSearch = false;
+        bool useObjectiveSearch = false;
         bool disableSharedEvidence = false;
         string? rankingModelPath = null;
         bool continuousThreatRanking = false;
@@ -533,6 +547,10 @@ internal sealed record HarnessOptions
                 case "--search-mode": searchMode = Value(); break;
                 case "--use-portfolio": usePortfolio = true; break;
                 case "--automatic-search": useAutomaticSearch = true; break;
+                case "--collect-outcome-values": collectOutcomeValues = true; break;
+                case "--verify-outcome-context": verifyOutcomeContext = true; break;
+                case "--outcome-value-model": outcomeValueModelPath = Path.GetFullPath(Value()); break;
+                case "--objective-search": useObjectiveSearch = true; break;
                 case "--no-shared-evidence": disableSharedEvidence = true; break;
                 case "--novelty-portfolio": useNoveltyPortfolio = true; break;
                 case "--no-plain-baseline": noPlainBaseline = true; break;
@@ -581,6 +599,15 @@ internal sealed record HarnessOptions
                 default: throw new ArgumentException($"未知选项 {key}。");
             }
         }
+        if (useObjectiveSearch && (outcomeValueModelPath == null || collectOutcomeValues
+            || searchMode != "Coordinator" || potionPolicy != "Disabled" || dop != 1
+            || useAutomaticSearch || usePortfolio || useNoveltyPortfolio || rankingModelPath != null
+            || ordering != "baseline" || outcomeProbes != 0))
+            throw new ArgumentException("--objective-search requires a fitted model, Coordinator, Disabled potions, DOP 1 and no other search experiment.");
+        if (outcomeValueModelPath != null && !useObjectiveSearch)
+            throw new ArgumentException("--outcome-value-model requires --objective-search.");
+        if (collectOutcomeValues && dop != 1)
+            throw new ArgumentException("--collect-outcome-values requires --dop 1.");
         if (milestone is not ("M1" or "M2"))
             throw new ArgumentException("--milestone 只接受 M1 或 M2。");
         if (profile is not ("Low" or "Medium" or "High" or "VeryHigh" or "Custom"))
@@ -677,6 +704,10 @@ internal sealed record HarnessOptions
             SearchMode = searchMode,
             UsePortfolio = usePortfolio,
             UseAutomaticSearch = useAutomaticSearch,
+            UseObjectiveSearch = useObjectiveSearch,
+            CollectOutcomeValues = collectOutcomeValues,
+            VerifyOutcomeContext = verifyOutcomeContext,
+            OutcomeValueModelPath = outcomeValueModelPath,
             DisableSharedEvidence = disableSharedEvidence,
             UseNoveltyPortfolio = useNoveltyPortfolio,
             NoPlainBaselineMember = noPlainBaseline,

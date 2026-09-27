@@ -149,6 +149,20 @@ internal sealed partial class CombatBeamSolver
 
     private List<SearchNode> Prune(IEnumerable<SearchNode> nodes)
     {
+        if (policy.UseObjectiveSearch)
+        {
+            List<SearchNode> objectivePool = nodes.ToList();
+            int boundary = ObserveSearchPathBoundaryInput(objectivePool,
+                SearchPathObservationStage.PruneInput, "objective_input");
+            var observer = CreateGlobalRetentionObserver(objectivePool, boundary);
+            var selected = RetainObjectives(objectivePool, _profile.BeamWidth);
+            observer?.Invoke(new(objectivePool, [], [], selected, _profile.BeamWidth,
+                _profile.BeamWidth, null, 0, null, null, _ => 0));
+            if (observer != null)
+                ObserveSearchPathRetentionPool(selected, SearchPathObservationStage.RetentionPoolFinal,
+                    "objective_final", boundary);
+            return selected;
+        }
         SearchMeasurement measurement = _run.Performance.Begin();
         try
         {
@@ -236,6 +250,8 @@ internal sealed partial class CombatBeamSolver
                 hasCycleExitWork,
                 cycleRegionTransaction);
             List<SearchNode> bounded = ApplyPrimaryIncumbentBound(finalized);
+            if (policy.ObjectiveValueModel is { } observerModel)
+                foreach (var observed in bounded) observerModel.ObserveState(observed, _player);
             // Emit all watched final aliases, after every portfolio and the incumbent.
             // The paired value events avoid equating a `with` clone with a dropped route.
             ObserveSearchPathBoundary(

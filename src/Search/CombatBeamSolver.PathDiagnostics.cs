@@ -5,6 +5,7 @@ internal sealed partial class CombatBeamSolver
 {
     private void ObserveCompletedOutcome(SearchNode node, SolverInterimResult quality)
     {
+        policy.ObjectiveValueModel?.ObserveVictory(node, _player);
         SearchCompletedOutcomeObserver? observer = policy.Diagnostics.CompletedOutcomeObserver;
         if (observer == null || !observer.WantsObservation()) return;
         PlanAction? first = null;

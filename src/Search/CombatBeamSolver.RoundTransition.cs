@@ -134,7 +134,7 @@ internal sealed partial class CombatBeamSolver
             CardChoiceSpec spec = TurnStartChoiceSupport.BuildPendingSpec(
                 (CombatPredictionSimulator)probe.Simulator, combat, _player);
             var choices = CardChoiceSupport.BuildChoices(spec, displayNames,
-                _profile.MaxPileChoiceBranchesPerAction, _profile.MaxHandChoiceBranchesPerAction);
+                _profile.MaxPileChoiceBranchesPerAction, _profile.MaxHandChoiceBranchesPerAction, useHeuristicScores: !policy.UseObjectiveSearch);
             int checkedBranches = 0;
             // Revisit the first sibling after all other writes to expose shared mutable state.
             foreach (var choice in choices.Concat(choices.Take(1)))

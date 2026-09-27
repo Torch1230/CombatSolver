@@ -33,7 +33,7 @@ internal sealed partial class CombatBeamSolver
                 try
                 {
                     CardChoiceSpec spec = BuildPrimaryCardChoiceSpec(probe)!;
-                    choices = CardChoiceSupport.BuildChoices(spec, displayNames, 32, 32).ToArray();
+                    choices = CardChoiceSupport.BuildChoices(spec, displayNames, 32, 32, useHeuristicScores: !policy.UseObjectiveSearch).ToArray();
                 }
                 finally { probe.ReleaseSimulator(); }
                 foreach (PlanCardChoice choice in choices.Concat(choices.Take(1)))

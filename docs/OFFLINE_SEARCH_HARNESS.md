@@ -196,3 +196,9 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 自动调度对照：`--search-mode Coordinator --automatic-search` 运行当前玩家入口，不叠加旧 `--novelty-portfolio`、`--adaptive-novelty` 或 `--outcome-probes`。不指定此参数仍复现历史布局，旧模式开关只存在于测试工具。`python tools/OutcomeValuation/run.py --out <目录> --automatic --seconds 150 --case attack_or_block --case focus_investment --case random-regent` 在相同配置预算下比较旧宽度+新颖性组合与自动入口；旧能力前缀有额外预算，实际工作量不相同。见[报告](strategy/automatic-search-20260927.md)。
 
 共享证据消融：同一 `--search-mode Coordinator --automatic-search` 命令加 `--no-shared-evidence`，仅关闭跨成员跨回合探测复用和终局见证回传。根、节点/时间预算及最终政策不变，开关不出现在玩家设置。配置写入 `searchPolicy.DisableSharedEvidenceForTesting`；日志的 `ranked_candidates` 是见证命中数，`reordered_candidates` 才是实际换位次数。当前反馈只用于既有 Beam 完全平局，未知/终局位置保持。见[合并后验收与失败对照](strategy/shared-search-evidence-20260927.md)。
+
+## 上下文结果估值研究
+
+`--collect-outcome-values --dop 1` 输出 `outcome-context.json` 与已见完整胜利的 `outcome-rows.json`；未完成/被裁剪状态不标失败。使用 `--fit-outcome-values <路径数组JSON> <模型JSON>` 拟合无需游戏启动的32棵回归树。`tools/OutcomeValuation/train.py` 对采集加拟合设置至多1800秒硬进程时限。
+
+`--objective-search --outcome-value-model <模型JSON> --search-mode Coordinator --potion-policy Disabled --dop 1` 仅用于替代排序实验，不叠加自动搜索或旧组合参数。它未通过默认替代验收，Runtime不会启用。笔尖计数8夹具可以追加 `--verify-outcome-context`，验证实机后续变化隔离、Fork独立及分支费用/计数可见性。具体输入、失败回归、内存和泛化限制见[报告](strategy/contextual-outcome-values-20260927.md)。

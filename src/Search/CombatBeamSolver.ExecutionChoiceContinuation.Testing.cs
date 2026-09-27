@@ -43,7 +43,7 @@ internal sealed partial class CombatBeamSolver
                     options = spec.Options.Select(CardChoiceSupport.ChoiceCardKey).ToArray(),
                     sources = spec.SourceCards.Select(CardChoiceSupport.ChoiceCardKey).ToArray(),
                     choices = CardChoiceSupport.BuildChoices(spec, displayNames,
-                        _profile.MaxPileChoiceBranchesPerAction, _profile.MaxHandChoiceBranchesPerAction),
+                        _profile.MaxPileChoiceBranchesPerAction, _profile.MaxHandChoiceBranchesPerAction, useHeuristicScores: !policy.UseObjectiveSearch),
                 });
             }
             string expected = Pending(full), actual = Pending(resumed);
@@ -97,7 +97,7 @@ internal sealed partial class CombatBeamSolver
                     ?? throw new InvalidOperationException("Search execution fixture lost its pending request.");
                 using var checkpoint = TakeExecutionChoiceCheckpoint(setup ? null : parent, setup ? null : action, seed, setupChoices)
                     ?? throw new InvalidOperationException($"Search execution fixture did not capture {request.SourceId} at layer {layers}.");
-                var choices = CardChoiceSupport.BuildChoices(request.Spec!, displayNames, 12, 12)
+                var choices = CardChoiceSupport.BuildChoices(request.Spec!, displayNames, 12, 12, useHeuristicScores: !policy.UseObjectiveSearch)
                     .Select(choice => choice with { SourceId = request.SourceId, ContextId = request.ContextId, Timing = request.Timing }).ToArray();
                 if (choices.Length == 0) throw new InvalidOperationException("Search execution fixture has no branches.");
                 if (request.SourceId == "GAMBLING_CHIP") choices = choices.OrderByDescending(choice => choice.Cards.Count).ToArray();

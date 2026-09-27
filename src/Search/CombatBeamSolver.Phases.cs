@@ -20,6 +20,8 @@ internal sealed partial class CombatBeamSolver
 {
     public SolverResult Solve()
     {
+        if (policy.UseObjectiveSearch)
+            policy = policy with { NoveltySearch = null };
         SearchRequestWorkTotals? requestWorkTotals = policy.RequestWorkTotals;
         long startedTimestamp = requestWorkTotals == null ? 0 : Stopwatch.GetTimestamp();
         long allocatedBytesAtStart = requestWorkTotals == null
@@ -1100,6 +1102,7 @@ internal sealed partial class CombatBeamSolver
             if (compatibleRoot == null)
                 continue;
             root = compatibleRoot;
+            policy.ObjectiveValueModel?.ObserveState(root, _player);
             frontier.Add(root);
             if (_run.Transpositions.TryGetValue(root.StateKey, out TranspositionFrontier? existing))
                 existing.TryAccept(new TranspositionLabel(

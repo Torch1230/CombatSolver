@@ -1,4 +1,6 @@
 # CombatSolver 文档导航
+
+- [角色与遗物上下文估值实验](strategy/contextual-outcome-values-20260927.md)：非神经网络森林、成对触发状态、训练成本和未通过的替代验收。
 - [搜索证据共享与回传](strategy/shared-search-evidence-20260927.md)：有界跨策略探测复用、沿途估值反馈与验证范围。
 
 - [统一自动搜索](strategy/automatic-search-20260927.md)：合并玩家入口、共享主搜索预算、复用终局见证及固定根成本取舍。

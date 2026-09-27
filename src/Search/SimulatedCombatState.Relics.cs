@@ -286,6 +286,25 @@ internal sealed partial class SimulatedCombatState
         }
     }
 
+    // A categorical observation of the existing branch-owned state. Reuse the
+    // semantic readers instead of maintaining another relic effect/score table.
+    internal StateFingerprint CaptureRelicObservation(
+        CombatPredictionSimulator simulator, RelicModel relic)
+    {
+        StateFingerprintBuilder key = new();
+        key.Add(relic.Id.Entry);
+        key.Add(relic.IsMelted);
+        if (IsStatefulRelic(relic))
+        {
+            StatefulRelicState state = PeekStatefulRelicState(relic);
+            key.Add(state.Current);
+            key.Add(state.Previous);
+        }
+        if (RelicPredictionStateSupport.IsTracked(relic))
+            RelicPredictionStateSupport.AppendFingerprint(ref key, simulator, relic);
+        return key.Finish();
+    }
+
     private StatefulRelicState GetStatefulRelicState(RelicModel relic)
     {
         if (_statefulRelicStates?.TryGetValue(relic, out StatefulRelicState state) == true)

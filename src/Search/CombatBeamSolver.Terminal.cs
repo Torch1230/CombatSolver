@@ -301,7 +301,7 @@ internal sealed partial class CombatBeamSolver
     }
 
     private double ApplySoldHpPenalty(double score, int futureSoldHp)
-        => score + futureSoldHp * SoldHpPenalty();
+        => policy.UseObjectiveSearch ? 0 : score + futureSoldHp * SoldHpPenalty();
 
     private static double SoldHpPenalty()
         => SolverWeights.SoldHpPenalty;

@@ -610,6 +610,7 @@ expected_beam_files=(
     CombatBeamSolver.FinalPlanOrdering.cs
     CombatBeamSolver.Models.cs
     CombatBeamSolver.NoveltySearch.cs
+    CombatBeamSolver.ObjectiveRetention.cs
     CombatBeamSolver.Transpositions.cs
     CombatBeamSolver.OrderedMutationRetention.cs
     CombatBeamSolver.ParallelExpansion.cs
@@ -1359,6 +1360,17 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
         forbid_fixed "$search_root/$file" "$token" 'intermediate estimate must not become final policy or exact dominance:'
     done
 done
+
+for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs CombatBeamSolver.ObjectiveRetention.cs; do
+    for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current'; do
+        if contains_fixed "$search_root/$file" "$forbidden"; then
+            add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
+        fi
+    done
+done
+if rg --quiet 'UseObjectiveSearch[[:space:]]*=[[:space:]]*true' "$repository_root/src/Runtime"; then
+    add_violation 'Unvalidated outcome valuation must not be enabled by Runtime.'
+fi
 
 if ((${#violations[@]} > 0)); then
     printf '%s\n' "${violations[@]}" >&2

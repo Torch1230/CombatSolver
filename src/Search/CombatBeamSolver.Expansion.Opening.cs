@@ -988,7 +988,7 @@ internal sealed partial class CombatBeamSolver
                     spec,
                     displayNames,
                     _profile.MaxPileChoiceBranchesPerAction,
-                    _profile.MaxHandChoiceBranchesPerAction)
+                    _profile.MaxHandChoiceBranchesPerAction, useHeuristicScores: !policy.UseObjectiveSearch)
                 .OrderByDescending(choice => choice.Cards.Count)
                 .FirstOrDefault();
             return fullRedraw == null

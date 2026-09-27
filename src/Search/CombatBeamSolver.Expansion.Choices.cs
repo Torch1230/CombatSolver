@@ -265,7 +265,7 @@ internal sealed partial class CombatBeamSolver
                 choiceSpec,
                 displayNames,
                 _profile.MaxPileChoiceBranchesPerAction,
-                _profile.MaxHandChoiceBranchesPerAction);
+                _profile.MaxHandChoiceBranchesPerAction, useHeuristicScores: !policy.UseObjectiveSearch);
             if (action.ReplayCount > 0 && builtChoices.Count > 1)
             {
                 int choiceEvents = checked(action.ReplayCount + 1);
@@ -914,7 +914,7 @@ internal sealed partial class CombatBeamSolver
             spec,
             displayNames,
             _profile.MaxPileChoiceBranchesPerAction,
-            _profile.MaxHandChoiceBranchesPerAction);
+            _profile.MaxHandChoiceBranchesPerAction, useHeuristicScores: !policy.UseObjectiveSearch);
         int semanticBranchCount =
             CardChoiceSupport.IsIdentityChangingPersistentChoiceEffect(spec.Effect)
                 ? CardChoiceSupport.CountSemanticChoices(branches)
@@ -933,7 +933,7 @@ internal sealed partial class CombatBeamSolver
             spec,
             displayNames,
             _profile.MaxPileChoiceBranchesPerAction,
-            _profile.MaxHandChoiceBranchesPerAction);
+            _profile.MaxHandChoiceBranchesPerAction, useHeuristicScores: !policy.UseObjectiveSearch);
         return CardChoiceSupport.IsIdentityChangingPersistentChoiceEffect(spec.Effect)
             ? CardChoiceSupport.CountSemanticChoices(branches)
             : branches.Count;
@@ -1133,7 +1133,7 @@ internal sealed partial class CombatBeamSolver
                 spec,
                 displayNames,
                 _profile.MaxPileChoiceBranchesPerAction,
-                _profile.MaxHandChoiceBranchesPerAction);
+                _profile.MaxHandChoiceBranchesPerAction, useHeuristicScores: !policy.UseObjectiveSearch);
             bool identityChangingLayer =
                 CardChoiceSupport.IsIdentityChangingPersistentChoiceEffect(spec.Effect);
             branches = CardChoiceSupport.TakeChoicesWithIdentityOccurrenceReserve(

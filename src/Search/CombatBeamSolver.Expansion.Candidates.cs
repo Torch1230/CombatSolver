@@ -83,6 +83,9 @@ internal sealed partial class CombatBeamSolver
         SearchNode parent,
         List<ActionCandidate> candidates)
     {
+        // Every legal action reaches the objective frontier; card utility tables do
+        // not choose its action set. Exact-state transpositions remain active.
+        if (policy.UseObjectiveSearch) return candidates.ToList();
         if (_developmentStrategy == null)
             candidates.Sort(static (left, right) =>
             {
@@ -480,6 +483,7 @@ internal sealed partial class CombatBeamSolver
         List<ActionCandidate> candidates,
         ActionCandidate candidate)
     {
+        if (policy.UseObjectiveSearch) { candidates.Add(candidate); return; }
         for (int index = candidates.Count - 1; index >= 0; index--)
         {
             ActionCandidate current = candidates[index];

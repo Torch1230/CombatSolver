@@ -217,8 +217,11 @@ internal static partial class CardChoiceSupport
         CardChoiceSpec spec,
         SolverDisplayNames displayNames,
         int maxPileBranches,
-        int maxHandBranches)
+        int maxHandBranches,
+        bool useHeuristicScores = true)
     {
+        if (!useHeuristicScores)
+            return BuildObjectiveChoices(spec, displayNames, maxPileBranches, maxHandBranches);
         if (spec.MaxCount < spec.MinCount)
             return [];
         if (spec.IsImplicitAllSelection)
@@ -327,6 +330,53 @@ internal static partial class CardChoiceSupport
                 ToTokens(selection, spec.Options, spec.SourceCards, displayNames.Card),
                 ContextId: spec.ContextId))
             .ToList();
+    }
+
+    // Structural enumeration does not consult CardValue, RemovalPriority or
+    // ChoicePriority. Keep each physical occurrence available; exact replay and
+    // transpositions, rather than estimated card worth, establish equivalence.
+    private static IReadOnlyList<PlanCardChoice> BuildObjectiveChoices(
+        CardChoiceSpec spec, SolverDisplayNames displayNames, int pileLimit, int handLimit)
+    {
+        if (spec.MaxCount < spec.MinCount) return [];
+        if (spec.IsImplicitAllSelection)
+            return [new(spec.Effect, spec.SourcePile,
+                ToTokens(spec.Options, spec.Options, spec.SourceCards, displayNames.Card), ContextId: spec.ContextId)];
+        int limit = spec.SourcePile == PileType.Hand ? handLimit : pileLimit;
+        int min = Math.Min(spec.MinCount, spec.Options.Count);
+        int max = Math.Min(spec.MaxCount, spec.Options.Count);
+        if (max == 1) limit = Math.Max(limit, spec.Options.Count + (min == 0 ? 1 : 0));
+        List<PredictedCard> ordered = spec.Options.OrderBy(card =>
+        {
+            StateFingerprintBuilder key = new(); key.Add(ChoiceCardKey(card));
+            return key.Finish().First;
+        }).ToList();
+        int[] distinctOccurrences = new int[ordered.Count];
+        Array.Fill(distinctOccurrences, -1);
+        List<List<IReadOnlyList<PredictedCard>>> bySize = [];
+        List<PredictedCard> combination = [];
+        for (int take = min; take <= max; take++)
+        {
+            List<IReadOnlyList<PredictedCard>> group = [];
+            BuildCombinations(ordered, distinctOccurrences, take, 0, combination, group, 0, limit);
+            bySize.Add(group);
+        }
+        List<PlanCardChoice> choices = [];
+        int effectiveLimit = Math.Min(Math.Max(limit, bySize.Count), spec.MaxBranches ?? int.MaxValue);
+        for (int row = 0; choices.Count < effectiveLimit; row++)
+        {
+            bool added = false;
+            foreach (var group in bySize)
+            {
+                if (row >= group.Count) continue;
+                choices.Add(new(spec.Effect, spec.SourcePile,
+                    ToTokens(group[row], spec.Options, spec.SourceCards, displayNames.Card), ContextId: spec.ContextId));
+                added = true;
+                if (choices.Count == effectiveLimit) break;
+            }
+            if (!added) break;
+        }
+        return choices;
     }
 
     internal static bool IsIdentityChangingPersistentChoiceEffect(PlanChoiceEffect effect)

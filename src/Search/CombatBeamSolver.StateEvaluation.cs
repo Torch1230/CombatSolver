@@ -529,7 +529,7 @@ internal sealed partial class CombatBeamSolver
             potionInventoryKey,
             boundary);
         return new SimulationSnapshot(
-            score,
+            policy.UseObjectiveSearch ? 0 : score,
             key,
             unorderedPileKey,
             cycleShapeKey,

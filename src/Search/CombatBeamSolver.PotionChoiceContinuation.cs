@@ -87,7 +87,7 @@ internal sealed partial class CombatBeamSolver
             }
             spec = PotionChoiceSupport.GetSpec(source, potion);
             choices = CardChoiceSupport.BuildChoices(spec, displayNames,
-                    _profile.MaxPileChoiceBranchesPerAction, _profile.MaxHandChoiceBranchesPerAction)
+                    _profile.MaxPileChoiceBranchesPerAction, _profile.MaxHandChoiceBranchesPerAction, useHeuristicScores: !policy.UseObjectiveSearch)
                 .Select(choice => choice with { SourceId = potion.Id.Entry }).Cast<PlanCardChoice?>().ToList();
             probe?.ReleaseSimulator(); probe = null;
             if (!generates && choices.Count >= 2)

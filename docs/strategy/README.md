@@ -1,5 +1,7 @@
 # 策略与搜索研究
 
+- [角色与遗物上下文估值实验](contextual-outcome-values-20260927.md)：原始分支特征、结果监督与失败边界。
+
 [返回文档导航](../README.md)
 
 当前搜索职责见 [架构地图](../ARCHITECTURE.md)，实际测试与未验证范围见 [测试矩阵](../TEST_MATRIX.md)。
