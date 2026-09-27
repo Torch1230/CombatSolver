@@ -1,5 +1,6 @@
 # CombatSolver 文档导航
 
+- [扩大旧策略数据池](strategy/expanded-classic-pool-20260928.md)：516增至796根，固定树模型的早期验证排序未改善，没有完整重拟合或实战。
 - [有界拟合强度](strategy/bounded-fitting-strength-20260928.md)：固定图增加树深度或步长，训练准确率上升，候选实战仍退化，未启用。
 - [完整长战斗牌组补采](strategy/long-fight-curriculum-20260928.md)：100场成对补采全部成功，44对用于训练；定向组验证指标改善，实战仍有一场退化，未启用。
 - [回合等权树模型](strategy/turn-balanced-trees-20260928.md)：316,629对固定偏好只改回合权重，早期损失改善但排序准确率未过门槛。
