@@ -82,6 +82,14 @@ class OvernightContracts(unittest.TestCase):
             different_death = {**row, 'Outcome': {**row['Outcome'], 'EnemyHp': 99}, 'RemainingActions': 25}
             path.write_text(json.dumps([row, different_death]))
             self.assertEqual(witnessed_rows(path), (2, False), 'Two deaths do not supply a preference')
+            row['FeatureSchema'] = 7
+            path.write_text(json.dumps([row]))
+            self.assertEqual(witnessed_rows(path), (1, False), 'Current raw observations support the same label census')
+            row['FeatureSchema'] = 8
+            path.write_text(json.dumps([row]))
+            with self.assertRaises(ValueError):
+                witnessed_rows(path)
+            row['FeatureSchema'] = 7
             row['Features']['hp'] = float('nan')
             path.write_text(json.dumps([row]))
             with self.assertRaises(ValueError):

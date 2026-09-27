@@ -71,6 +71,18 @@ internal static class OutcomeContextChecks
             string strength = petCombat.EffectivePowers().First(p => p is StrengthPower).Id.Entry;
             Check(summoned["power/osty/" + strength] == 3, "pet powers use pet ownership");
             Check(summoned["power/enemy/0/" + strength] == 4, "enemy powers align with body roster index");
+            Check(summoned[SearchOutcomeContext.EnemyPowerTotalPrefix + strength] == 4,
+                "enemy totals exclude the pet's identical power");
+            var legacy = summoned.Where(p => !p.Key.StartsWith(SearchOutcomeContext.EnemyPowerTotalPrefix,
+                StringComparison.Ordinal)).ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
+            SearchOutcomeContext.AddLegacyEnemyPowerTotals(legacy);
+            Check(Equal(legacy, summoned), "legacy row upgrade exactly reproduces native enemy totals");
+            string totalName = SearchOutcomeContext.EnemyPowerTotalPrefix + strength;
+            Dictionary<string, int> totalColumn = new() { [totalName] = 0 };
+            double[] totalValue = [double.NaN];
+            SearchOutcomeContext.CaptureSelected(petFork, player, totalColumn, totalValue,
+                SearchOutcomeContext.RequiredPrefixes(totalColumn.Keys));
+            Check(totalValue[0] == 4, "aggregate-only inference does not require a positional power column");
             Check(Equal(before, SearchOutcomeContext.Capture(parent, player)), "pet mutations do not change parent");
             var names = summoned.Keys.ToDictionary(name => name, _ => 0, StringComparer.Ordinal);
             int column = 0;

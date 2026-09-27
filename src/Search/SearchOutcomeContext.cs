@@ -8,6 +8,31 @@ namespace CombatSolver;
 // Named sparse columns avoid merging unrelated identities into small hash buckets.
 internal static class SearchOutcomeContext
 {
+    internal const string EnemyPowerTotalPrefix = "power/enemies/";
+
+    // A lossless addition to schema-6 observations: keep every original column
+    // and expose the same power across roster positions to the learner.
+    internal static void AddLegacyEnemyPowerTotals(Dictionary<string, double> values)
+    {
+        Dictionary<string, double> totals = new(StringComparer.Ordinal);
+        foreach (var (name, amount) in values)
+        {
+            if (name.StartsWith(EnemyPowerTotalPrefix, StringComparison.Ordinal))
+                throw new InvalidDataException("Legacy observations already contain enemy power totals.");
+            const string prefix = "power/enemy/";
+            if (!name.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            int separator = name.IndexOf('/', prefix.Length);
+            if (separator < 0 || separator == name.Length - 1
+                || !int.TryParse(name.AsSpan(prefix.Length, separator - prefix.Length),
+                    System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int slot)
+                || slot < 0)
+                throw new InvalidDataException("Invalid legacy enemy power column.");
+            string total = EnemyPowerTotalPrefix + name[(separator + 1)..];
+            totals[total] = totals.GetValueOrDefault(total) + amount;
+        }
+        foreach (var (name, amount) in totals) values.Add(name, amount);
+    }
+
     internal static Dictionary<string, double> Capture(CombatPredictionSimulator simulator, Player player)
     {
         Dictionary<string, double> values = new(StringComparer.Ordinal);
@@ -136,7 +161,12 @@ internal static class SearchOutcomeContext
                 : "other/" + power.Owner?.CombatId;
             for (int index = 0; index < combat.KnownEnemies.Count; index++)
                 if (ReferenceEquals(power.Owner, combat.KnownEnemies[index]))
-                { owner = "enemy/" + index; break; }
+                {
+                    owner = "enemy/" + index;
+                    if (x.WantsPrefix(EnemyPowerTotalPrefix))
+                        Add(EnemyPowerTotalPrefix + power.Id.Entry, power.Amount);
+                    break;
+                }
             Add("power/" + owner + "/" + power.Id.Entry, power.Amount);
         }
         for (int index = 0; index < combat.KnownEnemies.Count; index++)

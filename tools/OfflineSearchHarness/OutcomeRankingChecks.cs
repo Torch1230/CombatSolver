@@ -49,7 +49,7 @@ internal static class OutcomeRankingChecks
             a with { Outcome = a.Outcome with { Won = false } },
             a with { Outcome = a.Outcome with { Survives = false } },
             a with { Groups = [] }, a with { Features = new() { ["x"] = double.NaN } },
-            a with { FeatureSchema = 0 }, a with { FeatureSchema = 5 },
+            a with { FeatureSchema = 0 }, a with { FeatureSchema = 5 }, a with { FeatureSchema = 6 },
         }) Reject(() => new Model().Fit([[invalid, b]]), "invalid/unknown label rejected");
 
         var loss = b with { Outcome = b.Outcome with { Won = false, Survives = false }, CompletedDefeat = true };
@@ -81,6 +81,7 @@ internal static class OutcomeRankingChecks
         Reject(() => Model.Load(document with { Schema = 3 }), "old label schema rejected");
         Reject(() => Model.Load(document with { Schema = 5 }), "old power-owner schema rejected");
         Reject(() => Model.Load(document with { Schema = 6 }), "old forest-only model schema rejected");
+        Reject(() => Model.Load(document with { Schema = 7 }), "old enemy-position model schema rejected");
         Reject(() => Model.Load(document with { LinearWeights = [1] }), "misaligned linear weights rejected");
         Reject(() => Model.Load(document with { LinearWeights = [0, 0, double.NaN] }), "non-finite linear weights rejected");
         Reject(() => Model.Load(document with { GameMvid = Guid.Empty }), "game version mismatch rejected");
@@ -147,6 +148,34 @@ internal static class OutcomeRankingChecks
         try
         {
             string one = Path.Combine(directory, "one.json"), two = Path.Combine(directory, "two.json");
+            string upgradedInput = Path.Combine(directory, "upgrade-input.json");
+            var legacyPowerRow = a with { FeatureSchema = 6, Features = new()
+                { ["power/enemy/0/TEST"] = 2, ["power/enemy/9/TEST"] = 5,
+                    ["power/player/TEST"] = 100, ["power/osty/TEST"] = 200 } };
+            File.WriteAllText(one, JsonSerializer.Serialize(new[] { legacyPowerRow }));
+            void WriteUpgrade(string method) => File.WriteAllText(upgradedInput,
+                JsonSerializer.Serialize(new { schemaVersion = 1, maximumRowsPerRoot = 64,
+                    roots = new[] { one }, featureUpgrade = method }));
+            WriteUpgrade("enemy-power-totals-v1");
+            var upgraded = OutcomeValueTraining.ReadRoots(upgradedInput)[0].Rows.Single();
+            Check(upgraded.FeatureSchema == Model.FeatureSchema && upgraded.Features["power/enemies/TEST"] == 7
+                && legacyPowerRow.Features.All(p => upgraded.Features[p.Key] == p.Value)
+                && upgraded.Outcome == legacyPowerRow.Outcome && upgraded.RemainingActions == legacyPowerRow.RemainingActions,
+                "explicit legacy projection adds enemy totals without changing observations or labels");
+            File.WriteAllText(one, JsonSerializer.Serialize(new[] { upgraded }));
+            Check(OutcomeValueTraining.ReadRoots(upgradedInput)[0].Rows.Single().Features["power/enemies/TEST"] == 7,
+                "explicit mixed-corpus upgrade leaves current observations unchanged");
+            WriteUpgrade("unknown");
+            Reject(() => OutcomeValueTraining.ReadRoots(upgradedInput), "unknown feature conversions are rejected");
+            WriteUpgrade("enemy-power-totals-v1");
+            File.WriteAllText(one, JsonSerializer.Serialize(new[] { legacyPowerRow with { Features = new()
+                { ["power/enemies/TEST"] = 7 } } }));
+            Reject(() => OutcomeValueTraining.ReadRoots(upgradedInput), "legacy rows cannot already contain aggregate columns");
+            File.WriteAllText(one, JsonSerializer.Serialize(new[] { legacyPowerRow with { Features = new()
+                { ["power/enemy/not-a-slot/TEST"] = 7 } } }));
+            Reject(() => OutcomeValueTraining.ReadRoots(upgradedInput), "malformed legacy enemy ownership is rejected");
+            File.WriteAllText(one, JsonSerializer.Serialize(new[] { legacyPowerRow with { Outcome = a.Outcome with { Score = 1 } } }));
+            Reject(() => OutcomeValueTraining.ReadRoots(upgradedInput), "feature upgrading never excuses an invalid original outcome");
             File.WriteAllText(one, JsonSerializer.Serialize(new[] { a }));
             File.WriteAllText(two, JsonSerializer.Serialize(new[] { b }));
             string inputs = Path.Combine(directory, "inputs.json");
