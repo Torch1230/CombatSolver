@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [联合稀疏线性排序](strategy/joint-sparse-ranking-20260928.md)：共用原偏好图的凸拟合与精确零系数，留出改善但实际搜索仍有退化，未启用。
+
 - [固定家族留出的数据量对照](strategy/independent-data-curve-20260928.md)：276/394/513根的留出损失小幅改善但非单调，494根完整候选仍丢失旧胜局，未启用。
 
 - [探寻打击选择风险与有效监督](strategy/seeker-choice-supervision-20260928.md)：原生复现并修复已完成选择仍被标风险的问题，重新采集受影响训练根并更新开发基线。

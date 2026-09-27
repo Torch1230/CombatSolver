@@ -1,5 +1,7 @@
 # 结果估值与小规模训练工具
 
+`sparse_fit.py` 是可选离线联合线性拟合器，使用同一C#导出图，依赖现有 `requirements-ranking.txt`。示例：`python tools/OutcomeValuation/sparse_fit.py export-directory model-directory --l1 .001 --l2 .001 --seconds 1000 --stop STOP`。正L1产生精确零系数，非负L2约束系数；两者均须有限并按隔离的完整家族选型。偏好差值RMS只使用训练侧，根内不变列保持零；输出沿用基础文档的schema与游戏身份、现有 `LinearWeights` 和零残差树，不新增运行模型或依赖。五角色合用256次/头的固定迭代协议和一个总时限，显式记录收敛状态与KKT残差；`--seconds` 仍须扣除C#导出成本。数学合同不证明战斗优势，实际候选需核对C#数值和独立开发质量。`test_sparse_fit.py` 覆盖解析梯度、已知最优解、精确零、重复对的根权重、原单位导出及失败不发布。
+
 `factor_fit.py` 是另一种离线训练后端：固定学习得到的线性项，加秩8二阶因子交互；只需 `requirements-ranking.txt` 的 NumPy/SciPy，不依赖 XGBoost。使用下方同一个 C# 导出目录，运行 `python tools/OutcomeValuation/factor_fit.py export-directory model-directory --seconds 1000 --stop STOP`。总预算仍包括导出和全部角色，`--seconds` 要扣除已用导出时间；遇到停止/超时/坏输入不发布完整模型。固定 L-BFGS-B 128 次迭代、均值偏好损失，默认 L2=.001，迭代上限并不意味着收敛。离线可显式指定非负有限 `--regularization`；应使用隔离的场景家族选型，线性基础、特征支持度和归一化也只能由内部训练侧拟合。首次完整家族留出试验见[正则化选型](../../docs/strategy/factor-regularization-selection-20260928.md)，默认值与玩家入口不变。
 
 因子只增加模型格式（schema10），原始观察保持8；宿主明确兼容无交互项的9，旧宿主拒绝10。两个外部后端共用 `ranking_data.py` 读入原 C# 偏好图，不在 Python 重建标签。用相同预测命令核对 C#，然后做独立开发战斗；首个完整交互模型仍有退化，未启用，见[实际结果](../../docs/strategy/factor-interactions-20260928.md)。`test_factor_fit.py` 覆盖解析梯度、归一化/原单位导出、情境反转、未观察列、停止及损坏输入。

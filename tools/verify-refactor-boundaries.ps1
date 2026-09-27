@@ -1784,6 +1784,8 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'document.Schema == LegacySchema && document.FactorWeights != null' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Interactions.cs'); Text = 'private double AddInteractions(float[] values, double score)' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/factor_fit.py'); Text = 'from ranking_data import derivatives, loss, read_head, read_manifest' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/sparse_fit.py'); Text = 'from ranking_data import read_head, read_manifest' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/sparse_fit.py'); Text = 'coefficients[active] = normalized / scale' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Linear.cs'); Text = 'pairs[p].Weight * probability' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'var prepared = PrepareTraining(roots, highestPolicyTierOnly);' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs'); Text = 'SearchOutcomeValueModel.PrepareTraining(' },
