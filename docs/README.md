@@ -1,5 +1,6 @@
 # CombatSolver 文档导航
 
+- [完整长战斗牌组补采](strategy/long-fight-curriculum-20260928.md)：100场成对补采全部成功，44对用于训练；定向组验证指标改善，实战仍有一场退化，未启用。
 - [回合等权树模型](strategy/turn-balanced-trees-20260928.md)：316,629对固定偏好只改回合权重，早期损失改善但排序准确率未过门槛。
 
 - [基础价值与交互联合拟合](strategy/joint-factor-ranking-20260928.md)：联合梯度和原单位合同通过，两档候选早期排序退化，未进入实战。

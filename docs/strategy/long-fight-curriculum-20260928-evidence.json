@@ -1,0 +1,3601 @@
+{
+  "study": "v62",
+  "sourceCommit": "c5f7de89",
+  "runtimeDefaultChanged": false,
+  "finalTestOpened": false,
+  "artifacts": {
+    "collection-protocol.json": {
+      "createdUtc": "2026-09-27T22:49:12.113407+00:00",
+      "seed": "engaged-long-fight-curriculum-20260928-v1",
+      "pairs": 50,
+      "trials": 100,
+      "candidatePairsSha256": "4d622eb3329ed410a925a8e427d603bf32b80f6af9eebe6202368ba9619ad907",
+      "censusScriptSha256": "b6fd4eef72d3cd24fc9b040a721ce403e3cecd6d53d3786603214b1128b87f6f",
+      "parentRule": "Classic-only roots in inner516, reliable win >=4turns. Engaged: win>=7turns and native Power played by turn3. Ordinary: remaining winners. Distinct paired parents share role, encounter family and act, chosen family-balanced then nearest ascension then fixed hash. 10pairs/role. Native Power identity from first reference table only, checked against native catalogs; no manual valuation imported.",
+      "intervention": "Retain every resolved native deck/relic/potion/upgrade/HP configuration. Only new seed; reset setupChoices=null for regenerated opening RNG. Same seed per pair. Curriculum recipes with different parents, not causal card-effect or same-root quality AB. Correlated siblings, not independent new families.",
+      "labels": "Existing risk-free completed witness authority, no hand utility. Do not filter newly collected children by win or Power activation.",
+      "search": {
+        "beam": 16,
+        "nodes": 6000,
+        "budgetMilliseconds": 12000,
+        "dop": 1,
+        "stopAtZeroLoss": false
+      },
+      "workers": 4,
+      "deadlineSeconds": 900,
+      "modSha256": "a1c767f2e788ada0e3bdbde1830e3fb032fdd42e53dfef34014864971d3d8af2",
+      "harnessSha256": "84fc3a472085162a4a262fcea326bb9e4bbd3389ef495f78add8769dda60ea8b",
+      "scriptSha256": "10d3b5b193654b90d1122b6b852704a2ed137c41cce0307397fc33639e566958",
+      "fitPlan": {
+        "baseInnerRoots": 516,
+        "baseFullRoots": 616,
+        "depth": 6,
+        "minimumLeafHessian": 3,
+        "rounds": 64,
+        "pairedEligibility": "Both arms collected with actual preferences, no exact full-root duplication. Minimum25usablepairs and >=3eachrole.",
+        "primarySelectionMetric": "Pair accuracy for later endpoint turn<=3, averaged role->family->root over unchanged internal100. Higher wins; ties lower early logloss, then baseline,ordinary,engaged. Require strict accuracy gain over baseline.",
+        "reasonForMetric": "Continue predeclared v60/v61 early ranking target; all-turn metrics remain reported. Repeated development, not final-test evidence. Strict5+10actualbattle gate retained.",
+        "fullFitGate": "One chosen augmented arm only if early accuracy strictly improves baseline. Final test remains sealed."
+      },
+      "finalTestSearch": false,
+      "runtimePromotion": false
+    },
+    "parent-census.json": {
+      "DEFECT": {
+        "engaged": 28,
+        "ordinary": 51,
+        "possibleDistinctPairs": 18,
+        "families": {
+          "CEREMONIAL_BEAST_BOSS": 10,
+          "AXEBOTS": 1,
+          "INFESTED_PRISMS_ELITE": 3,
+          "MECHA_KNIGHT_ELITE": 1,
+          "CONSTRUCT_MENAGERIE": 1,
+          "THE_LOST_AND_FORGOTTEN": 1,
+          "OVICOPTER": 1
+        }
+      },
+      "IRONCLAD": {
+        "engaged": 23,
+        "ordinary": 67,
+        "possibleDistinctPairs": 18,
+        "families": {
+          "CEREMONIAL_BEAST_BOSS": 7,
+          "INFESTED_PRISMS_ELITE": 3,
+          "SLIMED_BERSERKER": 1,
+          "MECHA_KNIGHT_ELITE": 2,
+          "OWL_MAGISTRATE": 1,
+          "CHOMPERS": 1,
+          "HUNTER_KILLER": 1,
+          "SLUMBERING_BEETLE": 1,
+          "THE_OBSCURA": 1
+        }
+      },
+      "NECROBINDER": {
+        "engaged": 23,
+        "ordinary": 44,
+        "possibleDistinctPairs": 17,
+        "families": {
+          "CEREMONIAL_BEAST_BOSS": 6,
+          "THE_LOST_AND_FORGOTTEN": 1,
+          "OWL_MAGISTRATE": 1,
+          "INFESTED_PRISMS_ELITE": 4,
+          "EXOSKELETONS": 1,
+          "DEVOTED_SCULPTOR": 1,
+          "HUNTER_KILLER": 1,
+          "SLIMED_BERSERKER": 1,
+          "CHOMPERS": 1
+        }
+      },
+      "REGENT": {
+        "engaged": 29,
+        "ordinary": 58,
+        "possibleDistinctPairs": 23,
+        "families": {
+          "INFESTED_PRISMS_ELITE": 5,
+          "CEREMONIAL_BEAST_BOSS": 10,
+          "MECHA_KNIGHT_ELITE": 2,
+          "AEONGLASS_BOSS": 1,
+          "TUNNELER": 1,
+          "GLOBE_HEAD": 1,
+          "CONSTRUCT_MENAGERIE": 1,
+          "FROG_KNIGHT": 1,
+          "SLUMBERING_BEETLE": 1
+        }
+      },
+      "SILENT": {
+        "engaged": 29,
+        "ordinary": 49,
+        "possibleDistinctPairs": 23,
+        "families": {
+          "CEREMONIAL_BEAST_BOSS": 9,
+          "INFESTED_PRISMS_ELITE": 5,
+          "MECHA_KNIGHT_ELITE": 2,
+          "OVICOPTER": 1,
+          "SLUMBERING_BEETLE": 1,
+          "HUNTER_KILLER": 1,
+          "CONSTRUCT_MENAGERIE": 1,
+          "TUNNELER": 1,
+          "THE_LOST_AND_FORGOTTEN": 1,
+          "THE_OBSCURA": 1
+        }
+      }
+    },
+    "collection-summary.json": {
+      "engaged": {
+        "collected": 50,
+        "preferences": 45,
+        "rows": 26971,
+        "reliableWins": 45
+      },
+      "ordinary": {
+        "collected": 50,
+        "preferences": 46,
+        "rows": 24534,
+        "reliableWins": 46
+      }
+    },
+    "collection-status.json": {
+      "phase": "completed",
+      "seconds": 457.3429020988988,
+      "updatedUtc": "2026-09-27T22:56:49.460617+00:00",
+      "childSeconds": {
+        "setup": 279.30406623648014,
+        "collect": 1535.029775900417
+      },
+      "records": 100,
+      "states": {
+        "collected": 100
+      }
+    },
+    "fit-eligibility.json": {
+      "pairedUsable": 44,
+      "acceptedPairs": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        31,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        43,
+        44,
+        45,
+        46,
+        47,
+        49
+      ],
+      "excluded": [
+        {
+          "pair": 13,
+          "reason": "Both arms must have completed witnessed preferences"
+        },
+        {
+          "pair": 30,
+          "reason": "Both arms must have completed witnessed preferences"
+        },
+        {
+          "pair": 32,
+          "reason": "Both arms must have completed witnessed preferences"
+        },
+        {
+          "pair": 33,
+          "reason": "Both arms must have completed witnessed preferences"
+        },
+        {
+          "pair": 42,
+          "reason": "Both arms must have completed witnessed preferences"
+        },
+        {
+          "pair": 48,
+          "reason": "Both arms must have completed witnessed preferences"
+        }
+      ],
+      "scope": "Correlated matched training siblings; not independent new families."
+    },
+    "fit-protocol.json": {
+      "createdUtc": "2026-09-27T22:57:01.378833+00:00",
+      "collectionProtocolSha256": "3194378057717ca4057a163665a30fb7ccf98222501501fed1d8a6e396cf7064",
+      "fitPlan": {
+        "baseInnerRoots": 516,
+        "baseFullRoots": 616,
+        "depth": 6,
+        "minimumLeafHessian": 3,
+        "rounds": 64,
+        "pairedEligibility": "Both arms collected with actual preferences, no exact full-root duplication. Minimum25usablepairs and >=3eachrole.",
+        "primarySelectionMetric": "Pair accuracy for later endpoint turn<=3, averaged role->family->root over unchanged internal100. Higher wins; ties lower early logloss, then baseline,ordinary,engaged. Require strict accuracy gain over baseline.",
+        "reasonForMetric": "Continue predeclared v60/v61 early ranking target; all-turn metrics remain reported. Repeated development, not final-test evidence. Strict5+10actualbattle gate retained.",
+        "fullFitGate": "One chosen augmented arm only if early accuracy strictly improves baseline. Final test remains sealed."
+      },
+      "arms": [
+        {
+          "name": "engaged",
+          "trainingRoots": 560,
+          "fullRoots": 660
+        },
+        {
+          "name": "ordinary",
+          "trainingRoots": 560,
+          "fullRoots": 660
+        }
+      ],
+      "depth": 6,
+      "minimumLeafHessian": 3,
+      "rounds": 64,
+      "baselineInnerModel": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/fitted/model.json",
+      "baselineInnerAudit": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/roots-516/audit.json",
+      "baselineFullModel": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v54/full/fitted/model.json",
+      "completeModelLimitSeconds": 1200,
+      "studyLimitSeconds": 1200,
+      "fittingEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine",
+      "evaluationEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine",
+      "modSha256": "6d732216d35c75a10e6e151b10c9750931fa96d54e406b8692326ab4692fb0e4",
+      "harnessSha256": "8bd7e5f94b687cade5f53f3a698d598c8ccff81510b1e4a3c336a019c1990598",
+      "baselineIndex": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/baseline-index.json",
+      "inputHashes": {
+        "fits/engaged/training-inputs.json": "1176b5beaa759fe4348bd1d298be517438338756347fe5fe2b1c2d714605fafa",
+        "fits/engaged/full-training-records.json": "372ea13f1099992172bc0eb151d5b518ae1224d4a3077d132ce096dfc4e3f0db",
+        "fits/engaged/full-training-inputs.json": "e2d4deac1a2241d8144e52fba459ed9846984c17dbf0bdcdb92c7fe464b3be29",
+        "fits/engaged/inner-separation.json": "35b341487aee5d0499b4e8694f7a7df25fdbd2cf32fe941bff6321c49f9077fb",
+        "fits/engaged/training-records.json": "f1b3752e7f7b154ac4ccf2764bfc7b4e82f434c67f0a425dea70fbffa7f973c7",
+        "fits/engaged/outer-separation.json": "fe9c00924c75ecf995278c256b53df31f3a357b5152b63904e332192072cd803",
+        "fits/ordinary/training-inputs.json": "ca4bb76aaaa9586efec46dae788d449f0186c157fd1831ea38d5b327de86ac45",
+        "fits/ordinary/full-training-records.json": "2d9459e4816d519e44bbadd12ac7d5db2c2060ea485e5977fb1544dc8d651163",
+        "fits/ordinary/full-training-inputs.json": "350e6d2da974e447e8b352f3f79614043d70b90e0c08c36aa8206338687bf7ae",
+        "fits/ordinary/inner-separation.json": "7f5c454693d5eeda6cbfac22c0385fd2fa33bb00594f62ee5167efaf8802b5c1",
+        "fits/ordinary/training-records.json": "652badfabcf1fc11423da19ea8d5329b706705b5bbe6172ed1b7164543c81911",
+        "fits/ordinary/outer-separation.json": "4423c530b5c671e6fbddf5a37f3a8bfdabf7ed65cc9c135580d429424c0bc7ff"
+      },
+      "scripts": {
+        "xgboost_fit.py": "73f81682078a0ca5b2e54eb636a992462ea0b9eadf28f986c0f2f9f9f6940774",
+        "ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+        "research_metrics.py": "4de57f64c042491598f4f8d9b86d5e2e7525d35b2b14b3f9d1a6e3cdad8c7bd2",
+        "evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+        "dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+        "overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+      },
+      "driverHashes": {
+        "fit.py": "ec6a285d00e170429d371baeb1885fb966d0d8de8ed271c0769ab5f20681a256",
+        "early_metrics.py": "2f1eaeb202830a9c6a9ecca7a49929556287380e7896270c4b7cda9d717a6350",
+        "prepare_fit.py": "32be340c0569fbf0d1cf89cc484e7928777a84b6ada33fe55c1f7e5ea68e153f"
+      }
+    },
+    "fit-status.json": {
+      "phase": "completed",
+      "seconds": 425.21723418997135,
+      "updatedUtc": "2026-09-27T23:04:06.754934+00:00",
+      "childSeconds": {
+        "export": 232.70387838513125,
+        "fit": 88.86316093907226,
+        "audit": 13.012961242115125,
+        "parity": 0.5011837620986626,
+        "evaluate": 89.83103512506932,
+        "compare-screen": 0.2506891170050949
+      }
+    },
+    "selection-metrics.json": [
+      {
+        "arm": "baseline",
+        "focus": {
+          "loss": 0.5770221992741953,
+          "accuracy": 0.6919188502675473,
+          "roles": {
+            "SILENT": {
+              "loss": 0.5817234953207335,
+              "accuracy": 0.6579102130510991,
+              "families": 8,
+              "roots": 19,
+              "pairs": 2903
+            },
+            "NECROBINDER": {
+              "loss": 0.5744188234446048,
+              "accuracy": 0.7230366704965349,
+              "families": 8,
+              "roots": 19,
+              "pairs": 2174
+            },
+            "REGENT": {
+              "loss": 0.5964790394578909,
+              "accuracy": 0.6759203400074398,
+              "families": 8,
+              "roots": 20,
+              "pairs": 1568
+            },
+            "DEFECT": {
+              "loss": 0.48323257541739933,
+              "accuracy": 0.7686651347449814,
+              "families": 8,
+              "roots": 23,
+              "pairs": 2494
+            },
+            "IRONCLAD": {
+              "loss": 0.6492570627303476,
+              "accuracy": 0.6340618930376811,
+              "families": 9,
+              "roots": 19,
+              "pairs": 2268
+            }
+          }
+        },
+        "macroMeanLoss": 0.41054867492063524,
+        "macroMeanAccuracy": 0.8420619300939634,
+        "roles": {
+          "DEFECT": {
+            "familyMeanLoss": 0.342324689837342,
+            "familyMeanAccuracy": 0.8952017731033104,
+            "families": 8,
+            "roots": 23,
+            "pairs": 16479,
+            "familyLosses": {
+              "BOWLBUGS": 0.20027036329576414,
+              "RUBY_RAIDERS": 0.26393393426403705,
+              "FABRICATOR": 0.29089639872680817,
+              "SOUL_NEXUS_ELITE": 0.33496788018278845,
+              "ENTOMANCER_ELITE": 0.5678097902164703,
+              "SCROLLS_OF_BITING": 0.2495118263045119,
+              "THIEVING_HOPPER": 0.33912036209029905,
+              "MYTES": 0.4920869636180571
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 20,
+                "pairs": 3878,
+                "familyMeanLoss": 0.2805792758096311,
+                "familyMeanAccuracy": 0.913205097096237
+              },
+              "victory-policy": {
+                "families": 7,
+                "roots": 21,
+                "pairs": 11364,
+                "familyMeanLoss": 0.3070080788461318,
+                "familyMeanAccuracy": 0.8946878507687984
+              },
+              "suffix-effort": {
+                "families": 7,
+                "roots": 20,
+                "pairs": 1237,
+                "familyMeanLoss": 0.6279068188378906,
+                "familyMeanAccuracy": 0.6902878972218718
+              }
+            }
+          },
+          "IRONCLAD": {
+            "familyMeanLoss": 0.4648114567009716,
+            "familyMeanAccuracy": 0.8178189625398037,
+            "families": 9,
+            "roots": 19,
+            "pairs": 16247,
+            "familyLosses": {
+              "SOUL_NEXUS_ELITE": 0.6876138688632043,
+              "RUBY_RAIDERS": 0.42210554604572875,
+              "ENTOMANCER_ELITE": 0.47222189041130597,
+              "TEST_SUBJECT_BOSS": 0.5558720782196016,
+              "THIEVING_HOPPER": 0.33847715511595894,
+              "FABRICATOR": 0.38012469997184345,
+              "MYTES": 0.5424247763310526,
+              "SCROLLS_OF_BITING": 0.3978459997401318,
+              "BOWLBUGS": 0.3866170956099173
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 8,
+                "roots": 16,
+                "pairs": 4968,
+                "familyMeanLoss": 0.39645315444373974,
+                "familyMeanAccuracy": 0.815778693316151
+              },
+              "victory-policy": {
+                "families": 9,
+                "roots": 19,
+                "pairs": 10560,
+                "familyMeanLoss": 0.4302193377251815,
+                "familyMeanAccuracy": 0.851456862974046
+              },
+              "suffix-effort": {
+                "families": 9,
+                "roots": 19,
+                "pairs": 719,
+                "familyMeanLoss": 0.6418336133582758,
+                "familyMeanAccuracy": 0.6663956087035471
+              }
+            }
+          },
+          "NECROBINDER": {
+            "familyMeanLoss": 0.4234153443275652,
+            "familyMeanAccuracy": 0.8435413025401187,
+            "families": 8,
+            "roots": 19,
+            "pairs": 16604,
+            "familyLosses": {
+              "RUBY_RAIDERS": 0.3042487336310761,
+              "MYTES": 0.27073512729813476,
+              "SOUL_NEXUS_ELITE": 0.4650660966875991,
+              "ENTOMANCER_ELITE": 0.48284606548434666,
+              "FABRICATOR": 0.5356258848240187,
+              "BOWLBUGS": 0.35151402451679487,
+              "THIEVING_HOPPER": 0.474714604557898,
+              "SCROLLS_OF_BITING": 0.5025722176206536
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 3936,
+                "familyMeanLoss": 0.3801667590133223,
+                "familyMeanAccuracy": 0.8392962017664798
+              },
+              "victory-policy": {
+                "families": 7,
+                "roots": 18,
+                "pairs": 11864,
+                "familyMeanLoss": 0.37131382919327993,
+                "familyMeanAccuracy": 0.8791476999952992
+              },
+              "suffix-effort": {
+                "families": 7,
+                "roots": 18,
+                "pairs": 804,
+                "familyMeanLoss": 0.5941867669912272,
+                "familyMeanAccuracy": 0.7524817095327536
+              }
+            }
+          },
+          "REGENT": {
+            "familyMeanLoss": 0.43952205755200646,
+            "familyMeanAccuracy": 0.8213285208363725,
+            "families": 8,
+            "roots": 20,
+            "pairs": 11622,
+            "familyLosses": {
+              "MYTES": 0.23990980343500404,
+              "ENTOMANCER_ELITE": 0.5167547940322791,
+              "SOUL_NEXUS_ELITE": 0.48245893670468626,
+              "FABRICATOR": 0.5497304546950332,
+              "RUBY_RAIDERS": 0.4764768195568618,
+              "BOWLBUGS": 0.39124586056528715,
+              "SCROLLS_OF_BITING": 0.45278879228343577,
+              "THIEVING_HOPPER": 0.4068109991434645
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 3558,
+                "familyMeanLoss": 0.4381216915262125,
+                "familyMeanAccuracy": 0.7672358580900782
+              },
+              "victory-policy": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 7552,
+                "familyMeanLoss": 0.432050983582283,
+                "familyMeanAccuracy": 0.817603083779712
+              },
+              "suffix-effort": {
+                "families": 8,
+                "roots": 17,
+                "pairs": 512,
+                "familyMeanLoss": 0.6125351441773743,
+                "familyMeanAccuracy": 0.6642305565046042
+              }
+            }
+          },
+          "SILENT": {
+            "familyMeanLoss": 0.3826698261852908,
+            "familyMeanAccuracy": 0.8324190914502112,
+            "families": 8,
+            "roots": 19,
+            "pairs": 14124,
+            "familyLosses": {
+              "ENTOMANCER_ELITE": 0.4385027357437443,
+              "MYTES": 0.4748174028249065,
+              "SOUL_NEXUS_ELITE": 0.2717323000229077,
+              "SCROLLS_OF_BITING": 0.3719672309323928,
+              "RUBY_RAIDERS": 0.3873726953384635,
+              "FABRICATOR": 0.5601370644069464,
+              "BOWLBUGS": 0.14412625852152597,
+              "THIEVING_HOPPER": 0.41270292169143874
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 4949,
+                "familyMeanLoss": 0.3490357649072179,
+                "familyMeanAccuracy": 0.8089909819615178
+              },
+              "victory-policy": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 8362,
+                "familyMeanLoss": 0.42491478336210353,
+                "familyMeanAccuracy": 0.8167110562306352
+              },
+              "suffix-effort": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 813,
+                "familyMeanLoss": 0.5660420894917062,
+                "familyMeanAccuracy": 0.8144847895146134
+              }
+            }
+          }
+        },
+        "zeroPairRoots": 0
+      },
+      {
+        "arm": "engaged",
+        "focus": {
+          "loss": 0.573116264075665,
+          "accuracy": 0.694476629593254,
+          "roles": {
+            "SILENT": {
+              "loss": 0.5811661236212838,
+              "accuracy": 0.6647038797358932,
+              "families": 8,
+              "roots": 19,
+              "pairs": 2903
+            },
+            "NECROBINDER": {
+              "loss": 0.5664142367998286,
+              "accuracy": 0.7215105510543108,
+              "families": 8,
+              "roots": 19,
+              "pairs": 2174
+            },
+            "REGENT": {
+              "loss": 0.5988624958049837,
+              "accuracy": 0.6720823363548543,
+              "families": 8,
+              "roots": 20,
+              "pairs": 1568
+            },
+            "DEFECT": {
+              "loss": 0.4799852828765696,
+              "accuracy": 0.780407195034977,
+              "families": 8,
+              "roots": 23,
+              "pairs": 2494
+            },
+            "IRONCLAD": {
+              "loss": 0.6391531812756588,
+              "accuracy": 0.6336791857862344,
+              "families": 9,
+              "roots": 19,
+              "pairs": 2268
+            }
+          }
+        },
+        "macroMeanLoss": 0.40415849248628194,
+        "macroMeanAccuracy": 0.8404052873583285,
+        "roles": {
+          "DEFECT": {
+            "familyMeanLoss": 0.33692556405753066,
+            "familyMeanAccuracy": 0.8987794776982869,
+            "families": 8,
+            "roots": 23,
+            "pairs": 16479,
+            "familyLosses": {
+              "BOWLBUGS": 0.19988709012953304,
+              "RUBY_RAIDERS": 0.25937072206555595,
+              "FABRICATOR": 0.28577993608132013,
+              "SOUL_NEXUS_ELITE": 0.333973153402119,
+              "ENTOMANCER_ELITE": 0.5717893929799249,
+              "SCROLLS_OF_BITING": 0.24432835816435758,
+              "THIEVING_HOPPER": 0.3339947488039426,
+              "MYTES": 0.466281110833492
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 20,
+                "pairs": 3878,
+                "familyMeanLoss": 0.27593649906553663,
+                "familyMeanAccuracy": 0.9199143304361047
+              },
+              "victory-policy": {
+                "families": 7,
+                "roots": 21,
+                "pairs": 11364,
+                "familyMeanLoss": 0.30461481394383316,
+                "familyMeanAccuracy": 0.8951379071138613
+              },
+              "suffix-effort": {
+                "families": 7,
+                "roots": 20,
+                "pairs": 1237,
+                "familyMeanLoss": 0.633112210273347,
+                "familyMeanAccuracy": 0.6841341505129097
+              }
+            }
+          },
+          "IRONCLAD": {
+            "familyMeanLoss": 0.4531786711970473,
+            "familyMeanAccuracy": 0.810992382928814,
+            "families": 9,
+            "roots": 19,
+            "pairs": 16247,
+            "familyLosses": {
+              "SOUL_NEXUS_ELITE": 0.6569026776498389,
+              "RUBY_RAIDERS": 0.43704343483468117,
+              "ENTOMANCER_ELITE": 0.4737485723703133,
+              "TEST_SUBJECT_BOSS": 0.518760867829014,
+              "THIEVING_HOPPER": 0.35214794343818556,
+              "FABRICATOR": 0.38285192956127945,
+              "MYTES": 0.4375173145540737,
+              "SCROLLS_OF_BITING": 0.4158706124239476,
+              "BOWLBUGS": 0.4037646881120919
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 8,
+                "roots": 16,
+                "pairs": 4968,
+                "familyMeanLoss": 0.3759138966413254,
+                "familyMeanAccuracy": 0.8170047234106557
+              },
+              "victory-policy": {
+                "families": 9,
+                "roots": 19,
+                "pairs": 10560,
+                "familyMeanLoss": 0.4274687635540187,
+                "familyMeanAccuracy": 0.8406021763931171
+              },
+              "suffix-effort": {
+                "families": 9,
+                "roots": 19,
+                "pairs": 719,
+                "familyMeanLoss": 0.641203422522357,
+                "familyMeanAccuracy": 0.6538764611454314
+              }
+            }
+          },
+          "NECROBINDER": {
+            "familyMeanLoss": 0.41388529639110927,
+            "familyMeanAccuracy": 0.8382043936889861,
+            "families": 8,
+            "roots": 19,
+            "pairs": 16604,
+            "familyLosses": {
+              "RUBY_RAIDERS": 0.30611037121629,
+              "MYTES": 0.27134631070119275,
+              "SOUL_NEXUS_ELITE": 0.4583051402003615,
+              "ENTOMANCER_ELITE": 0.4797966806146038,
+              "FABRICATOR": 0.47019045636221735,
+              "BOWLBUGS": 0.35609205746588757,
+              "THIEVING_HOPPER": 0.46813264330005244,
+              "SCROLLS_OF_BITING": 0.5011087112682686
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 3936,
+                "familyMeanLoss": 0.3662898810415013,
+                "familyMeanAccuracy": 0.8387048263471986
+              },
+              "victory-policy": {
+                "families": 7,
+                "roots": 18,
+                "pairs": 11864,
+                "familyMeanLoss": 0.368836104243081,
+                "familyMeanAccuracy": 0.8747544276936404
+              },
+              "suffix-effort": {
+                "families": 7,
+                "roots": 18,
+                "pairs": 804,
+                "familyMeanLoss": 0.5959469572812054,
+                "familyMeanAccuracy": 0.7156439697418953
+              }
+            }
+          },
+          "REGENT": {
+            "familyMeanLoss": 0.4365519993029756,
+            "familyMeanAccuracy": 0.8185944773214302,
+            "families": 8,
+            "roots": 20,
+            "pairs": 11622,
+            "familyLosses": {
+              "MYTES": 0.23752116669421425,
+              "ENTOMANCER_ELITE": 0.521586462132998,
+              "SOUL_NEXUS_ELITE": 0.4639160002625467,
+              "FABRICATOR": 0.5428869194832135,
+              "RUBY_RAIDERS": 0.4788106565936417,
+              "BOWLBUGS": 0.39197926580246784,
+              "SCROLLS_OF_BITING": 0.44824137466714975,
+              "THIEVING_HOPPER": 0.4074741487875732
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 3558,
+                "familyMeanLoss": 0.4338281834639082,
+                "familyMeanAccuracy": 0.7698974021070002
+              },
+              "victory-policy": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 7552,
+                "familyMeanLoss": 0.4339009065056147,
+                "familyMeanAccuracy": 0.8067080239135633
+              },
+              "suffix-effort": {
+                "families": 8,
+                "roots": 17,
+                "pairs": 512,
+                "familyMeanLoss": 0.6139372910441128,
+                "familyMeanAccuracy": 0.6743611128764063
+              }
+            }
+          },
+          "SILENT": {
+            "familyMeanLoss": 0.3802509314827468,
+            "familyMeanAccuracy": 0.8354557051541252,
+            "families": 8,
+            "roots": 19,
+            "pairs": 14124,
+            "familyLosses": {
+              "ENTOMANCER_ELITE": 0.4429355904279471,
+              "MYTES": 0.4718835185952124,
+              "SOUL_NEXUS_ELITE": 0.27126535201332946,
+              "SCROLLS_OF_BITING": 0.36891659103109076,
+              "RUBY_RAIDERS": 0.37716123939414636,
+              "FABRICATOR": 0.5605429600562397,
+              "BOWLBUGS": 0.13915816222346242,
+              "THIEVING_HOPPER": 0.41014403812054634
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 4949,
+                "familyMeanLoss": 0.3478760106519398,
+                "familyMeanAccuracy": 0.829009922740106
+              },
+              "victory-policy": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 8362,
+                "familyMeanLoss": 0.4227686814298255,
+                "familyMeanAccuracy": 0.8181668662583829
+              },
+              "suffix-effort": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 813,
+                "familyMeanLoss": 0.5656646603998767,
+                "familyMeanAccuracy": 0.806847787270534
+              }
+            }
+          }
+        },
+        "zeroPairRoots": 0
+      },
+      {
+        "arm": "ordinary",
+        "focus": {
+          "loss": 0.5765529192655107,
+          "accuracy": 0.6921066207388451,
+          "roles": {
+            "SILENT": {
+              "loss": 0.5821002186031076,
+              "accuracy": 0.652435514880695,
+              "families": 8,
+              "roots": 19,
+              "pairs": 2903
+            },
+            "NECROBINDER": {
+              "loss": 0.5727231687377217,
+              "accuracy": 0.7214127139785111,
+              "families": 8,
+              "roots": 19,
+              "pairs": 2174
+            },
+            "REGENT": {
+              "loss": 0.5973156688399065,
+              "accuracy": 0.6747513591691047,
+              "families": 8,
+              "roots": 20,
+              "pairs": 1568
+            },
+            "DEFECT": {
+              "loss": 0.48701210708802734,
+              "accuracy": 0.776937524628702,
+              "families": 8,
+              "roots": 23,
+              "pairs": 2494
+            },
+            "IRONCLAD": {
+              "loss": 0.6436134330587904,
+              "accuracy": 0.6349959910372129,
+              "families": 9,
+              "roots": 19,
+              "pairs": 2268
+            }
+          }
+        },
+        "macroMeanLoss": 0.40969787447333744,
+        "macroMeanAccuracy": 0.841189316708164,
+        "roles": {
+          "DEFECT": {
+            "familyMeanLoss": 0.3442064179771852,
+            "familyMeanAccuracy": 0.900071971196464,
+            "families": 8,
+            "roots": 23,
+            "pairs": 16479,
+            "familyLosses": {
+              "BOWLBUGS": 0.1947624114175147,
+              "RUBY_RAIDERS": 0.256316194770978,
+              "FABRICATOR": 0.2885982954190321,
+              "SOUL_NEXUS_ELITE": 0.3338333641967717,
+              "ENTOMANCER_ELITE": 0.5668308154390004,
+              "SCROLLS_OF_BITING": 0.2416971842857346,
+              "THIEVING_HOPPER": 0.34121285732280093,
+              "MYTES": 0.5304002209656491
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 20,
+                "pairs": 3878,
+                "familyMeanLoss": 0.28562655808462784,
+                "familyMeanAccuracy": 0.9207681912843095
+              },
+              "victory-policy": {
+                "families": 7,
+                "roots": 21,
+                "pairs": 11364,
+                "familyMeanLoss": 0.30339354037674515,
+                "familyMeanAccuracy": 0.8970212413847974
+              },
+              "suffix-effort": {
+                "families": 7,
+                "roots": 20,
+                "pairs": 1237,
+                "familyMeanLoss": 0.6320521889747106,
+                "familyMeanAccuracy": 0.7001100469219217
+              }
+            }
+          },
+          "IRONCLAD": {
+            "familyMeanLoss": 0.46378806201943507,
+            "familyMeanAccuracy": 0.8103176615168657,
+            "families": 9,
+            "roots": 19,
+            "pairs": 16247,
+            "familyLosses": {
+              "SOUL_NEXUS_ELITE": 0.6472803982370622,
+              "RUBY_RAIDERS": 0.4240739780378548,
+              "ENTOMANCER_ELITE": 0.472250896748278,
+              "TEST_SUBJECT_BOSS": 0.5390724760352359,
+              "THIEVING_HOPPER": 0.35297994333899063,
+              "FABRICATOR": 0.3784837294025968,
+              "MYTES": 0.5565742863481573,
+              "SCROLLS_OF_BITING": 0.4094051548275366,
+              "BOWLBUGS": 0.3939716951992032
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 8,
+                "roots": 16,
+                "pairs": 4968,
+                "familyMeanLoss": 0.38412888429838066,
+                "familyMeanAccuracy": 0.8170035101404266
+              },
+              "victory-policy": {
+                "families": 9,
+                "roots": 19,
+                "pairs": 10560,
+                "familyMeanLoss": 0.441156751349445,
+                "familyMeanAccuracy": 0.8381229516207166
+              },
+              "suffix-effort": {
+                "families": 9,
+                "roots": 19,
+                "pairs": 719,
+                "familyMeanLoss": 0.6447593308775554,
+                "familyMeanAccuracy": 0.6517831549052241
+              }
+            }
+          },
+          "NECROBINDER": {
+            "familyMeanLoss": 0.420760848961587,
+            "familyMeanAccuracy": 0.8379623495019505,
+            "families": 8,
+            "roots": 19,
+            "pairs": 16604,
+            "familyLosses": {
+              "RUBY_RAIDERS": 0.3012044901447724,
+              "MYTES": 0.274387630980379,
+              "SOUL_NEXUS_ELITE": 0.4652727019807056,
+              "ENTOMANCER_ELITE": 0.47604781222976494,
+              "FABRICATOR": 0.5357582771891847,
+              "BOWLBUGS": 0.34264158369107645,
+              "THIEVING_HOPPER": 0.472167516727301,
+              "SCROLLS_OF_BITING": 0.4986067787495119
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 3936,
+                "familyMeanLoss": 0.3798408070543144,
+                "familyMeanAccuracy": 0.8300943750444779
+              },
+              "victory-policy": {
+                "families": 7,
+                "roots": 18,
+                "pairs": 11864,
+                "familyMeanLoss": 0.36742923233334684,
+                "familyMeanAccuracy": 0.8775974117260023
+              },
+              "suffix-effort": {
+                "families": 7,
+                "roots": 18,
+                "pairs": 804,
+                "familyMeanLoss": 0.578166379790127,
+                "familyMeanAccuracy": 0.7698327432848577
+              }
+            }
+          },
+          "REGENT": {
+            "familyMeanLoss": 0.4374546190340103,
+            "familyMeanAccuracy": 0.8262720890961105,
+            "families": 8,
+            "roots": 20,
+            "pairs": 11622,
+            "familyLosses": {
+              "MYTES": 0.2393295955368393,
+              "ENTOMANCER_ELITE": 0.5193706008181022,
+              "SOUL_NEXUS_ELITE": 0.4682963000111445,
+              "FABRICATOR": 0.5511176095302864,
+              "RUBY_RAIDERS": 0.47332915310603585,
+              "BOWLBUGS": 0.39046456158388926,
+              "SCROLLS_OF_BITING": 0.45033312746481546,
+              "THIEVING_HOPPER": 0.4073960042209692
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 3558,
+                "familyMeanLoss": 0.4371646035725259,
+                "familyMeanAccuracy": 0.7797287068779218
+              },
+              "victory-policy": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 7552,
+                "familyMeanLoss": 0.42954162242518373,
+                "familyMeanAccuracy": 0.8199977020188861
+              },
+              "suffix-effort": {
+                "families": 8,
+                "roots": 17,
+                "pairs": 512,
+                "familyMeanLoss": 0.6237151332300915,
+                "familyMeanAccuracy": 0.6364805540267128
+              }
+            }
+          },
+          "SILENT": {
+            "familyMeanLoss": 0.38227942437446955,
+            "familyMeanAccuracy": 0.8313225122294291,
+            "families": 8,
+            "roots": 19,
+            "pairs": 14124,
+            "familyLosses": {
+              "ENTOMANCER_ELITE": 0.43016440647462784,
+              "MYTES": 0.48049799791424486,
+              "SOUL_NEXUS_ELITE": 0.2708695269391641,
+              "SCROLLS_OF_BITING": 0.37330584101456354,
+              "RUBY_RAIDERS": 0.38589591030374426,
+              "FABRICATOR": 0.5576282663578224,
+              "BOWLBUGS": 0.14681606026682986,
+              "THIEVING_HOPPER": 0.41305738572475936
+            },
+            "kinds": {
+              "victory-over-defeat": {
+                "families": 7,
+                "roots": 17,
+                "pairs": 4949,
+                "familyMeanLoss": 0.3498353337817911,
+                "familyMeanAccuracy": 0.7996216512797522
+              },
+              "victory-policy": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 8362,
+                "familyMeanLoss": 0.42438368278833943,
+                "familyMeanAccuracy": 0.8184051387106042
+              },
+              "suffix-effort": {
+                "families": 8,
+                "roots": 19,
+                "pairs": 813,
+                "familyMeanLoss": 0.5666599829889875,
+                "familyMeanAccuracy": 0.8248112951168542
+              }
+            }
+          }
+        },
+        "zeroPairRoots": 0
+      }
+    ],
+    "selection.json": {
+      "arm": "engaged",
+      "focus": {
+        "loss": 0.573116264075665,
+        "accuracy": 0.694476629593254,
+        "roles": {
+          "SILENT": {
+            "loss": 0.5811661236212838,
+            "accuracy": 0.6647038797358932,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.5664142367998286,
+            "accuracy": 0.7215105510543108,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.5988624958049837,
+            "accuracy": 0.6720823363548543,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.4799852828765696,
+            "accuracy": 0.780407195034977,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6391531812756588,
+            "accuracy": 0.6336791857862344,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.40415849248628194,
+      "macroMeanAccuracy": 0.8404052873583285,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.33692556405753066,
+          "familyMeanAccuracy": 0.8987794776982869,
+          "families": 8,
+          "roots": 23,
+          "pairs": 16479,
+          "familyLosses": {
+            "BOWLBUGS": 0.19988709012953304,
+            "RUBY_RAIDERS": 0.25937072206555595,
+            "FABRICATOR": 0.28577993608132013,
+            "SOUL_NEXUS_ELITE": 0.333973153402119,
+            "ENTOMANCER_ELITE": 0.5717893929799249,
+            "SCROLLS_OF_BITING": 0.24432835816435758,
+            "THIEVING_HOPPER": 0.3339947488039426,
+            "MYTES": 0.466281110833492
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 3878,
+              "familyMeanLoss": 0.27593649906553663,
+              "familyMeanAccuracy": 0.9199143304361047
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 21,
+              "pairs": 11364,
+              "familyMeanLoss": 0.30461481394383316,
+              "familyMeanAccuracy": 0.8951379071138613
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 1237,
+              "familyMeanLoss": 0.633112210273347,
+              "familyMeanAccuracy": 0.6841341505129097
+            }
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.4531786711970473,
+          "familyMeanAccuracy": 0.810992382928814,
+          "families": 9,
+          "roots": 19,
+          "pairs": 16247,
+          "familyLosses": {
+            "SOUL_NEXUS_ELITE": 0.6569026776498389,
+            "RUBY_RAIDERS": 0.43704343483468117,
+            "ENTOMANCER_ELITE": 0.4737485723703133,
+            "TEST_SUBJECT_BOSS": 0.518760867829014,
+            "THIEVING_HOPPER": 0.35214794343818556,
+            "FABRICATOR": 0.38285192956127945,
+            "MYTES": 0.4375173145540737,
+            "SCROLLS_OF_BITING": 0.4158706124239476,
+            "BOWLBUGS": 0.4037646881120919
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 8,
+              "roots": 16,
+              "pairs": 4968,
+              "familyMeanLoss": 0.3759138966413254,
+              "familyMeanAccuracy": 0.8170047234106557
+            },
+            "victory-policy": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 10560,
+              "familyMeanLoss": 0.4274687635540187,
+              "familyMeanAccuracy": 0.8406021763931171
+            },
+            "suffix-effort": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 719,
+              "familyMeanLoss": 0.641203422522357,
+              "familyMeanAccuracy": 0.6538764611454314
+            }
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.41388529639110927,
+          "familyMeanAccuracy": 0.8382043936889861,
+          "families": 8,
+          "roots": 19,
+          "pairs": 16604,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.30611037121629,
+            "MYTES": 0.27134631070119275,
+            "SOUL_NEXUS_ELITE": 0.4583051402003615,
+            "ENTOMANCER_ELITE": 0.4797966806146038,
+            "FABRICATOR": 0.47019045636221735,
+            "BOWLBUGS": 0.35609205746588757,
+            "THIEVING_HOPPER": 0.46813264330005244,
+            "SCROLLS_OF_BITING": 0.5011087112682686
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3936,
+              "familyMeanLoss": 0.3662898810415013,
+              "familyMeanAccuracy": 0.8387048263471986
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 11864,
+              "familyMeanLoss": 0.368836104243081,
+              "familyMeanAccuracy": 0.8747544276936404
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 804,
+              "familyMeanLoss": 0.5959469572812054,
+              "familyMeanAccuracy": 0.7156439697418953
+            }
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.4365519993029756,
+          "familyMeanAccuracy": 0.8185944773214302,
+          "families": 8,
+          "roots": 20,
+          "pairs": 11622,
+          "familyLosses": {
+            "MYTES": 0.23752116669421425,
+            "ENTOMANCER_ELITE": 0.521586462132998,
+            "SOUL_NEXUS_ELITE": 0.4639160002625467,
+            "FABRICATOR": 0.5428869194832135,
+            "RUBY_RAIDERS": 0.4788106565936417,
+            "BOWLBUGS": 0.39197926580246784,
+            "SCROLLS_OF_BITING": 0.44824137466714975,
+            "THIEVING_HOPPER": 0.4074741487875732
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3558,
+              "familyMeanLoss": 0.4338281834639082,
+              "familyMeanAccuracy": 0.7698974021070002
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 7552,
+              "familyMeanLoss": 0.4339009065056147,
+              "familyMeanAccuracy": 0.8067080239135633
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 17,
+              "pairs": 512,
+              "familyMeanLoss": 0.6139372910441128,
+              "familyMeanAccuracy": 0.6743611128764063
+            }
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.3802509314827468,
+          "familyMeanAccuracy": 0.8354557051541252,
+          "families": 8,
+          "roots": 19,
+          "pairs": 14124,
+          "familyLosses": {
+            "ENTOMANCER_ELITE": 0.4429355904279471,
+            "MYTES": 0.4718835185952124,
+            "SOUL_NEXUS_ELITE": 0.27126535201332946,
+            "SCROLLS_OF_BITING": 0.36891659103109076,
+            "RUBY_RAIDERS": 0.37716123939414636,
+            "FABRICATOR": 0.5605429600562397,
+            "BOWLBUGS": 0.13915816222346242,
+            "THIEVING_HOPPER": 0.41014403812054634
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 4949,
+              "familyMeanLoss": 0.3478760106519398,
+              "familyMeanAccuracy": 0.829009922740106
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 8362,
+              "familyMeanLoss": 0.4227686814298255,
+              "familyMeanAccuracy": 0.8181668662583829
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 813,
+              "familyMeanLoss": 0.5656646603998767,
+              "familyMeanAccuracy": 0.806847787270534
+            }
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    },
+    "summary.json": {
+      "arm": "engaged",
+      "baselineEarlyAccuracy": 0.6919188502675473,
+      "chosenEarlyAccuracy": 0.694476629593254,
+      "baselineEarlyLoss": 0.5770221992741953,
+      "chosenEarlyLoss": 0.573116264075665,
+      "chosenAllTurnLoss": 0.40415849248628194,
+      "fullFit": true,
+      "finalTestOpened": false,
+      "runtimeDefaultChanged": false,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v62/full/fitted/model.json",
+      "modelSha256": "0505394713199a0de1dc1f35da81d132de6c36604f044092aa18282b8533b721",
+      "development": {
+        "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v62/full/fitted/model.json",
+        "modelSha256": "0505394713199a0de1dc1f35da81d132de6c36604f044092aa18282b8533b721",
+        "regressions": [
+          "unseen-necrobinder-kaiser_crab_boss"
+        ],
+        "improvements": [],
+        "unverified": [],
+        "fullDevelopmentCoverage": false,
+        "eligibleForFinalReview": false
+      }
+    },
+    "activation-audit.json": {
+      "scope": "Selected route only, not all labeled witnesses. Used for coverage report, never post-collection eligibility or card-value labels.",
+      "summary": {
+        "engaged": {
+          "collected": 50,
+          "selectedRoutePowerUsed": 44,
+          "selectedRouteEarlyPowerUsed": 37,
+          "selectedRouteLongWinWithEarlyPower": 26
+        },
+        "ordinary": {
+          "collected": 50,
+          "selectedRoutePowerUsed": 38,
+          "selectedRouteEarlyPowerUsed": 33,
+          "selectedRouteLongWinWithEarlyPower": 15
+        }
+      },
+      "rows": [
+        {
+          "id": "long-fight-000-engaged",
+          "pair": 0,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "HAILSTORM",
+            "ITERATION"
+          ],
+          "earlyPowersUsed": [
+            "HAILSTORM",
+            "ITERATION"
+          ]
+        },
+        {
+          "id": "long-fight-000-ordinary",
+          "pair": 0,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "CAPACITOR",
+            "ITERATION",
+            "LOOP",
+            "MACHINE_LEARNING",
+            "STORM",
+            "TRASH_TO_TREASURE"
+          ],
+          "earlyPowersUsed": [
+            "CAPACITOR",
+            "ITERATION",
+            "MACHINE_LEARNING",
+            "STORM",
+            "TRASH_TO_TREASURE"
+          ]
+        },
+        {
+          "id": "long-fight-001-engaged",
+          "pair": 1,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 10,
+          "powersUsed": [
+            "BUFFER",
+            "CREATIVE_AI",
+            "SPINNER"
+          ],
+          "earlyPowersUsed": [
+            "CREATIVE_AI"
+          ]
+        },
+        {
+          "id": "long-fight-001-ordinary",
+          "pair": 1,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [
+            "BULK_UP"
+          ],
+          "earlyPowersUsed": [
+            "BULK_UP"
+          ]
+        },
+        {
+          "id": "long-fight-002-engaged",
+          "pair": 2,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "BULK_UP",
+            "MACHINE_LEARNING"
+          ],
+          "earlyPowersUsed": [
+            "BULK_UP",
+            "MACHINE_LEARNING"
+          ]
+        },
+        {
+          "id": "long-fight-002-ordinary",
+          "pair": 2,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "DEFRAGMENT"
+          ],
+          "earlyPowersUsed": [
+            "DEFRAGMENT"
+          ]
+        },
+        {
+          "id": "long-fight-003-engaged",
+          "pair": 3,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "DEFRAGMENT",
+            "SPINNER",
+            "SUBROUTINE"
+          ],
+          "earlyPowersUsed": [
+            "SPINNER"
+          ]
+        },
+        {
+          "id": "long-fight-003-ordinary",
+          "pair": 3,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-004-engaged",
+          "pair": 4,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "BULK_UP",
+            "DEFRAGMENT",
+            "MACHINE_LEARNING"
+          ],
+          "earlyPowersUsed": [
+            "BULK_UP",
+            "DEFRAGMENT",
+            "MACHINE_LEARNING"
+          ]
+        },
+        {
+          "id": "long-fight-004-ordinary",
+          "pair": 4,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 4,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-005-engaged",
+          "pair": 5,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "LOOP"
+          ],
+          "earlyPowersUsed": [
+            "LOOP"
+          ]
+        },
+        {
+          "id": "long-fight-005-ordinary",
+          "pair": 5,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "HAILSTORM",
+            "SUBROUTINE"
+          ],
+          "earlyPowersUsed": [
+            "HAILSTORM",
+            "SUBROUTINE"
+          ]
+        },
+        {
+          "id": "long-fight-006-engaged",
+          "pair": 6,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "BULK_UP",
+            "FERAL",
+            "SMOKESTACK"
+          ],
+          "earlyPowersUsed": [
+            "FERAL",
+            "SMOKESTACK"
+          ]
+        },
+        {
+          "id": "long-fight-006-ordinary",
+          "pair": 6,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "DEFRAGMENT"
+          ],
+          "earlyPowersUsed": [
+            "DEFRAGMENT"
+          ]
+        },
+        {
+          "id": "long-fight-007-engaged",
+          "pair": 7,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "MACHINE_LEARNING",
+            "THUNDER",
+            "WHITE_NOISE"
+          ],
+          "earlyPowersUsed": [
+            "MACHINE_LEARNING",
+            "THUNDER",
+            "WHITE_NOISE"
+          ]
+        },
+        {
+          "id": "long-fight-007-ordinary",
+          "pair": 7,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "COOLANT",
+            "MACHINE_LEARNING",
+            "STORM",
+            "SUBROUTINE"
+          ],
+          "earlyPowersUsed": [
+            "MACHINE_LEARNING"
+          ]
+        },
+        {
+          "id": "long-fight-008-engaged",
+          "pair": 8,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [
+            "BUFFER",
+            "COOLANT",
+            "CREATIVE_AI",
+            "DEFRAGMENT",
+            "ECHO_FORM"
+          ],
+          "earlyPowersUsed": [
+            "BUFFER"
+          ]
+        },
+        {
+          "id": "long-fight-008-ordinary",
+          "pair": 8,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "DEFRAGMENT",
+            "STORM"
+          ],
+          "earlyPowersUsed": [
+            "DEFRAGMENT"
+          ]
+        },
+        {
+          "id": "long-fight-009-engaged",
+          "pair": 9,
+          "arm": "engaged",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "BULK_UP",
+            "ITERATION",
+            "THUNDER"
+          ],
+          "earlyPowersUsed": [
+            "BULK_UP",
+            "ITERATION",
+            "THUNDER"
+          ]
+        },
+        {
+          "id": "long-fight-009-ordinary",
+          "pair": 9,
+          "arm": "ordinary",
+          "role": "DEFECT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "DEFRAGMENT"
+          ],
+          "earlyPowersUsed": [
+            "DEFRAGMENT"
+          ]
+        },
+        {
+          "id": "long-fight-010-engaged",
+          "pair": 10,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "DEMON_FORM"
+          ],
+          "earlyPowersUsed": [
+            "DEMON_FORM"
+          ]
+        },
+        {
+          "id": "long-fight-010-ordinary",
+          "pair": 10,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "FEEL_NO_PAIN",
+            "JUGGERNAUT",
+            "RUPTURE"
+          ],
+          "earlyPowersUsed": [
+            "FEEL_NO_PAIN"
+          ]
+        },
+        {
+          "id": "long-fight-011-engaged",
+          "pair": 11,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "INFERNO",
+            "PYRE"
+          ],
+          "earlyPowersUsed": [
+            "INFERNO",
+            "PYRE"
+          ]
+        },
+        {
+          "id": "long-fight-011-ordinary",
+          "pair": 11,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [
+            "JUGGLING"
+          ],
+          "earlyPowersUsed": [
+            "JUGGLING"
+          ]
+        },
+        {
+          "id": "long-fight-012-engaged",
+          "pair": 12,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "INFERNO",
+            "JUGGLING",
+            "RUPTURE",
+            "VICIOUS"
+          ],
+          "earlyPowersUsed": [
+            "JUGGLING",
+            "RUPTURE",
+            "VICIOUS"
+          ]
+        },
+        {
+          "id": "long-fight-012-ordinary",
+          "pair": 12,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "HELLRAISER"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-013-engaged",
+          "pair": 13,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "FEEL_NO_PAIN"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-013-ordinary",
+          "pair": 13,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "STAMPEDE"
+          ],
+          "earlyPowersUsed": [
+            "STAMPEDE"
+          ]
+        },
+        {
+          "id": "long-fight-014-engaged",
+          "pair": 14,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "AGGRESSION",
+            "CRIMSON_MANTLE"
+          ],
+          "earlyPowersUsed": [
+            "AGGRESSION",
+            "CRIMSON_MANTLE"
+          ]
+        },
+        {
+          "id": "long-fight-014-ordinary",
+          "pair": 14,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-015-engaged",
+          "pair": 15,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [
+            "HELLRAISER"
+          ],
+          "earlyPowersUsed": [
+            "HELLRAISER"
+          ]
+        },
+        {
+          "id": "long-fight-015-ordinary",
+          "pair": 15,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 4,
+          "powersUsed": [
+            "AGGRESSION",
+            "CRUELTY",
+            "INFLAME"
+          ],
+          "earlyPowersUsed": [
+            "AGGRESSION",
+            "CRUELTY",
+            "INFLAME"
+          ]
+        },
+        {
+          "id": "long-fight-016-engaged",
+          "pair": 16,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "RUPTURE",
+            "STONE_ARMOR"
+          ],
+          "earlyPowersUsed": [
+            "STONE_ARMOR"
+          ]
+        },
+        {
+          "id": "long-fight-016-ordinary",
+          "pair": 16,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [
+            "INFLAME"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-017-engaged",
+          "pair": 17,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "HELLRAISER"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-017-ordinary",
+          "pair": 17,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 4,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-018-engaged",
+          "pair": 18,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "DEMON_FORM",
+            "STAMPEDE"
+          ],
+          "earlyPowersUsed": [
+            "DEMON_FORM"
+          ]
+        },
+        {
+          "id": "long-fight-018-ordinary",
+          "pair": 18,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "DARK_EMBRACE",
+            "INFERNO"
+          ],
+          "earlyPowersUsed": [
+            "INFERNO"
+          ]
+        },
+        {
+          "id": "long-fight-019-engaged",
+          "pair": 19,
+          "arm": "engaged",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "CRUELTY"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-019-ordinary",
+          "pair": 19,
+          "arm": "ordinary",
+          "role": "IRONCLAD",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-020-engaged",
+          "pair": 20,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-020-ordinary",
+          "pair": 20,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 15,
+          "powersUsed": [
+            "HAUNT"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-021-engaged",
+          "pair": 21,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "NECRO_MASTERY",
+            "PAGESTORM",
+            "REAPER_FORM",
+            "SHROUD"
+          ],
+          "earlyPowersUsed": [
+            "NECRO_MASTERY",
+            "SHROUD"
+          ]
+        },
+        {
+          "id": "long-fight-021-ordinary",
+          "pair": 21,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 3,
+          "powersUsed": [
+            "CALCIFY"
+          ],
+          "earlyPowersUsed": [
+            "CALCIFY"
+          ]
+        },
+        {
+          "id": "long-fight-022-engaged",
+          "pair": 22,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "SLEIGHT_OF_FLESH"
+          ],
+          "earlyPowersUsed": [
+            "SLEIGHT_OF_FLESH"
+          ]
+        },
+        {
+          "id": "long-fight-022-ordinary",
+          "pair": 22,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "CALCIFY",
+            "SENTRY_MODE"
+          ],
+          "earlyPowersUsed": [
+            "CALCIFY",
+            "SENTRY_MODE"
+          ]
+        },
+        {
+          "id": "long-fight-023-engaged",
+          "pair": 23,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "COUNTDOWN"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-023-ordinary",
+          "pair": 23,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "CALL_OF_THE_VOID",
+            "SPIRIT_OF_ASH"
+          ],
+          "earlyPowersUsed": [
+            "CALL_OF_THE_VOID"
+          ]
+        },
+        {
+          "id": "long-fight-024-engaged",
+          "pair": 24,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "NEUROSURGE"
+          ],
+          "earlyPowersUsed": [
+            "NEUROSURGE"
+          ]
+        },
+        {
+          "id": "long-fight-024-ordinary",
+          "pair": 24,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [
+            "CALL_OF_THE_VOID",
+            "NECRO_MASTERY",
+            "NEUROSURGE"
+          ],
+          "earlyPowersUsed": [
+            "CALL_OF_THE_VOID",
+            "NECRO_MASTERY",
+            "NEUROSURGE"
+          ]
+        },
+        {
+          "id": "long-fight-025-engaged",
+          "pair": 25,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "DANSE_MACABRE",
+            "SENTRY_MODE",
+            "SPIRIT_OF_ASH"
+          ],
+          "earlyPowersUsed": [
+            "DANSE_MACABRE",
+            "SENTRY_MODE",
+            "SPIRIT_OF_ASH"
+          ]
+        },
+        {
+          "id": "long-fight-025-ordinary",
+          "pair": 25,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 4,
+          "powersUsed": [
+            "LETHALITY"
+          ],
+          "earlyPowersUsed": [
+            "LETHALITY"
+          ]
+        },
+        {
+          "id": "long-fight-026-engaged",
+          "pair": 26,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 3,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-026-ordinary",
+          "pair": 26,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "CALL_OF_THE_VOID",
+            "DEVOUR_LIFE",
+            "NECRO_MASTERY",
+            "SHROUD",
+            "SPIRIT_OF_ASH"
+          ],
+          "earlyPowersUsed": [
+            "CALL_OF_THE_VOID",
+            "NECRO_MASTERY",
+            "SPIRIT_OF_ASH"
+          ]
+        },
+        {
+          "id": "long-fight-027-engaged",
+          "pair": 27,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [
+            "NECRO_MASTERY",
+            "SLEIGHT_OF_FLESH"
+          ],
+          "earlyPowersUsed": [
+            "NECRO_MASTERY",
+            "SLEIGHT_OF_FLESH"
+          ]
+        },
+        {
+          "id": "long-fight-027-ordinary",
+          "pair": 27,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [
+            "REAPER_FORM"
+          ],
+          "earlyPowersUsed": [
+            "REAPER_FORM"
+          ]
+        },
+        {
+          "id": "long-fight-028-engaged",
+          "pair": 28,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "NEUROSURGE"
+          ],
+          "earlyPowersUsed": [
+            "NEUROSURGE"
+          ]
+        },
+        {
+          "id": "long-fight-028-ordinary",
+          "pair": 28,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 3,
+          "powersUsed": [
+            "CALL_OF_THE_VOID",
+            "FRIENDSHIP",
+            "LETHALITY",
+            "NECRO_MASTERY",
+            "NEUROSURGE"
+          ],
+          "earlyPowersUsed": [
+            "CALL_OF_THE_VOID",
+            "FRIENDSHIP",
+            "LETHALITY",
+            "NECRO_MASTERY",
+            "NEUROSURGE"
+          ]
+        },
+        {
+          "id": "long-fight-029-engaged",
+          "pair": 29,
+          "arm": "engaged",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "SPIRIT_OF_ASH"
+          ],
+          "earlyPowersUsed": [
+            "SPIRIT_OF_ASH"
+          ]
+        },
+        {
+          "id": "long-fight-029-ordinary",
+          "pair": 29,
+          "arm": "ordinary",
+          "role": "NECROBINDER",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "DEMESNE"
+          ],
+          "earlyPowersUsed": [
+            "DEMESNE"
+          ]
+        },
+        {
+          "id": "long-fight-030-engaged",
+          "pair": 30,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-030-ordinary",
+          "pair": 30,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "ROYALTIES"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-031-engaged",
+          "pair": 31,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-031-ordinary",
+          "pair": 31,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-032-engaged",
+          "pair": 32,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "ROYALTIES"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-032-ordinary",
+          "pair": 32,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "MONARCHS_GAZE",
+            "PILLAR_OF_CREATION",
+            "SPECTRUM_SHIFT"
+          ],
+          "earlyPowersUsed": [
+            "PILLAR_OF_CREATION",
+            "SPECTRUM_SHIFT"
+          ]
+        },
+        {
+          "id": "long-fight-033-engaged",
+          "pair": 33,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "FURNACE",
+            "PALE_BLUE_DOT",
+            "VOID_FORM"
+          ],
+          "earlyPowersUsed": [
+            "FURNACE"
+          ]
+        },
+        {
+          "id": "long-fight-033-ordinary",
+          "pair": 33,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "PARRY",
+            "SWORD_SAGE"
+          ],
+          "earlyPowersUsed": [
+            "SWORD_SAGE"
+          ]
+        },
+        {
+          "id": "long-fight-034-engaged",
+          "pair": 34,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 13,
+          "powersUsed": [
+            "CHILD_OF_THE_STARS",
+            "SEEKING_EDGE"
+          ],
+          "earlyPowersUsed": [
+            "CHILD_OF_THE_STARS",
+            "SEEKING_EDGE"
+          ]
+        },
+        {
+          "id": "long-fight-034-ordinary",
+          "pair": 34,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-035-engaged",
+          "pair": 35,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-035-ordinary",
+          "pair": 35,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-036-engaged",
+          "pair": 36,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "CHILD_OF_THE_STARS",
+            "PARRY",
+            "SWORD_SAGE",
+            "VOID_FORM"
+          ],
+          "earlyPowersUsed": [
+            "CHILD_OF_THE_STARS",
+            "PARRY",
+            "VOID_FORM"
+          ]
+        },
+        {
+          "id": "long-fight-036-ordinary",
+          "pair": 36,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [
+            "NEUTRON_AEGIS",
+            "PARRY"
+          ],
+          "earlyPowersUsed": [
+            "NEUTRON_AEGIS"
+          ]
+        },
+        {
+          "id": "long-fight-037-engaged",
+          "pair": 37,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [
+            "BLACK_HOLE"
+          ],
+          "earlyPowersUsed": [
+            "BLACK_HOLE"
+          ]
+        },
+        {
+          "id": "long-fight-037-ordinary",
+          "pair": 37,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "FURNACE",
+            "PARRY",
+            "SWORD_SAGE"
+          ],
+          "earlyPowersUsed": [
+            "PARRY",
+            "SWORD_SAGE"
+          ]
+        },
+        {
+          "id": "long-fight-038-engaged",
+          "pair": 38,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "MONARCHS_GAZE",
+            "PARRY"
+          ],
+          "earlyPowersUsed": [
+            "MONARCHS_GAZE",
+            "PARRY"
+          ]
+        },
+        {
+          "id": "long-fight-038-ordinary",
+          "pair": 38,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 4,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-039-engaged",
+          "pair": 39,
+          "arm": "engaged",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "SPECTRUM_SHIFT"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-039-ordinary",
+          "pair": 39,
+          "arm": "ordinary",
+          "role": "REGENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "NEUTRON_AEGIS"
+          ],
+          "earlyPowersUsed": [
+            "NEUTRON_AEGIS"
+          ]
+        },
+        {
+          "id": "long-fight-040-engaged",
+          "pair": 40,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "FAN_OF_KNIVES",
+            "PHANTOM_BLADES"
+          ],
+          "earlyPowersUsed": [
+            "FAN_OF_KNIVES",
+            "PHANTOM_BLADES"
+          ]
+        },
+        {
+          "id": "long-fight-040-ordinary",
+          "pair": 40,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "ACCELERANT",
+            "AFTERIMAGE",
+            "FAN_OF_KNIVES"
+          ],
+          "earlyPowersUsed": [
+            "AFTERIMAGE",
+            "FAN_OF_KNIVES"
+          ]
+        },
+        {
+          "id": "long-fight-041-engaged",
+          "pair": 41,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-041-ordinary",
+          "pair": 41,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-042-engaged",
+          "pair": 42,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "ENVENOM"
+          ],
+          "earlyPowersUsed": [
+            "ENVENOM"
+          ]
+        },
+        {
+          "id": "long-fight-042-ordinary",
+          "pair": 42,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "FOOTWORK",
+            "INFINITE_BLADES"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-043-engaged",
+          "pair": 43,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "FAN_OF_KNIVES",
+            "FOOTWORK"
+          ],
+          "earlyPowersUsed": [
+            "FOOTWORK"
+          ]
+        },
+        {
+          "id": "long-fight-043-ordinary",
+          "pair": 43,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [
+            "FAN_OF_KNIVES",
+            "TRACKING"
+          ],
+          "earlyPowersUsed": [
+            "TRACKING"
+          ]
+        },
+        {
+          "id": "long-fight-044-engaged",
+          "pair": 44,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 9,
+          "powersUsed": [
+            "AFTERIMAGE",
+            "NOXIOUS_FUMES"
+          ],
+          "earlyPowersUsed": [
+            "AFTERIMAGE"
+          ]
+        },
+        {
+          "id": "long-fight-044-ordinary",
+          "pair": 44,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "AFTERIMAGE",
+            "FOOTWORK"
+          ],
+          "earlyPowersUsed": [
+            "AFTERIMAGE"
+          ]
+        },
+        {
+          "id": "long-fight-045-engaged",
+          "pair": 45,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "AFTERIMAGE"
+          ],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-045-ordinary",
+          "pair": 45,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-046-engaged",
+          "pair": 46,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "ACCURACY"
+          ],
+          "earlyPowersUsed": [
+            "ACCURACY"
+          ]
+        },
+        {
+          "id": "long-fight-046-ordinary",
+          "pair": 46,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [],
+          "earlyPowersUsed": []
+        },
+        {
+          "id": "long-fight-047-engaged",
+          "pair": 47,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 2,
+          "powersUsed": [
+            "SPEEDSTER"
+          ],
+          "earlyPowersUsed": [
+            "SPEEDSTER"
+          ]
+        },
+        {
+          "id": "long-fight-047-ordinary",
+          "pair": 47,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 7,
+          "powersUsed": [
+            "INFINITE_BLADES",
+            "TOOLS_OF_THE_TRADE"
+          ],
+          "earlyPowersUsed": [
+            "INFINITE_BLADES",
+            "TOOLS_OF_THE_TRADE"
+          ]
+        },
+        {
+          "id": "long-fight-048-engaged",
+          "pair": 48,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": false,
+          "won": false,
+          "wonTurn": null,
+          "powersUsed": [
+            "AFTERIMAGE",
+            "FAN_OF_KNIVES"
+          ],
+          "earlyPowersUsed": [
+            "FAN_OF_KNIVES"
+          ]
+        },
+        {
+          "id": "long-fight-048-ordinary",
+          "pair": 48,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 8,
+          "powersUsed": [
+            "INFINITE_BLADES",
+            "NOXIOUS_FUMES"
+          ],
+          "earlyPowersUsed": [
+            "INFINITE_BLADES",
+            "NOXIOUS_FUMES"
+          ]
+        },
+        {
+          "id": "long-fight-049-engaged",
+          "pair": 49,
+          "arm": "engaged",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 6,
+          "powersUsed": [
+            "FAN_OF_KNIVES",
+            "WELL_LAID_PLANS"
+          ],
+          "earlyPowersUsed": [
+            "FAN_OF_KNIVES",
+            "WELL_LAID_PLANS"
+          ]
+        },
+        {
+          "id": "long-fight-049-ordinary",
+          "pair": 49,
+          "arm": "ordinary",
+          "role": "SILENT",
+          "preferences": true,
+          "won": true,
+          "wonTurn": 5,
+          "powersUsed": [
+            "INFINITE_BLADES",
+            "TOOLS_OF_THE_TRADE"
+          ],
+          "earlyPowersUsed": [
+            "INFINITE_BLADES",
+            "TOOLS_OF_THE_TRADE"
+          ]
+        }
+      ]
+    },
+    "representation-audit.json": {
+      "scope": "In-sample fixed516 training graph. Weighting is exported equal-root edge mass, not role-family-root heldout macro; no generalization or causal claim. Identical full feature endpoints are a lower bound on unobservable distinctions, not all aliasing.",
+      "modelSha256": "f28ce4d9cd4957a70ecbeee2257ba010fa85477fe77e6fe7e41f29125807bb37",
+      "seconds": 8.066608699038625,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "all": {
+            "pairs": 70406,
+            "totalRootMass": 107.0,
+            "accuracy": 0.8392934593492742,
+            "linearAccuracy": 0.8139943223081427,
+            "logLoss": 0.3976619355357189,
+            "identicalFeaturePairs": 596,
+            "identicalFeatureWeight": 1.3121507984147152
+          },
+          "early": {
+            "pairs": 12319,
+            "totalRootMass": 24.73791479106614,
+            "accuracy": 0.7146525337412676,
+            "linearAccuracy": 0.6568225860598097,
+            "logLoss": 0.5616457059523967,
+            "identicalFeaturePairs": 437,
+            "identicalFeatureWeight": 0.9971969111204808
+          }
+        },
+        {
+          "character": "IRONCLAD",
+          "all": {
+            "pairs": 84208,
+            "totalRootMass": 111.99999999999999,
+            "accuracy": 0.8164911560206187,
+            "linearAccuracy": 0.7843261792092543,
+            "logLoss": 0.4398011743765208,
+            "identicalFeaturePairs": 598,
+            "identicalFeatureWeight": 1.368882794159422
+          },
+          "early": {
+            "pairs": 16712,
+            "totalRootMass": 30.70420499662491,
+            "accuracy": 0.7058104026714637,
+            "linearAccuracy": 0.6437034817951034,
+            "logLoss": 0.5948043003134972,
+            "identicalFeaturePairs": 472,
+            "identicalFeatureWeight": 1.1936911536950827
+          }
+        },
+        {
+          "character": "NECROBINDER",
+          "all": {
+            "pairs": 41620,
+            "totalRootMass": 91.0,
+            "accuracy": 0.81882165533907,
+            "linearAccuracy": 0.7733953178091393,
+            "logLoss": 0.4345887870186894,
+            "identicalFeaturePairs": 395,
+            "identicalFeatureWeight": 1.4576366916293666
+          },
+          "early": {
+            "pairs": 9607,
+            "totalRootMass": 32.57244590467321,
+            "accuracy": 0.7396693072765554,
+            "linearAccuracy": 0.6808114288647618,
+            "logLoss": 0.5611998625528852,
+            "identicalFeaturePairs": 317,
+            "identicalFeatureWeight": 1.2974493038286474
+          }
+        },
+        {
+          "character": "REGENT",
+          "all": {
+            "pairs": 60893,
+            "totalRootMass": 106.0,
+            "accuracy": 0.8322855629802488,
+            "linearAccuracy": 0.7914815783930711,
+            "logLoss": 0.3976957532860555,
+            "identicalFeaturePairs": 462,
+            "identicalFeatureWeight": 1.5005163286994692
+          },
+          "early": {
+            "pairs": 9025,
+            "totalRootMass": 34.63004969732033,
+            "accuracy": 0.7155201991974394,
+            "linearAccuracy": 0.6199993190258877,
+            "logLoss": 0.5787929141027838,
+            "identicalFeaturePairs": 358,
+            "identicalFeatureWeight": 1.353284783351298
+          }
+        },
+        {
+          "character": "SILENT",
+          "all": {
+            "pairs": 59502,
+            "totalRootMass": 100.0,
+            "accuracy": 0.8370396286033415,
+            "linearAccuracy": 0.8067430238510235,
+            "logLoss": 0.38556125355197096,
+            "identicalFeaturePairs": 581,
+            "identicalFeatureWeight": 1.4366463421101814
+          },
+          "early": {
+            "pairs": 8964,
+            "totalRootMass": 29.23156919194692,
+            "accuracy": 0.7254291758271056,
+            "linearAccuracy": 0.6724086558188586,
+            "logLoss": 0.5428551539522943,
+            "identicalFeaturePairs": 311,
+            "identicalFeatureWeight": 1.1137916981789928
+          }
+        }
+      ]
+    },
+    "fits/engaged/cost.json": {
+      "fitProcessSeconds": 24.52886425307952,
+      "exportSeconds": 69.06134534208104,
+      "completeModelSeconds": 93.59020959516056,
+      "returnCode": 0
+    },
+    "fits/engaged/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 37900,
+          "pairs": 77359,
+          "initialLoss": 50.983023043391775,
+          "finalLoss": 45.714637779202036,
+          "float32MaxPredictionDrift": 1.202882745232614e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 5.895098848035559
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 39776,
+          "pairs": 92436,
+          "initialLoss": 59.42323433150523,
+          "finalLoss": 53.94415417928541,
+          "float32MaxPredictionDrift": 8.771736332846558e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.666988831013441
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 24436,
+          "pairs": 47706,
+          "initialLoss": 49.27174616607735,
+          "finalLoss": 43.57990766463579,
+          "float32MaxPredictionDrift": 6.504142303853655e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.5055374179501086
+        },
+        {
+          "character": "REGENT",
+          "rows": 29530,
+          "pairs": 66244,
+          "initialLoss": 49.546179755034714,
+          "finalLoss": 44.61932006248176,
+          "float32MaxPredictionDrift": 8.039091712319646e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.408730603987351
+        },
+        {
+          "character": "SILENT",
+          "rows": 31851,
+          "pairs": 65462,
+          "initialLoss": 46.014137621657824,
+          "finalLoss": 41.10657119546269,
+          "float32MaxPredictionDrift": 6.723333452640645e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.407116587040946
+        }
+      ],
+      "seconds": 24.06136776704807,
+      "peakWorkingSetBytes": 2700443648
+    },
+    "fits/ordinary/cost.json": {
+      "fitProcessSeconds": 24.53061366104521,
+      "exportSeconds": 67.31170321803074,
+      "completeModelSeconds": 91.84231687907595,
+      "returnCode": 0
+    },
+    "fits/ordinary/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 37720,
+          "pairs": 76450,
+          "initialLoss": 52.01554732552074,
+          "finalLoss": 46.381564623193995,
+          "float32MaxPredictionDrift": 1.1708744530380955e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 5.806962081929669
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 39478,
+          "pairs": 89425,
+          "initialLoss": 58.780067477718184,
+          "finalLoss": 53.5317736868112,
+          "float32MaxPredictionDrift": 8.047449373549398e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.75850860401988
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 23987,
+          "pairs": 45262,
+          "initialLoss": 49.33365386065317,
+          "finalLoss": 43.79683046727783,
+          "float32MaxPredictionDrift": 6.458281092136531e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.489864757983014
+        },
+        {
+          "character": "REGENT",
+          "rows": 28898,
+          "pairs": 63763,
+          "initialLoss": 50.008959752237296,
+          "finalLoss": 45.001448565586685,
+          "float32MaxPredictionDrift": 7.878181914833249e-06,
+          "float32PairSignChanges": 1,
+          "seconds": 4.360090691014193
+        },
+        {
+          "character": "SILENT",
+          "rows": 31312,
+          "pairs": 65513,
+          "initialLoss": 46.63836521009465,
+          "finalLoss": 41.47093753349934,
+          "float32MaxPredictionDrift": 7.916248030426232e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.6477003450272605
+        }
+      ],
+      "seconds": 24.22550921200309,
+      "peakWorkingSetBytes": 2679701504
+    },
+    "full/cost.json": {
+      "fitProcessSeconds": 39.80368302494753,
+      "exportSeconds": 96.33082982501946,
+      "completeModelSeconds": 136.134512849967,
+      "returnCode": 0
+    },
+    "full/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 45752,
+          "pairs": 94383,
+          "initialLoss": 60.31803399065541,
+          "finalLoss": 54.07588444782772,
+          "float32MaxPredictionDrift": 1.1152325463115176e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 9.245801273034886
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 46583,
+          "pairs": 109237,
+          "initialLoss": 68.24064556084804,
+          "finalLoss": 61.79018613985518,
+          "float32MaxPredictionDrift": 6.160310567437932e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 8.907453136052936
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 30469,
+          "pairs": 63837,
+          "initialLoss": 57.23933160617362,
+          "finalLoss": 50.65230971315456,
+          "float32MaxPredictionDrift": 8.751960439923323e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.972652163007297
+        },
+        {
+          "character": "REGENT",
+          "rows": 34439,
+          "pairs": 77311,
+          "initialLoss": 59.073184419022944,
+          "finalLoss": 53.120054889584814,
+          "float32MaxPredictionDrift": 9.3881401959095e-06,
+          "float32PairSignChanges": 1,
+          "seconds": 7.16691038897261
+        },
+        {
+          "character": "SILENT",
+          "rows": 38289,
+          "pairs": 79108,
+          "initialLoss": 54.07776931891431,
+          "finalLoss": 48.396139495791644,
+          "float32MaxPredictionDrift": 9.024642521282544e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 7.762032679049298
+        }
+      ],
+      "seconds": 39.33099475200288,
+      "peakWorkingSetBytes": 3305242624
+    },
+    "parity.json": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "evaluation/report.json": {
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v62/full/fitted/model.json",
+      "modelSha256": "0505394713199a0de1dc1f35da81d132de6c36604f044092aa18282b8533b721",
+      "records": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000834963,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 17.4905363,
+          "rss": 357761024,
+          "nodes": 12000,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 8.9746791,
+          "rss": 304185344,
+          "nodes": 7107,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 199,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 64,
+            "strategicHpDeficit": 64,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9997819946,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 20.7174637,
+          "rss": 380141568,
+          "nodes": 16354,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 117,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 79,
+            "score": -1000003040040,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 19.8785077,
+          "rss": 387768320,
+          "nodes": 14497,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 193,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 10.4333295,
+          "rss": 333451264,
+          "nodes": 6265,
+          "timeBoundary": true
+        }
+      ],
+      "comparisons": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "materialComparison": 0
+        }
+      ],
+      "completed": true,
+      "historicalBaselineTimingIsSpeedProof": false,
+      "regressions": [
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "stage": "screen",
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    }
+  },
+  "separation": {
+    "engaged/inner": {
+      "schema": 2,
+      "splitCounts": {
+        "train": 560,
+        "validation": 100
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5625
+        }
+      ],
+      "maximumDeckSimilarity": 0.5625,
+      "passed": true,
+      "datasetSha256": "56a5835ee8bc4fa6fa5dcc5687fb240ac732d7b8834a18b6f8b38e4b51f942f3"
+    },
+    "engaged/outer": {
+      "schema": 2,
+      "splitCounts": {
+        "train": 660,
+        "validation": 15,
+        "test": 5
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5333333333333333
+        },
+        {
+          "left": "train",
+          "right": "test",
+          "maximumDeckSimilarity": 0.5135135135135135
+        },
+        {
+          "left": "validation",
+          "right": "test",
+          "maximumDeckSimilarity": 0.4594594594594595
+        }
+      ],
+      "maximumDeckSimilarity": 0.5333333333333333,
+      "passed": true,
+      "datasetSha256": "df1f1035bd8e6b1ad2d69e192c6cc5a8560abd6910f31b42349778cb0eb1e53e"
+    },
+    "ordinary/inner": {
+      "schema": 2,
+      "splitCounts": {
+        "train": 560,
+        "validation": 100
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5625
+        }
+      ],
+      "maximumDeckSimilarity": 0.5625,
+      "passed": true,
+      "datasetSha256": "003cb819a27d2ddd901bf3374a88fc0989f196f776d3436942c6375abec9f00c"
+    },
+    "ordinary/outer": {
+      "schema": 2,
+      "splitCounts": {
+        "train": 660,
+        "validation": 15,
+        "test": 5
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5333333333333333
+        },
+        {
+          "left": "train",
+          "right": "test",
+          "maximumDeckSimilarity": 0.5135135135135135
+        },
+        {
+          "left": "validation",
+          "right": "test",
+          "maximumDeckSimilarity": 0.4594594594594595
+        }
+      ],
+      "maximumDeckSimilarity": 0.5333333333333333,
+      "passed": true,
+      "datasetSha256": "c30db608691ff629819dc91d749a63af7315f62aaf37d3ebdc7ec529a6e12724"
+    }
+  },
+  "localArtifactHashes": {
+    "candidate-pairs.json": "4d622eb3329ed410a925a8e427d603bf32b80f6af9eebe6202368ba9619ad907",
+    "trials.json": "9782e85063dcee98988f56d9dd8e7b1777fb53bf6ff8573e72df9366673d66ca",
+    "records.json": "219b56e482d94abbc9a3c2203bd00b08cf90850b6be7171d53388b8c5e416c44",
+    "census.py": "b6fd4eef72d3cd24fc9b040a721ce403e3cecd6d53d3786603214b1128b87f6f",
+    "collect.py": "10d3b5b193654b90d1122b6b852704a2ed137c41cce0307397fc33639e566958",
+    "prepare_fit.py": "32be340c0569fbf0d1cf89cc484e7928777a84b6ada33fe55c1f7e5ea68e153f",
+    "fit.py": "ec6a285d00e170429d371baeb1885fb966d0d8de8ed271c0769ab5f20681a256",
+    "early_metrics.py": "2f1eaeb202830a9c6a9ecca7a49929556287380e7896270c4b7cda9d717a6350",
+    "activation_audit.py": "2fb7c4fd5d3b6f5998fa313712357ae5e531cf4c5836293f9cdec2a48ee3bf25",
+    "representation_audit.py": "b4cf64e697d776d664867e6070b5b29586ceb974e72aaae02fed18a437042552"
+  }
+}
