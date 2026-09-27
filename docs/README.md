@@ -2,7 +2,7 @@
 
 - [共用偏好图的 CPU 树训练器](strategy/external-ranking-backend-20260928.md)：376 根完整导出与五角色训练约 63 秒，独立开发仍有退化；新格式夜间任务已启动。
 
-- [引擎资源规则量观察](strategy/resource-rule-observations-20260928.md)：新增当前分支抽牌量/能量上限，旧数据明确拒绝，固定 408 场重新采集与双组消融进行中。
+- [引擎资源规则量观察](strategy/resource-rule-observations-20260928.md)：固定 408 场重采和双组消融完成；隐藏资源的完整模型保住五场初筛，扩展开发仍有退化。
 
 - [具体卡牌身份列消融](strategy/identity-ablation-20260928.md)：固定 408 根隐藏身份列后拟合约 77 秒，实战仍丢失旧胜局；记录长期资源监督线索。
 

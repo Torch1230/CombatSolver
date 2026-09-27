@@ -678,7 +678,11 @@
     "observationSchema": 8,
     "fitTimeoutSeconds": 1200,
     "finalTestOpened": false,
-    "productionModelEnabled": false
+    "productionModelEnabled": false,
+    "oldDurableRecordStates": {
+      "collected": 994,
+      "interrupted": 16
+    }
   },
   "limitations": [
     "Same-machine four-thread one-shot fit timing under concurrent work, not universal speedup.",
