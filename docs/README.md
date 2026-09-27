@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [终局偏好分层诊断与监督选择](strategy/policy-tier-training-20260928.md)：固定 408 根的标签分类审计与最高政策类别消融。
+
 - [困难构筑补采与敌方状态共享](strategy/shared-enemy-powers-20260928.md)：两组各 20 场原生补采，以及保持原样本的跨敌人序号特征试验。
 - [按遭遇留出的模型选型](strategy/model-selection-20260928.md)：223 场拟合、72 场内部选型；减少树数未改善外部搜索，定位困难战斗有效监督缺口。
 - [夜间训练吞吐](strategy/overnight-training-throughput-20260927.md)：区分样本量和有效偏好、无信号行压缩、固定顺序的四路拟合，模型产物一致。

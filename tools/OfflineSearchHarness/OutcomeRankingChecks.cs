@@ -58,6 +58,21 @@ internal static class OutcomeRankingChecks
         var mixed = new Model();
         mixed.Fit([[a, b, loss]]);
         Check(mixed.FittedPairs == 3, "genuine defeat witnesses add cross-outcome preferences");
+        Check(mixed.FittedPairKinds.SequenceEqual([2, 1, 0]), "fitted pair kinds use the final-policy comparator");
+        var distinctLoss = loss with { Features = new() { ["x"] = 3 } };
+        var tiered = new Model(); var explicitPairs = new Model();
+        Check(tiered.Fit([[a, b, distinctLoss]], highestPolicyTierOnly: true)
+            && explicitPairs.Fit([[a with { Groups = [0] }, b with { Groups = [1] }, distinctLoss with { Groups = [0, 1] }]]),
+            "highest-tier fitting retains witnessed victory comparisons");
+        Check(tiered.FittedPairKinds.SequenceEqual([2, 0, 0])
+            && JsonSerializer.Serialize(tiered.ExportModel()) == JsonSerializer.Serialize(explicitPairs.ExportModel()),
+            "tier selection equals the explicitly separated comparisons with the same root weight");
+        var lowerTier = new Model();
+        Check(lowerTier.Fit([[a, b, Row(2, 4)]], highestPolicyTierOnly: true)
+            && lowerTier.FittedPairKinds.SequenceEqual([0, 3, 0]),
+            "roots without observed defeats still learn victory-policy quality");
+        Reject(() => new Model().Fit([[a, distinctLoss, b with { Outcome = b.Outcome with { Score = 1 } }]],
+            highestPolicyTierOnly: true), "discarded lower-tier labels still require validation");
         Reject(() => new Model().Fit([[loss with { CompletedDefeat = false }, a]]), "unfinished loss cannot masquerade as a defeat witness");
         Model.Tree tree = new(2, 0.5, 0, new(-1, 0, -2), new(-1, 0, 3));
         Model.Document document = new(Model.Schema, ["unused", "also-unused", "counter"],
@@ -279,6 +294,28 @@ internal static class OutcomeRankingChecks
             File.WriteAllText(inputs, JsonSerializer.Serialize(new { schemaVersion = 1, maximumRowsPerRoot = 64,
                 partition = "unknown", roots = new[] { one, two } }));
             Reject(() => OutcomeValueTraining.Run(inputs, bundled), "unknown partitions are rejected before fitting");
+            File.WriteAllText(inputs, JsonSerializer.Serialize(new { schemaVersion = 1, maximumRowsPerRoot = 64,
+                pairSelection = "unknown", roots = new[] { one, two } }));
+            Reject(() => OutcomeValueTraining.Run(inputs, bundled), "unknown pair selection cannot silently use all pairs");
+            File.WriteAllText(one, JsonSerializer.Serialize(new[] { a, Row(1, 2) with { RemainingActions = 2 },
+                Row(2, 3), loss with { Features = new() { ["x"] = 3 } } }));
+            File.WriteAllText(inputs, JsonSerializer.Serialize(new[] { one }));
+            File.WriteAllText(bundled, JsonSerializer.Serialize(new Model.Document(Model.Schema, ["x"],
+                typeof(Player).Assembly.ManifestModule.ModuleVersionId, [new(-1, 0, 0)], [1])));
+            OutcomeValueTraining.Audit(inputs, bundled, auditOutput);
+            using (var diagnostics = JsonDocument.Parse(File.ReadAllText(auditOutput)))
+            {
+                var kinds = diagnostics.RootElement[0].GetProperty("kinds").EnumerateArray()
+                    .ToDictionary(r => r.GetProperty("kind").GetString()!, r => r);
+                Check(kinds["victory-over-defeat"].GetProperty("pairs").GetInt32() == 3
+                    && kinds["victory-over-defeat"].GetProperty("wrong").GetInt32() == 3,
+                    "audit exposes losing witnesses incorrectly ranked ahead of all three winning witnesses");
+                Check(kinds["victory-policy"].GetProperty("pairs").GetInt32() == 2
+                    && kinds["victory-policy"].GetProperty("wrong").GetInt32() == 2
+                    && kinds["suffix-effort"].GetProperty("pairs").GetInt32() == 1
+                    && kinds["suffix-effort"].GetProperty("correct").GetInt32() == 1,
+                    "effort accuracy cannot disguise incorrect final-policy ordering");
+            }
         }
         finally { Directory.Delete(directory, recursive: true); }
         Console.WriteLine($"Outcome ranking: {checks} assertions passed.");

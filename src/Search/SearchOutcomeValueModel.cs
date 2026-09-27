@@ -45,6 +45,7 @@ internal sealed partial class SearchOutcomeValueModel
     internal int FittedPairs { get; private set; }
     internal int FittedRows { get; private set; }
     internal int FittedRoots { get; private set; }
+    internal int[] FittedPairKinds { get; private set; } = new int[3];
     internal int EligibleFeatures { get; private set; }
     internal int Samples => _observations.Values.Count(o => o.Outcome != null);
     private static ObservationKey Key(SearchNode node) => new(node.StateKey,
@@ -209,7 +210,8 @@ internal sealed partial class SearchOutcomeValueModel
             throw new InvalidDataException("Invalid witnessed ranking row.");
     }
 
-    internal bool Fit(IReadOnlyList<TrainingRow[]> roots, int maximumTrainingParallelism = 1)
+    internal bool Fit(IReadOnlyList<TrainingRow[]> roots, int maximumTrainingParallelism = 1,
+        bool highestPolicyTierOnly = false)
     {
         if (maximumTrainingParallelism is < 1 or > 4)
             throw new ArgumentOutOfRangeException(nameof(maximumTrainingParallelism));
@@ -217,13 +219,14 @@ internal sealed partial class SearchOutcomeValueModel
         List<Pair> pairs = [];
         Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
         int participatingRoots = 0;
+        FittedPairKinds = new int[3];
         Random random = new(0);
         foreach (var root in roots)
         {
             int offset = rows.Count;
             ValidateTrainingRows(root);
             rows.AddRange(root);
-            List<(int Preferred, int Other)> rootPairs = [];
+            List<(int Preferred, int Other, int Kind)> rootPairs = [];
             HashSet<(int, int)> seen = [];
             var groups = Enumerable.Range(0, root.Length).SelectMany(i => root[i].Groups.Select(g => (Group: g, Row: i)))
                 .GroupBy(x => x.Group);
@@ -234,14 +237,18 @@ internal sealed partial class SearchOutcomeValueModel
                     for (int b = a + 1; b < members.Length; b++)
                     {
                         int ia = members[a], ib = members[b];
-                        int order = CompareWitnesses(root[ia], root[ib]);
+                        int order = CompareWitnesses(root[ia], root[ib], out int kind);
                         if (order == 0) continue;
                         var pair = order < 0 ? (ia, ib) : (ib, ia);
-                        if (seen.Add(pair)) rootPairs.Add(pair);
+                        if (seen.Add(pair)) rootPairs.Add((pair.Item1, pair.Item2, kind));
                     }
             }
             // Equal total weight per root; repeated states/pools cannot multiply a pair.
-            var sampled = rootPairs.ToArray(); random.Shuffle(sampled);
+            // Optional offline ablation: use each root's highest available
+            // policy tier. No hand-assigned numeric tradeoff between tiers.
+            int firstKind = rootPairs.Count == 0 ? 0 : rootPairs.Min(p => p.Kind);
+            var sampled = rootPairs.Where(p => !highestPolicyTierOnly || p.Kind == firstKind).ToArray();
+            random.Shuffle(sampled);
             int count = Math.Min(4096, sampled.Length);
             if (count > 0)
             {
@@ -250,7 +257,10 @@ internal sealed partial class SearchOutcomeValueModel
                     featureRoots[name] = featureRoots.GetValueOrDefault(name) + 1;
             }
             foreach (var pair in sampled.Take(count))
+            {
                 pairs.Add(new(offset + pair.Preferred, offset + pair.Other, 1d / count));
+                FittedPairKinds[pair.Kind]++;
+            }
         }
         FittedPairs = pairs.Count;
         FittedRoots = participatingRoots;
@@ -393,12 +403,18 @@ internal sealed partial class SearchOutcomeValueModel
     // Lower means preferred. Effort only breaks an exact final-policy tie; it is
     // observed suffix length, not a handmade conversion between damage and cards.
     internal static int CompareWitnesses(TrainingRow a, TrainingRow b)
+        => CompareWitnesses(a, b, out _);
+
+    // Kind is meaningful only for a nonzero preference: victory, policy, effort.
+    internal static int CompareWitnesses(TrainingRow a, TrainingRow b, out int kind)
     {
+        kind = a.Outcome.Won != b.Outcome.Won ? 0 : 1;
         // Neither defeated continuation achieves the primary goal. Do not teach
         // the model to die faster via the effort tie-breaker.
         if (!a.Outcome.Won && !b.Outcome.Won) return 0;
         if (SolverInterimResultOrdering.IsBetter(a.Outcome, b.Outcome)) return -1;
         if (SolverInterimResultOrdering.IsBetter(b.Outcome, a.Outcome)) return 1;
+        kind = 2;
         return a.RemainingActions.CompareTo(b.RemainingActions);
     }
 

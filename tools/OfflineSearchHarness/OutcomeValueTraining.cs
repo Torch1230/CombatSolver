@@ -18,6 +18,9 @@ internal static class OutcomeValueTraining
             HashSet<(int, int)> seen = [];
             int correct = 0, wrong = 0, ties = 0, indistinguishable = 0;
             double loss = 0;
+            string[] kindNames = ["victory-over-defeat", "victory-policy", "suffix-effort"];
+            int[] kindPairs = new int[3], kindCorrect = new int[3], kindWrong = new int[3], kindTies = new int[3];
+            double[] kindLoss = new double[3];
             foreach (var group in Enumerable.Range(0, rows.Length)
                 .SelectMany(i => rows[i].Groups.Select(g => (Group: g, Row: i))).GroupBy(p => p.Group))
             {
@@ -27,11 +30,15 @@ internal static class OutcomeValueTraining
                     {
                         int left = members[a], right = members[b];
                         if (!seen.Add((Math.Min(left, right), Math.Max(left, right)))) continue;
-                        int preference = SearchOutcomeValueModel.CompareWitnesses(rows[left], rows[right]);
+                        int preference = SearchOutcomeValueModel.CompareWitnesses(rows[left], rows[right], out int kind);
                         if (preference == 0) continue;
                         double margin = (scores[right] - scores[left]) * Math.Sign(preference);
+                        kindPairs[kind]++;
+                        if (margin > 0) kindCorrect[kind]++; else if (margin < 0) kindWrong[kind]++; else kindTies[kind]++;
+                        double pairLoss = Math.Log(1 + Math.Exp(-Math.Clamp(margin, -40, 40)));
+                        kindLoss[kind] += pairLoss;
                         if (margin > 0) correct++; else if (margin < 0) wrong++; else ties++;
-                        loss += Math.Log(1 + Math.Exp(-Math.Clamp(margin, -40, 40)));
+                        loss += pairLoss;
                         if (rows[left].Features.Count == rows[right].Features.Count
                             && rows[left].Features.All(p => rows[right].Features.TryGetValue(p.Key, out var v) && v == p.Value))
                             indistinguishable++;
@@ -41,7 +48,10 @@ internal static class OutcomeValueTraining
             // Directory labels can repeat (for example, every root's "search"
             // folder). Join diagnostics to the ordered input by this index.
             results.Add(new { rootIndex = results.Count, root = root.Id, rows = rows.Length,
-                pairs, correct, wrong, ties, indistinguishable, logLoss = pairs == 0 ? 0 : loss / pairs });
+                pairs, correct, wrong, ties, indistinguishable, logLoss = pairs == 0 ? 0 : loss / pairs,
+                kinds = Enumerable.Range(0, kindNames.Length).Select(k => new { kind = kindNames[k],
+                    pairs = kindPairs[k], correct = kindCorrect[k], wrong = kindWrong[k], ties = kindTies[k],
+                    logLoss = kindPairs[k] == 0 ? 0 : kindLoss[k] / kindPairs[k] }).ToArray() });
         }
         File.WriteAllText(output, JsonSerializer.Serialize(results));
         Console.WriteLine($"Audited {results.Count} supplied roots; ranking diagnostics do not measure search decision quality.");
@@ -56,6 +66,11 @@ internal static class OutcomeValueTraining
             && specification.RootElement.TryGetProperty("partition", out var part)
             ? part.GetString() ?? throw new InvalidDataException("Missing training partition.") : "shared";
         if (partition is not ("shared" or "character")) throw new InvalidDataException("Unknown training partition.");
+        string pairSelection = specification.RootElement.ValueKind == JsonValueKind.Object
+            && specification.RootElement.TryGetProperty("pairSelection", out var selection)
+            ? selection.GetString() ?? throw new InvalidDataException("Missing pair selection.") : "all";
+        if (pairSelection is not ("all" or "highest-policy-tier"))
+            throw new InvalidDataException("Unknown training pair selection.");
         // Sample once in the original global root order. Partitioning never
         // restarts the row sampler or resamples a character's observations.
         var inputs = ReadRoots(pathsFile);
@@ -70,11 +85,13 @@ internal static class OutcomeValueTraining
         {
             Stopwatch headClock = Stopwatch.StartNew();
             SearchOutcomeValueModel model = new();
-            if (!model.Fit(group.Select(r => r.Rows).ToArray(), trainingParallelism))
+            if (!model.Fit(group.Select(r => r.Rows).ToArray(), trainingParallelism,
+                highestPolicyTierOnly: pairSelection == "highest-policy-tier"))
                 throw new InvalidOperationException("Insufficient witnessed outcomes for partition: " + group.Key);
             models.Add(group.Key, model);
             heads.Add(new { character = group.Key, rootIndices = group.Select(r => r.Index).ToArray(),
                 roots = group.Count(), rows = group.Sum(r => r.Rows.Length), pairs = model.FittedPairs,
+                pairKinds = model.FittedPairKinds,
                 participatingRoots = model.FittedRoots, participatingRows = model.FittedRows,
                 features = model.ExportModel().FeatureNames.Length, fitMilliseconds = headClock.Elapsed.TotalMilliseconds });
         }
@@ -88,7 +105,8 @@ internal static class OutcomeValueTraining
         string linearOutput = Path.ChangeExtension(output, "linear.json");
         File.WriteAllText(linearOutput, JsonSerializer.Serialize(Export(linear: true)));
         Console.WriteLine(JsonSerializer.Serialize(new { roots = roots.Length, rows = roots.Sum(r => r.Length),
-            pairs = models.Values.Sum(m => m.FittedPairs), partition, heads,
+            pairs = models.Values.Sum(m => m.FittedPairs), partition, pairSelection, heads,
+            pairKinds = Enumerable.Range(0, 3).Select(k => models.Values.Sum(m => m.FittedPairKinds[k])).ToArray(),
             participatingRoots = models.Values.Sum(m => m.FittedRoots), participatingRows = models.Values.Sum(m => m.FittedRows), trainingParallelism,
             features = models.Values.Sum(m => m.ExportModel().FeatureNames.Length),
             maximumHeadFeatures = models.Values.Max(m => m.ExportModel().FeatureNames.Length),
