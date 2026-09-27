@@ -378,6 +378,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.RunExpandedCardContinuationContractAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "SEEKER-CHOICE-RISK-CONTRACT")
+            {
+                await runner.RunExpandedCardContinuationContractAsync(combatState, player, seekerOnly: true);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "CARD-CONTINUATION-EXPANDED-SEARCH" or "CARD-CONTINUATION-EXPANDED-INCREMENTAL")
             {
                 await AssertCardChoiceSearchAsync(combatState, player,

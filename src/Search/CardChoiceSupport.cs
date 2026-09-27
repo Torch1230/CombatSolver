@@ -886,7 +886,8 @@ internal static partial class CardChoiceSupport
         if (options.Count == 0)
             return null;
         simulator.History.CardsSelected(options);
-        simulator.History.RecordRisk(PredictionRiskReason.UnresolvedPlayerChoice);
+        // The action cursor validates a supplied selection or suspends at this
+        // supported choice. Offering options is not a permanent prediction gap.
         string contextId = $"seeker:{simulator.Rng.CombatCardSelection.Counter()}:" +
             string.Join(',', options.Select(card =>
                 $"{card.Preview.Id.Entry}+{card.Preview.CurrentUpgradeLevel}"));

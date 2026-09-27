@@ -26,11 +26,12 @@ internal sealed partial class UnattendedTestRunner
         "TRUE_GRIT", "WISH",
     ];
 
-    private async Task RunExpandedCardContinuationContractAsync(CombatState live, Player player)
+    private async Task RunExpandedCardContinuationContractAsync(CombatState live, Player player, bool seekerOnly = false)
     {
+        List<string> unresolvedCompletedChoices = [];
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
         await OstyCmd.Summon(new BlockingPlayerChoiceContext(), player, 10, null);
-        foreach (string id in ExpandedContinuationCards)
+        foreach (string id in seekerOnly ? new[] { "SEEKER_STRIKE" } : ExpandedContinuationCards)
         foreach (int upgrade in new[] { 0, 1 })
         {
             await ClearPlayerPilesAsync(player);
@@ -61,10 +62,11 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException(id + " produced an unexpected post-action selector.");
                 sim.CheckWinCondition(root.StartTurnNumber);
             }
-            CombatPredictionSimulator Legacy(IReadOnlyList<PlanCardChoice>? choices)
+            CombatPredictionSimulator Legacy(IReadOnlyList<PlanCardChoice>? choices, PredictionRiskReason? priorRisk = null)
             {
                 using var isolation = SimulationNotificationIsolation.Enter();
                 var sim = parent.Fork(); var combat = (SimulatedCombatState)sim.State.CombatState;
+                if (priorRisk is { } risk) sim.History.RecordRisk(risk);
                 ForkableSet<uint> deaths = [];
                 combat.BeginActionChoices(choices);
                 try
@@ -80,6 +82,13 @@ internal sealed partial class UnattendedTestRunner
             var request = ((SimulatedCombatState)discovery.State.CombatState).PendingTurnStartChoice;
             bool hasChoice = !(id == "ARMAMENTS" && upgrade == 1 || id == "TRUE_GRIT" && upgrade == 0);
             if (hasChoice != (request != null)) throw new InvalidOperationException(id + " unexpected selection availability.");
+            if (id == "SEEKER_STRIKE")
+            {
+                if (!discovery.HasPendingChoice || discovery.History.OfType<CombatPredictionCardPlayFinishedEntry>().Count()
+                    != parent.History.OfType<CombatPredictionCardPlayFinishedEntry>().Count())
+                    throw new InvalidOperationException("Seeker selection must suspend before card completion.");
+                _completedChecks.Add($"SeekerChoice:+{upgrade}:pending-before-card-completion");
+            }
             var seed = parent.Fork();
             CardContinuationContractCheckpoint? captured;
             using (SimulationNotificationIsolation.Enter())
@@ -113,6 +122,9 @@ internal sealed partial class UnattendedTestRunner
                     if (!ends.Any(end => ReferenceEquals(started.CardPlay, end.CardPlay) && ReferenceEquals(started.Trace, end.Trace)))
                         throw new InvalidOperationException(id + " lost CardPlay/trace identity.");
                 Equal(Stamp(resumed), Stamp(resumed.Fork()), "completed state Fork");
+                if (id == "SEEKER_STRIKE" && resumed.History.OfType<CombatPredictionRiskEntry>()
+                    .Any(entry => entry.Reason == PredictionRiskReason.UnresolvedPlayerChoice))
+                    unresolvedCompletedChoices.Add($"+{upgrade}:resumed-choice-{index}");
             }
             var first = Resume(0); string firstBefore = Stamp(first);
             _ = Resume(choices.Length - 1);
@@ -130,8 +142,17 @@ internal sealed partial class UnattendedTestRunner
             Equal(liveBefore, ContinuationStamp.CaptureLive(live).StateText, "live preserved");
             _completedChecks.Add($"ExpandedCardContinuation:{id}+{upgrade}:choices={choices.Length}:state:history:RNG:identity:siblings:DOP2");
 
+            if (id == "SEEKER_STRIKE")
+            {
+                var marked = Legacy([choices[0]], PredictionRiskReason.MethodNotMirrored);
+                if (!marked.History.OfType<CombatPredictionRiskEntry>()
+                    .Any(entry => entry.Reason == PredictionRiskReason.MethodNotMirrored))
+                    throw new InvalidOperationException("Resolving a choice must preserve unrelated prediction risks.");
+                _completedChecks.Add($"SeekerChoice:+{upgrade}:unrelated-risk-preserved");
+            }
+
             // Representatives cross each changed prefix family through the actual native action.
-            if (upgrade == 0 && id is "THINKING_AHEAD" or "GLIMMER" or "PHOTON_CUT" or "SURVIVOR"
+            if (seekerOnly || upgrade == 0 && id is "THINKING_AHEAD" or "GLIMMER" or "PHOTON_CUT" or "SURVIVOR"
                 or "ARMAMENTS" or "HOLOGRAM" or "SEEKER_STRIKE" or "ABUNDANCE" or "CLEANSE" or "SNAP")
             {
                 int index = Array.FindIndex(choices, choice => choice.Cards.Count > 0);
@@ -147,8 +168,16 @@ internal sealed partial class UnattendedTestRunner
                 await session.AwaitProducerAndCompleteAsync(action.CompletionTask).WaitAsync(deadline.Token);
                 Equal(expectedNative, ContinuationStamp.CaptureLive(live).StateText, "native full continuation");
                 _completedChecks.Add($"ExpandedCardContinuation:{id}+{upgrade}:native-full-continuation");
+                if (id == "SEEKER_STRIKE" && expected.History.OfType<CombatPredictionRiskEntry>()
+                    .Any(entry => entry.Reason == PredictionRiskReason.UnresolvedPlayerChoice))
+                    unresolvedCompletedChoices.Add($"+{upgrade}:native-equivalent-direct-play");
             }
         }
+        // Defer this assertion until both native variants have established state/RNG parity.
+        if (unresolvedCompletedChoices.Count != 0)
+            throw new InvalidOperationException("Completed Seeker choices retain unresolved risk: "
+                + string.Join(", ", unresolvedCompletedChoices));
+        if (seekerOnly) _completedChecks.Add("SeekerChoice:all-completed-selections-risk-free");
     }
 
     private static string DescribeContinuationContractState(CombatPredictionSimulator simulator, CombatRootSnapshot root, Player player)
