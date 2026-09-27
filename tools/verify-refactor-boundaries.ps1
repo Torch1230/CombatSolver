@@ -1754,7 +1754,7 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
     }
 }
 
-foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
+foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'SearchOutcomeValueModel.Neural.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
     foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.', 'xgboost')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
@@ -1783,6 +1783,9 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'Schema = 10, LegacySchema = 9, FeatureSchema = 8' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'document.Schema == LegacySchema && document.FactorWeights != null' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Interactions.cs'); Text = 'private double AddInteractions(float[] values, double score)' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Neural.cs'); Text = 'private double AddNeural(float[] values, double score)' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '(document.Schema == NeuralSchema) != (document.Neural != null)' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/neural_fit.py'); Text = 'from ranking_data import derivatives, loss, read_head, read_manifest' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/factor_fit.py'); Text = 'from ranking_data import derivatives, loss, read_head, read_manifest' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/sparse_fit.py'); Text = 'from ranking_data import read_head, read_manifest' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OutcomeValuation/sparse_fit.py'); Text = 'coefficients[active] = normalized / scale' },

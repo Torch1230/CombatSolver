@@ -357,6 +357,7 @@ internal static class OutcomeRankingChecks
         }
         finally { Directory.Delete(directory, recursive: true); }
         checks += OutcomeInteractionChecks.Run();
+        checks += OutcomeNeuralChecks.Run();
         Console.WriteLine($"Outcome ranking: {checks} assertions passed.");
         return 0;
     }

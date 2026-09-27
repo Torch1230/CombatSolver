@@ -1,10 +1,12 @@
 # CombatSolver 架构与职责地图
 
+`SearchOutcomeValueModel.Neural` 只拥有可选单隐层tanh残差的数值校验、复制和C#推理，至多32个隐单元，与原线性/树共用列裁剪、float32观察和缓存。该项使用schema11；9/10不得携带神经项，11必须有神经项且不混入因子项，防止旧加载器静默丢弃参数。线性导出清除全部非线性项并回到schema10，空神经字段不进入旧格式JSON。`neural_fit.py` 只离线消费原权威偏好图，尺度/活动列只从训练侧计算，参数折回原始单位，全部角色及导出共用完整拟合时限；它不修改终局政策、玩家模式或Runtime默认，不引入游戏内机器学习框架。
+
 离线 `pairWeighting=turns` 由宿主解析，`PrepareTraining` 在原配对/去重/抽样之后按较晚端点的实际回合分层，每根内各非空回合等权，根总权重仍为1。回合必须是原观察中的正整数，原始行在抽样前校验；不合成回合、不改变标签或默认 `pairs` 权重。内置和所有外部训练器共用这一权威入口。`Audit` 仍使用全量原偏好及原根均值，额外回合诊断只拆分同一批对，不随训练权重改变；缺少回合观察的旧合成合同不输出回合分项。模型格式和在线推理不变。
 
 `tools/OutcomeValuation/sparse_fit.py` 只拥有可选离线稀疏线性拟合。它通过 `ranking_data.py` 读取并校验同一 C# 偏好图，使用训练侧的偏好差值RMS、根归一权重和有界正负系数分解联合拟合L1/L2线性项；不消费旧基础分作为标签，不改动权威政策、抽样、运行推理或默认入口。系数还原原始观察单位后写入现有 `LinearWeights`，零系数由既有编译列裁剪处理。固定迭代状态和KKT残差均写入研究指标；完整导出及所有角色共用单次训练预算。
 
-`SearchOutcomeValueModel.Interactions` 只拥有有限秩二阶因子的格式校验和 C# 数值推理；它与线性/树共用紧凑列与 float32 观察，加载及导出复制因子矩阵，零矩阵归一为无交互项。新模型 schema10，显式兼容没有因子的 schema9；观察保持8，不因推理形式变化重新采集。旧格式带因子必须拒绝，线性导出必须同时移除树残差及因子。`ranking_data.py` 共用外部训练的二进制读入、哈希/格式校验与偏好损失；`factor_fit.py` 只在离线学习秩8因子，不改变终局政策、Runtime 默认、玩家模式或运行中的冻结采集器。
+`SearchOutcomeValueModel.Interactions` 只拥有有限秩二阶因子的格式校验和 C# 数值推理；它与线性/树共用紧凑列与 float32 观察，加载及导出复制因子矩阵，零矩阵归一为无交互项。因子模型使用schema10，显式兼容没有因子的schema9；观察保持8，不因推理形式变化重新采集。旧格式带因子必须拒绝，线性导出必须同时移除树残差及因子。`ranking_data.py` 共用外部训练的二进制读入、哈希/格式校验与偏好损失；`factor_fit.py` 只在离线学习秩8因子，不改变终局政策、Runtime 默认、玩家模式或运行中的冻结采集器。
 
 离线学习排序通过 `ObjectiveRankScore` 的标量回调接入 `BeamRetentionPolicy`，不再自建简化 Prune/RankBest或独立协调器；去重、资源/选牌/循环保路、最终仲裁和完整结果下界仍由共用职责拥有。`SearchOutcomeValueModel` 在展开准入节点及固定前缀释放前计算标量，并按弱引用快照身份及状态/政策键保存，供模拟器释放后的父节点及record副本排序；不持有节点、模拟器或特征向量，不改变生产节点结构。其大小随存活快照变化，与上限4096项的状态缓存分别计量。辅助通道仍有原启发式特征，最终政策不使用学习分。
 
@@ -28,7 +30,7 @@
 
 `SearchOutcomeContext` 保留按敌人 roster 位置和同名 Power 总层数的原始观察。另通过既有 `PersistentPowerSupport.GetModifiedMaxEnergy` / `GetModifiedHandDraw` 投影 `resource/current-max-energy` / `resource/current-hand-draw`，参数和补偿与引擎共用；仅查询当前分支/回合的规则量，不消费延迟资源、推进战斗或赋予效用，也不声称该量保证下回合到账。未引用这些列的稀疏推理不调用查询。模型 schema10/观察 schema8；旧观察缺失这些量，必须重新采集，宿主拒绝 `featureUpgrade`，不再提供会伪造当前 schema 完整性的旧聚合升级。历史 schema6/7 转换仅能由原冻结程序复现。
 
-`SearchOutcomeContext` 投影分支原始上下文，包括奥斯蒂身体及可受击状态；Power归属区分主人/奥斯蒂/敌人，敌人使用与身体相同的roster索引。推理跳过模型未引用的类别。`SearchOutcomeValueModel` 拥有有界同池观测、已完成胜利/真实死亡见证、学习得到的线性基础项、64棵直方图残差树及请求内缓存；模型schema10/游戏MVID与观察schema8分别校验。`SearchOutcomeValueModel.Linear` 只在离线拟合阶段按同根偏好差值学习连续系数，先归一化差值、再折回原始单位；根内常量没有线性边际效用，条件效应由残差树或离线交互因子学习。线性和树共同排除只在少于三个有偏好根中出现的字段（玩具合同少于三根时取实际根数），不按相关行数伪造跨根支持度。固定预测器与 `OutcomeTrainingCollector` 分离；采集可复制三个首回合动作深度的保留/淘汰前缀，每对独立组、合计至多六条，不保存节点或模拟器。离线宿主 `OutcomeCorrections` 在主搜索后通过原固定前缀 Beam 补查，独立记录训练成本，只更新已有状态的完成见证。`OutcomeValueTraining` 合并同根不同采集策略时重映射组号。新颖性子节点池也参与有界观察（最多64/256池），以免自动搜索的早期胜利完全缺席训练。`tools/OutcomeValuation/prepare_training.py` 在搜索前按目录准备各角色等量的原生根；建局成本计入训练总账。`refit.py` 复用完整且输入未变的原观察，继承全部历史成本并输出数据摘要；独立线性产物与完整残差模型来自同一次拟合。`tools/OutcomeValuation/dataset.py` 审计跨场景隔离并核对实际搜索装备与封存建局装备完全相同，`evaluate.py` 独占冻结模型的独立进程对照与测试使用记录；最终测试身份包含程序集、模型、搜索配置和数据摘要。宿主统一监听两个入口的回合层/新颖性时间停止，独立导出阶段计数，不能用外层结果的边界代替整个请求。文件 I/O、训练和纠正搜索编排均不在 Search 内环。`ObjectiveRetention` 仍仅离线 DOP1/Disabled药水；协调器把学习估值接入同一自动调度，原 `CombatSearchCoordinator.ObjectiveSearch` 独立宽度循环已删除。新颖性保持原探索规则，队列与边界回退的排序使用学习分；Runtime不启用。见[连续估值与场景支持度](strategy/linear-outcome-ranking-20260927.md)。
+`SearchOutcomeContext` 投影分支原始上下文，包括奥斯蒂身体及可受击状态；Power归属区分主人/奥斯蒂/敌人，敌人使用与身体相同的roster索引。推理跳过模型未引用的类别。`SearchOutcomeValueModel` 拥有有界同池观测、已完成胜利/真实死亡见证、学习得到的线性基础项、64棵直方图残差树及请求内缓存；模型schema9/10/11及游戏MVID与观察schema8分别校验。`SearchOutcomeValueModel.Linear` 只在离线拟合阶段按同根偏好差值学习连续系数，先归一化差值、再折回原始单位；根内常量没有线性边际效用，条件效应由残差树或离线交互因子学习。线性和树共同排除只在少于三个有偏好根中出现的字段（玩具合同少于三根时取实际根数），不按相关行数伪造跨根支持度。固定预测器与 `OutcomeTrainingCollector` 分离；采集可复制三个首回合动作深度的保留/淘汰前缀，每对独立组、合计至多六条，不保存节点或模拟器。离线宿主 `OutcomeCorrections` 在主搜索后通过原固定前缀 Beam 补查，独立记录训练成本，只更新已有状态的完成见证。`OutcomeValueTraining` 合并同根不同采集策略时重映射组号。新颖性子节点池也参与有界观察（最多64/256池），以免自动搜索的早期胜利完全缺席训练。`tools/OutcomeValuation/prepare_training.py` 在搜索前按目录准备各角色等量的原生根；建局成本计入训练总账。`refit.py` 复用完整且输入未变的原观察，继承全部历史成本并输出数据摘要；独立线性产物与完整残差模型来自同一次拟合。`tools/OutcomeValuation/dataset.py` 审计跨场景隔离并核对实际搜索装备与封存建局装备完全相同，`evaluate.py` 独占冻结模型的独立进程对照与测试使用记录；最终测试身份包含程序集、模型、搜索配置和数据摘要。宿主统一监听两个入口的回合层/新颖性时间停止，独立导出阶段计数，不能用外层结果的边界代替整个请求。文件 I/O、训练和纠正搜索编排均不在 Search 内环。`ObjectiveRetention` 仍仅离线 DOP1/Disabled药水；协调器把学习估值接入同一自动调度，原 `CombatSearchCoordinator.ObjectiveSearch` 独立宽度循环已删除。新颖性保持原探索规则，队列与边界回退的排序使用学习分；Runtime不启用。见[连续估值与场景支持度](strategy/linear-outcome-ranking-20260927.md)。
 
 
 `CombatPredictionHistory` 拥有模拟历史及六项累计值；单人身份在模拟器建立时冻结，三类 Fork 按值继承。`CombatHistoryCounterKey` 消费根冻结的读者依赖掩码，不维护第二份账本。测试构建逐事件核对独立全扫描。

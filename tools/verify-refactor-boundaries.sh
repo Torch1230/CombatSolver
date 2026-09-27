@@ -1361,7 +1361,7 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
     done
 done
 
-for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs CombatBeamSolver.ObjectiveRetention.cs; do
+for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs CombatBeamSolver.ObjectiveRetention.cs; do
     for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.' 'xgboost'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
@@ -1398,6 +1398,9 @@ require_fixed "$search_root/SearchOutcomeValueModel.cs" 'r.FeatureSchema != Feat
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'Schema = 10, LegacySchema = 9, FeatureSchema = 8' 'model serialization and resource observation schemas must be distinct:'
 require_fixed "$search_root/SearchOutcomeValueModel.cs" 'document.Schema == LegacySchema && document.FactorWeights != null' 'legacy models must not silently discard interactions:'
 require_fixed "$search_root/SearchOutcomeValueModel.Interactions.cs" 'private double AddInteractions(float[] values, double score)' 'factor inference must share float observations and preserve the base score:'
+require_fixed "$search_root/SearchOutcomeValueModel.Neural.cs" 'private double AddNeural(float[] values, double score)' 'neural inference must share observations and preserve the base score:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" '(document.Schema == NeuralSchema) != (document.Neural != null)' 'neural parameters require an explicit incompatible model schema:'
+require_fixed "$repository_root/tools/OutcomeValuation/neural_fit.py" 'from ranking_data import derivatives, loss, read_head, read_manifest' 'neural fitting must consume the authoritative shared graph:'
 require_fixed "$repository_root/tools/OutcomeValuation/factor_fit.py" 'from ranking_data import derivatives, loss, read_head, read_manifest' 'interaction fitting must consume the authoritative shared graph:'
 require_fixed "$repository_root/tools/OutcomeValuation/sparse_fit.py" 'from ranking_data import read_head, read_manifest' 'sparse fitting must consume the authoritative shared graph:'
 require_fixed "$repository_root/tools/OutcomeValuation/sparse_fit.py" 'coefficients[active] = normalized / scale' 'sparse fitting must restore original observation units and preserve unobserved zeros:'
