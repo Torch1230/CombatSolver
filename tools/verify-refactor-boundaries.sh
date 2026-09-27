@@ -1371,7 +1371,9 @@ done
 require_fixed "$search_root/SearchPolicySnapshot.cs" 'SearchOutcomeValueModel? OutcomeTrainingCollector' 'training collector must remain separate from the frozen predictor:'
 require_fixed "$search_root/CombatBeamSolver.cs" 'policy.UseObjectiveSearch ? ObjectiveRankScore : null' 'learned scalar must use the shared retention policy:'
 require_fixed "$search_root/CombatSearchCoordinator.cs" 'UseAutomaticSearch = policy.UseAutomaticSearch || policy.UseObjectiveSearch' 'learned ranking must use the shared automatic scheduler:'
-require_fixed "$search_root/CombatBeamSolver.NoveltySearch.cs" '=> policy.UseObjectiveSearch ? ObjectiveRankScore(node) : node.Score;' 'novelty ordering must use the selected estimator:'
+require_fixed "$search_root/CombatBeamSolver.ObjectiveRetention.cs" '=> policy.UseObjectiveSearch ? ObjectiveRankScore(node) : node.Score;' 'intermediate ordering must use the selected estimator:'
+require_fixed "$search_root/CombatBeamSolver.NoveltySearch.cs" 'CandidateRankScore(' 'novelty ordering must share the selected estimator:'
+require_fixed "$search_root/CombatBeamSolver.Expansion.Opening.cs" 'CandidateRankScore(' 'opening proposals must not silently rank learned states by zeroed classic scores:'
 forbid_fixed "$search_root/CombatBeamSolver.Phases.cs" 'policy = policy with { NoveltySearch = null };' 'learned ranking must not silently disable novelty exploration:'
 if [[ -e "$search_root/CombatSearchCoordinator.ObjectiveSearch.cs" ]]; then
     add_violation 'Learned ranking must not recreate a separate width/budget scheduler.'

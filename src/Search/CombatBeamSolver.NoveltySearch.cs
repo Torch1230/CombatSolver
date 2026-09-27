@@ -82,7 +82,7 @@ internal sealed partial class CombatBeamSolver
                 }
 
                 _ = NoveltyFor(seed);
-                if (SearchPriority(seed) > SearchPriority(fallback)) fallback = seed;
+                if (CandidateRankScore(seed) > CandidateRankScore(fallback)) fallback = seed;
                 observeBoundary(seed);
                 completed.Add(seed);
                 targetReached |= hpTarget(seed);
@@ -117,7 +117,7 @@ internal sealed partial class CombatBeamSolver
                         {
                             ObserveNoveltyCandidate(child, clock);
                             maximumTurn = Math.Max(maximumTurn, child.Turn);
-                            if (SearchPriority(child) > SearchPriority(fallback)) fallback = child;
+                            if (CandidateRankScore(child) > CandidateRankScore(fallback)) fallback = child;
                             if (child.IsTerminal || child.Turn > parent.Turn)
                                 observeBoundary(child);
                             if (child.IsTerminal)
@@ -174,8 +174,6 @@ internal sealed partial class CombatBeamSolver
         }
         int NoveltyFor(SearchNode node)
             => novelty.Evaluate((node.Snapshot.EnemyHp / 10, node.PotionCount), CaptureNoveltyFacts(node));
-        double SearchPriority(SearchNode node)
-            => policy.UseObjectiveSearch ? ObjectiveRankScore(node) : node.Score;
         void Enqueue(SearchNode node, bool initialSeed = false, BfwsEscapeBudget? parentEscape = null)
         {
             int w = NoveltyFor(node);
@@ -192,7 +190,7 @@ internal sealed partial class CombatBeamSolver
             BfwsEscapeBudget? escape = options.FamiliarAllowance > 0
                 ? initialSeed || w <= options.Width ? new(options.FamiliarAllowance) : parentEscape
                 : null;
-            var rank = ((double)w, -SearchPriority(node), sequence++);
+            var rank = ((double)w, -CandidateRankScore(node), sequence++);
             if (open.Enqueue((node, escape), rank, out var evicted))
             {
                 _novelty.OpenDropped++;

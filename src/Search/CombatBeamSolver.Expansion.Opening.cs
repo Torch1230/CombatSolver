@@ -74,7 +74,7 @@ internal sealed partial class CombatBeamSolver
                     && HasPlayableFetchedPower(node)
                     && node.Action!.Choice!.Cards.Any(card =>
                         PowerCardValuationModels.Registry.ContainsCardId(card.CardId)))
-                .OrderByDescending(node => node.Score)
+                .OrderByDescending(node => CandidateRankScore(node))
                 .DistinctBy(node => (node.Action!.CardStateKey,
                     Choice: string.Join('|', node.Action.Choice!.Cards.Select(card => card.StateKey))))
                 .Take(3)
@@ -116,7 +116,7 @@ internal sealed partial class CombatBeamSolver
                             card.Preview.CurrentUpgradeLevel - original.Preview.CurrentUpgradeLevel)))))
                 .Where(item => item.UpgradeGain > 0)
                 .OrderByDescending(item => item.UpgradeGain)
-                .ThenByDescending(item => item.Node.Score)
+                .ThenByDescending(item => CandidateRankScore(item.Node))
                 .DistinctBy(item => (item.Node.Action!.CardId,
                     item.Node.Action.CardStateKey,
                     item.Node.Action.CardStateOccurrence,
@@ -259,7 +259,7 @@ internal sealed partial class CombatBeamSolver
                 .Where(item => item.Value > 0)
                 .DistinctBy(item => item.Token.StateKey)
                 .OrderByDescending(item => item.Value)
-                .ThenByDescending(item => item.Node.Score)
+                .ThenByDescending(item => CandidateRankScore(item.Node))
                 .ToArray();
             return candidates.Take(2)
                 .Concat(candidates.GroupBy(item => item.Type).Select(group => group.First()))
@@ -296,7 +296,7 @@ internal sealed partial class CombatBeamSolver
                     ? OpeningDiscardChoiceCardValue(node, choice)
                     : double.MaxValue)
                 .ThenByDescending(node => node.Snapshot.ReachableHandValue)
-                .ThenByDescending(node => node.Score)
+                .ThenByDescending(node => CandidateRankScore(node))
                 .DistinctBy(node => (node.Action!.CardId,
                     node.Action.Choice?.Cards.FirstOrDefault()?.StateKey))
                 .Take(3)
@@ -340,7 +340,7 @@ internal sealed partial class CombatBeamSolver
                 })
                 .Where(item => item.NewCards >= 2)
                 .OrderByDescending(item => item.NewCards)
-                .ThenByDescending(item => item.Node.Score)
+                .ThenByDescending(item => CandidateRankScore(item.Node))
                 .DistinctBy(item => item.Node.Action!.CardStateKey)
                 .Take(3)
                 .Select(item => item.Node.Action!)
@@ -406,7 +406,7 @@ internal sealed partial class CombatBeamSolver
             children.AddRange(Expand(seed));
             return children
                 .Where(node => node.Action?.Kind == PlanActionKind.UsePotion)
-                .OrderByDescending(node => node.Score)
+                .OrderByDescending(node => CandidateRankScore(node))
                 .Select(node => node.Action!)
                 .ToArray();
         }
@@ -521,10 +521,10 @@ internal sealed partial class CombatBeamSolver
                 .GroupBy(candidate => cardTypes[candidate.Node.Action!.CardId])
                 .Select(group => group
                     .OrderByDescending(candidate => candidate.Value)
-                    .ThenByDescending(candidate => candidate.Node.Score)
+                    .ThenByDescending(candidate => CandidateRankScore(candidate.Node))
                     .First())
                 .OrderByDescending(candidate => candidate.Value)
-                .ThenByDescending(candidate => candidate.Node.Score)
+                .ThenByDescending(candidate => CandidateRankScore(candidate.Node))
                 .Take(3)
                 .Select(candidate => candidate.Node.Action!)
                 .ToArray();
@@ -650,7 +650,7 @@ internal sealed partial class CombatBeamSolver
                     .OrderBy(node => node.Snapshot.AliveEnemyCount)
                     .ThenBy(node => node.Snapshot.EnemyHp)
                     .ThenByDescending(node => node.Snapshot.FocusTargetPressure)
-                    .ThenByDescending(node => node.Score)
+                    .ThenByDescending(node => CandidateRankScore(node))
                     .First().Action!)
                 .OrderBy(action => action.TargetCombatId)
                 .Take(3)
@@ -748,8 +748,8 @@ internal sealed partial class CombatBeamSolver
                     && node.Snapshot.Turn == seed.Snapshot.Turn
                     && node.Snapshot.EnemyHp < seed.Snapshot.EnemyHp)
                 .GroupBy(node => node.Action!.CardStateKey)
-                .Select(group => group.OrderByDescending(node => node.Score).First())
-                .OrderByDescending(node => node.Score)
+                .Select(group => group.OrderByDescending(node => CandidateRankScore(node)).First())
+                .OrderByDescending(node => CandidateRankScore(node))
                 .Take(5)
                 .Select(node => node.Action!)
                 .ToArray();
@@ -783,8 +783,8 @@ internal sealed partial class CombatBeamSolver
                     && node.Snapshot.EnemyHp < seed.Snapshot.EnemyHp
                     && (includeTerminal || !node.Snapshot.AllEnemiesDead))
                 .GroupBy(node => node.Action!.CardStateKey)
-                .Select(group => group.OrderByDescending(node => node.Score).First())
-                .OrderByDescending(node => node.Score)
+                .Select(group => group.OrderByDescending(node => CandidateRankScore(node)).First())
+                .OrderByDescending(node => CandidateRankScore(node))
                 .Take(3)
                 .Select(node => node.Action!)
                 .ToArray();
@@ -811,7 +811,7 @@ internal sealed partial class CombatBeamSolver
                     Kind: PlanActionKind.EndTurn,
                     TurnStartChoices: { Count: > 0 },
                 })
-                .OrderByDescending(node => node.Score)
+                .OrderByDescending(node => CandidateRankScore(node))
                 .Select(node => node.Action!)
                 .DistinctBy(TurnEndChoiceKey)
                 .Take(4)
@@ -850,14 +850,14 @@ internal sealed partial class CombatBeamSolver
                 }
                 frontier = next
                     .DistinctBy(node => node.Snapshot.StateKey)
-                    .OrderByDescending(node => node.Score)
+                    .OrderByDescending(node => CandidateRankScore(node))
                     .Take(24)
                     .ToList();
                 candidates.AddRange(frontier);
             }
             return candidates
                 .OrderByDescending(node => node.ActionCount)
-                .ThenByDescending(node => node.Score)
+                .ThenByDescending(node => CandidateRankScore(node))
                 .Take(12)
                 .Select(node => node.Actions.ToArray())
                 .ToArray();
@@ -888,7 +888,7 @@ internal sealed partial class CombatBeamSolver
                     && node.Snapshot.Turn == prefixSnapshot.Turn
                     && node.Snapshot.PlayerBlock > prefixSnapshot.PlayerBlock)
                 .OrderByDescending(node => node.Snapshot.PlayerBlock)
-                .ThenByDescending(node => node.Score)
+                .ThenByDescending(node => CandidateRankScore(node))
                 .DistinctBy(node => node.Action!.CardId)
                 .Take(3)
                 .Select(node => node.Action!)
@@ -929,11 +929,11 @@ internal sealed partial class CombatBeamSolver
                     .ThenByDescending(node => node.Action?.Choice is
                         { Effect: PlanChoiceEffect.Exhaust, Cards.Count: 1 } choice
                         && hand.Count(card => card.Preview.Id.Entry == choice.Cards[0].CardId) > 1)
-                    .ThenByDescending(node => node.Score)
+                    .ThenByDescending(node => CandidateRankScore(node))
                     .First())
                 .OrderByDescending(node => node.Snapshot.PersistentBuffValue
                     - prefixSnapshot.PersistentBuffValue)
-                .ThenByDescending(node => node.Score)
+                .ThenByDescending(node => CandidateRankScore(node))
                 .FirstOrDefault();
             return best?.Action;
         }
