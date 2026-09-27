@@ -98,6 +98,26 @@ class FactorContracts(unittest.TestCase):
             tree = copy.deepcopy(foundation); tree["Forest"][0]["Mean"] = 1
             with self.assertRaises(ValueError): validate_foundation(tree)
 
+    def test_explicit_regularization_and_unchanged_default(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary); self.make_export(directory)
+            fit(directory, directory / "default", 30)
+            fit(directory, directory / "explicit", 30, regularization=.001)
+            self.assertEqual((directory / "default/model.json").read_bytes(),
+                             (directory / "explicit/model.json").read_bytes())
+            fit(directory, directory / "strong", 30, regularization=1.)
+            document = json.loads((directory / "strong/model.json").read_text())
+            original = json.loads((directory / "default/model.json").read_text())
+            self.assertLess(np.linalg.norm(document["FactorWeights"]), np.linalg.norm(original["FactorWeights"]))
+            self.assertEqual(json.loads((directory / "strong/metrics.json").read_text())["regularization"], 1.)
+
+    def test_invalid_regularization_does_not_create_outputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            for value in (-1., np.nan, np.inf):
+                with self.assertRaises(ValueError): fit(directory, directory / "output", regularization=value)
+            self.assertFalse((directory / "output").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

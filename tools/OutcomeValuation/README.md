@@ -1,6 +1,6 @@
 # 结果估值与小规模训练工具
 
-`factor_fit.py` 是另一种离线训练后端：固定学习得到的线性项，加秩8二阶因子交互；只需 `requirements-ranking.txt` 的 NumPy/SciPy，不依赖 XGBoost。使用下方同一个 C# 导出目录，运行 `python tools/OutcomeValuation/factor_fit.py export-directory model-directory --seconds 1000 --stop STOP`。总预算仍包括导出和全部角色，`--seconds` 要扣除已用导出时间；遇到停止/超时/坏输入不发布完整模型。固定 L-BFGS-B 128 次迭代、均值偏好损失、L2=.001，迭代上限并不意味着收敛。
+`factor_fit.py` 是另一种离线训练后端：固定学习得到的线性项，加秩8二阶因子交互；只需 `requirements-ranking.txt` 的 NumPy/SciPy，不依赖 XGBoost。使用下方同一个 C# 导出目录，运行 `python tools/OutcomeValuation/factor_fit.py export-directory model-directory --seconds 1000 --stop STOP`。总预算仍包括导出和全部角色，`--seconds` 要扣除已用导出时间；遇到停止/超时/坏输入不发布完整模型。固定 L-BFGS-B 128 次迭代、均值偏好损失，默认 L2=.001，迭代上限并不意味着收敛。离线可显式指定非负有限 `--regularization`；应使用隔离的场景家族选型，线性基础、特征支持度和归一化也只能由内部训练侧拟合。首次完整家族留出试验见[正则化选型](../../docs/strategy/factor-regularization-selection-20260928.md)，默认值与玩家入口不变。
 
 因子只增加模型格式（schema10），原始观察保持8；宿主明确兼容无交互项的9，旧宿主拒绝10。两个外部后端共用 `ranking_data.py` 读入原 C# 偏好图，不在 Python 重建标签。用相同预测命令核对 C#，然后做独立开发战斗；首个完整交互模型仍有退化，未启用，见[实际结果](../../docs/strategy/factor-interactions-20260928.md)。`test_factor_fit.py` 覆盖解析梯度、归一化/原单位导出、情境反转、未观察列、停止及损坏输入。
 

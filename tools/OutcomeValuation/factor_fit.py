@@ -63,8 +63,11 @@ def score_raw(matrix, factors, linear):
     return scores
 
 
-def fit(directory: Path, output: Path, seconds=1200, stop: Path | None = None):
+def fit(directory: Path, output: Path, seconds=1200, stop: Path | None = None,
+        regularization=REGULARIZATION):
     started = time.monotonic()
+    if not math.isfinite(regularization) or regularization < 0:
+        raise ValueError("Interaction regularization must be finite and nonnegative")
     if not 1 <= seconds <= 1200 or output.exists():
         raise ValueError("Use a new output directory and at most 1200 seconds for all heads")
     manifest = read_manifest(directory)
@@ -90,7 +93,7 @@ def fit(directory: Path, output: Path, seconds=1200, stop: Path | None = None):
             nonlocal calls
             check_deadline()
             calls += 1
-            result = objective(flat, x, x2, edges, margins, RANK, REGULARIZATION)
+            result = objective(flat, x, x2, edges, margins, RANK, regularization)
             if not math.isfinite(result[0]) or not np.isfinite(result[1]).all():
                 raise ValueError("Non-finite interaction objective")
             return result
@@ -129,7 +132,7 @@ def fit(directory: Path, output: Path, seconds=1200, stop: Path | None = None):
     model = models[""] if manifest["partition"] == "shared" else dict(CharacterSchema=1, CharacterModels=models)
     for name, value in (("parity-inputs.json", parity_inputs), ("parity-expected.json", parity_expected),
                         ("metrics.json", dict(backend="factor-interactions", rank=RANK,
-                            regularization=REGULARIZATION, optimizer="L-BFGS-B", options=OPTIONS,
+                            regularization=regularization, optimizer="L-BFGS-B", options=OPTIONS,
                             heads=metrics, seconds=time.monotonic() - started,
                             peakWorkingSetBytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024))):
         (output / name).write_text(json.dumps(value, allow_nan=False))
@@ -145,5 +148,7 @@ if __name__ == "__main__":
     parser.add_argument("output", type=Path)
     parser.add_argument("--seconds", type=int, default=1200)
     parser.add_argument("--stop", type=Path)
+    parser.add_argument("--regularization", type=float, default=REGULARIZATION,
+                        help="L2 coefficient on mean root-balanced loss; choose using separate families")
     args = parser.parse_args()
-    fit(args.export, args.output, args.seconds, args.stop)
+    fit(args.export, args.output, args.seconds, args.stop, args.regularization)
