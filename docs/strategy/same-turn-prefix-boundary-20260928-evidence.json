@@ -1,0 +1,153 @@
+{
+  "study": "v57",
+  "sourceBase": "3bdf3c9",
+  "change": "Same-turn supplementary defense/setup prefixes cannot contain a turn-ending action; release all materialized follow-ups. Main expansion unchanged.",
+  "checks": {
+    "sameRootDescription": true,
+    "sameFullRootDiagnostics": true,
+    "sameResolvedEquipment": true,
+    "ordinaryDefensivePrefixExecuted": true,
+    "turnEndingPowerRetained": true,
+    "completedRiskFree": true
+  },
+  "failureLogSha256": "dcb3eeecdb3d9202dfe16aae1397c85952ceb930c9da174b938b64b16ed77389",
+  "process": {
+    "returnCode": 0,
+    "seconds": 11.184823136078194
+  },
+  "quality": {
+    "quality": {
+      "won": true,
+      "outstandingStolenResource": 0,
+      "projectedBattleHpLost": 0,
+      "strategicHpDeficit": 0,
+      "potionStrategicCost": 0,
+      "projectedBattlePotionCount": 0,
+      "enemyHp": 0,
+      "score": 0,
+      "combatEndedTurn": 3,
+      "theftPolicy": null,
+      "survives": true,
+      "deathSaveUseCount": 0,
+      "growthHpCredit": 0,
+      "growthRewardCount": 0
+    },
+    "snapshot": {
+      "hasRisk": false,
+      "playerDead": false,
+      "allEnemiesDead": true,
+      "playerHp": 75,
+      "playerMaxHp": 75,
+      "cumulativePlayerHpLost": 0,
+      "recoveredPlayerHp": 0,
+      "deathSaveRelicHpRestored": 0,
+      "longTermResourceValue": 0,
+      "angerCopiesGenerated": 0,
+      "projectedPlayerHp": 75,
+      "playerBlock": 0,
+      "enemyHp": 0,
+      "aliveEnemyCount": 0,
+      "energy": 3,
+      "stars": 2,
+      "handCount": 4,
+      "outstandingStolenResource": 0,
+      "turn": 3,
+      "shufflesCrossed": 0,
+      "boundaryReason": "None",
+      "predictionGaps": [
+        {
+          "sourceId": "BIG_BANG",
+          "method": "OnPlay",
+          "reason": "MethodMirrorIncomplete",
+          "compensated": true,
+          "key": "BIG_BANG.OnPlay"
+        },
+        {
+          "sourceId": "FALLING_STAR",
+          "method": "OnPlay",
+          "reason": "MethodMirrorIncomplete",
+          "compensated": true,
+          "key": "FALLING_STAR.OnPlay"
+        },
+        {
+          "sourceId": "KNOW_THY_PLACE",
+          "method": "OnPlay",
+          "reason": "MethodNotMirrored",
+          "compensated": true,
+          "key": "KNOW_THY_PLACE.OnPlay"
+        }
+      ],
+      "deathSavePotionHpRestored": 0,
+      "deathSaveHpRestored": 0,
+      "deathSaveUseCount": 0,
+      "projectedDeathSaveUseCount": 0,
+      "unrecoveredGold": 0,
+      "unrecoveredCards": 0,
+      "relicCounters": {
+        "satisfiedMask": 0,
+        "targetMask": 0,
+        "hpCredit": 0,
+        "distance": 0,
+        "counterValues": 0,
+        "satisfiedPriority": 0,
+        "healingHpCredit": 0,
+        "targetMinimums": 0,
+        "targetMaximums": 0,
+        "satisfied": true,
+        "satisfiedCount": 0
+      },
+      "strategyGoalHpCredit": 0,
+      "strategicHpCredit": 0,
+      "strategyGoalCount": 0,
+      "growthHpCredit": 0,
+      "growthRewards": {
+        "handOfGreed": 0,
+        "theHunt": 0,
+        "feed": 0,
+        "royalties": 0,
+        "alchemize": 0,
+        "geneticAlgorithm": 0,
+        "theScythe": 0,
+        "goopy": 0,
+        "forbiddenGrimoire": 0,
+        "madScience": 0
+      }
+    },
+    "resultScope": "SearchCompletion",
+    "boundaryReason": "None"
+  },
+  "collection": {
+    "featureSchema": 8,
+    "states": 3135,
+    "pools": 201,
+    "noveltyPools": 64,
+    "labelled": 645,
+    "exported": 451
+  },
+  "engineSha256": "cac8abe207cbec6b8e4e7af0851af96d2fe66811f9d624f7f5d4489c87a22bc6",
+  "regressionLogSha256": "976bc9088b2a34be08941ea63c89ab83d6cf168a77c91c43d1c9709e970d33c6",
+  "buildSeconds": {
+    "mod": 17.08,
+    "host": 3.01
+  },
+  "boundaries": {
+    "bash": 222,
+    "powershell": 222
+  },
+  "limitations": [
+    "Offline search contract, not a new native semantic proof or model quality gain.",
+    "Running r7 collector remains frozen on its original engine; failed record preserved.",
+    "Setup helper has the identical contract guard; target reproduction exercises defensive helper."
+  ],
+  "deployment": {
+    "target": "/home/ltlly/.local/share/Steam/steamapps/common/Slay the Spire 2/mods/CombatSolver",
+    "files": [
+      "CombatSolver.json",
+      "CombatSolver.dll",
+      "CombatSolver.MemoryCleaner.exe",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "completedUtc": "2026-09-27T21:57:21.092584+00:00"
+  }
+}

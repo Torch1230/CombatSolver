@@ -192,3 +192,4 @@
 - 新增专题文档时更新对应索引；移动文件时同步 Markdown 链接、脚本、skill 和结构化证据中的路径。
 - `COMBAT_HOOK_COVERAGE.md` 等工具生成文档保留固定入口，内容由对应工具维护。
 - [保留资源与长期能力补采](strategy/retained-resource-curriculum-20260928.md)：60场匹配补采、早期留出选型及实战对照；候选仍丢失胜利，未启用。
+- [同回合前缀边界](strategy/same-turn-prefix-boundary-20260928.md)：修复补充搜索错误接入结束回合的出牌；原失败根完成，正常出牌仍保留。

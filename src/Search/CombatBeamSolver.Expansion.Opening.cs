@@ -879,11 +879,14 @@ internal sealed partial class CombatBeamSolver
         List<SearchNode> followUps = [];
         try
         {
-            followUps.AddRange(Expand(seed).Where(node =>
-                node.Action is { Kind: PlanActionKind.PlayCard, Turn: var turn }
-                && turn == prefixSnapshot.Turn));
+            // Keep every materialized child owned here, including actions which cannot
+            // be appended to a same-turn fixed prefix. The main search still expands them.
+            followUps.AddRange(Expand(seed));
             return followUps
-                .Where(node => node.Snapshot.PlayerBlock > prefixSnapshot.PlayerBlock)
+                .Where(node => node.Action is { Kind: PlanActionKind.PlayCard, EndsPlayerTurn: false }
+                    && node.Action.Turn == prefixSnapshot.Turn
+                    && node.Snapshot.Turn == prefixSnapshot.Turn
+                    && node.Snapshot.PlayerBlock > prefixSnapshot.PlayerBlock)
                 .OrderByDescending(node => node.Snapshot.PlayerBlock)
                 .ThenByDescending(node => node.Score)
                 .DistinctBy(node => node.Action!.CardId)
@@ -906,12 +909,13 @@ internal sealed partial class CombatBeamSolver
         List<SearchNode> followUps = [];
         try
         {
-            followUps.AddRange(Expand(seed).Where(node =>
-                node.Action is { Kind: PlanActionKind.PlayCard, Turn: var turn }
-                && turn == prefixSnapshot.Turn));
+            followUps.AddRange(Expand(seed));
             IReadOnlyList<PredictedCard> hand = ((CombatPredictionSimulator)prefixSnapshot.Simulator)
                 .State.GetPlayerCombatState(_player).Hand.Cards;
             SearchNode? best = followUps
+                .Where(node => node.Action is { Kind: PlanActionKind.PlayCard, EndsPlayerTurn: false }
+                    && node.Action.Turn == prefixSnapshot.Turn
+                    && node.Snapshot.Turn == prefixSnapshot.Turn)
                 .Where(node => node.Snapshot.PersistentBuffValue > prefixSnapshot.PersistentBuffValue
                     || node.Snapshot.DelayedDamageValue > prefixSnapshot.DelayedDamageValue
                     || node.Snapshot.ReplayPotentialValue > prefixSnapshot.ReplayPotentialValue
