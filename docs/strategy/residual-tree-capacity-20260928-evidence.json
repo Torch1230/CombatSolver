@@ -1,0 +1,1045 @@
+{
+  "study": "v53",
+  "sourceCommit": "c514629",
+  "protocol": {
+    "createdUtc": "2026-09-27T21:12:07.909586+00:00",
+    "hypothesis": "Lower-depth residual trees may preserve useful nonlinear thresholds while reducing the variance of the existing depth6 learner. This changes model capacity, not gameplay labels or runtime modes.",
+    "innerExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v49/roots-394/export",
+    "innerExportSha256": "ae3d5ac320ca610b7302888567567c4824e66d23ba128b34488e06a9f2f23588",
+    "innerExportSeconds": 44.78918119193986,
+    "fullExport": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v49/full/export",
+    "fullExportSha256": "13b1d48f02096327a2f336e5e46fc02d5814abd18eb38fc23d7ac22d37f82664",
+    "fullExportSeconds": 59.80271524004638,
+    "innerRoots": 394,
+    "selectionRoots": 100,
+    "fullRoots": 494,
+    "depths": [
+      1,
+      2,
+      3,
+      6
+    ],
+    "minimumLeafHessian": 3,
+    "rounds": 64,
+    "baseline": {
+      "candidate": "l1-0.01",
+      "l1": 0.01,
+      "l2": 0.001,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v50/l1-0.01/fitted/model.json",
+      "macroMeanLoss": 0.4217338563263271,
+      "macroMeanAccuracy": 0.8339505634574765,
+      "zeroPairRoots": 0
+    },
+    "selectionRule": "One global minimum all-turn character->family->root loss on the same100roots; exact tie prefers lower depth. Must beat previous sparse baseline to receive full refit and5+10outergate. Per-turn diagnostics never select heads or change the gate.",
+    "completeModelLimitSeconds": 1200,
+    "studyLimitSeconds": 1200,
+    "auditEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v52/engine",
+    "evaluationEngine": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/engine",
+    "baselineIndex": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v48/baseline-index.json",
+    "finalTestOpened": false,
+    "scripts": {
+      "xgboost_fit.py": "73f81682078a0ca5b2e54eb636a992462ea0b9eadf28f986c0f2f9f9f6940774",
+      "ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+      "research_metrics.py": "4de57f64c042491598f4f8d9b86d5e2e7525d35b2b14b3f9d1a6e3cdad8c7bd2",
+      "evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+      "dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+      "overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+    },
+    "depthWrapperSha256": "497f23ce3a8b81529d52a4f922d00c86e7a2f535bfdb539891cc2a5c4190b0f7"
+  },
+  "selectionMetrics": [
+    {
+      "depth": 1,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v53/depth-1/fitted/model.json",
+      "macroMeanLoss": 0.4249393071112131,
+      "macroMeanAccuracy": 0.8242570856995994,
+      "zeroPairRoots": 0
+    },
+    {
+      "depth": 2,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v53/depth-2/fitted/model.json",
+      "macroMeanLoss": 0.4188083992192545,
+      "macroMeanAccuracy": 0.8387482825405945,
+      "zeroPairRoots": 0
+    },
+    {
+      "depth": 3,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v53/depth-3/fitted/model.json",
+      "macroMeanLoss": 0.41724803870083094,
+      "macroMeanAccuracy": 0.8392358169165938,
+      "zeroPairRoots": 0
+    },
+    {
+      "depth": 6,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v53/depth-6/fitted/model.json",
+      "macroMeanLoss": 0.41272562095923154,
+      "macroMeanAccuracy": 0.8412234491795805,
+      "zeroPairRoots": 0
+    }
+  ],
+  "artifacts": {
+    "full/cost.json": {
+      "fitProcessSeconds": 24.780968676088378,
+      "historicalExportSeconds": 59.80271524004638,
+      "completeModelSeconds": 84.58368391613476,
+      "returnCode": 0
+    },
+    "full/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 34789,
+          "pairs": 70856,
+          "initialLoss": 45.00507448225082,
+          "finalLoss": 40.657113372119355,
+          "float32MaxPredictionDrift": 1.1439046623706872e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 6.142712001921609
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 35129,
+          "pairs": 84930,
+          "initialLoss": 52.63134175805867,
+          "finalLoss": 47.58365984435032,
+          "float32MaxPredictionDrift": 6.313463163820643e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 5.534949730965309
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 21836,
+          "pairs": 46766,
+          "initialLoss": 40.890927465383015,
+          "finalLoss": 35.831939331226025,
+          "float32MaxPredictionDrift": 8.657571385128904e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.4808093360625207
+        },
+        {
+          "character": "REGENT",
+          "rows": 25498,
+          "pairs": 57505,
+          "initialLoss": 46.05318474968775,
+          "finalLoss": 41.67894620229208,
+          "float32MaxPredictionDrift": 6.750033293201341e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.410023066913709
+        },
+        {
+          "character": "SILENT",
+          "rows": 27466,
+          "pairs": 59582,
+          "initialLoss": 41.51656188868533,
+          "finalLoss": 36.99082704202958,
+          "float32MaxPredictionDrift": 7.472563670063437e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.842257168027572
+        }
+      ],
+      "seconds": 24.48375679401215,
+      "peakWorkingSetBytes": 2283331584
+    },
+    "parity.json": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "evaluation/screen-comparison.json": [
+      {
+        "id": "unseen-defect-the_kin_boss",
+        "comparison": 1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000834963,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        }
+      },
+      {
+        "id": "unseen-ironclad-byrdonis_elite",
+        "comparison": 1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000711993,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-necrobinder-kaiser_crab_boss",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 66,
+          "strategicHpDeficit": 66,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 144,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 64,
+          "strategicHpDeficit": 64,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 9997819946,
+          "combatEndedTurn": 9,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-regent-knowledge_demon_boss",
+        "comparison": -1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 75,
+          "strategicHpDeficit": 75,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 345,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 75,
+          "strategicHpDeficit": 75,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 79,
+          "score": -1000003040040,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "unseen-silent-knights_elite",
+        "comparison": -1,
+        "materialComparison": 0,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 199,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 191,
+          "score": -1000010940027,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      }
+    ],
+    "evaluation/report.json": {
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v53/full/fitted/model.json",
+      "modelSha256": "797ed3959433eac308f04214713830abe82f04356a779929f1758786e530ba3f",
+      "records": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 24,
+            "strategicHpDeficit": 24,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000834963,
+            "combatEndedTurn": 7,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 1
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 17.3307803,
+          "rss": 362434560,
+          "nodes": 12000,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "quality": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 0,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 28,
+            "strategicHpDeficit": 22,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 10000711993,
+            "combatEndedTurn": 3,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 8.9262004,
+          "rss": 299335680,
+          "nodes": 6688,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 66,
+            "strategicHpDeficit": 66,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 144,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": true,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 64,
+            "strategicHpDeficit": 64,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 0,
+            "score": 9997819946,
+            "combatEndedTurn": 9,
+            "theftPolicy": null,
+            "survives": true,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 23.4004423,
+          "rss": 377675776,
+          "nodes": 16407,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 345,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 75,
+            "strategicHpDeficit": 75,
+            "potionStrategicCost": 0,
+            "projectedBattlePotionCount": 0,
+            "enemyHp": 79,
+            "score": -1000003040040,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 0,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 24.7412211,
+          "rss": 406024192,
+          "nodes": 14470,
+          "timeBoundary": true
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "quality": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 199,
+            "score": 0,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "baseline": {
+            "won": false,
+            "outstandingStolenResource": 0,
+            "projectedBattleHpLost": 91,
+            "strategicHpDeficit": 280,
+            "potionStrategicCost": 9,
+            "projectedBattlePotionCount": 1,
+            "enemyHp": 191,
+            "score": -1000010940027,
+            "combatEndedTurn": null,
+            "theftPolicy": null,
+            "survives": false,
+            "deathSaveUseCount": 1,
+            "growthHpCredit": 0,
+            "growthRewardCount": 0
+          },
+          "issues": [],
+          "baselineIssues": [],
+          "seconds": 11.5393738,
+          "rss": 344580096,
+          "nodes": 6139,
+          "timeBoundary": true
+        }
+      ],
+      "comparisons": [
+        {
+          "id": "unseen-defect-the_kin_boss",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-ironclad-byrdonis_elite",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-necrobinder-kaiser_crab_boss",
+          "materialComparison": 1
+        },
+        {
+          "id": "unseen-regent-knowledge_demon_boss",
+          "materialComparison": 0
+        },
+        {
+          "id": "unseen-silent-knights_elite",
+          "materialComparison": 0
+        }
+      ],
+      "completed": true,
+      "historicalBaselineTimingIsSpeedProof": false,
+      "regressions": [
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [],
+      "unverified": [],
+      "stage": "screen",
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    },
+    "summary.json": {
+      "depth": 6,
+      "baselineLoss": 0.4217338563263271,
+      "candidateLoss": 0.41272562095923154,
+      "fullFit": true,
+      "finalTestOpened": false,
+      "runtimeDefaultChanged": false,
+      "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v53/full/fitted/model.json",
+      "modelSha256": "797ed3959433eac308f04214713830abe82f04356a779929f1758786e530ba3f",
+      "development": {
+        "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v53/full/fitted/model.json",
+        "modelSha256": "797ed3959433eac308f04214713830abe82f04356a779929f1758786e530ba3f",
+        "regressions": [
+          "unseen-necrobinder-kaiser_crab_boss"
+        ],
+        "improvements": [],
+        "unverified": [],
+        "fullDevelopmentCoverage": false,
+        "eligibleForFinalReview": false
+      }
+    },
+    "status.json": {
+      "phase": "completed",
+      "seconds": 198.5092334219953,
+      "updatedUtc": "2026-09-27T21:16:24.060339+00:00",
+      "childSeconds": {
+        "fit": 74.09859441407025,
+        "audit": 24.524556416785344,
+        "parity": 0.5013006250374019,
+        "evaluate": 99.08358076796867,
+        "compare-screen": 0.25059637601953
+      }
+    },
+    "turn-diagnostics.json": {
+      "depth-1": {
+        "1": {
+          "loss": 0.6669919531705111,
+          "accuracy": 0.5988789355111445
+        },
+        "2-3": {
+          "loss": 0.5264698861584385,
+          "accuracy": 0.7325189586991744
+        },
+        "4-6": {
+          "loss": 0.40395997134390793,
+          "accuracy": 0.8397629681445203
+        },
+        "7+": {
+          "loss": 0.36499293843793773,
+          "accuracy": 0.8706961680833295
+        }
+      },
+      "depth-2": {
+        "1": {
+          "loss": 0.6637956038004171,
+          "accuracy": 0.6164615841995971
+        },
+        "2-3": {
+          "loss": 0.5220538824870792,
+          "accuracy": 0.7330018227057146
+        },
+        "4-6": {
+          "loss": 0.4012982123638049,
+          "accuracy": 0.8413601328019981
+        },
+        "7+": {
+          "loss": 0.3581279182705011,
+          "accuracy": 0.8773861092100909
+        }
+      },
+      "depth-3": {
+        "1": {
+          "loss": 0.6612631338720293,
+          "accuracy": 0.6266834139683909
+        },
+        "2-3": {
+          "loss": 0.5219910282831407,
+          "accuracy": 0.7381135846190022
+        },
+        "4-6": {
+          "loss": 0.398451965970828,
+          "accuracy": 0.8425006578941275
+        },
+        "7+": {
+          "loss": 0.35390884107025006,
+          "accuracy": 0.8785321427127271
+        }
+      },
+      "depth-6": {
+        "1": {
+          "loss": 0.6614944523921353,
+          "accuracy": 0.6147891276961144
+        },
+        "2-3": {
+          "loss": 0.5197244293380263,
+          "accuracy": 0.7505190463403543
+        },
+        "4-6": {
+          "loss": 0.39607224389823936,
+          "accuracy": 0.8439344485320033
+        },
+        "7+": {
+          "loss": 0.3507046493809755,
+          "accuracy": 0.8760480356864707
+        }
+      }
+    },
+    "depth-1/cost.json": {
+      "fitProcessSeconds": 9.26359078695532,
+      "historicalExportSeconds": 44.78918119193986,
+      "completeModelSeconds": 54.05277197889518,
+      "returnCode": 0
+    },
+    "depth-1/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 1,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 27013,
+          "pairs": 53918,
+          "initialLoss": 35.76641162368412,
+          "finalLoss": 35.25851383071737,
+          "float32MaxPredictionDrift": 6.571864119564452e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.179785948013887
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 28422,
+          "pairs": 68909,
+          "initialLoss": 43.69556299393514,
+          "finalLoss": 42.89988420741184,
+          "float32MaxPredictionDrift": 5.014123084734479e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.2907887619221583
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 15691,
+          "pairs": 30242,
+          "initialLoss": 32.95604275195632,
+          "finalLoss": 32.38644746899272,
+          "float32MaxPredictionDrift": 6.943489765376398e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 1.1598227400099859
+        },
+        {
+          "character": "REGENT",
+          "rows": 20538,
+          "pairs": 46266,
+          "initialLoss": 36.678971095258454,
+          "finalLoss": 36.02221898378313,
+          "float32MaxPredictionDrift": 4.050033286517873e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 1.7490541359875351
+        },
+        {
+          "character": "SILENT",
+          "rows": 20909,
+          "pairs": 45824,
+          "initialLoss": 33.172793169915124,
+          "finalLoss": 32.65559227793541,
+          "float32MaxPredictionDrift": 4.400157914474789e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 1.5296885080169886
+        }
+      ],
+      "seconds": 8.95445965998806,
+      "peakWorkingSetBytes": 1739350016
+    },
+    "depth-2/cost.json": {
+      "fitProcessSeconds": 10.263857653015293,
+      "historicalExportSeconds": 44.78918119193986,
+      "completeModelSeconds": 55.053038844955154,
+      "returnCode": 0
+    },
+    "depth-2/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 2,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 27013,
+          "pairs": 53918,
+          "initialLoss": 35.76641162368412,
+          "finalLoss": 34.57547109402866,
+          "float32MaxPredictionDrift": 4.468218470776719e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.354593373951502
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 28422,
+          "pairs": 68909,
+          "initialLoss": 43.69556299393514,
+          "finalLoss": 41.889906566874046,
+          "float32MaxPredictionDrift": 6.336108311799649e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.3848349399631843
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 15691,
+          "pairs": 30242,
+          "initialLoss": 32.95604275195632,
+          "finalLoss": 31.350611671325737,
+          "float32MaxPredictionDrift": 8.66972415636269e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 1.3362189680337906
+        },
+        {
+          "character": "REGENT",
+          "rows": 20538,
+          "pairs": 46266,
+          "initialLoss": 36.678971095258454,
+          "finalLoss": 35.18736967638333,
+          "float32MaxPredictionDrift": 5.4720054691870246e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.0185303880134597
+        },
+        {
+          "character": "SILENT",
+          "rows": 20909,
+          "pairs": 45824,
+          "initialLoss": 33.172793169915124,
+          "finalLoss": 31.765410381455986,
+          "float32MaxPredictionDrift": 6.63720520854838e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 1.8587113689864054
+        }
+      ],
+      "seconds": 9.98441781103611,
+      "peakWorkingSetBytes": 2012573696
+    },
+    "depth-3/cost.json": {
+      "fitProcessSeconds": 11.767617798992433,
+      "historicalExportSeconds": 44.78918119193986,
+      "completeModelSeconds": 56.55679899093229,
+      "returnCode": 0
+    },
+    "depth-3/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 3,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 27013,
+          "pairs": 53918,
+          "initialLoss": 35.76641162368412,
+          "finalLoss": 33.84959824304103,
+          "float32MaxPredictionDrift": 7.3139489291662585e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.8285789330257103
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 28422,
+          "pairs": 68909,
+          "initialLoss": 43.69556299393514,
+          "finalLoss": 41.232278996021286,
+          "float32MaxPredictionDrift": 6.167819627478366e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.7040879589039832
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 15691,
+          "pairs": 30242,
+          "initialLoss": 32.95604275195632,
+          "finalLoss": 30.100341915065055,
+          "float32MaxPredictionDrift": 1.0940915302626308e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 1.5688532020431012
+        },
+        {
+          "character": "REGENT",
+          "rows": 20538,
+          "pairs": 46266,
+          "initialLoss": 36.678971095258454,
+          "finalLoss": 34.62607371425194,
+          "float32MaxPredictionDrift": 6.694887545677375e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.2370132190408185
+        },
+        {
+          "character": "SILENT",
+          "rows": 20909,
+          "pairs": 45824,
+          "initialLoss": 33.172793169915124,
+          "finalLoss": 30.937972116408254,
+          "float32MaxPredictionDrift": 9.48004312029127e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 2.1417266270145774
+        }
+      ],
+      "seconds": 11.512127746012993,
+      "peakWorkingSetBytes": 1740083200
+    },
+    "depth-6/cost.json": {
+      "fitProcessSeconds": 18.022559499018826,
+      "historicalExportSeconds": 44.78918119193986,
+      "completeModelSeconds": 62.811740690958686,
+      "returnCode": 0
+    },
+    "depth-6/fitted/metrics.json": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 27013,
+          "pairs": 53918,
+          "initialLoss": 35.76641162368412,
+          "finalLoss": 32.60722121519903,
+          "float32MaxPredictionDrift": 9.66317697681518e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.092446836060844
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 28422,
+          "pairs": 68909,
+          "initialLoss": 43.69556299393514,
+          "finalLoss": 39.678627850555216,
+          "float32MaxPredictionDrift": 7.651824363463788e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.61812549107708
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 15691,
+          "pairs": 30242,
+          "initialLoss": 32.95604275195632,
+          "finalLoss": 28.904579215811225,
+          "float32MaxPredictionDrift": 1.3156258582114333e-05,
+          "float32PairSignChanges": 0,
+          "seconds": 2.4711721159983426
+        },
+        {
+          "character": "REGENT",
+          "rows": 20538,
+          "pairs": 46266,
+          "initialLoss": 36.678971095258454,
+          "finalLoss": 32.89934075580848,
+          "float32MaxPredictionDrift": 7.396030962780742e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.397378283087164
+        },
+        {
+          "character": "SILENT",
+          "rows": 20909,
+          "pairs": 45824,
+          "initialLoss": 33.172793169915124,
+          "finalLoss": 29.620317014672203,
+          "float32MaxPredictionDrift": 7.846870722971744e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.1122873859712854
+        }
+      ],
+      "seconds": 17.73108904599212,
+      "peakWorkingSetBytes": 1748742144
+    }
+  },
+  "sourceChanged": false,
+  "reusedValidation": "Existing pinned backend contracts, v52 C#146 and gates/build/deployment; no unchanged validation rerun."
+}
