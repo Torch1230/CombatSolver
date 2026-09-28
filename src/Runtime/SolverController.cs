@@ -133,6 +133,20 @@ internal static partial class SolverController
         }
     }
 
+
+    internal static bool MultiplayerRngNeedsReview
+    {
+        get
+        {
+            CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+            return state != null && CombatManager.Instance.IsInProgress
+                && _combat.LatestResult is { MultiplayerStyle: not null } result
+                && IsSamePlayableTurn(state, result.StartTurnNumber)
+                && _combat.LatestRngStateText != null
+                && ContinuationStamp.CaptureLive(state).RngStateText != _combat.LatestRngStateText;
+        }
+    }
+
     /// <summary>
     /// True when the current run uses the game's network multiplayer service.
     /// Multiplayer planning and deployment act only for the local player.
@@ -1253,6 +1267,7 @@ internal static partial class SolverController
             _combat.LatestResult = null;
             _combat.MultiplayerOptions = [];
             _combat.LatestStamp = null;
+            _combat.LatestRngStateText = null;
             LastCompletedResultForTesting = null;
             LastSearchFailureForTesting = null;
             LastFullAutoStoppedForWorseRecalculationForTesting = false;
@@ -1493,6 +1508,7 @@ internal static partial class SolverController
         }
         if (state.Players.Count > 1 && _combat.LatestResult is { MultiplayerStyle: not null } previous)
         {
+            bool rngChanged = MultiplayerRngNeedsReview;
             if (RunManager.Instance.ActionExecutor.IsRunning || !RunManager.Instance.ActionQueueSet.IsEmpty)
             {
                 SolverOverlay.Show(host, SolverText.Get("等待当前原生动作结算后再执行。"));
@@ -1506,6 +1522,7 @@ internal static partial class SolverController
                 return;
             }
             _combat.LatestStamp = current;
+            _combat.LatestRngStateText = ContinuationStamp.CaptureLive(state).RngStateText;
             _combat.MultiplayerOptions = [];
             _combat.ContinuationSource = null;
             SolverOverlaySnapshot preview = SolverOverlaySnapshot.CaptureCurrentTurn(revised) with
@@ -1515,6 +1532,11 @@ internal static partial class SolverController
                     $"当前回合预计扣血 {revised.HpLost} HP；假设队友后续不主动出牌。"),
             };
             SolverOverlay.ShowResult(host, preview);
+            if (rngChanged)
+            {
+                SolverOverlay.ShowMultiplayerRngDeviation();
+                SolverOverlay.ShowMultiplayerRngReevaluated();
+            }
             Entry.Logger.Info($"[CombatSolver/Test] MULTIPLAYER_ROUTE_REEVALUATED turn={revised.Turn} " +
                 $"hp_lost={revised.HpLost} enemy_hp_lost={revised.EnemyHpLost} " +
                 $"actions={revised.Actions.Count}");
@@ -2641,6 +2663,7 @@ internal static partial class SolverController
             }
             _combat.LatestResult = changedResult;
             _combat.LatestStamp = changedStamp;
+            _combat.LatestRngStateText = ContinuationStamp.CaptureLive(searchedState).RngStateText;
             _combat.ContinuationSource = null;
             _combat.MultiplayerOptions = [];
             if (UnattendedTestRunner.IsActive)
@@ -2652,6 +2675,13 @@ internal static partial class SolverController
                     $"当前回合预计扣血 {revised.HpLost} HP；假设队友后续不主动出牌。"),
             };
             SolverOverlay.ShowResult(host, revisedSnapshot);
+            if (new ContinuationStamp(changedResult.ComparisonRootState
+                    ?? throw new InvalidOperationException("Multiplayer search result has no comparison root.")).RngStateText
+                != _combat.LatestRngStateText)
+            {
+                SolverOverlay.ShowMultiplayerRngDeviation();
+                SolverOverlay.ShowMultiplayerRngReevaluated();
+            }
             SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Succeeded);
             Entry.Logger.Info($"[CombatSolver/Test] SEARCH_MULTIPLAYER_REEVALUATED generation={generation} " +
                 $"turn={revised.Turn} actions={revised.Actions.Count} hp_lost={revised.HpLost}");
@@ -2725,6 +2755,9 @@ internal static partial class SolverController
         _combat.MultiplayerOptions = result.MultiplayerStyle is null
             ? [] : [result, .. result.MultiplayerAlternatives];
         _combat.LatestStamp = searchedStamp;
+        _combat.LatestRngStateText = result.MultiplayerStyle == null
+            ? null : new ContinuationStamp(result.ComparisonRootState
+                ?? throw new InvalidOperationException("Multiplayer search result has no comparison root.")).RngStateText;
         _combat.ContinuationSource = currentTurnAdopted ? null : result;
         if (UnattendedTestRunner.IsActive)
             LastCompletedResultForTesting = result;

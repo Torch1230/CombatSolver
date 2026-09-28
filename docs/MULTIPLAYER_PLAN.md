@@ -205,6 +205,8 @@ P5 防守方案进入执行器：双人一费 `Defend`／`Strike` 固定根在�
 
 P2 敌人目标药水候选：四人双敌根本地持有 `FirePotion`，搜索候选逐一覆盖两名存活敌人、没有任何玩家目标，Passed：`.local/multiplayer-p2/enemy-potion-targets-0f2fa7cb78094b5ca2b982b876d05897/peer-0/result.json`。本项验证候选合法目标集合；药水实际原生使用与模拟伤害差分未由此证明。
 
+P5 旧预测的随机流说明：求解完成后、点击执行前，队友原生把 `Largesse` 给本地玩家，悬浮窗保留执行按钮并明确提示随机流变化和后续预测不准；点击后从新根重评估原序列并继续本地部署，无完整重搜，Passed：`.local/multiplayer-p5/predeploy-rng-hint-fixed-884797ea14704d88b21fd1729f3501d5/peer-0/result.json`。首次测试发现 `ShowResult` 重建预览时清空已见偏差标记，现重评估后恢复该提示。搜索仍在运行时发生同类队友 `Largesse`，发布结果时也显示偏差已重评估，原路线继续本地执行，Passed：`.local/multiplayer-p5/search-time-rng-hint-9d0c942ebe614adba99abc40bcd3a7e5/peer-0/result.json`。均为无头控件断言，可见窗口排版未验。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

@@ -110,9 +110,11 @@ internal sealed partial class UnattendedTestRunner
                 int searchesBefore = SolverController.SearchesStartedForTesting;
                 SolverController.RequestSearch(runner._host, combat, SearchReason.Manual);
                 Player teammate = combat.Players.First(player => player != scenario.Player);
-                CardModel teammateStrike = teammate.PlayerCombatState!.Hand.Cards
-                    .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
-                var teammatePlay = new PlayCardAction(teammateStrike, enemy);
+                CardModel teammateCard = teammate.PlayerCombatState!.Hand.Cards
+                    .First(card => card.Id.Entry == (input.VerifyControllerSearchRngDrift
+                        ? "LARGESSE" : "STRIKE_IRONCLAD"));
+                var teammatePlay = new PlayCardAction(teammateCard,
+                    input.VerifyControllerSearchRngDrift ? scenario.Player.Creature : enemy);
                 RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
                 await teammatePlay.CompletionTask;
                 await runner.MultiplayerProbeBarrierAsync("search-drift", combat);
@@ -127,13 +129,19 @@ internal sealed partial class UnattendedTestRunner
                     || retained.MultiplayerStyle != MultiplayerPlanStyle.Output
                     || !SolverController.CanExecuteCurrentTurn)
                     throw new InvalidOperationException("Teammate action during search discarded the legal local route.");
+                if (input.VerifyControllerSearchRngDrift
+                    && (!SolverOverlay.MultiplayerRngDeviationSeenForTesting
+                        || !SolverOverlay.MultiplayerRngReevaluatedForTesting))
+                    throw new InvalidOperationException("Search-time teammate RNG change was not reported after re-evaluation.");
                 SolverController.RequestDeploy(runner._host, combat);
                 await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
                     && SolverController.LastSolverDeployedTurnForBugReport == 1
                     && CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player));
                 if (SolverController.SearchesStartedForTesting != searchesBefore + 1)
                     throw new InvalidOperationException("Search drift deployment started an extra full search.");
-                runner._completedChecks.Add("MultiplayerController:SearchTimeTeammateDamage:RouteReevaluated:LocalDeployment:NoFullRescan");
+                runner._completedChecks.Add(input.VerifyControllerSearchRngDrift
+                    ? "MultiplayerController:SearchTimeTeammateRng:RouteReevaluated:LocalDeployment:NoFullRescan"
+                    : "MultiplayerController:SearchTimeTeammateDamage:RouteReevaluated:LocalDeployment:NoFullRescan");
                 return new ExecutionOutcome(false, 1, true, true, true, false);
             }
             if (input.VerifyControllerAutomaticCalculation || input.VerifyControllerFullAuto)
@@ -255,15 +263,17 @@ internal sealed partial class UnattendedTestRunner
                     if (input.VerifyControllerTeammateDrift)
                     {
                         Player teammate = combat.Players.First(player => player != scenario.Player);
-                        CardModel teammateStrike = teammate.PlayerCombatState!.Hand.Cards
-                            .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
+                        CardModel teammateCard = teammate.PlayerCombatState!.Hand.Cards
+                            .First(card => card.Id.Entry == (input.VerifyControllerPreDeployRng
+                                ? "LARGESSE" : "STRIKE_IRONCLAD"));
                         Creature teammateTarget = input.VerifyControllerTeammateKillsTarget
                             ? combat.GetCreature(plannedCards.First(action => action.TargetCombatId != null).TargetCombatId)
                                 ?? throw new InvalidOperationException("Planned enemy target disappeared before probe setup.")
                             : combat.Enemies.Single();
                         if (input.VerifyControllerTeammateKillsTarget)
                             await CreatureCmd.SetCurrentHp(teammateTarget, 6);
-                        var teammatePlay = new PlayCardAction(teammateStrike, teammateTarget);
+                        var teammatePlay = new PlayCardAction(teammateCard,
+                            input.VerifyControllerPreDeployRng ? scenario.Player.Creature : teammateTarget);
                         RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
                         await teammatePlay.CompletionTask;
                         await runner.MultiplayerProbeBarrierAsync("teammate-drift", combat);
@@ -274,6 +284,13 @@ internal sealed partial class UnattendedTestRunner
                             throw new InvalidOperationException("Teammate action did not mark stale multiplayer numbers.");
                         if (SolverOverlay.ExecuteButtonDisabledForTesting)
                             throw new InvalidOperationException("Teammate action disabled the retained local route button.");
+                        if (input.VerifyControllerPreDeployRng
+                            && (!SolverController.MultiplayerRngNeedsReview
+                                || !SolverOverlay.MultiplayerRngDeviationSeenForTesting
+                                || SolverOverlay.SearchSummaryTextForTesting?.Contains(
+                                    SolverText.Get("随机流曾变化，后续预测可能不准。"),
+                                    StringComparison.Ordinal) != true))
+                            throw new InvalidOperationException("Pre-deployment teammate RNG change was not explained in the overlay.");
                     }
                     if (input.VerifyControllerTeammateDrift
                         && !input.VerifyControllerTeammateKillsTarget)
@@ -372,6 +389,16 @@ internal sealed partial class UnattendedTestRunner
                     if (input.VerifyControllerTeammateDrift
                         && SolverController.SearchesStartedForTesting != searchesBeforeDrift)
                         throw new InvalidOperationException("Teammate damage started a new search instead of retaining the legal route.");
+                    if (input.VerifyControllerPreDeployRng)
+                    {
+                        await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
+                            && SolverController.LastSolverDeployedTurnForBugReport == 1);
+                        if (!SolverOverlay.MultiplayerRngReevaluatedForTesting
+                            || SolverController.SearchesStartedForTesting != searchesBeforeDrift)
+                            throw new InvalidOperationException("Pre-deployment RNG drift did not re-evaluate the retained route.");
+                        runner._completedChecks.Add("MultiplayerController:PreDeployTeammateRng:StaleHint:RouteReevaluated:NoFullSearch");
+                        return new ExecutionOutcome(false, 1, true, true, true, false);
+                    }
                     if (input.VerifyControllerTeammateKillsTarget)
                     {
                         if (SolverController.IsDeploying

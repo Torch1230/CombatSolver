@@ -136,6 +136,8 @@ P5 防守按钮执行：一费 `Defend`／`Strike` 根，点击防守后生产�
 
 P2 敌人药水目标：四人双敌根 `FirePotion` 的搜索候选恰覆盖两名存活敌人且不含玩家，Passed：`.local/multiplayer-p2/enemy-potion-targets-0f2fa7cb78094b5ca2b982b876d05897/peer-0/result.json`。未实际原生投药。
 
+P5 旧结果随机流提示：虚拟双人队友在求解后用 `Largesse` 推进共享 RNG，悬浮窗明确提示旧预测可能不准、执行按钮保留；重评估原路线后继续部署，无完整重搜，Passed：`.local/multiplayer-p5/predeploy-rng-hint-fixed-884797ea14704d88b21fd1729f3501d5/peer-0/result.json`。求解进行时队友同样推进 RNG，结果发布后的偏差／重评估提示及本地原生部署 Passed：`.local/multiplayer-p5/search-time-rng-hint-9d0c942ebe614adba99abc40bcd3a7e5/peer-0/result.json`。均为无头 UI 状态，未看可见窗口。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

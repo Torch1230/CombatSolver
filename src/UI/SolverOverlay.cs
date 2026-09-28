@@ -1508,12 +1508,20 @@ internal static class SolverOverlay
         if (SolverController.MultiplayerPredictionNeedsReview
             && _lastSnapshot != null && _presentation == SolverOverlayPresentation.Ready)
         {
-            SetStatus(SolverText.Get("队友行动后预测待更新"), Warning);
+            bool rngChanged = SolverController.MultiplayerRngNeedsReview;
+            if (rngChanged)
+                _multiplayerRngDeviationSeen = true;
+            SetStatus(SolverText.Get(rngChanged
+                ? "随机流发生变化，后续预测待更新" : "队友行动后预测待更新"), Warning);
             if (_routeHeadingLabel != null)
                 _routeHeadingLabel.Text = SolverText.Get("已保存路线（数值待更新）");
             if (_summaryText != null)
-                _summaryText.Text = SolverText.Format(
-                    $"[color={SolverUiTokens.Palette.WarningHex}]当前数值待重评估；执行前会复核原路线。[/color]");
+            {
+                string warning = SolverText.Get(rngChanged
+                    ? "随机流曾变化，后续预测可能不准。"
+                    : "当前数值待重评估；执行前会复核原路线。");
+                _summaryText.Text = $"[color={SolverUiTokens.Palette.WarningHex}]{warning}[/color]";
+            }
         }
         else if (_lastSnapshot != null && _presentation == SolverOverlayPresentation.Ready)
         {

@@ -78,7 +78,9 @@ internal sealed partial class UnattendedTestRunner
                         && ReferenceEquals(player, run.Players[input.ContentTargetSeat])
                         && input.ContentTeammateCardIdAfter.Length > 0)
                         cardIds[2] = input.ContentTeammateCardIdAfter;
-                    if (input.VerifyControllerMidDeploymentRng && !ReferenceEquals(player, run.Players[input.Seat]))
+                    if ((input.VerifyControllerMidDeploymentRng || input.VerifyControllerPreDeployRng
+                            || input.VerifyControllerSearchRngDrift)
+                        && !ReferenceEquals(player, run.Players[input.Seat]))
                         cardIds[2] = "LARGESSE";
                     if (input.VerifyEnetControllerRng && ReferenceEquals(player, run.Players[1]))
                         cardIds[2] = "LARGESSE";
