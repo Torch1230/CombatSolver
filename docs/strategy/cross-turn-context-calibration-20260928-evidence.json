@@ -375,5 +375,233 @@
     "usesV83InferenceOptimization": false,
     "finalTestOpened": false,
     "runtimeModelEnabled": false
+  },
+  "featureCoverageAudit": {
+    "scope": "Read-only model topology and initial native training loadouts; not feature importance, causal interaction, fitted-loss or battle-quality evidence.",
+    "finalTestOpened": false,
+    "newSearches": 0,
+    "newTrainingRuns": 0,
+    "trainingRoots": 292,
+    "caveats": [
+      "Loadout presence is not proof of drawing, playing or triggering an interaction.",
+      "Three-root feature eligibility and minimum leaf Hessian 3 are distinct constraints; eligibility does not guarantee a split.",
+      "Indirect relic effects can be represented by branch resources, powers, damage and costs.",
+      "Zero direct relic tree splits does not prove that more data alone will improve battle quality."
+    ],
+    "trainingCoverage": [
+      {
+        "character": "DEFECT",
+        "roots": 60,
+        "relicIdentities": 101,
+        "relicsInAtLeast3Roots": 24,
+        "relicsInAtLeast6Roots": 3,
+        "cardIdentities": 132,
+        "cardsInAtLeast3Roots": 107
+      },
+      {
+        "character": "IRONCLAD",
+        "roots": 58,
+        "relicIdentities": 109,
+        "relicsInAtLeast3Roots": 29,
+        "relicsInAtLeast6Roots": 2,
+        "cardIdentities": 132,
+        "cardsInAtLeast3Roots": 101
+      },
+      {
+        "character": "NECROBINDER",
+        "roots": 57,
+        "relicIdentities": 100,
+        "relicsInAtLeast3Roots": 27,
+        "relicsInAtLeast6Roots": 1,
+        "cardIdentities": 135,
+        "cardsInAtLeast3Roots": 102
+      },
+      {
+        "character": "REGENT",
+        "roots": 58,
+        "relicIdentities": 102,
+        "relicsInAtLeast3Roots": 31,
+        "relicsInAtLeast6Roots": 3,
+        "cardIdentities": 129,
+        "cardsInAtLeast3Roots": 107
+      },
+      {
+        "character": "SILENT",
+        "roots": 59,
+        "relicIdentities": 98,
+        "relicsInAtLeast3Roots": 33,
+        "relicsInAtLeast6Roots": 2,
+        "cardIdentities": 133,
+        "cardsInAtLeast3Roots": 101
+      }
+    ],
+    "models": {
+      "v77": {
+        "modelSha256": "9a2639fec53d20555bb1bb9e733422211ad2293ea0665700796c1e5a03de41a8",
+        "heads": [
+          {
+            "character": "DEFECT",
+            "eligibleColumns": 3092,
+            "eligibleRelicIdentities": 24,
+            "usedColumns": 87,
+            "treeUsedColumns": 56,
+            "linearUsedColumns": 35,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [],
+            "treeCardIdentities": 5,
+            "turnSplits": 0,
+            "totalSplits": 606,
+            "averageLeafDepth": 3.9477611940298507
+          },
+          {
+            "character": "IRONCLAD",
+            "eligibleColumns": 3026,
+            "eligibleRelicIdentities": 29,
+            "usedColumns": 86,
+            "treeUsedColumns": 55,
+            "linearUsedColumns": 40,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [
+              "relic/KUNAI/state/FC4DA7E91F399FE65F7A1B8FDF7A238A"
+            ],
+            "treeCardIdentities": 4,
+            "turnSplits": 0,
+            "totalSplits": 610,
+            "averageLeafDepth": 4.137982195845697
+          },
+          {
+            "character": "NECROBINDER",
+            "eligibleColumns": 2925,
+            "eligibleRelicIdentities": 27,
+            "usedColumns": 98,
+            "treeUsedColumns": 68,
+            "linearUsedColumns": 38,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [],
+            "treeCardIdentities": 6,
+            "turnSplits": 3,
+            "totalSplits": 600,
+            "averageLeafDepth": 3.944277108433735
+          },
+          {
+            "character": "REGENT",
+            "eligibleColumns": 3557,
+            "eligibleRelicIdentities": 31,
+            "usedColumns": 86,
+            "treeUsedColumns": 58,
+            "linearUsedColumns": 39,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [
+              "relic/LETTER_OPENER/state/19AB43037F4C1026C35EE08CF053D90D",
+              "relic/NUNCHAKU/state/E95E8FB3DA21C6BB59C041FE06F54A4D",
+              "relic/NUNCHAKU/state/E95E92B3DA21DC9242FEE95557000F11",
+              "relic/PEN_NIB/state/5D5AB8E628C9177F2DCF27F75E661D73"
+            ],
+            "treeCardIdentities": 4,
+            "turnSplits": 1,
+            "totalSplits": 588,
+            "averageLeafDepth": 4.0996932515337425
+          },
+          {
+            "character": "SILENT",
+            "eligibleColumns": 2724,
+            "eligibleRelicIdentities": 33,
+            "usedColumns": 86,
+            "treeUsedColumns": 60,
+            "linearUsedColumns": 34,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [],
+            "treeCardIdentities": 4,
+            "turnSplits": 3,
+            "totalSplits": 577,
+            "averageLeafDepth": 4.0124804992199685
+          }
+        ]
+      },
+      "v82": {
+        "modelSha256": "2b189d25ea35024a7a6bc8ef9b4284bf1b7b63ae30f6831f75a0dd7946098f83",
+        "heads": [
+          {
+            "character": "DEFECT",
+            "eligibleColumns": 3092,
+            "eligibleRelicIdentities": 24,
+            "usedColumns": 84,
+            "treeUsedColumns": 58,
+            "linearUsedColumns": 33,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [],
+            "treeCardIdentities": 4,
+            "turnSplits": 5,
+            "totalSplits": 614,
+            "averageLeafDepth": 4.125368731563422
+          },
+          {
+            "character": "IRONCLAD",
+            "eligibleColumns": 3026,
+            "eligibleRelicIdentities": 29,
+            "usedColumns": 74,
+            "treeUsedColumns": 52,
+            "linearUsedColumns": 31,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [],
+            "treeCardIdentities": 4,
+            "turnSplits": 6,
+            "totalSplits": 588,
+            "averageLeafDepth": 4.121165644171779
+          },
+          {
+            "character": "NECROBINDER",
+            "eligibleColumns": 2925,
+            "eligibleRelicIdentities": 27,
+            "usedColumns": 83,
+            "treeUsedColumns": 62,
+            "linearUsedColumns": 30,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [],
+            "treeCardIdentities": 4,
+            "turnSplits": 0,
+            "totalSplits": 587,
+            "averageLeafDepth": 4.027649769585254
+          },
+          {
+            "character": "REGENT",
+            "eligibleColumns": 3557,
+            "eligibleRelicIdentities": 31,
+            "usedColumns": 80,
+            "treeUsedColumns": 61,
+            "linearUsedColumns": 30,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [
+              "relic/LETTER_OPENER/state/19AB43037F4C1026C35EE08CF053D90D",
+              "relic/NUNCHAKU/state/E95E92B3DA21DC9242FEE95557000F11"
+            ],
+            "treeCardIdentities": 5,
+            "turnSplits": 12,
+            "totalSplits": 649,
+            "averageLeafDepth": 4.227208976157082
+          },
+          {
+            "character": "SILENT",
+            "eligibleColumns": 2724,
+            "eligibleRelicIdentities": 33,
+            "usedColumns": 78,
+            "treeUsedColumns": 59,
+            "linearUsedColumns": 26,
+            "directRelicTreeSplits": 0,
+            "directRelicLinearFeatures": [],
+            "treeCardIdentities": 5,
+            "turnSplits": 5,
+            "totalSplits": 651,
+            "averageLeafDepth": 3.953846153846154
+          }
+        ]
+      }
+    },
+    "inputsManifest": ".local/objective-search/v82/full/feature-coverage-audit.json",
+    "reproducer": ".local/objective-search/v82/audit_feature_coverage.py",
+    "artifactSha256": {
+      "inputsManifest": "23244ac64ccd8f80486bddd4e2ce807a8bcefc7e2d8dec10fac5e281bf11a4d9",
+      "reproducer": "60ec21dbea4942016eb6be014bf9bba60da853a1df576ebf3bb9901ad40439a4"
+    }
   }
 }
