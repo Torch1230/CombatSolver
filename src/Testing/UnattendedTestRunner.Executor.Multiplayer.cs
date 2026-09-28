@@ -552,6 +552,19 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Ovicopter eggs did not hatch before the third-turn diff.");
                     runner._completedChecks.Add("MultiplayerContent:ToughEgg:ThreeHatched:ScaledHp:FullState:FullRng");
                 }
+                if (input.VerifyThirdRoundDifferential)
+                {
+                    ContinuationStamp thirdRoundPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                    var thirdEnd = new EndPlayerTurnAction(scenario.Player, 3);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(thirdEnd);
+                    await thirdEnd.CompletionTask;
+                    await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                        player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 4 }));
+                    await runner.MultiplayerProbeBarrierAsync("fourth-turn", combat);
+                    CheckPrediction(thirdRoundPrediction, scenario.Player, "THIRD_END_TURN");
+                    runner._completedChecks.Add("MultiplayerRoundDiff:ThirdEnemyTurn:AllPlayers:FullRng");
+                    return new ExecutionOutcome(false, 4, true, true, true, false);
+                }
                 runner._completedChecks.Add("MultiplayerRoundDiff:SecondEnemyTurn:AllPlayers:FullRng");
                 return new ExecutionOutcome(false, 3, true, true, true, false);
             }
