@@ -64,6 +64,29 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerController:LifecycleReset:NoSearchOrDeployment:OverlayHidden:TeammateUntouched");
                 return new ExecutionOutcome(false, 1, true, true, true, false);
             }
+            if (input.VerifyControllerStaleSearchCallback)
+            {
+                CombatState callbackCombat = scenario.CombatState;
+                SolverController.MonitorCombatPresence();
+                SolverController.RequestSearch(runner._host, callbackCombat, SearchReason.Manual);
+                SolverController.Reset("multiplayer_probe_replace_search");
+                SolverController.MonitorCombatPresence();
+                SolverController.RequestSearch(runner._host, callbackCombat, SearchReason.Manual);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    SolverController.LastCompletedResultForTesting != null
+                    || SolverController.LastSearchFailureForTesting != null);
+                if (SolverController.LastSearchFailureForTesting is { } failure)
+                    throw new InvalidOperationException("Replacement multiplayer search failed.", failure);
+                await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsSearching);
+                if (SolverController.LastCompletedResultForTesting is not
+                    { MultiplayerStyle: MultiplayerPlanStyle.Output }
+                    || !SolverController.CanExecuteCurrentTurn
+                    || !SolverOverlay.IsVisible
+                    || SolverController.SearchesStartedForTesting != 1)
+                    throw new InvalidOperationException("Old multiplayer callback displaced the replacement search result.");
+                runner._completedChecks.Add("MultiplayerController:StaleSearchCanceled:ReplacementResultVisible:NoOldCallbackOverwrite");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             CombatState combat = scenario.CombatState;
             Creature enemy = input.VerifyControllerTeammateKillsTarget
                 || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage

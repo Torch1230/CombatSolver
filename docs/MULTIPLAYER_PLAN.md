@@ -189,6 +189,8 @@ P4 本地控制权：虚拟双人双敌根中第一张本地 `Strike` 执行后�
 
 P4 生命周期清理代表：虚拟双人搜索启动后调用战斗会话 `Reset("multiplayer_probe_exit")`，原搜索／部署停下、求解器界面隐藏，两名玩家均未被代结束，Passed：`.local/multiplayer-p4/lifecycle-reset-f4a212c020ac4bed9ca90c7e9f8a2e7b/peer-0/result.json`。这是退出时调用的清理入口测试，不等于真实房间退出、旧异步回调或 ENet 对端断开全部通过。
 
+P4 旧搜索回调代表：虚拟双人同一原生战斗先启动搜索，立刻 `Reset` 取消，再启动新搜索；新结果可见且可执行，新会话仅计一次搜索，旧任务没有覆盖结果，Passed：`.local/multiplayer-p4/stale-search-callback-5ea7bbb41f244b5a8a790f7282aa9261/peer-0/result.json`。本次在同一战斗重置会话，未模拟真实切换房间或退出进程。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

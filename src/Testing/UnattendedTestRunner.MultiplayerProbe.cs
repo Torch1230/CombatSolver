@@ -44,6 +44,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerManualTakeover { get; init; }
         public bool VerifyControllerSearchCancel { get; init; }
         public bool VerifyControllerLifecycleReset { get; init; }
+        public bool VerifyControllerStaleSearchCallback { get; init; }
         public bool VerifyControllerTargetedDeploy { get; init; }
         public bool VerifyControllerSelfPotionDeploy { get; init; }
         public bool VerifyControllerStyleSelection { get; init; }
@@ -105,6 +106,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerManualTakeover && !input.VerifyControllerDeploy
                 || input.VerifyControllerSearchCancel && input.VerifyControllerSearch
                 || input.VerifyControllerLifecycleReset && input.VerifyControllerSearch
+                || input.VerifyControllerStaleSearchCallback && input.VerifyControllerSearch
                 || input.VerifySecondRoundDifferential && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyEnetControllerRng && (input.IsVirtual || input.PlayerCount != 2)
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
