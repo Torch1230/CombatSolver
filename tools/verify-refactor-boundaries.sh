@@ -1361,13 +1361,16 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
     done
 done
 
-for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs SearchOutcomeValueModel.Imitation.cs CombatBeamSolver.ObjectiveRetention.cs; do
+for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs SearchOutcomeValueModel.Imitation.cs SearchOutcomeValueModel.JointTraining.cs CombatBeamSolver.ObjectiveRetention.cs; do
     for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.' 'xgboost'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
         fi
     done
 done
+require_fixed "$search_root/SearchOutcomeValueModel.JointTraining.cs" 'Dictionary<(int Target, int Group), int>' 'joint targets must keep distinct pool identities:'
+require_fixed "$search_root/SearchOutcomeValueModel.JointTraining.cs" 'PrepareRanking(roots, ValidateJointRows, CompareJoint, kindCount: 4)' 'joint supervision must share physical-root weighting and separately count imitation edges:'
+require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.Joint.cs" 'ValidateJointSources(outcomePaths, imitationPaths);' 'joint target collections must be paired before reading observations:'
 require_fixed "$search_root/SearchOutcomeValueModel.Imitation.cs" 'bool? OnWinningRoute' 'imitation membership must not default missing labels to negative:'
 require_fixed "$search_root/SearchOutcomeValueModel.Imitation.cs" 'route-exceeds-bound' 'bounded teacher paths must fail explicitly:'
 require_fixed "$search_root/SearchOutcomeValueModel.Imitation.cs" 'PrepareRanking(roots, ValidateImitationRows, CompareImitation)' 'imitation shares the numeric graph but owns its label comparator:'

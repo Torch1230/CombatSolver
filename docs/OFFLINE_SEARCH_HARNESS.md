@@ -237,3 +237,16 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 每个路径代表一个物理根。先验证完整文档，再有界保留路径正例和同池其他观察；图构建按根等权、同池配对并去重。无教师、缺失路线成员标签、重复文件、混合角色和不匹配版本均拒绝。导出清单的 `trainingTarget` 区分两类边，模仿边不能解释成已验证的胜败比较。
 
 `--audit-imitation-ranking <inputs.json> <model.json> <output.json>` 输出各根对专家分支的准确率/损失及显式缺失原因。它只度量模仿，不能证明搜索决策改善。研究协议还必须核对装备/完整根戳、家族与近牌组隔离，单列准入/排除场景，并在冻结模型后执行独立实际战斗对照。默认游戏策略与玩家选项不变。
+
+联合监督使用 `--export-joint-ranking <inputs.json> <empty-directory>`，输入引用已经固定的两个采样清单：
+
+```json
+{
+  "schemaVersion": 1,
+  "trainingTarget": "completed-outcome-and-imitation",
+  "outcomeInputs": "/absolute/path/to/outcome-inputs.json",
+  "imitationInputs": "/absolute/path/to/imitation-inputs.json"
+}
+```
+
+两个清单须按同一物理根顺序排列，分别指向同一采集目录的 `outcome-rows.json` 与 `imitation-rows.json`；不接受重复目录或多次roll-in合并。终局清单固定为角色头、全偏好、逐对权重。两个原抽样器保持不变，图准备给目标分开池命名空间，合并后每物理根最多4,096对、总权重1，特征支持也只计一次。`pairKinds` 的前三项仍是已完成结果的胜败/政策/动作数比较，第四项是独立模仿边。相同特征不能证明状态身份相同，不跨目标拼接或比较观察。目录配对只防止操作错配，完整根身份、原文件摘要、教师来源及数据隔离仍必须在研究协议中核验。

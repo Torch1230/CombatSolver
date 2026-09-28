@@ -1754,7 +1754,7 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
     }
 }
 
-foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'SearchOutcomeValueModel.Neural.cs', 'SearchOutcomeValueModel.Imitation.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
+foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'SearchOutcomeValueModel.Neural.cs', 'SearchOutcomeValueModel.Imitation.cs', 'SearchOutcomeValueModel.JointTraining.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
     foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.', 'xgboost')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
@@ -1762,6 +1762,9 @@ foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'Se
     }
 }
 foreach ($contract in @(
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.JointTraining.cs'); Text = 'Dictionary<(int Target, int Group), int>' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.JointTraining.cs'); Text = 'PrepareRanking(roots, ValidateJointRows, CompareJoint, kindCount: 4)' },
+    @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.Joint.cs'); Text = 'ValidateJointSources(outcomePaths, imitationPaths);' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Imitation.cs'); Text = 'bool? OnWinningRoute' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Imitation.cs'); Text = 'route-exceeds-bound' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Imitation.cs'); Text = 'PrepareRanking(roots, ValidateImitationRows, CompareImitation)' },

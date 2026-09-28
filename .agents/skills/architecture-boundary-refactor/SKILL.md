@@ -125,3 +125,5 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - 外部结果排序训练的数据边界：Search 的 `PrepareTraining` 独占偏好图准备，`FitLinearFoundation` 独占基础项；离线 `OutcomeValueTraining.Export` 独占二进制与 JSON 输出。Python 只消费已裁定的边，不重建战斗政策；C# 推理继续加载普通模型文档，不能依赖 Python 或 XGBoost。
 
 - 获胜路线模仿是独立训练目标：`SearchOutcomeValueModel.Imitation.cs` 只保存最佳完整胜利的有界路径键，不持有节点/模拟器；未选中不是失败。`RankingObservation` 共享数值图准备，各目标独占验证/比较器。离线 `OutcomeValueTraining.Imitation.cs` 验证全部原始文档后再抽样；缺失标签、超界路径及无教师明确拒绝/不可用。旧结果偏好图与基础项须保持字节兼容，模仿指标不能代替独立实际战斗。
+
+- 联合监督的两个目标必须分开池命名空间和比较器，每物理根只计一次支持与总权重；相同特征向量不能作为状态身份连接。`JointTraining` 只构造数值图，宿主 `OutcomeValueTraining.Joint` 复用原采样并拒绝错配/重复来源；完整根与隔离审计仍在数据协议层。第四类模仿边不得记为真实胜败或动作长度偏好。

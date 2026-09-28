@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [结果与路线联合监督](strategy/joint-outcome-imitation-20260928.md)：共享物理根权重，两个验证目标改善；完整模型136秒，实战一改善两退化，未启用。
+
 - [完整获胜路线模仿](strategy/winning-route-imitation-20260928.md)：独立监督标签及同根训练对照；完整拟合80秒，模仿改善但实战仍一场退化，默认不启用。
 
 - [有界单隐层神经排序](strategy/small-neural-ranking-20260928.md)：纯C#数值核与小规模CPU训练，格式/数学/兼容检查通过，候选仍有两场实战退化，未启用。

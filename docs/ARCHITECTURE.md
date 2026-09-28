@@ -45,6 +45,8 @@
 
 
 离线获胜路线模仿由 `SearchOutcomeValueModel.Imitation.cs` 记录最佳可靠完整胜利的有界脱离路径键；只保留状态/政策标量，不持有节点或模拟器。`ImitationRow.OnWinningRoute` 是独立的路线成员标签，不将未被选中者写为失败。结果见证与模仿标签通过 `RankingObservation` 共用数值图准备和基础线性拟合，各自验证/比较器保持分离。`OutcomeValueTraining.Imitation.cs` 独占文件验证、正例保留抽样和模仿诊断，二进制输出共用 `OutcomeValueTraining.Export.cs`，导出明确标识训练目标。新增入口仅离线，不增加玩家模式；没有完整教师时明确不可用。
+联合监督只在 `SearchOutcomeValueModel.JointTraining.cs` 给两个目标分配独立池命名空间，共用一次每物理根权重/抽样/特征支持计数，禁止通过相同特征向量合并状态；第四种边明确表示模仿。`OutcomeValueTraining.Joint.cs` 复用两个原读入器和抽样器，拒绝错配、重复采集目录或混合角色；文件来源、双根戳和数据隔离继续由离线数据审计负责。
+
 
 ## 当前精简分支的局部合同
 

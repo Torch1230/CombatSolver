@@ -239,13 +239,13 @@ internal sealed partial class SearchOutcomeValueModel
     private delegate int PreferenceOrder<T>(T left, T right, out int kind);
     private static PreparedTraining PrepareRanking<T>(IReadOnlyList<T[]> roots,
         Action<IEnumerable<T>> validate, PreferenceOrder<T> compare,
-        bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false) where T : class, RankingObservation
+        bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false, int kindCount = 3) where T : class, RankingObservation
     {
         List<T> rows = [];
         List<Pair> pairs = [];
         Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
         int participatingRoots = 0;
-        int[] pairKinds = new int[3];
+        int[] pairKinds = new int[kindCount];
         Random random = new(0);
         foreach (var root in roots)
         {
