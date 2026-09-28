@@ -250,3 +250,9 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 ```
 
 两个清单须按同一物理根顺序排列，分别指向同一采集目录的 `outcome-rows.json` 与 `imitation-rows.json`；不接受重复目录或多次roll-in合并。终局清单固定为角色头、全偏好、逐对权重。两个原抽样器保持不变，图准备给目标分开池命名空间，合并后每物理根最多4,096对、总权重1，特征支持也只计一次。`pairKinds` 的前三项仍是已完成结果的胜败/政策/动作数比较，第四项是独立模仿边。相同特征不能证明状态身份相同，不跨目标拼接或比较观察。目录配对只防止操作错配，完整根身份、原文件摘要、教师来源及数据隔离仍必须在研究协议中核验。
+
+### 固定开发集的重复配对
+
+`python3 tools/OutcomeValuation/paired_benchmark.py <protocol.json>` 运行冻结的开发协议，按场景交替 ABBA/BAAB，旧自动算法和学习候选各两次；不因质量退化提前结束，失败/超时单列。协议必须包含审计清单、模型/程序/输入摘要、同一搜索参数和CPU集合；本入口拒绝打开最终测试集。结果逐场保存，恢复时复用已有记录。
+
+`python3 tools/OutcomeValuation/benchmark_report.py <protocol.json>` 生成 `summary.json` 和 `cases.csv`；终局比较复用宿主权威比较器，重复结果冲突、未验证、质量不下降子集速度与采样内存分别报告。完整口径见[100场配对评测](strategy/paired-development-benchmark-20260928.md)。
