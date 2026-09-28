@@ -118,6 +118,8 @@ P2 `ToughEgg` 孵化：在 `OVICOPTER_NORMAL` 虚拟双人根推进第二个敌�
 
 P4 取消与接管代表：双人虚拟双敌根第一张本地攻击后关闭求解器，第二张没有打出，队友未被操作，Passed：`.local/multiplayer-p4/manual-takeover-fixed-0383b266d34b47cb9071f3fdb3b4fee0/peer-0/result.json`。双人虚拟根启动搜索后用户立即停止，没有部署也没有结束任一玩家回合，Passed：`.local/multiplayer-p4/search-user-stop-9252b7db3f0c4c7999424fb259ef519c/peer-0/result.json`。战斗退出与旧任务回调仍待验。
 
+P4 生命周期 Reset 代表：双人虚拟搜索期间主动重置战斗会话，搜索和部署均停下、悬浮窗隐藏、两名玩家都未被代结束，Passed：`.local/multiplayer-p4/lifecycle-reset-f4a212c020ac4bed9ca90c7e9f8a2e7b/peer-0/result.json`。实际房间退出与旧结果回调时序仍未覆盖。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

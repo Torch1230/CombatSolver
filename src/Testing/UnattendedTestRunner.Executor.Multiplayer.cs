@@ -47,6 +47,23 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerController:SearchStoppedByUser:NoDeployment:TeammateUntouched");
                 return new ExecutionOutcome(false, 1, true, true, true, false);
             }
+            if (input.VerifyControllerLifecycleReset)
+            {
+                CombatState lifecycleCombat = scenario.CombatState;
+                Player localPlayer = scenario.Player;
+                Player otherPlayer = lifecycleCombat.Players.First(player => player != localPlayer);
+                SolverController.MonitorCombatPresence();
+                SolverController.RequestSearch(runner._host, lifecycleCombat, SearchReason.Manual);
+                SolverController.Reset("multiplayer_probe_exit");
+                await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsSearching
+                    && !SolverController.IsDeploying);
+                if (SolverOverlay.IsVisible
+                    || CombatManager.Instance.IsPlayerReadyToEndTurn(localPlayer)
+                    || CombatManager.Instance.IsPlayerReadyToEndTurn(otherPlayer))
+                    throw new InvalidOperationException("Multiplayer lifecycle reset retained local UI or changed player turns.");
+                runner._completedChecks.Add("MultiplayerController:LifecycleReset:NoSearchOrDeployment:OverlayHidden:TeammateUntouched");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             CombatState combat = scenario.CombatState;
             Creature enemy = input.VerifyControllerTeammateKillsTarget
                 || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage

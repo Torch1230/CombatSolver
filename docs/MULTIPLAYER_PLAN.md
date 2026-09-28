@@ -187,6 +187,8 @@ P2 `ToughEgg` 孵化追加第三回合检查：同一 `OVICOPTER_NORMAL` 双人�
 
 P4 本地控制权：虚拟双人双敌根中第一张本地 `Strike` 执行后关闭求解器，第二张本地牌未自动打出，队友能量与结束状态不变、无新增完整搜索，Passed：`.local/multiplayer-p4/manual-takeover-fixed-0383b266d34b47cb9071f3fdb3b4fee0/peer-0/result.json`。测试夹具初次把双敌根当单敌调用 `Single()`，在搜索前失败，修为选第一只敌人后通过。另一虚拟双人根启动手动搜索后立即通过用户停止入口取消，双方均未被部署或代结束，Passed：`.local/multiplayer-p4/search-user-stop-9252b7db3f0c4c7999424fb259ef519c/peer-0/result.json`。这些证据不覆盖战斗退出、旧结果回调或真实联机取消。
 
+P4 生命周期清理代表：虚拟双人搜索启动后调用战斗会话 `Reset("multiplayer_probe_exit")`，原搜索／部署停下、求解器界面隐藏，两名玩家均未被代结束，Passed：`.local/multiplayer-p4/lifecycle-reset-f4a212c020ac4bed9ca90c7e9f8a2e7b/peer-0/result.json`。这是退出时调用的清理入口测试，不等于真实房间退出、旧异步回调或 ENet 对端断开全部通过。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。
