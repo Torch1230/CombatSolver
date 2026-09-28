@@ -301,6 +301,7 @@ internal sealed partial class UnattendedTestRunner
                         ? input.ContentSearchTurnDepth : configured.MaxTurnLayers,
                     MultiplayerAllyTargetSeatForTesting = input.VerifyTargetedSupport
                         ? input.ContentTargetSeat
+                        : input.VerifyMultipleSupport ? input.ContentTargetSeat
                         : input.VerifySelfTargetNormal ? 0 : null,
                     Profile = SolverSearchProfile.Default with
                     {
@@ -397,7 +398,21 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Self-target Blaze was not searched normally.");
                     runner._completedChecks.Add("MultiplayerSupport:SelfTargetBlaze:NormalSetupSearch");
                 }
-                if (input.VerifyPureSupport || input.VerifyTargetedSupport)
+                if (input.VerifyMultipleSupport)
+                {
+                    PlanAction[] current = search.BestNode.Actions
+                        .Where(action => action.Turn == 1).ToArray();
+                    int attack = Array.FindIndex(current, action => action.CardId == "STRIKE_IRONCLAD");
+                    int beacon = Array.FindIndex(current, action => action.CardId == "BEACON_OF_HOPE");
+                    int blaze = Array.FindIndex(current, action => action.CardId == "BLAZE");
+                    if (attack < 0 || beacon <= attack || blaze <= attack
+                        || !search.MultiplayerSupportAdded
+                        || current[blaze].TargetCombatId
+                            != combat.Players[input.ContentTargetSeat].Creature.CombatId)
+                        throw new InvalidOperationException("Multiple support cards did not use spare resources.");
+                    runner._completedChecks.Add("MultiplayerSupport:TwoCards:SpareEnergy:FixedTarget");
+                }
+                if (input.VerifyPureSupport || input.VerifyTargetedSupport || input.VerifyMultipleSupport)
                 {
                     CombatBeamSolver replayDriver = new(searchRoot, SolverDisplayNames.Capture(combat),
                         BattleDamageTracker.Observe(combat), searchPolicy);
@@ -467,7 +482,7 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.ContentSearchOnly)
                 return new ExecutionOutcome(false,
-                    input.VerifyPureSupport || input.VerifyTargetedSupport ? 2 : 1,
+                    input.VerifyPureSupport || input.VerifyTargetedSupport || input.VerifyMultipleSupport ? 2 : 1,
                     true, true, true, false);
             if (input.ContentTeammateStrikeBefore)
                 await PlayTeammateStrikeAsync("before");

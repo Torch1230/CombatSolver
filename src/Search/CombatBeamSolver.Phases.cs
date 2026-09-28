@@ -494,14 +494,16 @@ internal sealed partial class CombatBeamSolver
                 materializedNode = blockPotionInsertion.Node;
                 materializedAnnotations = blockPotionInsertion.Annotations;
             }
-            MultiplayerSupportInsertion? supportInsertion = resultScope == SolverResultScope.SearchCompletion
-                ? TryAppendPureSupport(materializedNode, materializedAnnotations, stopwatch)
-                : null;
-            if (supportInsertion != null)
+            bool supportAdded = false;
+            MultiplayerSupportInsertion? supportInsertion;
+            while (resultScope == SolverResultScope.SearchCompletion
+                   && (supportInsertion = TryAppendPureSupport(
+                       materializedNode, materializedAnnotations, stopwatch)) != null)
             {
                 materializedNode.Snapshot.ReleaseSimulator();
                 materializedNode = supportInsertion.Node;
                 materializedAnnotations = supportInsertion.Annotations;
+                supportAdded = true;
             }
             FinalPlanCandidate selectedCandidate = publishedCandidate with
             {
@@ -512,7 +514,7 @@ internal sealed partial class CombatBeamSolver
                 BattleSold = battleDamage.SoldHpCommitted + materializedNode.FutureSoldHp,
                 PotionCount = materializedNode.PotionCount,
                 Score = blockPotionInsertion == null && afterimageFrontloading == null
-                    && supportInsertion == null
+                    && !supportAdded
                     ? publishedCandidate.Score
                     : materializedNode.Score,
             };
@@ -689,7 +691,7 @@ internal sealed partial class CombatBeamSolver
                 MultiplayerEffectiveDamage = best.CumulativeEnemyHpLost,
                 MultiplayerSetupValue = CurrentTurnSetup(best),
                 MultiplayerCurrentTurnProjectedHp = CurrentTurnSnapshot(best).ProjectedPlayerHp,
-                MultiplayerSupportAdded = supportInsertion != null,
+                MultiplayerSupportAdded = supportAdded,
                 ResultScope = resultScope,
                 DeterministicBlockPotionInserted = blockPotionInsertion != null,
                 TotalSearchElapsed = stopwatch.Elapsed,

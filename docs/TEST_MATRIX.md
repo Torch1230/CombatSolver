@@ -34,7 +34,9 @@ P3 选人合同：四人 `BelieveInYou` 在三个 Fork 中固定同一原版合�
 
 多人生产搜索协调器：双人 `Strike`／`Inflame` 两回合根通过 `CombatSearchCoordinator.Solve` 获得输出＋启动，单场搜索统计与根比较戳对账 Passed；证据 `.local/multiplayer-p3/coordinator-styles-two-turn-a4297d0afd3d43fba976a1ba76e9772a/peer-0/result.json`。控制器、界面与真实玩家交互仍未接入。
 
-纯支援第一批：`BeaconOfHope` 有余能时在 `Strike` 后补入并按原生执行整条路线；余能不足时不补；独立固定目标的 `Blaze` 补给队友并按原生执行整条路线；`Rally` 群体自身收益与 `Blaze` 自指均走正常搜索。全部对应虚拟双人请求 Passed，路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。最多一张补入及这些固定机制，不能推出所有纯支援或额外成本已通过。
+纯支援第一批：`BeaconOfHope` 有余能时在 `Strike` 后补入并按原生执行整条路线；余能不足时不补；独立固定目标的 `Blaze` 补给队友并按原生执行整条路线；`Rally` 群体自身收益与 `Blaze` 自指均走正常搜索。全部对应虚拟双人请求 Passed，路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。两张补入在固定机制中已通过，不能推出所有纯支援或额外成本已通过。
+
+两张余费支援组合：`Strike` 后依次补 `BeaconOfHope` 和给队友的 `Blaze`，整条原生执行路线／所有玩家状态／RNG Passed；证据 `.local/multiplayer-p3/support-two-cards-ca2a44b61ca94328a437837241a5b660/peer-0/result.json`。
 
 ## 多人 P1 普通状态差分（2026-09-28）
 
