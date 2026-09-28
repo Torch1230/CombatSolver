@@ -221,6 +221,8 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 ### 外部结果排序训练器（离线研究）
 
+联合输入可显式设置 `crossTurnOutcomes: true`，同时要求 `balanceCorrectionSources: true` 及对齐纠偏输入。它在同根原结果观察中补充不同回合、无共享原池的严格完成政策偏好；至多256行/1,024新边，整根仍最多4,096边、总权重1，非空来源等权。导出新增 `crossTurnPairs` 和 `crossTurnWeight`，数字矩阵/边格式与模型格式保持。详见[校准实验与限制](strategy/cross-turn-context-calibration-20260928.md)。
+
 `--export-outcome-ranking <训练输入> <空输出目录>` 导出共用 C# 准备器裁定的偏好图、float32 零值矩阵和线性基础项，带格式与内容摘要。可选 CPU 训练流程见 [OutcomeValuation](../tools/OutcomeValuation/README.md)。`--predict-outcome-features <模型> <输入 JSON> <输出 JSON>` 只通过现有模型读取/推理边界验证转换；输入数组成员为 `Character` 与 `Features`，非有限数值拒绝。它们均不运行战斗，也不替代独立战斗质量验证。
 
 ## 独立获胜路线模仿目标

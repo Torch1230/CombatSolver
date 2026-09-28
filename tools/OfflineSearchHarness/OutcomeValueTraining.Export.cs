@@ -62,6 +62,7 @@ internal static partial class OutcomeValueTraining
                 roots = group.Count(), sampledRows = group.Sum(r => r.Rows.Length),
                 participatingRoots = prepared.ParticipatingRoots, rows = prepared.Rows.Count,
                 pairs = prepared.Pairs.Count, pairKinds = prepared.PairKinds,
+                crossTurnPairs = prepared.CrossTurnPairs, crossTurnWeight = prepared.CrossTurnWeight,
                 correctionPairs = prepared.Pairs.Count(p => prepared.Rows[p.Preferred]
                     is SearchOutcomeValueModel.JointObservation { IsCorrection: true }),
                 correctionWeight = prepared.Pairs.Where(p => prepared.Rows[p.Preferred]

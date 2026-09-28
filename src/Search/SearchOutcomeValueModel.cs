@@ -174,7 +174,11 @@ internal sealed partial class SearchOutcomeValueModel
 
     internal readonly record struct Pair(int Preferred, int Other, double Weight);
     internal sealed record PreparedTraining(IReadOnlyList<RankingObservation> Rows, List<Pair> Pairs,
-        string[] FeatureNames, int ParticipatingRoots, int[] PairKinds);
+        string[] FeatureNames, int ParticipatingRoots, int[] PairKinds)
+    {
+        internal int CrossTurnPairs { get; init; }
+        internal double CrossTurnWeight { get; init; }
+    }
     internal static void ValidateTrainingRows(IEnumerable<TrainingRow> rows)
     {
         if (rows.Any(r => r == null || r.FeatureSchema != FeatureSchema || r.Features == null || r.Outcome == null || r.Groups == null || r.Features.Count == 0
@@ -195,14 +199,18 @@ internal sealed partial class SearchOutcomeValueModel
     private static PreparedTraining PrepareRanking<T>(IReadOnlyList<T[]> roots,
         Action<IEnumerable<T>> validate, PreferenceOrder<T> compare,
         bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false, int kindCount = 3,
-        Func<T, bool>? correctionSource = null) where T : class, RankingObservation
+        Func<T, bool>? correctionSource = null,
+        Func<T[], IReadOnlyList<(int Preferred, int Other, int Kind)>>? crossTurnPairs = null)
+        where T : class, RankingObservation
     {
-        if (correctionSource != null && (highestPolicyTierOnly || balanceTrainingTurns))
-            throw new InvalidDataException("Correction source weighting cannot be combined with other weighting ablations.");
+        if ((correctionSource != null || crossTurnPairs != null) && (highestPolicyTierOnly || balanceTrainingTurns))
+            throw new InvalidDataException("Source weighting cannot be combined with other weighting ablations.");
         List<T> rows = [];
         List<Pair> pairs = [];
         Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
         int participatingRoots = 0;
+        int contextPairCount = 0;
+        double contextWeight = 0;
         int[] pairKinds = new int[kindCount];
         Random random = new(0);
         foreach (var root in roots)
@@ -211,7 +219,7 @@ internal sealed partial class SearchOutcomeValueModel
             validate(root);
             int[]? turns = balanceTrainingTurns ? root.Select(TrainingTurn).ToArray() : null;
             rows.AddRange(root);
-            List<(int Preferred, int Other, int Kind)> rootPairs = [];
+            List<(int Preferred, int Other, int Kind, int Source)> rootPairs = [];
             HashSet<(int, int)> seen = [];
             var groups = Enumerable.Range(0, root.Length).SelectMany(i => root[i].Groups.Select(g => (Group: g, Row: i)))
                 .GroupBy(x => x.Group);
@@ -225,28 +233,48 @@ internal sealed partial class SearchOutcomeValueModel
                         int order = compare(root[ia], root[ib], out int kind);
                         if (order == 0) continue;
                         var pair = order < 0 ? (ia, ib) : (ib, ia);
-                        if (seen.Add(pair)) rootPairs.Add((pair.Item1, pair.Item2, kind));
+                        int source = correctionSource?.Invoke(root[pair.Item1]) == true ? 1 : 0;
+                        if (correctionSource != null && correctionSource(root[ia]) != correctionSource(root[ib]))
+                            throw new InvalidDataException("Invalid correction preference source.");
+                        if (seen.Add(pair)) rootPairs.Add((pair.Item1, pair.Item2, kind, source));
                     }
+            }
+            if (crossTurnPairs != null)
+            {
+                var additional = crossTurnPairs(root);
+                if (additional.Count > MaximumCrossTurnPairsPerRoot)
+                    throw new InvalidDataException("Cross-turn comparison budget exceeded.");
+                foreach (var pair in additional)
+                {
+                    if ((uint)pair.Preferred >= root.Length || (uint)pair.Other >= root.Length
+                        || pair.Preferred == pair.Other || pair.Kind is not (0 or 1))
+                        throw new InvalidDataException("Invalid cross-turn completed-outcome comparison.");
+                    // The additional source is edge-local, not a new physical
+                    // observation. A preference remains unique within its root.
+                    if (seen.Add((pair.Preferred, pair.Other)))
+                        rootPairs.Add((pair.Preferred, pair.Other, pair.Kind, 2));
+                }
             }
             // Equal total weight per root; repeated states/pools cannot multiply a pair.
             // Optional offline ablation: use each root's highest available
             // policy tier. No hand-assigned numeric tradeoff between tiers.
             int firstKind = rootPairs.Count == 0 ? 0 : rootPairs.Min(p => p.Kind);
             var sampled = rootPairs.Where(p => !highestPolicyTierOnly || p.Kind == firstKind).ToArray();
-            if (correctionSource == null)
+            if (correctionSource == null && crossTurnPairs == null)
                 random.Shuffle(sampled);
             else
             {
                 // Keep the old sampler's RNG stream for existing observations.
                 // The at-most-six explicit queries supply at most fifteen pairs;
                 // reserve their actual edges, never fabricate a preference.
-                var ordinary = sampled.Where(p => !correctionSource(root[p.Preferred])).ToArray();
-                var corrections = sampled.Where(p => correctionSource(root[p.Preferred])).ToArray();
-                if (corrections.Length > 15 || sampled.Any(p =>
-                    correctionSource(root[p.Preferred]) != correctionSource(root[p.Other])))
+                var ordinary = sampled.Where(p => p.Source == 0).ToArray();
+                var corrections = sampled.Where(p => p.Source == 1).ToArray();
+                var contexts = sampled.Where(p => p.Source == 2).ToArray();
+                if (corrections.Length > 15)
                     throw new InvalidDataException("Invalid correction preference source.");
                 random.Shuffle(ordinary);
-                sampled = ordinary.Take(4096 - corrections.Length).Concat(corrections).ToArray();
+                sampled = ordinary.Take(4096 - corrections.Length - contexts.Length)
+                    .Concat(corrections).Concat(contexts).ToArray();
             }
             int count = Math.Min(4096, sampled.Length);
             if (count > 0)
@@ -261,20 +289,22 @@ internal sealed partial class SearchOutcomeValueModel
             int[]? pairTurns = turns == null ? null : sampled.Take(count)
                 .Select(p => Math.Max(turns[p.Preferred], turns[p.Other])).ToArray();
             var turnCounts = pairTurns?.GroupBy(t => t).ToDictionary(g => g.Key, g => g.Count());
-            var sourceCounts = correctionSource == null ? null : sampled.Take(count)
-                .GroupBy(p => correctionSource(root[p.Preferred])).ToDictionary(g => g.Key, g => g.Count());
+            var sourceCounts = correctionSource == null && crossTurnPairs == null ? null : sampled.Take(count)
+                .GroupBy(p => p.Source).ToDictionary(g => g.Key, g => g.Count());
             for (int i = 0; i < count; i++)
             {
                 var pair = sampled[i];
                 double weight = turnCounts == null ? 1d / count
                     : 1d / (turnCounts.Count * (double)turnCounts[pairTurns![i]]);
                 if (sourceCounts != null)
-                    weight = 1d / (sourceCounts.Count * (double)sourceCounts[correctionSource!(root[pair.Preferred])]);
+                    weight = 1d / (sourceCounts.Count * (double)sourceCounts[pair.Source]);
                 pairs.Add(new(offset + pair.Preferred, offset + pair.Other, weight));
                 pairKinds[pair.Kind]++;
+                if (pair.Source == 2) { contextPairCount++; contextWeight += weight; }
             }
         }
-        if (pairs.Count < 2) return new([], pairs, [], participatingRoots, pairKinds);
+        if (pairs.Count < 2) return new([], pairs, [], participatingRoots, pairKinds)
+            { CrossTurnPairs = contextPairCount, CrossTurnWeight = contextWeight };
         // Validate every input above, but allocate feature histograms only for
         // witnesses referenced by a sampled preference. Unknown comparisons and
         // all-defeat pools supply no gradient, even if their raw row count is high.
@@ -289,7 +319,8 @@ internal sealed partial class SearchOutcomeValueModel
         int minimumRoots = Math.Min(3, participatingRoots);
         string[] names = featureRoots.Where(p => p.Value >= minimumRoots)
             .Select(p => p.Key).Order(StringComparer.Ordinal).ToArray();
-        return new(rows, pairs, names, participatingRoots, pairKinds);
+        return new(rows, pairs, names, participatingRoots, pairKinds)
+            { CrossTurnPairs = contextPairCount, CrossTurnWeight = contextWeight };
     }
 
     internal static int TrainingTurn(RankingObservation row)

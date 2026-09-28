@@ -30,11 +30,15 @@ internal static partial class OutcomeValueTraining
         var corrections = ReadJointCorrections(input, outcomePaths);
         bool balanceCorrections = input.TryGetProperty("balanceCorrectionSources", out var balance)
             && balance.GetBoolean();
+        bool crossTurnOutcomes = input.TryGetProperty("crossTurnOutcomes", out var context)
+            && context.GetBoolean();
         if (balanceCorrections && corrections == null)
             throw new InvalidDataException("Correction weighting requires explicit paired correction inputs.");
+        if (crossTurnOutcomes && !balanceCorrections)
+            throw new InvalidDataException("Cross-turn calibration requires source-balanced joint supervision.");
         // Reuse each established sampler exactly. The manifest's paired raw
         // files still require external native-root/provenance and split audits.
-        var outcomes = ReadRoots(outcomeFile);
+        var outcomes = ReadRoots(outcomeFile, requireTrainingTurns: crossTurnOutcomes);
         var imitations = ReadImitationRoots(imitationFile);
         List<(string Id, Model.JointObservation[] Rows)> roots = [];
         for (int i = 0; i < outcomes.Count; i++)
@@ -44,8 +48,9 @@ internal static partial class OutcomeValueTraining
             roots.Add((Path.GetDirectoryName(outcomePaths[i])!, rows));
         }
         return ExportRanking(roots, directory, clock, "character", "all",
-            balanceCorrections ? "correction-sources" : "pairs",
-            "completed-outcome-and-imitation", rows => Model.PrepareJointTraining(rows, balanceCorrections));
+            crossTurnOutcomes ? "cross-turn-sources" : balanceCorrections ? "correction-sources" : "pairs",
+            "completed-outcome-and-imitation", rows => crossTurnOutcomes
+                ? Model.PrepareContextCalibratedTraining(rows) : Model.PrepareJointTraining(rows, balanceCorrections));
     }
 
     private static Model.TrainingRow[][]? ReadJointCorrections(JsonElement input, string[] outcomes)

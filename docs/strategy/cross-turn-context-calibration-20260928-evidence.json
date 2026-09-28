@@ -1,0 +1,170 @@
+{
+  "experiment": "bounded-within-root-cross-turn-completion-calibration",
+  "sourceBase": "d6f508c2",
+  "fullCandidateTrained": false,
+  "finalTestOpened": false,
+  "runtimeLearnedModelEnabled": false,
+  "rankingContracts": 235,
+  "newContextContracts": 22,
+  "bashGateSearchFiles": 231,
+  "powershellGateSearchFiles": 231,
+  "modBuildPassed": true,
+  "harnessBuildPassed": true,
+  "modBuildWarning": "NU1900 offline vulnerability source",
+  "pilot": {
+    "completed": true,
+    "trainingRoots": 10,
+    "fullModelTrained": false,
+    "finalTestOpened": false,
+    "runtimeModelEnabled": false,
+    "defaultCompatibility": {
+      "passed": true,
+      "heads": 5,
+      "binaryFiles": 15,
+      "reference": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v76/augmented/export",
+      "scope": "Exact foundation JSON and matrix/edge/margin bytes; metadata adds zero context counts."
+    },
+    "pipelineSeconds": 5.109298533992842,
+    "parityRows": 1280,
+    "maximumAbsoluteDifference": 0.0,
+    "processes": {
+      "defaultExport": {
+        "processSeconds": 4.1056946909520775,
+        "returnCode": 0,
+        "timedOut": false
+      },
+      "contextExport": {
+        "processSeconds": 4.605898057925515,
+        "returnCode": 0,
+        "timedOut": false
+      },
+      "fit": {
+        "processSeconds": 0.5019630680326372,
+        "returnCode": 0,
+        "timedOut": false
+      },
+      "parity": {
+        "processSeconds": 0.3010425299871713,
+        "returnCode": 0,
+        "timedOut": false
+      }
+    },
+    "heads": [
+      {
+        "character": "DEFECT",
+        "roots": 2,
+        "rows": 1081,
+        "pairs": 5837,
+        "pairKinds": [
+          230,
+          5289,
+          194,
+          124
+        ],
+        "crossTurnPairs": 2048,
+        "crossTurnWeight": 0.6666666666666742,
+        "correctionPairs": 6,
+        "correctionWeight": 0.6666666666666667
+      },
+      {
+        "character": "IRONCLAD",
+        "roots": 2,
+        "rows": 1294,
+        "pairs": 4449,
+        "pairKinds": [
+          766,
+          2997,
+          37,
+          649
+        ],
+        "crossTurnPairs": 2048,
+        "crossTurnWeight": 0.6666666666666742,
+        "correctionPairs": 5,
+        "correctionWeight": 0.6666666666666667
+      },
+      {
+        "character": "NECROBINDER",
+        "roots": 2,
+        "rows": 1054,
+        "pairs": 2987,
+        "pairKinds": [
+          1100,
+          1220,
+          27,
+          640
+        ],
+        "crossTurnPairs": 2048,
+        "crossTurnWeight": 0.8333333333333712,
+        "correctionPairs": 3,
+        "correctionWeight": 0.3333333333333333
+      },
+      {
+        "character": "REGENT",
+        "roots": 2,
+        "rows": 1377,
+        "pairs": 5674,
+        "pairKinds": [
+          1219,
+          4050,
+          39,
+          366
+        ],
+        "crossTurnPairs": 2048,
+        "crossTurnWeight": 0.8333333333333712,
+        "correctionPairs": 3,
+        "correctionWeight": 0.3333333333333333
+      },
+      {
+        "character": "SILENT",
+        "roots": 2,
+        "rows": 1704,
+        "pairs": 4299,
+        "pairKinds": [
+          1888,
+          1477,
+          97,
+          837
+        ],
+        "crossTurnPairs": 2048,
+        "crossTurnWeight": 0.6666666666666742,
+        "correctionPairs": 4,
+        "correctionWeight": 0.6666666666666666
+      }
+    ]
+  },
+  "pilotExportPeakWorkingSetBytes": 387166208,
+  "pilotParticipatingRows": 6510,
+  "pilotPairs": 23246,
+  "deployment": {
+    "completed": true,
+    "utc": "2026-09-28T08:35:52.942280+00:00",
+    "target": "/home/ltlly/.local/share/Steam/steamapps/common/Slay the Spire 2/mods/CombatSolver",
+    "files": {
+      "CombatSolver.json": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/CombatSolver.json",
+      "CombatSolver.dll": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v82/engine/CombatSolver.dll",
+      "CombatSolver.MemoryCleaner.exe": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/CombatSolver.MemoryCleaner/bin/Release/net48/CombatSolver.MemoryCleaner.exe",
+      "LICENSE": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/LICENSE",
+      "THIRD_PARTY_NOTICES.md": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/THIRD_PARTY_NOTICES.md"
+    },
+    "runtimeLearnedModelEnabled": false
+  },
+  "bounds": {
+    "contextRowsPerRoot": 256,
+    "contextPairsPerRoot": 1024,
+    "totalPairsPerRoot": 4096,
+    "completeModelSeconds": 1800
+  },
+  "weighting": "Equal mass among nonempty ordinary, correction, and cross-turn sources; one total unit per physical root; this changes relative source weights when a new source participates.",
+  "sha256": {
+    "src/Search/SearchOutcomeValueModel.cs": "eded5e45bbfcd8a73a13deb48aee70eb18f8c8e90d0f5e8e4c72fce8fe57e169",
+    "src/Search/SearchOutcomeValueModel.ContextTraining.cs": "a3dd64a33ed5cb60319052bc55db0955609845248ef7d52e7f1420c830494e4d",
+    "tools/OfflineSearchHarness/OutcomeValueTraining.Joint.cs": "dc7fed469f3a5444c386a9edde6ebb3850970106399c5b7ec5e555e2ed148eb5",
+    "tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs": "7113e7657c8cedf4657934803d0794c1209cbf2d9b068337124ea814e3ab5542",
+    "tools/OfflineSearchHarness/OutcomeContextTrainingChecks.cs": "9a8383246f475e447e5d174894224b36a7bdaf396aafa2e87f67ba672051d42d",
+    "tools/OfflineSearchHarness/OutcomeRankingChecks.cs": "16f0dde3d2c42d33b4f65bbd37ca93e8f6405480f80a1779827d5fc470574c21",
+    ".local/objective-search/v82/engine/CombatSolver.dll": "153d410da56212698132639e9f4c8e8903eeeb0b447beee8fefe96de62b796a6",
+    ".local/objective-search/v82/harness/OfflineSearchHarness.dll": "af68e1b638cb675a4799dc17b8805265f4f54db6d699cdc04d7d5fd23868340a",
+    ".local/objective-search/v82/pilot-protocol.json": "c52070cd28b45c480d4e1589435eadea2e21d82e918634bbea7ada59e74f28c7",
+    ".local/objective-search/v82/pilot-summary.json": "a1615ce178f08cea8c26590dd44e430de2dd65c9be15348ede47ae3c0eb0c673"
+  }
+}
