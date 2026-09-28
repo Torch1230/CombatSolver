@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [联合训练的纠正来源平衡](strategy/source-balanced-corrections-20260928.md)：保留真实补查偏好、同根分配一次总权重；训练流程验证完成，正式候选等待292根采集结束。
+
 - [跨回合续局监督](strategy/cross-turn-witnesses-20260928.md)：逐步验证教师前缀，十训练根产21对有效偏好；292根补采启动，未重新训练或启用。
 
 - [完整协调器的排序失误诊断](strategy/coordinator-ranking-diagnosis-20260928.md)：定位稳定丢胜例的第二回合前缀，四个模型保路成员未保留；定向记录未触顶，路线/工作量无诊断漂移。

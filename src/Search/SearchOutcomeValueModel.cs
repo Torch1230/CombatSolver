@@ -241,8 +241,11 @@ internal sealed partial class SearchOutcomeValueModel
     private delegate int PreferenceOrder<T>(T left, T right, out int kind);
     private static PreparedTraining PrepareRanking<T>(IReadOnlyList<T[]> roots,
         Action<IEnumerable<T>> validate, PreferenceOrder<T> compare,
-        bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false, int kindCount = 3) where T : class, RankingObservation
+        bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false, int kindCount = 3,
+        Func<T, bool>? correctionSource = null) where T : class, RankingObservation
     {
+        if (correctionSource != null && (highestPolicyTierOnly || balanceTrainingTurns))
+            throw new InvalidDataException("Correction source weighting cannot be combined with other weighting ablations.");
         List<T> rows = [];
         List<Pair> pairs = [];
         Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
@@ -277,7 +280,21 @@ internal sealed partial class SearchOutcomeValueModel
             // policy tier. No hand-assigned numeric tradeoff between tiers.
             int firstKind = rootPairs.Count == 0 ? 0 : rootPairs.Min(p => p.Kind);
             var sampled = rootPairs.Where(p => !highestPolicyTierOnly || p.Kind == firstKind).ToArray();
-            random.Shuffle(sampled);
+            if (correctionSource == null)
+                random.Shuffle(sampled);
+            else
+            {
+                // Keep the old sampler's RNG stream for existing observations.
+                // The at-most-six explicit queries supply at most fifteen pairs;
+                // reserve their actual edges, never fabricate a preference.
+                var ordinary = sampled.Where(p => !correctionSource(root[p.Preferred])).ToArray();
+                var corrections = sampled.Where(p => correctionSource(root[p.Preferred])).ToArray();
+                if (corrections.Length > 15 || sampled.Any(p =>
+                    correctionSource(root[p.Preferred]) != correctionSource(root[p.Other])))
+                    throw new InvalidDataException("Invalid correction preference source.");
+                random.Shuffle(ordinary);
+                sampled = ordinary.Take(4096 - corrections.Length).Concat(corrections).ToArray();
+            }
             int count = Math.Min(4096, sampled.Length);
             if (count > 0)
             {
@@ -291,11 +308,15 @@ internal sealed partial class SearchOutcomeValueModel
             int[]? pairTurns = turns == null ? null : sampled.Take(count)
                 .Select(p => Math.Max(turns[p.Preferred], turns[p.Other])).ToArray();
             var turnCounts = pairTurns?.GroupBy(t => t).ToDictionary(g => g.Key, g => g.Count());
+            var sourceCounts = correctionSource == null ? null : sampled.Take(count)
+                .GroupBy(p => correctionSource(root[p.Preferred])).ToDictionary(g => g.Key, g => g.Count());
             for (int i = 0; i < count; i++)
             {
                 var pair = sampled[i];
                 double weight = turnCounts == null ? 1d / count
                     : 1d / (turnCounts.Count * (double)turnCounts[pairTurns![i]]);
+                if (sourceCounts != null)
+                    weight = 1d / (sourceCounts.Count * (double)sourceCounts[correctionSource!(root[pair.Preferred])]);
                 pairs.Add(new(offset + pair.Preferred, offset + pair.Other, weight));
                 pairKinds[pair.Kind]++;
             }

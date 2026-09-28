@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "experiment": "v76-source-balanced-corrective-supervision",
+  "sourceBase": "6d5b5958",
+  "goalAchieved": false,
+  "runtimeModelEnabled": false,
+  "finalTestOpened": false,
+  "completeCandidateTrained": false,
+  "validation": {
+    "outcomeRankingAssertions": 201,
+    "boundariesBash": "REFACTOR_BOUNDARIES_OK search_files=228",
+    "boundariesPowerShell": "REFACTOR_BOUNDARIES_OK search_files=228",
+    "compatibility": {
+      "roots": 10,
+      "heads": 5,
+      "binaryFiles": 15,
+      "baselineFoundationAndBinaryFilesUnchanged": true,
+      "correctionPairs": 21
+    },
+    "parity": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0,
+      "purpose": "Training-pipeline verification only; this ten-root model is not a quality candidate."
+    }
+  },
+  "nativePilot": {
+    "roots": 10,
+    "heads": [
+      {
+        "role": "DEFECT",
+        "roots": 2,
+        "rows": 1038,
+        "pairs": 3789,
+        "correctionPairs": 6,
+        "correctionWeight": 0.9999999999999999
+      },
+      {
+        "role": "IRONCLAD",
+        "roots": 2,
+        "rows": 1245,
+        "pairs": 2401,
+        "correctionPairs": 5,
+        "correctionWeight": 0.9999999999999999
+      },
+      {
+        "role": "NECROBINDER",
+        "roots": 2,
+        "rows": 933,
+        "pairs": 939,
+        "correctionPairs": 3,
+        "correctionWeight": 0.5
+      },
+      {
+        "role": "REGENT",
+        "roots": 2,
+        "rows": 1339,
+        "pairs": 3626,
+        "correctionPairs": 3,
+        "correctionWeight": 0.5
+      },
+      {
+        "role": "SILENT",
+        "roots": 2,
+        "rows": 1510,
+        "pairs": 2251,
+        "correctionPairs": 4,
+        "correctionWeight": 1
+      }
+    ],
+    "exportProcess": {
+      "processSeconds": 4.005367645062506,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "fitProcess": {
+      "processSeconds": 0.5009717040229589,
+      "returnCode": 0,
+      "timedOut": false
+    }
+  },
+  "fullProtocol": {
+    "file": ".local/objective-search/v76/full-protocol.json",
+    "trainingRoots": 292,
+    "completeModelLimitSeconds": 1800,
+    "ancestorTrainingSeconds": 135.88075087300967,
+    "validationCases": 100,
+    "plannedPairedRequests": 400,
+    "stateAtReport": "waiting for the finite v75 collection; not started"
+  },
+  "rawDirectory": ".local/objective-search/v76/",
+  "limitations": [
+    "The ten-root fit validates plumbing, not independent decision quality.",
+    "Equal source mass is a predeclared training hypothesis, not teacher confidence.",
+    "Completed witnesses do not provide optimal action values or prove an unobserved prefix impossible.",
+    "The former internal 100 validation roots are now training; final 55 remain sealed."
+  ],
+  "deployment": {
+    "completed": true,
+    "source": ".local/objective-search/v76/engine/CombatSolver.dll",
+    "record": ".local/objective-search/v76/deployment.json",
+    "files": 5
+  }
+}

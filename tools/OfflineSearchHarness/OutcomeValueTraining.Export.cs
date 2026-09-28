@@ -62,6 +62,10 @@ internal static partial class OutcomeValueTraining
                 roots = group.Count(), sampledRows = group.Sum(r => r.Rows.Length),
                 participatingRoots = prepared.ParticipatingRoots, rows = prepared.Rows.Count,
                 pairs = prepared.Pairs.Count, pairKinds = prepared.PairKinds,
+                correctionPairs = prepared.Pairs.Count(p => prepared.Rows[p.Preferred]
+                    is SearchOutcomeValueModel.JointObservation { IsCorrection: true }),
+                correctionWeight = prepared.Pairs.Where(p => prepared.Rows[p.Preferred]
+                    is SearchOutcomeValueModel.JointObservation { IsCorrection: true }).Sum(p => p.Weight),
                 foundation, matrix = matrixName, edges = pairsName, margins = marginName,
                 sha256 = new[] { matrixName, pairsName, marginName }.ToDictionary(n => n, n =>
                     Hash(Path.Combine(directory, n))) });

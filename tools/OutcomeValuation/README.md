@@ -138,3 +138,5 @@ dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --
 本轮 17 根中 3 根减少战损、1 根同战损提前结束、13 根实质相同；无胜负翻转。
 合计搜索墙钟约 68.0→108.3 秒，实际转移约 23.6→49.2 万；不能据小样本称为普遍改善。
 续搜仍依赖原启发式，当前原型没有消除全部手写评分，训练时间为零。
+
+跨回合查询的联合导出可使用 `correctionInputs` 和 `balanceCorrectionSources: true`。它仍输出同一数值格式供现有CPU拟合器消费；逐根原生身份、六行上限、独立池、有限边预算与单次根权重由C#校验，不能在Python重新生成偏好。完成采集后才冻结新训练输入，单次完整导出/拟合及必要祖先训练共用1800秒期限；采集成本单列。详见[纠正来源平衡](../../docs/strategy/source-balanced-corrections-20260928.md)。

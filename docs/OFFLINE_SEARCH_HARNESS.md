@@ -256,3 +256,5 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 `python3 tools/OutcomeValuation/paired_benchmark.py <protocol.json>` 运行冻结的开发协议，按场景交替 ABBA/BAAB，旧自动算法和学习候选各两次；不因质量退化提前结束，失败/超时单列。协议必须包含审计清单、模型/程序/输入摘要、同一搜索参数和CPU集合；本入口拒绝打开最终测试集。结果逐场保存，恢复时复用已有记录。
 
 `python3 tools/OutcomeValuation/benchmark_report.py <protocol.json>` 生成 `summary.json` 和 `cases.csv`；终局比较复用宿主权威比较器，重复结果冲突、未验证、质量不下降子集速度与采样内存分别报告。完整口径见[100场配对评测](strategy/paired-development-benchmark-20260928.md)。
+
+联合导出输入可增加 `correctionInputs`（与原物理根顺序一致的查询文件/null数组）及 `balanceCorrectionSources: true`。每非空输入只接受至多六条查询，读取两侧相邻 `harness-result.json` 的完整live/continuation根戳核对；原结果/模仿抽样不挤占行额度，补查使用独立池。启用平衡后保证实际补查边进入4096对总额度，每根两种非空来源等分训练权重，根总权重仍为1；全失败无偏好时不占训练权重。导出每头的 `correctionPairs` 与 `correctionWeight`，供核对监督是否被抽样丢弃。见[来源平衡协议](strategy/source-balanced-corrections-20260928.md)。

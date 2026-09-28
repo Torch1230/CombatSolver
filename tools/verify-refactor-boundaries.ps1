@@ -1764,7 +1764,7 @@ foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeContext.Columns.cs'
 }
 foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.JointTraining.cs'); Text = 'Dictionary<(int Target, int Group), int>' },
-    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.JointTraining.cs'); Text = 'PrepareRanking(roots, ValidateJointRows, CompareJoint, kindCount: 4)' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.JointTraining.cs'); Text = 'PrepareRanking(roots, ValidateJointRows, CompareJoint, kindCount: 4,' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeValueTraining.Joint.cs'); Text = 'ValidateJointSources(outcomePaths, imitationPaths);' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Imitation.cs'); Text = 'bool? OnWinningRoute' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Imitation.cs'); Text = 'route-exceeds-bound' },

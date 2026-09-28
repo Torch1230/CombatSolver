@@ -1370,7 +1370,7 @@ for file in SearchOutcomeContext.cs SearchOutcomeContext.Columns.cs SearchOutcom
     done
 done
 require_fixed "$search_root/SearchOutcomeValueModel.JointTraining.cs" 'Dictionary<(int Target, int Group), int>' 'joint targets must keep distinct pool identities:'
-require_fixed "$search_root/SearchOutcomeValueModel.JointTraining.cs" 'PrepareRanking(roots, ValidateJointRows, CompareJoint, kindCount: 4)' 'joint supervision must share physical-root weighting and separately count imitation edges:'
+require_fixed "$search_root/SearchOutcomeValueModel.JointTraining.cs" 'PrepareRanking(roots, ValidateJointRows, CompareJoint, kindCount: 4,' 'joint supervision must share physical-root weighting and separately count imitation edges:'
 require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.Joint.cs" 'ValidateJointSources(outcomePaths, imitationPaths);' 'joint target collections must be paired before reading observations:'
 require_fixed "$search_root/SearchOutcomeValueModel.Imitation.cs" 'bool? OnWinningRoute' 'imitation membership must not default missing labels to negative:'
 require_fixed "$search_root/SearchOutcomeValueModel.Imitation.cs" 'route-exceeds-bound' 'bounded teacher paths must fail explicitly:'
