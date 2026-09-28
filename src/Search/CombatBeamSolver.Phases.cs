@@ -494,6 +494,15 @@ internal sealed partial class CombatBeamSolver
                 materializedNode = blockPotionInsertion.Node;
                 materializedAnnotations = blockPotionInsertion.Annotations;
             }
+            MultiplayerSupportInsertion? supportInsertion = resultScope == SolverResultScope.SearchCompletion
+                ? TryAppendPureSupport(materializedNode, materializedAnnotations, stopwatch)
+                : null;
+            if (supportInsertion != null)
+            {
+                materializedNode.Snapshot.ReleaseSimulator();
+                materializedNode = supportInsertion.Node;
+                materializedAnnotations = supportInsertion.Annotations;
+            }
             FinalPlanCandidate selectedCandidate = publishedCandidate with
             {
                 Node = materializedNode,
@@ -503,6 +512,7 @@ internal sealed partial class CombatBeamSolver
                 BattleSold = battleDamage.SoldHpCommitted + materializedNode.FutureSoldHp,
                 PotionCount = materializedNode.PotionCount,
                 Score = blockPotionInsertion == null && afterimageFrontloading == null
+                    && supportInsertion == null
                     ? publishedCandidate.Score
                     : materializedNode.Score,
             };
@@ -679,6 +689,7 @@ internal sealed partial class CombatBeamSolver
                 MultiplayerEffectiveDamage = best.CumulativeEnemyHpLost,
                 MultiplayerSetupValue = CurrentTurnSetup(best),
                 MultiplayerCurrentTurnProjectedHp = CurrentTurnSnapshot(best).ProjectedPlayerHp,
+                MultiplayerSupportAdded = supportInsertion != null,
                 ResultScope = resultScope,
                 DeterministicBlockPotionInserted = blockPotionInsertion != null,
                 TotalSearchElapsed = stopwatch.Elapsed,

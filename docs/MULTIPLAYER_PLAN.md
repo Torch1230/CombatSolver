@@ -105,6 +105,8 @@ P3 目前在同一次 Beam 搜索的最终候选中按有效伤害、预计自�
 
 搜索协调器已给多人根接入一次直接 Beam 请求，跳过单人整场深化／药水审计，仍复用请求工作量账本。双人两回合 `Strike`／`Inflame` 根通过协调器取得输出＋启动路线，断言只记一场搜索、总展开量与本场相等、根比较戳一致，Passed：`.local/multiplayer-p3/coordinator-styles-two-turn-a4297d0afd3d43fba976a1ba76e9772a/peer-0/result.json`。这是生产搜索函数的原生进程调用；运行时多人 `CanSolve` 与 UI 入口仍关闭，未验证真实玩家点击。
 
+P3 纯支援第一批按原版效果和目标身份分类：`BeaconOfHope`／`HammerTime` 及指定其他玩家的简单资源、能力、球、生成牌等进入余费补入；指向自己的同类牌和自身也受益的群体牌继续普通搜索。补入在本地路线形成后、首回合结束前尝试一张，完整回放原动作序列，并拒绝本地血量、资源、有效伤害或预测边界变差的结果。双人 `Strike` 后余费补 `BeaconOfHope` 的整条原生路线／全状态／RNG Passed：`.local/multiplayer-p3/support-beacon-native-route-b64a4cf8934c411dbfe8b493ca49f212/peer-0/result.json`；余能不足时不补 Passed：`.local/multiplayer-p3/support-no-spare-1ca90c8f1dfd4067849d8746db22de95/peer-0/result.json`。固定独立选人来源后，`Strike` 后给队友 `Blaze` 的目标身份、整条原生路线／全状态／RNG Passed：`.local/multiplayer-p3/support-blaze-target-72cb58a9d9114b3284478df3396f5bec/peer-0/result.json`。`Rally` 作为群体自身获益牌正常进入防守搜索 Passed（`.local/multiplayer-p3/group-rally-legal-18d19032cefd474f8461146a52c3050a/peer-0/result.json`）；`Blaze` 指向自己时正常进入启动搜索 Passed（`.local/multiplayer-p3/self-blaze-search-73cc11e6325d42e6922675c0db1e51bd/peer-0/result.json`）。补入目前最多一张，其他纯支援条件、零费额外成本、保留到未来的资源与队友未知选择尚未收口。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

@@ -299,6 +299,9 @@ internal sealed partial class UnattendedTestRunner
                 {
                     MaxTurnLayers = input.ContentSearchOnly
                         ? input.ContentSearchTurnDepth : configured.MaxTurnLayers,
+                    MultiplayerAllyTargetSeatForTesting = input.VerifyTargetedSupport
+                        ? input.ContentTargetSeat
+                        : input.VerifySelfTargetNormal ? 0 : null,
                     Profile = SolverSearchProfile.Default with
                     {
                         MaxExpandedNodes = 10_000,
@@ -361,11 +364,111 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Defense search did not preserve a real HP tradeoff.");
                     runner._completedChecks.Add("MultiplayerPlans:OutputAndDefense:DistinctActions:ProjectedHpGain");
                 }
+                if (input.VerifyPureSupport)
+                {
+                    PlanAction[] current = search.BestNode.Actions
+                        .Where(action => action.Turn == 1).ToArray();
+                    int attack = Array.FindIndex(current, action => action.CardId == "STRIKE_IRONCLAD");
+                    int support = Array.FindIndex(current, action => action.CardId == "BEACON_OF_HOPE");
+                    if (attack < 0 || support <= attack || current[support].Kind != PlanActionKind.PlayCard
+                        || !search.MultiplayerSupportAdded)
+                        throw new InvalidOperationException("Pure support was not appended after the local attack.");
+                    runner._completedChecks.Add("MultiplayerSupport:AfterMainAction:SpareEnergy:StableReplay");
+                }
+                if (input.VerifyTargetedSupport)
+                {
+                    PlanAction[] current = search.BestNode.Actions
+                        .Where(action => action.Turn == 1).ToArray();
+                    int attack = Array.FindIndex(current, action => action.CardId == "STRIKE_IRONCLAD");
+                    int support = Array.FindIndex(current, action => action.CardId == "BLAZE");
+                    if (attack < 0 || support <= attack || !search.MultiplayerSupportAdded
+                        || current[support].TargetCombatId
+                            != combat.Players[input.ContentTargetSeat].Creature.CombatId)
+                        throw new InvalidOperationException("Targeted support did not keep the teammate target.");
+                    runner._completedChecks.Add("MultiplayerSupport:FixedTeammateTarget:AfterMainAction");
+                }
+                if (input.VerifySelfTargetNormal)
+                {
+                    SolverResult? setup = contentPlans.FirstOrDefault(plan =>
+                        plan.MultiplayerStyle == MultiplayerPlanStyle.Setup);
+                    if (setup == null || setup.MultiplayerSupportAdded
+                        || !setup.BestNode.Actions.Any(action => action.CardId == "BLAZE"
+                            && action.TargetCombatId == actor.Creature.CombatId))
+                        throw new InvalidOperationException("Self-target Blaze was not searched normally.");
+                    runner._completedChecks.Add("MultiplayerSupport:SelfTargetBlaze:NormalSetupSearch");
+                }
+                if (input.VerifyPureSupport || input.VerifyTargetedSupport)
+                {
+                    CombatBeamSolver replayDriver = new(searchRoot, SolverDisplayNames.Capture(combat),
+                        BattleDamageTracker.Observe(combat), searchPolicy);
+                    SimulationSnapshot replayed = UnattendedTestRunner.InvokeForcedTerminalReplay(
+                        replayDriver, search.BestNode.Actions, null, 0, null);
+                    ContinuationStamp predictedRoute;
+                    try
+                    {
+                        predictedRoute = ContinuationStamp.CapturePredicted(
+                            actor, replayed.Simulator, replayed.Turn, searchRoot.Forecast, 1);
+                    }
+                    finally
+                    {
+                        replayed.ReleaseSimulator();
+                    }
+                    foreach (PlanAction planned in search.BestNode.Actions)
+                    {
+                        if (planned.Turn != 1)
+                            throw new InvalidOperationException("Support fixture route exceeded the current turn.");
+                        if (planned.Kind == PlanActionKind.PlayCard)
+                        {
+                            CardModel liveCard = actor.PlayerCombatState!.Hand.Cards.Single(card =>
+                                card.Id.Entry == planned.CardId);
+                            Creature? liveTarget = planned.TargetCombatId is { } id
+                                ? combat.Creatures.Single(creature => creature.CombatId == id)
+                                : null;
+                            var play = new PlayCardAction(liveCard, liveTarget);
+                            RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(play);
+                            await play.CompletionTask;
+                        }
+                        else if (planned.Kind == PlanActionKind.EndTurn)
+                        {
+                            var end = new EndPlayerTurnAction(actor, 1);
+                            RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                            await end.CompletionTask;
+                        }
+                        else
+                            throw new InvalidOperationException("Support fixture has an unexpected action kind.");
+                    }
+                    await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                        player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                    await runner.MultiplayerProbeBarrierAsync("support-route", combat);
+                    ContinuationStamp actualRoute = ContinuationStamp.CaptureLive(combat);
+                    if (predictedRoute != actualRoute)
+                        throw new InvalidOperationException("Support route differs: "
+                            + predictedRoute.DescribeFirstDifference(actualRoute));
+                    runner._completedChecks.Add("MultiplayerSupport:NativeRoute:AllPlayers:FullRng");
+                }
+                if (input.VerifyNoPureSupport)
+                {
+                    if (search.MultiplayerSupportAdded || search.BestNode.Actions.Any(action =>
+                            action.CardId == "BEACON_OF_HOPE"))
+                        throw new InvalidOperationException("Support consumed reserved main-plan energy.");
+                    runner._completedChecks.Add("MultiplayerSupport:NoSpareEnergy:NotAdded");
+                }
+                if (input.VerifyGroupBenefitSearch)
+                {
+                    SolverResult? defense = contentPlans.FirstOrDefault(plan =>
+                        plan.MultiplayerStyle == MultiplayerPlanStyle.Defense);
+                    if (defense == null || defense.MultiplayerSupportAdded
+                        || !defense.BestNode.Actions.Any(action => action.CardId == "RALLY"))
+                        throw new InvalidOperationException("Self-benefiting group card was not searched normally.");
+                    runner._completedChecks.Add("MultiplayerGroupCard:Rally:NormalDefenseSearch");
+                }
                 runner._completedChecks.Add(
                     $"MultiplayerContentSearch:Players={input.PlayerCount}:LocalActions:Budget=3000ms:Styles={string.Join(',', contentPlans.Select(plan => plan.MultiplayerStyle))}");
             }
             if (input.ContentSearchOnly)
-                return new ExecutionOutcome(false, 1, true, true, true, false);
+                return new ExecutionOutcome(false,
+                    input.VerifyPureSupport || input.VerifyTargetedSupport ? 2 : 1,
+                    true, true, true, false);
             if (input.ContentTeammateStrikeBefore)
                 await PlayTeammateStrikeAsync("before");
             for (int index = 0; index < input.ContentCardIds.Length; index++)

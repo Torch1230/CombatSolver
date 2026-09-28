@@ -29,6 +29,11 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifySearch { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
+        public bool VerifyPureSupport { get; init; }
+        public bool VerifyNoPureSupport { get; init; }
+        public bool VerifyGroupBenefitSearch { get; init; }
+        public bool VerifyTargetedSupport { get; init; }
+        public bool VerifySelfTargetNormal { get; init; }
         public bool VerifyAllyTarget { get; init; }
         public bool VerifySelfPotion { get; init; }
         public string[] ContentCardIds { get; init; } = [];

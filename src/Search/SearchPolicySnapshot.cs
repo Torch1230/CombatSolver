@@ -21,6 +21,7 @@ internal sealed record SearchPolicySnapshot(
 {
     public bool UseNoveltyPortfolio { get; init; }
     public int MaxTurnLayers { get; init; } = int.MaxValue;
+    internal int? MultiplayerAllyTargetSeatForTesting { get; init; }
     public int EarlyTurnExplorationDepth { get; init; }
     public int EarlyTurnExplorationBudgetMilliseconds { get; init; }
     public bool PredictPotionReward { get; init; }

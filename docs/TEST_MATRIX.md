@@ -34,6 +34,8 @@ P3 选人合同：四人 `BelieveInYou` 在三个 Fork 中固定同一原版合�
 
 多人生产搜索协调器：双人 `Strike`／`Inflame` 两回合根通过 `CombatSearchCoordinator.Solve` 获得输出＋启动，单场搜索统计与根比较戳对账 Passed；证据 `.local/multiplayer-p3/coordinator-styles-two-turn-a4297d0afd3d43fba976a1ba76e9772a/peer-0/result.json`。控制器、界面与真实玩家交互仍未接入。
 
+纯支援第一批：`BeaconOfHope` 有余能时在 `Strike` 后补入并按原生执行整条路线；余能不足时不补；独立固定目标的 `Blaze` 补给队友并按原生执行整条路线；`Rally` 群体自身收益与 `Blaze` 自指均走正常搜索。全部对应虚拟双人请求 Passed，路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。最多一张补入及这些固定机制，不能推出所有纯支援或额外成本已通过。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

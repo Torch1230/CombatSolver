@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -1005,8 +1006,15 @@ internal sealed partial class CombatBeamSolver
             if (eligible.Length == 0)
                 yield break;
             uint selectedId = _allyTargetByCard.GetOrAdd(card.Original, _ =>
-                eligible[Random.Shared.Next(eligible.Length)].CombatId
-                    ?? throw new InvalidOperationException("Ally target has no combat identity."));
+            {
+                Creature selected = policy.MultiplayerAllyTargetSeatForTesting is { } seat
+                    ? players[seat].Creature
+                    : eligible[Random.Shared.Next(eligible.Length)];
+                if (!eligible.Contains(selected))
+                    throw new InvalidOperationException("Fixed ally target is not legal in this branch.");
+                return selected.CombatId
+                    ?? throw new InvalidOperationException("Ally target has no combat identity.");
+            });
             for (int index = 0; index < players.Count; index++)
             {
                 Creature target = players[index].Creature;
@@ -1025,6 +1033,18 @@ internal sealed partial class CombatBeamSolver
             .Select(candidate => candidate.Target?.CombatId
                 ?? throw new InvalidOperationException("Ally target candidate has no identity."))
             .ToArray();
+
+    private bool IsPureTeammateSupport(PredictedCard card, Creature? target)
+    {
+        if (root.PlayerCount == 1)
+            return false;
+        if (card.Preview is BeaconOfHope or HammerTime)
+            return true;
+        return target?.Player != null
+            && target.Player != _player
+            && card.Preview is (BelieveInYou or Lift or Blaze or Coordinate or Fade
+                or Constellation or Ignition or Largesse or Concoct or Soulbound);
+    }
 
     private IEnumerable<(int Index, Creature? Target)> TargetsForPotion(
         PotionModel potion,

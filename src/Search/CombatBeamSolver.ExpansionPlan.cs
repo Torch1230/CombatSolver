@@ -103,6 +103,8 @@ internal sealed partial class CombatBeamSolver
             }
             foreach ((int targetIndex, Creature? target) in TargetsFor(card, simulator))
             {
+                if (IsPureTeammateSupport(card, target))
+                    continue;
                 if (node.ActionCount == 0 && !card.Original.CanPlayTargeting(target))
                     continue;
                 string cardTitle;
