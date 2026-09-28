@@ -25,6 +25,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyRootProjection { get; init; }
         public bool VerifyActionDifferential { get; init; }
         public bool VerifyRoundDifferential { get; init; }
+        public bool VerifySecondRoundDifferential { get; init; }
         public bool VerifyEnemyPowerScaling { get; init; }
         public bool UseFirstEnemyForProbe { get; init; }
         public bool VerifySearch { get; init; }
@@ -98,6 +99,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerMidDeploymentKill && !input.VerifyControllerDeploy
                 || input.VerifyControllerMidDeploymentDamage && !input.VerifyControllerDeploy
                 || input.VerifyControllerMidDeploymentRng && !input.VerifyControllerDeploy
+                || input.VerifySecondRoundDifferential && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyEnetControllerRng && (input.IsVirtual || input.PlayerCount != 2)
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifySelfPotion && input.SelfPotionId is not

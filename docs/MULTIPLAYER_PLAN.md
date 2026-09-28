@@ -183,6 +183,8 @@ P2 `OvicopterNormal` 双敌及召唤卵：虚拟双人首回合原生结束到�
 
 P4 双端 ENet RNG 交错：房主搜索并执行两张本地 `Strike`，加入者在两张之间原生对房主打 `Largesse`。房主收到生成牌，提示共享随机流偏差并从新根重评估，第二张本地攻击继续，无额外完整搜索；双方同一检查点原生状态、玩家阶段及九条完整 RNG 一致，Passed：`.local/multiplayer-p0/enet-2-75c6c88c214a4a7caa289c21b4d183fc/peer-0/result.json` 与 `peer-1/result.json`。首轮测试让加入者等待原始 `PlayCardAction.CompletionTask`，联机同步动作不完成该对象，双方超时；改为等待原生出牌及目标收牌状态后取得有效证据。此项不覆盖四人、Steam 房间或真实网络延迟。
 
+P2 `ToughEgg` 孵化追加第三回合检查：同一 `OVICOPTER_NORMAL` 双人虚拟根推进第二个敌方回合，原版三只卵均转为已孵化，移除 `HatchPower` 并以多人缩放后的随机 HP 重设；预测对所有玩家、敌人、能力及九条 RNG 的完整续用戳一致，Passed：`.local/multiplayer-p2/ovicopter-hatch-assert-f2e4b9fea5b04323b5da3cba71aff9d7/peer-0/result.json`。一次更早的第三回合探针已通过差分但没有显式孵化断言，不单独计为孵化证据。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

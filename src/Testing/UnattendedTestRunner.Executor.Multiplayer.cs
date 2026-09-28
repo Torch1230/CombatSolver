@@ -9,6 +9,7 @@ using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Monsters;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Runs;
@@ -457,6 +458,28 @@ internal sealed partial class UnattendedTestRunner
                 player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
             await runner.MultiplayerProbeBarrierAsync("second-turn", combat);
             CheckPrediction(roundPrediction, scenario.Player, "END_TURN");
+            if (input.VerifySecondRoundDifferential)
+            {
+                ContinuationStamp secondRoundPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var secondEnd = new EndPlayerTurnAction(scenario.Player, 2);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(secondEnd);
+                await secondEnd.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
+                await runner.MultiplayerProbeBarrierAsync("third-turn", combat);
+                CheckPrediction(secondRoundPrediction, scenario.Player, "SECOND_END_TURN");
+                if (input.UseFirstEnemyForProbe && runner._request.EncounterId == "OVICOPTER_NORMAL")
+                {
+                    ToughEgg[] eggs = combat.Enemies.Select(creature => creature.Monster)
+                        .OfType<ToughEgg>().ToArray();
+                    if (eggs.Length != 3 || eggs.Any(egg => !egg.IsHatched
+                        || egg.Creature.HasPower<HatchPower>()))
+                        throw new InvalidOperationException("Ovicopter eggs did not hatch before the third-turn diff.");
+                    runner._completedChecks.Add("MultiplayerContent:ToughEgg:ThreeHatched:ScaledHp:FullState:FullRng");
+                }
+                runner._completedChecks.Add("MultiplayerRoundDiff:SecondEnemyTurn:AllPlayers:FullRng");
+                return new ExecutionOutcome(false, 3, true, true, true, false);
+            }
             runner._completedChecks.Add($"MultiplayerNativeProbe:Mode={input.Mode}:Players={input.PlayerCount}:Seat={input.Seat}:ScriptedCards:NativeChoice:EnemyTurn:NextDraw");
             return new ExecutionOutcome(false, 2, true, true, true, false);
 
@@ -1278,11 +1301,11 @@ internal sealed partial class UnattendedTestRunner
             CombatBeamSolver driver = new(root, SolverDisplayNames.Capture(combat),
                 BattleDamageTracker.Observe(combat), policy);
             SimulationSnapshot predicted = UnattendedTestRunner.InvokeForcedTerminalReplay(
-                driver, [new PlanAction(PlanActionKind.EndTurn, 1)], null, 0, null);
+                driver, [new PlanAction(PlanActionKind.EndTurn, root.StartTurnNumber)], null, 0, null);
             try
             {
                 return ContinuationStamp.CapturePredicted(
-                    localPlayer, predicted.Simulator, predicted.Turn, root.Forecast, 1);
+                    localPlayer, predicted.Simulator, predicted.Turn, root.Forecast, root.StartTurnNumber);
             }
             finally
             {

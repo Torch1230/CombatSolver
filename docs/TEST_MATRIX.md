@@ -114,6 +114,8 @@ P2 `OvicopterNormal` 双敌召唤：虚拟双人到第二回合的完整状态�
 
 P4 ENet 双端交错随机流：加入者在房主两张本地 `Strike` 之间用 `Largesse` 给房主生成牌；房主显示随机偏差、重评估后继续攻击且无完整重搜，双方稳定检查点原生全状态／九条 RNG 一致，Passed：`.local/multiplayer-p0/enet-2-75c6c88c214a4a7caa289c21b4d183fc/peer-0/result.json` 与 `peer-1/result.json`。最初两端超时来自测试等待加入者原始联机动作对象的 CompletionTask，修为等待原生可观察状态后通过。四人、Steam 房间与真实延迟未验。
 
+P2 `ToughEgg` 孵化：在 `OVICOPTER_NORMAL` 虚拟双人根推进第二个敌方回合，显式断言三只卵均已孵化、`HatchPower` 移除；完整全玩家／敌人状态及九条 RNG 与预测一致，Passed：`.local/multiplayer-p2/ovicopter-hatch-assert-f2e4b9fea5b04323b5da3cba71aff9d7/peer-0/result.json`。覆盖该种子对应的三次随机 HP 与多人缩放，不代表其他卵死亡路径通过。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。
