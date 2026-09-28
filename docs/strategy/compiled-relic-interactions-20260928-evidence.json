@@ -47,9 +47,8 @@
       "scope": "One additional synthetic five-head fitting/export contract only, CPU0; 96 rows per head, no real combat or candidate fitting."
     }
   ],
-  "newCombatSearches": 0,
-  "realCandidateTrained": false,
-  "csharpParityPassed": false,
+  "realCandidateTrained": true,
+  "csharpParityPassed": true,
   "runtimeModelEnabled": false,
   "finalTestOpened": false,
   "protocol": {
@@ -68,7 +67,7 @@
   "upstreamSource": "https://github.com/dmlc/xgboost/blob/v3.4.1/src/tree/driver.h",
   "limitations": [
     "Synthetic conditional reversal is not combat quality or a causal explanation of regressions.",
-    "No C# prediction parity, native training or full candidate benchmark yet.",
+    "C# synthetic and 1280 real training-observation parity passed; complete real battle evaluation is running, not accepted.",
     "Product screening is a training proxy; rare-root support and label limitations remain.",
     "48+16 also changes the final 16 tree depths; compare as a whole candidate.",
     "Compiled gated branches can increase model size and inference work."
@@ -84,5 +83,189 @@
     "tools/OutcomeValuation/context_gates.py": "a7d724d0a0e9d38d43f4c7946d6f002968c6e5dee2db7c8462c9a1206eae973c",
     "tools/OutcomeValuation/context_gate_fit.py": "63a1fd20049109ac428d134dcda68aa319a7401da93c99e169d6ec7a9d77da43",
     "tools/OutcomeValuation/test_context_gates.py": "5b9d838d574662449f61247357cccc9f96278b27b06f767c2900ef870222c8ff"
-  }
+  },
+  "csharpSyntheticParity": {
+    "returnCode": 0,
+    "syntheticRows": 2880,
+    "newTrainingRuns": 0,
+    "newCombatSearches": 0,
+    "seconds": 0.2627141010016203,
+    "finalTestOpened": false,
+    "runtimeModelEnabled": false,
+    "command": [
+      "dotnet",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v83/harness/OfflineSearchHarness.dll",
+      "--predict-outcome-features",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v84-context-gates/csharp-parity/model.json",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v84-context-gates/csharp-parity/inputs.json",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v84-context-gates/csharp-parity/actual.json"
+    ],
+    "peakChildRssBytes": 86761472,
+    "maximumAbsoluteDifference": 0.0,
+    "passed": true,
+    "hashes": {
+      ".local/objective-search/v83/engine/CombatSolver.dll": "1704edfe67da461817b626c2bec2f64798243204ac8229fd500b8865b1460db1",
+      ".local/objective-search/v83/harness/OfflineSearchHarness.dll": "5a2da5f06a18f389b9308f63448141d5fe1cd17343edaaaa905e8a410caad60b",
+      ".local/objective-search/v84-context-gates/csharp-parity/model.json": "2729bba7baf1bc5c914b390c7ad3b314487fde5b08b19c43ff3b80c207db104a",
+      ".local/objective-search/v84-context-gates/csharp-parity/inputs.json": "e87274bf269a8a950443827458d5563db647f4b3d26b0c3dd82bc1fcb5009857"
+    }
+  },
+  "fullTraining": {
+    "modelSha256": "60d3a1141dd924027bdf1247dea1744085799f6c4571237eb2c3989db387b3db",
+    "modelBytes": 1135379,
+    "cost": {
+      "completeModelSeconds": 293.8526484470349,
+      "ancestorTrainingSeconds": 135.88075087300967,
+      "reusedExportSeconds": 131.09233400202356,
+      "fitProcessSeconds": 26.74268702196423,
+      "reuseIncludesOriginalExportCost": true,
+      "dataCollectionAccountedSeparately": true,
+      "completed": true
+    },
+    "parity": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "fitPeakRssBytes": 2830331904,
+    "heads": [
+      {
+        "character": "DEFECT",
+        "selectedProducts": 64,
+        "prefixRelicSplits": 0,
+        "suffixRelicSplits": 0,
+        "relicColumns": [],
+        "uniqueUsedColumns": 56,
+        "splitNodes": 574,
+        "maximumDepth": 6,
+        "initialLoss": 29.837105990075695,
+        "prefixLoss": 26.91526914159394,
+        "finalLoss": 26.413096559241254,
+        "float32PairSignChanges": 0,
+        "float32MaxPredictionDrift": 3.0983664620620743e-06
+      },
+      {
+        "character": "IRONCLAD",
+        "selectedProducts": 64,
+        "prefixRelicSplits": 0,
+        "suffixRelicSplits": 0,
+        "relicColumns": [],
+        "uniqueUsedColumns": 53,
+        "splitNodes": 546,
+        "maximumDepth": 6,
+        "initialLoss": 30.482969895092406,
+        "prefixLoss": 27.54220107072112,
+        "finalLoss": 27.083679484381094,
+        "float32PairSignChanges": 0,
+        "float32MaxPredictionDrift": 3.979756663774481e-06
+      },
+      {
+        "character": "NECROBINDER",
+        "selectedProducts": 64,
+        "prefixRelicSplits": 0,
+        "suffixRelicSplits": 0,
+        "relicColumns": [],
+        "uniqueUsedColumns": 60,
+        "splitNodes": 544,
+        "maximumDepth": 6,
+        "initialLoss": 28.911386511136485,
+        "prefixLoss": 26.264677029974518,
+        "finalLoss": 25.89567104649964,
+        "float32PairSignChanges": 0,
+        "float32MaxPredictionDrift": 3.7697185897300756e-06
+      },
+      {
+        "character": "REGENT",
+        "selectedProducts": 64,
+        "prefixRelicSplits": 0,
+        "suffixRelicSplits": 0,
+        "relicColumns": [],
+        "uniqueUsedColumns": 54,
+        "splitNodes": 592,
+        "maximumDepth": 6,
+        "initialLoss": 29.930448000281302,
+        "prefixLoss": 26.526957147092816,
+        "finalLoss": 26.081153868847043,
+        "float32PairSignChanges": 0,
+        "float32MaxPredictionDrift": 3.2244488537003235e-06
+      },
+      {
+        "character": "SILENT",
+        "selectedProducts": 64,
+        "prefixRelicSplits": 0,
+        "suffixRelicSplits": 0,
+        "relicColumns": [],
+        "uniqueUsedColumns": 56,
+        "splitNodes": 617,
+        "maximumDepth": 6,
+        "initialLoss": 29.87702501190564,
+        "prefixLoss": 26.718696213930908,
+        "finalLoss": 26.20435565118511,
+        "float32PairSignChanges": 0,
+        "float32MaxPredictionDrift": 3.3678730835262627e-06
+      }
+    ],
+    "finalTestOpened": false,
+    "runtimeModelEnabled": false
+  },
+  "fullProtocol": {
+    "sourceCommit": "8fce459d",
+    "engineBuildCommit": "95de641c",
+    "export": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v82/full/export",
+    "mod": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v83/engine/CombatSolver.dll",
+    "harness": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v83/harness/OfflineSearchHarness.dll",
+    "python": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/xgboost-env/bin/python",
+    "fitter": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/context_gate_fit.py",
+    "benchmarkTemplate": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v82/benchmark-protocol.json",
+    "trainingRoots": 292,
+    "ancestorTrainingSeconds": 135.88075087300967,
+    "reusedExportSeconds": 131.09233400202356,
+    "completeModelLimitSeconds": 1800,
+    "fitterLimitSeconds": 1200,
+    "plan": "One fixed 48 ordinary depth-six + 16 contextual depth-four candidate, up to 64 binary presence products selected only on training graph. Same 292 roots / v82 exported graph / learned foundation, no new data, labels or per-role cherry-picking. New product splits compile to raw-feature depth-eight ordinary trees. Retain Hessian3. Reused original export and v71 ancestor costs count toward complete 1800s. Full 100/400 paired development without quality early exit; final55 sealed. C# v83 frozen implementation for both arms.",
+    "runtimeModelEnabled": false,
+    "finalTestOpened": false,
+    "declaredBeforeRealCandidateResults": true,
+    "hashes": {
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/context_gates.py": "a7d724d0a0e9d38d43f4c7946d6f002968c6e5dee2db7c8462c9a1206eae973c",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/context_gate_fit.py": "63a1fd20049109ac428d134dcda68aa319a7401da93c99e169d6ec7a9d77da43",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/xgboost_fit.py": "73f81682078a0ca5b2e54eb636a992462ea0b9eadf28f986c0f2f9f9f6940774",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v82/full/export/manifest.json": "76e2b8887c333451346073de2b9e92d7b881b61f89b8877c3882823382789a82",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v82/full/cost.json": "15be9f22bdd715f2d9adb6b7ad949a8b1954e1f047d3371f611312cfb04e84b1",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v82/benchmark-protocol.json": "b81eaa069960ef01ac02052137b7fed82ab9e74308c06482737202be0bcfd447",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v84-context-gates/csharp-parity/result.json": "7647079877f84dc203ffb377096097a6513f723f8ec30eeff56dfcc66dace161",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v84-context-gates/train_and_evaluate.py": "77d59e086210500adacce4a8d0dbb3591481a15555e978c3bbc5a8cbe7dd5e6e",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v83/engine/CombatSolver.dll": "1704edfe67da461817b626c2bec2f64798243204ac8229fd500b8865b1460db1",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v83/harness/OfflineSearchHarness.dll": "5a2da5f06a18f389b9308f63448141d5fe1cd17343edaaaa905e8a410caad60b",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/paired_benchmark.py": "fc34d97b3a62fdc798e0efc8ab7467077489b371f4690f79f1ead29f1f70055c",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/benchmark_report.py": "279ce485cd56187aebbeb7240e93b4606b8a580cf888500c3840b11345a005c6",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+    },
+    "benchmarkToolHashes": {
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/paired_benchmark.py": "fc34d97b3a62fdc798e0efc8ab7467077489b371f4690f79f1ead29f1f70055c",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/benchmark_report.py": "279ce485cd56187aebbeb7240e93b4606b8a580cf888500c3840b11345a005c6",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+      "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+    },
+    "preflightCorrection": "Before first launch and before any real candidate fitting: benchmark createdUtc is generated anew instead of inheriting the predecessor timestamp; no algorithm/data/measurement parameters changed."
+  },
+  "fullEvaluation": {
+    "started": true,
+    "completed": false,
+    "plannedCases": 100,
+    "plannedRuns": 400,
+    "pipelineSession": 84952,
+    "noQualityEarlyExit": true
+  },
+  "actualRelicProductsAdopted": false,
+  "syntheticValidationNewCombatSearches": 0,
+  "completedStages": [
+    "v82 full 100/400 run completed and actual session/cell reaped",
+    "2880 synthetic C# compiled-product predictions, max difference zero",
+    "real 292-root model fit within complete-model budget",
+    "1280 actual training-observation C# predictions, max difference zero"
+  ]
 }
