@@ -2894,6 +2894,41 @@ internal static partial class SolverController
         PlanAction? plannedEndTurn = result.BestNode.Actions
             .FirstOrDefault(action => action.Turn == turn && action.Kind == PlanActionKind.EndTurn);
         LiveCombatStamp validatedStamp = LiveCombatStamp.Capture(state);
+        int? revisedPlannedHpLoss = null;
+        async Task<bool> ReevaluateRemainingAsync(int nextActionIndex)
+        {
+            if (state.Players.Count < 2 || LiveCombatStamp.Capture(state) == validatedStamp)
+                return true;
+            await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+            token.ThrowIfCancellationRequested();
+            if (!IsSamePlayableTurn(state, turn))
+                throw new InvalidOperationException("部署途中已不再是原玩家回合。");
+            CombatRootSnapshot changedRoot = CombatRootSnapshot.Capture(state);
+            SearchPolicySnapshot changedPolicy = CaptureSearchPolicy(
+                SolverSettings.Capture(), state, includeTurnSetup: false, theftPolicy: null);
+            CombatBeamSolver replay = new(changedRoot, SolverDisplayNames.Capture(state),
+                BattleDamageTracker.Observe(state), changedPolicy);
+            PlanAction[] remaining = plannedEndTurn is null
+                ? [.. actions.Skip(nextActionIndex)]
+                : [.. actions.Skip(nextActionIndex), plannedEndTurn];
+            SolverCurrentTurnPreview? revised = replay.ReevaluateMultiplayerCurrentTurn(result, remaining);
+            if (revised == null)
+            {
+                _combat.FullAutoEnabled = false;
+                _combat.AutomaticSearchPaused = true;
+                _combat.AutomaticSearchPausedTurn = turn;
+                _combat.ContinuationSource = null;
+                SolverOverlay.Show(host, SolverText.Get("原路线在当前状态已失效，未执行。请重新计算。"));
+                Entry.Logger.Warn($"[CombatSolver/Test] MULTIPLAYER_ROUTE_INVALID reason=mid_deployment action_index={nextActionIndex}");
+                return false;
+            }
+            validatedStamp = changedRoot.LiveStamp;
+            revisedPlannedHpLoss = revised.HpLost;
+            Entry.Logger.Info($"[CombatSolver/Test] MULTIPLAYER_ROUTE_REEVALUATED turn={turn} " +
+                $"action_index={nextActionIndex} hp_lost={revised.HpLost} enemy_hp_lost={revised.EnemyHpLost} " +
+                $"actions={revised.Actions.Count}");
+            return true;
+        }
         FastModeType originalFastMode = SaveManager.Instance.PrefsSave.FastMode;
         FastModeType? overrideFastMode = ResolveDeploymentFastMode(deploymentSettings.DeploymentFastMode);
         try
@@ -2911,36 +2946,8 @@ internal static partial class SolverController
                 if (!IsSamePlayableTurn(state, turn))
                     throw new InvalidOperationException("部署途中已不再是原玩家回合。");
 
-                if (state.Players.Count > 1 && LiveCombatStamp.Capture(state) != validatedStamp)
-                {
-                    await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
-                    token.ThrowIfCancellationRequested();
-                    if (!IsSamePlayableTurn(state, turn))
-                        throw new InvalidOperationException("部署途中已不再是原玩家回合。");
-                    CombatRootSnapshot changedRoot = CombatRootSnapshot.Capture(state);
-                    SearchPolicySnapshot changedPolicy = CaptureSearchPolicy(
-                        SolverSettings.Capture(), state, includeTurnSetup: false, theftPolicy: null);
-                    CombatBeamSolver replay = new(changedRoot, SolverDisplayNames.Capture(state),
-                        BattleDamageTracker.Observe(state), changedPolicy);
-                    PlanAction[] remaining = plannedEndTurn is null
-                        ? [.. actions.Skip(actionIndex)]
-                        : [.. actions.Skip(actionIndex), plannedEndTurn];
-                    SolverCurrentTurnPreview? revised = replay.ReevaluateMultiplayerCurrentTurn(result, remaining);
-                    if (revised == null)
-                    {
-                        _combat.FullAutoEnabled = false;
-                        _combat.AutomaticSearchPaused = true;
-                        _combat.AutomaticSearchPausedTurn = turn;
-                        _combat.ContinuationSource = null;
-                        SolverOverlay.Show(host, SolverText.Get("原路线在当前状态已失效，未执行。请重新计算。"));
-                        Entry.Logger.Warn($"[CombatSolver/Test] MULTIPLAYER_ROUTE_INVALID reason=mid_deployment action_index={actionIndex}");
-                        return;
-                    }
-                    validatedStamp = changedRoot.LiveStamp;
-                    Entry.Logger.Info($"[CombatSolver/Test] MULTIPLAYER_ROUTE_REEVALUATED turn={turn} " +
-                        $"action_index={actionIndex} hp_lost={revised.HpLost} enemy_hp_lost={revised.EnemyHpLost} " +
-                        $"actions={revised.Actions.Count}");
-                }
+                if (!await ReevaluateRemainingAsync(actionIndex))
+                    return;
 
                 Player player = LocalContext.GetMe(state)!;
                 Creature? target = state.GetCreature(action.TargetCombatId);
@@ -3126,6 +3133,8 @@ internal static partial class SolverController
                         deployWhenReady: !_combat.FullAutoEnabled);
                     return;
                 }
+                if (!await ReevaluateRemainingAsync(actions.Count))
+                    return;
                 Player player = LocalContext.GetMe(state)!;
                 if (_combat.FullAutoEnabled
                     && (_stopFullAutoOnDeathTurn || _stopFullAutoOnWorseRecalculation))
@@ -3134,7 +3143,7 @@ internal static partial class SolverController
                     LiveEndTurnRiskProjection liveRisk = LiveEndTurnRiskEvaluator.Evaluate(
                         state,
                         plannedEndTurn.TurnStartChoices);
-                    int plannedHpLoss = result.RequireHpLostForTurn(turn);
+                    int plannedHpLoss = revisedPlannedHpLoss ?? result.RequireHpLostForTurn(turn);
                     bool worsened = liveRisk.HpLost > plannedHpLoss;
                     if ((_stopFullAutoOnDeathTurn && liveRisk.PlayerDead)
                         || (_stopFullAutoOnWorseRecalculation && worsened))

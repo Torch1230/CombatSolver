@@ -72,6 +72,8 @@ P4 队友击杀原计划目标：双敌 `CULTISTS_NORMAL` 中，队友原生击�
 
 P4 部署中队友交错：双敌 `CULTISTS_NORMAL`，本地第一张 `Strike` 后队友在原生动作间隙击杀第二张原目标，控制器只打出第一张，未完整重搜并暂停，Passed：`.local/multiplayer-p4/mid-deploy-kill-17962d61dd5d47eab915f6657275e2bd/peer-0/result.json`。队友改攻击另一只敌人时，两张本地 `Strike` 仍按原目标打出并结束本地回合，未完整重搜，Passed：`.local/multiplayer-p4/mid-deploy-legal-e58f2483bb964daf87188a8f014b1888/peer-0/result.json`。未覆盖最后一张牌到本地回合结束之间的变化。
 
+P4 结束回合前余下 `EndTurn` 回放接入后，双敌合法交错样本仍按原路线完成并结束本地回合，Passed：`.local/multiplayer-p4/mid-deploy-endturn-replay-5c8330980cb8443385df9ca5e0a31570/peer-0/result.json`。该输入的队友动作发生在两张本地牌之间，不覆盖最后一张牌之后的队友动作。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

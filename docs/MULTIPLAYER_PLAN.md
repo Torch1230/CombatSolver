@@ -143,6 +143,8 @@ P4 队友插入动作的首轮虚拟双人探针：本地求解后，队友原�
 
 部署中的队友交错已加入逐动作新根回放，仍执行原本地余下序列，失效则在下一动作前暂停。双敌 `CULTISTS_NORMAL` 中本地第一张 `Strike` 后，队友在部署延迟内击杀第二张牌原目标，控制器只执行第一张并暂停、未完整重搜，Passed：`.local/multiplayer-p4/mid-deploy-kill-17962d61dd5d47eab915f6657275e2bd/peer-0/result.json`。同一机制改为队友攻击另一只敌人，两个本地 `Strike` 按原目标完成、本地回合结束、未完整重搜，Passed：`.local/multiplayer-p4/mid-deploy-legal-e58f2483bb964daf87188a8f014b1888/peer-0/result.json`。两项都是虚拟双人；最后一张牌后到结束本地回合、四人和 ENet 交错尚未通过。
 
+逐动作回放已复用到最后一张牌后的原生结束回合前，重算剩余 `EndTurn` 的数值，并用于原有全自动风险对比。合法交错样本在该修改后仍完成两张本地攻击与回合结束，Passed：`.local/multiplayer-p4/mid-deploy-endturn-replay-5c8330980cb8443385df9ca5e0a31570/peer-0/result.json`。该样本的队友动作发生在两张本地牌之间，尚未单独覆盖最后一张牌后的队友动作。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。
