@@ -1,6 +1,6 @@
 # 结果估值与小规模训练工具
 
-离线输入的`exportRowRoots: true`将为压缩后的训练观察生成显式根编号附属文件，供`root_provenance.read_assignments`严格核对每根权重和来源。251项C#断言、两组六项Python合同和真实292根原图不变核对通过。只读零边界检查由3→40项通过分区约束，尚未接入真实拟合器。见[状态与边界](../../docs/strategy/training-root-provenance-20260928.md)。
+离线输入的`exportRowRoots: true`将为压缩后的训练观察生成显式根编号附属文件，供`root_provenance.read_assignments`严格核对每根权重和来源。251项C#断言、两组六项Python合同和真实292根原图不变核对通过。只读零边界检查由3→40项通过分区约束，已接入显式研究入口`root_context_fit.py`并通过六项新增合成拟合合同，真实候选尚未训练。见[状态与边界](../../docs/strategy/training-root-provenance-20260928.md)。
 
 `root_support.py`提供尚未接入拟合器的纯数值剪枝原型：按根Hessian参与度约束树叶，弱支持分支用真实梯度/Hessian重算父叶，并要求后续轮使用修改后的预测。另六项合成合同通过，包括低曲率条件反转；不代表实际遗物收益或新模型验收。
 

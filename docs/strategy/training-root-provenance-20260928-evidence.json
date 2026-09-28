@@ -1,7 +1,7 @@
 {
   "experiment": "explicit-compacted-row-root-provenance",
   "sourceBase": "365d487b",
-  "stage": "provenance-and-real-applicability-validated-fitter-pending",
+  "stage": "fitter-synthetic-contracts-passed-real-candidate-pending",
   "sourceHashes": {
     "src/Search/SearchOutcomeValueModel.cs": "df3e855fcedc5b1faa96b0b6434fbe833daae059583b4039406bf45d1d73d1b0",
     "tools/OfflineSearchHarness/OutcomeRankingChecks.cs": "b97219fe9a6a75d7fea6a8488069d02b8ffb2b173633c578261fc5b96c072587",
@@ -13,7 +13,10 @@
     "tools/OutcomeValuation/root_provenance.py": "48a23200e49f79671664c0be4d03f3f64d4c40887bd7e195bb0ec79e82e50038",
     "tools/OutcomeValuation/test_root_provenance.py": "168c5a282af844a6517dcb9fbb3b76e122ce408402c26d5244c92d12bd32eef4",
     "tools/OutcomeValuation/root_support.py": "7a2993415c6784ff46e87ee77b1cb5022273d981b3cc11125f53ce1e4cb1039f",
-    "tools/OutcomeValuation/test_root_support.py": "a4b3d414755b4ef9f52a0351f4a221b59d95bd53b21f8a91d3a250e05db632f7"
+    "tools/OutcomeValuation/test_root_support.py": "a4b3d414755b4ef9f52a0351f4a221b59d95bd53b21f8a91d3a250e05db632f7",
+    "tools/OutcomeValuation/root_context_round.py": "0e4a11575a6af1cabdc529146f7d5959f4b440ffb75ee7b12c76631a318a7854",
+    "tools/OutcomeValuation/root_context_fit.py": "f29cc443b8af2c3bb0e20e9bd4276ca5109c9724b0db0807af7bcb3b852cc655",
+    "tools/OutcomeValuation/test_root_context_fit.py": "bc58dd785cf6e084a263d2318a577ed34938ee3bfc0b453f7cdb845af6a94091"
   },
   "pythonContracts": {
     "returnCode": 0,
@@ -44,7 +47,7 @@
   "csharpBuildPassed": true,
   "csharpContractsPassed": true,
   "realExportCompleted": true,
-  "newLeafGuardImplemented": "prototype-validated-on-synthetic-and-readonly-real-cuts-not-connected-to-fitter",
+  "newLeafGuardImplemented": "explicit-offline-fitter-validated-synthetically-real-candidate-pending",
   "newFullCandidateRetained": false,
   "newRealTrainingRuns": 0,
   "runtimeModelEnabled": false,
@@ -67,8 +70,8 @@
     "atomicPerFileReplacement": true
   },
   "remainingValidation": [
-    "Connect root-aware contextual fitter and verify update/conversion contracts",
-    "Fit one complete candidate with dependencies/export/fitting within 1800 seconds",
+    "Fit one complete real candidate with dependencies/export/fitting within 1800 seconds",
+    "Check real model Python/C# numerical parity",
     "Run all 100 fixed development cases / 400 paired searches for every retained candidate",
     "Keep 55 sealed final configurations unopened until a development-qualified candidate"
   ],
@@ -104,7 +107,7 @@
       "stdout": "",
       "stderr": "test_conditional_reversal_with_three_roots_per_context (test_root_support.RootSupportChecks.test_conditional_reversal_with_three_roots_per_context) ... ok\ntest_more_correlated_rows_do_not_create_support (test_root_support.RootSupportChecks.test_more_correlated_rows_do_not_create_support) ... ok\ntest_participation_is_scale_invariant_and_detects_dominance (test_root_support.RootSupportChecks.test_participation_is_scale_invariant_and_detects_dominance) ... ok\ntest_small_curvature_can_retain_balanced_supported_leaves (test_root_support.RootSupportChecks.test_small_curvature_can_retain_balanced_supported_leaves) ... ok\ntest_unsupported_child_collapses_to_regularized_parent (test_root_support.RootSupportChecks.test_unsupported_child_collapses_to_regularized_parent) ... ok\ntest_zero_hessian_and_invalid_inputs_cannot_supply_support (test_root_support.RootSupportChecks.test_zero_hessian_and_invalid_inputs_cannot_supply_support) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.018s\n\nOK\n"
     },
-    "realFitterConnected": false,
+    "realFitterConnected": true,
     "limitations": [
       "Exactly three roots need balanced Hessian contributions.",
       "Parent collapse can discard alternative supported splits.",
@@ -279,5 +282,49 @@
     "finalTestOpened": false,
     "reportSha256": "3c97df473ba2eec21f906058c1ac2cb72d205cd7496c590c665055ae3a5fab18",
     "runnerSha256": "7594cbb80e48f6b5cac665166bb737841ddcc919f01b01fe19027942519065e5"
+  },
+  "fitterContracts": {
+    "returnCode": 0,
+    "seconds": 0.3802242981037125,
+    "peakRssBytes": 79695872,
+    "command": [
+      "taskset",
+      "-c",
+      "0",
+      "env",
+      "OPENBLAS_NUM_THREADS=1",
+      "OMP_NUM_THREADS=1",
+      ".local/objective-search/xgboost-env/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/OutcomeValuation",
+      "-p",
+      "test_root_context_fit.py",
+      "-v"
+    ],
+    "stdout": "",
+    "stderr": "test_actual_loss_rejects_bad_proposal_and_keeps_exact_ties (test_root_context_fit.RootContextFitChecks.test_actual_loss_rejects_bad_proposal_and_keeps_exact_ties) ... ok\ntest_complete_fitter_preserves_five_heads_raw_schema_and_root_support (test_root_context_fit.RootContextFitChecks.test_complete_fitter_preserves_five_heads_raw_schema_and_root_support) ... ok\ntest_iterative_updates_use_retained_predictions_and_compile_exactly (test_root_context_fit.RootContextFitChecks.test_iterative_updates_use_retained_predictions_and_compile_exactly) ... ok\ntest_missing_provenance_never_publishes_a_model (test_root_context_fit.RootContextFitChecks.test_missing_provenance_never_publishes_a_model) ... ok\ntest_no_product_is_explicit_and_deadline_is_enforced (test_root_context_fit.RootContextFitChecks.test_no_product_is_explicit_and_deadline_is_enforced) ... ok\ntest_supported_stump_survives_rejected_greedy_alternative (test_root_context_fit.RootContextFitChecks.test_supported_stump_survives_rejected_greedy_alternative) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.207s\n\nOK\n",
+    "scope": "Six synthetic fitter integration contracts, CPU0; no real complete candidate or combat."
+  },
+  "fitterProtocol": {
+    "ordinaryRounds": 48,
+    "ordinaryDepth": 6,
+    "ordinaryMinimumHessian": 3,
+    "contextRounds": 16,
+    "contextDepth": 4,
+    "maximumProducts": 64,
+    "minimumRootParticipation": 3,
+    "proposalOrder": [
+      "hessian3",
+      "root-pruned",
+      "supported-product-stump"
+    ],
+    "zeroUpdateAlwaysAvailable": true,
+    "selection": "Strict actual training loss improvement; deterministic first proposal wins ties.",
+    "freshPrefix": true,
+    "rawFeatureOutput": true,
+    "realCompleteCandidate": false
   }
 }
