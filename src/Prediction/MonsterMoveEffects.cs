@@ -957,7 +957,9 @@ internal static partial class MonsterMoveEffects
                 combat.Apply<FlutterPower>(move.Owner, 5, move.Owner);
                 return true;
             case ("TwoTailedRat", "SCREECH_MOVE"):
-                Debuff<FrailPower>(combat, player, 1, move.Owner);
+                foreach (var member in combat.Players)
+                    if (simulator.State.GetCreature(member.Creature).IsAlive)
+                        Debuff<FrailPower>(combat, member.Creature, 1, move.Owner);
                 return true;
             default:
                 return false;

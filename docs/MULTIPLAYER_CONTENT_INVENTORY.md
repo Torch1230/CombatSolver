@@ -95,13 +95,13 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 遗物目录直接涉及人数或战斗生成池的入口包括 `MassiveScroll`（多人专属牌来源）、`Toolbox`、`VexingPuzzlebox`、`OrangeDough`、`ChoicesParadox`（战斗生成池），以及 `BigHat`、`Crossbow`、`ScrollBoxes`、`DustyTome`、`DistinguishedCape`、`NeowsBones`（战前／局外池）。`WingedBoots` 和 `SilverCrucible` 只允许单人，`LastingCandy` 读取局外玩家集合；`WhisperingEarring` 自动用玩家目标药水时指向持有人。战斗生成物和多人可达牌进入 P2；局外获得路径只登记来源，本批不扩展为战前求解器。
 
-`GremlinMerc` 的入场 `ThieveryPower` 按每名玩家创建一个实例，首回合 `GIMME_MOVE` 后对每个实例调用 `Steal`。模拟曾只读取首个实例；按原版逐实例扣对应玩家金币并更新每条能力的已偷金币后，双人和四人到第二回合完整状态／RNG 差分 Passed，证据见[规划 0.2 节](MULTIPLAYER_PLAN.md)。其他招式与死亡返还仍待关联差分。
+`GremlinMerc` 的入场 `ThieveryPower` 按每名玩家创建一个实例，首回合 `GIMME_MOVE` 后对每个实例调用 `Steal`。模拟曾只读取首个实例；按原版逐实例扣对应玩家金币并更新每条能力的已偷金币后，双人和四人到第二回合完整状态／RNG 差分 Passed，证据见[规划 0.2 节](MULTIPLAYER_PLAN.md)。其他招式及死亡链路的证据见下文。
 
-第二回合 `DOUBLE_SMASH_MOVE` 又发现虚弱应施给所有存活玩家；模拟由本地单目标改为遍历全体玩家，第三回合完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-second-fixed-31e35320566f4014b7c3f198bcb80012/peer-0/result.json`。第三招与偷窃返还仍未验。
+第二回合 `DOUBLE_SMASH_MOVE` 又发现虚弱应施给所有存活玩家；模拟由本地单目标改为遍历全体玩家，第三回合完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-second-fixed-31e35320566f4014b7c3f198bcb80012/peer-0/result.json`。第三招与偷窃返还的证据见下文。
 
-第三回合 `HEHE_MOVE` 的攻击、敌人力量 2 与每名玩家逐实例失去累计 60 金币，在第四回合完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-third-move-54881f1b85174c2b9c8c329b66fb19af/peer-0/result.json`。死亡返还及玩家中途死亡仍待验。
+第三回合 `HEHE_MOVE` 的攻击、敌人力量 2 与每名玩家逐实例失去累计 60 金币，在第四回合完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-third-move-54881f1b85174c2b9c8c329b66fb19af/peer-0/result.json`。死亡链路的证据见下文；玩家中途死亡仍待验。
 
-首轮偷窃后第二回合由本地玩家击杀 `GremlinMerc`，其 `SurprisePower` 生成胖／鬼祟地精；胖地精两条 `HeistPower` 逐条绑定原被偷玩家、金额各 20，原生和预测完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-death-fixed-stamp-8bc637ffb298497ba5d8ed6e9da0c927/peer-0/result.json`。胖地精后续死亡返还与玩家中途死亡未验。
+首轮偷窃后第二回合由本地玩家击杀 `GremlinMerc`，其 `SurprisePower` 生成胖／鬼祟地精；胖地精两条 `HeistPower` 逐条绑定原被偷玩家、金额各 20，原生和预测完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-death-fixed-stamp-8bc637ffb298497ba5d8ed6e9da0c927/peer-0/result.json`。胖地精后续死亡返还见下文；玩家中途死亡未验。
 
 继续击杀胖地精，原版 `CombatRoom.ExtraRewards` 给两名目标玩家各加入 20 金币追回奖励，同时预测与原版战斗状态／九条 RNG 对齐，Passed：`.local/multiplayer-p2/heist-recovery-c59c5d5a889143068996ab4b51bf28ca/peer-0/result.json`。模拟本身只覆盖战斗内续用，不把原版房间奖励复制进战斗快照；战后领取未验。
 
@@ -118,6 +118,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 分段死亡与重附另在双人原生根通过：先击杀一段，原版首个敌方回合保持死亡，下一敌方回合 `REATTACH_MOVE` 复活；三个稳定边界的完整玩家／敌人状态及九条 RNG 与预测一致：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。三段全部死亡及整场结束仍未覆盖。
 
 `TheObscuraNormal` 前两次敌方行动及伙伴 `Parafright` 的双人全状态／RNG 到第三回合 Passed：`.local/multiplayer-p2/obscura-second-round-35ee5bad5bbb4718aed927b9cd2325a1/peer-0/result.json`；伙伴死亡和幻象后续分支未验。`QueenBoss` 的 `PUPPET_STRINGS_MOVE` 原版给所有目标玩家束缚，`YOU_ARE_MINE_MOVE` 同样给全体三种异常状态；修正模拟后双人前三招到第四回合的全部状态／RNG Passed：`.local/multiplayer-p2/queen-third-round-fddc55be530542df8dbbb00efbb3d3ac/peer-0/result.json`。女王死亡与后续条件分支未验。
+
+`TwoTailedRatsNormal` 双人原生战斗中的 `SCREECH_MOVE` 给全部存活目标玩家施加脆弱；模拟修正后连续两个敌方回合的所有玩家／敌人状态和完整 RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rats-round-fixed-9193a1f28b1c4cb6bb0ea3d40685386c/peer-0/result.json`。召唤分支及其后续回合未验。
 
 ## 已通过的卡牌即时差分
 
