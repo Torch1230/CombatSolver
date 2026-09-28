@@ -4,11 +4,15 @@ param(
     [ValidateRange(1, 65535)]
     [int]$Port = 33771,
     [switch]$VerifyControllerFullAuto,
+    [switch]$VerifyControllerAutoNextTurn,
     [ValidateRange(0, 16)]
     [int]$SearchMaxDegreeOfParallelismForTest = 0
 )
 
 $ErrorActionPreference = 'Stop'
+if ($VerifyControllerAutoNextTurn -and !$VerifyControllerFullAuto) {
+    throw 'VerifyControllerAutoNextTurn requires VerifyControllerFullAuto.'
+}
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $session = Join-Path $repositoryRoot ('.local/multiplayer-p0/enet-' + $PlayerCount + '-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $session -Force | Out-Null
@@ -26,6 +30,7 @@ foreach ($seat in 0..($PlayerCount - 1)) {
         coordinationDirectory = $session
         expectedGameVersion = '0.111.0'
         verifyControllerFullAuto = [bool]$VerifyControllerFullAuto
+        verifyControllerAutoNextTurn = [bool]$VerifyControllerAutoNextTurn
     } | ConvertTo-Json | Set-Content -LiteralPath $input -Encoding utf8
     $instance = 'mp-p0-' + [Guid]::NewGuid().ToString('N')
     $arguments = @(

@@ -30,6 +30,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerSearch { get; init; }
         public bool VerifyControllerAutomaticCalculation { get; init; }
         public bool VerifyControllerFullAuto { get; init; }
+        public bool VerifyControllerAutoNextTurn { get; init; }
         public bool VerifyControllerSearchDrift { get; init; }
         public bool VerifyControllerDeploy { get; init; }
         public bool VerifyControllerTeammateDrift { get; init; }
@@ -88,6 +89,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerSearchDrift
                     && (input.VerifyControllerSearch || input.VerifyControllerAutomaticCalculation
                         || input.VerifyControllerFullAuto)
+                || input.VerifyControllerAutoNextTurn && !input.VerifyControllerFullAuto
                 || input.VerifyControllerTeammateDrift && !input.VerifyControllerDeploy
                 || input.VerifyControllerTeammateKillsTarget && !input.VerifyControllerTeammateDrift
                 || input.VerifyControllerMidDeploymentKill && !input.VerifyControllerDeploy

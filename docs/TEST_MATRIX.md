@@ -102,6 +102,8 @@ P2 玩家目标药水自用机制：四人 `BlockPotion` `.local/multiplayer-p2/
 
 P4 生产控制器本地药水执行：虚拟双人必用 `BlockPotion`，方案只为本地持有人用药，原生部署后仅本地玩家得格挡、队友不变，Passed：`.local/multiplayer-p4/controller-self-block-potion-0b2e57c7926d4cd2aad110ee092f4221/peer-0/result.json`。其他药水与 ENet 执行未验。
 
+P4 ENet 双端下一回合全自动：旧多人门禁移除后，首探针仍因无人宿主默认关自动触发而在第二回合等待到 120 秒，未通过；测试显式启用后，双端在第二回合自动从新根搜索并原生部署本地牌，第三回合完整状态／RNG 双端一致，Passed：`.local/multiplayer-p0/enet-2-f52d9e1e9246452992994101120ea52e/peer-0/result.json`、`peer-1/result.json`。四人自动延续、Steam 房间与可见 UI 未验。
+
 P5 多人设置编辑／保存：原生无头设置页提交深度 `3`、时间 `4.5` 秒，再从设置文件重载并确认值保持，最后恢复原设置；同次三语言 UI 与 475 条英文目录占位符 Passed：`.local/multiplayer-p5/ui-settings-edit-509374eb84d540ea80d689f32873b416/result.json`。可见窗口布局未验。
 
 ## 多人 P1 普通状态差分（2026-09-28）

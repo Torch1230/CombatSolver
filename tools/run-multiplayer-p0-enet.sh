@@ -5,6 +5,7 @@ port="${1:-33771}"
 player_count="${2:-2}"
 controller_mode="${3:-scripted}"
 search_dop="${4:-0}"
+auto_next_turn="${5:-false}"
 if [[ ! "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
     printf 'Port must be in 1..65535.\n' >&2
     exit 2
@@ -21,6 +22,14 @@ if [[ ! "$search_dop" =~ ^[0-9]+$ ]] || ((search_dop < 0 || search_dop > 16)); t
     printf 'Search DOP must be in 0..16.\n' >&2
     exit 2
 fi
+if [[ "$auto_next_turn" != false && "$auto_next_turn" != true ]]; then
+    printf 'Auto next turn must be true or false.\n' >&2
+    exit 2
+fi
+if [[ "$auto_next_turn" == true && "$controller_mode" != full-auto ]]; then
+    printf 'Auto next turn requires full-auto controller mode.\n' >&2
+    exit 2
+fi
 
 repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 session="$repository_root/.local/multiplayer-p0/enet-$player_count-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
@@ -31,10 +40,10 @@ for ((seat=0; seat<player_count; seat++)); do
     peer="$session/peer-$seat"
     input="$session/input-$seat.json"
     mkdir -p -- "$peer"
-    python3 - "$input" "$session" "$seat" "$port" "$player_count" "$controller_mode" <<'PY'
+    python3 - "$input" "$session" "$seat" "$port" "$player_count" "$controller_mode" "$auto_next_turn" <<'PY'
 import json
 import sys
-path, session, seat, port, player_count, controller_mode = sys.argv[1:]
+path, session, seat, port, player_count, controller_mode, auto_next_turn = sys.argv[1:]
 with open(path, 'w', encoding='utf-8') as output:
     json.dump({
         'mode': 'host' if seat == '0' else 'client',
@@ -44,6 +53,7 @@ with open(path, 'w', encoding='utf-8') as output:
         'coordinationDirectory': session,
         'expectedGameVersion': '0.111.0',
         'verifyControllerFullAuto': controller_mode == 'full-auto',
+        'verifyControllerAutoNextTurn': auto_next_turn == 'true',
     }, output)
 PY
     search_args=()

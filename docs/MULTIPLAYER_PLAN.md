@@ -159,7 +159,7 @@ P4 队友插入动作的首轮虚拟双人探针：本地求解后，队友原�
 
 针对收牌队友归属另加四人代表：本地玩家的 `Largesse` 指定第 3 号队友，牌进入该队友手牌且牌主为该队友，完整状态与 RNG Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。这补目标身份跨座位的证据，不把生成者参数误作收牌者。
 
-P4 三种计算入口的虚拟双人原生代表：手动入口此前已通过；自动计算只产生本地方案、不擅自部署，Passed：`.local/multiplayer-p4/automatic-calculation-enabled-5b98feffdcb84bd0a7d3581ee8284788/peer-0/result.json`；全自动产生本地方案、按原生动作执行并只结束本地回合，队友未被代操作，Passed：`.local/multiplayer-p4/full-auto-virtual2-6de921827935483c881b174c2d67af09/peer-0/result.json`。首次自动计算探针超时是无人测试宿主默认禁用自动触发，根文件存在但没有搜索结果；按该入口的测试需要显式启用后通过。上述虚拟证据未覆盖 ENet、取消或下一回合自动延续；ENet 首回合证据见下文。
+P4 三种计算入口的虚拟双人原生代表：手动入口此前已通过；自动计算只产生本地方案、不擅自部署，Passed：`.local/multiplayer-p4/automatic-calculation-enabled-5b98feffdcb84bd0a7d3581ee8284788/peer-0/result.json`；全自动产生本地方案、按原生动作执行并只结束本地回合，队友未被代操作，Passed：`.local/multiplayer-p4/full-auto-virtual2-6de921827935483c881b174c2d67af09/peer-0/result.json`。首次自动计算探针超时是无人测试宿主默认禁用自动触发，根文件存在但没有搜索结果；按该入口的测试需要显式启用后通过。上述虚拟证据未覆盖 ENet、取消；ENet 自动延续证据见下文。
 
 ENet 双端全自动首回合：房主与加入者分别从本地搜索并原生执行自身牌，双端同步第二回合、完整状态与 RNG 对账 Passed：`.local/multiplayer-p0/enet-2-09e37bb5ce8643039446ee6953ff7359/peer-0/result.json` 及 `peer-1/result.json`。首次双端探针把另一玩家自行进入准备结束误判为“本端代操作”，使对端等待至超时；测试改为逐端检查本地部署牌后通过。
 
@@ -170,6 +170,8 @@ ENet 双端全自动首回合：房主与加入者分别从本地搜索并原生
 同一自用候选规则另以四人 `BlockPotion`、双人 `EnergyPotion` 分别验格挡与能量效果，原生自用即时全状态及完整 RNG 均 Passed；证据与边界见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#普通内容的多人差异扫描)。
 
 生产执行器药水代表：虚拟双人把 `BlockPotion` 设为本地必用，搜索方案仅有本地药水动作，原生执行后本地取得格挡、队友格挡不变并只结束本地回合，Passed：`.local/multiplayer-p4/controller-self-block-potion-0b2e57c7926d4cd2aad110ee092f4221/peer-0/result.json`。这证明求解器自身用药执行入口，不证明所有药水或 ENet 投药。
+
+真实 ENet 下一回合自动入口曾被 `Entry.OnTurnStarted` 和本地准备补丁的旧多人门禁阻断；当前只对本地玩家按原有阶段、取消和状态检查运行自动触发。首次双端测试在第二回合开始后等不到自动搜索，因为无人宿主默认关闭自动触发，超时且不计通过；显式启用测试宿主后，双端第二回合重新从当前根搜索并各自原生部署本地牌，第三回合双方完整状态／RNG 对账 Passed：`.local/multiplayer-p0/enet-2-f52d9e1e9246452992994101120ea52e/peer-0/result.json` 与 `peer-1/result.json`。一次中间探针只证明第二回合搜索启动，未证明部署，已由上述更完整输入替代。四人第二回合自动延续、真实 Steam 房间与可见界面仍未验证。
 
 P5 设置输入已在原生无头设置页实际提交多人深度 `3` 与时间 `4.5` 秒，重新读取持久化文件后值保持，测试结束恢复原设置；eng／zhs／zht 构造与 475 条英文目录占位符对账同次 Passed：`.local/multiplayer-p5/ui-settings-edit-509374eb84d540ea80d689f32873b416/result.json`。仍未人工检查可见窗口排版。
 

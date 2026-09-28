@@ -81,7 +81,11 @@ internal sealed partial class UnattendedTestRunner
                     SolverController.SetAutomaticCalculationEnabled(true);
                 }
                 else
+                {
+                    if (input.VerifyControllerAutoNextTurn)
+                        UnattendedTestRunner.EnableAutomaticTurnSearchForTesting();
                     SolverController.SetFullAuto(runner._host, combat, true);
+                }
                 await runner.WaitForMultiplayerProbeAsync(() =>
                     SolverController.LastCompletedResultForTesting != null
                     || SolverController.LastSearchFailureForTesting != null);
@@ -119,10 +123,26 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Full auto did not deploy its local cards and finish its local turn.");
                     if (!input.IsVirtual)
                     {
-                        SolverController.SetFullAuto(runner._host, combat, false);
+                        if (!input.VerifyControllerAutoNextTurn)
+                            SolverController.SetFullAuto(runner._host, combat, false);
                         await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
                             player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
                         await runner.MultiplayerProbeBarrierAsync("full-auto-second-turn", combat);
+                        if (input.VerifyControllerAutoNextTurn)
+                        {
+                            await runner.WaitForMultiplayerProbeAsync(() =>
+                                SolverController.SearchesStartedForTesting >= searchesBefore + 2);
+                            await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
+                                && SolverController.LastSolverDeployedTurnForBugReport == 2
+                                && (CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
+                                    || scenario.Player.PlayerCombatState?.TurnNumber == 3));
+                            SolverController.SetFullAuto(runner._host, combat, false);
+                            await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                                player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
+                            await runner.MultiplayerProbeBarrierAsync("full-auto-third-turn", combat);
+                            runner._completedChecks.Add("MultiplayerController:FullAuto:SecondTurnSearchAndDeployment:ThirdTurnFullState:FullRng");
+                            return new ExecutionOutcome(false, 3, true, true, true, false);
+                        }
                         runner._completedChecks.Add("MultiplayerController:FullAuto:EnetPeers:LocalDeployment:SecondTurn:FullState:FullRng");
                         return new ExecutionOutcome(false, 2, true, true, true, false);
                     }
