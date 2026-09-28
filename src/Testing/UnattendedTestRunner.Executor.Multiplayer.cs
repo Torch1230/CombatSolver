@@ -572,6 +572,43 @@ internal sealed partial class UnattendedTestRunner
                 player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
             await runner.MultiplayerProbeBarrierAsync("second-turn", combat);
             CheckPrediction(roundPrediction, scenario.Player, "END_TURN");
+            if (input.VerifySegmentReattachAfterRound)
+            {
+                Creature segment = combat.Enemies.First(creature => creature.Monster is DecimillipedeSegment);
+                await CreatureCmd.SetCurrentHp(segment, 1);
+                ContinuationStamp deathPrediction = PredictOrdinaryCard(scenario.Player, "STRIKE_IRONCLAD", segment);
+                CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                var strikeAction = new PlayCardAction(strike, segment);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(strikeAction);
+                await strikeAction.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("segment-death", combat);
+                CheckPrediction(deathPrediction, scenario.Player, "SEGMENT_DEATH");
+                if (!segment.IsDead || combat.Enemies.Count(creature => creature.IsAlive) != 2)
+                    throw new InvalidOperationException("Segment death fixture did not leave two living segments.");
+                ContinuationStamp reattachPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var end = new EndPlayerTurnAction(scenario.Player, 2);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
+                await runner.MultiplayerProbeBarrierAsync("segment-reattach", combat);
+                CheckPrediction(reattachPrediction, scenario.Player, "SEGMENT_REATTACH");
+                if (segment.IsAlive)
+                    throw new InvalidOperationException("Segment reattached during its dead move instead of the following move.");
+                ContinuationStamp actualReattachPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var followingEnd = new EndPlayerTurnAction(scenario.Player, 3);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(followingEnd);
+                await followingEnd.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 4 }));
+                await runner.MultiplayerProbeBarrierAsync("segment-revived", combat);
+                CheckPrediction(actualReattachPrediction, scenario.Player, "SEGMENT_REVIVED");
+                if (!segment.IsAlive)
+                    throw new InvalidOperationException("Segment did not reattach after the enemy turn.");
+                runner._completedChecks.Add("MultiplayerContent:SegmentDeathAndReattach:FullState:FullRng");
+                return new ExecutionOutcome(false, 4, true, true, true, false);
+            }
             if (input.VerifyMonsterDeathAfterRound)
             {
                 Creature merc = combat.Enemies.Single(creature => creature.Monster is GremlinMerc);

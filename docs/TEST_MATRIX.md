@@ -144,6 +144,8 @@ P2 蜈蚣分段首轮：双人 `DECIMILLIPEDE_ELITE` 第一次第二回合差分
 
 P2 四人敌方能力缩放全 12 项：各自原生施加、预测同根 Fork、完整状态／RNG 差分 Passed：`.local/multiplayer-p2/all-enemy-power-scaling-3eb5d0a936b342a08bd0970baa5e09fc/peer-0/result.json`。本轮追加 `Plow`、`Reattach`、`Flutter`、`Regen`、`Rampart`、`Shriek`、`HardenedShell`；仅即时应用，不覆盖后续监听。
 
+P2 蜈蚣分段复活：双人第二回合击杀一段，原生 `DEAD_MOVE` 保持死亡，随后 `REATTACH_MOVE` 才复活；击杀动作与两次敌方回合的全状态／RNG 均与预测一致，Passed：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。最初 6 HP 夹具未考虑玩家虚弱、下一次夹具误以为死亡回合即复活，均为测试前提错误；全段死亡未验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

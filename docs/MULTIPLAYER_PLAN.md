@@ -213,6 +213,8 @@ P2 `DecimillipedeElite`：虚拟双人首回合三段敌人与全玩家状态差
 
 P2 敌方能力施加缩放：四人虚拟根在同一场景分别从新 Fork 给敌人施加并移除 12 个原版 `ShouldScaleInMultiplayer` 能力，逐项原生／预测完整状态与 RNG 差分 Passed：`.local/multiplayer-p2/all-enemy-power-scaling-3eb5d0a936b342a08bd0970baa5e09fc/peer-0/result.json`。前 5 项已有旧证据，本轮新增 `Plow`、`Reattach`、`Flutter`、`Regen`、`Rampart`、`Shriek`、`HardenedShell` 的即时施加代表。其监听生命周期、怪物专属触发仍待验。
 
+P2 蜈蚣分段死亡／重附：双人第二回合把一段血量置 1 后原生 `Strike` 击杀，死亡后仍留场且其余两段存活；该回合敌方 `DEAD_MOVE` 仍保持死亡，下一敌方回合 `REATTACH_MOVE` 才复活。死亡、两个回合边界、复活 HP、能力、意图与完整 RNG 均和预测逐字段一致，Passed：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。首次夹具把弱化后的打击误认为能击杀 6 HP，第二次误把 `DEAD_MOVE` 当作立即复活；按原版状态机修正测试时点后通过。全段同时死亡的终局路径未验。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

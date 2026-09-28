@@ -113,7 +113,9 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 通用多人缩放覆盖原版 `CombatState.AddMonster` 的新怪 HP、`MultiplayerScalingModel` 的敌方来源格挡，以及 `PowerCmd.Apply` 对敌方新施加能力的幅度。`ShouldScaleInMultiplayer=true` 的原版能力为 `PlowPower`、`PlatingPower`、`SlipperyPower`、`CurlUpPower`、`ReattachPower`、`FlutterPower`、`SkittishPower`、`RegenPower`、`RampartPower`、`ShriekPower`、`HardenedShellPower`、`ArtifactPower`；其中 `PlatingPower` 另在施加后把递减值设为玩家数。`BufferPower` 虽覆盖缩放函数，但其 `ShouldScaleInMultiplayer` 沿用默认 false，不进入该路径。当前模拟对新施加敌方能力调用原版缩放函数；首批四人原生差分核对 `ArtifactPower`、`PlatingPower`、`SlipperyPower`、`SkittishPower`、`CurlUpPower` 五项，覆盖默认倍率、三种特殊公式及附属递减值。其余七项的即时差分见下文；触发生命周期及怪物 HP 缩放仍待验证。
 
-本轮四人把其余七项 `Plow`、`Reattach`、`Flutter`、`Regen`、`Rampart`、`Shriek`、`HardenedShell` 也逐项做新根原生施加与预测 Fork 的完整状态／RNG 差分，连同前五项同批 12／12 Passed：`.local/multiplayer-p2/all-enemy-power-scaling-3eb5d0a936b342a08bd0970baa5e09fc/peer-0/result.json`。这封闭上述 12 项的即时缩放路径，不封闭各自后续监听与怪物专属用法。`DecimillipedeElite` 三段敌人首轮另发现 `CONSTRICT_MOVE` 的虚弱应给全体存活玩家，修正后到第二回合完整差分 Passed：`.local/multiplayer-p2/decimillipede-round-fixed-b5a8732d07ee4bb7a06e59d920a237ad/peer-0/result.json`；分段死亡与重附未验。
+本轮四人把其余七项 `Plow`、`Reattach`、`Flutter`、`Regen`、`Rampart`、`Shriek`、`HardenedShell` 也逐项做新根原生施加与预测 Fork 的完整状态／RNG 差分，连同前五项同批 12／12 Passed：`.local/multiplayer-p2/all-enemy-power-scaling-3eb5d0a936b342a08bd0970baa5e09fc/peer-0/result.json`。这封闭上述 12 项的即时缩放路径，不封闭各自后续监听与怪物专属用法。`DecimillipedeElite` 三段敌人首轮另发现 `CONSTRICT_MOVE` 的虚弱应给全体存活玩家，修正后到第二回合完整差分 Passed：`.local/multiplayer-p2/decimillipede-round-fixed-b5a8732d07ee4bb7a06e59d920a237ad/peer-0/result.json`；分段死亡与重附由下一个独立场景验证。
+
+分段死亡与重附另在双人原生根通过：先击杀一段，原版首个敌方回合保持死亡，下一敌方回合 `REATTACH_MOVE` 复活；三个稳定边界的完整玩家／敌人状态及九条 RNG 与预测一致：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。三段全部死亡及整场结束仍未覆盖。
 
 ## 已通过的卡牌即时差分
 
