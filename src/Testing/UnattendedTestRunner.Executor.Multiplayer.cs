@@ -30,14 +30,32 @@ internal sealed partial class UnattendedTestRunner
                 return await ExecuteMultiplayerContentProbeAsync(scenario, input);
             if (input.VerifyEnetControllerRng)
                 return await ExecuteEnetControllerRngProbeAsync(scenario, input);
+            if (input.VerifyControllerSearchCancel)
+            {
+                CombatState cancelCombat = scenario.CombatState;
+                Player localPlayer = scenario.Player;
+                Player otherPlayer = cancelCombat.Players.First(player => player != localPlayer);
+                SolverController.MonitorCombatPresence();
+                SolverController.RequestSearch(runner._host, cancelCombat, SearchReason.Manual);
+                SolverController.StopSearchByUser(runner._host);
+                await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsSearching);
+                if (SolverController.IsDeploying
+                    || CombatManager.Instance.IsPlayerReadyToEndTurn(localPlayer)
+                    || CombatManager.Instance.IsPlayerReadyToEndTurn(otherPlayer)
+                    || SolverController.SearchesStartedForTesting != 1)
+                    throw new InvalidOperationException("Multiplayer user stop changed another player's turn or started a second search.");
+                runner._completedChecks.Add("MultiplayerController:SearchStoppedByUser:NoDeployment:TeammateUntouched");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             CombatState combat = scenario.CombatState;
             Creature enemy = input.VerifyControllerTeammateKillsTarget
                 || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
-                || input.VerifyControllerMidDeploymentRng || input.UseFirstEnemyForProbe
+                || input.VerifyControllerMidDeploymentRng || input.VerifyControllerManualTakeover
+                || input.UseFirstEnemyForProbe
                 ? combat.Enemies.First() : combat.Enemies.Single();
             if ((input.VerifyControllerTeammateKillsTarget
                     || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
-                    || input.VerifyControllerMidDeploymentRng)
+                    || input.VerifyControllerMidDeploymentRng || input.VerifyControllerManualTakeover)
                 && combat.Enemies.Count < 2)
                 throw new InvalidOperationException("Invalidation probe requires a surviving second enemy.");
             if (enemy.CurrentHp <= input.PlayerCount * 6)
@@ -185,6 +203,7 @@ internal sealed partial class UnattendedTestRunner
                     if (plannedCards.Length == 0)
                         throw new InvalidOperationException("Deployment fixture has no planned local card.");
                     if ((input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
+                            || input.VerifyControllerManualTakeover
                             || input.VerifyControllerMidDeploymentRng)
                         && (plannedCards.Length < 2
                             || plannedCards[0].TargetCombatId == null
@@ -220,6 +239,7 @@ internal sealed partial class UnattendedTestRunner
                     else
                         SolverController.RequestDeploy(runner._host, combat);
                     if (input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
+                        || input.VerifyControllerManualTakeover
                         || input.VerifyControllerMidDeploymentRng)
                     {
                         Creature target = combat.GetCreature(plannedCards[0].TargetCombatId)
@@ -227,6 +247,21 @@ internal sealed partial class UnattendedTestRunner
                         int startingHp = target.CurrentHp;
                         await runner.WaitForMultiplayerProbeAsync(() => target.CurrentHp == startingHp - 6
                             && SolverController.IsDeploying);
+                        if (input.VerifyControllerManualTakeover)
+                        {
+                            Player remotePlayer = combat.Players.First(player => player != scenario.Player);
+                            int teammateEnergy = remotePlayer.PlayerCombatState!.Energy;
+                            SolverController.SetSolverDisabled(true, persist: false);
+                            await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying);
+                            if (target.CurrentHp != startingHp - 6
+                                || scenario.Player.PlayerCombatState!.Energy != 2
+                                || remotePlayer.PlayerCombatState.Energy != teammateEnergy
+                                || CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
+                                || SolverController.SearchesStartedForTesting != searchesBeforeDrift)
+                                throw new InvalidOperationException("Manual takeover failed to stop the local deployment only.");
+                            runner._completedChecks.Add("MultiplayerController:ManualTakeover:FirstLocalAttackOnly:TeammateUntouched:NoFullSearch");
+                            return new ExecutionOutcome(false, 1, true, true, true, false);
+                        }
                         if (input.VerifyControllerMidDeploymentKill)
                             await CreatureCmd.SetCurrentHp(target, 6);
                         Creature teammateTarget = input.VerifyControllerMidDeploymentKill
