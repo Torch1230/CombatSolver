@@ -13,13 +13,17 @@ internal static class OutcomeCorrections
         MainLoopContext loop, SearchOutcomeValueModel collector)
     {
         var queries = collector.BeginCorrections();
+        if (options.VerifyOutcomePrefix)
+            WitnessPrefixChecks.Run(root, names, damage, policy, queries, options.OutputDirectory);
         Stopwatch clock = Stopwatch.StartNew();
         List<object> trials = [];
-        foreach (var query in queries)
+        for (int index = 0; index < queries.Length; index++)
         {
+            var query = queries[index];
             int remaining = 6000 - (int)clock.ElapsedMilliseconds;
             if (remaining < 100) break;
-            int milliseconds = Math.Min(1500, remaining);
+            int milliseconds = Math.Min(1500, remaining / (queries.Length - index));
+            if (milliseconds < 100) break;
             SearchRequestWorkTotals totals = new();
             SolverSearchProfile profile = policy.Profile with
             {
@@ -33,16 +37,18 @@ internal static class OutcomeCorrections
             };
             var before = collector.CorrectionWitness(query);
             var task = Task.Run(() => new CombatBeamSolver(root, names, damage, teacher,
-                searchProfile: profile, fixedPrefixActions: query.Prefix).Solve());
+                searchProfile: profile, witnessPrefix: query.Replay).Solve());
             loop.RunUntilCompleted(task, TimeSpan.FromSeconds(70), "outcome correction");
             var result = task.GetAwaiter().GetResult();
             var after = collector.CorrectionWitness(query);
             trials.Add(new
             {
-                query.Prefix, nodeAllowance = 1000, timeAllowanceMs = milliseconds,
+                query.Prefix, turn = query.Replay.Steps[^1].Turn,
+                nodeAllowance = 1000, timeAllowanceMs = milliseconds,
                 work = totals.Snapshot(), before, after,
-                queryWitnessImproved = after != null && (before == null
-                    || after.Won && SolverInterimResultOrdering.IsBetter(after, before)),
+                queryWitnessAdded = before == null && after != null,
+                queryWitnessImproved = before != null && after is { Won: true }
+                    && SolverInterimResultOrdering.IsBetter(after, before),
                 result.BoundaryReason, snapshotRisk = result.Snapshot.HasRisk,
                 quality = CombatSearchCoordinator.CapturePortfolioQuality(root, teacher, result),
             });
@@ -53,5 +59,7 @@ internal static class OutcomeCorrections
                 requested = queries.Length, completed = trials.Count, allowanceMilliseconds = 6000,
                 elapsedMilliseconds = clock.Elapsed.TotalMilliseconds, trials,
             }, UnattendedTestFiles.JsonOptions));
+        File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-correction-rows.json"),
+            JsonSerializer.Serialize(collector.ExportCorrectionRows()));
     }
 }

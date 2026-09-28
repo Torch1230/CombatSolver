@@ -23,7 +23,7 @@ internal sealed partial class SearchOutcomeValueModel
     private int _groups;
     private int _noveltyGroups;
     private readonly List<CorrectionQuery> _correctionQueries = [];
-    private readonly HashSet<int> _correctionDepths = [];
+    private readonly HashSet<int> _correctionTurns = [];
     // Retention can compare an expanded parent's rank after releasing its simulator.
     // Record copies can share a snapshot after the original node is expanded.
     // Keep only scalars, keyed by the exact state/policy identity, for that weak
@@ -80,18 +80,20 @@ internal sealed partial class SearchOutcomeValueModel
         }
     }
 
-    // Detached first-turn prefixes only: the fixed-prefix replay contract does
-    // not accept EndTurn or a root's initial choice transaction. No state graphs
-    // survive this synchronous pruning callback.
-    internal sealed record CorrectionQuery(PlanAction[] Prefix, StateFingerprint State, int HpCost, int PotionCost);
+    // At most one actual competition per observed turn, three turns total. The
+    // separate teacher prefix supports EndTurn; unresolved root setup is excluded.
+    internal sealed record CorrectionQuery(SearchWitnessPrefix Replay, StateFingerprint State, int HpCost, int PotionCost)
+    {
+        internal PlanAction[] Prefix => Replay.Actions;
+    }
     internal void ObserveCorrectionBoundary(IReadOnlyList<SearchNode> pool, IReadOnlyList<SearchNode> selected,
         Player player, SearchOutcomeValueModel predictor)
     {
-        if (_frozen || _correcting || _correctionDepths.Count >= 3 || _groups >= MaximumGroups) return;
+        if (_frozen || _correcting || _correctionTurns.Count >= 3 || _groups >= MaximumGroups) return;
         var retained = selected.LastOrDefault(Eligible);
-        if (retained == null || _correctionDepths.Contains(retained.ActionCount)) return;
+        if (retained == null || _correctionTurns.Contains(retained.Turn)) return;
         var selectedKeys = selected.Select(Key).ToHashSet();
-        var dropped = pool.Where(n => Eligible(n) && n.ActionCount == retained.ActionCount
+        var dropped = pool.Where(n => Eligible(n) && n.Turn == retained.Turn && n.ActionCount == retained.ActionCount
                 && !selectedKeys.Contains(Key(n)))
             .OrderByDescending(n => predictor.PredictPriority(n, player)).FirstOrDefault();
         if (dropped == null) return;
@@ -100,15 +102,11 @@ internal sealed partial class SearchOutcomeValueModel
             || !_observations.TryGetValue(Key(dropped), out var b) || b.Groups.Count >= 8) return;
         int group = _groups++;
         a.Groups.Add(group); b.Groups.Add(group);
-        _correctionDepths.Add(retained.ActionCount);
+        _correctionTurns.Add(retained.Turn);
         foreach (var node in new[] { retained, dropped })
         {
-            List<PlanAction> actions = [];
-            for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
-                if (cursor.Action is { } action) actions.Add(CombatBeamSolver.CopyObservedAction(action));
-            actions.Reverse();
             var key = Key(node);
-            _correctionQueries.Add(new(actions.ToArray(), key.State, key.HpCost, key.PotionCost));
+            _correctionQueries.Add(new(SearchWitnessPrefix.Capture(node), key.State, key.HpCost, key.PotionCost));
         }
 
         static bool Eligible(SearchNode node)
@@ -116,8 +114,7 @@ internal sealed partial class SearchOutcomeValueModel
             if (node.ActionCount is < 1 or > 96 || node.IsTerminal || node.HasPredictionRisk
                 || node.BoundaryReason != SearchBoundaryReason.None || !node.Snapshot.HasSimulator) return false;
             for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
-                if (cursor.TurnSetupChoices is { Count: > 0 }
-                    || cursor.Action is { } action && (action.EndsPlayerTurn || action.Turn != node.Turn)) return false;
+                if (cursor.TurnSetupChoices is { Count: > 0 }) return false;
             return true;
         }
     }
@@ -177,6 +174,10 @@ internal sealed partial class SearchOutcomeValueModel
         [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         NeuralTerm? Neural = null);
     internal TrainingRow[] ExportRows() => _observations.Values.Where(o => o.Outcome != null && o.Groups.Count != 0)
+        .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won, FeatureSchema)).ToArray();
+    internal TrainingRow[] ExportCorrectionRows() => _correctionQueries
+        .Select(query => new ObservationKey(query.State, query.HpCost, query.PotionCost)).Distinct()
+        .Select(key => _observations[key]).Where(o => o.Outcome != null)
         .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won, FeatureSchema)).ToArray();
     internal Document ExportModel() => new(_neural == null ? Schema : NeuralSchema, _featureNames, typeof(Player).Assembly.ManifestModule.ModuleVersionId,
         _forest ?? throw new InvalidOperationException("No fitted ranker."), _linearWeights,

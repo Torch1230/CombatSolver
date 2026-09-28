@@ -167,9 +167,6 @@ internal sealed partial class CombatBeamSolver
                 preserveDefensiveRoute: true,
                 useSecondRankBand: true,
                 observe: observeGlobalRetention);
-            if (policy.UseObjectiveSearch)
-                policy.OutcomeTrainingCollector?.ObserveCorrectionBoundary(
-                    pool, global, _player, policy.ObjectiveValueModel!);
             // RankBest has drained its lanes and published its ordered result. The rest of
             // retention is a separate allocation interval while the complete pool stays rooted.
             _run.CheckpointPruneMetadata?.Invoke("resource_routes");
@@ -242,6 +239,9 @@ internal sealed partial class CombatBeamSolver
             List<SearchNode> bounded = ApplyPrimaryIncumbentBound(finalized);
             if (policy.OutcomeTrainingCollector is { } observerModel)
                 foreach (var observed in bounded) observerModel.ObserveState(observed, _player);
+            if (policy.UseObjectiveSearch)
+                policy.OutcomeTrainingCollector?.ObserveCorrectionBoundary(
+                    pool, bounded, _player, policy.ObjectiveValueModel!);
             // Emit all watched final aliases, after every portfolio and the incumbent.
             // The paired value events avoid equating a `with` clone with a dropped route.
             ObserveSearchPathBoundary(

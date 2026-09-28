@@ -40,7 +40,8 @@ internal sealed partial class CombatBeamSolver(
     PrimarySearchIncumbent? primaryIncumbent = null,
     int? earliestPotionTurn = null,
     int earlyTurnScoutDepth = 0,
-    Action<int, IReadOnlyList<EarlyTurnFrontierCandidate>>? earlyTurnScoutObserver = null)
+    Action<int, IReadOnlyList<EarlyTurnFrontierCandidate>>? earlyTurnScoutObserver = null,
+    SearchWitnessPrefix? witnessPrefix = null)
 {
     private readonly SolverSearchProfile _profile = searchProfile ?? SolverSearchProfile.Default;
     private readonly SearchRunContext _run = new(
@@ -78,6 +79,7 @@ internal sealed partial class CombatBeamSolver(
     private readonly DevelopmentSearchStrategy? _developmentStrategy = policy.DevelopmentStrategy;
     private readonly IReadOnlyList<PlanAction> _fixedPrefixActions = fixedPrefixActions ?? [];
     private readonly bool _resetFixedPrefixSchedulingBaseline = resetFixedPrefixSchedulingBaseline;
+    private readonly SearchWitnessPrefix? _witnessPrefix = witnessPrefix;
     private readonly int _earlyTurnScoutDepth = earlyTurnScoutDepth;
     private readonly Action<int, IReadOnlyList<EarlyTurnFrontierCandidate>>? _earlyTurnScoutObserver = earlyTurnScoutObserver;
     private readonly string? _progressPhaseOverride = DescribePotionProgressPhase(

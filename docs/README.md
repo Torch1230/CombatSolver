@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [跨回合续局监督](strategy/cross-turn-witnesses-20260928.md)：逐步验证教师前缀，十训练根产21对有效偏好；292根补采启动，未重新训练或启用。
+
 - [完整协调器的排序失误诊断](strategy/coordinator-ranking-diagnosis-20260928.md)：定位稳定丢胜例的第二回合前缀，四个模型保路成员未保留；定向记录未触顶，路线/工作量无诊断漂移。
 
 - [模型特征索引优化](strategy/compiled-outcome-features-20260928.md)：固定v71权重，五场20次路线一致，耗时降低4.0%、累计分配降低32.3%，RSS基本持平；质量门槛仍未通过。

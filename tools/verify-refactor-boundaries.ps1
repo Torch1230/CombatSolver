@@ -630,6 +630,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.ExecutionChoiceContinuation.cs",
     "CombatBeamSolver.ExecutionChoiceContinuation.Testing.cs",
     "CombatBeamSolver.TurnExecutionContinuation.cs",
+    "CombatBeamSolver.WitnessPrefix.cs",
     "CombatBeamSolver.BeamRetentionPolicy.cs",
     "CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs",
     "CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs",
@@ -1818,8 +1819,9 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeContext.cs'); Text = 'EnemyPowerTotalPrefix + power.Id.Entry' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeContext.cs'); Text = 'combat.GetOstyMaxHp(simulator, player)' },
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.Expansion.Opening.cs'); Text = '.Where(node => node.Action is { EndsPlayerTurn: false } && !node.IsTerminal' },
-    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '_correctionDepths.Count >= 3' },
-    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = 'action.EndsPlayerTurn || action.Turn != node.Turn' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '_correctionTurns.Count >= 3' },
+    @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.WitnessPrefix.cs'); Text = 'snapshot.StateKey != step.State' },
+    @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.Phases.cs'); Text = 'policy.OutcomeTrainingCollector == null' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeCorrections.cs'); Text = 'ObjectiveValueModel = null' }
 )) {
     if (-not (Select-String -LiteralPath $contract.Path -SimpleMatch $contract.Text -Quiet)) {

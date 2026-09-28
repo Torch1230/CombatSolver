@@ -20,6 +20,11 @@ internal sealed partial class CombatBeamSolver
 {
     public SolverResult Solve()
     {
+        if (_witnessPrefix != null && (policy.OutcomeTrainingCollector == null
+            || policy.UseObjectiveSearch || policy.MaxDegreeOfParallelism != 1
+            || policy.PotionPolicy != SolverPotionPolicy.Disabled || _includeTurnSetup
+            || _fixedPrefixActions.Count != 0))
+            throw new InvalidOperationException("Continuation prefix requires an offline serial teacher with Disabled potions and resolved setup.");
         if ((policy.ObjectiveValueModel != null || policy.OutcomeTrainingCollector != null) && policy.MaxDegreeOfParallelism != 1)
             throw new InvalidOperationException("Outcome ranking collection/inference requires DOP 1.");
         if (policy.UseObjectiveSearch && (policy.ObjectiveValueModel is not { IsFitted: true }
@@ -1101,7 +1106,8 @@ internal sealed partial class CombatBeamSolver
             // This hook does not claim coverage of the initial Start-phase choice enumeration.
             ObserveSearchPath(root, SearchPathObservationStage.Root,
                 _includeTurnSetup ? "turn_setup_root_after_choice_budget" : "play_root");
-            SearchNode? compatibleRoot = ApplyFixedPrefix(root);
+            SearchNode? compatibleRoot = _witnessPrefix == null
+                ? ApplyFixedPrefix(root) : ApplyWitnessPrefix(root, _witnessPrefix);
             if (compatibleRoot == null)
                 continue;
             root = compatibleRoot;
@@ -1131,7 +1137,7 @@ internal sealed partial class CombatBeamSolver
                 $"固定搜索前缀与全部回合准备选牌分支都不相容：" +
                 $"include_turn_setup={_includeTurnSetup} " +
                 $"prefix={string.Join('+', _fixedPrefixActions.Select(action => action.CardId))}。");
-        if (_resetFixedPrefixSchedulingBaseline && !_includeTurnSetup && _fixedPrefixActions.Count > 0)
+        if (_witnessPrefix != null || _resetFixedPrefixSchedulingBaseline && !_includeTurnSetup && _fixedPrefixActions.Count > 0)
         {
             SimulationSnapshot start = frontier[0].Snapshot;
             _run.InitialPersistentBuffValue = start.PersistentBuffValue;

@@ -589,6 +589,7 @@ expected_beam_files=(
     CombatBeamSolver.ExecutionChoiceContinuation.cs
     CombatBeamSolver.ExecutionChoiceContinuation.Testing.cs
     CombatBeamSolver.TurnExecutionContinuation.cs
+    CombatBeamSolver.WitnessPrefix.cs
     CombatBeamSolver.BeamRetentionPolicy.cs
     CombatBeamSolver.BeamRetentionPolicy.OrderedMutation.cs
     CombatBeamSolver.BeamRetentionPolicy.OrderedMutationScheduling.cs
@@ -1434,8 +1435,9 @@ require_fixed "$search_root/SearchOutcomeContext.cs" 'EnemyPowerTotalPrefix + po
 require_fixed "$search_root/SearchOutcomeContext.cs" 'combat.GetOstyMaxHp(simulator, player)' 'pet features must read branch-owned maximum HP:'
 require_fixed "$search_root/CombatBeamSolver.Expansion.Opening.cs" '.Where(node => node.Action is { EndsPlayerTurn: false } && !node.IsTerminal' 'same-turn resource audits must exclude completed turns and terminals:'
 forbid_fixed "$search_root/SearchOutcomeContext.cs" 'player.Osty' 'pet features must not read live pet state:'
-require_fixed "$search_root/SearchOutcomeValueModel.cs" '_correctionDepths.Count >= 3' 'offline correction prefixes lost their bounded ownership:'
-require_fixed "$search_root/SearchOutcomeValueModel.cs" 'action.EndsPlayerTurn || action.Turn != node.Turn' 'correction prefixes must respect the existing first-turn replay boundary:'
+require_fixed "$search_root/SearchOutcomeValueModel.cs" '_correctionTurns.Count >= 3' 'offline correction prefixes lost their bounded ownership:'
+require_fixed "$search_root/CombatBeamSolver.WitnessPrefix.cs" 'snapshot.StateKey != step.State' 'teacher prefixes must validate every observed physical identity:'
+require_fixed "$search_root/CombatBeamSolver.Phases.cs" 'policy.OutcomeTrainingCollector == null' 'cross-turn prefixes require an offline teacher collector:'
 require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeCorrections.cs" 'ObjectiveValueModel = null' 'offline teacher must not recursively use the learned predictor:'
 forbid_fixed "$search_root/SearchOutcomeValueModel.cs" 'new CombatBeamSolver(' 'training correction searches belong in the offline host:'
 for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transpositions.cs; do

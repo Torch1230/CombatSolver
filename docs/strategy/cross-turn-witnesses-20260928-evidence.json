@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "experiment": "v75-cross-turn-continuation-witnesses",
+  "sourceBase": "e53f56ea",
+  "goalAchieved": false,
+  "modelRetrained": false,
+  "runtimeModelEnabled": false,
+  "finalTestOpened": false,
+  "model": ".local/objective-search/v71/full/fitted/model.json",
+  "prefixContract": {
+    "passed": 24,
+    "queries": 6,
+    "turns": [
+      2,
+      2,
+      3,
+      3,
+      4,
+      4
+    ],
+    "maximumActions": 4,
+    "rootUnchanged": true
+  },
+  "pilot": {
+    "roots": 10,
+    "roles": {
+      "DEFECT": 2,
+      "IRONCLAD": 2,
+      "NECROBINDER": 2,
+      "REGENT": 2,
+      "SILENT": 2
+    },
+    "processSeconds": 163.14057547377888,
+    "teacherSeconds": 19.5771776,
+    "completedQueries": 48,
+    "queryTurns": {
+      "2": 16,
+      "3": 16,
+      "4": 2,
+      "1": 14
+    },
+    "labelledQueries": 48,
+    "winningWitnesses": 38,
+    "newlyWitnessed": 31,
+    "unknownToVictory": 25,
+    "failureToVictory": 8,
+    "rootsWithPreferences": 8,
+    "preferencePairs": 21,
+    "correct": 14,
+    "wrong": 4,
+    "ties": 3,
+    "laterTurnPairs": 15,
+    "meanCollectionPeakRssMiB": 673.42890625,
+    "maxCollectionPeakRssMiB": 1129.0625
+  },
+  "nativeProvenance": [
+    {
+      "case": "r7-root-000005",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "ebdabd719eb3716254c304c0821cc52d1ac7e81cc4471dc537c9796d0658cd61"
+    },
+    {
+      "case": "r6-root-000065",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "7ebeac78fcd00a5e4aa24e0ac7e7e3d99f60d5d20e54481eb4df0646d3116d09"
+    },
+    {
+      "case": "r6-root-000006",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "f171e10ec825cc44816e9d6f292d710f9be5d20f0011bfbe0b8bd27c9b0f0fff"
+    },
+    {
+      "case": "r7-root-000031",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "55c79c29bd6d18f19b5d4171236a0daf555aba1de4e2e222864ef9afd28b7d2b"
+    },
+    {
+      "case": "r7-root-000007",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "6a39c798e7610c6dfe05db9528f32a54b7b16dd1cf087ac9f4db55b8b1de89f5"
+    },
+    {
+      "case": "r6-root-000017",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "d5887cec0fe30ddcad426f9abb5b7a006da7a07d0bb724c35d927dc1f957605a"
+    },
+    {
+      "case": "r6-root-000018",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "3e8b80dc84141fdfb71ec5b61d41b09645e2cc3ed5f1496b22ca397f12727455"
+    },
+    {
+      "case": "r6-root-000113",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "a840dfe24064a88f4bf3acdd44608a4c610264f65f98c00004cad0fad46f128d"
+    },
+    {
+      "case": "r6-root-000019",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "4a1f719f7abff00dfeea8aabd4ad6cc9c344444e96a48d30d84f91c0ba138b8e"
+    },
+    {
+      "case": "r6-root-000029",
+      "sameNativeLoadout": true,
+      "sameFullRootStamps": true,
+      "rootKey": "62f651d3ef5611500ec167e90b50e94e786abbc01392f93d8e7f0090b63b43e1"
+    }
+  ],
+  "normalParity": [
+    {
+      "arm": "classic",
+      "sameRoute": true,
+      "sameQuality": true,
+      "sameWorkCounters": true,
+      "sameRootStamps": true,
+      "timeBoundaryObserved": false
+    },
+    {
+      "arm": "model",
+      "sameRoute": true,
+      "sameQuality": true,
+      "sameWorkCounters": true,
+      "sameRootStamps": true,
+      "timeBoundaryObserved": false
+    }
+  ],
+  "validation": {
+    "outcomeRankingAssertions": 187,
+    "boundariesBash": "REFACTOR_BOUNDARIES_OK search_files=228",
+    "boundariesPowerShell": "REFACTOR_BOUNDARIES_OK search_files=228",
+    "modBuild": "passed; NU1900 package-vulnerability service unavailable",
+    "harnessBuild": "passed",
+    "missingLearnerCollectorCliRejected": true
+  },
+  "fullCollection": {
+    "protocol": ".local/objective-search/v75/collection-protocol.json",
+    "statusAtReport": "running",
+    "plannedRoots": 292,
+    "reusedPilotRoots": 10
+  },
+  "limitations": [
+    "Pilot measures supervision yield, not independent battle quality.",
+    "Only the witnessed continuations were verified; no optimal cost-to-go labels.",
+    "First eligible competition per turn biases sample selection.",
+    "Manual potions and unresolved root setup are excluded.",
+    "No dedicated forced-turn-end or turn-start-choice parity fixture in this batch.",
+    "Collection RSS includes feature dictionaries and labels, not inference-only memory.",
+    "The development lost-win replay contract is excluded from all training collection."
+  ],
+  "rawDirectory": ".local/objective-search/v75/",
+  "deployment": {
+    "completed": true,
+    "files": [
+      "CombatSolver.json",
+      "CombatSolver.dll",
+      "CombatSolver.MemoryCleaner.exe",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "source": ".local/objective-search/v75/final-engine/CombatSolver.dll",
+    "record": ".local/objective-search/v75/deployment.json"
+  }
+}

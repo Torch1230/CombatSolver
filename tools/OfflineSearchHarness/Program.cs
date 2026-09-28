@@ -381,6 +381,7 @@ internal sealed record HarnessOptions
           --outcome-value-model <p>  加载与游戏/特征版本匹配的结果预测森林
           --collect-outcome-values   导出同池完整胜利/真实终局失败见证与原始上下文（DOP 1）
           --verify-outcome-context   笔尖夹具：验证根/分支隔离及费用与计数可观测性
+          --verify-outcome-prefix    采集合同：核对跨回合教师前缀的完整/逐步重放，不能用于性能数据
           --no-shared-evidence   仅供对照：关闭统一搜索的证据共享与回传
           --novelty-portfolio    旧多策略探索对照（Coordinator；区别于 --adaptive-novelty）
           --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
@@ -442,6 +443,7 @@ internal sealed record HarnessOptions
     public bool UseObjectiveSearch { get; init; }
     public bool CollectOutcomeValues { get; init; }
     public bool VerifyOutcomeContext { get; init; }
+    public bool VerifyOutcomePrefix { get; init; }
     public string? OutcomeValueModelPath { get; init; }
     public bool DisableSharedEvidence { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
@@ -510,6 +512,7 @@ internal sealed record HarnessOptions
         bool selectiveOutcomeProbes = false;
         bool collectOutcomeValues = false;
         bool verifyOutcomeContext = false;
+        bool verifyOutcomePrefix = false;
         string? outcomeValueModelPath = null;
         bool useAutomaticSearch = false;
         bool useObjectiveSearch = false;
@@ -566,6 +569,7 @@ internal sealed record HarnessOptions
                 case "--automatic-search": useAutomaticSearch = true; break;
                 case "--collect-outcome-values": collectOutcomeValues = true; break;
                 case "--verify-outcome-context": verifyOutcomeContext = true; break;
+                case "--verify-outcome-prefix": verifyOutcomePrefix = true; break;
                 case "--outcome-value-model": outcomeValueModelPath = Path.GetFullPath(Value()); break;
                 case "--objective-search": useObjectiveSearch = true; break;
                 case "--no-shared-evidence": disableSharedEvidence = true; break;
@@ -626,6 +630,8 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--outcome-value-model requires --objective-search.");
         if (collectOutcomeValues && dop != 1)
             throw new ArgumentException("--collect-outcome-values requires --dop 1.");
+        if (verifyOutcomePrefix && (!collectOutcomeValues || outcomeValueModelPath == null))
+            throw new ArgumentException("--verify-outcome-prefix requires learner-driven outcome collection.");
         if (milestone is not ("M1" or "M2"))
             throw new ArgumentException("--milestone 只接受 M1 或 M2。");
         if (profile is not ("Low" or "Medium" or "High" or "VeryHigh" or "Custom"))
@@ -729,6 +735,7 @@ internal sealed record HarnessOptions
             UseObjectiveSearch = useObjectiveSearch,
             CollectOutcomeValues = collectOutcomeValues,
             VerifyOutcomeContext = verifyOutcomeContext,
+            VerifyOutcomePrefix = verifyOutcomePrefix,
             OutcomeValueModelPath = outcomeValueModelPath,
             DisableSharedEvidence = disableSharedEvidence,
             UseNoveltyPortfolio = useNoveltyPortfolio,
