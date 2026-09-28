@@ -78,6 +78,8 @@ internal sealed partial class UnattendedTestRunner
                         && ReferenceEquals(player, run.Players[input.ContentTargetSeat])
                         && input.ContentTeammateCardIdAfter.Length > 0)
                         cardIds[2] = input.ContentTeammateCardIdAfter;
+                    if (input.VerifyControllerMidDeploymentRng && !ReferenceEquals(player, run.Players[input.Seat]))
+                        cardIds[2] = "LARGESSE";
                     foreach (string cardId in cardIds)
                         await InjectRunCardAsync(run, player, new UnattendedCardInjection { CardId = cardId });
                 }

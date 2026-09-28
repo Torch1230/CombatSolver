@@ -19,6 +19,17 @@ namespace CombatSolver;
 /// </summary>
 internal sealed record ContinuationStamp(string StateText)
 {
+    public string RngStateText
+    {
+        get
+        {
+            int start = StateText.LastIndexOf(";R=", StringComparison.Ordinal);
+            if (start < 0)
+                throw new InvalidOperationException("Continuation stamp has no RNG state.");
+            return StateText[(start + 3)..];
+        }
+    }
+
     public string DescribeFirstDifference(ContinuationStamp actual)
         => DescribeDifferences(actual, maximumDifferences: 1).FirstOrDefault() ?? "none";
 

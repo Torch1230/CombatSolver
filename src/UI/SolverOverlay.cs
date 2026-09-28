@@ -146,6 +146,8 @@ internal static class SolverOverlay
     private static int _lastDeploymentTurn;
     private static int _lastDeploymentActionCount;
     private static bool _lastDeploymentEndedTurn;
+    private static bool _multiplayerRngDeviationSeen;
+    private static bool _multiplayerRngReevaluated;
     private static bool _waitingForNextTurnPlan;
     private static bool _themeRefreshQueued;
     private static int _remainingLayoutPasses;
@@ -180,6 +182,9 @@ internal static class SolverOverlay
                 StringComparison.Ordinal);
     internal static string? ExecuteButtonTextForTesting => _executeButton?.Text;
     internal static bool ExecuteButtonDisabledForTesting => _executeButton?.Disabled ?? true;
+    public static bool MultiplayerRngDeviationSeen => _multiplayerRngDeviationSeen;
+    internal static bool MultiplayerRngDeviationSeenForTesting => MultiplayerRngDeviationSeen;
+    internal static bool MultiplayerRngReevaluatedForTesting => _multiplayerRngReevaluated;
     internal static void PressExecuteButtonForTesting()
         => _executeButton!.EmitSignal(BaseButton.SignalName.Pressed);
     internal static string? StopSearchButtonTextForTesting => _stopSearchButton?.Text;
@@ -1069,6 +1074,8 @@ internal static class SolverOverlay
 
     public static void ShowResult(Node host, SolverOverlaySnapshot snapshot)
     {
+        _multiplayerRngDeviationSeen = false;
+        _multiplayerRngReevaluated = false;
         _presentation = SolverOverlayPresentation.Ready;
         _waitingForNextTurnPlan = false;
         _lastSnapshot = snapshot;
@@ -1338,6 +1345,18 @@ internal static class SolverOverlay
             $"action_count={actionCount} active_action_index={activeActionIndex?.ToString() ?? "-"}");
     }
 
+    public static void ShowMultiplayerRngDeviation()
+    {
+        _multiplayerRngDeviationSeen = true;
+        SetStatus(SolverText.Get("随机流发生变化，后续预测待更新"), Warning);
+    }
+
+    public static void ShowMultiplayerRngReevaluated()
+    {
+        _multiplayerRngReevaluated = true;
+        SetStatus(SolverText.Get("随机流变化后已重评估余下路线"), Warning);
+    }
+
     public static void ShowEndTurnDeploymentStep()
     {
         if (RouteRows[0] == null)
@@ -1374,6 +1393,10 @@ internal static class SolverOverlay
             _summaryText.Text = endedTurn
                 ? SolverText.Format($"已按推荐路线打出 [b]{actionCount}[/b] 张牌，并提交结束回合动作。")
                 : SolverText.Format($"已打出 [b]{actionCount}[/b] 张牌；战斗或当前回合已在执行期间结束。");
+            if (_multiplayerRngDeviationSeen)
+                _summaryText.Text += "\n" + SolverText.Get(_multiplayerRngReevaluated
+                    ? "随机流曾变化，余下路线已按新状态重评估。"
+                    : "随机流曾变化，后续预测可能不准。");
         }
         if (_progressText != null)
             _progressText.Visible = false;

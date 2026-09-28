@@ -133,4 +133,23 @@ internal sealed partial class CombatBeamSolver
             replayed.Snapshot.ReleaseSimulator();
         }
     }
+
+    internal string PredictMultiplayerActionRng(PlanAction action)
+    {
+        if (root.PlayerCount < 2 || action.Turn != root.StartTurnNumber)
+            throw new InvalidOperationException("Multiplayer action RNG requires a current-turn multiplayer root.");
+        SimulationSnapshot predicted = Replay([action]);
+        try
+        {
+            if (predicted.HasRisk || predicted.BoundaryReason != SearchBoundaryReason.None)
+                throw new InvalidOperationException("Multiplayer action RNG reached an unresolved boundary.");
+            return ContinuationStamp.CapturePredicted(
+                _player, predicted.Simulator, predicted.Turn, root.Forecast,
+                root.StartTurnNumber).RngStateText;
+        }
+        finally
+        {
+            predicted.ReleaseSimulator();
+        }
+    }
 }

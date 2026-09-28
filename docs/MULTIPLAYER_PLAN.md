@@ -175,6 +175,8 @@ ENet 双端全自动首回合：房主与加入者分别从本地搜索并原生
 
 P5 设置输入已在原生无头设置页实际提交多人深度 `3` 与时间 `4.5` 秒，重新读取持久化文件后值保持，测试结束恢复原设置；eng／zhs／zht 构造与 475 条英文目录占位符对账同次 Passed：`.local/multiplayer-p5/ui-settings-edit-509374eb84d540ea80d689f32873b416/result.json`。仍未人工检查可见窗口排版。
 
+P4 RNG 动作边界：虚拟双人双敌根中，本地第一张 `Strike` 后队友原生对本地玩家打 `Largesse`，原版生成 `Shockwave` 归目标玩家所有并推进共享 `CombatCardGeneration`。初试时控制器在队友动作尚未完全结算时观测，未提示偏差；改为每次多人动作边界先等待原生动作队列稳定后，同一场景的 RNG 偏差提示、余下路线重评估、第二张本地 `Strike`、无完整重搜均 Passed：`.local/multiplayer-p4/mid-deploy-rng-fixed-d1f774413f044e81a46697a326d4a5b0/peer-0/result.json`。反向以本地玩家自己对队友打 `Largesse`，原生生成牌牌主为队友、共享 RNG 正常前进且无误报，Passed：`.local/multiplayer-p4/own-largesse-rng-final-1127aa6c05374ca293827af5f3f55a4f/peer-0/result.json`。这两项是虚拟多人生产执行证据；真实 ENet 交错随机流仍未验证。测试在本地回合结束后的队友手牌位置断言曾失败；即时入手与牌主另由内容差分证据确认，回合后仅断言牌仍归队友。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

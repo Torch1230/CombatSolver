@@ -37,6 +37,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerTeammateKillsTarget { get; init; }
         public bool VerifyControllerMidDeploymentKill { get; init; }
         public bool VerifyControllerMidDeploymentDamage { get; init; }
+        public bool VerifyControllerMidDeploymentRng { get; init; }
         public bool VerifyControllerTargetedDeploy { get; init; }
         public bool VerifyControllerSelfPotionDeploy { get; init; }
         public bool VerifyControllerStyleSelection { get; init; }
@@ -94,10 +95,12 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerTeammateKillsTarget && !input.VerifyControllerTeammateDrift
                 || input.VerifyControllerMidDeploymentKill && !input.VerifyControllerDeploy
                 || input.VerifyControllerMidDeploymentDamage && !input.VerifyControllerDeploy
+                || input.VerifyControllerMidDeploymentRng && !input.VerifyControllerDeploy
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifySelfPotion && input.SelfPotionId is not
                     ("STRENGTH_POTION" or "BLOCK_POTION" or "ENERGY_POTION")
-                || input.VerifyControllerTargetedDeploy && !input.ContentCardIds.Contains("BLAZE")
+                || input.VerifyControllerTargetedDeploy
+                    && !input.ContentCardIds.Any(id => id is "BLAZE" or "LARGESSE")
                 || input.VerifyControllerSelfPotionDeploy
                     && (input.Mode != "virtual" || !input.ContentCardIds.Contains("STRIKE_IRONCLAD"))
                 || input.VerifyControllerStyleSelection

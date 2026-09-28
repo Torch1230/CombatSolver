@@ -2960,15 +2960,25 @@ internal static partial class SolverController
         PlanAction? plannedEndTurn = result.BestNode.Actions
             .FirstOrDefault(action => action.Turn == turn && action.Kind == PlanActionKind.EndTurn);
         LiveCombatStamp validatedStamp = LiveCombatStamp.Capture(state);
+        string lastObservedRng = ContinuationStamp.CaptureLive(state).RngStateText;
         int? revisedPlannedHpLoss = null;
         async Task<bool> ReevaluateRemainingAsync(int nextActionIndex)
         {
-            if (state.Players.Count < 2 || LiveCombatStamp.Capture(state) == validatedStamp)
+            if (state.Players.Count < 2)
                 return true;
             await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
             token.ThrowIfCancellationRequested();
             if (!IsSamePlayableTurn(state, turn))
                 throw new InvalidOperationException("部署途中已不再是原玩家回合。");
+            ContinuationStamp observed = ContinuationStamp.CaptureLive(state);
+            if (observed.RngStateText != lastObservedRng)
+            {
+                SolverOverlay.ShowMultiplayerRngDeviation();
+                Entry.Logger.Warn($"[CombatSolver/Test] MULTIPLAYER_RNG_DRIFT turn={turn} action_index={nextActionIndex} source=between_actions");
+                lastObservedRng = observed.RngStateText;
+            }
+            if (LiveCombatStamp.FromContinuation(observed) == validatedStamp)
+                return true;
             CombatRootSnapshot changedRoot = CombatRootSnapshot.Capture(state);
             SearchPolicySnapshot changedPolicy = CaptureSearchPolicy(
                 SolverSettings.Capture(), state, includeTurnSetup: false, theftPolicy: null);
@@ -2990,6 +3000,8 @@ internal static partial class SolverController
             }
             validatedStamp = changedRoot.LiveStamp;
             revisedPlannedHpLoss = revised.HpLost;
+            if (SolverOverlay.MultiplayerRngDeviationSeen)
+                SolverOverlay.ShowMultiplayerRngReevaluated();
             Entry.Logger.Info($"[CombatSolver/Test] MULTIPLAYER_ROUTE_REEVALUATED turn={turn} " +
                 $"action_index={nextActionIndex} hp_lost={revised.HpLost} enemy_hp_lost={revised.EnemyHpLost} " +
                 $"actions={revised.Actions.Count}");
@@ -3017,6 +3029,16 @@ internal static partial class SolverController
 
                 Player player = LocalContext.GetMe(state)!;
                 Creature? target = state.GetCreature(action.TargetCombatId);
+                string? expectedRngAfterAction = null;
+                if (state.Players.Count > 1)
+                {
+                    CombatRootSnapshot actionRoot = CombatRootSnapshot.Capture(state);
+                    SearchPolicySnapshot actionPolicy = CaptureSearchPolicy(
+                        SolverSettings.Capture(), state, includeTurnSetup: false, theftPolicy: null);
+                    CombatBeamSolver actionReplay = new(actionRoot, SolverDisplayNames.Capture(state),
+                        BattleDamageTracker.Observe(state), actionPolicy);
+                    expectedRngAfterAction = actionReplay.PredictMultiplayerActionRng(action);
+                }
                 string actionTitle = action.Kind == PlanActionKind.UsePotion
                     ? SolverUiModelNames.Potion(action.PotionId, action.PotionTitle)
                     : SolverUiModelNames.Card(action.CardId, action.CardUpgradeLevel, action.CardTitle);
@@ -3148,6 +3170,18 @@ internal static partial class SolverController
                 {
                     choiceSession.ReleaseVisibleSurface();
                     throw;
+                }
+                if (expectedRngAfterAction != null)
+                {
+                    await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+                    token.ThrowIfCancellationRequested();
+                    string actualRngAfterAction = ContinuationStamp.CaptureLive(state).RngStateText;
+                    if (actualRngAfterAction != expectedRngAfterAction)
+                    {
+                        SolverOverlay.ShowMultiplayerRngDeviation();
+                        Entry.Logger.Warn($"[CombatSolver/Test] MULTIPLAYER_RNG_DRIFT turn={turn} action_index={actionIndex} source=action_boundary");
+                    }
+                    lastObservedRng = actualRngAfterAction;
                 }
                 if (measureDeploymentTiming)
                 {

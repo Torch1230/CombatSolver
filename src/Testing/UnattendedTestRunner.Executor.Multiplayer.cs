@@ -30,9 +30,11 @@ internal sealed partial class UnattendedTestRunner
             CombatState combat = scenario.CombatState;
             Creature enemy = input.VerifyControllerTeammateKillsTarget
                 || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
+                || input.VerifyControllerMidDeploymentRng
                 ? combat.Enemies.First() : combat.Enemies.Single();
             if ((input.VerifyControllerTeammateKillsTarget
-                    || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage)
+                    || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
+                    || input.VerifyControllerMidDeploymentRng)
                 && combat.Enemies.Count < 2)
                 throw new InvalidOperationException("Invalidation probe requires a surviving second enemy.");
             if (enemy.CurrentHp <= input.PlayerCount * 6)
@@ -179,7 +181,8 @@ internal sealed partial class UnattendedTestRunner
                         .ToArray();
                     if (plannedCards.Length == 0)
                         throw new InvalidOperationException("Deployment fixture has no planned local card.");
-                    if ((input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage)
+                    if ((input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
+                            || input.VerifyControllerMidDeploymentRng)
                         && (plannedCards.Length < 2
                             || plannedCards[0].TargetCombatId == null
                             || plannedCards[1].TargetCombatId != plannedCards[0].TargetCombatId))
@@ -213,7 +216,8 @@ internal sealed partial class UnattendedTestRunner
                         SolverOverlay.PressExecuteButtonForTesting();
                     else
                         SolverController.RequestDeploy(runner._host, combat);
-                    if (input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage)
+                    if (input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
+                        || input.VerifyControllerMidDeploymentRng)
                     {
                         Creature target = combat.GetCreature(plannedCards[0].TargetCombatId)
                             ?? throw new InvalidOperationException("Mid-deployment target is missing.");
@@ -226,13 +230,44 @@ internal sealed partial class UnattendedTestRunner
                             ? target : combat.Enemies.Single(candidate => candidate != target);
                         int teammateTargetHp = teammateTarget.CurrentHp;
                         Player teammate = combat.Players.First(player => player != scenario.Player);
-                        CardModel teammateStrike = teammate.PlayerCombatState!.Hand.Cards
-                            .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
-                        var teammatePlay = new PlayCardAction(teammateStrike, teammateTarget);
+                        CardModel teammateCard = teammate.PlayerCombatState!.Hand.Cards
+                            .First(card => card.Id.Entry == (input.VerifyControllerMidDeploymentRng
+                                ? "LARGESSE" : "STRIKE_IRONCLAD"));
+                        HashSet<CardModel> localHandBefore = [.. scenario.Player.PlayerCombatState!.Hand.Cards];
+                        var teammatePlay = new PlayCardAction(teammateCard,
+                            input.VerifyControllerMidDeploymentRng ? scenario.Player.Creature : teammateTarget);
                         RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
                         await teammatePlay.CompletionTask;
+                        CardModel? generatedForLocal = input.VerifyControllerMidDeploymentRng
+                            ? scenario.Player.PlayerCombatState!.AllCards.SingleOrDefault(card =>
+                                !localHandBefore.Contains(card) && card.Id.Entry is not
+                                    ("STRIKE_IRONCLAD" or "DEFEND_IRONCLAD" or "SURVIVOR"))
+                            : null;
                         await runner.MultiplayerProbeBarrierAsync("mid-deployment-drift", combat);
                         await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying);
+                        if (input.VerifyControllerMidDeploymentRng)
+                        {
+                            if (target.CurrentHp != startingHp - 12
+                                || generatedForLocal is null
+                                || !ReferenceEquals(generatedForLocal.Owner, scenario.Player)
+                                || !scenario.Player.PlayerCombatState!.AllCards.Contains(generatedForLocal)
+                                || teammate.PlayerCombatState!.AllCards.Contains(generatedForLocal)
+                                || teammate.PlayerCombatState!.Hand.Cards.Any(card =>
+                                    card.Id.Entry == "LARGESSE")
+                                || !SolverOverlay.MultiplayerRngDeviationSeenForTesting
+                                || !SolverOverlay.MultiplayerRngReevaluatedForTesting
+                                || SolverController.SearchesStartedForTesting != searchesBeforeDrift)
+                                throw new InvalidOperationException(
+                                    $"Teammate Largesse RNG change failed: target_hp={target.CurrentHp}/{startingHp - 12} " +
+                                    $"generated_for_local={generatedForLocal?.Id.Entry ?? "-"} " +
+                                    $"local_cards={string.Join(',', scenario.Player.PlayerCombatState.Hand.Cards.Select(card => card.Id.Entry))} " +
+                                    $"teammate_cards={string.Join(',', teammate.PlayerCombatState.Hand.Cards.Select(card => card.Id.Entry))} " +
+                                    $"rng_hint={SolverOverlay.MultiplayerRngDeviationSeenForTesting} " +
+                                    $"reevaluated={SolverOverlay.MultiplayerRngReevaluatedForTesting} " +
+                                    $"searches={SolverController.SearchesStartedForTesting}/{searchesBeforeDrift}.");
+                            runner._completedChecks.Add("MultiplayerController:MidDeploymentTeammateLargesse:RecipientLocal:RngHint:Reevaluated:BothLocalAttacks:NoFullSearch");
+                            return new ExecutionOutcome(false, 1, true, true, true, false);
+                        }
                         if (input.VerifyControllerMidDeploymentDamage)
                         {
                             if (target.CurrentHp != startingHp - 12
@@ -598,6 +633,9 @@ internal sealed partial class UnattendedTestRunner
             if (input.VerifyControllerTargetedDeploy)
             {
                 Player teammate = combat.Players[input.ContentTargetSeat];
+                string supportCardId = input.ContentCardIds.Single(id => id is "BLAZE" or "LARGESSE");
+                HashSet<CardModel> teammateCardsBefore = [.. teammate.PlayerCombatState!.AllCards];
+                string rngBeforeDeployment = ContinuationStamp.CaptureLive(combat).RngStateText;
                 SolverController.MonitorCombatPresence();
                 if (!SolverOverlay.IsVisible)
                     throw new InvalidOperationException("Targeted multiplayer controls were not attached.");
@@ -611,21 +649,42 @@ internal sealed partial class UnattendedTestRunner
                     ?? throw new InvalidOperationException("Targeted search did not publish a route.");
                 PlanAction[] current = result.BestNode.Actions.Where(action => action.Turn == 1).ToArray();
                 if (current.All(action => action.CardId != "STRIKE_IRONCLAD")
-                    || current.All(action => action.CardId != "BLAZE"
+                    || current.All(action => action.CardId != supportCardId
                         || action.TargetCombatId != teammate.Creature.CombatId)
-                    || current.Any(action => action.CardId == "BLAZE"
+                    || current.Any(action => action.CardId == supportCardId
                         && action.TargetCombatId == actor.Creature.CombatId))
                     throw new InvalidOperationException("Controller route did not preserve a legal teammate target.");
                 SolverController.RequestDeploy(runner._host, combat);
                 await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
                     && SolverController.LastSolverDeployedTurnForBugReport == 1);
-                if (!SolverController.WasCardDeployedForTesting("BLAZE")
-                    || teammate.Creature.Powers.OfType<StrengthPower>().All(power => power.Amount < 5)
-                    || actor.Creature.Powers.OfType<StrengthPower>().Any()
+                if (!SolverController.WasCardDeployedForTesting(supportCardId)
                     || !CombatManager.Instance.IsPlayerReadyToEndTurn(actor)
                     || CombatManager.Instance.IsPlayerReadyToEndTurn(teammate))
-                    throw new InvalidOperationException("Targeted deployment did not apply Blaze to the teammate only.");
-                runner._completedChecks.Add("MultiplayerController:BlazeTargetedTeammate:NativeDeployment:LocalTurnOnly");
+                    throw new InvalidOperationException("Targeted deployment did not act on the teammate and end the local turn.");
+                if (supportCardId == "BLAZE")
+                {
+                    if (teammate.Creature.Powers.OfType<StrengthPower>().All(power => power.Amount < 5)
+                        || actor.Creature.Powers.OfType<StrengthPower>().Any())
+                        throw new InvalidOperationException("Targeted deployment did not apply Blaze to the teammate only.");
+                    runner._completedChecks.Add("MultiplayerController:BlazeTargetedTeammate:NativeDeployment:LocalTurnOnly");
+                }
+                else
+                {
+                    CardModel generated = teammate.PlayerCombatState!.AllCards.Single(card =>
+                        !teammateCardsBefore.Contains(card));
+                    if (!ReferenceEquals(generated.Owner, teammate)
+                        || actor.PlayerCombatState!.AllCards.Contains(generated)
+                        || ContinuationStamp.CaptureLive(combat).RngStateText == rngBeforeDeployment
+                        || SolverOverlay.MultiplayerRngDeviationSeenForTesting)
+                        throw new InvalidOperationException(
+                            $"Own Largesse check failed: generated={generated.Id.Entry} " +
+                            $"owner={generated.Owner.NetId}/{teammate.NetId} " +
+                            $"in_hand={teammate.PlayerCombatState.Hand.Cards.Contains(generated)} " +
+                            $"in_actor={actor.PlayerCombatState!.AllCards.Contains(generated)} " +
+                            $"rng_changed={ContinuationStamp.CaptureLive(combat).RngStateText != rngBeforeDeployment} " +
+                            $"rng_hint={SolverOverlay.MultiplayerRngDeviationSeenForTesting}.");
+                    runner._completedChecks.Add("MultiplayerController:OwnLargesse:TargetTeammate:GeneratedCardRecipient:ExpectedRngNoFalseHint");
+                }
                 return new ExecutionOutcome(false, 1, true, true, true, false);
             }
             if (input.VerifyAllyTarget)

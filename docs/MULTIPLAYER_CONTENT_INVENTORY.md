@@ -50,6 +50,8 @@
 
 `Largesse` 四人代表：本地 0 号对 3 号队友原生出牌，显式断言生成牌进 3 号手牌且牌主为 3 号，所有玩家状态与完整 RNG 对齐，Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。基础／升级的双人即时差分与余费支援原生路线证据见下文和规划记录；四人这一请求只验基础版单次出牌。
 
+生产控制器另以本地 `Largesse` 指向队友原生执行，生成牌归目标队友、随机流正常前进且没有旧预测偏差误报，Passed：`.local/multiplayer-p4/own-largesse-rng-final-1127aa6c05374ca293827af5f3f55a4f/peer-0/result.json`。队友反向对本地玩家打 `Largesse` 的交错动作中，目标玩家取得生成牌，控制器观测到外部 RNG 变化并重评估后继续合法攻击，Passed：`.local/multiplayer-p4/mid-deploy-rng-fixed-d1f774413f044e81a46697a326d4a5b0/peer-0/result.json`。即时入手位置由前述内容差分验证；控制器回合结束后的归属断言仅检查目标玩家持有该牌。
+
 同一四人目标身份再组合本地自用 `StrengthPotion`：搜索候选只含持有人自用的单项，原生自用后完整状态／RNG 与模拟一致，随后 `Largesse` 仍把新牌给 3 号队友、牌主为该队友，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。这只证明玩家目标药水的候选与自用代表，不代表所有药水已建模或求解器已实际部署药水。
 
 玩家目标自用按机制追加格挡和能量：四人 `BlockPotion` `.local/multiplayer-p2/self-block-potion-four-cbc90f92c6f64218a5bd0cda95b38ab1/peer-0/result.json`、双人 `EnergyPotion` `.local/multiplayer-p2/self-energy-potion-two-a56b08d453e743228b3ce67070940b77/peer-0/result.json`，均核搜索只出现本地持有者的一个候选、原生自用即时全状态／完整 RNG 对齐。与力量药水合起来覆盖三种不同自用机制；选牌、治疗、球及被动触发等药水机制仍未收口。
