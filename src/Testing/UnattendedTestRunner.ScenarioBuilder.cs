@@ -70,6 +70,9 @@ internal sealed partial class UnattendedTestRunner
             if (RunManager.Instance.IsInProgress)
                 throw new InvalidOperationException("无人测试要求从无进行中跑局的独立游戏进程启动。");
 
+            if (request.MultiplayerProbePath != null)
+                return await BuildMultiplayerProbeAsync();
+
             PrepareGeneratedScenario();
             using IDisposable? generatedChoices = BeginGeneratedSetupChoices();
             request = runner._request;

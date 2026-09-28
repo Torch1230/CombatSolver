@@ -24,6 +24,7 @@ internal sealed class UnattendedTestRequest
     public string[] ModifierIds { get; init; } = [];
     public string Seed { get; init; } = "COMBATSOLVER";
     public string? GeneratedScenarioPath { get; init; }
+    public string? MultiplayerProbePath { get; init; }
     public string? RunSnapshotPath { get; init; }
     public bool LoadRunSnapshotDirectly { get; init; }
     public int? TargetActFloor { get; init; }

@@ -1,5 +1,11 @@
 # CombatSolver 测试清单
 
+## 多人 P0 原型交接（2026-09-28）
+
+`feat/multiplayer` 上的 P0 测试原型通过 `dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false`，0 警告、0 错误。新增请求字段 `MultiplayerProbePath` 与专用 `MULTIPLAYER-P0` 路径。尚未运行虚拟 2／4 人、ENet 双进程、原生选牌同步、四人联机、单人运行回归和结构门禁；Linux 未验证。原型的原生对端检查点不构成完整模拟差分证据。
+
+用户中止当前窗口的继续开发，转为交接指导。后续入口与尚未实测的命令示例见 [规划第 0 节](MULTIPLAYER_PLAN.md#0-给接手窗口的执行指令)。相同行为源码和输入的已通过构建可复用，文档完善不触发重新构建。未生成或保留 P0 游戏实例，未部署该原型。
+
 ## PR #144 最终修复与合并验证（2026-09-28）
 
 以 `main@f47c447a` 整合 PR head `1e914b38`，修正 `ReclaimWithinSearch` 主动退出路径的恢复许可，并将复审夹具纳入 `GcRecoveryChecks.RunExplicitDefaultExit`。原候选同一真实 CLR 边界失败：主动退出后 `enabled=True / attempts=1 / restarts=1`；原 main 通过。修复后 `recovery-lifecycle` 3 项、`checkpoint` 1 项通过，主动退出结果 `EXPLICIT_DEFAULT_EXIT_OK attempts=0 restarts=0 forced=0`，正常恢复仍为 starts=1/restarts=1/forced=0，取消与退出清理通过。

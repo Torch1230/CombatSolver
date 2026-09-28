@@ -22,6 +22,7 @@ param(
     [ValidateRange(1, 3600)]
     [int]$HeadlessQueueTimeoutSeconds = 120,
     [string]$GeneratedScenarioPath = "",
+    [string]$MultiplayerProbePath = "",
     [string]$RunSnapshotPath = "",
     [switch]$LoadRunSnapshotDirectly,
     [int]$TargetActFloor = -1,
@@ -781,6 +782,7 @@ $request = [ordered]@{
     targetActFloor = if ($TargetActFloor -gt 0) { $TargetActFloor } else { $null }
     targetMapColumn = if ($TargetMapColumn -ge 0) { $TargetMapColumn } else { $null }
     generatedScenarioPath = if ($GeneratedScenarioPath) { (Resolve-Path -LiteralPath $GeneratedScenarioPath).Path } else { $null }
+    multiplayerProbePath = if ($MultiplayerProbePath) { (Resolve-Path -LiteralPath $MultiplayerProbePath).Path } else { $null }
     targetRoomType = $TargetRoomType
     targetMapPointType = $TargetMapPointType
     preCombatPlayerCurrentHpOverride = if ($PreCombatPlayerCurrentHpOverride -gt 0) { $PreCombatPlayerCurrentHpOverride } else { $null }

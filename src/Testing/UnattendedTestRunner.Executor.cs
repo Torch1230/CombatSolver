@@ -14,7 +14,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private sealed class Executor(UnattendedTestRunner runner)
+    private sealed partial class Executor(UnattendedTestRunner runner)
     {
         private SolverSettingsData? _settingsBeforeTest;
 
@@ -32,6 +32,8 @@ internal sealed partial class UnattendedTestRunner
 
         public async Task<ExecutionOutcome> ExecuteAsync(ScenarioContext scenario)
         {
+            if (runner._multiplayerProbe != null)
+                return await ExecuteMultiplayerProbeAsync(scenario);
             UnattendedTestRequest request = runner._request;
             CombatState combatState = scenario.CombatState;
             Player player = scenario.Player;

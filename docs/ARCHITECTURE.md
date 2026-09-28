@@ -1,5 +1,7 @@
 # CombatSolver 架构与职责地图
 
+多人 P0 测试原型：`UnattendedTestRequest.MultiplayerProbePath` 由两端无人脚本传入，`ScenarioBuilder.Multiplayer` 拥有虚拟／ENet 建局，`Executor.Multiplayer` 拥有脚本动作与原生选牌作用域，`MultiplayerProbe` 保存测试配置、大厅回调和跨进程检查点；文件写入复用 `Writer`。目前只编译通过，原生运行及结构门禁待验证，生产搜索仍限制单人。交接入口见 [多人实施规划](MULTIPLAYER_PLAN.md)。
+
 `CombatPredictionHistory` 拥有模拟历史及六项累计值；单人身份在模拟器建立时冻结，三类 Fork 按值继承。`CombatHistoryCounterKey` 消费根冻结的读者依赖掩码，不维护第二份账本。测试构建逐事件核对独立全扫描。
 
 `SearchRunContext` 拥有转置表触顶观测，新增条目后记录首次触顶节点和峰值；缓存重建不清空这些观测。搜索结束才枚举前沿的标签数，输出两表合计标签与每条目分布。诊断不进入状态键、路线排序、准入或结果合同。
