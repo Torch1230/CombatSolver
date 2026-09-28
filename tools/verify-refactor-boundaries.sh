@@ -1361,7 +1361,7 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
     done
 done
 
-for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs SearchOutcomeValueModel.Imitation.cs SearchOutcomeValueModel.JointTraining.cs CombatBeamSolver.ObjectiveRetention.cs; do
+for file in SearchOutcomeContext.cs SearchOutcomeContext.Columns.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs SearchOutcomeValueModel.Imitation.cs SearchOutcomeValueModel.JointTraining.cs CombatBeamSolver.ObjectiveRetention.cs; do
     for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.' 'xgboost'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"

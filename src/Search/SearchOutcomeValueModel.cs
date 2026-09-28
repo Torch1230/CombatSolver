@@ -36,10 +36,11 @@ internal sealed partial class SearchOutcomeValueModel
     private Tree[]? _forest;
     private double[] _linearWeights = [];
     private Dictionary<string, int> _columns = new(StringComparer.Ordinal);
-    private HashSet<string> _prefixes = [];
+    private SearchOutcomeContext.Selection _selection = new(new Dictionary<string, int>());
     private double[] _featureScratch = [];
     private float[] _predictionValues = [];
     private long _predictionCalls, _cacheHits, _featureTicks, _forestTicks;
+    private long _featureAllocatedBytes, _forestAllocatedBytes;
     internal bool MeasurePerformance { get; set; }
     private const double LearningRate = 0.1;
     internal bool IsFitted => _forest != null;
@@ -519,7 +520,7 @@ internal sealed partial class SearchOutcomeValueModel
         { Feature = remap[tree.Feature], Left = Rewrite(tree.Left!), Right = Rewrite(tree.Right!) };
         _featureNames = original.Select(i => names[i]).ToArray();
         _columns = _featureNames.Select((name, index) => (name, index)).ToDictionary(p => p.name, p => p.index, StringComparer.Ordinal);
-        _prefixes = SearchOutcomeContext.RequiredPrefixes(_featureNames);
+        _selection = new(_columns);
         _forest = trees.Select(Rewrite).ToArray();
         _linearWeights = original.Select(i => linearWeights[i]).ToArray();
         _factorWeights = hasFactors ? original.Select(i => factors![i].ToArray()).ToArray() : null;
@@ -547,11 +548,13 @@ internal sealed partial class SearchOutcomeValueModel
             return cached;
         }
         long started = MeasurePerformance ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
+        long allocatedBefore = MeasurePerformance ? GC.GetAllocatedBytesForCurrentThread() : 0;
         SearchOutcomeContext.CaptureSelected((CombatPredictionSimulator)node.Snapshot.Simulator,
-            player, _columns, _featureScratch, _prefixes);
+            player, _selection, _featureScratch);
         AddPolicyFeatures(node, Set);
         for (int i = 0; i < _predictionValues.Length; i++) _predictionValues[i] = (float)_featureScratch[i];
         long featuresDone = MeasurePerformance ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
+        long allocatedAfterFeatures = MeasurePerformance ? GC.GetAllocatedBytesForCurrentThread() : 0;
         double sum = 0;
         foreach (Tree tree in _forest) sum += tree.Predict(_predictionValues);
         double predicted = AddNeural(_predictionValues,
@@ -560,6 +563,8 @@ internal sealed partial class SearchOutcomeValueModel
         {
             _featureTicks += featuresDone - started;
             _forestTicks += System.Diagnostics.Stopwatch.GetTimestamp() - featuresDone;
+            _featureAllocatedBytes += allocatedAfterFeatures - allocatedBefore;
+            _forestAllocatedBytes += GC.GetAllocatedBytesForCurrentThread() - allocatedAfterFeatures;
         }
         if (_frozen)
         {
@@ -580,6 +585,7 @@ internal sealed partial class SearchOutcomeValueModel
         neuralUnits = _neural?.HiddenBias.Length ?? 0,
         featureMilliseconds = _featureTicks * 1000d / System.Diagnostics.Stopwatch.Frequency,
         forestMilliseconds = _forestTicks * 1000d / System.Diagnostics.Stopwatch.Frequency,
+        featureAllocatedBytes = _featureAllocatedBytes, forestAllocatedBytes = _forestAllocatedBytes,
         measured = MeasurePerformance,
     };
 

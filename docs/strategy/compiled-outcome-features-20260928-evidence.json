@@ -1,0 +1,3156 @@
+{
+  "schemaVersion": 1,
+  "experiment": "v73-compiled-outcome-features",
+  "sourceBase": "86f1f56",
+  "goalAchieved": false,
+  "runtimeModelEnabled": false,
+  "modelRetrained": false,
+  "protocol": {
+    "ids": [
+      "v72-validation-00-defect-shrinker_beetle_weak",
+      "v72-validation-05-ironclad-the_insatiable_boss",
+      "v72-validation-02-necrobinder-the_insatiable_boss",
+      "v72-validation-01-regent-knights_elite",
+      "v72-validation-01-silent-phrog_parasite_elite"
+    ],
+    "selection": "frozen before running: five roles, one ordinary, two elite, two boss including stable lost win; implementation comparison, not model quality selection",
+    "arms": {
+      "before": {
+        "mod": ".local/objective-search/v73/before/CombatSolver.dll",
+        "harness": ".local/objective-search/v71/engine/harness/OfflineSearchHarness.dll"
+      },
+      "after": {
+        "mod": ".local/objective-search/v73/engine/CombatSolver.dll",
+        "harness": ".local/objective-search/v73/engine/harness/OfflineSearchHarness.dll"
+      }
+    },
+    "model": ".local/objective-search/v71/full/fitted/model.json",
+    "hashes": {
+      ".local/objective-search/v73/before/CombatSolver.dll": "de02a8961ba68439004e5b0d3396eef85d158ccb7d2900ef965e9dbb6c9be2a0",
+      ".local/objective-search/v73/engine/CombatSolver.dll": "3b7897fe6eb083790303ad95544045beadbe82d764ad446f2d0c198732aa4f5d",
+      ".local/objective-search/v71/engine/harness/OfflineSearchHarness.dll": "8066ecc845c2e3fe65df02888a4e4ac3b079c41556f9d315b20bf2d20b70fe40",
+      ".local/objective-search/v73/engine/harness/OfflineSearchHarness.dll": "2b7a2e6fc252ae32eb35405f47a0d4b55fda720725da471cfbf0e2b0f924ad4c",
+      ".local/objective-search/v71/full/fitted/model.json": "bc5a08d66f7a743575eee9c8b04704c659e8ae0beec3467b30752068060366ff"
+    },
+    "order": "ABBA / BAAB, serial fresh process, no measurement flags",
+    "cpuAffinity": [
+      12,
+      13,
+      14,
+      15
+    ]
+  },
+  "summary": {
+    "completed": true,
+    "cases": 5,
+    "runs": 20,
+    "elapsedSeconds": 197.84110025991686,
+    "rows": [
+      {
+        "id": "v72-validation-00-defect-shrinker_beetle_weak",
+        "rootsIdentical": true,
+        "loadoutsVerified": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": true,
+        "before": {
+          "seconds": 2.2209259,
+          "rss": 253188096,
+          "allocated": 474706084,
+          "expanded": 556,
+          "transitions": 3731
+        },
+        "after": {
+          "seconds": 2.1588289,
+          "rss": 253118464,
+          "allocated": 420566636,
+          "expanded": 556,
+          "transitions": 3731
+        },
+        "timeRatio": 0.972040039696957,
+        "allocationRatio": 0.8859516449761786,
+        "rssRatio": 0.9997249791712166,
+        "timeBoundaries": {
+          "before-0": false,
+          "after-0": false,
+          "after-1": false,
+          "before-1": false
+        }
+      },
+      {
+        "id": "v72-validation-05-ironclad-the_insatiable_boss",
+        "rootsIdentical": true,
+        "loadoutsVerified": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": true,
+        "before": {
+          "seconds": 8.6622512,
+          "rss": 329687040,
+          "allocated": 3028328760,
+          "expanded": 12000,
+          "transitions": 45220
+        },
+        "after": {
+          "seconds": 8.30129955,
+          "rss": 321787904,
+          "allocated": 2029167668,
+          "expanded": 12000,
+          "transitions": 45220
+        },
+        "timeRatio": 0.958330503045213,
+        "allocationRatio": 0.6700618819206406,
+        "rssRatio": 0.976040501925705,
+        "timeBoundaries": {
+          "after-0": false,
+          "before-0": false,
+          "before-1": false,
+          "after-1": false
+        }
+      },
+      {
+        "id": "v72-validation-02-necrobinder-the_insatiable_boss",
+        "rootsIdentical": true,
+        "loadoutsVerified": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": true,
+        "before": {
+          "seconds": 9.719401,
+          "rss": 323393536,
+          "allocated": 3911977016,
+          "expanded": 14210,
+          "transitions": 52791
+        },
+        "after": {
+          "seconds": 9.08095425,
+          "rss": 325095424,
+          "allocated": 2745688388,
+          "expanded": 14210,
+          "transitions": 52791
+        },
+        "timeRatio": 0.9343121299347563,
+        "allocationRatio": 0.7018672085163397,
+        "rssRatio": 1.0052625912720778,
+        "timeBoundaries": {
+          "before-0": false,
+          "after-0": false,
+          "after-1": false,
+          "before-1": false
+        }
+      },
+      {
+        "id": "v72-validation-01-regent-knights_elite",
+        "rootsIdentical": true,
+        "loadoutsVerified": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": false,
+        "before": {
+          "seconds": 9.22780995,
+          "rss": 339970048,
+          "allocated": 3280894056,
+          "expanded": 6031.5,
+          "transitions": 33549.5
+        },
+        "after": {
+          "seconds": 8.8900087,
+          "rss": 333488128,
+          "allocated": 2113362584,
+          "expanded": 5743.5,
+          "transitions": 32250.5
+        },
+        "timeRatio": 0.9633931288322642,
+        "allocationRatio": 0.6441422819292645,
+        "rssRatio": 0.9809338497960856,
+        "timeBoundaries": {
+          "after-0": true,
+          "before-0": true,
+          "before-1": true,
+          "after-1": true
+        }
+      },
+      {
+        "id": "v72-validation-01-silent-phrog_parasite_elite",
+        "rootsIdentical": true,
+        "loadoutsVerified": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": false,
+        "before": {
+          "seconds": 9.74204095,
+          "rss": 375162880,
+          "allocated": 3360526940,
+          "expanded": 3937,
+          "transitions": 36283.5
+        },
+        "after": {
+          "seconds": 9.5638724,
+          "rss": 391475200,
+          "allocated": 2203156976,
+          "expanded": 3974,
+          "transitions": 36644
+        },
+        "timeRatio": 0.9817113733236771,
+        "allocationRatio": 0.6555986651307726,
+        "rssRatio": 1.0434806343314136,
+        "timeBoundaries": {
+          "before-0": true,
+          "after-0": true,
+          "after-1": true,
+          "before-1": true
+        }
+      }
+    ],
+    "allQualityIdentical": true,
+    "allRoutesIdentical": true,
+    "allWorkCountersIdentical": false,
+    "timeRatio": 0.9601372662769829,
+    "allocationRatio": 0.6766967373190859,
+    "rssRatio": 1.0021978021978022,
+    "fixedWorkCases": [
+      "v72-validation-00-defect-shrinker_beetle_weak",
+      "v72-validation-05-ironclad-the_insatiable_boss",
+      "v72-validation-02-necrobinder-the_insatiable_boss"
+    ],
+    "fixedWorkTimeRatio": 0.9484775451476144,
+    "means": {
+      "before": {
+        "seconds": 7.9144858,
+        "rss": 324280320,
+        "allocated": 2811286571.2
+      },
+      "after": {
+        "seconds": 7.59899276,
+        "rss": 324993024,
+        "allocated": 1902388450.4
+      }
+    }
+  },
+  "records": [
+    {
+      "id": "v72-validation-00-defect-shrinker_beetle_weak",
+      "run": "before-0",
+      "arm": "before",
+      "processSeconds": 4.106412263005041,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 2.2189888,
+      "rss": 253145088,
+      "allocated": 474715808,
+      "timeBoundary": false,
+      "expanded": 556,
+      "transitions": 3731,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 2,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 75,
+          "playerMaxHp": 75,
+          "cumulativePlayerHpLost": 0,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 75,
+          "playerBlock": 14,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 3,
+          "outstandingStolenResource": 0,
+          "turn": 2,
+          "shufflesCrossed": 0,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "DISCOVERY",
+              "method": "OnPlay",
+              "reason": "UnresolvedPlayerChoice",
+              "compensated": true,
+              "key": "DISCOVERY.OnPlay"
+            },
+            {
+              "sourceId": "ECHO_FORM",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "ECHO_FORM.OnPlay"
+            },
+            {
+              "sourceId": "SHRINK_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "SHRINK_POWER.AfterDeath"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-00-defect-shrinker_beetle_weak",
+      "run": "after-0",
+      "arm": "after",
+      "processSeconds": 4.10712812806014,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 2.1574485,
+      "rss": 253087744,
+      "allocated": 420570312,
+      "timeBoundary": false,
+      "expanded": 556,
+      "transitions": 3731,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 2,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 75,
+          "playerMaxHp": 75,
+          "cumulativePlayerHpLost": 0,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 75,
+          "playerBlock": 14,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 3,
+          "outstandingStolenResource": 0,
+          "turn": 2,
+          "shufflesCrossed": 0,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "DISCOVERY",
+              "method": "OnPlay",
+              "reason": "UnresolvedPlayerChoice",
+              "compensated": true,
+              "key": "DISCOVERY.OnPlay"
+            },
+            {
+              "sourceId": "ECHO_FORM",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "ECHO_FORM.OnPlay"
+            },
+            {
+              "sourceId": "SHRINK_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "SHRINK_POWER.AfterDeath"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-00-defect-shrinker_beetle_weak",
+      "run": "after-1",
+      "arm": "after",
+      "processSeconds": 4.107175151002593,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 2.1602093,
+      "rss": 253149184,
+      "allocated": 420562960,
+      "timeBoundary": false,
+      "expanded": 556,
+      "transitions": 3731,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 2,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 75,
+          "playerMaxHp": 75,
+          "cumulativePlayerHpLost": 0,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 75,
+          "playerBlock": 14,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 3,
+          "outstandingStolenResource": 0,
+          "turn": 2,
+          "shufflesCrossed": 0,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "DISCOVERY",
+              "method": "OnPlay",
+              "reason": "UnresolvedPlayerChoice",
+              "compensated": true,
+              "key": "DISCOVERY.OnPlay"
+            },
+            {
+              "sourceId": "ECHO_FORM",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "ECHO_FORM.OnPlay"
+            },
+            {
+              "sourceId": "SHRINK_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "SHRINK_POWER.AfterDeath"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-00-defect-shrinker_beetle_weak",
+      "run": "before-1",
+      "arm": "before",
+      "processSeconds": 4.206430713064037,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 2.222863,
+      "rss": 253231104,
+      "allocated": 474696360,
+      "timeBoundary": false,
+      "expanded": 556,
+      "transitions": 3731,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 2,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 75,
+          "playerMaxHp": 75,
+          "cumulativePlayerHpLost": 0,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 75,
+          "playerBlock": 14,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 3,
+          "outstandingStolenResource": 0,
+          "turn": 2,
+          "shufflesCrossed": 0,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "DISCOVERY",
+              "method": "OnPlay",
+              "reason": "UnresolvedPlayerChoice",
+              "compensated": true,
+              "key": "DISCOVERY.OnPlay"
+            },
+            {
+              "sourceId": "ECHO_FORM",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "ECHO_FORM.OnPlay"
+            },
+            {
+              "sourceId": "SHRINK_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "SHRINK_POWER.AfterDeath"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-05-ironclad-the_insatiable_boss",
+      "run": "after-0",
+      "arm": "after",
+      "processSeconds": 10.515315252006985,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 8.5268136,
+      "rss": 322056192,
+      "allocated": 2031013960,
+      "timeBoundary": false,
+      "expanded": 12000,
+      "transitions": 45220,
+      "quality": {
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 39,
+          "strategicHpDeficit": 37,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 226,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": true,
+          "allEnemiesDead": false,
+          "playerHp": 0,
+          "playerMaxHp": 80,
+          "cumulativePlayerHpLost": 39,
+          "recoveredPlayerHp": 13,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": -24,
+          "playerBlock": 0,
+          "enemyHp": 226,
+          "aliveEnemyCount": 1,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 0,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AGGRESSION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AGGRESSION.OnPlay"
+            },
+            {
+              "sourceId": "AUTOMATION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AUTOMATION.OnPlay"
+            },
+            {
+              "sourceId": "BASH",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "BASH.OnPlay"
+            },
+            {
+              "sourceId": "FORGOTTEN_RITUAL",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "FORGOTTEN_RITUAL.OnPlay"
+            },
+            {
+              "sourceId": "HELLRAISER",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "HELLRAISER.OnPlay"
+            },
+            {
+              "sourceId": "NOT_YET",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "NOT_YET.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-05-ironclad-the_insatiable_boss",
+      "run": "before-0",
+      "arm": "before",
+      "processSeconds": 10.615109279053286,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 8.5931535,
+      "rss": 332128256,
+      "allocated": 3027656736,
+      "timeBoundary": false,
+      "expanded": 12000,
+      "transitions": 45220,
+      "quality": {
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 39,
+          "strategicHpDeficit": 37,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 226,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": true,
+          "allEnemiesDead": false,
+          "playerHp": 0,
+          "playerMaxHp": 80,
+          "cumulativePlayerHpLost": 39,
+          "recoveredPlayerHp": 13,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": -24,
+          "playerBlock": 0,
+          "enemyHp": 226,
+          "aliveEnemyCount": 1,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 0,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AGGRESSION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AGGRESSION.OnPlay"
+            },
+            {
+              "sourceId": "AUTOMATION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AUTOMATION.OnPlay"
+            },
+            {
+              "sourceId": "BASH",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "BASH.OnPlay"
+            },
+            {
+              "sourceId": "FORGOTTEN_RITUAL",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "FORGOTTEN_RITUAL.OnPlay"
+            },
+            {
+              "sourceId": "HELLRAISER",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "HELLRAISER.OnPlay"
+            },
+            {
+              "sourceId": "NOT_YET",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "NOT_YET.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-05-ironclad-the_insatiable_boss",
+      "run": "before-1",
+      "arm": "before",
+      "processSeconds": 10.716852572048083,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 8.7313489,
+      "rss": 327245824,
+      "allocated": 3029000784,
+      "timeBoundary": false,
+      "expanded": 12000,
+      "transitions": 45220,
+      "quality": {
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 39,
+          "strategicHpDeficit": 37,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 226,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": true,
+          "allEnemiesDead": false,
+          "playerHp": 0,
+          "playerMaxHp": 80,
+          "cumulativePlayerHpLost": 39,
+          "recoveredPlayerHp": 13,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": -24,
+          "playerBlock": 0,
+          "enemyHp": 226,
+          "aliveEnemyCount": 1,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 0,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AGGRESSION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AGGRESSION.OnPlay"
+            },
+            {
+              "sourceId": "AUTOMATION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AUTOMATION.OnPlay"
+            },
+            {
+              "sourceId": "BASH",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "BASH.OnPlay"
+            },
+            {
+              "sourceId": "FORGOTTEN_RITUAL",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "FORGOTTEN_RITUAL.OnPlay"
+            },
+            {
+              "sourceId": "HELLRAISER",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "HELLRAISER.OnPlay"
+            },
+            {
+              "sourceId": "NOT_YET",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "NOT_YET.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-05-ironclad-the_insatiable_boss",
+      "run": "after-1",
+      "arm": "after",
+      "processSeconds": 10.015359955956228,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 8.0757855,
+      "rss": 321519616,
+      "allocated": 2027321376,
+      "timeBoundary": false,
+      "expanded": 12000,
+      "transitions": 45220,
+      "quality": {
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 39,
+          "strategicHpDeficit": 37,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 226,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": true,
+          "allEnemiesDead": false,
+          "playerHp": 0,
+          "playerMaxHp": 80,
+          "cumulativePlayerHpLost": 39,
+          "recoveredPlayerHp": 13,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": -24,
+          "playerBlock": 0,
+          "enemyHp": 226,
+          "aliveEnemyCount": 1,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 0,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AGGRESSION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AGGRESSION.OnPlay"
+            },
+            {
+              "sourceId": "AUTOMATION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AUTOMATION.OnPlay"
+            },
+            {
+              "sourceId": "BASH",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "BASH.OnPlay"
+            },
+            {
+              "sourceId": "FORGOTTEN_RITUAL",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "FORGOTTEN_RITUAL.OnPlay"
+            },
+            {
+              "sourceId": "HELLRAISER",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "HELLRAISER.OnPlay"
+            },
+            {
+              "sourceId": "NOT_YET",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "NOT_YET.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-02-necrobinder-the_insatiable_boss",
+      "run": "before-0",
+      "arm": "before",
+      "processSeconds": 12.218640045961365,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.5317242,
+      "rss": 327348224,
+      "allocated": 3905672400,
+      "timeBoundary": false,
+      "expanded": 14210,
+      "transitions": 52791,
+      "quality": {
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 253,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": true,
+          "allEnemiesDead": false,
+          "playerHp": 0,
+          "playerMaxHp": 66,
+          "cumulativePlayerHpLost": 24,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": -14,
+          "playerBlock": 4,
+          "enemyHp": 253,
+          "aliveEnemyCount": 1,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 1,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AUTOMATION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AUTOMATION.OnPlay"
+            },
+            {
+              "sourceId": "BODYGUARD",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "BODYGUARD.OnPlay"
+            },
+            {
+              "sourceId": "DEATHBRINGER",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "DEATHBRINGER.OnPlay"
+            },
+            {
+              "sourceId": "SLEIGHT_OF_FLESH",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "SLEIGHT_OF_FLESH.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-02-necrobinder-the_insatiable_boss",
+      "run": "after-0",
+      "arm": "after",
+      "processSeconds": 11.618352892925031,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 8.9568052,
+      "rss": 332423168,
+      "allocated": 2749494904,
+      "timeBoundary": false,
+      "expanded": 14210,
+      "transitions": 52791,
+      "quality": {
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 253,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": true,
+          "allEnemiesDead": false,
+          "playerHp": 0,
+          "playerMaxHp": 66,
+          "cumulativePlayerHpLost": 24,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": -14,
+          "playerBlock": 4,
+          "enemyHp": 253,
+          "aliveEnemyCount": 1,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 1,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AUTOMATION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AUTOMATION.OnPlay"
+            },
+            {
+              "sourceId": "BODYGUARD",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "BODYGUARD.OnPlay"
+            },
+            {
+              "sourceId": "DEATHBRINGER",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "DEATHBRINGER.OnPlay"
+            },
+            {
+              "sourceId": "SLEIGHT_OF_FLESH",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "SLEIGHT_OF_FLESH.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-02-necrobinder-the_insatiable_boss",
+      "run": "after-1",
+      "arm": "after",
+      "processSeconds": 11.916525262058713,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.2051033,
+      "rss": 317767680,
+      "allocated": 2741881872,
+      "timeBoundary": false,
+      "expanded": 14210,
+      "transitions": 52791,
+      "quality": {
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 253,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": true,
+          "allEnemiesDead": false,
+          "playerHp": 0,
+          "playerMaxHp": 66,
+          "cumulativePlayerHpLost": 24,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": -14,
+          "playerBlock": 4,
+          "enemyHp": 253,
+          "aliveEnemyCount": 1,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 1,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AUTOMATION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AUTOMATION.OnPlay"
+            },
+            {
+              "sourceId": "BODYGUARD",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "BODYGUARD.OnPlay"
+            },
+            {
+              "sourceId": "DEATHBRINGER",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "DEATHBRINGER.OnPlay"
+            },
+            {
+              "sourceId": "SLEIGHT_OF_FLESH",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "SLEIGHT_OF_FLESH.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-02-necrobinder-the_insatiable_boss",
+      "run": "before-1",
+      "arm": "before",
+      "processSeconds": 12.51871390209999,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.9070778,
+      "rss": 319438848,
+      "allocated": 3918281632,
+      "timeBoundary": false,
+      "expanded": 14210,
+      "transitions": 52791,
+      "quality": {
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 253,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": true,
+          "allEnemiesDead": false,
+          "playerHp": 0,
+          "playerMaxHp": 66,
+          "cumulativePlayerHpLost": 24,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": -14,
+          "playerBlock": 4,
+          "enemyHp": 253,
+          "aliveEnemyCount": 1,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 1,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AUTOMATION",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AUTOMATION.OnPlay"
+            },
+            {
+              "sourceId": "BODYGUARD",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "BODYGUARD.OnPlay"
+            },
+            {
+              "sourceId": "DEATHBRINGER",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "DEATHBRINGER.OnPlay"
+            },
+            {
+              "sourceId": "SLEIGHT_OF_FLESH",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "SLEIGHT_OF_FLESH.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-01-regent-knights_elite",
+      "run": "after-0",
+      "arm": "after",
+      "processSeconds": 11.01710534398444,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 8.9836476,
+      "rss": 325632000,
+      "allocated": 2072698928,
+      "timeBoundary": true,
+      "expanded": 5589,
+      "transitions": 31540,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 71,
+          "strategicHpDeficit": 71,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 4,
+          "playerMaxHp": 75,
+          "cumulativePlayerHpLost": 71,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 4,
+          "playerBlock": 0,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 1,
+          "stars": 0,
+          "handCount": 5,
+          "outstandingStolenResource": 0,
+          "turn": 6,
+          "shufflesCrossed": 0,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "BOMBARDMENT",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "BOMBARDMENT.OnPlay"
+            },
+            {
+              "sourceId": "DYING_STAR",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "DYING_STAR.OnPlay"
+            },
+            {
+              "sourceId": "FALLING_STAR",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "FALLING_STAR.OnPlay"
+            },
+            {
+              "sourceId": "FURNACE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "FURNACE.OnPlay"
+            },
+            {
+              "sourceId": "HEX_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "HEX_POWER.AfterDeath"
+            },
+            {
+              "sourceId": "SHINING_STRIKE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SHINING_STRIKE.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-01-regent-knights_elite",
+      "run": "before-0",
+      "arm": "before",
+      "processSeconds": 11.215447945985943,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.2094993,
+      "rss": 342532096,
+      "allocated": 3285394344,
+      "timeBoundary": true,
+      "expanded": 6049,
+      "transitions": 33629,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 71,
+          "strategicHpDeficit": 71,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 4,
+          "playerMaxHp": 75,
+          "cumulativePlayerHpLost": 71,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 4,
+          "playerBlock": 0,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 1,
+          "stars": 0,
+          "handCount": 5,
+          "outstandingStolenResource": 0,
+          "turn": 6,
+          "shufflesCrossed": 0,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "BOMBARDMENT",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "BOMBARDMENT.OnPlay"
+            },
+            {
+              "sourceId": "DYING_STAR",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "DYING_STAR.OnPlay"
+            },
+            {
+              "sourceId": "FALLING_STAR",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "FALLING_STAR.OnPlay"
+            },
+            {
+              "sourceId": "FURNACE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "FURNACE.OnPlay"
+            },
+            {
+              "sourceId": "HEX_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "HEX_POWER.AfterDeath"
+            },
+            {
+              "sourceId": "SHINING_STRIKE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SHINING_STRIKE.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-01-regent-knights_elite",
+      "run": "before-1",
+      "arm": "before",
+      "processSeconds": 11.216631078044884,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.2461206,
+      "rss": 337408000,
+      "allocated": 3276393768,
+      "timeBoundary": true,
+      "expanded": 6014,
+      "transitions": 33470,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 71,
+          "strategicHpDeficit": 71,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 4,
+          "playerMaxHp": 75,
+          "cumulativePlayerHpLost": 71,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 4,
+          "playerBlock": 0,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 1,
+          "stars": 0,
+          "handCount": 5,
+          "outstandingStolenResource": 0,
+          "turn": 6,
+          "shufflesCrossed": 0,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "BOMBARDMENT",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "BOMBARDMENT.OnPlay"
+            },
+            {
+              "sourceId": "DYING_STAR",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "DYING_STAR.OnPlay"
+            },
+            {
+              "sourceId": "FALLING_STAR",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "FALLING_STAR.OnPlay"
+            },
+            {
+              "sourceId": "FURNACE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "FURNACE.OnPlay"
+            },
+            {
+              "sourceId": "HEX_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "HEX_POWER.AfterDeath"
+            },
+            {
+              "sourceId": "SHINING_STRIKE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SHINING_STRIKE.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-01-regent-knights_elite",
+      "run": "after-1",
+      "arm": "after",
+      "processSeconds": 10.81563184200786,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 8.7963698,
+      "rss": 341344256,
+      "allocated": 2154026240,
+      "timeBoundary": true,
+      "expanded": 5898,
+      "transitions": 32961,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 71,
+          "strategicHpDeficit": 71,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 4,
+          "playerMaxHp": 75,
+          "cumulativePlayerHpLost": 71,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 4,
+          "playerBlock": 0,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 1,
+          "stars": 0,
+          "handCount": 5,
+          "outstandingStolenResource": 0,
+          "turn": 6,
+          "shufflesCrossed": 0,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "BOMBARDMENT",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "BOMBARDMENT.OnPlay"
+            },
+            {
+              "sourceId": "DYING_STAR",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "DYING_STAR.OnPlay"
+            },
+            {
+              "sourceId": "FALLING_STAR",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "FALLING_STAR.OnPlay"
+            },
+            {
+              "sourceId": "FURNACE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "FURNACE.OnPlay"
+            },
+            {
+              "sourceId": "HEX_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "HEX_POWER.AfterDeath"
+            },
+            {
+              "sourceId": "SHINING_STRIKE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SHINING_STRIKE.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-01-silent-phrog_parasite_elite",
+      "run": "before-0",
+      "arm": "before",
+      "processSeconds": 11.816445566015318,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.781559,
+      "rss": 380354560,
+      "allocated": 3355110696,
+      "timeBoundary": true,
+      "expanded": 3931,
+      "transitions": 36223,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 70,
+          "playerMaxHp": 70,
+          "cumulativePlayerHpLost": 0,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 70,
+          "playerBlock": 5,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 0,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AFTERIMAGE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AFTERIMAGE.OnPlay"
+            },
+            {
+              "sourceId": "BLADE_DANCE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "BLADE_DANCE.OnPlay"
+            },
+            {
+              "sourceId": "CORROSIVE_WAVE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "CORROSIVE_WAVE.OnPlay"
+            },
+            {
+              "sourceId": "ENVENOM",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "ENVENOM.OnPlay"
+            },
+            {
+              "sourceId": "INFESTED_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "INFESTED_POWER.AfterDeath"
+            },
+            {
+              "sourceId": "MALAISE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "MALAISE.OnPlay"
+            },
+            {
+              "sourceId": "NEUTRALIZE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "NEUTRALIZE.OnPlay"
+            },
+            {
+              "sourceId": "PHANTOM_BLADES",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "PHANTOM_BLADES.OnPlay"
+            },
+            {
+              "sourceId": "SHIV",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SHIV.OnPlay"
+            },
+            {
+              "sourceId": "SLICE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SLICE.OnPlay"
+            },
+            {
+              "sourceId": "SUCKER_PUNCH",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SUCKER_PUNCH.OnPlay"
+            },
+            {
+              "sourceId": "TOOLS_OF_THE_TRADE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "TOOLS_OF_THE_TRADE.OnPlay"
+            },
+            {
+              "sourceId": "TRACKING",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "TRACKING.OnPlay"
+            },
+            {
+              "sourceId": "UP_MY_SLEEVE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "UP_MY_SLEEVE.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-01-silent-phrog_parasite_elite",
+      "run": "after-0",
+      "arm": "after",
+      "processSeconds": 11.717400770052336,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.6470335,
+      "rss": 394256384,
+      "allocated": 2209853496,
+      "timeBoundary": true,
+      "expanded": 3982,
+      "transitions": 36754,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 70,
+          "playerMaxHp": 70,
+          "cumulativePlayerHpLost": 0,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 70,
+          "playerBlock": 5,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 0,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AFTERIMAGE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AFTERIMAGE.OnPlay"
+            },
+            {
+              "sourceId": "BLADE_DANCE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "BLADE_DANCE.OnPlay"
+            },
+            {
+              "sourceId": "CORROSIVE_WAVE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "CORROSIVE_WAVE.OnPlay"
+            },
+            {
+              "sourceId": "ENVENOM",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "ENVENOM.OnPlay"
+            },
+            {
+              "sourceId": "INFESTED_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "INFESTED_POWER.AfterDeath"
+            },
+            {
+              "sourceId": "MALAISE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "MALAISE.OnPlay"
+            },
+            {
+              "sourceId": "NEUTRALIZE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "NEUTRALIZE.OnPlay"
+            },
+            {
+              "sourceId": "PHANTOM_BLADES",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "PHANTOM_BLADES.OnPlay"
+            },
+            {
+              "sourceId": "SHIV",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SHIV.OnPlay"
+            },
+            {
+              "sourceId": "SLICE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SLICE.OnPlay"
+            },
+            {
+              "sourceId": "SUCKER_PUNCH",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SUCKER_PUNCH.OnPlay"
+            },
+            {
+              "sourceId": "TOOLS_OF_THE_TRADE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "TOOLS_OF_THE_TRADE.OnPlay"
+            },
+            {
+              "sourceId": "TRACKING",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "TRACKING.OnPlay"
+            },
+            {
+              "sourceId": "UP_MY_SLEEVE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "UP_MY_SLEEVE.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-01-silent-phrog_parasite_elite",
+      "run": "after-1",
+      "arm": "after",
+      "processSeconds": 11.616495996015146,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.4807113,
+      "rss": 388694016,
+      "allocated": 2196460456,
+      "timeBoundary": true,
+      "expanded": 3966,
+      "transitions": 36534,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 70,
+          "playerMaxHp": 70,
+          "cumulativePlayerHpLost": 0,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 70,
+          "playerBlock": 5,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 0,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AFTERIMAGE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AFTERIMAGE.OnPlay"
+            },
+            {
+              "sourceId": "BLADE_DANCE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "BLADE_DANCE.OnPlay"
+            },
+            {
+              "sourceId": "CORROSIVE_WAVE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "CORROSIVE_WAVE.OnPlay"
+            },
+            {
+              "sourceId": "ENVENOM",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "ENVENOM.OnPlay"
+            },
+            {
+              "sourceId": "INFESTED_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "INFESTED_POWER.AfterDeath"
+            },
+            {
+              "sourceId": "MALAISE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "MALAISE.OnPlay"
+            },
+            {
+              "sourceId": "NEUTRALIZE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "NEUTRALIZE.OnPlay"
+            },
+            {
+              "sourceId": "PHANTOM_BLADES",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "PHANTOM_BLADES.OnPlay"
+            },
+            {
+              "sourceId": "SHIV",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SHIV.OnPlay"
+            },
+            {
+              "sourceId": "SLICE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SLICE.OnPlay"
+            },
+            {
+              "sourceId": "SUCKER_PUNCH",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SUCKER_PUNCH.OnPlay"
+            },
+            {
+              "sourceId": "TOOLS_OF_THE_TRADE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "TOOLS_OF_THE_TRADE.OnPlay"
+            },
+            {
+              "sourceId": "TRACKING",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "TRACKING.OnPlay"
+            },
+            {
+              "sourceId": "UP_MY_SLEEVE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "UP_MY_SLEEVE.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    },
+    {
+      "id": "v72-validation-01-silent-phrog_parasite_elite",
+      "run": "before-1",
+      "arm": "before",
+      "processSeconds": 11.71655113401357,
+      "returnCode": 0,
+      "timedOut": false,
+      "seconds": 9.7025229,
+      "rss": 369971200,
+      "allocated": 3365943184,
+      "timeBoundary": true,
+      "expanded": 3943,
+      "transitions": 36344,
+      "quality": {
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "snapshot": {
+          "hasRisk": false,
+          "playerDead": false,
+          "allEnemiesDead": true,
+          "playerHp": 70,
+          "playerMaxHp": 70,
+          "cumulativePlayerHpLost": 0,
+          "recoveredPlayerHp": 0,
+          "deathSaveRelicHpRestored": 0,
+          "longTermResourceValue": 0,
+          "angerCopiesGenerated": 0,
+          "projectedPlayerHp": 70,
+          "playerBlock": 5,
+          "enemyHp": 0,
+          "aliveEnemyCount": 0,
+          "energy": 0,
+          "stars": 0,
+          "handCount": 0,
+          "outstandingStolenResource": 0,
+          "turn": 5,
+          "shufflesCrossed": 1,
+          "boundaryReason": "None",
+          "predictionGaps": [
+            {
+              "sourceId": "AFTERIMAGE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "AFTERIMAGE.OnPlay"
+            },
+            {
+              "sourceId": "BLADE_DANCE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "BLADE_DANCE.OnPlay"
+            },
+            {
+              "sourceId": "CORROSIVE_WAVE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "CORROSIVE_WAVE.OnPlay"
+            },
+            {
+              "sourceId": "ENVENOM",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "ENVENOM.OnPlay"
+            },
+            {
+              "sourceId": "INFESTED_POWER",
+              "method": "AfterDeath",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "INFESTED_POWER.AfterDeath"
+            },
+            {
+              "sourceId": "MALAISE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "MALAISE.OnPlay"
+            },
+            {
+              "sourceId": "NEUTRALIZE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "NEUTRALIZE.OnPlay"
+            },
+            {
+              "sourceId": "PHANTOM_BLADES",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "PHANTOM_BLADES.OnPlay"
+            },
+            {
+              "sourceId": "SHIV",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SHIV.OnPlay"
+            },
+            {
+              "sourceId": "SLICE",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SLICE.OnPlay"
+            },
+            {
+              "sourceId": "SUCKER_PUNCH",
+              "method": "OnPlay",
+              "reason": "MethodMirrorIncomplete",
+              "compensated": true,
+              "key": "SUCKER_PUNCH.OnPlay"
+            },
+            {
+              "sourceId": "TOOLS_OF_THE_TRADE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "TOOLS_OF_THE_TRADE.OnPlay"
+            },
+            {
+              "sourceId": "TRACKING",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "TRACKING.OnPlay"
+            },
+            {
+              "sourceId": "UP_MY_SLEEVE",
+              "method": "OnPlay",
+              "reason": "MethodNotMirrored",
+              "compensated": true,
+              "key": "UP_MY_SLEEVE.OnPlay"
+            }
+          ],
+          "deathSavePotionHpRestored": 0,
+          "deathSaveHpRestored": 0,
+          "deathSaveUseCount": 0,
+          "projectedDeathSaveUseCount": 0,
+          "unrecoveredGold": 0,
+          "unrecoveredCards": 0,
+          "relicCounters": {
+            "satisfiedMask": 0,
+            "targetMask": 0,
+            "hpCredit": 0,
+            "distance": 0,
+            "counterValues": 0,
+            "satisfiedPriority": 0,
+            "healingHpCredit": 0,
+            "targetMinimums": 0,
+            "targetMaximums": 0,
+            "satisfied": true,
+            "satisfiedCount": 0
+          },
+          "strategyGoalHpCredit": 0,
+          "strategicHpCredit": 0,
+          "strategyGoalCount": 0,
+          "growthHpCredit": 0,
+          "growthRewards": {
+            "handOfGreed": 0,
+            "theHunt": 0,
+            "feed": 0,
+            "royalties": 0,
+            "alchemize": 0,
+            "geneticAlgorithm": 0,
+            "theScythe": 0,
+            "goopy": 0,
+            "forbiddenGrimoire": 0,
+            "madScience": 0
+          }
+        },
+        "resultScope": "SearchCompletion",
+        "boundaryReason": "None"
+      }
+    }
+  ],
+  "profiling": {
+    "before": {
+      "schema": 10,
+      "predictionCalls": 124249,
+      "cacheHits": 91543,
+      "usedFeatures": 64,
+      "trees": 64,
+      "factorRank": 0,
+      "neuralUnits": 0,
+      "featureMilliseconds": 1232.667048,
+      "forestMilliseconds": 40.030253,
+      "featureAllocatedBytes": 1116520664,
+      "forestAllocatedBytes": 1336,
+      "measured": true
+    },
+    "after": {
+      "schema": 10,
+      "predictionCalls": 124249,
+      "cacheHits": 91543,
+      "usedFeatures": 64,
+      "trees": 64,
+      "factorRank": 0,
+      "neuralUnits": 0,
+      "featureMilliseconds": 652.621412,
+      "forestMilliseconds": 40.477139,
+      "featureAllocatedBytes": 118817624,
+      "forestAllocatedBytes": 1336,
+      "measured": true
+    }
+  },
+  "contextContracts": [
+    {
+      "role": "IRONCLAD",
+      "returnCode": 0,
+      "passed": 24,
+      "character": "IRONCLAD",
+      "counter": 8
+    },
+    {
+      "role": "DEFECT",
+      "returnCode": 0,
+      "passed": 24,
+      "character": "DEFECT",
+      "counter": 8
+    },
+    {
+      "role": "NECROBINDER",
+      "returnCode": 0,
+      "passed": 34,
+      "character": "NECROBINDER",
+      "counter": 8
+    },
+    {
+      "role": "REGENT",
+      "returnCode": 0,
+      "passed": 24,
+      "character": "REGENT",
+      "counter": 8
+    },
+    {
+      "role": "SILENT",
+      "returnCode": 0,
+      "passed": 24,
+      "character": "SILENT",
+      "counter": 8
+    }
+  ],
+  "rankingAssertionsPassed": 187,
+  "boundaryGates": {
+    "bash": "REFACTOR_BOUNDARIES_OK search_files=226",
+    "powershell": "REFACTOR_BOUNDARIES_OK search_files=226"
+  },
+  "sourceSha256": {
+    "src/Search/SearchOutcomeContext.cs": "5838c15bd0e57a79346cc2ad6ba9b2d15da1cffee2fca513f4093a0bc1c9eed0",
+    "src/Search/SearchOutcomeContext.Columns.cs": "fe86a9d1ca101dc1c1a79fed89d1dc26875076b9427b22a8e8ab872f01c70b57",
+    "src/Search/SearchOutcomeValueModel.cs": "7578176925207038f20cc5973df60aa905221fdda75c626b3d0f3c1084c6306e",
+    "tools/OfflineSearchHarness/OutcomeContextChecks.cs": "4afe33aee0d2804d290dc6363ce371794803480e9409d93ab547c8f9deac0283"
+  },
+  "limits": [
+    "Five development cases compare inference implementation with unchanged v71 weights, not general quality against the classic solver.",
+    "Two cases have time boundaries and different work totals despite identical selected routes.",
+    "RSS is 100ms sampled whole-process working set during search, not exact OS high-water mark or model-only memory.",
+    "Profiled run timing is diagnostic and excluded from normal paired results.",
+    "Known lost-win counterexample persists; no model promotion or final-test searches."
+  ],
+  "deployment": {
+    "completedUtc": "2026-09-28T03:41:27.162533+00:00",
+    "status": "copied",
+    "source": "v73 successful Release build; final behavioral source unchanged since build",
+    "target": "/home/ltlly/.local/share/Steam/steamapps/common/Slay the Spire 2/mods/CombatSolver",
+    "files": [
+      {
+        "source": "CombatSolver.json",
+        "target": "CombatSolver.json"
+      },
+      {
+        "source": ".local/objective-search/v73/engine/CombatSolver.dll",
+        "target": "CombatSolver.dll"
+      },
+      {
+        "source": "tools/CombatSolver.MemoryCleaner/bin/Release/net48/CombatSolver.MemoryCleaner.exe",
+        "target": "CombatSolver.MemoryCleaner.exe"
+      },
+      {
+        "source": "LICENSE",
+        "target": "LICENSE"
+      },
+      {
+        "source": "THIRD_PARTY_NOTICES.md",
+        "target": "THIRD_PARTY_NOTICES.md"
+      }
+    ],
+    "runtimeLearnedDefaultChanged": false,
+    "gameStarted": false
+  }
+}

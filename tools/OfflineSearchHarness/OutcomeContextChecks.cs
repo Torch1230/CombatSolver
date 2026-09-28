@@ -40,8 +40,7 @@ internal static class OutcomeContextChecks
         Check(Equal(before, SearchOutcomeContext.Capture(parent, player)), "resource modifiers stay in the child branch");
         Dictionary<string, int> resourceColumns = new() { ["resource/current-max-energy"] = 0, ["resource/current-hand-draw"] = 1 };
         double[] resourceValues = [double.NaN, double.NaN];
-        SearchOutcomeContext.CaptureSelected(resources, player, resourceColumns, resourceValues,
-            SearchOutcomeContext.RequiredPrefixes(resourceColumns.Keys));
+        SearchOutcomeContext.CaptureSelected(resources, player, resourceColumns, resourceValues);
         Check(resourceColumns.All(p => resourceValues[p.Value] == capacity[p.Key]),
             "resource-only selected projection matches full observations");
         var fork = parent.Fork();
@@ -103,16 +102,14 @@ internal static class OutcomeContextChecks
             string totalName = SearchOutcomeContext.EnemyPowerTotalPrefix + strength;
             Dictionary<string, int> totalColumn = new() { [totalName] = 0 };
             double[] totalValue = [double.NaN];
-            SearchOutcomeContext.CaptureSelected(petFork, player, totalColumn, totalValue,
-                SearchOutcomeContext.RequiredPrefixes(totalColumn.Keys));
+            SearchOutcomeContext.CaptureSelected(petFork, player, totalColumn, totalValue);
             Check(totalValue[0] == 4, "aggregate-only inference does not require a positional power column");
             Check(Equal(before, SearchOutcomeContext.Capture(parent, player)), "pet mutations do not change parent");
             var names = summoned.Keys.ToDictionary(name => name, _ => 0, StringComparer.Ordinal);
             int column = 0;
             foreach (string name in names.Keys.ToArray()) names[name] = column++;
             double[] values = new double[column];
-            SearchOutcomeContext.CaptureSelected(petFork, player, names, values,
-                SearchOutcomeContext.RequiredPrefixes(names.Keys));
+            SearchOutcomeContext.CaptureSelected(petFork, player, names, values);
             Check(names.All(p => values[p.Value] == summoned[p.Key]), "pet selected features match sparse capture");
             petBody.CurrentHp = 0;
             var deadPet = SearchOutcomeContext.Capture(petFork, player);
@@ -125,11 +122,31 @@ internal static class OutcomeContextChecks
             var selected = allNames.Where((_, i) => i % 3 == offset).Select((name, index) => (name, index))
                 .ToDictionary(p => p.name, p => p.index, StringComparer.Ordinal);
             double[] projected = new double[selected.Count];
-            SearchOutcomeContext.CaptureSelected(fork, player, selected, projected,
-                SearchOutcomeContext.RequiredPrefixes(selected.Keys));
+            var plan = new SearchOutcomeContext.Selection(selected);
+            // The plan owns names/indices only. Reuse across a changed child and
+            // its parent, with dirty scratch, to catch state or value retention.
+            SearchOutcomeContext.CaptureSelected(fork, player, plan, projected);
             Check(selected.All(p => projected[p.Value] == stunned.GetValueOrDefault(p.Key)),
                 "pruned feature program matches full context partition " + offset);
+            Array.Fill(projected, double.NaN);
+            SearchOutcomeContext.CaptureSelected(parent, player, plan, projected);
+            Check(selected.All(p => projected[p.Value] == before.GetValueOrDefault(p.Key)),
+                "compiled projection reuse preserves parent and clears absent child values " + offset);
         }
+        // Literal slashes are legal in external identities/variable names;
+        // path scopes must resolve them without interning or collisions.
+        var paths = new SearchOutcomeContext.Selection(new Dictionary<string, int>
+        {
+            ["pile/draw/card/MOD/CARD/var/custom/Δ"] = 0,
+            ["pile/draw/card/MOD/CARD/count"] = 1,
+            ["pile/draw/card/MOD/CARDINAL/count"] = 2,
+        });
+        var cardPaths = paths.Root.Find("pile/draw/card")!.Find("MOD/CARD")!;
+        Check(cardPaths.Find("var")!.Find("custom/Δ")!.Index == 0
+            && cardPaths.Find("count")!.Index == 1
+            && cardPaths.Find("missing") == null
+            && paths.Root.Find("pile/draw/card/MOD/CARDINAL/count")!.Index == 2,
+            "compiled feature paths preserve exact identity and slash-bearing names");
         File.WriteAllText(Path.Combine(output, "outcome-context-checks.json"),
             JsonSerializer.Serialize(new { passed = checks, character = player.Character.Id.Entry, counter = saved }));
 

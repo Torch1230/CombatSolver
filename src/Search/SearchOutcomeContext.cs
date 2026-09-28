@@ -7,7 +7,7 @@ namespace CombatSolver;
 
 // Observations, not utilities. No card/relic bonus or exchange rate is encoded.
 // Named sparse columns avoid merging unrelated identities into small hash buckets.
-internal static class SearchOutcomeContext
+internal static partial class SearchOutcomeContext
 {
     internal const string EnemyPowerTotalPrefix = "power/enemies/";
 
@@ -19,10 +19,15 @@ internal static class SearchOutcomeContext
     }
 
     internal static void CaptureSelected(CombatPredictionSimulator simulator, Player player,
-        IReadOnlyDictionary<string, int> columns, double[] values, IReadOnlySet<string>? prefixes = null)
+        IReadOnlyDictionary<string, int> columns, double[] values)
+        => CaptureSelected(simulator, player, new Selection(columns), values);
+
+    internal static void CaptureSelected(CombatPredictionSimulator simulator, Player player,
+        Selection selection, double[] values)
     {
+        if (values.Length < selection.RequiredLength) throw new ArgumentException("Feature buffer is too small.");
         Array.Clear(values);
-        Capture(new FeatureWriter(columns, values, prefixes), simulator, player);
+        Capture(new FeatureWriter(selection, values), simulator, player);
     }
 
     internal static HashSet<string> RequiredPrefixes(IEnumerable<string> names)
@@ -87,54 +92,63 @@ internal static class SearchOutcomeContext
             x["relic/POCKETWATCH/previous"] = previous;
             x["relic/POCKETWATCH/threshold"] = threshold;
         }
-        var piles = new[] { state.Hand.Cards, state.DrawPile.Cards, state.DiscardPile.Cards, state.ExhaustPile.Cards };
-        string[] zones = ["hand", "draw", "discard", "exhaust"];
-        for (int zone = 0; zone < piles.Length; zone++)
+        for (int zone = 0; zone < 4; zone++)
         {
-            string pile = "pile/" + zones[zone];
-            if (!x.WantsPrefix(pile + "/")) continue;
-            x[pile + "/count"] = piles[zone].Count;
-            for (int index = 0; index < piles[zone].Count; index++)
+            var pile = x.Scope(zone switch { 0 => "pile/hand", 1 => "pile/draw",
+                2 => "pile/discard", _ => "pile/exhaust" });
+            if (!pile.Needed) continue;
+            var cards = zone switch { 0 => state.Hand.Cards, 1 => state.DrawPile.Cards,
+                2 => state.DiscardPile.Cards, _ => state.ExhaustPile.Cards };
+            pile["count"] = cards.Count;
+            var identities = pile.Scope("card");
+            var types = pile.Scope("type");
+            var positions = pile.Scope("position");
+            for (int index = 0; index < cards.Count; index++)
             {
-                var card = piles[zone][index];
+                var card = cards[index];
                 var preview = card.Preview;
-                string id = pile + "/card/" + preview.Id.Entry;
-                string type = pile + "/type/" + preview.Type;
-                Add(id + "/count", 1);
-                Add(id + "/upgrades", preview.CurrentUpgradeLevel);
-                Add(type + "/count", 1);
+                var id = identities.Scope(preview.Id.Entry);
+                var type = types.Scope(Enum.GetName(preview.Type) ?? preview.Type.ToString());
+                id.Add("count", 1);
+                id.Add("upgrades", preview.CurrentUpgradeLevel);
+                type.Add("count", 1);
                 // Hand costs include branch-owned global and local cost modifiers.
                 if (zone == 0)
                 {
-                    if (x.Wants(id + "/energy") || x.Wants(type + "/energy"))
+                    if (id.Wants("energy") || type.Wants("energy"))
                     {
                         int energy = card.GetEnergyCostWithModifiers(simulator, state);
-                        Add(id + "/energy", energy); Add(type + "/energy", energy);
+                        id.Add("energy", energy); type.Add("energy", energy);
                     }
-                    if (x.Wants(id + "/stars") || x.Wants(type + "/stars"))
+                    if (id.Wants("stars") || type.Wants("stars"))
                     {
                         int stars = card.GetStarCostWithModifiers(simulator, state);
-                        Add(id + "/stars", stars); Add(type + "/stars", stars);
+                        id.Add("stars", stars); type.Add("stars", stars);
                     }
                 }
-                Add(type + "/x-cost", preview.EnergyCost.CostsX ? 1 : 0);
-                Add(type + "/exhaust-next", preview.ExhaustOnNextPlay ? 1 : 0);
-                Add(type + "/retain", preview.ShouldRetainThisTurn ? 1 : 0);
-                if (x.WantsPrefix(type + "/keyword/"))
-                    foreach (var keyword in preview.Keywords) Add(type + "/keyword/" + keyword, 1);
-                if (x.WantsPrefix(type + "/var/") || x.WantsPrefix(id + "/var/"))
+                type.Add("x-cost", preview.EnergyCost.CostsX ? 1 : 0);
+                type.Add("exhaust-next", preview.ExhaustOnNextPlay ? 1 : 0);
+                type.Add("retain", preview.ShouldRetainThisTurn ? 1 : 0);
+                var keywords = type.Scope("keyword");
+                if (keywords.Needed)
+                    foreach (var keyword in preview.Keywords)
+                        keywords.Add(Enum.GetName(keyword) ?? keyword.ToString(), 1);
+                var typeVars = type.Scope("var");
+                var idVars = id.Scope("var");
+                if (typeVars.Needed || idVars.Needed)
                     foreach (var (name, value) in preview.DynamicVars)
                         if (SemanticStateFieldPolicy.IsSemantic(preview, name, value))
                         {
-                            Add(type + "/var/" + name, (double)value.BaseValue);
-                            Add(id + "/var/" + name, (double)value.BaseValue);
+                            typeVars.Add(name, (double)value.BaseValue);
+                            idVars.Add(name, (double)value.BaseValue);
                         }
                 if (preview.Enchantment is { } enchantment)
-                    Add(id + "/enchantment/" + enchantment.Id.Entry, enchantment.Amount);
+                    id.Scope("enchantment").Add(enchantment.Id.Entry, enchantment.Amount);
                 if (preview.Affliction is { } affliction)
-                    Add(id + "/affliction/" + affliction.Id.Entry, affliction.Amount);
+                    id.Scope("affliction").Add(affliction.Id.Entry, affliction.Amount);
                 // Draw order is semantically meaningful; preserve the next hand's prefix.
-                if (zone == 1 && index < 10) Add($"{pile}/position/{index}/{preview.Id.Entry}", 1);
+                if (zone == 1 && index < 10 && positions.Needed)
+                    positions.Scope(index.ToString()).Add(preview.Id.Entry, 1);
             }
         }
         if (x.WantsPrefix("power/")) foreach (var power in combat.EffectivePowers())
@@ -194,9 +208,12 @@ internal static class SearchOutcomeContext
         private readonly IReadOnlyDictionary<string, int>? _columns;
         private readonly double[]? _values;
         private readonly IReadOnlySet<string>? _prefixes;
+        private readonly Selection? _selection;
         internal FeatureWriter(Dictionary<string, double> sparse) => _sparse = sparse;
-        internal FeatureWriter(IReadOnlyDictionary<string, int> columns, double[] values, IReadOnlySet<string>? prefixes)
-        { _columns = columns; _values = values; _prefixes = prefixes; }
+        internal FeatureWriter(Selection selection, double[] values)
+        { _selection = selection; _columns = selection.Columns; _values = values; _prefixes = selection.Prefixes; }
+        internal FeatureScope Scope(string path) => _sparse != null
+            ? new(_sparse, path + "/") : new(_selection!.Root.Find(path), _values!);
         internal bool Wants(string name) => _columns == null || _columns.ContainsKey(name);
         internal bool WantsPrefix(string prefix) => _prefixes == null || _prefixes.Contains(prefix);
         internal double this[string name]

@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [模型特征索引优化](strategy/compiled-outcome-features-20260928.md)：固定v71权重，五场20次路线一致，耗时降低4.0%、累计分配降低32.3%，RSS基本持平；质量门槛仍未通过。
+
 - [100场固定配对开发评测](strategy/paired-development-benchmark-20260928.md)：冻结v71，100场/400次完成；核心指标12改善/74一致/14退化，整体慢14.6%；55个普通战配置封存。
 - [结果与路线联合监督](strategy/joint-outcome-imitation-20260928.md)：共享物理根权重，两个验证目标改善；完整模型136秒，实战一改善两退化，未启用。
 

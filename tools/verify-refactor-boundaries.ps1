@@ -1754,7 +1754,7 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
     }
 }
 
-foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'SearchOutcomeValueModel.Neural.cs', 'SearchOutcomeValueModel.Imitation.cs', 'SearchOutcomeValueModel.JointTraining.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
+foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeContext.Columns.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'SearchOutcomeValueModel.Neural.cs', 'SearchOutcomeValueModel.Imitation.cs', 'SearchOutcomeValueModel.JointTraining.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
     foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.', 'xgboost')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
