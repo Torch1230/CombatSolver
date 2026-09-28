@@ -1,7 +1,7 @@
 {
   "experiment": "bounded-within-root-cross-turn-completion-calibration",
   "sourceBase": "d6f508c2",
-  "fullCandidateTrained": false,
+  "fullCandidateTrained": true,
   "finalTestOpened": false,
   "runtimeLearnedModelEnabled": false,
   "rankingContracts": 235,
@@ -166,5 +166,214 @@
     ".local/objective-search/v82/harness/OfflineSearchHarness.dll": "af68e1b638cb675a4799dc17b8805265f4f54db6d699cdc04d7d5fd23868340a",
     ".local/objective-search/v82/pilot-protocol.json": "c52070cd28b45c480d4e1589435eadea2e21d82e918634bbea7ada59e74f28c7",
     ".local/objective-search/v82/pilot-summary.json": "a1615ce178f08cea8c26590dd44e430de2dd65c9be15348ede47ae3c0eb0c673"
+  },
+  "fullTraining": {
+    "roots": 292,
+    "sampledRows": 213649,
+    "rows": 204217,
+    "pairs": 700214,
+    "crossTurnPairs": 293554,
+    "crossTurnWeight": 104.8333333333103,
+    "correctionPairs": 542,
+    "correctionWeight": 82.33333333333323,
+    "exportPeakWorkingSetBytes": 4347170816,
+    "fitPeakWorkingSetBytes": 2238046208,
+    "heads": [
+      {
+        "character": "DEFECT",
+        "roots": 60,
+        "sampledRows": 46259,
+        "participatingRoots": 60,
+        "rows": 44152,
+        "pairs": 154291,
+        "pairKinds": [
+          39104,
+          93020,
+          5319,
+          16848
+        ],
+        "crossTurnPairs": 60120,
+        "crossTurnWeight": 21.333333333325825,
+        "correctionPairs": 107,
+        "correctionWeight": 17.333333333333318
+      },
+      {
+        "character": "IRONCLAD",
+        "roots": 58,
+        "sampledRows": 42775,
+        "participatingRoots": 58,
+        "rows": 41309,
+        "pairs": 153710,
+        "pairKinds": [
+          44263,
+          90078,
+          3428,
+          15941
+        ],
+        "crossTurnPairs": 59392,
+        "crossTurnWeight": 20.66666666666383,
+        "correctionPairs": 121,
+        "correctionWeight": 16.666666666666636
+      },
+      {
+        "character": "NECROBINDER",
+        "roots": 57,
+        "sampledRows": 40527,
+        "participatingRoots": 57,
+        "rows": 38449,
+        "pairs": 128754,
+        "pairKinds": [
+          37716,
+          71481,
+          3483,
+          16074
+        ],
+        "crossTurnPairs": 57200,
+        "crossTurnWeight": 20.166666666662397,
+        "correctionPairs": 111,
+        "correctionWeight": 16.66666666666664
+      },
+      {
+        "character": "REGENT",
+        "roots": 58,
+        "sampledRows": 38388,
+        "participatingRoots": 58,
+        "rows": 36949,
+        "pairs": 129198,
+        "pairKinds": [
+          37616,
+          74223,
+          2084,
+          15275
+        ],
+        "crossTurnPairs": 58418,
+        "crossTurnWeight": 21.50000000000289,
+        "correctionPairs": 95,
+        "correctionWeight": 14.999999999999984
+      },
+      {
+        "character": "SILENT",
+        "roots": 59,
+        "sampledRows": 45700,
+        "participatingRoots": 59,
+        "rows": 43358,
+        "pairs": 134261,
+        "pairKinds": [
+          45604,
+          66075,
+          3428,
+          19154
+        ],
+        "crossTurnPairs": 58424,
+        "crossTurnWeight": 21.166666666655367,
+        "correctionPairs": 108,
+        "correctionWeight": 16.666666666666647
+      }
+    ],
+    "cost": {
+      "completeModelSeconds": 288.9111341020325,
+      "ancestorTrainingSeconds": 135.88075087300967,
+      "exportProcessSeconds": 131.09233400202356,
+      "fitProcessSeconds": 21.936553598963656,
+      "dataCollectionAccountedSeparately": true,
+      "completed": true
+    },
+    "parity": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "modelBytes": 1172097,
+    "modelSha256": "2b189d25ea35024a7a6bc8ef9b4284bf1b7b63ae30f6831f75a0dd7946098f83",
+    "metrics": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 44152,
+          "pairs": 154291,
+          "initialLoss": 29.837105990075695,
+          "finalLoss": 26.259768348996094,
+          "float32MaxPredictionDrift": 3.272700564771469e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.7515012110816315
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 41309,
+          "pairs": 153710,
+          "initialLoss": 30.482969895092406,
+          "finalLoss": 26.898479612821543,
+          "float32MaxPredictionDrift": 3.9220818930374435e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.183768293005414
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 38449,
+          "pairs": 128754,
+          "initialLoss": 28.911386511136485,
+          "finalLoss": 25.680720459274667,
+          "float32MaxPredictionDrift": 3.242793739310912e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.786821484914981
+        },
+        {
+          "character": "REGENT",
+          "rows": 36949,
+          "pairs": 129198,
+          "initialLoss": 29.930448000281302,
+          "finalLoss": 25.847807740507275,
+          "float32MaxPredictionDrift": 3.871626990559207e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.56050573498942
+        },
+        {
+          "character": "SILENT",
+          "rows": 43358,
+          "pairs": 134261,
+          "initialLoss": 29.87702501190564,
+          "finalLoss": 26.07792273594697,
+          "float32MaxPredictionDrift": 3.1012417238684975e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.264705950045027
+        }
+      ],
+      "seconds": 21.658749787020497,
+      "peakWorkingSetBytes": 2238046208
+    }
+  },
+  "fullDevelopmentEvaluation": {
+    "started": true,
+    "completed": false,
+    "plannedCases": 100,
+    "plannedSearches": 400,
+    "noQualityEarlyStop": true,
+    "protocol": ".local/objective-search/v82/benchmark-protocol.json",
+    "protocolSha256": "b81eaa069960ef01ac02052137b7fed82ab9e74308c06482737202be0bcfd447",
+    "engineSourceCommit": "ac2cf720",
+    "usesV83InferenceOptimization": false,
+    "finalTestOpened": false,
+    "runtimeModelEnabled": false
   }
 }
