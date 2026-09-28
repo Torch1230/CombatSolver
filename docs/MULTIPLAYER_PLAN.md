@@ -209,6 +209,10 @@ P5 旧预测的随机流说明：求解完成后、点击执行前，队友原�
 
 P4 四端 ENet 自动执行再补两个不同组合：默认搜索并行设置下，四端各自搜索并部署首回合本地动作、同步第二回合与全状态／九条 RNG 对账 Passed：`.local/multiplayer-p0/enet-4-8574f581756247b9afe12b3794bbcfce/peer-0/result.json` 至 `peer-3/result.json`。每端 DOP 1 且启用下回合自动继续时，四端第二回合均从新根搜索、部署，再同步第三回合全状态／RNG，Passed：`.local/multiplayer-p0/enet-4-eee65da42e15466291de1a0d3ecfe8b7/peer-0/result.json` 至 `peer-3/result.json`。这覆盖本机 ENet 四人两回合，不代表 Steam 邀请、异机延迟或未安装 Mod 的对端通过。
 
+P2 `DecimillipedeElite`：虚拟双人首回合三段敌人与全玩家状态差分首次发现 `CONSTRICT_MOVE` 的虚弱漏给队友，原版对所有目标玩家施加。修正后推进第二回合，三段 HP、能力、意图、玩家状态及九条 RNG 对账 Passed：`.local/multiplayer-p2/decimillipede-round-fixed-b5a8732d07ee4bb7a06e59d920a237ad/peer-0/result.json`。分段死亡、复活及重新附着未在该场景触发。
+
+P2 敌方能力施加缩放：四人虚拟根在同一场景分别从新 Fork 给敌人施加并移除 12 个原版 `ShouldScaleInMultiplayer` 能力，逐项原生／预测完整状态与 RNG 差分 Passed：`.local/multiplayer-p2/all-enemy-power-scaling-3eb5d0a936b342a08bd0970baa5e09fc/peer-0/result.json`。前 5 项已有旧证据，本轮新增 `Plow`、`Reattach`、`Flutter`、`Regen`、`Rampart`、`Shriek`、`HardenedShell` 的即时施加代表。其监听生命周期、怪物专属触发仍待验。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

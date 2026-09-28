@@ -453,6 +453,16 @@ internal sealed partial class UnattendedTestRunner
                 await VerifyScaledPowerAsync<SlipperyPower>();
                 await VerifyScaledPowerAsync<SkittishPower>();
                 await VerifyScaledPowerAsync<CurlUpPower>();
+                if (input.VerifyAllEnemyPowerScaling)
+                {
+                    await VerifyScaledPowerAsync<PlowPower>();
+                    await VerifyScaledPowerAsync<ReattachPower>();
+                    await VerifyScaledPowerAsync<FlutterPower>();
+                    await VerifyScaledPowerAsync<RegenPower>();
+                    await VerifyScaledPowerAsync<RampartPower>();
+                    await VerifyScaledPowerAsync<ShriekPower>();
+                    await VerifyScaledPowerAsync<HardenedShellPower>();
+                }
             }
             if (input.VerifySearch)
             {

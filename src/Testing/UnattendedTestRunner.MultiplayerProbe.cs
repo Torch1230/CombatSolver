@@ -32,6 +32,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyMonsterDeathAfterRound { get; init; }
         public bool VerifyHeistRecoveryAfterRound { get; init; }
         public bool VerifyEnemyPowerScaling { get; init; }
+        public bool VerifyAllEnemyPowerScaling { get; init; }
         public bool UseFirstEnemyForProbe { get; init; }
         public bool VerifySearch { get; init; }
         public bool VerifyControllerSearch { get; init; }
@@ -115,6 +116,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerMidDeploymentRng && !input.VerifyControllerDeploy
                 || input.VerifyControllerManualTakeover && !input.VerifyControllerDeploy
                 || input.VerifyControllerSearchCancel && input.VerifyControllerSearch
+                || input.VerifyAllEnemyPowerScaling && !input.VerifyEnemyPowerScaling
                 || input.VerifyControllerLifecycleReset && input.VerifyControllerSearch
                 || input.VerifyControllerStaleSearchCallback && input.VerifyControllerSearch
                 || input.VerifySecondRoundDifferential && (!input.VerifyRoundDifferential || !input.IsVirtual)

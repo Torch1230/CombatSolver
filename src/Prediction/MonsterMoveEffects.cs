@@ -913,7 +913,9 @@ internal static partial class MonsterMoveEffects
             case ("DecimillipedeSegmentBack", "CONSTRICT_MOVE"):
             case ("DecimillipedeSegmentFront", "CONSTRICT_MOVE"):
             case ("DecimillipedeSegmentMiddle", "CONSTRICT_MOVE"):
-                Debuff<WeakPower>(combat, player, 1, move.Owner);
+                foreach (var member in combat.Players)
+                    if (simulator.State.GetCreature(member.Creature).IsAlive)
+                        Debuff<WeakPower>(combat, member.Creature, 1, move.Owner);
                 return true;
             case ("DecimillipedeSegmentBack", "DEAD_MOVE"):
             case ("DecimillipedeSegmentFront", "DEAD_MOVE"):
