@@ -604,6 +604,32 @@ internal sealed partial class UnattendedTestRunner
                         player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 4 }));
                     await runner.MultiplayerProbeBarrierAsync("fourth-turn", combat);
                     CheckPrediction(thirdRoundPrediction, scenario.Player, "THIRD_END_TURN");
+                    if (input.VerifyFourthRoundDifferential)
+                    {
+                        Creature? giant = input.VerifyWaterfallSiphon
+                            ? combat.Enemies.Single(creature => creature.Monster is WaterfallGiant)
+                            : null;
+                        if (giant != null)
+                            await CreatureCmd.SetCurrentHp(giant, giant.CurrentHp - 40);
+                        int giantHpBefore = giant?.CurrentHp ?? 0;
+                        ContinuationStamp fourthRoundPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                        var fourthEnd = new EndPlayerTurnAction(scenario.Player, 4);
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(fourthEnd);
+                        await fourthEnd.CompletionTask;
+                        await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                            player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 5 }));
+                        await runner.MultiplayerProbeBarrierAsync("fifth-turn", combat);
+                        CheckPrediction(fourthRoundPrediction, scenario.Player, "FOURTH_END_TURN");
+                        if (giant != null)
+                        {
+                            int expectedHeal = ((WaterfallGiant)giant.Monster!).SiphonHeal * combat.Players.Count;
+                            if (giant.CurrentHp != giantHpBefore + expectedHeal)
+                                throw new InvalidOperationException("Waterfall Giant Siphon did not heal by player count.");
+                            runner._completedChecks.Add("MultiplayerContent:WaterfallSiphon:PlayerCountHealing:FullState:FullRng");
+                        }
+                        runner._completedChecks.Add("MultiplayerRoundDiff:FourthEnemyTurn:AllPlayers:FullRng");
+                        return new ExecutionOutcome(false, 5, true, true, true, false);
+                    }
                     runner._completedChecks.Add("MultiplayerRoundDiff:ThirdEnemyTurn:AllPlayers:FullRng");
                     return new ExecutionOutcome(false, 4, true, true, true, false);
                 }

@@ -130,6 +130,8 @@ P2 `GremlinMerc` 死亡能力转移：双人首轮各被偷 20 金币后，本�
 
 P2 胖地精死亡追回：第二张本地 `Strike` 后，房间原版奖励分别为两名被偷玩家各 20 金币，战斗预测的全状态与九条 RNG 仍对齐，Passed：`.local/multiplayer-p2/heist-recovery-c59c5d5a889143068996ab4b51bf28ca/peer-0/result.json`。原版房间奖励只做目标／金额断言，战后 UI 未验。
 
+P2 `WaterfallGiant` 群体虚弱与人数治疗：双人固定种子四个敌方回合，首次 `STOMP` 差分发现模拟漏给队友虚弱；修复后到第四回合完整状态／RNG Passed：`.local/multiplayer-p2/waterfall-giant-rounds-fixed-5354778cf43b427eb2324cb7fa11d66b/peer-0/result.json`。继续降低敌人 40 HP 后明确断言 `SIPHON` 按两人份治疗，到第五回合全状态／RNG Passed：`.local/multiplayer-p2/waterfall-siphon-explicit-e1c7efeb896f4076a1b2418f991a5a69/peer-0/result.json`。其他阶段未验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

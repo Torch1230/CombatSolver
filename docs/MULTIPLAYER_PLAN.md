@@ -199,6 +199,8 @@ P2 `GremlinMerc` 死亡转移：首轮偷窃后第二回合把怪物血量置 6�
 
 P2 随后本地玩家第二张 `Strike` 击杀胖地精，原版房间给两名被偷玩家各加入一份 20 金币追回奖励；预测的全部战斗状态与九条 RNG 仍逐字段一致，Passed：`.local/multiplayer-p2/heist-recovery-c59c5d5a889143068996ab4b51bf28ca/peer-0/result.json`。奖励由原版房间生成，求解器的战斗预测并不构造房间奖励；本项用原版奖励目标断言，不据此宣称战后领奖 UI 已验。
 
+P2 `WaterfallGiant` 四个敌方回合：双人虚拟根的 `PRESSURIZE`、`STOMP`、`RAM`、`SIPHON` 连续结算。首试在第三回合发现 `STOMP` 的虚弱只预测本地玩家，原版给两名目标玩家；按原版群体施加后到第四回合完整状态／RNG Passed：`.local/multiplayer-p2/waterfall-giant-rounds-fixed-5354778cf43b427eb2324cb7fa11d66b/peer-0/result.json`。再在 `SIPHON` 前将敌人血量降低 40，明确断言治疗量为 `SiphonHeal × 玩家数`，到第五回合全状态／RNG Passed：`.local/multiplayer-p2/waterfall-siphon-explicit-e1c7efeb896f4076a1b2418f991a5a69/peer-0/result.json`。这是双人该固定种子的四招证据，其他阶段和死亡路径未验。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

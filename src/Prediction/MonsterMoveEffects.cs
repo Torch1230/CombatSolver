@@ -875,7 +875,9 @@ internal static partial class MonsterMoveEffects
                 combat.Apply<SteamEruptionPower>(move.Owner, combat.GetMonsterStaticInt(move.Owner, "PressurizeAmount"), move.Owner);
                 return true;
             case ("WaterfallGiant", "STOMP_MOVE"):
-                Debuff<WeakPower>(combat, player, 1, move.Owner);
+                foreach (var member in combat.Players)
+                    if (simulator.State.GetCreature(member.Creature).IsAlive)
+                        Debuff<WeakPower>(combat, member.Creature, 1, move.Owner);
                 combat.Apply<SteamEruptionPower>(move.Owner, 3, move.Owner);
                 return true;
             case ("WaterfallGiant", "RAM_MOVE"):
