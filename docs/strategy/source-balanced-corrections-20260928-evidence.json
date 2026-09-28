@@ -95,7 +95,8 @@
     "Completed witnesses do not provide optimal action values or prove an unobserved prefix impossible.",
     "The former internal 100 validation roots are now training; final 55 remain sealed.",
     "Full development quality and performance results remain pending; no promotion based on fit loss.",
-    "Only REGENT uses one direct relic feature in its linear foundation; no head currently has a relic tree split. Broad relic/card synergy learning is not established."
+    "Only REGENT uses one direct relic feature in its linear foundation; no head currently has a relic tree split. Broad relic/card synergy learning is not established.",
+    "70.16% of queries occur before any action on the queried turn; 89.88% for turns 2–4. Multi-turn labels do not establish within-turn decision-depth coverage."
   ],
   "deployment": {
     "completed": true,
@@ -223,5 +224,68 @@
     },
     "float32AccumulationPairSignChanges": 2,
     "trainingLossIsNotQualityAcceptance": true
+  },
+  "correctionDepthAudit": {
+    "queries": 1595,
+    "actionsOnQueriedTurn": {
+      "0": 1119,
+      "1": 128,
+      "2": 210,
+      "3": 130,
+      "4": 8
+    },
+    "cardsOnQueriedTurn": {
+      "0": 1119,
+      "1": 128,
+      "2": 210,
+      "3": 130,
+      "4": 8
+    },
+    "byTurn": {
+      "1": {
+        "queries": 350,
+        "actions": {
+          "1": 8,
+          "2": 204,
+          "3": 130,
+          "4": 8
+        }
+      },
+      "2": {
+        "queries": 532,
+        "actions": {
+          "0": 416,
+          "1": 110,
+          "2": 6
+        }
+      },
+      "3": {
+        "queries": 531,
+        "actions": {
+          "0": 525,
+          "1": 6
+        }
+      },
+      "4": {
+        "queries": 182,
+        "actions": {
+          "0": 178,
+          "1": 4
+        }
+      }
+    },
+    "teacherBoundaries": {
+      "NodeLimit": 289,
+      "None": 1249,
+      "TimeLimit": 57
+    },
+    "meaning": "Recorded witness prefix metadata only; current-turn actions exclude previous turns and do not measure all eligible or unobserved competitions.",
+    "rawFile": ".local/objective-search/v76/correction-depth-audit.json"
+  },
+  "correctionRankingAudit": {
+    "state": "prepared; deferred until paired benchmark finishes",
+    "roots": 267,
+    "emptyRoots": 25,
+    "independentQualityEvidence": false
   }
 }
