@@ -59,7 +59,15 @@
 
 ## 普通内容的多人差异扫描
 
-本机 0.111.0 原版 Cards 目录定向扫描后，普通卡的实际调用点分为：`Stoke`、`Splash`、`Fasten`、`WhiteNoise`、`Metamorphosis`、`Quasar`、`Jackpot`、`JackOfAllTrades`、`ManifestAuthority`、`MadScience`、`InfernalBlade`、`BundleOfJoy`、`Distraction`、`Discovery`、`Abundance` 使用 `CardMultiplayerConstraint` 过滤战斗生成池；`Omnislice` 用受击敌人的存活队友二次分配伤害；`BeatDown`、`BouncingFlask` 消耗共享 `CombatTargets` 随机敌人流。原先搜索结果中的 `IAmInvincible`、`HowlFromBeyond`、`SovereignBlade`、`Soul`、`ThrummingHatchet`、`RocketPunch`、`Shiv`、`Bombardment`、`Bolas`、`ByrdonisEgg`、`FlakCannon` 仅因 `using ...Players` 命中，不构成额外多人分支；其普通效果仍受通用玩家所有权和目标规则约束。以上是源码分类，相关模拟入口和差分仍待 P2 核对。
+本机 0.111.0 原版 Cards 目录定向扫描后，普通卡的实际调用点分为：`Stoke`、`Splash`、`WhiteNoise`、`Metamorphosis`、`Quasar`、`Jackpot`、`JackOfAllTrades`、`ManifestAuthority`、`MadScience`、`InfernalBlade`、`BundleOfJoy`、`Distraction`、`Discovery`、`Abundance` 使用 `CardMultiplayerConstraint` 过滤战斗生成池；`Omnislice` 用受击敌人的存活队友二次分配伤害；`BeatDown`、`BouncingFlask` 消耗共享 `CombatTargets` 随机敌人流。原先搜索结果中的 `IAmInvincible`、`HowlFromBeyond`、`SovereignBlade`、`Soul`、`ThrummingHatchet`、`RocketPunch`、`Shiv`、`Bombardment`、`Bolas`、`ByrdonisEgg`、`FlakCannon` 仅因 `using ...Players` 命中，不构成额外多人分支；其普通效果仍受通用玩家所有权和目标规则约束。以上是源码分类，相关模拟入口和差分仍待 P2 核对。
+
+`Fasten` 的 `CardMultiplayerConstraint` 仅用于 `ExtraHoverTips` 选择展示哪张防御牌，`OnPlay` 只给出牌者施加 `FastenPower`；它不是战斗生成池分支。此项由原版 `Fasten.cs` 直接调用位置核对，未做本轮原生差分。
+
+普通生成池首批：`InfernalBlade`、`JackOfAllTrades`、`Metamorphosis` 在虚拟双人基础／升级各一次，逐张即时原生／模拟全状态及完整 RNG 差分 Passed：`.local/multiplayer-p2/ordinary-generation-base-0c7da3f98c164553b69268974a58fc30/peer-0/result.json`、`.local/multiplayer-p2/ordinary-generation-upgrade-caed2c83160540dbbe9d99fc15e0d7b6/peer-0/result.json`。三张牌分别覆盖角色攻击池免费本回合、无色池多张生成、角色攻击池随机插入抽牌堆；只证明这组输入实际抽到的生成结果，不覆盖全部可解锁池或后续打出生成牌。
+
+普通生成池第二批：`BundleOfJoy`、`Distraction`、`WhiteNoise` 在虚拟双人基础／升级逐张即时全状态及完整 RNG 差分 Passed：`.local/multiplayer-p2/ordinary-generation-hand-base-f0686a01182f4a6c94632392cab215a7/peer-0/result.json`、`.local/multiplayer-p2/ordinary-generation-hand-upgrade-8b164232336d4b52ba80637493c81fe0/peer-0/result.json`。本批覆盖无色多张入手、角色技能／能力随机入手及本回合免费；仍只对应这些输入实际生成的对象。
+
+普通生成池第三批：`Jackpot`、`ManifestAuthority` 在虚拟双人基础／升级逐张即时全状态及完整 RNG 差分 Passed：`.local/multiplayer-p2/ordinary-generation-attack-base-e550f1c902f648c89132e47b785f5618/peer-0/result.json`、`.local/multiplayer-p2/ordinary-generation-attack-upgrade-c8716d189491435b8d77890fe79188a9/peer-0/result.json`。覆盖攻击后生成零费角色牌及自身格挡后生成无色牌；后续使用生成牌与更多随机池结果未覆盖。
 
 药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。当前 `CombatBeamSolver.Expansion.Candidates.TargetsForPotion` 对 `AnyPlayer`／`Self` 只产生一个本地自用候选，模拟 `PotionOnUseSupport.Use` 将空目标解析为持有人，原版 `PotionModel.EnqueueManualUse` 也这样解析；生产多人门禁仍在；本地自用代表的原生证据见下文。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
 

@@ -147,6 +147,12 @@ P4 队友插入动作的首轮虚拟双人探针：本地求解后，队友原�
 
 队友动作使旧状态戳失效时，悬浮窗立即把路线数值标为待更新，隐藏旧摘要数值，执行按钮仍可进入重评估；在稳定新根重评估后再显示更新预览。虚拟双人原生 `Strike` 交错后，界面待更新标题和可用按钮断言、点击后的本地部署均 Passed：`.local/multiplayer-p5/stale-hint-f44cce3493a04f49b1908ed78dee8905/peer-0/result.json`。该证据为无头 UI 控件状态，未人工检查可见窗口；RNG 偏差专门提示尚未实现。
 
+普通内容的多人生成池开始按已盘点机制验收：`InfernalBlade`、`JackOfAllTrades`、`Metamorphosis` 的双人基础／升级即时全状态和完整 RNG 差分 Passed，具体输入与界限见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#普通内容的多人差异扫描)。其余普通生成、共享随机目标、怪物与遗物分支仍待逐项建模／差分。
+
+第二批普通生成池 `BundleOfJoy`、`Distraction`、`WhiteNoise` 的双人基础／升级即时全状态和完整 RNG 差分也 Passed，证据及限制见同一清单。复核原版发现清单把 `Fasten` 的悬停说明选牌错列为战斗生成分支，已从该类移除；它的 `OnPlay` 只给自身施加 Power，当前只是源码分类修正，未记为本轮差分通过。
+
+第三批普通生成池 `Jackpot`、`ManifestAuthority` 的双人基础／升级即时全状态和完整 RNG 差分 Passed，证据及限制见同一清单。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。
