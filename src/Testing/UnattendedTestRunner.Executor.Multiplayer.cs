@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
 using CombatSolver.Engine.Common;
@@ -195,6 +196,33 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
+            if (input.VerifySelfPotion)
+            {
+                PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, "STRENGTH_POTION");
+                int slot = actor.PotionSlots.ToList().IndexOf(potion);
+                if (slot < 0)
+                    throw new InvalidOperationException("Injected potion has no slot.");
+                CombatRootSnapshot potionRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator potionSimulator = potionRoot.ForkSimulator();
+                SimulatedCombatState potionCombat = (SimulatedCombatState)potionSimulator.State.CombatState;
+                int historyStart = potionSimulator.History.Entries.Count;
+                if (!PotionExecutionSupport.Prepare(potionSimulator, potionCombat, potion, slot, null)
+                    || !PotionExecutionSupport.Complete(potionSimulator, potionCombat, potion,
+                        null, null, historyStart, new HashSet<uint>())
+                    || !CombatBeamSolver.SettleReplayActionBoundary(potionSimulator, potionCombat))
+                    throw new InvalidOperationException("Self potion prediction did not complete.");
+                ContinuationStamp predictedPotion = ContinuationStamp.CapturePredicted(
+                    actor, potionSimulator, 1, potionRoot.Forecast, 1);
+                runner.SetStage("multiplayer_self_potion");
+                potion.EnqueueManualUse(null);
+                await runner.WaitForMultiplayerProbeAsync(() => actor.GetPotionAtSlotIndex(slot) == null);
+                await runner.MultiplayerProbeBarrierAsync("self-potion", combat);
+                ContinuationStamp actualPotion = ContinuationStamp.CaptureLive(combat);
+                if (predictedPotion != actualPotion)
+                    throw new InvalidOperationException(
+                        "Multiplayer self potion differs: " + predictedPotion.DescribeFirstDifference(actualPotion));
+                runner._completedChecks.Add("MultiplayerSelfPotion:OwnerOnly:FullState:FullRng");
+            }
             if (input.VerifySearch)
             {
                 CombatRootSnapshot searchRoot = CombatRootSnapshot.Capture(combat);

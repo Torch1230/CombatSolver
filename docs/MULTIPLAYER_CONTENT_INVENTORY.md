@@ -59,7 +59,9 @@
 
 本机 0.111.0 原版 Cards 目录定向扫描后，普通卡的实际调用点分为：`Stoke`、`Splash`、`Fasten`、`WhiteNoise`、`Metamorphosis`、`Quasar`、`Jackpot`、`JackOfAllTrades`、`ManifestAuthority`、`MadScience`、`InfernalBlade`、`BundleOfJoy`、`Distraction`、`Discovery`、`Abundance` 使用 `CardMultiplayerConstraint` 过滤战斗生成池；`Omnislice` 用受击敌人的存活队友二次分配伤害；`BeatDown`、`BouncingFlask` 消耗共享 `CombatTargets` 随机敌人流。原先搜索结果中的 `IAmInvincible`、`HowlFromBeyond`、`SovereignBlade`、`Soul`、`ThrummingHatchet`、`RocketPunch`、`Shiv`、`Bombardment`、`Bolas`、`ByrdonisEgg`、`FlakCannon` 仅因 `using ...Players` 命中，不构成额外多人分支；其普通效果仍受通用玩家所有权和目标规则约束。以上是源码分类，相关模拟入口和差分仍待 P2 核对。
 
-药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。当前 `CombatBeamSolver.Expansion.Candidates.TargetsForPotion` 对 `AnyPlayer`／`Self` 只产生一个本地自用候选，模拟 `PotionOnUseSupport.Use` 将空目标解析为持有人，原版 `PotionModel.EnqueueManualUse` 也这样解析；这是源码检查，生产多人门禁仍在，尚无原生多人用药证据。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
+药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。当前 `CombatBeamSolver.Expansion.Candidates.TargetsForPotion` 对 `AnyPlayer`／`Self` 只产生一个本地自用候选，模拟 `PotionOnUseSupport.Use` 将空目标解析为持有人，原版 `PotionModel.EnqueueManualUse` 也这样解析；生产多人门禁仍在；本地自用代表的原生证据见下文。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
+
+一瓶 `StrengthPotion` 已在虚拟双人完成本地持有者自用的原生／模拟全状态与 RNG 差分，证据 `.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。这只代表玩家目标自用入口；其余药水机制、生成池及正式执行仍待验。
 
 Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower` 和 `PlatingPower`；球目录有 `FrostOrb`。`DoomPower` 的 `GetTeammatesOf` 位于死亡特效等待，结算仍须按全阵营 Doom 生命周期验收；`ReattachPower` 的队友是蜈蚣怪物分段，按怪物死亡／复活验收。怪物目录的结算候选为 `ToughEgg`（卵孵化 HP 缩放）、`WaterfallGiant`／`KnowledgeDemon`（治疗随玩家数变化）、`TheObscura`／`Queen`（怪物同伴能力）、`KinPriest`／`Ovicopter`／`TwoTailedRat`／`LivingShield`／`Fabricator`（同伴存活与召唤条件）、`DecimillipedeSegment`（玩家数与分段 HP／复活）、`TestSubject`（重生 HP 缩放）、`GremlinMerc`（逐玩家创建目标型 `ThieveryPower`）。`Parafright`／`EyeWithTeeth` 的 `GetTeammatesOf` 命中动画死亡条件，不是战斗结算分支。这些实际调用条件与模拟入口仍须逐项验收。
 
