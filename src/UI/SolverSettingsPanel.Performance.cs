@@ -350,6 +350,29 @@ internal sealed partial class SolverSettingsPanel
            && _multiplayerTimeLimit.Text == SolverSettings.FormatSeconds(
                SolverSettings.Current.MultiplayerTimeLimitSeconds);
 
+    internal bool ExerciseMultiplayerInputsForTesting()
+    {
+        SolverSettingsData original = SolverSettings.Current;
+        try
+        {
+            _multiplayerTurnDepth.Text = "3";
+            _multiplayerTurnDepth.EmitSignal(LineEdit.SignalName.TextSubmitted, "3");
+            _multiplayerTimeLimit.Text = "4.5";
+            _multiplayerTimeLimit.EmitSignal(LineEdit.SignalName.TextSubmitted, "4.5");
+            if (SolverSettings.Current.MultiplayerTurnDepth != 3
+                || SolverSettings.Current.MultiplayerTimeLimitSeconds != 4.5d)
+                return false;
+            SolverSettings.Load();
+            return SolverSettings.Current.MultiplayerTurnDepth == 3
+                && SolverSettings.Current.MultiplayerTimeLimitSeconds == 4.5d;
+        }
+        finally
+        {
+            SolverSettings.Update(original);
+            Reload();
+        }
+    }
+
     internal bool NoGcControlsConfiguredForTesting
         => _performancePage.IsAncestorOf(_noGcRegionEnabled)
            && _performancePage.IsAncestorOf(_noGcRegionBudget)

@@ -232,7 +232,12 @@ internal sealed partial class UnattendedTestRunner
                     if (!dialog.ExerciseResponsiveBoundsForTesting())
                         throw new InvalidOperationException($"Upload dialog bounds failed: {target}");
                     if (english)
+                    {
                         AssertEnglishControls(harness);
+                        if (!settings.ExerciseMultiplayerInputsForTesting())
+                            throw new InvalidOperationException("Multiplayer depth/time UI edits were not persisted.");
+                        _completedChecks.Add("MultiplayerSettings:EditedDepthAndTime:Persisted:Restored");
+                    }
                     if (!settings.ExerciseUploadCompletionTransitionForTesting())
                         throw new InvalidOperationException($"Upload transitions failed: {target}");
                 }

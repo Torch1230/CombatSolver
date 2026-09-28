@@ -167,6 +167,8 @@ ENet 双端全自动首回合：房主与加入者分别从本地搜索并原生
 
 四人玩家目标药水候选复核：`StrengthPotion` 搜索只枚举持有人自用，原生自用后全状态／RNG 与模拟一致，随后 `Largesse` 仍给第 3 号队友生成牌，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。这是候选与原生动作代表，未证明生产执行器实际投药。
 
+P5 设置输入已在原生无头设置页实际提交多人深度 `3` 与时间 `4.5` 秒，重新读取持久化文件后值保持，测试结束恢复原设置；eng／zhs／zht 构造与 475 条英文目录占位符对账同次 Passed：`.local/multiplayer-p5/ui-settings-edit-509374eb84d540ea80d689f32873b416/result.json`。仍未人工检查可见窗口排版。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

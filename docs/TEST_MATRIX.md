@@ -98,6 +98,8 @@ P4 搜索期间队友变化：虚拟双人开始手动搜索后，队友原生 `
 
 P2 四人玩家目标药水自用候选：本地 `StrengthPotion` 搜索只产生一个无队友目标候选，原生自用即时全状态／RNG 对齐；之后 `Largesse` 给 3 号队友生成牌且牌主属于该队友，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。未验证生产执行器实际投药。
 
+P5 多人设置编辑／保存：原生无头设置页提交深度 `3`、时间 `4.5` 秒，再从设置文件重载并确认值保持，最后恢复原设置；同次三语言 UI 与 475 条英文目录占位符 Passed：`.local/multiplayer-p5/ui-settings-edit-509374eb84d540ea80d689f32873b416/result.json`。可见窗口布局未验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。
