@@ -260,3 +260,9 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 `python3 tools/OutcomeValuation/benchmark_report.py <protocol.json>` 生成 `summary.json` 和 `cases.csv`；终局比较复用宿主权威比较器，重复结果冲突、未验证、质量不下降子集速度与采样内存分别报告。完整口径见[100场配对评测](strategy/paired-development-benchmark-20260928.md)。
 
 联合导出输入可增加 `correctionInputs`（与原物理根顺序一致的查询文件/null数组）及 `balanceCorrectionSources: true`。每非空输入只接受至多六条查询，读取两侧相邻 `harness-result.json` 的完整live/continuation根戳核对；原结果/模仿抽样不挤占行额度，补查使用独立池。启用平衡后保证实际补查边进入4096对总额度，每根两种非空来源等分训练权重，根总权重仍为1；全失败无偏好时不占训练权重。导出每头的 `correctionPairs` 与 `correctionWeight`，供核对监督是否被抽样丢弃。见[来源平衡协议](strategy/source-balanced-corrections-20260928.md)。
+
+## 选中路线的状态诊断
+
+`--replay-selected-states` 必须显式配合 `--observe-ordering N --dop 1 --potion-policy Disabled`，不能用于训练采集。搜索完成后逐段重放至多96步选中路线，输出 `ordering-selected-states.json` 的前缀哈希、物理状态键及根不变证据；根准备选择明确拒绝。它不保留搜索祖先或改变搜索预算，但重放成本计入宿主进程，不能把该请求用作正常性能样本。重放状态仍须与真实搜索事件核对，不能代替真实准入/展开证明。
+
+显式关注状态的路径观察还记录新颖性入队、淘汰、取出和停止时待展开事件；`novelty` 字段复制真实操作已计算的等级、分数、队列长度和上限，不重算排名。待展开事件区分已生成但没有在预算内取出的路径。见[续局等待诊断](strategy/novelty-continuation-diagnosis-20260928.md)。

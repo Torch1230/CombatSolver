@@ -533,6 +533,8 @@ internal static class ModRuntime
         if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
             LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
         orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);
+        if (options.ReplaySelectedStates)
+            SelectedPathReplay.Write(root, names, damage, policy, result, options.OutputDirectory);
         if (outcomeCollector != null && outcomeModel != null)
             OutcomeCorrections.Run(root, names, damage, policy, options, loop, outcomeCollector);
         if (outcomeCollector != null)

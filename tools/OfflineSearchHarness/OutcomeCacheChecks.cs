@@ -88,12 +88,19 @@ internal static class OutcomeCacheChecks
         Require(HarnessOptions.Parse(["--search-mode", "Coordinator", "--dop", "1",
             "--potion-policy", "Disabled", "--observe-ordering", "4000"]).OrderingObservationLimit == 4000,
             "bounded serial coordinator observation is accepted");
+        Require(HarnessOptions.Parse(["--search-mode", "Coordinator", "--dop", "1",
+            "--potion-policy", "Disabled", "--observe-ordering", "1", "--replay-selected-states"]).ReplaySelectedStates,
+            "selected-route state replay is an explicit bounded diagnostic");
         foreach (string[] invalid in new[]
         {
             new[] { "--search-mode", "Coordinator", "--observe-ordering", "4000" },
             new[] { "--search-mode", "Coordinator", "--dop", "2", "--potion-policy", "Disabled", "--observe-ordering", "4000" },
             new[] { "--observe-ordering", "100001" },
             new[] { "--observe-ordering", "10", "--observe-ordering-states-only" },
+            new[] { "--replay-selected-states", "--dop", "1", "--potion-policy", "Disabled" },
+            new[] { "--replay-selected-states", "--dop", "2", "--potion-policy", "Disabled", "--observe-ordering", "1" },
+            new[] { "--replay-selected-states", "--dop", "1", "--observe-ordering", "1" },
+            new[] { "--replay-selected-states", "--dop", "1", "--potion-policy", "Disabled", "--observe-ordering", "1", "--collect-outcome-values" },
         })
         {
             bool rejected = false;

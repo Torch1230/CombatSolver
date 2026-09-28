@@ -277,7 +277,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 | `CombatBeamSolver.StandPatJobs.cs` | 对原保路规则必经的 EndTurn 探针批量求值，复用固定 lane、回传标量，缓存和选择仍由 coordinator 原序完成 |
 | `CombatBeamSolver.RetentionJobs.cs` | 剪枝只读索引作业；复用空闲固定 lane，按原索引收集输出，排空后统一记账并传播取消/错误 |
 | `ParallelExpansionWorkProfile.cs` | coordinator 所有的作业经过时间分布与 wave/等待/提交计时；不代表 CPU 时间 |
-| `CombatBeamSolver.PathDiagnostics.cs` | 可选路径/已完成终局观察的值复制与边界配对；分别记录生成、两类转置、实际展开、动作准入、完整保留及回合注释，不写搜索策略或账本 |
+| `CombatBeamSolver.PathDiagnostics.cs` | 可选路径/已完成终局观察的值复制与边界配对；分别记录生成、两类转置、实际展开、动作准入、完整保留、回合注释及新颖性入队/淘汰/取出/待展开；队列等级和分数只复制已算出的值，不写搜索策略或账本 |
 | `CombatBeamSolver.Retention.cs` | prune/retention 调用边界与相关小型辅助 |
 | `StrategicHpRecoveryBound.cs` | 主结果战损下界的无治疗来源证明与乐观回复量；未知来源保留完整缺血余量 |
 | `CombatBeamSolver.BeamRetentionPolicy.cs` | 保路主构造与字段、既有合同类型、RankFinal/RankBest协调、状态去重、多样性通道及路由分组；初始化顺序保持在此文件 |

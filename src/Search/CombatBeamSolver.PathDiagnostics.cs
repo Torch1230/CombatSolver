@@ -69,6 +69,17 @@ internal sealed partial class CombatBeamSolver
         observer.Observe(CaptureSearchPathObservation(node, stage, reason, boundaryId));
     }
 
+    private void ObserveNoveltyPath(SearchNode node, SearchPathObservationStage stage, string reason,
+        int? observedNovelty, int maximumWidth, int openCount, int maximumOpen, double? queuedScore = null)
+    {
+        SearchPathObserver? observer = policy.Diagnostics.PathObserver;
+        if (observer == null || !observer.WantsState(node.StateKey)) return;
+        // Values come from the actual admission/queue operation. Never evaluate
+        // novelty or model priority again merely to describe a decision.
+        observer.Observe(CaptureSearchPathObservation(node, stage, reason, 0) with
+        { Novelty = new(observedNovelty, maximumWidth, openCount, maximumOpen, queuedScore) });
+    }
+
     internal StrategicEffectVector CaptureStrategicEffectsForTesting()
     {
         SimulationSnapshot snapshot = Replay([]);

@@ -68,7 +68,14 @@ internal enum SearchPathObservationStage
     CardChoiceContinuationReplay,
     PotionChoiceContinuationReplay,
     ExecutionChoiceContinuationReplay,
+    NoveltyQueued,
+    NoveltyDropped,
+    NoveltyDequeued,
+    NoveltyPending,
 }
+
+internal sealed record SearchPathNoveltyDetails(int? ObservedNovelty, int MaximumWidth,
+    int OpenCount, int MaximumOpen, double? QueuedScore = null);
 
 internal readonly record struct SearchPathPolicyLabel(
     int PotionCount,
@@ -171,6 +178,8 @@ internal sealed record SearchPathObservation(
     IReadOnlyList<PlanCardChoice> RootTurnSetupChoices)
 {
     public SearchPathRetentionDetails? Retention { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public SearchPathNoveltyDetails? Novelty { get; init; }
 
     public int PotionCount => PolicyLabel.PotionCount;
     public int PotionStrategicCost => PolicyLabel.PotionStrategicCost;

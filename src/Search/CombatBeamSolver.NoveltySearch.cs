@@ -98,6 +98,8 @@ internal sealed partial class CombatBeamSolver
                 var (parent, escape) = open.Dequeue();
                 try
                 {
+                    ObserveNoveltyPath(parent, SearchPathObservationStage.NoveltyDequeued, "novelty_open_dequeued",
+                        null, options.Width, open.Count, options.MaxOpen);
                     if (parent.ActionCount >= options.MaxActions || parent.Turn >= _startTurnNumber + options.MaxTurns)
                     { _novelty.HorizonLeaves++; continue; }
                     if (!beforeParent(parent, open.Count, completed.Count))
@@ -161,7 +163,15 @@ internal sealed partial class CombatBeamSolver
         {
             foreach (SearchNode seed in initial) seed.Snapshot.ReleaseSimulator();
             initial.Clear();
-            foreach (var pending in open.Values) pending.Node.Snapshot.ReleaseSimulator();
+            foreach (var pending in open.Values)
+            {
+                try
+                {
+                    ObserveNoveltyPath(pending.Node, SearchPathObservationStage.NoveltyPending, _novelty.Stop,
+                        null, options.Width, open.Count, options.MaxOpen);
+                }
+                finally { pending.Node.Snapshot.ReleaseSimulator(); }
+            }
             open.Clear();
             foreach (SearchNode dropped in noveltyDropped) dropped.Snapshot.ReleaseSimulator();
             noveltyDropped.Clear();
@@ -183,6 +193,8 @@ internal sealed partial class CombatBeamSolver
                 {
                     _novelty.NonNovelPruned++;
                     noveltyDropped.Add(node);
+                    ObserveNoveltyPath(node, SearchPathObservationStage.NoveltyDropped, "non_novel_without_escape",
+                        w, options.Width, open.Count, options.MaxOpen);
                     return;
                 }
                 _novelty.FamiliarAdmitted++;
@@ -191,11 +203,19 @@ internal sealed partial class CombatBeamSolver
                 ? initialSeed || w <= options.Width ? new(options.FamiliarAllowance) : parentEscape
                 : null;
             var rank = ((double)w, -CandidateRankScore(node), sequence++);
-            if (open.Enqueue((node, escape), rank, out var evicted))
+            bool dropped = open.Enqueue((node, escape), rank, out var evicted);
+            if (dropped)
             {
                 _novelty.OpenDropped++;
                 noveltyDropped.Add(evicted.Node);
+                bool droppedSelf = ReferenceEquals(evicted.Node, node);
+                ObserveNoveltyPath(evicted.Node, SearchPathObservationStage.NoveltyDropped, "open_capacity",
+                    droppedSelf ? w : null, options.Width, open.Count, options.MaxOpen,
+                    droppedSelf ? -rank.Item2 : null);
             }
+            if (!dropped || !ReferenceEquals(evicted.Node, node))
+                ObserveNoveltyPath(node, SearchPathObservationStage.NoveltyQueued, "novelty_open_queued",
+                    w, options.Width, open.Count, options.MaxOpen, -rank.Item2);
             _novelty.PeakOpen = Math.Max(_novelty.PeakOpen, open.Count);
         }
     }

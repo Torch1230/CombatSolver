@@ -402,6 +402,7 @@ internal sealed record HarnessOptions
           --observe-ordering <N> 最多导出 N 个真实剪枝候选；仅供采集，不能用于性能数据
           --observe-ordering-states <p>  追加观察给定状态键的生成/准入/回合筛选事件
           --observe-ordering-states-only  只展开包含指定状态的保路池；仍记录池内竞争候选
+          --replay-selected-states  搜索后重放至多96步选中路线并导出状态；仅诊断、禁根准备选择
           --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
           --outcome-probes <n>  离线实验：0..16 个首动作续搜，共享请求额度，无训练
           --selective-outcome-probes  实验：完整基线、复用已有终局见证、选择性探测
@@ -473,6 +474,7 @@ internal sealed record HarnessOptions
     public int OrderingObservationLimit { get; init; }
     public string? OrderingWatchedStatesPath { get; init; }
     public bool OrderingWatchedStatesOnly { get; init; }
+    public bool ReplaySelectedStates { get; init; }
     public string Ordering { get; init; } = "baseline";
     public int OutcomeProbes { get; init; }
     public bool SelectiveOutcomeProbes { get; init; }
@@ -507,6 +509,7 @@ internal sealed record HarnessOptions
         int orderingObservationLimit = 0;
         string? orderingWatchedStatesPath = null;
         bool orderingWatchedStatesOnly = false;
+        bool replaySelectedStates = false;
         string ordering = "baseline";
         int outcomeProbes = 0;
         bool selectiveOutcomeProbes = false;
@@ -590,6 +593,7 @@ internal sealed record HarnessOptions
                 case "--observe-ordering": orderingObservationLimit = int.Parse(Value()); break;
                 case "--observe-ordering-states": orderingWatchedStatesPath = Path.GetFullPath(Value()); break;
                 case "--observe-ordering-states-only": orderingWatchedStatesOnly = true; break;
+                case "--replay-selected-states": replaySelectedStates = true; break;
                 case "--ordering": ordering = Value(); break;
                 case "--outcome-probes": outcomeProbes = int.Parse(Value()); break;
                 case "--selective-outcome-probes": selectiveOutcomeProbes = true; break;
@@ -655,6 +659,9 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--observe-ordering-states 需要有限的 --observe-ordering。");
         if (orderingWatchedStatesOnly && orderingWatchedStatesPath == null)
             throw new ArgumentException("--observe-ordering-states-only 需要显式状态列表。");
+        if (replaySelectedStates && (orderingObservationLimit == 0 || dop != 1
+                || potionPolicy != "Disabled" || collectOutcomeValues))
+            throw new ArgumentException("--replay-selected-states 需要有界排序观察、DOP1、Disabled药水且禁训练采集。");
         if (ordering is not ("baseline" or "base" or "band") || ordering != "baseline" && searchMode != "Evaluate")
             throw new ArgumentException("--ordering 只接受 baseline|base|band，非基线仅支持 Evaluate。");
         if (rankingModelPath != null && ordering != "baseline")
@@ -755,6 +762,7 @@ internal sealed record HarnessOptions
             OrderingObservationLimit = orderingObservationLimit,
             OrderingWatchedStatesPath = orderingWatchedStatesPath,
             OrderingWatchedStatesOnly = orderingWatchedStatesOnly,
+            ReplaySelectedStates = replaySelectedStates,
             Ordering = ordering,
             OutcomeProbes = outcomeProbes,
             SelectiveOutcomeProbes = selectiveOutcomeProbes,
