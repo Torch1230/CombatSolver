@@ -1075,6 +1075,13 @@ internal sealed partial class CombatBeamSolver
             yield return (-1, null);
     }
 
+    internal (int Index, uint? TargetCombatId)[] PotionTargetsForTesting(
+        PotionModel potion,
+        CombatPredictionSimulator simulator)
+        => TargetsForPotion(potion, simulator)
+            .Select(candidate => (candidate.Index, candidate.Target?.CombatId))
+            .ToArray();
+
     private static IReadOnlyList<PlanCardChoice>? ActionChoicesForReplay(PlanAction action)
     {
         List<PlanCardChoice> choices = [.. action.GetActionChoicesInExecutionOrder()];

@@ -629,6 +629,15 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Injected potion has no slot.");
                 CombatRootSnapshot potionRoot = CombatRootSnapshot.Capture(combat);
                 CombatPredictionSimulator potionSimulator = potionRoot.ForkSimulator();
+                SearchPolicySnapshot potionPolicy = SolverController.CaptureSearchPolicy(
+                    SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
+                CombatBeamSolver potionDriver = new(potionRoot, SolverDisplayNames.Capture(combat),
+                    BattleDamageTracker.Observe(combat), potionPolicy);
+                (int Index, uint? TargetCombatId)[] potionTargets = potionDriver.PotionTargetsForTesting(
+                    potion, potionSimulator);
+                if (potionTargets.Length != 1 || potionTargets[0] != (-1, null))
+                    throw new InvalidOperationException("Player-target potion generated a teammate-use candidate.");
+                runner._completedChecks.Add("MultiplayerSelfPotion:SearchCandidateSelfOnly");
                 SimulatedCombatState potionCombat = (SimulatedCombatState)potionSimulator.State.CombatState;
                 int historyStart = potionSimulator.History.Entries.Count;
                 if (!PotionExecutionSupport.Prepare(potionSimulator, potionCombat, potion, slot, null)

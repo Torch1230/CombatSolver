@@ -165,6 +165,8 @@ ENet 双端全自动首回合：房主与加入者分别从本地搜索并原生
 
 四人 ENet 全自动初次默认并行度请求与改为每端 DOP 1 的请求，四端均在原生建局根后未产出结果，均达到 120 秒并由启动器清理；不计通过。随后修复搜索完成时对同一本地回合队友变化一律丢弃结果的逻辑：在新根重放原当前回合动作，合法则发布更新预览并继续原路线，失效则暂停。虚拟双人搜索期间队友原生 `Strike` 后，原路线重评估、本地部署、无新增完整搜索 Passed：`.local/multiplayer-p4/search-time-drift-virtual2-344e51f9f444480483391e546f5a900f/peer-0/result.json`。在每端 DOP 1 的四人 ENet 复验中，四端本地搜索与部署、同步第二回合、完整状态／RNG 对账 Passed：`.local/multiplayer-p0/enet-4-f316f44de37240058975bc49cd2c9d2e/peer-0/result.json` 至 `peer-3/result.json`。首次四人超时的具体逐端状态未留完整运行日志，不能把它唯一归因为搜索时队友变化；当前证据也不代表默认 DOP 的四人全自动性能已通过。Linux 脚本与 Windows 参数同步，Linux 本轮未运行游戏。
 
+四人玩家目标药水候选复核：`StrengthPotion` 搜索只枚举持有人自用，原生自用后全状态／RNG 与模拟一致，随后 `Largesse` 仍给第 3 号队友生成牌，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。这是候选与原生动作代表，未证明生产执行器实际投药。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。
