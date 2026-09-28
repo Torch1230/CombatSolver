@@ -82,7 +82,9 @@
   "sourceHashes": {
     "tools/OutcomeValuation/context_gates.py": "a7d724d0a0e9d38d43f4c7946d6f002968c6e5dee2db7c8462c9a1206eae973c",
     "tools/OutcomeValuation/context_gate_fit.py": "63a1fd20049109ac428d134dcda68aa319a7401da93c99e169d6ec7a9d77da43",
-    "tools/OutcomeValuation/test_context_gates.py": "5b9d838d574662449f61247357cccc9f96278b27b06f767c2900ef870222c8ff"
+    "tools/OutcomeValuation/test_context_gates.py": "5b9d838d574662449f61247357cccc9f96278b27b06f767c2900ef870222c8ff",
+    "tools/OutcomeValuation/context_product_audit.py": "ecfe5eec4fe08de20f1ebee28bc1629596f46d0dcd4eb32b0a8d643a666a440d",
+    "tools/OutcomeValuation/test_context_product_audit.py": "c5aeff08079e8faf78255744666ce7f4bf9a27db771f66b4702281ef49fa79d3"
   },
   "csharpSyntheticParity": {
     "returnCode": 0,
@@ -267,5 +269,46 @@
     "2880 synthetic C# compiled-product predictions, max difference zero",
     "real 292-root model fit within complete-model budget",
     "1280 actual training-observation C# predictions, max difference zero"
-  ]
+  ],
+  "hessianFeasibilityAudit": {
+    "status": "synthetic-contracts-passed-real-audit-pending",
+    "scope": "Per-round necessary bounds on nonzero-child Hessian; passing does not establish split gain, independent support, selection, or battle quality.",
+    "syntheticContractsPassed": 6,
+    "contracts": {
+      "returnCode": 0,
+      "seconds": 0.2097113620257005,
+      "peakRssBytes": 77946880,
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "env",
+        "OPENBLAS_NUM_THREADS=1",
+        "OMP_NUM_THREADS=1",
+        ".local/objective-search/xgboost-env/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/OutcomeValuation",
+        "-p",
+        "test_context_product_audit.py",
+        "-v"
+      ],
+      "scope": "Six contracts after fixing native JSON scalar conversion in shared bound calculation; includes actual Hessian replay of 96 synthetic rows on CPU0. No real-data audit or combat.",
+      "stdout": "",
+      "stderr": "test_bad_hessian_or_observation_is_rejected (test_context_product_audit.ContextFeasibilityChecks.test_bad_hessian_or_observation_is_rejected) ... ok\ntest_bound_applies_to_every_descendant_subset_and_threshold (test_context_product_audit.ContextFeasibilityChecks.test_bound_applies_to_every_descendant_subset_and_threshold) ... ok\ntest_exact_cutoff_and_borderline_are_not_called_impossible (test_context_product_audit.ContextFeasibilityChecks.test_exact_cutoff_and_borderline_are_not_called_impossible) ... ok\ntest_positive_negative_and_zero_are_separate_bounds (test_context_product_audit.ContextFeasibilityChecks.test_positive_negative_and_zero_are_separate_bounds) ... ok\ntest_row_duplication_does_not_manufacture_hessian_mass (test_context_product_audit.ContextFeasibilityChecks.test_row_duplication_does_not_manufacture_hessian_mass) ... ok\ntest_saved_round_replay_matches_actual_training_hessian (test_context_product_audit.ContextFeasibilityChecks.test_saved_round_replay_matches_actual_training_hessian) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.019s\n\nOK\n"
+    },
+    "priorReplayContractFailure": "NumPy bool sums produced int64 JSON values; explicitly converted guard and bound flag to native scalars, then reran the six affected checks.",
+    "realAuditStarted": false,
+    "newRealTrainingRuns": 0,
+    "newCombatSearches": 0,
+    "finalTestOpened": false,
+    "mustWaitForEvaluationSessionReaped": 84952,
+    "hardLimitSeconds": 180,
+    "upstreamSources": [
+      "https://github.com/dmlc/xgboost/blob/v3.4.1/src/c_api/c_api.cc",
+      "https://github.com/dmlc/xgboost/blob/v3.4.1/include/xgboost/base.h"
+    ]
+  }
 }
