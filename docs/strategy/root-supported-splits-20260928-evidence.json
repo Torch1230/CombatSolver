@@ -1,7 +1,7 @@
 {
   "experiment": "root-supported-histogram-split-prototype",
   "sourceBase": "d6e2d443",
-  "stage": "complete-model-trained-full-development-running",
+  "stage": "full-development-complete-research-paused",
   "sourceHashes": {
     "tools/OutcomeValuation/root_histogram.py": "891f29ac1462422379c49b4c08d43b1bf14a5a57b42ade64a57d3f7e479aeeab",
     "tools/OutcomeValuation/root_histogram_fit.py": "aa670e7285bb70bcbc5dc5887e4beceee84f80875f4272e7cce43d63277db1d2",
@@ -44,7 +44,7 @@
     "owner": "Root",
     "mustFinishAndReapBeforeHeavyValidation": true
   },
-  "next": "Complete and reap all100/400 paired searches, then inspect quality/cost; do not enable runtime or open final test based on training loss.",
+  "next": "No further development, collection or training; experimental PR only, not recommended for merge.",
   "limits": {
     "maximumColumns": 256,
     "quantileCutsPerColumn": 32,
@@ -2053,7 +2053,7 @@
       }
     ],
     "productSplits": 55,
-    "fullDevelopmentCompleted": false,
+    "fullDevelopmentCompleted": true,
     "runtimeModelEnabled": false,
     "finalTestOpened": false,
     "sourceCommit": "ac201f43",
@@ -2062,9 +2062,410 @@
   },
   "sourceCommit": "ac201f43",
   "fullDevelopmentEvaluation": {
-    "stage": "running",
+    "stage": "completed-not-accepted",
     "plannedCases": 100,
     "plannedSearches": 400,
-    "source": ".local/objective-search/v86-root-histogram/evaluation/status.json"
-  }
+    "pipelineReaped": true,
+    "pipelineExitCode": 0,
+    "benchmarkProcessSeconds": 4889.034674148075,
+    "summary": {
+      "completed": true,
+      "casesFinished": 100,
+      "plannedCases": 100,
+      "counts": {
+        "equal": 55,
+        "improved": 22,
+        "regressed": 23
+      },
+      "coreCounts": {
+        "equal": 72,
+        "improved": 15,
+        "regressed": 13
+      },
+      "byCharacter": {
+        "DEFECT": {
+          "equal": 14,
+          "improved": 2,
+          "regressed": 4
+        },
+        "IRONCLAD": {
+          "equal": 7,
+          "regressed": 8,
+          "improved": 5
+        },
+        "NECROBINDER": {
+          "equal": 13,
+          "improved": 6,
+          "regressed": 1
+        },
+        "REGENT": {
+          "improved": 5,
+          "regressed": 6,
+          "equal": 9
+        },
+        "SILENT": {
+          "equal": 12,
+          "regressed": 4,
+          "improved": 4
+        }
+      },
+      "byKind": {
+        "Boss": {
+          "equal": 16,
+          "improved": 8,
+          "regressed": 6
+        },
+        "Elite": {
+          "improved": 9,
+          "regressed": 12,
+          "equal": 14
+        },
+        "Monster": {
+          "equal": 25,
+          "improved": 5,
+          "regressed": 5
+        }
+      },
+      "coreByCharacter": {
+        "DEFECT": {
+          "equal": 16,
+          "improved": 2,
+          "regressed": 2
+        },
+        "IRONCLAD": {
+          "equal": 10,
+          "regressed": 5,
+          "improved": 5
+        },
+        "NECROBINDER": {
+          "equal": 14,
+          "improved": 5,
+          "regressed": 1
+        },
+        "REGENT": {
+          "equal": 16,
+          "regressed": 2,
+          "improved": 2
+        },
+        "SILENT": {
+          "equal": 16,
+          "regressed": 3,
+          "improved": 1
+        }
+      },
+      "coreByKind": {
+        "Boss": {
+          "equal": 20,
+          "improved": 5,
+          "regressed": 5
+        },
+        "Elite": {
+          "improved": 7,
+          "regressed": 5,
+          "equal": 23
+        },
+        "Monster": {
+          "equal": 29,
+          "regressed": 3,
+          "improved": 3
+        }
+      },
+      "byCharacterCosts": {
+        "DEFECT": {
+          "cases": 20,
+          "faster": 2,
+          "atLeast10PercentFaster": 0,
+          "bothRepeatsFaster": 0,
+          "rssLower": 2,
+          "baselineSeconds": 159.2762802,
+          "candidateSeconds": 168.6617357,
+          "aggregateSecondsRatio": 1.0589256321670426,
+          "geometricMeanSecondsRatio": 1.0684058419354872,
+          "medianSecondsRatio": 1.0645225098214213,
+          "baselineMeanRssMiB": 298.9490234375,
+          "candidateMeanRssMiB": 308.4912109375,
+          "baselineMaximumObservedRssMiB": 352.21484375,
+          "candidateMaximumObservedRssMiB": 381.6796875,
+          "baselineMeanManagedHeapMiB": 78.41771602630615,
+          "candidateMeanManagedHeapMiB": 87.59360618591309,
+          "baselineMeanAllocatedGiB": 1.862139123864472,
+          "candidateMeanAllocatedGiB": 1.9031004041433335
+        },
+        "IRONCLAD": {
+          "cases": 20,
+          "faster": 3,
+          "atLeast10PercentFaster": 1,
+          "bothRepeatsFaster": 3,
+          "rssLower": 5,
+          "baselineSeconds": 174.73640655,
+          "candidateSeconds": 183.7536858,
+          "aggregateSecondsRatio": 1.0516050400030388,
+          "geometricMeanSecondsRatio": 1.015528070199946,
+          "medianSecondsRatio": 1.0701734455282892,
+          "baselineMeanRssMiB": 314.51962890625,
+          "candidateMeanRssMiB": 319.78212890625,
+          "baselineMaximumObservedRssMiB": 411.69140625,
+          "candidateMaximumObservedRssMiB": 388.26171875,
+          "baselineMeanManagedHeapMiB": 93.60809326171875,
+          "candidateMeanManagedHeapMiB": 98.56155471801758,
+          "baselineMeanAllocatedGiB": 2.0487198563292623,
+          "candidateMeanAllocatedGiB": 2.092495751939714
+        },
+        "NECROBINDER": {
+          "cases": 20,
+          "faster": 1,
+          "atLeast10PercentFaster": 0,
+          "bothRepeatsFaster": 1,
+          "rssLower": 2,
+          "baselineSeconds": 210.620369,
+          "candidateSeconds": 237.0922663,
+          "aggregateSecondsRatio": 1.125685361893939,
+          "geometricMeanSecondsRatio": 1.1534616622902456,
+          "medianSecondsRatio": 1.1265527818722259,
+          "baselineMeanRssMiB": 342.16767578125,
+          "candidateMeanRssMiB": 358.6943359375,
+          "baselineMaximumObservedRssMiB": 748.41796875,
+          "candidateMaximumObservedRssMiB": 816.9921875,
+          "baselineMeanManagedHeapMiB": 120.15400104522705,
+          "candidateMeanManagedHeapMiB": 134.9084030151367,
+          "baselineMeanAllocatedGiB": 2.425413567572832,
+          "candidateMeanAllocatedGiB": 2.6457077015191315
+        },
+        "REGENT": {
+          "cases": 20,
+          "faster": 3,
+          "atLeast10PercentFaster": 2,
+          "bothRepeatsFaster": 3,
+          "rssLower": 5,
+          "baselineSeconds": 235.9590266,
+          "candidateSeconds": 243.38795395,
+          "aggregateSecondsRatio": 1.0314839718447966,
+          "geometricMeanSecondsRatio": 1.1635605739543418,
+          "medianSecondsRatio": 1.0451566117877875,
+          "baselineMeanRssMiB": 345.5025390625,
+          "candidateMeanRssMiB": 352.88623046875,
+          "baselineMaximumObservedRssMiB": 639.7734375,
+          "candidateMaximumObservedRssMiB": 660.390625,
+          "baselineMeanManagedHeapMiB": 123.20745601654053,
+          "candidateMeanManagedHeapMiB": 129.08503398895263,
+          "baselineMeanAllocatedGiB": 2.87289030123502,
+          "candidateMeanAllocatedGiB": 2.7809599630534647
+        },
+        "SILENT": {
+          "cases": 20,
+          "faster": 4,
+          "atLeast10PercentFaster": 0,
+          "bothRepeatsFaster": 4,
+          "rssLower": 3,
+          "baselineSeconds": 189.3657143,
+          "candidateSeconds": 217.80170145,
+          "aggregateSecondsRatio": 1.1501643909253323,
+          "geometricMeanSecondsRatio": 1.2915492891474265,
+          "medianSecondsRatio": 1.1055867137393132,
+          "baselineMeanRssMiB": 328.8947265625,
+          "candidateMeanRssMiB": 354.99736328125,
+          "baselineMaximumObservedRssMiB": 521.97265625,
+          "candidateMaximumObservedRssMiB": 570.15625,
+          "baselineMeanManagedHeapMiB": 107.05875225067139,
+          "candidateMeanManagedHeapMiB": 130.97205696105956,
+          "baselineMeanAllocatedGiB": 2.1403423814103006,
+          "candidateMeanAllocatedGiB": 2.346864703297615
+        }
+      },
+      "unstableWithinArmCases": 0,
+      "coreUnstableWithinArmCases": 0,
+      "equalWinCases": 41,
+      "equalDefeatCases": 14,
+      "coreEqualWinCases": 58,
+      "coreEqualDefeatCases": 14,
+      "winLostCases": 1,
+      "winGainedCases": 1,
+      "allCompletedCosts": {
+        "cases": 100,
+        "faster": 13,
+        "atLeast10PercentFaster": 3,
+        "bothRepeatsFaster": 11,
+        "rssLower": 17,
+        "baselineSeconds": 969.95779665,
+        "candidateSeconds": 1050.6973432,
+        "aggregateSecondsRatio": 1.0832402675960282,
+        "geometricMeanSecondsRatio": 1.1346613625193296,
+        "medianSecondsRatio": 1.0826186708880132,
+        "baselineMeanRssMiB": 326.00671875,
+        "candidateMeanRssMiB": 338.97025390625,
+        "baselineMaximumObservedRssMiB": 748.41796875,
+        "candidateMaximumObservedRssMiB": 816.9921875,
+        "baselineMeanManagedHeapMiB": 104.48920372009277,
+        "candidateMeanManagedHeapMiB": 116.22413097381592,
+        "baselineMeanAllocatedGiB": 2.2699010460823774,
+        "candidateMeanAllocatedGiB": 2.3538257047906517
+      },
+      "nondegradingCosts": {
+        "cases": 77,
+        "faster": 9,
+        "atLeast10PercentFaster": 3,
+        "bothRepeatsFaster": 7,
+        "rssLower": 15,
+        "baselineSeconds": 692.00950345,
+        "candidateSeconds": 744.17217255,
+        "aggregateSecondsRatio": 1.0753785444274162,
+        "geometricMeanSecondsRatio": 1.1167360181003703,
+        "medianSecondsRatio": 1.0763536402610583,
+        "baselineMeanRssMiB": 319.4220779220779,
+        "candidateMeanRssMiB": 329.81582284902595,
+        "baselineMaximumObservedRssMiB": 748.41796875,
+        "candidateMaximumObservedRssMiB": 816.9921875,
+        "baselineMeanManagedHeapMiB": 98.77950004478554,
+        "candidateMeanManagedHeapMiB": 108.31271862674069,
+        "baselineMeanAllocatedGiB": 2.1174844322943844,
+        "candidateMeanAllocatedGiB": 2.1706079010452544
+      },
+      "stableNondegradingCosts": {
+        "cases": 77,
+        "faster": 9,
+        "atLeast10PercentFaster": 3,
+        "bothRepeatsFaster": 7,
+        "rssLower": 15,
+        "baselineSeconds": 692.00950345,
+        "candidateSeconds": 744.17217255,
+        "aggregateSecondsRatio": 1.0753785444274162,
+        "geometricMeanSecondsRatio": 1.1167360181003703,
+        "medianSecondsRatio": 1.0763536402610583,
+        "baselineMeanRssMiB": 319.4220779220779,
+        "candidateMeanRssMiB": 329.81582284902595,
+        "baselineMaximumObservedRssMiB": 748.41796875,
+        "candidateMaximumObservedRssMiB": 816.9921875,
+        "baselineMeanManagedHeapMiB": 98.77950004478554,
+        "candidateMeanManagedHeapMiB": 108.31271862674069,
+        "baselineMeanAllocatedGiB": 2.1174844322943844,
+        "candidateMeanAllocatedGiB": 2.1706079010452544
+      },
+      "coreNondegradingCosts": {
+        "cases": 87,
+        "faster": 10,
+        "atLeast10PercentFaster": 3,
+        "bothRepeatsFaster": 8,
+        "rssLower": 15,
+        "baselineSeconds": 824.7300197,
+        "candidateSeconds": 889.56078855,
+        "aggregateSecondsRatio": 1.0786084746540239,
+        "geometricMeanSecondsRatio": 1.136981099568878,
+        "medianSecondsRatio": 1.0767106295813658,
+        "baselineMeanRssMiB": 323.46430495689657,
+        "candidateMeanRssMiB": 335.26519845545977,
+        "baselineMaximumObservedRssMiB": 748.41796875,
+        "candidateMaximumObservedRssMiB": 816.9921875,
+        "baselineMeanManagedHeapMiB": 102.52205833347364,
+        "candidateMeanManagedHeapMiB": 113.19748350121509,
+        "baselineMeanAllocatedGiB": 2.2372473086091293,
+        "candidateMeanAllocatedGiB": 2.299161186163453
+      },
+      "coreStableNondegradingCosts": {
+        "cases": 87,
+        "faster": 10,
+        "atLeast10PercentFaster": 3,
+        "bothRepeatsFaster": 8,
+        "rssLower": 15,
+        "baselineSeconds": 824.7300197,
+        "candidateSeconds": 889.56078855,
+        "aggregateSecondsRatio": 1.0786084746540239,
+        "geometricMeanSecondsRatio": 1.136981099568878,
+        "medianSecondsRatio": 1.0767106295813658,
+        "baselineMeanRssMiB": 323.46430495689657,
+        "candidateMeanRssMiB": 335.26519845545977,
+        "baselineMaximumObservedRssMiB": 748.41796875,
+        "candidateMaximumObservedRssMiB": 816.9921875,
+        "baselineMeanManagedHeapMiB": 102.52205833347364,
+        "candidateMeanManagedHeapMiB": 113.19748350121509,
+        "baselineMeanAllocatedGiB": 2.2372473086091293,
+        "candidateMeanAllocatedGiB": 2.299161186163453
+      },
+      "stableNondegradingWinCosts": {
+        "cases": 62,
+        "faster": 9,
+        "atLeast10PercentFaster": 3,
+        "bothRepeatsFaster": 7,
+        "rssLower": 14,
+        "baselineSeconds": 520.9321893,
+        "candidateSeconds": 559.44361325,
+        "aggregateSecondsRatio": 1.073927902212665,
+        "geometricMeanSecondsRatio": 1.1258877739301578,
+        "medianSecondsRatio": 1.0723619137655729,
+        "baselineMeanRssMiB": 309.65492691532256,
+        "candidateMeanRssMiB": 319.02573714717744,
+        "baselineMaximumObservedRssMiB": 564.86328125,
+        "candidateMaximumObservedRssMiB": 570.15625,
+        "baselineMeanManagedHeapMiB": 90.42457660551995,
+        "candidateMeanManagedHeapMiB": 99.03776968679121,
+        "baselineMeanAllocatedGiB": 1.9395317094580782,
+        "candidateMeanAllocatedGiB": 1.9829729210825697
+      },
+      "coreStableNondegradingWinCosts": {
+        "cases": 72,
+        "faster": 10,
+        "atLeast10PercentFaster": 3,
+        "bothRepeatsFaster": 8,
+        "rssLower": 14,
+        "baselineSeconds": 653.65270555,
+        "candidateSeconds": 704.83222925,
+        "aggregateSecondsRatio": 1.0782977309899395,
+        "geometricMeanSecondsRatio": 1.1492938667802997,
+        "medianSecondsRatio": 1.0748354866443204,
+        "baselineMeanRssMiB": 315.8958333333333,
+        "candidateMeanRssMiB": 327.10902235243054,
+        "baselineMaximumObservedRssMiB": 639.7734375,
+        "candidateMaximumObservedRssMiB": 660.390625,
+        "baselineMeanManagedHeapMiB": 96.10724057091608,
+        "candidateMeanManagedHeapMiB": 106.2283812628852,
+        "baselineMeanAllocatedGiB": 2.108960840954549,
+        "candidateMeanAllocatedGiB": 2.164368554484099
+      },
+      "coreUncertainty": {
+        "families": 15,
+        "available": true,
+        "replicates": 2000,
+        "description": "Descriptive percentile intervals resampling encounter families; synthetic development set, not population confidence guarantees",
+        "percentile95": {
+          "improvedFraction": [
+            0.09,
+            0.21212121212121213
+          ],
+          "regressedFraction": [
+            0.06930693069306931,
+            0.1919191919191919
+          ],
+          "nondegradingGeometricMeanSecondsRatio": [
+            1.0545911265172883,
+            1.2349703733786455
+          ]
+        }
+      },
+      "uncertainty": {
+        "families": 15,
+        "available": true,
+        "replicates": 2000,
+        "description": "Descriptive percentile intervals resampling encounter families; synthetic development set, not population confidence guarantees",
+        "percentile95": {
+          "improvedFraction": [
+            0.14285714285714285,
+            0.3
+          ],
+          "regressedFraction": [
+            0.15151515151515152,
+            0.3069306930693069
+          ],
+          "nondegradingGeometricMeanSecondsRatio": [
+            1.0407494232138166,
+            1.2134304126238662
+          ]
+        }
+      },
+      "finalTestOpened": false,
+      "modelSha256": "0124f2f0d4a164c4c258d3e40a8448a4454fc876b44c1b20138ad41356d8ed13"
+    },
+    "publicRows": "outcome-research-closeout-20260929-evidence.json",
+    "source": ".local/objective-search/v86-root-histogram/evaluation/summary.json"
+  },
+  "researchStoppedAtUserRequest": true,
+  "goalAchieved": false
 }
