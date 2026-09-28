@@ -85,7 +85,7 @@
     "ancestorTrainingSeconds": 135.88075087300967,
     "validationCases": 100,
     "plannedPairedRequests": 400,
-    "stateAtReport": "trained with numerical parity; complete 100-case/400-request paired development benchmark running",
+    "stateAtReport": "complete 100-case/400-request paired development benchmark finished; candidate rejected for default promotion",
     "fitterMaximumSeconds": 1200
   },
   "rawDirectory": ".local/objective-search/v76/",
@@ -94,9 +94,10 @@
     "Equal source mass is a predeclared training hypothesis, not teacher confidence.",
     "Completed witnesses do not provide optimal action values or prove an unobserved prefix impossible.",
     "The former internal 100 validation roots are now training; final 55 remain sealed.",
-    "Full development quality and performance results remain pending; no promotion based on fit loss.",
     "Only REGENT uses one direct relic feature in its linear foundation; no head currently has a relic tree split. Broad relic/card synergy learning is not established.",
-    "70.16% of queries occur before any action on the queried turn; 89.88% for turns 2–4. Multi-turn labels do not establish within-turn decision-depth coverage."
+    "70.16% of queries occur before any action on the queried turn; 89.88% for turns 2–4. Multi-turn labels do not establish within-turn decision-depth coverage.",
+    "The complete candidate still has 13 core regressions, one lost win and higher same-machine search cost; it is not promoted.",
+    "100 development cases are repeatedly used for development, not final independent acceptance; all 55 sealed final configurations remain unsearched."
   ],
   "deployment": {
     "completed": true,
@@ -283,9 +284,979 @@
     "rawFile": ".local/objective-search/v76/correction-depth-audit.json"
   },
   "correctionRankingAudit": {
-    "state": "prepared; deferred until paired benchmark finishes",
-    "roots": 267,
+    "completed": true,
     "emptyRoots": 25,
-    "independentQualityEvidence": false
+    "independentQualityEvidence": false,
+    "rawDirectory": ".local/objective-search/v76/",
+    "v71": {
+      "suppliedRoots": 267,
+      "rootsWithPairs": 247,
+      "rows": 1595,
+      "pairs": 586,
+      "correct": 359,
+      "wrong": 159,
+      "ties": 68,
+      "indistinguishable": 31,
+      "meanRootAccuracy": 0.6780701754385965,
+      "meanRootLogLoss": 0.6165287873633829,
+      "kinds": {
+        "victory-over-defeat": {
+          "pairs": 72,
+          "correct": 44,
+          "wrong": 22,
+          "ties": 6
+        },
+        "victory-policy": {
+          "pairs": 475,
+          "correct": 304,
+          "wrong": 119,
+          "ties": 52
+        },
+        "suffix-effort": {
+          "pairs": 39,
+          "correct": 11,
+          "wrong": 18,
+          "ties": 10
+        }
+      },
+      "turns": {
+        "2": {
+          "pairs": 208,
+          "correct": 127,
+          "wrong": 60,
+          "ties": 21
+        },
+        "3": {
+          "pairs": 191,
+          "correct": 137,
+          "wrong": 49,
+          "ties": 5
+        },
+        "4": {
+          "pairs": 66,
+          "correct": 51,
+          "wrong": 15,
+          "ties": 0
+        },
+        "1": {
+          "pairs": 121,
+          "correct": 44,
+          "wrong": 35,
+          "ties": 42
+        }
+      }
+    },
+    "v76": {
+      "suppliedRoots": 267,
+      "rootsWithPairs": 247,
+      "rows": 1595,
+      "pairs": 586,
+      "correct": 502,
+      "wrong": 37,
+      "ties": 47,
+      "indistinguishable": 31,
+      "meanRootAccuracy": 0.9045209176788124,
+      "meanRootLogLoss": 0.39564409847818677,
+      "kinds": {
+        "victory-over-defeat": {
+          "pairs": 72,
+          "correct": 61,
+          "wrong": 7,
+          "ties": 4
+        },
+        "victory-policy": {
+          "pairs": 475,
+          "correct": 413,
+          "wrong": 27,
+          "ties": 35
+        },
+        "suffix-effort": {
+          "pairs": 39,
+          "correct": 28,
+          "wrong": 3,
+          "ties": 8
+        }
+      },
+      "turns": {
+        "2": {
+          "pairs": 208,
+          "correct": 177,
+          "wrong": 16,
+          "ties": 15
+        },
+        "3": {
+          "pairs": 191,
+          "correct": 173,
+          "wrong": 14,
+          "ties": 4
+        },
+        "4": {
+          "pairs": 66,
+          "correct": 62,
+          "wrong": 4,
+          "ties": 0
+        },
+        "1": {
+          "pairs": 121,
+          "correct": 90,
+          "wrong": 3,
+          "ties": 28
+        }
+      }
+    },
+    "purpose": "Training-only native preference audit; these rows trained v76 and are not independent validation."
+  },
+  "pairedDevelopment": {
+    "completed": true,
+    "casesFinished": 100,
+    "plannedCases": 100,
+    "counts": {
+      "equal": 58,
+      "regressed": 19,
+      "improved": 23
+    },
+    "coreCounts": {
+      "equal": 75,
+      "regressed": 13,
+      "improved": 12
+    },
+    "byCharacter": {
+      "DEFECT": {
+        "equal": 14,
+        "improved": 2,
+        "regressed": 4
+      },
+      "IRONCLAD": {
+        "equal": 10,
+        "regressed": 6,
+        "improved": 4
+      },
+      "NECROBINDER": {
+        "equal": 13,
+        "improved": 6,
+        "regressed": 1
+      },
+      "REGENT": {
+        "regressed": 5,
+        "equal": 9,
+        "improved": 6
+      },
+      "SILENT": {
+        "equal": 12,
+        "regressed": 3,
+        "improved": 5
+      }
+    },
+    "byKind": {
+      "Boss": {
+        "equal": 16,
+        "regressed": 8,
+        "improved": 6
+      },
+      "Elite": {
+        "equal": 17,
+        "regressed": 6,
+        "improved": 12
+      },
+      "Monster": {
+        "equal": 25,
+        "regressed": 5,
+        "improved": 5
+      }
+    },
+    "coreByCharacter": {
+      "DEFECT": {
+        "equal": 17,
+        "improved": 1,
+        "regressed": 2
+      },
+      "IRONCLAD": {
+        "equal": 12,
+        "regressed": 5,
+        "improved": 3
+      },
+      "NECROBINDER": {
+        "equal": 16,
+        "improved": 4
+      },
+      "REGENT": {
+        "equal": 14,
+        "regressed": 3,
+        "improved": 3
+      },
+      "SILENT": {
+        "equal": 16,
+        "regressed": 3,
+        "improved": 1
+      }
+    },
+    "coreByKind": {
+      "Boss": {
+        "equal": 20,
+        "regressed": 6,
+        "improved": 4
+      },
+      "Elite": {
+        "equal": 24,
+        "regressed": 5,
+        "improved": 6
+      },
+      "Monster": {
+        "equal": 31,
+        "regressed": 2,
+        "improved": 2
+      }
+    },
+    "byCharacterCosts": {
+      "DEFECT": {
+        "cases": 20,
+        "faster": 5,
+        "atLeast10PercentFaster": 1,
+        "bothRepeatsFaster": 4,
+        "rssLower": 1,
+        "baselineSeconds": 159.34803055,
+        "candidateSeconds": 170.07383810000002,
+        "aggregateSecondsRatio": 1.0673105749282197,
+        "geometricMeanSecondsRatio": 1.1159152546968354,
+        "medianSecondsRatio": 1.0536003341529678,
+        "baselineMeanRssMiB": 294.29150390625,
+        "candidateMeanRssMiB": 306.1640625,
+        "baselineMaximumObservedRssMiB": 356.5078125,
+        "candidateMaximumObservedRssMiB": 360.23046875,
+        "baselineMeanManagedHeapMiB": 76.43823490142822,
+        "candidateMeanManagedHeapMiB": 86.83087158203125,
+        "baselineMeanAllocatedGiB": 1.8634853100404143,
+        "candidateMeanAllocatedGiB": 1.9397428689524532
+      },
+      "IRONCLAD": {
+        "cases": 20,
+        "faster": 0,
+        "atLeast10PercentFaster": 0,
+        "bothRepeatsFaster": 0,
+        "rssLower": 0,
+        "baselineSeconds": 174.1093811,
+        "candidateSeconds": 192.37298115000002,
+        "aggregateSecondsRatio": 1.104897277416145,
+        "geometricMeanSecondsRatio": 1.1249573371959913,
+        "medianSecondsRatio": 1.1099350051060344,
+        "baselineMeanRssMiB": 312.95087890625,
+        "candidateMeanRssMiB": 323.88486328125,
+        "baselineMaximumObservedRssMiB": 405.6328125,
+        "candidateMaximumObservedRssMiB": 407.078125,
+        "baselineMeanManagedHeapMiB": 93.52582740783691,
+        "candidateMeanManagedHeapMiB": 104.10534744262695,
+        "baselineMeanAllocatedGiB": 2.054377427697182,
+        "candidateMeanAllocatedGiB": 2.2196505511179567
+      },
+      "NECROBINDER": {
+        "cases": 20,
+        "faster": 3,
+        "atLeast10PercentFaster": 1,
+        "bothRepeatsFaster": 3,
+        "rssLower": 7,
+        "baselineSeconds": 210.0269886,
+        "candidateSeconds": 234.1554521,
+        "aggregateSecondsRatio": 1.1148826808441892,
+        "geometricMeanSecondsRatio": 1.1187241278245552,
+        "medianSecondsRatio": 1.108378240135969,
+        "baselineMeanRssMiB": 335.14775390625,
+        "candidateMeanRssMiB": 336.3697265625,
+        "baselineMaximumObservedRssMiB": 685.828125,
+        "candidateMaximumObservedRssMiB": 551.72265625,
+        "baselineMeanManagedHeapMiB": 114.2359136581421,
+        "candidateMeanManagedHeapMiB": 115.58080863952637,
+        "baselineMeanAllocatedGiB": 2.426096646487713,
+        "candidateMeanAllocatedGiB": 2.707080678269267
+      },
+      "REGENT": {
+        "cases": 20,
+        "faster": 2,
+        "atLeast10PercentFaster": 1,
+        "bothRepeatsFaster": 2,
+        "rssLower": 9,
+        "baselineSeconds": 235.15977965000002,
+        "candidateSeconds": 257.00783785,
+        "aggregateSecondsRatio": 1.0929072915126792,
+        "geometricMeanSecondsRatio": 1.2643325695268979,
+        "medianSecondsRatio": 1.1028140412753968,
+        "baselineMeanRssMiB": 344.6509765625,
+        "candidateMeanRssMiB": 345.44580078125,
+        "baselineMaximumObservedRssMiB": 589.55078125,
+        "candidateMaximumObservedRssMiB": 566.3359375,
+        "baselineMeanManagedHeapMiB": 124.12014751434326,
+        "candidateMeanManagedHeapMiB": 124.15112247467042,
+        "baselineMeanAllocatedGiB": 2.881404174119234,
+        "candidateMeanAllocatedGiB": 3.0294916056096555
+      },
+      "SILENT": {
+        "cases": 20,
+        "faster": 2,
+        "atLeast10PercentFaster": 0,
+        "bothRepeatsFaster": 2,
+        "rssLower": 3,
+        "baselineSeconds": 188.26983935,
+        "candidateSeconds": 219.6616655,
+        "aggregateSecondsRatio": 1.1667384763187774,
+        "geometricMeanSecondsRatio": 1.304621700316946,
+        "medianSecondsRatio": 1.0781081595633997,
+        "baselineMeanRssMiB": 328.886328125,
+        "candidateMeanRssMiB": 352.2091796875,
+        "baselineMaximumObservedRssMiB": 547.80859375,
+        "candidateMaximumObservedRssMiB": 584.5859375,
+        "baselineMeanManagedHeapMiB": 109.76448841094971,
+        "candidateMeanManagedHeapMiB": 130.9590898513794,
+        "baselineMeanAllocatedGiB": 2.1391464890912175,
+        "candidateMeanAllocatedGiB": 2.481142207607627
+      }
+    },
+    "unstableWithinArmCases": 1,
+    "coreUnstableWithinArmCases": 1,
+    "equalWinCases": 44,
+    "equalDefeatCases": 14,
+    "coreEqualWinCases": 61,
+    "coreEqualDefeatCases": 14,
+    "winLostCases": 1,
+    "winGainedCases": 1,
+    "allCompletedCosts": {
+      "cases": 100,
+      "faster": 12,
+      "atLeast10PercentFaster": 3,
+      "bothRepeatsFaster": 11,
+      "rssLower": 20,
+      "baselineSeconds": 966.91401925,
+      "candidateSeconds": 1073.2717747,
+      "aggregateSecondsRatio": 1.1099971179779746,
+      "geometricMeanSecondsRatio": 1.1829523166245388,
+      "medianSecondsRatio": 1.0982732624957492,
+      "baselineMeanRssMiB": 323.18548828125,
+      "candidateMeanRssMiB": 332.8147265625,
+      "baselineMaximumObservedRssMiB": 685.828125,
+      "candidateMaximumObservedRssMiB": 584.5859375,
+      "baselineMeanManagedHeapMiB": 103.61692237854004,
+      "candidateMeanManagedHeapMiB": 112.32544799804687,
+      "baselineMeanAllocatedGiB": 2.272902009487152,
+      "candidateMeanAllocatedGiB": 2.475421582311392
+    },
+    "nondegradingCosts": {
+      "cases": 81,
+      "faster": 10,
+      "atLeast10PercentFaster": 3,
+      "bothRepeatsFaster": 9,
+      "rssLower": 16,
+      "baselineSeconds": 778.0079227,
+      "candidateSeconds": 867.6624089000001,
+      "aggregateSecondsRatio": 1.1152359552957545,
+      "geometricMeanSecondsRatio": 1.190855984759912,
+      "medianSecondsRatio": 1.1001798403970409,
+      "baselineMeanRssMiB": 320.70756172839504,
+      "candidateMeanRssMiB": 330.9464699074074,
+      "baselineMaximumObservedRssMiB": 685.828125,
+      "candidateMaximumObservedRssMiB": 584.5859375,
+      "baselineMeanManagedHeapMiB": 101.49854570553626,
+      "candidateMeanManagedHeapMiB": 110.71198013682424,
+      "baselineMeanAllocatedGiB": 2.2739555882175027,
+      "candidateMeanAllocatedGiB": 2.477768302193762
+    },
+    "stableNondegradingCosts": {
+      "cases": 80,
+      "faster": 10,
+      "atLeast10PercentFaster": 3,
+      "bothRepeatsFaster": 9,
+      "rssLower": 16,
+      "baselineSeconds": 766.01996,
+      "candidateSeconds": 854.4888762,
+      "aggregateSecondsRatio": 1.1154916592512811,
+      "geometricMeanSecondsRatio": 1.1920528852810988,
+      "medianSecondsRatio": 1.1012154394371172,
+      "baselineMeanRssMiB": 320.5973876953125,
+      "candidateMeanRssMiB": 330.9314697265625,
+      "baselineMaximumObservedRssMiB": 685.828125,
+      "candidateMaximumObservedRssMiB": 584.5859375,
+      "baselineMeanManagedHeapMiB": 101.35055932998657,
+      "candidateMeanManagedHeapMiB": 110.66184964179993,
+      "baselineMeanAllocatedGiB": 2.2695728015620262,
+      "candidateMeanAllocatedGiB": 2.473147088242695
+    },
+    "coreNondegradingCosts": {
+      "cases": 87,
+      "faster": 10,
+      "atLeast10PercentFaster": 3,
+      "bothRepeatsFaster": 9,
+      "rssLower": 17,
+      "baselineSeconds": 819.0370500500001,
+      "candidateSeconds": 914.75028475,
+      "aggregateSecondsRatio": 1.116860689872524,
+      "geometricMeanSecondsRatio": 1.2002909306139973,
+      "medianSecondsRatio": 1.1022510384771937,
+      "baselineMeanRssMiB": 319.79633620689657,
+      "candidateMeanRssMiB": 329.56737158764366,
+      "baselineMaximumObservedRssMiB": 685.828125,
+      "candidateMaximumObservedRssMiB": 584.5859375,
+      "baselineMeanManagedHeapMiB": 100.96573730994915,
+      "candidateMeanManagedHeapMiB": 109.63009731248877,
+      "baselineMeanAllocatedGiB": 2.2235036535167145,
+      "candidateMeanAllocatedGiB": 2.428030487278412
+    },
+    "coreStableNondegradingCosts": {
+      "cases": 86,
+      "faster": 10,
+      "atLeast10PercentFaster": 3,
+      "bothRepeatsFaster": 9,
+      "rssLower": 17,
+      "baselineSeconds": 807.04908735,
+      "candidateSeconds": 901.57675205,
+      "aggregateSecondsRatio": 1.1171275281536936,
+      "geometricMeanSecondsRatio": 1.2015233585219294,
+      "medianSecondsRatio": 1.1028140412753968,
+      "baselineMeanRssMiB": 319.6832530886628,
+      "candidateMeanRssMiB": 329.5373819040698,
+      "baselineMaximumObservedRssMiB": 685.828125,
+      "candidateMaximumObservedRssMiB": 584.5859375,
+      "baselineMeanManagedHeapMiB": 100.82188011879144,
+      "candidateMeanManagedHeapMiB": 109.5708842610204,
+      "baselineMeanAllocatedGiB": 2.2188399922709134,
+      "candidateMeanAllocatedGiB": 2.423153336917938
+    },
+    "stableNondegradingWinCosts": {
+      "cases": 65,
+      "faster": 9,
+      "atLeast10PercentFaster": 2,
+      "bothRepeatsFaster": 8,
+      "rssLower": 13,
+      "baselineSeconds": 594.92525985,
+      "candidateSeconds": 671.79930895,
+      "aggregateSecondsRatio": 1.129216313859967,
+      "geometricMeanSecondsRatio": 1.2207711073567769,
+      "medianSecondsRatio": 1.1022510384771937,
+      "baselineMeanRssMiB": 313.01370192307695,
+      "candidateMeanRssMiB": 325.68091947115386,
+      "baselineMaximumObservedRssMiB": 589.55078125,
+      "candidateMaximumObservedRssMiB": 584.5859375,
+      "baselineMeanManagedHeapMiB": 95.02748553936298,
+      "candidateMeanManagedHeapMiB": 106.457384960468,
+      "baselineMeanAllocatedGiB": 2.135342949972703,
+      "candidateMeanAllocatedGiB": 2.3447647199607813
+    },
+    "coreStableNondegradingWinCosts": {
+      "cases": 71,
+      "faster": 9,
+      "atLeast10PercentFaster": 2,
+      "bothRepeatsFaster": 8,
+      "rssLower": 14,
+      "baselineSeconds": 635.9543872,
+      "candidateSeconds": 718.8871848,
+      "aggregateSecondsRatio": 1.1304068330515638,
+      "geometricMeanSecondsRatio": 1.2300515279665223,
+      "medianSecondsRatio": 1.1033770440736,
+      "baselineMeanRssMiB": 312.54731514084506,
+      "candidateMeanRssMiB": 324.4360145246479,
+      "baselineMaximumObservedRssMiB": 589.55078125,
+      "candidateMaximumObservedRssMiB": 584.5859375,
+      "baselineMeanManagedHeapMiB": 94.92145780106665,
+      "candidateMeanManagedHeapMiB": 105.49124081034056,
+      "baselineMeanAllocatedGiB": 2.085235309275523,
+      "candidateMeanAllocatedGiB": 2.2950581227179985
+    },
+    "coreUncertainty": {
+      "families": 15,
+      "available": true,
+      "replicates": 2000,
+      "description": "Descriptive percentile intervals resampling encounter families; synthetic development set, not population confidence guarantees",
+      "percentile95": {
+        "improvedFraction": [
+          0.050505050505050504,
+          0.1941747572815534
+        ],
+        "regressedFraction": [
+          0.08,
+          0.18181818181818182
+        ],
+        "nondegradingGeometricMeanSecondsRatio": [
+          1.1027962447109902,
+          1.3227429461116884
+        ]
+      }
+    },
+    "uncertainty": {
+      "families": 15,
+      "available": true,
+      "replicates": 2000,
+      "description": "Descriptive percentile intervals resampling encounter families; synthetic development set, not population confidence guarantees",
+      "percentile95": {
+        "improvedFraction": [
+          0.14583333333333334,
+          0.32
+        ],
+        "regressedFraction": [
+          0.12871287128712872,
+          0.25510204081632654
+        ],
+        "nondegradingGeometricMeanSecondsRatio": [
+          1.0885468962463543,
+          1.3156790160318679
+        ]
+      }
+    },
+    "finalTestOpened": false,
+    "modelSha256": "43c555f9183da4baf0be5e0eda6d088761db39a843a99bb610213716d0473818",
+    "runs": 400,
+    "processFailures": 0,
+    "evidenceIssues": 0,
+    "winsByRepeat": {
+      "baseline": [
+        85,
+        85
+      ],
+      "candidate": [
+        85,
+        85
+      ]
+    },
+    "timeBoundaryRuns": {
+      "baseline": 130,
+      "candidate": 142
+    },
+    "benchmarkProcess": {
+      "processSeconds": 4927.538615141995,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "rawDirectory": ".local/objective-search/v76/evaluation/",
+    "coreRegressions": [
+      {
+        "id": "v72-validation-01-ironclad-byrdonis_elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          16,
+          16
+        ],
+        "candidateHpLosses": [
+          18,
+          18
+        ],
+        "pairedHpLossChanges": [
+          2,
+          2
+        ],
+        "baselineSeconds": 11.04093615,
+        "candidateSeconds": 11.12322265
+      },
+      {
+        "id": "v72-validation-01-regent-knights_elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          68,
+          68
+        ],
+        "candidateHpLosses": [
+          70,
+          70
+        ],
+        "pairedHpLossChanges": [
+          2,
+          2
+        ],
+        "baselineSeconds": 8.4249744,
+        "candidateSeconds": 9.03688035
+      },
+      {
+        "id": "v72-validation-02-ironclad-knowledge_demon_boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          29,
+          29
+        ],
+        "candidateHpLosses": [
+          34,
+          34
+        ],
+        "pairedHpLossChanges": [
+          5,
+          5
+        ],
+        "baselineSeconds": 10.60001415,
+        "candidateSeconds": 11.29541935
+      },
+      {
+        "id": "v72-validation-02-silent-vantom_boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          28,
+          28
+        ],
+        "candidateHpLosses": [
+          29,
+          29
+        ],
+        "pairedHpLossChanges": [
+          1,
+          1
+        ],
+        "baselineSeconds": 8.8346539,
+        "candidateSeconds": 8.86185295
+      },
+      {
+        "id": "v72-validation-03-ironclad-slithering_strangler_normal",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          5,
+          5
+        ],
+        "candidateHpLosses": [
+          6,
+          6
+        ],
+        "pairedHpLossChanges": [
+          1,
+          1
+        ],
+        "baselineSeconds": 16.9698338,
+        "candidateSeconds": 17.955268500000003
+      },
+      {
+        "id": "v72-validation-04-regent-phrog_parasite_elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          1,
+          1
+        ],
+        "pairedHpLossChanges": [
+          1,
+          1
+        ],
+        "baselineSeconds": 11.9743535,
+        "candidateSeconds": 13.8590412
+      },
+      {
+        "id": "v72-validation-10-silent-decimillipede_elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          15,
+          15
+        ],
+        "candidateHpLosses": [
+          19,
+          19
+        ],
+        "pairedHpLossChanges": [
+          4,
+          4
+        ],
+        "baselineSeconds": 14.9419766,
+        "candidateSeconds": 17.35181505
+      },
+      {
+        "id": "v72-validation-11-defect-the_kin_boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          37,
+          37
+        ],
+        "candidateHpLosses": [
+          43,
+          43
+        ],
+        "pairedHpLossChanges": [
+          6,
+          6
+        ],
+        "baselineSeconds": 10.3055898,
+        "candidateSeconds": 11.6458283
+      },
+      {
+        "id": "v72-validation-11-ironclad-vantom_boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          39,
+          39
+        ],
+        "candidateHpLosses": [
+          40,
+          40
+        ],
+        "pairedHpLossChanges": [
+          1,
+          1
+        ],
+        "baselineSeconds": 10.415570500000001,
+        "candidateSeconds": 10.43702095
+      },
+      {
+        "id": "v72-validation-11-silent-the_insatiable_boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          9,
+          9
+        ],
+        "candidateHpLosses": [
+          13,
+          13
+        ],
+        "pairedHpLossChanges": [
+          4,
+          4
+        ],
+        "baselineSeconds": 15.7243909,
+        "candidateSeconds": 16.791232
+      },
+      {
+        "id": "v72-validation-15-ironclad-slimes_normal",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          2,
+          2
+        ],
+        "candidateHpLosses": [
+          4,
+          4
+        ],
+        "pairedHpLossChanges": [
+          2,
+          2
+        ],
+        "baselineSeconds": 6.17790495,
+        "candidateSeconds": 7.994933699999999
+      },
+      {
+        "id": "v72-validation-16-regent-knights_elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          65,
+          65
+        ],
+        "candidateHpLosses": [
+          75,
+          75
+        ],
+        "pairedHpLossChanges": [
+          10,
+          10
+        ],
+        "baselineSeconds": 9.989244,
+        "candidateSeconds": 9.900313050000001
+      },
+      {
+        "id": "v72-validation-17-defect-kaiser_crab_boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          65,
+          65
+        ],
+        "candidateHpLosses": [
+          71,
+          71
+        ],
+        "pairedHpLossChanges": [
+          6,
+          6
+        ],
+        "baselineSeconds": 12.47752655,
+        "candidateSeconds": 12.268661900000001
+      }
+    ],
+    "winChanges": [
+      {
+        "id": "v72-validation-16-regent-knights_elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          65,
+          65
+        ],
+        "candidateHpLosses": [
+          75,
+          75
+        ],
+        "pairedHpLossChanges": [
+          10,
+          10
+        ],
+        "baselineSeconds": 9.989244,
+        "candidateSeconds": 9.900313050000001
+      },
+      {
+        "id": "v72-validation-17-regent-the_kin_boss",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          47,
+          47
+        ],
+        "candidateHpLosses": [
+          57,
+          57
+        ],
+        "pairedHpLossChanges": [
+          10,
+          10
+        ],
+        "baselineSeconds": 10.06168805,
+        "candidateSeconds": 11.37416815
+      }
+    ],
+    "previousLostWinDiagnostic": {
+      "id": "v72-validation-05-ironclad-the_insatiable_boss",
+      "classification": "improved",
+      "coreClassification": "improved",
+      "baselineWins": [
+        true,
+        true
+      ],
+      "candidateWins": [
+        true,
+        true
+      ],
+      "baselineHpLosses": [
+        92,
+        92
+      ],
+      "candidateHpLosses": [
+        73,
+        73
+      ],
+      "pairedHpLossChanges": [
+        -19,
+        -19
+      ],
+      "baselineSeconds": 7.3784564,
+      "candidateSeconds": 8.7683014
+    }
   }
 }
