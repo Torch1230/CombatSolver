@@ -203,6 +203,8 @@ P2 `WaterfallGiant` 四个敌方回合：双人虚拟根的 `PRESSURIZE`、`STOM
 
 P5 防守方案进入执行器：双人一费 `Defend`／`Strike` 固定根在悬浮窗显示输出与防守，点击防守后原生只执行防守牌、不执行输出牌，且本地回合结束，Passed：`.local/multiplayer-p5/defense-style-deploy-fixed-input-c5904e9a0dee42f2a97a165fd2d17cba/peer-0/result.json`。首次误用夹具默认 10 能量，搜索选同时出两张而没有取舍，未通过按钮断言；改用已记录的 1 能量输入后通过。至此三种方案按钮中启动和防守均有选择后执行代表；可见窗口仍未人工检查。
 
+P2 敌人目标药水候选：四人双敌根本地持有 `FirePotion`，搜索候选逐一覆盖两名存活敌人、没有任何玩家目标，Passed：`.local/multiplayer-p2/enemy-potion-targets-0f2fa7cb78094b5ca2b982b876d05897/peer-0/result.json`。本项验证候选合法目标集合；药水实际原生使用与模拟伤害差分未由此证明。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

@@ -1029,6 +1029,27 @@ internal sealed partial class UnattendedTestRunner
                 }
                 runner._completedChecks.Add("MultiplayerSelfPotion:OwnerOnly:FullState:FullRng");
             }
+            if (input.VerifyEnemyPotionTargets)
+            {
+                PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, "FIRE_POTION");
+                CombatRootSnapshot potionRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator potionSimulator = potionRoot.ForkSimulator();
+                SearchPolicySnapshot potionPolicy = SolverController.CaptureSearchPolicy(
+                    SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
+                CombatBeamSolver potionDriver = new(potionRoot, SolverDisplayNames.Capture(combat),
+                    BattleDamageTracker.Observe(combat), potionPolicy);
+                (int Index, uint? TargetCombatId)[] targets = potionDriver.PotionTargetsForTesting(
+                    potion, potionSimulator);
+                uint[] aliveEnemyIds = combat.Enemies.Where(enemy => enemy.IsAlive)
+                    .Select(enemy => enemy.CombatId ?? throw new InvalidOperationException("Enemy has no combat ID."))
+                    .ToArray();
+                if (targets.Length != aliveEnemyIds.Length
+                    || targets.Any(candidate => candidate.TargetCombatId is not { } targetId
+                        || !aliveEnemyIds.Contains(targetId)))
+                    throw new InvalidOperationException("Enemy potion targets did not match all living enemies.");
+                runner._completedChecks.Add("MultiplayerEnemyPotion:AllLivingEnemies:NoPlayerTarget");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifySearch)
             {
                 SolverSettingsSnapshot settings = SolverSettings.Capture();
