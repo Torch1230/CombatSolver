@@ -1,0 +1,2938 @@
+{
+  "study": "v69-bounded-correction-coverage",
+  "collectionProtocol": {
+    "createdUtc": "2026-09-28T00:11:27.770940+00:00",
+    "sourceBase": "e8fbe2a2",
+    "parents": 40,
+    "runs": 80,
+    "roleCounts": {
+      "DEFECT": 7,
+      "IRONCLAD": 5,
+      "NECROBINDER": 8,
+      "REGENT": 8,
+      "SILENT": 12
+    },
+    "selection": "From frozen v59 training-only parents, keep all40 whose prior learner requested at least4correction queries. Selection before new experiments; no filtering on newly measured outcomes or query count.",
+    "arms": [
+      "before",
+      "coverage"
+    ],
+    "pairing": "Same parent request, full native equipment and both root stamps. Original plus new trajectory merged as one weighted root; both arms must have preferences.",
+    "queryPolicy": "First pair keeps previous boundary selection; later pairs prioritize unqueried, underrepresented first-action strata and use highest-ranked retained reference. At most3depths/6prefixes, same6second correction allowance and1000nodes/probe. First-action stratum is not utility/state equivalence.",
+    "ancestorModel": ".local/objective-search/v54/roots-516/fitted/model.json",
+    "ancestorModelSha256": "f28ce4d9cd4957a70ecbeee2257ba010fa85477fe77e6fe7e41f29125807bb37",
+    "ancestorInputsSha256": "37e956c0e7711a4ab193480916432017677a7b18d0cdeb900c1600df4ffc80a3",
+    "ancestorTrainingSeconds": 85.83324902702589,
+    "parentInputsSha256": "35f1fea4fa1bad7872f013d3452c3b10ae342227859c32f4b0c575c169c9fb6e",
+    "engines": {
+      "before": {
+        "path": ".local/objective-search/v67/engine",
+        "modSha256": "79d1ce2479ab870be42a4a38ccc5d84a31758e93f8693aef8a14b459651c40d5",
+        "harnessSha256": "9bec48ccc82584b6a7f69b247a2bd545bdb5e3386f771f6b49555885a1cc509e"
+      },
+      "coverage": {
+        "path": ".local/objective-search/v69/engine",
+        "modSha256": "fb17718edd870da1e42e0d07eabbc9b935f8369f2083aaed6fdb678345bbbda9",
+        "harnessSha256": "3667519d733a112105d74dd0d837cf274aee59c3b46a417daa22e2ee00a64817"
+      }
+    },
+    "search": {
+      "beam": 16,
+      "nodes": 6000,
+      "budgetMilliseconds": 12000,
+      "dop": 1,
+      "stopAtZeroLoss": false
+    },
+    "workers": 4,
+    "collectionLimitSeconds": 900,
+    "scriptSha256": "1243a1d84eeaaf69c814a4896ab244451b641c570a9bdf1abbe05739b7009e84",
+    "fitPlan": {
+      "baseInnerRoots": 516,
+      "baseFullRoots": 616,
+      "depth": 6,
+      "trees": 64,
+      "minimumLeafHessian": 3,
+      "maximumRowsPerRoot": 512,
+      "primary": "Early<=3turn equal-role/family/root pair accuracy on fixed internal100; require strictly higher than baseline. Highest wins, ties early loss then baseline,before,coverage. All-turn metrics reported. One full candidate, no per-role picking.",
+      "minimumPairedParents": 25,
+      "minimumPairsPerRole": 3,
+      "completeModelLimitSeconds": 1200,
+      "actualGate": "Fixed5+10outerdevelopment; no final search or promotion.",
+      "interpretation": "Matched complete acquisition pipelines, including sampling/pool effects and time-boundary overhead, not an isolated causal value estimate."
+    },
+    "finalTestOpened": false,
+    "runtimeDefaultChanged": false,
+    "oldOvernightServiceRestarted": false
+  },
+  "collectionStatus": {
+    "phase": "completed",
+    "seconds": 380.28306396794505,
+    "updatedUtc": "2026-09-28T00:17:48.062317+00:00",
+    "childSeconds": {
+      "before": {
+        "collect": 756.2422209423967
+      },
+      "coverage": {
+        "collect": 752.0474088785704
+      }
+    },
+    "records": 80,
+    "states": {
+      "collected": 80
+    }
+  },
+  "collectionSummary": {
+    "before": {
+      "collected": 40,
+      "preferences": 40,
+      "rows": 24737,
+      "reliableWins": 38,
+      "corrections": 203,
+      "improvedCorrections": 179,
+      "totalDistinctFamiliesPerRoot": 117,
+      "absentFamilyQueries": 0
+    },
+    "coverage": {
+      "collected": 40,
+      "preferences": 39,
+      "rows": 24520,
+      "reliableWins": 38,
+      "corrections": 204,
+      "improvedCorrections": 181,
+      "totalDistinctFamiliesPerRoot": 156,
+      "absentFamilyQueries": 13
+    }
+  },
+  "collectionDiagnostics": {
+    "correctionWitnessTransitions": {
+      "before": {
+        "win->win": 45,
+        "unknown->win": 122,
+        "defeat->win": 9,
+        "unknown->defeat": 19,
+        "defeat->defeat": 6,
+        "unknown->unknown": 2
+      },
+      "coverage": {
+        "win->win": 42,
+        "unknown->win": 125,
+        "defeat->win": 9,
+        "unknown->defeat": 20,
+        "defeat->defeat": 8
+      }
+    },
+    "mainRouteChangedPairs": [
+      3,
+      12,
+      14,
+      19,
+      20
+    ],
+    "mainComparisons": [
+      {
+        "id": "0",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 22,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 22,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "1",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 20,
+          "strategicHpDeficit": 20,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 20,
+          "strategicHpDeficit": 20,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "2",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 21,
+          "score": 0,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 21,
+          "score": 0,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "3",
+        "comparison": -1,
+        "materialComparison": -1,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 85,
+          "strategicHpDeficit": 418,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 440,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 97,
+          "strategicHpDeficit": 430,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 404,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "4",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 17,
+          "strategicHpDeficit": 17,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 17,
+          "strategicHpDeficit": 17,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "5",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        }
+      },
+      {
+        "id": "6",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 43,
+          "strategicHpDeficit": 43,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 43,
+          "strategicHpDeficit": 43,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "7",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 8,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 8,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "8",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 10,
+          "strategicHpDeficit": 4,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 10,
+          "strategicHpDeficit": 4,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "9",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 44,
+          "strategicHpDeficit": 38,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 44,
+          "strategicHpDeficit": 38,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "10",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 31,
+          "strategicHpDeficit": 25,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 31,
+          "strategicHpDeficit": 25,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "11",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 54,
+          "strategicHpDeficit": 35,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 54,
+          "strategicHpDeficit": 35,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "12",
+        "comparison": -1,
+        "materialComparison": -1,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 23,
+          "strategicHpDeficit": 23,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 25,
+          "strategicHpDeficit": 25,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 9,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "13",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "14",
+        "comparison": 1,
+        "materialComparison": 1,
+        "candidate": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 10,
+          "strategicHpDeficit": 10,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 505,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 0,
+          "strategicHpDeficit": 0,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 490,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        }
+      },
+      {
+        "id": "15",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 25,
+          "strategicHpDeficit": 25,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 25,
+          "strategicHpDeficit": 25,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 4,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        }
+      },
+      {
+        "id": "16",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 8,
+          "strategicHpDeficit": 8,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 8,
+          "strategicHpDeficit": 8,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "17",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 47,
+          "strategicHpDeficit": 47,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 11,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 47,
+          "strategicHpDeficit": 47,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 11,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "18",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 11,
+          "strategicHpDeficit": 11,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 11,
+          "strategicHpDeficit": 11,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "19",
+        "comparison": -1,
+        "materialComparison": -1,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 26,
+          "strategicHpDeficit": 26,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 29,
+          "strategicHpDeficit": 29,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "20",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 7,
+          "strategicHpDeficit": 7,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 7,
+          "strategicHpDeficit": 7,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "21",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 45,
+          "strategicHpDeficit": 45,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 45,
+          "strategicHpDeficit": 45,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "22",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 39,
+          "strategicHpDeficit": 39,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 39,
+          "strategicHpDeficit": 39,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "23",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 13,
+          "strategicHpDeficit": 13,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 13,
+          "strategicHpDeficit": 13,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "24",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 5,
+          "strategicHpDeficit": 5,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 5,
+          "strategicHpDeficit": 5,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "25",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 32,
+          "strategicHpDeficit": 32,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 32,
+          "strategicHpDeficit": 32,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "26",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 9,
+          "strategicHpDeficit": 9,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 9,
+          "strategicHpDeficit": 9,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "27",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 31,
+          "strategicHpDeficit": 31,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 31,
+          "strategicHpDeficit": 31,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "28",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 15,
+          "strategicHpDeficit": 15,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 12,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 15,
+          "strategicHpDeficit": 15,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 12,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "29",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 32,
+          "strategicHpDeficit": 32,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 32,
+          "strategicHpDeficit": 32,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "30",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 52,
+          "strategicHpDeficit": 52,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 52,
+          "strategicHpDeficit": 52,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "31",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 43,
+          "strategicHpDeficit": 43,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 43,
+          "strategicHpDeficit": 43,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "32",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 12,
+          "strategicHpDeficit": 12,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 12,
+          "strategicHpDeficit": 12,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "33",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 11,
+          "strategicHpDeficit": 11,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 11,
+          "strategicHpDeficit": 11,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "34",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 52,
+          "strategicHpDeficit": 52,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 10,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 52,
+          "strategicHpDeficit": 52,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 10,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "35",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 3,
+          "strategicHpDeficit": 3,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 3,
+          "strategicHpDeficit": 3,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "36",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 62,
+          "strategicHpDeficit": 62,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 62,
+          "strategicHpDeficit": 62,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 6,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "37",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 8,
+          "strategicHpDeficit": 8,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 8,
+          "strategicHpDeficit": 8,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "38",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 12,
+          "strategicHpDeficit": 12,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 12,
+          "strategicHpDeficit": 12,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 8,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      },
+      {
+        "id": "39",
+        "comparison": 0,
+        "materialComparison": 0,
+        "candidate": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 1,
+          "strategicHpDeficit": 1,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 21,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 1,
+          "strategicHpDeficit": 1,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 21,
+          "score": 0,
+          "combatEndedTurn": 5,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        }
+      }
+    ],
+    "interpretation": "Unknown-to-defeat increases witnessed coverage, not a victory improvement; both-defeat labels are tied by the authoritative preference builder."
+  },
+  "eligibility": {
+    "acceptedPairs": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ],
+    "excludedPairs": [
+      3
+    ],
+    "pairedUsable": 39,
+    "rootCountUnchanged": true
+  },
+  "ancestrySeparation": {
+    "schema": 2,
+    "splitCounts": {
+      "train": 516,
+      "validation": 115,
+      "test": 5
+    },
+    "comparisons": [
+      {
+        "left": "train",
+        "right": "validation",
+        "maximumDeckSimilarity": 0.5625
+      },
+      {
+        "left": "train",
+        "right": "test",
+        "maximumDeckSimilarity": 0.5135135135135135
+      },
+      {
+        "left": "validation",
+        "right": "test",
+        "maximumDeckSimilarity": 0.4594594594594595
+      }
+    ],
+    "maximumDeckSimilarity": 0.5625,
+    "passed": true,
+    "datasetSha256": "d0e79d11631621eb75093a317d4e019c35f2a2adecf670865bf9cc94fcc16417",
+    "trainingRoots": 516,
+    "evaluationRoots": 120,
+    "fullAudit": {
+      "path": ".local/objective-search/v69/ancestry-separation.json",
+      "sha256": "649af8909a5ccc2671aa547175a9985fcac0720919f9b2c78554e2371b0db67d"
+    }
+  },
+  "innerSeparation": {
+    "schema": 2,
+    "splitCounts": {
+      "train": 516,
+      "validation": 100
+    },
+    "comparisons": [
+      {
+        "left": "train",
+        "right": "validation",
+        "maximumDeckSimilarity": 0.5625
+      }
+    ],
+    "maximumDeckSimilarity": 0.5625,
+    "passed": true,
+    "datasetSha256": "a0db89277639a2633c9c68dc902fcae02239d26332549986f52ef0a7220058f0",
+    "trainingRoots": 516,
+    "evaluationRoots": 100,
+    "fullAudit": {
+      "path": ".local/objective-search/v69/inner-separation.json",
+      "sha256": "bf57f6e8c5109bedc2fa1726fcf2856d33935547809335b55772e52fc99892e7"
+    }
+  },
+  "outerSeparation": {
+    "schema": 2,
+    "splitCounts": {
+      "train": 616,
+      "validation": 15,
+      "test": 5
+    },
+    "comparisons": [
+      {
+        "left": "train",
+        "right": "validation",
+        "maximumDeckSimilarity": 0.5333333333333333
+      },
+      {
+        "left": "train",
+        "right": "test",
+        "maximumDeckSimilarity": 0.5135135135135135
+      },
+      {
+        "left": "validation",
+        "right": "test",
+        "maximumDeckSimilarity": 0.4594594594594595
+      }
+    ],
+    "maximumDeckSimilarity": 0.5333333333333333,
+    "passed": true,
+    "datasetSha256": "755a4239c95085a6e4a4415a3ed50db4910887824f9b3aa8ed6982b72bf123c8",
+    "trainingRoots": 616,
+    "evaluationRoots": 20,
+    "fullAudit": {
+      "path": ".local/objective-search/v69/outer-separation.json",
+      "sha256": "8908cd9f46889c6d2d3e6472e6b86f6ba51cd9c26fca2bd010601687e2dc2524"
+    }
+  },
+  "fitProtocol": {
+    "createdUtc": "2026-09-28T00:17:55.321751+00:00",
+    "collectionProtocolSha256": "2eeadb21059b595e7f848649bca29702ad75c8f443186e60c72f1a387ea9012d",
+    "arms": [
+      {
+        "name": "before",
+        "trainingRoots": 516,
+        "fullRoots": 616,
+        "augmentedRoots": 39
+      },
+      {
+        "name": "coverage",
+        "trainingRoots": 516,
+        "fullRoots": 616,
+        "augmentedRoots": 39
+      }
+    ],
+    "depth": 6,
+    "minimumLeafHessian": 3,
+    "rounds": 64,
+    "baselineInnerAudit": ".local/objective-search/v54/roots-516/audit.json",
+    "completeModelLimitSeconds": 1200,
+    "studyLimitSeconds": 1200,
+    "ancestorTrainingSeconds": 85.83324902702589,
+    "fittingSource": "v69; only correction collection changed from v67, numeric and feature contracts unchanged",
+    "collectionWallSeconds": 380.28306396794505,
+    "collectionChildSeconds": {
+      "before": {
+        "collect": 756.2422209423967
+      },
+      "coverage": {
+        "collect": 752.0474088785704
+      }
+    },
+    "fittingEngine": ".local/objective-search/v69/engine",
+    "evaluationEngine": ".local/objective-search/v69/engine",
+    "modSha256": "fb17718edd870da1e42e0d07eabbc9b935f8369f2083aaed6fdb678345bbbda9",
+    "harnessSha256": "3667519d733a112105d74dd0d837cf274aee59c3b46a417daa22e2ee00a64817",
+    "baselineIndex": ".local/objective-search/v48/baseline-index.json",
+    "selection": "Early<=3turn equal-role/family/root pair accuracy on fixed internal100; require strictly higher than baseline. Highest wins, ties early loss then baseline,before,coverage. All-turn metrics reported. One full candidate, no per-role picking.",
+    "inputHashes": {
+      "fits/coverage/training-inputs.json": "a129769e29d667f09230534367a059174820ff0280421470c9bf87a3e0883ce4",
+      "fits/coverage/full-training-records.json": "3de6290d61d8b7d8ebaaa71f00ce068e2843432bcf7474177ad8211ec3c959f3",
+      "fits/coverage/full-training-inputs.json": "2a085fb78e47d0570d0e1c55da3bd684faa42d9701a6aa0aa600d9a01e4bb001",
+      "fits/coverage/training-records.json": "f0161154aaaf1854471f6899817553eb3a9fc6b58e6bcc1629d1df8b86203333",
+      "fits/before/training-inputs.json": "53f9e0cc867d5a5961fee7097f517c008589b06bb0cace02530fb1b912ac78f3",
+      "fits/before/full-training-records.json": "10d10e336b1284e356e674e901d459aae6ead3a72efa03b5c223af1f59141cba",
+      "fits/before/full-training-inputs.json": "5a78e91ce6286e5073197054c20a597859f28035393b637d1d20ba3cb7bf2926",
+      "fits/before/training-records.json": "d3833749378d5d1d70a7ba9e65ec88c3d9399480ccffeaf37aae8a69e76ca53e"
+    },
+    "scripts": {
+      "xgboost_fit.py": "73f81682078a0ca5b2e54eb636a992462ea0b9eadf28f986c0f2f9f9f6940774",
+      "ranking_data.py": "91d2a5a8173bd0ebf9e3467f8e38b9052e0aebd2d08b0dcaf981e9f908697aca",
+      "research_metrics.py": "4de57f64c042491598f4f8d9b86d5e2e7525d35b2b14b3f9d1a6e3cdad8c7bd2",
+      "evaluate.py": "6189a51085660a4f5c7e30a54d2e1875c2b9ab701bedc3498fcd2f8c0d985ba4",
+      "dataset.py": "36b31da0f3059496aa7d85dd100cf773dc7a965f5f30d6bfaf3b451fa87f39ca",
+      "overnight.py": "efe8200093d60b61f961795bcc8652d43e7693c7e9057b0fc4799f620b163dcc"
+    },
+    "runnerHashes": {
+      "fit.py": "8bbe36bb582d91102ddaf321718e0e5c5e74013ef81e7fe971e519f320d1d556",
+      "early_metrics.py": "2f1eaeb202830a9c6a9ecca7a49929556287380e7896270c4b7cda9d717a6350"
+    }
+  },
+  "selectionMetrics": [
+    {
+      "arm": "baseline",
+      "focus": {
+        "loss": 0.5770221992741953,
+        "accuracy": 0.6919188502675473,
+        "roles": {
+          "SILENT": {
+            "loss": 0.5817234953207335,
+            "accuracy": 0.6579102130510991,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.5744188234446048,
+            "accuracy": 0.7230366704965349,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.5964790394578909,
+            "accuracy": 0.6759203400074398,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.48323257541739933,
+            "accuracy": 0.7686651347449814,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6492570627303476,
+            "accuracy": 0.6340618930376811,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.41054867492063524,
+      "macroMeanAccuracy": 0.8420619300939634,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.342324689837342,
+          "familyMeanAccuracy": 0.8952017731033104,
+          "families": 8,
+          "roots": 23,
+          "pairs": 16479,
+          "familyLosses": {
+            "BOWLBUGS": 0.20027036329576414,
+            "RUBY_RAIDERS": 0.26393393426403705,
+            "FABRICATOR": 0.29089639872680817,
+            "SOUL_NEXUS_ELITE": 0.33496788018278845,
+            "ENTOMANCER_ELITE": 0.5678097902164703,
+            "SCROLLS_OF_BITING": 0.2495118263045119,
+            "THIEVING_HOPPER": 0.33912036209029905,
+            "MYTES": 0.4920869636180571
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 3878,
+              "familyMeanLoss": 0.2805792758096311,
+              "familyMeanAccuracy": 0.913205097096237
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 21,
+              "pairs": 11364,
+              "familyMeanLoss": 0.3070080788461318,
+              "familyMeanAccuracy": 0.8946878507687984
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 1237,
+              "familyMeanLoss": 0.6279068188378906,
+              "familyMeanAccuracy": 0.6902878972218718
+            }
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.4648114567009716,
+          "familyMeanAccuracy": 0.8178189625398037,
+          "families": 9,
+          "roots": 19,
+          "pairs": 16247,
+          "familyLosses": {
+            "SOUL_NEXUS_ELITE": 0.6876138688632043,
+            "RUBY_RAIDERS": 0.42210554604572875,
+            "ENTOMANCER_ELITE": 0.47222189041130597,
+            "TEST_SUBJECT_BOSS": 0.5558720782196016,
+            "THIEVING_HOPPER": 0.33847715511595894,
+            "FABRICATOR": 0.38012469997184345,
+            "MYTES": 0.5424247763310526,
+            "SCROLLS_OF_BITING": 0.3978459997401318,
+            "BOWLBUGS": 0.3866170956099173
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 8,
+              "roots": 16,
+              "pairs": 4968,
+              "familyMeanLoss": 0.39645315444373974,
+              "familyMeanAccuracy": 0.815778693316151
+            },
+            "victory-policy": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 10560,
+              "familyMeanLoss": 0.4302193377251815,
+              "familyMeanAccuracy": 0.851456862974046
+            },
+            "suffix-effort": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 719,
+              "familyMeanLoss": 0.6418336133582758,
+              "familyMeanAccuracy": 0.6663956087035471
+            }
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.4234153443275652,
+          "familyMeanAccuracy": 0.8435413025401187,
+          "families": 8,
+          "roots": 19,
+          "pairs": 16604,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.3042487336310761,
+            "MYTES": 0.27073512729813476,
+            "SOUL_NEXUS_ELITE": 0.4650660966875991,
+            "ENTOMANCER_ELITE": 0.48284606548434666,
+            "FABRICATOR": 0.5356258848240187,
+            "BOWLBUGS": 0.35151402451679487,
+            "THIEVING_HOPPER": 0.474714604557898,
+            "SCROLLS_OF_BITING": 0.5025722176206536
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3936,
+              "familyMeanLoss": 0.3801667590133223,
+              "familyMeanAccuracy": 0.8392962017664798
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 11864,
+              "familyMeanLoss": 0.37131382919327993,
+              "familyMeanAccuracy": 0.8791476999952992
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 804,
+              "familyMeanLoss": 0.5941867669912272,
+              "familyMeanAccuracy": 0.7524817095327536
+            }
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.43952205755200646,
+          "familyMeanAccuracy": 0.8213285208363725,
+          "families": 8,
+          "roots": 20,
+          "pairs": 11622,
+          "familyLosses": {
+            "MYTES": 0.23990980343500404,
+            "ENTOMANCER_ELITE": 0.5167547940322791,
+            "SOUL_NEXUS_ELITE": 0.48245893670468626,
+            "FABRICATOR": 0.5497304546950332,
+            "RUBY_RAIDERS": 0.4764768195568618,
+            "BOWLBUGS": 0.39124586056528715,
+            "SCROLLS_OF_BITING": 0.45278879228343577,
+            "THIEVING_HOPPER": 0.4068109991434645
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3558,
+              "familyMeanLoss": 0.4381216915262125,
+              "familyMeanAccuracy": 0.7672358580900782
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 7552,
+              "familyMeanLoss": 0.432050983582283,
+              "familyMeanAccuracy": 0.817603083779712
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 17,
+              "pairs": 512,
+              "familyMeanLoss": 0.6125351441773743,
+              "familyMeanAccuracy": 0.6642305565046042
+            }
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.3826698261852908,
+          "familyMeanAccuracy": 0.8324190914502112,
+          "families": 8,
+          "roots": 19,
+          "pairs": 14124,
+          "familyLosses": {
+            "ENTOMANCER_ELITE": 0.4385027357437443,
+            "MYTES": 0.4748174028249065,
+            "SOUL_NEXUS_ELITE": 0.2717323000229077,
+            "SCROLLS_OF_BITING": 0.3719672309323928,
+            "RUBY_RAIDERS": 0.3873726953384635,
+            "FABRICATOR": 0.5601370644069464,
+            "BOWLBUGS": 0.14412625852152597,
+            "THIEVING_HOPPER": 0.41270292169143874
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 4949,
+              "familyMeanLoss": 0.3490357649072179,
+              "familyMeanAccuracy": 0.8089909819615178
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 8362,
+              "familyMeanLoss": 0.42491478336210353,
+              "familyMeanAccuracy": 0.8167110562306352
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 813,
+              "familyMeanLoss": 0.5660420894917062,
+              "familyMeanAccuracy": 0.8144847895146134
+            }
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    },
+    {
+      "arm": "before",
+      "focus": {
+        "loss": 0.5766701776412502,
+        "accuracy": 0.6972887751323729,
+        "roles": {
+          "SILENT": {
+            "loss": 0.5898627981440879,
+            "accuracy": 0.6398359585514354,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.5729056369293812,
+            "accuracy": 0.7280417037211623,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.5886539087950345,
+            "accuracy": 0.7008096227037186,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.48623619931078876,
+            "accuracy": 0.7753763225227361,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.6456923450269585,
+            "accuracy": 0.6423802681628117,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.4084549477655744,
+      "macroMeanAccuracy": 0.8425507014281136,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.34515166213114035,
+          "familyMeanAccuracy": 0.8962568175216545,
+          "families": 8,
+          "roots": 23,
+          "pairs": 16479,
+          "familyLosses": {
+            "BOWLBUGS": 0.2006868060968001,
+            "RUBY_RAIDERS": 0.26690112117023834,
+            "FABRICATOR": 0.29110960798298186,
+            "SOUL_NEXUS_ELITE": 0.3329472356593111,
+            "ENTOMANCER_ELITE": 0.5565504155586132,
+            "SCROLLS_OF_BITING": 0.2528047769952533,
+            "THIEVING_HOPPER": 0.33895582025415527,
+            "MYTES": 0.5212575133317698
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 3878,
+              "familyMeanLoss": 0.28224143734030077,
+              "familyMeanAccuracy": 0.9173723865085119
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 21,
+              "pairs": 11364,
+              "familyMeanLoss": 0.30825591798212476,
+              "familyMeanAccuracy": 0.8942678485605335
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 1237,
+              "familyMeanLoss": 0.6273833496203755,
+              "familyMeanAccuracy": 0.6975584726590054
+            }
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.4535038702651169,
+          "familyMeanAccuracy": 0.8180562501414373,
+          "families": 9,
+          "roots": 19,
+          "pairs": 16247,
+          "familyLosses": {
+            "SOUL_NEXUS_ELITE": 0.6736869217490522,
+            "RUBY_RAIDERS": 0.4198164801111803,
+            "ENTOMANCER_ELITE": 0.47006754180440335,
+            "TEST_SUBJECT_BOSS": 0.5480275978272401,
+            "THIEVING_HOPPER": 0.33589150458698164,
+            "FABRICATOR": 0.37621473851751125,
+            "MYTES": 0.4660945839144862,
+            "SCROLLS_OF_BITING": 0.4034867428139576,
+            "BOWLBUGS": 0.38824872106123953
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 8,
+              "roots": 16,
+              "pairs": 4968,
+              "familyMeanLoss": 0.3838347249117084,
+              "familyMeanAccuracy": 0.8124704474322092
+            },
+            "victory-policy": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 10560,
+              "familyMeanLoss": 0.4197045621359439,
+              "familyMeanAccuracy": 0.8509520847797929
+            },
+            "suffix-effort": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 719,
+              "familyMeanLoss": 0.6374548370669126,
+              "familyMeanAccuracy": 0.670619159662104
+            }
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.4235038944225864,
+          "familyMeanAccuracy": 0.8424764546468472,
+          "families": 8,
+          "roots": 19,
+          "pairs": 16604,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.3119963445001744,
+            "MYTES": 0.2685544701933907,
+            "SOUL_NEXUS_ELITE": 0.45049916146960256,
+            "ENTOMANCER_ELITE": 0.4789141534156854,
+            "FABRICATOR": 0.5244366220586241,
+            "BOWLBUGS": 0.36875182718731886,
+            "THIEVING_HOPPER": 0.4792630729251615,
+            "SCROLLS_OF_BITING": 0.5056155036307338
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3936,
+              "familyMeanLoss": 0.37698993909686945,
+              "familyMeanAccuracy": 0.8483102908387425
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 11864,
+              "familyMeanLoss": 0.37303692961049534,
+              "familyMeanAccuracy": 0.8804767976438781
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 804,
+              "familyMeanLoss": 0.6005741450247308,
+              "familyMeanAccuracy": 0.6729250204735135
+            }
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.43742408088480556,
+          "familyMeanAccuracy": 0.8258777585904074,
+          "families": 8,
+          "roots": 20,
+          "pairs": 11622,
+          "familyLosses": {
+            "MYTES": 0.24145483627507652,
+            "ENTOMANCER_ELITE": 0.5201422276305526,
+            "SOUL_NEXUS_ELITE": 0.47385369115970954,
+            "FABRICATOR": 0.5270157594648208,
+            "RUBY_RAIDERS": 0.4744998228394073,
+            "BOWLBUGS": 0.39546551599802454,
+            "SCROLLS_OF_BITING": 0.4579887342136121,
+            "THIEVING_HOPPER": 0.4089720594972411
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3558,
+              "familyMeanLoss": 0.4362231012562867,
+              "familyMeanAccuracy": 0.7850573177588857
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 7552,
+              "familyMeanLoss": 0.4292514897485392,
+              "familyMeanAccuracy": 0.8087383718219753
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 17,
+              "pairs": 512,
+              "familyMeanLoss": 0.6147526225560709,
+              "familyMeanAccuracy": 0.7068951642864657
+            }
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.3826912311242228,
+          "familyMeanAccuracy": 0.8300862262402214,
+          "families": 8,
+          "roots": 19,
+          "pairs": 14124,
+          "familyLosses": {
+            "ENTOMANCER_ELITE": 0.44229354299615137,
+            "MYTES": 0.46935964336928215,
+            "SOUL_NEXUS_ELITE": 0.2650165995524243,
+            "SCROLLS_OF_BITING": 0.37238438799383156,
+            "RUBY_RAIDERS": 0.3845505123183714,
+            "FABRICATOR": 0.5615922202879023,
+            "BOWLBUGS": 0.14358546178709572,
+            "THIEVING_HOPPER": 0.42274748068872386
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 4949,
+              "familyMeanLoss": 0.3476897501724561,
+              "familyMeanAccuracy": 0.815237786768857
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 8362,
+              "familyMeanLoss": 0.43548419404813415,
+              "familyMeanAccuracy": 0.8173786289345754
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 813,
+              "familyMeanLoss": 0.5545229981744813,
+              "familyMeanAccuracy": 0.8081013468373157
+            }
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    },
+    {
+      "arm": "coverage",
+      "focus": {
+        "loss": 0.5783727885046838,
+        "accuracy": 0.6957500772562706,
+        "roles": {
+          "SILENT": {
+            "loss": 0.5855246937204751,
+            "accuracy": 0.6492885788112756,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2903
+          },
+          "NECROBINDER": {
+            "loss": 0.5603438697309582,
+            "accuracy": 0.7413525921320341,
+            "families": 8,
+            "roots": 19,
+            "pairs": 2174
+          },
+          "REGENT": {
+            "loss": 0.5964771959236242,
+            "accuracy": 0.6760013912520179,
+            "families": 8,
+            "roots": 20,
+            "pairs": 1568
+          },
+          "DEFECT": {
+            "loss": 0.4871772409051542,
+            "accuracy": 0.7729401720184657,
+            "families": 8,
+            "roots": 23,
+            "pairs": 2494
+          },
+          "IRONCLAD": {
+            "loss": 0.662340942243207,
+            "accuracy": 0.63916765206756,
+            "families": 9,
+            "roots": 19,
+            "pairs": 2268
+          }
+        }
+      },
+      "macroMeanLoss": 0.4094599271268972,
+      "macroMeanAccuracy": 0.8443966357307532,
+      "roles": {
+        "DEFECT": {
+          "familyMeanLoss": 0.3454769041738293,
+          "familyMeanAccuracy": 0.9000559673529752,
+          "families": 8,
+          "roots": 23,
+          "pairs": 16479,
+          "familyLosses": {
+            "BOWLBUGS": 0.1968664187241439,
+            "RUBY_RAIDERS": 0.2586639104009088,
+            "FABRICATOR": 0.28932885539457043,
+            "SOUL_NEXUS_ELITE": 0.3316081006158041,
+            "ENTOMANCER_ELITE": 0.574017988612613,
+            "SCROLLS_OF_BITING": 0.24505067197474803,
+            "THIEVING_HOPPER": 0.32324180130324365,
+            "MYTES": 0.5450374863646028
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 3878,
+              "familyMeanLoss": 0.2870835749021671,
+              "familyMeanAccuracy": 0.9190904003594237
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 21,
+              "pairs": 11364,
+              "familyMeanLoss": 0.30523745627469084,
+              "familyMeanAccuracy": 0.8952867060909527
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 20,
+              "pairs": 1237,
+              "familyMeanLoss": 0.6246511585816812,
+              "familyMeanAccuracy": 0.7055477837507023
+            }
+          }
+        },
+        "IRONCLAD": {
+          "familyMeanLoss": 0.46667486797999436,
+          "familyMeanAccuracy": 0.8199683037961101,
+          "families": 9,
+          "roots": 19,
+          "pairs": 16247,
+          "familyLosses": {
+            "SOUL_NEXUS_ELITE": 0.6879039848237739,
+            "RUBY_RAIDERS": 0.40089704247319113,
+            "ENTOMANCER_ELITE": 0.47644873971395774,
+            "TEST_SUBJECT_BOSS": 0.5481354381296927,
+            "THIEVING_HOPPER": 0.3352664894847546,
+            "FABRICATOR": 0.3798994957208035,
+            "MYTES": 0.5897211653044672,
+            "SCROLLS_OF_BITING": 0.4009855590240049,
+            "BOWLBUGS": 0.3808158971453036
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 8,
+              "roots": 16,
+              "pairs": 4968,
+              "familyMeanLoss": 0.4040356936599032,
+              "familyMeanAccuracy": 0.8151286779767609
+            },
+            "victory-policy": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 10560,
+              "familyMeanLoss": 0.430707078299321,
+              "familyMeanAccuracy": 0.8488804591461279
+            },
+            "suffix-effort": {
+              "families": 9,
+              "roots": 19,
+              "pairs": 719,
+              "familyMeanLoss": 0.6377419306646563,
+              "familyMeanAccuracy": 0.6777995321761401
+            }
+          }
+        },
+        "NECROBINDER": {
+          "familyMeanLoss": 0.40864335420434594,
+          "familyMeanAccuracy": 0.8486477835385327,
+          "families": 8,
+          "roots": 19,
+          "pairs": 16604,
+          "familyLosses": {
+            "RUBY_RAIDERS": 0.3038888186777614,
+            "MYTES": 0.27322073731263696,
+            "SOUL_NEXUS_ELITE": 0.43241963247802484,
+            "ENTOMANCER_ELITE": 0.4787108072389623,
+            "FABRICATOR": 0.4628716601398803,
+            "BOWLBUGS": 0.35332965489385343,
+            "THIEVING_HOPPER": 0.46787662559281284,
+            "SCROLLS_OF_BITING": 0.4968288973008357
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3936,
+              "familyMeanLoss": 0.3636167651774599,
+              "familyMeanAccuracy": 0.8527140678966386
+            },
+            "victory-policy": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 11864,
+              "familyMeanLoss": 0.36464906007804676,
+              "familyMeanAccuracy": 0.8750716172066944
+            },
+            "suffix-effort": {
+              "families": 7,
+              "roots": 18,
+              "pairs": 804,
+              "familyMeanLoss": 0.592235912545341,
+              "familyMeanAccuracy": 0.7280239340927659
+            }
+          }
+        },
+        "REGENT": {
+          "familyMeanLoss": 0.4418409899727896,
+          "familyMeanAccuracy": 0.8217666757484251,
+          "families": 8,
+          "roots": 20,
+          "pairs": 11622,
+          "familyLosses": {
+            "MYTES": 0.24611567989699473,
+            "ENTOMANCER_ELITE": 0.5265502571027101,
+            "SOUL_NEXUS_ELITE": 0.4764788354731787,
+            "FABRICATOR": 0.5365031165410048,
+            "RUBY_RAIDERS": 0.4741953499412027,
+            "BOWLBUGS": 0.405666740735208,
+            "SCROLLS_OF_BITING": 0.4538910730333775,
+            "THIEVING_HOPPER": 0.41532686705864014
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 3558,
+              "familyMeanLoss": 0.4383467421619516,
+              "familyMeanAccuracy": 0.7800439690043366
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 7552,
+              "familyMeanLoss": 0.43447140175609494,
+              "familyMeanAccuracy": 0.813226105948757
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 17,
+              "pairs": 512,
+              "familyMeanLoss": 0.6178108643241231,
+              "familyMeanAccuracy": 0.6994264879915877
+            }
+          }
+        },
+        "SILENT": {
+          "familyMeanLoss": 0.3846635193035268,
+          "familyMeanAccuracy": 0.8315444482177231,
+          "families": 8,
+          "roots": 19,
+          "pairs": 14124,
+          "familyLosses": {
+            "ENTOMANCER_ELITE": 0.4461454514890915,
+            "MYTES": 0.48190504070183293,
+            "SOUL_NEXUS_ELITE": 0.26694269281362115,
+            "SCROLLS_OF_BITING": 0.3634278207418161,
+            "RUBY_RAIDERS": 0.3829987884275501,
+            "FABRICATOR": 0.5712174728615202,
+            "BOWLBUGS": 0.1402226082847971,
+            "THIEVING_HOPPER": 0.42444827910798527
+          },
+          "kinds": {
+            "victory-over-defeat": {
+              "families": 7,
+              "roots": 17,
+              "pairs": 4949,
+              "familyMeanLoss": 0.3512447197245777,
+              "familyMeanAccuracy": 0.8176163838879531
+            },
+            "victory-policy": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 8362,
+              "familyMeanLoss": 0.4326561948574877,
+              "familyMeanAccuracy": 0.8188766665444405
+            },
+            "suffix-effort": {
+              "families": 8,
+              "roots": 19,
+              "pairs": 813,
+              "familyMeanLoss": 0.5538027460569966,
+              "familyMeanAccuracy": 0.8145849913731341
+            }
+          }
+        }
+      },
+      "zeroPairRoots": 0
+    }
+  ],
+  "fitCosts": {
+    "before": {
+      "fitProcessSeconds": 22.028013915987685,
+      "exportSeconds": 60.056888774968684,
+      "ancestorTrainingSeconds": 85.83324902702589,
+      "completeModelSeconds": 167.91815171798225,
+      "returnCode": 0
+    },
+    "coverage": {
+      "fitProcessSeconds": 21.276019022101536,
+      "exportSeconds": 61.05758338794112,
+      "ancestorTrainingSeconds": 85.83324902702589,
+      "completeModelSeconds": 168.16685143706854,
+      "returnCode": 0
+    }
+  },
+  "completeCandidateCost": {
+    "fitProcessSeconds": 27.032416383968666,
+    "exportSeconds": 74.57152026100084,
+    "ancestorTrainingSeconds": 85.83324902702589,
+    "completeModelSeconds": 187.4371856719954,
+    "returnCode": 0
+  },
+  "parity": {
+    "rows": 1280,
+    "maximumAbsoluteDifference": 0.0
+  },
+  "summary": {
+    "arm": "before",
+    "baselineEarlyAccuracy": 0.6919188502675473,
+    "chosenEarlyAccuracy": 0.6972887751323729,
+    "baselineEarlyLoss": 0.5770221992741953,
+    "chosenEarlyLoss": 0.5766701776412502,
+    "chosenAllTurnLoss": 0.4084549477655744,
+    "baselineAllTurnLoss": 0.41054867492063524,
+    "fullFit": true,
+    "finalTestOpened": false,
+    "runtimeDefaultChanged": false,
+    "model": ".local/objective-search/v69/full/fitted/model.json",
+    "modelSha256": "958b9ab68058938d9af1943535fa9192a65d956ab4da09c8821dad93dc93de00",
+    "development": {
+      "model": ".local/objective-search/v69/full/fitted/model.json",
+      "modelSha256": "958b9ab68058938d9af1943535fa9192a65d956ab4da09c8821dad93dc93de00",
+      "regressions": [
+        "unseen-defect-the_kin_boss",
+        "unseen-necrobinder-kaiser_crab_boss"
+      ],
+      "improvements": [
+        "unseen-regent-knowledge_demon_boss"
+      ],
+      "unverified": [],
+      "fullDevelopmentCoverage": false,
+      "eligibleForFinalReview": false
+    }
+  },
+  "development": {
+    "model": ".local/objective-search/v69/full/fitted/model.json",
+    "modelSha256": "958b9ab68058938d9af1943535fa9192a65d956ab4da09c8821dad93dc93de00",
+    "records": [
+      {
+        "id": "unseen-defect-the_kin_boss",
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 29,
+          "strategicHpDeficit": 29,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 9,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 24,
+          "strategicHpDeficit": 24,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000834963,
+          "combatEndedTurn": 7,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 1
+        },
+        "issues": [],
+        "baselineIssues": [],
+        "seconds": 14.5466756,
+        "rss": 363102208,
+        "nodes": 12000,
+        "timeBoundary": true
+      },
+      {
+        "id": "unseen-ironclad-byrdonis_elite",
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 28,
+          "strategicHpDeficit": 22,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 10000711993,
+          "combatEndedTurn": 3,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "issues": [],
+        "baselineIssues": [],
+        "seconds": 7.9043897,
+        "rss": 331317248,
+        "nodes": 8020,
+        "timeBoundary": false
+      },
+      {
+        "id": "unseen-necrobinder-kaiser_crab_boss",
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 66,
+          "strategicHpDeficit": 66,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 240,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 64,
+          "strategicHpDeficit": 64,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 9997819946,
+          "combatEndedTurn": 9,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "issues": [],
+        "baselineIssues": [],
+        "seconds": 19.5181757,
+        "rss": 388939776,
+        "nodes": 17276,
+        "timeBoundary": true
+      },
+      {
+        "id": "unseen-regent-knowledge_demon_boss",
+        "quality": {
+          "won": true,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 71,
+          "strategicHpDeficit": 71,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 0,
+          "score": 0,
+          "combatEndedTurn": 10,
+          "theftPolicy": null,
+          "survives": true,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 75,
+          "strategicHpDeficit": 75,
+          "potionStrategicCost": 0,
+          "projectedBattlePotionCount": 0,
+          "enemyHp": 79,
+          "score": -1000003040040,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 0,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "issues": [],
+        "baselineIssues": [],
+        "seconds": 16.4730949,
+        "rss": 374177792,
+        "nodes": 14698,
+        "timeBoundary": true
+      },
+      {
+        "id": "unseen-silent-knights_elite",
+        "quality": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 225,
+          "score": 0,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "baseline": {
+          "won": false,
+          "outstandingStolenResource": 0,
+          "projectedBattleHpLost": 91,
+          "strategicHpDeficit": 280,
+          "potionStrategicCost": 9,
+          "projectedBattlePotionCount": 1,
+          "enemyHp": 191,
+          "score": -1000010940027,
+          "combatEndedTurn": null,
+          "theftPolicy": null,
+          "survives": false,
+          "deathSaveUseCount": 1,
+          "growthHpCredit": 0,
+          "growthRewardCount": 0
+        },
+        "issues": [],
+        "baselineIssues": [],
+        "seconds": 9.6715937,
+        "rss": 338931712,
+        "nodes": 6923,
+        "timeBoundary": true
+      }
+    ],
+    "comparisons": [
+      {
+        "id": "unseen-defect-the_kin_boss",
+        "materialComparison": 1
+      },
+      {
+        "id": "unseen-ironclad-byrdonis_elite",
+        "materialComparison": 0
+      },
+      {
+        "id": "unseen-necrobinder-kaiser_crab_boss",
+        "materialComparison": 1
+      },
+      {
+        "id": "unseen-regent-knowledge_demon_boss",
+        "materialComparison": -1
+      },
+      {
+        "id": "unseen-silent-knights_elite",
+        "materialComparison": 0
+      }
+    ],
+    "completed": true,
+    "historicalBaselineTimingIsSpeedProof": false,
+    "regressions": [
+      "unseen-defect-the_kin_boss",
+      "unseen-necrobinder-kaiser_crab_boss"
+    ],
+    "improvements": [
+      "unseen-regent-knowledge_demon_boss"
+    ],
+    "unverified": [],
+    "stage": "screen",
+    "fullDevelopmentCoverage": false,
+    "eligibleForFinalReview": false
+  },
+  "fitStatus": {
+    "phase": "completed",
+    "seconds": 357.1685984650394,
+    "updatedUtc": "2026-09-28T00:23:52.626174+00:00",
+    "childSeconds": {
+      "export": 195.68599242391065,
+      "fit": 70.33644932205789,
+      "audit": 11.512888935976662,
+      "parity": 0.5014080030377954,
+      "evaluate": 78.82732501497958,
+      "compare-screen": 0.2509086549980566
+    }
+  },
+  "sourceRollback": {
+    "restoredUtc": "2026-09-28T00:22:41.559669+00:00",
+    "productionSource": "e8fbe2a2 (v67 behavior)",
+    "reason": "Coverage increased sampled first-action strata but lost to matched before acquisition on the predeclared early accuracy metric and both loss metrics. Preserve complete patch and frozen v69 engine; do not default an inferior acquisition policy.",
+    "newPolicyEarlyAccuracy": 0.6957500772562706,
+    "matchedBeforeEarlyAccuracy": 0.6972887751323729,
+    "patch": "v69/exploratory-source.patch",
+    "frozenStudyContinues": true,
+    "runtimeModelStillDisabled": true,
+    "sameSourceDeploymentReused": "v67/deployment.json; source rollback restores already deployed behavior, no repeat build or copy"
+  },
+  "sourcePatchSha256": "19f51280f1d0e79136ef58b16a6d458607d2a76736b86024bafe9b7070354401",
+  "build": [
+    {
+      "name": "main",
+      "command": [
+        "dotnet",
+        "build",
+        "CombatSolver.csproj",
+        "-c",
+        "Release",
+        "--no-restore",
+        "-p:CopyModOnBuild=false"
+      ],
+      "exit": 0,
+      "seconds": 12.918488894007169
+    },
+    {
+      "name": "host",
+      "command": [
+        "dotnet",
+        "build",
+        "tools/OfflineSearchHarness/OfflineSearchHarness.csproj",
+        "-c",
+        "Release",
+        "--no-restore",
+        "-p:CopyModOnBuild=false"
+      ],
+      "exit": 0,
+      "seconds": 2.5311580930138007
+    }
+  ],
+  "checks": {
+    "exploratoryModelContracts": 176,
+    "exploratoryBoundarySearchFiles": 224,
+    "firstBoundaryAttempt": "Failed: old guards still referred to the original owner file. Preserved original logs; corrected ownership paths without changing behavior; both final gates passed.",
+    "productionContracts": "Restored v67 behavior, reuse existing 168 model contracts, source builds and deployment. No new production behavior retained."
+  },
+  "limits": [
+    "Repeated internal100 and outer15 are development, not independent final tests.",
+    "Five acquisition pairs changed main routes and four changed material quality under observed time stops; compare whole acquisition pipelines, not a pure causal estimate of query stratification.",
+    "Unknown-to-defeat queries add completed witnesses, not a victory improvement.",
+    "Actual candidate evaluated with frozen v69 engine and collection disabled; differences from deployed v67 source only concern disabled offline correction collection.",
+    "No final test opened or runtime model enabled."
+  ]
+}
