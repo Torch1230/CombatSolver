@@ -1,5 +1,7 @@
 # 结果估值与小规模训练工具
 
+宿主 `--audit-outcome-context-ranking <结果训练输入> <模型> <输出>` 对已有同根完成见证作有界跨池/跨回合诊断，只使用完整终局政策，不用动作后缀长短制造政策偏好。`--check-outcome-context-ranking` 验证其合同；结果不能当作独立测试准确率。见[292训练根审计](../../docs/strategy/training-context-ranking-audit-20260928.md)。
+
 `collect_continuations.py <冻结协议.json> <输出目录>` 用于有限的跨回合训练补采，不拟合模型；训练/开发/最终集合先做家族与实际牌组隔离，再核对每次原生装备和双根戳。冻结二进制、模型、输入摘要，保留失败，可续跑已记录任务；Linux入口使用指定CPU亲和性，单进程超时由协议给出。教师代价和采集RSS单列，不作为正常推理性能。协议与试采证据见[跨回合续局监督](../../docs/strategy/cross-turn-witnesses-20260928.md)。
 
 `neural_fit.py` 是可选的CPU单隐层tanh残差训练器，依赖现有 `requirements-ranking.txt`，游戏内只运行C#数值核。示例：`python tools/OutcomeValuation/neural_fit.py export-directory model-directory --seconds 1000 --units 16 --penalty .1 --iterations 128`。沿用权威偏好图和学习得到的线性基础项；活动列和RMS只从训练侧计算，权重折回原始观察单位，全部角色共用一个时限，传入时间仍须扣除完整导出成本。输出schema11，至多32个隐单元；旧9/10明确拒绝携带神经项，11必须携带神经项且不混入因子。线性导出清除全部非线性项，旧模型序列化不会增加空字段。`--self-test`检查梯度、重复数据的根权重、条件作用和原单位导出；128次迭代耗尽记录为未收敛，不能当作最优解或更强决策。仍须通过C#实样本核对及独立实战，不自动启用模型。

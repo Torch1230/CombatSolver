@@ -124,7 +124,8 @@ internal static partial class OutcomeValueTraining
     }
     // An entry is one actual root: either one observation file or several policies'
     // files for that same root. Query IDs never join across independent roll-ins.
-    internal static List<(string Id, SearchOutcomeValueModel.TrainingRow[] Rows)> ReadRoots(string pathsFile)
+    internal static List<(string Id, SearchOutcomeValueModel.TrainingRow[] Rows)> ReadRoots(string pathsFile,
+        bool requireTrainingTurns = false)
     {
         using var input = JsonDocument.Parse(File.ReadAllText(pathsFile));
         JsonElement entries = input.RootElement;
@@ -170,7 +171,7 @@ internal static partial class OutcomeValueTraining
                 // Invalid labels must not disappear merely because the sampler
                 // would omit them. Use the fitter's authoritative validator.
                 SearchOutcomeValueModel.ValidateTrainingRows(source);
-                if (balanceTrainingTurns)
+                if (balanceTrainingTurns || requireTrainingTurns)
                     foreach (var row in source) _ = SearchOutcomeValueModel.TrainingTurn(row);
                 Dictionary<int, int> groups = [];
                 foreach (var row in Sample(source, maximumRowsPerRoot / files.Length, sampler, sampling))

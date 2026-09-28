@@ -201,6 +201,8 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 ## 上下文结果估值研究
 
+`--audit-outcome-context-ranking <结果训练输入> <模型> <输出>` 对每个物理根已有完成见证最多抽样256行，区分同/跨回合与原池重叠，只比较胜负和完整胜局政策；双方败局与同政策后缀不赋偏好。回合在原始行抽样前验证，默认训练抽样不变。`--check-outcome-context-ranking` 验证该诊断合同。它不比较模仿标签、不重训、不运行战斗；根内相关比较不能计作独立测试数量。见[训练上下文审计](strategy/training-context-ranking-audit-20260928.md)。
+
 模型推理支持 schema10 的 `FactorWeights` 二阶交互，并明确兼容没有因子的 schema9；原始观察继续为8。外部因子训练及完整预算口径见 [`tools/OutcomeValuation`](../tools/OutcomeValuation/README.md)，不会成为新的玩家搜索模式。
 
 `--collect-outcome-values --dop 1` 输出 `outcome-context.json` 与同池完整胜利/真实终局死亡见证的 `outcome-rows.json`；未完成/被裁剪状态不标失败。使用 `--fit-outcome-values <路径数组JSON> <模型JSON>` 拟合无需游戏启动的线性基础项和64棵深度6直方图成对残差树（模型schema10，观察schema8）。同时输出 `<模型名>.linear.json`，供同一次拟合的纯线性消融使用。`tools/OutcomeValuation/train.py` 对采集加拟合设置至多1800秒硬进程时限。

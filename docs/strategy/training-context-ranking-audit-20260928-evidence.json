@@ -1,0 +1,558 @@
+{
+  "experiment": "training-completion-context-audit",
+  "sourceBase": "e233c591",
+  "newModelTrained": false,
+  "finalTestOpened": false,
+  "runtimeLearnedModelEnabled": false,
+  "contracts": 17,
+  "harnessBuildPassed": true,
+  "harnessBuildWarnings": 0,
+  "process": {
+    "processSeconds": 18.82366753392853,
+    "returnCode": 0,
+    "timedOut": false
+  },
+  "modDeploymentReused": ".local/objective-search/v80/deployment.json",
+  "trainingRoots": 292,
+  "maximumRowsPerRoot": 256,
+  "samplerSeed": 0,
+  "elapsedSeconds": 18.560861,
+  "peakWorkingSetBytes": 1973895168,
+  "scope": "Observed within-root completed outcomes; no imitation or suffix-effort comparisons; not independent evaluation.",
+  "sharedPoolMeaning": "Endpoints occur in an original pool; not proof this edge survived training pair sampling.",
+  "totals": {
+    "same-turn/shared-pool/victory-policy": {
+      "Pairs": 63230,
+      "Correct": 53646,
+      "Wrong": 9082,
+      "Ties": 502,
+      "LossSum": 24260.095525398097,
+      "Accuracy": 0.848426379882967,
+      "MeanLogLoss": 0.38368014432070374
+    },
+    "cross-turn/disjoint-pools/victory-policy": {
+      "Pairs": 4075772,
+      "Correct": 3382509,
+      "Wrong": 693198,
+      "Ties": 65,
+      "LossSum": 1608575.2677825831,
+      "Accuracy": 0.8299063343091811,
+      "MeanLogLoss": 0.3946676280671694
+    },
+    "same-turn/disjoint-pools/victory-policy": {
+      "Pairs": 379639,
+      "Correct": 310558,
+      "Wrong": 68873,
+      "Ties": 208,
+      "LossSum": 157152.4594361369,
+      "Accuracy": 0.8180350280134548,
+      "MeanLogLoss": 0.4139523585199016
+    },
+    "cross-turn/shared-pool/victory-policy": {
+      "Pairs": 643,
+      "Correct": 548,
+      "Wrong": 95,
+      "Ties": 0,
+      "LossSum": 295.64919489337865,
+      "Accuracy": 0.8522550544323484,
+      "MeanLogLoss": 0.4597965705962343
+    },
+    "same-turn/shared-pool/victory-over-defeat": {
+      "Pairs": 25168,
+      "Correct": 20281,
+      "Wrong": 4582,
+      "Ties": 305,
+      "LossSum": 10285.027742107903,
+      "Accuracy": 0.8058248569612206,
+      "MeanLogLoss": 0.4086549484308607
+    },
+    "cross-turn/disjoint-pools/victory-over-defeat": {
+      "Pairs": 1913151,
+      "Correct": 1426361,
+      "Wrong": 486790,
+      "Ties": 0,
+      "LossSum": 1599544.1488009386,
+      "Accuracy": 0.7455558918245345,
+      "MeanLogLoss": 0.8360783591054437
+    },
+    "same-turn/disjoint-pools/victory-over-defeat": {
+      "Pairs": 181621,
+      "Correct": 148180,
+      "Wrong": 33311,
+      "Ties": 130,
+      "LossSum": 70413.69370055724,
+      "Accuracy": 0.8158748162382103,
+      "MeanLogLoss": 0.3876957714171667
+    },
+    "cross-turn/shared-pool/victory-over-defeat": {
+      "Pairs": 314,
+      "Correct": 279,
+      "Wrong": 35,
+      "Ties": 0,
+      "LossSum": 93.10938171791359,
+      "Accuracy": 0.8885350318471338,
+      "MeanLogLoss": 0.29652669336915155
+    }
+  },
+  "byCharacter": {
+    "DEFECT": {
+      "same-turn/shared-pool/victory-policy": {
+        "Pairs": 14030,
+        "Correct": 12150,
+        "Wrong": 1766,
+        "Ties": 114,
+        "LossSum": 4906.35788747739,
+        "Accuracy": 0.8660014255167499,
+        "MeanLogLoss": 0.3497047674609687
+      },
+      "cross-turn/disjoint-pools/victory-policy": {
+        "Pairs": 998418,
+        "Correct": 854413,
+        "Wrong": 143998,
+        "Ties": 7,
+        "LossSum": 364959.6606128124,
+        "Accuracy": 0.8557668231141666,
+        "MeanLogLoss": 0.3655379416364813
+      },
+      "same-turn/disjoint-pools/victory-policy": {
+        "Pairs": 82507,
+        "Correct": 68733,
+        "Wrong": 13700,
+        "Ties": 74,
+        "LossSum": 30962.276654319176,
+        "Accuracy": 0.8330565891378914,
+        "MeanLogLoss": 0.37526848212053737
+      },
+      "cross-turn/shared-pool/victory-policy": {
+        "Pairs": 91,
+        "Correct": 78,
+        "Wrong": 13,
+        "Ties": 0,
+        "LossSum": 37.397855160739034,
+        "Accuracy": 0.8571428571428571,
+        "MeanLogLoss": 0.41096544132680257
+      },
+      "cross-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 397570,
+        "Correct": 292196,
+        "Wrong": 105374,
+        "Ties": 0,
+        "LossSum": 409085.4118825594,
+        "Accuracy": 0.7349548507181125,
+        "MeanLogLoss": 1.0289644889769334
+      },
+      "same-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 40011,
+        "Correct": 32631,
+        "Wrong": 7307,
+        "Ties": 73,
+        "LossSum": 15754.070055158982,
+        "Accuracy": 0.8155507235510234,
+        "MeanLogLoss": 0.3937434719241954
+      },
+      "same-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 5158,
+        "Correct": 4124,
+        "Wrong": 920,
+        "Ties": 114,
+        "LossSum": 2136.021369600286,
+        "Accuracy": 0.7995347033734005,
+        "MeanLogLoss": 0.41411814067473557
+      },
+      "cross-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 56,
+        "Correct": 51,
+        "Wrong": 5,
+        "Ties": 0,
+        "LossSum": 14.922692291940045,
+        "Accuracy": 0.9107142857142857,
+        "MeanLogLoss": 0.2664766480703579
+      }
+    },
+    "IRONCLAD": {
+      "same-turn/shared-pool/victory-policy": {
+        "Pairs": 15352,
+        "Correct": 12559,
+        "Wrong": 2650,
+        "Ties": 143,
+        "LossSum": 6746.620137781547,
+        "Accuracy": 0.818069306930693,
+        "MeanLogLoss": 0.4394619683286573
+      },
+      "same-turn/disjoint-pools/victory-policy": {
+        "Pairs": 89075,
+        "Correct": 69557,
+        "Wrong": 19475,
+        "Ties": 43,
+        "LossSum": 41963.85804922458,
+        "Accuracy": 0.7808812798203761,
+        "MeanLogLoss": 0.4711070227249462
+      },
+      "cross-turn/disjoint-pools/victory-policy": {
+        "Pairs": 869118,
+        "Correct": 724737,
+        "Wrong": 144325,
+        "Ties": 56,
+        "LossSum": 337673.3865092591,
+        "Accuracy": 0.8338764126390202,
+        "MeanLogLoss": 0.3885242124881306
+      },
+      "cross-turn/shared-pool/victory-policy": {
+        "Pairs": 191,
+        "Correct": 151,
+        "Wrong": 40,
+        "Ties": 0,
+        "LossSum": 95.68240493026947,
+        "Accuracy": 0.7905759162303665,
+        "MeanLogLoss": 0.5009549996349187
+      },
+      "cross-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 413437,
+        "Correct": 313975,
+        "Wrong": 99462,
+        "Ties": 0,
+        "LossSum": 300422.42951474903,
+        "Accuracy": 0.7594264664265656,
+        "MeanLogLoss": 0.7266462109456798
+      },
+      "same-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 40138,
+        "Correct": 32540,
+        "Wrong": 7580,
+        "Ties": 18,
+        "LossSum": 16409.46009586442,
+        "Accuracy": 0.810703074393343,
+        "MeanLogLoss": 0.40882605251543225
+      },
+      "same-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 5941,
+        "Correct": 4707,
+        "Wrong": 1196,
+        "Ties": 38,
+        "LossSum": 2584.7162910225043,
+        "Accuracy": 0.7922908601245582,
+        "MeanLogLoss": 0.435064179603182
+      },
+      "cross-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 69,
+        "Correct": 64,
+        "Wrong": 5,
+        "Ties": 0,
+        "LossSum": 17.194570050197306,
+        "Accuracy": 0.927536231884058,
+        "MeanLogLoss": 0.24919666739416385
+      }
+    },
+    "NECROBINDER": {
+      "same-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 4001,
+        "Correct": 3143,
+        "Wrong": 807,
+        "Ties": 51,
+        "LossSum": 1885.3714814426019,
+        "Accuracy": 0.7855536115971007,
+        "MeanLogLoss": 0.47122506409462683
+      },
+      "cross-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 324239,
+        "Correct": 247157,
+        "Wrong": 77082,
+        "Ties": 0,
+        "LossSum": 249442.18786203396,
+        "Accuracy": 0.7622679566615984,
+        "MeanLogLoss": 0.7693158067414283
+      },
+      "same-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 32827,
+        "Correct": 26034,
+        "Wrong": 6785,
+        "Ties": 8,
+        "LossSum": 14007.963760911352,
+        "Accuracy": 0.7930666829134554,
+        "MeanLogLoss": 0.4267208018067856
+      },
+      "same-turn/shared-pool/victory-policy": {
+        "Pairs": 11556,
+        "Correct": 10025,
+        "Wrong": 1456,
+        "Ties": 75,
+        "LossSum": 4163.364372356448,
+        "Accuracy": 0.8675147109726549,
+        "MeanLogLoss": 0.3602772907888931
+      },
+      "cross-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 70,
+        "Correct": 53,
+        "Wrong": 17,
+        "Ties": 0,
+        "LossSum": 25.361398171519095,
+        "Accuracy": 0.7571428571428571,
+        "MeanLogLoss": 0.3623056881645585
+      },
+      "cross-turn/disjoint-pools/victory-policy": {
+        "Pairs": 759059,
+        "Correct": 594552,
+        "Wrong": 164507,
+        "Ties": 0,
+        "LossSum": 332891.96742029587,
+        "Accuracy": 0.7832750813836605,
+        "MeanLogLoss": 0.4385587515862349
+      },
+      "same-turn/disjoint-pools/victory-policy": {
+        "Pairs": 74915,
+        "Correct": 64572,
+        "Wrong": 10331,
+        "Ties": 12,
+        "LossSum": 27623.532300532508,
+        "Accuracy": 0.8619368617766803,
+        "MeanLogLoss": 0.36873165988830686
+      },
+      "cross-turn/shared-pool/victory-policy": {
+        "Pairs": 149,
+        "Correct": 128,
+        "Wrong": 21,
+        "Ties": 0,
+        "LossSum": 68.37269895762714,
+        "Accuracy": 0.8590604026845637,
+        "MeanLogLoss": 0.45887717421226265
+      }
+    },
+    "REGENT": {
+      "same-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 4859,
+        "Correct": 3996,
+        "Wrong": 815,
+        "Ties": 48,
+        "LossSum": 1846.0381562329294,
+        "Accuracy": 0.8223914385676065,
+        "MeanLogLoss": 0.37992141515392663
+      },
+      "same-turn/shared-pool/victory-policy": {
+        "Pairs": 12333,
+        "Correct": 10708,
+        "Wrong": 1533,
+        "Ties": 92,
+        "LossSum": 4393.332564669526,
+        "Accuracy": 0.8682396821535717,
+        "MeanLogLoss": 0.35622578161595114
+      },
+      "same-turn/disjoint-pools/victory-policy": {
+        "Pairs": 64981,
+        "Correct": 54360,
+        "Wrong": 10595,
+        "Ties": 26,
+        "LossSum": 25664.22149571568,
+        "Accuracy": 0.8365522229574799,
+        "MeanLogLoss": 0.3949496236702371
+      },
+      "same-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 30074,
+        "Correct": 24190,
+        "Wrong": 5870,
+        "Ties": 14,
+        "LossSum": 12225.178107011865,
+        "Accuracy": 0.8043492717962359,
+        "MeanLogLoss": 0.40650322893568747
+      },
+      "cross-turn/disjoint-pools/victory-policy": {
+        "Pairs": 765608,
+        "Correct": 656422,
+        "Wrong": 109186,
+        "Ties": 0,
+        "LossSum": 283829.22931482235,
+        "Accuracy": 0.8573865476849771,
+        "MeanLogLoss": 0.3707239596697296
+      },
+      "cross-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 354126,
+        "Correct": 242358,
+        "Wrong": 111768,
+        "Ties": 0,
+        "LossSum": 368863.5911112787,
+        "Accuracy": 0.6843835245082259,
+        "MeanLogLoss": 1.0416168005491793
+      },
+      "cross-turn/shared-pool/victory-policy": {
+        "Pairs": 100,
+        "Correct": 91,
+        "Wrong": 9,
+        "Ties": 0,
+        "LossSum": 47.540454938153204,
+        "Accuracy": 0.91,
+        "MeanLogLoss": 0.47540454938153204
+      },
+      "cross-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 58,
+        "Correct": 53,
+        "Wrong": 5,
+        "Ties": 0,
+        "LossSum": 20.984142377120847,
+        "Accuracy": 0.9137931034482759,
+        "MeanLogLoss": 0.3617955582262215
+      }
+    },
+    "SILENT": {
+      "cross-turn/disjoint-pools/victory-policy": {
+        "Pairs": 683569,
+        "Correct": 552385,
+        "Wrong": 131182,
+        "Ties": 2,
+        "LossSum": 289221.023925466,
+        "Accuracy": 0.8080896003183292,
+        "MeanLogLoss": 0.42310435950937797
+      },
+      "cross-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 423779,
+        "Correct": 330675,
+        "Wrong": 93104,
+        "Ties": 0,
+        "LossSum": 271730.5284303573,
+        "Accuracy": 0.7803005811991628,
+        "MeanLogLoss": 0.641208102407994
+      },
+      "same-turn/disjoint-pools/victory-policy": {
+        "Pairs": 68161,
+        "Correct": 53336,
+        "Wrong": 14772,
+        "Ties": 53,
+        "LossSum": 30938.57093633848,
+        "Accuracy": 0.7825002567450595,
+        "MeanLogLoss": 0.4539042991789804
+      },
+      "same-turn/shared-pool/victory-policy": {
+        "Pairs": 9959,
+        "Correct": 8204,
+        "Wrong": 1677,
+        "Ties": 78,
+        "LossSum": 4050.420563113552,
+        "Accuracy": 0.8237774876995683,
+        "MeanLogLoss": 0.4067095655300283
+      },
+      "same-turn/disjoint-pools/victory-over-defeat": {
+        "Pairs": 38571,
+        "Correct": 32785,
+        "Wrong": 5769,
+        "Ties": 17,
+        "LossSum": 12017.021681611875,
+        "Accuracy": 0.8499909258251017,
+        "MeanLogLoss": 0.31155587569966753
+      },
+      "same-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 5209,
+        "Correct": 4311,
+        "Wrong": 844,
+        "Ties": 54,
+        "LossSum": 1832.880443809562,
+        "Accuracy": 0.8276060664234978,
+        "MeanLogLoss": 0.35186800610665425
+      },
+      "cross-turn/shared-pool/victory-over-defeat": {
+        "Pairs": 61,
+        "Correct": 58,
+        "Wrong": 3,
+        "Ties": 0,
+        "LossSum": 14.646578827136334,
+        "Accuracy": 0.9508196721311475,
+        "MeanLogLoss": 0.2401078496251858
+      },
+      "cross-turn/shared-pool/victory-policy": {
+        "Pairs": 112,
+        "Correct": 100,
+        "Wrong": 12,
+        "Ties": 0,
+        "LossSum": 46.655780906589676,
+        "Accuracy": 0.8928571428571429,
+        "MeanLogLoss": 0.416569472380265
+      }
+    }
+  },
+  "macroSummary": {
+    "roots": 292,
+    "pairedRoots": 292,
+    "macroAccuracy": {
+      "local": 0.810680974008907,
+      "cross": 0.7830602830281017
+    },
+    "macroLogLoss": {
+      "local": 0.42247454667947704,
+      "cross": 0.5787786410229471
+    },
+    "byCharacter": {
+      "DEFECT": {
+        "roots": 60,
+        "macroAccuracy": {
+          "local": 0.8161316641042115,
+          "cross": 0.8002401251509614
+        }
+      },
+      "IRONCLAD": {
+        "roots": 58,
+        "macroAccuracy": {
+          "local": 0.7975991332651167,
+          "cross": 0.7880546878024225
+        }
+      },
+      "NECROBINDER": {
+        "roots": 57,
+        "macroAccuracy": {
+          "local": 0.8205839088820192,
+          "cross": 0.7669235203770562
+        }
+      },
+      "REGENT": {
+        "roots": 58,
+        "macroAccuracy": {
+          "local": 0.8172834166775581,
+          "cross": 0.7739065996375621
+        }
+      },
+      "SILENT": {
+        "roots": 59,
+        "macroAccuracy": {
+          "local": 0.8019402349389484,
+          "cross": 0.7852677932565539
+        }
+      }
+    },
+    "warning": "Training-only diagnostics; heavily dependent comparisons, different label/context mixtures, not an independent accuracy estimate or causal attribution."
+  },
+  "separation": {
+    "schema": 2,
+    "splitCounts": {
+      "train": 292,
+      "validation": 100,
+      "test": 55
+    },
+    "comparisons": [
+      {
+        "left": "train",
+        "right": "validation",
+        "maximumDeckSimilarity": 0.5555555555555556
+      },
+      {
+        "left": "train",
+        "right": "test",
+        "maximumDeckSimilarity": 0.5555555555555556
+      },
+      {
+        "left": "validation",
+        "right": "test",
+        "maximumDeckSimilarity": 0.5
+      }
+    ],
+    "maximumDeckSimilarity": 0.5555555555555556,
+    "passed": true,
+    "datasetSha256": "fa4da8ca30a39b856424b21a7f40d2c02eb905187229b28459d55d3c12506e68"
+  },
+  "input": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v70/full-outcome-inputs.json",
+  "model": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v76/full/fitted/model.json",
+  "sha256": {
+    ".local/objective-search/v81/context-audit.json": "3340a798b13470f73d3c501ee3d3b0b79d07378527e9682e9eb5773fe1b40f97",
+    ".local/objective-search/v81/summary.json": "8073594a09a43138bd17cda1b82e86861a0d79a37c03849e0ab9fe44cf4db49f",
+    ".local/objective-search/v81/protocol.json": "a428d8f5daf1e4d10f8c9aacb4c865fdf23f30c2694de5e9498be461c1b83e48",
+    ".local/objective-search/v81/harness/OfflineSearchHarness.dll": "3a17002df6d6ee260e370e45aa64c8f0b02c2bd3050a88533175ce92c8ca50de",
+    "tools/OfflineSearchHarness/OutcomeContextAudit.cs": "f08d8b0b71864540b657d5d7702c3f89134f292fdd8c1c62651c77fca62746a6",
+    "tools/OfflineSearchHarness/OutcomeValueTraining.cs": "efc09e8f86afb183a97370c24d9046eed18b29bb528a52cbd8efcfc8496fac3c",
+    "tools/OfflineSearchHarness/Program.cs": "157a5697373cbb7bb5a1725aafcfea909a1bc849a229bca2d845d777287202a1"
+  }
+}

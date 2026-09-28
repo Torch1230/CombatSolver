@@ -34,6 +34,10 @@ internal static class Program
             return OutcomeRankingChecks.Run();
         if (rawArgs.Length == 4 && rawArgs[0] == "--audit-outcome-ranking")
             return OutcomeValueTraining.Audit(rawArgs[1], rawArgs[2], rawArgs[3]);
+        if (rawArgs.Length == 4 && rawArgs[0] == "--audit-outcome-context-ranking")
+            return OutcomeContextAudit.Run(rawArgs[1], rawArgs[2], rawArgs[3]);
+        if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-context-ranking")
+            return OutcomeContextAudit.Check();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-shared-evidence")
             return SharedEvidenceChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-cache")
