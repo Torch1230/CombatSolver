@@ -63,12 +63,29 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Deployment fixture has no planned local card.");
                     SolverController.RequestDeploy(runner._host, combat);
                     await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
-                        && SolverController.LastSolverDeployedTurnForBugReport == 1);
-                    if (!plannedCards.All(action => SolverController.WasCardDeployedForTesting(action.CardId))
-                        || !CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
-                        || combat.Players.Where(player => player != scenario.Player)
-                            .Any(CombatManager.Instance.IsPlayerReadyToEndTurn))
-                        throw new InvalidOperationException("Controller deployed another player's action or did not finish the local turn.");
+                        && SolverController.LastSolverDeployedTurnForBugReport == 1
+                        && (CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
+                            || scenario.Player.PlayerCombatState?.TurnNumber == 2));
+                    bool cardsDeployed = plannedCards.All(action =>
+                        SolverController.WasCardDeployedForTesting(action.CardId));
+                    bool localReady = CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player);
+                    int actualTurn = scenario.Player.PlayerCombatState?.TurnNumber ?? 0;
+                    if (!cardsDeployed || !localReady && actualTurn != 2)
+                        throw new InvalidOperationException(
+                            $"Controller deployment did not complete its local route: cards={cardsDeployed} " +
+                            $"ready={localReady} turn={actualTurn} " +
+                            $"planned={string.Join(',', plannedCards.Select(action => action.CardId))}.");
+                    if (!input.IsVirtual)
+                    {
+                        await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                            player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                        await runner.MultiplayerProbeBarrierAsync("controller-second-turn", combat);
+                        runner._completedChecks.Add("MultiplayerController:EnetPeers:LocalDeployment:SecondTurn:FullState:FullRng");
+                        return new ExecutionOutcome(false, 2, true, true, true, false);
+                    }
+                    if (combat.Players.Where(player => player != scenario.Player)
+                        .Any(CombatManager.Instance.IsPlayerReadyToEndTurn))
+                        throw new InvalidOperationException("Controller ended a virtual teammate's turn.");
                     runner._completedChecks.Add("MultiplayerController:DeployCurrentLocalTurn:NativeCards:TeammateUntouched");
                     return new ExecutionOutcome(false, 1, true, true, true, false);
                 }
@@ -269,6 +286,52 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
+            if (input.VerifyControllerStyleSelection)
+            {
+                SolverController.MonitorCombatPresence();
+                SolverController.RequestSearch(runner._host, combat, SearchReason.Manual);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    SolverController.LastCompletedResultForTesting != null
+                    || SolverController.LastSearchFailureForTesting != null);
+                if (SolverController.LastSearchFailureForTesting is { } failure)
+                    throw new InvalidOperationException("Multiplayer style controller search failed.", failure);
+                SolverResult primary = SolverController.LastCompletedResultForTesting
+                    ?? throw new InvalidOperationException("Multiplayer search did not publish a result.");
+                SolverResult[] options = [primary, .. primary.MultiplayerAlternatives];
+                IReadOnlyList<SolverMultiplayerOptionSnapshot> presented = SolverController.MultiplayerOptionsForUi;
+                MultiplayerPlanStyle alternativeStyle = input.ContentCardIds.Contains("INFLAME")
+                    ? MultiplayerPlanStyle.Setup : MultiplayerPlanStyle.Defense;
+                if (options.Length != 2
+                    || options[0].MultiplayerStyle != MultiplayerPlanStyle.Output
+                    || options[1].MultiplayerStyle != alternativeStyle
+                    || presented.Count != 2 || !presented[0].Selected
+                    || SolverOverlay.MultiplayerOptionCountForTesting != 2
+                    || SolverOverlay.SelectedMultiplayerStyleForTesting != MultiplayerPlanStyle.Output)
+                    throw new InvalidOperationException("Multiplayer style options were not shown in the overlay.");
+                SolverOverlay.PressMultiplayerStyleForTesting(alternativeStyle);
+                if (!ReferenceEquals(SolverController.LastCompletedResultForTesting, options[1])
+                    || SolverOverlay.SelectedMultiplayerStyleForTesting != alternativeStyle
+                    || options[0].BestNode.Actions.Where(action => action.Turn == 1)
+                        .SequenceEqual(options[1].BestNode.Actions.Where(action => action.Turn == 1))
+                    || SolverOverlay.SearchSummaryTextForTesting?.Contains(
+                        "条件预测：队友后续不主动出牌；仅安排自己的动作。", StringComparison.Ordinal) != true)
+                    throw new InvalidOperationException("Selecting a multiplayer style did not update the route and assumptions.");
+                runner._completedChecks.Add($"MultiplayerOptions:OutputAnd{alternativeStyle}:OverlaySelection:DistinctLocalActions:Assumption");
+                if (input.VerifyControllerStyleDeploy)
+                {
+                    string expectedCard = alternativeStyle == MultiplayerPlanStyle.Setup
+                        ? "INFLAME" : "DEFEND_IRONCLAD";
+                    SolverController.RequestDeploy(runner._host, combat);
+                    await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
+                        && SolverController.LastSolverDeployedTurnForBugReport == 1
+                        && CombatManager.Instance.IsPlayerReadyToEndTurn(actor));
+                    if (!SolverController.WasCardDeployedForTesting(expectedCard)
+                        || SolverController.WasCardDeployedForTesting("STRIKE_IRONCLAD"))
+                        throw new InvalidOperationException("Selected multiplayer style was not the deployed route.");
+                    runner._completedChecks.Add($"MultiplayerOptions:{alternativeStyle}:SelectedRouteDeployed");
+                }
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyControllerTargetedDeploy)
             {
                 Player teammate = combat.Players[input.ContentTargetSeat];

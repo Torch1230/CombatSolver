@@ -52,6 +52,16 @@ P4 指定队友部署：生产控制器对虚拟双人 `Strike`＋`Blaze` 根搜
 
 模拟能量变化后的目标候选：live 能量为零时 `Blaze` 不可打；Fork 内补足能量后模拟器可打且目标仍为另一名玩家，三个 Fork 固定、游戏 RNG 不变，Passed：`.local/multiplayer-p4/ally-after-energy-750666e7869748c097f02a30b8f0b9e3/peer-0/result.json`。
 
+P4 ENet 双端控制器部署：房主与加入者分别本地搜索并原生执行自己的牌，两端同步进入第二回合且全状态／RNG 一致，Passed：`.local/multiplayer-p4/enet-controller-2-ready-wait-2daef04b383044949b8ec3cc106b50b7/peer-0/result.json`、`peer-1/result.json`。首次失败是测试在原生准备结束状态传播前断言，修正等待条件后通过；四人和交错变化未验。
+
+P5 方案按钮：虚拟双人 `Inflame`／`Strike` 根的输出／启动两条实际动作路线同时显示，点击启动按钮后当前结果切到启动，Passed：`.local/multiplayer-p4/overlay-style-selection-332cc73ae73f4bc8af5225dd5b725613/peer-0/result.json`。多人深度／时间输入已接入性能页；该轮仅验证构建及英文 JSON 解析，输入保存与可见窗口排版未验。
+
+P5 多人设置页：`UI-LOCALIZATION` 在原生 `PHROG_PARASITE_ELITE` 中对 eng／zhs／zht 实际构造设置面板、检查多人深度与时间输入显示值，并对账 468 条目录占位符，Passed：`.local/multiplayer-p5/ui-localization-phrog-3569a408218a4b3caeeba6478db72f82/result.json`。默认遭遇的首次尝试在既有怪物生成夹具处失败，未计为设置验证；可见排版与输入保存尚未测。
+
+P5 防守按钮与假设文案：双人 `Defend`／`Strike` 根显示输出／防守两条不同动作路线，点击防守后当前方案切换，摘要显示队友不再主动出牌的条件预测，Passed：`.local/multiplayer-p5/overlay-defense-selection-e074cd147626491dab30e2c4f83a93bc/peer-0/result.json`。与输出／启动探针合并覆盖三种风格按钮；可见窗口排版未验。
+
+P5 所选方案原生部署：界面只接收不可变选项快照，结构边界门禁通过。双人输出／启动固定根点击启动后原生执行 `Inflame`，未执行输出方案的 `Strike`，Passed：`.local/multiplayer-p5/overlay-setup-deploy-24cde210264443d3bb8d5ffadf2b02bd/peer-0/result.json`。防守方案部署与可见窗口观感未验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

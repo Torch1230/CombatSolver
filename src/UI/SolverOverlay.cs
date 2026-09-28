@@ -61,6 +61,8 @@ internal static class SolverOverlay
     private static Label? _reviewText;
     private static ProgressBar? _searchProgressBar;
     private static HFlowContainer? _routeHeadingRow;
+    private static HFlowContainer? _multiplayerOptionsRow;
+    private static readonly Dictionary<MultiplayerPlanStyle, Button> MultiplayerOptionButtons = [];
     private static PanelContainer? _routeOutcomePanel;
     private static Label? _routeHeadingLabel;
     private static readonly SolverRouteRow[] RouteRows = new SolverRouteRow[SolverWeights.UiTurnRows];
@@ -1107,8 +1109,17 @@ internal static class SolverOverlay
             _searchProgressBar.Visible = false;
 
         if (_routeHeadingLabel != null)
-            _routeHeadingLabel.Text = SolverText.Get("推荐路线");
+            _routeHeadingLabel.Text = SolverController.SelectedMultiplayerStyleForUi is { } style
+                ? SolverText.Get(style switch
+                {
+                    MultiplayerPlanStyle.Output => "输出方案",
+                    MultiplayerPlanStyle.Defense => "防守方案",
+                    MultiplayerPlanStyle.Setup => "启动方案",
+                    _ => throw new ArgumentOutOfRangeException(nameof(style)),
+                })
+                : SolverText.Get("推荐路线");
         PopulateRoute(snapshot, resetScroll: true);
+        UpdateMultiplayerOptions();
         if (_detailsButton != null)
             _detailsButton.Visible = hasRouteDetails;
         if (_detailsText != null)
@@ -1119,6 +1130,55 @@ internal static class SolverOverlay
         Entry.Logger.Info(
             $"[CombatSolver/Test] UI_STATE state=ready turn={snapshot.StartTurnNumber} " +
             $"risk={snapshot.HasRisk} only_death_routes={snapshot.OnlyDeathRoutesFound}");
+    }
+
+    private static void UpdateMultiplayerOptions()
+    {
+        HFlowContainer row = _multiplayerOptionsRow
+            ?? throw new InvalidOperationException("Multiplayer option row was not created.");
+        foreach (Node child in row.GetChildren())
+        {
+            row.RemoveChild(child);
+            child.QueueFree();
+        }
+        MultiplayerOptionButtons.Clear();
+        foreach (SolverMultiplayerOptionSnapshot option in SolverController.MultiplayerOptionsForUi)
+        {
+            MultiplayerPlanStyle style = option.Style;
+            string label = style switch
+            {
+                MultiplayerPlanStyle.Output => SolverText.Format($"输出 · 预计伤害 {option.EffectiveDamage:F0}"),
+                MultiplayerPlanStyle.Defense => SolverText.Format($"防守 · 预计血量 {option.ProjectedHp:F0}"),
+                MultiplayerPlanStyle.Setup => SolverText.Format($"启动 · 持续收益估值 {option.SetupValue:F0}"),
+                _ => throw new ArgumentOutOfRangeException(nameof(style)),
+            };
+            Button button = SolverUiTokens.CreateButton(label, SolverButtonStyle.Secondary);
+            button.ToggleMode = true;
+            button.ButtonPressed = option.Selected;
+            button.Pressed += () =>
+            {
+                CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+                if (NGame.Instance is not { } host || state == null)
+                    return;
+                if (!SolverController.SelectMultiplayerStyle(host, state, style))
+                    Show(host, SolverText.Get("战斗状态已变化，请重新计算多人方案。"));
+            };
+            row.AddChild(button);
+            MultiplayerOptionButtons.Add(style, button);
+        }
+        row.Visible = MultiplayerOptionButtons.Count > 0;
+    }
+
+    internal static int MultiplayerOptionCountForTesting => MultiplayerOptionButtons.Count;
+    internal static MultiplayerPlanStyle? SelectedMultiplayerStyleForTesting
+        => MultiplayerOptionButtons.Where(item => item.Value.ButtonPressed)
+            .Select(item => (MultiplayerPlanStyle?)item.Key).SingleOrDefault();
+
+    internal static void PressMultiplayerStyleForTesting(MultiplayerPlanStyle style)
+    {
+        if (!MultiplayerOptionButtons.TryGetValue(style, out Button? button))
+            throw new InvalidOperationException($"Multiplayer style button is missing: {style}.");
+        button.EmitSignal(Button.SignalName.Pressed);
     }
 
     private static void PopulateRoute(SolverOverlaySnapshot snapshot, bool resetScroll)
@@ -1856,6 +1916,15 @@ internal static class SolverOverlay
         _routeOutcomePanel.AddChild(routeSummary);
         _body.AddChild(_routeOutcomePanel);
         _body.MoveChild(_routeOutcomePanel, 0);
+        _multiplayerOptionsRow = new HFlowContainer
+        {
+            Visible = false,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        _multiplayerOptionsRow.AddThemeConstantOverride("h_separation", SolverUiTokens.Spacing.Sm);
+        _multiplayerOptionsRow.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Sm);
+        _body.AddChild(_multiplayerOptionsRow);
+        _body.MoveChild(_multiplayerOptionsRow, 1);
         VBoxContainer routes = new()
         {
             Name = "Routes",
@@ -2549,6 +2618,8 @@ internal static class SolverOverlay
 
     private static void SetRouteVisibility(bool visible)
     {
+        if (_multiplayerOptionsRow != null)
+            _multiplayerOptionsRow.Visible = visible && MultiplayerOptionButtons.Count > 0;
         if (_routeHeadingRow != null)
             _routeHeadingRow.Visible = visible;
         if (_routeOutcomePanel != null)

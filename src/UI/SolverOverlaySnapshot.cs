@@ -22,6 +22,13 @@ internal enum SolverOverlayActionVisualKind
     Potion,
 }
 
+internal sealed record SolverMultiplayerOptionSnapshot(
+    MultiplayerPlanStyle Style,
+    int EffectiveDamage,
+    int ProjectedHp,
+    int SetupValue,
+    bool Selected);
+
 internal sealed record SolverOverlayActionSnapshot(
     string Title,
     string TargetName,
@@ -252,6 +259,9 @@ internal sealed record SolverOverlaySnapshot(
         string summaryText = result.CombatEndedTurn == startTurnNumber
             ? SolverText.Format($"[color={SolverUiTokens.Palette.SuccessHex}]本回合结束战斗  │  {confidence}[/color]")
             : SolverText.Format($"[color={SolverUiTokens.Palette.TextSecondaryHex}]预计路线 [b]{searchedTurns}[/b] 回合  │  {confidence}[/color]");
+        if (result.MultiplayerStyle != null)
+            summaryText += "\n" + SolverText.Format(
+                $"[color={SolverUiTokens.Palette.TextSecondaryHex}]条件预测：队友后续不主动出牌；仅安排自己的动作。[/color]");
         double searchElapsedSeconds = result.TotalSearchElapsed.TotalSeconds;
         long searchWorldlines = result.TotalExpandedNodes > 0
             ? result.TotalExpandedNodes

@@ -223,6 +223,7 @@ internal sealed partial class UnattendedTestRunner
                     harness.AddChild(settings);
                     settings.Reload();
                     if (!settings.SettingsTabsConfiguredForTesting || !settings.UploadProgressConfiguredForTesting
+                        || !settings.MultiplayerControlsConfiguredForTesting
                         || !settings.PotionRewardPredictionConfiguredForTesting
                         || !settings.ExerciseSettingsTabSwitchingForTesting())
                         throw new InvalidOperationException($"Settings localization failed: {target}");

@@ -11,6 +11,8 @@ internal sealed partial class SolverSettingsPanel
     private CheckButton _earlyTurnExplorationEnabled = null!;
     private CheckButton _noGcRegionEnabled = null!;
     private LineEdit _noGcRegionBudget = null!;
+    private LineEdit _multiplayerTurnDepth = null!;
+    private LineEdit _multiplayerTimeLimit = null!;
     private Label _gcStartupStatus = null!;
     private Control _advancedParameters = null!;
     private Button _advancedParametersToggle = null!;
@@ -203,6 +205,22 @@ internal sealed partial class SolverSettingsPanel
             || RuntimeGcProfile.Current.IsActive;
         AddSettingsSection(content, SolverText.Get("搜索预算"),
             SolverText.Get("选择性能预设与并行度；详细参数可在下方展开。"), budgetGrid);
+        GridContainer multiplayerGrid = CreateSettingsGrid();
+        _multiplayerTurnDepth = CreateRequiredIntInput(
+            data => data.MultiplayerTurnDepth,
+            (data, value) => data with { MultiplayerTurnDepth = value },
+            1, 32);
+        AddBasicRow(multiplayerGrid, SolverText.Get("多人回合深度"), _multiplayerTurnDepth,
+            SolverText.Get("从当前回合起最多搜索多少个回合。"));
+        _multiplayerTimeLimit = CreateRequiredDoubleInput(
+            data => data.MultiplayerTimeLimitSeconds,
+            (data, value) => data with { MultiplayerTimeLimitSeconds = value },
+            0.1d, 600d);
+        AddBasicRow(multiplayerGrid, SolverText.Get("多人时间上限（秒）"), _multiplayerTimeLimit,
+            SolverText.Get("一次多人搜索的总时间上限，输出、防守与启动方案共用。"));
+        AddSettingsSection(content, SolverText.Get("多人搜索"),
+            SolverText.Get("多人独立设置，默认搜索 2 回合、最多 3 秒。只安排自己的动作，修改后下次搜索生效。"),
+            multiplayerGrid);
         GridContainer memoryGrid = CreateSettingsGrid();
         CheckButton automaticGc = CreateToggle();
         _reloadInputs.Add(data => automaticGc.ButtonPressed = data.AutoConfigureServerGc);
@@ -324,6 +342,13 @@ internal sealed partial class SolverSettingsPanel
         content.AddChild(_advancedParameters);
         return CreatePageScroll(content);
     }
+
+    internal bool MultiplayerControlsConfiguredForTesting
+        => _performancePage.IsAncestorOf(_multiplayerTurnDepth)
+           && _performancePage.IsAncestorOf(_multiplayerTimeLimit)
+           && _multiplayerTurnDepth.Text == SolverSettings.Current.MultiplayerTurnDepth.ToString(CultureInfo.InvariantCulture)
+           && _multiplayerTimeLimit.Text == SolverSettings.FormatSeconds(
+               SolverSettings.Current.MultiplayerTimeLimitSeconds);
 
     internal bool NoGcControlsConfiguredForTesting
         => _performancePage.IsAncestorOf(_noGcRegionEnabled)

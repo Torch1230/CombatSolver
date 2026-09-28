@@ -30,6 +30,8 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerSearch { get; init; }
         public bool VerifyControllerDeploy { get; init; }
         public bool VerifyControllerTargetedDeploy { get; init; }
+        public bool VerifyControllerStyleSelection { get; init; }
+        public bool VerifyControllerStyleDeploy { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -71,6 +73,10 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerDeploy && !input.VerifyControllerSearch
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifyControllerTargetedDeploy && !input.ContentCardIds.Contains("BLAZE")
+                || input.VerifyControllerStyleSelection
+                    && !input.ContentCardIds.Contains("INFLAME")
+                    && !input.ContentCardIds.Contains("DEFEND_IRONCLAD")
+                || input.VerifyControllerStyleDeploy && !input.VerifyControllerStyleSelection
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.ContentCardIds.Length > 0 && (input.Mode != "virtual"
                     || input.ContentCardIds.Length > 5

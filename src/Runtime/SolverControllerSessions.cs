@@ -123,6 +123,7 @@ internal sealed class SolverCombatSession
 {
     public CombatState? State { get; set; }
     public SolverResult? LatestResult { get; set; }
+    public IReadOnlyList<SolverResult> MultiplayerOptions { get; set; } = [];
     public LiveCombatStamp? LatestStamp { get; set; }
     public SolverResult? ContinuationSource { get; set; }
     public SearchInteractionState? StoppedSearch { get; set; }

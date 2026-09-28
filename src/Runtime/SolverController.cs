@@ -182,6 +182,16 @@ internal static partial class SolverController
             : "solver_only";
     internal static int? LastSolverDeployedTurnForBugReport => _combat.LastSolverDeployedTurn;
     internal static SolverResult? LastCompletedResultForTesting { get; private set; }
+    internal static IReadOnlyList<SolverMultiplayerOptionSnapshot> MultiplayerOptionsForUi
+        => _combat.LatestResult?.MultiplayerStyle == null ? []
+            : _combat.MultiplayerOptions.Select(option => new SolverMultiplayerOptionSnapshot(
+                option.MultiplayerStyle ?? throw new InvalidOperationException("Multiplayer option has no style."),
+                option.MultiplayerEffectiveDamage,
+                option.MultiplayerCurrentTurnProjectedHp,
+                option.MultiplayerSetupValue,
+                ReferenceEquals(option, _combat.LatestResult))).ToArray();
+    internal static MultiplayerPlanStyle? SelectedMultiplayerStyleForUi
+        => _combat.LatestResult?.MultiplayerStyle;
     internal static bool HasActiveSearchSessionForTesting => _search != null;
     internal static SolverResult? LastTurnSetupResultForTesting { get; private set; }
     internal static Exception? LastSearchFailureForTesting { get; private set; }
@@ -1227,6 +1237,7 @@ internal static partial class SolverController
             search.PotionRewardOutlook = rootSnapshot.PotionRewardOutlook;
             _combat.State = state;
             _combat.LatestResult = null;
+            _combat.MultiplayerOptions = [];
             _combat.LatestStamp = null;
             LastCompletedResultForTesting = null;
             LastSearchFailureForTesting = null;
@@ -1397,6 +1408,28 @@ internal static partial class SolverController
 
     private static string EscapeRichText(string value)
         => value.Replace('[', '［').Replace(']', '］');
+
+    internal static bool SelectMultiplayerStyle(NGame host, CombatState state, MultiplayerPlanStyle style)
+    {
+        AssertMainThread();
+        if (IsSearching || IsDeploying || !ReferenceEquals(_combat.State, state)
+            || _combat.LatestResult?.MultiplayerStyle == null
+            || _combat.LatestStamp != LiveCombatStamp.Capture(state)
+            || !CanSolve(state, out _))
+            return false;
+        SolverResult selected = _combat.MultiplayerOptions.Single(option => option.MultiplayerStyle == style);
+        if (ReferenceEquals(_combat.LatestResult, selected))
+            return true;
+        _combat.LatestResult = selected;
+        _combat.ContinuationSource = selected;
+        if (UnattendedTestRunner.IsActive)
+            LastCompletedResultForTesting = selected;
+        BattleDamageTracker.RegisterPlan(state, selected);
+        SolverOverlay.ShowResult(host, SolverOverlaySnapshot.CaptureWithReviewedWorldlines(
+            selected, UnexpectedReplanCount > 0, _combat.ReviewedWorldlinesTotal));
+        Entry.Logger.Info($"[CombatSolver/Test] MULTIPLAYER_STYLE_SELECTED style={style}");
+        return true;
+    }
 
     public static void RequestDeploy(NGame host, CombatState state)
     {
@@ -2583,6 +2616,8 @@ internal static partial class SolverController
         }
 
         _combat.LatestResult = result;
+        _combat.MultiplayerOptions = result.MultiplayerStyle is null
+            ? [] : [result, .. result.MultiplayerAlternatives];
         _combat.LatestStamp = searchedStamp;
         _combat.ContinuationSource = currentTurnAdopted ? null : result;
         if (UnattendedTestRunner.IsActive)
