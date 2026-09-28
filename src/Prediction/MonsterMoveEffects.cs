@@ -346,9 +346,14 @@ internal static partial class MonsterMoveEffects
                 combat.CreatureEscaped(move.Owner);
                 return true;
             case ("MagiKnight", "DAMPEN_MOVE"):
-                combat.ApplyDampen(simulator, player, move.Owner);
+                foreach (var member in combat.Players)
+                    if (simulator.State.GetCreature(member.Creature).IsAlive)
+                        combat.ApplyDampen(simulator, member.Creature, move.Owner);
                 return true;
             case ("KnowledgeDemon", "CURSE_OF_KNOWLEDGE_MOVE"):
+                if (combat.Players.Count > 1)
+                    throw new NotSupportedException(
+                        "知识恶魔会让每名玩家分别选择诅咒；多人预测不能替队友选择。请等待原生选择完成后重新求解。");
                 KnowledgeDemonChoiceSupport.Resolve(
                     combat,
                     move.Owner,
