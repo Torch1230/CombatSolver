@@ -159,7 +159,11 @@ P4 队友插入动作的首轮虚拟双人探针：本地求解后，队友原�
 
 针对收牌队友归属另加四人代表：本地玩家的 `Largesse` 指定第 3 号队友，牌进入该队友手牌且牌主为该队友，完整状态与 RNG Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。这补目标身份跨座位的证据，不把生成者参数误作收牌者。
 
-P4 三种计算入口的虚拟双人原生代表：手动入口此前已通过；自动计算只产生本地方案、不擅自部署，Passed：`.local/multiplayer-p4/automatic-calculation-enabled-5b98feffdcb84bd0a7d3581ee8284788/peer-0/result.json`；全自动产生本地方案、按原生动作执行并只结束本地回合，队友未被代操作，Passed：`.local/multiplayer-p4/full-auto-virtual2-6de921827935483c881b174c2d67af09/peer-0/result.json`。首次自动计算探针超时是无人测试宿主默认禁用自动触发，根文件存在但没有搜索结果；按该入口的测试需要显式启用后通过。上述均未覆盖 ENet 三入口、取消或下一回合自动延续。
+P4 三种计算入口的虚拟双人原生代表：手动入口此前已通过；自动计算只产生本地方案、不擅自部署，Passed：`.local/multiplayer-p4/automatic-calculation-enabled-5b98feffdcb84bd0a7d3581ee8284788/peer-0/result.json`；全自动产生本地方案、按原生动作执行并只结束本地回合，队友未被代操作，Passed：`.local/multiplayer-p4/full-auto-virtual2-6de921827935483c881b174c2d67af09/peer-0/result.json`。首次自动计算探针超时是无人测试宿主默认禁用自动触发，根文件存在但没有搜索结果；按该入口的测试需要显式启用后通过。上述虚拟证据未覆盖 ENet、取消或下一回合自动延续；ENet 首回合证据见下文。
+
+ENet 双端全自动首回合：房主与加入者分别从本地搜索并原生执行自身牌，双端同步第二回合、完整状态与 RNG 对账 Passed：`.local/multiplayer-p0/enet-2-09e37bb5ce8643039446ee6953ff7359/peer-0/result.json` 及 `peer-1/result.json`。首次双端探针把另一玩家自行进入准备结束误判为“本端代操作”，使对端等待至超时；测试改为逐端检查本地部署牌后通过。
+
+四人 ENet 全自动初次默认并行度请求与改为每端 DOP 1 的请求，四端均在原生建局根后未产出结果，均达到 120 秒并由启动器清理；不计通过。随后修复搜索完成时对同一本地回合队友变化一律丢弃结果的逻辑：在新根重放原当前回合动作，合法则发布更新预览并继续原路线，失效则暂停。虚拟双人搜索期间队友原生 `Strike` 后，原路线重评估、本地部署、无新增完整搜索 Passed：`.local/multiplayer-p4/search-time-drift-virtual2-344e51f9f444480483391e546f5a900f/peer-0/result.json`。在每端 DOP 1 的四人 ENet 复验中，四端本地搜索与部署、同步第二回合、完整状态／RNG 对账 Passed：`.local/multiplayer-p0/enet-4-f316f44de37240058975bc49cd2c9d2e/peer-0/result.json` 至 `peer-3/result.json`。首次四人超时的具体逐端状态未留完整运行日志，不能把它唯一归因为搜索时队友变化；当前证据也不代表默认 DOP 的四人全自动性能已通过。Linux 脚本与 Windows 参数同步，Linux 本轮未运行游戏。
 
 ### 0.3 接手后第一轮的具体操作
 

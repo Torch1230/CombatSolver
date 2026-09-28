@@ -3,12 +3,22 @@ set -euo pipefail
 
 port="${1:-33771}"
 player_count="${2:-2}"
+controller_mode="${3:-scripted}"
+search_dop="${4:-0}"
 if [[ ! "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
     printf 'Port must be in 1..65535.\n' >&2
     exit 2
 fi
 if [[ "$player_count" != 2 && "$player_count" != 4 ]]; then
     printf 'Player count must be 2 or 4.\n' >&2
+    exit 2
+fi
+if [[ "$controller_mode" != scripted && "$controller_mode" != full-auto ]]; then
+    printf 'Controller mode must be scripted or full-auto.\n' >&2
+    exit 2
+fi
+if [[ ! "$search_dop" =~ ^[0-9]+$ ]] || ((search_dop < 0 || search_dop > 16)); then
+    printf 'Search DOP must be in 0..16.\n' >&2
     exit 2
 fi
 
@@ -21,10 +31,10 @@ for ((seat=0; seat<player_count; seat++)); do
     peer="$session/peer-$seat"
     input="$session/input-$seat.json"
     mkdir -p -- "$peer"
-    python3 - "$input" "$session" "$seat" "$port" "$player_count" <<'PY'
+    python3 - "$input" "$session" "$seat" "$port" "$player_count" "$controller_mode" <<'PY'
 import json
 import sys
-path, session, seat, port, player_count = sys.argv[1:]
+path, session, seat, port, player_count, controller_mode = sys.argv[1:]
 with open(path, 'w', encoding='utf-8') as output:
     json.dump({
         'mode': 'host' if seat == '0' else 'client',
@@ -33,14 +43,20 @@ with open(path, 'w', encoding='utf-8') as output:
         'port': int(port),
         'coordinationDirectory': session,
         'expectedGameVersion': '0.111.0',
+        'verifyControllerFullAuto': controller_mode == 'full-auto',
     }, output)
 PY
+    search_args=()
+    if ((search_dop > 0)); then
+        search_args+=(--search-max-degree-of-parallelism-for-test "$search_dop")
+    fi
     "$repository_root/tools/run-unattended-test.sh" \
         --scenario-id MULTIPLAYER-P0 --multiplayer-probe-path "$input" \
         --evidence-directory "$peer" \
         --headless-instance "mp-p0-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')" \
         --headless-execution-mode parallel --headless-memory-reservation-mib 1536 \
         --timeout-seconds 120 --exit-on-complete --cleanup-instance-on-exit \
+        "${search_args[@]}" \
         >"$peer/stdout.txt" 2>"$peer/stderr.txt" &
     pids+=("$!")
 done

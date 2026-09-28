@@ -114,6 +114,8 @@ internal sealed partial class CombatBeamSolver
         {
             if (replayed.Snapshot.HasRisk || replayed.Snapshot.BoundaryReason != SearchBoundaryReason.None)
                 throw new InvalidOperationException("Multiplayer route replay reached an unmodeled or unresolved boundary.");
+            if (replayed.Snapshot.PlayerDead || replayed.Snapshot.ProjectedPlayerHp <= 0)
+                return null;
             RouteAnnotations updated = BuildRouteAnnotations(replayed);
             int turn = root.StartTurnNumber;
             return new SolverCurrentTurnPreview(

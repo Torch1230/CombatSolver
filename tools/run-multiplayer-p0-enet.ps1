@@ -2,7 +2,10 @@ param(
     [ValidateSet(2, 4)]
     [int]$PlayerCount = 2,
     [ValidateRange(1, 65535)]
-    [int]$Port = 33771
+    [int]$Port = 33771,
+    [switch]$VerifyControllerFullAuto,
+    [ValidateRange(0, 16)]
+    [int]$SearchMaxDegreeOfParallelismForTest = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -22,6 +25,7 @@ foreach ($seat in 0..($PlayerCount - 1)) {
         port = $Port
         coordinationDirectory = $session
         expectedGameVersion = '0.111.0'
+        verifyControllerFullAuto = [bool]$VerifyControllerFullAuto
     } | ConvertTo-Json | Set-Content -LiteralPath $input -Encoding utf8
     $instance = 'mp-p0-' + [Guid]::NewGuid().ToString('N')
     $arguments = @(
@@ -31,6 +35,9 @@ foreach ($seat in 0..($PlayerCount - 1)) {
         '-HeadlessExecutionMode', 'parallel', '-HeadlessMemoryReservationMiB', '1536',
         '-TimeoutSeconds', '120', '-ExitOnComplete', '-CleanupInstanceOnExit'
     )
+    if ($SearchMaxDegreeOfParallelismForTest -gt 0) {
+        $arguments += @('-SearchMaxDegreeOfParallelismForTest', [string]$SearchMaxDegreeOfParallelismForTest)
+    }
     $processes += Start-Process -FilePath 'pwsh' -ArgumentList $arguments `
         -WorkingDirectory $repositoryRoot -WindowStyle Hidden `
         -RedirectStandardOutput (Join-Path $peer 'stdout.txt') `

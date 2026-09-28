@@ -90,7 +90,11 @@ P2 普通共享目标：双敌 `CULTISTS_NORMAL` 上 `Omnislice`、`BeatDown`（
 
 P2 `Largesse` 四人目标归属：本地 0 号给 3 号队友出牌，显式断言新牌进入目标队友手牌且牌主为该队友，完整状态／RNG Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。这次是基础版单次出牌。
 
-P4 自动计算入口：无人宿主默认关闭自动触发，首次请求没有搜索结果并超时，未计通过；测试显式启用该入口后，虚拟双人得到本地方案、未部署，Passed：`.local/multiplayer-p4/automatic-calculation-enabled-5b98feffdcb84bd0a7d3581ee8284788/peer-0/result.json`。全自动入口在虚拟双人自动搜索并原生执行本地牌、只结束本地回合，队友未被操作，Passed：`.local/multiplayer-p4/full-auto-virtual2-6de921827935483c881b174c2d67af09/peer-0/result.json`。与既有手动入口合起来覆盖三入口虚拟双人代表，ENet 三入口和取消未覆盖。
+P4 自动计算入口：无人宿主默认关闭自动触发，首次请求没有搜索结果并超时，未计通过；测试显式启用该入口后，虚拟双人得到本地方案、未部署，Passed：`.local/multiplayer-p4/automatic-calculation-enabled-5b98feffdcb84bd0a7d3581ee8284788/peer-0/result.json`。全自动入口在虚拟双人自动搜索并原生执行本地牌、只结束本地回合，队友未被操作，Passed：`.local/multiplayer-p4/full-auto-virtual2-6de921827935483c881b174c2d67af09/peer-0/result.json`。与既有手动入口合起来覆盖三入口虚拟双人代表；ENet 全自动证据见下文，取消未覆盖。
+
+P4 ENet 全自动双端：每端本地搜索、原生部署自己牌、同步第二回合、两端完整状态／RNG 一致，Passed：`.local/multiplayer-p0/enet-2-09e37bb5ce8643039446ee6953ff7359/peer-0/result.json` 与 `peer-1/result.json`。最初失败来自测试把另一端自行结束回合当作本端越权；已改为每端核本地实际部署牌。
+
+P4 搜索期间队友变化：虚拟双人开始手动搜索后，队友原生 `Strike` 改变根；新根重评估原本地路线并部署、没有第二次完整搜索，Passed：`.local/multiplayer-p4/search-time-drift-virtual2-344e51f9f444480483391e546f5a900f/peer-0/result.json`。四人 ENet 全自动两次初试在建局根后 120 秒内无结果，第一次为默认 DOP、第二次每端 DOP 1，均未通过；搜索完成后的同回合变化处理加入后，每端 DOP 1 的四人 ENet 搜索与部署、第二回合全状态／RNG 对账四端 Passed：`.local/multiplayer-p0/enet-4-f316f44de37240058975bc49cd2c9d2e/peer-0/result.json` 至 `peer-3/result.json`。无法单凭该前后对比确定初试唯一根因；默认 DOP 四人全自动与 Linux 游戏运行仍未验证。
 
 ## 多人 P1 普通状态差分（2026-09-28）
 

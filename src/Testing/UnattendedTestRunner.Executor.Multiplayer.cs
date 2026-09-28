@@ -39,6 +39,38 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyControllerSearchDrift)
+            {
+                SolverController.MonitorCombatPresence();
+                int searchesBefore = SolverController.SearchesStartedForTesting;
+                SolverController.RequestSearch(runner._host, combat, SearchReason.Manual);
+                Player teammate = combat.Players.First(player => player != scenario.Player);
+                CardModel teammateStrike = teammate.PlayerCombatState!.Hand.Cards
+                    .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
+                var teammatePlay = new PlayCardAction(teammateStrike, enemy);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
+                await teammatePlay.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("search-drift", combat);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    SolverController.LastCompletedResultForTesting != null
+                    || SolverController.LastSearchFailureForTesting != null);
+                if (SolverController.LastSearchFailureForTesting is { } driftFailure)
+                    throw new InvalidOperationException("Changed multiplayer search failed.", driftFailure);
+                SolverResult retained = SolverController.LastCompletedResultForTesting
+                    ?? throw new InvalidOperationException("Changed multiplayer search did not retain its route.");
+                if (SolverController.SearchesStartedForTesting != searchesBefore + 1
+                    || retained.MultiplayerStyle != MultiplayerPlanStyle.Output
+                    || !SolverController.CanExecuteCurrentTurn)
+                    throw new InvalidOperationException("Teammate action during search discarded the legal local route.");
+                SolverController.RequestDeploy(runner._host, combat);
+                await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
+                    && SolverController.LastSolverDeployedTurnForBugReport == 1
+                    && CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player));
+                if (SolverController.SearchesStartedForTesting != searchesBefore + 1)
+                    throw new InvalidOperationException("Search drift deployment started an extra full search.");
+                runner._completedChecks.Add("MultiplayerController:SearchTimeTeammateDamage:RouteReevaluated:LocalDeployment:NoFullRescan");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyControllerAutomaticCalculation || input.VerifyControllerFullAuto)
             {
                 SolverController.MonitorCombatPresence();
@@ -76,10 +108,24 @@ internal sealed partial class UnattendedTestRunner
                     await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
                         && SolverController.LastSolverDeployedTurnForBugReport == 1
                         && CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player));
+                    PlanAction[] localPlannedCards = automaticResult.BestNode.Actions
+                        .Where(action => action.Turn == 1 && action.Kind == PlanActionKind.PlayCard)
+                        .ToArray();
                     if (!SolverController.FullAutoEnabled
-                        || combat.Players.Where(player => player != scenario.Player)
+                        || localPlannedCards.Length == 0
+                        || localPlannedCards.Any(action => !SolverController.WasCardDeployedForTesting(action.CardId))
+                        || input.IsVirtual && combat.Players.Where(player => player != scenario.Player)
                             .Any(CombatManager.Instance.IsPlayerReadyToEndTurn))
-                        throw new InvalidOperationException("Full auto controlled a teammate or failed to finish the local turn.");
+                        throw new InvalidOperationException("Full auto did not deploy its local cards and finish its local turn.");
+                    if (!input.IsVirtual)
+                    {
+                        SolverController.SetFullAuto(runner._host, combat, false);
+                        await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                            player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                        await runner.MultiplayerProbeBarrierAsync("full-auto-second-turn", combat);
+                        runner._completedChecks.Add("MultiplayerController:FullAuto:EnetPeers:LocalDeployment:SecondTurn:FullState:FullRng");
+                        return new ExecutionOutcome(false, 2, true, true, true, false);
+                    }
                     runner._completedChecks.Add("MultiplayerController:FullAuto:LocalPlan:NativeDeployment:TeammateUntouched");
                 }
                 return new ExecutionOutcome(false, 1, true, true, true, false);
