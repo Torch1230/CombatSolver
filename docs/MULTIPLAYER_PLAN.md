@@ -119,7 +119,7 @@ P4 首次虚拟双人手动入口探针暴露战报结果记录使用 `Players.S
 
 战损记录器原来在多人根只返回空的本地 HP／药水账本，已改为按本地玩家记录。双人虚拟原生请求先由队友自用 `StrengthPotion`，本地账本仍为零；再由本地玩家自用一瓶，账本恰为该一瓶，随后给队友打牌并完成全状态／RNG 差分，Passed：`.local/multiplayer-p4/local-potion-accounting-2c8ee81616f944cea0e52decb33179ea/peer-0/result.json`。这是测试队友自己的用药事件，不改变“求解器只给自己用药”的产品边界。
 
-生产控制器在虚拟双人 `Strike`＋`Blaze` 根取得本地方案，按原生动作执行，`Blaze` 力量只落到另一名玩家，本地回合结束而队友仍可行动，Passed：`.local/multiplayer-p4/controller-blaze-deploy-99cc944e1a944ed5ba2ac2d6e950c229/peer-0/result.json`。队友交错后的重评估与 ENet 执行仍未验证。
+生产控制器在虚拟双人 `Strike`＋`Blaze` 根取得本地方案，按原生动作执行，`Blaze` 力量只落到另一名玩家，本地回合结束而队友仍可行动，Passed：`.local/multiplayer-p4/controller-blaze-deploy-99cc944e1a944ed5ba2ac2d6e950c229/peer-0/result.json`。
 
 目标合法性与出牌资源已分离：模拟分支取得能量后，`Blaze` 在原生 live 根仍不可打，但搜索枚举的目标仍为其他存活玩家；三个 Fork 固定、游戏 RNG 不变，Passed：`.local/multiplayer-p4/ally-after-energy-750666e7869748c097f02a30b8f0b9e3/peer-0/result.json`。先前使用 `CardModel.CanPlayTargeting` 会把 live 能量误用于模拟分支，现目标枚举使用 `IsValidTarget`，出牌资源由模拟状态检查。
 
@@ -132,6 +132,8 @@ P4 首次虚拟双人手动入口探针暴露战报结果记录使用 `Players.S
 双人 `Defend`／`Strike` 固定根在现有悬浮窗生成输出与防守两按钮，点击防守后当前动作路线切换，并显示“队友后续不主动出牌；仅安排自己的动作”的条件预测，Passed：`.local/multiplayer-p5/overlay-defense-selection-e074cd147626491dab30e2c4f83a93bc/peer-0/result.json`。与上述输出／启动测试合起来覆盖三类按钮各自的选取入口；还未在可见游戏窗口人工检查观感。
 
 将多人按钮数据限制为不可变的界面快照后，结构边界门禁 `REFACTOR_BOUNDARIES_OK search_files=239`、Release 构建 0 警告／0 错误。随后双人 `Inflame`／`Strike` 根点击启动并实际调用原生部署，断言只出 `Inflame` 而未出输出方案的 `Strike`，Passed：`.local/multiplayer-p5/overlay-setup-deploy-24cde210264443d3bb8d5ffadf2b02bd/peer-0/result.json`。这证明界面所选方案进入执行器；防守路线执行与可见窗口观感仍未验。
+
+P4 队友插入动作的首轮虚拟双人探针：本地求解后，队友原生打出 `Strike`，原控制器因状态戳变化启动了一次完整新搜索，失败证据 `.local/multiplayer-p4/teammate-drift-baseline-a9b160ce4b634e63ab86d16f36ecfc6d/peer-0/result.json`。现改为对已选本地当前回合动作使用现有回放入口，在新根上重算预览；动作仍合法时直接原生部署原序列。相同输入复验 Passed，且无额外完整搜索、本地牌均出手、本地回合结束：`.local/multiplayer-p4/teammate-drift-replay-f3b8a015470948b288908279a983f65c/peer-0/result.json`。Release 构建 0 警告／0 错误。该证据仅覆盖部署前的虚拟双人队友伤害；失效动作暂停、部署中变化、随机流、原生选牌、四人及 ENet 交错尚未通过。
 
 ### 0.3 接手后第一轮的具体操作
 

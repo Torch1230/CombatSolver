@@ -62,6 +62,8 @@ P5 防守按钮与假设文案：双人 `Defend`／`Strike` 根显示输出／�
 
 P5 所选方案原生部署：界面只接收不可变选项快照，结构边界门禁通过。双人输出／启动固定根点击启动后原生执行 `Inflame`，未执行输出方案的 `Strike`，Passed：`.local/multiplayer-p5/overlay-setup-deploy-24cde210264443d3bb8d5ffadf2b02bd/peer-0/result.json`。防守方案部署与可见窗口观感未验。
 
+P4 部署前队友伤害：虚拟双人本地求解后队友原生打出 `Strike`，原逻辑会重新完整搜索（失败证据 `.local/multiplayer-p4/teammate-drift-baseline-a9b160ce4b634e63ab86d16f36ecfc6d/peer-0/result.json`）；当前逻辑在新根重放原路线并原生部署，无额外完整搜索且本地回合完成，Passed：`.local/multiplayer-p4/teammate-drift-replay-f3b8a015470948b288908279a983f65c/peer-0/result.json`。仅覆盖部署前仍合法的队友伤害。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

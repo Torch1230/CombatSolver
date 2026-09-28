@@ -29,6 +29,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifySearch { get; init; }
         public bool VerifyControllerSearch { get; init; }
         public bool VerifyControllerDeploy { get; init; }
+        public bool VerifyControllerTeammateDrift { get; init; }
         public bool VerifyControllerTargetedDeploy { get; init; }
         public bool VerifyControllerStyleSelection { get; init; }
         public bool VerifyControllerStyleDeploy { get; init; }
@@ -71,6 +72,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.Mode is not ("virtual" or "host" or "client")
                 || input.PlayerCount is not (2 or 4)
                 || input.VerifyControllerDeploy && !input.VerifyControllerSearch
+                || input.VerifyControllerTeammateDrift && !input.VerifyControllerDeploy
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifyControllerTargetedDeploy && !input.ContentCardIds.Contains("BLAZE")
                 || input.VerifyControllerStyleSelection

@@ -89,4 +89,43 @@ internal sealed partial class CombatBeamSolver
             prefix.ReleaseSimulator();
         }
     }
+
+    internal SolverCurrentTurnPreview? ReevaluateMultiplayerCurrentTurn(SolverResult original)
+    {
+        if (root.PlayerCount < 2 || original.StartTurnNumber != root.StartTurnNumber)
+            throw new InvalidOperationException("Multiplayer route must be replayed in its original local turn.");
+        PlanAction[] actions = original.BestNode.Actions
+            .Where(action => action.Turn == root.StartTurnNumber).ToArray();
+        if (actions.Length == 0)
+            throw new InvalidOperationException("Multiplayer route has no current-turn actions.");
+        RouteAnnotations originalAnnotations = new(
+            original.HpLostByTurn, original.HpRecoveredByTurn, original.EnemyHpLostByTurn,
+            original.SoldHpByTurn, original.MaxBlockByTurn, original.ActualBlockByTurn,
+            original.EnergyLeftByTurn, original.PotionCountByTurn,
+            original.PotionStrategicCostByTurn, original.KillsAfterAction,
+            original.CombatEndedTurn, original.DeathTurn);
+        SearchNode? replayed = ReplayAdjustedRoute(actions, [], null, originalAnnotations);
+        if (replayed == null)
+            return null;
+        try
+        {
+            if (replayed.Snapshot.HasRisk || replayed.Snapshot.BoundaryReason != SearchBoundaryReason.None)
+                throw new InvalidOperationException("Multiplayer route replay reached an unmodeled or unresolved boundary.");
+            RouteAnnotations updated = BuildRouteAnnotations(replayed);
+            int turn = root.StartTurnNumber;
+            return new SolverCurrentTurnPreview(
+                0,
+                turn,
+                actions,
+                updated.HpLostByTurn.GetValueOrDefault(turn),
+                updated.HpRecoveredByTurn.GetValueOrDefault(turn),
+                updated.EnemyHpLostByTurn.GetValueOrDefault(turn),
+                updated.EnergyLeftByTurn.GetValueOrDefault(turn),
+                updated.CombatEndedTurn == turn);
+        }
+        finally
+        {
+            replayed.Snapshot.ReleaseSimulator();
+        }
+    }
 }

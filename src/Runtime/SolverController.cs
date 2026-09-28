@@ -1477,6 +1477,43 @@ internal static partial class SolverController
             StartDeployment(host, state, _combat.LatestResult);
             return;
         }
+        if (state.Players.Count > 1 && _combat.LatestResult is { MultiplayerStyle: not null } previous)
+        {
+            if (RunManager.Instance.ActionExecutor.IsRunning || !RunManager.Instance.ActionQueueSet.IsEmpty)
+            {
+                SolverOverlay.Show(host, SolverText.Get("等待当前原生动作结算后再执行。"));
+                return;
+            }
+            CombatRootSnapshot root = CombatRootSnapshot.Capture(state);
+            if (root.LiveStamp != current)
+                throw new InvalidOperationException("Multiplayer route root changed during capture.");
+            SearchPolicySnapshot policy = CaptureSearchPolicy(
+                SolverSettings.Capture(), state, includeTurnSetup: false, theftPolicy: null);
+            CombatBeamSolver replay = new(root, SolverDisplayNames.Capture(state),
+                BattleDamageTracker.Observe(state), policy);
+            SolverCurrentTurnPreview? revised = replay.ReevaluateMultiplayerCurrentTurn(previous);
+            if (revised == null)
+            {
+                SolverOverlay.Show(host, SolverText.Get("原路线在当前状态已失效，未执行。请重新计算。"));
+                Entry.Logger.Warn("[CombatSolver/Test] MULTIPLAYER_ROUTE_INVALID reason=action_not_legal");
+                return;
+            }
+            _combat.LatestStamp = current;
+            _combat.MultiplayerOptions = [];
+            _combat.ContinuationSource = null;
+            SolverOverlaySnapshot preview = SolverOverlaySnapshot.CaptureCurrentTurn(revised) with
+            {
+                StatusText = SolverText.Get("原路线已在当前状态重评估"),
+                SummaryText = SolverText.Format(
+                    $"当前回合预计扣血 {revised.HpLost} HP；假设队友后续不主动出牌。"),
+            };
+            SolverOverlay.ShowResult(host, preview);
+            Entry.Logger.Info($"[CombatSolver/Test] MULTIPLAYER_ROUTE_REEVALUATED turn={revised.Turn} " +
+                $"hp_lost={revised.HpLost} enemy_hp_lost={revised.EnemyHpLost} " +
+                $"actions={revised.Actions.Count}");
+            StartDeployment(host, state, previous);
+            return;
+        }
 
         if (_search is { } search
             && ReferenceEquals(search.State, state)

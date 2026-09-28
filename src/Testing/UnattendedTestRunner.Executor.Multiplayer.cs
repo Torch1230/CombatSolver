@@ -61,7 +61,21 @@ internal sealed partial class UnattendedTestRunner
                         .ToArray();
                     if (plannedCards.Length == 0)
                         throw new InvalidOperationException("Deployment fixture has no planned local card.");
+                    int searchesBeforeDrift = SolverController.SearchesStartedForTesting;
+                    if (input.VerifyControllerTeammateDrift)
+                    {
+                        Player teammate = combat.Players.First(player => player != scenario.Player);
+                        CardModel teammateStrike = teammate.PlayerCombatState!.Hand.Cards
+                            .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
+                        var teammatePlay = new PlayCardAction(teammateStrike, combat.Enemies.Single());
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
+                        await teammatePlay.CompletionTask;
+                        await runner.MultiplayerProbeBarrierAsync("teammate-drift", combat);
+                    }
                     SolverController.RequestDeploy(runner._host, combat);
+                    if (input.VerifyControllerTeammateDrift
+                        && SolverController.SearchesStartedForTesting != searchesBeforeDrift)
+                        throw new InvalidOperationException("Teammate damage started a new search instead of retaining the legal route.");
                     await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
                         && SolverController.LastSolverDeployedTurnForBugReport == 1
                         && (CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
