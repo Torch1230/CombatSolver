@@ -52,6 +52,8 @@
 
 同一四人目标身份再组合本地自用 `StrengthPotion`：搜索候选只含持有人自用的单项，原生自用后完整状态／RNG 与模拟一致，随后 `Largesse` 仍把新牌给 3 号队友、牌主为该队友，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。这只证明玩家目标药水的候选与自用代表，不代表所有药水已建模或求解器已实际部署药水。
 
+玩家目标自用按机制追加格挡和能量：四人 `BlockPotion` `.local/multiplayer-p2/self-block-potion-four-cbc90f92c6f64218a5bd0cda95b38ab1/peer-0/result.json`、双人 `EnergyPotion` `.local/multiplayer-p2/self-energy-potion-two-a56b08d453e743228b3ce67070940b77/peer-0/result.json`，均核搜索只出现本地持有者的一个候选、原生自用即时全状态／完整 RNG 对齐。与力量药水合起来覆盖三种不同自用机制；选牌、治疗、球及被动触发等药水机制仍未收口。
+
 ## 已确认的关联调用链
 
 - 抽牌、生成与格挡 Hook 在现有模拟中分别有 `AfterCardDrawnMirrors`（`CacophonyPower`）、`AfterCardGeneratedForCombatMirrors`（`SoulboundPower`）、`AfterBlockGainedMirrors`（`BeaconOfHopePower`）；当前还需核对这些镜像是否以多人状态和同一个 Fork 上下文结算。

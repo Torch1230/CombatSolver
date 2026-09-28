@@ -623,7 +623,7 @@ internal sealed partial class UnattendedTestRunner
                     if (BattleDamageTracker.Observe(combat).PotionsUsedSoFar != 0)
                         throw new InvalidOperationException("Teammate potion was counted as local use.");
                 }
-                PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, "STRENGTH_POTION");
+                PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, input.SelfPotionId);
                 int slot = actor.PotionSlots.ToList().IndexOf(potion);
                 if (slot < 0)
                     throw new InvalidOperationException("Injected potion has no slot.");
@@ -659,7 +659,7 @@ internal sealed partial class UnattendedTestRunner
                 {
                     BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);
                     if (observed.PotionsUsedSoFar != 1
-                        || !observed.PotionIdsUsedSoFar.SequenceEqual(["STRENGTH_POTION"]))
+                        || !observed.PotionIdsUsedSoFar.SequenceEqual([input.SelfPotionId]))
                         throw new InvalidOperationException("Local potion accounting includes another player or misses self use.");
                     runner._completedChecks.Add("MultiplayerPotionAccounting:TeammateIgnored:LocalUseCounted");
                 }

@@ -49,6 +49,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyAllyTarget { get; init; }
         public bool VerifyAllyAfterEnergyGain { get; init; }
         public bool VerifySelfPotion { get; init; }
+        public string SelfPotionId { get; init; } = "STRENGTH_POTION";
         public bool VerifyPotionAccounting { get; init; }
         public string[] ContentCardIds { get; init; } = [];
         public int ContentUpgradeLevel { get; init; }
@@ -91,6 +92,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerMidDeploymentKill && !input.VerifyControllerDeploy
                 || input.VerifyControllerMidDeploymentDamage && !input.VerifyControllerDeploy
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
+                || input.VerifySelfPotion && input.SelfPotionId is not
+                    ("STRENGTH_POTION" or "BLOCK_POTION" or "ENERGY_POTION")
                 || input.VerifyControllerTargetedDeploy && !input.ContentCardIds.Contains("BLAZE")
                 || input.VerifyControllerStyleSelection
                     && !input.ContentCardIds.Contains("INFLAME")

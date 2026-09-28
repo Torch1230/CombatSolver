@@ -98,6 +98,8 @@ P4 搜索期间队友变化：虚拟双人开始手动搜索后，队友原生 `
 
 P2 四人玩家目标药水自用候选：本地 `StrengthPotion` 搜索只产生一个无队友目标候选，原生自用即时全状态／RNG 对齐；之后 `Largesse` 给 3 号队友生成牌且牌主属于该队友，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。未验证生产执行器实际投药。
 
+P2 玩家目标药水自用机制：四人 `BlockPotion` `.local/multiplayer-p2/self-block-potion-four-cbc90f92c6f64218a5bd0cda95b38ab1/peer-0/result.json` 和双人 `EnergyPotion` `.local/multiplayer-p2/self-energy-potion-two-a56b08d453e743228b3ce67070940b77/peer-0/result.json`，每次候选仅本地自用一项，原生动作／模拟即时全状态与完整 RNG 差分 Passed。选牌、治疗、球等其他药水机制未验。
+
 P5 多人设置编辑／保存：原生无头设置页提交深度 `3`、时间 `4.5` 秒，再从设置文件重载并确认值保持，最后恢复原设置；同次三语言 UI 与 475 条英文目录占位符 Passed：`.local/multiplayer-p5/ui-settings-edit-509374eb84d540ea80d689f32873b416/result.json`。可见窗口布局未验。
 
 ## 多人 P1 普通状态差分（2026-09-28）
