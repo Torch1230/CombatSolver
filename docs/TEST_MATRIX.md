@@ -18,6 +18,8 @@
 
 `ImitationLearning` 指向队友，队友打 `Inflame` 后本地自动复制、双方力量各 2、能力减 1 层及第二回合全状态／RNG 差分 Passed；证据 `.local/multiplayer-p2/imitation-trigger-fixed-0573378d566f4e2f9590ca523b4ce057/peer-0/result.json`。单次普通能力触发不覆盖选择型能力或多次耗尽。
 
+`HammerTime`→`TheSmith`：本地锻造后队友按原版联动锻造，其手牌生成与刀刃伤害、全状态／RNG 差分 Passed；证据 `.local/multiplayer-p2/hammer-forge-fixed-252559287acf463795c462620800ae6c/peer-0/result.json`。
+
 P3 首次搜索探针：虚拟双人、四人普通牌根和含 `BelieveInYou` 的双人内容根各运行 3 秒单成员搜索，非空路线的一回合出牌均属于本地玩家，三次 Passed，证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。`AnyAlly` 起初产生 null 目标导致搜索失败，按存活玩家生成合法目标后通过。三类方案和生产入口尚未验收。
 
 P3 选人合同：四人 `BelieveInYou` 在三个 Fork 中固定同一原版合法目标、不推进游戏 RNG，随后短搜与原生出牌差分 Passed；证据 `.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json`。生产重评估保持目标仍待验。
