@@ -207,6 +207,8 @@ P2 敌人目标药水候选：四人双敌根本地持有 `FirePotion`，搜索�
 
 P5 旧预测的随机流说明：求解完成后、点击执行前，队友原生把 `Largesse` 给本地玩家，悬浮窗保留执行按钮并明确提示随机流变化和后续预测不准；点击后从新根重评估原序列并继续本地部署，无完整重搜，Passed：`.local/multiplayer-p5/predeploy-rng-hint-fixed-884797ea14704d88b21fd1729f3501d5/peer-0/result.json`。首次测试发现 `ShowResult` 重建预览时清空已见偏差标记，现重评估后恢复该提示。搜索仍在运行时发生同类队友 `Largesse`，发布结果时也显示偏差已重评估，原路线继续本地执行，Passed：`.local/multiplayer-p5/search-time-rng-hint-9d0c942ebe614adba99abc40bcd3a7e5/peer-0/result.json`。均为无头控件断言，可见窗口排版未验。
 
+P4 四端 ENet 自动执行再补两个不同组合：默认搜索并行设置下，四端各自搜索并部署首回合本地动作、同步第二回合与全状态／九条 RNG 对账 Passed：`.local/multiplayer-p0/enet-4-8574f581756247b9afe12b3794bbcfce/peer-0/result.json` 至 `peer-3/result.json`。每端 DOP 1 且启用下回合自动继续时，四端第二回合均从新根搜索、部署，再同步第三回合全状态／RNG，Passed：`.local/multiplayer-p0/enet-4-eee65da42e15466291de1a0d3ecfe8b7/peer-0/result.json` 至 `peer-3/result.json`。这覆盖本机 ENet 四人两回合，不代表 Steam 邀请、异机延迟或未安装 Mod 的对端通过。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。
