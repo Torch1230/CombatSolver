@@ -1000,7 +1000,9 @@ internal sealed partial class CombatBeamSolver
         {
             IReadOnlyList<Player> players = ((SimulatedCombatState)simulator.State.CombatState).Players;
             Creature[] eligible = players.Select(member => member.Creature)
+                // NTargetManager excludes the card owner for manual AnyAlly selection.
                 .Where(target => simulator.State.GetCreature(target).IsAlive
+                    && (targetType != TargetType.AnyAlly || target.Player != card.Original.Owner)
                     && card.Original.CanPlayTargeting(target))
                 .ToArray();
             if (eligible.Length == 0)

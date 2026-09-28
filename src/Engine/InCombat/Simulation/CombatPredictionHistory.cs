@@ -82,8 +82,10 @@ internal sealed partial class CombatPredictionHistory(PredictionTrace trace, Pla
 
     internal CombatHistoryCounters GetCounters(Player owner)
     {
+        if (_counterOwner == null)
+            return CombatHistoryCounters.Scan(this, owner);
         if (!ReferenceEquals(owner, _counterOwner))
-            throw new InvalidOperationException("History counters require the captured single-player owner.");
+            throw new InvalidOperationException("History counters require the captured owner.");
         VerifyCounters();
         return _counters;
     }

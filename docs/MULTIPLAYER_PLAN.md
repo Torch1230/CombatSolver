@@ -89,9 +89,9 @@ ENet 初次失败定位为测试 `LocalSelector` 没有发送原版 `SyncLocalCh
 
 跨玩家转移再验 `TheBall`：本地出牌后原版随机放入另一玩家抽牌堆，队友抽到并再次打出，同一牌实例的累计增伤、二次转移、全部玩家牌堆与完整 RNG 逐步差分 Passed：`.local/multiplayer-p2/ball-replay-42e35d8052c146ebba56f30befa826fe/peer-0/result.json`。`LegionOfBone` 群体召唤后的第二回合伙伴与各玩家状态差分也 Passed：`.local/multiplayer-p2/legion-round-f7a757a155b6423dbe5440fc287504b0/peer-0/result.json`。两项均为双人固定输入，死亡／复活分支尚未验。
 
-P3 首个真实搜索探针在虚拟双人和四人的普通牌根各跑一次 3 秒单成员搜索，取得只含本地已持有牌的非空路线并完成原生脚本，均 Passed：`.local/multiplayer-p3/search-ordinary-2-e6ccd5056c3949a7af04a448dd3dbaa2/peer-0/result.json`、`.local/multiplayer-p3/search-ordinary-4-ce51792b5b924f7ba2a95c838a2cc2fa/peer-0/result.json`。加入 `BelieveInYou` 后第一次内容根搜索暴露 `AnyAlly` 候选目标被构造为 null；按存活玩家生成目标后，同一双人内容根搜索 Passed：`.local/multiplayer-p3/search-teammate-card-target-e56288e18a0e4c35bc3beb03a9b2c9f2/peer-0/result.json`。这些只证明有限搜索不崩溃且动作属于本地，不证明三类方案、纯支援余费、两回合深度、预算共享、生产执行或 UI。药水候选仍仅玩家自用。
+P3 首个真实搜索探针在虚拟双人和四人的普通牌根各跑一次 3 秒单成员搜索，取得只含本地已持有牌的非空路线并完成原生脚本，均 Passed：`.local/multiplayer-p3/search-ordinary-2-e6ccd5056c3949a7af04a448dd3dbaa2/peer-0/result.json`、`.local/multiplayer-p3/search-ordinary-4-ce51792b5b924f7ba2a95c838a2cc2fa/peer-0/result.json`。加入 `BelieveInYou` 后第一次内容根搜索暴露 `AnyAlly` 候选目标被构造为 null；初版按存活玩家生成目标后，同一双人内容根搜索 Passed；后经用户指出并核对原版选人界面，`AnyAlly` 还必须排除出牌者，旧搜索目标合法性结论作废：`.local/multiplayer-p3/search-teammate-card-target-e56288e18a0e4c35bc3beb03a9b2c9f2/peer-0/result.json`。这些只证明有限搜索不崩溃且动作属于本地，不证明三类方案、纯支援余费、两回合深度、预算共享、生产执行或 UI。药水候选仍仅玩家自用。
 
-四人 `BelieveInYou` 内容根增加随机目标合同：同一原卡在三个 Fork 中只选一个原版可打出的存活玩家，独立选择不推进游戏状态或 RNG；随后运行 3 秒真实搜索，路线只含本地动作，并完成原生出牌全状态／RNG 差分，Passed：`.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json`。此合同尚未覆盖生产重评估与执行时保持目标，也没有验余费支援分类。
+四人 `BelieveInYou` 初版探针验证目标跨 Fork 固定、游戏 RNG 不变及内容差分，证据 `.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json`；该版本未断言排除出牌者。按原版 `NTargetManager` 修正后，同一四人根断言目标必为其他存活玩家、三个 Fork 固定、游戏 RNG 不变，且短搜与原生内容差分 Passed：`.local/multiplayer-p3/ally-other-player-4-6c6362c2b3a74cd6b19e6048b2a301d1/peer-0/result.json`。此合同尚未覆盖生产重评估与执行时保持目标，也没有验余费支援分类。
 
 按产品边界对一瓶玩家目标 `StrengthPotion` 进行双人自用原生差分：本地持有者向自己用药，完整续用状态／RNG 与模拟一致，之后仍可给队友打 `BelieveInYou`，Passed：`.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。候选源码只枚举本地玩家自身；该样本不代表 51 种玩家目标药水逐瓶通过。
 
@@ -105,9 +105,15 @@ P3 目前在同一次 Beam 搜索的最终候选中按有效伤害、预计自�
 
 搜索协调器已给多人根接入一次直接 Beam 请求，跳过单人整场深化／药水审计，仍复用请求工作量账本。双人两回合 `Strike`／`Inflame` 根通过协调器取得输出＋启动路线，断言只记一场搜索、总展开量与本场相等、根比较戳一致，Passed：`.local/multiplayer-p3/coordinator-styles-two-turn-a4297d0afd3d43fba976a1ba76e9772a/peer-0/result.json`。这是生产搜索函数的原生进程调用；运行时多人 `CanSolve` 与 UI 入口仍关闭，未验证真实玩家点击。
 
-P3 纯支援第一批按原版效果和目标身份分类：`BeaconOfHope`／`HammerTime` 及指定其他玩家的简单资源、能力、球、生成牌等进入余费补入；指向自己的同类牌和自身也受益的群体牌继续普通搜索。补入在本地路线形成后、首回合结束前按剩余预算逐张尝试，完整回放原动作序列，并拒绝本地血量、资源、有效伤害或预测边界变差的结果。双人 `Strike` 后余费补 `BeaconOfHope` 的整条原生路线／全状态／RNG Passed：`.local/multiplayer-p3/support-beacon-native-route-b64a4cf8934c411dbfe8b493ca49f212/peer-0/result.json`；余能不足时不补 Passed：`.local/multiplayer-p3/support-no-spare-1ca90c8f1dfd4067849d8746db22de95/peer-0/result.json`。固定独立选人来源后，`Strike` 后给队友 `Blaze` 的目标身份、整条原生路线／全状态／RNG Passed：`.local/multiplayer-p3/support-blaze-target-72cb58a9d9114b3284478df3396f5bec/peer-0/result.json`。`Rally` 作为群体自身获益牌正常进入防守搜索 Passed（`.local/multiplayer-p3/group-rally-legal-18d19032cefd474f8461146a52c3050a/peer-0/result.json`）；`Blaze` 指向自己时正常进入启动搜索 Passed（`.local/multiplayer-p3/self-blaze-search-73cc11e6325d42e6922675c0db1e51bd/peer-0/result.json`）。同一方案补两张支援牌的机制已通过；其他纯支援条件、零费额外成本、保留到未来的资源与队友未知选择尚未收口。
+P3 纯支援第一批按原版效果和目标身份分类：`BeaconOfHope`／`HammerTime` 及指定其他玩家的简单资源、能力、球、生成牌等进入余费补入；自身也受益的群体牌继续普通搜索；原版选人界面不允许 `AnyAlly` 指向出牌者。补入在本地路线形成后、首回合结束前按剩余预算逐张尝试，完整回放原动作序列，并拒绝本地血量、资源、有效伤害或预测边界变差的结果。双人 `Strike` 后余费补 `BeaconOfHope` 的整条原生路线／全状态／RNG Passed：`.local/multiplayer-p3/support-beacon-native-route-b64a4cf8934c411dbfe8b493ca49f212/peer-0/result.json`；余能不足时不补 Passed：`.local/multiplayer-p3/support-no-spare-1ca90c8f1dfd4067849d8746db22de95/peer-0/result.json`。`Strike` 后给队友 `Blaze` 的目标身份、整条原生路线／全状态／RNG 首次 Passed：`.local/multiplayer-p3/support-blaze-target-72cb58a9d9114b3284478df3396f5bec/peer-0/result.json`；排除 `AnyAlly` 自指后，同一机制复验 Passed：`.local/multiplayer-p3/support-blaze-other-player-cf876f7b22a84b29b53729e0d1e9e1bb/peer-0/result.json`。`Rally` 作为群体自身获益牌正常进入防守搜索 Passed（`.local/multiplayer-p3/group-rally-legal-18d19032cefd474f8461146a52c3050a/peer-0/result.json`）。此前以 `Blaze` 自指为条件的 `.local/multiplayer-p3/self-blaze-search-73cc11e6325d42e6922675c0db1e51bd/peer-0/result.json` 违反原版选人规则，作废，不作为通过证据。同一方案补两张支援牌的机制已通过；其他纯支援条件、零费额外成本、保留到未来的资源与队友未知选择尚未收口。
 
 同一固定根中先 `Strike`、再依次补 `BeaconOfHope` 与指向队友的 `Blaze`，两张均消耗余能，完整路线与原版全状态／RNG Passed：`.local/multiplayer-p3/support-two-cards-ca2a44b61ca94328a437837241a5b660/peer-0/result.json`。本批的支援枚举仍以已核对的显式卡牌集合为限，其他条件式收益与所有零费成本组合尚待补齐。
+
+针对 `AnyAlly` 误判核对原版 `NTargetManager`、15 张指定队友牌及 8 张 `AllAllies` 牌：手动 `AnyAlly` 目标排除出牌者，群体目标包含出牌者；直接自身收益的指定队友牌继续正常搜索。`Largesse` 的目标玩家是生成牌牌主，`AddGeneratedCardToCombat(..., base.Owner)` 里的 `base.Owner` 是创建者，早先清单写成给出牌者是错误的。双人 `Largesse` 短搜和原生出牌显式断言牌进入队友手牌、归队友所有，全状态／RNG Passed：`.local/multiplayer-p3/largesse-recipient-and-search-c6a5eb6ba3e64c159a0623d0a234e63c/peer-0/result.json`。为此修复多人历史计数器的按玩家读取；测试进程中显示名提前在主线程捕获。该探针不证明 `Largesse` 余费补入策略已通过。
+
+补充验证 `Largesse` 的余费支援：双人固定根中本地先 `Strike`，再在不额外消耗能量的情况下把 `Largesse` 补给队友；整条路线按原版执行、所有玩家状态与 RNG 对齐，Passed：`.local/multiplayer-p3/largesse-spare-support-7a83bcf691ce4be98528ac869b670ff4/peer-0/result.json`。
+
+P4 首次虚拟双人手动入口探针暴露战报结果记录使用 `Players.Single()`；改为本地玩家后，同一请求在原生战斗内取得可见悬浮窗与本地搜索结果并完成脚本，Passed：`.local/multiplayer-p4/controller-virtual-2-outcome-fix-119a18d17ad54ec38dcac49e76a3f1a6/peer-0/result.json`。这是控制器手动入口证据；方案选择、逐步执行和真实联机变化尚未验收。
 
 ### 0.3 接手后第一轮的具体操作
 
@@ -309,43 +315,43 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 
 | 序号 | 类型 | 当前证据状态 |
 |---|---|---|
-| 1 | `BeaconOfHope` | 待按多人结算验收 |
-| 2 | `BelieveInYou` | 待按多人结算验收 |
-| 3 | `BladeSymphony` | 待按多人结算验收 |
-| 4 | `Blaze` | 待按多人结算验收 |
-| 5 | `Cacophony` | 待按多人结算验收 |
-| 6 | `Concoct` | 待按多人结算验收 |
-| 7 | `Constellation` | 待按多人结算验收 |
-| 8 | `Coordinate` | 待按多人结算验收 |
-| 9 | `DemonicShield` | 待按多人结算验收 |
-| 10 | `EnergySurge` | 待按多人结算验收 |
-| 11 | `Fade` | 待按多人结算验收 |
-| 12 | `Flanking` | 待按多人结算验收 |
-| 13 | `GangUp` | 待按多人结算验收 |
-| 14 | `GlimpseBeyond` | 待按多人结算验收 |
-| 15 | `HammerTime` | 待按多人结算验收 |
-| 16 | `Hibernate` | 待按多人结算验收 |
-| 17 | `HuddleUp` | 待按多人结算验收 |
-| 18 | `Ignition` | 待按多人结算验收 |
-| 19 | `ImitationLearning` | 待按多人结算验收 |
-| 20 | `Intercept` | 待按多人结算验收 |
-| 21 | `Knockdown` | 待按多人结算验收 |
-| 22 | `Largesse` | 待按多人结算验收 |
-| 23 | `LegionOfBone` | 待按多人结算验收 |
-| 24 | `Lift` | 待按多人结算验收 |
-| 25 | `Midnight` | 待按多人结算验收 |
-| 26 | `Mimic` | 待按多人结算验收 |
-| 27 | `OneForAll` | 待按多人结算验收 |
-| 28 | `Outrage` | 待按多人结算验收 |
-| 29 | `Plot` | 待按多人结算验收 |
-| 30 | `Rally` | 待按多人结算验收 |
-| 31 | `Sneaky` | 待按多人结算验收 |
-| 32 | `Soulbound` | 待按多人结算验收 |
-| 33 | `TagTeam` | 待按多人结算验收 |
-| 34 | `Tank` | 待按多人结算验收 |
-| 35 | `TheBall` | 待按多人结算验收 |
-| 36 | `Tutor` | 待按多人结算验收 |
-| 37 | `Underworld` | 待按多人结算验收 |
+| 1 | `BeaconOfHope` | 基础／升级即时差分通过；完整机制待验 |
+| 2 | `BelieveInYou` | 基础／升级即时差分通过；完整机制待验 |
+| 3 | `BladeSymphony` | 基础／升级即时差分通过；完整机制待验 |
+| 4 | `Blaze` | 基础／升级即时差分通过；完整机制待验 |
+| 5 | `Cacophony` | 基础／升级即时差分通过；完整机制待验 |
+| 6 | `Concoct` | 基础／升级即时差分通过；完整机制待验 |
+| 7 | `Constellation` | 基础／升级即时差分通过；完整机制待验 |
+| 8 | `Coordinate` | 基础／升级即时差分通过；完整机制待验 |
+| 9 | `DemonicShield` | 基础／升级即时差分通过；完整机制待验 |
+| 10 | `EnergySurge` | 基础／升级即时差分通过；完整机制待验 |
+| 11 | `Fade` | 基础／升级即时差分通过；完整机制待验 |
+| 12 | `Flanking` | 基础／升级即时差分通过；完整机制待验 |
+| 13 | `GangUp` | 基础／升级即时差分通过；完整机制待验 |
+| 14 | `GlimpseBeyond` | 基础／升级即时差分通过；完整机制待验 |
+| 15 | `HammerTime` | 基础／升级即时差分通过；完整机制待验 |
+| 16 | `Hibernate` | 基础／升级即时差分通过；完整机制待验 |
+| 17 | `HuddleUp` | 基础／升级即时差分通过；完整机制待验 |
+| 18 | `Ignition` | 基础／升级即时差分通过；完整机制待验 |
+| 19 | `ImitationLearning` | 基础／升级即时差分通过；完整机制待验 |
+| 20 | `Intercept` | 基础／升级即时差分通过；完整机制待验 |
+| 21 | `Knockdown` | 基础／升级即时差分通过；完整机制待验 |
+| 22 | `Largesse` | 基础／升级即时差分通过；完整机制待验 |
+| 23 | `LegionOfBone` | 基础／升级即时差分通过；完整机制待验 |
+| 24 | `Lift` | 基础／升级即时差分通过；完整机制待验 |
+| 25 | `Midnight` | 基础／升级即时差分通过；完整机制待验 |
+| 26 | `Mimic` | 基础／升级即时差分通过；完整机制待验 |
+| 27 | `OneForAll` | 基础／升级即时差分通过；完整机制待验 |
+| 28 | `Outrage` | 基础／升级即时差分通过；完整机制待验 |
+| 29 | `Plot` | 基础／升级即时差分通过；完整机制待验 |
+| 30 | `Rally` | 基础／升级即时差分通过；完整机制待验 |
+| 31 | `Sneaky` | 基础／升级即时差分通过；完整机制待验 |
+| 32 | `Soulbound` | 基础／升级即时差分通过；完整机制待验 |
+| 33 | `TagTeam` | 基础／升级即时差分通过；完整机制待验 |
+| 34 | `Tank` | 基础／升级即时差分通过；完整机制待验 |
+| 35 | `TheBall` | 基础／升级即时差分通过；完整机制待验 |
+| 36 | `Tutor` | 基础／升级即时差分通过；完整机制待验 |
+| 37 | `Underworld` | 基础／升级即时差分通过；完整机制待验 |
 
 37 张的原版入口、已发现关联机制及普通内容待调查名单见 [多人内容盘点](MULTIPLAYER_CONTENT_INVENTORY.md)。该清单仍在 P0 盘点中，尚未封闭。37 张只是初始集合，不是全部工作量。P0/P2 需沿调用链补齐：
 
@@ -404,7 +410,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 | P1 通用状态与差分 | 所有玩家快照、目标身份、Hook 所有权、共享 RNG、Fork、多人历史、回合与死亡边界；通用差分和参数化测试入口 | 普通已有卡牌在 2／4 人根严格对账；跨两回合、兄弟分支隔离、根/live 隔离与差分负向合同通过 | 普通 2／4 人卡牌、默认回合、负向键与兄弟隔离通过；复杂生命周期待验 |
 | P2 原版内容建模 | 完整清单内卡牌、Power、遗物、药水及普通内容多人差异；机制分类和关联测试 | 每项有原版依据及基础／升级差分证据；复杂机制的生命周期、所有者和引用合同通过；无影响范围内未解释缺口 | 37 张专用卡即时差分与若干关联机制通过；普通多人内容、死亡等仍待做 |
 | P3 有限回合与多方案 | 深度／时间配置、共享预算、本地候选、队友无主动动作、三类排序、估值、去重、余费支援 | 固定根短搜证明三类目标与去重；预算和深度上限有效；纯支援分类、随机目标固定及自身收益牌正常搜索通过；单人哨兵通过 | 默认深度／时间和两回合输出／防守、输出／启动代表通过；余费支援、生产入口待做 |
-| P4 执行与变化处理 | 新状态重评估原序列、RNG 提示、逐步原生执行、选牌等待、当前回合范围、三种计算入口 | 队友交错动作、随机偏差、计划内／外击杀、不可执行暂停及旧任务淘汰在真实联机链路通过 | 未开始 |
+| P4 执行与变化处理 | 新状态重评估原序列、RNG 提示、逐步原生执行、选牌等待、当前回合范围、三种计算入口 | 队友交错动作、随机偏差、计划内／外击杀、不可执行暂停及旧任务淘汰在真实联机链路通过 | 虚拟双人手动搜索入口与可见悬浮窗通过；执行及变化处理待验 |
 | P5 界面与完整验收 | 设置、方案列表、收益／假设／可信状态、中英文本；四人联调、单人回归、文档与本地部署 | 第 9 节检查项有对应证据；实际未测项明确，只有满足范围的功能对外声明完成 | 未开始 |
 
 P2 可按机制小批完成并立即验证，不等待全部内容写完才测试。发现通用根因回到对应职责修复，禁止在单卡里复制底层规则。P0 若某原版测试入口不可用，记录具体失败，调整为可运行的原版建局入口；不能靠自制期望值替代原生验收。

@@ -1,5 +1,6 @@
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Combat.History.Entries;
+using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -27,7 +28,8 @@ internal sealed class CombatReplayOutcome : IDisposable
 
     public CombatReplayOutcome(CombatState state)
     {
-        _player = state.Players.Single().Creature;
+        _player = LocalContext.GetMe(state)?.Creature
+            ?? throw new InvalidOperationException("Outcome observation requires a local player.");
         _initialHp = _player.CurrentHp;
         _historyStart = CombatManager.Instance.History.Entries.Count();
         _actions = RunManager.Instance.ActionQueueSet;

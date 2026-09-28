@@ -33,6 +33,26 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyControllerSearch)
+            {
+                SolverController.MonitorCombatPresence();
+                if (!SolverOverlay.IsVisible)
+                    throw new InvalidOperationException("Multiplayer manual controls were not attached.");
+                SolverController.RequestSearch(runner._host, combat, SearchReason.Manual);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    SolverController.LastCompletedResultForTesting != null
+                    || SolverController.LastSearchFailureForTesting != null);
+                if (SolverController.LastSearchFailureForTesting is { } failure)
+                    throw new InvalidOperationException("Multiplayer controller search failed.", failure);
+                SolverResult completed = SolverController.LastCompletedResultForTesting
+                    ?? throw new InvalidOperationException("Multiplayer controller did not publish a result.");
+                if (completed.MultiplayerStyle != MultiplayerPlanStyle.Output
+                    || completed.BestNode.Actions.Any(action => action.Kind == PlanActionKind.PlayCard
+                        && !scenario.Player.PlayerCombatState!.AllCards.Any(card =>
+                            card.Id.Entry == action.CardId)))
+                    throw new InvalidOperationException("Multiplayer controller published a non-local route.");
+                runner._completedChecks.Add("MultiplayerController:ManualSearch:LocalResult:VisibleOverlay");
+            }
             if (input.VerifyEnemyPowerScaling)
             {
                 await VerifyScaledPowerAsync<ArtifactPower>();
@@ -75,8 +95,10 @@ internal sealed partial class UnattendedTestRunner
                     UseBeamWidthPortfolio = false,
                     EarlyTurnExplorationBudgetMilliseconds = 0,
                 };
+                SolverDisplayNames displayNames = SolverDisplayNames.Capture(combat);
+                BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
                 SolverResult result = await Task.Run(() => new CombatBeamSolver(
-                    root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
+                    root, displayNames, damage,
                     policy, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
                 if (result.StartTurnNumber != 1 || result.BestNode.Actions.Count == 0
                     || result.SearchedTurns > policy.MaxTurnLayers
@@ -243,7 +265,8 @@ internal sealed partial class UnattendedTestRunner
                         .First(candidate => candidate.Preview.Id.Entry == input.ContentCardIds[0]);
                     uint[] current = targetDriver.AllyTargetsForTesting(source, fork);
                     if (current.Length != 1
-                        || !combat.Players.Any(member => member.Creature.CombatId == current[0]
+                        || !combat.Players.Any(member => member != actor
+                            && member.Creature.CombatId == current[0]
                             && member.Creature.IsAlive
                             && source.Original.CanPlayTargeting(member.Creature))
                         || iteration > 0 && !targets.SequenceEqual(current))
@@ -252,7 +275,7 @@ internal sealed partial class UnattendedTestRunner
                 }
                 if (ContinuationStamp.CaptureLive(combat).StateText != firstRng)
                     throw new InvalidOperationException("Ally target selection changed game state or RNG.");
-                runner._completedChecks.Add("MultiplayerAllyTarget:OneLegalTarget:StableForks:GameRngUnchanged");
+                runner._completedChecks.Add("MultiplayerAllyTarget:OneOtherLivingPlayer:StableForks:GameRngUnchanged");
             }
             if (input.VerifySelfPotion)
             {
@@ -301,8 +324,7 @@ internal sealed partial class UnattendedTestRunner
                         ? input.ContentSearchTurnDepth : configured.MaxTurnLayers,
                     MultiplayerAllyTargetSeatForTesting = input.VerifyTargetedSupport
                         ? input.ContentTargetSeat
-                        : input.VerifyMultipleSupport ? input.ContentTargetSeat
-                        : input.VerifySelfTargetNormal ? 0 : null,
+                        : input.VerifyMultipleSupport ? input.ContentTargetSeat : null,
                     Profile = SolverSearchProfile.Default with
                     {
                         MaxExpandedNodes = 10_000,
@@ -313,11 +335,13 @@ internal sealed partial class UnattendedTestRunner
                     UseBeamWidthPortfolio = false,
                     EarlyTurnExplorationBudgetMilliseconds = 0,
                 };
+                SolverDisplayNames displayNames = SolverDisplayNames.Capture(combat);
+                BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
                 SolverResult search = await Task.Run(() => input.ContentSearchOnly
-                    ? CombatSearchCoordinator.Solve(searchRoot, SolverDisplayNames.Capture(combat),
-                        BattleDamageTracker.Observe(combat), searchPolicy, CancellationToken.None, null)
+                    ? CombatSearchCoordinator.Solve(searchRoot, displayNames,
+                        damage, searchPolicy, CancellationToken.None, null)
                     : new CombatBeamSolver(searchRoot,
-                        SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
+                        displayNames, damage,
                         searchPolicy, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
                 if (search.StartTurnNumber != 1 || search.BestNode.Actions.Count == 0
                     || search.SearchedTurns > searchPolicy.MaxTurnLayers
@@ -380,23 +404,14 @@ internal sealed partial class UnattendedTestRunner
                 {
                     PlanAction[] current = search.BestNode.Actions
                         .Where(action => action.Turn == 1).ToArray();
+                    string supportCardId = input.ContentCardIds.Single(id => id is "BLAZE" or "LARGESSE");
                     int attack = Array.FindIndex(current, action => action.CardId == "STRIKE_IRONCLAD");
-                    int support = Array.FindIndex(current, action => action.CardId == "BLAZE");
+                    int support = Array.FindIndex(current, action => action.CardId == supportCardId);
                     if (attack < 0 || support <= attack || !search.MultiplayerSupportAdded
                         || current[support].TargetCombatId
                             != combat.Players[input.ContentTargetSeat].Creature.CombatId)
                         throw new InvalidOperationException("Targeted support did not keep the teammate target.");
                     runner._completedChecks.Add("MultiplayerSupport:FixedTeammateTarget:AfterMainAction");
-                }
-                if (input.VerifySelfTargetNormal)
-                {
-                    SolverResult? setup = contentPlans.FirstOrDefault(plan =>
-                        plan.MultiplayerStyle == MultiplayerPlanStyle.Setup);
-                    if (setup == null || setup.MultiplayerSupportAdded
-                        || !setup.BestNode.Actions.Any(action => action.CardId == "BLAZE"
-                            && action.TargetCombatId == actor.Creature.CombatId))
-                        throw new InvalidOperationException("Self-target Blaze was not searched normally.");
-                    runner._completedChecks.Add("MultiplayerSupport:SelfTargetBlaze:NormalSetupSearch");
                 }
                 if (input.VerifyMultipleSupport)
                 {
@@ -501,6 +516,12 @@ internal sealed partial class UnattendedTestRunner
                 };
                 if (!card.CanPlayTargeting(target))
                     throw new InvalidOperationException($"Content probe card is not playable: {card.Id.Entry}.");
+                Player? largesseRecipient = card is Largesse
+                    ? target?.Player ?? throw new InvalidOperationException("Largesse requires a player target.")
+                    : null;
+                int targetHandBefore = largesseRecipient?.PlayerCombatState!.Hand.Cards.Count ?? 0;
+                int actorHandBefore = card is Largesse
+                    ? actor.PlayerCombatState!.Hand.Cards.Count : 0;
                 int enemyHpBefore = combat.Enemies.Single().CurrentHp;
                 CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
                 CombatPredictionSimulator simulator = root.ForkSimulator();
@@ -544,6 +565,15 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException(
                         $"Multiplayer content differs: {card.Id.Entry}+{card.CurrentUpgradeLevel} " +
                         predicted.DescribeFirstDifference(actual));
+                if (largesseRecipient is { } recipient)
+                {
+                    if (recipient.PlayerCombatState!.Hand.Cards.Count != targetHandBefore + 1
+                        || actor.PlayerCombatState!.Hand.Cards.Count != actorHandBefore - 1
+                        || recipient.PlayerCombatState.Hand.Cards.Any(generated =>
+                            generated.Owner != recipient))
+                        throw new InvalidOperationException("Largesse did not add the generated card to the teammate's hand.");
+                    runner._completedChecks.Add("MultiplayerLargesse:TeammateReceivesGeneratedCard:Owner:FullState:FullRng");
+                }
                 runner._completedChecks.Add(
                     $"MultiplayerContent:{card.Id.Entry}:Upgrade={card.CurrentUpgradeLevel}:Target={combat.Players[input.ContentTargetSeat].NetId}:FullState:FullRng");
                 if (card is HuddleUp && input.ContentCacophonyCardsRemaining > 0)

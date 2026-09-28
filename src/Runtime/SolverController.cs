@@ -14,6 +14,7 @@ using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Settings;
+using CombatSolver.Engine.InCombat.Extensions;
 
 namespace CombatSolver;
 
@@ -2266,7 +2267,7 @@ internal static partial class SolverController
         if (!SolverOverlay.IsVisible && !IsSearching && !IsDeploying
             && !PendingCombatDeferredOperations.Any(task => !task.IsCompleted)
             && !PlayerTurnSetupCoordinator.IsManaging(current)
-            && current.Players.Count == 1
+            && current.Players.Count is >= 1 and <= 4
             && LocalContext.GetMe(current)?.PlayerCombatState?.Phase == PlayerTurnPhase.Play
             && NGame.Instance is { } host)
         {
@@ -2899,6 +2900,9 @@ internal static partial class SolverController
                             deployWhenReady: !_combat.FullAutoEnabled);
                         return;
                     }
+                    if ((potion.TargetType is TargetType.AnyPlayer or TargetType.Self)
+                        && target != null && target != player.Creature)
+                        throw new InvalidOperationException("玩家目标药水的部署目标必须是本地玩家。");
                     GameAction queuedAction = await EnqueueAndCaptureActionAsync(
                         candidate => candidate is UsePotionAction usePotion
                             && ReferenceEquals(usePotion.Player, player)
@@ -2914,7 +2918,9 @@ internal static partial class SolverController
                 {
                     List<CardModel> hand = player.PlayerCombatState!.Hand.Cards.ToList();
                     CardModel card = FindCardForDeployment(hand, action);
-                    if (!card.CanPlayTargeting(target))
+                    if (!card.CanPlayTargeting(target)
+                        || card.TargetType == TargetType.AnyAlly
+                        && (target == null || !state.GetValidManualCardTargets(card).Contains(target)))
                     {
                         bool targetValid = card.IsValidTarget(target);
                         bool cardPlayable = card.CanPlay(out UnplayableReason reason, out AbstractModel? preventer);
@@ -3600,8 +3606,8 @@ internal static partial class SolverController
             rejection = "求解器已在设置中禁用。";
         else if (!CombatManager.Instance.IsInProgress)
             rejection = "当前没有进行中的战斗。";
-        else if (state.Players.Count != 1)
-            rejection = "第一版只支持单人战斗。";
+        else if (state.Players.Count is < 1 or > 4)
+            rejection = "只支持 1～4 人战斗。";
         else if (state.CurrentSide != CombatSide.Player || player?.PlayerCombatState?.Phase != PlayerTurnPhase.Play)
             rejection = "当前不是玩家出牌阶段。";
         else if (CombatManager.Instance.PlayerActionsDisabled)

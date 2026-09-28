@@ -29,7 +29,7 @@
 | `ImitationLearning` | `OnPlay` 按目标玩家叠加／施加 `ImitationLearningPower`；Power 保存目标玩家引用及原牌／复制牌配对，监听目标能力牌并由持有者自动打出复制品 | 跨玩家引用、私有状态、嵌套出牌 |
 | `Intercept` | `OnPlay` 自身得格挡、目标得 `CoveredPower`；关联 `InterceptPower` 记录受保护者，涉及施加者死亡和敌方回合结束 | 跨玩家引用、死亡、保护 |
 | `Knockdown` | `OnPlay` 攻击并施加 `KnockdownPower`；其他玩家攻击增伤，敌方回合后移除 | 来源身份、攻击修正 |
-| `Largesse` | `OnPlay` 从目标玩家可解锁无色池消耗 `CombatCardGeneration` 生成牌；升级版升级生成牌，加入目标手牌 | 生成池、牌主、RNG |
+| `Largesse` | `OnPlay` 从目标玩家可解锁无色池消耗 `CombatCardGeneration` 生成牌；升级版升级生成牌，加入目标玩家手牌；`base.Owner` 是 `AddGeneratedCardToCombat` 的创建者参数 | 生成池、目标牌主、创建者、RNG |
 | `LegionOfBone` | `OnPlay` 给每个存活玩家调用 `OstyCmd.Summon` | 群体伙伴、召唤 |
 | `Lift` | `OnPlay` 给指定玩家格挡 | 指定队友格挡 |
 | `Midnight` | `OnPlay` 攻击；入场时按历史消耗次数减费，之后每次消耗继续减费 | 历史、费用、跨回合 |
@@ -45,6 +45,8 @@
 | `TheBall` | `OnPlay` 攻击并累加逐实例伤害；`GetResultLocationForCardPlay` 用 `CombatTargets` 随机转给另一玩家，弃牌改为随机插入其抽牌堆；降级还原内部增伤 | 私有计数、所有权转移、RNG |
 | `Tutor` | `OnPlay` 由目标玩家从其抽牌堆原生选择一张进手牌 | 队友原生选牌等待 |
 | `Underworld` | `OnPlay` 施加 `UnderworldPower`；其他玩家或其伙伴的攻击造成伤害后叠加 `DoomPower`，敌方回合结束移除 | 来源身份、伙伴、伤害监听 |
+
+原版目标与受益归属复核：15 张 `AnyAlly` 牌的手动目标均须是另一名存活玩家，依据 `NTargetManager.AllowedToTargetCreature`；`CardModel.CanPlayTargeting` 本身不排除出牌者，不能单独用于搜索候选。8 张 `AllAllies` 牌的 `GetTeammatesOf` 包括出牌者。`ImitationLearning`、`Intercept`、`Mimic` 有自身收益，`DemonicShield` 有自身掉血成本；`Largesse` 给队友生成牌，`Tutor` 需要队友原生选牌。这是原版源码核对，运行证据按下文实际探针分别记录。
 
 ## 已确认的关联调用链
 

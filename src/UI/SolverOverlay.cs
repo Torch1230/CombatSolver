@@ -2577,7 +2577,7 @@ internal static class SolverOverlay
             || !GodotObject.IsInstanceValid(_layer)
             || !CombatManager.Instance.IsInProgress
             || state == null
-            || state.Players.Count != 1
+            || state.Players.Count is < 1 or > 4
             || BugReportUploadDialog.IsOpen)
         {
             return false;

@@ -22,9 +22,9 @@
 
 `TheBall` 跨玩家实例转移、队友抽牌后再次打出及逐次增伤，全状态／RNG 差分 Passed；证据 `.local/multiplayer-p2/ball-replay-42e35d8052c146ebba56f30befa826fe/peer-0/result.json`。`LegionOfBone` 群体召唤并推进第二回合的伙伴与所有玩家状态差分 Passed；证据 `.local/multiplayer-p2/legion-round-f7a757a155b6423dbe5440fc287504b0/peer-0/result.json`。
 
-P3 首次搜索探针：虚拟双人、四人普通牌根和含 `BelieveInYou` 的双人内容根各运行 3 秒单成员搜索，非空路线的一回合出牌均属于本地玩家，三次 Passed，证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。`AnyAlly` 起初产生 null 目标导致搜索失败，按存活玩家生成合法目标后通过。三类方案和生产入口尚未验收。
+P3 首次搜索探针：虚拟双人、四人普通牌根和含 `BelieveInYou` 的双人内容根各运行 3 秒单成员搜索，非空路线的一回合出牌均属于本地玩家，三次 Passed，证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。`AnyAlly` 起初产生 null 目标导致搜索失败，初版按存活玩家生成目标后通过搜索，但未排除出牌者；后续目标合法性已修正并单独复验。三类方案和生产入口尚未验收。
 
-P3 选人合同：四人 `BelieveInYou` 在三个 Fork 中固定同一原版合法目标、不推进游戏 RNG，随后短搜与原生出牌差分 Passed；证据 `.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json`。生产重评估保持目标仍待验。
+P3 选人合同：初版四人探针没有断言目标必须是其他玩家，旧证据 `.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json` 不覆盖此规则。修正后四人 `BelieveInYou` 在三个 Fork 中固定同一其他存活玩家，不推进游戏 RNG，随后短搜与原生出牌差分 Passed；证据 `.local/multiplayer-p3/ally-other-player-4-6c6362c2b3a74cd6b19e6048b2a301d1/peer-0/result.json`。生产重评估保持目标仍待验。
 
 玩家目标药水自用代表：双人 `StrengthPotion` 本地持有者自用后完整状态／RNG 差分 Passed，随后队友目标牌仍可执行；证据 `.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。此项不覆盖所有药水或生产自动执行。
 
@@ -34,9 +34,15 @@ P3 选人合同：四人 `BelieveInYou` 在三个 Fork 中固定同一原版合�
 
 多人生产搜索协调器：双人 `Strike`／`Inflame` 两回合根通过 `CombatSearchCoordinator.Solve` 获得输出＋启动，单场搜索统计与根比较戳对账 Passed；证据 `.local/multiplayer-p3/coordinator-styles-two-turn-a4297d0afd3d43fba976a1ba76e9772a/peer-0/result.json`。控制器、界面与真实玩家交互仍未接入。
 
-纯支援第一批：`BeaconOfHope` 有余能时在 `Strike` 后补入并按原生执行整条路线；余能不足时不补；独立固定目标的 `Blaze` 补给队友并按原生执行整条路线；`Rally` 群体自身收益与 `Blaze` 自指均走正常搜索。全部对应虚拟双人请求 Passed，路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。两张补入在固定机制中已通过，不能推出所有纯支援或额外成本已通过。
+纯支援第一批：`BeaconOfHope` 有余能时在 `Strike` 后补入并按原生执行整条路线；余能不足时不补；独立固定目标的 `Blaze` 补给队友并按原生执行整条路线；`Rally` 群体自身收益走正常搜索。此前 `Blaze` 自指测试违反原版 `AnyAlly` 选人规则，结果作废；修正后 `Blaze` 给队友的原生路线复验 Passed：`.local/multiplayer-p3/support-blaze-other-player-cf876f7b22a84b29b53729e0d1e9e1bb/peer-0/result.json`，其余对应虚拟双人请求 Passed，路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。两张补入在固定机制中已通过，不能推出所有纯支援或额外成本已通过。
 
 两张余费支援组合：`Strike` 后依次补 `BeaconOfHope` 和给队友的 `Blaze`，整条原生执行路线／所有玩家状态／RNG Passed；证据 `.local/multiplayer-p3/support-two-cards-ca2a44b61ca94328a437837241a5b660/peer-0/result.json`。
+
+目标与受益归属复核：原版 `NTargetManager` 排除 `AnyAlly` 自指，15 张此类型牌的搜索候选统一排除出牌者；8 张 `AllAllies` 牌包含出牌者。`Largesse` 的目标玩家拥有新牌，`base.Owner` 是创建者。双人 `Largesse` 短搜、原生出牌、队友手牌／牌主显式断言及全状态／RNG 差分 Passed：`.local/multiplayer-p3/largesse-recipient-and-search-c6a5eb6ba3e64c159a0623d0a234e63c/peer-0/result.json`。该证据不覆盖余费补入。
+
+`Largesse` 余费支援：双人 `Strike` 后补给队友，整条原生路线／所有玩家状态／RNG Passed；证据 `.local/multiplayer-p3/largesse-spare-support-7a83bcf691ce4be98528ac869b670ff4/peer-0/result.json`。
+
+P4 控制器手动入口：首次虚拟双人请求因战报结果记录的 `Players.Single()` 失败；修为本地玩家后，同一脚本取得可见悬浮窗与本地搜索结果并完成原生一回合，Passed：`.local/multiplayer-p4/controller-virtual-2-outcome-fix-119a18d17ad54ec38dcac49e76a3f1a6/peer-0/result.json`。逐步部署与联机变化未验。
 
 ## 多人 P1 普通状态差分（2026-09-28）
 
