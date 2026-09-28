@@ -90,12 +90,15 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
-    internal SolverCurrentTurnPreview? ReevaluateMultiplayerCurrentTurn(SolverResult original)
+    internal SolverCurrentTurnPreview? ReevaluateMultiplayerCurrentTurn(
+        SolverResult original,
+        IReadOnlyList<PlanAction>? remainingActions = null)
     {
         if (root.PlayerCount < 2 || original.StartTurnNumber != root.StartTurnNumber)
             throw new InvalidOperationException("Multiplayer route must be replayed in its original local turn.");
-        PlanAction[] actions = original.BestNode.Actions
-            .Where(action => action.Turn == root.StartTurnNumber).ToArray();
+        PlanAction[] actions = remainingActions?.ToArray()
+            ?? original.BestNode.Actions
+                .Where(action => action.Turn == root.StartTurnNumber).ToArray();
         if (actions.Length == 0)
             throw new InvalidOperationException("Multiplayer route has no current-turn actions.");
         RouteAnnotations originalAnnotations = new(

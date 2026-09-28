@@ -29,8 +29,11 @@ internal sealed partial class UnattendedTestRunner
                 return await ExecuteMultiplayerContentProbeAsync(scenario, input);
             CombatState combat = scenario.CombatState;
             Creature enemy = input.VerifyControllerTeammateKillsTarget
+                || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
                 ? combat.Enemies.First() : combat.Enemies.Single();
-            if (input.VerifyControllerTeammateKillsTarget && combat.Enemies.Count < 2)
+            if ((input.VerifyControllerTeammateKillsTarget
+                    || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage)
+                && combat.Enemies.Count < 2)
                 throw new InvalidOperationException("Invalidation probe requires a surviving second enemy.");
             if (enemy.CurrentHp <= input.PlayerCount * 6)
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
@@ -65,6 +68,11 @@ internal sealed partial class UnattendedTestRunner
                         .ToArray();
                     if (plannedCards.Length == 0)
                         throw new InvalidOperationException("Deployment fixture has no planned local card.");
+                    if ((input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage)
+                        && (plannedCards.Length < 2
+                            || plannedCards[0].TargetCombatId == null
+                            || plannedCards[1].TargetCombatId != plannedCards[0].TargetCombatId))
+                        throw new InvalidOperationException("Mid-deployment fixture needs two attacks on one enemy.");
                     int searchesBeforeDrift = SolverController.SearchesStartedForTesting;
                     if (input.VerifyControllerTeammateDrift)
                     {
@@ -90,6 +98,47 @@ internal sealed partial class UnattendedTestRunner
                         SolverOverlay.PressExecuteButtonForTesting();
                     else
                         SolverController.RequestDeploy(runner._host, combat);
+                    if (input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage)
+                    {
+                        Creature target = combat.GetCreature(plannedCards[0].TargetCombatId)
+                            ?? throw new InvalidOperationException("Mid-deployment target is missing.");
+                        int startingHp = target.CurrentHp;
+                        await runner.WaitForMultiplayerProbeAsync(() => target.CurrentHp == startingHp - 6
+                            && SolverController.IsDeploying);
+                        if (input.VerifyControllerMidDeploymentKill)
+                            await CreatureCmd.SetCurrentHp(target, 6);
+                        Creature teammateTarget = input.VerifyControllerMidDeploymentKill
+                            ? target : combat.Enemies.Single(candidate => candidate != target);
+                        int teammateTargetHp = teammateTarget.CurrentHp;
+                        Player teammate = combat.Players.First(player => player != scenario.Player);
+                        CardModel teammateStrike = teammate.PlayerCombatState!.Hand.Cards
+                            .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
+                        var teammatePlay = new PlayCardAction(teammateStrike, teammateTarget);
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
+                        await teammatePlay.CompletionTask;
+                        await runner.MultiplayerProbeBarrierAsync("mid-deployment-drift", combat);
+                        await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying);
+                        if (input.VerifyControllerMidDeploymentDamage)
+                        {
+                            if (target.CurrentHp != startingHp - 12
+                                || teammateTarget.CurrentHp != teammateTargetHp - 6
+                                || scenario.Player.PlayerCombatState!.Energy != 1
+                                || !CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
+                                || SolverController.SearchesStartedForTesting != searchesBeforeDrift)
+                                throw new InvalidOperationException("Legal mid-deployment teammate damage lost the original local route.");
+                            runner._completedChecks.Add("MultiplayerController:MidDeploymentTeammateDamage:BothLocalAttacks:Ready:NoFullSearch");
+                            return new ExecutionOutcome(false, 1, true, true, true, false);
+                        }
+                        if (scenario.Player.PlayerCombatState!.Energy != 2
+                            || CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
+                            || SolverController.SearchesStartedForTesting != searchesBeforeDrift
+                            || SolverOverlay.SearchSummaryTextForTesting?.Contains(
+                                SolverText.Get("原路线在当前状态已失效，未执行。请重新计算。"),
+                                StringComparison.Ordinal) != true)
+                            throw new InvalidOperationException("Mid-deployment target loss did not pause before the second attack.");
+                        runner._completedChecks.Add("MultiplayerController:MidDeploymentTeammateKill:FirstAttackOnly:Paused:NoFullSearch");
+                        return new ExecutionOutcome(false, 1, true, true, true, false);
+                    }
                     if (input.VerifyControllerTeammateDrift
                         && SolverController.SearchesStartedForTesting != searchesBeforeDrift)
                         throw new InvalidOperationException("Teammate damage started a new search instead of retaining the legal route.");

@@ -2893,6 +2893,7 @@ internal static partial class SolverController
             .ToList();
         PlanAction? plannedEndTurn = result.BestNode.Actions
             .FirstOrDefault(action => action.Turn == turn && action.Kind == PlanActionKind.EndTurn);
+        LiveCombatStamp validatedStamp = LiveCombatStamp.Capture(state);
         FastModeType originalFastMode = SaveManager.Instance.PrefsSave.FastMode;
         FastModeType? overrideFastMode = ResolveDeploymentFastMode(deploymentSettings.DeploymentFastMode);
         try
@@ -2909,6 +2910,37 @@ internal static partial class SolverController
                 token.ThrowIfCancellationRequested();
                 if (!IsSamePlayableTurn(state, turn))
                     throw new InvalidOperationException("部署途中已不再是原玩家回合。");
+
+                if (state.Players.Count > 1 && LiveCombatStamp.Capture(state) != validatedStamp)
+                {
+                    await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+                    token.ThrowIfCancellationRequested();
+                    if (!IsSamePlayableTurn(state, turn))
+                        throw new InvalidOperationException("部署途中已不再是原玩家回合。");
+                    CombatRootSnapshot changedRoot = CombatRootSnapshot.Capture(state);
+                    SearchPolicySnapshot changedPolicy = CaptureSearchPolicy(
+                        SolverSettings.Capture(), state, includeTurnSetup: false, theftPolicy: null);
+                    CombatBeamSolver replay = new(changedRoot, SolverDisplayNames.Capture(state),
+                        BattleDamageTracker.Observe(state), changedPolicy);
+                    PlanAction[] remaining = plannedEndTurn is null
+                        ? [.. actions.Skip(actionIndex)]
+                        : [.. actions.Skip(actionIndex), plannedEndTurn];
+                    SolverCurrentTurnPreview? revised = replay.ReevaluateMultiplayerCurrentTurn(result, remaining);
+                    if (revised == null)
+                    {
+                        _combat.FullAutoEnabled = false;
+                        _combat.AutomaticSearchPaused = true;
+                        _combat.AutomaticSearchPausedTurn = turn;
+                        _combat.ContinuationSource = null;
+                        SolverOverlay.Show(host, SolverText.Get("原路线在当前状态已失效，未执行。请重新计算。"));
+                        Entry.Logger.Warn($"[CombatSolver/Test] MULTIPLAYER_ROUTE_INVALID reason=mid_deployment action_index={actionIndex}");
+                        return;
+                    }
+                    validatedStamp = changedRoot.LiveStamp;
+                    Entry.Logger.Info($"[CombatSolver/Test] MULTIPLAYER_ROUTE_REEVALUATED turn={turn} " +
+                        $"action_index={actionIndex} hp_lost={revised.HpLost} enemy_hp_lost={revised.EnemyHpLost} " +
+                        $"actions={revised.Actions.Count}");
+                }
 
                 Player player = LocalContext.GetMe(state)!;
                 Creature? target = state.GetCreature(action.TargetCombatId);

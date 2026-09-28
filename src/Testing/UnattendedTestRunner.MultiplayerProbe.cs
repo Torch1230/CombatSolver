@@ -31,6 +31,8 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerDeploy { get; init; }
         public bool VerifyControllerTeammateDrift { get; init; }
         public bool VerifyControllerTeammateKillsTarget { get; init; }
+        public bool VerifyControllerMidDeploymentKill { get; init; }
+        public bool VerifyControllerMidDeploymentDamage { get; init; }
         public bool VerifyControllerTargetedDeploy { get; init; }
         public bool VerifyControllerStyleSelection { get; init; }
         public bool VerifyControllerStyleDeploy { get; init; }
@@ -75,6 +77,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerDeploy && !input.VerifyControllerSearch
                 || input.VerifyControllerTeammateDrift && !input.VerifyControllerDeploy
                 || input.VerifyControllerTeammateKillsTarget && !input.VerifyControllerTeammateDrift
+                || input.VerifyControllerMidDeploymentKill && !input.VerifyControllerDeploy
+                || input.VerifyControllerMidDeploymentDamage && !input.VerifyControllerDeploy
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifyControllerTargetedDeploy && !input.ContentCardIds.Contains("BLAZE")
                 || input.VerifyControllerStyleSelection
