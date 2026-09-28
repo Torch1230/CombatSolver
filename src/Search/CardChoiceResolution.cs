@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -21,6 +22,12 @@ internal static partial class CardChoiceSupport
     {
         simulator.AcknowledgeExecutionDispatch();
         SimPlayerCombatState owner = simulator.State.GetPlayerCombatState(playedCard.Preview.Owner);
+        if (playedCard.Preview is Tutor)
+        {
+            Player targetPlayer = playedCard.Preview.CurrentTarget?.Player
+                ?? throw new InvalidOperationException("Tutor 选择缺少目标玩家。");
+            owner = simulator.State.GetPlayerCombatState(targetPlayer);
+        }
         List<PredictedCard> selected;
         if (choice.Effect == PlanChoiceEffect.ModDefined)
         {

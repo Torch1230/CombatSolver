@@ -98,6 +98,10 @@ internal static partial class CardChoiceSupport
 
         return card switch
         {
+            Tutor when card.CurrentTarget?.Player is { } targetPlayer =>
+                Spec(simulator.State.GetPlayerCombatState(targetPlayer),
+                    PlanChoiceEffect.MoveToHand, PileType.Draw, 1,
+                    simulator.State.GetPlayerCombatState(targetPlayer).DrawPile.Cards),
             SeekerStrike => BuildSeekerSpec(simulator, playedCard, owner),
             TrueGrit when card.IsUpgraded => Spec(owner, PlanChoiceEffect.Exhaust, PileType.Hand, 1, owner.Hand.Cards),
             Hologram => Spec(owner, PlanChoiceEffect.MoveToHand, PileType.Discard, 1, discardBeforeResolution),

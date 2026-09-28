@@ -529,6 +529,8 @@ internal sealed record ContinuationStamp(string StateText)
             if (power is SurroundedPower surrounded)
                 text.Append("Facing=").Append(simulator == null ? surrounded.Facing
                     : PowerPredictionStateSupport.SurroundedFacing(simulator, surrounded)).Append(',');
+            if (power is ImitationLearningPower imitation)
+                text.Append("PlayerTarget=").Append(imitation.PlayerTarget.NetId).Append(',');
             if (power is NightmarePower nightmare)
             {
                 CardModel selected = simulator == null

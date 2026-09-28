@@ -76,6 +76,8 @@ Windows 结构门禁在同步更新 `Executor partial` 声明检查后通过，`
 
 再按施加、球／保护关联和守护三批验 `BeaconOfHope`、`Cacophony`、`Concoct`、`Flanking`、`HammerTime`、`Hibernate`、`Intercept`、`Sneaky`、`Soulbound`、`TagTeam`、`Tank`、`Underworld`，基础／升级六次请求 Passed；证据详见同一[清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。首因修复：霜球读取分支 `HibernatePower`；`CoveredPower.AfterApplied` 建立 `InterceptPower` 的保护者集合；`TagTeamPower` 原已有卡牌 spec，删除镜像中的重复施加；`TankPower.AfterApplied` 给其他存活玩家施 `GuardedPower`。累计 33／37 张仅具即时出牌差分，关联监听和四张未测卡仍待完成。
 
+最后四张 `LegionOfBone`、`Midnight`、`ImitationLearning`、`Tutor` 的基础／升级即时差分也各 Passed，累计 37／37；证据详见同一[清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。`Tutor` 的夹具让目标玩家从抽牌堆原生选择一张牌，预测把该目标牌堆作为选择来源并对最终状态／RNG；生产搜索尚不能评价队友未知选牌，遇到该候选明确失败，不把它写成搜索已支持。其他三张的伙伴重召、历史减费和能力复制仍需独立验。P2 的“全部原版内容”与 P1 生命周期仍未完成。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

@@ -4,7 +4,7 @@
 
 ## 直接声明 MultiplayerOnly 的 37 张卡
 
-原版入口列只列会改变战斗的关键入口；常规出牌、费用、升级及牌堆生命周期仍须验收。下方另列已找到的显式模拟入口；没有显式登记的牌仍可能进入现有简单效果推断器，但推断器只识别攻击、格挡和自身抽牌，不能据此认为其他效果已实现。33 张卡已取得基础／升级的即时结算差分，见下文；跨回合与关联 Hook 尚未因此通过。
+原版入口列只列会改变战斗的关键入口；常规出牌、费用、升级及牌堆生命周期仍须验收。下方另列已找到的显式模拟入口；没有显式登记的牌仍可能进入现有简单效果推断器，但推断器只识别攻击、格挡和自身抽牌，不能据此认为其他效果已实现。37 张卡已取得基础／升级的即时结算差分，见下文；跨回合与关联 Hook 尚未因此通过。
 
 | 卡牌类型 | 原版入口与关联状态／内容 | 机制批次 |
 |---|---|---|
@@ -69,7 +69,7 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 ## 已通过的卡牌即时差分
 
-虚拟双人 33 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。
+虚拟双人 37 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。
 
 | 批次 | 卡牌 | 基础版／升级版证据目录 |
 |---|---|---|
@@ -81,5 +81,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 | 持续能力施加 | `BeaconOfHope`、`Cacophony`、`Concoct`、`Flanking`、`HammerTime` | `.local/multiplayer-p2/power-cards-base-b5ad7774b536489880d127f95f753795/peer-0/`；`.local/multiplayer-p2/power-cards-upgrade-c3a608ff94234c9ea09d0cb7dab80edc/peer-0/` |
 | 球、保护、来源关联 | `Hibernate`、`Intercept`、`Sneaky`、`Soulbound`、`TagTeam` | `.local/multiplayer-p2/linked-powers-fixed2-af6ed1cf93f64d2ebdff45e80069e8e3/peer-0/`；`.local/multiplayer-p2/linked-powers-upgrade-466a2c781b7c445bb19a36770002765b/peer-0/` |
 | 守护与伤害监听 | `Tank`、`Underworld` | `.local/multiplayer-p2/tank-underworld-fixed-5f4f59ef644a4679abcdc574da7f9661/peer-0/`；`.local/multiplayer-p2/tank-underworld-upgrade-d76ee709aadb42a8bbde0092a1e516c5/peer-0/` |
+| 伙伴召唤与高费攻击 | `LegionOfBone`、`Midnight` | `.local/multiplayer-p2/summon-midnight-base-6133af7bf51440e0a1af112390da4dcc/peer-0/`；`.local/multiplayer-p2/summon-midnight-upgrade-5e9ac4a9ba9e4eeca1894b8e53f23f3a/peer-0/` |
+| 目标玩家能力引用 | `ImitationLearning` | `.local/multiplayer-p2/imitation-base-5917619007294ba7a7499b7a2883e2d1/peer-0/`；`.local/multiplayer-p2/imitation-upgrade-8c82f81ae4114de398198a2175eca041/peer-0/` |
+| 队友原生选牌 | `Tutor` | `.local/multiplayer-p2/tutor-base-a97afa936b3c4b3b94b418eb882736f5/peer-0/`；`.local/multiplayer-p2/tutor-upgrade-481f242390d34d10bef949f5d08734d9/peer-0/` |
 
-上述十六次成功请求状态均为 Passed。`GangUp` 此批没有队友先行攻击历史；`Knockdown` 此批没有队友后续攻击；`TheBall` 此批只打出一次；新加持续能力仅验施加后的状态，不代表格挡、抽牌、锻造、死亡、打牌、伤害或球的后续监听通过。另有四人敌方能力缩放代表差分，见上文。当前仍有 `ImitationLearning`、`LegionOfBone`、`Midnight`、`Tutor` 四张多人专用卡未取得出牌即时差分，内容清单、关联普通卡、怪物、遗物与药水尚未封闭。
+上述二十二次成功请求状态均为 Passed。`GangUp` 此批没有队友先行攻击历史；`Knockdown` 此批没有队友后续攻击；`TheBall` 此批只打出一次；`Midnight` 没有消耗历史；`ImitationLearning` 没有后续复制能力牌。持续能力仅验施加后的状态，不代表格挡、抽牌、锻造、死亡、打牌、伤害或球的后续监听通过。`Tutor` 已验队友原生选牌的结果，但搜索仍无法评价队友的未知选牌，遇到该候选明确失败。另有四人敌方能力缩放代表差分，见上文。37 张专用卡的即时效果已有基础／升级代表证据，内容清单、关联普通卡、怪物、遗物与药水尚未封闭。

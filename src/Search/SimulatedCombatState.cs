@@ -633,6 +633,26 @@ internal sealed partial class SimulatedCombatState
     public void Apply<T>(Creature target, int amount, Creature? applier = null) where T : PowerModel
         => ApplyWithBeforeApplied<T>(target, amount, applier, null);
 
+    public void ApplyImitationLearning(Player owner, Player target, int amount)
+    {
+        ImitationLearningPower? existing = EffectivePowers().OfType<ImitationLearningPower>()
+            .FirstOrDefault(power => power.Amount > 0
+                && ReferenceEquals(power.Owner, owner.Creature)
+                && ReferenceEquals(power._playerTarget, target));
+        if (existing != null)
+        {
+            SetPowerAmount(existing, existing.Amount + amount);
+            RecordPowerAmountChange(existing, amount, owner.Creature);
+            return;
+        }
+        Apply<ImitationLearningPower>(owner.Creature, amount, owner.Creature);
+        ImitationLearningPower applied = EffectivePowers().OfType<ImitationLearningPower>()
+            .Last(power => power.Amount > 0
+                && ReferenceEquals(power.Owner, owner.Creature)
+                && power._playerTarget == null);
+        ((ImitationLearningPower)GetMutablePowerInstance(applied)).PlayerTarget = target;
+    }
+
     private int ApplyWithBeforeApplied<T>(Creature target, int amount, Creature? applier, Action<int>? beforeApplied,
         Action<int, PowerModel>? afterAmountChanged = null)
         where T : PowerModel
@@ -2362,6 +2382,8 @@ internal sealed partial class SimulatedCombatState
             item.Add(ritual._wasJustAppliedByEnemy);
         if (power is SurroundedPower surrounded)
             item.Add((int)PowerPredictionStateSupport.SurroundedFacing(simulator, surrounded));
+        if (power is ImitationLearningPower imitation)
+            item.Add(imitation.PlayerTarget.NetId);
         ulong dynamicFirst = 0;
         ulong dynamicSecond = 0;
         int dynamicCount = 0;

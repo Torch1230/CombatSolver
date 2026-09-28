@@ -174,6 +174,23 @@ internal static class MultiplayerCardMirrors
     public static void UnderworldOnPlay(Underworld card, CardOnPlayMirrorContext context)
         => Combat(context).Apply<UnderworldPower>(card.Owner.Creature, 1, card.Owner.Creature);
 
+    public static void LegionOfBoneOnPlay(LegionOfBone card, CardOnPlayMirrorContext context)
+    {
+        SimulatedCombatState combat = Combat(context);
+        foreach (var member in combat.Players)
+        {
+            if (!context.State.GetCreature(member.Creature).IsAlive)
+                continue;
+            combat.SummonOsty(context.Simulator, member, card.DynamicVars.Summon.IntValue);
+            if (context.Simulator.HasPendingChoice)
+                return;
+        }
+    }
+
+    public static void ImitationLearningOnPlay(ImitationLearning card, CardOnPlayMirrorContext context)
+        => Combat(context).ApplyImitationLearning(card.Owner, context.TargetPlayer,
+            card.DynamicVars["ImitationLearningPower"].IntValue);
+
     private static SimulatedCombatState Combat(CardOnPlayMirrorContext context)
         => context.State.CombatState as SimulatedCombatState
             ?? throw new InvalidOperationException("Multiplayer card requires SimulatedCombatState.");

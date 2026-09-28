@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
 
@@ -56,6 +57,9 @@ internal sealed partial class CombatBeamSolver
         {
             cancellationToken.ThrowIfCancellationRequested();
             PredictedCard card = hand[handIndex];
+            if (card.Preview is Tutor)
+                throw new NotSupportedException(
+                    "Tutor 需要队友原生选牌；搜索尚不能评价该未知结果。");
             string cardId = card.Preview.Id.Entry;
             int occurrence = 0;
             for (int priorIndex = 0; priorIndex < handIndex; priorIndex++)

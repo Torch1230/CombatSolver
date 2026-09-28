@@ -32,6 +32,7 @@ internal sealed partial class UnattendedTestRunner
         public int ContentExtraDrawCardsPerPlayer { get; init; }
         public int ContentActorBlock { get; init; }
         public int ContentTargetBlock { get; init; }
+        public int ContentActorEnergy { get; init; } = 10;
         public bool VerifyContentRound { get; init; }
         public bool IsVirtual => Mode == "virtual";
         public int PeerCount => IsVirtual ? 1 : PlayerCount;
@@ -55,6 +56,7 @@ internal sealed partial class UnattendedTestRunner
                     || input.ContentExtraDrawCardsPerPlayer is < 0 or > 5
                     || input.ContentActorBlock is < 0 or > 100
                     || input.ContentTargetBlock is < 0 or > 100
+                    || input.ContentActorEnergy is < 0 or > 20
                     || input.ContentTargetSeat <= 0 || input.ContentTargetSeat >= input.PlayerCount)
                 || input.Seat < 0 || input.Seat >= input.PeerCount
                 || (input.Mode == "host" && input.Seat != 0)

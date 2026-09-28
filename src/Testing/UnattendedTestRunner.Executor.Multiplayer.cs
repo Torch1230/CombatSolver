@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
@@ -165,7 +166,7 @@ internal sealed partial class UnattendedTestRunner
             await UnattendedTestRunner.SetBlockAsync(actor.Creature, input.ContentActorBlock);
             await UnattendedTestRunner.SetBlockAsync(
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
-            UnattendedTestRunner.SetEnergy(actor, 10);
+            UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
             for (int index = 0; index < input.ContentCardIds.Length; index++)
             {
@@ -186,14 +187,35 @@ internal sealed partial class UnattendedTestRunner
                 CombatPredictionSimulator simulator = root.ForkSimulator();
                 PredictedCard predictedCard = simulator.State.GetPlayerCombatState(actor).Hand.Cards.Single(candidate =>
                     candidate.Preview.Id.Entry == card.Id.Entry);
-                if (!simulator.CanPlay(predictedCard)
-                    || !simulator.ManualPlay(predictedCard, target, out _)
-                    || !CombatBeamSolver.SettleReplayActionBoundary(
-                        simulator, (SimulatedCombatState)simulator.State.CombatState))
-                    throw new InvalidOperationException($"Content prediction did not complete: {card.Id.Entry}.");
+                SimulatedCombatState predictedCombat = (SimulatedCombatState)simulator.State.CombatState;
+                PlanCardChoice[]? plannedChoices = null;
+                if (card is Tutor)
+                {
+                    Player targetPlayer = target?.Player
+                        ?? throw new InvalidOperationException("Tutor fixture has no target player.");
+                    var targetState = simulator.State.GetPlayerCombatState(targetPlayer);
+                    var spec = new CardChoiceSpec(PlanChoiceEffect.MoveToHand, PileType.Draw,
+                        1, 1, targetState.DrawPile.Cards, targetState.DrawPile.Cards, 0d);
+                    plannedChoices = [CardChoiceSupport.BuildRequestedChoice(spec, ["DEFEND_IRONCLAD"])];
+                }
+                predictedCombat.BeginActionChoices(plannedChoices);
+                try
+                {
+                    if (!simulator.CanPlay(predictedCard)
+                        || !simulator.ManualPlay(predictedCard, target, out _)
+                        || !CombatBeamSolver.SettleReplayActionBoundary(simulator, predictedCombat))
+                        throw new InvalidOperationException($"Content prediction did not complete: {card.Id.Entry}.");
+                }
+                finally
+                {
+                    predictedCombat.EndActionChoices();
+                }
                 ContinuationStamp predicted = ContinuationStamp.CapturePredicted(
                     actor, simulator, 1, root.Forecast, 1);
                 runner.SetStage($"multiplayer_content_play_{cardId}");
+                using var selector = card is Tutor
+                    ? CardSelectCmd.UseSelector(new UnattendedCardSelector(["DEFEND_IRONCLAD"]), localOnly: false)
+                    : null;
                 var action = new PlayCardAction(card, target);
                 RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
                 await action.CompletionTask;

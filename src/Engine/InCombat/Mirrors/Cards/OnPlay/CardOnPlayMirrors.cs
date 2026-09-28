@@ -164,6 +164,10 @@ internal static partial class CardOnPlayMirrors
         registry.Register<TagTeam>(MultiplayerCardMirrors.TagTeamOnPlay);
         registry.Register<Tank>(MultiplayerCardMirrors.TankOnPlay);
         registry.Register<Underworld>(MultiplayerCardMirrors.UnderworldOnPlay);
+        registry.Register<LegionOfBone>(MultiplayerCardMirrors.LegionOfBoneOnPlay);
+        registry.Register<Midnight>(GeneralCardMirrors.GeneralAttackOnPlay);
+        registry.Register<ImitationLearning>(MultiplayerCardMirrors.ImitationLearningOnPlay);
+        registry.Register<Tutor>(static (_, _) => { });
         registry.Register<MeteorStrike>(OrbCardMirrors.MeteorStrikeOnPlay);
         registry.Register<MultiCast>(OrbCardMirrors.MultiCastOnPlay);
         registry.Register<Null>(OrbCardMirrors.NullOnPlay);
