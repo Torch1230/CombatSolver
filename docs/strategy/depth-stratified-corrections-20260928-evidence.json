@@ -4,7 +4,7 @@
   "runtimeModelEnabled": false,
   "finalTestOpened": false,
   "goalAchieved": false,
-  "newModelTrained": false,
+  "newModelTrained": true,
   "build": {
     "modPassed": true,
     "harnessPassed": true,
@@ -186,5 +186,458 @@
     "exactFiles": 5,
     "runtimeLearnedModelEnabled": false,
     "record": ".local/objective-search/v77/deployment.json"
+  },
+  "fullCollection": {
+    "completed": true,
+    "failures": 0,
+    "protocolSha256": "d539fe4c2fa22a245d28daf1b64871a11576b61f64b8625831de352ab29f55f9",
+    "physicalRoots": 292,
+    "reusedRoots": 10,
+    "requested": 1596,
+    "completedQueries": 1595,
+    "knownLabels": 1595,
+    "winningWitnesses": 1296,
+    "rootsWithNoQueries": [
+      "r7-root-000007",
+      "r6-root-000018",
+      "r6-root-000357",
+      "r7-root-000569",
+      "r7-root-000752",
+      "r7-root-000890",
+      "r7-root-000778",
+      "root-000251",
+      "root-000215",
+      "root-000183",
+      "root-000252",
+      "root-000228",
+      "root-000320",
+      "root-000359",
+      "root-000391",
+      "root-000474",
+      "root-000394",
+      "root-000216",
+      "root-000367",
+      "root-000333",
+      "root-000428",
+      "root-000401",
+      "root-000263",
+      "root-000148",
+      "root-000418"
+    ],
+    "queryDepths": {
+      "0": 238,
+      "1": 262,
+      "2": 303,
+      "3": 334,
+      "4": 206,
+      "5": 114,
+      "6": 78,
+      "7": 30,
+      "8": 10,
+      "9": 6,
+      "10": 2,
+      "11": 4,
+      "12": 4,
+      "13": 4
+    },
+    "laterTurnDepths": {
+      "0": 238,
+      "1": 254,
+      "2": 227,
+      "3": 206,
+      "4": 140,
+      "5": 76,
+      "6": 58,
+      "7": 24,
+      "8": 6,
+      "9": 4,
+      "10": 2,
+      "11": 4,
+      "12": 2,
+      "13": 4
+    },
+    "turnDepths": {
+      "2": {
+        "2": 116,
+        "0": 90,
+        "3": 72,
+        "6": 22,
+        "4": 62,
+        "1": 118,
+        "11": 2,
+        "5": 36,
+        "7": 8,
+        "8": 2,
+        "13": 2,
+        "9": 2
+      },
+      "3": {
+        "7": 6,
+        "3": 102,
+        "2": 93,
+        "1": 104,
+        "0": 110,
+        "4": 58,
+        "5": 30,
+        "6": 22,
+        "10": 2,
+        "8": 2,
+        "9": 2
+      },
+      "4": {
+        "2": 18,
+        "4": 20,
+        "3": 32,
+        "0": 38,
+        "1": 32,
+        "6": 14,
+        "8": 2,
+        "7": 10,
+        "12": 2,
+        "13": 2,
+        "5": 10,
+        "11": 2
+      },
+      "1": {
+        "4": 66,
+        "3": 128,
+        "2": 76,
+        "6": 20,
+        "7": 6,
+        "5": 38,
+        "12": 2,
+        "8": 4,
+        "1": 8,
+        "9": 2
+      }
+    },
+    "roleDepths": {
+      "DEFECT": {
+        "2": 69,
+        "7": 10,
+        "4": 50,
+        "3": 76,
+        "5": 22,
+        "1": 52,
+        "0": 44,
+        "12": 2,
+        "6": 6,
+        "9": 4
+      },
+      "IRONCLAD": {
+        "4": 40,
+        "0": 54,
+        "3": 70,
+        "1": 74,
+        "2": 62,
+        "6": 10,
+        "5": 10,
+        "7": 4
+      },
+      "SILENT": {
+        "3": 58,
+        "0": 58,
+        "2": 42,
+        "6": 30,
+        "4": 48,
+        "5": 24,
+        "7": 8,
+        "11": 2,
+        "1": 52,
+        "10": 2,
+        "8": 4,
+        "13": 2
+      },
+      "NECROBINDER": {
+        "2": 70,
+        "0": 42,
+        "1": 42,
+        "3": 70,
+        "5": 20,
+        "6": 22,
+        "4": 36,
+        "7": 4,
+        "12": 2,
+        "13": 2,
+        "11": 2
+      },
+      "REGENT": {
+        "3": 60,
+        "0": 40,
+        "2": 60,
+        "1": 42,
+        "4": 32,
+        "5": 38,
+        "6": 10,
+        "8": 6,
+        "7": 4,
+        "9": 2
+      }
+    },
+    "queriesAtOrdinaryStateCap": 456,
+    "queriesAtOrdinaryPoolCap": 746,
+    "teacherBoundaries": {
+      "None": 1271,
+      "NodeLimit": 278,
+      "TimeLimit": 46
+    },
+    "collectionProcessSeconds": 4953.5884157116525,
+    "teacherSeconds": 511.888191,
+    "meanProcessPeakRssMiB": 704.6480629280821,
+    "maximumProcessPeakRssMiB": 1517.55078125,
+    "ranking": {
+      "pairs": 542,
+      "correct": 311,
+      "wrong": 168,
+      "ties": 63,
+      "indistinguishable": 17
+    },
+    "pairKinds": {
+      "victory-over-defeat": {
+        "pairs": 56,
+        "correct": 33,
+        "wrong": 17,
+        "ties": 6
+      },
+      "victory-policy": {
+        "pairs": 430,
+        "correct": 251,
+        "wrong": 135,
+        "ties": 44
+      },
+      "suffix-effort": {
+        "pairs": 56,
+        "correct": 27,
+        "wrong": 16,
+        "ties": 13
+      }
+    },
+    "finalTestOpened": false,
+    "runtimeModelEnabled": false,
+    "separation": {
+      "schema": 2,
+      "splitCounts": {
+        "train": 292,
+        "validation": 100,
+        "test": 55
+      },
+      "comparisons": [
+        {
+          "left": "train",
+          "right": "validation",
+          "maximumDeckSimilarity": 0.5555555555555556
+        },
+        {
+          "left": "train",
+          "right": "test",
+          "maximumDeckSimilarity": 0.5555555555555556
+        },
+        {
+          "left": "validation",
+          "right": "test",
+          "maximumDeckSimilarity": 0.5
+        }
+      ],
+      "maximumDeckSimilarity": 0.5555555555555556,
+      "passed": true,
+      "datasetSha256": "fa4da8ca30a39b856424b21a7f40d2c02eb905187229b28459d55d3c12506e68"
+    },
+    "unexecutedQuery": {
+      "id": "root-000190",
+      "requested": 6,
+      "completed": 5,
+      "actualTeacherMilliseconds": 6264.1772,
+      "sharedSoftAllowanceMilliseconds": 6000,
+      "missingLabelFabricated": false
+    }
+  },
+  "fullTraining": {
+    "sourceCommit": "0751a158",
+    "cost": {
+      "completeModelSeconds": 273.3827281190315,
+      "ancestorTrainingSeconds": 135.88075087300967,
+      "exportProcessSeconds": 116.76998588605784,
+      "fitProcessSeconds": 20.7306192870019,
+      "dataCollectionAccountedSeparately": true,
+      "completed": true
+    },
+    "predictionParity": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "roots": 292,
+    "sampledRows": 213649,
+    "participatingRows": 193329,
+    "pairs": 407595,
+    "exportPeakWorkingSetBytes": 4397936640,
+    "fitPeakWorkingSetBytes": 2129436672,
+    "modelBytes": 1154214,
+    "modelSha256": "9a2639fec53d20555bb1bb9e733422211ad2293ea0665700796c1e5a03de41a8",
+    "heads": [
+      {
+        "character": "DEFECT",
+        "roots": 60,
+        "participatingRoots": 60,
+        "rows": 41964,
+        "pairs": 94171,
+        "pairKinds": [
+          17760,
+          54244,
+          5319,
+          16848
+        ],
+        "correctionPairs": 107,
+        "correctionWeight": 26.000000000000025
+      },
+      {
+        "character": "IRONCLAD",
+        "roots": 58,
+        "participatingRoots": 58,
+        "rows": 39811,
+        "pairs": 95136,
+        "pairKinds": [
+          22505,
+          53184,
+          3428,
+          16019
+        ],
+        "correctionPairs": 121,
+        "correctionWeight": 25.00000000000002
+      },
+      {
+        "character": "NECROBINDER",
+        "roots": 57,
+        "participatingRoots": 57,
+        "rows": 35952,
+        "pairs": 71671,
+        "pairKinds": [
+          13522,
+          38574,
+          3490,
+          16085
+        ],
+        "correctionPairs": 111,
+        "correctionWeight": 25.00000000000001
+      },
+      {
+        "character": "REGENT",
+        "roots": 58,
+        "participatingRoots": 58,
+        "rows": 34707,
+        "pairs": 70780,
+        "pairKinds": [
+          14250,
+          39171,
+          2084,
+          15275
+        ],
+        "correctionPairs": 95,
+        "correctionWeight": 22.500000000000004
+      },
+      {
+        "character": "SILENT",
+        "roots": 59,
+        "participatingRoots": 59,
+        "rows": 40895,
+        "pairs": 75837,
+        "pairKinds": [
+          19101,
+          34154,
+          3428,
+          19154
+        ],
+        "correctionPairs": 108,
+        "correctionWeight": 25.00000000000002
+      }
+    ],
+    "fitter": {
+      "backend": "xgboost-cpu",
+      "version": "3.4.1",
+      "parameters": {
+        "tree_method": "hist",
+        "device": "cpu",
+        "nthread": 4,
+        "max_depth": 6,
+        "max_bin": 32,
+        "eta": 0.1,
+        "reg_lambda": 0.001,
+        "reg_alpha": 0,
+        "min_child_weight": 3.0,
+        "gamma": 0,
+        "subsample": 1,
+        "colsample_bytree": 1,
+        "base_score": 0,
+        "boost_from_average": 0,
+        "seed": 0,
+        "objective": "reg:squarederror",
+        "disable_default_eval_metric": 1
+      },
+      "rounds": 64,
+      "heads": [
+        {
+          "character": "DEFECT",
+          "rows": 41964,
+          "pairs": 94171,
+          "initialLoss": 28.5171153506668,
+          "finalLoss": 24.02958701133778,
+          "float32MaxPredictionDrift": 7.878335566147143e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.774172730976716
+        },
+        {
+          "character": "IRONCLAD",
+          "rows": 39811,
+          "pairs": 95136,
+          "initialLoss": 28.889253195177606,
+          "finalLoss": 24.487738101985094,
+          "float32MaxPredictionDrift": 6.5950037555495555e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.23631979804486
+        },
+        {
+          "character": "NECROBINDER",
+          "rows": 35952,
+          "pairs": 71671,
+          "initialLoss": 28.457758743188123,
+          "finalLoss": 24.039992617599623,
+          "float32MaxPredictionDrift": 6.545039813232734e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.549467215081677
+        },
+        {
+          "character": "REGENT",
+          "rows": 34707,
+          "pairs": 70780,
+          "initialLoss": 27.795476831971566,
+          "finalLoss": 23.13959075278242,
+          "float32MaxPredictionDrift": 7.645260740929416e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 4.010905676987022
+        },
+        {
+          "character": "SILENT",
+          "rows": 40895,
+          "pairs": 75837,
+          "initialLoss": 28.45191802891091,
+          "finalLoss": 23.41035492543126,
+          "float32MaxPredictionDrift": 7.423084483093589e-06,
+          "float32PairSignChanges": 0,
+          "seconds": 3.6194312559673563
+        }
+      ],
+      "seconds": 20.415909450966865,
+      "peakWorkingSetBytes": 2129436672
+    }
+  },
+  "fullDevelopmentEvaluation": {
+    "started": true,
+    "completed": false,
+    "plannedCases": 100,
+    "plannedSearches": 400,
+    "protocol": ".local/objective-search/v77/benchmark-protocol.json",
+    "report": ".local/objective-search/v77/evaluation/report.json",
+    "noQualityEarlyStop": true,
+    "finalTestOpened": false,
+    "runtimeModelEnabled": false
   }
 }
