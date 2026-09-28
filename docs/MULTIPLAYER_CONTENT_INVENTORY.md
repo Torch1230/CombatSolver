@@ -87,7 +87,7 @@
 
 药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。当前 `CombatBeamSolver.Expansion.Candidates.TargetsForPotion` 对 `AnyPlayer`／`Self` 只产生一个本地自用候选，模拟 `PotionOnUseSupport.Use` 将空目标解析为持有人，原版 `PotionModel.EnqueueManualUse` 也这样解析；生产多人门禁仍在；本地自用代表的原生证据见下文。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
 
-敌人目标另验四人双敌 `FirePotion`：本地持有者的候选正好为两名存活敌人，没有玩家目标，Passed：`.local/multiplayer-p2/enemy-potion-targets-0f2fa7cb78094b5ca2b982b876d05897/peer-0/result.json`。本次只验候选枚举，未验原生投药效果。
+敌人目标另验四人双敌 `FirePotion`：本地持有者的候选正好为两名存活敌人，没有玩家目标，Passed：`.local/multiplayer-p2/enemy-potion-targets-0f2fa7cb78094b5ca2b982b876d05897/peer-0/result.json`。随后在同类四人双敌根向第一名敌人实际投药，所有玩家／敌人状态及完整 RNG 与模拟一致，Passed：`.local/multiplayer-p2/enemy-potion-native-11c3d4df66734ff4b8bc726ef1960c6e/peer-0/result.json`。其他敌方目标药水未逐瓶验。
 
 一瓶 `StrengthPotion` 已在虚拟双人完成本地持有者自用的原生／模拟全状态与 RNG 差分，证据 `.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。这只代表玩家目标自用入口；其余药水机制、生成池及正式执行仍待验。
 

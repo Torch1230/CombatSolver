@@ -158,6 +158,8 @@ P2 `FabricatorNormal` 双人到第三回合，原生随机召唤、召唤物行�
 
 P2 `TestSubjectBoss` 双人第一阶段两招到第三回合全状态／RNG Passed：`.local/multiplayer-p2/test-subject-second-567130576bb64c859c8d9860b1853170/peer-0/result.json`。连续两次本地击杀、第二及第三形态 HP 缩放／能力变化、最后击杀结束战斗，每个稳定边界全状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/test-subject-final-death-fixed-d16c44bc416442c0b6a305f240630a93/peer-0/result.json`。初版最后一击未考虑第三形态的无实体减伤，夹具 6 HP 未击杀；改为 1 HP 后通过。
 
+P2 敌方目标药水原生结算：四人双敌 `FirePotion` 候选仅两名存活敌人，实际向第一名敌人投药后全部状态和九条 RNG 与模拟一致，Passed：`.local/multiplayer-p2/enemy-potion-native-11c3d4df66734ff4b8bc726ef1960c6e/peer-0/result.json`。本次未覆盖其他敌方目标药水。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

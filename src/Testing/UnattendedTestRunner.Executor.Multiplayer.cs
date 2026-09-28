@@ -1252,6 +1252,31 @@ internal sealed partial class UnattendedTestRunner
                         || !aliveEnemyIds.Contains(targetId)))
                     throw new InvalidOperationException("Enemy potion targets did not match all living enemies.");
                 runner._completedChecks.Add("MultiplayerEnemyPotion:AllLivingEnemies:NoPlayerTarget");
+                if (input.VerifyEnemyPotionUse)
+                {
+                    Creature target = combat.Enemies.First(enemy => enemy.IsAlive);
+                    int slot = actor.PotionSlots.ToList().IndexOf(potion);
+                    if (slot < 0)
+                        throw new InvalidOperationException("Injected enemy potion has no slot.");
+                    SimulatedCombatState potionCombat = (SimulatedCombatState)potionSimulator.State.CombatState;
+                    int historyStart = potionSimulator.History.Entries.Count;
+                    if (!PotionExecutionSupport.Prepare(potionSimulator, potionCombat, potion, slot, target)
+                        || !PotionExecutionSupport.Complete(potionSimulator, potionCombat, potion,
+                            target, null, historyStart, new HashSet<uint>())
+                        || !CombatBeamSolver.SettleReplayActionBoundary(potionSimulator, potionCombat))
+                        throw new InvalidOperationException("Enemy potion prediction did not complete.");
+                    ContinuationStamp predictedPotion = ContinuationStamp.CapturePredicted(
+                        actor, potionSimulator, 1, potionRoot.Forecast, 1);
+                    runner.SetStage("multiplayer_enemy_potion");
+                    potion.EnqueueManualUse(target);
+                    await runner.WaitForMultiplayerProbeAsync(() => actor.GetPotionAtSlotIndex(slot) == null);
+                    await runner.MultiplayerProbeBarrierAsync("enemy-potion", combat);
+                    ContinuationStamp actualPotion = ContinuationStamp.CaptureLive(combat);
+                    if (predictedPotion != actualPotion)
+                        throw new InvalidOperationException(
+                            "Multiplayer enemy potion differs: " + predictedPotion.DescribeFirstDifference(actualPotion));
+                    runner._completedChecks.Add("MultiplayerEnemyPotion:NativeUse:FullState:FullRng");
+                }
                 return new ExecutionOutcome(false, 1, true, true, true, false);
             }
             if (input.VerifySearch)
