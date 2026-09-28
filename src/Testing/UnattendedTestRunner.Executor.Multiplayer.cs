@@ -388,6 +388,30 @@ internal sealed partial class UnattendedTestRunner
                 await PlayTeammateStrikeAsync("after");
             if (input.ContentTeammateCardIdAfter.Length > 0)
                 await PlayTeammateCardAfterAsync(input.ContentTeammateCardIdAfter);
+            if (input.ContentReplayTransferredBall)
+            {
+                Player teammate = combat.Players[input.ContentTargetSeat];
+                if (!teammate.PlayerCombatState!.AllCards.Any(card => card is TheBall))
+                    throw new InvalidOperationException("Transferred Ball is missing from the teammate's cards.");
+                CombatRootSnapshot drawRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator drawSimulator = drawRoot.ForkSimulator();
+                drawSimulator.Draw(teammate, 5);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(
+                    drawSimulator, (SimulatedCombatState)drawSimulator.State.CombatState))
+                    throw new InvalidOperationException("Transferred Ball prediction draw did not complete.");
+                ContinuationStamp predictedDraw = ContinuationStamp.CapturePredicted(
+                    actor, drawSimulator, 1, drawRoot.Forecast, 1);
+                await CardPileCmd.Draw(new ThrowingPlayerChoiceContext(), 5, teammate);
+                await runner.MultiplayerProbeBarrierAsync("ball-draw", combat);
+                ContinuationStamp actualDraw = ContinuationStamp.CaptureLive(combat);
+                if (predictedDraw != actualDraw)
+                    throw new InvalidOperationException(
+                        "Transferred Ball draw differs: " + predictedDraw.DescribeFirstDifference(actualDraw));
+                if (!teammate.PlayerCombatState.Hand.Cards.Any(card => card is TheBall))
+                    throw new InvalidOperationException("Transferred Ball was not drawn into the teammate's hand.");
+                await PlayTeammateCardAfterAsync("THE_BALL");
+                runner._completedChecks.Add("MultiplayerBall:Transfer:Draw:Replay:FullState:FullRng");
+            }
             if (input.VerifyContentRound)
             {
                 ContinuationStamp predictedRound = PredictMultiplayerRound(combat, actor);

@@ -96,3 +96,5 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 `ImitationLearningPower` 的目标玩家打普通能力牌触发已补原生差分：队友 `Inflame` 后复制到本地持有者并自动打出，能力递减及第二回合完整状态／RNG Passed；证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。选择型能力与多次耗尽仍待验。
 
 `HammerTimePower` 的锻造监听已补代表差分：持有者打 `TheSmith`，原版和模拟均为所有存活玩家生成或加强 `SovereignBlade`，完整状态／RNG Passed；证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。
+
+`TheBall` 同一实例二次打出、逐次增伤与跨玩家转移；`LegionOfBone` 群体召唤后到第二回合的伙伴状态，均通过双人完整状态／RNG 差分，证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。

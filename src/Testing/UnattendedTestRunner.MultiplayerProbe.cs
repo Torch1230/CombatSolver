@@ -41,6 +41,7 @@ internal sealed partial class UnattendedTestRunner
         public bool ContentTeammateStrikeBefore { get; init; }
         public bool ContentTeammateStrikeAfter { get; init; }
         public string ContentTeammateCardIdAfter { get; init; } = "";
+        public bool ContentReplayTransferredBall { get; init; }
         public bool IsVirtual => Mode == "virtual";
         public int PeerCount => IsVirtual ? 1 : PlayerCount;
 
