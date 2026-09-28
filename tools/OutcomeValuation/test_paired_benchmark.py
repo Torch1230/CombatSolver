@@ -49,7 +49,7 @@ class BenchmarkContracts(unittest.TestCase):
                                   'encounter': name, 'state': 'completed', 'issues': [],
                                   'seconds': 10 if arm == 'baseline' else 1, 'rss': 100,
                                   'managedHeap': 50, 'managedLive': 30, 'allocated': 200,
-                                  'timeBoundary': False, 'quality': {'won': arm == 'baseline',
+                                  'timeBoundary': False, 'quality': {'won': name == 'safe' or arm == 'baseline',
                                   'projectedBattleHpLost': 3}, 'metrics': {'totalExpanded': 5}}
                         if name == 'failed' and arm == 'candidate' and repeat == 1:
                             record.update(state='failed', reason='timeout')
@@ -63,6 +63,32 @@ class BenchmarkContracts(unittest.TestCase):
             self.assertEqual(result['casesFinished'], 3)
             self.assertEqual(result['allCompletedCosts']['faster'], 2)
             self.assertEqual(result['nondegradingCosts']['faster'], 1)
+            self.assertEqual(result['equalWinCases'], 1)
+            self.assertEqual(result['stableNondegradingWinCosts']['faster'], 1)
+            self.assertEqual(result['coreCounts'], {'unverified': 3})
+            self.assertEqual(result['coreNondegradingCosts']['cases'], 0)
+            # Core evidence must come from the authoritative comparison, never
+            # inferred from the primary classification or a fast runtime.
+            for comparison in comparisons:
+                comparison['coreComparison'] = comparison['materialComparison']
+            core = summarize({'manifest': str(manifest), 'modelSha256': 'frozen'},
+                             {'records': records, 'comparisons': comparisons, 'completed': True})
+            self.assertEqual(core['coreCounts'], {'equal': 1, 'regressed': 1, 'unverified': 1})
+            self.assertEqual(core['coreNondegradingCosts']['faster'], 1)
+            # A later equal-cost victory can be worse only on ending turn.
+            for record in records:
+                if record['id'] == 'bad':
+                    record['quality']['won'] = True
+            for comparison in comparisons:
+                if comparison['id'].startswith('bad/'):
+                    comparison['coreComparison'] = 0
+            ending_turn_only = summarize({'manifest': str(manifest), 'modelSha256': 'frozen'},
+                                         {'records': records, 'comparisons': comparisons, 'completed': True})
+            self.assertEqual(ending_turn_only['counts'], result['counts'])
+            self.assertEqual(ending_turn_only['coreCounts'], {'equal': 2, 'unverified': 1})
+            self.assertEqual(ending_turn_only['coreNondegradingCosts']['faster'], 2)
+            self.assertEqual(ending_turn_only['coreEqualWinCases'], 2)
+            self.assertEqual(ending_turn_only['coreByCharacter'], {'A': {'equal': 2, 'unverified': 1}})
 
 
 if __name__ == '__main__':

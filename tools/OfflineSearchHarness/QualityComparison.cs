@@ -22,20 +22,34 @@ internal static class QualityComparison
             bool worse = CombatSearchCoordinator.IsBetterPotionPolicyResult(candidate.TheftPolicy, baseline, candidate);
             if (better && worse)
                 throw new InvalidOperationException($"Non-antisymmetric outcome comparison: {pair.Id}");
-            // Separate policy outcomes from the final legacy-score tie breaker.
-            SolverInterimResult materialCandidate = candidate with { Score = 0 };
-            SolverInterimResult materialBaseline = baseline with { Score = 0 };
-            bool materialBetter = CombatSearchCoordinator.IsBetterPotionPolicyResult(
-                candidate.TheftPolicy, materialCandidate, materialBaseline);
-            bool materialWorse = CombatSearchCoordinator.IsBetterPotionPolicyResult(
-                candidate.TheftPolicy, materialBaseline, materialCandidate);
             return new { pair.Id, comparison = better ? -1 : worse ? 1 : 0,
-                materialComparison = materialBetter ? -1 : materialWorse ? 1 : 0, candidate, baseline };
+                materialComparison = CompareMaterial(candidate, baseline, includeEndingTurn: true),
+                coreComparison = CompareMaterial(candidate, baseline, includeEndingTurn: false), candidate, baseline };
         }).ToArray();
         using FileStream stream = new(output, FileMode.CreateNew, FileAccess.Write);
         JsonSerializer.Serialize(stream, results, UnattendedTestFiles.JsonOptions);
         Console.WriteLine($"Compared {results.Length} saved pairs with the production coordinator.");
         return 0;
+    }
+
+    internal static int CompareMaterial(SolverInterimResult candidate, SolverInterimResult baseline,
+        bool includeEndingTurn)
+    {
+        if (candidate.TheftPolicy != baseline.TheftPolicy)
+            throw new InvalidDataException("Different theft policies in material comparison.");
+        SolverInterimResult Material(SolverInterimResult value) => value with
+        {
+            Score = 0,
+            // Only copies used for the supplementary metric are normalized.
+            // Keep the authoritative win/resource ordering and original records.
+            CombatEndedTurn = includeEndingTurn ? value.CombatEndedTurn : value.Won ? 1 : null,
+        };
+        var left = Material(candidate);
+        var right = Material(baseline);
+        bool better = CombatSearchCoordinator.IsBetterPotionPolicyResult(candidate.TheftPolicy, left, right);
+        bool worse = CombatSearchCoordinator.IsBetterPotionPolicyResult(candidate.TheftPolicy, right, left);
+        if (better && worse) throw new InvalidOperationException("Non-antisymmetric material comparison.");
+        return better ? -1 : worse ? 1 : 0;
     }
 
     private static SolverInterimResult Read(string path)

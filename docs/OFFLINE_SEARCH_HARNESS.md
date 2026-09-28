@@ -1,5 +1,7 @@
 # 离线搜索宿主
 
+`--compare-quality-batch` 保留原始及完整政策比较，并输出 `coreComparison`：只对内存副本清零旧Score、统一胜局结束回合，再调用同一个原生政策比较器。它用于预先声明的补充质量口径，不写回保存结果、不改变生产终局政策，也不表示执行了新的战斗。下游缺少这个字段时应标为未验证，不能从完整比较猜测核心结果。
+
 `tools/OfflineSearchHarness/` 是一个普通的 .NET 9 控制台程序：它加载 `sts2.dll` 但**不启动 Godot
 引擎**，用游戏自己的核心层建出一场战斗、推进到玩家第一回合，再在同一个进程里调
 `CombatRootSnapshot.Capture` 与 `CombatSearchCoordinator.Solve`（或单次 `CombatBeamSolver`）跑一次

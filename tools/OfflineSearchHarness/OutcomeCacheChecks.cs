@@ -16,6 +16,18 @@ internal static class OutcomeCacheChecks
         PlanAction action = new(PlanActionKind.PlayCard, 1, CardId: "A", TargetCombatId: 1,
             CardStateKey: "physical-state", CardTitle: "title");
         SolverInterimResult quality = new(true, 0, 5, 5, 0, 0, 0, 123, 3) { Survives = true };
+        var later = quality with { CombatEndedTurn = 7 };
+        Require(QualityComparison.CompareMaterial(later, quality, includeEndingTurn: true) > 0,
+            "primary saved-quality comparison preserves the ending-turn tie breaker");
+        Require(QualityComparison.CompareMaterial(later, quality, includeEndingTurn: false) == 0
+            && later.CombatEndedTurn == 7 && quality.Score == 123,
+            "supplementary core comparison excludes only ending turn and legacy score, without mutation");
+        Require(QualityComparison.CompareMaterial(later with
+            { ProjectedBattleHpLost = 4, StrategicHpDeficit = 4 }, quality, includeEndingTurn: false) < 0,
+            "core comparison retains a real HP improvement despite a later ending turn");
+        Require(QualityComparison.CompareMaterial(quality with { Won = false, Survives = false,
+            ProjectedBattleHpLost = 0, StrategicHpDeficit = 0 }, quality, includeEndingTurn: false) > 0,
+            "low-loss defeat cannot become core-quality equality with a victory");
         SearchCompletedOutcome witness = new(action, quality, false, false, SearchBoundaryReason.None);
         RootOutcomeCache cache = new();
         cache.Observe(witness);

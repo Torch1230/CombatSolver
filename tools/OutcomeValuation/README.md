@@ -140,3 +140,5 @@ dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --
 续搜仍依赖原启发式，当前原型没有消除全部手写评分，训练时间为零。
 
 跨回合查询的联合导出可使用 `correctionInputs` 和 `balanceCorrectionSources: true`。它仍输出同一数值格式供现有CPU拟合器消费；逐根原生身份、六行上限、独立池、有限边预算与单次根权重由C#校验，不能在Python重新生成偏好。完成采集后才冻结新训练输入，单次完整导出/拟合及必要祖先训练共用1800秒期限；采集成本单列。详见[纠正来源平衡](../../docs/strategy/source-balanced-corrections-20260928.md)。
+
+固定配对报告同时保留完整终局分类与 `coreClassification`（C#原比较器仅排除结束回合及旧Score）。旧比较缺少 `coreComparison` 时核心分类为未验证，不猜测。总表、角色/战斗类型、共同胜/败、质量不下降及稳定获胜子集的时间/内存分别输出；重复搜索不是新的独立场景。两种描述性区间均按遭遇家族重抽样，不能解释为全部真实牌组的总体保证。

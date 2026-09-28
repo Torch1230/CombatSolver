@@ -7885,5 +7885,36 @@
     "modelBytes": 1098943,
     "benchmarkToolsCommit": "163d27af",
     "primaryProtocolSha256": "dfcecad9297da60cfaa768fb5c784ef38b97330272730a86f52f5db612516f2f"
+  },
+  "subsequentReportingIntegration": {
+    "sourceMod": ".local/objective-search/v76/engine/CombatSolver.dll",
+    "modUnchanged": true,
+    "outcomeCacheComparisonAssertions": 45,
+    "pythonBenchmarkContracts": 4,
+    "compatibility": {
+      "savedComparisons": 400,
+      "newBattleSearches": 0,
+      "rawAndMaterialComparisonsUnchanged": true,
+      "coreComparisonsMatchPriorSeparateNormalization": true,
+      "originalOutcomesUnchanged": true,
+      "counts": {
+        "equal": 62,
+        "regressed": 21,
+        "improved": 16,
+        "mixed": 1
+      },
+      "coreCounts": {
+        "equal": 74,
+        "regressed": 14,
+        "improved": 12
+      },
+      "coreNondegradingFaster": 6
+    },
+    "equalWinCases": 48,
+    "equalDefeatCases": 14,
+    "coreEqualWinCases": 60,
+    "coreEqualDefeatCases": 14,
+    "newBattleSearches": 0,
+    "source": ".local/objective-search/v76/comparison-compatibility/summary-final.json"
   }
 }

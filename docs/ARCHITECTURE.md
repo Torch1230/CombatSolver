@@ -600,3 +600,5 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 ### 默认搜索组合的预算再分配
 
 `CombatSearchCoordinator.RunBeamWidthPortfolioPass` 通过不可变 `SolverSearchProfile.ReallocatedRefinementPortfolio` 选择默认成员布局：省去普通基线成员，其余既有成员之后追加 `BoundedRefinement`。`BeamWidthPortfolio` 仍独占成员预算/终局选优，追加成员最多消费此前组合实际展开的1/8和共享余量；该局部额度不是请求级硬上限。显式布局、关闭组合及其他可选算法/排序实验保持原入口；旧布局的学习选择器不裁决新布局。没有新增模拟状态或修改最终政策，独有旧好解仍可能损失。实际质量取舍与内存尾部见[组合再分配报告](strategy/contextual-ordering-20260922.md)。
+
+离线宿主 `QualityComparison` 只读取保存的终局标量，完整政策与补充核心口径共用 `CombatSearchCoordinator.IsBetterPotionPolicyResult`。核心口径只在副本上清零旧Score、统一胜局结束回合，原始结果及生产排序不变。`benchmark_report.py` 不复制游戏比较规则，缺少核心比较字段时保留未验证；共同胜/败、各角色成本、稳定非退化获胜成本和两种家族区间分别汇总，不把共同失败或劣质快路线藏入胜利收益。
