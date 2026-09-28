@@ -39,6 +39,51 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyControllerAutomaticCalculation || input.VerifyControllerFullAuto)
+            {
+                SolverController.MonitorCombatPresence();
+                int searchesBefore = SolverController.SearchesStartedForTesting;
+                if (input.VerifyControllerAutomaticCalculation)
+                {
+                    UnattendedTestRunner.EnableAutomaticTurnSearchForTesting();
+                    SolverController.SetAutomaticCalculationEnabled(true);
+                }
+                else
+                    SolverController.SetFullAuto(runner._host, combat, true);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    SolverController.LastCompletedResultForTesting != null
+                    || SolverController.LastSearchFailureForTesting != null);
+                if (SolverController.LastSearchFailureForTesting is { } automaticFailure)
+                    throw new InvalidOperationException("Automatic multiplayer search failed.", automaticFailure);
+                SolverResult automaticResult = SolverController.LastCompletedResultForTesting
+                    ?? throw new InvalidOperationException("Automatic multiplayer search did not publish a result.");
+                if (SolverController.SearchesStartedForTesting != searchesBefore + 1
+                    || automaticResult.MultiplayerStyle != MultiplayerPlanStyle.Output
+                    || automaticResult.BestNode.Actions.Any(action => action.Turn == 1
+                        && action.Kind == PlanActionKind.PlayCard
+                        && !scenario.Player.PlayerCombatState!.AllCards.Any(card => card.Id.Entry == action.CardId)))
+                    throw new InvalidOperationException("Automatic multiplayer search did not retain a local plan.");
+                if (input.VerifyControllerAutomaticCalculation)
+                {
+                    await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsSearching);
+                    if (SolverController.IsDeploying
+                        || CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player))
+                        throw new InvalidOperationException("Automatic calculation deployed without user execution.");
+                    runner._completedChecks.Add("MultiplayerController:AutomaticCalculation:LocalPlan:NoDeployment");
+                }
+                else
+                {
+                    await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
+                        && SolverController.LastSolverDeployedTurnForBugReport == 1
+                        && CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player));
+                    if (!SolverController.FullAutoEnabled
+                        || combat.Players.Where(player => player != scenario.Player)
+                            .Any(CombatManager.Instance.IsPlayerReadyToEndTurn))
+                        throw new InvalidOperationException("Full auto controlled a teammate or failed to finish the local turn.");
+                    runner._completedChecks.Add("MultiplayerController:FullAuto:LocalPlan:NativeDeployment:TeammateUntouched");
+                }
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyControllerSearch)
             {
                 SolverController.MonitorCombatPresence();

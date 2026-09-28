@@ -53,6 +53,12 @@ internal sealed partial class UnattendedTestRunner
     internal static bool ReusedProcess => Host.ReusedProcess;
     internal static bool IsReplayingRecordedInputs => CombatReplayRecording.TestObserver != null;
     public static bool AutomaticTurnSearchEnabled => Host.AutomaticTurnSearchEnabled;
+    internal static void EnableAutomaticTurnSearchForTesting()
+    {
+        if (!IsActive)
+            throw new InvalidOperationException("Automatic turn search can only be enabled by an active unattended test.");
+        Host.EnableAutomaticTurnSearch();
+    }
     public static bool VerifyIncrementalSearch => Host.VerifyIncrementalSearch;
     public static bool FixedSearchBudget => Host.FixedSearchBudget;
     public static bool MeasureSearchPhases => Host.MeasureSearchPhases;

@@ -159,6 +159,8 @@ P4 队友插入动作的首轮虚拟双人探针：本地求解后，队友原�
 
 针对收牌队友归属另加四人代表：本地玩家的 `Largesse` 指定第 3 号队友，牌进入该队友手牌且牌主为该队友，完整状态与 RNG Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。这补目标身份跨座位的证据，不把生成者参数误作收牌者。
 
+P4 三种计算入口的虚拟双人原生代表：手动入口此前已通过；自动计算只产生本地方案、不擅自部署，Passed：`.local/multiplayer-p4/automatic-calculation-enabled-5b98feffdcb84bd0a7d3581ee8284788/peer-0/result.json`；全自动产生本地方案、按原生动作执行并只结束本地回合，队友未被代操作，Passed：`.local/multiplayer-p4/full-auto-virtual2-6de921827935483c881b174c2d67af09/peer-0/result.json`。首次自动计算探针超时是无人测试宿主默认禁用自动触发，根文件存在但没有搜索结果；按该入口的测试需要显式启用后通过。上述均未覆盖 ENet 三入口、取消或下一回合自动延续。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

@@ -134,9 +134,8 @@ internal static partial class SolverController
     }
 
     /// <summary>
-    /// True whenever the current run is a networked multiplayer session (host or client).
-    /// The solver must stay fully inert in this case: the game's own multiplayer turn
-    /// synchronization has no concept of a client silently auto-planning another player's turn.
+    /// True when the current run uses the game's network multiplayer service.
+    /// Multiplayer planning and deployment act only for the local player.
     /// </summary>
     public static bool IsMultiplayerSession
         => RunManager.Instance.IsInProgress && RunManager.Instance.NetService.Type.IsMultiplayer();
