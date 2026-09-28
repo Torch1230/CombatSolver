@@ -52,6 +52,26 @@ internal sealed partial class UnattendedTestRunner
                             card.Id.Entry == action.CardId)))
                     throw new InvalidOperationException("Multiplayer controller published a non-local route.");
                 runner._completedChecks.Add("MultiplayerController:ManualSearch:LocalResult:VisibleOverlay");
+                if (input.VerifyControllerDeploy)
+                {
+                    if (!SolverController.CanExecuteCurrentTurn)
+                        throw new InvalidOperationException("Multiplayer controller route is not executable.");
+                    PlanAction[] plannedCards = completed.BestNode.Actions
+                        .Where(action => action.Turn == 1 && action.Kind == PlanActionKind.PlayCard)
+                        .ToArray();
+                    if (plannedCards.Length == 0)
+                        throw new InvalidOperationException("Deployment fixture has no planned local card.");
+                    SolverController.RequestDeploy(runner._host, combat);
+                    await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
+                        && SolverController.LastSolverDeployedTurnForBugReport == 1);
+                    if (!plannedCards.All(action => SolverController.WasCardDeployedForTesting(action.CardId))
+                        || !CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
+                        || combat.Players.Where(player => player != scenario.Player)
+                            .Any(CombatManager.Instance.IsPlayerReadyToEndTurn))
+                        throw new InvalidOperationException("Controller deployed another player's action or did not finish the local turn.");
+                    runner._completedChecks.Add("MultiplayerController:DeployCurrentLocalTurn:NativeCards:TeammateUntouched");
+                    return new ExecutionOutcome(false, 1, true, true, true, false);
+                }
             }
             if (input.VerifyEnemyPowerScaling)
             {
@@ -279,6 +299,18 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.VerifySelfPotion)
             {
+                if (input.VerifyPotionAccounting)
+                {
+                    BattleDamageTracker.Begin(combat);
+                    Player teammate = combat.Players.First(member => member != actor);
+                    PotionModel teammatePotion = UnattendedTestRunner.InjectPotionForTest(teammate, "STRENGTH_POTION");
+                    var teammateUse = new UsePotionAction(teammatePotion, null, isCombatInProgress: true);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammateUse);
+                    await teammateUse.CompletionTask;
+                    await runner.MultiplayerProbeBarrierAsync("teammate-self-potion", combat);
+                    if (BattleDamageTracker.Observe(combat).PotionsUsedSoFar != 0)
+                        throw new InvalidOperationException("Teammate potion was counted as local use.");
+                }
                 PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, "STRENGTH_POTION");
                 int slot = actor.PotionSlots.ToList().IndexOf(potion);
                 if (slot < 0)
@@ -302,6 +334,14 @@ internal sealed partial class UnattendedTestRunner
                 if (predictedPotion != actualPotion)
                     throw new InvalidOperationException(
                         "Multiplayer self potion differs: " + predictedPotion.DescribeFirstDifference(actualPotion));
+                if (input.VerifyPotionAccounting)
+                {
+                    BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);
+                    if (observed.PotionsUsedSoFar != 1
+                        || !observed.PotionIdsUsedSoFar.SequenceEqual(["STRENGTH_POTION"]))
+                        throw new InvalidOperationException("Local potion accounting includes another player or misses self use.");
+                    runner._completedChecks.Add("MultiplayerPotionAccounting:TeammateIgnored:LocalUseCounted");
+                }
                 runner._completedChecks.Add("MultiplayerSelfPotion:OwnerOnly:FullState:FullRng");
             }
             if (input.VerifySearch)

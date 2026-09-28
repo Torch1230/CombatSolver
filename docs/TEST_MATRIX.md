@@ -42,7 +42,11 @@ P3 选人合同：初版四人探针没有断言目标必须是其他玩家，�
 
 `Largesse` 余费支援：双人 `Strike` 后补给队友，整条原生路线／所有玩家状态／RNG Passed；证据 `.local/multiplayer-p3/largesse-spare-support-7a83bcf691ce4be98528ac869b670ff4/peer-0/result.json`。
 
-P4 控制器手动入口：首次虚拟双人请求因战报结果记录的 `Players.Single()` 失败；修为本地玩家后，同一脚本取得可见悬浮窗与本地搜索结果并完成原生一回合，Passed：`.local/multiplayer-p4/controller-virtual-2-outcome-fix-119a18d17ad54ec38dcac49e76a3f1a6/peer-0/result.json`。逐步部署与联机变化未验。
+P4 控制器手动入口：首次虚拟双人请求因战报结果记录的 `Players.Single()` 失败；修为本地玩家后，同一脚本取得可见悬浮窗与本地搜索结果并完成原生一回合，Passed：`.local/multiplayer-p4/controller-virtual-2-outcome-fix-119a18d17ad54ec38dcac49e76a3f1a6/peer-0/result.json`。该探针未覆盖逐步部署与联机变化。
+
+P4 本地部署：虚拟双人普通根在手动搜索后实际调用 `RequestDeploy`，本地牌出手、只结束本地回合、队友未被代操作，Passed：`.local/multiplayer-p4/controller-deploy-virtual-2-e6cc81878d00486cad9ac8e0ebffa4fe/peer-0/result.json`。目标牌与联机交错仍未验。
+
+多人本地药水账本：原生虚拟双人先由队友自用 `StrengthPotion`，本地账本计零；再由本地自用，同一账本只计本地一瓶，原生内容牌及完整状态／RNG 差分 Passed：`.local/multiplayer-p4/local-potion-accounting-2c8ee81616f944cea0e52decb33179ea/peer-0/result.json`。该探针没有让求解器替队友用药。
 
 ## 多人 P1 普通状态差分（2026-09-28）
 
