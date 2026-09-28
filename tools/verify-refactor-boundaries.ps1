@@ -2089,7 +2089,7 @@ if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Search/Comb
 if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Search/CombatBeamSolver.CycleReplay.cs') -SimpleMatch '_replayWork.TryConsumeCycleReplayAction()' -Quiet)) {
     $violations.Add('Loop budget/history ownership changed: src/Search/CombatBeamSolver.CycleReplay.cs')
 }
-if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Runtime/CombatRootSnapshot.cs') -SimpleMatch 'playerState.AllCards.Cast<AbstractModel>()' -Quiet)) {
+if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Runtime/CombatRootSnapshot.cs') -SimpleMatch 'state.Players.SelectMany(member => member.PlayerCombatState?.AllCards' -Quiet)) {
     $violations.Add('Loop budget/history ownership changed: src/Runtime/CombatRootSnapshot.cs')
 }
 if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'src/Search/CombatBeamSolver.StateEvaluation.cs') -SimpleMatch '_historyDependencies' -Quiet)) {

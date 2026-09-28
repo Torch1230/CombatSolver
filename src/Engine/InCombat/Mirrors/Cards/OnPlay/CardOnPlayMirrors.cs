@@ -137,6 +137,18 @@ internal static partial class CardOnPlayMirrors
         registry.Register<Glasswork>(OrbCardMirrors.GlassworkOnPlay);
         registry.Register<IceLance>(OrbCardMirrors.IceLanceOnPlay);
         registry.Register<Ignition>(OrbCardMirrors.IgnitionOnPlay);
+        registry.Register<BelieveInYou>(MultiplayerCardMirrors.BelieveInYouOnPlay);
+        registry.Register<Blaze>(MultiplayerCardMirrors.BlazeOnPlay);
+        registry.Register<Coordinate>(MultiplayerCardMirrors.CoordinateOnPlay);
+        registry.Register<Fade>(MultiplayerCardMirrors.FadeOnPlay);
+        registry.Register<Lift>(GeneralCardMirrors.GeneralBlockOnPlay);
+        registry.Register<EnergySurge>(MultiplayerCardMirrors.EnergySurgeOnPlay);
+        registry.Register<Plot>(MultiplayerCardMirrors.PlotOnPlay);
+        registry.Register<OneForAll>(MultiplayerCardMirrors.OneForAllOnPlay);
+        registry.Register<BladeSymphony>(MultiplayerCardMirrors.BladeSymphonyOnPlay);
+        registry.Register<Rally>(GeneralCardMirrors.GeneralBlockOnPlay);
+        registry.Register<Mimic>(MultiplayerCardMirrors.MimicOnPlay);
+        registry.Register<DemonicShield>(MultiplayerCardMirrors.DemonicShieldOnPlay);
         registry.Register<MeteorStrike>(OrbCardMirrors.MeteorStrikeOnPlay);
         registry.Register<MultiCast>(OrbCardMirrors.MultiCastOnPlay);
         registry.Register<Null>(OrbCardMirrors.NullOnPlay);

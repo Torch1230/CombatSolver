@@ -4,7 +4,7 @@
 
 ## 直接声明 MultiplayerOnly 的 37 张卡
 
-原版入口列只列会改变战斗的关键入口；常规出牌、费用、升级及牌堆生命周期仍须验收。下方另列已找到的显式模拟入口；没有显式登记的牌仍可能进入现有简单效果推断器，但推断器只识别攻击、格挡和自身抽牌，不能据此认为其他效果已实现。基础／升级原生差分当前均未运行。
+原版入口列只列会改变战斗的关键入口；常规出牌、费用、升级及牌堆生命周期仍须验收。下方另列已找到的显式模拟入口；没有显式登记的牌仍可能进入现有简单效果推断器，但推断器只识别攻击、格挡和自身抽牌，不能据此认为其他效果已实现。15 张卡已取得基础／升级的即时结算差分，见下文；跨回合与关联 Hook 尚未因此通过。
 
 | 卡牌类型 | 原版入口与关联状态／内容 | 机制批次 |
 |---|---|---|
@@ -53,18 +53,28 @@
 - 现有 `CardDrawCardMirrors` 明确登记 `Constellation`、`HuddleUp`，`CardGenerationCardMirrors` 明确处理 `Largesse`；`CalculatedVarSpecRegistry` 列有 `GangUp`、`Mimic`、`DemonicShield`；`CardResultLocationMirrors` 登记 `TheBall`。其他卡牌可能由通用 spec 或 support 结算，须沿调用链逐项确认唯一入口。
 - `MassiveScroll` 是已识别的多人专用遗物：`IsAllowed` 要求玩家数大于 1，`AfterObtained` 从角色与无色池的 `MultiplayerOnly` 卡中提供三选一；这是战前牌组来源，战斗中仍需覆盖其产生的牌。`InterceptPower`／`GuardedPower`、临时力量／敏捷、`FrostOrb`、`Shiv`、`Soul`、`Osty` 和生成池是上表直接依赖，不能只验卡牌主效果。
 
-目前能定位到的显式模拟入口如下，均为源码位置记录，尚未经过多人差分：`CardOnPlayMirrors` 登记 `Constellation`、`HuddleUp`、`Ignition`、`Largesse`；`AfterBlockGainedMirrors` 登记 `BeaconOfHopePower`；`AfterCardDrawnMirrors` 登记 `CacophonyPower`；`AfterDamageGivenMirrors` 登记 `ConcoctPower`、`UnderworldPower`；`BeforeCardPlayedMirrors` 和 `AfterCardPlayedMirrors` 登记 `ImitationLearningPower`，后者还登记 `SneakyPower`；`ModifyCardPlayCountMirrors` 登记 `TagTeamPower`；`AfterCardGeneratedForCombatMirrors` 登记 `SoulboundPower`；`AfterCardExhaustedMirrors` 登记 `Midnight`；`AfterPlayerTurnStartMirrors` 登记 `HibernatePower`；`FrostOrbMirrors`、`CardResultLocationMirrors` 分别处理球与 `TheBall` 去向；`CalculatedVarSpecRegistry` 登记 `GangUp`、`Mimic`、`DemonicShield`。其余主效果要逐项补入权威入口，不能仅靠关联 Hook 已存在判定可用。
+目前能定位到的显式模拟入口如下；已通过的卡牌即时差分范围见下文，其余入口仍待多人差分：`CardOnPlayMirrors` 登记 `Constellation`、`HuddleUp`、`Ignition`、`Largesse`；`AfterBlockGainedMirrors` 登记 `BeaconOfHopePower`；`AfterCardDrawnMirrors` 登记 `CacophonyPower`；`AfterDamageGivenMirrors` 登记 `ConcoctPower`、`UnderworldPower`；`BeforeCardPlayedMirrors` 和 `AfterCardPlayedMirrors` 登记 `ImitationLearningPower`，后者还登记 `SneakyPower`；`ModifyCardPlayCountMirrors` 登记 `TagTeamPower`；`AfterCardGeneratedForCombatMirrors` 登记 `SoulboundPower`；`AfterCardExhaustedMirrors` 登记 `Midnight`；`AfterPlayerTurnStartMirrors` 登记 `HibernatePower`；`FrostOrbMirrors`、`CardResultLocationMirrors` 分别处理球与 `TheBall` 去向；`CalculatedVarSpecRegistry` 登记 `GangUp`、`Mimic`、`DemonicShield`。其余主效果要逐项补入权威入口，不能仅靠关联 Hook 已存在判定可用。
 
 ## 普通内容的多人差异扫描
 
-本机 0.111.0 原版的 Cards／Powers／Relics／Potions／Orbs／Monsters 目录中，对玩家枚举、队友目标、多人约束及 `CombatTargets` 的定向搜索已经列出候选，尚未沿调用链封闭。普通卡至少需核对 `Stoke`、`Splash`、`IAmInvincible`、`HowlFromBeyond`、`Fasten`、`WhiteNoise`、`SovereignBlade`、`Metamorphosis`、`Quasar`、`Jackpot`、`Soul`、`JackOfAllTrades`、`ThrummingHatchet`、`RocketPunch`、`Shiv`、`ManifestAuthority`、`MadScience`、`InfernalBlade`、`Omnislice`、`BundleOfJoy`、`Distraction`、`Discovery`、`BeatDown`、`Abundance`、`BouncingFlask`、`Bombardment`、`Bolas`、`ByrdonisEgg`、`FlakCannon`。这些是待调查名单，不表示每项存在模拟缺口。
+本机 0.111.0 原版 Cards 目录定向扫描后，普通卡的实际调用点分为：`Stoke`、`Splash`、`Fasten`、`WhiteNoise`、`Metamorphosis`、`Quasar`、`Jackpot`、`JackOfAllTrades`、`ManifestAuthority`、`MadScience`、`InfernalBlade`、`BundleOfJoy`、`Distraction`、`Discovery`、`Abundance` 使用 `CardMultiplayerConstraint` 过滤战斗生成池；`Omnislice` 用受击敌人的存活队友二次分配伤害；`BeatDown`、`BouncingFlask` 消耗共享 `CombatTargets` 随机敌人流。原先搜索结果中的 `IAmInvincible`、`HowlFromBeyond`、`SovereignBlade`、`Soul`、`ThrummingHatchet`、`RocketPunch`、`Shiv`、`Bombardment`、`Bolas`、`ByrdonisEgg`、`FlakCannon` 仅因 `using ...Players` 命中，不构成额外多人分支；其普通效果仍受通用玩家所有权和目标规则约束。以上是源码分类，相关模拟入口和差分仍待 P2 核对。
 
 药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。当前 `CombatBeamSolver.Expansion.Candidates.TargetsForPotion` 对 `AnyPlayer`／`Self` 只产生一个本地自用候选，模拟 `PotionOnUseSupport.Use` 将空目标解析为持有人，原版 `PotionModel.EnqueueManualUse` 也这样解析；这是源码检查，生产多人门禁仍在，尚无原生多人用药证据。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
 
-Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower` 和 `PlatingPower`；球目录有 `FrostOrb`。`DoomPower` 的 `GetTeammatesOf` 位于死亡特效等待，结算仍须按全阵营 Doom 生命周期验收；`ReattachPower` 的队友是蜈蚣怪物分段，按怪物死亡／复活验收。怪物目录对应候选为 `ToughEgg`、`WaterfallGiant`、`TheObscura`、`KinPriest`、`Ovicopter`、`DecimillipedeSegment`、`Queen`、`TestSubject`、`TwoTailedRat`、`GremlinMerc`、`Parafright`、`KnowledgeDemon`、`LivingShield`、`Fabricator`、`EyeWithTeeth`。这些类型仍须核对实际调用条件与模拟入口；搜索结果没有自动证明其行为不同。
+Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower` 和 `PlatingPower`；球目录有 `FrostOrb`。`DoomPower` 的 `GetTeammatesOf` 位于死亡特效等待，结算仍须按全阵营 Doom 生命周期验收；`ReattachPower` 的队友是蜈蚣怪物分段，按怪物死亡／复活验收。怪物目录的结算候选为 `ToughEgg`（卵孵化 HP 缩放）、`WaterfallGiant`／`KnowledgeDemon`（治疗随玩家数变化）、`TheObscura`／`Queen`（怪物同伴能力）、`KinPriest`／`Ovicopter`／`TwoTailedRat`／`LivingShield`／`Fabricator`（同伴存活与召唤条件）、`DecimillipedeSegment`（玩家数与分段 HP／复活）、`TestSubject`（重生 HP 缩放）、`GremlinMerc`（逐玩家创建目标型 `ThieveryPower`）。`Parafright`／`EyeWithTeeth` 的 `GetTeammatesOf` 命中动画死亡条件，不是战斗结算分支。这些实际调用条件与模拟入口仍须逐项验收。
 
 遗物目录直接涉及人数或战斗生成池的入口包括 `MassiveScroll`（多人专属牌来源）、`Toolbox`、`VexingPuzzlebox`、`OrangeDough`、`ChoicesParadox`（战斗生成池），以及 `BigHat`、`Crossbow`、`ScrollBoxes`、`DustyTome`、`DistinguishedCape`、`NeowsBones`（战前／局外池）。`WingedBoots` 和 `SilverCrucible` 只允许单人，`LastingCandy` 读取局外玩家集合；`WhisperingEarring` 自动用玩家目标药水时指向持有人。战斗生成物和多人可达牌进入 P2；局外获得路径只登记来源，本批不扩展为战前求解器。
 
-通用多人缩放还需逐项核对原版 `CombatState.AddMonster` 的新怪 HP、`MultiplayerScalingModel` 的怪物格挡，以及 `PowerCmd.Apply` 对敌方 `ShouldScaleInMultiplayer` 能力的幅度；`PlatingPower` 另在施加后把递减值设为玩家数。现有 `SimulatedCombatState` 有缩放模型和召唤状态入口，但尚未证明所有原版缩放点与模拟一致。
+通用多人缩放覆盖原版 `CombatState.AddMonster` 的新怪 HP、`MultiplayerScalingModel` 的敌方来源格挡，以及 `PowerCmd.Apply` 对敌方新施加能力的幅度。`ShouldScaleInMultiplayer=true` 的原版能力为 `PlowPower`、`PlatingPower`、`SlipperyPower`、`CurlUpPower`、`ReattachPower`、`FlutterPower`、`SkittishPower`、`RegenPower`、`RampartPower`、`ShriekPower`、`HardenedShellPower`、`ArtifactPower`；其中 `PlatingPower` 另在施加后把递减值设为玩家数。`BufferPower` 虽覆盖缩放函数，但其 `ShouldScaleInMultiplayer` 沿用默认 false，不进入该路径。当前模拟对新施加敌方能力调用原版缩放函数；四人原生差分已核 `ArtifactPower`、`PlatingPower`、`SlipperyPower`、`SkittishPower`、`CurlUpPower` 五项，覆盖默认倍率、三种特殊公式及附属递减值。其他能力共享该通用入口，但其触发生命周期及怪物 HP 缩放仍待差分。
 
-后续盘点必须区分实际多人分支、共享 RNG、只用于展示的引用以及普通单人路径。当前不能宣称原版内容清单已经封闭，也没有任何卡牌的多人 actual/simulated 通过记录。
+## 已通过的卡牌即时差分
+
+虚拟双人 15 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。
+
+| 批次 | 卡牌 | 基础版／升级版证据目录 |
+|---|---|---|
+| 指定队友资源与能力 | `BelieveInYou`、`Lift`、`Blaze`、`Coordinate`、`Fade` | `.local/multiplayer-p2/targeted-simple-base-46267a63117142dfaa004cae2528db17/peer-0/`；`.local/multiplayer-p2/targeted-simple-upgrade-498a99ba00744db59f9e274737685995/peer-0/` |
+| 群体资源、格挡、能力、生成 | `EnergySurge`、`Rally`、`Plot`、`OneForAll`、`BladeSymphony` | `.local/multiplayer-p2/group-simple-base-c52fbf802a544b99acd2dd7dece05b66/peer-0/`；`.local/multiplayer-p2/group-simple-upgrade-58ceacf88a56479b997969bd4f978aa3/peer-0/` |
+| 抽牌、球、成本与复制格挡 | `Constellation`、`HuddleUp`、`Ignition`、`Mimic`、`DemonicShield` | `.local/multiplayer-p2/targeted-mixed-base-07fb67d8db5d4196bcd2cfa2ec4b40cc/peer-0/`；`.local/multiplayer-p2/targeted-mixed-upgrade-73d2febc7736446ca06e48c0e055bcb3/peer-0/` |
+
+这六次请求状态均为 Passed。另有四人敌方能力缩放代表差分，见上文。当前仍有 22 张多人专用卡未取得出牌即时差分，内容清单、关联普通卡、怪物、遗物与药水尚未封闭。

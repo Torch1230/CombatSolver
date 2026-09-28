@@ -25,6 +25,13 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyRootProjection { get; init; }
         public bool VerifyActionDifferential { get; init; }
         public bool VerifyRoundDifferential { get; init; }
+        public bool VerifyEnemyPowerScaling { get; init; }
+        public string[] ContentCardIds { get; init; } = [];
+        public int ContentUpgradeLevel { get; init; }
+        public int ContentTargetSeat { get; init; } = 1;
+        public int ContentExtraDrawCardsPerPlayer { get; init; }
+        public int ContentActorBlock { get; init; }
+        public int ContentTargetBlock { get; init; }
         public bool IsVirtual => Mode == "virtual";
         public int PeerCount => IsVirtual ? 1 : PlayerCount;
 
@@ -33,9 +40,21 @@ internal sealed partial class UnattendedTestRunner
             var input = JsonSerializer.Deserialize<MultiplayerProbeInput>(
                 File.ReadAllText(request.MultiplayerProbePath!), UnattendedTestFiles.JsonOptions)
                 ?? throw new InvalidDataException("Multiplayer probe input is empty.");
-            if (request.ScenarioId != "MULTIPLAYER-P0" || !request.ExitOnComplete
+            if (input.ContentCardIds is null)
+                throw new InvalidDataException("Multiplayer content card IDs cannot be null.");
+            if (request.ScenarioId != (input.ContentCardIds.Length == 0 ? "MULTIPLAYER-P0" : "MULTIPLAYER-CONTENT")
+                || !request.ExitOnComplete
                 || input.Mode is not ("virtual" or "host" or "client")
                 || input.PlayerCount is not (2 or 4)
+                || input.ContentCardIds.Length > 0 && (input.Mode != "virtual"
+                    || input.ContentCardIds.Length > 5
+                    || input.ContentCardIds.Any(string.IsNullOrWhiteSpace)
+                    || input.ContentCardIds.Distinct(StringComparer.Ordinal).Count() != input.ContentCardIds.Length
+                    || input.ContentUpgradeLevel is not (0 or 1)
+                    || input.ContentExtraDrawCardsPerPlayer is < 0 or > 5
+                    || input.ContentActorBlock is < 0 or > 100
+                    || input.ContentTargetBlock is < 0 or > 100
+                    || input.ContentTargetSeat <= 0 || input.ContentTargetSeat >= input.PlayerCount)
                 || input.Seat < 0 || input.Seat >= input.PeerCount
                 || (input.Mode == "host" && input.Seat != 0)
                 || (input.Mode == "client" && input.Seat == 0)

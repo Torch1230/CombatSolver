@@ -6,7 +6,9 @@ using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
 using CombatSolver.Engine.Common;
@@ -21,12 +23,22 @@ internal sealed partial class UnattendedTestRunner
         private async Task<ExecutionOutcome> ExecuteMultiplayerProbeAsync(ScenarioContext scenario)
         {
             MultiplayerProbeInput input = runner._multiplayerProbe!;
+            if (input.ContentCardIds.Length > 0)
+                return await ExecuteMultiplayerContentProbeAsync(scenario, input);
             CombatState combat = scenario.CombatState;
             Creature enemy = combat.Enemies.Single();
             if (enemy.CurrentHp <= input.PlayerCount * 6)
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyEnemyPowerScaling)
+            {
+                await VerifyScaledPowerAsync<ArtifactPower>();
+                await VerifyScaledPowerAsync<PlatingPower>();
+                await VerifyScaledPowerAsync<SlipperyPower>();
+                await VerifyScaledPowerAsync<SkittishPower>();
+                await VerifyScaledPowerAsync<CurlUpPower>();
+            }
             ICardSelector selector = input.IsVirtual
                 ? new UnattendedCardSelector(["DEFEND_IRONCLAD"])
                 : new MultiplayerProbeNetworkSelector(combat);
@@ -77,6 +89,27 @@ internal sealed partial class UnattendedTestRunner
             CheckPrediction(roundPrediction, scenario.Player, "END_TURN");
             runner._completedChecks.Add($"MultiplayerNativeProbe:Mode={input.Mode}:Players={input.PlayerCount}:Seat={input.Seat}:ScriptedCards:NativeChoice:EnemyTurn:NextDraw");
             return new ExecutionOutcome(false, 2, true, true, true, false);
+
+            async Task VerifyScaledPowerAsync<T>() where T : PowerModel
+            {
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator simulator = root.ForkSimulator();
+                SimulatedCombatState predictedCombat = (SimulatedCombatState)simulator.State.CombatState;
+                predictedCombat.Apply<T>(enemy, 1, enemy);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(simulator, predictedCombat))
+                    throw new InvalidOperationException($"Predicted {typeof(T).Name} application requested a choice.");
+                ContinuationStamp predicted = ContinuationStamp.CapturePredicted(
+                    scenario.Player, simulator, 1, root.Forecast, 1);
+                T applied = await PowerCmd.Apply<T>(
+                    new ThrowingPlayerChoiceContext(), enemy, 1, enemy, null)
+                    ?? throw new InvalidOperationException($"Native {typeof(T).Name} application failed.");
+                ContinuationStamp actual = ContinuationStamp.CaptureLive(combat);
+                if (predicted != actual)
+                    throw new InvalidOperationException(
+                        $"Multiplayer power differs: {typeof(T).Name} " + predicted.DescribeFirstDifference(actual));
+                runner._completedChecks.Add($"MultiplayerPowerScaling:{typeof(T).Name}:Players={input.PlayerCount}:FullState");
+                await PowerCmd.Remove(applied);
+            }
 
             ContinuationStamp PredictRound()
             {
@@ -138,6 +171,62 @@ internal sealed partial class UnattendedTestRunner
                 }
                 await runner.WaitForMultiplayerProbeAsync(observed);
             }
+        }
+
+        private async Task<ExecutionOutcome> ExecuteMultiplayerContentProbeAsync(
+            ScenarioContext scenario, MultiplayerProbeInput input)
+        {
+            CombatState combat = scenario.CombatState;
+            Player actor = scenario.Player;
+            foreach (Player member in combat.Players)
+                for (int index = 0; index < input.ContentExtraDrawCardsPerPlayer; index++)
+                    await UnattendedTestRunner.InjectCardAsync(combat, member,
+                        new UnattendedCardInjection { CardId = "DEFEND_IRONCLAD", Pile = "Draw" });
+            await UnattendedTestRunner.SetBlockAsync(actor.Creature, input.ContentActorBlock);
+            await UnattendedTestRunner.SetBlockAsync(
+                combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
+            UnattendedTestRunner.SetEnergy(actor, 10);
+            UnattendedTestRunner.SetStars(actor, 5);
+            for (int index = 0; index < input.ContentCardIds.Length; index++)
+            {
+                string cardId = input.ContentCardIds[index];
+                CardModel card = actor.PlayerCombatState!.Hand.Cards.Single(candidate =>
+                    candidate.Id.Entry == cardId);
+                Creature? target = card.TargetType switch
+                {
+                    TargetType.AnyAlly => combat.Players[input.ContentTargetSeat].Creature,
+                    TargetType.Self or TargetType.AllAllies => null,
+                    TargetType.AnyEnemy => combat.Enemies.Single(),
+                    _ => throw new InvalidOperationException(
+                        $"Content probe has no target rule for {card.Id.Entry}: {card.TargetType}."),
+                };
+                if (!card.CanPlayTargeting(target))
+                    throw new InvalidOperationException($"Content probe card is not playable: {card.Id.Entry}.");
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator simulator = root.ForkSimulator();
+                PredictedCard predictedCard = simulator.State.GetPlayerCombatState(actor).Hand.Cards.Single(candidate =>
+                    candidate.Preview.Id.Entry == card.Id.Entry);
+                if (!simulator.CanPlay(predictedCard)
+                    || !simulator.ManualPlay(predictedCard, target, out _)
+                    || !CombatBeamSolver.SettleReplayActionBoundary(
+                        simulator, (SimulatedCombatState)simulator.State.CombatState))
+                    throw new InvalidOperationException($"Content prediction did not complete: {card.Id.Entry}.");
+                ContinuationStamp predicted = ContinuationStamp.CapturePredicted(
+                    actor, simulator, 1, root.Forecast, 1);
+                runner.SetStage($"multiplayer_content_play_{cardId}");
+                var action = new PlayCardAction(card, target);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
+                await action.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync($"content-{index}", combat);
+                ContinuationStamp actual = ContinuationStamp.CaptureLive(combat);
+                if (predicted != actual)
+                    throw new InvalidOperationException(
+                        $"Multiplayer content differs: {card.Id.Entry}+{card.CurrentUpgradeLevel} " +
+                        predicted.DescribeFirstDifference(actual));
+                runner._completedChecks.Add(
+                    $"MultiplayerContent:{card.Id.Entry}:Upgrade={card.CurrentUpgradeLevel}:Target={combat.Players[input.ContentTargetSeat].NetId}:FullState:FullRng");
+            }
+            return new ExecutionOutcome(false, 1, true, true, true, false);
         }
 
         private sealed class MultiplayerProbeNetworkSelector(CombatState combat) : ICardSelector

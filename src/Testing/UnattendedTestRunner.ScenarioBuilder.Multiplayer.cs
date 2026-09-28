@@ -54,8 +54,21 @@ internal sealed partial class UnattendedTestRunner
             foreach (Player player in run.Players)
             {
                 ClearRunDeck(run, player);
-                foreach (string cardId in new[] { "STRIKE_IRONCLAD", "DEFEND_IRONCLAD", "SURVIVOR", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD" })
-                    await InjectRunCardAsync(run, player, new UnattendedCardInjection { CardId = cardId });
+                if (input.ContentCardIds.Length > 0 && ReferenceEquals(player, run.Players[0]))
+                {
+                    foreach (string cardId in input.ContentCardIds)
+                    {
+                        await InjectRunCardAsync(run, player, new UnattendedCardInjection
+                        {
+                            CardId = cardId, UpgradeLevels = input.ContentUpgradeLevel,
+                        });
+                    }
+                }
+                else
+                {
+                    foreach (string cardId in new[] { "STRIKE_IRONCLAD", "DEFEND_IRONCLAD", "SURVIVOR", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD" })
+                        await InjectRunCardAsync(run, player, new UnattendedCardInjection { CardId = cardId });
+                }
             }
             runner._writer.WriteGeneratedArtifact("environment.json", new
             {

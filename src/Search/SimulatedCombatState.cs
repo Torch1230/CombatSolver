@@ -647,7 +647,15 @@ internal sealed partial class SimulatedCombatState
             return 0;
         }
         bool instanced = incoming.InstanceType == MegaCrit.Sts2.Core.Entities.Powers.PowerInstanceType.Instanced;
-        if (instanced || GetAmount<T>(target) == 0)
+        bool firstApplication = instanced || GetAmount<T>(target) == 0;
+        if (firstApplication && Players.Count > 1
+            && (target.IsPrimaryEnemy || target.IsSecondaryEnemy)
+            && incoming.ShouldScaleInMultiplayer)
+        {
+            amount = (int)incoming.GetScaledAmountForMultiplayer(
+                this, applier, amount, target, CurrentPowerCardSource);
+        }
+        if (firstApplication)
             beforeApplied?.Invoke(amount);
         PowerModel simulated;
         if (instanced)
@@ -680,6 +688,11 @@ internal sealed partial class SimulatedCombatState
         {
             ritual._wasJustAppliedByEnemy = true;
         }
+        if (simulated is PlatingPower plating
+            && previousAmount == 0
+            && simulated._amount > 0
+            && target.IsEnemy)
+            plating.DynamicVars["Decrement"].BaseValue = Players.Count;
         if (simulated is KnockdownPower knockdown && applier != null)
         {
             Player? applyingPlayer = applier.Player
