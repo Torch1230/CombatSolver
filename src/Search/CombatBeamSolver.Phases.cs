@@ -1469,6 +1469,7 @@ internal sealed partial class CombatBeamSolver
         }
 
         while (frontier.Count > 0
+            && searchedTurnLayers < policy.MaxTurnLayers
             && (_earlyTurnScoutDepth == 0 || searchedTurnLayers < _earlyTurnScoutDepth)
             && (!policy.VerifyIncrementalSearch
                 || searchedTurnLayers < SolverWeights.IncrementalVerificationMaxTurns)

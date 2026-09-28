@@ -20,6 +20,7 @@ internal sealed record SearchPolicySnapshot(
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
     public bool UseNoveltyPortfolio { get; init; }
+    public int MaxTurnLayers { get; init; } = int.MaxValue;
     public int EarlyTurnExplorationDepth { get; init; }
     public int EarlyTurnExplorationBudgetMilliseconds { get; init; }
     public bool PredictPotionReward { get; init; }

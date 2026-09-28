@@ -43,6 +43,24 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.VerifySearch)
             {
+                SolverSettingsSnapshot settings = SolverSettings.Capture();
+                SearchPolicySnapshot defaultMultiplayerPolicy = SolverController.CaptureSearchPolicy(
+                    settings with
+                    {
+                        MultiplayerTurnDepth = 2,
+                        MultiplayerTimeLimitMilliseconds = 3_000,
+                    }, combat, includeTurnSetup: false, theftPolicy: null);
+                SearchPolicySnapshot customMultiplayerPolicy = SolverController.CaptureSearchPolicy(
+                    settings with
+                    {
+                        MultiplayerTurnDepth = 3,
+                        MultiplayerTimeLimitMilliseconds = 6_000,
+                    }, combat, includeTurnSetup: false, theftPolicy: null);
+                if (defaultMultiplayerPolicy.MaxTurnLayers != 2
+                    || defaultMultiplayerPolicy.Profile.SoftTimeBudgetMilliseconds != 3_000
+                    || customMultiplayerPolicy.MaxTurnLayers != 3
+                    || customMultiplayerPolicy.Profile.SoftTimeBudgetMilliseconds != 6_000)
+                    throw new InvalidOperationException("Multiplayer depth/time policy did not follow settings.");
                 CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
                 SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
                     SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null) with
@@ -61,6 +79,7 @@ internal sealed partial class UnattendedTestRunner
                     root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
                     policy, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
                 if (result.StartTurnNumber != 1 || result.BestNode.Actions.Count == 0
+                    || result.SearchedTurns > policy.MaxTurnLayers
                     || result.BestNode.Actions.Any(action => action.Kind == PlanActionKind.PlayCard
                         && action.Turn == 1 && !scenario.Player.PlayerCombatState!.AllCards.Any(card =>
                             card.Id.Entry == action.CardId)))
@@ -225,6 +244,16 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.VerifySearch)
             {
+                SolverSettingsSnapshot settings = SolverSettings.Capture();
+                SearchPolicySnapshot configured = SolverController.CaptureSearchPolicy(
+                    settings with
+                    {
+                        MultiplayerTurnDepth = 2,
+                        MultiplayerTimeLimitMilliseconds = 3_000,
+                    }, combat, includeTurnSetup: false, theftPolicy: null);
+                if (configured.MaxTurnLayers != 2
+                    || configured.Profile.SoftTimeBudgetMilliseconds != 3_000)
+                    throw new InvalidOperationException("Multiplayer content policy did not apply depth/time settings.");
                 CombatRootSnapshot searchRoot = CombatRootSnapshot.Capture(combat);
                 SearchPolicySnapshot searchPolicy = SolverController.CaptureSearchPolicy(
                     SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null) with
@@ -243,6 +272,7 @@ internal sealed partial class UnattendedTestRunner
                     SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
                     searchPolicy, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
                 if (search.StartTurnNumber != 1 || search.BestNode.Actions.Count == 0
+                    || search.SearchedTurns > searchPolicy.MaxTurnLayers
                     || search.BestNode.Actions.Any(action => action.Kind == PlanActionKind.PlayCard
                         && action.Turn == 1 && !actor.PlayerCombatState!.AllCards.Any(card =>
                             card.Id.Entry == action.CardId)))

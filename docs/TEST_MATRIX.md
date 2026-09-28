@@ -16,6 +16,8 @@ P3 首次搜索探针：虚拟双人、四人普通牌根和含 `BelieveInYou` �
 
 玩家目标药水自用代表：双人 `StrengthPotion` 本地持有者自用后完整状态／RNG 差分 Passed，随后队友目标牌仍可执行；证据 `.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。此项不覆盖所有药水或生产自动执行。
 
+多人深度／时间策略：默认 2 回合／3000 毫秒及自定义 3／6000 毫秒快照断言、实际搜索层上限，虚拟双人请求 Passed，证据 `.local/multiplayer-p3/horizon-policy-2-b5e9a8d5762c444d93de124b59b26158/peer-0/result.json`。设置 UI 和多成员共享预算仍待验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

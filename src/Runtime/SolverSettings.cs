@@ -114,6 +114,8 @@ internal sealed record SolverSettingsData
     public bool UseNoveltyPortfolio { get; init; }
     public bool UseEarlyTurnExploration { get; init; }
     public double? SearchTimeLimitSeconds { get; init; }
+    public int MultiplayerTurnDepth { get; init; } = 2;
+    public double MultiplayerTimeLimitSeconds { get; init; } = 3d;
     public bool AutoConfigureServerGc { get; init; } = true;
     public bool EnableNoGcRegion { get; init; } = true;
     public double? NoGcRegionBudgetGigabytes { get; init; } = 16d;
@@ -163,6 +165,8 @@ internal sealed record SolverSettingsSnapshot(
     public bool UseNoveltyPortfolio { get; init; }
     public bool UseEarlyTurnExploration { get; init; }
     public bool PredictPotionReward { get; init; }
+    public int MultiplayerTurnDepth { get; init; } = 2;
+    public int MultiplayerTimeLimitMilliseconds { get; init; } = 3_000;
 }
 
 internal static class SolverSettings
@@ -328,6 +332,9 @@ internal static class SolverSettings
             UseNoveltyPortfolio = data.UseNoveltyPortfolio,
             UseEarlyTurnExploration = data.UseEarlyTurnExploration,
             PredictPotionReward = data.PredictPotionReward,
+            MultiplayerTurnDepth = data.MultiplayerTurnDepth,
+            MultiplayerTimeLimitMilliseconds = checked((int)Math.Round(
+                data.MultiplayerTimeLimitSeconds * 1000d, MidpointRounding.AwayFromZero)),
         };
     }
 
@@ -546,6 +553,9 @@ internal static class SolverSettings
         if (data.PerformanceMigrationVersion < 0)
             throw new InvalidDataException("PerformanceMigrationVersion must be non-negative.");
         ValidateRange(data.SearchTimeLimitSeconds, 0.1d, 600d, nameof(data.SearchTimeLimitSeconds));
+        ValidateRange(data.MultiplayerTurnDepth, 1, 32, nameof(data.MultiplayerTurnDepth));
+        ValidateRange(data.MultiplayerTimeLimitSeconds, 0.1d, 600d,
+            nameof(data.MultiplayerTimeLimitSeconds));
         ValidateRange(
             data.NoGcRegionBudgetGigabytes,
             1d,

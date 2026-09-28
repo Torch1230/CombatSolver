@@ -512,10 +512,16 @@ internal static partial class SolverController
                 $"搜索并行度必须在 1..{SolverWeights.MaximumSearchMaxDegreeOfParallelism} 之间，" +
                 $"实际为 {maxDegreeOfParallelism}。");
         }
+        SolverSearchProfile profile = state.Players.Count > 1
+            ? settings.Profile with
+            {
+                SoftTimeBudgetMilliseconds = settings.MultiplayerTimeLimitMilliseconds,
+            }
+            : settings.Profile;
+        if (UnattendedTestRunner.BeamWeightPerturbationOverride is { } beamWeightPerturbation)
+            profile = profile with { BeamWeightPerturbation = beamWeightPerturbation };
         SearchPolicySnapshot policy = new(
-            UnattendedTestRunner.BeamWeightPerturbationOverride is { } beamWeightPerturbation
-                ? settings.Profile with { BeamWeightPerturbation = beamWeightPerturbation }
-                : settings.Profile,
+            profile,
             settings.PotionPolicy,
             CapturePotionStrategy(state, settings.PotionPolicy),
             settings.EnableDetailedDiagnosticLogs,
@@ -523,7 +529,8 @@ internal static partial class SolverController
             UnattendedTestRunner.FixedSearchBudget,
             UnattendedTestRunner.MeasureSearchPhases,
             maxDegreeOfParallelism,
-            UnattendedTestRunner.SearchBudgetOverrideMilliseconds,
+            UnattendedTestRunner.SearchBudgetOverrideMilliseconds
+                ?? (state.Players.Count > 1 ? settings.MultiplayerTimeLimitMilliseconds : null),
             includeTurnSetup,
             theftPolicy,
             settings.ActTransitionBossHpStrategy,
@@ -549,6 +556,7 @@ internal static partial class SolverController
             UseBeamWidthPortfolio = settings.UseBeamWidthPortfolio
                 || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             PredictPotionReward = settings.PredictPotionReward,
+            MaxTurnLayers = state.Players.Count > 1 ? settings.MultiplayerTurnDepth : int.MaxValue,
             BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,
             BeamWidthPortfolioPlainBaselineMember =
                 UnattendedTestRunner.BeamWidthPortfolioPlainBaselineMemberOverride,
