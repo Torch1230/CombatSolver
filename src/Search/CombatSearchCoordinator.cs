@@ -24,6 +24,15 @@ internal static partial class CombatSearchCoordinator
             RequestWorkTotals = requestWorkTotals,
             PortfolioTelemetry = portfolioTelemetry,
         };
+        if (root.PlayerCount > 1)
+        {
+            SolverResult multiplayer = new CombatBeamSolver(root, displayNames, battleDamage,
+                policy, cancellationToken, progressCallback, policy.Profile).Solve();
+            PopulateRequestWorkTotals(multiplayer, requestWorkTotals);
+            multiplayer.ComparisonQuality = BuildInterimResult(root, policy, multiplayer);
+            multiplayer.ComparisonRootState = root.ContinuationStamp.StateText;
+            return multiplayer;
+        }
         SearchInteractionState? interaction = policy.Interaction;
         if (policy.IncludeTurnSetup)
             policy.Diagnostics.Info("[CombatSolver/Test] OPENING_PREFIX_REFINEMENT skipped reason=TurnSetupRoot");

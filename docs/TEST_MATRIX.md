@@ -32,6 +32,8 @@ P3 选人合同：四人 `BelieveInYou` 在三个 Fork 中固定同一原版合�
 
 多人方案候选：同一次搜索的末端候选按输出／防守／启动取不同目标，当前回合动作相同或该风格无主指标增益时合并。普通双人根仅输出一条 Passed；一回合限制的打击／防御、打击／`Inflame` 两根分别拿到输出＋防守、输出＋启动，主指标与动作取舍断言 Passed；单人短搜 Passed。两回合首次缺首回合启动候选，现保留首回合风格代表并完整回放；打击／`Inflame` 和打击／防御两根分别取得有差异的输出＋启动、输出＋防守，均 Passed。路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。纯支援及生产多方案还未完成。
 
+多人生产搜索协调器：双人 `Strike`／`Inflame` 两回合根通过 `CombatSearchCoordinator.Solve` 获得输出＋启动，单场搜索统计与根比较戳对账 Passed；证据 `.local/multiplayer-p3/coordinator-styles-two-turn-a4297d0afd3d43fba976a1ba76e9772a/peer-0/result.json`。控制器、界面与真实玩家交互仍未接入。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

@@ -309,9 +309,12 @@ internal sealed partial class UnattendedTestRunner
                     UseBeamWidthPortfolio = false,
                     EarlyTurnExplorationBudgetMilliseconds = 0,
                 };
-                SolverResult search = await Task.Run(() => new CombatBeamSolver(searchRoot,
-                    SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
-                    searchPolicy, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+                SolverResult search = await Task.Run(() => input.ContentSearchOnly
+                    ? CombatSearchCoordinator.Solve(searchRoot, SolverDisplayNames.Capture(combat),
+                        BattleDamageTracker.Observe(combat), searchPolicy, CancellationToken.None, null)
+                    : new CombatBeamSolver(searchRoot,
+                        SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
+                        searchPolicy, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
                 if (search.StartTurnNumber != 1 || search.BestNode.Actions.Count == 0
                     || search.SearchedTurns > searchPolicy.MaxTurnLayers
                     || search.BestNode.Actions.Any(action => action.Kind == PlanActionKind.PlayCard
@@ -325,6 +328,11 @@ internal sealed partial class UnattendedTestRunner
                     || contentPlans.Any(plan => plan.Snapshot.PlayerDead
                         || plan.Snapshot.ProjectedPlayerHp <= 0))
                     throw new InvalidOperationException("Multiplayer content search styles are invalid.");
+                if (input.ContentSearchOnly
+                    && (search.TotalExpandedNodes != search.ExpandedNodes
+                        || !search.SingleSessionSearch
+                        || search.ComparisonRootState != searchRoot.ContinuationStamp.StateText))
+                    throw new InvalidOperationException("Multiplayer production search did not use one shared session.");
                 if (input.ContentSearchOnly
                     && input.ContentCardIds.Contains("INFLAME"))
                 {
