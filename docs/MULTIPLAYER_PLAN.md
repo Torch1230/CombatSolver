@@ -165,9 +165,11 @@ ENet 双端全自动首回合：房主与加入者分别从本地搜索并原生
 
 四人 ENet 全自动初次默认并行度请求与改为每端 DOP 1 的请求，四端均在原生建局根后未产出结果，均达到 120 秒并由启动器清理；不计通过。随后修复搜索完成时对同一本地回合队友变化一律丢弃结果的逻辑：在新根重放原当前回合动作，合法则发布更新预览并继续原路线，失效则暂停。虚拟双人搜索期间队友原生 `Strike` 后，原路线重评估、本地部署、无新增完整搜索 Passed：`.local/multiplayer-p4/search-time-drift-virtual2-344e51f9f444480483391e546f5a900f/peer-0/result.json`。在每端 DOP 1 的四人 ENet 复验中，四端本地搜索与部署、同步第二回合、完整状态／RNG 对账 Passed：`.local/multiplayer-p0/enet-4-f316f44de37240058975bc49cd2c9d2e/peer-0/result.json` 至 `peer-3/result.json`。首次四人超时的具体逐端状态未留完整运行日志，不能把它唯一归因为搜索时队友变化；当前证据也不代表默认 DOP 的四人全自动性能已通过。Linux 脚本与 Windows 参数同步，Linux 本轮未运行游戏。
 
-四人玩家目标药水候选复核：`StrengthPotion` 搜索只枚举持有人自用，原生自用后全状态／RNG 与模拟一致，随后 `Largesse` 仍给第 3 号队友生成牌，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。这是候选与原生动作代表，未证明生产执行器实际投药。
+四人玩家目标药水候选复核：`StrengthPotion` 搜索只枚举持有人自用，原生自用后全状态／RNG 与模拟一致，随后 `Largesse` 仍给第 3 号队友生成牌，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。这是候选与原生动作代表；生产执行器的格挡药水证据见下文。
 
 同一自用候选规则另以四人 `BlockPotion`、双人 `EnergyPotion` 分别验格挡与能量效果，原生自用即时全状态及完整 RNG 均 Passed；证据与边界见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#普通内容的多人差异扫描)。
+
+生产执行器药水代表：虚拟双人把 `BlockPotion` 设为本地必用，搜索方案仅有本地药水动作，原生执行后本地取得格挡、队友格挡不变并只结束本地回合，Passed：`.local/multiplayer-p4/controller-self-block-potion-0b2e57c7926d4cd2aad110ee092f4221/peer-0/result.json`。这证明求解器自身用药执行入口，不证明所有药水或 ENet 投药。
 
 P5 设置输入已在原生无头设置页实际提交多人深度 `3` 与时间 `4.5` 秒，重新读取持久化文件后值保持，测试结束恢复原设置；eng／zhs／zht 构造与 475 条英文目录占位符对账同次 Passed：`.local/multiplayer-p5/ui-settings-edit-509374eb84d540ea80d689f32873b416/result.json`。仍未人工检查可见窗口排版。
 

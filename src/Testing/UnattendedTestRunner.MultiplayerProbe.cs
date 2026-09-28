@@ -37,6 +37,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerMidDeploymentKill { get; init; }
         public bool VerifyControllerMidDeploymentDamage { get; init; }
         public bool VerifyControllerTargetedDeploy { get; init; }
+        public bool VerifyControllerSelfPotionDeploy { get; init; }
         public bool VerifyControllerStyleSelection { get; init; }
         public bool VerifyControllerStyleDeploy { get; init; }
         public bool ContentSearchOnly { get; init; }
@@ -95,6 +96,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifySelfPotion && input.SelfPotionId is not
                     ("STRENGTH_POTION" or "BLOCK_POTION" or "ENERGY_POTION")
                 || input.VerifyControllerTargetedDeploy && !input.ContentCardIds.Contains("BLAZE")
+                || input.VerifyControllerSelfPotionDeploy
+                    && (input.Mode != "virtual" || !input.ContentCardIds.Contains("STRIKE_IRONCLAD"))
                 || input.VerifyControllerStyleSelection
                     && !input.ContentCardIds.Contains("INFLAME")
                     && !input.ContentCardIds.Contains("DEFEND_IRONCLAD")

@@ -100,6 +100,8 @@ P2 四人玩家目标药水自用候选：本地 `StrengthPotion` 搜索只产�
 
 P2 玩家目标药水自用机制：四人 `BlockPotion` `.local/multiplayer-p2/self-block-potion-four-cbc90f92c6f64218a5bd0cda95b38ab1/peer-0/result.json` 和双人 `EnergyPotion` `.local/multiplayer-p2/self-energy-potion-two-a56b08d453e743228b3ce67070940b77/peer-0/result.json`，每次候选仅本地自用一项，原生动作／模拟即时全状态与完整 RNG 差分 Passed。选牌、治疗、球等其他药水机制未验。
 
+P4 生产控制器本地药水执行：虚拟双人必用 `BlockPotion`，方案只为本地持有人用药，原生部署后仅本地玩家得格挡、队友不变，Passed：`.local/multiplayer-p4/controller-self-block-potion-0b2e57c7926d4cd2aad110ee092f4221/peer-0/result.json`。其他药水与 ENet 执行未验。
+
 P5 多人设置编辑／保存：原生无头设置页提交深度 `3`、时间 `4.5` 秒，再从设置文件重载并确认值保持，最后恢复原设置；同次三语言 UI 与 475 条英文目录占位符 Passed：`.local/multiplayer-p5/ui-settings-edit-509374eb84d540ea80d689f32873b416/result.json`。可见窗口布局未验。
 
 ## 多人 P1 普通状态差分（2026-09-28）

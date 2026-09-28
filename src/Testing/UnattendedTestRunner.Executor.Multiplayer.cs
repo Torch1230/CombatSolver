@@ -489,6 +489,46 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
+            if (input.VerifyControllerSelfPotionDeploy)
+            {
+                SolverSettingsData originalSettings = SolverSettings.Current;
+                try
+                {
+                    PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, "BLOCK_POTION");
+                    SolverSettings.Update(originalSettings with { PotionPolicy = SolverPotionPolicy.RequireAtLeastOne });
+                    SolverController.MonitorCombatPresence();
+                    SolverController.RequestSearch(runner._host, combat, SearchReason.Manual);
+                    await runner.WaitForMultiplayerProbeAsync(() =>
+                        SolverController.LastCompletedResultForTesting != null
+                        || SolverController.LastSearchFailureForTesting != null);
+                    if (SolverController.LastSearchFailureForTesting is { } potionSearchFailure)
+                        throw new InvalidOperationException("Multiplayer self-potion controller search failed.", potionSearchFailure);
+                    SolverResult plan = SolverController.LastCompletedResultForTesting
+                        ?? throw new InvalidOperationException("Self-potion controller search published no result.");
+                    PlanAction[] plannedUses = plan.BestNode.Actions
+                        .Where(action => action.Turn == 1 && action.Kind == PlanActionKind.UsePotion)
+                        .ToArray();
+                    if (plannedUses.Length != 1 || plannedUses[0].PotionId != potion.Id.Entry
+                        || plannedUses[0].TargetCombatId is { } targetId
+                            && targetId != actor.Creature.CombatId)
+                        throw new InvalidOperationException("Multiplayer search did not plan only the owner's block potion.");
+                    SolverController.RequestDeploy(runner._host, combat);
+                    await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
+                        && SolverController.LastSolverDeployedTurnForBugReport == 1
+                        && CombatManager.Instance.IsPlayerReadyToEndTurn(actor));
+                    if (!SolverController.WasPotionDeployedForTesting("BLOCK_POTION")
+                        || actor.Creature.Block < 12
+                        || combat.Players.Where(member => member != actor)
+                            .Any(member => member.Creature.Block != 0))
+                        throw new InvalidOperationException("Controller block potion was not used on the owner only.");
+                    runner._completedChecks.Add("MultiplayerController:BlockPotion:OwnerOnly:NativeDeployment:TeammatesUnchanged");
+                    return new ExecutionOutcome(false, 1, true, true, true, false);
+                }
+                finally
+                {
+                    SolverSettings.Update(originalSettings);
+                }
+            }
             if (input.VerifyControllerStyleSelection)
             {
                 SolverController.MonitorCombatPresence();
