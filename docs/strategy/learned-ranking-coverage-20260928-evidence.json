@@ -487,5 +487,328 @@
     "src/Search/CombatBeamSolver.StateEvaluation.cs: retained hand/future resource/persistent effect estimates remain snapshot fields even though learned snapshot.Score is zero",
     "src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs: auxiliary retention and Pareto consume these fields",
     "src/Search/CardChoiceSupport.cs: learned BuildObjectiveChoices bypasses heuristic card values but uses bounded combination enumeration"
-  ]
+  ],
+  "v86StaticAudit": {
+    "scope": "Read-only static v86 numeric program usage using the actual constant-leaf trimming rule. Compared with saved v85 static audit; no new training/search/labels or final-test access.",
+    "sourceCommit": "ac201f43",
+    "modelSha256": "0124f2f0d4a164c4c258d3e40a8448a4454fc876b44c1b20138ad41356d8ed13",
+    "modelBytes": 1280360,
+    "previousModelSha256": "bc41794612df7318ba0d5eb19aed6b5955ca8598cbb644a19bada8ef4f800656",
+    "heads": [
+      {
+        "character": "DEFECT",
+        "eligibleColumns": 3092,
+        "usedColumns": 87,
+        "groups": {
+          "playerPowers": {
+            "eligibleColumns": 41,
+            "usedColumns": 5,
+            "usedNames": [
+              "power/player/BUFFER_POWER",
+              "power/player/DEXTERITY_POWER",
+              "power/player/FOCUS_POWER",
+              "power/player/LOOP_POWER",
+              "power/player/SUBROUTINE_POWER"
+            ],
+            "previousUsedColumns": 1,
+            "addedNames": [
+              "power/player/DEXTERITY_POWER",
+              "power/player/FOCUS_POWER",
+              "power/player/LOOP_POWER",
+              "power/player/SUBROUTINE_POWER"
+            ],
+            "removedNames": []
+          },
+          "petPowers": {
+            "eligibleColumns": 0,
+            "usedColumns": 0
+          },
+          "enemyPowers": {
+            "eligibleColumns": 30,
+            "usedColumns": 3
+          },
+          "relics": {
+            "eligibleColumns": 106,
+            "usedColumns": 2,
+            "usedNames": [
+              "relic/BRONZE_SCALES/present",
+              "relic/HAPPY_FLOWER/present"
+            ],
+            "previousUsedColumns": 0,
+            "addedNames": [
+              "relic/BRONZE_SCALES/present",
+              "relic/HAPPY_FLOWER/present"
+            ],
+            "removedNames": []
+          },
+          "handCardIdentity": {
+            "eligibleColumns": 615,
+            "usedColumns": 5
+          },
+          "handCardAggregate": {
+            "eligibleColumns": 93,
+            "usedColumns": 7
+          },
+          "drawOrder": {
+            "eligibleColumns": 1003,
+            "usedColumns": 14
+          }
+        },
+        "eligibleExplicitCardIds": 120,
+        "usedExplicitCardIds": 12,
+        "previousUsedColumns": 83
+      },
+      {
+        "character": "IRONCLAD",
+        "eligibleColumns": 3026,
+        "usedColumns": 76,
+        "groups": {
+          "playerPowers": {
+            "eligibleColumns": 36,
+            "usedColumns": 8,
+            "usedNames": [
+              "power/player/AGGRESSION_POWER",
+              "power/player/CRIMSON_MANTLE_POWER",
+              "power/player/DEMON_FORM_POWER",
+              "power/player/JUGGLING_POWER",
+              "power/player/STAMPEDE_POWER",
+              "power/player/STRENGTH_POWER",
+              "power/player/VICIOUS_POWER",
+              "power/player/WEAK_POWER"
+            ],
+            "previousUsedColumns": 3,
+            "addedNames": [
+              "power/player/CRIMSON_MANTLE_POWER",
+              "power/player/DEMON_FORM_POWER",
+              "power/player/JUGGLING_POWER",
+              "power/player/VICIOUS_POWER",
+              "power/player/WEAK_POWER"
+            ],
+            "removedNames": []
+          },
+          "petPowers": {
+            "eligibleColumns": 0,
+            "usedColumns": 0
+          },
+          "enemyPowers": {
+            "eligibleColumns": 26,
+            "usedColumns": 4
+          },
+          "relics": {
+            "eligibleColumns": 104,
+            "usedColumns": 2,
+            "usedNames": [
+              "relic/STURDY_CLAMP/present",
+              "relic/VEXING_PUZZLEBOX/present"
+            ],
+            "previousUsedColumns": 0,
+            "addedNames": [
+              "relic/STURDY_CLAMP/present",
+              "relic/VEXING_PUZZLEBOX/present"
+            ],
+            "removedNames": []
+          },
+          "handCardIdentity": {
+            "eligibleColumns": 558,
+            "usedColumns": 4
+          },
+          "handCardAggregate": {
+            "eligibleColumns": 85,
+            "usedColumns": 5
+          },
+          "drawOrder": {
+            "eligibleColumns": 941,
+            "usedColumns": 6
+          }
+        },
+        "eligibleExplicitCardIds": 107,
+        "usedExplicitCardIds": 9,
+        "previousUsedColumns": 74
+      },
+      {
+        "character": "NECROBINDER",
+        "eligibleColumns": 2925,
+        "usedColumns": 88,
+        "groups": {
+          "playerPowers": {
+            "eligibleColumns": 37,
+            "usedColumns": 0,
+            "usedNames": [],
+            "previousUsedColumns": 0,
+            "addedNames": [],
+            "removedNames": []
+          },
+          "petPowers": {
+            "eligibleColumns": 1,
+            "usedColumns": 0
+          },
+          "enemyPowers": {
+            "eligibleColumns": 45,
+            "usedColumns": 7
+          },
+          "relics": {
+            "eligibleColumns": 85,
+            "usedColumns": 3,
+            "usedNames": [
+              "relic/LAVA_LAMP/present",
+              "relic/PRAYER_WHEEL/present",
+              "relic/WING_CHARM/present"
+            ],
+            "previousUsedColumns": 0,
+            "addedNames": [
+              "relic/LAVA_LAMP/present",
+              "relic/PRAYER_WHEEL/present",
+              "relic/WING_CHARM/present"
+            ],
+            "removedNames": []
+          },
+          "handCardIdentity": {
+            "eligibleColumns": 576,
+            "usedColumns": 5
+          },
+          "handCardAggregate": {
+            "eligibleColumns": 97,
+            "usedColumns": 8
+          },
+          "drawOrder": {
+            "eligibleColumns": 913,
+            "usedColumns": 14
+          }
+        },
+        "eligibleExplicitCardIds": 108,
+        "usedExplicitCardIds": 11,
+        "previousUsedColumns": 82
+      },
+      {
+        "character": "REGENT",
+        "eligibleColumns": 3557,
+        "usedColumns": 84,
+        "groups": {
+          "playerPowers": {
+            "eligibleColumns": 42,
+            "usedColumns": 4,
+            "usedNames": [
+              "power/player/ARSENAL_POWER",
+              "power/player/PARRY_POWER",
+              "power/player/STRENGTH_POWER",
+              "power/player/TYRANNY_POWER"
+            ],
+            "previousUsedColumns": 3,
+            "addedNames": [
+              "power/player/TYRANNY_POWER"
+            ],
+            "removedNames": []
+          },
+          "petPowers": {
+            "eligibleColumns": 0,
+            "usedColumns": 0
+          },
+          "enemyPowers": {
+            "eligibleColumns": 47,
+            "usedColumns": 2
+          },
+          "relics": {
+            "eligibleColumns": 139,
+            "usedColumns": 5,
+            "usedNames": [
+              "relic/GORGET/present",
+              "relic/LETTER_OPENER/state/19AB43037F4C1026C35EE08CF053D90D",
+              "relic/NUNCHAKU/present",
+              "relic/NUNCHAKU/state/E95E92B3DA21DC9242FEE95557000F11",
+              "relic/TOXIC_EGG/present"
+            ],
+            "previousUsedColumns": 2,
+            "addedNames": [
+              "relic/GORGET/present",
+              "relic/NUNCHAKU/present",
+              "relic/TOXIC_EGG/present"
+            ],
+            "removedNames": []
+          },
+          "handCardIdentity": {
+            "eligibleColumns": 737,
+            "usedColumns": 6
+          },
+          "handCardAggregate": {
+            "eligibleColumns": 102,
+            "usedColumns": 8
+          },
+          "drawOrder": {
+            "eligibleColumns": 1088,
+            "usedColumns": 10
+          }
+        },
+        "eligibleExplicitCardIds": 139,
+        "usedExplicitCardIds": 12,
+        "previousUsedColumns": 73
+      },
+      {
+        "character": "SILENT",
+        "eligibleColumns": 2724,
+        "usedColumns": 79,
+        "groups": {
+          "playerPowers": {
+            "eligibleColumns": 41,
+            "usedColumns": 5,
+            "usedNames": [
+              "power/player/ACCELERANT_POWER",
+              "power/player/AFTERIMAGE_POWER",
+              "power/player/DEXTERITY_POWER",
+              "power/player/FAN_OF_KNIVES_POWER",
+              "power/player/SERPENT_FORM_POWER"
+            ],
+            "previousUsedColumns": 4,
+            "addedNames": [
+              "power/player/DEXTERITY_POWER"
+            ],
+            "removedNames": []
+          },
+          "petPowers": {
+            "eligibleColumns": 0,
+            "usedColumns": 0
+          },
+          "enemyPowers": {
+            "eligibleColumns": 44,
+            "usedColumns": 7
+          },
+          "relics": {
+            "eligibleColumns": 122,
+            "usedColumns": 1,
+            "usedNames": [
+              "relic/WHITE_STAR/present"
+            ],
+            "previousUsedColumns": 0,
+            "addedNames": [
+              "relic/WHITE_STAR/present"
+            ],
+            "removedNames": []
+          },
+          "handCardIdentity": {
+            "eligibleColumns": 536,
+            "usedColumns": 4
+          },
+          "handCardAggregate": {
+            "eligibleColumns": 88,
+            "usedColumns": 10
+          },
+          "drawOrder": {
+            "eligibleColumns": 898,
+            "usedColumns": 8
+          }
+        },
+        "eligibleExplicitCardIds": 104,
+        "usedExplicitCardIds": 11,
+        "previousUsedColumns": 75
+      }
+    ],
+    "newTrainingRuns": 0,
+    "newCombatSearches": 0,
+    "finalTestOpened": false,
+    "limitations": [
+      "Used columns and accepted product splits are not evidence of decision quality.",
+      "Unused identity can still affect generic observations and actual simulated futures.",
+      "Eligible columns are exported training observations, not the complete game catalogue.",
+      "More observed columns may have a runtime cost; only the full paired evaluation measures it."
+    ]
+  }
 }
