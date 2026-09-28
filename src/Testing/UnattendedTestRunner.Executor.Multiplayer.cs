@@ -64,7 +64,7 @@ internal sealed partial class UnattendedTestRunner
                 }
             }
             ContinuationStamp? roundPrediction = input.VerifyRoundDifferential
-                ? PredictRound() : null;
+                ? PredictMultiplayerRound(combat, scenario.Player) : null;
             foreach (Player player in input.IsVirtual ? new[] { scenario.Player } : combat.Players)
             {
                 if (input.IsVirtual || LocalContext.IsMe(player))
@@ -109,26 +109,6 @@ internal sealed partial class UnattendedTestRunner
                         $"Multiplayer power differs: {typeof(T).Name} " + predicted.DescribeFirstDifference(actual));
                 runner._completedChecks.Add($"MultiplayerPowerScaling:{typeof(T).Name}:Players={input.PlayerCount}:FullState");
                 await PowerCmd.Remove(applied);
-            }
-
-            ContinuationStamp PredictRound()
-            {
-                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
-                SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
-                    SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
-                CombatBeamSolver driver = new(root, SolverDisplayNames.Capture(combat),
-                    BattleDamageTracker.Observe(combat), policy);
-                SimulationSnapshot predicted = UnattendedTestRunner.InvokeForcedTerminalReplay(
-                    driver, [new PlanAction(PlanActionKind.EndTurn, 1)], null, 0, null);
-                try
-                {
-                    return ContinuationStamp.CapturePredicted(
-                        scenario.Player, predicted.Simulator, predicted.Turn, root.Forecast, 1);
-                }
-                finally
-                {
-                    predicted.ReleaseSimulator();
-                }
             }
 
             ContinuationStamp PredictOrdinaryCard(Player actor, string cardId, Creature? target)
@@ -226,7 +206,44 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(
                     $"MultiplayerContent:{card.Id.Entry}:Upgrade={card.CurrentUpgradeLevel}:Target={combat.Players[input.ContentTargetSeat].NetId}:FullState:FullRng");
             }
+            if (input.VerifyContentRound)
+            {
+                ContinuationStamp predictedRound = PredictMultiplayerRound(combat, actor);
+                runner.SetStage("multiplayer_content_round");
+                var end = new EndPlayerTurnAction(actor, 1);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                await runner.MultiplayerProbeBarrierAsync("content-round", combat);
+                ContinuationStamp actualRound = ContinuationStamp.CaptureLive(combat);
+                if (predictedRound != actualRound)
+                    throw new InvalidOperationException(
+                        "Multiplayer content round differs: " + predictedRound.DescribeFirstDifference(actualRound));
+                runner._completedChecks.Add("MultiplayerContentRound:AllPlayers:FullState:FullRng");
+                return new ExecutionOutcome(false, 2, true, true, true, false);
+            }
             return new ExecutionOutcome(false, 1, true, true, true, false);
+        }
+
+        private static ContinuationStamp PredictMultiplayerRound(CombatState combat, Player localPlayer)
+        {
+            CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+            SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
+                SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
+            CombatBeamSolver driver = new(root, SolverDisplayNames.Capture(combat),
+                BattleDamageTracker.Observe(combat), policy);
+            SimulationSnapshot predicted = UnattendedTestRunner.InvokeForcedTerminalReplay(
+                driver, [new PlanAction(PlanActionKind.EndTurn, 1)], null, 0, null);
+            try
+            {
+                return ContinuationStamp.CapturePredicted(
+                    localPlayer, predicted.Simulator, predicted.Turn, root.Forecast, 1);
+            }
+            finally
+            {
+                predicted.ReleaseSimulator();
+            }
         }
 
         private sealed class MultiplayerProbeNetworkSelector(CombatState combat) : ICardSelector

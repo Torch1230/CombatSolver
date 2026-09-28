@@ -64,7 +64,7 @@ Windows 结构门禁在同步更新 `Executor partial` 声明检查后通过，`
 | 该次实测 DLL `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`，虚拟四人三个验证开关均开 | 四人各防御／打击与完整 RNG 对账；第二回合固定 EndTurn 对账；队友格挡、卡牌所有者、RNG 人工差异同时被续用戳和状态键检出；兄弟 Fork 保持根状态，全部 Passed | `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` |
 | 同一 DLL 单人 `MULTIPLAYER-P0-SINGLEPLAYER`、1 秒短搜 | 原版首个搜索结果 Passed；Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=238` | `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` |
 
-失败的首因和原始结果分别位于 `.local/multiplayer-p1/root-2-4bb628f7e3b44dd7ad301a2bd022cca7/`、`ordinary-diff-2-420319584c054931871b96d892b8b812/`、`round-diff-2-82032daee2cf4701ac9769334f65e3f0/`。这些是按具体根因修复前的记录，均不是通过证据。以上成功测试使用同一固定遭遇与普通牌，尚未覆盖队友跨回合 Power／球触发、额外回合、死亡／复活、跨玩家引用、队友选择及生产搜索／执行。原版多玩家通常把 `AfterSideTurnStart` 对全体参与者派发一次，当前模拟的玩家准备续接仍逐人调用；复杂监听器的调用顺序须在对应机制差分后收口。生产入口仍保留多人门禁，不能据此标为 P1 完成。成功实例由启动器报告清理，本地部署未做。
+失败的首因和原始结果分别位于 `.local/multiplayer-p1/root-2-4bb628f7e3b44dd7ad301a2bd022cca7/`、`ordinary-diff-2-420319584c054931871b96d892b8b812/`、`round-diff-2-82032daee2cf4701ac9769334f65e3f0/`。这些是按具体根因修复前的记录，均不是通过证据。随后用 `Plot`、`Coordinate`、`Fade` 构造队友跨回合能力，首次第二回合差分指出队友 HP 原生 76、预测 80。原版普通怪物攻击面向所有存活玩家，而模拟仅伤本地玩家；沿原版 `AttackCommand.FromMonster` 的多目标语义修复后，同一输入的即时出牌和第二回合完整状态／RNG 均 Passed：`.local/multiplayer-p1/power-round-fixed-ac3e4164274049fda0e7f2b3d8970463/peer-0/result.json`。这只覆盖该固定怪物及这三种能力，未覆盖其他跨玩家监听、额外回合、死亡／复活、跨玩家引用、队友选择及生产搜索／执行。原版多玩家通常把 `AfterSideTurnStart` 对全体参与者派发一次，当前模拟的玩家准备续接仍逐人调用；复杂监听器的调用顺序须在对应机制差分后收口。生产入口仍保留多人门禁，不能据此标为 P1 完成。成功实例由启动器报告清理，本地部署未做。
 
 ### 0.6 P2 首个通用机制批次（2026-09-28）
 

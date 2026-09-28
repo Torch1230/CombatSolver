@@ -39,12 +39,15 @@ internal static class MonsterMoveSemantics
             foreach (ForecastAttackHit hit in move.AttackHits)
             {
                 int baseDamage = combat.AdjustMonsterMoveDamage(move.Owner, move.Move.Id, hit.BaseDamage);
-                IReadOnlyList<DamageResult> results = DamagePlayer(
-                    simulator,
-                    combat,
-                    move.Owner,
-                    player,
-                    baseDamage);
+                List<DamageResult> results = [];
+                foreach (var member in combat.Players)
+                {
+                    if (simulator.State.GetCreature(member.Creature).IsAlive)
+                        results.AddRange(DamagePlayer(simulator, combat, move.Owner,
+                            member.Creature, baseDamage));
+                    if (simulator.HasPendingChoice)
+                        return simulatedPlayer.IsDead;
+                }
                 if (simulator.HasPendingChoice)
                     return simulatedPlayer.IsDead;
                 simulator.AddAttackContextHit(attackContext!, results);
@@ -60,7 +63,7 @@ internal static class MonsterMoveSemantics
                     processedEnemyDeaths);
                 if (simulator.HasPendingChoice)
                     return simulatedPlayer.IsDead;
-                if (simulatedPlayer.IsDead)
+                if (combat.Players.All(member => simulator.State.GetCreature(member.Creature).IsDead))
                 {
                     playerDied = true;
                     break;

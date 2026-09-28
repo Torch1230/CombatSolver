@@ -32,6 +32,7 @@ internal sealed partial class UnattendedTestRunner
         public int ContentExtraDrawCardsPerPlayer { get; init; }
         public int ContentActorBlock { get; init; }
         public int ContentTargetBlock { get; init; }
+        public bool VerifyContentRound { get; init; }
         public bool IsVirtual => Mode == "virtual";
         public int PeerCount => IsVirtual ? 1 : PlayerCount;
 

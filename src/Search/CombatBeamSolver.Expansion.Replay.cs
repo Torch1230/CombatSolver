@@ -1137,12 +1137,15 @@ internal sealed partial class CombatBeamSolver
                         performedMoves[actingEnemy] = move.Move;
                         if (forcedMove == "EXPLODE_MOVE")
                         {
-                            MonsterMoveSemantics.DamagePlayer(
-                                simulator,
-                                simulatedCombat,
-                                move.Owner,
-                                _player.Creature,
-                                forcedDamage);
+                            foreach (Player member in simulatedCombat.Players)
+                            {
+                                if (simulator.State.GetCreature(member.Creature).IsAlive)
+                                    MonsterMoveSemantics.DamagePlayer(
+                                        simulator, simulatedCombat, move.Owner,
+                                        member.Creature, forcedDamage);
+                                if (simulatedCombat.HasPendingChoice)
+                                    return SearchBoundaryReason.PendingChoice;
+                            }
                             if (simulatedCombat.HasPendingChoice)
                                 return SearchBoundaryReason.PendingChoice;
                             using (simulator.PushDamageSource(
