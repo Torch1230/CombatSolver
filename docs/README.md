@@ -1,5 +1,7 @@
 # CombatSolver 文档导航
 
+- [完整协调器的排序失误诊断](strategy/coordinator-ranking-diagnosis-20260928.md)：定位稳定丢胜例的第二回合前缀，四个模型保路成员未保留；定向记录未触顶，路线/工作量无诊断漂移。
+
 - [模型特征索引优化](strategy/compiled-outcome-features-20260928.md)：固定v71权重，五场20次路线一致，耗时降低4.0%、累计分配降低32.3%，RSS基本持平；质量门槛仍未通过。
 
 - [100场固定配对开发评测](strategy/paired-development-benchmark-20260928.md)：冻结v71，100场/400次完成；核心指标12改善/74一致/14退化，整体慢14.6%；55个普通战配置封存。

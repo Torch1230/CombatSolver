@@ -15,20 +15,26 @@ internal sealed class OrderingObservations : IDisposable
     private readonly int _limit;
     private int _written;
     private readonly HashSet<StateFingerprint> _watched;
+    private readonly bool _watchedOnly;
+    private readonly Dictionary<Guid, int> _solverRecords = [];
     private readonly object _writeLock = new();
     public SearchPathObserver Observer { get; }
 
-    public OrderingObservations(string directory, int limit, string? watchedStatesPath = null)
+    public OrderingObservations(string directory, int limit, string? watchedStatesPath = null, bool watchedOnly = false)
     {
+        if (limit is < 1 or > 100000) throw new ArgumentOutOfRangeException(nameof(limit));
         _limit = limit;
+        _watchedOnly = watchedOnly;
         _watched = watchedStatesPath == null ? []
             : new(JsonSerializer.Deserialize<StateFingerprint[]>(File.ReadAllText(watchedStatesPath), Json)
                 ?? throw new InvalidDataException("Missing watched ordering states."));
+        if (watchedOnly && _watched.Count == 0)
+            throw new InvalidDataException("Focused ordering observation requires watched states.");
         _writer = new StreamWriter(new FileStream(Path.Combine(directory, "ordering-observations.jsonl"),
             FileMode.CreateNew, FileAccess.Write, FileShare.Read));
         Observer = new SearchPathObserver(
             state => Volatile.Read(ref _written) < _limit && _watched.Contains(state), Observe,
-            _ => Volatile.Read(ref _written) < _limit);
+            state => Volatile.Read(ref _written) < _limit && (!_watchedOnly || _watched.Contains(state)));
     }
 
     private void Observe(SearchPathObservation observation)
@@ -49,11 +55,16 @@ internal sealed class OrderingObservations : IDisposable
                 prefix = Convert.ToHexString(prefix.GetCurrentHash()), observation,
             }, Json));
             _written++;
+            _solverRecords[observation.SolverId] = _solverRecords.GetValueOrDefault(observation.SolverId) + 1;
         }
     }
 
     public void WriteSelectedPath(string directory, SolverResult result)
     {
+        File.WriteAllText(Path.Combine(directory, "ordering-observation-summary.json"),
+            JsonSerializer.Serialize(new { limit = _limit, written = _written,
+                limitReached = _written >= _limit, watchedOnly = _watchedOnly,
+                watchedStates = _watched.Count, solverRecords = _solverRecords }, Json));
         // Match executable prefixes, including all card state/choice/target fields and
         // root choices. Presentation-only relic annotations can be added by final replay.
         // Matching is scoped to the same root; these are witnesses, never optimal labels.

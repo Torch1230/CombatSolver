@@ -400,6 +400,7 @@ internal sealed record HarnessOptions
           --signal-ballast-mb <int>  进 No-GC scope 后先持有 N MiB 活对象，制造回收腾不出余量的压力
           --observe-ordering <N> 最多导出 N 个真实剪枝候选；仅供采集，不能用于性能数据
           --observe-ordering-states <p>  追加观察给定状态键的生成/准入/回合筛选事件
+          --observe-ordering-states-only  只展开包含指定状态的保路池；仍记录池内竞争候选
           --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
           --outcome-probes <n>  离线实验：0..16 个首动作续搜，共享请求额度，无训练
           --selective-outcome-probes  实验：完整基线、复用已有终局见证、选择性探测
@@ -469,6 +470,7 @@ internal sealed record HarnessOptions
     public int SignalBallastMegabytes { get; init; }
     public int OrderingObservationLimit { get; init; }
     public string? OrderingWatchedStatesPath { get; init; }
+    public bool OrderingWatchedStatesOnly { get; init; }
     public string Ordering { get; init; } = "baseline";
     public int OutcomeProbes { get; init; }
     public bool SelectiveOutcomeProbes { get; init; }
@@ -502,6 +504,7 @@ internal sealed record HarnessOptions
         double noGcRegionBudgetGigabytes = 1d;
         int orderingObservationLimit = 0;
         string? orderingWatchedStatesPath = null;
+        bool orderingWatchedStatesOnly = false;
         string ordering = "baseline";
         int outcomeProbes = 0;
         bool selectiveOutcomeProbes = false;
@@ -582,6 +585,7 @@ internal sealed record HarnessOptions
                 case "--signal-ballast-mb": signalBallastMegabytes = int.Parse(Value()); break;
                 case "--observe-ordering": orderingObservationLimit = int.Parse(Value()); break;
                 case "--observe-ordering-states": orderingWatchedStatesPath = Path.GetFullPath(Value()); break;
+                case "--observe-ordering-states-only": orderingWatchedStatesOnly = true; break;
                 case "--ordering": ordering = Value(); break;
                 case "--outcome-probes": outcomeProbes = int.Parse(Value()); break;
                 case "--selective-outcome-probes": selectiveOutcomeProbes = true; break;
@@ -637,10 +641,14 @@ internal sealed record HarnessOptions
             throw new ArgumentException("Coordinator 续搜实验需要 --selective-outcome-probes --potion-policy Disabled。");
         if (selectiveOutcomeProbes && outcomeProbes == 0)
             throw new ArgumentException("--selective-outcome-probes 需要 --outcome-probes N。");
-        if (orderingObservationLimit is < 0 or > 100000 || orderingObservationLimit > 0 && searchMode != "Evaluate")
-            throw new ArgumentException("--observe-ordering 仅支持 Evaluate，范围 0..100000。");
+        if (orderingObservationLimit is < 0 or > 100000)
+            throw new ArgumentException("--observe-ordering 范围为 0..100000。");
+        if (orderingObservationLimit > 0 && searchMode == "Coordinator" && (dop != 1 || potionPolicy != "Disabled"))
+            throw new ArgumentException("Coordinator 路径观察需要 --dop 1 --potion-policy Disabled。");
         if (orderingWatchedStatesPath != null && orderingObservationLimit == 0)
             throw new ArgumentException("--observe-ordering-states 需要有限的 --observe-ordering。");
+        if (orderingWatchedStatesOnly && orderingWatchedStatesPath == null)
+            throw new ArgumentException("--observe-ordering-states-only 需要显式状态列表。");
         if (ordering is not ("baseline" or "base" or "band") || ordering != "baseline" && searchMode != "Evaluate")
             throw new ArgumentException("--ordering 只接受 baseline|base|band，非基线仅支持 Evaluate。");
         if (rankingModelPath != null && ordering != "baseline")
@@ -739,6 +747,7 @@ internal sealed record HarnessOptions
             SignalBallastMegabytes = signalBallastMegabytes,
             OrderingObservationLimit = orderingObservationLimit,
             OrderingWatchedStatesPath = orderingWatchedStatesPath,
+            OrderingWatchedStatesOnly = orderingWatchedStatesOnly,
             Ordering = ordering,
             OutcomeProbes = outcomeProbes,
             SelectiveOutcomeProbes = selectiveOutcomeProbes,

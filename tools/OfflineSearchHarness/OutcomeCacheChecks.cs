@@ -73,6 +73,37 @@ internal static class OutcomeCacheChecks
         Require(HarnessOptions.Parse(["--search-mode", "Coordinator", "--outcome-probes", "4",
             "--selective-outcome-probes", "--potion-policy", "Disabled"]).SelectiveOutcomeProbes,
             "disabled-potion coordinator experiment is accepted");
+        Require(HarnessOptions.Parse(["--search-mode", "Coordinator", "--dop", "1",
+            "--potion-policy", "Disabled", "--observe-ordering", "4000"]).OrderingObservationLimit == 4000,
+            "bounded serial coordinator observation is accepted");
+        foreach (string[] invalid in new[]
+        {
+            new[] { "--search-mode", "Coordinator", "--observe-ordering", "4000" },
+            new[] { "--search-mode", "Coordinator", "--dop", "2", "--potion-policy", "Disabled", "--observe-ordering", "4000" },
+            new[] { "--observe-ordering", "100001" },
+            new[] { "--observe-ordering", "10", "--observe-ordering-states-only" },
+        })
+        {
+            bool rejected = false;
+            try { HarnessOptions.Parse(invalid); }
+            catch (ArgumentException) { rejected = true; }
+            Require(rejected, "coordinator observation preserves its policy and resource bounds");
+        }
+        string orderingChecks = Path.Combine(Path.GetTempPath(), "ordering-contract-" + Guid.NewGuid());
+        Directory.CreateDirectory(orderingChecks);
+        try
+        {
+            string watchedFile = Path.Combine(orderingChecks, "states.json");
+            StateFingerprint watchedKey = new(1, 2), absentKey = new(3, 4);
+            File.WriteAllText(watchedFile, System.Text.Json.JsonSerializer.Serialize(new[] { watchedKey }));
+            using var observations = new OrderingObservations(orderingChecks, 4, watchedFile, watchedOnly: true);
+            Require(observations.Observer.WantsState(watchedKey) && !observations.Observer.WantsState(absentKey),
+                "focused observations preserve exact watched-state membership");
+            Require(observations.Observer.WantsRetentionPool(watchedKey)
+                && !observations.Observer.WantsRetentionPool(absentKey),
+                "focused diagnostics copy only pools containing the watched state");
+        }
+        finally { Directory.Delete(orderingChecks, recursive: true); }
         RootOutcomeCache bounded = new();
         for (int i = 0; i < RootOutcomeCache.MaximumEvents + 10; i++)
             bounded.Observe(witness with { FirstAction = action with { CardOccurrence = i } });

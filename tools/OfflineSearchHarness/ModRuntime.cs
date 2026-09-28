@@ -430,7 +430,7 @@ internal static class ModRuntime
         }
         using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0
             ? new OrderingObservations(options.OutputDirectory, options.OrderingObservationLimit,
-                options.OrderingWatchedStatesPath) : null;
+                options.OrderingWatchedStatesPath, options.OrderingWatchedStatesOnly) : null;
         if (orderingObservations != null)
             policy = policy with { Diagnostics = new SearchDiagnosticsSink(
                 policy.Diagnostics.Info, policy.Diagnostics.Debug, orderingObservations.Observer) };

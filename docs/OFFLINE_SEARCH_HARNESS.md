@@ -205,7 +205,7 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 `--objective-search --outcome-value-model <模型JSON> --search-mode Coordinator --potion-policy Disabled --dop 1` 仅用于替代排序实验，内部共用自动协调器；CLI不叠加自动搜索或旧组合参数。它未通过默认替代验收，Runtime不会启用。笔尖计数8夹具可以追加 `--verify-outcome-context`，验证实机后续变化隔离、Fork独立及分支费用/计数可见性。具体输入、失败回归、内存和泛化限制见[报告](strategy/contextual-outcome-values-20260927.md)。
 
-`--check-outcome-ranking` 运行44项纯标签/拟合/加载/多策略分组及线性外推/单位变换合同；`--verify-outcome-context` 另验证选择列数值投影与复用清理。替代排序也允许 `--search-mode Evaluate --observe-ordering <上限>` 做首次裁剪诊断；该数据不能作性能基准。训练/测试须先以 `tools/OutcomeValuation/dataset.py` 检查模板、实际遭遇和牌组隔离，不能只换种子。见[成对排序报告](strategy/pairwise-outcome-ranking-20260927.md)。
+`--check-outcome-ranking` 运行标签/拟合/加载/多策略分组及线性外推/单位变换合同；`--verify-outcome-context` 另验证选择列数值投影与复用清理。`--observe-ordering <上限>`可用于Evaluate或Coordinator；后者要求`--dop 1 --potion-policy Disabled`。上限为1..100000，0关闭。`--observe-ordering-states <状态键数组JSON> --observe-ordering-states-only`只展开包含目标状态的保路池，同时保留池内竞争者及目标的生成/准入/最终保留/展开事件。`ordering-observation-summary.json`记录写入数、触顶状态和各SolverId计数；触顶不能当作完整覆盖，诊断数据不能作性能基准。见[协调器前缀诊断](strategy/coordinator-ranking-diagnosis-20260928.md)。训练/测试须先以`tools/OutcomeValuation/dataset.py`检查模板、实际遭遇和牌组隔离，不能只换种子。见[成对排序报告](strategy/pairwise-outcome-ranking-20260927.md)。
 
 训练与重拟合必须重复提供 `--evaluation-manifest <验证清单> --evaluation-manifest <封存测试清单>`，执行三组两两结构隔离。最终评测额外提供 `--validation-manifest <开发验证清单>`；检查装备资料不等于运行测试，最终搜索使用记录仍单独冻结。共用保路实验的 `selectedPrimaryIncumbentUpdates` / `selectedPrimaryIncumbentBranchesPruned` 位于 `harness-result.json` 的 `search.solverMetrics`，仅代表所选 solver，不能当成全协调器总量。
 
