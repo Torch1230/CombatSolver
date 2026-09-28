@@ -155,4 +155,4 @@ dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --
 
 固定配对报告同时保留完整终局分类与 `coreClassification`（C#原比较器仅排除结束回合及旧Score）。旧比较缺少 `coreComparison` 时核心分类为未验证，不猜测。总表、角色/战斗类型、共同胜/败、质量不下降及稳定获胜子集的时间/内存分别输出；重复搜索不是新的独立场景。两种描述性区间均按遭遇家族重抽样，不能解释为全部真实牌组的总体保证。
 
-`root_histogram.py`是尚未接入完整拟合器的单树原型，在选择分裂时检查根参与度；八项小型合成合同通过。真实大图适用性及资源占用尚未测，见[边界与证据](../../docs/strategy/root-supported-splits-20260928.md)。
+`root_histogram.py`是尚未接入完整拟合器的单树原型，在选择分裂时检查根参与度；十项小型合成合同通过。真实大图适用性及资源占用尚未测，见[边界与证据](../../docs/strategy/root-supported-splits-20260928.md)。

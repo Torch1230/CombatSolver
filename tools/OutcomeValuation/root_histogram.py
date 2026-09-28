@@ -1,6 +1,6 @@
 """Prototype: enforce root participation while selecting histogram splits.
 
-Not connected to a full fitter. At most 192 explicitly selected columns and
+Not connected to a full fitter. At most 256 explicitly selected columns and
 32 quantile cuts per column; contextual products also retain both zero cuts.
 No new labels, root inference, runtime features or utility scores are created.
 """
@@ -9,6 +9,29 @@ import math
 import numpy as np
 
 from root_support import prune_tree, root_participation
+
+
+def contextual_columns(names, signals, products):
+    """Include every exported active-power observation, not only prefix winners.
+
+    This chooses available raw columns, never assigns a power value. Products
+    keep their expanded-matrix indices. Exceeding the explicit capacity fails;
+    no role or ability is silently dropped to fit the cap.
+    """
+    if (not names or len(set(names)) != len(names)
+            or any(not isinstance(n, str) or not n.strip() for n in names)
+            or len(set(signals)) != len(signals) or not set(signals) <= set(names)
+            or len(products) > 64 or len(set(products)) != len(products)
+            or any(type(g) is not int or type(s) is not int or not 0 <= g < len(names)
+                   or not 0 <= s < len(names) or g == s for g, s in products)):
+        raise ValueError('Invalid contextual column selection')
+    lookup = {name: index for index, name in enumerate(names)}
+    columns = ({lookup[n] for n in signals} | {g for g, _ in products}
+               | {i for i, n in enumerate(names) if n.startswith('power/')}
+               | set(range(len(names), len(names) + len(products))))
+    if not 1 <= len(columns) <= 256:
+        raise ValueError('Contextual column capacity exceeded or no observations selected')
+    return sorted(columns)
 
 
 def supported_columns(root_hessian, minimum=3):
@@ -37,7 +60,7 @@ class RootHistogram:
     def __init__(self, matrix, columns, *, products=(), check_deadline=lambda: None):
         self.matrix = np.asarray(matrix, dtype=np.float32)
         if (self.matrix.ndim != 2 or not len(self.matrix) or not np.isfinite(self.matrix).all()
-                or not 1 <= len(columns) <= 192 or len(set(columns)) != len(columns)
+                or not 1 <= len(columns) <= 256 or len(set(columns)) != len(columns)
                 or any(type(i) is not int or not 0 <= i < self.matrix.shape[1] for i in columns)
                 or len(set(products)) != len(products) or not set(products) <= set(columns)):
             raise ValueError('Invalid bounded histogram observations or columns')

@@ -3,7 +3,7 @@ import unittest
 
 try:
     import numpy as np
-    from root_histogram import RootHistogram, supported_columns
+    from root_histogram import RootHistogram, contextual_columns, supported_columns
     from root_support import root_participation
     from root_context_round import leaf_values
     from ranking_data import EDGE_DTYPE, derivatives, loss
@@ -99,6 +99,27 @@ class RootHistogramChecks(unittest.TestCase):
             histogram.fit(np.arange(6), np.ones(6), np.ones(6), check_deadline=expired)
         with self.assertRaises(ValueError):
             histogram.fit(np.arange(6), np.ones(6), -np.ones(6))
+
+    def test_contextual_columns_include_unused_powers_and_preserve_product_indices(self):
+        names = ['player/hp', 'power/player/UNUSED_A', 'relic/SYNTHETIC/present',
+                 'pile/hand/type/Attack/count', 'power/enemy/0/UNUSED_B',
+                 'power/osty/UNUSED_C', 'unused/other']
+        actual = contextual_columns(names, ['player/hp', 'pile/hand/type/Attack/count'], [(2, 3)])
+        self.assertEqual(actual, [0, 1, 2, 3, 4, 5, 7])
+        with self.assertRaises(ValueError):
+            contextual_columns(names, ['unknown'], [(2, 3)])
+        with self.assertRaises(ValueError):
+            contextual_columns(names, ['player/hp'], [(2, 3), (2, 3)])
+
+    def test_column_capacity_never_silently_truncates_available_powers(self):
+        names = [f'power/player/P{i}' for i in range(257)]
+        self.assertEqual(len(contextual_columns(names[:256], [], [])), 256)
+        with self.assertRaises(ValueError):
+            contextual_columns(names, [], [])
+        accepted = RootHistogram(np.ones((6, 256)), list(range(256)))
+        self.assertEqual(accepted.bins.nbytes, 6 * 256)
+        with self.assertRaises(ValueError):
+            RootHistogram(np.ones((6, 257)), list(range(257)))
 
     def test_best_root_split_matches_direct_row_enumeration(self):
         rng = np.random.default_rng(1409)

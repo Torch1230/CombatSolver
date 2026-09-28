@@ -3,8 +3,8 @@
   "sourceBase": "d6e2d443",
   "stage": "synthetic-contracts-passed-real-applicability-pending",
   "sourceHashes": {
-    "tools/OutcomeValuation/root_histogram.py": "2430e4408dfa5e9414b89cb0b62910eee51d366349df9d98d443c5c9531826de",
-    "tools/OutcomeValuation/test_root_histogram.py": "dad67749a0216078c67df2ad1967ce652fd1cb2880f67ffdcb180733cc9f0c35"
+    "tools/OutcomeValuation/root_histogram.py": "04c22d12a0990872d3eca18f238048a3ee587ad287111b6f6e8e7210ff8feae4",
+    "tools/OutcomeValuation/test_root_histogram.py": "6facde6dfb25e96c295dcfa5fd9963ed993f4749d09f369dbb9736494d5f4bda"
   },
   "contracts": {
     "returnCode": 0,
@@ -31,7 +31,7 @@
     "stderr": "test_conditional_reversal_learns_with_supported_growing_splits (test_root_histogram.RootHistogramChecks.test_conditional_reversal_learns_with_supported_growing_splits) ... ok\ntest_constant_observations_and_duplicate_rows_do_not_invent_support (test_root_histogram.RootHistogramChecks.test_constant_observations_and_duplicate_rows_do_not_invent_support) ... ok\ntest_invalid_data_or_deadline_fails_explicitly (test_root_histogram.RootHistogramChecks.test_invalid_data_or_deadline_fails_explicitly) ... ok\ntest_unsupported_best_split_does_not_hide_supported_alternative (test_root_histogram.RootHistogramChecks.test_unsupported_best_split_does_not_hide_supported_alternative) ... ok\ntest_vector_support_matches_exact_roots_across_scales (test_root_histogram.RootHistogramChecks.test_vector_support_matches_exact_roots_across_scales) ... ok\ntest_zero_cuts_and_float32_boundaries_have_identical_masks (test_root_histogram.RootHistogramChecks.test_zero_cuts_and_float32_boundaries_have_identical_masks) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.046s\n\nOK\n",
     "scope": "Six tiny histogram contracts on CPU0 while v85 benchmark uses CPUs12-15. No real-data training, new complete candidate, or combat. Maximum synthetic matrix20 columns /12 observations."
   },
-  "contractsPassed": 8,
+  "contractsPassed": 10,
   "completeFitterConnected": false,
   "newFullCandidateRetained": false,
   "newRealDataTrainingRuns": 0,
@@ -43,9 +43,9 @@
     "owner": "Root",
     "mustFinishAndReapBeforeHeavyValidation": true
   },
-  "next": "After the full v85 100/400 pipeline is completed and reaped, assess one bounded real-data supported-tree fit per head at the saved48-tree prefix. No complete candidate until actual support, numerical and resource feasibility are checked.",
+  "next": "After full v85 100/400 and actual process reaping, compare original prefix signal pool and all exported raw power observations in one supported-tree fit per role and pool (10 fits). No complete model or battle conclusion from this audit.",
   "limits": {
-    "maximumColumns": 192,
+    "maximumColumns": 256,
     "quantileCutsPerColumn": 32,
     "extraProductCuts": [
       "strictly-negative",
@@ -58,7 +58,7 @@
   },
   "limitations": [
     "Training root participation is not statistical independence.",
-    "Columns must be explicitly chosen from training observations; at most192.",
+    "Columns must be explicitly chosen from training observations; at most256.",
     "Quantile cuts are a bounded subset of thresholds.",
     "Actual runtime and memory on full graphs are unmeasured.",
     "No claim of battle quality or learned real relic interactions."
@@ -85,5 +85,30 @@
     "stdout": "",
     "stderr": "test_best_root_split_matches_direct_row_enumeration (test_root_histogram.RootHistogramChecks.test_best_root_split_matches_direct_row_enumeration) ... ok\ntest_selected_column_indices_compile_back_to_original_observations (test_root_histogram.RootHistogramChecks.test_selected_column_indices_compile_back_to_original_observations) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.029s\n\nOK\n",
     "scope": "Two new tiny CPU0 contracts only, prior six successes reused; largest observation matrix48x3. v85 benchmark CPUs12-15 continues."
-  }
+  },
+  "additionalPowerColumnContracts": {
+    "returnCode": 0,
+    "seconds": 0.07986341998912394,
+    "peakRssBytes": 40144896,
+    "command": [
+      "taskset",
+      "-c",
+      "0",
+      "env",
+      "OPENBLAS_NUM_THREADS=1",
+      "OMP_NUM_THREADS=1",
+      "PYTHONPATH=tools/OutcomeValuation",
+      ".local/objective-search/xgboost-env/bin/python",
+      "-m",
+      "unittest",
+      "test_root_histogram.RootHistogramChecks.test_contextual_columns_include_unused_powers_and_preserve_product_indices",
+      "test_root_histogram.RootHistogramChecks.test_column_capacity_never_silently_truncates_available_powers",
+      "-v"
+    ],
+    "stdout": "",
+    "stderr": "test_contextual_columns_include_unused_powers_and_preserve_product_indices (test_root_histogram.RootHistogramChecks.test_contextual_columns_include_unused_powers_and_preserve_product_indices) ... ok\ntest_column_capacity_never_silently_truncates_available_powers (test_root_histogram.RootHistogramChecks.test_column_capacity_never_silently_truncates_available_powers) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.011s\n\nOK\n",
+    "scope": "Two new CPU0 column selection/capacity contracts only. Previous eight unaffected successes reused. Largest synthetic matrix6x257, no real training or combat."
+  },
+  "realAuditSingleTreeFitsPlanned": 10,
+  "columnPoolAmendmentBeforeAnyRealAuditResults": true
 }

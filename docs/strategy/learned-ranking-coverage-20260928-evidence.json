@@ -1,0 +1,491 @@
+{
+  "scope": "Static inference-feature use in v85 plus first-repeat descriptive choice counters in all16 v84 core regressions. No causal attribution, new model, training labels or final-test access.",
+  "sourceCommit": "c9acd3e2",
+  "modelSha256": "bc41794612df7318ba0d5eb19aed6b5955ca8598cbb644a19bada8ef4f800656",
+  "summarySha256": "5aca5ae66b289b1fd4052149d85b7497a7d04e07ecb6fcc03473aa59b35a1b6e",
+  "heads": [
+    {
+      "character": "DEFECT",
+      "eligibleColumns": 3092,
+      "usedColumns": 83,
+      "groups": {
+        "playerPowers": {
+          "eligibleColumns": 41,
+          "usedColumns": 1,
+          "usedNames": [
+            "power/player/BUFFER_POWER"
+          ]
+        },
+        "petPowers": {
+          "eligibleColumns": 0,
+          "usedColumns": 0
+        },
+        "enemyPowers": {
+          "eligibleColumns": 30,
+          "usedColumns": 3
+        },
+        "relics": {
+          "eligibleColumns": 106,
+          "usedColumns": 0,
+          "usedNames": []
+        },
+        "handCardIdentity": {
+          "eligibleColumns": 615,
+          "usedColumns": 5
+        },
+        "handCardAggregate": {
+          "eligibleColumns": 93,
+          "usedColumns": 7
+        },
+        "drawOrder": {
+          "eligibleColumns": 1003,
+          "usedColumns": 15
+        }
+      },
+      "eligibleExplicitCardIds": 120,
+      "usedExplicitCardIds": 12
+    },
+    {
+      "character": "IRONCLAD",
+      "eligibleColumns": 3026,
+      "usedColumns": 74,
+      "groups": {
+        "playerPowers": {
+          "eligibleColumns": 36,
+          "usedColumns": 3,
+          "usedNames": [
+            "power/player/AGGRESSION_POWER",
+            "power/player/STAMPEDE_POWER",
+            "power/player/STRENGTH_POWER"
+          ]
+        },
+        "petPowers": {
+          "eligibleColumns": 0,
+          "usedColumns": 0
+        },
+        "enemyPowers": {
+          "eligibleColumns": 26,
+          "usedColumns": 3
+        },
+        "relics": {
+          "eligibleColumns": 104,
+          "usedColumns": 0,
+          "usedNames": []
+        },
+        "handCardIdentity": {
+          "eligibleColumns": 558,
+          "usedColumns": 5
+        },
+        "handCardAggregate": {
+          "eligibleColumns": 85,
+          "usedColumns": 6
+        },
+        "drawOrder": {
+          "eligibleColumns": 941,
+          "usedColumns": 7
+        }
+      },
+      "eligibleExplicitCardIds": 107,
+      "usedExplicitCardIds": 9
+    },
+    {
+      "character": "NECROBINDER",
+      "eligibleColumns": 2925,
+      "usedColumns": 82,
+      "groups": {
+        "playerPowers": {
+          "eligibleColumns": 37,
+          "usedColumns": 0,
+          "usedNames": []
+        },
+        "petPowers": {
+          "eligibleColumns": 1,
+          "usedColumns": 0
+        },
+        "enemyPowers": {
+          "eligibleColumns": 45,
+          "usedColumns": 5
+        },
+        "relics": {
+          "eligibleColumns": 85,
+          "usedColumns": 0,
+          "usedNames": []
+        },
+        "handCardIdentity": {
+          "eligibleColumns": 576,
+          "usedColumns": 5
+        },
+        "handCardAggregate": {
+          "eligibleColumns": 97,
+          "usedColumns": 8
+        },
+        "drawOrder": {
+          "eligibleColumns": 913,
+          "usedColumns": 14
+        }
+      },
+      "eligibleExplicitCardIds": 108,
+      "usedExplicitCardIds": 11
+    },
+    {
+      "character": "REGENT",
+      "eligibleColumns": 3557,
+      "usedColumns": 73,
+      "groups": {
+        "playerPowers": {
+          "eligibleColumns": 42,
+          "usedColumns": 3,
+          "usedNames": [
+            "power/player/ARSENAL_POWER",
+            "power/player/PARRY_POWER",
+            "power/player/STRENGTH_POWER"
+          ]
+        },
+        "petPowers": {
+          "eligibleColumns": 0,
+          "usedColumns": 0
+        },
+        "enemyPowers": {
+          "eligibleColumns": 47,
+          "usedColumns": 2
+        },
+        "relics": {
+          "eligibleColumns": 139,
+          "usedColumns": 2,
+          "usedNames": [
+            "relic/LETTER_OPENER/state/19AB43037F4C1026C35EE08CF053D90D",
+            "relic/NUNCHAKU/state/E95E92B3DA21DC9242FEE95557000F11"
+          ]
+        },
+        "handCardIdentity": {
+          "eligibleColumns": 737,
+          "usedColumns": 6
+        },
+        "handCardAggregate": {
+          "eligibleColumns": 102,
+          "usedColumns": 8
+        },
+        "drawOrder": {
+          "eligibleColumns": 1088,
+          "usedColumns": 10
+        }
+      },
+      "eligibleExplicitCardIds": 139,
+      "usedExplicitCardIds": 12
+    },
+    {
+      "character": "SILENT",
+      "eligibleColumns": 2724,
+      "usedColumns": 75,
+      "groups": {
+        "playerPowers": {
+          "eligibleColumns": 41,
+          "usedColumns": 4,
+          "usedNames": [
+            "power/player/ACCELERANT_POWER",
+            "power/player/AFTERIMAGE_POWER",
+            "power/player/FAN_OF_KNIVES_POWER",
+            "power/player/SERPENT_FORM_POWER"
+          ]
+        },
+        "petPowers": {
+          "eligibleColumns": 0,
+          "usedColumns": 0
+        },
+        "enemyPowers": {
+          "eligibleColumns": 44,
+          "usedColumns": 6
+        },
+        "relics": {
+          "eligibleColumns": 122,
+          "usedColumns": 0,
+          "usedNames": []
+        },
+        "handCardIdentity": {
+          "eligibleColumns": 536,
+          "usedColumns": 5
+        },
+        "handCardAggregate": {
+          "eligibleColumns": 88,
+          "usedColumns": 10
+        },
+        "drawOrder": {
+          "eligibleColumns": 898,
+          "usedColumns": 8
+        }
+      },
+      "eligibleExplicitCardIds": 104,
+      "usedExplicitCardIds": 12
+    }
+  ],
+  "v84RegressionFirstRepeatChoiceCounters": [
+    {
+      "id": "v72-validation-01-ironclad-byrdonis_elite",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 34846,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 35896,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-01-regent-knights_elite",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 2117,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 2412,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-02-silent-vantom_boss",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 3419,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 4117,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-03-ironclad-slithering_strangler_normal",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 47069,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 43502,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-10-silent-decimillipede_elite",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 8112,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 1
+      },
+      "candidate": {
+        "totalChoiceBranches": 14249,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 2
+      }
+    },
+    {
+      "id": "v72-validation-11-defect-the_kin_boss",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 0,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 0,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-11-silent-the_insatiable_boss",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 22671,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 20578,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-13-regent-decimillipede_elite",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 54347,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 1
+      },
+      "candidate": {
+        "totalChoiceBranches": 55913,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 1
+      }
+    },
+    {
+      "id": "v72-validation-13-silent-knights_elite",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 20491,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 1
+      },
+      "candidate": {
+        "totalChoiceBranches": 24655,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 2
+      }
+    },
+    {
+      "id": "v72-validation-14-defect-vantom_boss",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 2196,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 2750,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-15-ironclad-slimes_normal",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 0,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 0,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-16-regent-knights_elite",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 5769,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 5206,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-17-defect-kaiser_crab_boss",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 2429,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 2618,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-17-ironclad-knowledge_demon_boss",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 8256,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 8062,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-19-ironclad-decimillipede_elite",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 7666,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 9421,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    },
+    {
+      "id": "v72-validation-19-necrobinder-knights_elite",
+      "replicate": 0,
+      "baseline": {
+        "totalChoiceBranches": 4946,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      },
+      "candidate": {
+        "totalChoiceBranches": 4212,
+        "replayBudgetExhaustions": 0,
+        "selectedActionsWithMultipleCards": 0
+      }
+    }
+  ],
+  "regressionsWithoutChoiceBranchesInEitherArm": 2,
+  "regressionsWithSelectedMultiCardActionsInEitherArm": 3,
+  "newTrainingRuns": 0,
+  "newCombatSearches": 0,
+  "finalTestOpened": false,
+  "limitations": [
+    "Unused identity features can still have effects through shared generic observations and simulated future states.",
+    "Eligible columns only cover input features that passed training export selection, not every game card or power.",
+    "Choice branch counts do not reveal whether a specific omitted alternative could win.",
+    "Snapshot score is zero on learned path, but auxiliary heuristic retention values remain."
+  ],
+  "runnerSha256": "413a20b52fa3f85e105965fbf5dca80178d09bdf854ca1b8518d896b2cd97fc5",
+  "candidateColumnPools": [
+    {
+      "character": "DEFECT",
+      "originalColumns": 145,
+      "withAllPowers": 215
+    },
+    {
+      "character": "IRONCLAD",
+      "originalColumns": 151,
+      "withAllPowers": 210
+    },
+    {
+      "character": "NECROBINDER",
+      "originalColumns": 150,
+      "withAllPowers": 231
+    },
+    {
+      "character": "REGENT",
+      "originalColumns": 152,
+      "withAllPowers": 239
+    },
+    {
+      "character": "SILENT",
+      "originalColumns": 148,
+      "withAllPowers": 231
+    }
+  ],
+  "remainingHeuristicSites": [
+    "src/Search/CombatBeamSolver.StateEvaluation.cs: retained hand/future resource/persistent effect estimates remain snapshot fields even though learned snapshot.Score is zero",
+    "src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs: auxiliary retention and Pareto consume these fields",
+    "src/Search/CardChoiceSupport.cs: learned BuildObjectiveChoices bypasses heuristic card values but uses bounded combination enumeration"
+  ]
+}
