@@ -51,10 +51,14 @@
 - 抽牌、生成与格挡 Hook 在现有模拟中分别有 `AfterCardDrawnMirrors`（`CacophonyPower`）、`AfterCardGeneratedForCombatMirrors`（`SoulboundPower`）、`AfterBlockGainedMirrors`（`BeaconOfHopePower`）；当前还需核对这些镜像是否以多人状态和同一个 Fork 上下文结算。
 - `BeforeCardPlayedMirrors`、`AfterCardPlayedMirrors` 处理 `ImitationLearningPower`；`AfterDamageGivenMirrors` 处理 `ConcoctPower`、`UnderworldPower`；`ModifyCardPlayCountMirrors` 处理 `TagTeamPower`。对应私有状态、来源和目标仍待多人差分。
 - 现有 `CardDrawCardMirrors` 明确登记 `Constellation`、`HuddleUp`，`CardGenerationCardMirrors` 明确处理 `Largesse`；`CalculatedVarSpecRegistry` 列有 `GangUp`、`Mimic`、`DemonicShield`；`CardResultLocationMirrors` 登记 `TheBall`。其他卡牌可能由通用 spec 或 support 结算，须沿调用链逐项确认唯一入口。
-- `MassiveScroll` 是已识别的多人专用遗物，原版效果与模拟入口待核对。`InterceptPower`／`GuardedPower`、临时力量／敏捷、`FrostOrb`、`Shiv`、`Soul`、`Osty` 和生成池是上表直接依赖，不能只验卡牌主效果。
+- `MassiveScroll` 是已识别的多人专用遗物：`IsAllowed` 要求玩家数大于 1，`AfterObtained` 从角色与无色池的 `MultiplayerOnly` 卡中提供三选一；这是战前牌组来源，战斗中仍需覆盖其产生的牌。`InterceptPower`／`GuardedPower`、临时力量／敏捷、`FrostOrb`、`Shiv`、`Soul`、`Osty` 和生成池是上表直接依赖，不能只验卡牌主效果。
 
 ## 普通内容的多人差异扫描
 
 本机 0.111.0 原版的 Cards／Powers／Relics／Potions／Orbs／Monsters 目录中，对玩家枚举、队友目标、多人约束及 `CombatTargets` 的定向搜索已经列出候选，尚未沿调用链封闭。普通卡至少需核对 `Stoke`、`Splash`、`IAmInvincible`、`HowlFromBeyond`、`Fasten`、`WhiteNoise`、`SovereignBlade`、`Metamorphosis`、`Quasar`、`Jackpot`、`Soul`、`JackOfAllTrades`、`ThrummingHatchet`、`RocketPunch`、`Shiv`、`ManifestAuthority`、`MadScience`、`InfernalBlade`、`Omnislice`、`BundleOfJoy`、`Distraction`、`Discovery`、`BeatDown`、`Abundance`、`BouncingFlask`、`Bombardment`、`Bolas`、`ByrdonisEgg`、`FlakCannon`。这些是待调查名单，不表示每项存在模拟缺口。
 
-对应检索还命中普通遗物、药水、能力、球与怪物；后续盘点必须区分实际多人分支、共享 RNG、只用于展示的引用以及普通单人路径。当前不能宣称原版内容清单已经封闭，也没有任何卡牌的多人 actual/simulated 通过记录。
+药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
+
+Power 目录中直接遍历玩家集合／队友的候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower`、`PlatingPower`、`DoomPower`、`ReattachPower`；球目录有 `FrostOrb`。怪物目录对应候选为 `ToughEgg`、`WaterfallGiant`、`TheObscura`、`KinPriest`、`Ovicopter`、`DecimillipedeSegment`、`Queen`、`TestSubject`、`TwoTailedRat`、`GremlinMerc`、`Parafright`、`KnowledgeDemon`、`LivingShield`、`Fabricator`、`EyeWithTeeth`。这些类型仍须核对实际调用条件与模拟入口；搜索结果没有自动证明其行为不同。
+
+后续盘点必须区分实际多人分支、共享 RNG、只用于展示的引用以及普通单人路径。当前不能宣称原版内容清单已经封闭，也没有任何卡牌的多人 actual/simulated 通过记录。

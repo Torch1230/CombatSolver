@@ -47,6 +47,7 @@
 | 同一原型，虚拟四人 | 同入口，`playerCount=4`，原生一回合 | Passed；`.local/multiplayer-p0/virtual-4-8c7ae052fc30497dac3d70959d98e92f/peer-0/` |
 | 修复本地选牌同步和客户端动作等待后的源码，双进程 ENet | 两个独立 `run-unattended-test.ps1`，`host/client`、`seat=0/1`、共享协调目录及端口；各自 `HeadlessExecutionMode=parallel`、`HeadlessMemoryReservationMiB=1536`、`CleanupInstanceOnExit` | 双端 Passed；`.local/multiplayer-p0/enet-2-31a2877191774eb698d783c71e6e4666/peer-0/`、`peer-1/`；实测 DLL SHA-256 为 `DB2D8910ADC9B9655F9B83CBE98AF167E84520A073D906708110D47915EFCAD2` |
 | 同一 DLL，单人原生建局与首个短搜 | `-ScenarioId MULTIPLAYER-P0-SINGLEPLAYER -PreserveNativeCombatStateForTest -StopAfterInitialSolverResultAssertion -ShortSearchBudgetOverrideMilliseconds 1000 -DeepSearchBudgetOverrideMilliseconds 1000 -ForceShortSearchOnly -CleanupInstanceOnExit` | Passed；`.local/multiplayer-p0/singleplayer-71d7b4fc39ab49db99c30d74f10b9156/` |
+| 双进程最小编排入口 | `pwsh -NoProfile -File tools/run-multiplayer-p0-enet.ps1 -Port 33771`，生成双端输入并调用上述原生请求 | Passed；`.local/multiplayer-p0/enet-2-f51e6160ab0d42e6b4c05a10fa535ead/`；Bash 对应入口 `tools/run-multiplayer-p0-enet.sh` 仅通过 `bash -n`，未运行游戏 |
 
 ENet 初次失败定位为测试 `LocalSelector` 没有发送原版 `SyncLocalChoice`，远端等待弃牌；修复后两端弃牌检查点一致。第二次停在客户端自己请求的动作：原版客户端只发送入队请求，随后执行的是重建动作，原请求对象的 `CompletionTask` 不会完成；测试器现等待原生状态和队列稳定。两次失败是脚手架问题，不作为生产多人功能证据。默认 4096 MiB 预留曾使四人虚拟请求停在主机资源准入；按实测约 1.3 GiB 工作集使用 2048 MiB 预留后通过，场景超时未提高。上述成功实例均由启动器报告删除。
 
@@ -93,6 +94,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 | 人数与身份 | 支持 2～4 人，房主和加入者都能使用；仅决定本地玩家的动作 |
 | 安装要求 | 队友无需安装 CombatSolver；通过原版动作及同步流程操作自己的角色 |
 | 内容覆盖 | 完整适配原版多人卡牌及关联能力、遗物、药水、生成物与普通内容的多人行为 |
+| 药水目标 | 仅把本地玩家持有的玩家目标药水用于自己；不向队友投药。敌人目标药水按原版合法敌人目标使用 |
 | 决策信息 | 策略判断只使用队友的可见信息；精确结算允许捕获必要内部状态，不搜索队友牌序 |
 | 队友假设 | 预测期间队友不再主动出牌或用药；现有能力、被动触发、抽弃牌及回合结算正常推进 |
 | 搜索范围 | 默认 2 回合、3 秒；回合深度与时间预算分别支持玩家自定义 |
@@ -155,7 +157,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 
 精确模拟可使用必要内部快照，策略侧读取受限的队友视图：公开生命、格挡、能力、可见意图及结束状态等。用类型与接口约束信息边界，避免评分函数随意读取队友隐藏手牌、牌序或私有 RNG 信息来优化支援目标。
 
-本地玩家的出牌、药水和本地选牌可形成候选。队友主动动作不形成搜索分支；其已有被动效果与原生回合事件必须继续结算。测试脚本驱动队友只是构造已知动作，不会进入生产搜索。
+本地玩家的出牌、对自己或敌人合法目标用药，以及本地选牌可形成候选；玩家目标药水不枚举队友。队友主动动作不形成搜索分支；其已有被动效果与原生回合事件必须继续结算。测试脚本驱动队友只是构造已知动作，不会进入生产搜索。
 
 队友选择属于外部输入：原版等待队友选择完成时，执行器等待同一原生动作完成任务。模拟能完整实现该效果并接受测试提供的确定选择；生产预测遇到未知且会影响本地后继的选择时，标明边界或条件，不能替队友编造答案。仅与队友后续使用有关的收益可单独估值，不能伪装为精确结算。
 
@@ -293,7 +295,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 
 - 卡牌施加的 Power、对应 Hook、私有计数、跨回合状态和派生生成物。
 - 多人专用遗物及普通遗物的多人行为；已发现的 `MassiveScroll` 纳入盘点，其余以完整目录审计为准。
-- 药水目标、多人生成池、共享随机消耗及可达内容；不能从“没有 MultiplayerOnly 标记”推导无需适配。
+- 本地药水仅用于自己或原版合法敌人目标；核对多人生成池、共享随机消耗及可达内容，不能从“没有 MultiplayerOnly 标记”推导无需适配。
 - 普通牌、怪物和能力中的玩家枚举、攻击目标分配、死亡／复活、额外回合、伙伴及球的多人差异。
 - 卡牌跨玩家转移、所有者变更与引用；例如 `TheBall` 的去向，不能只验伤害数字。
 
@@ -358,7 +360,7 @@ P2 可按机制小批完成并立即验证，不等待全部内容写完才测�
 | 计划编号 | 最小覆盖 |
 |---|---|
 | MP-BOOT | 2／4 人建局、本地玩家不同座位、独立身份与存活状态 |
-| MP-ACTOR | 指定队友原版出牌、药水、选牌和结束；对应动作完成后取证 |
+| MP-ACTOR | 指定队友原版出牌、对自己用药、选牌和结束；对应动作完成后取证 |
 | MP-DIFF | 逐玩家差分，队友格挡／卡牌所有权／RNG 人工差异被检出 |
 | MP-FORK | 父子／兄弟隔离、跨玩家模型引用、根捕获后 live 改变不污染分支 |
 | MP-ROUND | 两回合、额外／跳过回合、各玩家结束状态、死亡／复活与多人攻击目标 |
@@ -400,6 +402,7 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 - [ ] 所有相关玩家、敌人、历史、私有状态与 RNG 都纳入所需快照、Fork、状态键和差分。
 - [ ] 默认 2 回合／3 秒及自定义生效，各风格共享预算，结果准确显示实际深度。
 - [ ] 输出／防守／启动方案正确表达取舍；纯支援仅用余费；自身获益和群体牌正常搜索。
+- [ ] 玩家目标药水只给本地玩家自己使用，敌人目标药水保持原版合法目标。
 - [ ] 随机队友目标固定且不消耗游戏 RNG；重评估与执行保持一致。
 - [ ] 队友行动与 RNG 偏差按规定提示／更新，合法原序列可继续，失效动作前暂停。
 - [ ] 仅执行当前回合，下回合新根重算；原生队友选牌和队友操作不被接管。

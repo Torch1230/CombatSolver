@@ -2,7 +2,7 @@
 
 ## 多人 P0 原生链路（2026-09-28）
 
-实测游戏版本 `0.111.0`。交接原型的虚拟双人、虚拟四人请求分别 Passed：每名玩家防御、攻击、生存者原生弃牌选择后进入第二回合。修正测试选牌未发送 `SyncLocalChoice`、客户端等待未入队的原请求动作后，同一源码双进程 ENet 房主／客户端均 Passed：双方各自操作本地玩家，逐动作原生状态、玩家阶段及九条完整 RNG 一致，结束回合进入第二回合。原版单人建局后首个短搜结果 Passed。证据与确切输入目录见 [多人规划第 0.4 节](MULTIPLAYER_PLAN.md)；成功实例均由启动器报告删除。
+实测游戏版本 `0.111.0`。交接原型的虚拟双人、虚拟四人请求分别 Passed：每名玩家防御、攻击、生存者原生弃牌选择后进入第二回合。修正测试选牌未发送 `SyncLocalChoice`、客户端等待未入队的原请求动作后，同一源码双进程 ENet 房主／客户端均 Passed：双方各自操作本地玩家，逐动作原生状态、玩家阶段及九条完整 RNG 一致，结束回合进入第二回合。原版单人建局后首个短搜结果 Passed。证据与确切输入目录见 [多人规划第 0.4 节](MULTIPLAYER_PLAN.md)；成功实例均由启动器报告删除。Windows 双进程编排入口 `tools/run-multiplayer-p0-enet.ps1 -Port 33771` 本轮 Passed，Bash 对应入口只通过 `bash -n` 语法检查，未在 Linux 运行。
 
 上述虚拟测试是单进程原生结算；ENet 测试两端均加载测试 Mod。尚未验证四进程网络、无求解器对端、Linux、生产模拟差分、搜索、执行和可见 UI；原生对端一致不构成预测差分。修复后的 `dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false` 为 0 警告、0 错误。Windows 结构门禁同步 `Executor partial` 声明检查后通过，`REFACTOR_BOUNDARIES_OK search_files=238`；内容清单仍待完成，P0 未收口。
 
