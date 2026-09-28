@@ -923,7 +923,9 @@ internal static partial class MonsterMoveEffects
                 return true;
             case ("GremlinMerc", "DOUBLE_SMASH_MOVE"):
                 combat.RecordThievery(simulator, move.Owner);
-                Debuff<WeakPower>(combat, player, 2, move.Owner);
+                foreach (var member in combat.Players)
+                    if (simulator.State.GetCreature(member.Creature).IsAlive)
+                        Debuff<WeakPower>(combat, member.Creature, 2, move.Owner);
                 return true;
             case ("GremlinMerc", "GIMME_MOVE"):
                 combat.RecordThievery(simulator, move.Owner);

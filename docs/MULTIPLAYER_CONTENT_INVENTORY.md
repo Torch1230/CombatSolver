@@ -95,6 +95,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `GremlinMerc` 的入场 `ThieveryPower` 按每名玩家创建一个实例，首回合 `GIMME_MOVE` 后对每个实例调用 `Steal`。模拟曾只读取首个实例；按原版逐实例扣对应玩家金币并更新每条能力的已偷金币后，双人和四人到第二回合完整状态／RNG 差分 Passed，证据见[规划 0.2 节](MULTIPLAYER_PLAN.md)。其他招式与死亡返还仍待关联差分。
 
+第二回合 `DOUBLE_SMASH_MOVE` 又发现虚弱应施给所有存活玩家；模拟由本地单目标改为遍历全体玩家，第三回合完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-second-fixed-31e35320566f4014b7c3f198bcb80012/peer-0/result.json`。第三招与偷窃返还仍未验。
+
 `OvicopterNormal` 首回合生成三只 `ToughEgg` 的双人初始 HP、`HatchPower` 与完整 RNG 已差分通过：`.local/multiplayer-p2/ovicopter-egg-round-6fd0947191ef4bba8ec663af8f1c4009/peer-0/result.json`。卵在该检查点尚未孵化，`ToughEgg.Hatch()` 的随机 HP 重设仍待单独验证。
 
 随后推进第二个敌方回合，原版三只卵全部孵化、`HatchPower` 消失并按人数缩放随机重设 HP；显式孵化断言与完整续用状态／RNG 差分 Passed：`.local/multiplayer-p2/ovicopter-hatch-assert-f2e4b9fea5b04323b5da3cba71aff9d7/peer-0/result.json`。死亡前孵化及其他种子未覆盖。

@@ -191,6 +191,8 @@ P4 生命周期清理代表：虚拟双人搜索启动后调用战斗会话 `Res
 
 P4 旧搜索回调代表：虚拟双人同一原生战斗先启动搜索，立刻 `Reset` 取消，再启动新搜索；新结果可见且可执行，新会话仅计一次搜索，旧任务没有覆盖结果，Passed：`.local/multiplayer-p4/stale-search-callback-5ea7bbb41f244b5a8a790f7282aa9261/peer-0/result.json`。本次在同一战斗重置会话，未模拟真实切换房间或退出进程。
 
+P2 `GremlinMerc` 第二招：双人原生推进第三回合首次差分显示队友缺少 `WeakPower`；原版 `DOUBLE_SMASH_MOVE` 对所有目标玩家施加虚弱，模拟先前只处理本地玩家。按原版遍历存活玩家后，第二个敌方回合的全玩家状态与完整 RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-second-fixed-31e35320566f4014b7c3f198bcb80012/peer-0/result.json`。第三招和死亡返还仍未验。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。
