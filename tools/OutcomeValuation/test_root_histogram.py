@@ -100,6 +100,50 @@ class RootHistogramChecks(unittest.TestCase):
         with self.assertRaises(ValueError):
             histogram.fit(np.arange(6), np.ones(6), -np.ones(6))
 
+    def test_best_root_split_matches_direct_row_enumeration(self):
+        rng = np.random.default_rng(1409)
+        roots = np.repeat(np.arange(12), 4)
+        matrix = rng.normal(size=(48, 3)).astype(np.float32)
+        gradient = rng.normal(size=48).astype(np.float32).astype(float)
+        hessian = rng.uniform(.05, .2, size=48).astype(np.float32).astype(float)
+        histogram = RootHistogram(matrix, [0, 1, 2])
+        tree, diagnostic = histogram.fit(roots, gradient, hessian)
+        parent = gradient.sum() ** 2 / (hessian.sum() + .001)
+        candidates = []
+        for column, cuts in zip(histogram.columns, histogram.cuts):
+            for cut in cuts:
+                mask = matrix[:, column] < cut
+                support = [root_participation(roots[m], hessian[m]) for m in (mask, ~mask)]
+                if any(s['distinctRoots'] < 3 or s['effectiveRoots'] < 3 for s in support):
+                    continue
+                gain = sum(gradient[m].sum() ** 2 / (hessian[m].sum() + .001)
+                           for m in (mask, ~mask)) - parent
+                candidates.append((float(gain), column, math.nextafter(float(cut), -math.inf)))
+        expected = max(candidates, key=lambda c: c[0])
+        self.assertGreater(expected[0], 0)
+        self.assertEqual((tree['Feature'], tree['Threshold']), expected[1:])
+        self.assertAlmostEqual(diagnostic['selectedSplits'][0]['quadraticGainProxy'], expected[0], places=12)
+
+    def test_selected_column_indices_compile_back_to_original_observations(self):
+        from context_gates import compile_products, expand_products
+        raw = np.array([(gate, signal) for gate in [0, 1] for _ in range(3)
+                        for signal in [0, 1]], dtype=np.float32)
+        # Leave unused columns between selected observations. A histogram slot
+        # must never accidentally become a raw-model feature index.
+        matrix = np.zeros((12, 8), dtype=np.float32)
+        matrix[:, 2] = raw[:, 0]; matrix[:, 6] = raw[:, 1]
+        names = [f'unused/{i}' for i in range(8)]
+        names[2] = 'relic/SYNTHETIC/present'; names[6] = 'player/block'
+        expanded = expand_products(matrix, names, [(2, 6)])
+        roots = np.repeat(np.arange(6), 2)
+        edges = np.array([(i + int(raw[i, 0]), i + 1 - int(raw[i, 0]), 1.)
+                          for i in range(0, 12, 2)], dtype=EDGE_DTYPE)
+        histogram = RootHistogram(expanded, [8, 6, 2], products=[8])
+        tree, _ = histogram.fit(roots, *derivatives(np.zeros(12), edges))
+        self.assertEqual(tree['Feature'], 8)
+        compiled = compile_products(tree, 8, [(2, 6)])
+        np.testing.assert_array_equal(leaf_values(tree, expanded), leaf_values(compiled, matrix))
+
 
 if __name__ == '__main__':
     unittest.main()

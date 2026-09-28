@@ -4,7 +4,7 @@
   "stage": "synthetic-contracts-passed-real-applicability-pending",
   "sourceHashes": {
     "tools/OutcomeValuation/root_histogram.py": "2430e4408dfa5e9414b89cb0b62910eee51d366349df9d98d443c5c9531826de",
-    "tools/OutcomeValuation/test_root_histogram.py": "0cb2fcf280d015d4f36442bcbc147c478a76a4b06d854f6d1bc98ef1e2b687c1"
+    "tools/OutcomeValuation/test_root_histogram.py": "dad67749a0216078c67df2ad1967ce652fd1cb2880f67ffdcb180733cc9f0c35"
   },
   "contracts": {
     "returnCode": 0,
@@ -31,7 +31,7 @@
     "stderr": "test_conditional_reversal_learns_with_supported_growing_splits (test_root_histogram.RootHistogramChecks.test_conditional_reversal_learns_with_supported_growing_splits) ... ok\ntest_constant_observations_and_duplicate_rows_do_not_invent_support (test_root_histogram.RootHistogramChecks.test_constant_observations_and_duplicate_rows_do_not_invent_support) ... ok\ntest_invalid_data_or_deadline_fails_explicitly (test_root_histogram.RootHistogramChecks.test_invalid_data_or_deadline_fails_explicitly) ... ok\ntest_unsupported_best_split_does_not_hide_supported_alternative (test_root_histogram.RootHistogramChecks.test_unsupported_best_split_does_not_hide_supported_alternative) ... ok\ntest_vector_support_matches_exact_roots_across_scales (test_root_histogram.RootHistogramChecks.test_vector_support_matches_exact_roots_across_scales) ... ok\ntest_zero_cuts_and_float32_boundaries_have_identical_masks (test_root_histogram.RootHistogramChecks.test_zero_cuts_and_float32_boundaries_have_identical_masks) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.046s\n\nOK\n",
     "scope": "Six tiny histogram contracts on CPU0 while v85 benchmark uses CPUs12-15. No real-data training, new complete candidate, or combat. Maximum synthetic matrix20 columns /12 observations."
   },
-  "contractsPassed": 6,
+  "contractsPassed": 8,
   "completeFitterConnected": false,
   "newFullCandidateRetained": false,
   "newRealDataTrainingRuns": 0,
@@ -62,5 +62,28 @@
     "Quantile cuts are a bounded subset of thresholds.",
     "Actual runtime and memory on full graphs are unmeasured.",
     "No claim of battle quality or learned real relic interactions."
-  ]
+  ],
+  "additionalExactSplitContracts": {
+    "returnCode": 0,
+    "seconds": 0.09795373398810625,
+    "peakRssBytes": 46878720,
+    "command": [
+      "taskset",
+      "-c",
+      "0",
+      "env",
+      "OPENBLAS_NUM_THREADS=1",
+      "OMP_NUM_THREADS=1",
+      "PYTHONPATH=tools/OutcomeValuation",
+      ".local/objective-search/xgboost-env/bin/python",
+      "-m",
+      "unittest",
+      "test_root_histogram.RootHistogramChecks.test_best_root_split_matches_direct_row_enumeration",
+      "test_root_histogram.RootHistogramChecks.test_selected_column_indices_compile_back_to_original_observations",
+      "-v"
+    ],
+    "stdout": "",
+    "stderr": "test_best_root_split_matches_direct_row_enumeration (test_root_histogram.RootHistogramChecks.test_best_root_split_matches_direct_row_enumeration) ... ok\ntest_selected_column_indices_compile_back_to_original_observations (test_root_histogram.RootHistogramChecks.test_selected_column_indices_compile_back_to_original_observations) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.029s\n\nOK\n",
+    "scope": "Two new tiny CPU0 contracts only, prior six successes reused; largest observation matrix48x3. v85 benchmark CPUs12-15 continues."
+  }
 }

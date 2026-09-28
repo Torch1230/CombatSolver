@@ -47,7 +47,7 @@
   "csharpBuildPassed": true,
   "csharpContractsPassed": true,
   "realExportCompleted": true,
-  "newLeafGuardImplemented": "explicit-offline-fitter-validated-synthetically-real-candidate-pending",
+  "newLeafGuardImplemented": "explicit-offline-fitter-real-candidate-trained-development-running",
   "newFullCandidateRetained": true,
   "newRealTrainingRuns": 1,
   "runtimeModelEnabled": false,
@@ -111,7 +111,7 @@
       "Exactly three roots need balanced Hessian contributions.",
       "Parent collapse can discard alternative supported splits.",
       "Next boosting round must use pruned predictions.",
-      "No real-data acceptance or new complete candidate."
+      "Complete real v85 candidate exists; no real-data acceptance, all product proposals unselected."
     ]
   },
   "queuedValidation": {
