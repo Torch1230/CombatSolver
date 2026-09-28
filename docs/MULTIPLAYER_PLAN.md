@@ -215,6 +215,10 @@ P2 敌方能力施加缩放：四人虚拟根在同一场景分别从新 Fork �
 
 P2 蜈蚣分段死亡／重附：双人第二回合把一段血量置 1 后原生 `Strike` 击杀，死亡后仍留场且其余两段存活；该回合敌方 `DEAD_MOVE` 仍保持死亡，下一敌方回合 `REATTACH_MOVE` 才复活。死亡、两个回合边界、复活 HP、能力、意图与完整 RNG 均和预测逐字段一致，Passed：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。首次夹具把弱化后的打击误认为能击杀 6 HP，第二次误把 `DEAD_MOVE` 当作立即复活；按原版状态机修正测试时点后通过。全段同时死亡的终局路径未验。
 
+P2 `TheObscuraNormal` 双人根到第三回合：原版初始伙伴 `Parafright`、前两次敌方行动后的双方状态、怪物能力与九条 RNG 均与预测对齐，Passed：`.local/multiplayer-p2/obscura-second-round-35ee5bad5bbb4718aed927b9cd2325a1/peer-0/result.json`。伙伴死亡、幻象变化及更后续招式未验。
+
+P2 `QueenBoss` 双人根：首个敌方回合差分发现 `PUPPET_STRINGS_MOVE` 的束缚只预测本地玩家，原版给两名玩家；同时按原版将 `YOU_ARE_MINE_MOVE` 的三种异常状态改为逐存活玩家施加。修复后到第四回合全玩家、女王与怪物伙伴、牌上 `Bound`、能力和完整 RNG 差分 Passed：`.local/multiplayer-p2/queen-third-round-fddc55be530542df8dbbb00efbb3d3ac/peer-0/result.json`。第四回合可见两名玩家均持束缚及三种异常状态；这是该固定种子的前三招，不覆盖女王死亡和后续状态分支。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

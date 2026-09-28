@@ -117,6 +117,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 分段死亡与重附另在双人原生根通过：先击杀一段，原版首个敌方回合保持死亡，下一敌方回合 `REATTACH_MOVE` 复活；三个稳定边界的完整玩家／敌人状态及九条 RNG 与预测一致：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。三段全部死亡及整场结束仍未覆盖。
 
+`TheObscuraNormal` 前两次敌方行动及伙伴 `Parafright` 的双人全状态／RNG 到第三回合 Passed：`.local/multiplayer-p2/obscura-second-round-35ee5bad5bbb4718aed927b9cd2325a1/peer-0/result.json`；伙伴死亡和幻象后续分支未验。`QueenBoss` 的 `PUPPET_STRINGS_MOVE` 原版给所有目标玩家束缚，`YOU_ARE_MINE_MOVE` 同样给全体三种异常状态；修正模拟后双人前三招到第四回合的全部状态／RNG Passed：`.local/multiplayer-p2/queen-third-round-fddc55be530542df8dbbb00efbb3d3ac/peer-0/result.json`。女王死亡与后续条件分支未验。
+
 ## 已通过的卡牌即时差分
 
 虚拟双人 37 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。

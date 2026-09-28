@@ -695,12 +695,19 @@ internal static partial class MonsterMoveEffects
                 Debuff<RingingPower>(combat, player, 1, move.Owner);
                 return true;
             case ("Queen", "PUPPET_STRINGS_MOVE"):
-                Debuff<ChainsOfBindingPower>(combat, player, 3, move.Owner);
+                foreach (var member in combat.Players)
+                    if (simulator.State.GetCreature(member.Creature).IsAlive)
+                        Debuff<ChainsOfBindingPower>(combat, member.Creature, 3, move.Owner);
                 return true;
             case ("Queen", "YOU_ARE_MINE_MOVE"):
-                Debuff<FrailPower>(combat, player, 99, move.Owner);
-                Debuff<WeakPower>(combat, player, 99, move.Owner);
-                Debuff<VulnerablePower>(combat, player, 99, move.Owner);
+                foreach (var member in combat.Players)
+                {
+                    if (!simulator.State.GetCreature(member.Creature).IsAlive)
+                        continue;
+                    Debuff<FrailPower>(combat, member.Creature, 99, move.Owner);
+                    Debuff<WeakPower>(combat, member.Creature, 99, move.Owner);
+                    Debuff<VulnerablePower>(combat, member.Creature, 99, move.Owner);
+                }
                 return true;
             case ("Queen", "BURN_BRIGHT_FOR_ME_MOVE"):
                 foreach (Creature enemy in combat.Enemies)
