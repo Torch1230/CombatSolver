@@ -27,6 +27,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyRoundDifferential { get; init; }
         public bool VerifySecondRoundDifferential { get; init; }
         public bool VerifyThirdRoundDifferential { get; init; }
+        public bool VerifyMonsterDeathAfterRound { get; init; }
         public bool VerifyEnemyPowerScaling { get; init; }
         public bool UseFirstEnemyForProbe { get; init; }
         public bool VerifySearch { get; init; }
@@ -110,6 +111,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerStaleSearchCallback && input.VerifyControllerSearch
                 || input.VerifySecondRoundDifferential && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyThirdRoundDifferential && !input.VerifySecondRoundDifferential
+                || input.VerifyMonsterDeathAfterRound && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyEnetControllerRng && (input.IsVirtual || input.PlayerCount != 2)
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifySelfPotion && input.SelfPotionId is not

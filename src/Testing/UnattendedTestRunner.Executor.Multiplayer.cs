@@ -533,6 +533,28 @@ internal sealed partial class UnattendedTestRunner
                 player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
             await runner.MultiplayerProbeBarrierAsync("second-turn", combat);
             CheckPrediction(roundPrediction, scenario.Player, "END_TURN");
+            if (input.VerifyMonsterDeathAfterRound)
+            {
+                Creature merc = combat.Enemies.Single(creature => creature.Monster is GremlinMerc);
+                await CreatureCmd.SetCurrentHp(merc, 6);
+                ContinuationStamp deathPrediction = PredictOrdinaryCard(scenario.Player, "STRIKE_IRONCLAD", merc);
+                CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                var strikeAction = new PlayCardAction(strike, merc);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(strikeAction);
+                await strikeAction.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("merc-death", combat);
+                CheckPrediction(deathPrediction, scenario.Player, "MERC_DEATH");
+                Creature fat = combat.Enemies.Single(creature => creature.Monster is FatGremlin);
+                HeistPower[] heists = fat.GetPowerInstances<HeistPower>().ToArray();
+                if (heists.Length != combat.Players.Count
+                    || combat.Enemies.Count(creature => creature.Monster is SneakyGremlin) != 1
+                    || combat.Players.Any(player => heists.Count(power =>
+                        ReferenceEquals(power.Target, player.Creature) && power.Amount == 20) != 1))
+                    throw new InvalidOperationException("Gremlin Merc death did not transfer each player's stolen gold.");
+                runner._completedChecks.Add("MultiplayerContent:GremlinMercDeath:PerPlayerHeistTransfer:FullState:FullRng");
+                return new ExecutionOutcome(false, 2, true, true, true, false);
+            }
             if (input.VerifySecondRoundDifferential)
             {
                 ContinuationStamp secondRoundPrediction = PredictMultiplayerRound(combat, scenario.Player);
@@ -604,7 +626,7 @@ internal sealed partial class UnattendedTestRunner
                         simulator, (SimulatedCombatState)simulator.State.CombatState))
                     throw new InvalidOperationException($"Multiplayer predicted action did not complete: actor={actor.NetId} card={cardId}.");
                 return ContinuationStamp.CapturePredicted(
-                    scenario.Player, simulator, scenario.StartedTurn, root.Forecast, scenario.StartedTurn);
+                    scenario.Player, simulator, root.StartTurnNumber, root.Forecast, root.StartTurnNumber);
             }
 
             void CheckPrediction(ContinuationStamp? predicted, Player actor, string cardId)

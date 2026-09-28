@@ -195,6 +195,8 @@ P2 `GremlinMerc` 第二招：双人原生推进第三回合首次差分显示队
 
 P2 再推进该怪第三个敌方回合到第四回合：原版 `HEHE_MOVE` 后敌人力量 2、两名玩家金币各从 99 降到 39，逐实例偷窃状态与预测全玩家、敌人、九条 RNG 对齐，Passed：`.local/multiplayer-p2/gremlin-merc-third-move-54881f1b85174c2b9c8c329b66fb19af/peer-0/result.json`。死亡返还、玩家途中死亡及其他种子仍未验。
 
+P2 `GremlinMerc` 死亡转移：首轮偷窃后第二回合把怪物血量置 6，由本地玩家原生 `Strike` 击杀；原版生成胖／鬼祟地精，胖地精持有分别指向两名玩家的 `HeistPower` 各 20，完整状态及九条 RNG 对预测一致，Passed：`.local/multiplayer-p2/gremlin-merc-death-fixed-stamp-8bc637ffb298497ba5d8ed6e9da0c927/peer-0/result.json`。首试失败只是差分夹具把第二回合的预测 `turn` 写成第一回合，修为当前根回合后通过。后续击杀胖地精的金币返还仍待验。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。
