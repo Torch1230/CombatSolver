@@ -32,6 +32,9 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyMonsterDeathAfterRound { get; init; }
         public bool VerifyThievingHopperPerPlayer { get; init; }
         public bool VerifyLivingShieldAllyDeath { get; init; }
+        public bool VerifyTestSubjectFirstRevive { get; init; }
+        public bool VerifyTestSubjectSecondRevive { get; init; }
+        public bool VerifyTestSubjectFinalDeath { get; init; }
         public bool VerifySegmentReattachAfterRound { get; init; }
         public bool VerifyHeistRecoveryAfterRound { get; init; }
         public bool VerifyEnemyPowerScaling { get; init; }
@@ -129,6 +132,9 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyMonsterDeathAfterRound && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyThievingHopperPerPlayer && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyLivingShieldAllyDeath && (!input.VerifyRoundDifferential || !input.IsVirtual)
+                || input.VerifyTestSubjectFirstRevive && (!input.VerifyRoundDifferential || !input.IsVirtual)
+                || input.VerifyTestSubjectSecondRevive && !input.VerifyTestSubjectFirstRevive
+                || input.VerifyTestSubjectFinalDeath && !input.VerifyTestSubjectSecondRevive
                 || input.VerifySegmentReattachAfterRound && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyHeistRecoveryAfterRound && !input.VerifyMonsterDeathAfterRound
                 || input.VerifyEnetControllerRng && (input.IsVirtual || input.PlayerCount != 2)

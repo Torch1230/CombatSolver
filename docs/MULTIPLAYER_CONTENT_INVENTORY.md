@@ -127,6 +127,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `FabricatorNormal` 的双人根连续两个敌方回合，包括实际随机选中的召唤与召唤物行动，全玩家／敌人状态及完整 RNG 到第三回合 Passed：`.local/multiplayer-p2/fabricator-second-ac4152fa82d140e8abc8b816308118bc/peer-0/result.json`。其他随机分支、满槽及召唤物死亡未验。`TurretOperatorWeak` 首回合还发现 `RampartPower` 的玩家方回合开始监听原版每侧派发一次，模拟按两名玩家重复派发，导致炮手格挡 110 而原版 55；修正为多人准备的最后一名存活玩家触发一次。随后本地击杀炮手，盾牌保留预排的下一招，后一轮才转为 `SMASH_MOVE` 并获得 3 力量；击杀动作及前后三个敌方回合全状态／RNG Passed：`.local/multiplayer-p2/living-shield-following-smash-153491e8a62c448a8c81702af9a3f369/peer-0/result.json`。第一次测试发现格挡重复，第二次夹具未清炮手格挡，第三次误认为死亡后立即换招；这三次均未计为通过。
 
+`TestSubjectBoss` 双人第一阶段两招到第三回合 Passed：`.local/multiplayer-p2/test-subject-second-567130576bb64c859c8d9860b1853170/peer-0/result.json`。再在同一原生战斗中两次击杀并推进两次 `RESPAWN_MOVE`：第二形态带 `PainfulStabsPower`，第三形态改为 `NemesisPower` 且移除 `AdaptablePower`／`PainfulStabsPower`，最后一次击杀结束战斗；各击杀和复活边界的全玩家／怪物状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/test-subject-final-death-fixed-d16c44bc416442c0b6a305f240630a93/peer-0/result.json`。最后一击夹具把第三形态的无实体减伤误当普通伤害，首次设 6 HP 未击杀；改为 1 HP 后通过。其他卡组、额外回合及多人玩家死亡组合未验。
+
 ## 已通过的卡牌即时差分
 
 虚拟双人 37 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。

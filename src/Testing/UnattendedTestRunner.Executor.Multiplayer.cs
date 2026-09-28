@@ -624,6 +624,84 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerContent:LivingShield:AllyDeath:SmashStrength:FullState:FullRng");
                 return new ExecutionOutcome(false, 4, true, true, true, false);
             }
+            if (input.VerifyTestSubjectFirstRevive)
+            {
+                Creature subject = combat.Enemies.Single(creature => creature.Monster is TestSubject);
+                await CreatureCmd.SetCurrentHp(subject, 6);
+                await CreatureCmd.LoseBlock(new ThrowingPlayerChoiceContext(),
+                    subject, subject.Block, null);
+                ContinuationStamp deathPrediction = PredictOrdinaryCard(scenario.Player,
+                    "STRIKE_IRONCLAD", subject);
+                CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                var strikeAction = new PlayCardAction(strike, subject);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(strikeAction);
+                await strikeAction.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("subject-dead", combat);
+                CheckPrediction(deathPrediction, scenario.Player, "SUBJECT_DEAD");
+                if (!subject.IsDead || !subject.HasPower<AdaptablePower>())
+                    throw new InvalidOperationException("Test Subject did not enter its reviving death state.");
+                ContinuationStamp revivePrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var end = new EndPlayerTurnAction(scenario.Player, 2);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
+                await runner.MultiplayerProbeBarrierAsync("subject-revived", combat);
+                CheckPrediction(revivePrediction, scenario.Player, "SUBJECT_REVIVED");
+                if (!subject.IsAlive || !subject.HasPower<PainfulStabsPower>())
+                    throw new InvalidOperationException("Test Subject did not revive into its second form.");
+                runner._completedChecks.Add("MultiplayerContent:TestSubject:FirstScaledRevive:FullState:FullRng");
+                if (input.VerifyTestSubjectSecondRevive)
+                {
+                    await CreatureCmd.SetCurrentHp(subject, 6);
+                    await CreatureCmd.LoseBlock(new ThrowingPlayerChoiceContext(),
+                        subject, subject.Block, null);
+                    ContinuationStamp secondDeathPrediction = PredictOrdinaryCard(scenario.Player,
+                        "STRIKE_IRONCLAD", subject);
+                    CardModel secondStrike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                        card.Id.Entry == "STRIKE_IRONCLAD");
+                    var secondStrikeAction = new PlayCardAction(secondStrike, subject);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(secondStrikeAction);
+                    await secondStrikeAction.CompletionTask;
+                    await runner.MultiplayerProbeBarrierAsync("subject-second-dead", combat);
+                    CheckPrediction(secondDeathPrediction, scenario.Player, "SUBJECT_SECOND_DEAD");
+                    if (!subject.IsDead || !subject.HasPower<AdaptablePower>())
+                        throw new InvalidOperationException("Test Subject did not enter its second reviving death state.");
+                    ContinuationStamp secondRevivePrediction = PredictMultiplayerRound(combat, scenario.Player);
+                    var secondEnd = new EndPlayerTurnAction(scenario.Player, 3);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(secondEnd);
+                    await secondEnd.CompletionTask;
+                    await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                        player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 4 }));
+                    await runner.MultiplayerProbeBarrierAsync("subject-second-revived", combat);
+                    CheckPrediction(secondRevivePrediction, scenario.Player, "SUBJECT_SECOND_REVIVED");
+                    if (!subject.IsAlive || !subject.HasPower<NemesisPower>()
+                        || subject.HasPower<AdaptablePower>() || subject.HasPower<PainfulStabsPower>())
+                        throw new InvalidOperationException("Test Subject did not revive into its final form.");
+                    runner._completedChecks.Add("MultiplayerContent:TestSubject:SecondScaledRevive:FullState:FullRng");
+                    if (input.VerifyTestSubjectFinalDeath)
+                    {
+                        await CreatureCmd.SetCurrentHp(subject, 1);
+                        await CreatureCmd.LoseBlock(new ThrowingPlayerChoiceContext(),
+                            subject, subject.Block, null);
+                        ContinuationStamp finalDeathPrediction = PredictOrdinaryCard(scenario.Player,
+                            "STRIKE_IRONCLAD", subject);
+                        CardModel finalStrike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                            card.Id.Entry == "STRIKE_IRONCLAD");
+                        var finalStrikeAction = new PlayCardAction(finalStrike, subject);
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(finalStrikeAction);
+                        await finalStrikeAction.CompletionTask;
+                        CheckPrediction(finalDeathPrediction, scenario.Player, "SUBJECT_FINAL_DEATH");
+                        if (!subject.IsDead || !CombatManager.Instance.IsOverOrEnding)
+                            throw new InvalidOperationException("Test Subject final death did not end combat.");
+                        runner._completedChecks.Add("MultiplayerContent:TestSubject:FinalDeath:CombatEnd:FullRng");
+                        return new ExecutionOutcome(true, 4, true, true, true, false);
+                    }
+                    return new ExecutionOutcome(false, 4, true, true, true, false);
+                }
+                return new ExecutionOutcome(false, 3, true, true, true, false);
+            }
             if (input.VerifySegmentReattachAfterRound)
             {
                 Creature segment = combat.Enemies.First(creature => creature.Monster is DecimillipedeSegment);
