@@ -5,7 +5,7 @@
   "goalAchieved": false,
   "runtimeModelEnabled": false,
   "finalTestOpened": false,
-  "completeCandidateTrained": false,
+  "completeCandidateTrained": true,
   "validation": {
     "outcomeRankingAssertions": 201,
     "boundariesBash": "REFACTOR_BOUNDARIES_OK search_files=228",
@@ -85,19 +85,143 @@
     "ancestorTrainingSeconds": 135.88075087300967,
     "validationCases": 100,
     "plannedPairedRequests": 400,
-    "stateAtReport": "waiting for the finite v75 collection; not started"
+    "stateAtReport": "trained with numerical parity; complete 100-case/400-request paired development benchmark running",
+    "fitterMaximumSeconds": 1200
   },
   "rawDirectory": ".local/objective-search/v76/",
   "limitations": [
     "The ten-root fit validates plumbing, not independent decision quality.",
     "Equal source mass is a predeclared training hypothesis, not teacher confidence.",
     "Completed witnesses do not provide optimal action values or prove an unobserved prefix impossible.",
-    "The former internal 100 validation roots are now training; final 55 remain sealed."
+    "The former internal 100 validation roots are now training; final 55 remain sealed.",
+    "Full development quality and performance results remain pending; no promotion based on fit loss.",
+    "Only REGENT uses one direct relic feature in its linear foundation; no head currently has a relic tree split. Broad relic/card synergy learning is not established."
   ],
   "deployment": {
     "completed": true,
     "source": ".local/objective-search/v76/engine/CombatSolver.dll",
     "record": ".local/objective-search/v76/deployment.json",
     "files": 5
+  },
+  "fullCollection": {
+    "completed": true,
+    "roots": 292,
+    "newPhysicalRoots": 0,
+    "failures": 0,
+    "reusedPilotRoots": 10,
+    "byCharacter": {
+      "DEFECT": 60,
+      "IRONCLAD": 58,
+      "NECROBINDER": 57,
+      "REGENT": 58,
+      "SILENT": 59
+    },
+    "families": 35,
+    "queries": 1595,
+    "labelled": 1595,
+    "winningWitnesses": 1305,
+    "unknownToVictory": 1027,
+    "newlyWitnessed": 1221,
+    "rootsWithoutQueries": 25,
+    "queriesByTurn": {
+      "1": 350,
+      "2": 532,
+      "3": 531,
+      "4": 182
+    },
+    "processSeconds": 4943.0731557353865,
+    "teacherSeconds": 536.200454,
+    "meanPeakWorkingSetBytes": 738368694.3561643,
+    "maximumPeakWorkingSetBytes": 1570459648,
+    "memoryScope": "Whole collector search, continuation teacher and label export; not ordinary inference."
+  },
+  "fullTraining": {
+    "sourceCommit": "3e6f1361",
+    "cost": {
+      "completeModelSeconds": 273.1829010359943,
+      "ancestorTrainingSeconds": 135.88075087300967,
+      "exportProcessSeconds": 117.26753415493295,
+      "fitProcessSeconds": 20.033355940016918,
+      "dataCollectionAccountedSeparately": true,
+      "completed": true
+    },
+    "sampledRows": 213649,
+    "rows": 193392,
+    "pairs": 407639,
+    "correctionPairs": 586,
+    "heads": [
+      {
+        "character": "DEFECT",
+        "roots": 60,
+        "rows": 41982,
+        "pairs": 94184,
+        "correctionPairs": 120,
+        "correctionWeight": 26.50000000000003,
+        "selectedFeatures": 3093,
+        "activeFeatures": 92,
+        "activeRelicFeatures": [],
+        "activeRelicTreeFeatures": []
+      },
+      {
+        "character": "IRONCLAD",
+        "roots": 58,
+        "rows": 39820,
+        "pairs": 95141,
+        "correctionPairs": 126,
+        "correctionWeight": 25.500000000000004,
+        "selectedFeatures": 3026,
+        "activeFeatures": 93,
+        "activeRelicFeatures": [],
+        "activeRelicTreeFeatures": []
+      },
+      {
+        "character": "NECROBINDER",
+        "roots": 57,
+        "rows": 35938,
+        "pairs": 71667,
+        "correctionPairs": 107,
+        "correctionWeight": 24.000000000000007,
+        "selectedFeatures": 2925,
+        "activeFeatures": 96,
+        "activeRelicFeatures": [],
+        "activeRelicTreeFeatures": []
+      },
+      {
+        "character": "REGENT",
+        "roots": 58,
+        "rows": 34729,
+        "pairs": 70793,
+        "correctionPairs": 108,
+        "correctionWeight": 22.000000000000007,
+        "selectedFeatures": 3558,
+        "activeFeatures": 90,
+        "activeRelicFeatures": [
+          "relic/NUNCHAKU/state/E95E8FB3DA21C6BB59C041FE06F54A4D"
+        ],
+        "activeRelicTreeFeatures": []
+      },
+      {
+        "character": "SILENT",
+        "roots": 59,
+        "rows": 40923,
+        "pairs": 75854,
+        "correctionPairs": 125,
+        "correctionWeight": 25.500000000000032,
+        "selectedFeatures": 2725,
+        "activeFeatures": 86,
+        "activeRelicFeatures": [],
+        "activeRelicTreeFeatures": []
+      }
+    ],
+    "exportPeakWorkingSetBytes": 4333105152,
+    "fitPeakWorkingSetBytes": 2399346688,
+    "modelBytes": 1139294,
+    "modelSha256": "43c555f9183da4baf0be5e0eda6d088761db39a843a99bb610213716d0473818",
+    "parity": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "float32AccumulationPairSignChanges": 2,
+    "trainingLossIsNotQualityAcceptance": true
   }
 }

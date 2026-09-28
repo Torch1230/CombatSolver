@@ -1,6 +1,6 @@
 # CombatSolver 文档导航
 
-- [联合训练的纠正来源平衡](strategy/source-balanced-corrections-20260928.md)：保留真实补查偏好、同根分配一次总权重；训练流程验证完成，正式候选等待292根采集结束。
+- [联合训练的纠正来源平衡](strategy/source-balanced-corrections-20260928.md)：292根补采完成，586条纠偏排序对全部保留；完整训练含依赖成本273秒，100场配对开发评估进行中，尚未启用。
 
 - [跨回合续局监督](strategy/cross-turn-witnesses-20260928.md)：逐步验证教师前缀，十训练根产21对有效偏好；292根补采启动，未重新训练或启用。
 
