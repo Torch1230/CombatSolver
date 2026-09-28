@@ -1,7 +1,7 @@
 {
   "experiment": "explicit-compacted-row-root-provenance",
   "sourceBase": "365d487b",
-  "stage": "fitter-synthetic-contracts-passed-real-candidate-pending",
+  "stage": "real-candidate-trained-full-development-running",
   "sourceHashes": {
     "src/Search/SearchOutcomeValueModel.cs": "df3e855fcedc5b1faa96b0b6434fbe833daae059583b4039406bf45d1d73d1b0",
     "tools/OfflineSearchHarness/OutcomeRankingChecks.cs": "b97219fe9a6a75d7fea6a8488069d02b8ffb2b173633c578261fc5b96c072587",
@@ -48,8 +48,8 @@
   "csharpContractsPassed": true,
   "realExportCompleted": true,
   "newLeafGuardImplemented": "explicit-offline-fitter-validated-synthetically-real-candidate-pending",
-  "newFullCandidateRetained": false,
-  "newRealTrainingRuns": 0,
+  "newFullCandidateRetained": true,
+  "newRealTrainingRuns": 1,
   "runtimeModelEnabled": false,
   "finalTestOpened": false,
   "prerequisiteOwnerCell": "2617",
@@ -70,10 +70,9 @@
     "atomicPerFileReplacement": true
   },
   "remainingValidation": [
-    "Fit one complete real candidate with dependencies/export/fitting within 1800 seconds",
-    "Check real model Python/C# numerical parity",
-    "Run all 100 fixed development cases / 400 paired searches for every retained candidate",
-    "Keep 55 sealed final configurations unopened until a development-qualified candidate"
+    "Complete and reap all100/400 paired development searches and summarize quality/time/memory",
+    "Keep55 final configurations sealed; runtime learned model remains off",
+    "Inspect next bounded root-supported histogram prototype only after current pipeline completes"
   ],
   "rootSupportPrototype": {
     "kind": "Hessian participation ratio across exact input roots; not statistical effective sample size",
@@ -325,6 +324,137 @@
     "selection": "Strict actual training loss improvement; deterministic first proposal wins ties.",
     "freshPrefix": true,
     "rawFeatureOutput": true,
-    "realCompleteCandidate": false
+    "realCompleteCandidate": true
+  },
+  "fullCandidate": {
+    "sourceCommit": "d6e2d443",
+    "protocolSha256": "6f579b6f0114735e33d00cd03c102b04eccc3222771007807bef32334b7e30d3",
+    "modelSha256": "bc41794612df7318ba0d5eb19aed6b5955ca8598cbb644a19bada8ef4f800656",
+    "modelBytes": 1135379,
+    "cost": {
+      "completeModelSeconds": 312.91207357496023,
+      "ancestorTrainingSeconds": 135.88075087300967,
+      "reusedExportSeconds": 130.78978930902667,
+      "fitProcessSeconds": 46.10507282195613,
+      "reuseIncludesOriginalExportCost": true,
+      "dataCollectionAccountedSeparately": true,
+      "completed": true
+    },
+    "parity": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "fitPeakRssBytes": 3467411456,
+    "heads": [
+      {
+        "character": "DEFECT",
+        "rows": 44152,
+        "pairs": 154291,
+        "participatingRoots": 60,
+        "productColumns": 64,
+        "initialLoss": 29.837105990075695,
+        "prefixLoss": 26.915269537912923,
+        "finalLoss": 26.413096549875775,
+        "prefixFloat32MaxPredictionDrift": 2.3733922036583976e-06,
+        "exportedPredictionDrift": 0.0,
+        "productSplits": 0,
+        "seconds": 9.830333731952123,
+        "selectedProposals": {
+          "hessian3": 16
+        },
+        "prunedProposalLeafCounts": {
+          "1": 16
+        },
+        "supportedStumpsProposed": 16
+      },
+      {
+        "character": "IRONCLAD",
+        "rows": 41309,
+        "pairs": 153710,
+        "participatingRoots": 58,
+        "productColumns": 64,
+        "initialLoss": 30.482969895092406,
+        "prefixLoss": 27.542201904685513,
+        "finalLoss": 27.083679413460505,
+        "prefixFloat32MaxPredictionDrift": 3.1168533052294833e-06,
+        "exportedPredictionDrift": 0.0,
+        "productSplits": 0,
+        "seconds": 8.96149473101832,
+        "selectedProposals": {
+          "hessian3": 16
+        },
+        "prunedProposalLeafCounts": {
+          "1": 16
+        },
+        "supportedStumpsProposed": 16
+      },
+      {
+        "character": "NECROBINDER",
+        "rows": 38449,
+        "pairs": 128754,
+        "participatingRoots": 57,
+        "productColumns": 64,
+        "initialLoss": 28.911386511136485,
+        "prefixLoss": 26.264677141133063,
+        "finalLoss": 25.895671035677218,
+        "prefixFloat32MaxPredictionDrift": 3.1591912179607107e-06,
+        "exportedPredictionDrift": 0.0,
+        "productSplits": 0,
+        "seconds": 8.670175001956522,
+        "selectedProposals": {
+          "hessian3": 16
+        },
+        "prunedProposalLeafCounts": {
+          "1": 16
+        },
+        "supportedStumpsProposed": 16
+      },
+      {
+        "character": "REGENT",
+        "rows": 36949,
+        "pairs": 129198,
+        "participatingRoots": 58,
+        "productColumns": 64,
+        "initialLoss": 29.930448000281302,
+        "prefixLoss": 26.52695698939216,
+        "finalLoss": 26.08115385798204,
+        "prefixFloat32MaxPredictionDrift": 3.002792306361357e-06,
+        "exportedPredictionDrift": 0.0,
+        "productSplits": 0,
+        "seconds": 9.074807784985751,
+        "selectedProposals": {
+          "hessian3": 16
+        },
+        "prunedProposalLeafCounts": {
+          "1": 16
+        },
+        "supportedStumpsProposed": 16
+      },
+      {
+        "character": "SILENT",
+        "rows": 43358,
+        "pairs": 134261,
+        "participatingRoots": 59,
+        "productColumns": 64,
+        "initialLoss": 29.87702501190564,
+        "prefixLoss": 26.718696348692582,
+        "finalLoss": 26.204355651119137,
+        "prefixFloat32MaxPredictionDrift": 2.7571244478608037e-06,
+        "exportedPredictionDrift": 0.0,
+        "productSplits": 0,
+        "seconds": 9.228412149939686,
+        "selectedProposals": {
+          "hessian3": 16
+        },
+        "prunedProposalLeafCounts": {
+          "1": 16
+        },
+        "supportedStumpsProposed": 16
+      }
+    ],
+    "accepted": false,
+    "evaluationCompleted": false,
+    "pipelineSession": 42175,
+    "pipelineSessionReaped": false
   }
 }

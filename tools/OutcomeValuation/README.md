@@ -1,6 +1,6 @@
 # 结果估值与小规模训练工具
 
-离线输入的`exportRowRoots: true`将为压缩后的训练观察生成显式根编号附属文件，供`root_provenance.read_assignments`严格核对每根权重和来源。251项C#断言、两组六项Python合同和真实292根原图不变核对通过。只读零边界检查由3→40项通过分区约束，已接入显式研究入口`root_context_fit.py`并通过六项新增合成拟合合同，真实候选尚未训练。见[状态与边界](../../docs/strategy/training-root-provenance-20260928.md)。
+离线输入的`exportRowRoots: true`将为压缩后的训练观察生成显式根编号附属文件，供`root_provenance.read_assignments`严格核对每根权重和来源。251项C#断言、两组六项Python合同和真实292根原图不变核对通过。只读零边界检查由3→40项通过分区约束，显式研究入口`root_context_fit.py`已训练v85候选，完整成本312.91秒，1,280条跨语言预测一致；实际乘积分裂仍为0，100/400开发对照进行中。见[状态与边界](../../docs/strategy/training-root-provenance-20260928.md)。
 
 `root_support.py`提供尚未接入拟合器的纯数值剪枝原型：按根Hessian参与度约束树叶，弱支持分支用真实梯度/Hessian重算父叶，并要求后续轮使用修改后的预测。另六项合成合同通过，包括低曲率条件反转；不代表实际遗物收益或新模型验收。
 
@@ -154,3 +154,5 @@ dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --
 跨回合查询的联合导出可使用 `correctionInputs` 和 `balanceCorrectionSources: true`。它仍输出同一数值格式供现有CPU拟合器消费；逐根原生身份、六行上限、独立池、有限边预算与单次根权重由C#校验，不能在Python重新生成偏好。完成采集后才冻结新训练输入，单次完整导出/拟合及必要祖先训练共用1800秒期限；采集成本单列。详见[纠正来源平衡](../../docs/strategy/source-balanced-corrections-20260928.md)。
 
 固定配对报告同时保留完整终局分类与 `coreClassification`（C#原比较器仅排除结束回合及旧Score）。旧比较缺少 `coreComparison` 时核心分类为未验证，不猜测。总表、角色/战斗类型、共同胜/败、质量不下降及稳定获胜子集的时间/内存分别输出；重复搜索不是新的独立场景。两种描述性区间均按遭遇家族重抽样，不能解释为全部真实牌组的总体保证。
+
+`root_histogram.py`是尚未接入完整拟合器的单树原型，在选择分裂时检查根参与度；六项小型合成合同通过。真实大图适用性及资源占用尚未测，见[边界与证据](../../docs/strategy/root-supported-splits-20260928.md)。

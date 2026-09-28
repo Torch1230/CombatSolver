@@ -1,0 +1,66 @@
+{
+  "experiment": "root-supported-histogram-split-prototype",
+  "sourceBase": "d6e2d443",
+  "stage": "synthetic-contracts-passed-real-applicability-pending",
+  "sourceHashes": {
+    "tools/OutcomeValuation/root_histogram.py": "2430e4408dfa5e9414b89cb0b62910eee51d366349df9d98d443c5c9531826de",
+    "tools/OutcomeValuation/test_root_histogram.py": "0cb2fcf280d015d4f36442bcbc147c478a76a4b06d854f6d1bc98ef1e2b687c1"
+  },
+  "contracts": {
+    "returnCode": 0,
+    "seconds": 0.1156419770559296,
+    "peakRssBytes": 46678016,
+    "command": [
+      "taskset",
+      "-c",
+      "0",
+      "env",
+      "OPENBLAS_NUM_THREADS=1",
+      "OMP_NUM_THREADS=1",
+      ".local/objective-search/xgboost-env/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/OutcomeValuation",
+      "-p",
+      "test_root_histogram.py",
+      "-v"
+    ],
+    "stdout": "",
+    "stderr": "test_conditional_reversal_learns_with_supported_growing_splits (test_root_histogram.RootHistogramChecks.test_conditional_reversal_learns_with_supported_growing_splits) ... ok\ntest_constant_observations_and_duplicate_rows_do_not_invent_support (test_root_histogram.RootHistogramChecks.test_constant_observations_and_duplicate_rows_do_not_invent_support) ... ok\ntest_invalid_data_or_deadline_fails_explicitly (test_root_histogram.RootHistogramChecks.test_invalid_data_or_deadline_fails_explicitly) ... ok\ntest_unsupported_best_split_does_not_hide_supported_alternative (test_root_histogram.RootHistogramChecks.test_unsupported_best_split_does_not_hide_supported_alternative) ... ok\ntest_vector_support_matches_exact_roots_across_scales (test_root_histogram.RootHistogramChecks.test_vector_support_matches_exact_roots_across_scales) ... ok\ntest_zero_cuts_and_float32_boundaries_have_identical_masks (test_root_histogram.RootHistogramChecks.test_zero_cuts_and_float32_boundaries_have_identical_masks) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.046s\n\nOK\n",
+    "scope": "Six tiny histogram contracts on CPU0 while v85 benchmark uses CPUs12-15. No real-data training, new complete candidate, or combat. Maximum synthetic matrix20 columns /12 observations."
+  },
+  "contractsPassed": 6,
+  "completeFitterConnected": false,
+  "newFullCandidateRetained": false,
+  "newRealDataTrainingRuns": 0,
+  "newCombatSearches": 0,
+  "runtimeModelEnabled": false,
+  "finalTestOpened": false,
+  "prerequisite": {
+    "pipelineSession": 42175,
+    "owner": "Root",
+    "mustFinishAndReapBeforeHeavyValidation": true
+  },
+  "next": "After the full v85 100/400 pipeline is completed and reaped, assess one bounded real-data supported-tree fit per head at the saved48-tree prefix. No complete candidate until actual support, numerical and resource feasibility are checked.",
+  "limits": {
+    "maximumColumns": 192,
+    "quantileCutsPerColumn": 32,
+    "extraProductCuts": [
+      "strictly-negative",
+      "nonpositive"
+    ],
+    "maximumDepth": 4,
+    "minimumRootParticipation": 3,
+    "regularization": 0.001,
+    "learningRate": 0.1
+  },
+  "limitations": [
+    "Training root participation is not statistical independence.",
+    "Columns must be explicitly chosen from training observations; at most192.",
+    "Quantile cuts are a bounded subset of thresholds.",
+    "Actual runtime and memory on full graphs are unmeasured.",
+    "No claim of battle quality or learned real relic interactions."
+  ]
+}
