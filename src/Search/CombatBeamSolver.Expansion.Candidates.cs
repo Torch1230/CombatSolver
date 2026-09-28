@@ -998,10 +998,20 @@ internal sealed partial class CombatBeamSolver
         if (targetType is TargetType.AnyAlly or TargetType.AnyPlayer)
         {
             IReadOnlyList<Player> players = ((SimulatedCombatState)simulator.State.CombatState).Players;
+            Creature[] eligible = players.Select(member => member.Creature)
+                .Where(target => simulator.State.GetCreature(target).IsAlive
+                    && card.Original.CanPlayTargeting(target))
+                .ToArray();
+            if (eligible.Length == 0)
+                yield break;
+            uint selectedId = _allyTargetByCard.GetOrAdd(card.Original, _ =>
+                eligible[Random.Shared.Next(eligible.Length)].CombatId
+                    ?? throw new InvalidOperationException("Ally target has no combat identity."));
             for (int index = 0; index < players.Count; index++)
             {
                 Creature target = players[index].Creature;
-                if (simulator.State.GetCreature(target).IsAlive)
+                if (target.CombatId == selectedId
+                    && simulator.State.GetCreature(target).IsAlive)
                     yield return (index, target);
             }
             yield break;
@@ -1009,6 +1019,12 @@ internal sealed partial class CombatBeamSolver
 
         yield return (-1, null);
     }
+
+    internal uint[] AllyTargetsForTesting(PredictedCard card, CombatPredictionSimulator simulator)
+        => TargetsFor(card, simulator)
+            .Select(candidate => candidate.Target?.CombatId
+                ?? throw new InvalidOperationException("Ally target candidate has no identity."))
+            .ToArray();
 
     private IEnumerable<(int Index, Creature? Target)> TargetsForPotion(
         PotionModel potion,

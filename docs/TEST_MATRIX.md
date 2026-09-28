@@ -14,6 +14,8 @@
 
 P3 首次搜索探针：虚拟双人、四人普通牌根和含 `BelieveInYou` 的双人内容根各运行 3 秒单成员搜索，非空路线的一回合出牌均属于本地玩家，三次 Passed，证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。`AnyAlly` 起初产生 null 目标导致搜索失败，按存活玩家生成合法目标后通过。三类方案和生产入口尚未验收。
 
+P3 选人合同：四人 `BelieveInYou` 在三个 Fork 中固定同一原版合法目标、不推进游戏 RNG，随后短搜与原生出牌差分 Passed；证据 `.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json`。生产重评估保持目标仍待验。
+
 玩家目标药水自用代表：双人 `StrengthPotion` 本地持有者自用后完整状态／RNG 差分 Passed，随后队友目标牌仍可执行；证据 `.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。此项不覆盖所有药水或生产自动执行。
 
 多人深度／时间策略：默认 2 回合／3000 毫秒及自定义 3／6000 毫秒快照断言、实际搜索层上限，虚拟双人请求 Passed，证据 `.local/multiplayer-p3/horizon-policy-2-b5e9a8d5762c444d93de124b59b26158/peer-0/result.json`。设置 UI 和多成员共享预算仍待验。

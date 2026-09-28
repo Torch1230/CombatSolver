@@ -27,6 +27,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyRoundDifferential { get; init; }
         public bool VerifyEnemyPowerScaling { get; init; }
         public bool VerifySearch { get; init; }
+        public bool VerifyAllyTarget { get; init; }
         public bool VerifySelfPotion { get; init; }
         public string[] ContentCardIds { get; init; } = [];
         public int ContentUpgradeLevel { get; init; }

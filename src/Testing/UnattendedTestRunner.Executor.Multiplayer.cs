@@ -215,6 +215,33 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
+            if (input.VerifyAllyTarget)
+            {
+                CombatRootSnapshot targetRoot = CombatRootSnapshot.Capture(combat);
+                SearchPolicySnapshot targetPolicy = SolverController.CaptureSearchPolicy(
+                    SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
+                CombatBeamSolver targetDriver = new(targetRoot, SolverDisplayNames.Capture(combat),
+                    BattleDamageTracker.Observe(combat), targetPolicy);
+                string firstRng = ContinuationStamp.CaptureLive(combat).StateText;
+                uint[] targets = [];
+                for (int iteration = 0; iteration < 3; iteration++)
+                {
+                    CombatPredictionSimulator fork = targetRoot.ForkSimulator();
+                    PredictedCard source = fork.State.GetPlayerCombatState(actor).Hand.Cards
+                        .First(candidate => candidate.Preview.Id.Entry == input.ContentCardIds[0]);
+                    uint[] current = targetDriver.AllyTargetsForTesting(source, fork);
+                    if (current.Length != 1
+                        || !combat.Players.Any(member => member.Creature.CombatId == current[0]
+                            && member.Creature.IsAlive
+                            && source.Original.CanPlayTargeting(member.Creature))
+                        || iteration > 0 && !targets.SequenceEqual(current))
+                        throw new InvalidOperationException("Ally target was not legal and stable across forks.");
+                    targets = current;
+                }
+                if (ContinuationStamp.CaptureLive(combat).StateText != firstRng)
+                    throw new InvalidOperationException("Ally target selection changed game state or RNG.");
+                runner._completedChecks.Add("MultiplayerAllyTarget:OneLegalTarget:StableForks:GameRngUnchanged");
+            }
             if (input.VerifySelfPotion)
             {
                 PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, "STRENGTH_POTION");

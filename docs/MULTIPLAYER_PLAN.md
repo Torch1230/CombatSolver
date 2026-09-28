@@ -82,6 +82,8 @@ Windows 结构门禁在同步更新 `Executor partial` 声明检查后通过，`
 
 P3 首个真实搜索探针在虚拟双人和四人的普通牌根各跑一次 3 秒单成员搜索，取得只含本地已持有牌的非空路线并完成原生脚本，均 Passed：`.local/multiplayer-p3/search-ordinary-2-e6ccd5056c3949a7af04a448dd3dbaa2/peer-0/result.json`、`.local/multiplayer-p3/search-ordinary-4-ce51792b5b924f7ba2a95c838a2cc2fa/peer-0/result.json`。加入 `BelieveInYou` 后第一次内容根搜索暴露 `AnyAlly` 候选目标被构造为 null；按存活玩家生成目标后，同一双人内容根搜索 Passed：`.local/multiplayer-p3/search-teammate-card-target-e56288e18a0e4c35bc3beb03a9b2c9f2/peer-0/result.json`。这些只证明有限搜索不崩溃且动作属于本地，不证明三类方案、纯支援余费、两回合深度、预算共享、生产执行或 UI。药水候选仍仅玩家自用。
 
+四人 `BelieveInYou` 内容根增加随机目标合同：同一原卡在三个 Fork 中只选一个原版可打出的存活玩家，独立选择不推进游戏状态或 RNG；随后运行 3 秒真实搜索，路线只含本地动作，并完成原生出牌全状态／RNG 差分，Passed：`.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json`。此合同尚未覆盖生产重评估与执行时保持目标，也没有验余费支援分类。
+
 按产品边界对一瓶玩家目标 `StrengthPotion` 进行双人自用原生差分：本地持有者向自己用药，完整续用状态／RNG 与模拟一致，之后仍可给队友打 `BelieveInYou`，Passed：`.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。候选源码只枚举本地玩家自身；该样本不代表 51 种玩家目标药水逐瓶通过。
 
 多人设置新增独立的回合深度与时间限制，默认 2 回合／3 秒；持久化值验证范围为深度 1..32、时间 0.1..600 秒。搜索的回合层循环消费该深度，策略快照将时间转成毫秒，单人继续沿用原设置。虚拟双人探针实际断言默认 2／3000、自定义 3／6000，且结果搜索层不超过配置，Passed：`.local/multiplayer-p3/horizon-policy-2-b5e9a8d5762c444d93de124b59b26158/peer-0/result.json`。这是策略与上限合同；设置 UI、三类方案和共享多成员预算尚未完成。

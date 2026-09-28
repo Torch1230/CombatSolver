@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Collections.Concurrent;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -51,6 +52,8 @@ internal sealed partial class CombatBeamSolver(
         policy.FramePressureSignal);
     private readonly bool _includeTurnSetup = policy.IncludeTurnSetup;
     private readonly Player _player = root.PlayerIdentity;
+    private readonly ConcurrentDictionary<CardModel, uint> _allyTargetByCard =
+        new(ReferenceEqualityComparer.Instance);
     private readonly IntentForecast _forecast = root.Forecast;
     private readonly int _startTurnNumber = root.StartTurnNumber;
     private readonly int _totalFloor = root.TotalFloor;
