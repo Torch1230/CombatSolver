@@ -5,6 +5,7 @@ param(
     [int]$Port = 33771,
     [switch]$VerifyControllerFullAuto,
     [switch]$VerifyControllerAutoNextTurn,
+    [switch]$VerifyControllerRngDrift,
     [ValidateRange(0, 16)]
     [int]$SearchMaxDegreeOfParallelismForTest = 0
 )
@@ -12,6 +13,9 @@ param(
 $ErrorActionPreference = 'Stop'
 if ($VerifyControllerAutoNextTurn -and !$VerifyControllerFullAuto) {
     throw 'VerifyControllerAutoNextTurn requires VerifyControllerFullAuto.'
+}
+if ($VerifyControllerRngDrift -and ($PlayerCount -ne 2 -or $VerifyControllerFullAuto)) {
+    throw 'VerifyControllerRngDrift requires two players and manual controller execution.'
 }
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $session = Join-Path $repositoryRoot ('.local/multiplayer-p0/enet-' + $PlayerCount + '-' + [Guid]::NewGuid().ToString('N'))
@@ -31,6 +35,7 @@ foreach ($seat in 0..($PlayerCount - 1)) {
         expectedGameVersion = '0.111.0'
         verifyControllerFullAuto = [bool]$VerifyControllerFullAuto
         verifyControllerAutoNextTurn = [bool]$VerifyControllerAutoNextTurn
+        verifyEnetControllerRng = [bool]$VerifyControllerRngDrift
     } | ConvertTo-Json | Set-Content -LiteralPath $input -Encoding utf8
     $instance = 'mp-p0-' + [Guid]::NewGuid().ToString('N')
     $arguments = @(
@@ -42,6 +47,9 @@ foreach ($seat in 0..($PlayerCount - 1)) {
     )
     if ($SearchMaxDegreeOfParallelismForTest -gt 0) {
         $arguments += @('-SearchMaxDegreeOfParallelismForTest', [string]$SearchMaxDegreeOfParallelismForTest)
+    }
+    if ($VerifyControllerRngDrift) {
+        $arguments += @('-EncounterId', 'CULTISTS_NORMAL', '-DeploymentInterActionDelaySecondsForTest', '3')
     }
     $processes += Start-Process -FilePath 'pwsh' -ArgumentList $arguments `
         -WorkingDirectory $repositoryRoot -WindowStyle Hidden `

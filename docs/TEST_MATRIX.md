@@ -110,6 +110,10 @@ P4 随机流观测：双人虚拟 `CULTISTS_NORMAL`，队友在两张本地 `Str
 
 P2 `GremlinMerc` 的定向偷窃：双人根与双方普通牌即时全状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-root-d62f670148804ee8897239a3052bdab5/peer-0/result.json`；跨回合首试漏扣第二名玩家 20 金币，修复为按每条 `ThieveryPower` 实例结算后双人 `.local/multiplayer-p2/gremlin-merc-round-fixed-7897a817c6344866a0d997f34eb41ad6/peer-0/result.json`、四人 `.local/multiplayer-p2/gremlin-merc-round-four-ad7a27e68a594586be4b18c861b226e8/peer-0/result.json` 均 Passed。相应定向实例合同 `.local/multiplayer-p2/instanced-thievery-5cbf464691ab46acb566d6eb7644113f/result.json` Passed。只验首回合 `GIMME_MOVE`，后续招式与死亡返还未验。
 
+P2 `OvicopterNormal` 双敌召唤：虚拟双人到第二回合的完整状态／RNG 差分 Passed：`.local/multiplayer-p2/ovicopter-egg-round-6fd0947191ef4bba8ec663af8f1c4009/peer-0/result.json`。三只 `ToughEgg` 已按多人 HP 生成并携带 `HatchPower`；没有推进到孵化动作，孵化 HP 待验。
+
+P4 ENet 双端交错随机流：加入者在房主两张本地 `Strike` 之间用 `Largesse` 给房主生成牌；房主显示随机偏差、重评估后继续攻击且无完整重搜，双方稳定检查点原生全状态／九条 RNG 一致，Passed：`.local/multiplayer-p0/enet-2-75c6c88c214a4a7caa289c21b4d183fc/peer-0/result.json` 与 `peer-1/result.json`。最初两端超时来自测试等待加入者原始联机动作对象的 CompletionTask，修为等待原生可观察状态后通过。四人、Steam 房间与真实延迟未验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

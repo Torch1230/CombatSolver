@@ -27,10 +27,12 @@ internal sealed partial class UnattendedTestRunner
             MultiplayerProbeInput input = runner._multiplayerProbe!;
             if (input.ContentCardIds.Length > 0)
                 return await ExecuteMultiplayerContentProbeAsync(scenario, input);
+            if (input.VerifyEnetControllerRng)
+                return await ExecuteEnetControllerRngProbeAsync(scenario, input);
             CombatState combat = scenario.CombatState;
             Creature enemy = input.VerifyControllerTeammateKillsTarget
                 || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
-                || input.VerifyControllerMidDeploymentRng
+                || input.VerifyControllerMidDeploymentRng || input.UseFirstEnemyForProbe
                 ? combat.Enemies.First() : combat.Enemies.Single();
             if ((input.VerifyControllerTeammateKillsTarget
                     || input.VerifyControllerMidDeploymentKill || input.VerifyControllerMidDeploymentDamage
@@ -519,6 +521,70 @@ internal sealed partial class UnattendedTestRunner
                 }
                 await runner.WaitForMultiplayerProbeAsync(observed);
             }
+        }
+
+        private async Task<ExecutionOutcome> ExecuteEnetControllerRngProbeAsync(
+            ScenarioContext scenario, MultiplayerProbeInput input)
+        {
+            CombatState combat = scenario.CombatState;
+            Creature enemy = combat.Enemies.First();
+            Player hostPlayer = combat.Players[0];
+            Player joiningPlayer = combat.Players[1];
+            string hostSignal = Path.Combine(input.CoordinationDirectory, "peer-0", "first-attack.signal");
+            string joinSignal = Path.Combine(input.CoordinationDirectory, "peer-1", "largesse-complete.signal");
+            if (input.Seat == 0)
+            {
+                SolverController.MonitorCombatPresence();
+                int searchesBefore = SolverController.SearchesStartedForTesting;
+                HashSet<CardModel> localCardsBefore = [.. hostPlayer.PlayerCombatState!.AllCards];
+                SolverController.RequestSearch(runner._host, combat, SearchReason.Manual);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    SolverController.LastCompletedResultForTesting != null
+                    || SolverController.LastSearchFailureForTesting != null);
+                if (SolverController.LastSearchFailureForTesting is { } failure)
+                    throw new InvalidOperationException("ENet RNG controller search failed.", failure);
+                SolverResult result = SolverController.LastCompletedResultForTesting
+                    ?? throw new InvalidOperationException("ENet RNG controller produced no route.");
+                PlanAction[] attacks = result.BestNode.Actions.Where(action =>
+                    action.Turn == 1 && action.CardId == "STRIKE_IRONCLAD").ToArray();
+                if (attacks.Length != 2 || attacks.Any(action => action.TargetCombatId != enemy.CombatId))
+                    throw new InvalidOperationException("ENet RNG fixture needs two local attacks on the same enemy.");
+                int startingHp = enemy.CurrentHp;
+                SolverController.RequestDeploy(runner._host, combat);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    enemy.CurrentHp == startingHp - 6 && SolverController.IsDeploying);
+                File.WriteAllText(hostSignal, "first attack complete");
+                await runner.WaitForMultiplayerProbeAsync(() => File.Exists(joinSignal)
+                    && hostPlayer.PlayerCombatState!.AllCards.Any(card => !localCardsBefore.Contains(card)));
+                await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying);
+                CardModel generated = hostPlayer.PlayerCombatState!.AllCards.Single(card =>
+                    !localCardsBefore.Contains(card));
+                if (enemy.CurrentHp != startingHp - 12
+                    || !ReferenceEquals(generated.Owner, hostPlayer)
+                    || joiningPlayer.PlayerCombatState!.AllCards.Contains(generated)
+                    || !SolverOverlay.MultiplayerRngDeviationSeenForTesting
+                    || !SolverOverlay.MultiplayerRngReevaluatedForTesting
+                    || SolverController.SearchesStartedForTesting != searchesBefore + 1
+                    || !CombatManager.Instance.IsPlayerReadyToEndTurn(hostPlayer)
+                    || CombatManager.Instance.IsPlayerReadyToEndTurn(joiningPlayer))
+                    throw new InvalidOperationException("ENet teammate Largesse did not preserve the local route and RNG hint.");
+            }
+            else
+            {
+                await runner.WaitForMultiplayerProbeAsync(() => File.Exists(hostSignal));
+                CardModel largesse = joiningPlayer.PlayerCombatState!.Hand.Cards.Single(card =>
+                    card.Id.Entry == "LARGESSE");
+                HashSet<CardModel> hostCardsBefore = [.. hostPlayer.PlayerCombatState!.AllCards];
+                var teammatePlay = new PlayCardAction(largesse, hostPlayer.Creature);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    !joiningPlayer.PlayerCombatState.Hand.Cards.Contains(largesse)
+                    && hostPlayer.PlayerCombatState.AllCards.Any(card => !hostCardsBefore.Contains(card)));
+                File.WriteAllText(joinSignal, "Largesse complete");
+            }
+            await runner.MultiplayerProbeBarrierAsync("enet-rng-drift", combat);
+            runner._completedChecks.Add($"MultiplayerController:EnetRngDrift:Seat={input.Seat}:LocalRoute:TargetRecipient:FullState:FullRng");
+            return new ExecutionOutcome(false, 1, true, true, true, false);
         }
 
         private async Task<ExecutionOutcome> ExecuteMultiplayerContentProbeAsync(

@@ -179,6 +179,10 @@ P4 RNG 动作边界：虚拟双人双敌根中，本地第一张 `Strike` 后队
 
 P2 `GremlinMerc`：原版入场给每名玩家建一条 `ThieveryPower`，每次偷窃逐实例扣对应玩家金币。双人根与双方普通牌即时差分 Passed：`.local/multiplayer-p2/gremlin-merc-root-d62f670148804ee8897239a3052bdab5/peer-0/result.json`。首个跨回合差分明确失败于第二名玩家金币原生 79、预测 99；模拟原先只取第一条能力，改为按原版逐实例结算后双人第二回合全状态／RNG Passed：`.local/multiplayer-p2/gremlin-merc-round-fixed-7897a817c6344866a0d997f34eb41ad6/peer-0/result.json`；四人对应回合也 Passed：`.local/multiplayer-p2/gremlin-merc-round-four-ad7a27e68a594586be4b18c861b226e8/peer-0/result.json`。既有定向能力实例合同改为两条均写入金币，Passed：`.local/multiplayer-p2/instanced-thievery-5cbf464691ab46acb566d6eb7644113f/result.json`。仅覆盖 `GIMME_MOVE` 首回合偷窃；其他招式和死亡返还仍待验。
 
+P2 `OvicopterNormal` 双敌及召唤卵：虚拟双人首回合原生结束到第二回合的全玩家、敌人与完整 RNG 差分 Passed：`.local/multiplayer-p2/ovicopter-egg-round-6fd0947191ef4bba8ec663af8f1c4009/peer-0/result.json`。第二回合状态里出现三只带 `HatchPower` 的 `ToughEgg`，本次对齐的是召唤和初始多人 HP；卵尚未孵化，不能把孵化 HP 重设记为通过。
+
+P4 双端 ENet RNG 交错：房主搜索并执行两张本地 `Strike`，加入者在两张之间原生对房主打 `Largesse`。房主收到生成牌，提示共享随机流偏差并从新根重评估，第二张本地攻击继续，无额外完整搜索；双方同一检查点原生状态、玩家阶段及九条完整 RNG 一致，Passed：`.local/multiplayer-p0/enet-2-75c6c88c214a4a7caa289c21b4d183fc/peer-0/result.json` 与 `peer-1/result.json`。首轮测试让加入者等待原始 `PlayCardAction.CompletionTask`，联机同步动作不完成该对象，双方超时；改为等待原生出牌及目标收牌状态后取得有效证据。此项不覆盖四人、Steam 房间或真实网络延迟。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

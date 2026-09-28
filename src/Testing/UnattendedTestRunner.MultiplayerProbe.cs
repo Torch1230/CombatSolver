@@ -26,6 +26,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyActionDifferential { get; init; }
         public bool VerifyRoundDifferential { get; init; }
         public bool VerifyEnemyPowerScaling { get; init; }
+        public bool UseFirstEnemyForProbe { get; init; }
         public bool VerifySearch { get; init; }
         public bool VerifyControllerSearch { get; init; }
         public bool VerifyControllerAutomaticCalculation { get; init; }
@@ -38,6 +39,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerMidDeploymentKill { get; init; }
         public bool VerifyControllerMidDeploymentDamage { get; init; }
         public bool VerifyControllerMidDeploymentRng { get; init; }
+        public bool VerifyEnetControllerRng { get; init; }
         public bool VerifyControllerTargetedDeploy { get; init; }
         public bool VerifyControllerSelfPotionDeploy { get; init; }
         public bool VerifyControllerStyleSelection { get; init; }
@@ -96,6 +98,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerMidDeploymentKill && !input.VerifyControllerDeploy
                 || input.VerifyControllerMidDeploymentDamage && !input.VerifyControllerDeploy
                 || input.VerifyControllerMidDeploymentRng && !input.VerifyControllerDeploy
+                || input.VerifyEnetControllerRng && (input.IsVirtual || input.PlayerCount != 2)
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifySelfPotion && input.SelfPotionId is not
                     ("STRENGTH_POTION" or "BLOCK_POTION" or "ENERGY_POTION")
