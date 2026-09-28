@@ -121,6 +121,18 @@ internal static partial class SolverController
         }
     }
 
+    public static bool MultiplayerPredictionNeedsReview
+    {
+        get
+        {
+            CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+            return state != null && CombatManager.Instance.IsInProgress
+                && _combat.LatestResult is { MultiplayerStyle: not null } result
+                && IsSamePlayableTurn(state, result.StartTurnNumber)
+                && _combat.LatestStamp != LiveCombatStamp.Capture(state);
+        }
+    }
+
     /// <summary>
     /// True whenever the current run is a networked multiplayer session (host or client).
     /// The solver must stay fully inert in this case: the game's own multiplayer turn

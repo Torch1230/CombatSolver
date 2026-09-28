@@ -1482,14 +1482,37 @@ internal static class SolverOverlay
         bool canAdoptRoute = SolverController.CanAdoptCurrentRoute;
         bool canApplyCurrentTurn = SolverController.CanApplyCurrentTurn;
         bool canExecuteCurrentTurn = SolverController.CanExecuteCurrentTurn;
-        if (!SolverController.ShouldAutomaticallySearchNextTurn
+        if (SolverController.MultiplayerPredictionNeedsReview
             && _lastSnapshot != null && _presentation == SolverOverlayPresentation.Ready)
         {
-            SetStatus(SolverText.Get(canExecuteCurrentTurn ? "路线已保留" : "历史路线（仅供参考）"),
-                canExecuteCurrentTurn ? Accent : TextMuted);
+            SetStatus(SolverText.Get("队友行动后预测待更新"), Warning);
             if (_routeHeadingLabel != null)
-                _routeHeadingLabel.Text = SolverText.Get(canExecuteCurrentTurn
-                    ? "已保存路线" : "已保存路线（已过期）");
+                _routeHeadingLabel.Text = SolverText.Get("已保存路线（数值待更新）");
+            if (_summaryText != null)
+                _summaryText.Text = SolverText.Format(
+                    $"[color={SolverUiTokens.Palette.WarningHex}]当前数值待重评估；执行前会复核原路线。[/color]");
+        }
+        else if (_lastSnapshot != null && _presentation == SolverOverlayPresentation.Ready)
+        {
+            if (!SolverController.ShouldAutomaticallySearchNextTurn)
+            {
+                SetStatus(SolverText.Get(canExecuteCurrentTurn ? "路线已保留" : "历史路线（仅供参考）"),
+                    canExecuteCurrentTurn ? Accent : TextMuted);
+                if (_routeHeadingLabel != null)
+                    _routeHeadingLabel.Text = SolverText.Get(canExecuteCurrentTurn
+                        ? "已保存路线" : "已保存路线（已过期）");
+            }
+            else
+                SetStatus(_lastSnapshot.StatusText, Accent);
+            if (_summaryText != null)
+            {
+                string currentSummary = SolverUiTokens.AdaptRichTextToActiveTheme(_lastSnapshot.SummaryText)
+                    + (_lastSnapshot.Turns.Count > SolverWeights.UiTurnRows
+                        ? "\n" + SolverText.Format($"另有 {_lastSnapshot.Turns.Count - SolverWeights.UiTurnRows} 回合未展开显示")
+                        : string.Empty);
+                if (_summaryText.Text != currentSummary)
+                    _summaryText.Text = currentSummary;
+            }
         }
         _recalculateButton.Text = !SolverController.AutomaticCalculationEnabled
             && !SolverController.HasCalculatedThisCombat

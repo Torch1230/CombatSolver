@@ -90,6 +90,10 @@ internal sealed partial class UnattendedTestRunner
                         await teammatePlay.CompletionTask;
                         await runner.MultiplayerProbeBarrierAsync("teammate-drift", combat);
                         SolverOverlay.RefreshControls();
+                        if (!SolverController.MultiplayerPredictionNeedsReview
+                            || SolverOverlay.RouteHeadingForTesting?.Contains(
+                                SolverText.Get("已保存路线（数值待更新）"), StringComparison.Ordinal) != true)
+                            throw new InvalidOperationException("Teammate action did not mark stale multiplayer numbers.");
                         if (SolverOverlay.ExecuteButtonDisabledForTesting)
                             throw new InvalidOperationException("Teammate action disabled the retained local route button.");
                     }
