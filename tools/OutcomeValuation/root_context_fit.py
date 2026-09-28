@@ -21,7 +21,7 @@ from xgboost_fit import Deadline, convert_tree, predict_document, training_param
 
 
 def fit_context_rounds(matrix, names, products, roots, edges, margins, trees,
-                       check_deadline, until, *, rounds=16):
+                       check_deadline, until, *, rounds=16, signal_names=None):
     expanded = expand_products(matrix, names, products)
     forest_sum = np.zeros(len(matrix), dtype=np.float64)
     for tree in trees:
@@ -63,7 +63,8 @@ def count_product_splits(tree, columns):
             + count_product_splits(tree['Right'], columns))
 
 
-def fit(directory, output, seconds):
+def fit(directory, output, seconds, *, round_fitter=fit_context_rounds,
+        backend='root-supported-context-xgboost-cpu'):
     started = time.monotonic()
     if xgb.__version__ != '3.4.1' or not 1 <= seconds <= 1200:
         raise ValueError('Requires pinned XGBoost 3.4.1 and a shared <=1200s deadline')
@@ -100,8 +101,8 @@ def fit(directory, output, seconds):
         products, screening = select_products(matrix, names, signals, *derivatives(prediction, edges),
                                               check_deadline=check_deadline)
         del data
-        updates, fitted, rounds = fit_context_rounds(matrix, names, products, roots, edges, margins,
-                                                     trees, check_deadline, until)
+        updates, fitted, rounds = round_fitter(matrix, names, products, roots, edges, margins,
+            trees, check_deadline, until, signal_names=[names[i] for i in signals])
         document = dict(foundation, Forest=trees + updates)
         if len(document['Forest']) != 64:
             raise ValueError('Incomplete root-aware model')
@@ -127,7 +128,7 @@ def fit(directory, output, seconds):
         del prefix, matrix, edges, margins, roots, reference, prediction, fitted, actual
     model = models[''] if manifest['partition'] == 'shared' else dict(CharacterSchema=1, CharacterModels=models)
     for name, value in [('parity-inputs.json', inputs), ('parity-expected.json', expected),
-                        ('metrics.json', dict(backend='root-supported-context-xgboost-cpu',
+                        ('metrics.json', dict(backend=backend,
                             version=xgb.__version__, parameters=parameters, ordinaryRounds=48,
                             contextualRounds=16, contextualDepth=4, minimumRootParticipation=3,
                             maximumProducts=64, heads=metrics, seconds=time.monotonic() - started,

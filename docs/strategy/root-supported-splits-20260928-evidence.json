@@ -1,7 +1,7 @@
 {
   "experiment": "root-supported-histogram-split-prototype",
   "sourceBase": "d6e2d443",
-  "stage": "synthetic-contracts-passed-real-applicability-pending",
+  "stage": "real-single-tree-audit-passed-complete-fitter-contracts-passed",
   "sourceHashes": {
     "tools/OutcomeValuation/root_histogram.py": "04c22d12a0990872d3eca18f238048a3ee587ad287111b6f6e8e7210ff8feae4",
     "tools/OutcomeValuation/test_root_histogram.py": "6facde6dfb25e96c295dcfa5fd9963ed993f4749d09f369dbb9736494d5f4bda"
@@ -32,7 +32,7 @@
     "scope": "Six tiny histogram contracts on CPU0 while v85 benchmark uses CPUs12-15. No real-data training, new complete candidate, or combat. Maximum synthetic matrix20 columns /12 observations."
   },
   "contractsPassed": 10,
-  "completeFitterConnected": false,
+  "completeFitterConnected": true,
   "newFullCandidateRetained": false,
   "newRealDataTrainingRuns": 0,
   "newCombatSearches": 0,
@@ -43,7 +43,7 @@
     "owner": "Root",
     "mustFinishAndReapBeforeHeavyValidation": true
   },
-  "next": "After full v85 100/400 and actual process reaping, compare original prefix signal pool and all exported raw power observations in one supported-tree fit per role and pool (10 fits). No complete model or battle conclusion from this audit.",
+  "next": "Freeze one full candidate using shared fresh48 prefix and16 rounds comparing Hessian3 plus both supported histogram proposals; <=1800s complete cost, then all100/400 searches without quality early exit.",
   "limits": {
     "maximumColumns": 256,
     "quantileCutsPerColumn": 32,
@@ -60,8 +60,8 @@
     "Training root participation is not statistical independence.",
     "Columns must be explicitly chosen from training observations; at most256.",
     "Quantile cuts are a bounded subset of thresholds.",
-    "Actual runtime and memory on full graphs are unmeasured.",
-    "No claim of battle quality or learned real relic interactions."
+    "No claim of battle quality or learned real relic interactions.",
+    "Only ten single-tree real fits measured; complete new model and battle quality not yet evaluated."
   ],
   "additionalExactSplitContracts": {
     "returnCode": 0,
@@ -110,5 +110,1849 @@
     "scope": "Two new CPU0 column selection/capacity contracts only. Previous eight unaffected successes reused. Largest synthetic matrix6x257, no real training or combat."
   },
   "realAuditSingleTreeFitsPlanned": 10,
-  "columnPoolAmendmentBeforeAnyRealAuditResults": true
+  "columnPoolAmendmentBeforeAnyRealAuditResults": true,
+  "realSingleTreeFits": 10,
+  "realAudit": {
+    "completed": true,
+    "protocolSha256": "94160d50fa6e0c07a667c92ef7227542ed7efde41cf5216e5bedb6387311ca54",
+    "scope": "Paired one-tree feasibility fits per head at the saved48-tree prefix: original prefix signal pool and all exported power columns added. Not a complete candidate, all16 rounds, unseen data or battle acceptance.",
+    "heads": [
+      {
+        "character": "DEFECT",
+        "variant": "prefix-signals",
+        "selectedColumns": 145,
+        "rows": 44152,
+        "availablePowerColumns": 71,
+        "selectedPowerColumns": 1,
+        "usedPowerColumns": [],
+        "cacheBytes": 6402040,
+        "cacheSeconds": 0.13070773903746158,
+        "singleTreeFitSeconds": 0.3370564910583198,
+        "productSplits": 1,
+        "beforeLoss": 26.915269537912923,
+        "afterLoss": 26.86018260141361,
+        "priorHessian3AfterOneRound": 26.87504847986998,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 13,
+              "effectiveRoots": 4.0523714414733405,
+              "hessianMass": 0.08417023008314573
+            },
+            {
+              "distinctRoots": 7,
+              "effectiveRoots": 3.079909736966747,
+              "hessianMass": 0.00943502501149851
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 5.741023527286839,
+              "hessianMass": 0.05857262115023332
+            },
+            {
+              "distinctRoots": 14,
+              "effectiveRoots": 5.285066727405411,
+              "hessianMass": 0.055541605622465795
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 4.729334608278802,
+              "hessianMass": 0.009504901741365757
+            },
+            {
+              "distinctRoots": 10,
+              "effectiveRoots": 3.573722994449696,
+              "hessianMass": 0.12159038459304838
+            },
+            {
+              "distinctRoots": 44,
+              "effectiveRoots": 16.401813199656296,
+              "hessianMass": 0.7189520139598358
+            },
+            {
+              "distinctRoots": 8,
+              "effectiveRoots": 3.1946555768846583,
+              "hessianMass": 0.027467073356092442
+            },
+            {
+              "distinctRoots": 21,
+              "effectiveRoots": 3.830896211270682,
+              "hessianMass": 0.2836020295607682
+            },
+            {
+              "distinctRoots": 12,
+              "effectiveRoots": 3.0407812115397483,
+              "hessianMass": 0.06928925424739418
+            },
+            {
+              "distinctRoots": 12,
+              "effectiveRoots": 4.597582108611201,
+              "hessianMass": 0.07219132211412216
+            },
+            {
+              "distinctRoots": 25,
+              "effectiveRoots": 7.250329351922091,
+              "hessianMass": 0.1489154708826419
+            },
+            {
+              "distinctRoots": 50,
+              "effectiveRoots": 25.68264625892606,
+              "hessianMass": 1.7875609342022472
+            },
+            {
+              "distinctRoots": 46,
+              "effectiveRoots": 22.77196642412142,
+              "hessianMass": 1.1178440221776356
+            },
+            {
+              "distinctRoots": 60,
+              "effectiveRoots": 58.19841777274774,
+              "hessianMass": 38.76395368569871
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.316419266779229,
+              "hessianMass": 0.37883290740319353
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 2906,
+            "threshold": 3.9999999999999996,
+            "depth": 0,
+            "quadraticGainProxy": 0.07635168304117196
+          },
+          {
+            "feature": 2,
+            "threshold": -26.000000000000004,
+            "depth": 1,
+            "quadraticGainProxy": 0.035000859191874206
+          },
+          {
+            "feature": 2147,
+            "threshold": 2.9999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.0206016906369263
+          },
+          {
+            "feature": 975,
+            "threshold": 16.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.010729560720917419
+          },
+          {
+            "feature": 1,
+            "threshold": 12.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.008260461689076824
+          },
+          {
+            "feature": 2171,
+            "threshold": 0.9999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.02942997175732273
+          },
+          {
+            "feature": 3,
+            "threshold": 6.999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.002681628849531769
+          },
+          {
+            "feature": 2904,
+            "threshold": 29.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.012873863255880386
+          },
+          {
+            "feature": 2,
+            "threshold": -26.000000000000004,
+            "depth": 1,
+            "quadraticGainProxy": 0.05251038711913554
+          },
+          {
+            "feature": 2910,
+            "threshold": 66.99999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.026500196463901435
+          },
+          {
+            "feature": 2872,
+            "threshold": 2.9999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.010574778678021646
+          },
+          {
+            "feature": 1,
+            "threshold": 8.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.03270821370552994
+          },
+          {
+            "feature": 2,
+            "threshold": 0.9999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.0610340988263578
+          },
+          {
+            "feature": 1,
+            "threshold": 30.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.13824573516968347
+          },
+          {
+            "feature": 3121,
+            "threshold": 1.4012984643248169e-45,
+            "depth": 3,
+            "quadraticGainProxy": 0.046437303582162415
+          }
+        ],
+        "proposedCuts": 9855,
+        "supportedCuts": 4387,
+        "variantSeconds": 0.4677642300957814,
+        "headElapsedSeconds": 1.1500327090034261
+      },
+      {
+        "character": "DEFECT",
+        "variant": "all-powers",
+        "selectedColumns": 215,
+        "rows": 44152,
+        "availablePowerColumns": 71,
+        "selectedPowerColumns": 71,
+        "usedPowerColumns": [
+          "power/player/DEXTERITY_POWER",
+          "power/player/LOOP_POWER"
+        ],
+        "cacheBytes": 9492680,
+        "cacheSeconds": 0.16332434595096856,
+        "singleTreeFitSeconds": 0.4854108579456806,
+        "productSplits": 1,
+        "beforeLoss": 26.915269537912923,
+        "afterLoss": 26.859648879499552,
+        "priorHessian3AfterOneRound": 26.87504847986998,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 13,
+              "effectiveRoots": 4.0523714414733405,
+              "hessianMass": 0.08417023008314573
+            },
+            {
+              "distinctRoots": 7,
+              "effectiveRoots": 3.079909736966747,
+              "hessianMass": 0.00943502501149851
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 5.741023527286839,
+              "hessianMass": 0.05857262115023332
+            },
+            {
+              "distinctRoots": 14,
+              "effectiveRoots": 5.285066727405411,
+              "hessianMass": 0.055541605622465795
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 4.729334608278802,
+              "hessianMass": 0.009504901741365757
+            },
+            {
+              "distinctRoots": 10,
+              "effectiveRoots": 3.573722994449696,
+              "hessianMass": 0.12159038459304838
+            },
+            {
+              "distinctRoots": 41,
+              "effectiveRoots": 15.378651713231829,
+              "hessianMass": 0.6239591547617351
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.4371234567978712,
+              "hessianMass": 0.12245993255419307
+            },
+            {
+              "distinctRoots": 16,
+              "effectiveRoots": 3.825144087772521,
+              "hessianMass": 0.32841984362804055
+            },
+            {
+              "distinctRoots": 8,
+              "effectiveRoots": 3.9385129034917945,
+              "hessianMass": 0.024471440180121817
+            },
+            {
+              "distinctRoots": 12,
+              "effectiveRoots": 4.597582108611201,
+              "hessianMass": 0.07219132211412216
+            },
+            {
+              "distinctRoots": 25,
+              "effectiveRoots": 7.250329351922091,
+              "hessianMass": 0.1489154708826419
+            },
+            {
+              "distinctRoots": 50,
+              "effectiveRoots": 25.68264625892606,
+              "hessianMass": 1.7875609342022472
+            },
+            {
+              "distinctRoots": 46,
+              "effectiveRoots": 22.77196642412142,
+              "hessianMass": 1.1178440221776356
+            },
+            {
+              "distinctRoots": 60,
+              "effectiveRoots": 58.19841777274774,
+              "hessianMass": 38.76395368569871
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.316419266779229,
+              "hessianMass": 0.37883290740319353
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 2906,
+            "threshold": 3.9999999999999996,
+            "depth": 0,
+            "quadraticGainProxy": 0.07635168304117196
+          },
+          {
+            "feature": 2,
+            "threshold": -26.000000000000004,
+            "depth": 1,
+            "quadraticGainProxy": 0.035000859191874206
+          },
+          {
+            "feature": 2147,
+            "threshold": 2.9999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.0206016906369263
+          },
+          {
+            "feature": 975,
+            "threshold": 16.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.010729560720917419
+          },
+          {
+            "feature": 1,
+            "threshold": 12.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.008260461689076824
+          },
+          {
+            "feature": 2171,
+            "threshold": 0.9999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.02942997175732273
+          },
+          {
+            "feature": 3,
+            "threshold": 6.999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.002681628849531769
+          },
+          {
+            "feature": 2962,
+            "threshold": 1.9999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.01657081945466407
+          },
+          {
+            "feature": 2,
+            "threshold": -26.000000000000004,
+            "depth": 1,
+            "quadraticGainProxy": 0.05251038711913554
+          },
+          {
+            "feature": 2910,
+            "threshold": 66.99999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.026500196463901435
+          },
+          {
+            "feature": 2948,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.012316914151967465
+          },
+          {
+            "feature": 1,
+            "threshold": 8.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.03270821370552994
+          },
+          {
+            "feature": 2,
+            "threshold": 0.9999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.0610340988263578
+          },
+          {
+            "feature": 1,
+            "threshold": 30.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.13824573516968347
+          },
+          {
+            "feature": 3121,
+            "threshold": 1.4012984643248169e-45,
+            "depth": 3,
+            "quadraticGainProxy": 0.046437303582162415
+          }
+        ],
+        "proposedCuts": 11880,
+        "supportedCuts": 4854,
+        "variantSeconds": 0.6487352038966492,
+        "headElapsedSeconds": 1.936319757020101
+      },
+      {
+        "character": "IRONCLAD",
+        "variant": "prefix-signals",
+        "selectedColumns": 151,
+        "rows": 41309,
+        "availablePowerColumns": 62,
+        "selectedPowerColumns": 3,
+        "usedPowerColumns": [],
+        "cacheBytes": 6237659,
+        "cacheSeconds": 0.1218543479917571,
+        "singleTreeFitSeconds": 0.29602962092030793,
+        "productSplits": 1,
+        "beforeLoss": 27.542201904685513,
+        "afterLoss": 27.48875740992068,
+        "priorHessian3AfterOneRound": 27.511035084831672,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 58,
+              "effectiveRoots": 42.600823616007276,
+              "hessianMass": 21.470608015662208
+            },
+            {
+              "distinctRoots": 48,
+              "effectiveRoots": 28.452111846177807,
+              "hessianMass": 2.8750213923897263
+            },
+            {
+              "distinctRoots": 12,
+              "effectiveRoots": 4.776964521745888,
+              "hessianMass": 0.5380935694556683
+            },
+            {
+              "distinctRoots": 15,
+              "effectiveRoots": 4.4702971817536445,
+              "hessianMass": 1.2238570052359137
+            },
+            {
+              "distinctRoots": 44,
+              "effectiveRoots": 19.261204799083373,
+              "hessianMass": 3.9506210316258716
+            },
+            {
+              "distinctRoots": 49,
+              "effectiveRoots": 36.28076563993501,
+              "hessianMass": 13.092327291981746
+            },
+            {
+              "distinctRoots": 27,
+              "effectiveRoots": 12.323233963030892,
+              "hessianMass": 0.269557903806799
+            },
+            {
+              "distinctRoots": 13,
+              "effectiveRoots": 4.116410945751101,
+              "hessianMass": 0.27138947301500593
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.0528804077968648,
+              "hessianMass": 0.08520623669755878
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.062985013219179,
+              "hessianMass": 0.22592099501707708
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 3026,
+            "threshold": 1.4012984643248169e-45,
+            "depth": 0,
+            "quadraticGainProxy": 0.0873816515289693
+          },
+          {
+            "feature": 1,
+            "threshold": 89.99999999999999,
+            "depth": 1,
+            "quadraticGainProxy": 0.04347020034624196
+          },
+          {
+            "feature": 2,
+            "threshold": 78.99999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.06159490023968205
+          },
+          {
+            "feature": 2855,
+            "threshold": 72.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.04383273768755808
+          },
+          {
+            "feature": 431,
+            "threshold": 9.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.06748776169392612
+          },
+          {
+            "feature": 2775,
+            "threshold": 49.99999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.10126521483462467
+          },
+          {
+            "feature": 2,
+            "threshold": 39.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.08572386847288631
+          },
+          {
+            "feature": 2,
+            "threshold": 59.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.049238551818997514
+          },
+          {
+            "feature": 421,
+            "threshold": 11.999999999999998,
+            "depth": 1,
+            "quadraticGainProxy": 0.006722065450662271
+          }
+        ],
+        "proposedCuts": 7601,
+        "supportedCuts": 3193,
+        "variantSeconds": 0.41788396891206503,
+        "headElapsedSeconds": 1.191930269007571
+      },
+      {
+        "character": "IRONCLAD",
+        "variant": "all-powers",
+        "selectedColumns": 210,
+        "rows": 41309,
+        "availablePowerColumns": 62,
+        "selectedPowerColumns": 62,
+        "usedPowerColumns": [
+          "power/player/CRIMSON_MANTLE_POWER",
+          "power/player/DEMON_FORM_POWER"
+        ],
+        "cacheBytes": 8674890,
+        "cacheSeconds": 0.1538869619835168,
+        "singleTreeFitSeconds": 0.4050889299251139,
+        "productSplits": 1,
+        "beforeLoss": 27.542201904685513,
+        "afterLoss": 27.47927727484933,
+        "priorHessian3AfterOneRound": 27.511035084831672,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 56,
+              "effectiveRoots": 43.80816818145455,
+              "hessianMass": 22.58127970688878
+            },
+            {
+              "distinctRoots": 18,
+              "effectiveRoots": 5.2809382471874295,
+              "hessianMass": 1.7443703645767528
+            },
+            {
+              "distinctRoots": 8,
+              "effectiveRoots": 6.369129694422224,
+              "hessianMass": 1.4479001738836814
+            },
+            {
+              "distinctRoots": 5,
+              "effectiveRoots": 3.4781920135044313,
+              "hessianMass": 0.3340297373943031
+            },
+            {
+              "distinctRoots": 43,
+              "effectiveRoots": 18.89025131947763,
+              "hessianMass": 3.1511333097476495
+            },
+            {
+              "distinctRoots": 49,
+              "effectiveRoots": 35.77093009738298,
+              "hessianMass": 13.049097520882242
+            },
+            {
+              "distinctRoots": 10,
+              "effectiveRoots": 3.516110651772179,
+              "hessianMass": 0.3129594987424298
+            },
+            {
+              "distinctRoots": 10,
+              "effectiveRoots": 4.026933854891858,
+              "hessianMass": 1.0707053710571017
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.0528804077968648,
+              "hessianMass": 0.08520623669755878
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.062985013219179,
+              "hessianMass": 0.22592099501707708
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 3026,
+            "threshold": 1.4012984643248169e-45,
+            "depth": 0,
+            "quadraticGainProxy": 0.0873816515289693
+          },
+          {
+            "feature": 1,
+            "threshold": 89.99999999999999,
+            "depth": 1,
+            "quadraticGainProxy": 0.04347020034624196
+          },
+          {
+            "feature": 2888,
+            "threshold": 9.999999999999998,
+            "depth": 2,
+            "quadraticGainProxy": 0.06897899581042934
+          },
+          {
+            "feature": 2,
+            "threshold": 78.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.056223031305981365
+          },
+          {
+            "feature": 2,
+            "threshold": 59.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.018661292871221306
+          },
+          {
+            "feature": 2891,
+            "threshold": 3.9999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.10552178158197695
+          },
+          {
+            "feature": 2,
+            "threshold": 39.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.17880812706887184
+          },
+          {
+            "feature": 2850,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.07445909303544918
+          },
+          {
+            "feature": 421,
+            "threshold": 11.999999999999998,
+            "depth": 1,
+            "quadraticGainProxy": 0.006722065450662271
+          }
+        ],
+        "proposedCuts": 8888,
+        "supportedCuts": 3595,
+        "variantSeconds": 0.5589758919086307,
+        "headElapsedSeconds": 1.8761986369499937
+      },
+      {
+        "character": "NECROBINDER",
+        "variant": "prefix-signals",
+        "selectedColumns": 150,
+        "rows": 38449,
+        "availablePowerColumns": 83,
+        "selectedPowerColumns": 2,
+        "usedPowerColumns": [
+          "power/enemies/DOOM_POWER"
+        ],
+        "cacheBytes": 5767350,
+        "cacheSeconds": 0.11561394005548209,
+        "singleTreeFitSeconds": 0.310243678977713,
+        "productSplits": 1,
+        "beforeLoss": 26.264677141133063,
+        "afterLoss": 26.2096398103558,
+        "priorHessian3AfterOneRound": 26.249669077310415,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 14,
+              "effectiveRoots": 6.013735340247296,
+              "hessianMass": 0.6639852537973638
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.647527681147173,
+              "hessianMass": 0.11685253100949922
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 4.1710521360106085,
+              "hessianMass": 0.24649353791187423
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 3.357951649181433,
+              "hessianMass": 0.29878516601092997
+            },
+            {
+              "distinctRoots": 53,
+              "effectiveRoots": 51.70956923736321,
+              "hessianMass": 37.37405061420179
+            },
+            {
+              "distinctRoots": 15,
+              "effectiveRoots": 7.143983745333961,
+              "hessianMass": 0.903912641549141
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.1982025792360353,
+              "hessianMass": 0.45731697914379765
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.045506878058229,
+              "hessianMass": 0.6208822005369257
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.045926637007957,
+              "hessianMass": 0.2064210173573997
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.1288973299459766,
+              "hessianMass": 0.05543286104875733
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.1353838883452005,
+              "hessianMass": 0.47391084141600004
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.09989156283989,
+              "hessianMass": 0.8207007929831889
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 2978,
+            "threshold": 1.9999999999999998,
+            "depth": 0,
+            "quadraticGainProxy": 0.042062782309617824
+          },
+          {
+            "feature": 50,
+            "threshold": 0.9999999999999999,
+            "depth": 1,
+            "quadraticGainProxy": 0.05049423509049639
+          },
+          {
+            "feature": 1,
+            "threshold": 89.99999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.15460577544448584
+          },
+          {
+            "feature": 396,
+            "threshold": 8.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.11748679941664644
+          },
+          {
+            "feature": 396,
+            "threshold": 5.999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.02510000119822442
+          },
+          {
+            "feature": 2879,
+            "threshold": 0.9999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.0580274918651599
+          },
+          {
+            "feature": 2757,
+            "threshold": 65.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.04646941560983736
+          },
+          {
+            "feature": 387,
+            "threshold": 11.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.0356721796468223
+          },
+          {
+            "feature": 2,
+            "threshold": 13.999999999999998,
+            "depth": 1,
+            "quadraticGainProxy": 0.019624207486599682
+          },
+          {
+            "feature": 52,
+            "threshold": 1.9999999999999998,
+            "depth": 2,
+            "quadraticGainProxy": 0.004153935354609936
+          },
+          {
+            "feature": 388,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.009820673967368208
+          }
+        ],
+        "proposedCuts": 8632,
+        "supportedCuts": 2513,
+        "variantSeconds": 0.4258576190331951,
+        "headElapsedSeconds": 0.9971671469975263
+      },
+      {
+        "character": "NECROBINDER",
+        "variant": "all-powers",
+        "selectedColumns": 231,
+        "rows": 38449,
+        "availablePowerColumns": 83,
+        "selectedPowerColumns": 83,
+        "usedPowerColumns": [
+          "power/enemies/DOOM_POWER"
+        ],
+        "cacheBytes": 8881719,
+        "cacheSeconds": 0.15076205402147025,
+        "singleTreeFitSeconds": 0.4410211140057072,
+        "productSplits": 1,
+        "beforeLoss": 26.264677141133063,
+        "afterLoss": 26.2096398103558,
+        "priorHessian3AfterOneRound": 26.249669077310415,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 14,
+              "effectiveRoots": 6.013735340247296,
+              "hessianMass": 0.6639852537973638
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.647527681147173,
+              "hessianMass": 0.11685253100949922
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 4.1710521360106085,
+              "hessianMass": 0.24649353791187423
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 3.357951649181433,
+              "hessianMass": 0.29878516601092997
+            },
+            {
+              "distinctRoots": 53,
+              "effectiveRoots": 51.70956923736321,
+              "hessianMass": 37.37405061420179
+            },
+            {
+              "distinctRoots": 15,
+              "effectiveRoots": 7.143983745333961,
+              "hessianMass": 0.903912641549141
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.1982025792360353,
+              "hessianMass": 0.45731697914379765
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.045506878058229,
+              "hessianMass": 0.6208822005369257
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.045926637007957,
+              "hessianMass": 0.2064210173573997
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.1288973299459766,
+              "hessianMass": 0.05543286104875733
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.1353838883452005,
+              "hessianMass": 0.47391084141600004
+            },
+            {
+              "distinctRoots": 4,
+              "effectiveRoots": 3.09989156283989,
+              "hessianMass": 0.8207007929831889
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 2978,
+            "threshold": 1.9999999999999998,
+            "depth": 0,
+            "quadraticGainProxy": 0.042062782309617824
+          },
+          {
+            "feature": 50,
+            "threshold": 0.9999999999999999,
+            "depth": 1,
+            "quadraticGainProxy": 0.05049423509049639
+          },
+          {
+            "feature": 1,
+            "threshold": 89.99999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.15460577544448584
+          },
+          {
+            "feature": 396,
+            "threshold": 8.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.11748679941664644
+          },
+          {
+            "feature": 396,
+            "threshold": 5.999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.02510000119822442
+          },
+          {
+            "feature": 2879,
+            "threshold": 0.9999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.0580274918651599
+          },
+          {
+            "feature": 2757,
+            "threshold": 65.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.04646941560983736
+          },
+          {
+            "feature": 387,
+            "threshold": 11.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.0356721796468223
+          },
+          {
+            "feature": 2,
+            "threshold": 13.999999999999998,
+            "depth": 1,
+            "quadraticGainProxy": 0.019624207486599682
+          },
+          {
+            "feature": 52,
+            "threshold": 1.9999999999999998,
+            "depth": 2,
+            "quadraticGainProxy": 0.004153935354609936
+          },
+          {
+            "feature": 388,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.009820673967368208
+          }
+        ],
+        "proposedCuts": 10842,
+        "supportedCuts": 2914,
+        "variantSeconds": 0.5917831680271775,
+        "headElapsedSeconds": 1.7053174820030108
+      },
+      {
+        "character": "REGENT",
+        "variant": "prefix-signals",
+        "selectedColumns": 152,
+        "rows": 36949,
+        "availablePowerColumns": 89,
+        "selectedPowerColumns": 2,
+        "usedPowerColumns": [],
+        "cacheBytes": 5616248,
+        "cacheSeconds": 0.11728026194032282,
+        "singleTreeFitSeconds": 0.3182194749824703,
+        "productSplits": 1,
+        "beforeLoss": 26.52695698939216,
+        "afterLoss": 26.46268715234924,
+        "priorHessian3AfterOneRound": 26.49903841454413,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 32,
+              "effectiveRoots": 11.699436247412937,
+              "hessianMass": 0.5136818994517398
+            },
+            {
+              "distinctRoots": 23,
+              "effectiveRoots": 3.0680645492054563,
+              "hessianMass": 0.3128841379933931
+            },
+            {
+              "distinctRoots": 15,
+              "effectiveRoots": 4.295116363247216,
+              "hessianMass": 0.055103473792769364
+            },
+            {
+              "distinctRoots": 25,
+              "effectiveRoots": 7.149550433878887,
+              "hessianMass": 0.23491400227135273
+            },
+            {
+              "distinctRoots": 11,
+              "effectiveRoots": 3.9602318487551935,
+              "hessianMass": 0.0913801396418421
+            },
+            {
+              "distinctRoots": 20,
+              "effectiveRoots": 8.606980482291949,
+              "hessianMass": 0.2887191072550195
+            },
+            {
+              "distinctRoots": 7,
+              "effectiveRoots": 3.2269628278218168,
+              "hessianMass": 0.08183015819304273
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.046438461406311,
+              "hessianMass": 0.03159904852145701
+            },
+            {
+              "distinctRoots": 55,
+              "effectiveRoots": 38.28459909583656,
+              "hessianMass": 14.861006701808492
+            },
+            {
+              "distinctRoots": 22,
+              "effectiveRoots": 8.23125863599498,
+              "hessianMass": 2.7084420766732364
+            },
+            {
+              "distinctRoots": 53,
+              "effectiveRoots": 45.7251258672419,
+              "hessianMass": 22.925812715566252
+            },
+            {
+              "distinctRoots": 21,
+              "effectiveRoots": 7.721963958834573,
+              "hessianMass": 0.8005364785090023
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.323133265574091,
+              "hessianMass": 0.2234107630465587
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.290344854905885,
+              "hessianMass": 0.3144217662375013
+            },
+            {
+              "distinctRoots": 5,
+              "effectiveRoots": 3.0141641909904706,
+              "hessianMass": 0.12006561222369783
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 4.5258841864415364,
+              "hessianMass": 0.15429448326813144
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 3320,
+            "threshold": 3.9999999999999996,
+            "depth": 0,
+            "quadraticGainProxy": 0.06464721139325513
+          },
+          {
+            "feature": 3,
+            "threshold": 10.999999999999998,
+            "depth": 1,
+            "quadraticGainProxy": 0.05365880159803137
+          },
+          {
+            "feature": 2221,
+            "threshold": 21.999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.05952584501438579
+          },
+          {
+            "feature": 2221,
+            "threshold": 12.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.04621514585518224
+          },
+          {
+            "feature": 552,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.013841583198948432
+          },
+          {
+            "feature": 5,
+            "threshold": 17.999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.01021802806251429
+          },
+          {
+            "feature": 2,
+            "threshold": -16.000000000000004,
+            "depth": 3,
+            "quadraticGainProxy": 0.003729710873730731
+          },
+          {
+            "feature": 609,
+            "threshold": 26.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.006526582338618962
+          },
+          {
+            "feature": 3574,
+            "threshold": 1.4012984643248169e-45,
+            "depth": 1,
+            "quadraticGainProxy": 0.05466886712088742
+          },
+          {
+            "feature": 8,
+            "threshold": 34.99999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.0516715551395013
+          },
+          {
+            "feature": 2,
+            "threshold": 67.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.0868383987330685
+          },
+          {
+            "feature": 3322,
+            "threshold": 8.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.07537690488708522
+          },
+          {
+            "feature": 3322,
+            "threshold": 3.9999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.06856974898848284
+          },
+          {
+            "feature": 3322,
+            "threshold": 1.9999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.021296558701607973
+          },
+          {
+            "feature": 562,
+            "threshold": 49.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.04111605116805446
+          }
+        ],
+        "proposedCuts": 10605,
+        "supportedCuts": 4488,
+        "variantSeconds": 0.4354997369227931,
+        "headElapsedSeconds": 1.100029719993472
+      },
+      {
+        "character": "REGENT",
+        "variant": "all-powers",
+        "selectedColumns": 239,
+        "rows": 36949,
+        "availablePowerColumns": 89,
+        "selectedPowerColumns": 89,
+        "usedPowerColumns": [],
+        "cacheBytes": 8830811,
+        "cacheSeconds": 0.1557868409436196,
+        "singleTreeFitSeconds": 0.48415318806655705,
+        "productSplits": 1,
+        "beforeLoss": 26.52695698939216,
+        "afterLoss": 26.46268715234924,
+        "priorHessian3AfterOneRound": 26.49903841454413,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 32,
+              "effectiveRoots": 11.699436247412937,
+              "hessianMass": 0.5136818994517398
+            },
+            {
+              "distinctRoots": 23,
+              "effectiveRoots": 3.0680645492054563,
+              "hessianMass": 0.3128841379933931
+            },
+            {
+              "distinctRoots": 15,
+              "effectiveRoots": 4.295116363247216,
+              "hessianMass": 0.055103473792769364
+            },
+            {
+              "distinctRoots": 25,
+              "effectiveRoots": 7.149550433878887,
+              "hessianMass": 0.23491400227135273
+            },
+            {
+              "distinctRoots": 11,
+              "effectiveRoots": 3.9602318487551935,
+              "hessianMass": 0.0913801396418421
+            },
+            {
+              "distinctRoots": 20,
+              "effectiveRoots": 8.606980482291949,
+              "hessianMass": 0.2887191072550195
+            },
+            {
+              "distinctRoots": 7,
+              "effectiveRoots": 3.2269628278218168,
+              "hessianMass": 0.08183015819304273
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.046438461406311,
+              "hessianMass": 0.03159904852145701
+            },
+            {
+              "distinctRoots": 55,
+              "effectiveRoots": 38.28459909583656,
+              "hessianMass": 14.861006701808492
+            },
+            {
+              "distinctRoots": 22,
+              "effectiveRoots": 8.23125863599498,
+              "hessianMass": 2.7084420766732364
+            },
+            {
+              "distinctRoots": 53,
+              "effectiveRoots": 45.7251258672419,
+              "hessianMass": 22.925812715566252
+            },
+            {
+              "distinctRoots": 21,
+              "effectiveRoots": 7.721963958834573,
+              "hessianMass": 0.8005364785090023
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.323133265574091,
+              "hessianMass": 0.2234107630465587
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.290344854905885,
+              "hessianMass": 0.3144217662375013
+            },
+            {
+              "distinctRoots": 5,
+              "effectiveRoots": 3.0141641909904706,
+              "hessianMass": 0.12006561222369783
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 4.5258841864415364,
+              "hessianMass": 0.15429448326813144
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 3320,
+            "threshold": 3.9999999999999996,
+            "depth": 0,
+            "quadraticGainProxy": 0.06464721139325513
+          },
+          {
+            "feature": 3,
+            "threshold": 10.999999999999998,
+            "depth": 1,
+            "quadraticGainProxy": 0.05365880159803137
+          },
+          {
+            "feature": 2221,
+            "threshold": 21.999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.05952584501438579
+          },
+          {
+            "feature": 2221,
+            "threshold": 12.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.04621514585518224
+          },
+          {
+            "feature": 552,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.013841583198948432
+          },
+          {
+            "feature": 5,
+            "threshold": 17.999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.01021802806251429
+          },
+          {
+            "feature": 2,
+            "threshold": -16.000000000000004,
+            "depth": 3,
+            "quadraticGainProxy": 0.003729710873730731
+          },
+          {
+            "feature": 609,
+            "threshold": 26.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.006526582338618962
+          },
+          {
+            "feature": 3574,
+            "threshold": 1.4012984643248169e-45,
+            "depth": 1,
+            "quadraticGainProxy": 0.05466886712088742
+          },
+          {
+            "feature": 8,
+            "threshold": 34.99999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.0516715551395013
+          },
+          {
+            "feature": 2,
+            "threshold": 67.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.0868383987330685
+          },
+          {
+            "feature": 3322,
+            "threshold": 8.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.07537690488708522
+          },
+          {
+            "feature": 3322,
+            "threshold": 3.9999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.06856974898848284
+          },
+          {
+            "feature": 3322,
+            "threshold": 1.9999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.021296558701607973
+          },
+          {
+            "feature": 562,
+            "threshold": 49.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.04111605116805446
+          }
+        ],
+        "proposedCuts": 12765,
+        "supportedCuts": 4911,
+        "variantSeconds": 0.6399400290101767,
+        "headElapsedSeconds": 1.862467807950452
+      },
+      {
+        "character": "SILENT",
+        "variant": "prefix-signals",
+        "selectedColumns": 148,
+        "rows": 43358,
+        "availablePowerColumns": 85,
+        "selectedPowerColumns": 2,
+        "usedPowerColumns": [
+          "power/enemies/POISON_POWER"
+        ],
+        "cacheBytes": 6416984,
+        "cacheSeconds": 0.19470545905642211,
+        "singleTreeFitSeconds": 0.3498239419423044,
+        "productSplits": 0,
+        "beforeLoss": 26.718696348692582,
+        "afterLoss": 26.6519439153049,
+        "priorHessian3AfterOneRound": 26.686027433822925,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 56,
+              "effectiveRoots": 36.62149400391072,
+              "hessianMass": 18.512885576610557
+            },
+            {
+              "distinctRoots": 36,
+              "effectiveRoots": 27.070034135430344,
+              "hessianMass": 10.33430467893794
+            },
+            {
+              "distinctRoots": 31,
+              "effectiveRoots": 13.329558046615839,
+              "hessianMass": 1.9067150955472698
+            },
+            {
+              "distinctRoots": 39,
+              "effectiveRoots": 20.604755571122173,
+              "hessianMass": 5.393527366590149
+            },
+            {
+              "distinctRoots": 35,
+              "effectiveRoots": 15.5919184690511,
+              "hessianMass": 4.915931671763246
+            },
+            {
+              "distinctRoots": 23,
+              "effectiveRoots": 9.410689940943756,
+              "hessianMass": 1.1455837467074161
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 4.752622763987238,
+              "hessianMass": 0.06774133592989529
+            },
+            {
+              "distinctRoots": 13,
+              "effectiveRoots": 3.8287153673986936,
+              "hessianMass": 0.39181737490730484
+            },
+            {
+              "distinctRoots": 24,
+              "effectiveRoots": 8.13680009188241,
+              "hessianMass": 0.27109825605293736
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 3.337984133205255,
+              "hessianMass": 0.08094951247949211
+            },
+            {
+              "distinctRoots": 20,
+              "effectiveRoots": 9.525166770316233,
+              "hessianMass": 0.17678738988115583
+            },
+            {
+              "distinctRoots": 11,
+              "effectiveRoots": 3.156743281830291,
+              "hessianMass": 0.3790383885825577
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.0609821473394874,
+              "hessianMass": 0.016176750021259068
+            },
+            {
+              "distinctRoots": 12,
+              "effectiveRoots": 3.0619281857873384,
+              "hessianMass": 0.17290803608557326
+            },
+            {
+              "distinctRoots": 8,
+              "effectiveRoots": 3.2742540795871156,
+              "hessianMass": 0.04293985517506371
+            },
+            {
+              "distinctRoots": 8,
+              "effectiveRoots": 3.438987507162425,
+              "hessianMass": 0.008592768172093201
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 2506,
+            "threshold": 25.999999999999996,
+            "depth": 0,
+            "quadraticGainProxy": 0.05908826346293608
+          },
+          {
+            "feature": 2,
+            "threshold": 69.99999999999999,
+            "depth": 1,
+            "quadraticGainProxy": 0.07190579530268118
+          },
+          {
+            "feature": 2520,
+            "threshold": 4.999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.03805384541775794
+          },
+          {
+            "feature": 8,
+            "threshold": 74.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.04573855054787218
+          },
+          {
+            "feature": 2512,
+            "threshold": 8.999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.08878682999905732
+          },
+          {
+            "feature": 463,
+            "threshold": 7.999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.06350602994893208
+          },
+          {
+            "feature": 2016,
+            "threshold": 1.9999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.06285131995633453
+          },
+          {
+            "feature": 8,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.019766942579659372
+          },
+          {
+            "feature": 5,
+            "threshold": 17.999999999999996,
+            "depth": 1,
+            "quadraticGainProxy": 0.07056775356016244
+          },
+          {
+            "feature": 8,
+            "threshold": 4.999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.056479093869262406
+          },
+          {
+            "feature": 1,
+            "threshold": 31.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.012392725247960458
+          },
+          {
+            "feature": 2508,
+            "threshold": 60.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.03511800025639247
+          },
+          {
+            "feature": 417,
+            "threshold": 4.999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.042270343598077936
+          },
+          {
+            "feature": 170,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.012676616250616349
+          },
+          {
+            "feature": 8,
+            "threshold": 92.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.0043596272095472455
+          }
+        ],
+        "proposedCuts": 9825,
+        "supportedCuts": 4198,
+        "variantSeconds": 0.5445294009987265,
+        "headElapsedSeconds": 1.2770215419586748
+      },
+      {
+        "character": "SILENT",
+        "variant": "all-powers",
+        "selectedColumns": 231,
+        "rows": 43358,
+        "availablePowerColumns": 85,
+        "selectedPowerColumns": 85,
+        "usedPowerColumns": [
+          "power/enemies/VULNERABLE_POWER",
+          "power/player/NIGHTMARE_POWER"
+        ],
+        "cacheBytes": 10015698,
+        "cacheSeconds": 0.1638358299387619,
+        "singleTreeFitSeconds": 0.49202210595831275,
+        "productSplits": 0,
+        "beforeLoss": 26.718696348692582,
+        "afterLoss": 26.65410028830253,
+        "priorHessian3AfterOneRound": 26.686027433822925,
+        "support": {
+          "accepted": true,
+          "collapsedBranches": 0,
+          "minimumRootParticipation": 3,
+          "leaves": [
+            {
+              "distinctRoots": 59,
+              "effectiveRoots": 53.852307347182396,
+              "hessianMass": 33.0635506161324
+            },
+            {
+              "distinctRoots": 19,
+              "effectiveRoots": 11.918050132552034,
+              "hessianMass": 2.444957002325509
+            },
+            {
+              "distinctRoots": 11,
+              "effectiveRoots": 4.263148869753626,
+              "hessianMass": 0.3693812060292885
+            },
+            {
+              "distinctRoots": 10,
+              "effectiveRoots": 4.560093409482871,
+              "hessianMass": 0.2695438931987155
+            },
+            {
+              "distinctRoots": 35,
+              "effectiveRoots": 15.5919184690511,
+              "hessianMass": 4.915931671763246
+            },
+            {
+              "distinctRoots": 23,
+              "effectiveRoots": 9.410689940943756,
+              "hessianMass": 1.1455837467074161
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 4.752622763987238,
+              "hessianMass": 0.06774133592989529
+            },
+            {
+              "distinctRoots": 13,
+              "effectiveRoots": 3.8287153673986936,
+              "hessianMass": 0.39181737490730484
+            },
+            {
+              "distinctRoots": 24,
+              "effectiveRoots": 8.13680009188241,
+              "hessianMass": 0.27109825605293736
+            },
+            {
+              "distinctRoots": 9,
+              "effectiveRoots": 3.337984133205255,
+              "hessianMass": 0.08094951247949211
+            },
+            {
+              "distinctRoots": 20,
+              "effectiveRoots": 9.525166770316233,
+              "hessianMass": 0.17678738988115583
+            },
+            {
+              "distinctRoots": 11,
+              "effectiveRoots": 3.156743281830291,
+              "hessianMass": 0.3790383885825577
+            },
+            {
+              "distinctRoots": 6,
+              "effectiveRoots": 3.0609821473394874,
+              "hessianMass": 0.016176750021259068
+            },
+            {
+              "distinctRoots": 12,
+              "effectiveRoots": 3.0619281857873384,
+              "hessianMass": 0.17290803608557326
+            },
+            {
+              "distinctRoots": 8,
+              "effectiveRoots": 3.2742540795871156,
+              "hessianMass": 0.04293985517506371
+            },
+            {
+              "distinctRoots": 8,
+              "effectiveRoots": 3.438987507162425,
+              "hessianMass": 0.008592768172093201
+            }
+          ]
+        },
+        "selectedSplits": [
+          {
+            "feature": 2506,
+            "threshold": 25.999999999999996,
+            "depth": 0,
+            "quadraticGainProxy": 0.05908826346293608
+          },
+          {
+            "feature": 2,
+            "threshold": 69.99999999999999,
+            "depth": 1,
+            "quadraticGainProxy": 0.07190579530268118
+          },
+          {
+            "feature": 2578,
+            "threshold": 2.9999999999999996,
+            "depth": 2,
+            "quadraticGainProxy": 0.06431096675508478
+          },
+          {
+            "feature": 2523,
+            "threshold": 1.9999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.06359241957699494
+          },
+          {
+            "feature": 2419,
+            "threshold": 1.9999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.023175660282079028
+          },
+          {
+            "feature": 463,
+            "threshold": 7.999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.06350602994893208
+          },
+          {
+            "feature": 2016,
+            "threshold": 1.9999999999999998,
+            "depth": 3,
+            "quadraticGainProxy": 0.06285131995633453
+          },
+          {
+            "feature": 8,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.019766942579659372
+          },
+          {
+            "feature": 5,
+            "threshold": 17.999999999999996,
+            "depth": 1,
+            "quadraticGainProxy": 0.07056775356016244
+          },
+          {
+            "feature": 8,
+            "threshold": 4.999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.056479093869262406
+          },
+          {
+            "feature": 1,
+            "threshold": 31.999999999999996,
+            "depth": 3,
+            "quadraticGainProxy": 0.012392725247960458
+          },
+          {
+            "feature": 2508,
+            "threshold": 60.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.03511800025639247
+          },
+          {
+            "feature": 417,
+            "threshold": 4.999999999999999,
+            "depth": 2,
+            "quadraticGainProxy": 0.042270343598077936
+          },
+          {
+            "feature": 170,
+            "threshold": 0.9999999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.012676616250616349
+          },
+          {
+            "feature": 8,
+            "threshold": 92.99999999999999,
+            "depth": 3,
+            "quadraticGainProxy": 0.0043596272095472455
+          }
+        ],
+        "proposedCuts": 12120,
+        "supportedCuts": 4401,
+        "variantSeconds": 0.6558579358970746,
+        "headElapsedSeconds": 2.067581865005195
+      }
+    ],
+    "seconds": 9.45817357499618,
+    "peakRssBytes": 3773014016,
+    "realSingleTreeFits": 10,
+    "newCompleteCandidates": 0,
+    "newCombatSearches": 0,
+    "finalTestOpened": false,
+    "runtimeModelEnabled": false
+  },
+  "realAuditProcess": {
+    "returnCode": 0,
+    "ownerElapsedSeconds": 9.736,
+    "reaped": true
+  },
+  "fitterContractsInitial": {
+    "returnCode": 1,
+    "seconds": 0.8381803339580074,
+    "peakRssBytes": 80838656,
+    "command": [
+      "taskset",
+      "-c",
+      "12-15",
+      ".local/objective-search/xgboost-env/bin/python",
+      "-m",
+      "unittest",
+      "test_root_context_fit",
+      "test_root_histogram_fit",
+      "-v"
+    ],
+    "stdout": "",
+    "stderr": "test_actual_loss_rejects_bad_proposal_and_keeps_exact_ties (test_root_context_fit.RootContextFitChecks.test_actual_loss_rejects_bad_proposal_and_keeps_exact_ties) ... ok\ntest_complete_fitter_preserves_five_heads_raw_schema_and_root_support (test_root_context_fit.RootContextFitChecks.test_complete_fitter_preserves_five_heads_raw_schema_and_root_support) ... ok\ntest_iterative_updates_use_retained_predictions_and_compile_exactly (test_root_context_fit.RootContextFitChecks.test_iterative_updates_use_retained_predictions_and_compile_exactly) ... ok\ntest_missing_provenance_never_publishes_a_model (test_root_context_fit.RootContextFitChecks.test_missing_provenance_never_publishes_a_model) ... ok\ntest_no_product_is_explicit_and_deadline_is_enforced (test_root_context_fit.RootContextFitChecks.test_no_product_is_explicit_and_deadline_is_enforced) ... ok\ntest_supported_stump_survives_rejected_greedy_alternative (test_root_context_fit.RootContextFitChecks.test_supported_stump_survives_rejected_greedy_alternative) ... ok\ntest_all_power_proposal_can_learn_a_signal_missing_from_prefix (test_root_histogram_fit.RootHistogramFitChecks.test_all_power_proposal_can_learn_a_signal_missing_from_prefix) ... FAIL\ntest_complete_five_head_model_uses_shared_export_and_exact_round_predictions (test_root_histogram_fit.RootHistogramFitChecks.test_complete_five_head_model_uses_shared_export_and_exact_round_predictions) ... ok\ntest_deadline_and_missing_root_provenance_fail_before_model_publication (test_root_histogram_fit.RootHistogramFitChecks.test_deadline_and_missing_root_provenance_fail_before_model_publication) ... ok\ntest_reversal_uses_retained_predictions_and_supported_compiled_products (test_root_histogram_fit.RootHistogramFitChecks.test_reversal_uses_retained_predictions_and_supported_compiled_products) ... ok\n\n======================================================================\nFAIL: test_all_power_proposal_can_learn_a_signal_missing_from_prefix (test_root_histogram_fit.RootHistogramFitChecks.test_all_power_proposal_can_learn_a_signal_missing_from_prefix)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/OutcomeValuation/test_root_histogram_fit.py\", line 30, in test_all_power_proposal_can_learn_a_signal_missing_from_prefix\n    self.assertTrue(all(r['selected'] == 'all-powers' for r in reports))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 10 tests in 0.662s\n\nFAILED (failures=1)\n",
+    "scope": "Four new histogram fitter contracts plus six existing context fitter contracts affected by shared driver injection. Prior ten unchanged histogram contracts reused. No real complete candidate or combat."
+  },
+  "fitterContractRepair": {
+    "returnCode": 0,
+    "seconds": 0.2014863919466734,
+    "peakRssBytes": 78233600,
+    "command": [
+      "taskset",
+      "-c",
+      "12-15",
+      ".local/objective-search/xgboost-env/bin/python",
+      "-m",
+      "unittest",
+      "test_root_histogram_fit.RootHistogramFitChecks.test_all_power_proposal_can_learn_a_signal_missing_from_prefix",
+      "-v"
+    ],
+    "stdout": "",
+    "stderr": "test_all_power_proposal_can_learn_a_signal_missing_from_prefix (test_root_histogram_fit.RootHistogramFitChecks.test_all_power_proposal_can_learn_a_signal_missing_from_prefix) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.025s\n\nOK\n",
+    "scope": "Only failed fixture rerun: six identical roots also meet absolute Hessian3, so corrected to three equally contributing roots to isolate lower-curvature supported power learning. Other nine successes unchanged and reused."
+  },
+  "fitterContractsPassed": 10,
+  "newFitterContractsPassed": 4
 }
