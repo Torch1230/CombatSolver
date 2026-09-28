@@ -121,6 +121,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `TwoTailedRatsNormal` 双人原生战斗中的 `SCREECH_MOVE` 给全部存活目标玩家施加脆弱；模拟修正后连续两个敌方回合的所有玩家／敌人状态和完整 RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rats-round-fixed-9193a1f28b1c4cb6bb0ea3d40685386c/peer-0/result.json`。召唤分支及其后续回合未验。
 
+原版 `MonsterModel.PerformMove` 把 `CombatState.PlayerCreatures` 全部传给怪物招式。逐项核对直接接收 `targets` 的 `PowerCmd.Apply`、`CardPileCmd.AddToCombatAndPreview` 和显式 `foreach` 后，修正 29 处单玩家减益结算、14 类状态牌分发、力量／敏捷／收缩等单玩家能力、`TheInsatiable` 的逐玩家沙坑与逃生牌、`Aeonglass` 的逐玩家枯萎升级和 `ThievingHopper` 的逐玩家偷牌。源码核对只证明目标范围与结算顺序，逐招效果尚未全部差分。代表性原生双人差分 Passed：`TheKinBoss` 前两招 `.local/multiplayer-p2/the-kin-round-6ed76c8562964caf8d05f9e560ae4660/peer-0/result.json`、`HauntedShipNormal` 群体减益加塞牌 `.local/multiplayer-p2/haunted-ship-round-0653a8921b9249158aeee7769dd155da/peer-0/result.json`、`AeonglassBoss` 到第四回合 `.local/multiplayer-p2/aeonglass-third-93674076c0b3426ca8d9210d192407fa/peer-0/result.json`、`SoulFyshBoss` 到第四回合 `.local/multiplayer-p2/soul-fysh-third-9b2f8e71a58846eeba17ced810298d01/peer-0/result.json`、`TheInsatiableBoss` 首轮 `.local/multiplayer-p2/insatiable-liquify-eb2b7791f691445b8da3d897e97d3492/peer-0/result.json`。`ThievingHopperWeak` 首轮另显式断言两名玩家各被偷一张自己的牌、敌人有两条对应 `SwipePower`，全状态／RNG 差分 Passed：`.local/multiplayer-p2/thieving-hopper-explicit-29c1d391025548ccacad6a46fca9b27c/peer-0/result.json`。其他种子、死人目标、战后归还与未运行招式仍未验。
+
 ## 已通过的卡牌即时差分
 
 虚拟双人 37 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。

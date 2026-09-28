@@ -572,6 +572,17 @@ internal sealed partial class UnattendedTestRunner
                 player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
             await runner.MultiplayerProbeBarrierAsync("second-turn", combat);
             CheckPrediction(roundPrediction, scenario.Player, "END_TURN");
+            if (input.VerifyThievingHopperPerPlayer)
+            {
+                Creature hopper = combat.Enemies.Single(creature => creature.Monster is ThievingHopper);
+                SwipePower[] swipes = hopper.GetPowerInstances<SwipePower>().ToArray();
+                if (swipes.Length != combat.Players.Count
+                    || combat.Players.Any(member => swipes.Count(power =>
+                        ReferenceEquals(power.Target, member.Creature)
+                        && ReferenceEquals(power.StolenCard?.Owner, member)) != 1))
+                    throw new InvalidOperationException("Thieving Hopper did not steal one deck card per player.");
+                runner._completedChecks.Add("MultiplayerContent:ThievingHopper:PerPlayerSwipe:FullState:FullRng");
+            }
             if (input.VerifySegmentReattachAfterRound)
             {
                 Creature segment = combat.Enemies.First(creature => creature.Monster is DecimillipedeSegment);

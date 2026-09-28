@@ -150,6 +150,8 @@ P2 `TheObscuraNormal` 双人前两回合：原版 `Parafright` 伙伴及全部�
 
 P2 `QueenBoss` 双人前三招：首试 `PUPPET_STRINGS_MOVE` 漏给队友束缚；同步修复 `YOU_ARE_MINE_MOVE` 的群体异常状态后，到第四回合两名玩家的束缚、虚弱、易伤、脆弱及牌上 `Bound`、怪物伙伴和完整 RNG 均对账 Passed：`.local/multiplayer-p2/queen-third-round-fddc55be530542df8dbbb00efbb3d3ac/peer-0/result.json`。死亡与更后续分支未验。
 
+P2 怪物多人目标批：双尾鼠前两回合群体脆弱 `.local/multiplayer-p2/two-tailed-rats-round-fixed-9193a1f28b1c4cb6bb0ea3d40685386c/peer-0/result.json`、祭司前两回合群体脆弱／虚弱 `.local/multiplayer-p2/the-kin-round-6ed76c8562964caf8d05f9e560ae4660/peer-0/result.json`、幽灵船首轮群体虚弱加晕眩牌 `.local/multiplayer-p2/haunted-ship-round-0653a8921b9249158aeee7769dd155da/peer-0/result.json`、永世沙漏前三招含逐玩家枯萎升级 `.local/multiplayer-p2/aeonglass-third-93674076c0b3426ca8d9210d192407fa/peer-0/result.json`、噬魂鱼前三招含逐玩家塞牌 `.local/multiplayer-p2/soul-fysh-third-9b2f8e71a58846eeba17ced810298d01/peer-0/result.json`、贪食者首招逐玩家沙坑及随机塞牌 `.local/multiplayer-p2/insatiable-liquify-eb2b7791f691445b8da3d897e97d3492/peer-0/result.json` 均为双人全状态／九条 RNG 差分 Passed。飞贼首招显式断言双方各被偷一张自己的牌并各有一条 `SwipePower`，同层差分 Passed：`.local/multiplayer-p2/thieving-hopper-explicit-29c1d391025548ccacad6a46fca9b27c/peer-0/result.json`。其余按原版 `targets` 源码修正的招式只完成目标范围审核，未声称原生差分通过。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。
