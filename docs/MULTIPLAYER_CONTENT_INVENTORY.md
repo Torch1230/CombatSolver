@@ -92,3 +92,5 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 后续机制代表补了 `BeaconOfHope` 格挡传播、`Soulbound` 生成联动、`GangUp` 队友伤害历史、`Concoct`／`Underworld`／`Flanking`／`Knockdown`／`TagTeam` 与队友攻击相互作用，以及 `Hibernate`／`Plot`／`Tank`／`Underworld` 到第二回合的结算；均通过所构造虚拟双人原生差分，具体证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。这并未覆盖所有叠加、死亡、选牌、特殊回合或怪物组合。
 
 `CacophonyPower` 抽牌计数与阈值触发已补原生差分：`Cacophony`→`HuddleUp` 常规计数，及原版计数置 2 后跨阈值的随机伤害、重置和第二回合，均在双人完整状态／RNG 对账 Passed；证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。
+
+`ImitationLearningPower` 的目标玩家打普通能力牌触发已补原生差分：队友 `Inflame` 后复制到本地持有者并自动打出，能力递减及第二回合完整状态／RNG Passed；证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。选择型能力与多次耗尽仍待验。

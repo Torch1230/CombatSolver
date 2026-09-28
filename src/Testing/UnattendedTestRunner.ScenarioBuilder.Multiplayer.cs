@@ -66,7 +66,12 @@ internal sealed partial class UnattendedTestRunner
                 }
                 else
                 {
-                    foreach (string cardId in new[] { "STRIKE_IRONCLAD", "DEFEND_IRONCLAD", "SURVIVOR", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD" })
+                    string[] cardIds = ["STRIKE_IRONCLAD", "DEFEND_IRONCLAD", "SURVIVOR", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD"];
+                    if (input.ContentCardIds.Length > 0
+                        && ReferenceEquals(player, run.Players[input.ContentTargetSeat])
+                        && input.ContentTeammateCardIdAfter.Length > 0)
+                        cardIds[2] = input.ContentTeammateCardIdAfter;
+                    foreach (string cardId in cardIds)
                         await InjectRunCardAsync(run, player, new UnattendedCardInjection { CardId = cardId });
                 }
             }

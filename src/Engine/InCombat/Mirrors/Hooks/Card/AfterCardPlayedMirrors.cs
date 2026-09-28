@@ -657,6 +657,7 @@ internal static class AfterCardPlayedMirrors
         state.CardAndClones.RemoveAt(index);
 
         state.Amount--;
+        ((SimulatedCombatState)context.CombatState).SetPowerAmount(power, state.Amount);
         context.Simulator.AutoPlay(
             clone,
             nestedChoiceSourceId: power.Id.Entry);

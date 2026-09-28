@@ -386,6 +386,8 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.ContentTeammateStrikeAfter)
                 await PlayTeammateStrikeAsync("after");
+            if (input.ContentTeammateCardIdAfter.Length > 0)
+                await PlayTeammateCardAfterAsync(input.ContentTeammateCardIdAfter);
             if (input.VerifyContentRound)
             {
                 ContinuationStamp predictedRound = PredictMultiplayerRound(combat, actor);
@@ -431,6 +433,38 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException(
                         $"Teammate strike {point} differs: " + predicted.DescribeFirstDifference(actual));
                 runner._completedChecks.Add($"MultiplayerTeammateStrike:{point}:FullState:FullRng");
+            }
+
+            async Task PlayTeammateCardAfterAsync(string cardId)
+            {
+                Player teammate = combat.Players[input.ContentTargetSeat];
+                CardModel card = teammate.PlayerCombatState!.Hand.Cards.Single(value => value.Id.Entry == cardId);
+                Creature? target = card.TargetType switch
+                {
+                    TargetType.Self or TargetType.AllAllies => null,
+                    TargetType.AnyEnemy => combat.Enemies.Single(),
+                    _ => throw new InvalidOperationException($"Teammate card target is unsupported: {card.TargetType}."),
+                };
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator simulator = root.ForkSimulator();
+                PredictedCard predictedCard = simulator.State.GetPlayerCombatState(teammate)
+                    .Hand.Cards.Single(value => value.Preview.Id.Entry == cardId);
+                if (!simulator.ManualPlay(predictedCard, target, out _)
+                    || !CombatBeamSolver.SettleReplayActionBoundary(
+                        simulator, (SimulatedCombatState)simulator.State.CombatState))
+                    throw new InvalidOperationException($"Teammate {cardId} prediction did not complete.");
+                ContinuationStamp predicted = ContinuationStamp.CapturePredicted(
+                    actor, simulator, 1, root.Forecast, 1);
+                runner.SetStage($"multiplayer_teammate_card_{cardId}");
+                var action = new PlayCardAction(card, target);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
+                await action.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync($"teammate-card-{cardId}", combat);
+                ContinuationStamp actual = ContinuationStamp.CaptureLive(combat);
+                if (predicted != actual)
+                    throw new InvalidOperationException(
+                        $"Teammate {cardId} differs: " + predicted.DescribeFirstDifference(actual));
+                runner._completedChecks.Add($"MultiplayerTeammateCard:{cardId}:FullState:FullRng");
             }
         }
 

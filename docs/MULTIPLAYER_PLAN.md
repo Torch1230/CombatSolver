@@ -83,6 +83,8 @@ ENet 初次失败定位为测试 `LocalSelector` 没有发送原版 `SyncLocalCh
 
 `Cacophony` 后打 `HuddleUp` 首次抽牌联动差分失败：模拟内部计数已递减，但能力动态变量仍为 33，原版为 29。改为逐次同步模拟能力实例的 `Cards` 动态变量后，常规抽牌与第二回合完整状态／RNG Passed（`.local/multiplayer-p2/cacophony-draw-fixed-5123bbe50c12457cbbbaff71a6f327e6/peer-0/result.json`）。再把原版能力计数置为 2，让群体抽牌跨过阈值，验证随机敌人伤害、归零重置及第二回合完整差分 Passed（`.local/multiplayer-p2/cacophony-threshold-18598c06bb234b70a3f212e57f7d0262/peer-0/result.json`）。这覆盖该抽牌机制，不代表其他监听已验。
 
+`ImitationLearning` 指向队友后，队友原生打出 `Inflame` 触发复制并由本地持有者自动打出；首次差分只差能力剩余层数（预测 2、原版 1），原因是预测内部计数递减没有同步能力实例。修复后，双方力量各为 2、复制能力剩余 1 层，完整状态／RNG 与第二回合均 Passed：`.local/multiplayer-p2/imitation-trigger-fixed-0573378d566f4e2f9590ca523b4ce057/peer-0/result.json`。这是普通能力牌触发一次的证据，不覆盖非首张连打、选择型能力或多次耗尽。
+
 P3 首个真实搜索探针在虚拟双人和四人的普通牌根各跑一次 3 秒单成员搜索，取得只含本地已持有牌的非空路线并完成原生脚本，均 Passed：`.local/multiplayer-p3/search-ordinary-2-e6ccd5056c3949a7af04a448dd3dbaa2/peer-0/result.json`、`.local/multiplayer-p3/search-ordinary-4-ce51792b5b924f7ba2a95c838a2cc2fa/peer-0/result.json`。加入 `BelieveInYou` 后第一次内容根搜索暴露 `AnyAlly` 候选目标被构造为 null；按存活玩家生成目标后，同一双人内容根搜索 Passed：`.local/multiplayer-p3/search-teammate-card-target-e56288e18a0e4c35bc3beb03a9b2c9f2/peer-0/result.json`。这些只证明有限搜索不崩溃且动作属于本地，不证明三类方案、纯支援余费、两回合深度、预算共享、生产执行或 UI。药水候选仍仅玩家自用。
 
 四人 `BelieveInYou` 内容根增加随机目标合同：同一原卡在三个 Fork 中只选一个原版可打出的存活玩家，独立选择不推进游戏状态或 RNG；随后运行 3 秒真实搜索，路线只含本地动作，并完成原生出牌全状态／RNG 差分，Passed：`.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json`。此合同尚未覆盖生产重评估与执行时保持目标，也没有验余费支援分类。
