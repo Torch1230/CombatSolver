@@ -1,5 +1,7 @@
 # 结果估值与小规模训练工具
 
+`context_gate_fit.py export-directory model-directory --seconds 1000`是显式离线交互原型：48棵普通树加16棵深度4树，后者可选择训练梯度筛出的二值遗物存在×原始数值乘积。导出编译回64棵原始字段树、最大深度8，生产不添加乘积观察或依赖。所有头共用时限，仍需计入导出及模型祖先训练的1,800秒总账；默认训练器不变。6项合成合同通过，尚未完成C#真实样本与实战验证，不能用合成反转成功宣称掌握遗物交互。见[原型边界](../../docs/strategy/compiled-relic-interactions-20260928.md)。
+
 联合训练实验 `crossTurnOutcomes: true` 依赖 `balanceCorrectionSources: true`，用同根、不同回合且不同原候选池的已完成结果补充有界偏好。它复用原行，不比较模仿标签或以更短动作后缀制造跨回合价值；每根新增边至多1,024，总边仍至多4,096，非空来源等权且根总权重1。只改变C#导出图，Python不重建标签；完整训练仍受1,800秒上限和独立场景审计约束。见[完整协议](../../docs/strategy/cross-turn-context-calibration-20260928.md)。
 
 宿主 `--audit-outcome-context-ranking <结果训练输入> <模型> <输出>` 对已有同根完成见证作有界跨池/跨回合诊断，只使用完整终局政策，不用动作后缀长短制造政策偏好。`--check-outcome-context-ranking` 验证其合同；结果不能当作独立测试准确率。见[292训练根审计](../../docs/strategy/training-context-ranking-audit-20260928.md)。

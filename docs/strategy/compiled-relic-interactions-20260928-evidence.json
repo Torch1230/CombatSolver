@@ -1,0 +1,88 @@
+{
+  "experiment": "binary-relic-context-products-compiled-to-raw-trees",
+  "sourceBase": "ab5c5ce",
+  "syntheticContractsPassed": 6,
+  "contracts": [
+    {
+      "returnCode": 0,
+      "seconds": 0.21428423409815878,
+      "peakRssBytes": 77705216,
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "env",
+        "OPENBLAS_NUM_THREADS=1",
+        "OMP_NUM_THREADS=1",
+        ".local/objective-search/xgboost-env/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/OutcomeValuation",
+        "-p",
+        "test_context_gates.py",
+        "-v"
+      ],
+      "scope": "Five synthetic numeric contracts only, CPU0 single thread; no combat or full-model fitting."
+    },
+    {
+      "returnCode": 0,
+      "seconds": 0.3145207690540701,
+      "peakRssBytes": 79052800,
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "env",
+        "OPENBLAS_NUM_THREADS=1",
+        "OMP_NUM_THREADS=1",
+        "PYTHONPATH=tools/OutcomeValuation",
+        ".local/objective-search/xgboost-env/bin/python",
+        "-m",
+        "unittest",
+        "test_context_gates.ContextGateChecks.test_complete_fitter_preserves_five_heads_and_raw_feature_schema",
+        "-v"
+      ],
+      "scope": "One additional synthetic five-head fitting/export contract only, CPU0; 96 rows per head, no real combat or candidate fitting."
+    }
+  ],
+  "newCombatSearches": 0,
+  "realCandidateTrained": false,
+  "csharpParityPassed": false,
+  "runtimeModelEnabled": false,
+  "finalTestOpened": false,
+  "protocol": {
+    "ordinaryRounds": 48,
+    "ordinaryDepth": 6,
+    "contextualRounds": 16,
+    "contextualDepth": 4,
+    "maximumSignalColumns": 64,
+    "maximumProducts": 64,
+    "minimumLeafHessian": 3,
+    "outputTrees": 64,
+    "maximumCompiledDepth": 8,
+    "fittingLimitSeconds": 1200,
+    "completeModelLimitSeconds": 1800
+  },
+  "upstreamSource": "https://github.com/dmlc/xgboost/blob/v3.4.1/src/tree/driver.h",
+  "limitations": [
+    "Synthetic conditional reversal is not combat quality or a causal explanation of regressions.",
+    "No C# prediction parity, native training or full candidate benchmark yet.",
+    "Product screening is a training proxy; rare-root support and label limitations remain.",
+    "48+16 also changes the final 16 tree depths; compare as a whole candidate.",
+    "Compiled gated branches can increase model size and inference work."
+  ],
+  "plannedValidation": [
+    "Await and reap active v82 session 50014; inspect completed 100 cases and 400 runs.",
+    "Validate compiled model numeric predictions in C# using explicit synthetic original-column inputs.",
+    "Decide a frozen real-data candidate from completed evidence; retain 1800-second complete cost cap.",
+    "Every retained full candidate completes 100 cases / 400 searches, no quality early exit."
+  ],
+  "modDeployment": "Reuse v83 successful matching deployment; no C# or production binary inputs changed.",
+  "sourceHashes": {
+    "tools/OutcomeValuation/context_gates.py": "a7d724d0a0e9d38d43f4c7946d6f002968c6e5dee2db7c8462c9a1206eae973c",
+    "tools/OutcomeValuation/context_gate_fit.py": "63a1fd20049109ac428d134dcda68aa319a7401da93c99e169d6ec7a9d77da43",
+    "tools/OutcomeValuation/test_context_gates.py": "5b9d838d574662449f61247357cccc9f96278b27b06f767c2900ef870222c8ff"
+  }
+}
