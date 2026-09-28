@@ -1,10 +1,12 @@
 {
   "experiment": "root-supported-histogram-split-prototype",
   "sourceBase": "d6e2d443",
-  "stage": "real-single-tree-audit-passed-complete-fitter-contracts-passed",
+  "stage": "complete-model-trained-full-development-running",
   "sourceHashes": {
-    "tools/OutcomeValuation/root_histogram.py": "04c22d12a0990872d3eca18f238048a3ee587ad287111b6f6e8e7210ff8feae4",
-    "tools/OutcomeValuation/test_root_histogram.py": "6facde6dfb25e96c295dcfa5fd9963ed993f4749d09f369dbb9736494d5f4bda"
+    "tools/OutcomeValuation/root_histogram.py": "891f29ac1462422379c49b4c08d43b1bf14a5a57b42ade64a57d3f7e479aeeab",
+    "tools/OutcomeValuation/root_histogram_fit.py": "aa670e7285bb70bcbc5dc5887e4beceee84f80875f4272e7cce43d63277db1d2",
+    "tools/OutcomeValuation/root_context_fit.py": "cbb3b5615080ec95c7a7f09dab76cdec308368901e1a12c7f60aa6980e4372e5",
+    "tools/OutcomeValuation/test_root_histogram_fit.py": "be0e4004d364699a1ad45fac2d2f093722151ad3673101f10c3aa5a6a730f806"
   },
   "contracts": {
     "returnCode": 0,
@@ -33,9 +35,8 @@
   },
   "contractsPassed": 10,
   "completeFitterConnected": true,
-  "newFullCandidateRetained": false,
-  "newRealDataTrainingRuns": 0,
-  "newCombatSearches": 0,
+  "newFullCandidateRetained": true,
+  "newRealDataTrainingRuns": 1,
   "runtimeModelEnabled": false,
   "finalTestOpened": false,
   "prerequisite": {
@@ -43,7 +44,7 @@
     "owner": "Root",
     "mustFinishAndReapBeforeHeavyValidation": true
   },
-  "next": "Freeze one full candidate using shared fresh48 prefix and16 rounds comparing Hessian3 plus both supported histogram proposals; <=1800s complete cost, then all100/400 searches without quality early exit.",
+  "next": "Complete and reap all100/400 paired searches, then inspect quality/cost; do not enable runtime or open final test based on training loss.",
   "limits": {
     "maximumColumns": 256,
     "quantileCutsPerColumn": 32,
@@ -1954,5 +1955,116 @@
     "scope": "Only failed fixture rerun: six identical roots also meet absolute Hessian3, so corrected to three equally contributing roots to isolate lower-curvature supported power learning. Other nine successes unchanged and reused."
   },
   "fitterContractsPassed": 10,
-  "newFitterContractsPassed": 4
+  "newFitterContractsPassed": 4,
+  "fullCandidate": {
+    "cost": {
+      "completeModelSeconds": 371.4787312101107,
+      "ancestorTrainingSeconds": 135.88075087300967,
+      "reusedExportSeconds": 130.78978930902667,
+      "fitProcessSeconds": 104.67045613995288,
+      "reuseIncludesOriginalExportCost": true,
+      "dataCollectionAccountedSeparately": true,
+      "completed": true
+    },
+    "parity": {
+      "rows": 1280,
+      "maximumAbsoluteDifference": 0.0
+    },
+    "fitPeakRssBytes": 3553857536,
+    "fitSeconds": 104.30100355099421,
+    "modelBytes": 1280360,
+    "modelSha256": "0124f2f0d4a164c4c258d3e40a8448a4454fc876b44c1b20138ad41356d8ed13",
+    "heads": [
+      {
+        "character": "DEFECT",
+        "rows": 44152,
+        "pairs": 154291,
+        "participatingRoots": 60,
+        "prefixLoss": 26.915269537912923,
+        "finalLoss": 26.11429120094835,
+        "productSplits": 4,
+        "selectedProposals": {
+          "all-powers": 5,
+          "prefix-signals": 11
+        },
+        "cacheBytes": 15894720,
+        "exportedPredictionDrift": 0.0
+      },
+      {
+        "character": "IRONCLAD",
+        "rows": 41309,
+        "pairs": 153710,
+        "participatingRoots": 58,
+        "prefixLoss": 27.542201904685513,
+        "finalLoss": 26.738133513948515,
+        "productSplits": 15,
+        "selectedProposals": {
+          "all-powers": 12,
+          "prefix-signals": 4
+        },
+        "cacheBytes": 14912549,
+        "exportedPredictionDrift": 0.0
+      },
+      {
+        "character": "NECROBINDER",
+        "rows": 38449,
+        "pairs": 128754,
+        "participatingRoots": 57,
+        "prefixLoss": 26.264677141133063,
+        "finalLoss": 25.45849339268316,
+        "productSplits": 20,
+        "selectedProposals": {
+          "prefix-signals": 12,
+          "all-powers": 4
+        },
+        "cacheBytes": 14649069,
+        "exportedPredictionDrift": 0.0
+      },
+      {
+        "character": "REGENT",
+        "rows": 36949,
+        "pairs": 129198,
+        "participatingRoots": 58,
+        "prefixLoss": 26.52695698939216,
+        "finalLoss": 25.56959949107396,
+        "productSplits": 12,
+        "selectedProposals": {
+          "prefix-signals": 12,
+          "hessian3": 1,
+          "all-powers": 3
+        },
+        "cacheBytes": 14447059,
+        "exportedPredictionDrift": 0.0
+      },
+      {
+        "character": "SILENT",
+        "rows": 43358,
+        "pairs": 134261,
+        "participatingRoots": 59,
+        "prefixLoss": 26.718696348692582,
+        "finalLoss": 25.4541792782412,
+        "productSplits": 4,
+        "selectedProposals": {
+          "prefix-signals": 9,
+          "all-powers": 7
+        },
+        "cacheBytes": 16432682,
+        "exportedPredictionDrift": 0.0
+      }
+    ],
+    "productSplits": 55,
+    "fullDevelopmentCompleted": false,
+    "runtimeModelEnabled": false,
+    "finalTestOpened": false,
+    "sourceCommit": "ac201f43",
+    "engineSourceCommit": "beb18aec",
+    "metricsSha256": "8bcdd9cfceb2fb412f994e7fbaf64d141f74e41ea1fa5a0a317c6d7e3cc5366c"
+  },
+  "sourceCommit": "ac201f43",
+  "fullDevelopmentEvaluation": {
+    "stage": "running",
+    "plannedCases": 100,
+    "plannedSearches": 400,
+    "source": ".local/objective-search/v86-root-histogram/evaluation/status.json"
+  }
 }
