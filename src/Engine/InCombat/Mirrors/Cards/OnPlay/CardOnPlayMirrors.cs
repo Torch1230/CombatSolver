@@ -149,6 +149,9 @@ internal static partial class CardOnPlayMirrors
         registry.Register<Rally>(GeneralCardMirrors.GeneralBlockOnPlay);
         registry.Register<Mimic>(MultiplayerCardMirrors.MimicOnPlay);
         registry.Register<DemonicShield>(MultiplayerCardMirrors.DemonicShieldOnPlay);
+        registry.Register<Outrage>(MultiplayerCardMirrors.OutrageOnPlay);
+        registry.Register<GlimpseBeyond>(MultiplayerCardMirrors.GlimpseBeyondOnPlay);
+        registry.Register<TheBall>(MultiplayerCardMirrors.TheBallOnPlay);
         registry.Register<MeteorStrike>(OrbCardMirrors.MeteorStrikeOnPlay);
         registry.Register<MultiCast>(OrbCardMirrors.MultiCastOnPlay);
         registry.Register<Null>(OrbCardMirrors.NullOnPlay);

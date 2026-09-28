@@ -72,6 +72,8 @@ Windows 结构门禁在同步更新 `Executor partial` 声明检查后通过，`
 
 虚拟双人 15 张多人专用卡按机制分三批，基础版与升级版各一次请求，出牌后逐张将所有玩家、敌人、牌堆与完整 RNG 的原生状态对模拟续用戳，六次请求均 Passed；输入、每批卡牌及证据目录见 [多人内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。本批仅证明即时效果，`Plot` 等跨回合触发、死亡、伙伴、队友原生选择仍未验。Windows 结构门禁通过 `search_files=238`；更新门禁中根历史依赖的检查以匹配全部玩家卡牌，Bash 脚本仅通过 `bash -n`。P0 内容盘点与 P1 生命周期都未封闭，生产多人门禁仍在。
 
+后续两批新增 `Outrage`、`GlimpseBeyond`、`Largesse`、`GangUp`、`Knockdown`、`TheBall` 的双人基础／升级即时差分，四次请求 Passed，证据详见同一[清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。`Outrage` 的首次红灯显示原版 `GetTeammatesOf` 包含自己，修正后双方都获得生成牌；`TheBall` 首次红灯显示逐实例增伤遗漏，现同步私有累计值、续用戳和状态键。这些修复均按首因重测。累计 21／37 张已通过即时差分，但 `GangUp` 来源历史、`Knockdown` 后续增伤与 `TheBall` 再次打出尚未验证。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

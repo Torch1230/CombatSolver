@@ -4,7 +4,7 @@
 
 ## 直接声明 MultiplayerOnly 的 37 张卡
 
-原版入口列只列会改变战斗的关键入口；常规出牌、费用、升级及牌堆生命周期仍须验收。下方另列已找到的显式模拟入口；没有显式登记的牌仍可能进入现有简单效果推断器，但推断器只识别攻击、格挡和自身抽牌，不能据此认为其他效果已实现。15 张卡已取得基础／升级的即时结算差分，见下文；跨回合与关联 Hook 尚未因此通过。
+原版入口列只列会改变战斗的关键入口；常规出牌、费用、升级及牌堆生命周期仍须验收。下方另列已找到的显式模拟入口；没有显式登记的牌仍可能进入现有简单效果推断器，但推断器只识别攻击、格挡和自身抽牌，不能据此认为其他效果已实现。21 张卡已取得基础／升级的即时结算差分，见下文；跨回合与关联 Hook 尚未因此通过。
 
 | 卡牌类型 | 原版入口与关联状态／内容 | 机制批次 |
 |---|---|---|
@@ -69,12 +69,14 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 ## 已通过的卡牌即时差分
 
-虚拟双人 15 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。
+虚拟双人 21 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。
 
 | 批次 | 卡牌 | 基础版／升级版证据目录 |
 |---|---|---|
 | 指定队友资源与能力 | `BelieveInYou`、`Lift`、`Blaze`、`Coordinate`、`Fade` | `.local/multiplayer-p2/targeted-simple-base-46267a63117142dfaa004cae2528db17/peer-0/`；`.local/multiplayer-p2/targeted-simple-upgrade-498a99ba00744db59f9e274737685995/peer-0/` |
 | 群体资源、格挡、能力、生成 | `EnergySurge`、`Rally`、`Plot`、`OneForAll`、`BladeSymphony` | `.local/multiplayer-p2/group-simple-base-c52fbf802a544b99acd2dd7dece05b66/peer-0/`；`.local/multiplayer-p2/group-simple-upgrade-58ceacf88a56479b997969bd4f978aa3/peer-0/` |
 | 抽牌、球、成本与复制格挡 | `Constellation`、`HuddleUp`、`Ignition`、`Mimic`、`DemonicShield` | `.local/multiplayer-p2/targeted-mixed-base-07fb67d8db5d4196bcd2cfa2ec4b40cc/peer-0/`；`.local/multiplayer-p2/targeted-mixed-upgrade-73d2febc7736446ca06e48c0e055bcb3/peer-0/` |
+| 队伍生成与随机插牌 | `Outrage`、`GlimpseBeyond` | `.local/multiplayer-p2/team-generation-fixed-922d9fc0e55e4c3f8d91d0c6b3ee4203/peer-0/`；`.local/multiplayer-p2/team-generation-upgrade-c09706f8751f4a849b753f9ae7cc7421/peer-0/` |
+| 既有生成、攻击、能力与转移 | `Largesse`、`GangUp`、`Knockdown`、`TheBall` | `.local/multiplayer-p2/existing-mixed-fixed-fab775350ee34ad186388567371b1e5e/peer-0/`；`.local/multiplayer-p2/existing-mixed-upgrade-d51e5bbf2b954ed2b8edc7e4d49f91dd/peer-0/` |
 
-这六次请求状态均为 Passed。另有四人敌方能力缩放代表差分，见上文。当前仍有 22 张多人专用卡未取得出牌即时差分，内容清单、关联普通卡、怪物、遗物与药水尚未封闭。
+上述十次成功请求状态均为 Passed。`GangUp` 此批没有队友先行攻击历史；`Knockdown` 此批没有队友后续攻击；`TheBall` 此批只打出一次，因此这些触发／累计路径仍待差分。另有四人敌方能力缩放代表差分，见上文。当前仍有 16 张多人专用卡未取得出牌即时差分，内容清单、关联普通卡、怪物、遗物与药水尚未封闭。

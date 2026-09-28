@@ -1,6 +1,8 @@
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.ValueProps;
+using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
@@ -69,6 +71,50 @@ internal static class MultiplayerCardMirrors
         context.GainBlock(context.Target,
             context.Calculate(card.DynamicVars.CalculatedBlock),
             card.DynamicVars.CalculatedBlock.Props);
+    }
+
+    public static void OutrageOnPlay(Outrage card, CardOnPlayMirrorContext context)
+    {
+        context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
+        foreach (var member in Combat(context).Players)
+        {
+            if (!context.State.GetCreature(member.Creature).IsAlive)
+                continue;
+            PredictedCard clone = context.Card.CreateCloneForPlayer(member);
+            context.Simulator.AddGeneratedCardToCombat(clone, PileType.Discard, card.Owner,
+                resultKind: CardGenerationResultKind.Fixed);
+            if (context.Simulator.HasPendingChoice)
+                return;
+        }
+    }
+
+    public static void GlimpseBeyondOnPlay(GlimpseBeyond card, CardOnPlayMirrorContext context)
+    {
+        foreach (var member in Combat(context).Players)
+        {
+            if (!context.State.GetCreature(member.Creature).IsAlive)
+                continue;
+            List<PredictedCard> souls = new(card.DynamicVars.Cards.IntValue);
+            for (int index = 0; index < card.DynamicVars.Cards.IntValue; index++)
+                souls.Add(PredictedCard.Create(CanonicalModels.Card<Soul>(), member));
+            context.Simulator.AddGeneratedCardsToCombat(souls, PileType.Draw, card.Owner,
+                CardPilePosition.Random, CardGenerationResultKind.Fixed);
+            if (context.Simulator.HasPendingChoice)
+                return;
+        }
+    }
+
+    public static void TheBallOnPlay(TheBall card, CardOnPlayMirrorContext context)
+    {
+        context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
+        TheBall mutable = (TheBall)context.Card.MutablePreview;
+        decimal increase = mutable.DynamicVars["Increase"].BaseValue;
+        mutable.DynamicVars.Damage.BaseValue += increase;
+        mutable._extraDamageFromPlays += increase;
     }
 
     private static SimulatedCombatState Combat(CardOnPlayMirrorContext context)

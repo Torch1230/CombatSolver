@@ -462,6 +462,9 @@ internal sealed record ContinuationStamp(string StateText)
             case TheScythe scythe:
                 text.Append(scythe.IncreasedDamage);
                 break;
+            case TheBall ball:
+                text.Append(ball._extraDamageFromPlays);
+                break;
             default:
                 text.Append('-');
                 break;

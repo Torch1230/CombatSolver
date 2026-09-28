@@ -1817,6 +1817,9 @@ internal sealed partial class CombatBeamSolver
             case TheScythe scythe:
                 key.Add(scythe.IncreasedDamage);
                 break;
+            case TheBall ball:
+                key.Add(ball._extraDamageFromPlays);
+                break;
         }
         if (card.HasExternallyMutableAttachedModels)
             AppendBaseLibCardModifiers(ref key, preview);
