@@ -1,5 +1,7 @@
 # CombatSolver 测试清单
 
+四进程 ENet P0 链路：房主和三名加入者各自完成普通出牌、原生弃牌选择和结束回合；各检查点的战斗状态、玩家阶段及完整 RNG 四端相等，四端均 Passed、各 18 条检查。证据 `.local/multiplayer-p0/enet-4-b8912c11b53b4f86847df214c6d328f5/peer-0/result.json` 至 `peer-3/result.json`。无头调度器并行上限由二调为四，仍由资源准入限制；Linux 入口只做脚本语法检查，未运行游戏。
+
 ## 多人 P2 首批内容差分（2026-09-28）
 
 虚拟四人对敌方新施加 `Artifact`、`Plating`、`Slippery`、`Skittish`、`CurlUp` 的缩放原生差分 Passed，包含 `Plating` 递减值；证据 `.local/multiplayer-p2/power-scaling-4-dec86567a8d04ddfb9cf15ef9ca0dcbe/peer-0/result.json`。虚拟双人 15 张多人专用卡按指定队友、群体、混合机制分三批，基础版和升级版共六次请求均 Passed，即时全状态与完整 RNG 对账；卡牌和证据目录见 [多人内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。跨回合 Hook、剩余 22 张专用卡、普通多人内容及网络搜索／执行未通过。Windows 结构门禁 238 通过；Bash 门禁仅完成语法检查。

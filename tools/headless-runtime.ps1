@@ -523,7 +523,7 @@ function Enter-HeadlessHostLease([hashtable]$Context, [Diagnostics.Process]$Exis
             $canEnter = $unknownGames.Count -eq 0 -and
                 ($null -ne $game -or $earlierQueued.Count -eq 0) -and
                 ($Context.Mode -ne 'exclusive' -or $active.Count -eq 0) -and
-                @($active | Where-Object { $_.mode -eq 'exclusive' }).Count -eq 0 -and $active.Count -lt 2 -and
+                @($active | Where-Object { $_.mode -eq 'exclusive' }).Count -eq 0 -and $active.Count -lt 4 -and
                 ($otherCpu + $Context.Cpu) -le $capacity.cpu -and
                 ($otherMemory + $Context.MemoryMiB) -le ($capacity.totalMiB - 2048) -and
                 ($otherOutstanding + $ownOutstanding + 2048) -le $capacity.availableMiB

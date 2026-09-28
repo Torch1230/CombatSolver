@@ -238,7 +238,7 @@ hr_acquire() {
             else own_remaining=$((HR_MEMORY - own_rss)); fi
         fi
         available="$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)"
-        ((count < 2 && used_cpu + HR_CPU <= capacity_cpu && used_memory + HR_MEMORY <= total - 2048 && available - reserved_remaining >= own_remaining + 2048)) || reason='host reservations full'
+        ((count < 4 && used_cpu + HR_CPU <= capacity_cpu && used_memory + HR_MEMORY <= total - 2048 && available - reserved_remaining >= own_remaining + 2048)) || reason='host reservations full'
         ((HR_POOL_UNCERTAIN == 0)) || reason='indeterminate lease identity'
         if hr_unknown_games; then reason='unregistered game process'; fi
         if [[ -z $reason ]]; then

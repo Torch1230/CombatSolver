@@ -39,7 +39,7 @@
 
 ### 0.4 接手后的 P0 实际进展（2026-09-28）
 
-上面的 0.2～0.3 节保留交接时的基线与调用说明，当前证据以本节为准。虚拟双人、虚拟四人均以原版 `0.111.0` 运行，逐玩家完成防御、打击、生存者的原生弃牌选择，进入第二回合；这是单进程动作链路证据。双进程 ENet 房主／客户端分别操作自己的玩家，完成同一动作序列与回合结束；每个稳定检查点的 `NetFullCombatState`、玩家阶段及九条完整 RNG 在两端一致。受影响单人基线在原版建局后取得首个短搜结果。以上均未验证生产多人模拟、搜索或执行。
+上面的 0.2～0.3 节保留交接时的基线与调用说明，当前证据以本节为准。虚拟双人、虚拟四人均以原版 `0.111.0` 运行，逐玩家完成防御、打击、生存者的原生弃牌选择，进入第二回合；这是单进程动作链路证据。双进程和四进程 ENet 房主／客户端分别操作自己的玩家，完成同一动作序列与回合结束；每个稳定检查点的 `NetFullCombatState`、玩家阶段及九条完整 RNG 在所有端一致。受影响单人基线在原版建局后取得首个短搜结果。以上均未验证生产多人执行。
 
 | 输入与源码 | 实际命令／层级 | 结果及证据 |
 |---|---|---|
@@ -48,10 +48,11 @@
 | 修复本地选牌同步和客户端动作等待后的源码，双进程 ENet | 两个独立 `run-unattended-test.ps1`，`host/client`、`seat=0/1`、共享协调目录及端口；各自 `HeadlessExecutionMode=parallel`、`HeadlessMemoryReservationMiB=1536`、`CleanupInstanceOnExit` | 双端 Passed；`.local/multiplayer-p0/enet-2-31a2877191774eb698d783c71e6e4666/peer-0/`、`peer-1/`；实测 DLL SHA-256 为 `DB2D8910ADC9B9655F9B83CBE98AF167E84520A073D906708110D47915EFCAD2` |
 | 同一 DLL，单人原生建局与首个短搜 | `-ScenarioId MULTIPLAYER-P0-SINGLEPLAYER -PreserveNativeCombatStateForTest -StopAfterInitialSolverResultAssertion -ShortSearchBudgetOverrideMilliseconds 1000 -DeepSearchBudgetOverrideMilliseconds 1000 -ForceShortSearchOnly -CleanupInstanceOnExit` | Passed；`.local/multiplayer-p0/singleplayer-71d7b4fc39ab49db99c30d74f10b9156/` |
 | 双进程最小编排入口 | `pwsh -NoProfile -File tools/run-multiplayer-p0-enet.ps1 -Port 33771`，生成双端输入并调用上述原生请求 | Passed；`.local/multiplayer-p0/enet-2-f51e6160ab0d42e6b4c05a10fa535ead/`；Bash 对应入口 `tools/run-multiplayer-p0-enet.sh` 仅通过 `bash -n`，未运行游戏 |
+| 四进程 ENet 房主和三名加入者 | `pwsh -NoProfile -File tools/run-multiplayer-p0-enet.ps1 -PlayerCount 4 -Port 33773`，四端脚本化出牌／选牌／结束回合，全部检查点逐端对账 | 四端 Passed，各 18 条检查；`.local/multiplayer-p0/enet-4-b8912c11b53b4f86847df214c6d328f5/peer-0/result.json` 至 `peer-3/result.json`；实测 DLL `E7F8D91BD5F65093CB8ED907744A161D4E3350F4B643F6EC51AF4A1D77E809BA` |
 
 ENet 初次失败定位为测试 `LocalSelector` 没有发送原版 `SyncLocalChoice`，远端等待弃牌；修复后两端弃牌检查点一致。第二次停在客户端自己请求的动作：原版客户端只发送入队请求，随后执行的是重建动作，原请求对象的 `CompletionTask` 不会完成；测试器现等待原生状态和队列稳定。两次失败是脚手架问题，不作为生产多人功能证据。默认 4096 MiB 预留曾使四人虚拟请求停在主机资源准入；按实测约 1.3 GiB 工作集使用 2048 MiB 预留后通过，场景超时未提高。上述成功实例均由启动器报告删除。
 
-Windows 结构门禁在同步更新 `Executor partial` 声明检查后通过，`REFACTOR_BOUNDARIES_OK search_files=238`；Bash 门禁文本已同步，Linux 未实测。仍未完成：37 张多人专用卡及关联内容的封闭清单、四进程 ENet、本地部署和 P1～P5。四人虚拟通过不代表四人网络同步。生产多人门禁保持原状。
+四进程 ENet 首次因无头实例调度器固定至多两个并行而失败；房主和一个加入者准入超时，已启动的客户端等待超时，记录在 `.local/multiplayer-p0/enet-4-85188e0ed1ba4801a307b5aee773ee89/`。将并行上限改为四个，仍受 CPU、可用内存、预留内存和排他实例约束后，按上表通过。Windows 结构门禁此前 `REFACTOR_BOUNDARIES_OK search_files=238`；Bash 入口已同步四人参数与调度上限，Linux 尚未运行游戏。P0 内容闭包、本地部署和 P1～P5 退出条件仍未完成。生产多人门禁保持原状。
 
 ### 0.5 P1 通用状态的本轮实证（2026-09-28）
 
@@ -379,7 +380,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 
 | 阶段 | 工作与交付 | 进入下一阶段的条件 | 当前状态 |
 |---|---|---|---|
-| P0 可行性与盘点 | 核对版本；核验虚拟多人与 ENet；两人／四人建局；指定玩家动作与选择；封闭内容清单；记录现有单人基线 | 虚拟多人至少完成指定队友普通出牌与结算；双进程联机完成动作同步和一次完整回合；四人建局可用；剩余限制有具体记录 | 虚拟 2／4 人、ENet 双进程和单人短搜通过；内容闭包待完成 |
+| P0 可行性与盘点 | 核对版本；核验虚拟多人与 ENet；两人／四人建局；指定玩家动作与选择；封闭内容清单；记录现有单人基线 | 虚拟多人至少完成指定队友普通出牌与结算；双进程联机完成动作同步和一次完整回合；四人建局可用；剩余限制有具体记录 | 虚拟 2／4 人、ENet 2／4 进程和单人短搜通过；内容闭包待完成 |
 | P1 通用状态与差分 | 所有玩家快照、目标身份、Hook 所有权、共享 RNG、Fork、多人历史、回合与死亡边界；通用差分和参数化测试入口 | 普通已有卡牌在 2／4 人根严格对账；跨两回合、兄弟分支隔离、根/live 隔离与差分负向合同通过 | 普通 2／4 人卡牌、默认回合、负向键与兄弟隔离通过；复杂生命周期待验 |
 | P2 原版内容建模 | 完整清单内卡牌、Power、遗物、药水及普通内容多人差异；机制分类和关联测试 | 每项有原版依据及基础／升级差分证据；复杂机制的生命周期、所有者和引用合同通过；无影响范围内未解释缺口 | 敌方能力缩放代表五项通过，其余内容待做 |
 | P3 有限回合与多方案 | 深度／时间配置、共享预算、本地候选、队友无主动动作、三类排序、估值、去重、余费支援 | 固定根短搜证明三类目标与去重；预算和深度上限有效；纯支援分类、随机目标固定及自身收益牌正常搜索通过；单人哨兵通过 | 未开始 |
