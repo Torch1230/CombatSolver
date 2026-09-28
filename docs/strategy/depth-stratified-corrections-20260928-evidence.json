@@ -627,6 +627,65 @@
       ],
       "seconds": 20.415909450966865,
       "peakWorkingSetBytes": 2129436672
+    },
+    "featureUse": {
+      "modelSha256": "9a2639fec53d20555bb1bb9e733422211ad2293ea0665700796c1e5a03de41a8",
+      "heads": [
+        {
+          "character": "DEFECT",
+          "eligibleColumns": 3092,
+          "usedColumns": 87,
+          "treeUsedColumns": 56,
+          "linearUsedColumns": 35,
+          "directRelicTreeSplits": 0,
+          "directRelicLinearFeatures": []
+        },
+        {
+          "character": "IRONCLAD",
+          "eligibleColumns": 3026,
+          "usedColumns": 86,
+          "treeUsedColumns": 55,
+          "linearUsedColumns": 40,
+          "directRelicTreeSplits": 0,
+          "directRelicLinearFeatures": [
+            "relic/KUNAI/state/FC4DA7E91F399FE65F7A1B8FDF7A238A"
+          ]
+        },
+        {
+          "character": "NECROBINDER",
+          "eligibleColumns": 2925,
+          "usedColumns": 98,
+          "treeUsedColumns": 68,
+          "linearUsedColumns": 38,
+          "directRelicTreeSplits": 0,
+          "directRelicLinearFeatures": []
+        },
+        {
+          "character": "REGENT",
+          "eligibleColumns": 3557,
+          "usedColumns": 86,
+          "treeUsedColumns": 58,
+          "linearUsedColumns": 39,
+          "directRelicTreeSplits": 0,
+          "directRelicLinearFeatures": [
+            "relic/LETTER_OPENER/state/19AB43037F4C1026C35EE08CF053D90D",
+            "relic/NUNCHAKU/state/E95E8FB3DA21C6BB59C041FE06F54A4D",
+            "relic/NUNCHAKU/state/E95E92B3DA21DC9242FEE95557000F11",
+            "relic/PEN_NIB/state/5D5AB8E628C9177F2DCF27F75E661D73"
+          ]
+        },
+        {
+          "character": "SILENT",
+          "eligibleColumns": 2724,
+          "usedColumns": 86,
+          "treeUsedColumns": 60,
+          "linearUsedColumns": 34,
+          "directRelicTreeSplits": 0,
+          "directRelicLinearFeatures": []
+        }
+      ],
+      "scope": "Read-only fitted feature usage, not battle quality or proof of learned relic interactions. Indirect effects can enter resource/power/card observations.",
+      "finalTestOpened": false
     }
   },
   "fullDevelopmentEvaluation": {
