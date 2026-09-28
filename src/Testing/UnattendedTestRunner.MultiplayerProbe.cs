@@ -27,6 +27,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyRoundDifferential { get; init; }
         public bool VerifyEnemyPowerScaling { get; init; }
         public bool VerifySearch { get; init; }
+        public bool ContentSearchOnly { get; init; }
         public bool VerifyAllyTarget { get; init; }
         public bool VerifySelfPotion { get; init; }
         public string[] ContentCardIds { get; init; } = [];
@@ -65,6 +66,7 @@ internal sealed partial class UnattendedTestRunner
                     || input.ContentActorBlock is < 0 or > 100
                     || input.ContentTargetBlock is < 0 or > 100
                     || input.ContentActorEnergy is < 0 or > 20
+                    || input.ContentSearchOnly && !input.VerifySearch
                     || input.ContentCacophonyCardsRemaining is < 0 or > 33
                     || input.ContentTeammateStrikeBefore && input.ContentTeammateStrikeAfter
                     || input.ContentTeammateStrikeAfter && input.ContentTeammateCardIdAfter.Length > 0

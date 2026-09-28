@@ -666,6 +666,8 @@ internal sealed partial class CombatBeamSolver
             ValidateOrderedMutationAdmissionLedger(_run);
             SolverResult result = new()
             {
+                MultiplayerEffectiveDamage = best.CumulativeEnemyHpLost,
+                MultiplayerSetupValue = finalSnapshot.PersistentBuffValue + finalSnapshot.LatentSetupValue,
                 ResultScope = resultScope,
                 DeterministicBlockPotionInserted = blockPotionInsertion != null,
                 TotalSearchElapsed = stopwatch.Elapsed,
@@ -2225,15 +2227,74 @@ internal sealed partial class CombatBeamSolver
                 evaluated,
                 initialHp,
                 emitDiagnostics: true);
-            return MaterializeSelectedRoute(
-                ordering,
-                onlyDeathRoutesFound,
-                currentTurnAdoptionReached
-                    ? SolverResultScope.CurrentTurnAdoption
-                    : SolverResultScope.SearchCompletion,
-                searchedTurnLayers,
-                timeBudgetReached,
-                memoryNoProgressTruncated);
+            SolverResultScope scope = currentTurnAdoptionReached
+                ? SolverResultScope.CurrentTurnAdoption
+                : SolverResultScope.SearchCompletion;
+            if (root.PlayerCount == 1 || scope != SolverResultScope.SearchCompletion)
+                return MaterializeSelectedRoute(ordering, onlyDeathRoutesFound, scope,
+                    searchedTurnLayers, timeBudgetReached, memoryNoProgressTruncated);
+
+            var viable = evaluated.Where(candidate => !candidate.Snapshot.PlayerDead
+                && candidate.Snapshot.ProjectedPlayerHp > 0).ToArray();
+            if (viable.Length == 0)
+                return MaterializeSelectedRoute(ordering, onlyDeathRoutesFound, scope,
+                    searchedTurnLayers, timeBudgetReached, memoryNoProgressTruncated);
+
+            static PlanAction[] CurrentTurnActions(SearchNode node, int turn)
+                => node.Actions.Where(action => action.Turn == turn).ToArray();
+            List<(MultiplayerPlanStyle Style, SearchNode Node, SimulationSnapshot Snapshot)> styles = [];
+            foreach (MultiplayerPlanStyle style in Enum.GetValues<MultiplayerPlanStyle>())
+            {
+                IEnumerable<(SearchNode Node, SimulationSnapshot Snapshot)> ranked = style switch
+                {
+                    MultiplayerPlanStyle.Output => viable
+                        .OrderByDescending(candidate => candidate.Node.CumulativeEnemyHpLost)
+                        .ThenBy(candidate => candidate.Snapshot.EnemyHp)
+                        .ThenByDescending(candidate => candidate.Snapshot.ProjectedPlayerHp),
+                    MultiplayerPlanStyle.Defense => viable
+                        .OrderByDescending(candidate => candidate.Snapshot.ProjectedPlayerHp)
+                        .ThenBy(candidate => candidate.Snapshot.CumulativePlayerHpLost)
+                        .ThenByDescending(candidate => candidate.Node.CumulativeEnemyHpLost),
+                    MultiplayerPlanStyle.Setup => viable
+                        .OrderByDescending(candidate => candidate.Snapshot.PersistentBuffValue
+                            + candidate.Snapshot.LatentSetupValue)
+                        .ThenByDescending(candidate => candidate.Snapshot.ProjectedPlayerHp)
+                        .ThenByDescending(candidate => candidate.Node.CumulativeEnemyHpLost),
+                    _ => throw new ArgumentOutOfRangeException(nameof(style), style, null),
+                };
+                foreach (var candidate in ranked)
+                {
+                    if (style == MultiplayerPlanStyle.Defense
+                        && candidate.Snapshot.ProjectedPlayerHp
+                            <= styles.Max(existing => existing.Snapshot.ProjectedPlayerHp))
+                        break;
+                    if (style == MultiplayerPlanStyle.Setup
+                        && candidate.Snapshot.PersistentBuffValue + candidate.Snapshot.LatentSetupValue
+                            <= styles.Max(existing => existing.Snapshot.PersistentBuffValue
+                                + existing.Snapshot.LatentSetupValue))
+                        break;
+                    PlanAction[] actions = CurrentTurnActions(candidate.Node, _startTurnNumber);
+                    if (styles.Any(existing => CurrentTurnActions(existing.Node, _startTurnNumber)
+                            .SequenceEqual(actions)))
+                        continue;
+                    styles.Add((style, candidate.Node, candidate.Snapshot));
+                    break;
+                }
+            }
+            if (styles.Count == 0)
+                throw new InvalidOperationException("Multiplayer search found viable candidates but no plan style.");
+            List<SolverResult> plans = new(styles.Count);
+            foreach (var item in styles)
+            {
+                FinalPlanSelection chosen = FinalOrdering.Select(
+                    [(item.Node, item.Snapshot)], initialHp, emitDiagnostics: false);
+                SolverResult plan = MaterializeSelectedRoute(chosen, onlyDeathRoutesFound,
+                    scope, searchedTurnLayers, timeBudgetReached, memoryNoProgressTruncated);
+                plan.MultiplayerStyle = item.Style;
+                plans.Add(plan);
+            }
+            plans[0].MultiplayerAlternatives = plans.Skip(1).ToArray();
+            return plans[0];
         }
         finally
         {

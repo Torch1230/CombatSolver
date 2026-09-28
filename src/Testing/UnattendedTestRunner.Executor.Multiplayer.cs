@@ -84,8 +84,19 @@ internal sealed partial class UnattendedTestRunner
                         && action.Turn == 1 && !scenario.Player.PlayerCombatState!.AllCards.Any(card =>
                             card.Id.Entry == action.CardId)))
                     throw new InvalidOperationException("Multiplayer search produced no legal local turn-one route.");
+                SolverResult[] plans = [result, .. result.MultiplayerAlternatives];
+                if (plans.Length is < 1 or > 3
+                    || plans[0].MultiplayerStyle != MultiplayerPlanStyle.Output
+                    || plans.Any(plan => plan.MultiplayerStyle == null
+                        || plan.Snapshot.PlayerDead || plan.Snapshot.ProjectedPlayerHp <= 0)
+                    || plans.Select(plan => plan.MultiplayerStyle).Distinct().Count() != plans.Length
+                    || plans.Select(plan => string.Join('|', plan.BestNode.Actions
+                            .Where(action => action.Turn == 1)
+                            .Select(action => $"{action.Kind}:{action.CardId}:{action.TargetCombatId}:{action.Choice}")))
+                        .Distinct(StringComparer.Ordinal).Count() != plans.Length)
+                    throw new InvalidOperationException("Multiplayer search plan styles were invalid or duplicated.");
                 runner._completedChecks.Add(
-                    $"MultiplayerSearch:Players={input.PlayerCount}:Seat={input.Seat}:LocalActions:Budget=3000ms");
+                    $"MultiplayerSearch:Players={input.PlayerCount}:Seat={input.Seat}:LocalActions:Budget=3000ms:Styles={string.Join(',', plans.Select(plan => plan.MultiplayerStyle))}");
             }
             ICardSelector selector = input.IsVirtual
                 ? new UnattendedCardSelector(["DEFEND_IRONCLAD"])
@@ -285,6 +296,7 @@ internal sealed partial class UnattendedTestRunner
                 SearchPolicySnapshot searchPolicy = SolverController.CaptureSearchPolicy(
                     SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null) with
                 {
+                    MaxTurnLayers = input.ContentSearchOnly ? 1 : configured.MaxTurnLayers,
                     Profile = SolverSearchProfile.Default with
                     {
                         MaxExpandedNodes = 10_000,
@@ -304,9 +316,45 @@ internal sealed partial class UnattendedTestRunner
                         && action.Turn == 1 && !actor.PlayerCombatState!.AllCards.Any(card =>
                             card.Id.Entry == action.CardId)))
                     throw new InvalidOperationException("Multiplayer content search produced no legal local route.");
+                SolverResult[] contentPlans = [search, .. search.MultiplayerAlternatives];
+                if (contentPlans[0].MultiplayerStyle != MultiplayerPlanStyle.Output
+                    || contentPlans.Length > 3
+                    || contentPlans.Select(plan => plan.MultiplayerStyle).Distinct().Count() != contentPlans.Length
+                    || contentPlans.Any(plan => plan.Snapshot.PlayerDead
+                        || plan.Snapshot.ProjectedPlayerHp <= 0))
+                    throw new InvalidOperationException("Multiplayer content search styles are invalid.");
+                if (input.ContentSearchOnly
+                    && input.ContentCardIds.Contains("INFLAME"))
+                {
+                    SolverResult? setup = contentPlans.FirstOrDefault(plan =>
+                        plan.MultiplayerStyle == MultiplayerPlanStyle.Setup);
+                    if (setup == null || setup.MultiplayerSetupValue <= search.MultiplayerSetupValue
+                        || setup.BestNode.Actions.Where(action => action.Turn == 1)
+                            .SequenceEqual(search.BestNode.Actions.Where(action => action.Turn == 1)))
+                        throw new InvalidOperationException("Setup search did not preserve a real opening tradeoff: "
+                            + string.Join("; ", contentPlans.Select(plan =>
+                                $"{plan.MultiplayerStyle}:setup={plan.MultiplayerSetupValue}:damage={plan.MultiplayerEffectiveDamage}:"
+                                + string.Join(',', plan.BestNode.Actions.Select(action =>
+                                    $"{action.Turn}/{action.Kind}/{action.CardId}")))));
+                    runner._completedChecks.Add("MultiplayerPlans:OutputAndSetup:DistinctActions:SetupEstimateGain");
+                }
+                if (input.ContentSearchOnly
+                    && input.ContentCardIds.Contains("DEFEND_IRONCLAD"))
+                {
+                    SolverResult? defense = contentPlans.FirstOrDefault(plan =>
+                        plan.MultiplayerStyle == MultiplayerPlanStyle.Defense);
+                    if (defense == null
+                        || defense.Snapshot.ProjectedPlayerHp <= search.Snapshot.ProjectedPlayerHp
+                        || defense.BestNode.Actions.Where(action => action.Turn == 1)
+                            .SequenceEqual(search.BestNode.Actions.Where(action => action.Turn == 1)))
+                        throw new InvalidOperationException("Defense search did not preserve a real HP tradeoff.");
+                    runner._completedChecks.Add("MultiplayerPlans:OutputAndDefense:DistinctActions:ProjectedHpGain");
+                }
                 runner._completedChecks.Add(
-                    $"MultiplayerContentSearch:Players={input.PlayerCount}:LocalActions:Budget=3000ms");
+                    $"MultiplayerContentSearch:Players={input.PlayerCount}:LocalActions:Budget=3000ms:Styles={string.Join(',', contentPlans.Select(plan => plan.MultiplayerStyle))}");
             }
+            if (input.ContentSearchOnly)
+                return new ExecutionOutcome(false, 1, true, true, true, false);
             if (input.ContentTeammateStrikeBefore)
                 await PlayTeammateStrikeAsync("before");
             for (int index = 0; index < input.ContentCardIds.Length; index++)
