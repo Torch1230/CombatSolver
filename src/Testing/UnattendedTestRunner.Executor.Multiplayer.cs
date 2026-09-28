@@ -324,6 +324,7 @@ internal sealed partial class UnattendedTestRunner
                 };
                 if (!card.CanPlayTargeting(target))
                     throw new InvalidOperationException($"Content probe card is not playable: {card.Id.Entry}.");
+                int enemyHpBefore = combat.Enemies.Single().CurrentHp;
                 CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
                 CombatPredictionSimulator simulator = root.ForkSimulator();
                 PredictedCard predictedCard = simulator.State.GetPlayerCombatState(actor).Hand.Cards.Single(candidate =>
@@ -368,6 +369,20 @@ internal sealed partial class UnattendedTestRunner
                         predicted.DescribeFirstDifference(actual));
                 runner._completedChecks.Add(
                     $"MultiplayerContent:{card.Id.Entry}:Upgrade={card.CurrentUpgradeLevel}:Target={combat.Players[input.ContentTargetSeat].NetId}:FullState:FullRng");
+                if (card is HuddleUp && input.ContentCacophonyCardsRemaining > 0)
+                {
+                    CacophonyPower triggered = actor.Creature.Powers.OfType<CacophonyPower>().Single();
+                    if (triggered.DynamicVars.Cards.IntValue <= input.ContentCacophonyCardsRemaining
+                        || combat.Enemies.Single().CurrentHp != enemyHpBefore - triggered.Amount)
+                        throw new InvalidOperationException("Cacophony draw fixture did not trigger and reset once.");
+                    runner._completedChecks.Add("MultiplayerCacophony:DrawThreshold:Damage:Reset:FullRng");
+                }
+                if (card is Cacophony && input.ContentCacophonyCardsRemaining > 0)
+                {
+                    CacophonyPower power = actor.Creature.Powers.OfType<CacophonyPower>().Single();
+                    power.DynamicVars.Cards.BaseValue = input.ContentCacophonyCardsRemaining;
+                    runner._completedChecks.Add($"MultiplayerCacophonyFixture:Cards={input.ContentCacophonyCardsRemaining}");
+                }
             }
             if (input.ContentTeammateStrikeAfter)
                 await PlayTeammateStrikeAsync("after");

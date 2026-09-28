@@ -203,12 +203,17 @@ internal static class AfterCardDrawnMirrors
             // count toward the next trigger instead of retriggering Cacophony immediately.
             // Use the canonical value to avoid hard-coding the number threshold in case it changes in the future.
             state.CardsDrawn = power.CanonicalInstance.DynamicVars.Cards.IntValue;
+            ((SimulatedCombatState)context.CombatState).SetPowerDynamicVar(
+                context.Simulator, power, "Cards", state.CardsDrawn);
 
             if (target is not null)
             {
                 context.Simulator.Damage(target, power.Amount, ValueProp.Unpowered, power.Owner);
             }
+            return;
         }
+        ((SimulatedCombatState)context.CombatState).SetPowerDynamicVar(
+            context.Simulator, power, "Cards", state.CardsDrawn);
     }
 
     private static void HandleKinglyKick(KinglyKick card, AfterCardDrawnMirrorContext context)

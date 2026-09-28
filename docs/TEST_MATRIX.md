@@ -14,6 +14,8 @@
 
 关联机制再按必要输入差分：格挡传播与生成联动、队友先攻击后的 `GangUp`、多种能力施加后的队友攻击、`Hibernate`／`Plot`／`Tank`／`Underworld` 组合的第二回合，四次虚拟双人请求 Passed，路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。未据此推断其他触发组合通过。
 
+`Cacophony` 抽牌计数与归零重置：双人 `Cacophony`→`HuddleUp` 的通常抽牌、计数置 2 后跨阈值随机伤害，以及两者各自第二回合全状态／RNG 差分 Passed；证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。首轮失败是预测计数未同步到能力动态变量，已按原版状态所有者修复。
+
 P3 首次搜索探针：虚拟双人、四人普通牌根和含 `BelieveInYou` 的双人内容根各运行 3 秒单成员搜索，非空路线的一回合出牌均属于本地玩家，三次 Passed，证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。`AnyAlly` 起初产生 null 目标导致搜索失败，按存活玩家生成合法目标后通过。三类方案和生产入口尚未验收。
 
 P3 选人合同：四人 `BelieveInYou` 在三个 Fork 中固定同一原版合法目标、不推进游戏 RNG，随后短搜与原生出牌差分 Passed；证据 `.local/multiplayer-p3/ally-search-legal-4-0a90f5ba2c8b4290acff8fabf087fd3f/peer-0/result.json`。生产重评估保持目标仍待验。

@@ -36,6 +36,7 @@ internal sealed partial class UnattendedTestRunner
         public int ContentActorBlock { get; init; }
         public int ContentTargetBlock { get; init; }
         public int ContentActorEnergy { get; init; } = 10;
+        public int ContentCacophonyCardsRemaining { get; init; }
         public bool VerifyContentRound { get; init; }
         public bool ContentTeammateStrikeBefore { get; init; }
         public bool ContentTeammateStrikeAfter { get; init; }
@@ -62,6 +63,7 @@ internal sealed partial class UnattendedTestRunner
                     || input.ContentActorBlock is < 0 or > 100
                     || input.ContentTargetBlock is < 0 or > 100
                     || input.ContentActorEnergy is < 0 or > 20
+                    || input.ContentCacophonyCardsRemaining is < 0 or > 33
                     || input.ContentTeammateStrikeBefore && input.ContentTeammateStrikeAfter
                     || input.ContentTargetSeat <= 0 || input.ContentTargetSeat >= input.PlayerCount)
                 || input.Seat < 0 || input.Seat >= input.PeerCount
