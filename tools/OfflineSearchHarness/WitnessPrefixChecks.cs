@@ -21,6 +21,16 @@ internal static class WitnessPrefixChecks
             finally { snapshot.ReleaseSimulator(); }
         }
         string before = RootStamp();
+        Check(queries.Length is > 0 and <= 6 && queries.Length % 2 == 0,
+            "corrective continuations are complete bounded retained/dropped pairs");
+        for (int pair = 0; pair < queries.Length; pair += 2)
+        {
+            var left = queries[pair]; var right = queries[pair + 1];
+            int turn = left.Replay.Steps[^1].Turn;
+            Check(turn == right.Replay.Steps[^1].Turn && left.Prefix.Length == right.Prefix.Length
+                && left.Prefix.Count(a => a.Turn == turn) == right.Prefix.Count(a => a.Turn == turn),
+                "each sampled competition has the same global and within-turn action depth");
+        }
         foreach (var query in queries)
         {
             var whole = driver.ReplayDiagnosticPrefix(query.Prefix);
@@ -60,6 +70,7 @@ internal static class WitnessPrefixChecks
         File.WriteAllText(Path.Combine(output, "outcome-prefix-checks.json"), JsonSerializer.Serialize(new
         {
             passed = checks, queries = queries.Length, turns = queries.Select(q => q.Replay.Steps[^1].Turn).ToArray(),
+            withinTurnDepths = queries.Select(q => q.Prefix.Count(a => a.Turn == q.Replay.Steps[^1].Turn)).ToArray(),
             maximumActions = queries.Max(q => q.Prefix.Length), rootUnchanged = true,
         }));
 

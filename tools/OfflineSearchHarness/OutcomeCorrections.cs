@@ -44,6 +44,7 @@ internal static class OutcomeCorrections
             trials.Add(new
             {
                 query.Prefix, turn = query.Replay.Steps[^1].Turn,
+                query.OrdinaryStatesAtSelection, query.OrdinaryPoolsAtSelection,
                 nodeAllowance = 1000, timeAllowanceMs = milliseconds,
                 work = totals.Snapshot(), before, after,
                 queryWitnessAdded = before == null && after != null,
@@ -57,7 +58,8 @@ internal static class OutcomeCorrections
             JsonSerializer.Serialize(new
             {
                 requested = queries.Length, completed = trials.Count, allowanceMilliseconds = 6000,
-                elapsedMilliseconds = clock.Elapsed.TotalMilliseconds, trials,
+                elapsedMilliseconds = clock.Elapsed.TotalMilliseconds,
+                selection = collector.DescribeCorrectionSampling(), trials,
             }, UnattendedTestFiles.JsonOptions));
         File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-correction-rows.json"),
             JsonSerializer.Serialize(collector.ExportCorrectionRows()));

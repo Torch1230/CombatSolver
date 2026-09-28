@@ -1,0 +1,190 @@
+{
+  "experiment": "v77-depth-stratified-correction-sampling",
+  "sourceBase": "0bcca5c",
+  "runtimeModelEnabled": false,
+  "finalTestOpened": false,
+  "goalAchieved": false,
+  "newModelTrained": false,
+  "build": {
+    "modPassed": true,
+    "harnessPassed": true,
+    "modWarnings": [
+      "NU1900: offline NuGet vulnerability source unavailable"
+    ],
+    "rankingContractAssertions": 213,
+    "structuralGates": {
+      "bashPassed": true,
+      "powershellPassed": true,
+      "searchFiles": 230,
+      "initialStaleGuardFailurePreserved": true
+    }
+  },
+  "nativePrefixContract": {
+    "passed": 28,
+    "queries": 6,
+    "turns": [
+      2,
+      2,
+      3,
+      3,
+      4,
+      4
+    ],
+    "withinTurnDepths": [
+      1,
+      1,
+      0,
+      0,
+      2,
+      2
+    ],
+    "maximumActions": 6,
+    "rootUnchanged": true
+  },
+  "pilot": {
+    "old": {
+      "roots": 10,
+      "queries": 48,
+      "labels": 48,
+      "wins": 38,
+      "depths": {
+        "0": 34,
+        "2": 10,
+        "3": 4
+      },
+      "lateDepths": {
+        "0": 34
+      },
+      "ordinaryStateCapQueries": null,
+      "ordinaryPoolCapQueries": null,
+      "processSeconds": 163.14057547377888,
+      "teacherSeconds": 19.5771776,
+      "meanRssMiB": 673.42890625,
+      "maxRssMiB": 1129.0625,
+      "ranking": {
+        "pairs": 21,
+        "correct": 14,
+        "wrong": 4,
+        "ties": 3,
+        "indistinguishable": 1
+      },
+      "kinds": {
+        "victory-over-defeat": {
+          "pairs": 4,
+          "correct": 2,
+          "wrong": 1,
+          "ties": 1
+        },
+        "victory-policy": {
+          "pairs": 15,
+          "correct": 11,
+          "wrong": 3,
+          "ties": 1
+        },
+        "suffix-effort": {
+          "pairs": 2,
+          "correct": 1,
+          "wrong": 0,
+          "ties": 1
+        }
+      }
+    },
+    "new": {
+      "roots": 10,
+      "queries": 48,
+      "labels": 48,
+      "wins": 40,
+      "depths": {
+        "0": 10,
+        "1": 2,
+        "2": 10,
+        "3": 14,
+        "4": 8,
+        "6": 2,
+        "7": 2
+      },
+      "lateDepths": {
+        "0": 10,
+        "1": 2,
+        "2": 8,
+        "3": 8,
+        "4": 2,
+        "6": 2,
+        "7": 2
+      },
+      "ordinaryStateCapQueries": 20,
+      "ordinaryPoolCapQueries": 26,
+      "processSeconds": 163.7405557470629,
+      "teacherSeconds": 19.5522223,
+      "meanRssMiB": 666.752734375,
+      "maxRssMiB": 1115.78515625,
+      "ranking": {
+        "pairs": 16,
+        "correct": 7,
+        "wrong": 6,
+        "ties": 3,
+        "indistinguishable": 1
+      },
+      "kinds": {
+        "victory-over-defeat": {
+          "pairs": 2,
+          "correct": 1,
+          "wrong": 0,
+          "ties": 1
+        },
+        "victory-policy": {
+          "pairs": 12,
+          "correct": 4,
+          "wrong": 6,
+          "ties": 2
+        },
+        "suffix-effort": {
+          "pairs": 2,
+          "correct": 2,
+          "wrong": 0,
+          "ties": 0
+        }
+      }
+    },
+    "samePhysicalRoots": true,
+    "notControlledPerformanceComparison": true,
+    "modelTrained": false,
+    "finalTestOpened": false
+  },
+  "pilotRootVerification": {
+    "equipment": true,
+    "bothFullNativeRootStamps": true,
+    "failures": 0,
+    "maximumQueriesPerRoot": 6,
+    "exportUsesOwnPairGroupsOnly": true
+  },
+  "frozenArtifacts": {
+    ".local/objective-search/v77/engine/CombatSolver.dll": "cc1150a6b086ae3ccc6f17bee3d4d3446b878aca7fe7dc745e68071233e21a9d",
+    ".local/objective-search/v77/engine/harness/OfflineSearchHarness.dll": "5a81e2eba32c8010072b2efbba060f223e1d8115626f4e106950cf8a789a8ee5",
+    ".local/objective-search/v77/pilot-protocol.json": "a5c7b0eeda94f317acd42e840bdb6ba3f83f3c8e477ef54e50f96e3311367c9d",
+    ".local/objective-search/v77/pilot-records.json": "ee743e561b9cfc3520e928f378739a40bd25b09712a1d404e7f8b8d8d575a25b",
+    ".local/objective-search/v77/pilot-ranking-audit.json": "2cced7344d4783354dea8c77d8aa125ec35fa79ece6c48a4c8e66b1fd9919066"
+  },
+  "nextCollection": {
+    "physicalTrainingRoots": 292,
+    "reusePilotRoots": 10,
+    "newTrainingPhysicalRoots": 0,
+    "rollInModel": "v71",
+    "searchBudgetChanged": false,
+    "auditBeforeFitting": true,
+    "completeTrainingLimitSeconds": 1800
+  },
+  "limitations": [
+    "Pilot measures sampling coverage, not held-out decision quality.",
+    "Historical collection costs are not a repeated controlled performance comparison.",
+    "Only observed eligible depths in the first three eligible turns are sampled.",
+    "One of sixteen preference pairs has identical input features.",
+    "Final55 remain sealed; no new model is promoted."
+  ],
+  "deployment": {
+    "completed": true,
+    "exactFiles": 5,
+    "runtimeLearnedModelEnabled": false,
+    "record": ".local/objective-search/v77/deployment.json"
+  }
+}

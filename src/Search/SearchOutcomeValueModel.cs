@@ -22,8 +22,6 @@ internal sealed partial class SearchOutcomeValueModel
     private readonly Dictionary<ObservationKey, double> _predictions = [];
     private int _groups;
     private int _noveltyGroups;
-    private readonly List<CorrectionQuery> _correctionQueries = [];
-    private readonly HashSet<int> _correctionTurns = [];
     // Retention can compare an expanded parent's rank after releasing its simulator.
     // Record copies can share a snapshot after the original node is expanded.
     // Keep only scalars, keyed by the exact state/policy identity, for that weak
@@ -80,53 +78,6 @@ internal sealed partial class SearchOutcomeValueModel
         }
     }
 
-    // At most one actual competition per observed turn, three turns total. The
-    // separate teacher prefix supports EndTurn; unresolved root setup is excluded.
-    internal sealed record CorrectionQuery(SearchWitnessPrefix Replay, StateFingerprint State, int HpCost, int PotionCost)
-    {
-        internal PlanAction[] Prefix => Replay.Actions;
-    }
-    internal void ObserveCorrectionBoundary(IReadOnlyList<SearchNode> pool, IReadOnlyList<SearchNode> selected,
-        Player player, SearchOutcomeValueModel predictor)
-    {
-        if (_frozen || _correcting || _correctionTurns.Count >= 3 || _groups >= MaximumGroups) return;
-        var retained = selected.LastOrDefault(Eligible);
-        if (retained == null || _correctionTurns.Contains(retained.Turn)) return;
-        var selectedKeys = selected.Select(Key).ToHashSet();
-        var dropped = pool.Where(n => Eligible(n) && n.Turn == retained.Turn && n.ActionCount == retained.ActionCount
-                && !selectedKeys.Contains(Key(n)))
-            .OrderByDescending(n => predictor.PredictPriority(n, player)).FirstOrDefault();
-        if (dropped == null) return;
-        ObserveState(retained, player); ObserveState(dropped, player);
-        if (!_observations.TryGetValue(Key(retained), out var a) || a.Groups.Count >= 8
-            || !_observations.TryGetValue(Key(dropped), out var b) || b.Groups.Count >= 8) return;
-        int group = _groups++;
-        a.Groups.Add(group); b.Groups.Add(group);
-        _correctionTurns.Add(retained.Turn);
-        foreach (var node in new[] { retained, dropped })
-        {
-            var key = Key(node);
-            _correctionQueries.Add(new(SearchWitnessPrefix.Capture(node), key.State, key.HpCost, key.PotionCost));
-        }
-
-        static bool Eligible(SearchNode node)
-        {
-            if (node.ActionCount is < 1 or > 96 || node.IsTerminal || node.HasPredictionRisk
-                || node.BoundaryReason != SearchBoundaryReason.None || !node.Snapshot.HasSimulator) return false;
-            for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
-                if (cursor.TurnSetupChoices is { Count: > 0 }) return false;
-            return true;
-        }
-    }
-
-    internal CorrectionQuery[] BeginCorrections()
-    {
-        _correcting = true; // Teacher adds witnesses, never more collection pools.
-        return _correctionQueries.ToArray();
-    }
-    internal SolverInterimResult? CorrectionWitness(CorrectionQuery query)
-        => _observations[new(query.State, query.HpCost, query.PotionCost)].Outcome;
-
     internal void ObserveCompleted(SearchNode node, SolverInterimResult quality)
     {
         bool victory = quality.Won && quality.Survives;
@@ -140,15 +91,21 @@ internal sealed partial class SearchOutcomeValueModel
         if (victory && !_correcting) ObserveWinningRoute(node, quality);
         for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
         {
-            if (!_observations.TryGetValue(Key(cursor), out var observation)) continue;
             int actions = node.ActionCount - cursor.ActionCount;
-            if (observation.Outcome is { } old
-                && (SolverInterimResultOrdering.IsBetter(old, quality)
-                    || !SolverInterimResultOrdering.IsBetter(quality, old)
-                        && observation.RemainingActions <= actions)) continue;
-            observation.Outcome = quality;
-            observation.RemainingActions = actions;
+            var key = Key(cursor);
+            if (_observations.TryGetValue(key, out var observation)) UpdateWitness(observation, quality, actions);
+            ObserveCorrectionWitness(key, quality, actions);
         }
+    }
+
+    private static void UpdateWitness(Observation observation, SolverInterimResult quality, int actions)
+    {
+        if (observation.Outcome is { } old
+            && (SolverInterimResultOrdering.IsBetter(old, quality)
+                || !SolverInterimResultOrdering.IsBetter(quality, old)
+                    && observation.RemainingActions <= actions)) return;
+        observation.Outcome = quality;
+        observation.RemainingActions = actions;
     }
 
     internal interface RankingObservation
@@ -174,10 +131,6 @@ internal sealed partial class SearchOutcomeValueModel
         [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         NeuralTerm? Neural = null);
     internal TrainingRow[] ExportRows() => _observations.Values.Where(o => o.Outcome != null && o.Groups.Count != 0)
-        .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won, FeatureSchema)).ToArray();
-    internal TrainingRow[] ExportCorrectionRows() => _correctionQueries
-        .Select(query => new ObservationKey(query.State, query.HpCost, query.PotionCost)).Distinct()
-        .Select(key => _observations[key]).Where(o => o.Outcome != null)
         .Select(o => new TrainingRow(o.Features, o.Outcome!, o.RemainingActions, o.Groups.ToArray(), !o.Outcome!.Won, FeatureSchema)).ToArray();
     internal Document ExportModel() => new(_neural == null ? Schema : NeuralSchema, _featureNames, typeof(Player).Assembly.ManifestModule.ModuleVersionId,
         _forest ?? throw new InvalidOperationException("No fitted ranker."), _linearWeights,

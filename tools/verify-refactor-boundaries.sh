@@ -1362,7 +1362,7 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
     done
 done
 
-for file in SearchOutcomeContext.cs SearchOutcomeContext.Columns.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs SearchOutcomeValueModel.Imitation.cs SearchOutcomeValueModel.JointTraining.cs CombatBeamSolver.ObjectiveRetention.cs; do
+for file in SearchOutcomeContext.cs SearchOutcomeContext.Columns.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs SearchOutcomeValueModel.Imitation.cs SearchOutcomeValueModel.JointTraining.cs SearchOutcomeValueModel.Corrections.cs SearchCorrectionSampler.cs CombatBeamSolver.ObjectiveRetention.cs; do
     for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.' 'xgboost'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
@@ -1435,7 +1435,10 @@ require_fixed "$search_root/SearchOutcomeContext.cs" 'EnemyPowerTotalPrefix + po
 require_fixed "$search_root/SearchOutcomeContext.cs" 'combat.GetOstyMaxHp(simulator, player)' 'pet features must read branch-owned maximum HP:'
 require_fixed "$search_root/CombatBeamSolver.Expansion.Opening.cs" '.Where(node => node.Action is { EndsPlayerTurn: false } && !node.IsTerminal' 'same-turn resource audits must exclude completed turns and terminals:'
 forbid_fixed "$search_root/SearchOutcomeContext.cs" 'player.Osty' 'pet features must not read live pet state:'
-require_fixed "$search_root/SearchOutcomeValueModel.cs" '_correctionTurns.Count >= 3' 'offline correction prefixes lost their bounded ownership:'
+require_fixed "$search_root/SearchCorrectionSampler.cs" 'MaximumTurns = 3' 'offline correction strata must remain bounded:'
+require_fixed "$search_root/SearchCorrectionSampler.cs" 'new T?[MaximumTurns]' 'offline corrective samples require fixed-capacity ownership:'
+require_fixed "$search_root/SearchCorrectionSampler.cs" 'if (Count == MaximumTurns) return false;' 'later turns must not expand corrective storage:'
+require_fixed "$search_root/SearchOutcomeValueModel.Corrections.cs" 'CurrentTurnDepth(n) == depth' 'corrective pairs must share within-turn action depth:'
 require_fixed "$search_root/CombatBeamSolver.WitnessPrefix.cs" 'snapshot.StateKey != step.State' 'teacher prefixes must validate every observed physical identity:'
 require_fixed "$search_root/CombatBeamSolver.Phases.cs" 'policy.OutcomeTrainingCollector == null' 'cross-turn prefixes require an offline teacher collector:'
 require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeCorrections.cs" 'ObjectiveValueModel = null' 'offline teacher must not recursively use the learned predictor:'

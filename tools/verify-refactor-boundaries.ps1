@@ -1755,7 +1755,7 @@ foreach ($file in @('CombatBeamSolver.FinalPlanOrdering.cs', 'CombatBeamSolver.T
     }
 }
 
-foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeContext.Columns.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'SearchOutcomeValueModel.Neural.cs', 'SearchOutcomeValueModel.Imitation.cs', 'SearchOutcomeValueModel.JointTraining.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
+foreach ($file in @('SearchOutcomeContext.cs', 'SearchOutcomeContext.Columns.cs', 'SearchOutcomeValueModel.cs', 'SearchOutcomeValueModel.Linear.cs', 'SearchOutcomeValueModel.Interactions.cs', 'SearchOutcomeValueModel.Neural.cs', 'SearchOutcomeValueModel.Imitation.cs', 'SearchOutcomeValueModel.JointTraining.cs', 'SearchOutcomeValueModel.Corrections.cs', 'SearchCorrectionSampler.cs', 'CombatBeamSolver.ObjectiveRetention.cs')) {
     foreach ($forbidden in @('SolverWeights', 'CardValue(', 'player.Relics', 'SolverSettings.Current', 'File.', 'Directory.', 'xgboost')) {
         if (Select-String -LiteralPath (Join-Path $searchRoot $file) -SimpleMatch $forbidden -Quiet) {
             $violations.Add("Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden")
@@ -1819,7 +1819,10 @@ foreach ($contract in @(
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeContext.cs'); Text = 'EnemyPowerTotalPrefix + power.Id.Entry' },
     @{ Path = (Join-Path $searchRoot 'SearchOutcomeContext.cs'); Text = 'combat.GetOstyMaxHp(simulator, player)' },
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.Expansion.Opening.cs'); Text = '.Where(node => node.Action is { EndsPlayerTurn: false } && !node.IsTerminal' },
-    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.cs'); Text = '_correctionTurns.Count >= 3' },
+    @{ Path = (Join-Path $searchRoot 'SearchCorrectionSampler.cs'); Text = 'MaximumTurns = 3' },
+    @{ Path = (Join-Path $searchRoot 'SearchCorrectionSampler.cs'); Text = 'new T?[MaximumTurns]' },
+    @{ Path = (Join-Path $searchRoot 'SearchCorrectionSampler.cs'); Text = 'if (Count == MaximumTurns) return false;' },
+    @{ Path = (Join-Path $searchRoot 'SearchOutcomeValueModel.Corrections.cs'); Text = 'CurrentTurnDepth(n) == depth' },
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.WitnessPrefix.cs'); Text = 'snapshot.StateKey != step.State' },
     @{ Path = (Join-Path $searchRoot 'CombatBeamSolver.Phases.cs'); Text = 'policy.OutcomeTrainingCollector == null' },
     @{ Path = (Join-Path $repositoryRoot 'tools/OfflineSearchHarness/OutcomeCorrections.cs'); Text = 'ObjectiveValueModel = null' }
