@@ -384,6 +384,9 @@ internal sealed partial class UnattendedTestRunner
                 for (int index = 0; index < input.ContentExtraDrawCardsPerPlayer; index++)
                     await UnattendedTestRunner.InjectCardAsync(combat, member,
                         new UnattendedCardInjection { CardId = "DEFEND_IRONCLAD", Pile = "Draw" });
+            for (int index = 0; index < input.ContentStokeHandCards; index++)
+                await UnattendedTestRunner.InjectCardAsync(combat, actor,
+                    new UnattendedCardInjection { CardId = "DEFEND_IRONCLAD", Pile = "Hand" });
             await UnattendedTestRunner.SetBlockAsync(actor.Creature, input.ContentActorBlock);
             await UnattendedTestRunner.SetBlockAsync(
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
@@ -781,6 +784,7 @@ internal sealed partial class UnattendedTestRunner
                     candidate.Preview.Id.Entry == card.Id.Entry);
                 SimulatedCombatState predictedCombat = (SimulatedCombatState)simulator.State.CombatState;
                 PlanCardChoice[]? plannedChoices = null;
+                string? selectedGeneratedCardId = null;
                 if (card is Tutor)
                 {
                     Player targetPlayer = target?.Player
@@ -789,6 +793,28 @@ internal sealed partial class UnattendedTestRunner
                     var spec = new CardChoiceSpec(PlanChoiceEffect.MoveToHand, PileType.Draw,
                         1, 1, targetState.DrawPile.Cards, targetState.DrawPile.Cards, 0d);
                     plannedChoices = [CardChoiceSupport.BuildRequestedChoice(spec, ["DEFEND_IRONCLAD"])];
+                }
+                else if (card is Abundance or Discovery or Quasar or Splash)
+                {
+                    CombatPredictionSimulator optionSimulator = root.ForkSimulator();
+                    PredictedCard optionCard = optionSimulator.State.GetPlayerCombatState(actor).Hand.Cards
+                        .Single(candidate => candidate.Preview.Id.Entry == card.Id.Entry);
+                    SimulatedCombatState optionCombat = (SimulatedCombatState)optionSimulator.State.CombatState;
+                    optionCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+                    try
+                    {
+                        optionSimulator.ManualPlay(optionCard, target, out _);
+                        if (!optionSimulator.HasPendingChoice)
+                            throw new InvalidOperationException($"{card.Id.Entry} did not request its generated-card choice.");
+                        CardChoiceSpec spec = CardChoiceSupport.GetSpec(optionSimulator, optionCard)
+                            ?? throw new InvalidOperationException($"{card.Id.Entry} has no generated-card choice spec.");
+                        selectedGeneratedCardId = spec.Options.First().Preview.Id.Entry;
+                        plannedChoices = [CardChoiceSupport.BuildRequestedChoice(spec, [selectedGeneratedCardId])];
+                    }
+                    finally
+                    {
+                        optionCombat.EndActionChoices();
+                    }
                 }
                 predictedCombat.BeginActionChoices(plannedChoices);
                 try
@@ -805,8 +831,9 @@ internal sealed partial class UnattendedTestRunner
                 ContinuationStamp predicted = ContinuationStamp.CapturePredicted(
                     actor, simulator, 1, root.Forecast, 1);
                 runner.SetStage($"multiplayer_content_play_{cardId}");
-                using var selector = card is Tutor
-                    ? CardSelectCmd.UseSelector(new UnattendedCardSelector(["DEFEND_IRONCLAD"]), localOnly: false)
+                string? nativeChoiceCardId = card is Tutor ? "DEFEND_IRONCLAD" : selectedGeneratedCardId;
+                using var selector = nativeChoiceCardId != null
+                    ? CardSelectCmd.UseSelector(new UnattendedCardSelector([nativeChoiceCardId]), localOnly: false)
                     : null;
                 var action = new PlayCardAction(card, target);
                 RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);

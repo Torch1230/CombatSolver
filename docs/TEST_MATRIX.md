@@ -82,6 +82,10 @@ P2 普通卡多人生成池第二批：虚拟双人 `BundleOfJoy`、`Distraction
 
 P2 普通卡多人生成池第三批：虚拟双人 `Jackpot`、`ManifestAuthority` 基础／升级四次即时原生／模拟全状态与完整 RNG 差分 Passed：`.local/multiplayer-p2/ordinary-generation-attack-base-e550f1c902f648c89132e47b785f5618/peer-0/result.json`、`.local/multiplayer-p2/ordinary-generation-attack-upgrade-c8716d189491435b8d77890fe79188a9/peer-0/result.json`。仅覆盖本输入实际生成的牌。
 
+P2 普通生成池选择批：`Discovery` 基础版 `.local/multiplayer-p2/ordinary-choice-discovery-base-2cc263cdf62146e68a62ce728dc0b893/peer-0/result.json`，`Abundance`／`Quasar`／`Splash` 基础版 `.local/multiplayer-p2/ordinary-choice-rest-base-7aca4e54e83d4f9a904b430d6bde89c3/peer-0/result.json`，四张升级版 `.local/multiplayer-p2/ordinary-choice-upgrade-4bae4dbe2a0245c9b50d836a7468ace9/peer-0/result.json` 均 Passed；同根生成候选选择第一个并在原版界面执行，逐张即时全状态／完整 RNG 对账。跳过与其余候选未验。
+
+P2 `Stoke` 三张手牌消耗／补牌基础及升级即时全状态／RNG Passed：`.local/multiplayer-p2/ordinary-stoke-base-4fca535f6f224b06a11baa7bcf8d4b23/peer-0/result.json`、`.local/multiplayer-p2/ordinary-stoke-upgrade-687fefeb63a14764a0e8637f9e8ae571/peer-0/result.json`。`MadScience` 的 Skill／Chaos 可达组合基础及升级即时全状态／RNG Passed：`.local/multiplayer-p2/ordinary-mad-science-base-34c7be43f6a7487fb15be48380e94904/peer-0/result.json`、`.local/multiplayer-p2/ordinary-mad-science-upgrade-357fe34b0b5a45f9b0a0c70b76231391/peer-0/result.json`。其他 Rider 与后续使用生成牌未验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

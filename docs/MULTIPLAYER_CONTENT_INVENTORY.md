@@ -69,6 +69,12 @@
 
 普通生成池第三批：`Jackpot`、`ManifestAuthority` 在虚拟双人基础／升级逐张即时全状态及完整 RNG 差分 Passed：`.local/multiplayer-p2/ordinary-generation-attack-base-e550f1c902f648c89132e47b785f5618/peer-0/result.json`、`.local/multiplayer-p2/ordinary-generation-attack-upgrade-c8716d189491435b8d77890fe79188a9/peer-0/result.json`。覆盖攻击后生成零费角色牌及自身格挡后生成无色牌；后续使用生成牌与更多随机池结果未覆盖。
 
+普通生成池选择批：测试器先在同根 Fork 读取原版镜像生成的三个候选，再从新 Fork 和原版选牌界面选择相同的第一个候选。`Discovery` 基础版 `.local/multiplayer-p2/ordinary-choice-discovery-base-2cc263cdf62146e68a62ce728dc0b893/peer-0/result.json`、`Abundance`／`Quasar`／`Splash` 基础版 `.local/multiplayer-p2/ordinary-choice-rest-base-7aca4e54e83d4f9a904b430d6bde89c3/peer-0/result.json`，四张升级版 `.local/multiplayer-p2/ordinary-choice-upgrade-4bae4dbe2a0245c9b50d836a7468ace9/peer-0/result.json` 均 Passed，即时全状态及完整 RNG 对齐。只覆盖所选选项，未覆盖跳过、其他候选或跨回合使用。
+
+`Stoke` 在手牌另有三张 `DefendIronclad` 时将其消耗，再按数量从多人过滤后的角色池生成；基础版 `.local/multiplayer-p2/ordinary-stoke-base-4fca535f6f224b06a11baa7bcf8d4b23/peer-0/result.json`、升级版 `.local/multiplayer-p2/ordinary-stoke-upgrade-687fefeb63a14764a0e8637f9e8ae571/peer-0/result.json` 即时全状态／RNG 差分 Passed。`MadScience` 使用原版可达的 Skill／Chaos 组合，基础版 `.local/multiplayer-p2/ordinary-mad-science-base-34c7be43f6a7487fb15be48380e94904/peer-0/result.json`、升级版 `.local/multiplayer-p2/ordinary-mad-science-upgrade-357fe34b0b5a45f9b0a0c70b76231391/peer-0/result.json` 即时全状态／RNG 差分 Passed；其他类型／Rider 不在本批生成池分支证据内。
+
+上述 14 张实际在战斗结算中使用 `CardMultiplayerConstraint` 的普通牌均取得基础／升级一次即时差分；它们的随机池多种结果、生成牌后续动作、选牌分支及相关 Hook 仍需按机制补足。`Fasten` 只在悬停说明使用该约束，已单独归类。
+
 药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。当前 `CombatBeamSolver.Expansion.Candidates.TargetsForPotion` 对 `AnyPlayer`／`Self` 只产生一个本地自用候选，模拟 `PotionOnUseSupport.Use` 将空目标解析为持有人，原版 `PotionModel.EnqueueManualUse` 也这样解析；生产多人门禁仍在；本地自用代表的原生证据见下文。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
 
 一瓶 `StrengthPotion` 已在虚拟双人完成本地持有者自用的原生／模拟全状态与 RNG 差分，证据 `.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。这只代表玩家目标自用入口；其余药水机制、生成池及正式执行仍待验。

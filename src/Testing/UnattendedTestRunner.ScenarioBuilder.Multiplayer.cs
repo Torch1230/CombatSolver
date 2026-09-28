@@ -61,6 +61,13 @@ internal sealed partial class UnattendedTestRunner
                         await InjectRunCardAsync(run, player, new UnattendedCardInjection
                         {
                             CardId = cardId, UpgradeLevels = input.ContentUpgradeLevel,
+                            EnumMembers = cardId == "MAD_SCIENCE"
+                                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                                {
+                                    ["TinkerTimeType"] = "Skill",
+                                    ["TinkerTimeRider"] = "Chaos",
+                                }
+                                : new Dictionary<string, string>(StringComparer.Ordinal),
                         });
                     }
                 }

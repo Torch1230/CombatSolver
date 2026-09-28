@@ -51,6 +51,7 @@ internal sealed partial class UnattendedTestRunner
         public int ContentUpgradeLevel { get; init; }
         public int ContentTargetSeat { get; init; } = 1;
         public int ContentExtraDrawCardsPerPlayer { get; init; }
+        public int ContentStokeHandCards { get; init; }
         public int ContentActorBlock { get; init; }
         public int ContentTargetBlock { get; init; }
         public int ContentActorEnergy { get; init; } = 10;
@@ -92,6 +93,8 @@ internal sealed partial class UnattendedTestRunner
                     || input.ContentCardIds.Distinct(StringComparer.Ordinal).Count() != input.ContentCardIds.Length
                     || input.ContentUpgradeLevel is not (0 or 1)
                     || input.ContentExtraDrawCardsPerPlayer is < 0 or > 5
+                    || input.ContentStokeHandCards is < 0 or > 5
+                    || input.ContentStokeHandCards > 0 && !input.ContentCardIds.Contains("STOKE")
                     || input.ContentActorBlock is < 0 or > 100
                     || input.ContentTargetBlock is < 0 or > 100
                     || input.ContentActorEnergy is < 0 or > 20
