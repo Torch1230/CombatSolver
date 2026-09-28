@@ -965,18 +965,24 @@ internal sealed partial class SimulatedCombatState
 
     public void RecordThievery(CombatPredictionSimulator simulator, Creature owner)
     {
-        ThieveryPower? source = GetPower<ThieveryPower>(owner);
-        if (source?.Target?.Player is not { } target
-            || simulator.State.GetCreature(source.Target).IsDead)
-            return;
-        int stolen = Math.Min(source.Amount, GetPlayerGold(target));
-        if (stolen <= 0)
-            return;
-        RecordStolenGold(simulator, stolen);
-        ThieveryPower simulated = (ThieveryPower)GetMutablePowerInstance(source);
-        simulated._target = source.Target;
-        simulated.DynamicVars.Gold.BaseValue += stolen;
-        LosePlayerGold(target, stolen);
+        ThieveryPower[] instances = EffectivePowers().OfType<ThieveryPower>()
+            .Where(power => ReferenceEquals(power.Owner, owner)).ToArray();
+        foreach (ThieveryPower source in instances)
+        {
+            if (source.Target is not { } targetCreature
+                || simulator.State.GetCreature(targetCreature).IsDead)
+                continue;
+            Player target = targetCreature.Player
+                ?? throw new InvalidOperationException("Thievery target is not a player.");
+            int stolen = Math.Min(source.Amount, GetPlayerGold(target));
+            if (stolen <= 0)
+                continue;
+            RecordStolenGold(simulator, stolen);
+            ThieveryPower simulated = (ThieveryPower)GetMutablePowerInstance(source);
+            simulated._target = targetCreature;
+            simulated.DynamicVars.Gold.BaseValue += stolen;
+            LosePlayerGold(target, stolen);
+        }
     }
 
     public bool GetNemesisShouldApplyIntangible(Creature owner)

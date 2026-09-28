@@ -108,6 +108,8 @@ P5 多人设置编辑／保存：原生无头设置页提交深度 `3`、时间 
 
 P4 随机流观测：双人虚拟 `CULTISTS_NORMAL`，队友在两张本地 `Strike` 之间打 `Largesse` 给本地玩家，原生生成牌归目标、共享 RNG 前进；生产控制器提示偏差、从新根重评估并继续第二张本地攻击，无完整重搜，Passed：`.local/multiplayer-p4/mid-deploy-rng-fixed-d1f774413f044e81a46697a326d4a5b0/peer-0/result.json`。首次失败根因为读取 RNG 时队友动作仍在队列中。反向本地 `Largesse` 给队友时，正常自身 RNG 消耗不误报，队友获得生成牌所有权，Passed：`.local/multiplayer-p4/own-largesse-rng-final-1127aa6c05374ca293827af5f3f55a4f/peer-0/result.json`；回合结束后不以仍在手牌作为断言。ENet 交错未验。
 
+P2 `GremlinMerc` 的定向偷窃：双人根与双方普通牌即时全状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-root-d62f670148804ee8897239a3052bdab5/peer-0/result.json`；跨回合首试漏扣第二名玩家 20 金币，修复为按每条 `ThieveryPower` 实例结算后双人 `.local/multiplayer-p2/gremlin-merc-round-fixed-7897a817c6344866a0d997f34eb41ad6/peer-0/result.json`、四人 `.local/multiplayer-p2/gremlin-merc-round-four-ad7a27e68a594586be4b18c861b226e8/peer-0/result.json` 均 Passed。相应定向实例合同 `.local/multiplayer-p2/instanced-thievery-5cbf464691ab46acb566d6eb7644113f/result.json` Passed。只验首回合 `GIMME_MOVE`，后续招式与死亡返还未验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

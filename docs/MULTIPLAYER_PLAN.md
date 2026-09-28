@@ -177,6 +177,8 @@ P5 设置输入已在原生无头设置页实际提交多人深度 `3` 与时间
 
 P4 RNG 动作边界：虚拟双人双敌根中，本地第一张 `Strike` 后队友原生对本地玩家打 `Largesse`，原版生成 `Shockwave` 归目标玩家所有并推进共享 `CombatCardGeneration`。初试时控制器在队友动作尚未完全结算时观测，未提示偏差；改为每次多人动作边界先等待原生动作队列稳定后，同一场景的 RNG 偏差提示、余下路线重评估、第二张本地 `Strike`、无完整重搜均 Passed：`.local/multiplayer-p4/mid-deploy-rng-fixed-d1f774413f044e81a46697a326d4a5b0/peer-0/result.json`。反向以本地玩家自己对队友打 `Largesse`，原生生成牌牌主为队友、共享 RNG 正常前进且无误报，Passed：`.local/multiplayer-p4/own-largesse-rng-final-1127aa6c05374ca293827af5f3f55a4f/peer-0/result.json`。这两项是虚拟多人生产执行证据；真实 ENet 交错随机流仍未验证。测试在本地回合结束后的队友手牌位置断言曾失败；即时入手与牌主另由内容差分证据确认，回合后仅断言牌仍归队友。
 
+P2 `GremlinMerc`：原版入场给每名玩家建一条 `ThieveryPower`，每次偷窃逐实例扣对应玩家金币。双人根与双方普通牌即时差分 Passed：`.local/multiplayer-p2/gremlin-merc-root-d62f670148804ee8897239a3052bdab5/peer-0/result.json`。首个跨回合差分明确失败于第二名玩家金币原生 79、预测 99；模拟原先只取第一条能力，改为按原版逐实例结算后双人第二回合全状态／RNG Passed：`.local/multiplayer-p2/gremlin-merc-round-fixed-7897a817c6344866a0d997f34eb41ad6/peer-0/result.json`；四人对应回合也 Passed：`.local/multiplayer-p2/gremlin-merc-round-four-ad7a27e68a594586be4b18c861b226e8/peer-0/result.json`。既有定向能力实例合同改为两条均写入金币，Passed：`.local/multiplayer-p2/instanced-thievery-5cbf464691ab46acb566d6eb7644113f/result.json`。仅覆盖 `GIMME_MOVE` 首回合偷窃；其他招式和死亡返还仍待验。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

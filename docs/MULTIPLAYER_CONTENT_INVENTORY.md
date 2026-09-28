@@ -93,6 +93,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 遗物目录直接涉及人数或战斗生成池的入口包括 `MassiveScroll`（多人专属牌来源）、`Toolbox`、`VexingPuzzlebox`、`OrangeDough`、`ChoicesParadox`（战斗生成池），以及 `BigHat`、`Crossbow`、`ScrollBoxes`、`DustyTome`、`DistinguishedCape`、`NeowsBones`（战前／局外池）。`WingedBoots` 和 `SilverCrucible` 只允许单人，`LastingCandy` 读取局外玩家集合；`WhisperingEarring` 自动用玩家目标药水时指向持有人。战斗生成物和多人可达牌进入 P2；局外获得路径只登记来源，本批不扩展为战前求解器。
 
+`GremlinMerc` 的入场 `ThieveryPower` 按每名玩家创建一个实例，首回合 `GIMME_MOVE` 后对每个实例调用 `Steal`。模拟曾只读取首个实例；按原版逐实例扣对应玩家金币并更新每条能力的已偷金币后，双人和四人到第二回合完整状态／RNG 差分 Passed，证据见[规划 0.2 节](MULTIPLAYER_PLAN.md)。其他招式与死亡返还仍待关联差分。
+
 通用多人缩放覆盖原版 `CombatState.AddMonster` 的新怪 HP、`MultiplayerScalingModel` 的敌方来源格挡，以及 `PowerCmd.Apply` 对敌方新施加能力的幅度。`ShouldScaleInMultiplayer=true` 的原版能力为 `PlowPower`、`PlatingPower`、`SlipperyPower`、`CurlUpPower`、`ReattachPower`、`FlutterPower`、`SkittishPower`、`RegenPower`、`RampartPower`、`ShriekPower`、`HardenedShellPower`、`ArtifactPower`；其中 `PlatingPower` 另在施加后把递减值设为玩家数。`BufferPower` 虽覆盖缩放函数，但其 `ShouldScaleInMultiplayer` 沿用默认 false，不进入该路径。当前模拟对新施加敌方能力调用原版缩放函数；四人原生差分已核 `ArtifactPower`、`PlatingPower`、`SlipperyPower`、`SkittishPower`、`CurlUpPower` 五项，覆盖默认倍率、三种特殊公式及附属递减值。其他能力共享该通用入口，但其触发生命周期及怪物 HP 缩放仍待差分。
 
 ## 已通过的卡牌即时差分

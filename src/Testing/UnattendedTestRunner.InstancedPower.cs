@@ -33,9 +33,10 @@ internal sealed partial class UnattendedTestRunner
             || shadow.GetPower<ThieveryPower>(owner) != instances[0])
             throw new InvalidOperationException("Targeted instance identity or first-instance lookup differs.");
         shadow.RecordThievery(simulator, owner);
-        if (instances[0].DynamicVars.Gold.BaseValue != 1 || instances[1].DynamicVars.Gold.BaseValue != 0)
-            throw new InvalidOperationException("Thievery wrote the wrong instance.");
-        _completedChecks.Add("InstancedPower:TargetedApplications:FirstInstanceMutation");
+        if (instances[0].DynamicVars.Gold.BaseValue != 1 || instances[1].DynamicVars.Gold.BaseValue != 2
+            || shadow.GetPlayerGold(player) != player.Gold - 3)
+            throw new InvalidOperationException("Thievery did not process every targeted instance.");
+        _completedChecks.Add("InstancedPower:TargetedApplications:AllInstancesMutation");
     }
 
     private async Task AssertInstancedPowerApplicationAsync(CombatState combat, Player player)
