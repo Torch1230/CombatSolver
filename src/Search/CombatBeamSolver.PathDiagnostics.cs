@@ -80,6 +80,30 @@ internal sealed partial class CombatBeamSolver
         { Novelty = new(observedNovelty, maximumWidth, openCount, maximumOpen, queuedScore) });
     }
 
+    private void ObservePendingNovelty(BfwsBoundedOpen<(SearchNode Node, BfwsEscapeBudget? Escape)> open,
+        NoveltySearchOptions options, string reason)
+    {
+        SearchPathObserver? observer = policy.Diagnostics.PathObserver;
+        if (observer == null) return;
+        var entries = open.RankedValues.ToArray();
+        if (!entries.Any(e => observer.WantsState(e.Value.Node.StateKey))) return;
+        var scoreRanks = entries.OrderBy(e =>
+                (e.Priority.Secondary, e.Priority.Primary, e.Priority.Sequence))
+            .Select((entry, index) => (entry.Priority.Sequence, Index: index))
+            .ToDictionary(p => p.Sequence, p => p.Index);
+        for (int index = 0; index < entries.Length; index++)
+        {
+            var entry = entries[index];
+            if (!observer.WantsState(entry.Value.Node.StateKey)) continue;
+            observer.Observe(CaptureSearchPathObservation(entry.Value.Node,
+                SearchPathObservationStage.NoveltyPending, reason, 0) with
+            {
+                Novelty = new((int)entry.Priority.Primary, options.Width, entries.Length, options.MaxOpen,
+                    -entry.Priority.Secondary, index, scoreRanks[entry.Priority.Sequence]),
+            });
+        }
+    }
+
     internal StrategicEffectVector CaptureStrategicEffectsForTesting()
     {
         SimulationSnapshot snapshot = Replay([]);

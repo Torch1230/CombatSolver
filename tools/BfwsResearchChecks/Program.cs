@@ -94,6 +94,14 @@ frontier.Enqueue("kept2", (1, 0, 4), out _);
 Check(frontier.Enqueue("rejected", (3, 0, 5), out dropped) && dropped == "rejected", "inferior newcomer loses");
 Check(frontier.Values.SequenceEqual(new[] { "kept", "kept2" }), "no evicted graph retained");
 Console.WriteLine("Passed 7 bounded OPEN contracts.");
+var described = frontier.RankedValues.ToArray();
+Check(described.Select(e => e.Value).SequenceEqual(frontier.Values)
+    && described.Select(e => e.Priority).SequenceEqual(new[] { (1d, 0d, 3L), (1d, 0d, 4L) }),
+    "diagnostic priority view returns the actual stable queue order and stored keys");
+described[0] = ("changed-copy", (3, 9, 99));
+Check(frontier.Count == 2 && frontier.Dequeue() == "kept" && frontier.Dequeue() == "kept2",
+    "describing or modifying a copied priority view cannot change queue ownership or ordering");
+Console.WriteLine("Passed 2 stored priority observation contracts.");
 
 var shared = SolverSearchProfile.Default with { MaxExpandedNodes = 24000, SoftTimeBudgetMilliseconds = 10000 };
 var scout = NoveltyPortfolioBudget.Default.Exploration(shared)!;

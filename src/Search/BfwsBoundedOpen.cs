@@ -10,6 +10,10 @@ internal sealed class BfwsBoundedOpen<T>(int capacity)
 
     public int Count => _entries.Count;
     public IEnumerable<T> Values => _entries.Select(entry => entry.Value);
+    // Read-only diagnostics reuse the stored priorities, never call the ranker
+    // again and never transfer ownership out of the bounded queue.
+    internal IEnumerable<(T Value, (double Primary, double Secondary, long Sequence) Priority)> RankedValues
+        => _entries.Select(entry => (entry.Value, entry.Priority));
 
     public bool Enqueue(T value, (double, double, long) priority, out T dropped)
     {

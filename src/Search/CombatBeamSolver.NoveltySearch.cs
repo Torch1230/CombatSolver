@@ -157,21 +157,14 @@ internal sealed partial class CombatBeamSolver
             turnLayers = Math.Max(0, maximumTurn - _startTurnNumber);
             policy.Diagnostics.Info($"[CombatSolver/Test] NOVELTY_SEARCH_STOP reason={_novelty.Stop} "
                 + $"expanded={_run.Expanded} transitions={_run.TransitionCount} elapsed_ms={clock.ElapsedMilliseconds}");
+            ObservePendingNovelty(open, options, _novelty.Stop);
             return stopped;
         }
         finally
         {
             foreach (SearchNode seed in initial) seed.Snapshot.ReleaseSimulator();
             initial.Clear();
-            foreach (var pending in open.Values)
-            {
-                try
-                {
-                    ObserveNoveltyPath(pending.Node, SearchPathObservationStage.NoveltyPending, _novelty.Stop,
-                        null, options.Width, open.Count, options.MaxOpen);
-                }
-                finally { pending.Node.Snapshot.ReleaseSimulator(); }
-            }
+            foreach (var pending in open.Values) pending.Node.Snapshot.ReleaseSimulator();
             open.Clear();
             foreach (SearchNode dropped in noveltyDropped) dropped.Snapshot.ReleaseSimulator();
             noveltyDropped.Clear();

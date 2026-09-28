@@ -75,7 +75,8 @@ internal enum SearchPathObservationStage
 }
 
 internal sealed record SearchPathNoveltyDetails(int? ObservedNovelty, int MaximumWidth,
-    int OpenCount, int MaximumOpen, double? QueuedScore = null);
+    int OpenCount, int MaximumOpen, double? QueuedScore = null,
+    int? NoveltyOrderIndex = null, int? ScoreOrderIndex = null);
 
 internal readonly record struct SearchPathPolicyLabel(
     int PotionCount,
