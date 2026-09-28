@@ -1403,7 +1403,7 @@ src/Testing/UnattendedTestRunner.ScenarioBuilder.cs	public CombatState? CombatSt
 src/Testing/UnattendedTestRunner.Assertions.cs	private sealed class Assertions(
 src/Testing/UnattendedTestRunner.Assertions.cs	public async Task RunBeforeExecutionAsync(ScenarioContext scenario)
 src/Testing/UnattendedTestRunner.Assertions.cs	public void AssertAfterExecution(ScenarioContext scenario, ExecutionOutcome outcome)
-src/Testing/UnattendedTestRunner.Executor.cs	private sealed class Executor(
+src/Testing/UnattendedTestRunner.Executor.cs	private sealed partial class Executor(
 src/Testing/UnattendedTestRunner.Executor.cs	public async Task<ExecutionOutcome> ExecuteAsync(ScenarioContext scenario)
 src/Testing/UnattendedTestRunner.Executor.cs	private FastModeType? ApplySettingsOverrides()
 src/Testing/UnattendedTestRunner.Executor.cs	public void RestoreSettings()

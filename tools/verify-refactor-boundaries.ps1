@@ -1752,7 +1752,7 @@ foreach ($check in @(
     @{ Path = $unattendedAssertionsPath; Text = "private sealed class Assertions(" },
     @{ Path = $unattendedAssertionsPath; Text = "public async Task RunBeforeExecutionAsync(ScenarioContext scenario)" },
     @{ Path = $unattendedAssertionsPath; Text = "public void AssertAfterExecution(ScenarioContext scenario, ExecutionOutcome outcome)" },
-    @{ Path = $unattendedExecutorPath; Text = "private sealed class Executor(" },
+    @{ Path = $unattendedExecutorPath; Text = "private sealed partial class Executor(" },
     @{ Path = $unattendedExecutorPath; Text = "public async Task<ExecutionOutcome> ExecuteAsync(ScenarioContext scenario)" },
     @{ Path = $unattendedExecutorPath; Text = "private FastModeType? ApplySettingsOverrides()" },
     @{ Path = $unattendedExecutorPath; Text = "public void RestoreSettings()" })) {

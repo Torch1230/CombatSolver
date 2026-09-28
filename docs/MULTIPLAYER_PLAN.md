@@ -2,9 +2,9 @@
 
 日期：2026-09-28。规划基线：`72363308`，项目版本 `0.47.2`，原版源码调查版本 `0.111.0`。
 
-状态：**需求已确定；P0 已有编译通过的测试原型，原生运行验证尚未开始。** 本文是交给接手窗口 GPT-6-sol 的完整实施指导，统一覆盖底层、原版内容建模、搜索、执行、界面和测试。由接手者顺序完成 P0～P5，原先的 DS 分工与双分支协作方案已取消。
+状态：**需求已确定；P0 原生动作和双进程 ENet 链路已通过，内容闭包盘点仍在进行。** 本文统一覆盖底层、原版内容建模、搜索、执行、界面和测试。按顺序完成 P0～P5，原先的 DS 分工与双分支协作方案已取消。
 
-下文的阶段、规划场景编号和完成条件不能当作已通过证据。本地虚拟多人及本机真实联机尚未实测；现有原型的具体状态见第 0 节。每阶段提交时只回填实际取得的结果。
+下文的阶段、规划场景编号和完成条件不能当作已通过证据。已通过的 P0 场景见第 0.4 节；每阶段只回填实际取得的结果。
 
 ## 0. 给接手窗口的执行指令
 
@@ -36,6 +36,21 @@
 本轮已经执行并通过一次最终原型构建：`dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false`，零警告、零错误。首次构建曾因选牌器只读属性和缺少命名空间失败，已修正。最后一次构建之后只完善文档，接手时若构建产物存在且行为源码未变化，直接使用该产物运行首个原生场景。
 
 尚未做：启动任何 P0 游戏实例、虚拟多人动作验证、ENet 双进程、四人运行、内容闭包清单、单人运行基线、结构门禁和本地部署。没有正在等待的测试进程，也没有需要延续的无头会话。Windows DLL 的文件版本元数据没有给出可靠的游戏语义版本；实际游戏版本核对在原型运行时使用 `NGame.GetGameVersion()`，不能把这项写成已经完成。
+
+### 0.4 接手后的 P0 实际进展（2026-09-28）
+
+上面的 0.2～0.3 节保留交接时的基线与调用说明，当前证据以本节为准。虚拟双人、虚拟四人均以原版 `0.111.0` 运行，逐玩家完成防御、打击、生存者的原生弃牌选择，进入第二回合；这是单进程动作链路证据。双进程 ENet 房主／客户端分别操作自己的玩家，完成同一动作序列与回合结束；每个稳定检查点的 `NetFullCombatState`、玩家阶段及九条完整 RNG 在两端一致。受影响单人基线在原版建局后取得首个短搜结果。以上均未验证生产多人模拟、搜索或执行。
+
+| 输入与源码 | 实际命令／层级 | 结果及证据 |
+|---|---|---|
+| `3917f0fa` 原型，虚拟双人 | `run-unattended-test.ps1 -ScenarioId MULTIPLAYER-P0 -MultiplayerProbePath <virtual,2> -CleanupInstanceOnExit`，原生一回合 | Passed；`.local/multiplayer-p0/virtual-2-7eaaef0646a4473dbd4809723abb41ec/peer-0/` |
+| 同一原型，虚拟四人 | 同入口，`playerCount=4`，原生一回合 | Passed；`.local/multiplayer-p0/virtual-4-8c7ae052fc30497dac3d70959d98e92f/peer-0/` |
+| 修复本地选牌同步和客户端动作等待后的源码，双进程 ENet | 两个独立 `run-unattended-test.ps1`，`host/client`、`seat=0/1`、共享协调目录及端口；各自 `HeadlessExecutionMode=parallel`、`HeadlessMemoryReservationMiB=1536`、`CleanupInstanceOnExit` | 双端 Passed；`.local/multiplayer-p0/enet-2-31a2877191774eb698d783c71e6e4666/peer-0/`、`peer-1/`；实测 DLL SHA-256 为 `DB2D8910ADC9B9655F9B83CBE98AF167E84520A073D906708110D47915EFCAD2` |
+| 同一 DLL，单人原生建局与首个短搜 | `-ScenarioId MULTIPLAYER-P0-SINGLEPLAYER -PreserveNativeCombatStateForTest -StopAfterInitialSolverResultAssertion -ShortSearchBudgetOverrideMilliseconds 1000 -DeepSearchBudgetOverrideMilliseconds 1000 -ForceShortSearchOnly -CleanupInstanceOnExit` | Passed；`.local/multiplayer-p0/singleplayer-71d7b4fc39ab49db99c30d74f10b9156/` |
+
+ENet 初次失败定位为测试 `LocalSelector` 没有发送原版 `SyncLocalChoice`，远端等待弃牌；修复后两端弃牌检查点一致。第二次停在客户端自己请求的动作：原版客户端只发送入队请求，随后执行的是重建动作，原请求对象的 `CompletionTask` 不会完成；测试器现等待原生状态和队列稳定。两次失败是脚手架问题，不作为生产多人功能证据。默认 4096 MiB 预留曾使四人虚拟请求停在主机资源准入；按实测约 1.3 GiB 工作集使用 2048 MiB 预留后通过，场景超时未提高。上述成功实例均由启动器报告删除。
+
+Windows 结构门禁在同步更新 `Executor partial` 声明检查后通过，`REFACTOR_BOUNDARIES_OK search_files=238`；Bash 门禁文本已同步，Linux 未实测。仍未完成：37 张多人专用卡及关联内容的封闭清单、四进程 ENet、本地部署和 P1～P5。四人虚拟通过不代表四人网络同步。生产多人门禁保持原状。
 
 ### 0.3 接手后第一轮的具体操作
 
@@ -274,7 +289,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 | 36 | `Tutor` | 待按多人结算验收 |
 | 37 | `Underworld` | 待按多人结算验收 |
 
-37 张只是初始集合，不是全部工作量。P0/P2 需沿调用链补齐：
+37 张的原版入口、已发现关联机制及普通内容待调查名单见 [多人内容盘点](MULTIPLAYER_CONTENT_INVENTORY.md)。该清单仍在 P0 盘点中，尚未封闭。37 张只是初始集合，不是全部工作量。P0/P2 需沿调用链补齐：
 
 - 卡牌施加的 Power、对应 Hook、私有计数、跨回合状态和派生生成物。
 - 多人专用遗物及普通遗物的多人行为；已发现的 `MassiveScroll` 纳入盘点，其余以完整目录审计为准。
@@ -327,7 +342,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 
 | 阶段 | 工作与交付 | 进入下一阶段的条件 | 当前状态 |
 |---|---|---|---|
-| P0 可行性与盘点 | 核对版本；核验虚拟多人与 ENet；两人／四人建局；指定玩家动作与选择；封闭内容清单；记录现有单人基线 | 虚拟多人至少完成指定队友普通出牌与结算；双进程联机完成动作同步和一次完整回合；四人建局可用；剩余限制有具体记录 | 原型编译通过，原生运行与盘点未完成 |
+| P0 可行性与盘点 | 核对版本；核验虚拟多人与 ENet；两人／四人建局；指定玩家动作与选择；封闭内容清单；记录现有单人基线 | 虚拟多人至少完成指定队友普通出牌与结算；双进程联机完成动作同步和一次完整回合；四人建局可用；剩余限制有具体记录 | 虚拟 2／4 人、ENet 双进程和单人短搜通过；内容闭包待完成 |
 | P1 通用状态与差分 | 所有玩家快照、目标身份、Hook 所有权、共享 RNG、Fork、多人历史、回合与死亡边界；通用差分和参数化测试入口 | 普通已有卡牌在 2／4 人根严格对账；跨两回合、兄弟分支隔离、根/live 隔离与差分负向合同通过 | 未开始 |
 | P2 原版内容建模 | 完整清单内卡牌、Power、遗物、药水及普通内容多人差异；机制分类和关联测试 | 每项有原版依据及基础／升级差分证据；复杂机制的生命周期、所有者和引用合同通过；无影响范围内未解释缺口 | 未开始 |
 | P3 有限回合与多方案 | 深度／时间配置、共享预算、本地候选、队友无主动动作、三类排序、估值、去重、余费支援 | 固定根短搜证明三类目标与去重；预算和深度上限有效；纯支援分类、随机目标固定及自身收益牌正常搜索通过；单人哨兵通过 | 未开始 |

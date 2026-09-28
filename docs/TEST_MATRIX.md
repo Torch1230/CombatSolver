@@ -1,10 +1,10 @@
 # CombatSolver 测试清单
 
-## 多人 P0 原型交接（2026-09-28）
+## 多人 P0 原生链路（2026-09-28）
 
-`feat/multiplayer` 上的 P0 测试原型通过 `dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false`，0 警告、0 错误。新增请求字段 `MultiplayerProbePath` 与专用 `MULTIPLAYER-P0` 路径。尚未运行虚拟 2／4 人、ENet 双进程、原生选牌同步、四人联机、单人运行回归和结构门禁；Linux 未验证。原型的原生对端检查点不构成完整模拟差分证据。
+实测游戏版本 `0.111.0`。交接原型的虚拟双人、虚拟四人请求分别 Passed：每名玩家防御、攻击、生存者原生弃牌选择后进入第二回合。修正测试选牌未发送 `SyncLocalChoice`、客户端等待未入队的原请求动作后，同一源码双进程 ENet 房主／客户端均 Passed：双方各自操作本地玩家，逐动作原生状态、玩家阶段及九条完整 RNG 一致，结束回合进入第二回合。原版单人建局后首个短搜结果 Passed。证据与确切输入目录见 [多人规划第 0.4 节](MULTIPLAYER_PLAN.md)；成功实例均由启动器报告删除。
 
-用户中止当前窗口的继续开发，转为交接指导。后续入口与尚未实测的命令示例见 [规划第 0 节](MULTIPLAYER_PLAN.md#0-给接手窗口的执行指令)。相同行为源码和输入的已通过构建可复用，文档完善不触发重新构建。未生成或保留 P0 游戏实例，未部署该原型。
+上述虚拟测试是单进程原生结算；ENet 测试两端均加载测试 Mod。尚未验证四进程网络、无求解器对端、Linux、生产模拟差分、搜索、执行和可见 UI；原生对端一致不构成预测差分。修复后的 `dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false` 为 0 警告、0 错误。Windows 结构门禁同步 `Executor partial` 声明检查后通过，`REFACTOR_BOUNDARIES_OK search_files=238`；内容清单仍待完成，P0 未收口。
 
 ## PR #144 最终修复与合并验证（2026-09-28）
 
