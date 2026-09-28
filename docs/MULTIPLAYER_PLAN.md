@@ -157,6 +157,8 @@ P4 队友插入动作的首轮虚拟双人探针：本地求解后，队友原�
 
 普通共享敌人目标三张 `Omnislice`、`BeatDown`、`BouncingFlask` 在双敌根完成基础／升级即时全状态和完整 RNG 差分，包含副目标分配、弃牌自动出牌和随机毒瓶；证据及场景界限见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#普通内容的多人差异扫描)。
 
+针对收牌队友归属另加四人代表：本地玩家的 `Largesse` 指定第 3 号队友，牌进入该队友手牌且牌主为该队友，完整状态与 RNG Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。这补目标身份跨座位的证据，不把生成者参数误作收牌者。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

@@ -48,6 +48,8 @@
 
 原版目标与受益归属复核：15 张 `AnyAlly` 牌的手动目标均须是另一名存活玩家，依据 `NTargetManager.AllowedToTargetCreature`；`CardModel.CanPlayTargeting` 本身不排除出牌者，不能单独用于搜索候选。8 张 `AllAllies` 牌的 `GetTeammatesOf` 包括出牌者。`ImitationLearning`、`Intercept`、`Mimic` 有自身收益，`DemonicShield` 有自身掉血成本；`Largesse` 给队友生成牌，`Tutor` 需要队友原生选牌。这是原版源码核对，运行证据按下文实际探针分别记录。
 
+`Largesse` 四人代表：本地 0 号对 3 号队友原生出牌，显式断言生成牌进 3 号手牌且牌主为 3 号，所有玩家状态与完整 RNG 对齐，Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。基础／升级的双人即时差分与余费支援原生路线证据见下文和规划记录；四人这一请求只验基础版单次出牌。
+
 ## 已确认的关联调用链
 
 - 抽牌、生成与格挡 Hook 在现有模拟中分别有 `AfterCardDrawnMirrors`（`CacophonyPower`）、`AfterCardGeneratedForCombatMirrors`（`SoulboundPower`）、`AfterBlockGainedMirrors`（`BeaconOfHopePower`）；当前还需核对这些镜像是否以多人状态和同一个 Fork 上下文结算。
