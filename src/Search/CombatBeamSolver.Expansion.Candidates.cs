@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
@@ -981,7 +982,8 @@ internal sealed partial class CombatBeamSolver
         PredictedCard card,
         CombatPredictionSimulator simulator)
     {
-        if (simulator.GetTargetType(card) == TargetType.AnyEnemy)
+        TargetType targetType = simulator.GetTargetType(card);
+        if (targetType == TargetType.AnyEnemy)
         {
             IReadOnlyList<Creature> enemies = simulator.State.Enemies;
             for (int i = 0; i < enemies.Count; i++)
@@ -989,6 +991,18 @@ internal sealed partial class CombatBeamSolver
                 Creature target = enemies[i];
                 if (simulator.State.IsHittable(target))
                     yield return (i, target);
+            }
+            yield break;
+        }
+
+        if (targetType is TargetType.AnyAlly or TargetType.AnyPlayer)
+        {
+            IReadOnlyList<Player> players = ((SimulatedCombatState)simulator.State.CombatState).Players;
+            for (int index = 0; index < players.Count; index++)
+            {
+                Creature target = players[index].Creature;
+                if (simulator.State.GetCreature(target).IsAlive)
+                    yield return (index, target);
             }
             yield break;
         }

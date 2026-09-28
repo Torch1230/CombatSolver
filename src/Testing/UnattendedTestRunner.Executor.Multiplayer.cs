@@ -40,6 +40,33 @@ internal sealed partial class UnattendedTestRunner
                 await VerifyScaledPowerAsync<SkittishPower>();
                 await VerifyScaledPowerAsync<CurlUpPower>();
             }
+            if (input.VerifySearch)
+            {
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+                SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
+                    SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null) with
+                {
+                    Profile = SolverSearchProfile.Default with
+                    {
+                        MaxExpandedNodes = 10_000,
+                        SoftTimeBudgetMilliseconds = 3_000,
+                    },
+                    BudgetOverrideMilliseconds = 3_000,
+                    MaxDegreeOfParallelism = 1,
+                    UseBeamWidthPortfolio = false,
+                    EarlyTurnExplorationBudgetMilliseconds = 0,
+                };
+                SolverResult result = await Task.Run(() => new CombatBeamSolver(
+                    root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
+                    policy, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+                if (result.StartTurnNumber != 1 || result.BestNode.Actions.Count == 0
+                    || result.BestNode.Actions.Any(action => action.Kind == PlanActionKind.PlayCard
+                        && action.Turn == 1 && !scenario.Player.PlayerCombatState!.AllCards.Any(card =>
+                            card.Id.Entry == action.CardId)))
+                    throw new InvalidOperationException("Multiplayer search produced no legal local turn-one route.");
+                runner._completedChecks.Add(
+                    $"MultiplayerSearch:Players={input.PlayerCount}:Seat={input.Seat}:LocalActions:Budget=3000ms");
+            }
             ICardSelector selector = input.IsVirtual
                 ? new UnattendedCardSelector(["DEFEND_IRONCLAD"])
                 : new MultiplayerProbeNetworkSelector(combat);
@@ -168,6 +195,33 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
+            if (input.VerifySearch)
+            {
+                CombatRootSnapshot searchRoot = CombatRootSnapshot.Capture(combat);
+                SearchPolicySnapshot searchPolicy = SolverController.CaptureSearchPolicy(
+                    SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null) with
+                {
+                    Profile = SolverSearchProfile.Default with
+                    {
+                        MaxExpandedNodes = 10_000,
+                        SoftTimeBudgetMilliseconds = 3_000,
+                    },
+                    BudgetOverrideMilliseconds = 3_000,
+                    MaxDegreeOfParallelism = 1,
+                    UseBeamWidthPortfolio = false,
+                    EarlyTurnExplorationBudgetMilliseconds = 0,
+                };
+                SolverResult search = await Task.Run(() => new CombatBeamSolver(searchRoot,
+                    SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
+                    searchPolicy, potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+                if (search.StartTurnNumber != 1 || search.BestNode.Actions.Count == 0
+                    || search.BestNode.Actions.Any(action => action.Kind == PlanActionKind.PlayCard
+                        && action.Turn == 1 && !actor.PlayerCombatState!.AllCards.Any(card =>
+                            card.Id.Entry == action.CardId)))
+                    throw new InvalidOperationException("Multiplayer content search produced no legal local route.");
+                runner._completedChecks.Add(
+                    $"MultiplayerContentSearch:Players={input.PlayerCount}:LocalActions:Budget=3000ms");
+            }
             if (input.ContentTeammateStrikeBefore)
                 await PlayTeammateStrikeAsync("before");
             for (int index = 0; index < input.ContentCardIds.Length; index++)
