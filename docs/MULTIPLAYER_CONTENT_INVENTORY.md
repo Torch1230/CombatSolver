@@ -101,6 +101,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 首轮偷窃后第二回合由本地玩家击杀 `GremlinMerc`，其 `SurprisePower` 生成胖／鬼祟地精；胖地精两条 `HeistPower` 逐条绑定原被偷玩家、金额各 20，原生和预测完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-death-fixed-stamp-8bc637ffb298497ba5d8ed6e9da0c927/peer-0/result.json`。胖地精后续死亡返还与玩家中途死亡未验。
 
+继续击杀胖地精，原版 `CombatRoom.ExtraRewards` 给两名目标玩家各加入 20 金币追回奖励，同时预测与原版战斗状态／九条 RNG 对齐，Passed：`.local/multiplayer-p2/heist-recovery-c59c5d5a889143068996ab4b51bf28ca/peer-0/result.json`。模拟本身只覆盖战斗内续用，不把原版房间奖励复制进战斗快照；战后领取未验。
+
 `OvicopterNormal` 首回合生成三只 `ToughEgg` 的双人初始 HP、`HatchPower` 与完整 RNG 已差分通过：`.local/multiplayer-p2/ovicopter-egg-round-6fd0947191ef4bba8ec663af8f1c4009/peer-0/result.json`。卵在该检查点尚未孵化，`ToughEgg.Hatch()` 的随机 HP 重设仍待单独验证。
 
 随后推进第二个敌方回合，原版三只卵全部孵化、`HatchPower` 消失并按人数缩放随机重设 HP；显式孵化断言与完整续用状态／RNG 差分 Passed：`.local/multiplayer-p2/ovicopter-hatch-assert-f2e4b9fea5b04323b5da3cba71aff9d7/peer-0/result.json`。死亡前孵化及其他种子未覆盖。

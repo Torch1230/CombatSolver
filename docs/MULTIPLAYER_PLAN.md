@@ -197,6 +197,8 @@ P2 再推进该怪第三个敌方回合到第四回合：原版 `HEHE_MOVE` 后�
 
 P2 `GremlinMerc` 死亡转移：首轮偷窃后第二回合把怪物血量置 6，由本地玩家原生 `Strike` 击杀；原版生成胖／鬼祟地精，胖地精持有分别指向两名玩家的 `HeistPower` 各 20，完整状态及九条 RNG 对预测一致，Passed：`.local/multiplayer-p2/gremlin-merc-death-fixed-stamp-8bc637ffb298497ba5d8ed6e9da0c927/peer-0/result.json`。首试失败只是差分夹具把第二回合的预测 `turn` 写成第一回合，修为当前根回合后通过。后续击杀胖地精的金币返还仍待验。
 
+P2 随后本地玩家第二张 `Strike` 击杀胖地精，原版房间给两名被偷玩家各加入一份 20 金币追回奖励；预测的全部战斗状态与九条 RNG 仍逐字段一致，Passed：`.local/multiplayer-p2/heist-recovery-c59c5d5a889143068996ab4b51bf28ca/peer-0/result.json`。奖励由原版房间生成，求解器的战斗预测并不构造房间奖励；本项用原版奖励目标断言，不据此宣称战后领奖 UI 已验。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

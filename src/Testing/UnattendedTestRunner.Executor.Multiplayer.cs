@@ -13,6 +13,8 @@ using MegaCrit.Sts2.Core.Models.Monsters;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Rewards;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.TestSupport;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
@@ -553,6 +555,24 @@ internal sealed partial class UnattendedTestRunner
                         ReferenceEquals(power.Target, player.Creature) && power.Amount == 20) != 1))
                     throw new InvalidOperationException("Gremlin Merc death did not transfer each player's stolen gold.");
                 runner._completedChecks.Add("MultiplayerContent:GremlinMercDeath:PerPlayerHeistTransfer:FullState:FullRng");
+                if (input.VerifyHeistRecoveryAfterRound)
+                {
+                    await CreatureCmd.SetCurrentHp(fat, 6);
+                    ContinuationStamp recoveryPrediction = PredictOrdinaryCard(scenario.Player, "STRIKE_IRONCLAD", fat);
+                    CardModel secondStrike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                        card.Id.Entry == "STRIKE_IRONCLAD");
+                    var recoveryAction = new PlayCardAction(secondStrike, fat);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(recoveryAction);
+                    await recoveryAction.CompletionTask;
+                    await runner.MultiplayerProbeBarrierAsync("heist-recovery", combat);
+                    CheckPrediction(recoveryPrediction, scenario.Player, "HEIST_RECOVERY");
+                    CombatRoom room = combat.RunState.CurrentRoom as CombatRoom
+                        ?? throw new InvalidOperationException("Heist recovery combat room is missing.");
+                    if (combat.Players.Any(player => !room.ExtraRewards.TryGetValue(player, out List<Reward>? rewards)
+                        || rewards.OfType<GoldReward>().Count(reward => reward.Amount == 20) != 1))
+                        throw new InvalidOperationException("Heist recovery did not return each player's stolen gold reward.");
+                    runner._completedChecks.Add("MultiplayerContent:HeistRecovery:PerPlayerGoldReward:FullState:FullRng");
+                }
                 return new ExecutionOutcome(false, 2, true, true, true, false);
             }
             if (input.VerifySecondRoundDifferential)
