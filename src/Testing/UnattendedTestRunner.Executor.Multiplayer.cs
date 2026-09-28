@@ -380,6 +380,9 @@ internal sealed partial class UnattendedTestRunner
         {
             CombatState combat = scenario.CombatState;
             Player actor = scenario.Player;
+            if (input.ContentCardIds.Any(id => id is "OMNISLICE" or "BEAT_DOWN" or "BOUNCING_FLASK")
+                && combat.Enemies.Count < 2)
+                throw new InvalidOperationException("Shared-target content probe requires two native enemies.");
             foreach (Player member in combat.Players)
                 for (int index = 0; index < input.ContentExtraDrawCardsPerPlayer; index++)
                     await UnattendedTestRunner.InjectCardAsync(combat, member,
@@ -387,6 +390,9 @@ internal sealed partial class UnattendedTestRunner
             for (int index = 0; index < input.ContentStokeHandCards; index++)
                 await UnattendedTestRunner.InjectCardAsync(combat, actor,
                     new UnattendedCardInjection { CardId = "DEFEND_IRONCLAD", Pile = "Hand" });
+            for (int index = 0; index < input.ContentBeatDownDiscardAttacks; index++)
+                await UnattendedTestRunner.InjectCardAsync(combat, actor,
+                    new UnattendedCardInjection { CardId = "STRIKE_IRONCLAD", Pile = "Discard" });
             await UnattendedTestRunner.SetBlockAsync(actor.Creature, input.ContentActorBlock);
             await UnattendedTestRunner.SetBlockAsync(
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
@@ -765,7 +771,8 @@ internal sealed partial class UnattendedTestRunner
                 {
                     TargetType.AnyAlly => combat.Players[input.ContentTargetSeat].Creature,
                     TargetType.Self or TargetType.AllAllies => null,
-                    TargetType.AnyEnemy => combat.Enemies.Single(),
+                    TargetType.AnyEnemy => combat.Enemies.First(),
+                    TargetType.RandomEnemy => null,
                     _ => throw new InvalidOperationException(
                         $"Content probe has no target rule for {card.Id.Entry}: {card.TargetType}."),
                 };
@@ -777,7 +784,7 @@ internal sealed partial class UnattendedTestRunner
                 int targetHandBefore = largesseRecipient?.PlayerCombatState!.Hand.Cards.Count ?? 0;
                 int actorHandBefore = card is Largesse
                     ? actor.PlayerCombatState!.Hand.Cards.Count : 0;
-                int enemyHpBefore = combat.Enemies.Single().CurrentHp;
+                int enemyHpBefore = combat.Enemies.First().CurrentHp;
                 CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
                 CombatPredictionSimulator simulator = root.ForkSimulator();
                 PredictedCard predictedCard = simulator.State.GetPlayerCombatState(actor).Hand.Cards.Single(candidate =>

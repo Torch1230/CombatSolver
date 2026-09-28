@@ -75,6 +75,8 @@
 
 上述 14 张实际在战斗结算中使用 `CardMultiplayerConstraint` 的普通牌均取得基础／升级一次即时差分；它们的随机池多种结果、生成牌后续动作、选牌分支及相关 Hook 仍需按机制补足。`Fasten` 只在悬停说明使用该约束，已单独归类。
 
+普通共享目标机制首批：双敌 `CULTISTS_NORMAL`，`Omnislice` 命中目标后对另一敌分配伤害、`BeatDown` 从弃牌堆自动打出两张攻击、`BouncingFlask` 按共享 `CombatTargets` 随机选择多次敌人。三张牌基础／升级逐张即时全状态与完整 RNG 差分 Passed：`.local/multiplayer-p2/ordinary-shared-target-base-9221f0b073ec4ee5b3e654ae761ec833/peer-0/result.json`、`.local/multiplayer-p2/ordinary-shared-target-upgrade-5602bef999cd4eeba20e79f044afe779/peer-0/result.json`。本次只有双敌一种状态和一组随机流，未覆盖敌人中途死亡、不同自动牌目标类型或更多敌人数。
+
 药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。当前 `CombatBeamSolver.Expansion.Candidates.TargetsForPotion` 对 `AnyPlayer`／`Self` 只产生一个本地自用候选，模拟 `PotionOnUseSupport.Use` 将空目标解析为持有人，原版 `PotionModel.EnqueueManualUse` 也这样解析；生产多人门禁仍在；本地自用代表的原生证据见下文。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
 
 一瓶 `StrengthPotion` 已在虚拟双人完成本地持有者自用的原生／模拟全状态与 RNG 差分，证据 `.local/multiplayer-p2/self-potion-060b3eb9d3de4f8c958b1ab84c19a4d4/peer-0/result.json`。这只代表玩家目标自用入口；其余药水机制、生成池及正式执行仍待验。

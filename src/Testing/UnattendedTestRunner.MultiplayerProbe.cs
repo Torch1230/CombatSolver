@@ -52,6 +52,7 @@ internal sealed partial class UnattendedTestRunner
         public int ContentTargetSeat { get; init; } = 1;
         public int ContentExtraDrawCardsPerPlayer { get; init; }
         public int ContentStokeHandCards { get; init; }
+        public int ContentBeatDownDiscardAttacks { get; init; }
         public int ContentActorBlock { get; init; }
         public int ContentTargetBlock { get; init; }
         public int ContentActorEnergy { get; init; } = 10;
@@ -95,6 +96,8 @@ internal sealed partial class UnattendedTestRunner
                     || input.ContentExtraDrawCardsPerPlayer is < 0 or > 5
                     || input.ContentStokeHandCards is < 0 or > 5
                     || input.ContentStokeHandCards > 0 && !input.ContentCardIds.Contains("STOKE")
+                    || input.ContentBeatDownDiscardAttacks is < 0 or > 3
+                    || input.ContentBeatDownDiscardAttacks > 0 && !input.ContentCardIds.Contains("BEAT_DOWN")
                     || input.ContentActorBlock is < 0 or > 100
                     || input.ContentTargetBlock is < 0 or > 100
                     || input.ContentActorEnergy is < 0 or > 20
