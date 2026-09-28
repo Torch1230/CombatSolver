@@ -74,6 +74,8 @@ Windows 结构门禁在同步更新 `Executor partial` 声明检查后通过，`
 
 后续两批新增 `Outrage`、`GlimpseBeyond`、`Largesse`、`GangUp`、`Knockdown`、`TheBall` 的双人基础／升级即时差分，四次请求 Passed，证据详见同一[清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。`Outrage` 的首次红灯显示原版 `GetTeammatesOf` 包含自己，修正后双方都获得生成牌；`TheBall` 首次红灯显示逐实例增伤遗漏，现同步私有累计值、续用戳和状态键。这些修复均按首因重测。累计 21／37 张已通过即时差分，但 `GangUp` 来源历史、`Knockdown` 后续增伤与 `TheBall` 再次打出尚未验证。
 
+再按施加、球／保护关联和守护三批验 `BeaconOfHope`、`Cacophony`、`Concoct`、`Flanking`、`HammerTime`、`Hibernate`、`Intercept`、`Sneaky`、`Soulbound`、`TagTeam`、`Tank`、`Underworld`，基础／升级六次请求 Passed；证据详见同一[清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。首因修复：霜球读取分支 `HibernatePower`；`CoveredPower.AfterApplied` 建立 `InterceptPower` 的保护者集合；`TagTeamPower` 原已有卡牌 spec，删除镜像中的重复施加；`TankPower.AfterApplied` 给其他存活玩家施 `GuardedPower`。累计 33／37 张仅具即时出牌差分，关联监听和四张未测卡仍待完成。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

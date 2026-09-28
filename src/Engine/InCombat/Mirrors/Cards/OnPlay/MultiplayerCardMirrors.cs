@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
@@ -116,6 +117,62 @@ internal static class MultiplayerCardMirrors
         mutable.DynamicVars.Damage.BaseValue += increase;
         mutable._extraDamageFromPlays += increase;
     }
+
+    public static void BeaconOfHopeOnPlay(BeaconOfHope card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<BeaconOfHopePower>(card.Owner.Creature, 1, card.Owner.Creature);
+
+    public static void CacophonyOnPlay(Cacophony card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<CacophonyPower>(card.Owner.Creature,
+            card.DynamicVars.Damage.IntValue, card.Owner.Creature);
+
+    public static void ConcoctOnPlay(Concoct card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<ConcoctPower>(context.Target,
+            card.DynamicVars["ConcoctPower"].IntValue, card.Owner.Creature);
+
+    public static void FlankingOnPlay(Flanking card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<FlankingPower>(context.Target, 2, card.Owner.Creature);
+
+    public static void HammerTimeOnPlay(HammerTime card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<HammerTimePower>(card.Owner.Creature, 1, card.Owner.Creature);
+
+    public static void HibernateOnPlay(Hibernate card, CardOnPlayMirrorContext context)
+    {
+        Combat(context).Apply<HibernatePower>(card.Owner.Creature, 1, card.Owner.Creature);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        for (int index = 0; index < card.DynamicVars.Repeat.IntValue; index++)
+        {
+            context.Simulator.OrbChannel<FrostOrb>(card.Owner);
+            if (context.Simulator.HasPendingChoice)
+                return;
+        }
+    }
+
+    public static void InterceptOnPlay(Intercept card, CardOnPlayMirrorContext context)
+    {
+        context.GainBlock(card.Owner.Creature);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        Combat(context).Apply<CoveredPower>(context.Target, 1, card.Owner.Creature);
+    }
+
+    public static void SneakyOnPlay(Sneaky card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<SneakyPower>(card.Owner.Creature,
+            card.DynamicVars["SneakyPower"].IntValue, card.Owner.Creature);
+
+    public static void SoulboundOnPlay(Soulbound card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<SoulboundPower>(context.Target, 1, card.Owner.Creature);
+
+    public static void TagTeamOnPlay(TagTeam card, CardOnPlayMirrorContext context)
+    {
+        context.AttackSingle();
+    }
+
+    public static void TankOnPlay(Tank card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<TankPower>(card.Owner.Creature, 1, card.Owner.Creature);
+
+    public static void UnderworldOnPlay(Underworld card, CardOnPlayMirrorContext context)
+        => Combat(context).Apply<UnderworldPower>(card.Owner.Creature, 1, card.Owner.Creature);
 
     private static SimulatedCombatState Combat(CardOnPlayMirrorContext context)
         => context.State.CombatState as SimulatedCombatState

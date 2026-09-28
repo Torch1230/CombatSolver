@@ -701,6 +701,32 @@ internal sealed partial class SimulatedCombatState
                 throw new InvalidOperationException("击倒 Power 的施加者不是战斗中的玩家。");
             ((StringVar)knockdown.DynamicVars["Applier"]).StringValue = _playerNames[applyingPlayer];
         }
+        if (simulated is CoveredPower covered && applier != null)
+        {
+            Player coveringPlayer = applier.Player
+                ?? throw new InvalidOperationException("Covered Power 的施加者不是玩家。");
+            ((StringVar)covered.DynamicVars["Applier"]).StringValue = _playerNames[coveringPlayer];
+            if (GetAmount<InterceptPower>(applier) == 0)
+                Apply<InterceptPower>(applier, 1, target);
+            InterceptPower intercept = GetPower<InterceptPower>(applier)
+                ?? throw new InvalidOperationException("Covered Power 未建立 Intercept Power。");
+            ((InterceptPower)GetMutablePowerInstance(intercept)).AddCoveredCreature(target);
+        }
+        if (simulated is GuardedPower guarded && applier != null)
+        {
+            Player guardingPlayer = applier.Player
+                ?? throw new InvalidOperationException("Guarded Power 的施加者不是玩家。");
+            ((StringVar)guarded.DynamicVars["Applier"]).StringValue = _playerNames[guardingPlayer];
+        }
+        if (simulated is TankPower && previousAmount == 0 && simulated._amount > 0)
+        {
+            CombatPredictionState predictionState = _predictionState
+                ?? throw new InvalidOperationException("Tank Power 缺少预测生物状态。");
+            foreach (Player member in Players)
+                if (!ReferenceEquals(member.Creature, target)
+                    && predictionState.GetCreature(member.Creature).IsAlive)
+                    Apply<GuardedPower>(member.Creature, simulated._amount, target);
+        }
         afterAmountChanged?.Invoke(amount, simulated);
         if (previousAmount == 0 && simulated._amount != 0 && simulated is PhantomBladesPower phantom)
             PhantomBladesPowerMirrors.AfterApplied(phantom, _predictionState

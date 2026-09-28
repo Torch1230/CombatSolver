@@ -152,6 +152,18 @@ internal static partial class CardOnPlayMirrors
         registry.Register<Outrage>(MultiplayerCardMirrors.OutrageOnPlay);
         registry.Register<GlimpseBeyond>(MultiplayerCardMirrors.GlimpseBeyondOnPlay);
         registry.Register<TheBall>(MultiplayerCardMirrors.TheBallOnPlay);
+        registry.Register<BeaconOfHope>(MultiplayerCardMirrors.BeaconOfHopeOnPlay);
+        registry.Register<Cacophony>(MultiplayerCardMirrors.CacophonyOnPlay);
+        registry.Register<Concoct>(MultiplayerCardMirrors.ConcoctOnPlay);
+        registry.Register<Flanking>(MultiplayerCardMirrors.FlankingOnPlay);
+        registry.Register<HammerTime>(MultiplayerCardMirrors.HammerTimeOnPlay);
+        registry.Register<Hibernate>(MultiplayerCardMirrors.HibernateOnPlay);
+        registry.Register<Intercept>(MultiplayerCardMirrors.InterceptOnPlay);
+        registry.Register<Sneaky>(MultiplayerCardMirrors.SneakyOnPlay);
+        registry.Register<Soulbound>(MultiplayerCardMirrors.SoulboundOnPlay);
+        registry.Register<TagTeam>(MultiplayerCardMirrors.TagTeamOnPlay);
+        registry.Register<Tank>(MultiplayerCardMirrors.TankOnPlay);
+        registry.Register<Underworld>(MultiplayerCardMirrors.UnderworldOnPlay);
         registry.Register<MeteorStrike>(OrbCardMirrors.MeteorStrikeOnPlay);
         registry.Register<MultiCast>(OrbCardMirrors.MultiCastOnPlay);
         registry.Register<Null>(OrbCardMirrors.NullOnPlay);

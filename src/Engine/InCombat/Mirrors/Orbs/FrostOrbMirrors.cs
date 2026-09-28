@@ -2,6 +2,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.ValueProps;
+using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver.Engine.InCombat.Mirrors.Orbs;
 
@@ -32,7 +33,9 @@ internal static class FrostOrbMirrors
         if (context.Simulator.HasPendingChoice)
             return completedTargets;
 
-        if (!orb.Owner.Creature.HasPower<HibernatePower>())
+        var combat = context.State.CombatState as SimulatedCombatState
+            ?? throw new InvalidOperationException("Frost orb requires SimulatedCombatState.");
+        if (combat.GetAmount<HibernatePower>(orb.Owner.Creature) <= 0)
         {
             return completedTargets;
         }
