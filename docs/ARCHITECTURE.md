@@ -43,6 +43,9 @@
 
 职责迁移时优先更新本文，并同步更新 Windows 的 `tools/verify-refactor-boundaries.ps1` 与 Linux 的 `tools/verify-refactor-boundaries.sh`。历史审计记录保留当时结论，不承担当前导航职责。
 
+
+离线获胜路线模仿由 `SearchOutcomeValueModel.Imitation.cs` 记录最佳可靠完整胜利的有界脱离路径键；只保留状态/政策标量，不持有节点或模拟器。`ImitationRow.OnWinningRoute` 是独立的路线成员标签，不将未被选中者写为失败。结果见证与模仿标签通过 `RankingObservation` 共用数值图准备和基础线性拟合，各自验证/比较器保持分离。`OutcomeValueTraining.Imitation.cs` 独占文件验证、正例保留抽样和模仿诊断，二进制输出共用 `OutcomeValueTraining.Export.cs`，导出明确标识训练目标。新增入口仅离线，不增加玩家模式；没有完整教师时明确不可用。
+
 ## 当前精简分支的局部合同
 
 普通 Power 的 Target 保留原生 null；显式定向入口继续保存传入目标。临时力量复用上游施加入口，首次回调仍先于计数加入，封顶后按修正请求量触发数量回调。Weak/Vulnerable/Frail 的跳过首次持续时间扣减只由各自 Power 保存，影响状态指纹与 ContinuationStamp；其他能力的无效 Skip 元数据不参与该等价性判断。未新增战斗后端或状态存储副本。

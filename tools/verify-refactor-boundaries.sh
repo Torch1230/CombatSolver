@@ -1361,13 +1361,17 @@ for file in CombatBeamSolver.FinalPlanOrdering.cs CombatBeamSolver.Transposition
     done
 done
 
-for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs CombatBeamSolver.ObjectiveRetention.cs; do
+for file in SearchOutcomeContext.cs SearchOutcomeValueModel.cs SearchOutcomeValueModel.Linear.cs SearchOutcomeValueModel.Interactions.cs SearchOutcomeValueModel.Neural.cs SearchOutcomeValueModel.Imitation.cs CombatBeamSolver.ObjectiveRetention.cs; do
     for forbidden in 'SolverWeights' 'CardValue(' 'player.Relics' 'SolverSettings.Current' 'File.' 'Directory.' 'xgboost'; do
         if contains_fixed "$search_root/$file" "$forbidden"; then
             add_violation "Outcome observations/learner must not use handwritten utilities or live relic inventory: $file / $forbidden"
         fi
     done
 done
+require_fixed "$search_root/SearchOutcomeValueModel.Imitation.cs" 'bool? OnWinningRoute' 'imitation membership must not default missing labels to negative:'
+require_fixed "$search_root/SearchOutcomeValueModel.Imitation.cs" 'route-exceeds-bound' 'bounded teacher paths must fail explicitly:'
+require_fixed "$search_root/SearchOutcomeValueModel.Imitation.cs" 'PrepareRanking(roots, ValidateImitationRows, CompareImitation)' 'imitation shares the numeric graph but owns its label comparator:'
+require_fixed "$repository_root/tools/OfflineSearchHarness/OutcomeValueTraining.Imitation.cs" 'Model.ValidateImitationRows(source.Rows);' 'raw imitation observations must be validated before sampling:'
 require_fixed "$search_root/SearchPolicySnapshot.cs" 'SearchOutcomeValueModel? OutcomeTrainingCollector' 'training collector must remain separate from the frozen predictor:'
 require_fixed "$search_root/CombatBeamSolver.cs" 'policy.UseObjectiveSearch ? ObjectiveRankScore : null' 'learned scalar must use the shared retention policy:'
 require_fixed "$search_root/CombatSearchCoordinator.cs" 'UseAutomaticSearch = policy.UseAutomaticSearch || policy.UseObjectiveSearch' 'learned ranking must use the shared automatic scheduler:'

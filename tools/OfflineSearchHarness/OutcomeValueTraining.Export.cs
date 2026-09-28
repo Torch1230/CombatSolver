@@ -15,6 +15,16 @@ internal static partial class OutcomeValueTraining
         using var specification = JsonDocument.Parse(File.ReadAllText(pathsFile));
         var (partition, pairSelection, pairWeighting) = ReadPolicy(specification.RootElement);
         var roots = ReadRoots(pathsFile);
+        return ExportRanking(roots, directory, clock, partition, pairSelection, pairWeighting,
+            "completed-outcome", r => SearchOutcomeValueModel.PrepareTraining(r,
+                highestPolicyTierOnly: pairSelection == "highest-policy-tier", balanceTrainingTurns: pairWeighting == "turns"));
+    }
+
+    private static int ExportRanking<T>(IReadOnlyList<(string Id, T[] Rows)> roots,
+        string directory, Stopwatch clock, string partition, string pairSelection, string pairWeighting,
+        string trainingTarget, Func<T[][], SearchOutcomeValueModel.PreparedTraining> prepare)
+        where T : class, SearchOutcomeValueModel.RankingObservation
+    {
         if (Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any())
             throw new InvalidDataException("Ranking export directory must be empty.");
         if (roots.Count == 0) throw new InvalidDataException("Missing ranking roots.");
@@ -25,8 +35,7 @@ internal static partial class OutcomeValueTraining
             .GroupBy(r => r.Character, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal);
         foreach (var group in groups)
         {
-            var prepared = SearchOutcomeValueModel.PrepareTraining(group.Select(r => r.Rows).ToArray(),
-                highestPolicyTierOnly: pairSelection == "highest-policy-tier", balanceTrainingTurns: pairWeighting == "turns");
+            var prepared = prepare(group.Select(r => r.Rows).ToArray());
             var (foundation, scores) = SearchOutcomeValueModel.FitLinearFoundation(prepared);
             string stem = "head-" + heads.Count;
             string matrixName = stem + ".f32", pairsName = stem + ".pairs", marginName = stem + ".f64";
@@ -57,7 +66,7 @@ internal static partial class OutcomeValueTraining
                 sha256 = new[] { matrixName, pairsName, marginName }.ToDictionary(n => n, n =>
                     Hash(Path.Combine(directory, n))) });
         }
-        var result = new { exportSchema = 1, partition, pairSelection, pairWeighting, heads,
+        var result = new { exportSchema = 1, trainingTarget, partition, pairSelection, pairWeighting, heads,
             roots = roots.Count, sampledRows = roots.Sum(r => r.Rows.Length),
             matrixFormat = "row-major-little-endian-float32-explicit-zero",
             edgeFormat = "little-endian-int32-int32-float64",

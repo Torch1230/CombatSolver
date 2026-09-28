@@ -218,3 +218,22 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 ### 外部结果排序训练器（离线研究）
 
 `--export-outcome-ranking <训练输入> <空输出目录>` 导出共用 C# 准备器裁定的偏好图、float32 零值矩阵和线性基础项，带格式与内容摘要。可选 CPU 训练流程见 [OutcomeValuation](../tools/OutcomeValuation/README.md)。`--predict-outcome-features <模型> <输入 JSON> <输出 JSON>` 只通过现有模型读取/推理边界验证转换；输入数组成员为 `Character` 与 `Features`，非有限数值拒绝。它们均不运行战斗，也不替代独立战斗质量验证。
+
+## 独立获胜路线模仿目标
+
+`--collect-outcome-values` 额外保存 `imitation-rows.json`：原生程序集标识、观察版本、最佳可靠完整胜利、动作数与各观察是否属于该获胜路径。路径最多8,192个脱离状态/政策键；无胜利或路径超过上限时明确标记不可用。不修改原 `outcome-rows.json` 的真实续局标签，未被选中不等于死亡或不可获胜。
+
+离线 `--export-imitation-ranking <inputs.json> <empty-directory>` 共用原数值导出与小型模型；输入必须明确目标：
+
+```json
+{
+  "schemaVersion": 1,
+  "trainingTarget": "winning-route-imitation",
+  "maximumRowsPerRoot": 512,
+  "roots": ["/absolute/path/to/imitation-rows.json"]
+}
+```
+
+每个路径代表一个物理根。先验证完整文档，再有界保留路径正例和同池其他观察；图构建按根等权、同池配对并去重。无教师、缺失路线成员标签、重复文件、混合角色和不匹配版本均拒绝。导出清单的 `trainingTarget` 区分两类边，模仿边不能解释成已验证的胜败比较。
+
+`--audit-imitation-ranking <inputs.json> <model.json> <output.json>` 输出各根对专家分支的准确率/损失及显式缺失原因。它只度量模仿，不能证明搜索决策改善。研究协议还必须核对装备/完整根戳、家族与近牌组隔离，单列准入/排除场景，并在冻结模型后执行独立实际战斗对照。默认游戏策略与玩家选项不变。

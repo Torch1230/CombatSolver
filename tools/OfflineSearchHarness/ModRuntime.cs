@@ -539,6 +539,8 @@ internal static class ModRuntime
         {
             File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-rows.json"),
                 JsonSerializer.Serialize(outcomeCollector.ExportRows()));
+            File.WriteAllText(Path.Combine(options.OutputDirectory, "imitation-rows.json"),
+                JsonSerializer.Serialize(outcomeCollector.ExportImitation()));
             File.WriteAllText(Path.Combine(options.OutputDirectory, "outcome-collection.json"),
                 JsonSerializer.Serialize(outcomeCollector.DescribeCollection()));
         }

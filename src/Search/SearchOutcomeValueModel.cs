@@ -139,6 +139,7 @@ internal sealed partial class SearchOutcomeValueModel
         // The existing final-policy result includes post-combat healing, max-HP,
         // boss relief, death saves and explicit user goals. The old Score is omitted.
         quality = quality with { Score = 0 };
+        if (victory && !_correcting) ObserveWinningRoute(node, quality);
         for (SearchNode? cursor = node; cursor != null; cursor = cursor.Parent)
         {
             if (!_observations.TryGetValue(Key(cursor), out var observation)) continue;
@@ -152,9 +153,15 @@ internal sealed partial class SearchOutcomeValueModel
         }
     }
 
+    internal interface RankingObservation
+    {
+        Dictionary<string, double> Features { get; }
+        int[] Groups { get; }
+        int FeatureSchema { get; }
+    }
     internal sealed record TrainingRow(Dictionary<string, double> Features,
         SolverInterimResult Outcome, int RemainingActions, int[] Groups, bool CompletedDefeat = false,
-        int FeatureSchema = 0);
+        int FeatureSchema = 0) : RankingObservation;
     internal sealed record Tree(int Feature, double Threshold, double Mean, Tree? Left = null, Tree? Right = null)
     {
         internal double Predict(float[] values)
@@ -211,7 +218,7 @@ internal sealed partial class SearchOutcomeValueModel
     }
 
     internal readonly record struct Pair(int Preferred, int Other, double Weight);
-    internal sealed record PreparedTraining(List<TrainingRow> Rows, List<Pair> Pairs,
+    internal sealed record PreparedTraining(IReadOnlyList<RankingObservation> Rows, List<Pair> Pairs,
         string[] FeatureNames, int ParticipatingRoots, int[] PairKinds);
     internal static void ValidateTrainingRows(IEnumerable<TrainingRow> rows)
     {
@@ -227,8 +234,14 @@ internal sealed partial class SearchOutcomeValueModel
     // comparisons, support threshold, ordering, root weights and sampled rows.
     internal static PreparedTraining PrepareTraining(IReadOnlyList<TrainingRow[]> roots,
         bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false)
+        => PrepareRanking(roots, ValidateTrainingRows, CompareWitnesses, highestPolicyTierOnly, balanceTrainingTurns);
+
+    private delegate int PreferenceOrder<T>(T left, T right, out int kind);
+    private static PreparedTraining PrepareRanking<T>(IReadOnlyList<T[]> roots,
+        Action<IEnumerable<T>> validate, PreferenceOrder<T> compare,
+        bool highestPolicyTierOnly = false, bool balanceTrainingTurns = false) where T : class, RankingObservation
     {
-        List<TrainingRow> rows = [];
+        List<T> rows = [];
         List<Pair> pairs = [];
         Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
         int participatingRoots = 0;
@@ -237,7 +250,7 @@ internal sealed partial class SearchOutcomeValueModel
         foreach (var root in roots)
         {
             int offset = rows.Count;
-            ValidateTrainingRows(root);
+            validate(root);
             int[]? turns = balanceTrainingTurns ? root.Select(TrainingTurn).ToArray() : null;
             rows.AddRange(root);
             List<(int Preferred, int Other, int Kind)> rootPairs = [];
@@ -251,7 +264,7 @@ internal sealed partial class SearchOutcomeValueModel
                     for (int b = a + 1; b < members.Length; b++)
                     {
                         int ia = members[a], ib = members[b];
-                        int order = CompareWitnesses(root[ia], root[ib], out int kind);
+                        int order = compare(root[ia], root[ib], out int kind);
                         if (order == 0) continue;
                         var pair = order < 0 ? (ia, ib) : (ib, ia);
                         if (seen.Add(pair)) rootPairs.Add((pair.Item1, pair.Item2, kind));
@@ -303,7 +316,7 @@ internal sealed partial class SearchOutcomeValueModel
         return new(rows, pairs, names, participatingRoots, pairKinds);
     }
 
-    internal static int TrainingTurn(TrainingRow row)
+    internal static int TrainingTurn(RankingObservation row)
     {
         if (!row.Features.TryGetValue("battle/turn", out double value) || !double.IsFinite(value)
             || value < 1 || value > int.MaxValue || value != Math.Truncate(value))

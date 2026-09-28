@@ -48,7 +48,7 @@ internal sealed class OutcomeModelFile
         return model;
     }
 
-    internal static string CharacterOf(IReadOnlyList<SearchOutcomeValueModel.TrainingRow> rows)
+    internal static string CharacterOf(IReadOnlyList<SearchOutcomeValueModel.RankingObservation> rows)
     {
         string? character = null;
         foreach (var row in rows)

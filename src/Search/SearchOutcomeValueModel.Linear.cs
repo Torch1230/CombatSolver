@@ -6,7 +6,7 @@ internal sealed partial class SearchOutcomeValueModel
     // Each coordinate uses exact pair differences, so root-constant identities
     // cannot acquire spurious marginal utility. Trees then fit its residuals.
     private static (double[] Weights, double[] Scores) FitLinearTerms(
-        IReadOnlyList<TrainingRow> rows, IReadOnlyList<Pair> pairs, string[] names)
+        IReadOnlyList<RankingObservation> rows, IReadOnlyList<Pair> pairs, string[] names)
     {
         var columns = names.Select((name, i) => (name, i))
             .ToDictionary(p => p.name, p => p.i, StringComparer.Ordinal);

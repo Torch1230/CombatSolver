@@ -27,6 +27,7 @@ internal static class OutcomeRankingChecks
             Check(rejected, message);
         }
         OutcomeTurnWeightChecks.Run(Check, Reject);
+        OutcomeImitationChecks.Run(Check, Reject);
         SolverInterimResult quality = new(true, 0, 3, 3, 0, 0, 0, 0, 2) { Survives = true };
         Model.TrainingRow Row(int x, int hp, int[]? groups = null) => new(new() { ["x"] = x },
             quality with { ProjectedBattleHpLost = hp, StrategicHpDeficit = hp }, 3, groups ?? [0], FeatureSchema: Model.FeatureSchema);

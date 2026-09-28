@@ -123,3 +123,5 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - `SharedSearchEvidence` 仅在自动主搜索的同根/同药水政策轮次内共享；4096 槽有界替换，只保存前缀/状态键与标量。完整胜利（包括非全局最优分支）回传沿途前缀；只有原 Beam 分数、动作数和进攻进度均相同的候选，才在已有见证的原位置之间按终局质量重排，未知与终局路线保持原位置；证据不进入最终政策、状态键或转置支配。StandPat 只复用完整正常无风险探测，完整动作/选牌/初始准备/祖先状态及累计政策标签必须匹配；worker 不修改共享表，串行端按原序发布。VerifyIncrementalSearch 命中也必须真实回放核对。长路径旁路只关闭优化，不能丢弃候选。不得把该表扩大成无界模拟器缓存；验证跨宽度复用、历史/选择分离、风险/边界、取消、DOP2 和实际分配，诊断命中不当作整搜提速证据。
 
 - 外部结果排序训练的数据边界：Search 的 `PrepareTraining` 独占偏好图准备，`FitLinearFoundation` 独占基础项；离线 `OutcomeValueTraining.Export` 独占二进制与 JSON 输出。Python 只消费已裁定的边，不重建战斗政策；C# 推理继续加载普通模型文档，不能依赖 Python 或 XGBoost。
+
+- 获胜路线模仿是独立训练目标：`SearchOutcomeValueModel.Imitation.cs` 只保存最佳完整胜利的有界路径键，不持有节点/模拟器；未选中不是失败。`RankingObservation` 共享数值图准备，各目标独占验证/比较器。离线 `OutcomeValueTraining.Imitation.cs` 验证全部原始文档后再抽样；缺失标签、超界路径及无教师明确拒绝/不可用。旧结果偏好图与基础项须保持字节兼容，模仿指标不能代替独立实际战斗。

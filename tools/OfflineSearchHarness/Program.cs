@@ -22,6 +22,10 @@ internal static class Program
             return OutcomeValueTraining.Run(rawArgs[1], rawArgs[2]);
         if (rawArgs.Length == 3 && rawArgs[0] == "--export-outcome-ranking")
             return OutcomeValueTraining.Export(rawArgs[1], rawArgs[2]);
+        if (rawArgs.Length == 3 && rawArgs[0] == "--export-imitation-ranking")
+            return OutcomeValueTraining.ExportImitation(rawArgs[1], rawArgs[2]);
+        if (rawArgs.Length == 4 && rawArgs[0] == "--audit-imitation-ranking")
+            return OutcomeValueTraining.AuditImitation(rawArgs[1], rawArgs[2], rawArgs[3]);
         if (rawArgs.Length == 4 && rawArgs[0] == "--predict-outcome-features")
             return OutcomeValueTraining.Predict(rawArgs[1], rawArgs[2], rawArgs[3]);
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-outcome-ranking")
