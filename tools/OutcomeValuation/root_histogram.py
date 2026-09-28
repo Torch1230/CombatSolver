@@ -1,6 +1,6 @@
-"""Prototype: enforce root participation while selecting histogram splits.
+"""Enforce root participation while selecting histogram splits.
 
-Not connected to a full fitter. At most 256 explicitly selected columns and
+Used by the explicit offline fitter. At most 256 selected columns and
 32 quantile cuts per column; contextual products also retain both zero cuts.
 No new labels, root inference, runtime features or utility scores are created.
 """
