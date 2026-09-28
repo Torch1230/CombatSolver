@@ -12,6 +12,7 @@ using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Monsters;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Potions;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Rooms;
@@ -1179,6 +1180,10 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.VerifySelfPotion)
             {
+                if (input.SelfPotionId == "BLOOD_POTION")
+                    await CreatureCmd.SetCurrentHp(actor.Creature, actor.Creature.MaxHp - 20);
+                if (input.SelfPotionId == "ESSENCE_OF_DARKNESS")
+                    await OrbCmd.AddSlots(actor, 2);
                 if (input.VerifyPotionAccounting)
                 {
                     BattleDamageTracker.Begin(combat);
@@ -1208,21 +1213,53 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerSelfPotion:SearchCandidateSelfOnly");
                 SimulatedCombatState potionCombat = (SimulatedCombatState)potionSimulator.State.CombatState;
                 int historyStart = potionSimulator.History.Entries.Count;
-                if (!PotionExecutionSupport.Prepare(potionSimulator, potionCombat, potion, slot, null)
-                    || !PotionExecutionSupport.Complete(potionSimulator, potionCombat, potion,
-                        null, null, historyStart, new HashSet<uint>())
+                if (!PotionExecutionSupport.Prepare(potionSimulator, potionCombat, potion, slot, null))
+                    throw new InvalidOperationException("Self potion prediction did not prepare.");
+                PlanCardChoice? potionChoice = null;
+                if (potion is AttackPotion)
+                {
+                    CardChoiceSpec spec = PotionChoiceSupport.GetSpec(potionSimulator, potion);
+                    potionChoice = CardChoiceSupport.BuildChoices(
+                            spec, SolverDisplayNames.Capture(combat), 256, 256)
+                        .First(choice => choice.Cards.Count == 1) with { SourceId = potion.Id.Entry };
+                }
+                if (!PotionExecutionSupport.Complete(potionSimulator, potionCombat, potion,
+                        null, potionChoice, historyStart, new HashSet<uint>())
                     || !CombatBeamSolver.SettleReplayActionBoundary(potionSimulator, potionCombat))
                     throw new InvalidOperationException("Self potion prediction did not complete.");
                 ContinuationStamp predictedPotion = ContinuationStamp.CapturePredicted(
                     actor, potionSimulator, 1, potionRoot.Forecast, 1);
                 runner.SetStage("multiplayer_self_potion");
-                potion.EnqueueManualUse(null);
+                if (potionChoice == null)
+                {
+                    potion.EnqueueManualUse(null);
+                }
+                else
+                {
+                    using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(12));
+                    using var session = NativeChoiceRuntime.Begin(combat, actor, "test:multiplayer-self-choice-potion");
+                    session.SetPlanAndStartDriving(NGame.Instance!, [potionChoice], deadline.Token);
+                    GameAction action = await SolverController.EnqueueAndCaptureActionAsync(
+                        queued => queued is UsePotionAction use && use.PotionIndex == (uint)slot
+                            && ReferenceEquals(use.Player, actor),
+                        () => potion.EnqueueManualUse(null), deadline.Token);
+                    await session.AwaitProducerAndCompleteAsync(action.CompletionTask).WaitAsync(deadline.Token);
+                }
                 await runner.WaitForMultiplayerProbeAsync(() => actor.GetPotionAtSlotIndex(slot) == null);
                 await runner.MultiplayerProbeBarrierAsync("self-potion", combat);
                 ContinuationStamp actualPotion = ContinuationStamp.CaptureLive(combat);
                 if (predictedPotion != actualPotion)
                     throw new InvalidOperationException(
                         "Multiplayer self potion differs: " + predictedPotion.DescribeFirstDifference(actualPotion));
+                if (potionChoice != null
+                    && !actor.PlayerCombatState!.Hand.Cards.Any(card =>
+                        card.Id.Entry == potionChoice.Cards[0].CardId && ReferenceEquals(card.Owner, actor)))
+                    throw new InvalidOperationException("Choice potion did not give its generated card to its holder.");
+                if (input.SelfPotionId == "ESSENCE_OF_DARKNESS"
+                    && (actor.PlayerCombatState!.OrbQueue.Orbs.Count != 2
+                        || combat.Players.Any(member => member != actor
+                            && member.PlayerCombatState!.OrbQueue.Orbs.Count != 0)))
+                    throw new InvalidOperationException("Dark orb potion did not channel only to its holder.");
                 if (input.VerifyPotionAccounting)
                 {
                     BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);

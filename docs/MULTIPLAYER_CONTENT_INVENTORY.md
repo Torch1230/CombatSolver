@@ -54,7 +54,9 @@
 
 同一四人目标身份再组合本地自用 `StrengthPotion`：搜索候选只含持有人自用的单项，原生自用后完整状态／RNG 与模拟一致，随后 `Largesse` 仍把新牌给 3 号队友、牌主为该队友，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。这只证明玩家目标药水的候选与自用代表，不代表所有药水已建模或求解器已实际部署药水。
 
-玩家目标自用按机制追加格挡和能量：四人 `BlockPotion` `.local/multiplayer-p2/self-block-potion-four-cbc90f92c6f64218a5bd0cda95b38ab1/peer-0/result.json`、双人 `EnergyPotion` `.local/multiplayer-p2/self-energy-potion-two-a56b08d453e743228b3ce67070940b77/peer-0/result.json`，均核搜索只出现本地持有者的一个候选、原生自用即时全状态／完整 RNG 对齐。与力量药水合起来覆盖三种不同自用机制；选牌、治疗、球及被动触发等药水机制仍未收口。
+玩家目标自用按机制追加格挡和能量：四人 `BlockPotion` `.local/multiplayer-p2/self-block-potion-four-cbc90f92c6f64218a5bd0cda95b38ab1/peer-0/result.json`、双人 `EnergyPotion` `.local/multiplayer-p2/self-energy-potion-two-a56b08d453e743228b3ce67070940b77/peer-0/result.json`，均核搜索只出现本地持有者的一个候选、原生自用即时全状态／完整 RNG 对齐。与力量药水合起来覆盖三种不同自用机制；后续追加的治疗、选牌与球代表见下文，被动触发等药水机制仍未收口。
+
+同一自用候选与原生即时差分又分别覆盖 `BloodPotion`（先使持有人损失 20 HP，再按自身最大 HP 治疗）`.local/multiplayer-p2/self-blood-potion-7d6f84aee81f41bca80978c306850a21/peer-0/result.json`、`FocusPotion`（自身能力）`.local/multiplayer-p2/self-focus-potion-dab6c067e16048528012a8b01a5fb3fb/peer-0/result.json`、`AttackPotion`（原生三选一，显式断言选中生成牌由持有人持有）`.local/multiplayer-p2/self-attack-potion-choice-f4ecacaab0b34c0ba63b17baa75fba92/peer-0/result.json`、`EssenceOfDarkness`（先给本地玩家两个球位，原生投药后显式断言只在本地两格充入暗球）`.local/multiplayer-p2/self-dark-orb-explicit-31d9a5a5aa194533a3dc52e3f079270f/peer-0/result.json`。这四项均为虚拟双人、本轮原生／模拟全状态与完整 RNG Passed；药水生成池其他选项、球溢出与后续触发未验。
 
 ## 已确认的关联调用链
 

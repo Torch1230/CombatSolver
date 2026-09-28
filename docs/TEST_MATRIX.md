@@ -98,7 +98,7 @@ P4 搜索期间队友变化：虚拟双人开始手动搜索后，队友原生 `
 
 P2 四人玩家目标药水自用候选：本地 `StrengthPotion` 搜索只产生一个无队友目标候选，原生自用即时全状态／RNG 对齐；之后 `Largesse` 给 3 号队友生成牌且牌主属于该队友，Passed：`.local/multiplayer-p2/four-self-potion-largesse-ed2714885b2248118fb8d5ef70ec32a3/peer-0/result.json`。未验证生产执行器实际投药。
 
-P2 玩家目标药水自用机制：四人 `BlockPotion` `.local/multiplayer-p2/self-block-potion-four-cbc90f92c6f64218a5bd0cda95b38ab1/peer-0/result.json` 和双人 `EnergyPotion` `.local/multiplayer-p2/self-energy-potion-two-a56b08d453e743228b3ce67070940b77/peer-0/result.json`，每次候选仅本地自用一项，原生动作／模拟即时全状态与完整 RNG 差分 Passed。选牌、治疗、球等其他药水机制未验。
+P2 玩家目标药水自用机制：四人 `BlockPotion` `.local/multiplayer-p2/self-block-potion-four-cbc90f92c6f64218a5bd0cda95b38ab1/peer-0/result.json` 和双人 `EnergyPotion` `.local/multiplayer-p2/self-energy-potion-two-a56b08d453e743228b3ce67070940b77/peer-0/result.json`，每次候选仅本地自用一项，原生动作／模拟即时全状态与完整 RNG 差分 Passed。选牌、治疗、球的后续代表见下文；其他药水机制仍未封闭。
 
 P4 生产控制器本地药水执行：虚拟双人必用 `BlockPotion`，方案只为本地持有人用药，原生部署后仅本地玩家得格挡、队友不变，Passed：`.local/multiplayer-p4/controller-self-block-potion-0b2e57c7926d4cd2aad110ee092f4221/peer-0/result.json`。其他药水与 ENet 执行未验。
 
@@ -134,7 +134,7 @@ P2 `WaterfallGiant` 群体虚弱与人数治疗：双人固定种子四个敌方
 
 P5 防守按钮执行：一费 `Defend`／`Strike` 根，点击防守后生产控制器原生执行防守路线而未打出输出牌，Passed：`.local/multiplayer-p5/defense-style-deploy-fixed-input-c5904e9a0dee42f2a97a165fd2d17cba/peer-0/result.json`。最初沿用默认 10 能量时两张都可打，缺少真实取舍，夹具未通过；改用既有一费输入后通过。可见窗口排版未验。
 
-P2 敌人药水目标：四人双敌根 `FirePotion` 的搜索候选恰覆盖两名存活敌人且不含玩家，Passed：`.local/multiplayer-p2/enemy-potion-targets-0f2fa7cb78094b5ca2b982b876d05897/peer-0/result.json`。未实际原生投药。
+P2 敌人药水目标：四人双敌根 `FirePotion` 的搜索候选恰覆盖两名存活敌人且不含玩家，Passed：`.local/multiplayer-p2/enemy-potion-targets-0f2fa7cb78094b5ca2b982b876d05897/peer-0/result.json`。原生投药的后续证据见下文。
 
 P5 旧结果随机流提示：虚拟双人队友在求解后用 `Largesse` 推进共享 RNG，悬浮窗明确提示旧预测可能不准、执行按钮保留；重评估原路线后继续部署，无完整重搜，Passed：`.local/multiplayer-p5/predeploy-rng-hint-fixed-884797ea14704d88b21fd1729f3501d5/peer-0/result.json`。求解进行时队友同样推进 RNG，结果发布后的偏差／重评估提示及本地原生部署 Passed：`.local/multiplayer-p5/search-time-rng-hint-9d0c942ebe614adba99abc40bcd3a7e5/peer-0/result.json`。均为无头 UI 状态，未看可见窗口。
 
@@ -159,6 +159,8 @@ P2 `FabricatorNormal` 双人到第三回合，原生随机召唤、召唤物行�
 P2 `TestSubjectBoss` 双人第一阶段两招到第三回合全状态／RNG Passed：`.local/multiplayer-p2/test-subject-second-567130576bb64c859c8d9860b1853170/peer-0/result.json`。连续两次本地击杀、第二及第三形态 HP 缩放／能力变化、最后击杀结束战斗，每个稳定边界全状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/test-subject-final-death-fixed-d16c44bc416442c0b6a305f240630a93/peer-0/result.json`。初版最后一击未考虑第三形态的无实体减伤，夹具 6 HP 未击杀；改为 1 HP 后通过。
 
 P2 敌方目标药水原生结算：四人双敌 `FirePotion` 候选仅两名存活敌人，实际向第一名敌人投药后全部状态和九条 RNG 与模拟一致，Passed：`.local/multiplayer-p2/enemy-potion-native-11c3d4df66734ff4b8bc726ef1960c6e/peer-0/result.json`。本次未覆盖其他敌方目标药水。
+
+P2 玩家目标药水自用机制再补四类：治疗 `BloodPotion` `.local/multiplayer-p2/self-blood-potion-7d6f84aee81f41bca80978c306850a21/peer-0/result.json`、能力 `FocusPotion` `.local/multiplayer-p2/self-focus-potion-dab6c067e16048528012a8b01a5fb3fb/peer-0/result.json`、原生选牌并归持有者的 `AttackPotion` `.local/multiplayer-p2/self-attack-potion-choice-f4ecacaab0b34c0ba63b17baa75fba92/peer-0/result.json`、显式验证两格暗球只归持有者的 `EssenceOfDarkness` `.local/multiplayer-p2/self-dark-orb-explicit-31d9a5a5aa194533a3dc52e3f079270f/peer-0/result.json`。四个虚拟双人请求均只有本地自用候选，原生投药后全玩家状态和完整 RNG 差分 Passed；其他选牌、溢球及被动药水机制未验。
 
 ## 多人 P1 普通状态差分（2026-09-28）
 

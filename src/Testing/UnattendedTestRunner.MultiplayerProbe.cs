@@ -143,7 +143,9 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyEnemyPotionTargets && input.ContentCardIds.Length == 0
                 || input.VerifyEnemyPotionUse && !input.VerifyEnemyPotionTargets
                 || input.VerifySelfPotion && input.SelfPotionId is not
-                    ("STRENGTH_POTION" or "BLOCK_POTION" or "ENERGY_POTION")
+                    ("STRENGTH_POTION" or "BLOCK_POTION" or "ENERGY_POTION"
+                        or "BLOOD_POTION" or "FOCUS_POTION" or "ATTACK_POTION"
+                        or "ESSENCE_OF_DARKNESS")
                 || input.VerifyControllerTargetedDeploy
                     && !input.ContentCardIds.Any(id => id is "BLAZE" or "LARGESSE")
                 || input.VerifyControllerSelfPotionDeploy
