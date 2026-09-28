@@ -67,7 +67,7 @@
   "upstreamSource": "https://github.com/dmlc/xgboost/blob/v3.4.1/src/tree/driver.h",
   "limitations": [
     "Synthetic conditional reversal is not combat quality or a causal explanation of regressions.",
-    "C# synthetic and 1280 real training-observation parity passed; complete real battle evaluation is running, not accepted.",
+    "C# parity and full 100/400 paired development completed. Core 12/72/16, one win gained and one lost, slower overall; not accepted.",
     "Product screening is a training proxy; rare-root support and label limitations remain.",
     "48+16 also changes the final 16 tree depths; compare as a whole candidate.",
     "Compiled gated branches can increase model size and inference work."
@@ -256,11 +256,417 @@
   },
   "fullEvaluation": {
     "started": true,
-    "completed": false,
+    "completed": true,
     "plannedCases": 100,
     "plannedRuns": 400,
     "pipelineSession": 84952,
-    "noQualityEarlyExit": true
+    "noQualityEarlyExit": true,
+    "casesFinished": 100,
+    "runsRecorded": 400,
+    "pipelineSessionReaped": true,
+    "pipelineExitCode": 0,
+    "ownerCellReaped": true,
+    "accepted": false,
+    "benchmarkProcess": {
+      "processSeconds": 4853.992420014925,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "qualityEvidenceIssueCount": 0,
+    "summary": {
+      "completed": true,
+      "casesFinished": 100,
+      "plannedCases": 100,
+      "counts": {
+        "equal": 57,
+        "improved": 21,
+        "regressed": 22
+      },
+      "coreCounts": {
+        "equal": 72,
+        "improved": 12,
+        "regressed": 16
+      },
+      "byCharacter": {
+        "DEFECT": {
+          "equal": 12,
+          "improved": 3,
+          "regressed": 5
+        },
+        "IRONCLAD": {
+          "equal": 7,
+          "regressed": 7,
+          "improved": 6
+        },
+        "NECROBINDER": {
+          "equal": 14,
+          "improved": 4,
+          "regressed": 2
+        },
+        "REGENT": {
+          "improved": 6,
+          "regressed": 4,
+          "equal": 10
+        },
+        "SILENT": {
+          "equal": 14,
+          "regressed": 4,
+          "improved": 2
+        }
+      },
+      "byKind": {
+        "Boss": {
+          "equal": 16,
+          "improved": 8,
+          "regressed": 6
+        },
+        "Elite": {
+          "improved": 9,
+          "regressed": 12,
+          "equal": 14
+        },
+        "Monster": {
+          "equal": 27,
+          "improved": 4,
+          "regressed": 4
+        }
+      },
+      "coreByCharacter": {
+        "DEFECT": {
+          "equal": 15,
+          "improved": 2,
+          "regressed": 3
+        },
+        "IRONCLAD": {
+          "equal": 10,
+          "regressed": 5,
+          "improved": 5
+        },
+        "NECROBINDER": {
+          "equal": 16,
+          "improved": 3,
+          "regressed": 1
+        },
+        "REGENT": {
+          "equal": 15,
+          "regressed": 3,
+          "improved": 2
+        },
+        "SILENT": {
+          "equal": 16,
+          "regressed": 4
+        }
+      },
+      "coreByKind": {
+        "Boss": {
+          "equal": 19,
+          "improved": 5,
+          "regressed": 6
+        },
+        "Elite": {
+          "improved": 5,
+          "regressed": 8,
+          "equal": 22
+        },
+        "Monster": {
+          "equal": 31,
+          "regressed": 2,
+          "improved": 2
+        }
+      },
+      "byCharacterCosts": {
+        "DEFECT": {
+          "cases": 20,
+          "faster": 3,
+          "atLeast10PercentFaster": 1,
+          "bothRepeatsFaster": 1,
+          "rssLower": 5,
+          "baselineSeconds": 158.91842979999998,
+          "candidateSeconds": 164.77100515,
+          "aggregateSecondsRatio": 1.0368275432708813,
+          "geometricMeanSecondsRatio": 1.053049095610301,
+          "medianSecondsRatio": 1.0551410828060295,
+          "baselineMeanRssMiB": 298.224609375,
+          "candidateMeanRssMiB": 306.140625,
+          "baselineMaximumObservedRssMiB": 356.51953125,
+          "candidateMaximumObservedRssMiB": 368.3125,
+          "baselineMeanManagedHeapMiB": 77.46009616851806,
+          "candidateMeanManagedHeapMiB": 85.67397861480713,
+          "baselineMeanAllocatedGiB": 1.865630173496902,
+          "candidateMeanAllocatedGiB": 1.8552315767854453
+        },
+        "IRONCLAD": {
+          "cases": 20,
+          "faster": 4,
+          "atLeast10PercentFaster": 1,
+          "bothRepeatsFaster": 4,
+          "rssLower": 2,
+          "baselineSeconds": 174.5247422,
+          "candidateSeconds": 184.7995784,
+          "aggregateSecondsRatio": 1.0588732352242949,
+          "geometricMeanSecondsRatio": 1.0864032199242497,
+          "medianSecondsRatio": 1.0733825541909876,
+          "baselineMeanRssMiB": 313.99326171875,
+          "candidateMeanRssMiB": 326.1791015625,
+          "baselineMaximumObservedRssMiB": 393.60546875,
+          "candidateMaximumObservedRssMiB": 379.80078125,
+          "baselineMeanManagedHeapMiB": 93.27531051635742,
+          "candidateMeanManagedHeapMiB": 104.3021432876587,
+          "baselineMeanAllocatedGiB": 2.0517129719257357,
+          "candidateMeanAllocatedGiB": 2.09580479580909
+        },
+        "NECROBINDER": {
+          "cases": 20,
+          "faster": 2,
+          "atLeast10PercentFaster": 0,
+          "bothRepeatsFaster": 2,
+          "rssLower": 7,
+          "baselineSeconds": 209.60561015000002,
+          "candidateSeconds": 232.8424715,
+          "aggregateSecondsRatio": 1.1108599208454917,
+          "geometricMeanSecondsRatio": 1.1326121112238399,
+          "medianSecondsRatio": 1.1268215172250693,
+          "baselineMeanRssMiB": 338.095703125,
+          "candidateMeanRssMiB": 338.95654296875,
+          "baselineMaximumObservedRssMiB": 690.390625,
+          "candidateMaximumObservedRssMiB": 580.08203125,
+          "baselineMeanManagedHeapMiB": 115.35009574890137,
+          "candidateMeanManagedHeapMiB": 116.41584510803223,
+          "baselineMeanAllocatedGiB": 2.426887683942914,
+          "candidateMeanAllocatedGiB": 2.558821782283485
+        },
+        "REGENT": {
+          "cases": 20,
+          "faster": 4,
+          "atLeast10PercentFaster": 1,
+          "bothRepeatsFaster": 4,
+          "rssLower": 5,
+          "baselineSeconds": 235.0346023,
+          "candidateSeconds": 245.08954415,
+          "aggregateSecondsRatio": 1.0427806874034904,
+          "geometricMeanSecondsRatio": 1.1596069554867396,
+          "medianSecondsRatio": 1.0669880692012987,
+          "baselineMeanRssMiB": 345.3880859375,
+          "candidateMeanRssMiB": 355.2380859375,
+          "baselineMaximumObservedRssMiB": 604.46484375,
+          "candidateMaximumObservedRssMiB": 635.77734375,
+          "baselineMeanManagedHeapMiB": 123.17839450836182,
+          "candidateMeanManagedHeapMiB": 133.35261001586915,
+          "baselineMeanAllocatedGiB": 2.888285266421735,
+          "candidateMeanAllocatedGiB": 2.854136252216995
+        },
+        "SILENT": {
+          "cases": 20,
+          "faster": 4,
+          "atLeast10PercentFaster": 1,
+          "bothRepeatsFaster": 4,
+          "rssLower": 5,
+          "baselineSeconds": 188.24654385,
+          "candidateSeconds": 209.70675425000002,
+          "aggregateSecondsRatio": 1.1140005545976988,
+          "geometricMeanSecondsRatio": 1.1888863089619237,
+          "medianSecondsRatio": 1.0781501474971238,
+          "baselineMeanRssMiB": 331.04169921875,
+          "candidateMeanRssMiB": 346.27080078125,
+          "baselineMaximumObservedRssMiB": 545.94921875,
+          "candidateMaximumObservedRssMiB": 567.86328125,
+          "baselineMeanManagedHeapMiB": 109.85094413757324,
+          "candidateMeanManagedHeapMiB": 123.89154281616212,
+          "baselineMeanAllocatedGiB": 2.145856917835772,
+          "candidateMeanAllocatedGiB": 2.270582139119506
+        }
+      },
+      "unstableWithinArmCases": 2,
+      "coreUnstableWithinArmCases": 1,
+      "equalWinCases": 43,
+      "equalDefeatCases": 14,
+      "coreEqualWinCases": 58,
+      "coreEqualDefeatCases": 14,
+      "winLostCases": 1,
+      "winGainedCases": 1,
+      "allCompletedCosts": {
+        "cases": 100,
+        "faster": 17,
+        "atLeast10PercentFaster": 4,
+        "bothRepeatsFaster": 15,
+        "rssLower": 24,
+        "baselineSeconds": 966.3299283,
+        "candidateSeconds": 1037.20935345,
+        "aggregateSecondsRatio": 1.0733490944181905,
+        "geometricMeanSecondsRatio": 1.123037867685477,
+        "medianSecondsRatio": 1.0802411322576329,
+        "baselineMeanRssMiB": 325.348671875,
+        "candidateMeanRssMiB": 334.55703125,
+        "baselineMaximumObservedRssMiB": 690.390625,
+        "candidateMaximumObservedRssMiB": 635.77734375,
+        "baselineMeanManagedHeapMiB": 103.82296821594238,
+        "candidateMeanManagedHeapMiB": 112.72722396850585,
+        "baselineMeanAllocatedGiB": 2.275674602724612,
+        "candidateMeanAllocatedGiB": 2.3269153092429042
+      },
+      "nondegradingCosts": {
+        "cases": 78,
+        "faster": 12,
+        "atLeast10PercentFaster": 4,
+        "bothRepeatsFaster": 11,
+        "rssLower": 19,
+        "baselineSeconds": 721.10277415,
+        "candidateSeconds": 775.0496832,
+        "aggregateSecondsRatio": 1.0748116787008481,
+        "geometricMeanSecondsRatio": 1.111587906304212,
+        "medianSecondsRatio": 1.081125810252087,
+        "baselineMeanRssMiB": 322.83461037660254,
+        "candidateMeanRssMiB": 329.89125100160254,
+        "baselineMaximumObservedRssMiB": 690.390625,
+        "candidateMaximumObservedRssMiB": 635.77734375,
+        "baselineMeanManagedHeapMiB": 101.64846586569762,
+        "candidateMeanManagedHeapMiB": 108.55953969710913,
+        "baselineMeanAllocatedGiB": 2.1702630816457362,
+        "candidateMeanAllocatedGiB": 2.218503448013694
+      },
+      "stableNondegradingCosts": {
+        "cases": 76,
+        "faster": 12,
+        "atLeast10PercentFaster": 4,
+        "bothRepeatsFaster": 11,
+        "rssLower": 19,
+        "baselineSeconds": 704.1214371,
+        "candidateSeconds": 755.7041619,
+        "aggregateSecondsRatio": 1.0732582791577105,
+        "geometricMeanSecondsRatio": 1.1107252737949487,
+        "medianSecondsRatio": 1.0802411322576329,
+        "baselineMeanRssMiB": 323.0728824013158,
+        "candidateMeanRssMiB": 329.8369654605263,
+        "baselineMaximumObservedRssMiB": 690.390625,
+        "candidateMaximumObservedRssMiB": 635.77734375,
+        "baselineMeanManagedHeapMiB": 101.77426247847707,
+        "candidateMeanManagedHeapMiB": 108.53436028329949,
+        "baselineMeanAllocatedGiB": 2.186198451605282,
+        "candidateMeanAllocatedGiB": 2.2281824504760537
+      },
+      "coreNondegradingCosts": {
+        "cases": 84,
+        "faster": 13,
+        "atLeast10PercentFaster": 4,
+        "bothRepeatsFaster": 12,
+        "rssLower": 19,
+        "baselineSeconds": 757.73839695,
+        "candidateSeconds": 817.81025485,
+        "aggregateSecondsRatio": 1.0792778327478154,
+        "geometricMeanSecondsRatio": 1.1361888912625058,
+        "medianSecondsRatio": 1.0836252256196448,
+        "baselineMeanRssMiB": 319.49583798363096,
+        "candidateMeanRssMiB": 327.8682338169643,
+        "baselineMaximumObservedRssMiB": 690.390625,
+        "candidateMaximumObservedRssMiB": 635.77734375,
+        "baselineMeanManagedHeapMiB": 98.78075822194417,
+        "candidateMeanManagedHeapMiB": 106.81674089885894,
+        "baselineMeanAllocatedGiB": 2.126089440569991,
+        "candidateMeanAllocatedGiB": 2.1769926621179496
+      },
+      "coreStableNondegradingCosts": {
+        "cases": 83,
+        "faster": 13,
+        "atLeast10PercentFaster": 4,
+        "bothRepeatsFaster": 12,
+        "rssLower": 19,
+        "baselineSeconds": 745.81956325,
+        "candidateSeconds": 804.3329889,
+        "aggregateSecondsRatio": 1.0784552035548929,
+        "geometricMeanSecondsRatio": 1.1362545338664798,
+        "medianSecondsRatio": 1.0818110835910226,
+        "baselineMeanRssMiB": 319.35765719126505,
+        "candidateMeanRssMiB": 327.6699454066265,
+        "baselineMaximumObservedRssMiB": 690.390625,
+        "candidateMaximumObservedRssMiB": 635.77734375,
+        "baselineMeanManagedHeapMiB": 98.61079388354199,
+        "candidateMeanManagedHeapMiB": 106.65920905607292,
+        "baselineMeanAllocatedGiB": 2.120130424982453,
+        "candidateMeanAllocatedGiB": 2.166391249297254
+      },
+      "stableNondegradingWinCosts": {
+        "cases": 61,
+        "faster": 11,
+        "atLeast10PercentFaster": 4,
+        "bothRepeatsFaster": 10,
+        "rssLower": 15,
+        "baselineSeconds": 533.8744629,
+        "candidateSeconds": 571.77559485,
+        "aggregateSecondsRatio": 1.0709925920489274,
+        "geometricMeanSecondsRatio": 1.1169673353461014,
+        "medianSecondsRatio": 1.0785747038090685,
+        "baselineMeanRssMiB": 314.1887807377049,
+        "candidateMeanRssMiB": 322.32415471311475,
+        "baselineMaximumObservedRssMiB": 604.46484375,
+        "candidateMaximumObservedRssMiB": 635.77734375,
+        "baselineMeanManagedHeapMiB": 94.25578489459929,
+        "candidateMeanManagedHeapMiB": 102.4702796310675,
+        "baselineMeanAllocatedGiB": 2.0212757859195842,
+        "candidateMeanAllocatedGiB": 2.0554791473951495
+      },
+      "coreStableNondegradingWinCosts": {
+        "cases": 68,
+        "faster": 12,
+        "atLeast10PercentFaster": 4,
+        "bothRepeatsFaster": 11,
+        "rssLower": 15,
+        "baselineSeconds": 575.57258905,
+        "candidateSeconds": 620.40442185,
+        "aggregateSecondsRatio": 1.0778908406218515,
+        "geometricMeanSecondsRatio": 1.1477198357394072,
+        "medianSecondsRatio": 1.0802411322576329,
+        "baselineMeanRssMiB": 310.5685604319853,
+        "candidateMeanRssMiB": 320.4524931066176,
+        "baselineMaximumObservedRssMiB": 604.46484375,
+        "candidateMaximumObservedRssMiB": 635.77734375,
+        "baselineMeanManagedHeapMiB": 91.16845327265122,
+        "candidateMeanManagedHeapMiB": 100.8057357002707,
+        "baselineMeanAllocatedGiB": 1.9576112631270115,
+        "candidateMeanAllocatedGiB": 1.9978358153911198
+      },
+      "coreUncertainty": {
+        "families": 15,
+        "available": true,
+        "replicates": 2000,
+        "description": "Descriptive percentile intervals resampling encounter families; synthetic development set, not population confidence guarantees",
+        "percentile95": {
+          "improvedFraction": [
+            0.06930693069306931,
+            0.17
+          ],
+          "regressedFraction": [
+            0.08,
+            0.24752475247524752
+          ],
+          "nondegradingGeometricMeanSecondsRatio": [
+            1.0563169081919157,
+            1.2277628085006211
+          ]
+        }
+      },
+      "uncertainty": {
+        "families": 15,
+        "available": true,
+        "replicates": 2000,
+        "description": "Descriptive percentile intervals resampling encounter families; synthetic development set, not population confidence guarantees",
+        "percentile95": {
+          "improvedFraction": [
+            0.12871287128712872,
+            0.3
+          ],
+          "regressedFraction": [
+            0.13725490196078433,
+            0.3106796116504854
+          ],
+          "nondegradingGeometricMeanSecondsRatio": [
+            1.0414359333322138,
+            1.1942614407421672
+          ]
+        }
+      },
+      "finalTestOpened": false,
+      "modelSha256": "60d3a1141dd924027bdf1247dea1744085799f6c4571237eb2c3989db387b3db"
+    }
   },
   "actualRelicProductsAdopted": false,
   "syntheticValidationNewCombatSearches": 0,
@@ -268,10 +674,12 @@
     "v82 full 100/400 run completed and actual session/cell reaped",
     "2880 synthetic C# compiled-product predictions, max difference zero",
     "real 292-root model fit within complete-model budget",
-    "1280 actual training-observation C# predictions, max difference zero"
+    "1280 actual training-observation C# predictions, max difference zero",
+    "full v84 100/400 evaluation and actual process/cell reaping",
+    "real per-round Hessian audit after evaluation; 317/320 products blocked every round"
   ],
   "hessianFeasibilityAudit": {
-    "status": "synthetic-contracts-passed-real-audit-pending",
+    "status": "completed",
     "scope": "Per-round necessary bounds on nonzero-child Hessian; passing does not establish split gain, independent support, selection, or battle quality.",
     "syntheticContractsPassed": 6,
     "contracts": {
@@ -300,7 +708,7 @@
       "stderr": "test_bad_hessian_or_observation_is_rejected (test_context_product_audit.ContextFeasibilityChecks.test_bad_hessian_or_observation_is_rejected) ... ok\ntest_bound_applies_to_every_descendant_subset_and_threshold (test_context_product_audit.ContextFeasibilityChecks.test_bound_applies_to_every_descendant_subset_and_threshold) ... ok\ntest_exact_cutoff_and_borderline_are_not_called_impossible (test_context_product_audit.ContextFeasibilityChecks.test_exact_cutoff_and_borderline_are_not_called_impossible) ... ok\ntest_positive_negative_and_zero_are_separate_bounds (test_context_product_audit.ContextFeasibilityChecks.test_positive_negative_and_zero_are_separate_bounds) ... ok\ntest_row_duplication_does_not_manufacture_hessian_mass (test_context_product_audit.ContextFeasibilityChecks.test_row_duplication_does_not_manufacture_hessian_mass) ... ok\ntest_saved_round_replay_matches_actual_training_hessian (test_context_product_audit.ContextFeasibilityChecks.test_saved_round_replay_matches_actual_training_hessian) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.019s\n\nOK\n"
     },
     "priorReplayContractFailure": "NumPy bool sums produced int64 JSON values; explicitly converted guard and bound flag to native scalars, then reran the six affected checks.",
-    "realAuditStarted": false,
+    "realAuditStarted": true,
     "newRealTrainingRuns": 0,
     "newCombatSearches": 0,
     "finalTestOpened": false,
@@ -309,6 +717,84 @@
     "upstreamSources": [
       "https://github.com/dmlc/xgboost/blob/v3.4.1/src/c_api/c_api.cc",
       "https://github.com/dmlc/xgboost/blob/v3.4.1/include/xgboost/base.h"
+    ],
+    "realAuditCompleted": true,
+    "process": {
+      "processSeconds": 7.418934316956438,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "reportSha256": "b117fcd227e0137705ef026c2efa3336601b9f4dfc6aef8d6921c602a2ecdf7b",
+    "realAudit": {
+      "completed": true,
+      "scope": "Training-round necessary feasibility bounds, not battle quality or causal attribution of regressions.",
+      "minimumLeafHessian": 3,
+      "seconds": 7.188551869010553,
+      "peakRssBytes": 2328334336,
+      "newTrainingRuns": 0,
+      "newCombatSearches": 0,
+      "finalTestOpened": false
+    },
+    "totalProducts": 320,
+    "totalBlockedEveryRound": 317,
+    "heads": [
+      {
+        "character": "DEFECT",
+        "productsBlockedEveryRound": 64,
+        "gateColumnsBlockedEveryRound": 20,
+        "variablePresenceColumns": 23,
+        "firstRoundMaximumNonzeroMass": 2.011459467829809,
+        "notRuledOut": []
+      },
+      {
+        "character": "IRONCLAD",
+        "productsBlockedEveryRound": 64,
+        "gateColumnsBlockedEveryRound": 20,
+        "variablePresenceColumns": 28,
+        "firstRoundMaximumNonzeroMass": 2.6296475220947286,
+        "notRuledOut": []
+      },
+      {
+        "character": "NECROBINDER",
+        "productsBlockedEveryRound": 63,
+        "gateColumnsBlockedEveryRound": 19,
+        "variablePresenceColumns": 26,
+        "firstRoundMaximumNonzeroMass": 3.0867022257764916,
+        "notRuledOut": [
+          {
+            "gate": "relic/WING_CHARM/present",
+            "signal": "osty/hp",
+            "screeningMerit": 0.026317320850470335
+          }
+        ]
+      },
+      {
+        "character": "REGENT",
+        "productsBlockedEveryRound": 62,
+        "gateColumnsBlockedEveryRound": 20,
+        "variablePresenceColumns": 30,
+        "firstRoundMaximumNonzeroMass": 3.8910936033989856,
+        "notRuledOut": [
+          {
+            "gate": "relic/NUNCHAKU/present",
+            "signal": "pile/hand/type/Attack/var/Damage",
+            "screeningMerit": 0.019100212291324453
+          },
+          {
+            "gate": "relic/NUNCHAKU/present",
+            "signal": "player/stars",
+            "screeningMerit": 0.01870770675203268
+          }
+        ]
+      },
+      {
+        "character": "SILENT",
+        "productsBlockedEveryRound": 64,
+        "gateColumnsBlockedEveryRound": 26,
+        "variablePresenceColumns": 32,
+        "firstRoundMaximumNonzeroMass": 2.7795512946129293,
+        "notRuledOut": []
+      }
     ]
   }
 }

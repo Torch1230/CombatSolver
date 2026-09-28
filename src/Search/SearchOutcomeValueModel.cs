@@ -176,6 +176,9 @@ internal sealed partial class SearchOutcomeValueModel
     internal sealed record PreparedTraining(IReadOnlyList<RankingObservation> Rows, List<Pair> Pairs,
         string[] FeatureNames, int ParticipatingRoots, int[] PairKinds)
     {
+        // Aligned with compacted Rows; indices refer to the supplied root list.
+        // This provenance is training metadata, never an inference feature.
+        internal IReadOnlyList<int> RowRootIndices { get; init; } = [];
         internal int CrossTurnPairs { get; init; }
         internal double CrossTurnWeight { get; init; }
     }
@@ -206,6 +209,7 @@ internal sealed partial class SearchOutcomeValueModel
         if ((correctionSource != null || crossTurnPairs != null) && (highestPolicyTierOnly || balanceTrainingTurns))
             throw new InvalidDataException("Source weighting cannot be combined with other weighting ablations.");
         List<T> rows = [];
+        List<int> rowRootIndices = [];
         List<Pair> pairs = [];
         Dictionary<string, int> featureRoots = new(StringComparer.Ordinal);
         int participatingRoots = 0;
@@ -213,12 +217,14 @@ internal sealed partial class SearchOutcomeValueModel
         double contextWeight = 0;
         int[] pairKinds = new int[kindCount];
         Random random = new(0);
-        foreach (var root in roots)
+        for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
         {
+            var root = roots[rootIndex];
             int offset = rows.Count;
             validate(root);
             int[]? turns = balanceTrainingTurns ? root.Select(TrainingTurn).ToArray() : null;
             rows.AddRange(root);
+            rowRootIndices.AddRange(Enumerable.Repeat(rootIndex, root.Length));
             List<(int Preferred, int Other, int Kind, int Source)> rootPairs = [];
             HashSet<(int, int)> seen = [];
             var groups = Enumerable.Range(0, root.Length).SelectMany(i => root[i].Groups.Select(g => (Group: g, Row: i)))
@@ -313,6 +319,7 @@ internal sealed partial class SearchOutcomeValueModel
         int[] remap = new int[rows.Count];
         for (int i = 0; i < observed.Length; i++) remap[observed[i]] = i;
         rows = observed.Select(i => rows[i]).ToList();
+        int[] compactedRootIndices = observed.Select(i => rowRootIndices[i]).ToArray();
         pairs = pairs.Select(p => new Pair(remap[p.Preferred], remap[p.Other], p.Weight)).ToList();
         // Correlated rows from one battle are not independent support for an
         // identity-specific coefficient or split. Count actual witnessed roots.
@@ -320,7 +327,8 @@ internal sealed partial class SearchOutcomeValueModel
         string[] names = featureRoots.Where(p => p.Value >= minimumRoots)
             .Select(p => p.Key).Order(StringComparer.Ordinal).ToArray();
         return new(rows, pairs, names, participatingRoots, pairKinds)
-            { CrossTurnPairs = contextPairCount, CrossTurnWeight = contextWeight };
+            { RowRootIndices = compactedRootIndices,
+                CrossTurnPairs = contextPairCount, CrossTurnWeight = contextWeight };
     }
 
     internal static int TrainingTurn(RankingObservation row)

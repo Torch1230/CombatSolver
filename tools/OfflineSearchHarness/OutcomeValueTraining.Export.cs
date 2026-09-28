@@ -17,12 +17,14 @@ internal static partial class OutcomeValueTraining
         var roots = ReadRoots(pathsFile);
         return ExportRanking(roots, directory, clock, partition, pairSelection, pairWeighting,
             "completed-outcome", r => SearchOutcomeValueModel.PrepareTraining(r,
-                highestPolicyTierOnly: pairSelection == "highest-policy-tier", balanceTrainingTurns: pairWeighting == "turns"));
+                highestPolicyTierOnly: pairSelection == "highest-policy-tier", balanceTrainingTurns: pairWeighting == "turns"),
+            ReadRootExportFlag(specification.RootElement));
     }
 
     private static int ExportRanking<T>(IReadOnlyList<(string Id, T[] Rows)> roots,
         string directory, Stopwatch clock, string partition, string pairSelection, string pairWeighting,
-        string trainingTarget, Func<T[][], SearchOutcomeValueModel.PreparedTraining> prepare)
+        string trainingTarget, Func<T[][], SearchOutcomeValueModel.PreparedTraining> prepare,
+        bool exportRowRoots = false)
         where T : class, SearchOutcomeValueModel.RankingObservation
     {
         if (Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any())
@@ -30,6 +32,7 @@ internal static partial class OutcomeValueTraining
         if (roots.Count == 0) throw new InvalidDataException("Missing ranking roots.");
         Directory.CreateDirectory(directory);
         List<object> heads = [];
+        List<object>? rootAssignments = exportRowRoots ? [] : null;
         var groups = roots.Select((root, index) => new { root.Rows, Index = index,
                 Character = partition == "character" ? OutcomeModelFile.CharacterOf(root.Rows) : "" })
             .GroupBy(r => r.Character, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal);
@@ -58,7 +61,10 @@ internal static partial class OutcomeValueTraining
                     if (!double.IsFinite(score)) throw new InvalidDataException("Non-finite linear score.");
                     writer.Write(score);
                 }
-            heads.Add(new { character = group.Key, rootIndices = group.Select(r => r.Index).ToArray(),
+            int[] sourceRootIndices = group.Select(r => r.Index).ToArray();
+            if (rootAssignments != null)
+                rootAssignments.Add(WriteRootAssignments(directory, stem, group.Key, prepared, sourceRootIndices));
+            heads.Add(new { character = group.Key, rootIndices = sourceRootIndices,
                 roots = group.Count(), sampledRows = group.Sum(r => r.Rows.Length),
                 participatingRoots = prepared.ParticipatingRoots, rows = prepared.Rows.Count,
                 pairs = prepared.Pairs.Count, pairKinds = prepared.PairKinds,
@@ -79,6 +85,13 @@ internal static partial class OutcomeValueTraining
             elapsedMilliseconds = clock.Elapsed.TotalMilliseconds,
             peakWorkingSetBytes = Process.GetCurrentProcess().PeakWorkingSet64 };
         File.WriteAllText(Path.Combine(directory, "manifest.json"), JsonSerializer.Serialize(result));
+        if (rootAssignments != null)
+            File.WriteAllText(Path.Combine(directory, "row-roots.json"), JsonSerializer.Serialize(new
+            {
+                schema = 1, assignmentFormat = "little-endian-int32-source-root-index",
+                manifestSha256 = Hash(Path.Combine(directory, "manifest.json")),
+                totalRoots = roots.Count, heads = rootAssignments
+            }));
         Console.WriteLine(JsonSerializer.Serialize(new { result.roots, result.sampledRows,
             heads = heads.Count, result.elapsedMilliseconds, result.peakWorkingSetBytes }));
         return 0;

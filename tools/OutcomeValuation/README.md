@@ -1,8 +1,12 @@
 # 结果估值与小规模训练工具
 
+离线输入的`exportRowRoots: true`将为压缩后的训练观察生成显式根编号附属文件，供`root_provenance.read_assignments`严格核对每根权重和来源。251项C#断言、两组六项Python合同和真实292根原图不变核对通过。只读零边界检查由3→40项通过分区约束，尚未接入真实拟合器。见[状态与边界](../../docs/strategy/training-root-provenance-20260928.md)。
+
+`root_support.py`提供尚未接入拟合器的纯数值剪枝原型：按根Hessian参与度约束树叶，弱支持分支用真实梯度/Hessian重算父叶，并要求后续轮使用修改后的预测。另六项合成合同通过，包括低曲率条件反转；不代表实际遗物收益或新模型验收。
+
 `context_product_audit.py export-directory fitted-directory report.json --seconds 180`只读重放已保存交互候选的16轮Hessian，报告被叶节点门槛必然排除的乘积及遗物存在列。未被排除不等于有有效增益；六项合成合同已通过，真实数据诊断必须与受控性能评测串行。详见[诊断边界](../../docs/strategy/compiled-relic-interactions-20260928.md#逐轮叶节点门槛诊断)。
 
-`context_gate_fit.py export-directory model-directory --seconds 1000`是显式离线交互原型：48棵普通树加16棵深度4树，后者可选择训练梯度筛出的二值遗物存在×原始数值乘积。导出编译回64棵原始字段树、最大深度8，生产不添加乘积观察或依赖。所有头共用时限，仍需计入导出及模型祖先训练的1,800秒总账；默认训练器不变。6项合成合同、2,880条C#合成输入与1,280条真实训练观察数值核对通过。完整训练294秒，但真实树未采用候选乘积，100场400次实战对照进行中；不能用合成反转成功宣称掌握遗物交互。见[原型边界](../../docs/strategy/compiled-relic-interactions-20260928.md)。
+`context_gate_fit.py export-directory model-directory --seconds 1000`是显式离线交互原型：48棵普通树加16棵深度4树，后者可选择训练梯度筛出的二值遗物存在×原始数值乘积。导出编译回64棵原始字段树、最大深度8，生产不添加乘积观察或依赖。所有头共用时限，仍需计入导出及模型祖先训练的1,800秒总账；默认训练器不变。6项合成合同、2,880条C#合成输入与1,280条真实训练观察数值核对通过。完整训练294秒，但真实树未采用候选乘积；100场400次核心12改善/72一致/16退化、慢7.33%，未采用；不能用合成反转成功宣称掌握遗物交互。见[原型边界](../../docs/strategy/compiled-relic-interactions-20260928.md)。
 
 联合训练实验 `crossTurnOutcomes: true` 依赖 `balanceCorrectionSources: true`，用同根、不同回合且不同原候选池的已完成结果补充有界偏好。它复用原行，不比较模仿标签或以更短动作后缀制造跨回合价值；每根新增边至多1,024，总边仍至多4,096，非空来源等权且根总权重1。只改变C#导出图，Python不重建标签；完整训练仍受1,800秒上限和独立场景审计约束。见[完整协议](../../docs/strategy/cross-turn-context-calibration-20260928.md)。
 

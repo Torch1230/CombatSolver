@@ -50,7 +50,8 @@ internal static partial class OutcomeValueTraining
         return ExportRanking(roots, directory, clock, "character", "all",
             crossTurnOutcomes ? "cross-turn-sources" : balanceCorrections ? "correction-sources" : "pairs",
             "completed-outcome-and-imitation", rows => crossTurnOutcomes
-                ? Model.PrepareContextCalibratedTraining(rows) : Model.PrepareJointTraining(rows, balanceCorrections));
+                ? Model.PrepareContextCalibratedTraining(rows) : Model.PrepareJointTraining(rows, balanceCorrections),
+            ReadRootExportFlag(input));
     }
 
     private static Model.TrainingRow[][]? ReadJointCorrections(JsonElement input, string[] outcomes)

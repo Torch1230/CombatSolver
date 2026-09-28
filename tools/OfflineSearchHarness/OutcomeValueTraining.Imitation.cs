@@ -10,9 +10,11 @@ internal static partial class OutcomeValueTraining
     internal static int ExportImitation(string pathsFile, string directory)
     {
         var clock = Stopwatch.StartNew();
+        using var specification = JsonDocument.Parse(File.ReadAllText(pathsFile));
         var roots = ReadImitationRoots(pathsFile);
         return ExportRanking(roots, directory, clock, "character", "all", "pairs",
-            "winning-route-imitation", Model.PrepareImitationTraining);
+            "winning-route-imitation", Model.PrepareImitationTraining,
+            ReadRootExportFlag(specification.RootElement));
     }
 
     internal static List<(string Id, Model.ImitationRow[] Rows)> ReadImitationRoots(string pathsFile)

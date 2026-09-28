@@ -30,6 +30,7 @@ internal static class OutcomeRankingChecks
         OutcomeImitationChecks.Run(Check, Reject);
         OutcomeJointChecks.Run(Check, Reject);
         OutcomeContextTrainingChecks.Run(Check, Reject);
+        OutcomeRootProvenanceChecks.Run(Check, Reject);
         OutcomeCorrectionSamplingChecks.Run(Check);
         SolverInterimResult quality = new(true, 0, 3, 3, 0, 0, 0, 0, 2) { Survives = true };
         Model.TrainingRow Row(int x, int hp, int[]? groups = null) => new(new() { ["x"] = x },
@@ -129,6 +130,14 @@ internal static class OutcomeRankingChecks
             "unpaired completed rows are valid observations");
         Check(withUnused.FittedRoots == 1 && withUnused.FittedRows == 24,
             "training storage includes only witnesses referenced by actual preference pairs");
+        var provenance = Model.PrepareTraining([[a, b], onlyDefeats, [a, b], [a, b]]);
+        Check(provenance.RowRootIndices.SequenceEqual([0, 0, 2, 2, 3, 3]),
+            "compacted rows keep exact input roots even when roots share observation references");
+        Check(provenance.Pairs.All(p => provenance.RowRootIndices[p.Preferred]
+                == provenance.RowRootIndices[p.Other])
+            && provenance.Pairs.GroupBy(p => provenance.RowRootIndices[p.Preferred])
+                .All(g => Math.Abs(g.Sum(p => p.Weight) - 1) < 1e-12),
+            "root provenance preserves equal-root weights and excludes unpaired roots");
         Check(JsonSerializer.Serialize(withUnused.ExportModel()) == JsonSerializer.Serialize(learned.ExportModel()),
             "compacting all-defeat and singleton rows preserves the exact serialized model");
         Reject(() => new Model().Fit([useful, [loss with { Outcome = loss.Outcome with { Score = 1 } }]]),

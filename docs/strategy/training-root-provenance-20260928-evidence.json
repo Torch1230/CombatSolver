@@ -1,0 +1,283 @@
+{
+  "experiment": "explicit-compacted-row-root-provenance",
+  "sourceBase": "365d487b",
+  "stage": "provenance-and-real-applicability-validated-fitter-pending",
+  "sourceHashes": {
+    "src/Search/SearchOutcomeValueModel.cs": "df3e855fcedc5b1faa96b0b6434fbe833daae059583b4039406bf45d1d73d1b0",
+    "tools/OfflineSearchHarness/OutcomeRankingChecks.cs": "b97219fe9a6a75d7fea6a8488069d02b8ffb2b173633c578261fc5b96c072587",
+    "tools/OfflineSearchHarness/OutcomeValueTraining.Export.cs": "0d56317d49c598b73b7ea8a4250742ee5ec4cc8040807c6392b8c14481d0578f",
+    "tools/OfflineSearchHarness/OutcomeValueTraining.Joint.cs": "0b2a00c347d2ca588a873e933cc208a475e36bff1585e612d67aaac7931f5040",
+    "tools/OfflineSearchHarness/OutcomeValueTraining.Imitation.cs": "f848a0a06f69fa91a711ea024cc8f982c1b1fe38f5f4e2b0539319221489f732",
+    "tools/OfflineSearchHarness/OutcomeValueTraining.Roots.cs": "fa34025238764fdee2ba6b850d5937a79da77cd9962af665e3cfaa019b16df2a",
+    "tools/OfflineSearchHarness/OutcomeRootProvenanceChecks.cs": "3c2b217536d9694b243d0916a709b9cc534b1b785bfd381fad9b248b199f2991",
+    "tools/OutcomeValuation/root_provenance.py": "48a23200e49f79671664c0be4d03f3f64d4c40887bd7e195bb0ec79e82e50038",
+    "tools/OutcomeValuation/test_root_provenance.py": "168c5a282af844a6517dcb9fbb3b76e122ce408402c26d5244c92d12bd32eef4",
+    "tools/OutcomeValuation/root_support.py": "7a2993415c6784ff46e87ee77b1cb5022273d981b3cc11125f53ce1e4cb1039f",
+    "tools/OutcomeValuation/test_root_support.py": "a4b3d414755b4ef9f52a0351f4a221b59d95bd53b21f8a91d3a250e05db632f7"
+  },
+  "pythonContracts": {
+    "returnCode": 0,
+    "seconds": 0.09152479702606797,
+    "peakRssBytes": 43610112,
+    "command": [
+      "taskset",
+      "-c",
+      "0",
+      "env",
+      "OPENBLAS_NUM_THREADS=1",
+      "OMP_NUM_THREADS=1",
+      ".local/objective-search/xgboost-env/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/OutcomeValuation",
+      "-p",
+      "test_root_provenance.py",
+      "-v"
+    ],
+    "scope": "Synthetic Python sidecar validation only, CPU0. No actual export, C# build, real-data audit, training or combat.",
+    "stdout": "",
+    "stderr": "test_global_root_gaps_and_multiple_pools_preserve_identity (test_root_provenance.RootProvenanceChecks.test_global_root_gaps_and_multiple_pools_preserve_identity) ... ok\ntest_missing_provenance_is_never_reconstructed_from_components (test_root_provenance.RootProvenanceChecks.test_missing_provenance_is_never_reconstructed_from_components) ... ok\ntest_reader_binds_manifest_and_exact_assignment_bytes (test_root_provenance.RootProvenanceChecks.test_reader_binds_manifest_and_exact_assignment_bytes) ... ok\ntest_rejects_cross_root_pairs_unknown_ids_and_unobserved_rows (test_root_provenance.RootProvenanceChecks.test_rejects_cross_root_pairs_unknown_ids_and_unobserved_rows) ... ok\ntest_row_duplication_still_has_only_two_roots (test_root_provenance.RootProvenanceChecks.test_row_duplication_still_has_only_two_roots) ... ok\ntest_total_weight_cannot_hide_wrong_per_root_weights (test_root_provenance.RootProvenanceChecks.test_total_weight_cannot_hide_wrong_per_root_weights) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.021s\n\nOK\n"
+  },
+  "pythonContractsPassed": 6,
+  "csharpBuildPassed": true,
+  "csharpContractsPassed": true,
+  "realExportCompleted": true,
+  "newLeafGuardImplemented": "prototype-validated-on-synthetic-and-readonly-real-cuts-not-connected-to-fitter",
+  "newFullCandidateRetained": false,
+  "newRealTrainingRuns": 0,
+  "runtimeModelEnabled": false,
+  "finalTestOpened": false,
+  "prerequisiteOwnerCell": "2617",
+  "prerequisitePipelineSession": 84952,
+  "modDeployment": {
+    "completed": true,
+    "utc": "2026-09-28T13:23:24.387387+00:00",
+    "target": "/home/ltlly/.local/share/Steam/steamapps/common/Slay the Spire 2/mods/CombatSolver",
+    "files": {
+      "CombatSolver.json": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/CombatSolver.json",
+      "CombatSolver.dll": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v85-root-support/engine/CombatSolver.dll",
+      "CombatSolver.MemoryCleaner.exe": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/tools/CombatSolver.MemoryCleaner/bin/Release/net48/CombatSolver.MemoryCleaner.exe",
+      "LICENSE": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/LICENSE",
+      "THIRD_PARTY_NOTICES.md": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/THIRD_PARTY_NOTICES.md"
+    },
+    "runtimeLearnedModelEnabled": false,
+    "gameLaunched": false,
+    "atomicPerFileReplacement": true
+  },
+  "remainingValidation": [
+    "Connect root-aware contextual fitter and verify update/conversion contracts",
+    "Fit one complete candidate with dependencies/export/fitting within 1800 seconds",
+    "Run all 100 fixed development cases / 400 paired searches for every retained candidate",
+    "Keep 55 sealed final configurations unopened until a development-qualified candidate"
+  ],
+  "rootSupportPrototype": {
+    "kind": "Hessian participation ratio across exact input roots; not statistical effective sample size",
+    "minimumDistinctRoots": 3,
+    "minimumParticipationRatio": 3,
+    "regularization": 0.001,
+    "learningRate": 0.1,
+    "contractsPassed": 6,
+    "contracts": {
+      "returnCode": 0,
+      "seconds": 0.20664000895339996,
+      "peakRssBytes": 78032896,
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "env",
+        "OPENBLAS_NUM_THREADS=1",
+        "OMP_NUM_THREADS=1",
+        ".local/objective-search/xgboost-env/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/OutcomeValuation",
+        "-p",
+        "test_root_support.py",
+        "-v"
+      ],
+      "scope": "Six tiny synthetic participation/pruning contracts on CPU0; no real export, fitting candidate or combat.",
+      "stdout": "",
+      "stderr": "test_conditional_reversal_with_three_roots_per_context (test_root_support.RootSupportChecks.test_conditional_reversal_with_three_roots_per_context) ... ok\ntest_more_correlated_rows_do_not_create_support (test_root_support.RootSupportChecks.test_more_correlated_rows_do_not_create_support) ... ok\ntest_participation_is_scale_invariant_and_detects_dominance (test_root_support.RootSupportChecks.test_participation_is_scale_invariant_and_detects_dominance) ... ok\ntest_small_curvature_can_retain_balanced_supported_leaves (test_root_support.RootSupportChecks.test_small_curvature_can_retain_balanced_supported_leaves) ... ok\ntest_unsupported_child_collapses_to_regularized_parent (test_root_support.RootSupportChecks.test_unsupported_child_collapses_to_regularized_parent) ... ok\ntest_zero_hessian_and_invalid_inputs_cannot_supply_support (test_root_support.RootSupportChecks.test_zero_hessian_and_invalid_inputs_cannot_supply_support) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.018s\n\nOK\n"
+    },
+    "realFitterConnected": false,
+    "limitations": [
+      "Exactly three roots need balanced Hessian contributions.",
+      "Parent collapse can discard alternative supported splits.",
+      "Next boosting round must use pruned predictions.",
+      "No real-data acceptance or new complete candidate."
+    ]
+  },
+  "queuedValidation": {
+    "session": 3242,
+    "state": "completed-after-fixture-correction",
+    "protocol": "/home/ltlly/Code/nmslmod/CombatSolver-outcome-valuation/.local/objective-search/v85-root-support/validation-protocol.json",
+    "stages": [
+      "mod-build",
+      "harness-build",
+      "gate-bash",
+      "gate-pwsh",
+      "ranking-checks",
+      "export-process",
+      "export-verification"
+    ],
+    "noConcurrentHeavyWork": true,
+    "newCompleteCandidate": false,
+    "initialSessionReaped": true,
+    "initialExitCode": 1,
+    "resumeSession": 66828,
+    "resumeSessionReaped": true,
+    "resumeExitCode": 0
+  },
+  "csharpAssertionsPassed": 251,
+  "csharpNewAssertions": 16,
+  "csharpStages": {
+    "mod-build": {
+      "processSeconds": 12.636414121021517,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "harness-build": {
+      "processSeconds": 2.9061774510191754,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "gate-bash": {
+      "processSeconds": 13.91448168293573,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "gate-pwsh": {
+      "processSeconds": 1.6028840789804235,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "ranking-checks": {
+      "processSeconds": 0.6016795289469883,
+      "returnCode": -6,
+      "timedOut": false
+    },
+    "harness-build-fixture-fix": {
+      "processSeconds": 2.7061112250667065,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "ranking-checks-fixture-fix": {
+      "processSeconds": 1.302516222000122,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "export-process": {
+      "processSeconds": 130.78978930902667,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "export-verification": {
+      "processSeconds": 2.1038823750568554,
+      "returnCode": 0,
+      "timedOut": false
+    }
+  },
+  "csharpInitialFailure": "New synthetic fixture omitted required maximumRowsPerRoot; fixed to 64. Rebuilt harness and reran failed contracts only; successful Mod build and structure gates reused.",
+  "realExportParity": {
+    "passed": true,
+    "originalGraphAndFoundationUnchanged": true,
+    "heads": [
+      {
+        "character": "DEFECT",
+        "rows": 44152,
+        "pairs": 154291,
+        "participatingRoots": 60,
+        "assignmentBytes": 176608
+      },
+      {
+        "character": "IRONCLAD",
+        "rows": 41309,
+        "pairs": 153710,
+        "participatingRoots": 58,
+        "assignmentBytes": 165236
+      },
+      {
+        "character": "NECROBINDER",
+        "rows": 38449,
+        "pairs": 128754,
+        "participatingRoots": 57,
+        "assignmentBytes": 153796
+      },
+      {
+        "character": "REGENT",
+        "rows": 36949,
+        "pairs": 129198,
+        "participatingRoots": 58,
+        "assignmentBytes": 147796
+      },
+      {
+        "character": "SILENT",
+        "rows": 43358,
+        "pairs": 134261,
+        "participatingRoots": 59,
+        "assignmentBytes": 173432
+      }
+    ],
+    "seconds": 1.9645191240124404,
+    "peakRssBytes": 722018304,
+    "newCompleteCandidate": false,
+    "newCombatSearches": 0,
+    "finalTestOpened": false
+  },
+  "partialTrainingCost": {
+    "exportProcessSeconds": 130.78978930902667,
+    "ancestorTrainingSeconds": 135.88075087300967,
+    "newCompleteCandidate": false,
+    "completeModelFitPending": true,
+    "exportAndAncestorSeconds": 266.67054018203635
+  },
+  "exportPeakRssBytes": 4409221120,
+  "realParticipationAudit": {
+    "completed": true,
+    "scope": "Two fixed zero cuts at the saved 48-tree prefix; eligibility/proxy only, not a trained split, all thresholds, or battle quality.",
+    "heads": [
+      {
+        "character": "DEFECT",
+        "productsPassingSomeRootCut": 6,
+        "productsPassingSomeRootCutWithPositiveProxy": 6,
+        "productsPassingSomeHessian3Cut": 0
+      },
+      {
+        "character": "IRONCLAD",
+        "productsPassingSomeRootCut": 5,
+        "productsPassingSomeRootCutWithPositiveProxy": 5,
+        "productsPassingSomeHessian3Cut": 0
+      },
+      {
+        "character": "NECROBINDER",
+        "productsPassingSomeRootCut": 9,
+        "productsPassingSomeRootCutWithPositiveProxy": 9,
+        "productsPassingSomeHessian3Cut": 1
+      },
+      {
+        "character": "REGENT",
+        "productsPassingSomeRootCut": 15,
+        "productsPassingSomeRootCutWithPositiveProxy": 15,
+        "productsPassingSomeHessian3Cut": 2
+      },
+      {
+        "character": "SILENT",
+        "productsPassingSomeRootCut": 5,
+        "productsPassingSomeRootCutWithPositiveProxy": 5,
+        "productsPassingSomeHessian3Cut": 0
+      }
+    ],
+    "seconds": 4.245594335952774,
+    "peakRssBytes": 1766617088,
+    "newRealTrainingRuns": 0,
+    "newCombatSearches": 0,
+    "finalTestOpened": false,
+    "reportSha256": "3c97df473ba2eec21f906058c1ac2cb72d205cd7496c590c665055ae3a5fab18",
+    "runnerSha256": "7594cbb80e48f6b5cac665166bb737841ddcc919f01b01fe19027942519065e5"
+  }
+}
