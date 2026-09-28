@@ -125,6 +125,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `KnightsElite` 的 `MagiKnight.DAMPEN_MOVE` 原版逐玩家附加施法者并降低已升级卡；模拟改为逐玩家调用后，双人连续两个敌方回合到第三回合全状态／RNG 差分 Passed：`.local/multiplayer-p2/knights-dampen-616a0b39006647fb88adf270df9352b5/peer-0/result.json`。本次初始牌未预先升级，已升级卡的降级与恢复仍未验。`KnowledgeDemon.CURSE_OF_KNOWLEDGE_MOVE` 原版让每名玩家分别选择诅咒；现有搜索只能生成一个本地选择，无法代表队友的外部输入。多人预测遇到该招明确报错并要求原生选择完成后重求解，不把单人结果当作多人正确结果；这一边界尚无原生差分证据，仍是 P2 未封闭项。
 
+`FabricatorNormal` 的双人根连续两个敌方回合，包括实际随机选中的召唤与召唤物行动，全玩家／敌人状态及完整 RNG 到第三回合 Passed：`.local/multiplayer-p2/fabricator-second-ac4152fa82d140e8abc8b816308118bc/peer-0/result.json`。其他随机分支、满槽及召唤物死亡未验。`TurretOperatorWeak` 首回合还发现 `RampartPower` 的玩家方回合开始监听原版每侧派发一次，模拟按两名玩家重复派发，导致炮手格挡 110 而原版 55；修正为多人准备的最后一名存活玩家触发一次。随后本地击杀炮手，盾牌保留预排的下一招，后一轮才转为 `SMASH_MOVE` 并获得 3 力量；击杀动作及前后三个敌方回合全状态／RNG Passed：`.local/multiplayer-p2/living-shield-following-smash-153491e8a62c448a8c81702af9a3f369/peer-0/result.json`。第一次测试发现格挡重复，第二次夹具未清炮手格挡，第三次误认为死亡后立即换招；这三次均未计为通过。
+
 ## 已通过的卡牌即时差分
 
 虚拟双人 37 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。

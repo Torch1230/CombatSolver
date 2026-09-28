@@ -152,7 +152,11 @@ internal static class PersistentPowerSupport
                 return false;
         }
 
-        if (side == CombatSide.Player && !isExtraTurn)
+        // The simulator prepares player turns one at a time; vanilla dispatches this
+        // side-wide Rampart hook once after the last living player's setup.
+        if (side == CombatSide.Player && !isExtraTurn
+            && participants.Contains(combat.Players.Last(member =>
+                simulator.State.GetCreature(member.Creature).IsAlive).Creature))
             return TriggerRampart(simulator, combat);
         return !simulator.HasPendingChoice;
     }

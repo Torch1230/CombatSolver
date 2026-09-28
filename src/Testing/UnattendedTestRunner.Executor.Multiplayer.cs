@@ -583,6 +583,47 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Thieving Hopper did not steal one deck card per player.");
                 runner._completedChecks.Add("MultiplayerContent:ThievingHopper:PerPlayerSwipe:FullState:FullRng");
             }
+            if (input.VerifyLivingShieldAllyDeath)
+            {
+                Creature operatorEnemy = combat.Enemies.Single(creature => creature.Monster is TurretOperator);
+                Creature shield = combat.Enemies.Single(creature => creature.Monster is LivingShield);
+                await CreatureCmd.SetCurrentHp(operatorEnemy, 6);
+                await CreatureCmd.LoseBlock(new ThrowingPlayerChoiceContext(),
+                    operatorEnemy, operatorEnemy.Block, null);
+                ContinuationStamp deathPrediction = PredictOrdinaryCard(scenario.Player,
+                    "STRIKE_IRONCLAD", operatorEnemy);
+                CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                var strikeAction = new PlayCardAction(strike, operatorEnemy);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(strikeAction);
+                await strikeAction.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("shield-ally-death", combat);
+                CheckPrediction(deathPrediction, scenario.Player, "SHIELD_ALLY_DEATH");
+                if (!operatorEnemy.IsDead || !shield.IsAlive)
+                    throw new InvalidOperationException("Living Shield ally death fixture did not hold.");
+                ContinuationStamp queuedPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var end = new EndPlayerTurnAction(scenario.Player, 2);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
+                await runner.MultiplayerProbeBarrierAsync("shield-queued-slam", combat);
+                CheckPrediction(queuedPrediction, scenario.Player, "SHIELD_QUEUED_SLAM");
+                if (shield.GetPowerAmount<StrengthPower>() != 0)
+                    throw new InvalidOperationException("Living Shield changed its queued move after ally death.");
+                ContinuationStamp followingPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var followingEnd = new EndPlayerTurnAction(scenario.Player, 3);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(followingEnd);
+                await followingEnd.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 4 }));
+                await runner.MultiplayerProbeBarrierAsync("shield-following-smash", combat);
+                CheckPrediction(followingPrediction, scenario.Player, "SHIELD_FOLLOWING_SMASH");
+                if (shield.GetPowerAmount<StrengthPower>() != 3)
+                    throw new InvalidOperationException("Living Shield did not gain Strength after ally death.");
+                runner._completedChecks.Add("MultiplayerContent:LivingShield:AllyDeath:SmashStrength:FullState:FullRng");
+                return new ExecutionOutcome(false, 4, true, true, true, false);
+            }
             if (input.VerifySegmentReattachAfterRound)
             {
                 Creature segment = combat.Enemies.First(creature => creature.Monster is DecimillipedeSegment);
