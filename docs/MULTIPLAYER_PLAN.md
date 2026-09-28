@@ -78,6 +78,8 @@ Windows 结构门禁在同步更新 `Executor partial` 声明检查后通过，`
 
 最后四张 `LegionOfBone`、`Midnight`、`ImitationLearning`、`Tutor` 的基础／升级即时差分也各 Passed，累计 37／37；证据详见同一[清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。`Tutor` 的夹具让目标玩家从抽牌堆原生选择一张牌，预测把该目标牌堆作为选择来源并对最终状态／RNG；生产搜索尚不能评价队友未知选牌，遇到该候选明确失败，不把它写成搜索已支持。其他三张的伙伴重召、历史减费和能力复制仍需独立验。P2 的“全部原版内容”与 P1 生命周期仍未完成。
 
+关联机制差分继续沿相同脚手架、不同必要输入运行：`BeaconOfHope` 格挡传播与 `Soulbound` 生成联动 Passed（`.local/multiplayer-p2/propagation-hooks-768aee0d51ac4a2f8a531dde8c34ebfb/peer-0/result.json`）；队友先打击后 `GangUp` 的来源历史增伤 Passed（`.local/multiplayer-p2/teammate-history-fixed-9b3e88b6703441888893c169596b798c/peer-0/result.json`）；`Concoct`、`Underworld`、`Flanking`、`Knockdown`、`TagTeam` 施加后队友打一张打击，攻击次数、伤害、毒、Doom、移除及 RNG 对账 Passed（`.local/multiplayer-p2/teammate-attack-hooks-204fde7085d0451db1147f3bab743d8c/peer-0/result.json`）。`Hibernate`、`Plot`、`Tank`、`Underworld` 组合推进到第二回合的所有玩家状态及 RNG Passed（`.local/multiplayer-p1/linked-round-0fba10cf57994a798d4d55853a91edf4/peer-0/result.json`）。这些是所列条件的实际证据，其他能力联动和回合分支仍未通过。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

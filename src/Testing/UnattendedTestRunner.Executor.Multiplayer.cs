@@ -168,6 +168,8 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
+            if (input.ContentTeammateStrikeBefore)
+                await PlayTeammateStrikeAsync("before");
             for (int index = 0; index < input.ContentCardIds.Length; index++)
             {
                 string cardId = input.ContentCardIds[index];
@@ -228,6 +230,8 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(
                     $"MultiplayerContent:{card.Id.Entry}:Upgrade={card.CurrentUpgradeLevel}:Target={combat.Players[input.ContentTargetSeat].NetId}:FullState:FullRng");
             }
+            if (input.ContentTeammateStrikeAfter)
+                await PlayTeammateStrikeAsync("after");
             if (input.VerifyContentRound)
             {
                 ContinuationStamp predictedRound = PredictMultiplayerRound(combat, actor);
@@ -246,6 +250,34 @@ internal sealed partial class UnattendedTestRunner
                 return new ExecutionOutcome(false, 2, true, true, true, false);
             }
             return new ExecutionOutcome(false, 1, true, true, true, false);
+
+            async Task PlayTeammateStrikeAsync(string point)
+            {
+                Player teammate = combat.Players[input.ContentTargetSeat];
+                CardModel strike = teammate.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                Creature enemy = combat.Enemies.Single();
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator simulator = root.ForkSimulator();
+                PredictedCard predictedStrike = simulator.State.GetPlayerCombatState(teammate)
+                    .Hand.Cards.First(card => card.Preview.Id.Entry == "STRIKE_IRONCLAD");
+                if (!simulator.ManualPlay(predictedStrike, enemy, out _)
+                    || !CombatBeamSolver.SettleReplayActionBoundary(
+                        simulator, (SimulatedCombatState)simulator.State.CombatState))
+                    throw new InvalidOperationException("Teammate strike prediction did not complete.");
+                ContinuationStamp predicted = ContinuationStamp.CapturePredicted(
+                    actor, simulator, 1, root.Forecast, 1);
+                runner.SetStage($"multiplayer_teammate_strike_{point}");
+                var action = new PlayCardAction(strike, enemy);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
+                await action.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync($"teammate-strike-{point}", combat);
+                ContinuationStamp actual = ContinuationStamp.CaptureLive(combat);
+                if (predicted != actual)
+                    throw new InvalidOperationException(
+                        $"Teammate strike {point} differs: " + predicted.DescribeFirstDifference(actual));
+                runner._completedChecks.Add($"MultiplayerTeammateStrike:{point}:FullState:FullRng");
+            }
         }
 
         private static ContinuationStamp PredictMultiplayerRound(CombatState combat, Player localPlayer)
