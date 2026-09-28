@@ -12,6 +12,7 @@ using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Monsters;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Potions;
+using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Rewards;
@@ -994,6 +995,44 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
+            if (input.VerifyWhisperingEarringTarget)
+            {
+                await UnattendedTestRunner.ClearPlayerPilesAsync(actor);
+                await UnattendedTestRunner.InjectCardAsync(combat, actor,
+                    new UnattendedCardInjection { CardId = "BLAZE", Pile = "Hand" });
+                await UnattendedTestRunner.InjectRelicAsync(actor,
+                    new UnattendedRelicInjection { RelicId = "WHISPERING_EARRING" });
+                CombatRootSnapshot relicRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator relicSimulator = relicRoot.ForkSimulator();
+                SimulatedCombatState relicCombat = (SimulatedCombatState)relicSimulator.State.CombatState;
+                relicCombat.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+                try
+                {
+                    if (!relicCombat.TriggerWhisperingEarring(relicSimulator, actor, 1, new HashSet<uint>())
+                        || !CombatBeamSolver.SettleReplayActionBoundary(relicSimulator, relicCombat))
+                        throw new InvalidOperationException("Whispering Earring prediction did not complete.");
+                }
+                finally
+                {
+                    relicCombat.EndActionChoices();
+                }
+                ContinuationStamp predictedRelic = ContinuationStamp.CapturePredicted(
+                    actor, relicSimulator, 1, relicRoot.Forecast, 1);
+                WhisperingEarring relic = actor.Relics.OfType<WhisperingEarring>().Single();
+                runner.SetStage("multiplayer_whispering_earring");
+                await relic.AfterAutoPrePlayPhaseEnteredLate(new ThrowingPlayerChoiceContext(), actor);
+                await runner.MultiplayerProbeBarrierAsync("whispering-earring", combat);
+                ContinuationStamp actualRelic = ContinuationStamp.CaptureLive(combat);
+                if (predictedRelic != actualRelic)
+                    throw new InvalidOperationException(
+                        "Whispering Earring differs: " + predictedRelic.DescribeFirstDifference(actualRelic));
+                if (actor.Creature.GetPowerAmount<StrengthPower>() != 0
+                    || combat.Players.Where(member => member != actor).Count(member =>
+                        member.Creature.GetPowerAmount<StrengthPower>() == 5) != 1)
+                    throw new InvalidOperationException("Whispering Earring Blaze did not target exactly one other player.");
+                runner._completedChecks.Add("MultiplayerRelic:WhisperingEarring:BlazeOtherPlayer:FullState:FullRng");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyControllerSelfPotionDeploy)
             {
                 SolverSettingsData originalSettings = SolverSettings.Current;

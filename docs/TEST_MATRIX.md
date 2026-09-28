@@ -162,6 +162,8 @@ P2 敌方目标药水原生结算：四人双敌 `FirePotion` 候选仅两名存
 
 P2 玩家目标药水自用机制再补四类：治疗 `BloodPotion` `.local/multiplayer-p2/self-blood-potion-7d6f84aee81f41bca80978c306850a21/peer-0/result.json`、能力 `FocusPotion` `.local/multiplayer-p2/self-focus-potion-dab6c067e16048528012a8b01a5fb3fb/peer-0/result.json`、原生选牌并归持有者的 `AttackPotion` `.local/multiplayer-p2/self-attack-potion-choice-f4ecacaab0b34c0ba63b17baa75fba92/peer-0/result.json`、显式验证两格暗球只归持有者的 `EssenceOfDarkness` `.local/multiplayer-p2/self-dark-orb-explicit-31d9a5a5aa194533a3dc52e3f079270f/peer-0/result.json`。四个虚拟双人请求均只有本地自用候选，原生投药后全玩家状态和完整 RNG 差分 Passed；其他选牌、溢球及被动药水机制未验。
 
+P2 `WhisperingEarring` 四人随机队友自动出牌：本地手牌只保留 `Blaze`，显式断言持有人没有力量、恰一名其他玩家得到 5 力量，原版遗物入口与模拟全部状态及九条 RNG 对齐，Passed：`.local/multiplayer-p2/earring-blaze-other-81734c90e5694861bcfbc628c07048e6/peer-0/result.json`。只覆盖这一张牌与首回合入口。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

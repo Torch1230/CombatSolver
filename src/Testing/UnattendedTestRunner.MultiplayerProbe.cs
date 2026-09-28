@@ -75,6 +75,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifySelfPotion { get; init; }
         public bool VerifyEnemyPotionTargets { get; init; }
         public bool VerifyEnemyPotionUse { get; init; }
+        public bool VerifyWhisperingEarringTarget { get; init; }
         public string SelfPotionId { get; init; } = "STRENGTH_POTION";
         public bool VerifyPotionAccounting { get; init; }
         public string[] ContentCardIds { get; init; } = [];
@@ -142,6 +143,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifyEnemyPotionTargets && input.ContentCardIds.Length == 0
                 || input.VerifyEnemyPotionUse && !input.VerifyEnemyPotionTargets
+                || input.VerifyWhisperingEarringTarget && (!input.IsVirtual || input.ContentCardIds.Length == 0)
                 || input.VerifySelfPotion && input.SelfPotionId is not
                     ("STRENGTH_POTION" or "BLOCK_POTION" or "ENERGY_POTION"
                         or "BLOOD_POTION" or "FOCUS_POTION" or "ATTACK_POTION"

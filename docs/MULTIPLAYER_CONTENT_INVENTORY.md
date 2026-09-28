@@ -95,7 +95,9 @@
 
 Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower` 和 `PlatingPower`；球目录有 `FrostOrb`。`DoomPower` 的 `GetTeammatesOf` 位于死亡特效等待，结算仍须按全阵营 Doom 生命周期验收；`ReattachPower` 的队友是蜈蚣怪物分段，按怪物死亡／复活验收。怪物目录的结算候选为 `ToughEgg`（卵孵化 HP 缩放）、`WaterfallGiant`／`KnowledgeDemon`（治疗随玩家数变化）、`TheObscura`／`Queen`（怪物同伴能力）、`KinPriest`／`Ovicopter`／`TwoTailedRat`／`LivingShield`／`Fabricator`（同伴存活与召唤条件）、`DecimillipedeSegment`（玩家数与分段 HP／复活）、`TestSubject`（重生 HP 缩放）、`GremlinMerc`（逐玩家创建目标型 `ThieveryPower`）。`Parafright`／`EyeWithTeeth` 的 `GetTeammatesOf` 命中动画死亡条件，不是战斗结算分支。这些实际调用条件与模拟入口仍须逐项验收。
 
-遗物目录直接涉及人数或战斗生成池的入口包括 `MassiveScroll`（多人专属牌来源）、`Toolbox`、`VexingPuzzlebox`、`OrangeDough`、`ChoicesParadox`（战斗生成池），以及 `BigHat`、`Crossbow`、`ScrollBoxes`、`DustyTome`、`DistinguishedCape`、`NeowsBones`（战前／局外池）。`WingedBoots` 和 `SilverCrucible` 只允许单人，`LastingCandy` 读取局外玩家集合；`WhisperingEarring` 自动用玩家目标药水时指向持有人。战斗生成物和多人可达牌进入 P2；局外获得路径只登记来源，本批不扩展为战前求解器。
+遗物目录直接涉及人数或战斗生成池的入口包括 `MassiveScroll`（多人专属牌来源）、`Toolbox`、`VexingPuzzlebox`、`OrangeDough`、`ChoicesParadox`（战斗生成池），以及 `BigHat`、`Crossbow`、`ScrollBoxes`、`DustyTome`、`DistinguishedCape`、`NeowsBones`（战前／局外池）。`WingedBoots` 和 `SilverCrucible` 只允许单人，`LastingCandy` 读取局外玩家集合；`WhisperingEarring` 自动打出 `AnyPlayer` 卡时指向持有人，打出 `AnyAlly` 卡时在其他存活玩家中随机选人。战斗生成物和多人可达牌进入 P2；局外获得路径只登记来源，本批不扩展为战前求解器。
+
+`WhisperingEarring` 原版自动出牌时，`AnyAlly` 从其他存活玩家中消耗 `CombatTargets` 随机挑选，`AnyPlayer` 指向持有人。四人原生根只给本地玩家的手牌保留 `Blaze`，分别运行原版遗物效果和同根模拟：显式断言本地没有力量、恰有一名其他玩家获得 5 力量，全部状态及完整 RNG 对齐，Passed：`.local/multiplayer-p2/earring-blaze-other-81734c90e5694861bcfbc628c07048e6/peer-0/result.json`。这次直接调用原版遗物的首回合自动出牌入口，未覆盖开战装载时序、更多自动牌或 13 张上限。
 
 `GremlinMerc` 的入场 `ThieveryPower` 按每名玩家创建一个实例，首回合 `GIMME_MOVE` 后对每个实例调用 `Steal`。模拟曾只读取首个实例；按原版逐实例扣对应玩家金币并更新每条能力的已偷金币后，双人和四人到第二回合完整状态／RNG 差分 Passed，证据见[规划 0.2 节](MULTIPLAYER_PLAN.md)。其他招式及死亡链路的证据见下文。
 
