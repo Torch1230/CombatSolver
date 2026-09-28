@@ -28,7 +28,10 @@ internal sealed partial class UnattendedTestRunner
             if (input.ContentCardIds.Length > 0)
                 return await ExecuteMultiplayerContentProbeAsync(scenario, input);
             CombatState combat = scenario.CombatState;
-            Creature enemy = combat.Enemies.Single();
+            Creature enemy = input.VerifyControllerTeammateKillsTarget
+                ? combat.Enemies.First() : combat.Enemies.Single();
+            if (input.VerifyControllerTeammateKillsTarget && combat.Enemies.Count < 2)
+                throw new InvalidOperationException("Invalidation probe requires a surviving second enemy.");
             if (enemy.CurrentHp <= input.PlayerCount * 6)
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
@@ -54,6 +57,7 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerController:ManualSearch:LocalResult:VisibleOverlay");
                 if (input.VerifyControllerDeploy)
                 {
+                    await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsSearching);
                     if (!SolverController.CanExecuteCurrentTurn)
                         throw new InvalidOperationException("Multiplayer controller route is not executable.");
                     PlanAction[] plannedCards = completed.BestNode.Actions
@@ -67,15 +71,44 @@ internal sealed partial class UnattendedTestRunner
                         Player teammate = combat.Players.First(player => player != scenario.Player);
                         CardModel teammateStrike = teammate.PlayerCombatState!.Hand.Cards
                             .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
-                        var teammatePlay = new PlayCardAction(teammateStrike, combat.Enemies.Single());
+                        Creature teammateTarget = input.VerifyControllerTeammateKillsTarget
+                            ? combat.GetCreature(plannedCards.First(action => action.TargetCombatId != null).TargetCombatId)
+                                ?? throw new InvalidOperationException("Planned enemy target disappeared before probe setup.")
+                            : combat.Enemies.Single();
+                        if (input.VerifyControllerTeammateKillsTarget)
+                            await CreatureCmd.SetCurrentHp(teammateTarget, 6);
+                        var teammatePlay = new PlayCardAction(teammateStrike, teammateTarget);
                         RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
                         await teammatePlay.CompletionTask;
                         await runner.MultiplayerProbeBarrierAsync("teammate-drift", combat);
+                        SolverOverlay.RefreshControls();
+                        if (SolverOverlay.ExecuteButtonDisabledForTesting)
+                            throw new InvalidOperationException("Teammate action disabled the retained local route button.");
                     }
-                    SolverController.RequestDeploy(runner._host, combat);
+                    if (input.VerifyControllerTeammateDrift
+                        && !input.VerifyControllerTeammateKillsTarget)
+                        SolverOverlay.PressExecuteButtonForTesting();
+                    else
+                        SolverController.RequestDeploy(runner._host, combat);
                     if (input.VerifyControllerTeammateDrift
                         && SolverController.SearchesStartedForTesting != searchesBeforeDrift)
                         throw new InvalidOperationException("Teammate damage started a new search instead of retaining the legal route.");
+                    if (input.VerifyControllerTeammateKillsTarget)
+                    {
+                        if (SolverController.IsDeploying
+                            || plannedCards.Any(action => SolverController.WasCardDeployedForTesting(action.CardId))
+                            || SolverOverlay.SearchSummaryTextForTesting?.Contains(
+                                SolverText.Get("原路线在当前状态已失效，未执行。请重新计算。"),
+                                StringComparison.Ordinal) != true)
+                            throw new InvalidOperationException(
+                                $"Invalidated teammate target did not pause before local execution: " +
+                                $"deploying={SolverController.IsDeploying} " +
+                                $"deployed={string.Join(',', plannedCards.Where(action => SolverController.WasCardDeployedForTesting(action.CardId)).Select(action => action.CardId))} " +
+                                $"summary={SolverOverlay.SearchSummaryTextForTesting} " +
+                                $"enemy_alive={string.Join(',', combat.Enemies.Where(candidate => !candidate.IsDead).Select(candidate => candidate.Monster?.Id.Entry))}.");
+                        runner._completedChecks.Add("MultiplayerController:TeammateKilledPlannedTarget:PausedBeforeAction:NoFullSearch");
+                        return new ExecutionOutcome(false, 1, true, true, true, false);
+                    }
                     await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
                         && SolverController.LastSolverDeployedTurnForBugReport == 1
                         && (CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player)
@@ -89,6 +122,9 @@ internal sealed partial class UnattendedTestRunner
                             $"Controller deployment did not complete its local route: cards={cardsDeployed} " +
                             $"ready={localReady} turn={actualTurn} " +
                             $"planned={string.Join(',', plannedCards.Select(action => action.CardId))}.");
+                    if (input.VerifyControllerTeammateDrift
+                        && SolverController.SearchesStartedForTesting != searchesBeforeDrift)
+                        throw new InvalidOperationException("Teammate drift started a deferred full search.");
                     if (!input.IsVirtual)
                     {
                         await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>

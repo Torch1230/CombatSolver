@@ -112,8 +112,11 @@ internal static partial class SolverController
             CombatState? state = CombatManager.Instance.DebugOnlyGetState();
             if (state == null || !CombatManager.Instance.IsInProgress)
                 return false;
-            return _combat.LatestResult != null
-                    && _combat.LatestStamp == LiveCombatStamp.Capture(state)
+            return _combat.LatestResult is { } result
+                    && (_combat.LatestStamp == LiveCombatStamp.Capture(state)
+                        || state.Players.Count > 1
+                        && result.MultiplayerStyle != null
+                        && IsSamePlayableTurn(state, result.StartTurnNumber))
                 || !_combat.RouteFrozen && PlayerTurnSetupCoordinator.CanTakeOverTurnSetup(state);
         }
     }

@@ -64,6 +64,12 @@ P5 所选方案原生部署：界面只接收不可变选项快照，结构边�
 
 P4 部署前队友伤害：虚拟双人本地求解后队友原生打出 `Strike`，原逻辑会重新完整搜索（失败证据 `.local/multiplayer-p4/teammate-drift-baseline-a9b160ce4b634e63ab86d16f36ecfc6d/peer-0/result.json`）；当前逻辑在新根重放原路线并原生部署，无额外完整搜索且本地回合完成，Passed：`.local/multiplayer-p4/teammate-drift-replay-f3b8a015470948b288908279a983f65c/peer-0/result.json`。仅覆盖部署前仍合法的队友伤害。
 
+P4 队友变化后的执行按钮：相同机制的原生虚拟双人探针刷新悬浮窗、断言执行按钮可点击、模拟实际点击、原生部署并在部署前后断言无新增完整搜索，Passed：`.local/multiplayer-p4/teammate-drift-button-3e1fff5d517d4bdcac1ddb11ec56612c/peer-0/result.json`。
+
+P4 队友击杀原计划目标：双敌 `CULTISTS_NORMAL` 中，队友原生击杀本地已计划攻击的敌人，另一敌仍存活。原回放因目标已消失而抛出 `CardPlay has no target creature`，失败证据 `.local/multiplayer-p4/teammate-kill-direct-bae6ed6cc99449829187eddbe9da8f3f/peer-0/result.json`；加入固定前缀的目标身份合法性检查后，控制器直接请求时显示路线失效并在本地动作前暂停，无完整新搜索，Passed：`.local/multiplayer-p4/teammate-kill-guard-c93271858d4f4520a0407264a71d7666/peer-0/result.json`。该请求未验证按钮点击的失效分支。
+
+受影响单人固定前缀哨兵：原生 `FIXED-PREFIX-TURN-OUTCOMES` 三回合续用与独立 oracle，Passed：`.local/multiplayer-p4/fixed-prefix-single-b9bd85d57578452bae95938e6caf0ce3/result.json`；Release 0 警告／0 错误，Windows 结构门禁 239 通过。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

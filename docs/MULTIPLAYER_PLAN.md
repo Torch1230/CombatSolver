@@ -135,6 +135,12 @@ P4 首次虚拟双人手动入口探针暴露战报结果记录使用 `Players.S
 
 P4 队友插入动作的首轮虚拟双人探针：本地求解后，队友原生打出 `Strike`，原控制器因状态戳变化启动了一次完整新搜索，失败证据 `.local/multiplayer-p4/teammate-drift-baseline-a9b160ce4b634e63ab86d16f36ecfc6d/peer-0/result.json`。现改为对已选本地当前回合动作使用现有回放入口，在新根上重算预览；动作仍合法时直接原生部署原序列。相同输入复验 Passed，且无额外完整搜索、本地牌均出手、本地回合结束：`.local/multiplayer-p4/teammate-drift-replay-f3b8a015470948b288908279a983f65c/peer-0/result.json`。Release 构建 0 警告／0 错误。该证据仅覆盖部署前的虚拟双人队友伤害；失效动作暂停、部署中变化、随机流、原生选牌、四人及 ENet 交错尚未通过。
 
+同一变化暴露执行按钮仍按旧状态戳禁用。现在多人同一本地回合保留按钮，由点击后的路线回放决定是否可执行；原生虚拟双人探针在队友 `Strike` 后刷新按钮、确认可点击、实际点击并部署原路线，搜索次数在部署前后均不增加，Passed：`.local/multiplayer-p4/teammate-drift-button-3e1fff5d517d4bdcac1ddb11ec56612c/peer-0/result.json`。这是无头界面交互证据，可见窗口排版未验。
+
+失效分支另用双敌 `CULTISTS_NORMAL`：本地原路线瞄准第一只敌人，队友原生 `Strike` 将其击杀，第二只仍存活。首次直接回放抛出 `CardPlay has no target creature`，原因是固定前缀合法性检查只验手牌与资源，未验目标身份已经消失；失败证据 `.local/multiplayer-p4/teammate-kill-direct-bae6ed6cc99449829187eddbe9da8f3f/peer-0/result.json`。现在回放前检查原目标仍可解析，失效时控制器暂停，未打本地牌、未启动完整新搜索；同一机制复验 Passed：`.local/multiplayer-p4/teammate-kill-guard-c93271858d4f4520a0407264a71d7666/peer-0/result.json`。该证据通过控制器直接请求，不覆盖按钮点击的失效分支。之前的按钮版探针因同步断言先见到旧摘要而失败，不计作该分支通过。
+
+受影响单人固定前缀哨兵 `FIXED-PREFIX-TURN-OUTCOMES` 在原生 0.111.0 跑到第四回合，三回合续用、独立前缀 oracle 与状态文本断言 Passed：`.local/multiplayer-p4/fixed-prefix-single-b9bd85d57578452bae95938e6caf0ce3/result.json`。这覆盖本次固定前缀合法性改动的单人路径；Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=239`、Release 0 警告／0 错误。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。

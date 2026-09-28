@@ -2462,6 +2462,8 @@ internal sealed partial class CombatBeamSolver
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         if (action.Kind == PlanActionKind.EndTurn)
             return true;
+        if (action.TargetCombatId != null && combat.GetCreature(action.TargetCombatId) == null)
+            return false;
         if (action.Kind == PlanActionKind.UsePotion)
         {
             PotionModel? potion = combat.GetPotionAtSlot(_player, action.PotionSlot);
