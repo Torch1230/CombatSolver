@@ -1,0 +1,441 @@
+{
+  "experiment": "v83-compiled-context-scopes",
+  "sourceBase": "c7f9bfa",
+  "completed": true,
+  "modelRetrained": false,
+  "runtimeModelEnabled": false,
+  "finalTestOpened": false,
+  "goalAchieved": false,
+  "modelSha256": "9a2639fec53d20555bb1bb9e733422211ad2293ea0665700796c1e5a03de41a8",
+  "summary": {
+    "completed": true,
+    "cases": 5,
+    "runs": 20,
+    "rows": [
+      {
+        "id": "v72-validation-00-defect-shrinker_beetle_weak",
+        "rootsIdentical": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": true,
+        "timeBoundaries": {
+          "before-0": false,
+          "after-0": false,
+          "after-1": false,
+          "before-1": false
+        },
+        "before": {
+          "seconds": 2.37062885,
+          "rss": 256794624,
+          "allocated": 435289100,
+          "expanded": 603,
+          "transitions": 4103,
+          "choices": 1036
+        },
+        "after": {
+          "seconds": 2.3755631,
+          "rss": 255391744,
+          "allocated": 430934348,
+          "expanded": 603,
+          "transitions": 4103,
+          "choices": 1036
+        },
+        "secondsRatio": 1.0020814097491473,
+        "rssRatio": 0.9945369572845887,
+        "allocatedRatio": 0.989995724680448,
+        "fixedWork": true
+      },
+      {
+        "id": "v72-validation-05-ironclad-the_insatiable_boss",
+        "rootsIdentical": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": true,
+        "timeBoundaries": {
+          "after-0": false,
+          "before-0": false,
+          "before-1": false,
+          "after-1": false
+        },
+        "before": {
+          "seconds": 8.6400067,
+          "rss": 346087424,
+          "allocated": 2107608328,
+          "expanded": 11743,
+          "transitions": 46530,
+          "choices": 0
+        },
+        "after": {
+          "seconds": 8.66552395,
+          "rss": 339091456,
+          "allocated": 2039959500,
+          "expanded": 11743,
+          "transitions": 46530,
+          "choices": 0
+        },
+        "secondsRatio": 1.0029533831264275,
+        "rssRatio": 0.9797855469027387,
+        "allocatedRatio": 0.9679025618274175,
+        "fixedWork": true
+      },
+      {
+        "id": "v72-validation-02-necrobinder-the_insatiable_boss",
+        "rootsIdentical": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": true,
+        "timeBoundaries": {
+          "before-0": false,
+          "after-0": false,
+          "after-1": false,
+          "before-1": false
+        },
+        "before": {
+          "seconds": 9.48107525,
+          "rss": 318834688,
+          "allocated": 2789114356,
+          "expanded": 14126,
+          "transitions": 53549,
+          "choices": 0
+        },
+        "after": {
+          "seconds": 9.20888135,
+          "rss": 318468096,
+          "allocated": 2687833088,
+          "expanded": 14126,
+          "transitions": 53549,
+          "choices": 0
+        },
+        "secondsRatio": 0.9712908195723898,
+        "rssRatio": 0.9988502129354256,
+        "allocatedRatio": 0.9636869432111589,
+        "fixedWork": true
+      },
+      {
+        "id": "v72-validation-01-regent-knights_elite",
+        "rootsIdentical": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": false,
+        "timeBoundaries": {
+          "after-0": true,
+          "before-0": true,
+          "before-1": true,
+          "after-1": true
+        },
+        "before": {
+          "seconds": 9.13504435,
+          "rss": 347996160,
+          "allocated": 2279620048,
+          "expanded": 6016,
+          "transitions": 34607,
+          "choices": 2520
+        },
+        "after": {
+          "seconds": 9.08503745,
+          "rss": 336723968,
+          "allocated": 2226884256,
+          "expanded": 6116,
+          "transitions": 35164,
+          "choices": 2520
+        },
+        "secondsRatio": 0.9945258174909682,
+        "rssRatio": 0.9676082862523541,
+        "allocatedRatio": 0.9768664115556155,
+        "fixedWork": false
+      },
+      {
+        "id": "v72-validation-01-silent-phrog_parasite_elite",
+        "rootsIdentical": true,
+        "qualityIdenticalAllFour": true,
+        "routeIdenticalAllFour": true,
+        "outcome-contextIdenticalAllFour": true,
+        "workCountersIdenticalAllFour": true,
+        "timeBoundaries": {
+          "before-0": false,
+          "after-0": false,
+          "after-1": false,
+          "before-1": false
+        },
+        "before": {
+          "seconds": 8.37271775,
+          "rss": 333400064,
+          "allocated": 1601338964,
+          "expanded": 3352,
+          "transitions": 25595,
+          "choices": 8452
+        },
+        "after": {
+          "seconds": 8.494214,
+          "rss": 349290496,
+          "allocated": 1562766696,
+          "expanded": 3352,
+          "transitions": 25595,
+          "choices": 8452
+        },
+        "secondsRatio": 1.0145109692727907,
+        "rssRatio": 1.0476617544980436,
+        "allocatedRatio": 0.9759124901928009,
+        "fixedWork": true
+      }
+    ],
+    "modelRetrained": false,
+    "runtimeModelEnabled": false,
+    "finalTestOpened": false,
+    "allRootsIdentical": true,
+    "allRoutesIdentical": true,
+    "allQualityIdentical": true,
+    "allRootFeaturesIdentical": true,
+    "fixedWorkCases": 4,
+    "costs": {
+      "seconds": {
+        "beforeMean": 7.59989458,
+        "afterMean": 7.56584397,
+        "aggregateRatio": 0.9955195944310059,
+        "lowerCases": 2
+      },
+      "rss": {
+        "beforeMean": 320622592,
+        "afterMean": 319793152,
+        "aggregateRatio": 0.997413033202601,
+        "lowerCases": 4
+      },
+      "allocated": {
+        "beforeMean": 1842594159.2,
+        "afterMean": 1789675577.6,
+        "aggregateRatio": 0.9712803921928334,
+        "lowerCases": 5
+      }
+    },
+    "contextChecks": {
+      "DEFECT": {
+        "passed": 75,
+        "character": "DEFECT",
+        "counter": 8,
+        "isolatedFeatureColumns": [
+          "relic/CRACKED_CORE/present",
+          "relic/CRACKED_CORE/melted",
+          "relic/CRACKED_CORE/state/C8A1FB92539970B003CF32BA301671C8",
+          "relic/PEN_NIB/present",
+          "relic/PEN_NIB/melted",
+          "relic/PEN_NIB/state/5D5ABEE628C9072DA54714102A27826A",
+          "relic/PEN_NIB/counter",
+          "enemy/0/hp",
+          "enemy/0/block",
+          "enemy/0/present",
+          "enemy/0/max-hp",
+          "enemy/0/identity/FUZZY_WURM_CRAWLER",
+          "enemy/0/skip-next",
+          "enemy/0/move/FIRST_ACID_GOOP",
+          "enemy/0/attack-hits",
+          "enemy/0/attack-damage",
+          "orb/capacity",
+          "orb/0/LIGHTNING_ORB/present",
+          "orb/0/LIGHTNING_ORB/passive",
+          "orb/0/LIGHTNING_ORB/evoke"
+        ]
+      },
+      "IRONCLAD": {
+        "passed": 59,
+        "character": "IRONCLAD",
+        "counter": 8,
+        "isolatedFeatureColumns": [
+          "relic/BURNING_BLOOD/present",
+          "relic/BURNING_BLOOD/melted",
+          "relic/BURNING_BLOOD/state/D8792C334565B19088879050AACE1A28",
+          "relic/PEN_NIB/present",
+          "relic/PEN_NIB/melted",
+          "relic/PEN_NIB/state/5D5ABEE628C9072DA54714102A27826A",
+          "relic/PEN_NIB/counter",
+          "enemy/0/hp",
+          "enemy/0/block",
+          "enemy/0/present",
+          "enemy/0/max-hp",
+          "enemy/0/identity/FUZZY_WURM_CRAWLER",
+          "enemy/0/skip-next",
+          "enemy/0/move/FIRST_ACID_GOOP",
+          "enemy/0/attack-hits",
+          "enemy/0/attack-damage",
+          "orb/capacity"
+        ]
+      },
+      "NECROBINDER": {
+        "passed": 71,
+        "character": "NECROBINDER",
+        "counter": 8,
+        "isolatedFeatureColumns": [
+          "relic/BOUND_PHYLACTERY/present",
+          "relic/BOUND_PHYLACTERY/melted",
+          "relic/BOUND_PHYLACTERY/state/06D0F4882B8C446E50D20F5BE8723C39",
+          "relic/PEN_NIB/present",
+          "relic/PEN_NIB/melted",
+          "relic/PEN_NIB/state/5D5ABEE628C9072DA54714102A27826A",
+          "relic/PEN_NIB/counter",
+          "power/osty/DIE_FOR_YOU_POWER",
+          "enemy/0/hp",
+          "enemy/0/block",
+          "enemy/0/present",
+          "enemy/0/max-hp",
+          "enemy/0/identity/FUZZY_WURM_CRAWLER",
+          "enemy/0/skip-next",
+          "enemy/0/move/FIRST_ACID_GOOP",
+          "enemy/0/attack-hits",
+          "enemy/0/attack-damage",
+          "orb/capacity"
+        ]
+      },
+      "REGENT": {
+        "passed": 59,
+        "character": "REGENT",
+        "counter": 8,
+        "isolatedFeatureColumns": [
+          "relic/DIVINE_RIGHT/present",
+          "relic/DIVINE_RIGHT/melted",
+          "relic/DIVINE_RIGHT/state/527822201F0169A3823CD58BE840CE65",
+          "relic/PEN_NIB/present",
+          "relic/PEN_NIB/melted",
+          "relic/PEN_NIB/state/5D5ABEE628C9072DA54714102A27826A",
+          "relic/PEN_NIB/counter",
+          "enemy/0/hp",
+          "enemy/0/block",
+          "enemy/0/present",
+          "enemy/0/max-hp",
+          "enemy/0/identity/FUZZY_WURM_CRAWLER",
+          "enemy/0/skip-next",
+          "enemy/0/move/FIRST_ACID_GOOP",
+          "enemy/0/attack-hits",
+          "enemy/0/attack-damage",
+          "orb/capacity"
+        ]
+      },
+      "SILENT": {
+        "passed": 59,
+        "character": "SILENT",
+        "counter": 8,
+        "isolatedFeatureColumns": [
+          "relic/RING_OF_THE_SNAKE/present",
+          "relic/RING_OF_THE_SNAKE/melted",
+          "relic/RING_OF_THE_SNAKE/state/EF700340026EEB124A7CCC0650F3ABDC",
+          "relic/PEN_NIB/present",
+          "relic/PEN_NIB/melted",
+          "relic/PEN_NIB/state/5D5ABEE628C9072DA54714102A27826A",
+          "relic/PEN_NIB/counter",
+          "enemy/0/hp",
+          "enemy/0/block",
+          "enemy/0/present",
+          "enemy/0/max-hp",
+          "enemy/0/identity/FUZZY_WURM_CRAWLER",
+          "enemy/0/skip-next",
+          "enemy/0/move/FIRST_ACID_GOOP",
+          "enemy/0/attack-hits",
+          "enemy/0/attack-damage",
+          "orb/capacity"
+        ]
+      }
+    },
+    "limitations": [
+      "Same-weight inference implementation comparison, not independent model quality acceptance.",
+      "RSS is sampled whole-process working set, not exact OS high-water mark or model-only memory.",
+      "Profiled runs are excluded from normal paired performance.",
+      "Time-boundary and changed-work cases remain separate from fixed-work evidence."
+    ]
+  },
+  "profile": {
+    "pruneCountersIdentical": true,
+    "work": {
+      "totalExpanded": [
+        11743,
+        11743
+      ],
+      "totalTransitions": [
+        46530,
+        46530
+      ],
+      "totalChoiceBranches": [
+        0,
+        0
+      ]
+    },
+    "rootsIdentical": true,
+    "routeIdentical": true,
+    "qualityIdentical": true,
+    "outcome-contextIdentical": true,
+    "before": {
+      "schema": 10,
+      "predictionCalls": 127929,
+      "cacheHits": 94790,
+      "usedFeatures": 86,
+      "trees": 64,
+      "factorRank": 0,
+      "neuralUnits": 0,
+      "featureMilliseconds": 713.008267,
+      "forestMilliseconds": 43.251593,
+      "featureAllocatedBytes": 122216544,
+      "forestAllocatedBytes": 1336,
+      "measured": true
+    },
+    "after": {
+      "schema": 10,
+      "predictionCalls": 127929,
+      "cacheHits": 94790,
+      "usedFeatures": 86,
+      "trees": 64,
+      "factorRank": 0,
+      "neuralUnits": 0,
+      "featureMilliseconds": 657.66887,
+      "forestMilliseconds": 45.193502,
+      "featureAllocatedBytes": 54585256,
+      "forestAllocatedBytes": 4112,
+      "measured": true
+    }
+  },
+  "builds": {
+    "mod-build": {
+      "processSeconds": 15.067619150038809,
+      "returnCode": 0,
+      "timedOut": false
+    },
+    "harness-build": {
+      "processSeconds": 2.8053918780060485,
+      "returnCode": 0,
+      "timedOut": false
+    }
+  },
+  "gates": {
+    "bash-boundaries": "REFACTOR_BOUNDARIES_OK search_files=231",
+    "powershell-boundaries": "REFACTOR_BOUNDARIES_OK search_files=231"
+  },
+  "contextChecksPassed": 323,
+  "sourceSha256": {
+    "src/Search/SearchOutcomeContext.cs": "4e1ece1bb4ee99f08844680ad7c63b3f68e4c466230b489a7a40d310c34dfcd8",
+    "tools/OfflineSearchHarness/OutcomeContextChecks.cs": "8d5711471ceec3f136e61504d646d560f34fb7b2f1d233882efca18bf5eb215e",
+    "tools/verify-refactor-boundaries.sh": "6fec167425db0f1280c7b2b2b41a2499992816f833892288540baf75b0f339d1",
+    "tools/verify-refactor-boundaries.ps1": "70e12093bbf83b5bc0e40ade315af1a16af8823f0f0f1aa397274d3da065485b"
+  },
+  "artifacts": {
+    "paired-report.json": "d37c5a7ba21d30d2f984e4904ec7a0dd1bfc74ccb5dbf1c57bc05657c7eae3fd",
+    "summary.json": "7ffa523983c86afebd0d2ee0e4a937952b5d920c418f9dc6e44dd9bafc5fb934",
+    "profile-comparison.json": "ba89819b2364729372ae733176e29c9251c86484af5846105ee4fe5ce12f4917",
+    "engine/CombatSolver.dll": "1704edfe67da461817b626c2bec2f64798243204ac8229fd500b8865b1460db1",
+    "harness/OfflineSearchHarness.dll": "5a2da5f06a18f389b9308f63448141d5fe1cd17343edaaaa905e8a410caad60b",
+    "protocol.json": "8ba6a142f63c79d29bf50492434fc13ede0e9a1f3396c3163ade739e3b1a2c44"
+  },
+  "deployment": {
+    "completed": true,
+    "record": ".local/objective-search/v83/deployment.json",
+    "source": "Successful tested v83 Release build; behavioral source unchanged after build.",
+    "files": [
+      "CombatSolver.json",
+      "CombatSolver.dll",
+      "CombatSolver.MemoryCleaner.exe",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "runtimeLearnedModelEnabled": false
+  },
+  "decision": "Retain as an allocation reduction with exact observed routes; elapsed differences are small and mixed, not a meaningful speedup claim."
+}

@@ -179,7 +179,8 @@
     "Historical collection costs are not a repeated controlled performance comparison.",
     "Only observed eligible depths in the first three eligible turns are sampled.",
     "One of sixteen preference pairs has identical input features.",
-    "Final55 remain sealed; no new model is promoted."
+    "Final55 remain sealed; no new model is promoted.",
+    "Full development evaluation completed but is synthetic and repeatedly used for development; final55 remain unopened and include only five ordinary encounter families."
   ],
   "deployment": {
     "completed": true,
@@ -690,13 +691,3725 @@
   },
   "fullDevelopmentEvaluation": {
     "started": true,
-    "completed": false,
+    "completed": true,
     "plannedCases": 100,
     "plannedSearches": 400,
     "protocol": ".local/objective-search/v77/benchmark-protocol.json",
     "report": ".local/objective-search/v77/evaluation/report.json",
     "noQualityEarlyStop": true,
     "finalTestOpened": false,
-    "runtimeModelEnabled": false
+    "runtimeModelEnabled": false,
+    "casesFinished": 100,
+    "searchesRecorded": 400,
+    "runStates": {
+      "completed": 400
+    },
+    "qualityIssueCases": 0,
+    "summary": {
+      "completed": true,
+      "casesFinished": 100,
+      "plannedCases": 100,
+      "counts": {
+        "equal": 58,
+        "regressed": 24,
+        "improved": 18
+      },
+      "coreCounts": {
+        "equal": 71,
+        "regressed": 16,
+        "improved": 13
+      },
+      "byCharacter": {
+        "DEFECT": {
+          "equal": 14,
+          "improved": 3,
+          "regressed": 3
+        },
+        "IRONCLAD": {
+          "equal": 9,
+          "regressed": 9,
+          "improved": 2
+        },
+        "NECROBINDER": {
+          "equal": 13,
+          "improved": 5,
+          "regressed": 2
+        },
+        "REGENT": {
+          "equal": 11,
+          "regressed": 6,
+          "improved": 3
+        },
+        "SILENT": {
+          "equal": 11,
+          "regressed": 4,
+          "improved": 5
+        }
+      },
+      "byKind": {
+        "Boss": {
+          "equal": 14,
+          "improved": 7,
+          "regressed": 9
+        },
+        "Elite": {
+          "equal": 17,
+          "regressed": 10,
+          "improved": 8
+        },
+        "Monster": {
+          "equal": 27,
+          "regressed": 5,
+          "improved": 3
+        }
+      },
+      "coreByCharacter": {
+        "DEFECT": {
+          "equal": 16,
+          "improved": 2,
+          "regressed": 2
+        },
+        "IRONCLAD": {
+          "equal": 10,
+          "regressed": 8,
+          "improved": 2
+        },
+        "NECROBINDER": {
+          "equal": 14,
+          "improved": 4,
+          "regressed": 2
+        },
+        "REGENT": {
+          "equal": 15,
+          "improved": 2,
+          "regressed": 3
+        },
+        "SILENT": {
+          "equal": 16,
+          "regressed": 1,
+          "improved": 3
+        }
+      },
+      "coreByKind": {
+        "Boss": {
+          "equal": 17,
+          "improved": 6,
+          "regressed": 7
+        },
+        "Elite": {
+          "equal": 24,
+          "regressed": 6,
+          "improved": 5
+        },
+        "Monster": {
+          "equal": 30,
+          "regressed": 3,
+          "improved": 2
+        }
+      },
+      "byCharacterCosts": {
+        "DEFECT": {
+          "cases": 20,
+          "faster": 3,
+          "atLeast10PercentFaster": 0,
+          "bothRepeatsFaster": 3,
+          "rssLower": 4,
+          "baselineSeconds": 158.80299495,
+          "candidateSeconds": 168.94135355,
+          "aggregateSecondsRatio": 1.063842363950328,
+          "geometricMeanSecondsRatio": 1.0723581763804935,
+          "medianSecondsRatio": 1.0653540523733793,
+          "baselineMeanRssMiB": 298.1638671875,
+          "candidateMeanRssMiB": 307.10078125,
+          "baselineMaximumObservedRssMiB": 359.140625,
+          "candidateMaximumObservedRssMiB": 364.48046875,
+          "baselineMeanManagedHeapMiB": 78.87594966888427,
+          "candidateMeanManagedHeapMiB": 86.96280822753906,
+          "baselineMeanAllocatedGiB": 1.8693574650213123,
+          "candidateMeanAllocatedGiB": 1.9479576526209712
+        },
+        "IRONCLAD": {
+          "cases": 20,
+          "faster": 3,
+          "atLeast10PercentFaster": 1,
+          "bothRepeatsFaster": 3,
+          "rssLower": 5,
+          "baselineSeconds": 174.57793855,
+          "candidateSeconds": 182.4235354,
+          "aggregateSecondsRatio": 1.0449403682685425,
+          "geometricMeanSecondsRatio": 1.0168567559662065,
+          "medianSecondsRatio": 1.0840093424388613,
+          "baselineMeanRssMiB": 312.45654296875,
+          "candidateMeanRssMiB": 318.27294921875,
+          "baselineMaximumObservedRssMiB": 365.7578125,
+          "candidateMaximumObservedRssMiB": 386.81640625,
+          "baselineMeanManagedHeapMiB": 92.48136463165284,
+          "candidateMeanManagedHeapMiB": 99.01568355560303,
+          "baselineMeanAllocatedGiB": 2.053202575072646,
+          "candidateMeanAllocatedGiB": 2.1185719912871717
+        },
+        "NECROBINDER": {
+          "cases": 20,
+          "faster": 4,
+          "atLeast10PercentFaster": 0,
+          "bothRepeatsFaster": 3,
+          "rssLower": 5,
+          "baselineSeconds": 209.77205684999998,
+          "candidateSeconds": 230.05170325,
+          "aggregateSecondsRatio": 1.0966746796714741,
+          "geometricMeanSecondsRatio": 1.0934655483106122,
+          "medianSecondsRatio": 1.1064043781369395,
+          "baselineMeanRssMiB": 336.03154296875,
+          "candidateMeanRssMiB": 343.1326171875,
+          "baselineMaximumObservedRssMiB": 670.1171875,
+          "candidateMaximumObservedRssMiB": 706.08203125,
+          "baselineMeanManagedHeapMiB": 114.86815071105957,
+          "candidateMeanManagedHeapMiB": 122.11408023834228,
+          "baselineMeanAllocatedGiB": 2.4207839319482445,
+          "candidateMeanAllocatedGiB": 2.607547249831259
+        },
+        "REGENT": {
+          "cases": 20,
+          "faster": 3,
+          "atLeast10PercentFaster": 0,
+          "bothRepeatsFaster": 3,
+          "rssLower": 7,
+          "baselineSeconds": 235.63060365,
+          "candidateSeconds": 252.34186945,
+          "aggregateSecondsRatio": 1.0709214573197907,
+          "geometricMeanSecondsRatio": 1.2123804029884793,
+          "medianSecondsRatio": 1.0880891547930014,
+          "baselineMeanRssMiB": 342.61982421875,
+          "candidateMeanRssMiB": 349.65263671875,
+          "baselineMaximumObservedRssMiB": 617.39453125,
+          "candidateMaximumObservedRssMiB": 599.60546875,
+          "baselineMeanManagedHeapMiB": 121.39058341979981,
+          "candidateMeanManagedHeapMiB": 127.88116264343262,
+          "baselineMeanAllocatedGiB": 2.8824608989059923,
+          "candidateMeanAllocatedGiB": 2.9711968759074807
+        },
+        "SILENT": {
+          "cases": 20,
+          "faster": 4,
+          "atLeast10PercentFaster": 1,
+          "bothRepeatsFaster": 4,
+          "rssLower": 5,
+          "baselineSeconds": 188.99000615,
+          "candidateSeconds": 212.9637655,
+          "aggregateSecondsRatio": 1.1268519951841909,
+          "geometricMeanSecondsRatio": 1.1729776358767052,
+          "medianSecondsRatio": 1.1063785954636316,
+          "baselineMeanRssMiB": 329.83955078125,
+          "candidateMeanRssMiB": 343.15634765625,
+          "baselineMaximumObservedRssMiB": 549.59765625,
+          "candidateMaximumObservedRssMiB": 563.04296875,
+          "baselineMeanManagedHeapMiB": 109.28583641052246,
+          "candidateMeanManagedHeapMiB": 121.20237007141114,
+          "baselineMeanAllocatedGiB": 2.14253734908998,
+          "candidateMeanAllocatedGiB": 2.406881394051015
+        }
+      },
+      "unstableWithinArmCases": 2,
+      "coreUnstableWithinArmCases": 2,
+      "equalWinCases": 45,
+      "equalDefeatCases": 13,
+      "coreEqualWinCases": 58,
+      "coreEqualDefeatCases": 13,
+      "winLostCases": 1,
+      "winGainedCases": 0,
+      "allCompletedCosts": {
+        "cases": 100,
+        "faster": 17,
+        "atLeast10PercentFaster": 2,
+        "bothRepeatsFaster": 16,
+        "rssLower": 26,
+        "baselineSeconds": 967.77360015,
+        "candidateSeconds": 1046.72222715,
+        "aggregateSecondsRatio": 1.0815775786689814,
+        "geometricMeanSecondsRatio": 1.111390494365912,
+        "medianSecondsRatio": 1.0850629060517587,
+        "baselineMeanRssMiB": 323.822265625,
+        "candidateMeanRssMiB": 332.26306640625,
+        "baselineMaximumObservedRssMiB": 670.1171875,
+        "candidateMaximumObservedRssMiB": 706.08203125,
+        "baselineMeanManagedHeapMiB": 103.38037696838379,
+        "candidateMeanManagedHeapMiB": 111.43522094726562,
+        "baselineMeanAllocatedGiB": 2.273668444007635,
+        "candidateMeanAllocatedGiB": 2.4104310327395795
+      },
+      "nondegradingCosts": {
+        "cases": 76,
+        "faster": 14,
+        "atLeast10PercentFaster": 2,
+        "bothRepeatsFaster": 13,
+        "rssLower": 18,
+        "baselineSeconds": 663.1502375,
+        "candidateSeconds": 713.8087370000001,
+        "aggregateSecondsRatio": 1.0763906828880538,
+        "geometricMeanSecondsRatio": 1.0927005107109675,
+        "medianSecondsRatio": 1.0861998804660256,
+        "baselineMeanRssMiB": 314.8635896381579,
+        "candidateMeanRssMiB": 322.4770764802632,
+        "baselineMaximumObservedRssMiB": 670.1171875,
+        "candidateMaximumObservedRssMiB": 706.08203125,
+        "baselineMeanManagedHeapMiB": 95.55937782086824,
+        "candidateMeanManagedHeapMiB": 102.87209796905518,
+        "baselineMeanAllocatedGiB": 2.0632108772467626,
+        "candidateMeanAllocatedGiB": 2.173763698457103
+      },
+      "stableNondegradingCosts": {
+        "cases": 76,
+        "faster": 14,
+        "atLeast10PercentFaster": 2,
+        "bothRepeatsFaster": 13,
+        "rssLower": 18,
+        "baselineSeconds": 663.1502375,
+        "candidateSeconds": 713.8087370000001,
+        "aggregateSecondsRatio": 1.0763906828880538,
+        "geometricMeanSecondsRatio": 1.0927005107109675,
+        "medianSecondsRatio": 1.0861998804660256,
+        "baselineMeanRssMiB": 314.8635896381579,
+        "candidateMeanRssMiB": 322.4770764802632,
+        "baselineMaximumObservedRssMiB": 670.1171875,
+        "candidateMaximumObservedRssMiB": 706.08203125,
+        "baselineMeanManagedHeapMiB": 95.55937782086824,
+        "candidateMeanManagedHeapMiB": 102.87209796905518,
+        "baselineMeanAllocatedGiB": 2.0632108772467626,
+        "candidateMeanAllocatedGiB": 2.173763698457103
+      },
+      "coreNondegradingCosts": {
+        "cases": 84,
+        "faster": 15,
+        "atLeast10PercentFaster": 2,
+        "bothRepeatsFaster": 14,
+        "rssLower": 22,
+        "baselineSeconds": 771.30860235,
+        "candidateSeconds": 837.68106325,
+        "aggregateSecondsRatio": 1.0860517576204627,
+        "geometricMeanSecondsRatio": 1.119327926840811,
+        "medianSecondsRatio": 1.0925419034743071,
+        "baselineMeanRssMiB": 320.0059058779762,
+        "candidateMeanRssMiB": 327.9013904389881,
+        "baselineMaximumObservedRssMiB": 670.1171875,
+        "candidateMaximumObservedRssMiB": 706.08203125,
+        "baselineMeanManagedHeapMiB": 100.30247070675804,
+        "candidateMeanManagedHeapMiB": 107.88794681004116,
+        "baselineMeanAllocatedGiB": 2.178743734467952,
+        "candidateMeanAllocatedGiB": 2.3043310227138654
+      },
+      "coreStableNondegradingCosts": {
+        "cases": 84,
+        "faster": 15,
+        "atLeast10PercentFaster": 2,
+        "bothRepeatsFaster": 14,
+        "rssLower": 22,
+        "baselineSeconds": 771.30860235,
+        "candidateSeconds": 837.68106325,
+        "aggregateSecondsRatio": 1.0860517576204627,
+        "geometricMeanSecondsRatio": 1.119327926840811,
+        "medianSecondsRatio": 1.0925419034743071,
+        "baselineMeanRssMiB": 320.0059058779762,
+        "candidateMeanRssMiB": 327.9013904389881,
+        "baselineMaximumObservedRssMiB": 670.1171875,
+        "candidateMaximumObservedRssMiB": 706.08203125,
+        "baselineMeanManagedHeapMiB": 100.30247070675804,
+        "candidateMeanManagedHeapMiB": 107.88794681004116,
+        "baselineMeanAllocatedGiB": 2.178743734467952,
+        "candidateMeanAllocatedGiB": 2.3043310227138654
+      },
+      "stableNondegradingWinCosts": {
+        "cases": 62,
+        "faster": 13,
+        "atLeast10PercentFaster": 2,
+        "bothRepeatsFaster": 12,
+        "rssLower": 16,
+        "baselineSeconds": 503.00869315,
+        "candidateSeconds": 542.27657155,
+        "aggregateSecondsRatio": 1.0780660035000431,
+        "geometricMeanSecondsRatio": 1.0957741407044272,
+        "medianSecondsRatio": 1.0992350197283733,
+        "baselineMeanRssMiB": 305.45372353830646,
+        "candidateMeanRssMiB": 313.29627646169354,
+        "baselineMaximumObservedRssMiB": 549.59765625,
+        "candidateMaximumObservedRssMiB": 563.04296875,
+        "baselineMeanManagedHeapMiB": 87.59217274573541,
+        "candidateMeanManagedHeapMiB": 95.01927554222846,
+        "baselineMeanAllocatedGiB": 1.8783470552654997,
+        "candidateMeanAllocatedGiB": 1.9869366262949282
+      },
+      "coreStableNondegradingWinCosts": {
+        "cases": 70,
+        "faster": 14,
+        "atLeast10PercentFaster": 2,
+        "bothRepeatsFaster": 13,
+        "rssLower": 20,
+        "baselineSeconds": 611.167058,
+        "candidateSeconds": 666.1488978,
+        "aggregateSecondsRatio": 1.0899620473327278,
+        "geometricMeanSecondsRatio": 1.127532482187537,
+        "medianSecondsRatio": 1.1025102756992555,
+        "baselineMeanRssMiB": 312.69991629464283,
+        "candidateMeanRssMiB": 320.8546875,
+        "baselineMaximumObservedRssMiB": 617.39453125,
+        "candidateMaximumObservedRssMiB": 586.93359375,
+        "baselineMeanManagedHeapMiB": 94.1944219316755,
+        "candidateMeanManagedHeapMiB": 101.9357595716204,
+        "baselineMeanAllocatedGiB": 2.0381137778716427,
+        "candidateMeanAllocatedGiB": 2.164969080793006
+      },
+      "coreUncertainty": {
+        "families": 15,
+        "available": true,
+        "replicates": 2000,
+        "description": "Descriptive percentile intervals resampling encounter families; synthetic development set, not population confidence guarantees",
+        "percentile95": {
+          "improvedFraction": [
+            0.0594059405940594,
+            0.21
+          ],
+          "regressedFraction": [
+            0.08,
+            0.25
+          ],
+          "nondegradingGeometricMeanSecondsRatio": [
+            1.0400491879382348,
+            1.2063494437849156
+          ]
+        }
+      },
+      "uncertainty": {
+        "families": 15,
+        "available": true,
+        "replicates": 2000,
+        "description": "Descriptive percentile intervals resampling encounter families; synthetic development set, not population confidence guarantees",
+        "percentile95": {
+          "improvedFraction": [
+            0.09803921568627451,
+            0.2653061224489796
+          ],
+          "regressedFraction": [
+            0.1485148514851485,
+            0.3434343434343434
+          ],
+          "nondegradingGeometricMeanSecondsRatio": [
+            1.0246673238758512,
+            1.1746776167444741
+          ]
+        }
+      },
+      "finalTestOpened": false,
+      "modelSha256": "9a2639fec53d20555bb1bb9e733422211ad2293ea0665700796c1e5a03de41a8"
+    },
+    "caseRows": [
+      {
+        "id": "v72-validation-00-defect-shrinker_beetle_weak",
+        "character": "DEFECT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 2.11610105,
+        "candidateSeconds": 2.34790545,
+        "baselineRss": 247185408,
+        "candidateRss": 253884416,
+        "baselineAllocated": 404471620,
+        "candidateAllocated": 435213788,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-00-ironclad-slimes_normal",
+        "character": "IRONCLAD",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 5.9812829,
+        "candidateSeconds": 6.2498939,
+        "baselineRss": 321820672,
+        "candidateRss": 327075840,
+        "baselineAllocated": 1183987424,
+        "candidateAllocated": 1205119148,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-00-necrobinder-slithering_strangler_normal",
+        "character": "NECROBINDER",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 6.733879,
+        "candidateSeconds": 6.1486558,
+        "baselineRss": 329451520,
+        "candidateRss": 330293248,
+        "baselineAllocated": 870948216,
+        "candidateAllocated": 925673920,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-00-regent-snapping_jaxfruit_normal",
+        "character": "REGENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.8429847500000001,
+        "candidateSeconds": 0.9860572999999999,
+        "baselineRss": 239800320,
+        "candidateRss": 247236608,
+        "baselineAllocated": 494223848,
+        "candidateAllocated": 510185096,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-00-silent-vine_shambler_normal",
+        "character": "SILENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 5.9595858,
+        "candidateSeconds": 6.35089675,
+        "baselineRss": 335159296,
+        "candidateRss": 316704768,
+        "baselineAllocated": 1345465364,
+        "candidateAllocated": 1311934648,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-01-defect-bygone_effigy_elite",
+        "character": "DEFECT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          5,
+          5
+        ],
+        "candidateHpLosses": [
+          5,
+          5
+        ],
+        "baselineSeconds": 14.5465017,
+        "candidateSeconds": 17.568019800000002,
+        "baselineRss": 345321472,
+        "candidateRss": 370182144,
+        "baselineAllocated": 3578520488,
+        "candidateAllocated": 4003994900,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-01-ironclad-byrdonis_elite",
+        "character": "IRONCLAD",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          16,
+          16
+        ],
+        "candidateHpLosses": [
+          18,
+          18
+        ],
+        "baselineSeconds": 10.839002950000001,
+        "candidateSeconds": 11.650986499999998,
+        "baselineRss": 344121344,
+        "candidateRss": 349089792,
+        "baselineAllocated": 2795723552,
+        "candidateAllocated": 2972295456,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-01-necrobinder-decimillipede_elite",
+        "character": "NECROBINDER",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          20,
+          20
+        ],
+        "candidateHpLosses": [
+          20,
+          20
+        ],
+        "baselineSeconds": 10.81136635,
+        "candidateSeconds": 12.1632136,
+        "baselineRss": 323540992,
+        "candidateRss": 334145536,
+        "baselineAllocated": 3254249732,
+        "candidateAllocated": 3469179616,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-01-regent-knights_elite",
+        "character": "REGENT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          68,
+          68
+        ],
+        "candidateHpLosses": [
+          68,
+          68
+        ],
+        "baselineSeconds": 8.3014094,
+        "candidateSeconds": 9.10933115,
+        "baselineRss": 321636352,
+        "candidateRss": 338073600,
+        "baselineAllocated": 2117486872,
+        "candidateAllocated": 2321053116,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-01-silent-phrog_parasite_elite",
+        "character": "SILENT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 9.65996975,
+        "candidateSeconds": 8.510682450000001,
+        "baselineRss": 357148672,
+        "candidateRss": 348307456,
+        "baselineAllocated": 1964440308,
+        "candidateAllocated": 1607888584,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-02-defect-kaiser_crab_boss",
+        "character": "DEFECT",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          75,
+          75
+        ],
+        "candidateHpLosses": [
+          75,
+          75
+        ],
+        "baselineSeconds": 8.55294845,
+        "candidateSeconds": 9.1096643,
+        "baselineRss": 308420608,
+        "candidateRss": 318701568,
+        "baselineAllocated": 2260471656,
+        "candidateAllocated": 2381186316,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-02-ironclad-knowledge_demon_boss",
+        "character": "IRONCLAD",
+        "kind": "Boss",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          29,
+          29
+        ],
+        "candidateHpLosses": [
+          29,
+          29
+        ],
+        "baselineSeconds": 10.5370268,
+        "candidateSeconds": 11.4617601,
+        "baselineRss": 375877632,
+        "candidateRss": 376104960,
+        "baselineAllocated": 2443635844,
+        "candidateAllocated": 2683627716,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-02-necrobinder-the_insatiable_boss",
+        "character": "NECROBINDER",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          24,
+          24
+        ],
+        "candidateHpLosses": [
+          24,
+          24
+        ],
+        "baselineSeconds": 8.0121831,
+        "candidateSeconds": 9.2248374,
+        "baselineRss": 318103552,
+        "candidateRss": 323788800,
+        "baselineAllocated": 2582013860,
+        "candidateAllocated": 2788636444,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-02-regent-the_kin_boss",
+        "character": "REGENT",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          10,
+          10
+        ],
+        "candidateHpLosses": [
+          10,
+          10
+        ],
+        "baselineSeconds": 18.22782655,
+        "candidateSeconds": 21.2885069,
+        "baselineRss": 451608576,
+        "candidateRss": 430514176,
+        "baselineAllocated": 4496473296,
+        "candidateAllocated": 5274892524,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-02-silent-vantom_boss",
+        "character": "SILENT",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          28,
+          28
+        ],
+        "candidateHpLosses": [
+          31,
+          31
+        ],
+        "baselineSeconds": 8.893648800000001,
+        "candidateSeconds": 8.853083999999999,
+        "baselineRss": 348694528,
+        "candidateRss": 328577024,
+        "baselineAllocated": 1988009548,
+        "candidateAllocated": 2118442444,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-03-defect-slimes_normal",
+        "character": "DEFECT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.6338938000000001,
+        "candidateSeconds": 0.70418855,
+        "baselineRss": 230950912,
+        "candidateRss": 243218432,
+        "baselineAllocated": 225631948,
+        "candidateAllocated": 239220252,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-03-ironclad-slithering_strangler_normal",
+        "character": "IRONCLAD",
+        "kind": "Monster",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          5,
+          5
+        ],
+        "candidateHpLosses": [
+          6,
+          6
+        ],
+        "baselineSeconds": 16.94058285,
+        "candidateSeconds": 15.458879,
+        "baselineRss": 383201280,
+        "candidateRss": 381820928,
+        "baselineAllocated": 4246213524,
+        "candidateAllocated": 3452937624,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-03-necrobinder-snapping_jaxfruit_normal",
+        "character": "NECROBINDER",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          8,
+          8
+        ],
+        "candidateHpLosses": [
+          8,
+          8
+        ],
+        "baselineSeconds": 19.99670855,
+        "candidateSeconds": 19.8493085,
+        "baselineRss": 387278848,
+        "candidateRss": 389214208,
+        "baselineAllocated": 4482500680,
+        "candidateAllocated": 4487268164,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-03-regent-vine_shambler_normal",
+        "character": "REGENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.66534205,
+        "candidateSeconds": 0.7123518,
+        "baselineRss": 231933952,
+        "candidateRss": 243355648,
+        "baselineAllocated": 318124336,
+        "candidateAllocated": 329933016,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-03-silent-shrinker_beetle_weak",
+        "character": "SILENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 5.97472155,
+        "candidateSeconds": 5.79072785,
+        "baselineRss": 309030912,
+        "candidateRss": 317515776,
+        "baselineAllocated": 593052248,
+        "candidateAllocated": 624408108,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-04-defect-byrdonis_elite",
+        "character": "DEFECT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          21,
+          21
+        ],
+        "candidateHpLosses": [
+          21,
+          21
+        ],
+        "baselineSeconds": 7.428338849999999,
+        "candidateSeconds": 7.3998627500000005,
+        "baselineRss": 325150720,
+        "candidateRss": 325001216,
+        "baselineAllocated": 1839568368,
+        "candidateAllocated": 1857413312,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-04-ironclad-decimillipede_elite",
+        "character": "IRONCLAD",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": false,
+        "coreStableWithinBothArms": false,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          55,
+          53
+        ],
+        "candidateHpLosses": [
+          60,
+          60
+        ],
+        "baselineSeconds": 12.05035105,
+        "candidateSeconds": 12.6863865,
+        "baselineRss": 348452864,
+        "candidateRss": 354617344,
+        "baselineAllocated": 2815610784,
+        "candidateAllocated": 3256026304,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-04-necrobinder-knights_elite",
+        "character": "NECROBINDER",
+        "kind": "Elite",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          58,
+          58
+        ],
+        "candidateHpLosses": [
+          53,
+          53
+        ],
+        "baselineSeconds": 9.32456005,
+        "candidateSeconds": 12.79611535,
+        "baselineRss": 346036224,
+        "candidateRss": 346634240,
+        "baselineAllocated": 2391387848,
+        "candidateAllocated": 3709548308,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-04-regent-phrog_parasite_elite",
+        "character": "REGENT",
+        "kind": "Elite",
+        "classification": "improved",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 12.14662535,
+        "candidateSeconds": 12.532838,
+        "baselineRss": 354973696,
+        "candidateRss": 352862208,
+        "baselineAllocated": 3075555192,
+        "candidateAllocated": 3413286988,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-04-silent-bygone_effigy_elite",
+        "character": "SILENT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 4.9216081,
+        "candidateSeconds": 5.6873387,
+        "baselineRss": 298520576,
+        "candidateRss": 314953728,
+        "baselineAllocated": 736593436,
+        "candidateAllocated": 861496496,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-05-defect-knowledge_demon_boss",
+        "character": "DEFECT",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          75,
+          75
+        ],
+        "candidateHpLosses": [
+          75,
+          75
+        ],
+        "baselineSeconds": 10.602963599999999,
+        "candidateSeconds": 10.89404235,
+        "baselineRss": 344166400,
+        "candidateRss": 358701056,
+        "baselineAllocated": 2922510812,
+        "candidateAllocated": 2824278812,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-05-ironclad-the_insatiable_boss",
+        "character": "IRONCLAD",
+        "kind": "Boss",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          92,
+          92
+        ],
+        "candidateHpLosses": [
+          73,
+          73
+        ],
+        "baselineSeconds": 7.481942500000001,
+        "candidateSeconds": 8.6173286,
+        "baselineRss": 307521536,
+        "candidateRss": 345868288,
+        "baselineAllocated": 1903427016,
+        "candidateAllocated": 2106446652,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-05-necrobinder-the_kin_boss",
+        "character": "NECROBINDER",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          11,
+          11
+        ],
+        "candidateHpLosses": [
+          11,
+          11
+        ],
+        "baselineSeconds": 10.7997675,
+        "candidateSeconds": 12.0420893,
+        "baselineRss": 363937792,
+        "candidateRss": 379680768,
+        "baselineAllocated": 3044024684,
+        "candidateAllocated": 3308308720,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-05-regent-vantom_boss",
+        "character": "REGENT",
+        "kind": "Boss",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          11,
+          11
+        ],
+        "candidateHpLosses": [
+          3,
+          3
+        ],
+        "baselineSeconds": 21.0273245,
+        "candidateSeconds": 19.4401456,
+        "baselineRss": 374929408,
+        "candidateRss": 392439808,
+        "baselineAllocated": 5909290600,
+        "candidateAllocated": 5024749208,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-05-silent-kaiser_crab_boss",
+        "character": "SILENT",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          70,
+          70
+        ],
+        "candidateHpLosses": [
+          70,
+          70
+        ],
+        "baselineSeconds": 10.6494587,
+        "candidateSeconds": 11.4356134,
+        "baselineRss": 355954688,
+        "candidateRss": 366696448,
+        "baselineAllocated": 2647995764,
+        "candidateAllocated": 2953310828,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-06-defect-slithering_strangler_normal",
+        "character": "DEFECT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          3,
+          3
+        ],
+        "candidateHpLosses": [
+          3,
+          3
+        ],
+        "baselineSeconds": 9.07615115,
+        "candidateSeconds": 9.3473852,
+        "baselineRss": 309086208,
+        "candidateRss": 340686848,
+        "baselineAllocated": 2096990248,
+        "candidateAllocated": 2204679916,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 1
+      },
+      {
+        "id": "v72-validation-06-ironclad-snapping_jaxfruit_normal",
+        "character": "IRONCLAD",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.6903090000000001,
+        "candidateSeconds": 0.94151695,
+        "baselineRss": 236163072,
+        "candidateRss": 245143552,
+        "baselineAllocated": 327452212,
+        "candidateAllocated": 358398268,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-06-necrobinder-vine_shambler_normal",
+        "character": "NECROBINDER",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.60766485,
+        "candidateSeconds": 0.65747055,
+        "baselineRss": 233187328,
+        "candidateRss": 239581184,
+        "baselineAllocated": 278287788,
+        "candidateAllocated": 293467524,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-06-regent-shrinker_beetle_weak",
+        "character": "REGENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 1.944885,
+        "candidateSeconds": 2.3878844,
+        "baselineRss": 260958208,
+        "candidateRss": 268126208,
+        "baselineAllocated": 323168776,
+        "candidateAllocated": 370299956,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-06-silent-slimes_normal",
+        "character": "SILENT",
+        "kind": "Monster",
+        "classification": "improved",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 6.0388215,
+        "candidateSeconds": 6.0124181,
+        "baselineRss": 355047424,
+        "candidateRss": 345262080,
+        "baselineAllocated": 1373665704,
+        "candidateAllocated": 1137218204,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-07-defect-decimillipede_elite",
+        "character": "DEFECT",
+        "kind": "Elite",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          46,
+          46
+        ],
+        "candidateHpLosses": [
+          40,
+          40
+        ],
+        "baselineSeconds": 14.47472045,
+        "candidateSeconds": 15.20682335,
+        "baselineRss": 333981696,
+        "candidateRss": 326948864,
+        "baselineAllocated": 4076859176,
+        "candidateAllocated": 4011617268,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-07-ironclad-knights_elite",
+        "character": "IRONCLAD",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          57,
+          57
+        ],
+        "candidateHpLosses": [
+          57,
+          57
+        ],
+        "baselineSeconds": 17.20610695,
+        "candidateSeconds": 16.9589607,
+        "baselineRss": 338638848,
+        "candidateRss": 355995648,
+        "baselineAllocated": 5297797128,
+        "candidateAllocated": 4779871728,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-07-necrobinder-phrog_parasite_elite",
+        "character": "NECROBINDER",
+        "kind": "Elite",
+        "classification": "improved",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 5.0326335,
+        "candidateSeconds": 5.1298469,
+        "baselineRss": 308793344,
+        "candidateRss": 312311808,
+        "baselineAllocated": 546474680,
+        "candidateAllocated": 607565444,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-07-regent-bygone_effigy_elite",
+        "character": "REGENT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.6376820000000001,
+        "candidateSeconds": 1.0727239499999999,
+        "baselineRss": 233367552,
+        "candidateRss": 245841920,
+        "baselineAllocated": 264884820,
+        "candidateAllocated": 308133620,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-07-silent-byrdonis_elite",
+        "character": "SILENT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          12,
+          12
+        ],
+        "candidateHpLosses": [
+          12,
+          12
+        ],
+        "baselineSeconds": 7.6612351,
+        "candidateSeconds": 8.43614295,
+        "baselineRss": 312502272,
+        "candidateRss": 317890560,
+        "baselineAllocated": 1746000856,
+        "candidateAllocated": 1830794352,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-08-defect-the_insatiable_boss",
+        "character": "DEFECT",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          12,
+          12
+        ],
+        "candidateHpLosses": [
+          12,
+          12
+        ],
+        "baselineSeconds": 8.490585,
+        "candidateSeconds": 9.209223000000001,
+        "baselineRss": 336068608,
+        "candidateRss": 336443392,
+        "baselineAllocated": 2127908620,
+        "candidateAllocated": 2306089288,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-08-ironclad-the_kin_boss",
+        "character": "IRONCLAD",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          6,
+          6
+        ],
+        "candidateHpLosses": [
+          6,
+          6
+        ],
+        "baselineSeconds": 9.75701555,
+        "candidateSeconds": 10.77051535,
+        "baselineRss": 378589184,
+        "candidateRss": 398981120,
+        "baselineAllocated": 2570744528,
+        "candidateAllocated": 2983958056,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-08-necrobinder-vantom_boss",
+        "character": "NECROBINDER",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          26,
+          26
+        ],
+        "candidateHpLosses": [
+          40,
+          40
+        ],
+        "baselineSeconds": 10.38873445,
+        "candidateSeconds": 11.40029795,
+        "baselineRss": 339734528,
+        "candidateRss": 383174656,
+        "baselineAllocated": 2088462272,
+        "candidateAllocated": 2345250008,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-08-regent-kaiser_crab_boss",
+        "character": "REGENT",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          75,
+          75
+        ],
+        "candidateHpLosses": [
+          75,
+          75
+        ],
+        "baselineSeconds": 10.91286045,
+        "candidateSeconds": 11.6550136,
+        "baselineRss": 346828800,
+        "candidateRss": 352413696,
+        "baselineAllocated": 2666513704,
+        "candidateAllocated": 2838738244,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-08-silent-knowledge_demon_boss",
+        "character": "SILENT",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          105,
+          105
+        ],
+        "candidateHpLosses": [
+          105,
+          105
+        ],
+        "baselineSeconds": 9.659991049999999,
+        "candidateSeconds": 10.7381484,
+        "baselineRss": 354050048,
+        "candidateRss": 364632064,
+        "baselineAllocated": 2611348268,
+        "candidateAllocated": 2810595552,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-09-defect-snapping_jaxfruit_normal",
+        "character": "DEFECT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.7188002499999999,
+        "candidateSeconds": 0.76285105,
+        "baselineRss": 237389824,
+        "candidateRss": 243283968,
+        "baselineAllocated": 356925692,
+        "candidateAllocated": 365968532,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-09-ironclad-vine_shambler_normal",
+        "character": "IRONCLAD",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 2.60847035,
+        "candidateSeconds": 0.77612665,
+        "baselineRss": 276776960,
+        "candidateRss": 243474432,
+        "baselineAllocated": 424517924,
+        "candidateAllocated": 285423420,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-09-necrobinder-shrinker_beetle_weak",
+        "character": "NECROBINDER",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.6763755499999999,
+        "candidateSeconds": 0.7544674499999999,
+        "baselineRss": 232085504,
+        "candidateRss": 243062784,
+        "baselineAllocated": 252737864,
+        "candidateAllocated": 270029544,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-09-regent-slimes_normal",
+        "character": "REGENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          8,
+          8
+        ],
+        "candidateHpLosses": [
+          8,
+          8
+        ],
+        "baselineSeconds": 11.2989882,
+        "candidateSeconds": 12.53154525,
+        "baselineRss": 356417536,
+        "candidateRss": 348616704,
+        "baselineAllocated": 2951045116,
+        "candidateAllocated": 2886690232,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-09-silent-slithering_strangler_normal",
+        "character": "SILENT",
+        "kind": "Monster",
+        "classification": "regressed",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.91159295,
+        "candidateSeconds": 0.9687247000000001,
+        "baselineRss": 239050752,
+        "candidateRss": 245823488,
+        "baselineAllocated": 271644136,
+        "candidateAllocated": 286299280,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-10-defect-knights_elite",
+        "character": "DEFECT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          75,
+          75
+        ],
+        "candidateHpLosses": [
+          75,
+          75
+        ],
+        "baselineSeconds": 8.68779215,
+        "candidateSeconds": 9.257864099999999,
+        "baselineRss": 314904576,
+        "candidateRss": 317319168,
+        "baselineAllocated": 2151520560,
+        "candidateAllocated": 2247088540,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-10-ironclad-phrog_parasite_elite",
+        "character": "IRONCLAD",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          2,
+          2
+        ],
+        "candidateHpLosses": [
+          3,
+          3
+        ],
+        "baselineSeconds": 8.9922284,
+        "candidateSeconds": 9.86594775,
+        "baselineRss": 360134656,
+        "candidateRss": 339582976,
+        "baselineAllocated": 2019706284,
+        "candidateAllocated": 2283361224,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-10-necrobinder-bygone_effigy_elite",
+        "character": "NECROBINDER",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          12,
+          12
+        ],
+        "candidateHpLosses": [
+          12,
+          12
+        ],
+        "baselineSeconds": 10.12950265,
+        "candidateSeconds": 11.7159826,
+        "baselineRss": 363753472,
+        "candidateRss": 347967488,
+        "baselineAllocated": 2312799844,
+        "candidateAllocated": 2497136500,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-10-regent-byrdonis_elite",
+        "character": "REGENT",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.77588475,
+        "candidateSeconds": 5.8299122,
+        "baselineRss": 234985472,
+        "candidateRss": 320837632,
+        "baselineAllocated": 241053596,
+        "candidateAllocated": 842140936,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-10-silent-decimillipede_elite",
+        "character": "SILENT",
+        "kind": "Elite",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          15,
+          15
+        ],
+        "candidateHpLosses": [
+          14,
+          14
+        ],
+        "baselineSeconds": 15.039234050000001,
+        "candidateSeconds": 17.827623850000002,
+        "baselineRss": 408596480,
+        "candidateRss": 438085632,
+        "baselineAllocated": 3573430732,
+        "candidateAllocated": 4248636016,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-11-defect-the_kin_boss",
+        "character": "DEFECT",
+        "kind": "Boss",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          37,
+          37
+        ],
+        "candidateHpLosses": [
+          28,
+          28
+        ],
+        "baselineSeconds": 10.2784452,
+        "candidateSeconds": 11.782524299999999,
+        "baselineRss": 360857600,
+        "candidateRss": 375072768,
+        "baselineAllocated": 2848537836,
+        "candidateAllocated": 3006723420,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-11-ironclad-vantom_boss",
+        "character": "IRONCLAD",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          39,
+          39
+        ],
+        "candidateHpLosses": [
+          40,
+          40
+        ],
+        "baselineSeconds": 10.6800326,
+        "candidateSeconds": 11.063649550000001,
+        "baselineRss": 349970432,
+        "candidateRss": 375156736,
+        "baselineAllocated": 2141568872,
+        "candidateAllocated": 2251869576,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-11-necrobinder-kaiser_crab_boss",
+        "character": "NECROBINDER",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          66,
+          66
+        ],
+        "candidateHpLosses": [
+          66,
+          66
+        ],
+        "baselineSeconds": 10.1860413,
+        "candidateSeconds": 11.1819966,
+        "baselineRss": 356096000,
+        "candidateRss": 336930816,
+        "baselineAllocated": 2591610192,
+        "candidateAllocated": 2838601244,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-11-regent-knowledge_demon_boss",
+        "character": "REGENT",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          75,
+          75
+        ],
+        "candidateHpLosses": [
+          75,
+          75
+        ],
+        "baselineSeconds": 24.388215000000002,
+        "candidateSeconds": 25.82744115,
+        "baselineRss": 494125056,
+        "candidateRss": 462649344,
+        "baselineAllocated": 7496724500,
+        "candidateAllocated": 7603800444,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-11-silent-the_insatiable_boss",
+        "character": "SILENT",
+        "kind": "Boss",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          9,
+          9
+        ],
+        "candidateHpLosses": [
+          8,
+          8
+        ],
+        "baselineSeconds": 15.906036700000001,
+        "candidateSeconds": 19.269655800000002,
+        "baselineRss": 394061824,
+        "candidateRss": 425945088,
+        "baselineAllocated": 3754569900,
+        "candidateAllocated": 4666059440,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-12-defect-vine_shambler_normal",
+        "character": "DEFECT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          5,
+          5
+        ],
+        "candidateHpLosses": [
+          5,
+          5
+        ],
+        "baselineSeconds": 11.280200449999999,
+        "candidateSeconds": 10.71825015,
+        "baselineRss": 321656832,
+        "candidateRss": 344006656,
+        "baselineAllocated": 2645045988,
+        "candidateAllocated": 2558010048,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-12-ironclad-shrinker_beetle_weak",
+        "character": "IRONCLAD",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.5834386,
+        "candidateSeconds": 0.6939657,
+        "baselineRss": 239536128,
+        "candidateRss": 246388736,
+        "baselineAllocated": 480882272,
+        "candidateAllocated": 500098472,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-12-necrobinder-slimes_normal",
+        "character": "NECROBINDER",
+        "kind": "Monster",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 15.940283149999999,
+        "candidateSeconds": 18.2628062,
+        "baselineRss": 398374912,
+        "candidateRss": 372578304,
+        "baselineAllocated": 3815329544,
+        "candidateAllocated": 4036601412,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-12-regent-slithering_strangler_normal",
+        "character": "REGENT",
+        "kind": "Monster",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          7,
+          7
+        ],
+        "candidateHpLosses": [
+          13,
+          13
+        ],
+        "baselineSeconds": 7.72299265,
+        "candidateSeconds": 8.3319882,
+        "baselineRss": 306604032,
+        "candidateRss": 332179456,
+        "baselineAllocated": 1808454496,
+        "candidateAllocated": 1956319904,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-12-silent-snapping_jaxfruit_normal",
+        "character": "SILENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          2,
+          2
+        ],
+        "candidateHpLosses": [
+          2,
+          2
+        ],
+        "baselineSeconds": 29.165056550000003,
+        "candidateSeconds": 30.280156400000003,
+        "baselineRss": 561364992,
+        "candidateRss": 588052480,
+        "baselineAllocated": 8850166572,
+        "candidateAllocated": 9200961700,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-13-defect-phrog_parasite_elite",
+        "character": "DEFECT",
+        "kind": "Elite",
+        "classification": "improved",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 5.884248299999999,
+        "candidateSeconds": 5.83955045,
+        "baselineRss": 331110400,
+        "candidateRss": 325586944,
+        "baselineAllocated": 1056780772,
+        "candidateAllocated": 983638404,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-13-ironclad-bygone_effigy_elite",
+        "character": "IRONCLAD",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.6416891,
+        "candidateSeconds": 0.7103665,
+        "baselineRss": 237543424,
+        "candidateRss": 245182464,
+        "baselineAllocated": 275156472,
+        "candidateAllocated": 290188656,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-13-necrobinder-byrdonis_elite",
+        "character": "NECROBINDER",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          3,
+          3
+        ],
+        "candidateHpLosses": [
+          3,
+          3
+        ],
+        "baselineSeconds": 14.198887,
+        "candidateSeconds": 14.77662775,
+        "baselineRss": 356990976,
+        "candidateRss": 356069376,
+        "baselineAllocated": 3809002300,
+        "candidateAllocated": 3659675028,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-13-regent-decimillipede_elite",
+        "character": "REGENT",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          47,
+          47
+        ],
+        "candidateHpLosses": [
+          48,
+          48
+        ],
+        "baselineSeconds": 30.2732258,
+        "candidateSeconds": 30.34842295,
+        "baselineRss": 521517056,
+        "candidateRss": 568733696,
+        "baselineAllocated": 7816048836,
+        "candidateAllocated": 7854154860,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-13-silent-knights_elite",
+        "character": "SILENT",
+        "kind": "Elite",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          63,
+          63
+        ],
+        "candidateHpLosses": [
+          55,
+          55
+        ],
+        "baselineSeconds": 12.428680700000001,
+        "candidateSeconds": 14.0678193,
+        "baselineRss": 362936320,
+        "candidateRss": 363089920,
+        "baselineAllocated": 3369449476,
+        "candidateAllocated": 4041474984,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-14-defect-vantom_boss",
+        "character": "DEFECT",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": false,
+        "coreStableWithinBothArms": false,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          1,
+          1
+        ],
+        "candidateHpLosses": [
+          4,
+          1
+        ],
+        "baselineSeconds": 11.49458925,
+        "candidateSeconds": 11.8936895,
+        "baselineRss": 372271104,
+        "candidateRss": 379082752,
+        "baselineAllocated": 2467915520,
+        "candidateAllocated": 2641589320,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-14-ironclad-kaiser_crab_boss",
+        "character": "IRONCLAD",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          80,
+          80
+        ],
+        "candidateHpLosses": [
+          80,
+          80
+        ],
+        "baselineSeconds": 9.9110126,
+        "candidateSeconds": 10.14923365,
+        "baselineRss": 331972608,
+        "candidateRss": 337410048,
+        "baselineAllocated": 2608292232,
+        "candidateAllocated": 2719578336,
+        "baselineTimeBoundaryRuns": 1,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-14-necrobinder-knowledge_demon_boss",
+        "character": "NECROBINDER",
+        "kind": "Boss",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          66,
+          66
+        ],
+        "candidateHpLosses": [
+          62,
+          62
+        ],
+        "baselineSeconds": 19.8657636,
+        "candidateSeconds": 19.5663748,
+        "baselineRss": 681508864,
+        "candidateRss": 722671616,
+        "baselineAllocated": 4868161372,
+        "candidateAllocated": 4455455868,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-14-regent-the_insatiable_boss",
+        "character": "REGENT",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          16,
+          16
+        ],
+        "candidateHpLosses": [
+          16,
+          16
+        ],
+        "baselineSeconds": 11.472563300000001,
+        "candidateSeconds": 12.8662854,
+        "baselineRss": 349583360,
+        "candidateRss": 366118912,
+        "baselineAllocated": 2804046012,
+        "candidateAllocated": 3138146284,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-14-silent-the_kin_boss",
+        "character": "SILENT",
+        "kind": "Boss",
+        "classification": "improved",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          21,
+          21
+        ],
+        "candidateHpLosses": [
+          21,
+          21
+        ],
+        "baselineSeconds": 11.13212445,
+        "candidateSeconds": 11.6745002,
+        "baselineRss": 365750272,
+        "candidateRss": 389535744,
+        "baselineAllocated": 2672964456,
+        "candidateAllocated": 2823674308,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-15-defect-shrinker_beetle_weak",
+        "character": "DEFECT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.6413738499999999,
+        "candidateSeconds": 0.7080631500000001,
+        "baselineRss": 230651904,
+        "candidateRss": 243183616,
+        "baselineAllocated": 238946472,
+        "candidateAllocated": 254286752,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-15-ironclad-slimes_normal",
+        "character": "IRONCLAD",
+        "kind": "Monster",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          2,
+          2
+        ],
+        "candidateHpLosses": [
+          6,
+          6
+        ],
+        "baselineSeconds": 6.30613295,
+        "candidateSeconds": 6.937908,
+        "baselineRss": 317603840,
+        "candidateRss": 336371712,
+        "baselineAllocated": 1318659596,
+        "candidateAllocated": 1340830924,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-15-necrobinder-slithering_strangler_normal",
+        "character": "NECROBINDER",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 6.352271999999999,
+        "candidateSeconds": 6.05860245,
+        "baselineRss": 296636416,
+        "candidateRss": 292091904,
+        "baselineAllocated": 1002725468,
+        "candidateAllocated": 886768036,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-15-regent-snapping_jaxfruit_normal",
+        "character": "REGENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          9,
+          9
+        ],
+        "candidateHpLosses": [
+          9,
+          9
+        ],
+        "baselineSeconds": 17.76316135,
+        "candidateSeconds": 17.3399384,
+        "baselineRss": 406165504,
+        "candidateRss": 375269376,
+        "baselineAllocated": 4554448604,
+        "candidateAllocated": 4556868720,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-15-silent-vine_shambler_normal",
+        "character": "SILENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.69376215,
+        "candidateSeconds": 0.85586495,
+        "baselineRss": 234522624,
+        "candidateRss": 246808576,
+        "baselineAllocated": 325311284,
+        "candidateAllocated": 348657680,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-16-defect-bygone_effigy_elite",
+        "character": "DEFECT",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          11,
+          11
+        ],
+        "candidateHpLosses": [
+          11,
+          11
+        ],
+        "baselineSeconds": 8.34782275,
+        "candidateSeconds": 9.2552348,
+        "baselineRss": 353411072,
+        "candidateRss": 352655360,
+        "baselineAllocated": 1982252616,
+        "candidateAllocated": 2278136500,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-16-ironclad-byrdonis_elite",
+        "character": "IRONCLAD",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          4,
+          4
+        ],
+        "candidateHpLosses": [
+          4,
+          4
+        ],
+        "baselineSeconds": 8.020368699999999,
+        "candidateSeconds": 8.13151565,
+        "baselineRss": 339329024,
+        "candidateRss": 329641984,
+        "baselineAllocated": 1808981516,
+        "candidateAllocated": 1709799748,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-16-necrobinder-decimillipede_elite",
+        "character": "NECROBINDER",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          25,
+          25
+        ],
+        "candidateHpLosses": [
+          25,
+          25
+        ],
+        "baselineSeconds": 13.93890465,
+        "candidateSeconds": 15.745647250000001,
+        "baselineRss": 351932416,
+        "candidateRss": 370075648,
+        "baselineAllocated": 3569568292,
+        "candidateAllocated": 3986009716,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-16-regent-knights_elite",
+        "character": "REGENT",
+        "kind": "Elite",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          65,
+          65
+        ],
+        "candidateHpLosses": [
+          46,
+          46
+        ],
+        "baselineSeconds": 9.936517899999998,
+        "candidateSeconds": 9.7402499,
+        "baselineRss": 373295104,
+        "candidateRss": 363100160,
+        "baselineAllocated": 2607341120,
+        "candidateAllocated": 2422683984,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-16-silent-phrog_parasite_elite",
+        "character": "SILENT",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          11,
+          11
+        ],
+        "candidateHpLosses": [
+          11,
+          11
+        ],
+        "baselineSeconds": 25.3145545,
+        "candidateSeconds": 30.35929415,
+        "baselineRss": 479666176,
+        "candidateRss": 522539008,
+        "baselineAllocated": 6180170548,
+        "candidateAllocated": 7405765636,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-17-defect-kaiser_crab_boss",
+        "character": "DEFECT",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          65,
+          65
+        ],
+        "candidateHpLosses": [
+          72,
+          72
+        ],
+        "baselineSeconds": 12.650701300000001,
+        "candidateSeconds": 12.899086650000001,
+        "baselineRss": 360112128,
+        "candidateRss": 366139392,
+        "baselineAllocated": 3466921676,
+        "candidateAllocated": 3830880504,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-17-ironclad-knowledge_demon_boss",
+        "character": "IRONCLAD",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          74,
+          74
+        ],
+        "candidateHpLosses": [
+          79,
+          79
+        ],
+        "baselineSeconds": 10.685282050000001,
+        "candidateSeconds": 11.5987285,
+        "baselineRss": 349603840,
+        "candidateRss": 365520896,
+        "baselineAllocated": 2619953788,
+        "candidateAllocated": 2794454224,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-17-necrobinder-the_insatiable_boss",
+        "character": "NECROBINDER",
+        "kind": "Boss",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          17,
+          17
+        ],
+        "candidateHpLosses": [
+          17,
+          17
+        ],
+        "baselineSeconds": 8.74916605,
+        "candidateSeconds": 10.416427299999999,
+        "baselineRss": 342185984,
+        "candidateRss": 366366720,
+        "baselineAllocated": 2982616876,
+        "candidateAllocated": 3208798336,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-17-regent-the_kin_boss",
+        "character": "REGENT",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          false,
+          false
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          47,
+          47
+        ],
+        "candidateHpLosses": [
+          51,
+          51
+        ],
+        "baselineSeconds": 10.1174208,
+        "candidateSeconds": 12.31996075,
+        "baselineRss": 329984000,
+        "candidateRss": 344788992,
+        "baselineAllocated": 2520926080,
+        "candidateAllocated": 3359172664,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-17-silent-vantom_boss",
+        "character": "SILENT",
+        "kind": "Boss",
+        "classification": "regressed",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 6.970489949999999,
+        "candidateSeconds": 8.7397153,
+        "baselineRss": 353339392,
+        "candidateRss": 344805376,
+        "baselineAllocated": 1310788392,
+        "candidateAllocated": 1809943280,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-18-defect-slimes_normal",
+        "character": "DEFECT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          7,
+          7
+        ],
+        "candidateHpLosses": [
+          7,
+          7
+        ],
+        "baselineSeconds": 11.55869195,
+        "candidateSeconds": 12.35295005,
+        "baselineRss": 340819968,
+        "candidateRss": 358629376,
+        "baselineAllocated": 2999093708,
+        "candidateAllocated": 2964767772,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-18-ironclad-slithering_strangler_normal",
+        "character": "IRONCLAD",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          4,
+          4
+        ],
+        "candidateHpLosses": [
+          4,
+          4
+        ],
+        "baselineSeconds": 12.5777365,
+        "candidateSeconds": 13.61580565,
+        "baselineRss": 347561984,
+        "candidateRss": 358352896,
+        "baselineAllocated": 3877821820,
+        "candidateAllocated": 4236576840,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-18-necrobinder-snapping_jaxfruit_normal",
+        "character": "NECROBINDER",
+        "kind": "Monster",
+        "classification": "improved",
+        "coreClassification": "improved",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          10,
+          10
+        ],
+        "candidateHpLosses": [
+          8,
+          8
+        ],
+        "baselineSeconds": 11.6852178,
+        "candidateSeconds": 12.5128476,
+        "baselineRss": 348755968,
+        "candidateRss": 358469632,
+        "baselineAllocated": 2666273760,
+        "candidateAllocated": 2984879364,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-18-regent-vine_shambler_normal",
+        "character": "REGENT",
+        "kind": "Monster",
+        "classification": "regressed",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          8,
+          8
+        ],
+        "candidateHpLosses": [
+          8,
+          8
+        ],
+        "baselineSeconds": 30.40408645,
+        "candidateSeconds": 30.4719775,
+        "baselineRss": 643504128,
+        "candidateRss": 609738752,
+        "baselineAllocated": 8363073484,
+        "candidateAllocated": 7771868244,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-18-silent-shrinker_beetle_weak",
+        "character": "SILENT",
+        "kind": "Monster",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 0.566012,
+        "candidateSeconds": 0.6430964,
+        "baselineRss": 234215424,
+        "candidateRss": 240496640,
+        "baselineAllocated": 261592816,
+        "candidateAllocated": 276627292,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-19-defect-byrdonis_elite",
+        "character": "DEFECT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 1.33812545,
+        "candidateSeconds": 1.6841746,
+        "baselineRss": 249432064,
+        "candidateRss": 261642240,
+        "baselineAllocated": 397272108,
+        "candidateAllocated": 437288416,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 0
+      },
+      {
+        "id": "v72-validation-19-ironclad-decimillipede_elite",
+        "character": "IRONCLAD",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          20,
+          20
+        ],
+        "candidateHpLosses": [
+          39,
+          39
+        ],
+        "baselineSeconds": 12.087926150000001,
+        "candidateSeconds": 14.0840602,
+        "baselineRss": 368269312,
+        "candidateRss": 362887168,
+        "baselineAllocated": 2932056772,
+        "candidateAllocated": 3285124712,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-19-necrobinder-knights_elite",
+        "character": "NECROBINDER",
+        "kind": "Elite",
+        "classification": "regressed",
+        "coreClassification": "regressed",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          false,
+          false
+        ],
+        "baselineHpLosses": [
+          62,
+          62
+        ],
+        "candidateHpLosses": [
+          66,
+          66
+        ],
+        "baselineSeconds": 16.34214575,
+        "candidateSeconds": 19.6480879,
+        "baselineRss": 368707584,
+        "candidateRss": 390903808,
+        "baselineAllocated": 4576763820,
+        "candidateAllocated": 5237797608,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-19-regent-phrog_parasite_elite",
+        "character": "REGENT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 6.770607399999999,
+        "candidateSeconds": 7.54929505,
+        "baselineRss": 353040384,
+        "candidateRss": 369850368,
+        "baselineAllocated": 1071493176,
+        "candidateAllocated": 1022849020,
+        "baselineTimeBoundaryRuns": 2,
+        "candidateTimeBoundaryRuns": 2
+      },
+      {
+        "id": "v72-validation-19-silent-bygone_effigy_elite",
+        "character": "SILENT",
+        "kind": "Elite",
+        "classification": "equal",
+        "coreClassification": "equal",
+        "stableWithinBothArms": true,
+        "coreStableWithinBothArms": true,
+        "baselineWins": [
+          true,
+          true
+        ],
+        "candidateWins": [
+          true,
+          true
+        ],
+        "baselineHpLosses": [
+          0,
+          0
+        ],
+        "candidateHpLosses": [
+          0,
+          0
+        ],
+        "baselineSeconds": 1.4434217999999999,
+        "candidateSeconds": 6.46226185,
+        "baselineRss": 257624064,
+        "candidateRss": 370788352,
+        "baselineAllocated": 433979416,
+        "candidateAllocated": 1323195532,
+        "baselineTimeBoundaryRuns": 0,
+        "candidateTimeBoundaryRuns": 2
+      }
+    ],
+    "sourceHashes": {
+      ".local/objective-search/v77/evaluation/summary.json": "e1be215847ec852be8430b64cb3dc351f7cd13d935077a14efb95142458c0027",
+      ".local/objective-search/v77/evaluation/report.json": "03131095d235ac2408cddbd6e064bd9e1101057a2346b4d599311c71dd5340ac",
+      ".local/objective-search/v77/evaluation/status.json": "2e3d835a8df645edf5aa158a1f2b73ee9ce1f1fd19fc527a40a6efc698b87c66"
+    },
+    "verdict": "Rejected: one stable lost win, 16 core regressions, slower overall and on stable nondegrading wins. No model promotion.",
+    "priorRegentLostWin": "v72-validation-16-regent-knights_elite: v77 wins with HP loss46 twice vs concurrent classic wins with HP loss65 twice; v76 candidate lost this case.",
+    "newLostWin": "v72-validation-19-necrobinder-knights_elite: classic wins at62 HP loss twice; v77 defeats at66 twice.",
+    "crossSessionCaution": "Classic results can change across sessions under time limits: v76 classic failed regent-the_kin_boss-17, whereas v77 classic won it. Candidate comparisons use their own concurrent baseline, not historical wins."
   }
 }

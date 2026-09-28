@@ -5,6 +5,7 @@ using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Hooks;
 
@@ -133,6 +134,61 @@ internal static class OutcomeContextChecks
             Check(selected.All(p => projected[p.Value] == before.GetValueOrDefault(p.Key)),
                 "compiled projection reuse preserves parent and clears absent child values " + offset);
         }
+        // A single selected leaf must not depend on visiting an unselected sibling
+        // (for example orb passive before evoke, or a move before attack damage).
+        // Start each projection from a fresh root fork, before sparse observation
+        // has had a chance to populate any branch-local rule cache.
+        string[] isolatedNames = before.Keys.Where(name =>
+            name.StartsWith("relic/", StringComparison.Ordinal)
+            || name.StartsWith("power/", StringComparison.Ordinal)
+            || name.StartsWith("enemy/", StringComparison.Ordinal)
+            || name.StartsWith("orb/", StringComparison.Ordinal)).ToArray();
+        foreach (string name in isolatedNames)
+        {
+            var cold = root.ForkSimulator();
+            var stamp = ContinuationStamp.CapturePredicted(
+                player, cold, root.StartTurnNumber, root.Forecast, root.StartTurnNumber);
+            var selected = new Dictionary<string, int>(StringComparer.Ordinal)
+                { [name] = 0, ["unknown/absent"] = 1 };
+            double[] projected = [double.NaN, double.NaN];
+            SearchOutcomeContext.CaptureSelected(cold, player,
+                new SearchOutcomeContext.Selection(selected), projected);
+            Check(projected[0] == before[name] && projected[1] == 0,
+                "isolated cold projection preserves exact leaf " + name);
+            Check(stamp == ContinuationStamp.CapturePredicted(
+                player, cold, root.StartTurnNumber, root.Forecast, root.StartTurnNumber),
+                "isolated observation preserves branch state " + name);
+        }
+        if (player.Character.Id.Entry == "DEFECT")
+        {
+            foreach (string leaf in new[] { "present", "passive", "evoke" })
+            {
+                var cold = root.ForkSimulator();
+                cold.OrbChannel<LightningOrb>(player);
+                ((SimulatedCombatState)cold.State.CombatState).Apply<FocusPower>(player.Creature, 2);
+                var orbs = cold.State.GetPlayerCombatState(player).OrbQueue.Orbs;
+                Check(orbs.Count > 0 && orbs[^1] is LightningOrb,
+                    "orb projection fixture contains a branch-owned lightning orb");
+                string name = $"orb/{orbs.Count - 1}/{orbs[^1].Id.Entry}/{leaf}";
+                var stamp = ContinuationStamp.CapturePredicted(
+                    player, cold, root.StartTurnNumber, root.Forecast, root.StartTurnNumber);
+                double[] projected = [double.NaN];
+                SearchOutcomeContext.CaptureSelected(cold, player,
+                    new SearchOutcomeContext.Selection(new Dictionary<string, int> { [name] = 0 }), projected);
+                Check(projected[0] == SearchOutcomeContext.Capture(cold, player)[name],
+                    "isolated orb leaf observes current branch focus " + leaf);
+                Check(stamp == ContinuationStamp.CapturePredicted(
+                    player, cold, root.StartTurnNumber, root.Forecast, root.StartTurnNumber),
+                    "isolated orb observation is read-only " + leaf);
+            }
+            Check(Equal(before, SearchOutcomeContext.Capture(parent, player)),
+                "orb and focus changes remain in their fixture branches");
+        }
+        double[] emptyProjection = [double.NaN, 17];
+        SearchOutcomeContext.CaptureSelected(parent, player,
+            new SearchOutcomeContext.Selection(new Dictionary<string, int>()), emptyProjection);
+        Check(emptyProjection.All(value => value == 0),
+            "empty selected context clears the complete reused buffer");
         // Literal slashes are legal in external identities/variable names;
         // path scopes must resolve them without interning or collisions.
         var paths = new SearchOutcomeContext.Selection(new Dictionary<string, int>
@@ -148,7 +204,8 @@ internal static class OutcomeContextChecks
             && paths.Root.Find("pile/draw/card/MOD/CARDINAL/count")!.Index == 2,
             "compiled feature paths preserve exact identity and slash-bearing names");
         File.WriteAllText(Path.Combine(output, "outcome-context-checks.json"),
-            JsonSerializer.Serialize(new { passed = checks, character = player.Character.Id.Entry, counter = saved }));
+            JsonSerializer.Serialize(new { passed = checks, character = player.Character.Id.Entry,
+                counter = saved, isolatedFeatureColumns = isolatedNames }));
 
         static bool Equal(Dictionary<string, double> left, Dictionary<string, double> right)
             => left.Count == right.Count && left.All(p => right.TryGetValue(p.Key, out double value) && p.Value == value);

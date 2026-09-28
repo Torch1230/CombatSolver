@@ -30,7 +30,7 @@
 
 
 
-`SearchOutcomeContext.Columns` 在模型编译时将所选字段转换为分段名称与整数列索引；牌堆采集沿同一遍历写稀疏字典或数值缓冲，不在逐卡推理时拼接完整字段名。索引只持有名称与列号，不持有模型实例、模拟器或分支值；每次采集先清零缓冲，费用、动态变量与有序牌堆仍读取当前分支。`SearchOutcomeValueModel` 的显式阶段诊断分别记录特征提取和推理的线程累计分配；这些诊断不作为正常性能样本。
+`SearchOutcomeContext.Columns` 在模型编译时将所选字段转换为分段名称与整数列索引；牌堆、角色、遗物、Power、敌方状态与充能球采集沿同一遍历写稀疏字典或数值缓冲，复用路径索引而不逐字段拼接完整名称。索引只持有名称与列号，不持有模型实例、模拟器或分支值；每次采集先清零缓冲，费用、动态变量与有序牌堆仍读取当前分支。`SearchOutcomeValueModel` 的显式阶段诊断分别记录特征提取和推理的线程累计分配；这些诊断不作为正常性能样本。
 
 `SearchOutcomeContext` 保留按敌人 roster 位置和同名 Power 总层数的原始观察。另通过既有 `PersistentPowerSupport.GetModifiedMaxEnergy` / `GetModifiedHandDraw` 投影 `resource/current-max-energy` / `resource/current-hand-draw`，参数和补偿与引擎共用；仅查询当前分支/回合的规则量，不消费延迟资源、推进战斗或赋予效用，也不声称该量保证下回合到账。未引用这些列的稀疏推理不调用查询。模型 schema10/观察 schema8；旧观察缺失这些量，必须重新采集，宿主拒绝 `featureUpgrade`，不再提供会伪造当前 schema 完整性的旧聚合升级。历史 schema6/7 转换仅能由原冻结程序复现。
 

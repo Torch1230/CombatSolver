@@ -44,8 +44,8 @@ internal static partial class SearchOutcomeContext
         var state = simulator.State.GetPlayerCombatState(player);
         var combat = (SimulatedCombatState)simulator.State.CombatState;
         var body = simulator.State.GetCreature(player.Creature);
-        void Add(string name, double value) => x.Add(name, value);
-        x["character/" + player.Character.Id.Entry] = 1;
+        var character = x.Scope("character");
+        character[player.Character.Id.Entry] = 1;
         x["player/hp"] = body.CurrentHp;
         x["player/max-hp"] = body.MaxHp;
         x["player/block"] = body.Block;
@@ -71,26 +71,29 @@ internal static partial class SearchOutcomeContext
                 x["osty/block"] = pet.Block;
             }
         }
-        foreach (var relic in combat.RelicsOf(player))
+        var relics = x.Scope("relic");
+        if (relics.Needed) foreach (var relic in combat.RelicsOf(player))
         {
-            string name = "relic/" + relic.Id.Entry;
-            if (!x.WantsPrefix(name + "/")) continue;
-            x[name + "/present"] = 1;
-            x[name + "/melted"] = relic.IsMelted ? 1 : 0;
-            if (x.WantsPrefix(name + "/state/"))
+            var observed = relics.Scope(relic.Id.Entry);
+            if (!observed.Needed) continue;
+            observed["present"] = 1;
+            observed["melted"] = relic.IsMelted ? 1 : 0;
+            var states = observed.Scope("state");
+            if (states.Needed)
             {
                 var key = combat.CaptureRelicObservation(simulator, relic);
-                x[$"{name}/state/{key.First:X16}{key.Second:X16}"] = 1;
+                states[$"{key.First:X16}{key.Second:X16}"] = 1;
             }
-            if (x.Wants(name + "/counter") && RelicCounterCatalog.Identify(relic) != null)
-                x[name + "/counter"] = combat.ReadRelicCounter(simulator, relic);
+            if (observed.Wants("counter") && RelicCounterCatalog.Identify(relic) != null)
+                observed["counter"] = combat.ReadRelicCounter(simulator, relic);
         }
-        if (x.WantsPrefix("relic/POCKETWATCH/")
+        var pocketwatch = relics.Scope("POCKETWATCH");
+        if (pocketwatch.Needed
             && combat.TryGetPocketwatchState(player, out int current, out int previous, out int threshold))
         {
-            x["relic/POCKETWATCH/current"] = current;
-            x["relic/POCKETWATCH/previous"] = previous;
-            x["relic/POCKETWATCH/threshold"] = threshold;
+            pocketwatch["current"] = current;
+            pocketwatch["previous"] = previous;
+            pocketwatch["threshold"] = threshold;
         }
         for (int zone = 0; zone < 4; zone++)
         {
@@ -151,55 +154,66 @@ internal static partial class SearchOutcomeContext
                     positions.Scope(index.ToString()).Add(preview.Id.Entry, 1);
             }
         }
-        if (x.WantsPrefix("power/")) foreach (var power in combat.EffectivePowers())
+        var powers = x.Scope("power");
+        var enemyPowers = powers.Scope("enemy");
+        var enemyPowerTotals = powers.Scope("enemies");
+        if (powers.Needed) foreach (var power in combat.EffectivePowers())
         {
             // Align enemy powers with the same roster index as enemy bodies;
             // a pet's powers are not enemy resources or arbitrary combat IDs.
-            string owner = ReferenceEquals(power.Owner, player.Creature) ? "player"
-                : osty != null && ReferenceEquals(power.Owner, osty) ? "osty"
-                : "other/" + power.Owner?.CombatId;
+            int enemyOwner = -1;
             for (int index = 0; index < combat.KnownEnemies.Count; index++)
                 if (ReferenceEquals(power.Owner, combat.KnownEnemies[index]))
                 {
-                    owner = "enemy/" + index;
-                    if (x.WantsPrefix(EnemyPowerTotalPrefix))
-                        Add(EnemyPowerTotalPrefix + power.Id.Entry, power.Amount);
+                    enemyOwner = index;
+                    enemyPowerTotals.Add(power.Id.Entry, power.Amount);
                     break;
                 }
-            Add("power/" + owner + "/" + power.Id.Entry, power.Amount);
+            var owner = enemyOwner >= 0 ? enemyPowers.Scope(enemyOwner.ToString())
+                : ReferenceEquals(power.Owner, player.Creature) ? powers.Scope("player")
+                : osty != null && ReferenceEquals(power.Owner, osty) ? powers.Scope("osty")
+                : powers.Scope("other").Scope((power.Owner?.CombatId).ToString() ?? string.Empty);
+            owner.Add(power.Id.Entry, power.Amount);
         }
-        for (int index = 0; index < combat.KnownEnemies.Count; index++)
+        var enemies = x.Scope("enemy");
+        if (enemies.Needed) for (int index = 0; index < combat.KnownEnemies.Count; index++)
         {
-            string name = "enemy/" + index;
-            if (!x.WantsPrefix(name + "/")) continue;
+            var observed = enemies.Scope(index.ToString());
+            if (!observed.Needed) continue;
             var enemy = combat.KnownEnemies[index];
             var predicted = simulator.State.GetCreature(enemy);
-            x[name + "/hp"] = combat.EffectiveEnemyHp(enemy, predicted);
-            x[name + "/block"] = predicted.Block;
-            x[name + "/present"] = combat.ContainsCreature(enemy) ? 1 : 0;
-            x[name + "/max-hp"] = predicted.MaxHp;
-            if (enemy.Monster != null) x[name + "/identity/" + enemy.Monster.Id.Entry] = 1;
+            observed["hp"] = combat.EffectiveEnemyHp(enemy, predicted);
+            observed["block"] = predicted.Block;
+            observed["present"] = combat.ContainsCreature(enemy) ? 1 : 0;
+            observed["max-hp"] = predicted.MaxHp;
+            var identities = observed.Scope("identity");
+            if (enemy.Monster != null) identities[enemy.Monster.Id.Entry] = 1;
             if (!combat.ContainsCreature(enemy) || !predicted.IsAlive) continue;
-            x[name + "/skip-next"] = combat.WillSkipNextMove(enemy) ? 1 : 0;
-            if (enemy.Monster != null && (x.WantsPrefix(name + "/move/")
-                || x.Wants(name + "/attack-hits") || x.Wants(name + "/attack-damage")))
+            observed["skip-next"] = combat.WillSkipNextMove(enemy) ? 1 : 0;
+            var moves = observed.Scope("move");
+            if (enemy.Monster != null && (moves.Needed
+                || observed.Wants("attack-hits") || observed.Wants("attack-damage")))
             {
                 ForecastMove move = combat.CurrentMonsterMove(enemy);
-                x[name + "/move/" + move.Move.Id] = 1;
-                Add(name + "/attack-hits", move.AttackHits.Count);
-                foreach (ForecastAttackHit hit in move.AttackHits)
-                    Add(name + "/attack-damage", combat.AdjustMonsterMoveDamage(enemy, move.Move.Id, hit.BaseDamage));
+                moves[move.Move.Id] = 1;
+                observed.Add("attack-hits", move.AttackHits.Count);
+                if (observed.Wants("attack-damage"))
+                    foreach (ForecastAttackHit hit in move.AttackHits)
+                        observed.Add("attack-damage", combat.AdjustMonsterMoveDamage(enemy, move.Move.Id, hit.BaseDamage));
             }
         }
-        x["orb/capacity"] = state.OrbQueue.Capacity;
-        for (int index = 0; index < state.OrbQueue.Orbs.Count; index++)
+        var orbs = x.Scope("orb");
+        orbs["capacity"] = state.OrbQueue.Capacity;
+        if (orbs.Needed) for (int index = 0; index < state.OrbQueue.Orbs.Count; index++)
         {
             var orb = state.OrbQueue.Orbs[index];
-            string name = $"orb/{index}/{orb.Id.Entry}";
-            if (!x.WantsPrefix(name + "/")) continue;
-            x[name + "/present"] = 1;
-            x[name + "/passive"] = (double)OrbMirrors.GetPassiveValue(simulator, orb);
-            x[name + "/evoke"] = (double)OrbMirrors.GetEvokeValue(simulator, orb);
+            var observed = orbs.Scope(index.ToString()).Scope(orb.Id.Entry);
+            if (!observed.Needed) continue;
+            observed["present"] = 1;
+            if (observed.Wants("passive"))
+                observed["passive"] = (double)OrbMirrors.GetPassiveValue(simulator, orb);
+            if (observed.Wants("evoke"))
+                observed["evoke"] = (double)OrbMirrors.GetEvokeValue(simulator, orb);
         }
     }
     private readonly struct FeatureWriter
@@ -223,11 +237,6 @@ internal static partial class SearchOutcomeContext
                 if (_sparse != null) _sparse[name] = value;
                 else if (_columns!.TryGetValue(name, out int index)) _values![index] = value;
             }
-        }
-        internal void Add(string name, double value)
-        {
-            if (_sparse != null) _sparse[name] = _sparse.GetValueOrDefault(name) + value;
-            else if (_columns!.TryGetValue(name, out int index)) _values![index] += value;
         }
     }
 
