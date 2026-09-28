@@ -1421,6 +1421,7 @@ internal sealed class SolverResult
     public IReadOnlyList<SolverResult> MultiplayerAlternatives { get; internal set; } = [];
     public int MultiplayerEffectiveDamage { get; internal set; }
     public int MultiplayerSetupValue { get; internal set; }
+    public int MultiplayerCurrentTurnProjectedHp { get; internal set; }
     public SolverInterimResult? ComparisonQuality { get; internal set; }
     public string? ComparisonRootState { get; internal set; }
     public bool WasRestoredFromCache { get; internal set; }

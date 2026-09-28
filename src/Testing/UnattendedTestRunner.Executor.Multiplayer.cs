@@ -87,6 +87,7 @@ internal sealed partial class UnattendedTestRunner
                 SolverResult[] plans = [result, .. result.MultiplayerAlternatives];
                 if (plans.Length is < 1 or > 3
                     || plans[0].MultiplayerStyle != MultiplayerPlanStyle.Output
+                    || plans.Length != 1
                     || plans.Any(plan => plan.MultiplayerStyle == null
                         || plan.Snapshot.PlayerDead || plan.Snapshot.ProjectedPlayerHp <= 0)
                     || plans.Select(plan => plan.MultiplayerStyle).Distinct().Count() != plans.Length
@@ -296,7 +297,8 @@ internal sealed partial class UnattendedTestRunner
                 SearchPolicySnapshot searchPolicy = SolverController.CaptureSearchPolicy(
                     SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null) with
                 {
-                    MaxTurnLayers = input.ContentSearchOnly ? 1 : configured.MaxTurnLayers,
+                    MaxTurnLayers = input.ContentSearchOnly
+                        ? input.ContentSearchTurnDepth : configured.MaxTurnLayers,
                     Profile = SolverSearchProfile.Default with
                     {
                         MaxExpandedNodes = 10_000,
@@ -344,7 +346,8 @@ internal sealed partial class UnattendedTestRunner
                     SolverResult? defense = contentPlans.FirstOrDefault(plan =>
                         plan.MultiplayerStyle == MultiplayerPlanStyle.Defense);
                     if (defense == null
-                        || defense.Snapshot.ProjectedPlayerHp <= search.Snapshot.ProjectedPlayerHp
+                        || defense.MultiplayerCurrentTurnProjectedHp
+                            <= search.MultiplayerCurrentTurnProjectedHp
                         || defense.BestNode.Actions.Where(action => action.Turn == 1)
                             .SequenceEqual(search.BestNode.Actions.Where(action => action.Turn == 1)))
                         throw new InvalidOperationException("Defense search did not preserve a real HP tradeoff.");
