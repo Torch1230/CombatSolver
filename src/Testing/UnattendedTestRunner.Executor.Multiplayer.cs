@@ -269,6 +269,39 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, 5);
+            if (input.VerifyControllerTargetedDeploy)
+            {
+                Player teammate = combat.Players[input.ContentTargetSeat];
+                SolverController.MonitorCombatPresence();
+                if (!SolverOverlay.IsVisible)
+                    throw new InvalidOperationException("Targeted multiplayer controls were not attached.");
+                SolverController.RequestSearch(runner._host, combat, SearchReason.Manual);
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    SolverController.LastCompletedResultForTesting != null
+                    || SolverController.LastSearchFailureForTesting != null);
+                if (SolverController.LastSearchFailureForTesting is { } failure)
+                    throw new InvalidOperationException("Targeted multiplayer controller search failed.", failure);
+                SolverResult result = SolverController.LastCompletedResultForTesting
+                    ?? throw new InvalidOperationException("Targeted search did not publish a route.");
+                PlanAction[] current = result.BestNode.Actions.Where(action => action.Turn == 1).ToArray();
+                if (current.All(action => action.CardId != "STRIKE_IRONCLAD")
+                    || current.All(action => action.CardId != "BLAZE"
+                        || action.TargetCombatId != teammate.Creature.CombatId)
+                    || current.Any(action => action.CardId == "BLAZE"
+                        && action.TargetCombatId == actor.Creature.CombatId))
+                    throw new InvalidOperationException("Controller route did not preserve a legal teammate target.");
+                SolverController.RequestDeploy(runner._host, combat);
+                await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying
+                    && SolverController.LastSolverDeployedTurnForBugReport == 1);
+                if (!SolverController.WasCardDeployedForTesting("BLAZE")
+                    || teammate.Creature.Powers.OfType<StrengthPower>().All(power => power.Amount < 5)
+                    || actor.Creature.Powers.OfType<StrengthPower>().Any()
+                    || !CombatManager.Instance.IsPlayerReadyToEndTurn(actor)
+                    || CombatManager.Instance.IsPlayerReadyToEndTurn(teammate))
+                    throw new InvalidOperationException("Targeted deployment did not apply Blaze to the teammate only.");
+                runner._completedChecks.Add("MultiplayerController:BlazeTargetedTeammate:NativeDeployment:LocalTurnOnly");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyAllyTarget)
             {
                 CombatRootSnapshot targetRoot = CombatRootSnapshot.Capture(combat);
@@ -283,12 +316,20 @@ internal sealed partial class UnattendedTestRunner
                     CombatPredictionSimulator fork = targetRoot.ForkSimulator();
                     PredictedCard source = fork.State.GetPlayerCombatState(actor).Hand.Cards
                         .First(candidate => candidate.Preview.Id.Entry == input.ContentCardIds[0]);
+                    if (input.VerifyAllyAfterEnergyGain)
+                    {
+                        if (source.Original.CanPlayTargeting(combat.Players[input.ContentTargetSeat].Creature))
+                            throw new InvalidOperationException("Energy-gain fixture card is already live-playable.");
+                        fork.GainEnergy(actor, 2);
+                        if (!fork.CanPlay(source))
+                            throw new InvalidOperationException("Energy-gain fixture card did not become simulated-playable.");
+                    }
                     uint[] current = targetDriver.AllyTargetsForTesting(source, fork);
                     if (current.Length != 1
                         || !combat.Players.Any(member => member != actor
                             && member.Creature.CombatId == current[0]
                             && member.Creature.IsAlive
-                            && source.Original.CanPlayTargeting(member.Creature))
+                            && source.Original.IsValidTarget(member.Creature))
                         || iteration > 0 && !targets.SequenceEqual(current))
                         throw new InvalidOperationException("Ally target was not legal and stable across forks.");
                     targets = current;
@@ -296,6 +337,11 @@ internal sealed partial class UnattendedTestRunner
                 if (ContinuationStamp.CaptureLive(combat).StateText != firstRng)
                     throw new InvalidOperationException("Ally target selection changed game state or RNG.");
                 runner._completedChecks.Add("MultiplayerAllyTarget:OneOtherLivingPlayer:StableForks:GameRngUnchanged");
+                if (input.VerifyAllyAfterEnergyGain)
+                {
+                    runner._completedChecks.Add("MultiplayerAllyTarget:SimulatedEnergyGain:LiveUnplayable:TargetRetained");
+                    return new ExecutionOutcome(false, 1, true, true, true, false);
+                }
             }
             if (input.VerifySelfPotion)
             {

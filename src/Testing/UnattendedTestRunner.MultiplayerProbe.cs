@@ -29,6 +29,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifySearch { get; init; }
         public bool VerifyControllerSearch { get; init; }
         public bool VerifyControllerDeploy { get; init; }
+        public bool VerifyControllerTargetedDeploy { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -37,6 +38,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyTargetedSupport { get; init; }
         public bool VerifyMultipleSupport { get; init; }
         public bool VerifyAllyTarget { get; init; }
+        public bool VerifyAllyAfterEnergyGain { get; init; }
         public bool VerifySelfPotion { get; init; }
         public bool VerifyPotionAccounting { get; init; }
         public string[] ContentCardIds { get; init; } = [];
@@ -68,6 +70,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.PlayerCount is not (2 or 4)
                 || input.VerifyControllerDeploy && !input.VerifyControllerSearch
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
+                || input.VerifyControllerTargetedDeploy && !input.ContentCardIds.Contains("BLAZE")
+                || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.ContentCardIds.Length > 0 && (input.Mode != "virtual"
                     || input.ContentCardIds.Length > 5
                     || input.ContentCardIds.Any(string.IsNullOrWhiteSpace)

@@ -1003,7 +1003,7 @@ internal sealed partial class CombatBeamSolver
                 // NTargetManager excludes the card owner for manual AnyAlly selection.
                 .Where(target => simulator.State.GetCreature(target).IsAlive
                     && (targetType != TargetType.AnyAlly || target.Player != card.Original.Owner)
-                    && card.Original.CanPlayTargeting(target))
+                    && card.Original.IsValidTarget(target))
                 .ToArray();
             if (eligible.Length == 0)
                 yield break;

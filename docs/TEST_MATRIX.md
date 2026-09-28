@@ -48,6 +48,10 @@ P4 本地部署：虚拟双人普通根在手动搜索后实际调用 `RequestDe
 
 多人本地药水账本：原生虚拟双人先由队友自用 `StrengthPotion`，本地账本计零；再由本地自用，同一账本只计本地一瓶，原生内容牌及完整状态／RNG 差分 Passed：`.local/multiplayer-p4/local-potion-accounting-2c8ee81616f944cea0e52decb33179ea/peer-0/result.json`。该探针没有让求解器替队友用药。
 
+P4 指定队友部署：生产控制器对虚拟双人 `Strike`＋`Blaze` 根搜索并执行，力量只施给队友且只结束本地回合，Passed：`.local/multiplayer-p4/controller-blaze-deploy-99cc944e1a944ed5ba2ac2d6e950c229/peer-0/result.json`。这是本地虚拟多人证据，未覆盖 ENet。
+
+模拟能量变化后的目标候选：live 能量为零时 `Blaze` 不可打；Fork 内补足能量后模拟器可打且目标仍为另一名玩家，三个 Fork 固定、游戏 RNG 不变，Passed：`.local/multiplayer-p4/ally-after-energy-750666e7869748c097f02a30b8f0b9e3/peer-0/result.json`。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

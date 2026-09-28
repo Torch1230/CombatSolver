@@ -40,7 +40,7 @@ internal sealed partial class CombatBeamSolver
                 foreach ((int targetIndex, Creature? target) in TargetsFor(card, simulator))
                 {
                     if (!IsPureTeammateSupport(card, target)
-                        || !card.Original.CanPlayTargeting(target))
+                        || !card.Original.IsValidTarget(target))
                         continue;
                     string stateKey = CardChoiceSupport.ChoiceCardKey(card);
                     PlanAction support = new(

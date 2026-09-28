@@ -119,6 +119,10 @@ P4 首次虚拟双人手动入口探针暴露战报结果记录使用 `Players.S
 
 战损记录器原来在多人根只返回空的本地 HP／药水账本，已改为按本地玩家记录。双人虚拟原生请求先由队友自用 `StrengthPotion`，本地账本仍为零；再由本地玩家自用一瓶，账本恰为该一瓶，随后给队友打牌并完成全状态／RNG 差分，Passed：`.local/multiplayer-p4/local-potion-accounting-2c8ee81616f944cea0e52decb33179ea/peer-0/result.json`。这是测试队友自己的用药事件，不改变“求解器只给自己用药”的产品边界。
 
+生产控制器在虚拟双人 `Strike`＋`Blaze` 根取得本地方案，按原生动作执行，`Blaze` 力量只落到另一名玩家，本地回合结束而队友仍可行动，Passed：`.local/multiplayer-p4/controller-blaze-deploy-99cc944e1a944ed5ba2ac2d6e950c229/peer-0/result.json`。队友交错后的重评估与 ENet 执行仍未验证。
+
+目标合法性与出牌资源已分离：模拟分支取得能量后，`Blaze` 在原生 live 根仍不可打，但搜索枚举的目标仍为其他存活玩家；三个 Fork 固定、游戏 RNG 不变，Passed：`.local/multiplayer-p4/ally-after-energy-750666e7869748c097f02a30b8f0b9e3/peer-0/result.json`。先前使用 `CardModel.CanPlayTargeting` 会把 live 能量误用于模拟分支，现目标枚举使用 `IsValidTarget`，出牌资源由模拟状态检查。
+
 ### 0.3 接手后第一轮的具体操作
 
 1. 保留原型，读这三个新增文件与两个现有接入点，查清输入和等待条件；不要重新实现一套测试系统。
