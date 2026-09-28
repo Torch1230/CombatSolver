@@ -251,8 +251,11 @@ internal sealed class CombatRootSnapshot
             .ToFrozenSet(StringComparer.Ordinal);
         int powerCount = state.Creatures.Sum(creature => creature.Powers.Count);
         CombatHistoryDependencies historyDependencies = CombatHistoryCounterKey.Capture(
-                playerState.AllCards.Cast<AbstractModel>().Concat(liveCombatHookListeners)
-                    .Concat(player.PotionSlots.OfType<AbstractModel>()),
+                state.Players.SelectMany(member => member.PlayerCombatState?.AllCards
+                        ?? throw new InvalidOperationException($"玩家 {member.NetId} 没有战斗状态。"))
+                    .Cast<AbstractModel>()
+                    .Concat(liveCombatHookListeners)
+                    .Concat(state.Players.SelectMany(member => member.PotionSlots.OfType<AbstractModel>())),
                 simulatedCombat.RootRunModSubscriberCount != 0
                     || simulatedCombat.RootCombatModSubscriberCount != 0
                     || simulatedCombat.RootHasBaseLibCardModifiers

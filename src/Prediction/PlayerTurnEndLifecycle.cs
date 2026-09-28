@@ -46,12 +46,15 @@ internal static class PlayerTurnEndLifecycle
             return false;
         if (simulator.IsOverOrEnding)
             return true;
-        if (!OrbLifecycleSupport.TriggerBeforeTurnEnd(simulator, combat, player)
-            || combat.HasPendingChoice
-            || !simulator.SimulateEndPlayerTurnAfterOrbPassives(combat.GetPlayerTurnNumber(player)))
+        foreach (Creature participant in participants)
         {
-            return false;
+            if (participant.Player is { } endingPlayer
+                && (!OrbLifecycleSupport.TriggerBeforeTurnEnd(simulator, combat, endingPlayer)
+                    || combat.HasPendingChoice))
+                return false;
         }
+        if (!simulator.SimulateEndPlayerTurnAfterOrbPassives(combat.GetPlayerTurnNumber(player)))
+            return false;
         CorePowerSupport.CompletePlayerEarlySideTurnEndEffects(combat, participants);
         return !combat.HasPendingChoice;
     }

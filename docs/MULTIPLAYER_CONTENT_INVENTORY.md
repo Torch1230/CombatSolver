@@ -4,7 +4,7 @@
 
 ## 直接声明 MultiplayerOnly 的 37 张卡
 
-原版入口列只列会改变战斗的关键入口；常规出牌、费用、升级及牌堆生命周期仍须验收。每张卡的模拟入口、基础／升级原生差分当前均待核对，不能凭登记名称判定支持。
+原版入口列只列会改变战斗的关键入口；常规出牌、费用、升级及牌堆生命周期仍须验收。下方另列已找到的显式模拟入口；没有显式登记的牌仍可能进入现有简单效果推断器，但推断器只识别攻击、格挡和自身抽牌，不能据此认为其他效果已实现。基础／升级原生差分当前均未运行。
 
 | 卡牌类型 | 原版入口与关联状态／内容 | 机制批次 |
 |---|---|---|
@@ -53,12 +53,18 @@
 - 现有 `CardDrawCardMirrors` 明确登记 `Constellation`、`HuddleUp`，`CardGenerationCardMirrors` 明确处理 `Largesse`；`CalculatedVarSpecRegistry` 列有 `GangUp`、`Mimic`、`DemonicShield`；`CardResultLocationMirrors` 登记 `TheBall`。其他卡牌可能由通用 spec 或 support 结算，须沿调用链逐项确认唯一入口。
 - `MassiveScroll` 是已识别的多人专用遗物：`IsAllowed` 要求玩家数大于 1，`AfterObtained` 从角色与无色池的 `MultiplayerOnly` 卡中提供三选一；这是战前牌组来源，战斗中仍需覆盖其产生的牌。`InterceptPower`／`GuardedPower`、临时力量／敏捷、`FrostOrb`、`Shiv`、`Soul`、`Osty` 和生成池是上表直接依赖，不能只验卡牌主效果。
 
+目前能定位到的显式模拟入口如下，均为源码位置记录，尚未经过多人差分：`CardOnPlayMirrors` 登记 `Constellation`、`HuddleUp`、`Ignition`、`Largesse`；`AfterBlockGainedMirrors` 登记 `BeaconOfHopePower`；`AfterCardDrawnMirrors` 登记 `CacophonyPower`；`AfterDamageGivenMirrors` 登记 `ConcoctPower`、`UnderworldPower`；`BeforeCardPlayedMirrors` 和 `AfterCardPlayedMirrors` 登记 `ImitationLearningPower`，后者还登记 `SneakyPower`；`ModifyCardPlayCountMirrors` 登记 `TagTeamPower`；`AfterCardGeneratedForCombatMirrors` 登记 `SoulboundPower`；`AfterCardExhaustedMirrors` 登记 `Midnight`；`AfterPlayerTurnStartMirrors` 登记 `HibernatePower`；`FrostOrbMirrors`、`CardResultLocationMirrors` 分别处理球与 `TheBall` 去向；`CalculatedVarSpecRegistry` 登记 `GangUp`、`Mimic`、`DemonicShield`。其余主效果要逐项补入权威入口，不能仅靠关联 Hook 已存在判定可用。
+
 ## 普通内容的多人差异扫描
 
 本机 0.111.0 原版的 Cards／Powers／Relics／Potions／Orbs／Monsters 目录中，对玩家枚举、队友目标、多人约束及 `CombatTargets` 的定向搜索已经列出候选，尚未沿调用链封闭。普通卡至少需核对 `Stoke`、`Splash`、`IAmInvincible`、`HowlFromBeyond`、`Fasten`、`WhiteNoise`、`SovereignBlade`、`Metamorphosis`、`Quasar`、`Jackpot`、`Soul`、`JackOfAllTrades`、`ThrummingHatchet`、`RocketPunch`、`Shiv`、`ManifestAuthority`、`MadScience`、`InfernalBlade`、`Omnislice`、`BundleOfJoy`、`Distraction`、`Discovery`、`BeatDown`、`Abundance`、`BouncingFlask`、`Bombardment`、`Bolas`、`ByrdonisEgg`、`FlakCannon`。这些是待调查名单，不表示每项存在模拟缺口。
 
-药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
+药水目录中有 51 个类型直接声明 `TargetType.AnyPlayer`。按当前产品边界，本地玩家持有的这些药水只以自己为目标，不枚举队友；敌人目标药水仍按原版合法目标枚举。当前 `CombatBeamSolver.Expansion.Candidates.TargetsForPotion` 对 `AnyPlayer`／`Self` 只产生一个本地自用候选，模拟 `PotionOnUseSupport.Use` 将空目标解析为持有人，原版 `PotionModel.EnqueueManualUse` 也这样解析；这是源码检查，生产多人门禁仍在，尚无原生多人用药证据。P0/P2 核对本地自用效果、多人生成池、共享 RNG 和队友已有被动触发，按机制选代表验收目标限制，不逐瓶测试不存在的队友投药路径。
 
-Power 目录中直接遍历玩家集合／队友的候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower`、`PlatingPower`、`DoomPower`、`ReattachPower`；球目录有 `FrostOrb`。怪物目录对应候选为 `ToughEgg`、`WaterfallGiant`、`TheObscura`、`KinPriest`、`Ovicopter`、`DecimillipedeSegment`、`Queen`、`TestSubject`、`TwoTailedRat`、`GremlinMerc`、`Parafright`、`KnowledgeDemon`、`LivingShield`、`Fabricator`、`EyeWithTeeth`。这些类型仍须核对实际调用条件与模拟入口；搜索结果没有自动证明其行为不同。
+Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower` 和 `PlatingPower`；球目录有 `FrostOrb`。`DoomPower` 的 `GetTeammatesOf` 位于死亡特效等待，结算仍须按全阵营 Doom 生命周期验收；`ReattachPower` 的队友是蜈蚣怪物分段，按怪物死亡／复活验收。怪物目录对应候选为 `ToughEgg`、`WaterfallGiant`、`TheObscura`、`KinPriest`、`Ovicopter`、`DecimillipedeSegment`、`Queen`、`TestSubject`、`TwoTailedRat`、`GremlinMerc`、`Parafright`、`KnowledgeDemon`、`LivingShield`、`Fabricator`、`EyeWithTeeth`。这些类型仍须核对实际调用条件与模拟入口；搜索结果没有自动证明其行为不同。
+
+遗物目录直接涉及人数或战斗生成池的入口包括 `MassiveScroll`（多人专属牌来源）、`Toolbox`、`VexingPuzzlebox`、`OrangeDough`、`ChoicesParadox`（战斗生成池），以及 `BigHat`、`Crossbow`、`ScrollBoxes`、`DustyTome`、`DistinguishedCape`、`NeowsBones`（战前／局外池）。`WingedBoots` 和 `SilverCrucible` 只允许单人，`LastingCandy` 读取局外玩家集合；`WhisperingEarring` 自动用玩家目标药水时指向持有人。战斗生成物和多人可达牌进入 P2；局外获得路径只登记来源，本批不扩展为战前求解器。
+
+通用多人缩放还需逐项核对原版 `CombatState.AddMonster` 的新怪 HP、`MultiplayerScalingModel` 的怪物格挡，以及 `PowerCmd.Apply` 对敌方 `ShouldScaleInMultiplayer` 能力的幅度；`PlatingPower` 另在施加后把递减值设为玩家数。现有 `SimulatedCombatState` 有缩放模型和召唤状态入口，但尚未证明所有原版缩放点与模拟一致。
 
 后续盘点必须区分实际多人分支、共享 RNG、只用于展示的引用以及普通单人路径。当前不能宣称原版内容清单已经封闭，也没有任何卡牌的多人 actual/simulated 通过记录。

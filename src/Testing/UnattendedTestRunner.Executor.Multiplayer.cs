@@ -9,6 +9,8 @@ using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
+using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 
@@ -32,17 +34,25 @@ internal sealed partial class UnattendedTestRunner
             {
                 foreach (Player player in combat.Players)
                 {
+                    ContinuationStamp? defendPrediction = input.VerifyActionDifferential
+                        ? PredictOrdinaryCard(player, "DEFEND_IRONCLAD", null) : null;
                     await PlayAsync(player, "DEFEND_IRONCLAD", null, () => player.PlayerCombatState!.Energy == 2 && player.Creature.Block == 5);
                     await runner.MultiplayerProbeBarrierAsync($"defend-{player.NetId}", combat);
+                    CheckPrediction(defendPrediction, player, "DEFEND_IRONCLAD");
                     int hp = enemy.CurrentHp;
+                    ContinuationStamp? strikePrediction = input.VerifyActionDifferential
+                        ? PredictOrdinaryCard(player, "STRIKE_IRONCLAD", enemy) : null;
                     await PlayAsync(player, "STRIKE_IRONCLAD", enemy, () => player.PlayerCombatState!.Energy == 1 && enemy.CurrentHp == hp - 6);
                     await runner.MultiplayerProbeBarrierAsync($"strike-{player.NetId}", combat);
+                    CheckPrediction(strikePrediction, player, "STRIKE_IRONCLAD");
                     await PlayAsync(player, "SURVIVOR", null, () => player.PlayerCombatState!.Energy == 0
                         && player.Creature.Block == 13 && player.PlayerCombatState.Hand.Cards.Count == 1
                         && player.PlayerCombatState.DiscardPile.Cards.Count == 4);
                     await runner.MultiplayerProbeBarrierAsync($"choice-{player.NetId}", combat);
                 }
             }
+            ContinuationStamp? roundPrediction = input.VerifyRoundDifferential
+                ? PredictRound() : null;
             foreach (Player player in input.IsVirtual ? new[] { scenario.Player } : combat.Players)
             {
                 if (input.IsVirtual || LocalContext.IsMe(player))
@@ -64,8 +74,56 @@ internal sealed partial class UnattendedTestRunner
             await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
                 player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
             await runner.MultiplayerProbeBarrierAsync("second-turn", combat);
+            CheckPrediction(roundPrediction, scenario.Player, "END_TURN");
             runner._completedChecks.Add($"MultiplayerNativeProbe:Mode={input.Mode}:Players={input.PlayerCount}:Seat={input.Seat}:ScriptedCards:NativeChoice:EnemyTurn:NextDraw");
             return new ExecutionOutcome(false, 2, true, true, true, false);
+
+            ContinuationStamp PredictRound()
+            {
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+                SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
+                    SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
+                CombatBeamSolver driver = new(root, SolverDisplayNames.Capture(combat),
+                    BattleDamageTracker.Observe(combat), policy);
+                SimulationSnapshot predicted = UnattendedTestRunner.InvokeForcedTerminalReplay(
+                    driver, [new PlanAction(PlanActionKind.EndTurn, 1)], null, 0, null);
+                try
+                {
+                    return ContinuationStamp.CapturePredicted(
+                        scenario.Player, predicted.Simulator, predicted.Turn, root.Forecast, 1);
+                }
+                finally
+                {
+                    predicted.ReleaseSimulator();
+                }
+            }
+
+            ContinuationStamp PredictOrdinaryCard(Player actor, string cardId, Creature? target)
+            {
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator simulator = root.ForkSimulator();
+                PredictedCard card = simulator.State.GetPlayerCombatState(actor).Hand.Cards
+                    .First(candidate => candidate.Preview.Id.Entry == cardId);
+                if (!simulator.CanPlay(card)
+                    || !simulator.ManualPlay(card, target, out _)
+                    || !CombatBeamSolver.SettleReplayActionBoundary(
+                        simulator, (SimulatedCombatState)simulator.State.CombatState))
+                    throw new InvalidOperationException($"Multiplayer predicted action did not complete: actor={actor.NetId} card={cardId}.");
+                return ContinuationStamp.CapturePredicted(
+                    scenario.Player, simulator, scenario.StartedTurn, root.Forecast, scenario.StartedTurn);
+            }
+
+            void CheckPrediction(ContinuationStamp? predicted, Player actor, string cardId)
+            {
+                if (predicted == null)
+                    return;
+                ContinuationStamp actual = ContinuationStamp.CaptureLive(combat);
+                if (predicted != actual)
+                    throw new InvalidOperationException(
+                        $"Multiplayer action differs: actor={actor.NetId} card={cardId} " +
+                        predicted.DescribeFirstDifference(actual));
+                runner._completedChecks.Add($"MultiplayerActionDiff:Actor={actor.NetId}:Card={cardId}:AllPlayers:FullRng");
+            }
 
             async Task PlayAsync(Player actor, string cardId, Creature? target, Func<bool> observed)
             {

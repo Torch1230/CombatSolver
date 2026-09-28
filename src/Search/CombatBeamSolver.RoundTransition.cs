@@ -1,4 +1,6 @@
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.ValueProps;
@@ -11,9 +13,6 @@ internal sealed partial class CombatBeamSolver
     private SearchBoundaryReason AdvanceRoundPlayerStart(
         CombatPredictionSimulator simulator,
         SimulatedCombatState simulatedCombat,
-        SimPlayerCombatState playerState,
-        SimCreatureState simulatedPlayer,
-        int roundIndex,
         ISet<uint> processedEnemyDeaths,
         ref int shufflesCrossed,
         TurnStartChoiceCursor roundChoices,
@@ -25,55 +24,65 @@ internal sealed partial class CombatBeamSolver
         simulatedCombat.CurrentSide = CombatSide.Player;
         if (!takingExtraTurn)
             simulatedCombat.RoundNumber++;
-        simulatedCombat.AdvancePlayerTurn(_player);
-        simulatedCombat.BeginSideTurn(_player.Creature);
-        simulatedCombat.SnapshotPowerAmountsAtTurnStart([_player.Creature]);
+        IReadOnlyList<Player> startingPlayers = takingExtraTurn ? [_player] : simulatedCombat.Players;
+        Creature[] startingCreatures = startingPlayers.Select(member => member.Creature).ToArray();
+        foreach (Player member in startingPlayers)
+            simulatedCombat.AdvancePlayerTurn(member);
+        foreach (Creature creature in startingCreatures)
+            simulatedCombat.BeginSideTurn(creature);
+        simulatedCombat.SnapshotPowerAmountsAtTurnStart(startingCreatures);
 
         if (!CombatSolver.Engine.InCombat.Mirrors.HookMirrors.BeforeSideTurnStart(
-                simulator, simulatedCombat.CurrentSide, [_player.Creature]))
+                simulator, simulatedCombat.CurrentSide, startingCreatures))
         {
             return SearchBoundaryReason.PendingChoice;
         }
 
-        if (simulatedPlayer.Block > 0)
+        foreach (Creature creature in startingCreatures)
         {
-            if (simulatedCombat.ShouldClearBlock(_player.Creature, out AbstractModel? preventer))
-                simulatedPlayer.DamageBlock(simulatedPlayer.Block, ValueProp.Move);
-            else
-                PersistentRelicSupport.TriggerAfterPreventingBlockClear(
-                    simulator,
-                    preventer,
-                    _player.Creature);
-        }
-        if (!CorePowerSupport.TriggerAfterBlockCleared(
-                simulator,
-                simulatedCombat,
-                _player.Creature))
-        {
-            return SearchBoundaryReason.PendingChoice;
+            SimCreatureState creatureState = simulator.State.GetCreature(creature);
+            if (creatureState.Block > 0)
+            {
+                if (simulatedCombat.ShouldClearBlock(creature, out AbstractModel? preventer))
+                    creatureState.DamageBlock(creatureState.Block, ValueProp.Move);
+                else
+                    PersistentRelicSupport.TriggerAfterPreventingBlockClear(
+                        simulator, preventer, creature);
+            }
+            if (!CorePowerSupport.TriggerAfterBlockCleared(simulator, simulatedCombat, creature))
+                return SearchBoundaryReason.PendingChoice;
         }
 
-        if (PersistentRelicSupport.ShouldPlayerResetEnergy(simulatedCombat, _player))
-            playerState.LoseEnergy(playerState.Energy);
-        playerState.GainEnergy(PersistentPowerSupport.GetModifiedMaxEnergy(simulatedCombat, _player)
-            + simulatedCombat.ConsumeEnergyNextTurn(_player));
-        if (simulatedCombat.HasPendingChoice
-            || !PersistentPowerSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player))
+        foreach (Player member in startingPlayers)
         {
-            return SearchBoundaryReason.PendingChoice;
+            SimPlayerCombatState memberState = simulator.State.GetPlayerCombatState(member);
+            if (PersistentRelicSupport.ShouldPlayerResetEnergy(simulatedCombat, member))
+                memberState.LoseEnergy(memberState.Energy);
+            memberState.GainEnergy(PersistentPowerSupport.GetModifiedMaxEnergy(simulatedCombat, member)
+                + simulatedCombat.ConsumeEnergyNextTurn(member));
+            if (simulatedCombat.HasPendingChoice
+                || !PersistentPowerSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, member))
+                return SearchBoundaryReason.PendingChoice;
+            TurnStartRelicSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, member);
+            if (simulatedCombat.HasPendingChoice)
+                return SearchBoundaryReason.PendingChoice;
+            TurnStartRelicSupport.TriggerAfterEnergyResetLate(simulator, simulatedCombat, member);
+            if (simulatedCombat.HasPendingChoice)
+                return SearchBoundaryReason.PendingChoice;
         }
-        TurnStartRelicSupport.TriggerAfterEnergyReset(simulator, simulatedCombat, _player);
-        if (simulatedCombat.HasPendingChoice)
-            return SearchBoundaryReason.PendingChoice;
-        TurnStartRelicSupport.TriggerAfterEnergyResetLate(simulator, simulatedCombat, _player);
-        if (simulatedCombat.HasPendingChoice)
-            return SearchBoundaryReason.PendingChoice;
-        var progress = new PlayerStartProgress(_player, _startTurnNumber + roundIndex + 1,
-            rootSetup: false, takingExtraTurn, processedEnemyDeaths, shufflesCrossed, simulator.ShuffleEventCount);
-        SearchBoundaryReason result = ContinuePlayerStart(simulator, simulatedCombat, progress,
-            PlayerStartStage.BeforeHand, this, capture, _run.Performance);
-        shufflesCrossed = progress.ShufflesCrossed;
-        return result;
+        foreach (Player member in startingPlayers)
+        {
+            var progress = new PlayerStartProgress(member, simulatedCombat.GetPlayerTurnNumber(member),
+                rootSetup: false, takingExtraTurn, processedEnemyDeaths, shufflesCrossed, simulator.ShuffleEventCount);
+            SearchBoundaryReason result = ContinuePlayerStart(simulator, simulatedCombat, progress,
+                PlayerStartStage.BeforeHand, this,
+                ReferenceEquals(member, _player) && startingPlayers.Count == 1 ? capture : null,
+                _run.Performance);
+            shufflesCrossed = progress.ShufflesCrossed;
+            if (result != SearchBoundaryReason.None)
+                return result;
+        }
+        return SearchBoundaryReason.None;
     }
 
     private RoundReplayCheckpoint? _roundReplayCheckpoint;

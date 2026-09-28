@@ -14,6 +14,8 @@ using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Unlocks;
+using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 
@@ -70,7 +72,55 @@ internal sealed partial class UnattendedTestRunner
             StartedTurn = 1;
             Player local = LocalContext.GetMe(CombatState) ?? throw new InvalidOperationException("Missing probe local player.");
             await runner.MultiplayerProbeBarrierAsync("root", CombatState);
+            if (input.VerifyRootProjection || input.VerifyActionDifferential)
+            {
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(CombatState);
+                if (root.PlayerCount != input.PlayerCount)
+                    throw new InvalidOperationException($"Multiplayer root captured {root.PlayerCount} players; expected {input.PlayerCount}.");
+                runner._completedChecks.Add($"MultiplayerRootProjection:Players={root.PlayerCount}:Seat={input.Seat}");
+                if (input.VerifyActionDifferential)
+                    VerifyMultiplayerRootForkContracts(root, CombatState, local);
+            }
             return new ScenarioContext(character, encounter, CombatState, local, 1, [], [], []);
+        }
+
+        private void VerifyMultiplayerRootForkContracts(CombatRootSnapshot root, CombatState combat, Player local)
+        {
+            Player teammate = combat.Players.First(player => player.NetId != local.NetId);
+            ContinuationStamp actual = ContinuationStamp.CaptureLive(combat);
+            SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
+                SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
+            CombatBeamSolver driver = new(root, SolverDisplayNames.Capture(combat),
+                BattleDamageTracker.Observe(combat), policy);
+            StateFingerprint rootKey = driver.CaptureStateKeyForTesting(root.ForkSimulator());
+            ContinuationStamp Stamp(CombatPredictionSimulator simulator) => ContinuationStamp.CapturePredicted(
+                local, simulator, 1, root.Forecast, 1);
+            void AssertDifferent(CombatPredictionSimulator simulator, string difference)
+            {
+                if (Stamp(simulator) == actual)
+                    throw new InvalidOperationException($"Multiplayer root missed {difference} difference.");
+                if (driver.CaptureStateKeyForTesting(simulator) == rootKey)
+                    throw new InvalidOperationException($"Multiplayer state key missed {difference} difference.");
+            }
+
+            CombatPredictionSimulator blockFork = root.ForkSimulator();
+            blockFork.State.GetCreature(teammate.Creature).GainBlock(1);
+            AssertDifferent(blockFork, "teammate block");
+
+            CombatPredictionSimulator ownerFork = root.ForkSimulator();
+            PredictedCard card = ownerFork.State.GetPlayerCombatState(teammate).Hand.Cards.First();
+            card.MutablePreview.Owner = null!;
+            card.MutablePreview.Owner = local;
+            AssertDifferent(ownerFork, "card owner");
+
+            CombatPredictionSimulator rngFork = root.ForkSimulator();
+            rngFork.Rng.Shuffle.NextInt(2);
+            AssertDifferent(rngFork, "RNG internal state");
+
+            CombatPredictionSimulator sibling = root.ForkSimulator();
+            if (Stamp(sibling) != actual || driver.CaptureStateKeyForTesting(sibling) != rootKey)
+                throw new InvalidOperationException("Multiplayer root was changed by a sibling fork.");
+            runner._completedChecks.Add("MultiplayerRootFork:StampAndStateKey:TeammateBlock:CardOwner:Rng:SiblingsIsolated");
         }
 
         private async Task<RunState> BuildNetworkProbeRunAsync(MultiplayerProbeInput input, CharacterModel character)

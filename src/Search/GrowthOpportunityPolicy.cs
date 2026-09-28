@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
@@ -69,8 +70,9 @@ internal static class GrowthOpportunityPolicy
 {
     public static GrowthOpportunityTargets Capture(CombatState state)
     {
-        CardModel[] availableCards = state.Players
-            .SelectMany(player => player.PlayerCombatState!.AllCards)
+        var local = LocalContext.GetMe(state)
+            ?? throw new InvalidOperationException("Growth opportunity capture requires the local player.");
+        CardModel[] availableCards = local.PlayerCombatState!.AllCards
             .Where(IsAvailable)
             .ToArray();
         int madScienceUpgradeCapacity = MadScienceGrowth.CaptureRemainingCapacity(state);

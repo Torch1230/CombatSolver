@@ -22,6 +22,9 @@ internal sealed partial class UnattendedTestRunner
         public required ushort Port { get; init; }
         public required string CoordinationDirectory { get; init; }
         public required string ExpectedGameVersion { get; init; }
+        public bool VerifyRootProjection { get; init; }
+        public bool VerifyActionDifferential { get; init; }
+        public bool VerifyRoundDifferential { get; init; }
         public bool IsVirtual => Mode == "virtual";
         public int PeerCount => IsVirtual ? 1 : PlayerCount;
 

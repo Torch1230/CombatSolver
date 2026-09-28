@@ -95,6 +95,8 @@ internal sealed record ContinuationStamp(string StateText)
         AppendPotions(text, player, player.GetPotionAtSlotIndex);
         SimulatedCombatState.AppendLiveStatefulRelics(text, player);
         RelicPredictionStateSupport.AppendLiveContinuation(text, player);
+        if (state.Players.Count > 1)
+            AppendLivePlayers(text, state, player);
         ModelPredictionStateMirrors.AppendLiveContinuation(text, state);
         if (AdaptedCardOnPlayMirrors.CaptureLiveStamp() is { } onPlayStamp)
             text.Append(";onplay_configuration=").Append(onPlayStamp);
@@ -159,6 +161,8 @@ internal sealed record ContinuationStamp(string StateText)
             text,
             simulator,
             combat.RelicsOf(player));
+        if (combat.Players.Count > 1)
+            AppendPredictedPlayers(text, simulator, combat, player);
         StateFingerprintBuilder adapterFingerprint = new();
         ModelPredictionStateMirrors.AppendPredicted(ref adapterFingerprint, text, simulator, combat);
         if (combat.AdaptedOnPlay is { } adaptedOnPlay)
@@ -177,6 +181,88 @@ internal sealed record ContinuationStamp(string StateText)
             simulator.Rng.MonsterAiState,
             simulator.Rng.NicheState);
         return new ContinuationStamp(text.ToString());
+    }
+
+    private static void AppendLivePlayers(StringBuilder text, CombatState state, Player local)
+    {
+        text.Append(";local_player=").Append(local.NetId)
+            .Append(";round=").Append(state.RoundNumber)
+            .Append(";side=").Append(state.CurrentSide)
+            .Append(";player_count=").Append(state.Players.Count);
+        foreach (Player player in state.Players.OrderBy(candidate => candidate.NetId))
+        {
+            PlayerCombatState pcs = player.PlayerCombatState
+                ?? throw new InvalidOperationException($"玩家 {player.NetId} 没有战斗状态。");
+            StringBuilder fields = new();
+            fields.Append(";turn=").Append(pcs.TurnNumber)
+                .Append(";phase=").Append(pcs.Phase)
+                .Append(";alive=").Append(player.Creature.IsAlive)
+                .Append(";hp=").Append(player.Creature.CurrentHp)
+                .Append(";max_hp=").Append(player.Creature.MaxHp)
+                .Append(";block=").Append(player.Creature.Block)
+                .Append(";energy=").Append(pcs.Energy)
+                .Append(";stars=").Append(pcs.Stars)
+                .Append(";gold=").Append(player.Gold);
+            AppendOsty(fields, player.Osty, player.Osty?.CurrentHp ?? 0, player.Osty?.MaxHp ?? 0);
+            AppendLivePile(fields, pcs.Hand, 'H');
+            AppendLivePile(fields, pcs.DrawPile, 'D');
+            AppendLivePile(fields, pcs.DiscardPile, 'C');
+            AppendLivePile(fields, pcs.ExhaustPile, 'X');
+            SimulatedCombatState.AppendLiveTurnCardHistory(fields, state, player);
+            AppendOrbs(fields, pcs.OrbQueue.Capacity, pcs.OrbQueue.Orbs);
+            AppendPotions(fields, player, player.GetPotionAtSlotIndex);
+            SimulatedCombatState.AppendLiveStatefulRelics(fields, player);
+            RelicPredictionStateSupport.AppendLiveContinuation(fields, player);
+            AppendPlayerFields(text, player.NetId, fields);
+        }
+    }
+
+    private static void AppendPredictedPlayers(
+        StringBuilder text,
+        CombatPredictionSimulator simulator,
+        SimulatedCombatState combat,
+        Player local)
+    {
+        text.Append(";local_player=").Append(local.NetId)
+            .Append(";round=").Append(combat.RoundNumber)
+            .Append(";side=").Append(combat.CurrentSide)
+            .Append(";player_count=").Append(combat.Players.Count);
+        foreach (Player player in combat.Players.OrderBy(candidate => candidate.NetId))
+        {
+            SimPlayerCombatState pcs = simulator.State.GetPlayerCombatState(player);
+            SimCreatureState creature = simulator.State.GetCreature(player.Creature);
+            Creature? osty = combat.GetOsty(player);
+            StringBuilder fields = new();
+            fields.Append(";turn=").Append(combat.GetPlayerTurnNumber(player))
+                .Append(";phase=").Append(pcs.Phase)
+                .Append(";alive=").Append(creature.IsAlive)
+                .Append(";hp=").Append(creature.CurrentHp)
+                .Append(";max_hp=").Append(creature.MaxHp)
+                .Append(";block=").Append(creature.Block)
+                .Append(";energy=").Append(pcs.Energy)
+                .Append(";stars=").Append(pcs.Stars)
+                .Append(";gold=").Append(combat.GetPlayerGold(player));
+            AppendOsty(fields, osty,
+                osty is null ? 0 : simulator.State.GetCreature(osty).CurrentHp,
+                combat.GetOstyMaxHp(simulator, player));
+            AppendPredictedPile(fields, pcs.Hand, 'H');
+            AppendPredictedPile(fields, pcs.DrawPile, 'D');
+            AppendPredictedPile(fields, pcs.DiscardPile, 'C');
+            AppendPredictedPile(fields, pcs.ExhaustPile, 'X');
+            combat.AppendPredictedTurnCardHistory(fields, player);
+            AppendPredictedOrbs(fields, simulator, pcs.OrbQueue.Capacity, pcs.OrbQueue.Orbs);
+            AppendPotions(fields, player, slot => combat.GetPotionAtSlot(player, slot));
+            combat.AppendPredictedStatefulRelics(fields, player);
+            RelicPredictionStateSupport.AppendPredictedContinuation(
+                fields, simulator, combat.RelicsOf(player));
+            AppendPlayerFields(text, player.NetId, fields);
+        }
+    }
+
+    private static void AppendPlayerFields(StringBuilder text, ulong netId, StringBuilder fields)
+    {
+        foreach (string field in fields.ToString().Split(';', StringSplitOptions.RemoveEmptyEntries))
+            text.Append(";player[").Append(netId).Append("].").Append(field);
     }
 
     private static StringBuilder Begin(int turn, int hp, int maxHp, int block, int energy, int stars, int gold)
@@ -332,6 +418,7 @@ internal sealed record ContinuationStamp(string StateText)
         bool discoverUnregisteredBaseLibModifiers)
     {
         text.Append(card.Id.Entry).Append('+').Append(card.CurrentUpgradeLevel)
+            .Append("/owner=").Append(card.Owner.NetId)
             .Append('/').Append(card.EnergyCost.CostsX).Append(':')
             .Append(card.EnergyCost.GetWithModifiers(CostModifiers.Local))
             .Append('/').Append(card.HasStarCostX).Append(':').Append(card.CurrentStarCost)
@@ -422,7 +509,9 @@ internal sealed record ContinuationStamp(string StateText)
         {
             text.Append(power.Owner.CombatId).Append(':').Append(power.Id.Entry).Append('=')
                 .Append(power.Amount).Append('/')
-                .Append(PowerLifecycleSupport.SemanticallyRelevantAmountOnTurnStart(power));
+                .Append(PowerLifecycleSupport.SemanticallyRelevantAmountOnTurnStart(power))
+                .Append("/applier=").Append(power.Applier?.CombatId ?? uint.MaxValue)
+                .Append("/target=").Append(power.Target?.CombatId ?? uint.MaxValue);
             if (PowerLifecycleSupport.SemanticallyRelevantSkipNextDurationTick(power)) text.Append("/skip");
             text.Append('[');
             foreach (var dynamicVar in power.DynamicVars.OrderBy(item => item.Key, StringComparer.Ordinal))

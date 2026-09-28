@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Events;
@@ -26,7 +27,8 @@ internal static class MadScienceGrowth
     // Existing stacks have already reserved that many targets at this search root.
     public static int CaptureRemainingCapacity(CombatState combat)
     {
-        var player = combat.Players.Single();
+        var player = LocalContext.GetMe(combat)
+            ?? throw new InvalidOperationException("Mad Science growth capture requires the local player.");
         int upgradable = PileType.Deck.GetPile(player).Cards.Count(card => card.IsUpgradable);
         int committed = 0;
         foreach (ImprovementPower power in player.Creature.Powers.OfType<ImprovementPower>())

@@ -141,8 +141,6 @@ internal sealed partial class CombatBeamSolver
                 nameof(_minimumPotionUses),
                 "最少用药数必须非负且不能超过最多用药数。");
         }
-        if (root.PlayerCount != 1)
-            throw new NotSupportedException("第一版只支持单人战斗。");
         if (root.Enemies.Count > 64)
             throw new NotSupportedException("单场战斗超过 64 个敌人，无法编码路线存活位图。");
         PlayerTurnPhase requiredPhase = _includeTurnSetup

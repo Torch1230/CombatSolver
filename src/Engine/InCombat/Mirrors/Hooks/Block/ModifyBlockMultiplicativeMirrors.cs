@@ -75,10 +75,16 @@ internal static class ModifyBlockMultiplicativeMirrors
         MultiplayerScalingModel _,
         ModifyBlockMultiplicativeMirrorContext context)
     {
-        int playerCount = context.State.CombatState.Players.Count;
-        if (playerCount != 1)
-            throw new NotSupportedException($"CombatSolver only supports single-player combat, found {playerCount} players.");
-        return 1m;
+        if (!context.Target.IsPrimaryEnemy && !context.Target.IsSecondaryEnemy
+            || !context.Props.IsPoweredCardOrMonsterMoveBlock())
+            return 1m;
+        SimulatedCombatState combat = context.State.CombatState as SimulatedCombatState
+            ?? throw new InvalidOperationException("Multiplayer block scaling requires SimulatedCombatState.");
+        int playerCount = combat.Players.Count;
+        return playerCount <= 2
+            ? playerCount
+            : playerCount * MultiplayerScalingModel.GetMultiplayerScaling(
+                combat.Encounter, combat.CurrentActIndex);
     }
 
     private static decimal HandlePaelsLegion(
