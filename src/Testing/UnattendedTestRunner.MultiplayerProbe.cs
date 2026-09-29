@@ -74,6 +74,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerSelfPotionDeploy { get; init; }
         public bool VerifyControllerStyleSelection { get; init; }
         public bool VerifyControllerStyleDeploy { get; init; }
+        public bool VerifyDashboardLayout { get; init; }
         public bool VerifyVisibleOverlayCapture { get; init; }
         public bool VerifyVisibleSettingsCapture { get; init; }
         public string ContentRelicId { get; init; } = "";
@@ -222,6 +223,7 @@ internal sealed partial class UnattendedTestRunner
                     && !input.ContentCardIds.Contains("INFLAME")
                     && !input.ContentCardIds.Contains("DEFEND_IRONCLAD")
                 || input.VerifyControllerStyleDeploy && !input.VerifyControllerStyleSelection
+                || input.VerifyDashboardLayout && !input.VerifyControllerStyleSelection
                 || input.VerifyVisibleOverlayCapture && !input.VerifyControllerStyleSelection
                 || input.VerifyVisibleSettingsCapture && !input.VerifyControllerStyleSelection
                 || input.ContentRelicId.Length > 0 && (!input.IsVirtual || input.ContentCardIds.Length == 0

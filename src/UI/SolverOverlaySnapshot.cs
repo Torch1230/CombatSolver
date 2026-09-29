@@ -24,8 +24,10 @@ internal enum SolverOverlayActionVisualKind
 
 internal sealed record SolverMultiplayerOptionSnapshot(
     MultiplayerPlanStyle Style,
-    int EffectiveDamage,
+    int CurrentTurnDamage,
+    int CurrentTurnHpChange,
     int ProjectedHp,
+    int EnergyLeft,
     int SetupValue,
     bool Selected);
 

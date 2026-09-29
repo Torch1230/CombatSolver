@@ -214,8 +214,11 @@ internal static partial class SolverController
         => _combat.LatestResult?.MultiplayerStyle == null ? []
             : _combat.MultiplayerOptions.Select(option => new SolverMultiplayerOptionSnapshot(
                 option.MultiplayerStyle ?? throw new InvalidOperationException("Multiplayer option has no style."),
-                option.MultiplayerEffectiveDamage,
+                option.EnemyHpLostByTurn[option.StartTurnNumber],
+                option.HpRecoveredByTurn[option.StartTurnNumber]
+                    - option.HpLostByTurn[option.StartTurnNumber],
                 option.MultiplayerCurrentTurnProjectedHp,
+                option.EnergyLeftByTurn[option.StartTurnNumber],
                 option.MultiplayerSetupValue,
                 ReferenceEquals(option, _combat.LatestResult))).ToArray();
     internal static MultiplayerPlanStyle? SelectedMultiplayerStyleForUi

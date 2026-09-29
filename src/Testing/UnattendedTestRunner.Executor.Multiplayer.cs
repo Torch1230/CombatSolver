@@ -2190,6 +2190,48 @@ internal sealed partial class UnattendedTestRunner
                     || SolverOverlay.MultiplayerOptionCountForTesting != 2
                     || SolverOverlay.SelectedMultiplayerStyleForTesting != MultiplayerPlanStyle.Output)
                     throw new InvalidOperationException("Multiplayer style options were not shown in the overlay.");
+                if (input.VerifyDashboardLayout)
+                {
+                    foreach (SolverResult option in options)
+                    {
+                        MultiplayerPlanStyle style = option.MultiplayerStyle
+                            ?? throw new InvalidOperationException("Displayed multiplayer route has no style.");
+                        string card = SolverOverlay.MultiplayerOptionTextForTesting(style);
+                        int turn = option.StartTurnNumber;
+                        string hpChange = HpChangeText.Signed(
+                            option.HpRecoveredByTurn[turn] - option.HpLostByTurn[turn]);
+                        if (!card.Contains(SolverText.Format(
+                                $"本回合伤害 {option.EnemyHpLostByTurn[turn]} · 血量变化 {hpChange} HP"),
+                                StringComparison.Ordinal)
+                            || !card.Contains(SolverText.Format(
+                                $"预计余血 {option.MultiplayerCurrentTurnProjectedHp} HP · 余 {option.EnergyLeftByTurn[turn]} 费"),
+                                StringComparison.Ordinal))
+                            throw new InvalidOperationException("Multiplayer dashboard mixes turn metrics or omits an option.");
+                    }
+                    for (int frame = 0; frame < 3; frame++)
+                        await runner.NextFrameAsync();
+                    var firstCard = SolverOverlay.MultiplayerOptionRectForTesting(
+                        MultiplayerPlanStyle.Output);
+                    var secondCard = SolverOverlay.MultiplayerOptionRectForTesting(
+                        alternativeStyle);
+                    if (Math.Abs(firstCard.Position.Y - secondCard.Position.Y) > 1
+                        || secondCard.Position.X < firstCard.Position.X + firstCard.Size.X
+                        || firstCard.Size.Y < 92 || secondCard.Size.Y < 92)
+                        throw new InvalidOperationException("Multiplayer options are not aligned comparison cards.");
+                    if (primary.SearchedTurns > 1)
+                    {
+                        if (!SolverOverlay.MultiplayerFutureTurnsVisibleForTesting
+                            || SolverOverlay.MultiplayerLaterTurnVisibleForTesting)
+                            throw new InvalidOperationException("Later multiplayer turns were not collapsed by default.");
+                        SolverOverlay.PressMultiplayerFutureTurnsForTesting();
+                        if (!SolverOverlay.MultiplayerLaterTurnVisibleForTesting)
+                            throw new InvalidOperationException("Later multiplayer turns did not expand.");
+                        SolverOverlay.PressMultiplayerFutureTurnsForTesting();
+                        if (SolverOverlay.MultiplayerLaterTurnVisibleForTesting)
+                            throw new InvalidOperationException("Later multiplayer turns did not collapse again.");
+                    }
+                    runner._completedChecks.Add("MultiplayerDashboard:SameTurnMetrics:LaterTurnsToggle");
+                }
                 if (input.VerifyVisibleOverlayCapture)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(3));

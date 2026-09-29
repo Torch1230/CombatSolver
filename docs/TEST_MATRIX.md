@@ -16,6 +16,8 @@ P4 预测死亡仍执行合法当前动作：虚拟双人先搜索仅持一张 `
 
 多人路线混合动作修复（2026-09-29）：首回合代表在本风格主指标相同后比较自身血量、有效伤害和启动收益。虚拟双人一回合固定根：`Defend`／`Strike`／`Uppercut`、2 费的防守路线同时出防御和攻击；`Inflame`／`Strike`／`Uppercut`、2 费的启动路线同时启动和攻击；`Defend`／`Uppercut`、3 费的输出路线同时攻击和防御，三者都用完费用且 `Passed`。证据分别为 `.local/multiplayer-hybrid-fix/defense-attack/peer-0/result.json`、`.local/multiplayer-hybrid-fix/setup-attack/peer-0/result.json`、`.local/multiplayer-hybrid-fix/output-defense/peer-0/result.json`。受影响单人哨兵 `SMOKE-001` Passed；结构门禁 `REFACTOR_BOUNDARIES_OK search_files=239`；原用户截图无完整战斗根，未逐动作复现。
 
+多人 4.1A 并列看板（2026-09-29）：双人输出／启动固定根检查两张对比卡同排、当前回合伤害／血量变化／余血／余费与各自结果一致，后续第二回合默认收起并可展开、收回，点选启动仍切换原路线和条件预测，`Passed`：`.local/multiplayer-dashboard-4-1a/peer-0/result.json`。`UI-LOCALIZATION` 在 `PHROG_PARASITE_ELITE` 的 eng／zhs／zht 三种语言目录及模板占位符检查 Passed，runId `aadef770e89d4c16aeab0baf2d12745e`。Release 构建与 Windows 结构门禁通过。无头截图入口因视口图像为空失败，未计可见观感通过；实际 Steam 窗口排版仍未验。
+
 ## 多人 P2 首批内容差分（2026-09-28）
 
 虚拟四人对敌方新施加 `Artifact`、`Plating`、`Slippery`、`Skittish`、`CurlUp` 的缩放原生差分 Passed，包含 `Plating` 递减值；证据 `.local/multiplayer-p2/power-scaling-4-dec86567a8d04ddfb9cf15ef9ca0dcbe/peer-0/result.json`。虚拟双人 15 张多人专用卡按指定队友、群体、混合机制分三批，基础版和升级版共六次请求均 Passed，即时全状态与完整 RNG 对账；卡牌和证据目录见 [多人内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。跨回合 Hook、剩余 22 张专用卡、普通多人内容及网络搜索／执行未通过。Windows 结构门禁 238 通过；Bash 门禁仅完成语法检查。

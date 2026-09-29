@@ -62,7 +62,9 @@ internal static class SolverOverlay
     private static ProgressBar? _searchProgressBar;
     private static HFlowContainer? _routeHeadingRow;
     private static HFlowContainer? _multiplayerOptionsRow;
+    private static Button? _multiplayerFutureTurnsButton;
     private static readonly Dictionary<MultiplayerPlanStyle, Button> MultiplayerOptionButtons = [];
+    private static bool _multiplayerFutureTurnsExpanded;
     private static PanelContainer? _routeOutcomePanel;
     private static Label? _routeHeadingLabel;
     private static readonly SolverRouteRow[] RouteRows = new SolverRouteRow[SolverWeights.UiTurnRows];
@@ -1090,6 +1092,8 @@ internal static class SolverOverlay
         _multiplayerRngReevaluated = false;
         _presentation = SolverOverlayPresentation.Ready;
         _waitingForNextTurnPlan = false;
+        if (_lastSnapshot?.StartTurnNumber != snapshot.StartTurnNumber)
+            _multiplayerFutureTurnsExpanded = false;
         _lastSnapshot = snapshot;
         _searchBestSnapshot = null;
         _searchPotionRewardOutlook = default;
@@ -1164,14 +1168,22 @@ internal static class SolverOverlay
         foreach (SolverMultiplayerOptionSnapshot option in SolverController.MultiplayerOptionsForUi)
         {
             MultiplayerPlanStyle style = option.Style;
-            string label = style switch
+            string title = style switch
             {
-                MultiplayerPlanStyle.Output => SolverText.Format($"输出 · 预计伤害 {option.EffectiveDamage:F0}"),
-                MultiplayerPlanStyle.Defense => SolverText.Format($"防守 · 预计血量 {option.ProjectedHp:F0}"),
-                MultiplayerPlanStyle.Setup => SolverText.Format($"启动 · 持续收益估值 {option.SetupValue:F0}"),
+                MultiplayerPlanStyle.Output => SolverText.Get("输出方案"),
+                MultiplayerPlanStyle.Defense => SolverText.Get("防守方案"),
+                MultiplayerPlanStyle.Setup => SolverText.Get("启动方案"),
                 _ => throw new ArgumentOutOfRangeException(nameof(style)),
             };
-            Button button = SolverUiTokens.CreateButton(label, SolverButtonStyle.Secondary);
+            string label = title + "\n"
+                + SolverText.Format($"本回合伤害 {option.CurrentTurnDamage} · 血量变化 {HpChangeText.Signed(option.CurrentTurnHpChange)} HP") + "\n"
+                + SolverText.Format($"预计余血 {option.ProjectedHp} HP · 余 {option.EnergyLeft} 费") + "\n"
+                + SolverText.Format($"持续收益估值 {option.SetupValue}");
+            Button button = SolverUiTokens.CreateButton(label,
+                option.Selected ? SolverButtonStyle.Primary : SolverButtonStyle.Secondary);
+            button.CustomMinimumSize = new Vector2(214, 92);
+            button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            button.Alignment = HorizontalAlignment.Left;
             button.ToggleMode = true;
             button.ButtonPressed = option.Selected;
             button.Pressed += () =>
@@ -1186,9 +1198,25 @@ internal static class SolverOverlay
             MultiplayerOptionButtons.Add(style, button);
         }
         row.Visible = MultiplayerOptionButtons.Count > 0;
+        if (row.Visible && _body != null)
+            _body.MoveChild(row, 0);
     }
 
     internal static int MultiplayerOptionCountForTesting => MultiplayerOptionButtons.Count;
+    internal static string MultiplayerOptionTextForTesting(MultiplayerPlanStyle style)
+        => MultiplayerOptionButtons[style].Text;
+    internal static Rect2 MultiplayerOptionRectForTesting(MultiplayerPlanStyle style)
+        => MultiplayerOptionButtons[style].GetGlobalRect();
+    internal static bool MultiplayerFutureTurnsVisibleForTesting
+        => _multiplayerFutureTurnsButton?.Visible == true;
+    internal static bool MultiplayerLaterTurnVisibleForTesting
+        => RouteRows[1]?.Visible == true;
+    internal static void PressMultiplayerFutureTurnsForTesting()
+    {
+        if (_multiplayerFutureTurnsButton?.Visible != true)
+            throw new InvalidOperationException("Multiplayer future turn control is missing.");
+        _multiplayerFutureTurnsButton.EmitSignal(Button.SignalName.Pressed);
+    }
     internal static MultiplayerPlanStyle? SelectedMultiplayerStyleForTesting
         => MultiplayerOptionButtons.Where(item => item.Value.ButtonPressed)
             .Select(item => (MultiplayerPlanStyle?)item.Key).SingleOrDefault();
@@ -1203,6 +1231,18 @@ internal static class SolverOverlay
     private static void PopulateRoute(SolverOverlaySnapshot snapshot, bool resetScroll)
     {
         SetRouteVisibility(true);
+        bool multiplayerDashboard = _presentation == SolverOverlayPresentation.Ready
+            && SolverController.SelectedMultiplayerStyleForUi != null;
+        if (_multiplayerFutureTurnsButton != null)
+        {
+            int laterTurns = Math.Max(0, snapshot.Turns.Count - 1);
+            _multiplayerFutureTurnsButton.Visible = multiplayerDashboard && laterTurns > 0;
+            if (laterTurns > 0)
+                _multiplayerFutureTurnsButton.Text = _multiplayerFutureTurnsExpanded
+                    ? SolverText.Format($"后续 {laterTurns} 回合 · 收起")
+                    : SolverText.Format($"后续 {laterTurns} 回合 · 展开");
+        }
+        UpdateRouteViewportSize();
         if (_strategyOutcomeRow != null)
         {
             foreach (Node child in _strategyOutcomeRow.GetChildren())
@@ -1263,8 +1303,10 @@ internal static class SolverOverlay
             _deathOutcomeLabel.Visible = snapshot.OnlyDeathRoutesFound;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
         {
-            SetRouteRowVisible(index, index < snapshot.Turns.Count);
-            if (index >= snapshot.Turns.Count)
+            bool rowVisible = index < snapshot.Turns.Count
+                && (!multiplayerDashboard || index == 0 || _multiplayerFutureTurnsExpanded);
+            SetRouteRowVisible(index, rowVisible);
+            if (!rowVisible)
                 continue;
             SolverOverlayTurnSnapshot turn = snapshot.Turns[index];
             RouteRows[index].TurnLabel.Text = SolverText.Format($"第 {turn.Turn} 回合");
@@ -1301,6 +1343,7 @@ internal static class SolverOverlay
                         ? Danger
                         : Success);
         }
+        QueueResponsiveLayout();
     }
 
     public static void ShowDeploying(Node host, int turn, int actionCount)
@@ -2017,6 +2060,18 @@ internal static class SolverOverlay
         _routeScroll.AddChild(routes);
         _body.AddChild(_routeScroll);
 
+        _multiplayerFutureTurnsButton = SolverUiTokens.CreateButton(
+            SolverText.Get("查看后续回合"), SolverButtonStyle.Secondary);
+        _multiplayerFutureTurnsButton.Visible = false;
+        _multiplayerFutureTurnsButton.Pressed += () =>
+        {
+            if (_lastSnapshot == null)
+                return;
+            _multiplayerFutureTurnsExpanded = !_multiplayerFutureTurnsExpanded;
+            PopulateRoute(_lastSnapshot, resetScroll: false);
+        };
+        _body.AddChild(_multiplayerFutureTurnsButton);
+
         _detailsPanel = CreateSectionPanel("DetailsPanel");
         _detailsText = CreateRichText(SolverUiTokens.Type.Caption);
         _detailsText.FitContent = true;
@@ -2686,12 +2741,18 @@ internal static class SolverOverlay
     {
         if (_multiplayerOptionsRow != null)
             _multiplayerOptionsRow.Visible = visible && MultiplayerOptionButtons.Count > 0;
+        if (_multiplayerFutureTurnsButton != null)
+            _multiplayerFutureTurnsButton.Visible = visible
+                && _presentation == SolverOverlayPresentation.Ready
+                && SolverController.SelectedMultiplayerStyleForUi != null
+                && _lastSnapshot?.Turns.Count > 1;
         if (_routeHeadingRow != null)
             _routeHeadingRow.Visible = visible;
         if (_routeOutcomePanel != null)
             _routeOutcomePanel.Visible = visible;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
             SetRouteRowVisible(index, visible);
+        UpdateRouteViewportSize();
         QueueResponsiveLayout();
     }
 
@@ -2928,15 +2989,25 @@ internal static class SolverOverlay
             _detailsText.Visible = visible;
         if (_detailsButton != null)
             _detailsButton.SetExpanded(visible);
-        if (_routeScroll != null)
-        {
-            _routeScroll.CustomMinimumSize = new Vector2(
-                0,
-                visible
-                    ? SolverUiTokens.Size.RouteViewportHeightWithDetails
-                    : SolverUiTokens.Size.RouteViewportHeight);
-        }
+        UpdateRouteViewportSize();
         QueueResponsiveLayout();
+    }
+
+    private static void UpdateRouteViewportSize()
+    {
+        if (_routeScroll == null)
+            return;
+        bool compact = _presentation == SolverOverlayPresentation.Ready
+            && SolverController.SelectedMultiplayerStyleForUi != null
+            && !_multiplayerFutureTurnsExpanded;
+        _routeScroll.SizeFlagsVertical = compact
+            ? Control.SizeFlags.ShrinkBegin
+            : Control.SizeFlags.ExpandFill;
+        _routeScroll.CustomMinimumSize = new Vector2(0, compact
+            ? SolverUiTokens.Size.RouteRowHeight + SolverUiTokens.Spacing.Sm
+            : _detailsVisible
+                ? SolverUiTokens.Size.RouteViewportHeightWithDetails
+                : SolverUiTokens.Size.RouteViewportHeight);
     }
 
     private static void QueueResponsiveLayout()
