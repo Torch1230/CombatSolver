@@ -725,3 +725,5 @@ P2 又补 `TheObscuraNormal` 幻象伙伴死亡／复活：双人原生击倒 `P
 P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，原版女王立刻改排 `ENRAGE_MOVE`；击杀及下一个敌方回合的全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/queen-amalgam-death-fc1b28efee2b4d618d2e4c784e441c17/peer-0/result.json`。女王自身死亡与其他后续招式仍未验。
 
 按玩家提醒又逐张复核 15 张 `AnyAlly` 牌的原版 `OnPlay` 与模拟受益归属，结果列于[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)；这是源码检查，不是新一轮原生差分。P2 双尾鼠召唤次数上限另以原版计数注入 3 后的一次双人敌方回合验证，未再排召唤，全状态／九条 RNG 对齐，Passed：`.local/multiplayer-p2/two-tailed-rat-limit-9c30001f1922426f9e87ca0dab9dcf67/peer-0/result.json`。首次启动因证据目录未按 `peer-0` 设置在建局前失败，改正测试调用后通过；未自然连续召唤三次。
+
+随后复用现有双回合差分入口验证 `SlumberingBeetleNormal` 敌方初始镀层：双人根、第二和第三回合甲虫镀层／格挡分别为 45／45、45／45、43／43，全部状态及九条 RNG 对齐，Passed：`.local/multiplayer-p2/slumbering-beetle-plating-bc43bf334ea24b7ca47fd14bb490fef2/peer-0/result.json`。该输入没有触发苏醒移除。
