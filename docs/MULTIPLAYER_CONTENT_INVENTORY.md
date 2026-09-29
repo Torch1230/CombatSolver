@@ -99,6 +99,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `WhisperingEarring` 原版自动出牌时，`AnyAlly` 从其他存活玩家中消耗 `CombatTargets` 随机挑选，`AnyPlayer` 指向持有人。四人原生根只给本地玩家的手牌保留 `Blaze`，分别运行原版遗物效果和同根模拟：显式断言本地没有力量、恰有一名其他玩家获得 5 力量，全部状态及完整 RNG 对齐，Passed：`.local/multiplayer-p2/earring-blaze-other-81734c90e5694861bcfbc628c07048e6/peer-0/result.json`。这次直接调用原版遗物的首回合自动出牌入口，未覆盖开战装载时序、更多自动牌或 13 张上限。
 
+`Blaze` 目标排除补充：四人 Play 阶段把 1 号队友生命设为 0，保留 0 号出牌者和另外两名存活队友；固定选择 0、1 号座位均明确拒绝，固定选择 2 号后原版出牌与模拟全部状态及 RNG 对齐，Passed：`.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`。夹具直接设置生命，没有运行死亡 Hook 和后续回合，不能代替死亡生命周期验收。
+
 `GremlinMerc` 的入场 `ThieveryPower` 按每名玩家创建一个实例，首回合 `GIMME_MOVE` 后对每个实例调用 `Steal`。模拟曾只读取首个实例；按原版逐实例扣对应玩家金币并更新每条能力的已偷金币后，双人和四人到第二回合完整状态／RNG 差分 Passed，证据见[规划 0.2 节](MULTIPLAYER_PLAN.md)。其他招式及死亡链路的证据见下文。
 
 第二回合 `DOUBLE_SMASH_MOVE` 又发现虚弱应施给所有存活玩家；模拟由本地单目标改为遍历全体玩家，第三回合完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-second-fixed-31e35320566f4014b7c3f198bcb80012/peer-0/result.json`。第三招与偷窃返还的证据见下文。

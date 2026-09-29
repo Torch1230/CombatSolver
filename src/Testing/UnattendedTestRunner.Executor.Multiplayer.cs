@@ -1178,6 +1178,16 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.VerifyAllyTarget)
             {
+                if (input.VerifyDeadTeammateTarget)
+                {
+                    Player deadTeammate = combat.Players[1];
+                    deadTeammate.Creature.SetCurrentHpInternal(0);
+                    await runner.MultiplayerProbeBarrierAsync("dead-teammate", combat);
+                    if (!deadTeammate.Creature.IsDead || !actor.Creature.IsAlive
+                        || combat.Players.Any(member => member.PlayerCombatState is not
+                            { Phase: PlayerTurnPhase.Play, TurnNumber: 1 }))
+                        throw new InvalidOperationException("Dead teammate target fixture did not hold.");
+                }
                 CombatRootSnapshot targetRoot = CombatRootSnapshot.Capture(combat);
                 SearchPolicySnapshot targetPolicy = SolverController.CaptureSearchPolicy(
                     SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
@@ -1211,6 +1221,26 @@ internal sealed partial class UnattendedTestRunner
                 if (ContinuationStamp.CaptureLive(combat).StateText != firstRng)
                     throw new InvalidOperationException("Ally target selection changed game state or RNG.");
                 runner._completedChecks.Add("MultiplayerAllyTarget:OneOtherLivingPlayer:StableForks:GameRngUnchanged");
+                if (input.VerifyDeadTeammateTarget)
+                {
+                    foreach (int excludedSeat in new[] { 0, 1 })
+                    {
+                        CombatBeamSolver excludedDriver = new(targetRoot, SolverDisplayNames.Capture(combat),
+                            BattleDamageTracker.Observe(combat), targetPolicy with
+                            { MultiplayerAllyTargetSeatForTesting = excludedSeat });
+                        CombatPredictionSimulator excludedFork = targetRoot.ForkSimulator();
+                        PredictedCard excludedSource = excludedFork.State.GetPlayerCombatState(actor).Hand.Cards
+                            .Single(candidate => candidate.Preview.Id.Entry == "BLAZE");
+                        bool rejected = false;
+                        try { _ = excludedDriver.AllyTargetsForTesting(excludedSource, excludedFork); }
+                        catch (InvalidOperationException error) when
+                            (error.Message == "Fixed ally target is not legal in this branch.")
+                        { rejected = true; }
+                        if (!rejected)
+                            throw new InvalidOperationException("Blaze accepted its owner or dead teammate.");
+                    }
+                    runner._completedChecks.Add("MultiplayerAllyTarget:OwnerAndDeadTeammateRejected");
+                }
                 if (input.VerifyAllyAfterEnergyGain)
                 {
                     runner._completedChecks.Add("MultiplayerAllyTarget:SimulatedEnergyGain:LiveUnplayable:TargetRetained");

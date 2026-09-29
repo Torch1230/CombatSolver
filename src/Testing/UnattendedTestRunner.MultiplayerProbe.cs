@@ -71,6 +71,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyTargetedSupport { get; init; }
         public bool VerifyMultipleSupport { get; init; }
         public bool VerifyAllyTarget { get; init; }
+        public bool VerifyDeadTeammateTarget { get; init; }
         public bool VerifyAllyAfterEnergyGain { get; init; }
         public bool VerifySelfPotion { get; init; }
         public bool VerifyEnemyPotionTargets { get; init; }
@@ -157,6 +158,7 @@ internal sealed partial class UnattendedTestRunner
                     && !input.ContentCardIds.Contains("DEFEND_IRONCLAD")
                 || input.VerifyControllerStyleDeploy && !input.VerifyControllerStyleSelection
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
+                || input.VerifyDeadTeammateTarget && (!input.VerifyAllyTarget || input.PlayerCount != 4)
                 || input.ContentCardIds.Length > 0 && (input.Mode != "virtual"
                     || input.ContentCardIds.Length > 5
                     || input.ContentCardIds.Any(string.IsNullOrWhiteSpace)
