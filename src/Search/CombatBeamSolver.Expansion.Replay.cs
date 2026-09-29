@@ -989,7 +989,7 @@ internal sealed partial class CombatBeamSolver
         {
             return SearchBoundaryReason.PendingChoice;
         }
-        IReadOnlyList<Player> endingPlayers = takingExtraTurn ? [_player] : simulatedCombat.Players;
+        IReadOnlyList<Player> endingPlayers = simulatedCombat.CurrentTurnPlayers;
         Creature[] endingCreatures = endingPlayers.Select(member => member.Creature).ToArray();
         int etherealExhaustCount = endingPlayers.Sum(member =>
             simulatedCombat.CountEtherealCardsInHand(simulator, member));

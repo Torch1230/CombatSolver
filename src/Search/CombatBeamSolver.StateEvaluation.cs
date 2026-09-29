@@ -1643,6 +1643,7 @@ internal sealed partial class CombatBeamSolver
                 SimPlayerCombatState memberState = simulator.State.GetPlayerCombatState(member);
                 key.Add(member.NetId);
                 key.Add(simulatedCombat.GetPlayerTurnNumber(member));
+                key.Add(simulatedCombat.IsCurrentTurnParticipant(member));
                 key.Add(creature.CurrentHp);
                 key.Add(creature.MaxHp);
                 key.Add(creature.Block);

@@ -62,6 +62,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerMidDeploymentDamage { get; init; }
         public bool VerifyControllerMidDeploymentRng { get; init; }
         public bool VerifyEnetControllerRng { get; init; }
+        public bool VerifyEnetPaelsEyeExtraTurn { get; init; }
         public bool VerifyControllerManualTakeover { get; init; }
         public bool VerifyControllerSearchCancel { get; init; }
         public bool VerifyControllerLifecycleReset { get; init; }
@@ -187,6 +188,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifySegmentReattachAfterRound && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyHeistRecoveryAfterRound && !input.VerifyMonsterDeathAfterRound
                 || input.VerifyEnetControllerRng && (input.IsVirtual || input.PlayerCount != 2)
+                || input.VerifyEnetPaelsEyeExtraTurn && (input.IsVirtual || input.PlayerCount != 2
+                    || request.EncounterId != "FUZZY_WURM_CRAWLER_WEAK")
                 || input.VerifyPotionAccounting && !input.VerifySelfPotion
                 || input.VerifyEnemyPotionTargets && input.ContentCardIds.Length == 0
                 || input.VerifyEnemyPotionUse && !input.VerifyEnemyPotionTargets

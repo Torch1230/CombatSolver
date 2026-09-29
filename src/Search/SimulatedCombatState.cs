@@ -234,6 +234,7 @@ internal sealed partial class SimulatedCombatState
     private uint _nextCreatureId;
     private int _roundNumber;
     private CombatSide _currentSide;
+    private Player[] _currentTurnPlayers;
     private bool _battlewornDummyTimedOut;
     private bool _rootMaterialized;
     private CombatPredictionState? _predictionState;
@@ -415,6 +416,8 @@ internal sealed partial class SimulatedCombatState
         _nextCreatureId = (uint)NextCreatureIdField.GetValue(inner)!;
         _roundNumber = inner.RoundNumber;
         _currentSide = inner.CurrentSide;
+        IReadOnlyList<Player> extraTurnPlayers = CombatManager.Instance.PlayersTakingExtraTurn;
+        _currentTurnPlayers = (extraTurnPlayers.Count > 0 ? extraTurnPlayers : _players).ToArray();
         _deathPhases = BuildInitialDeathPhases(inner.Enemies);
         _playerTurnNumbers = [];
         _simulatedPlayerGold = [];
@@ -465,6 +468,7 @@ internal sealed partial class SimulatedCombatState
         _playerNames = source._playerNames;
         _rootFloatingCards = source._rootFloatingCards;
         _rootDeadCreatures = source._rootDeadCreatures;
+        _currentTurnPlayers = source._currentTurnPlayers;
         _allies = allies;
         _enemies = enemies;
         _knownEnemies = knownEnemies;
@@ -533,6 +537,14 @@ internal sealed partial class SimulatedCombatState
     public IReadOnlyList<Creature> Creatures => _creatures ??= new CombinedRosterView(_allies, _enemies);
     public IReadOnlyList<Creature> PlayerCreatures => _playerCreatures;
     public IReadOnlyList<Player> Players => _players;
+    public IReadOnlyList<Player> CurrentTurnPlayers => _currentTurnPlayers;
+    public bool IsCurrentTurnParticipant(Player player) => _currentTurnPlayers.Contains(player);
+    public void SetCurrentTurnPlayers(IReadOnlyList<Player> players)
+    {
+        if (players.Count == 0)
+            throw new InvalidOperationException("A player turn must have at least one participant.");
+        _currentTurnPlayers = players.ToArray();
+    }
     public IReadOnlyList<ModifierModel> Modifiers => _modifiers;
     public MultiplayerScalingModel? MultiplayerScalingModel => _multiplayerScalingModel;
     public int RoundNumber

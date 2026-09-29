@@ -6,6 +6,7 @@ param(
     [switch]$VerifyControllerFullAuto,
     [switch]$VerifyControllerAutoNextTurn,
     [switch]$VerifyControllerRngDrift,
+    [switch]$VerifyPaelsEyeExtraTurn,
     [ValidateRange(0, 16)]
     [int]$SearchMaxDegreeOfParallelismForTest = 0
 )
@@ -16,6 +17,9 @@ if ($VerifyControllerAutoNextTurn -and !$VerifyControllerFullAuto) {
 }
 if ($VerifyControllerRngDrift -and ($PlayerCount -ne 2 -or $VerifyControllerFullAuto)) {
     throw 'VerifyControllerRngDrift requires two players and manual controller execution.'
+}
+if ($VerifyPaelsEyeExtraTurn -and ($PlayerCount -ne 2 -or $VerifyControllerFullAuto -or $VerifyControllerRngDrift)) {
+    throw 'VerifyPaelsEyeExtraTurn requires two players and scripted execution.'
 }
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $session = Join-Path $repositoryRoot ('.local/multiplayer-p0/enet-' + $PlayerCount + '-' + [Guid]::NewGuid().ToString('N'))
@@ -36,6 +40,7 @@ foreach ($seat in 0..($PlayerCount - 1)) {
         verifyControllerFullAuto = [bool]$VerifyControllerFullAuto
         verifyControllerAutoNextTurn = [bool]$VerifyControllerAutoNextTurn
         verifyEnetControllerRng = [bool]$VerifyControllerRngDrift
+        verifyEnetPaelsEyeExtraTurn = [bool]$VerifyPaelsEyeExtraTurn
     } | ConvertTo-Json | Set-Content -LiteralPath $input -Encoding utf8
     $instance = 'mp-p0-' + [Guid]::NewGuid().ToString('N')
     $arguments = @(
@@ -50,6 +55,9 @@ foreach ($seat in 0..($PlayerCount - 1)) {
     }
     if ($VerifyControllerRngDrift) {
         $arguments += @('-EncounterId', 'CULTISTS_NORMAL', '-DeploymentInterActionDelaySecondsForTest', '3')
+    }
+    if ($VerifyPaelsEyeExtraTurn) {
+        $arguments += @('-EncounterId', 'FUZZY_WURM_CRAWLER_WEAK')
     }
     $processes += Start-Process -FilePath 'pwsh' -ArgumentList $arguments `
         -WorkingDirectory $repositoryRoot -WindowStyle Hidden `

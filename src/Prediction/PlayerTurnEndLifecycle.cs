@@ -42,7 +42,8 @@ internal static class PlayerTurnEndLifecycle
         TurnStartRelicSupport.TriggerBeforeSideTurnEnd(simulator, combat, participants);
         if (combat.HasPendingChoice)
             return false;
-        if (!simulator.SimulateEndPlayerTurnBeforeOrbPassives(combat.GetPlayerTurnNumber(player)))
+        if (!simulator.SimulateEndPlayerTurnBeforeOrbPassives(
+                combat.GetPlayerTurnNumber(player), combat.CurrentTurnPlayers))
             return false;
         if (simulator.IsOverOrEnding)
             return true;
@@ -53,7 +54,8 @@ internal static class PlayerTurnEndLifecycle
                     || combat.HasPendingChoice))
                 return false;
         }
-        if (!simulator.SimulateEndPlayerTurnAfterOrbPassives(combat.GetPlayerTurnNumber(player)))
+        if (!simulator.SimulateEndPlayerTurnAfterOrbPassives(
+                combat.GetPlayerTurnNumber(player), combat.CurrentTurnPlayers))
             return false;
         CorePowerSupport.CompletePlayerEarlySideTurnEndEffects(combat, participants);
         return !combat.HasPendingChoice;

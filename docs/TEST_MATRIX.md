@@ -244,7 +244,9 @@ P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不�
 
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
 
-P1 `PaelsEye` 双人额外回合探针未通过：注入持有人遗物后，预测转到其第 2 回合；虚拟原生端未在 120 秒内到达稳定额外回合边界。三次定位的严格等待超时、过早取样和放宽目标条件后仍超时证据见[规划最新记录](MULTIPLAYER_PLAN.md)。原版源码定位根因：虚拟多人用单人 NetService，`AllPlayersReadyToEndTurn` 恒真；额外回合开始标记被排除的队友结束后提前返回，持有人进不了 `Play`。临时探针已撤回，需双进程 ENet 验收，不把该行为记为已验。
+P1 `PaelsEye` 虚拟双人额外回合探针未通过：注入持有人遗物后，预测转到其第 2 回合；虚拟原生端未在 120 秒内到达稳定额外回合边界。三次定位的严格等待超时、过早取样和放宽目标条件后仍超时证据见[规划最新记录](MULTIPLAYER_PLAN.md)。原版源码定位根因：虚拟多人用单人 NetService，`AllPlayersReadyToEndTurn` 恒真；额外回合开始标记被排除的队友结束后提前返回，持有人进不了 `Play`。临时虚拟探针已撤回，真实双端证据如下。
+
+双进程 ENet `PaelsEye` 已通过：`.local/multiplayer-p0/enet-2-18a7ba08e08442f6b5fc2c9cbfac17cb/peer-0/result.json`、`peer-1/result.json` 均 `Passed`。两端逐检查点核对原生完整状态、玩家阶段和九条 RNG；原版／预测差分确认房主独自进入额外回合 `Play/2`、队友保持 `Start/1`，随后额外回合结束、敌方行动，两人进入普通回合 `Play/3` 与 `Play/2`。该测试先后暴露客户端动作实例等待错误、预测把非参与者置为 `End`、预测错误保留队友手牌；对应失败与修复链见[规划最新记录](MULTIPLAYER_PLAN.md)。先前内存准入失败的证据仍为 `.local/multiplayer-p0/enet-2-83af4982d6bd4723865877d37710f5c1/`。Windows 与 Bash 入口均支持探针；Bash 只做语法检查，Linux 游戏未运行。
 
 P2 `HibernatePower`／`FrostOrb` 跨玩家格挡：双人本地球主的霜球被动让两名玩家各得 2 格挡，激发让两人各再得 5，队友没有球、持有人队列清空；两次原版／预测全状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/frost-hibernate-both-players-a809108ca0b64db19510bc03387da4ad/peer-0/result.json`。能力和球由夹具施加，跨回合能力递减未验。
 

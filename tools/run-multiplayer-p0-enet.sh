@@ -14,8 +14,8 @@ if [[ "$player_count" != 2 && "$player_count" != 4 ]]; then
     printf 'Player count must be 2 or 4.\n' >&2
     exit 2
 fi
-if [[ "$controller_mode" != scripted && "$controller_mode" != full-auto && "$controller_mode" != rng-drift ]]; then
-    printf 'Controller mode must be scripted, full-auto, or rng-drift.\n' >&2
+if [[ "$controller_mode" != scripted && "$controller_mode" != full-auto && "$controller_mode" != rng-drift && "$controller_mode" != paels-eye ]]; then
+    printf 'Controller mode must be scripted, full-auto, rng-drift, or paels-eye.\n' >&2
     exit 2
 fi
 if [[ ! "$search_dop" =~ ^[0-9]+$ ]] || ((search_dop < 0 || search_dop > 16)); then
@@ -30,8 +30,8 @@ if [[ "$auto_next_turn" == true && "$controller_mode" != full-auto ]]; then
     printf 'Auto next turn requires full-auto controller mode.\n' >&2
     exit 2
 fi
-if [[ "$controller_mode" == rng-drift && "$player_count" != 2 ]]; then
-    printf 'RNG drift probe requires two players.\n' >&2
+if [[ "$controller_mode" == rng-drift || "$controller_mode" == paels-eye ]] && [[ "$player_count" != 2 ]]; then
+    printf 'RNG drift and Pael\x27s Eye probes require two players.\n' >&2
     exit 2
 fi
 
@@ -59,6 +59,7 @@ with open(path, 'w', encoding='utf-8') as output:
         'verifyControllerFullAuto': controller_mode == 'full-auto',
         'verifyControllerAutoNextTurn': auto_next_turn == 'true',
         'verifyEnetControllerRng': controller_mode == 'rng-drift',
+        'verifyEnetPaelsEyeExtraTurn': controller_mode == 'paels-eye',
     }, output)
 PY
     search_args=()
@@ -67,6 +68,9 @@ PY
     fi
     if [[ "$controller_mode" == rng-drift ]]; then
         search_args+=(--encounter-id CULTISTS_NORMAL --deployment-inter-action-delay-seconds-for-test 3)
+    fi
+    if [[ "$controller_mode" == paels-eye ]]; then
+        search_args+=(--encounter-id FUZZY_WURM_CRAWLER_WEAK)
     fi
     "$repository_root/tools/run-unattended-test.sh" \
         --scenario-id MULTIPLAYER-P0 --multiplayer-probe-path "$input" \

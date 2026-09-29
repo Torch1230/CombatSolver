@@ -783,3 +783,11 @@ P1 的多人专属额外回合仍有未验缺口：`PaelsEye` 原版源码按持
 P3 又核自身受益的队友目标牌：双人 1 能量、队友 10 格挡时，`Mimic` 作为普通本地动作指向队友进入搜索，未记作纯支援，唯一输出方案 Passed。首试断言错误要求额外防守方案，诊断确认同动作方案按合同合并；失败、诊断与最终证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。此项没有重新跑已有基础／升级原生即时差分。
 
 P2 `HibernatePower` 与 `FrostOrb` 的真正跨玩家效果又在虚拟双人原版根通过：霜球被动给本地与队友各 2 格挡，激发再给两人各 5 格挡，球只从持有人队列移除；两处全状态／九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。这补足即时施加与既有组合跨回合证据之外的球被动／激发归属，未验死亡目标或多次触发。
+
+针对 `PaelsEye` 虚拟多人固有的回合边界问题，新增双进程 ENet 探针。首次启动 `.local/multiplayer-p0/enet-2-83af4982d6bd4723865877d37710f5c1/` 因内存准入失败，未进入双端战斗；两端各 1.5 GiB 预留及固定 2 GiB 余量未降低。用户释放内存后，`.local/multiplayer-p0/enet-2-104e192a94544f0e8c7f0dac48bc83aa/` 两端进入战斗，但测试夹具在加入者等待永不完成的本地 `EndPlayerTurnAction.CompletionTask`，双方超时。原版客户端 `RequestEnqueue` 只向房主发送请求，客户端动作实例本身不入队；夹具改为等待原生就绪状态。
+
+随后 `.local/multiplayer-p0/enet-2-96cc93775d044a29a460040c6617760d/` 两端原生额外回合状态及九条 RNG 相同，房主持有人进入 `Play/2`，队友保持 `Start/1`，但预测错把队友阶段置为 `End`。按原版 `StartTurn` 给全部玩家设 `Start` 后，`.local/multiplayer-p0/enet-2-ce836a8b0217497da128449256de05c0/` 继续发现预测保留队友上一回合手牌。根因是把“下一额外回合参与者”误用于“当前共同回合结束者”；原版先结束并清空当前全部玩家手牌，随后才确定下一额外回合参与者。现从原生根捕获当前参与者，Fork 时保留并写入多人状态键；回合末按当前参与者结算，回合开始再更新下一参与者。
+
+最终双人 ENet `.local/multiplayer-p0/enet-2-18a7ba08e08442f6b5fc2c9cbfac17cb/peer-0/result.json` 与 `peer-1/result.json` 均 `Passed`：房主第 2 回合独自行动、队友仍第 1 回合，随后房主结束额外回合并经历敌方回合，两人进入普通回合 `Play/3` 与 `Play/2`。两个边界的原版／预测完整状态和九条 RNG 对齐，两端原生状态、玩家阶段与九条 RNG 也逐检查点一致。此项覆盖一名持有人、双人首回合零出牌和一次后续普通回合；多持有人及其他额外回合来源未验。
+
+本次行为源码的 Release 构建 0 警告／0 错误，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=239`；Bash ENet 入口仅做语法检查，未在 Linux 启动游戏。最终 DLL 已覆盖本地 Mod，源文件与部署文件 SHA-256 同为 `26473CED7C1DDB61820CE246DFD713D3120D93B5367FB9FDA514D09EDE1C8A2F`。无头测试进程与实例均已退出清理。本项通过不表示第 9 节其他未勾选条件已完成。

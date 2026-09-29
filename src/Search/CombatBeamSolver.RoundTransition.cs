@@ -22,9 +22,12 @@ internal sealed partial class CombatBeamSolver
         simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.PlayerTurnStart);
         using SearchMeasurementScope _ = _run.Performance.Measure(SearchMetricPhase.RoundPlayerStart);
         simulatedCombat.CurrentSide = CombatSide.Player;
+        foreach (Player member in simulatedCombat.Players)
+            simulator.State.GetPlayerCombatState(member).Phase = PlayerTurnPhase.Start;
         if (!takingExtraTurn)
             simulatedCombat.RoundNumber++;
         IReadOnlyList<Player> startingPlayers = takingExtraTurn ? [_player] : simulatedCombat.Players;
+        simulatedCombat.SetCurrentTurnPlayers(startingPlayers);
         Creature[] startingCreatures = startingPlayers.Select(member => member.Creature).ToArray();
         foreach (Player member in startingPlayers)
             simulatedCombat.AdvancePlayerTurn(member);

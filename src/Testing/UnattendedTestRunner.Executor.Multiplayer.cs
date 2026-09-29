@@ -36,6 +36,8 @@ internal sealed partial class UnattendedTestRunner
                 return await ExecuteMultiplayerContentProbeAsync(scenario, input);
             if (input.VerifyEnetControllerRng)
                 return await ExecuteEnetControllerRngProbeAsync(scenario, input);
+            if (input.VerifyEnetPaelsEyeExtraTurn)
+                return await ExecuteEnetPaelsEyeExtraTurnProbeAsync(scenario, input);
             if (input.VerifyControllerSearchCancel)
             {
                 CombatState cancelCombat = scenario.CombatState;
@@ -1668,6 +1670,86 @@ internal sealed partial class UnattendedTestRunner
                 }
                 await runner.WaitForMultiplayerProbeAsync(observed);
             }
+        }
+
+        private async Task<ExecutionOutcome> ExecuteEnetPaelsEyeExtraTurnProbeAsync(
+            ScenarioContext scenario, MultiplayerProbeInput input)
+        {
+            CombatState combat = scenario.CombatState;
+            Player hostPlayer = combat.Players[0];
+            Player joiningPlayer = combat.Players[1];
+            await UnattendedTestRunner.InjectRelicAsync(hostPlayer,
+                new UnattendedRelicInjection { RelicId = "PAELS_EYE" });
+            await runner.MultiplayerProbeBarrierAsync("paels-eye-equipped", combat);
+            string readySignal = Path.Combine(input.CoordinationDirectory, "peer-0", "paels-eye-predicted.signal");
+            ContinuationStamp? prediction = null;
+            if (input.Seat == 0)
+            {
+                runner.SetStage("multiplayer_enet_paels_eye_predict");
+                prediction = PredictMultiplayerRound(combat, hostPlayer);
+                File.WriteAllText(readySignal, "predicted");
+            }
+            else
+            {
+                await runner.WaitForMultiplayerProbeAsync(() => File.Exists(readySignal));
+            }
+            runner.SetStage("multiplayer_enet_paels_eye_end");
+            var end = new EndPlayerTurnAction(scenario.Player, 1);
+            RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+            if (input.Seat == 0)
+                await end.CompletionTask;
+            else
+                await runner.WaitForMultiplayerProbeAsync(() =>
+                    CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player));
+            await runner.WaitForMultiplayerProbeAsync(() =>
+                hostPlayer.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 });
+            await runner.MultiplayerProbeBarrierAsync("paels-eye-extra-turn", combat);
+            ContinuationStamp actual = ContinuationStamp.CaptureLive(combat);
+            if (combat.RoundNumber != 1
+                || joiningPlayer.PlayerCombatState?.TurnNumber != 1
+                || !CombatManager.Instance.IsPartOfPlayerTurn(hostPlayer)
+                || CombatManager.Instance.IsPartOfPlayerTurn(joiningPlayer)
+                || prediction != null && prediction != actual)
+                throw new InvalidOperationException("ENet Pael's Eye owner-only extra turn differs: "
+                    + prediction?.DescribeFirstDifference(actual)
+                    + $" round={combat.RoundNumber} host={hostPlayer.PlayerCombatState?.Phase}/{hostPlayer.PlayerCombatState?.TurnNumber}"
+                    + $" join={joiningPlayer.PlayerCombatState?.Phase}/{joiningPlayer.PlayerCombatState?.TurnNumber}");
+            runner._completedChecks.Add($"MultiplayerPaelsEye:Enet:Seat={input.Seat}:OwnerOnlyExtraTurn:FullState:FullRng");
+            string followingSignal = Path.Combine(input.CoordinationDirectory,
+                "peer-0", "paels-eye-following-predicted.signal");
+            ContinuationStamp? followingPrediction = null;
+            if (input.Seat == 0)
+            {
+                runner.SetStage("multiplayer_enet_paels_eye_following_predict");
+                followingPrediction = PredictMultiplayerRound(combat, hostPlayer);
+                File.WriteAllText(followingSignal, "predicted");
+            }
+            else
+            {
+                await runner.WaitForMultiplayerProbeAsync(() => File.Exists(followingSignal));
+            }
+            runner.SetStage("multiplayer_enet_paels_eye_following_end");
+            if (input.Seat == 0)
+            {
+                var extraTurnEnd = new EndPlayerTurnAction(hostPlayer, 2);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(extraTurnEnd);
+                await extraTurnEnd.CompletionTask;
+            }
+            await runner.WaitForMultiplayerProbeAsync(() =>
+                hostPlayer.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }
+                && joiningPlayer.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 });
+            await runner.MultiplayerProbeBarrierAsync("paels-eye-following-round", combat);
+            ContinuationStamp followingActual = ContinuationStamp.CaptureLive(combat);
+            if (combat.RoundNumber != 2
+                || !CombatManager.Instance.IsPartOfPlayerTurn(hostPlayer)
+                || !CombatManager.Instance.IsPartOfPlayerTurn(joiningPlayer)
+                || followingPrediction != null && followingPrediction != followingActual)
+                throw new InvalidOperationException("ENet Pael's Eye following round differs: "
+                    + followingPrediction?.DescribeFirstDifference(followingActual)
+                    + $" round={combat.RoundNumber} host={hostPlayer.PlayerCombatState?.Phase}/{hostPlayer.PlayerCombatState?.TurnNumber}"
+                    + $" join={joiningPlayer.PlayerCombatState?.Phase}/{joiningPlayer.PlayerCombatState?.TurnNumber}");
+            runner._completedChecks.Add($"MultiplayerPaelsEye:Enet:Seat={input.Seat}:FollowingSharedRound:FullState:FullRng");
+            return new ExecutionOutcome(false, 3, true, true, true, false);
         }
 
         private async Task<ExecutionOutcome> ExecuteEnetControllerRngProbeAsync(
