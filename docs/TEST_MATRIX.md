@@ -218,6 +218,8 @@ P2 共享随机敌人的球与能力：双人双敌 `LightningOrb` 回合结束�
 
 P2 Power 生成池：双人本地各施加 1 层 `CreativeAiPower`、`HelloWorldPower`、`SpectrumShiftPower`、`CallOfTheVoidPower` 后进入第二回合，四张新牌归持有人，队友手牌不变；全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/power-generation-pools-28f739c456b040ecad3bc8327516a516/peer-0/result.json`。另在独立根验证 `CalamityPower` 持有人打攻击后生成一张持有人攻击牌，全状态／九条 RNG Passed：`.local/multiplayer-p2/calamity-owner-generation-bd1a235a9367428a8073e83076ed002c/peer-0/result.json`。其他池结果和非持有者动作未验。
 
+P2 随机敌人 Power：双人双敌同根，`JuggernautPower` 随持有人得格挡随机打 3、`HauntPower` 随持有人打 `Soul` 随机打 4、`CountdownPower` 下一回合给一名随机敌人 5 Doom；三处原版／预测全状态和九条 RNG 差分 Passed：`.local/multiplayer-p2/random-power-hooks-3aa9cbd891574d8195c59390cea24618/peer-0/result.json`。更高叠层与死人目标变化未测。
+
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
 
 ## 多人 P1 普通状态差分（2026-09-28）

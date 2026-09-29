@@ -108,6 +108,56 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyRandomPowerHooks)
+            {
+                Player actor = scenario.Player;
+                Creature owner = actor.Creature;
+                await PowerCmd.Apply<JuggernautPower>(new ThrowingPlayerChoiceContext(), owner, 3, owner, null);
+                await PowerCmd.Apply<HauntPower>(new ThrowingPlayerChoiceContext(), owner, 4, owner, null);
+                await PowerCmd.Apply<CountdownPower>(new ThrowingPlayerChoiceContext(), owner, 5, owner, null);
+                int[] hpBeforeBlock = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                ContinuationStamp blockPrediction = PredictOrdinaryCard(actor, "DEFEND_IRONCLAD", null);
+                CardModel defend = actor.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "DEFEND_IRONCLAD");
+                var defendPlay = new PlayCardAction(defend, null);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(defendPlay);
+                await defendPlay.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("juggernaut-block", combat);
+                CheckPrediction(blockPrediction, actor, "JUGGERNAUT_BLOCK");
+                if (combat.Enemies.Where((creature, index) =>
+                        hpBeforeBlock[index] - creature.CurrentHp == 3).Count() != 1
+                    || combat.Enemies.Where((creature, index) =>
+                        hpBeforeBlock[index] != creature.CurrentHp).Count() != 1)
+                    throw new InvalidOperationException("Juggernaut did not hit one enemy for 3.");
+                await UnattendedTestRunner.InjectCardAsync(combat, actor,
+                    new UnattendedCardInjection { CardId = "SOUL", Pile = "Hand" });
+                int[] hpBeforeSoul = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                ContinuationStamp soulPrediction = PredictOrdinaryCard(actor, "SOUL", null);
+                CardModel soul = actor.PlayerCombatState.Hand.Cards.Single(card => card.Id.Entry == "SOUL");
+                var soulPlay = new PlayCardAction(soul, null);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(soulPlay);
+                await soulPlay.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("haunt-soul", combat);
+                CheckPrediction(soulPrediction, actor, "HAUNT_SOUL");
+                if (combat.Enemies.Where((creature, index) =>
+                        hpBeforeSoul[index] - creature.CurrentHp == 4).Count() != 1
+                    || combat.Enemies.Where((creature, index) =>
+                        hpBeforeSoul[index] != creature.CurrentHp).Count() != 1)
+                    throw new InvalidOperationException("Haunt did not hit one enemy for 4.");
+                ContinuationStamp countdownPrediction = PredictMultiplayerRound(combat, actor);
+                var end = new EndPlayerTurnAction(actor, 1);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                await runner.MultiplayerProbeBarrierAsync("countdown-next-turn", combat);
+                CheckPrediction(countdownPrediction, actor, "COUNTDOWN_NEXT_TURN");
+                if (combat.Enemies.Count(creature => creature.GetPowerAmount<DoomPower>() == 5) != 1
+                    || combat.Enemies.Count(creature => creature.GetPowerAmount<DoomPower>() > 0) != 1)
+                    throw new InvalidOperationException("Countdown did not give one random enemy 5 Doom.");
+                runner._completedChecks.Add("MultiplayerContent:JuggernautHauntCountdown:SharedTargetsRng:FullState");
+                return new ExecutionOutcome(false, 2, true, true, true, false);
+            }
             if (input.VerifyCalamityGeneration)
             {
                 Player actor = scenario.Player;

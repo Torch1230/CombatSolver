@@ -752,4 +752,6 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 
 随后 `LightningOrb` 的随机被动／激发及 `SerpentFormPower` 的持有人打牌后随机伤害均在双人双敌根以显式伤害量、队列归属、全状态／九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。Power 目录定向补扫又发现五项多人过滤牌池和三项随机敌人流触发，已列入待验证范围；因此 P0 清单仍未封闭，P2 仍有实际内容工作。
 
-五项 Power 多人过滤生成池入口已按机制分两组验收：`CreativeAiPower`、`HelloWorldPower`、`SpectrumShiftPower`、`CallOfTheVoidPower` 在同一双人原生根从回合开始前各生成一张，`CalamityPower` 在另一个根由持有人攻击触发生成；均核对牌主、队友手牌、完整状态与九条 RNG，Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。未测所有随机池结果、非持有人触发及更多叠层；随机敌人流的 `JuggernautPower`、`CountdownPower`、`HauntPower` 仍待原生差分。
+五项 Power 多人过滤生成池入口已按机制分两组验收：`CreativeAiPower`、`HelloWorldPower`、`SpectrumShiftPower`、`CallOfTheVoidPower` 在同一双人原生根从回合开始前各生成一张，`CalamityPower` 在另一个根由持有人攻击触发生成；均核对牌主、队友手牌、完整状态与九条 RNG，Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。未测所有随机池结果、非持有人触发及更多叠层；随机敌人流的 `JuggernautPower`、`CountdownPower`、`HauntPower` 证据见下段。
+
+上述三种随机敌人 Power 随后也在双人双敌同根依序验收：得格挡触发 `JuggernautPower` 3 伤害、打 `Soul` 触发 `HauntPower` 4 伤害、下回合 `CountdownPower` 随机施 5 Doom；每处全玩家／敌人状态与九条 RNG 均对齐，Passed：`.local/multiplayer-p2/random-power-hooks-3aa9cbd891574d8195c59390cea24618/peer-0/result.json`。这封闭各自首次触发的代表路径，不扩展到更多叠层或目标中途死亡。
