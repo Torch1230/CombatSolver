@@ -39,6 +39,10 @@ internal static partial class EndTurnPowerSupport
                 case ConcoctPower when owner.Side != side:
                     combat.SetAmount<ConcoctPower>(owner, 0);
                     break;
+                case CoveredPower or InterceptPower when side == CombatSide.Enemy:
+                case FlankingPower or KnockdownPower when ownerParticipates:
+                    combat.SetPowerAmount(power, 0);
+                    break;
                 case CorrosiveWavePower when ownerParticipates:
                     combat.SetAmount<CorrosiveWavePower>(owner, 0);
                     break;

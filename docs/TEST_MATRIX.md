@@ -186,6 +186,8 @@ P5 可见 Steam 中文多人设置页：同为 1920×1080 游戏视口，打开�
 
 P2 战斗内多人生成遗物：`VexingPuzzlebox`、`OrangeDough`、`Toolbox`、`ChoicesParadox` 在虚拟双人第一回合分别对同根原版 Hook 与预测 Fork 做全玩家／卡牌归属／完整 RNG 差分，四项独立请求均 Passed；后两项选择原版第一项，`ChoicesParadox` 显式核对保留关键词。证据逐项见[多人内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。首个合并探针因把模拟 `AfterSideTurnStart` 的成功返回值误判为等待选择而整体 Failed；改为独立输入后取得四个完整通过结果。原版开战时序及其他选择尚未验证。
 
+P2 队友关联能力跨回合：`Intercept` 首次第二回合差分发现保护者／被保护者能力未按原版敌方回合结束清理；修复后双人全状态／完整 RNG Passed：`.local/multiplayer-p2/intercept-round-fixed-ecfc1cef8fdc435ab87d8ad6639b37ba/peer-0/result.json`。同一入口的 `Flanking`、`Knockdown` 两种敌方能力到第二回合也 Passed：`.local/multiplayer-p2/ally-attack-debuff-expiry-247fefdbb5774c30b1df63dd5203c463/peer-0/result.json`。另验 `Sneaky` 持有者在队友原生攻击后获得 1 格挡，完整状态／RNG Passed：`.local/multiplayer-p2/sneaky-teammate-attack-6674f7a9b4c44d6c8a47c97c85016f67/peer-0/result.json`。`Intercept` 保护者死亡路径、其他叠层与来源组合仍未测。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

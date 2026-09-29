@@ -703,3 +703,5 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 ### 2026-09-29 战斗内生成遗物补充
 
 四件使用多人过滤后生成池的遗物 `VexingPuzzlebox`、`OrangeDough`、`Toolbox`、`ChoicesParadox`，在双人第一回合分别从同根调用原版 Hook 与预测 Fork，手牌增量、生成牌归属、全状态和完整 RNG 均 Passed。后两者固定选原版第一项，`ChoicesParadox` 额外显式核对保留关键词；证据目录列于[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。这验证直接 Hook 效果，不宣称真实开战调用顺序或所有选项已验。首个合并探针在第二件遗物前因测试器误读成功返回值失败；根因修正后各项独立请求通过。
+
+`Intercept` 的敌方回合结束差分揭示预测未移除保护者和被保护者能力；按原版 `AfterSideTurnEnd` 修正逐实例移除后，双人到第二回合全状态／完整 RNG Passed。共用此入口的 `Flanking`、`Knockdown` 敌方能力也在同根到第二回合通过；`Sneaky` 持有者在队友攻击后得格挡的监听单独通过。证据及边界见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。保护者死亡路径尚未验证。
