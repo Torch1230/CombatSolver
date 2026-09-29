@@ -107,9 +107,9 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
-            if (input.VerifyPlayerDoomHook)
+            if (input.VerifyPlayerDoomHook || input.VerifyPlayerDoomRound)
             {
-                Player actor = scenario.Player;
+                Player actor = input.VerifyPlayerDoomRound ? combat.Players[0] : scenario.Player;
                 Player teammate = combat.Players.Single(player => player != actor);
                 actor.AddRelicInternal(ModelDb.Relic<BookRepairKnife>().ToMutable());
                 await CreatureCmd.SetCurrentHp(actor.Creature, 70);
@@ -118,6 +118,29 @@ internal sealed partial class UnattendedTestRunner
                     new ThrowingPlayerChoiceContext(), teammate.Creature, 2,
                     actor.Creature, null)
                     ?? throw new InvalidOperationException("Doom fixture did not apply power.");
+                if (input.VerifyPlayerDoomRound)
+                {
+                    ContinuationStamp? doomRoundPrediction = input.Seat == 0
+                        ? PredictMultiplayerRound(combat, actor) : null;
+                    foreach (Player player in input.IsVirtual ? new[] { actor } : combat.Players)
+                    {
+                        if (!input.IsVirtual && !LocalContext.IsMe(player))
+                            continue;
+                        var end = new EndPlayerTurnAction(player, 1);
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                        if (input.Mode != "client")
+                            await end.CompletionTask;
+                    }
+                    await runner.WaitForMultiplayerProbeAsync(() => actor.PlayerCombatState is
+                        { Phase: PlayerTurnPhase.Play, TurnNumber: 2 } && teammate.Creature.IsDead);
+                    await runner.MultiplayerProbeBarrierAsync("player-doom-round", combat);
+                    if (doomRoundPrediction != null)
+                        CheckPrediction(doomRoundPrediction, actor, "PLAYER_DOOM_ROUND");
+                    if (actor.Creature.CurrentHp != 69)
+                        throw new InvalidOperationException("Survivor health differs after the Doom heal and enemy attack.");
+                    runner._completedChecks.Add("MultiplayerContent:PlayerDoomRound:TeammateDeath:OwnerRelicHeal:FullState:FullRng");
+                    return new ExecutionOutcome(false, 2, true, true, true, false);
+                }
                 CombatRootSnapshot doomRoot = CombatRootSnapshot.Capture(combat);
                 CombatPredictionSimulator doomSimulator = doomRoot.ForkSimulator();
                 SimulatedCombatState doomCombat = (SimulatedCombatState)doomSimulator.State.CombatState;
