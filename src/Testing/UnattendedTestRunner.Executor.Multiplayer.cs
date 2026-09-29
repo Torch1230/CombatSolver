@@ -2138,6 +2138,8 @@ internal sealed partial class UnattendedTestRunner
                     .SelectMany(member => member.PlayerCombatState!.AllCards)
                     .Where(card => card.Tags.Contains(CardTag.Strike))
                     .Select(card => (card, card.BaseReplayCount)).ToArray();
+                int[] playerHpBeforePotion = combat.Players.Select(member => member.Creature.CurrentHp).ToArray();
+                int[] enemyHpBeforePotion = combat.Enemies.Select(enemy => enemy.CurrentHp).ToArray();
                 int slot = actor.PotionSlots.ToList().IndexOf(potion);
                 if (slot < 0)
                     throw new InvalidOperationException("Injected potion has no slot.");
@@ -2264,6 +2266,12 @@ internal sealed partial class UnattendedTestRunner
                         || combat.Players.Where(member => member != actor)
                             .Any(member => member.Osty != null)))
                     throw new InvalidOperationException("Bone Brew did not summon only the holder's Osty.");
+                if (potion is FoulPotion
+                    && (!combat.Players.Select((member, index) =>
+                            member.Creature.CurrentHp < playerHpBeforePotion[index]).All(hit => hit)
+                        || !combat.Enemies.Select((enemy, index) =>
+                            enemy.CurrentHp < enemyHpBeforePotion[index]).All(hit => hit)))
+                    throw new InvalidOperationException("Foul Potion did not damage every player and enemy.");
                 if (input.VerifyPotionAccounting)
                 {
                     BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);

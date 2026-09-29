@@ -763,3 +763,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 继续按抽牌／资源机制验 `BottledPotential`、`Clarity`、`CureAll`、`GlowwaterPotion`、`SwiftPotion`：五瓶均只有持有人自用候选，显式核持有人牌／资源效果与队友手牌隔离，原版／预测全部状态和九条 RNG 差分 Passed，逐项证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。Glowwater 首次请求因夹具随后寻找已被药水耗尽的牌而整体 Failed；修正夹具流程后同机制通过，失败记录保留。其余药水机制及 P0 清单仍未封闭。
 
 随后补三种不同副作用的自用药水：`EntropicBrew` 只填持有人药水槽，`SoldiersStew` 只增加持有人 `Strike` 的重播，`BoneBrew` 只召唤持有人的 Osty；虚拟双人原版／预测全状态和九条 RNG 差分均 Passed，逐项证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。这些代表不覆盖全部药水，也不证明后续伙伴或重播生命周期。
+
+另核 `FoulPotion` 的特殊范围：战斗中没有对队友指定投药目标，但原版群体效果会伤害所有非伙伴生物，两名玩家及敌人均受伤。双人原生／预测全状态和九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。玩家目标药水的“只给自己丢”约束仍按候选目标实行，不能推成所有药水效果只影响自身。
