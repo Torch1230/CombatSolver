@@ -50,6 +50,8 @@
 
 再次逐张对照原版 `OnPlay` 与模拟结算：`BelieveInYou`、`Blaze`、`Concoct`、`Constellation`、`Coordinate`、`Fade`、`Ignition`、`Lift`、`Soulbound` 都把资源、能力、球或格挡给所选的另一名玩家；`Tutor` 从目标玩家的抽牌堆选入其手牌；`Largesse` 用目标玩家的无色池生成目标玩家持有的牌。`DemonicShield` 先扣出牌者生命，再给队友格挡；`Intercept` 给出牌者格挡、给队友保护；`Mimic` 读取队友格挡并给出牌者等量格挡；`ImitationLearning` 把能力留在出牌者身上并引用目标队友。此段为本轮源码复核；基础／升级即时差分及少数生命周期实测在下文，未将源码复核计作新增原生测试。
 
+另逐张核对 8 张 `AllAllies`：`Plot`、`HuddleUp`、`Rally`、`EnergySurge`、`GlimpseBeyond`、`BladeSymphony` 遍历包含出牌者的存活玩家；`LegionOfBone` 同样遍历存活玩家并分别召唤伙伴；`OneForAll` 原版逐个遍历全部玩家，包括死亡玩家，模拟也保留这个范围。目标类型表达的是作用阵营，具体收益仍按各牌 `OnPlay` 确定。这是源码复核，不增加即时差分以外的运行结论。
+
 `Largesse` 四人代表：本地 0 号对 3 号队友原生出牌，显式断言生成牌进 3 号手牌且牌主为 3 号，所有玩家状态与完整 RNG 对齐，Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。基础／升级的双人即时差分与余费支援原生路线证据见下文和规划记录；四人这一请求只验基础版单次出牌。
 
 生产控制器另以本地 `Largesse` 指向队友原生执行，生成牌归目标队友、随机流正常前进且没有旧预测偏差误报，Passed：`.local/multiplayer-p4/own-largesse-rng-final-1127aa6c05374ca293827af5f3f55a4f/peer-0/result.json`。队友反向对本地玩家打 `Largesse` 的交错动作中，目标玩家取得生成牌，控制器观测到外部 RNG 变化并重评估后继续合法攻击，Passed：`.local/multiplayer-p4/mid-deploy-rng-fixed-d1f774413f044e81a46697a326d4a5b0/peer-0/result.json`。即时入手位置由前述内容差分验证；控制器回合结束后的归属断言仅检查目标玩家持有该牌。

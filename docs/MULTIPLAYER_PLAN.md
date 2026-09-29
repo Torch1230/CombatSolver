@@ -729,3 +729,11 @@ P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，�
 随后复用现有双回合差分入口验证 `SlumberingBeetleNormal` 敌方初始镀层：双人根、第二和第三回合甲虫镀层／格挡分别为 45／45、45／45、43／43，全部状态及九条 RNG 对齐，Passed：`.local/multiplayer-p2/slumbering-beetle-plating-bc43bf334ea24b7ca47fd14bb490fef2/peer-0/result.json`。该输入没有触发苏醒移除。
 
 玩家侧 Doom 的直接 Hook 探针发现旧预测只杀单个持有者，现按原版同次处理队友全体并触发 `BookRepairKnife`。双人测试中队友死亡、本地遗物持有者从 70 回到 73 HP、九条 RNG 对齐，证据 `.local/multiplayer-p2/player-doom-repair-knife-scope-5cf6ac1cd0a94c9789d5c97b79fdacb1/peer-0/result.json`。首次严格全状态差分失败：虚拟原版死亡后切换玩家阶段并移动本地手牌，预测保留原手牌，记录 `.local/multiplayer-p2/player-doom-repair-knife-3a883173aff94661bea03a7db5779764/peer-0/result.json`。随后改成真实双进程 ENet 的完整回合边界，两端第二回合同步、房主包含队友死亡和遗物回血的全状态／九条 RNG 严格预测差分 Passed：`.local/multiplayer-p2/enet-player-doom-final-d8ff8a78501e43459922097f05076545/peer-0/result.json`、`peer-1/result.json`。虚拟单进程的中途 Hook 阶段差异未改为通过；完整回合已经补齐相应行为证据。
+
+### 2026-09-29 最新交接记录
+
+- 当前阶段：P0 内容闭包及 P2 原版分支仍在进行；P1、P3～P5 已有代表机制和联机证据，尚未达到第 9 节全部退出条件。当前游戏为 `0.111.0`，分支 `feat/multiplayer`。
+- 最新行为提交：`4c41f4ca`。本交接后的文档更新单独提交；恢复时以 `git log -1` 为准。最近补的女王同伴死亡、双尾鼠召唤上限、敌方镀层跨回合与玩家侧 Doom 双进程结果均列于[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。15 张 `AnyAlly` 和 8 张 `AllAllies` 的受益归属已重新逐张源码复核，未把该复核写成新增差分。
+- 最近完整构建 0 警告、0 错误；Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=239`，`git diff --check` 通过。最后的 Release DLL 已精确覆盖本地游戏 Mod 并核对哈希；其他四个部署文件在同批早先按仓库规则部署，此后未变。无头实例已由各启动器清理。
+- 最新一次直接 Hook 全状态差分失败的根因是虚拟测试在死亡中途自动推进玩家阶段，已用双进程 ENet 稳定回合边界取得完整通过；失败与通过都保留证据。更早的单进程完整 Doom 回合测试等待第二回合超时，未计为通过；另一次 ENet 首试两个进程共用同一 `HeadlessInstance` 而锁冲突，之后改成各自实例。不要扩大超时或重复运行已通过的最终双进程输入。
+- 下一条具体工作：按[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)剩余原版多人关联分支继续最小机制差分，尤其 `Soulbound`／`ImitationLearning` 多次或死亡引用、`Plating` 苏醒移除、怪物未触发招式和药水生成池；发现通用根因就修对应权威入口。之后按第 9 节逐项验收。Steam 邀请／真实远程延迟及 Linux 游戏运行仍缺外部环境；WSL 仅 `bash -n` 通过，不算 Linux 实机。
