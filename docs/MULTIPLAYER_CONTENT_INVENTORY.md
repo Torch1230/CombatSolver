@@ -181,7 +181,9 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `TheBall` 同一实例二次打出、逐次增伤与跨玩家转移；`LegionOfBone` 群体召唤后到第二回合的伙伴状态，均通过双人完整状态／RNG 差分，证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。
 
-`Intercept` 的保护生命周期补了双人原版敌方回合差分：出牌给另一名玩家 `CoveredPower` 后，怪物攻击结算并结束敌方回合；初次差分发现预测保留 `InterceptPower` 与 `CoveredPower`，原版已移除。按两者原版 `AfterSideTurnEnd` 在敌方回合结束逐实例清理后，全部玩家、敌人及完整 RNG 到第二回合 Passed：`.local/multiplayer-p2/intercept-round-fixed-ecfc1cef8fdc435ab87d8ad6639b37ba/peer-0/result.json`。同一回合结束入口的敌方 `FlankingPower`、`KnockdownPower` 也按原版在持有敌人参与其回合结束时逐实例清理；两张牌同根打出、随后到第二回合全状态／RNG 差分 Passed：`.local/multiplayer-p2/ally-attack-debuff-expiry-247fefdbb5774c30b1df63dd5203c463/peer-0/result.json`。保护者死亡时 `CoveredPower` 的移除仍未验。
+`Intercept` 的保护生命周期补了双人原版敌方回合差分：出牌给另一名玩家 `CoveredPower` 后，怪物攻击结算并结束敌方回合；初次差分发现预测保留 `InterceptPower` 与 `CoveredPower`，原版已移除。按两者原版 `AfterSideTurnEnd` 在敌方回合结束逐实例清理后，全部玩家、敌人及完整 RNG 到第二回合 Passed：`.local/multiplayer-p2/intercept-round-fixed-ecfc1cef8fdc435ab87d8ad6639b37ba/peer-0/result.json`。同一回合结束入口的敌方 `FlankingPower`、`KnockdownPower` 也按原版在持有敌人参与其回合结束时逐实例清理；两张牌同根打出、随后到第二回合全状态／RNG 差分 Passed：`.local/multiplayer-p2/ally-attack-debuff-expiry-247fefdbb5774c30b1df63dd5203c463/peer-0/result.json`。
+
+`CoveredPower.AfterDeath` 原版在保护者死亡且死亡未被阻止时移除；现补对应的唯一 Hook 镜像。在双人原生战斗中出牌建立保护引用后，分别直接调用原版与预测的 `AfterDeath` Hook，显式断言队友 `CoveredPower` 消失、全部状态与完整 RNG 一致，Passed：`.local/multiplayer-p2/intercept-applier-death-hook-8d0cd5c52a234cdda18932c4633ffa3f/peer-0/result.json`。该夹具只调用死亡 Hook，未实际使玩家死亡，也不代表整条死亡与后续回合流程已验。
 
 `SneakyPower` 的队友攻击监听：双人本地打出 `Sneaky` 后，另一名玩家原生打 `Strike`，原版给本地持有者 1 格挡，预测全状态／RNG 与之对齐，Passed：`.local/multiplayer-p2/sneaky-teammate-attack-6674f7a9b4c44d6c8a47c97c85016f67/peer-0/result.json`。只验一名队友的一次普通攻击，未验伙伴攻击或更高叠层。
 

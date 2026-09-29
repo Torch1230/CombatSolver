@@ -708,4 +708,6 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 
 `Midnight` 又补全战斗消耗历史：本地两次消耗逐次降费并打出后，新 Fork 中队友再消耗一张，随后本地生成的新 `Midnight` 应按原版降至 9 费。预测原先只镜像在场牌每次消耗的降费，漏掉新牌进入战斗时的历史累计；现把根历史与 Fork 内总消耗合并，纳入 Fork／状态键，所有边界的原版全状态／完整 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。
 
+`Intercept` 保护者死亡的 `CoveredPower.AfterDeath` 镜像已补，双人战斗中出牌后对原版与预测分别直接调用死亡 Hook，目标能力清理及全部状态／完整 RNG Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。该测试没有真正杀死玩家，完整死亡流程仍沿用现有 ENet 死者回合证据，组合路径未验。
+
 同一源码下单人 1 秒短搜哨兵 Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`；这个输入不生成 `Midnight`，只用于核对通用搜索路径。

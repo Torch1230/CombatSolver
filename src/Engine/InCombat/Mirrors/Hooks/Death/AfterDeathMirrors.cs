@@ -51,6 +51,7 @@ internal static class AfterDeathMirrors
         registry.Register<Melancholy>(HandleMelancholy);
         registry.Register<StockPower>(HandleStock);
         registry.Register<CrabRagePower>(HandleCrabRage);
+        registry.Register<CoveredPower>(HandleCovered);
         registry.Register<DampenPower>(HandleDampen);
 
         return registry;
@@ -64,6 +65,15 @@ internal static class AfterDeathMirrors
                 throw new InvalidOperationException("Dampen death requires captured caster and card state.");
             combat.RemoveDampenCaster(context.Creature);
         }
+    }
+
+    private static void HandleCovered(CoveredPower power, AfterDeathMirrorContext context)
+    {
+        if (context.WasRemovalPrevented || context.Creature != power.Applier)
+            return;
+        if (context.CombatState is not ICombatPredictionEffectSink effects)
+            throw new InvalidOperationException("Covered death requires writable branch state.");
+        effects.SetPowerAmount(power, 0);
     }
 
     private static void HandleCrabRage(CrabRagePower power, AfterDeathMirrorContext context)

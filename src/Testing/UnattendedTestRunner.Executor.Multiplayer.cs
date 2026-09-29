@@ -19,6 +19,7 @@ using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.TestSupport;
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Mirrors;
 using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
@@ -2127,6 +2128,27 @@ internal sealed partial class UnattendedTestRunner
                 if (generated.Owner != actor || generated.EnergyCost.GetAmountToSpend() != 9)
                     throw new InvalidOperationException("Generated Midnight did not inherit combat exhaust history.");
                 runner._completedChecks.Add("MultiplayerMidnight:GeneratedAfterThreeExhausts:Cost=9:FullState:FullRng");
+            }
+            if (input.VerifyInterceptApplierDeathHook)
+            {
+                Player teammate = combat.Players[input.ContentTargetSeat];
+                if (!teammate.Creature.HasPower<CoveredPower>()
+                    || !actor.Creature.HasPower<InterceptPower>())
+                    throw new InvalidOperationException("Intercept death fixture has no linked powers.");
+                CombatRootSnapshot deathRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator deathSimulator = deathRoot.ForkSimulator();
+                HookMirrors.AfterDeath(deathSimulator, actor.Creature, wasRemovalPrevented: false);
+                ContinuationStamp predictedDeathHook = ContinuationStamp.CapturePredicted(
+                    actor, deathSimulator, 1, deathRoot.Forecast, 1);
+                await MegaCrit.Sts2.Core.Hooks.Hook.AfterDeath(
+                    combat.RunState, combat, actor.Creature, wasRemovalPrevented: false, deathAnimLength: 0f);
+                await runner.MultiplayerProbeBarrierAsync("intercept-applier-death-hook", combat);
+                ContinuationStamp actualDeathHook = ContinuationStamp.CaptureLive(combat);
+                if (predictedDeathHook != actualDeathHook
+                    || teammate.Creature.HasPower<CoveredPower>())
+                    throw new InvalidOperationException("Intercept applier death hook differs: "
+                        + predictedDeathHook.DescribeFirstDifference(actualDeathHook));
+                runner._completedChecks.Add("MultiplayerIntercept:ApplierDeathHook:CoveredRemoved:FullState:FullRng");
             }
             if (input.VerifyContentRound)
             {

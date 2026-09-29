@@ -73,6 +73,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyVisibleSettingsCapture { get; init; }
         public string ContentRelicId { get; init; } = "";
         public bool VerifyMidnightExhaustHistory { get; init; }
+        public bool VerifyInterceptApplierDeathHook { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -187,6 +188,8 @@ internal sealed partial class UnattendedTestRunner
                         or "TOOLBOX" or "CHOICES_PARADOX"))
                 || input.VerifyMidnightExhaustHistory && (!input.IsVirtual
                     || input.ContentCardIds.Length != 1 || input.ContentCardIds[0] != "MIDNIGHT")
+                || input.VerifyInterceptApplierDeathHook && (!input.IsVirtual
+                    || input.ContentCardIds.Length != 1 || input.ContentCardIds[0] != "INTERCEPT")
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

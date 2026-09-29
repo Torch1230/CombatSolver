@@ -190,6 +190,8 @@ P2 队友关联能力跨回合：`Intercept` 首次第二回合差分发现保�
 
 P2 `Midnight` 跨玩家消耗历史：先两次本地消耗，费用 12→11→10 并原生出牌；新 Fork 内再消耗一张队友牌，然后本地生成新 `Midnight`，原版与预测费用均为 9。各步全部状态／完整 RNG Passed：`.local/multiplayer-p2/midnight-teammate-exhaust-5208e28eda814bf9b930a3b8a93a54c8/peer-0/result.json`。此前预测的卡牌入场镜像漏用累计消耗次数，现从根历史和 Fork 新增计数构成全战斗次数，计数进入 Fork 与状态键。更多跨回合历史未验。
 
+P2 `Intercept` 保护者死亡 Hook：双人出牌后建立保护引用，原版和模拟直接调用 `AfterDeath`，队友 `CoveredPower` 消失且全状态／完整 RNG 一致，Passed：`.local/multiplayer-p2/intercept-applier-death-hook-8d0cd5c52a234cdda18932c4633ffa3f/peer-0/result.json`。这是 Hook 本身的差分；未实际杀死玩家，完整死亡／后续回合不由此覆盖。
+
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
 
 ## 多人 P1 普通状态差分（2026-09-28）
