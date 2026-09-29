@@ -107,26 +107,39 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
-            if (input.VerifyDeadAllyGroupPower)
+            if (input.VerifyDeadAllyGroupPower || input.VerifyDeadAllyGroupEnergy)
             {
                 Player actor = scenario.Player;
                 Player teammate = combat.Players.Single(player => player != actor);
                 teammate.Creature.SetCurrentHpInternal(0);
+                int teammateEnergy = teammate.PlayerCombatState!.Energy;
+                string cardId = input.VerifyDeadAllyGroupPower ? "ONE_FOR_ALL" : "ENERGY_SURGE";
                 await UnattendedTestRunner.InjectCardAsync(combat, actor,
-                    new UnattendedCardInjection { CardId = "ONE_FOR_ALL", Pile = "Hand" });
-                ContinuationStamp groupPrediction = PredictOrdinaryCard(actor, "ONE_FOR_ALL", null);
+                    new UnattendedCardInjection { CardId = cardId, Pile = "Hand" });
+                ContinuationStamp groupPrediction = PredictOrdinaryCard(actor, cardId, null);
                 CardModel groupCard = actor.PlayerCombatState!.Hand.Cards.Single(card =>
-                    card.Id.Entry == "ONE_FOR_ALL");
+                    card.Id.Entry == cardId);
                 var play = new PlayCardAction(groupCard, null);
                 RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(play);
                 await play.CompletionTask;
                 await runner.MultiplayerProbeBarrierAsync("dead-ally-group-power", combat);
                 CheckPrediction(groupPrediction, actor, "DEAD_ALLY_GROUP_POWER");
-                if (!teammate.Creature.IsDead
-                    || actor.Creature.GetPowerAmount<OneForAllPower>() != 3
-                    || teammate.Creature.GetPowerAmount<OneForAllPower>() != 3)
-                    throw new InvalidOperationException("One For All did not apply to every original player.");
-                runner._completedChecks.Add("MultiplayerContent:OneForAll:DeadAllyIncluded:FullState:FullRng");
+                if (!teammate.Creature.IsDead)
+                    throw new InvalidOperationException("Dead ally group fixture lost its death state.");
+                if (input.VerifyDeadAllyGroupPower)
+                {
+                    if (actor.Creature.GetPowerAmount<OneForAllPower>() != 3
+                        || teammate.Creature.GetPowerAmount<OneForAllPower>() != 3)
+                        throw new InvalidOperationException("One For All did not apply to every original player.");
+                    runner._completedChecks.Add("MultiplayerContent:OneForAll:DeadAllyIncluded:FullState:FullRng");
+                }
+                else
+                {
+                    if (actor.PlayerCombatState.Energy != 4
+                        || teammate.PlayerCombatState.Energy != teammateEnergy)
+                        throw new InvalidOperationException("Energy Surge gave energy to a dead teammate.");
+                    runner._completedChecks.Add("MultiplayerContent:EnergySurge:DeadAllyExcluded:FullState:FullRng");
+                }
                 return new ExecutionOutcome(false, 1, true, true, true, false);
             }
             if (input.VerifyBeetleDamageWake)

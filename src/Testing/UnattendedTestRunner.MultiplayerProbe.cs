@@ -81,6 +81,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyPlayerDoomRound { get; init; }
         public bool VerifyBeetleDamageWake { get; init; }
         public bool VerifyDeadAllyGroupPower { get; init; }
+        public bool VerifyDeadAllyGroupEnergy { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -208,6 +209,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyBeetleDamageWake && (!input.IsVirtual
                     || request.EncounterId != "SLUMBERING_BEETLE_NORMAL")
                 || input.VerifyDeadAllyGroupPower && (!input.IsVirtual || input.PlayerCount != 2)
+                || input.VerifyDeadAllyGroupEnergy && (!input.IsVirtual || input.PlayerCount != 2)
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

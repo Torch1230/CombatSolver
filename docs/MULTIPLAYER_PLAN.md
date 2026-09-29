@@ -745,3 +745,5 @@ P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，�
 最新行为提交 `35c15e7d`，当前工作区在随后文档提交后为干净状态。该提交的 Release 构建 0 警告／0 错误、Windows 结构门禁通过，最终 DLL 已覆盖本地 Mod 且哈希一致。恢复后继续未完成的内容闭包及第 9 节验收，不复跑已通过的甲虫场景。
 
 P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围：虚拟双人直接把队友生命置 0 后，本地原版出牌仍给两名玩家各 3 层能力；原版／预测全状态和九条 RNG 差分 Passed：`.local/multiplayer-p2/one-for-all-dead-ally-e1e846c834dc4fe4bf9ce34db069c4b3/peer-0/result.json`。这验证 `OneForAll` 的原版遍历行为，未实际杀死队友或覆盖死亡 Hook。
+
+同一死亡目标机制的相反分支用 `EnergySurge` 独立原生请求核对：已死亡队友能量不变、出牌者净增 1 点，全部状态和九条 RNG 与预测对齐，Passed：`.local/multiplayer-p2/energy-surge-dead-ally-b3728b1c11814e1c9253a15284ccbd06/peer-0/result.json`。因此群体牌必须依各牌原版遍历条件建模；两次夹具均直接置零生命，死亡 Hook 未由此覆盖。

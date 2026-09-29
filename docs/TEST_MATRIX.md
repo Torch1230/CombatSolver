@@ -180,6 +180,8 @@ P2 `Blaze` 四人目标排除：Play 阶段直接把一名队友生命设为 0�
 
 P2 `OneForAll` 死亡队友群体范围：双人将队友生命直接置 0 后原生出牌，存活出牌者与死亡队友都取得 3 层能力；全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/one-for-all-dead-ally-e1e846c834dc4fe4bf9ce34db069c4b3/peer-0/result.json`。只验证仍在战斗中的死亡玩家，未运行死亡 Hook。
 
+P2 `EnergySurge` 死亡队友排除：同类双人 Play 根中，死者能量保持 3，出牌者支付 1 点并获得 2 点后为 4；全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/energy-surge-dead-ally-b3728b1c11814e1c9253a15284ccbd06/peer-0/result.json`。与 `OneForAll` 的死亡玩家仍获能力分开验收；未运行死亡 Hook。
+
 P2 `KnightsElite` 升级牌压制：双人各一张升级 `Bash`，第二招后两张均降级；击杀 `MagiKnight` 后均恢复，原版／模拟两个敌方回合及击杀的完整状态、RNG 差分 Passed：`.local/multiplayer-p2/knights-dampen-upgraded-7a33347c0eae4f63a7e48b78ac939dcd/peer-0/result.json`。多施法者未测。
 
 P2 `KnowledgeDemonBoss` 队友选择边界：预测在每名玩家各自选诅咒前明确停止，原版两人各选第一项后从新根预测接下来的三招；第四招按两人治疗 60 HP，逐回合完整状态及 RNG 差分 Passed：`.local/multiplayer-p2/knowledge-demon-post-choice-9b9e0925426b40e597846920c9ea90f7/peer-0/result.json`。第二／第三组选择未测。

@@ -54,6 +54,8 @@
 
 `OneForAll` 的死人范围另验：虚拟双人把队友生命直接设为 0 后，原版出牌给出牌者和已死亡队友各施加 3 层 `OneForAllPower`；预测的全部玩家、敌人状态及九条 RNG 严格差分 Passed：`.local/multiplayer-p2/one-for-all-dead-ally-e1e846c834dc4fe4bf9ce34db069c4b3/peer-0/result.json`。夹具没有运行队友死亡 Hook，只证明原版仍在场的死亡玩家可接收该群体能力；与其余七张只遍历存活玩家的卡牌不能合并成统一死亡目标规则。
 
+对照 `EnergySurge`：同样在虚拟双人 Play 阶段把队友生命设为 0，本地原版出牌后出牌者能量为 4，死者能量保持 3；预测的全部状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/energy-surge-dead-ally-b3728b1c11814e1c9253a15284ccbd06/peer-0/result.json`。这与 `OneForAll` 的死者仍获能力形成明确分支证据；两项均未运行死亡 Hook。
+
 `Largesse` 四人代表：本地 0 号对 3 号队友原生出牌，显式断言生成牌进 3 号手牌且牌主为 3 号，所有玩家状态与完整 RNG 对齐，Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。基础／升级的双人即时差分与余费支援原生路线证据见下文和规划记录；四人这一请求只验基础版单次出牌。
 
 生产控制器另以本地 `Largesse` 指向队友原生执行，生成牌归目标队友、随机流正常前进且没有旧预测偏差误报，Passed：`.local/multiplayer-p4/own-largesse-rng-final-1127aa6c05374ca293827af5f3f55a4f/peer-0/result.json`。队友反向对本地玩家打 `Largesse` 的交错动作中，目标玩家取得生成牌，控制器观测到外部 RNG 变化并重评估后继续合法攻击，Passed：`.local/multiplayer-p4/mid-deploy-rng-fixed-d1f774413f044e81a46697a326d4a5b0/peer-0/result.json`。即时入手位置由前述内容差分验证；控制器回合结束后的归属断言仅检查目标玩家持有该牌。
