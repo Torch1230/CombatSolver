@@ -769,3 +769,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 `PotionOfBinding` 又在双人双敌根验收另一条 `AllEnemies` 分支：唯一无指定生物候选，原版向两名敌人各施虚弱和易伤，玩家无减益，全部状态／九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。药水效果范围以各自原版结算为准；51 个玩家目标药水的源码登记仍不等于运行验收。
 
 用户指出近期对普通自用药水测得过细，偏离跨玩家适配主线。已启动的 `ShipInABottle` 下回合和 `FruitJuice` 自用验证均 Passed 并如实登记在[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)；自此停止逐瓶普通药水探针，把工作转回多人专属牌、队友目标／归属、跨玩家生命周期、联机执行与第 9 节实际缺口。
+
+回到 `Soulbound` 的跨玩家能力：本地出牌给队友后，原生叠层到 2，再由本地生成一张 `Soul`，队友自己的抽牌堆新增两张队友持有的 `Soul`；原版／预测全状态与九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。第二层由夹具原生施加，死亡引用仍未验。

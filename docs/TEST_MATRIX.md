@@ -232,6 +232,8 @@ P2 `PotionOfBinding` 群体敌方目标：双人双敌原版用药后两名敌�
 
 P2 收尾两瓶普通自用药水：`ShipInABottle` 即时格挡与下回合完整差分 Passed，`FruitJuice` 持有人最大生命及当前生命各加 5、队友不变且即时差分 Passed；证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。后续测试优先跨玩家专属机制。
 
+P2 `Soulbound` 两层跨玩家生成：本地出牌向队友施加能力，再原生叠到 2 层；本地生成一张 `Soul` 后队友的抽牌堆新增两张队友持有的 `Soul`，全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/soulbound-two-stack-generation-503930d530244c098bc41d176a640d4a/peer-0/result.json`。第二层是夹具原生施加，未运行死亡引用。
+
 P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不增加本地计数，本地第三次仍触发；下一回合本地第一张攻击只造成普通伤害。交错出牌及跨回合完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。
 
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。

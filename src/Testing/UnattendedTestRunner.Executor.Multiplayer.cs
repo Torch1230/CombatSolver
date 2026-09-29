@@ -2719,6 +2719,42 @@ internal sealed partial class UnattendedTestRunner
                 await PlayTeammateStrikeAsync("after");
             if (input.ContentTeammateCardIdAfter.Length > 0)
                 await PlayTeammateCardAfterAsync(input.ContentTeammateCardIdAfter);
+            if (input.VerifySoulboundStack)
+            {
+                Player teammate = combat.Players[input.ContentTargetSeat];
+                SoulboundPower linked = teammate.Creature.Powers.OfType<SoulboundPower>().Single();
+                if (linked.Amount != 1 || linked.Applier != actor.Creature)
+                    throw new InvalidOperationException("Soulbound was not applied by the local player to the teammate.");
+                await PowerCmd.Apply<SoulboundPower>(new ThrowingPlayerChoiceContext(),
+                    teammate.Creature, 1, actor.Creature, null);
+                if (linked.Amount != 2)
+                    throw new InvalidOperationException("Soulbound did not stack on the teammate.");
+                await runner.MultiplayerProbeBarrierAsync("soulbound-stacked", combat);
+                int actorSoulsBefore = actor.PlayerCombatState!.DrawPile.Cards.Count(card => card is Soul);
+                int teammateSoulsBefore = teammate.PlayerCombatState!.DrawPile.Cards.Count(card => card is Soul);
+                CombatRootSnapshot soulRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator soulSimulator = soulRoot.ForkSimulator();
+                soulSimulator.CreateAndAddGeneratedCardsToCombat<Soul>(
+                    actor, PileType.Draw, 1, actor, CardPilePosition.Random);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(
+                    soulSimulator, (SimulatedCombatState)soulSimulator.State.CombatState))
+                    throw new InvalidOperationException("Soulbound generation prediction did not settle.");
+                ContinuationStamp predictedSouls = ContinuationStamp.CapturePredicted(
+                    actor, soulSimulator, 1, soulRoot.Forecast, 1);
+                await CardPileCmd.AddGeneratedCardsToCombat(
+                    Soul.Create(actor, 1, combat), PileType.Draw, actor, CardPilePosition.Random);
+                await runner.MultiplayerProbeBarrierAsync("soulbound-two-stack-generation", combat);
+                ContinuationStamp actualSouls = ContinuationStamp.CaptureLive(combat);
+                if (predictedSouls != actualSouls
+                    || actor.PlayerCombatState.DrawPile.Cards.Count(card => card is Soul) != actorSoulsBefore + 1
+                    || teammate.PlayerCombatState.DrawPile.Cards.Count(card => card is Soul) != teammateSoulsBefore + 2
+                    || teammate.PlayerCombatState.DrawPile.Cards.Any(card => card is Soul && card.Owner != teammate)
+                    || linked.Amount != 2)
+                    throw new InvalidOperationException("Soulbound two-stack generation differs: "
+                        + predictedSouls.DescribeFirstDifference(actualSouls));
+                runner._completedChecks.Add("MultiplayerSoulbound:TwoStacks:TeammateOwnsTwoSouls:FullState:FullRng");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.ContentReplayTransferredBall)
             {
                 Player teammate = combat.Players[input.ContentTargetSeat];
