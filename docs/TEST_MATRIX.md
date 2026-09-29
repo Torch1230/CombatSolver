@@ -214,6 +214,8 @@ P2 共享随机敌人遗物：双人双敌 `Tingsha` 弃牌、`ForgottenSoul` �
 
 P2 多人过滤生成池药水：双人 `SkillPotion`、`PowerPotion`、`ColorlessPotion` 原生三选一及 `OrobicAcid` 三类牌、`CosmicConcoction` 三张升级无色牌，均只枚举持有人自用候选；实际生成张数、牌主及队友手牌不变，完整状态／九条 RNG 差分 Passed。五个证据目录按药水名列于[多人内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)；三选一只覆盖第一项。
 
+P2 共享随机敌人的球与能力：双人双敌 `LightningOrb` 回合结束被动随机打 3，第二回合激发随机打 8 并离开持有人球队列，完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/lightning-passive-evoke-862b76b77ff64aad9c84c283926f8576/peer-0/result.json`。`SerpentForm` 原版出牌本身无追加伤害，下一张 `Strike` 造成普通 6 加随机 4，逐步完整状态／RNG 差分 Passed：`.local/multiplayer-p2/serpent-form-shared-target-ac081f843cb54638823e7207bd2dd99d/peer-0/result.json`。多持有者和更多触发未测。
+
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
 
 ## 多人 P1 普通状态差分（2026-09-28）

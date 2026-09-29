@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Monsters;
+using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Models.Relics;
@@ -107,6 +108,51 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyLightningOrbTargets)
+            {
+                Player actor = scenario.Player;
+                await OrbCmd.AddSlots(actor, 2);
+                await OrbCmd.Channel<LightningOrb>(new ThrowingPlayerChoiceContext(), actor);
+                int[] hpBeforePassive = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                ContinuationStamp passivePrediction = PredictMultiplayerRound(combat, actor);
+                var end = new EndPlayerTurnAction(actor, 1);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                await runner.MultiplayerProbeBarrierAsync("lightning-passive", combat);
+                CheckPrediction(passivePrediction, actor, "LIGHTNING_PASSIVE");
+                if (combat.Enemies.Where((creature, index) =>
+                        hpBeforePassive[index] - creature.CurrentHp == 3).Count() != 1
+                    || combat.Enemies.Where((creature, index) =>
+                        hpBeforePassive[index] != creature.CurrentHp).Count() != 1)
+                    throw new InvalidOperationException("Lightning passive did not hit one enemy for 3.");
+                int[] hpBeforeEvoke = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                CombatRootSnapshot evokeRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator evokeSimulator = evokeRoot.ForkSimulator();
+                evokeSimulator.OrbEvokeNext(actor);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(evokeSimulator,
+                        (SimulatedCombatState)evokeSimulator.State.CombatState))
+                    throw new InvalidOperationException("Lightning evoke prediction did not settle.");
+                ContinuationStamp evokePrediction = ContinuationStamp.CapturePredicted(
+                    actor, evokeSimulator, 2, evokeRoot.Forecast, 2);
+                await OrbCmd.EvokeNext(new ThrowingPlayerChoiceContext(), actor);
+                await runner.MultiplayerProbeBarrierAsync("lightning-evoke", combat);
+                ContinuationStamp evokeActual = ContinuationStamp.CaptureLive(combat);
+                if (evokePrediction != evokeActual)
+                    throw new InvalidOperationException("Lightning evoke differs: "
+                        + evokePrediction.DescribeFirstDifference(evokeActual));
+                if (combat.Enemies.Where((creature, index) =>
+                        hpBeforeEvoke[index] - creature.CurrentHp == 8).Count() != 1
+                    || combat.Enemies.Where((creature, index) =>
+                        hpBeforeEvoke[index] != creature.CurrentHp).Count() != 1
+                    || actor.PlayerCombatState!.OrbQueue.Orbs.Count != 0
+                    || combat.Players.Where(player => player != actor)
+                        .Any(player => player.PlayerCombatState!.OrbQueue.Orbs.Count != 0))
+                    throw new InvalidOperationException("Lightning evoke did not use its holder's orb and random enemy.");
+                runner._completedChecks.Add("MultiplayerContent:LightningOrb:PassiveAndEvoke:OwnerQueue:RandomTarget:FullState:FullRng");
+                return new ExecutionOutcome(false, 2, true, true, true, false);
+            }
             if (input.VerifyKusarigamaRandomTarget)
             {
                 Player actor = scenario.Player;
@@ -2304,6 +2350,8 @@ internal sealed partial class UnattendedTestRunner
                 int actorHandBefore = card is Largesse
                     ? actor.PlayerCombatState!.Hand.Cards.Count : 0;
                 int enemyHpBefore = combat.Enemies.First().CurrentHp;
+                int totalEnemyHpBefore = input.VerifySerpentFormRandomTarget
+                    ? combat.Enemies.Sum(creature => creature.CurrentHp) : 0;
                 CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
                 CombatPredictionSimulator simulator = root.ForkSimulator();
                 PredictedCard predictedCard = simulator.State.GetPlayerCombatState(actor).Hand.Cards.Single(candidate =>
@@ -2370,6 +2418,14 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException(
                         $"Multiplayer content differs: {card.Id.Entry}+{card.CurrentUpgradeLevel} " +
                         predicted.DescribeFirstDifference(actual));
+                if (input.VerifySerpentFormRandomTarget)
+                {
+                    int damage = totalEnemyHpBefore - combat.Enemies.Sum(creature => creature.CurrentHp);
+                    if (damage != (index == 0 ? 0 : 10)
+                        || actor.Creature.GetPowerAmount<SerpentFormPower>() != 4)
+                        throw new InvalidOperationException("Serpent Form did not trigger on the following card only.");
+                    runner._completedChecks.Add($"MultiplayerContent:SerpentForm:Card={index + 1}:RandomTarget:FullState:FullRng");
+                }
                 if (largesseRecipient is { } recipient)
                 {
                     if (recipient.PlayerCombatState!.Hand.Cards.Count != targetHandBefore + 1
