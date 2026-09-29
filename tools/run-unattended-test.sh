@@ -49,6 +49,7 @@ add_option encounter-id "FUZZY_WURM_CRAWLER_WEAK" string raw_string
 add_option sts2-game-root "$steam_root/steamapps/common/Slay the Spire 2" string none
 add_option ritsu-workshop-root "$steam_root/steamapps/workshop/content/2868840/3747602295" string none
 add_option combat-solver-build-dir "" string none
+add_option replacement-test-mod-id "" string none
 add_option headless-instance "" string none
 add_option runtime-profile default string none "default|server-generational"
 add_option stop-instance 0 switch none
@@ -430,6 +431,13 @@ done
 if ((option_value[keep-game-open] == 1 \
     && (option_value[exit-on-complete] == 1 || option_value[cleanup-instance-on-exit] == 1))); then
     die "--keep-game-open cannot be combined with --exit-on-complete or --cleanup-instance-on-exit"
+fi
+if [[ -n ${option_value[replacement-test-mod-id]} ]]; then
+    [[ -n ${option_value[combat-solver-build-dir]} \
+        && ${option_value[cleanup-instance-on-exit]} == 1 \
+        && ${option_value[reuse-only]} == 0 \
+        && ${option_value[keep-game-open]} == 0 ]] ||
+        die '--replacement-test-mod-id requires --combat-solver-build-dir and a fresh --cleanup-instance-on-exit run'
 fi
 if ((option_value[cleanup-instance-on-exit] == 1)); then
     option_value[exit-on-complete]=1
@@ -1198,6 +1206,15 @@ fi
 hr_acquire "$process_pid" "$process_identity_start_time" || runtime_error 'headless host admission failed'
 if [[ -z $process_pid ]]; then
     hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$artifact_id" || runtime_error 'could not prepare frozen game snapshot'
+    if [[ -n ${option_value[replacement-test-mod-id]} ]]; then
+        [[ ${option_value[replacement-test-mod-id]} == NoSolverPeerProbe ]] || runtime_error 'unsupported replacement test mod ID'
+        source_mod="$game_root/mods/CombatSolver"
+        target_mod="$game_root/mods/NoSolverPeerProbe"
+        [[ -d $source_mod && ! -e $target_mod ]] || runtime_error 'No Solver peer mod replacement target is invalid'
+        mv -- "$source_mod" "$target_mod"
+        mv -- "$target_mod/CombatSolver.dll" "$target_mod/NoSolverPeerProbe.dll"
+        mv -- "$target_mod/CombatSolver.json" "$target_mod/NoSolverPeerProbe.json"
+    fi
 fi
 
 # Publish only after every process-safety check. An already-running protocol

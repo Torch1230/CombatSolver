@@ -8,6 +8,8 @@ param(
     [string]$Sts2GameRoot = "D:\Steam\steamapps\common\Slay the Spire 2",
     [string]$RitsuWorkshopRoot = "D:\Steam\steamapps\workshop\content\2868840\3747602295",
     [string]$CombatSolverBuildDir = "",
+    [ValidateSet("", "NoSolverPeerProbe")]
+    [string]$ReplacementTestModId = "",
     [string]$HeadlessInstance = "",
     [ValidateSet("default", "server-generational")]
     [string]$RuntimeProfile = "default",
@@ -440,6 +442,12 @@ if ([string]::Equals(
 }
 if ($KeepGameOpen.IsPresent -and ($ExitOnComplete.IsPresent -or $CleanupInstanceOnExit.IsPresent)) {
     throw "KeepGameOpen cannot be combined with ExitOnComplete or CleanupInstanceOnExit."
+}
+if ($ReplacementTestModId -and (
+    [string]::IsNullOrWhiteSpace($CombatSolverBuildDir) -or
+    -not $CleanupInstanceOnExit.IsPresent -or
+    $ReuseOnly.IsPresent -or $KeepGameOpen.IsPresent)) {
+    throw "ReplacementTestModId requires CombatSolverBuildDir and a fresh CleanupInstanceOnExit run."
 }
 if ($HoldAfterInitialSearch.IsPresent -and -not $KeepGameOpen.IsPresent) {
     throw "HoldAfterInitialSearch requires KeepGameOpen so the profiler can attach to the held combat."
@@ -1266,6 +1274,20 @@ if ($ReuseOnly -and $null -eq $process) {
 Enter-HeadlessHostLease $runtimeContext $process
 if ($null -eq $process) {
     Set-HeadlessGameSnapshot $runtimeContext $snapshotPlan
+    if ($ReplacementTestModId -eq "NoSolverPeerProbe") {
+        $sourceMod = [IO.Path]::GetFullPath((Join-Path $gameModsRoot 'CombatSolver'))
+        $targetMod = [IO.Path]::GetFullPath((Join-Path $gameModsRoot $ReplacementTestModId))
+        $headlessPrefix = [IO.Path]::GetFullPath($headlessRoot).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+        if (-not $sourceMod.StartsWith($headlessPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+            -not $targetMod.StartsWith($headlessPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+            -not (Test-Path -LiteralPath $sourceMod -PathType Container) -or
+            (Test-Path -LiteralPath $targetMod)) {
+            throw 'No Solver peer mod replacement target is invalid.'
+        }
+        Move-Item -LiteralPath $sourceMod -Destination $targetMod
+        Rename-Item -LiteralPath (Join-Path $targetMod 'CombatSolver.dll') -NewName 'NoSolverPeerProbe.dll'
+        Rename-Item -LiteralPath (Join-Path $targetMod 'CombatSolver.json') -NewName 'NoSolverPeerProbe.json'
+    }
 }
 $snapshotPlan = $null
 Write-Host "UNATTENDED_RUNTIME instance=$($runtimeContext.Instance) root=$headlessRoot artifact=$($runtimeContext.ArtifactId)"
