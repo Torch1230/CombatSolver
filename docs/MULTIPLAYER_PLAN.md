@@ -516,7 +516,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 | P1 通用状态与差分 | 所有玩家快照、目标身份、Hook 所有权、共享 RNG、Fork、多人历史、回合与死亡边界；通用差分和参数化测试入口 | 普通已有卡牌在 2／4 人根严格对账；跨两回合、兄弟分支隔离、根/live 隔离与差分负向合同通过 | 普通 2／4 人、兄弟 Fork、多人历史和若干死亡／复活分支通过；剩余生命周期开口见内容清单 |
 | P2 原版内容建模 | 完整清单内卡牌、Power、遗物、药水及普通内容多人差异；机制分类和关联测试 | 每项有原版依据及基础／升级差分证据；复杂机制的生命周期、所有者和引用合同通过；无影响范围内未解释缺口 | 37 张专用卡即时、14 张普通生成牌、代表性 Power／怪物／药水／遗物差分通过；其余分支和内容闭包未完成 |
 | P3 有限回合与多方案 | 深度／时间配置、共享预算、本地候选、队友无主动动作、三类排序、估值、去重、余费支援 | 固定根短搜证明三类目标与去重；预算和深度上限有效；纯支援分类、随机目标固定及自身收益牌正常搜索通过；单人哨兵通过 | 默认深度／时间、多方案、余费支援、队友目标与单人哨兵有代表证据；完整内容准入仍受 P2 限制 |
-| P4 执行与变化处理 | 新状态重评估原序列、RNG 提示、逐步原生执行、选牌等待、当前回合范围、三种计算入口 | 队友交错动作、随机偏差、计划内／外击杀、不可执行暂停及旧任务淘汰在真实联机链路通过 | 虚拟变化／RNG／失效与 ENet 2／4 端部署通过；双人无求解器对端的普通原生动作链路通过，未验证该组合的生产控制器部署 |
+| P4 执行与变化处理 | 新状态重评估原序列、RNG 提示、逐步原生执行、选牌等待、当前回合范围、三种计算入口 | 队友交错动作、随机偏差、计划内／外击杀、不可执行暂停及旧任务淘汰在真实联机链路通过 | 虚拟变化／RNG／失效与 ENet 2／4 端部署通过；双人无求解器对端的普通原生动作及房主全自动部署均通过，复杂交错仍未覆盖此组合 |
 | P5 界面与完整验收 | 设置、方案列表、收益／假设／可信状态、中英文本；四人联调、单人回归、文档与本地部署 | 第 9 节检查项有对应证据；实际未测项明确，只有满足范围的功能对外声明完成 | 无头设置编辑／本地化／方案按钮、四端全自动、本地部署及 1920×1080 可见中文方案窗通过；设置页可见排版、Steam 房间与 Linux 实机未验 |
 
 P2 可按机制小批完成并立即验证，不等待全部内容写完才测试。发现通用根因回到对应职责修复，禁止在单卡里复制底层规则。P0 若某原版测试入口不可用，记录具体失败，调整为可运行的原版建局入口；不能靠自制期望值替代原生验收。
@@ -717,3 +717,5 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 本机双进程 ENet：房主使用 CombatSolver `0.47.2`，加入者仅使用 `NoSolverPeerProbe` 测试驱动、QuickRightPlay 与 RitsuLib，战斗期模组列表明确没有 CombatSolver。双方各自原生打防御、打击、生存者并完成联网弃牌选择，再各自结束回合；根、六次出牌／选择、首名玩家准备结束和第二回合共九个检查点，两端 `NetFullCombatState`、玩家阶段、九条完整 RNG 全相等，房主与加入者均 Passed。证据 `.local/multiplayer-p0/no-solver-peer-ftue-fixed-4e86ba14daa6402b8b9afea185e92098/peer-0/result.json`、`peer-1/result.json`，加入者战斗期装载清单在 `peer-1/environment.json`。驱动源码见 `tools/NoSolverPeerProbe/`，只用原版联机与出牌接口；为无界面测试跳过原版教学 UI 创建。此前两次因测试驱动读取内容库过早和初始化期误判自身装载而失败；第三次动作到回合尾，但原版教学 UI 在无界面下空引用，修复驱动后取得完整结果。这是本机 ENet 与带测试驱动的非求解器对端，仍未验证纯原版可见 Steam 邀请、真实网络延迟及四人无求解器组合。
 
 可重跑入口：`dotnet build tools/NoSolverPeerProbe/NoSolverPeerProbe.csproj -c Release`，把产物 DLL、该目录 manifest 和已有 MemoryCleaner 复制到仓库忽略目录 `.local/no-solver-peer-dist/`，临时分别命名为 `CombatSolver.dll`、`CombatSolver.json`、`CombatSolver.MemoryCleaner.exe`。两端共用上述证据目录的 `input-0.json`／`input-1.json`，分别调用 `tools/run-unattended-test.ps1 -ScenarioId MULTIPLAYER-P0 -HeadlessExecutionMode parallel -HeadlessMemoryReservationMiB 1536 -CleanupInstanceOnExit`；加入者额外指定 `-CombatSolverBuildDir .local/no-solver-peer-dist -ReplacementTestModId NoSolverPeerProbe`。启动器只在加入者的隔离快照内把该临时模组更名为独立 ID，不改本地正式 Mod。Bash 入口有同名选项并通过 `bash -n`，未在 Linux 运行游戏。
+
+同一无求解器加入者配置再验生产控制器全自动：房主实际搜索并部署本地路线、结束自己的第一回合，测试对端只原生结束自己的回合；两端进入第二回合，根与第二回合两个检查点的全状态、阶段及九条完整 RNG 一致，双方 Passed：`.local/multiplayer-p4/no-solver-peer-full-auto-5fc2f9442dc54c4a976e5552ad907185/peer-0/result.json`、`peer-1/result.json`，加入者装载清单在 `peer-1/environment.json`。输入为同目录 `input-0.json`／`input-1.json`，均增加 `verifyControllerFullAuto=true`。这证明一个持有求解器的房主能与未装求解器的加入者同步执行；队友交错动作与延迟变化的该组合未在这次测试触发。

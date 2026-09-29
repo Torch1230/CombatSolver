@@ -93,7 +93,8 @@ public static class Entry
             Directory.CreateDirectory(evidenceDirectory);
             WriteJson(Path.Combine(evidenceDirectory, "environment.json"), new
             {
-                GameVersion = NGame.GetGameVersion(), LoadedMods = loadedMods,
+                GameVersion = NGame.GetGameVersion(),
+                LoadedMods = loadedMods,
                 Seat = seat,
             });
             if (loadedMods.Contains("CombatSolver", StringComparer.Ordinal))
@@ -144,62 +145,93 @@ public static class Entry
                     + string.Join(',', combatMods));
             WriteJson(Path.Combine(evidenceDirectory, "environment.json"), new
             {
-                GameVersion = NGame.GetGameVersion(), LoadedMods = combatMods,
-                SolverLoaded = false, Seat = seat,
+                GameVersion = NGame.GetGameVersion(),
+                LoadedMods = combatMods,
+                SolverLoaded = false,
+                Seat = seat,
             });
             Player local = LocalContext.GetMe(state)
                 ?? throw new InvalidOperationException("No Solver peer has no local player.");
             if (!ReferenceEquals(local, state.Players[seat]))
                 throw new InvalidOperationException("No Solver peer joined the wrong seat.");
             await BarrierAsync(host, state, coordination, evidenceDirectory, "root", playerCount);
-            using (CardSelectCmd.UseSelector(new NetworkSelector(state), localOnly: true))
+            if (probe.TryGetProperty("verifyControllerFullAuto", out JsonElement fullAuto) && fullAuto.GetBoolean())
             {
+                await WaitAsync(host, () => CombatManager.Instance.IsPlayerReadyToEndTurn(state.Players[0]));
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(local, 1));
+                await WaitAsync(host, () => state.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                await BarrierAsync(host, state, coordination, evidenceDirectory,
+                    "full-auto-second-turn", playerCount);
+            }
+            else
+            {
+                using (CardSelectCmd.UseSelector(new NetworkSelector(state), localOnly: true))
+                {
+                    foreach (Player player in state.Players)
+                    {
+                        await PlayAsync(host, state, player, "DEFEND_IRONCLAD", null,
+                            () => player.PlayerCombatState!.Energy == 2 && player.Creature.Block == 5);
+                        await BarrierAsync(host, state, coordination, evidenceDirectory,
+                            $"defend-{player.NetId}", playerCount);
+                        int hp = state.Enemies.Single().CurrentHp;
+                        await PlayAsync(host, state, player, "STRIKE_IRONCLAD", state.Enemies.Single(),
+                            () => player.PlayerCombatState!.Energy == 1 && state.Enemies.Single().CurrentHp == hp - 6);
+                        await BarrierAsync(host, state, coordination, evidenceDirectory,
+                            $"strike-{player.NetId}", playerCount);
+                        await PlayAsync(host, state, player, "SURVIVOR", null,
+                            () => player.PlayerCombatState!.Energy == 0 && player.Creature.Block == 13
+                                && player.PlayerCombatState.Hand.Cards.Count == 1
+                                && player.PlayerCombatState.DiscardPile.Cards.Count == 4);
+                        await BarrierAsync(host, state, coordination, evidenceDirectory,
+                            $"choice-{player.NetId}", playerCount);
+                    }
+                }
                 foreach (Player player in state.Players)
                 {
-                    await PlayAsync(host, state, player, "DEFEND_IRONCLAD", null,
-                        () => player.PlayerCombatState!.Energy == 2 && player.Creature.Block == 5);
-                    await BarrierAsync(host, state, coordination, evidenceDirectory,
-                        $"defend-{player.NetId}", playerCount);
-                    int hp = state.Enemies.Single().CurrentHp;
-                    await PlayAsync(host, state, player, "STRIKE_IRONCLAD", state.Enemies.Single(),
-                        () => player.PlayerCombatState!.Energy == 1 && state.Enemies.Single().CurrentHp == hp - 6);
-                    await BarrierAsync(host, state, coordination, evidenceDirectory,
-                        $"strike-{player.NetId}", playerCount);
-                    await PlayAsync(host, state, player, "SURVIVOR", null,
-                        () => player.PlayerCombatState!.Energy == 0 && player.Creature.Block == 13
-                            && player.PlayerCombatState.Hand.Cards.Count == 1
-                            && player.PlayerCombatState.DiscardPile.Cards.Count == 4);
-                    await BarrierAsync(host, state, coordination, evidenceDirectory,
-                        $"choice-{player.NetId}", playerCount);
+                    if (LocalContext.IsMe(player))
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(player, 1));
+                    if (player != state.Players[^1])
+                    {
+                        await WaitAsync(host, () => CombatManager.Instance.IsPlayerReadyToEndTurn(player));
+                        await BarrierAsync(host, state, coordination, evidenceDirectory,
+                            $"ready-{player.NetId}", playerCount);
+                    }
                 }
+                await WaitAsync(host, () => state.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                await BarrierAsync(host, state, coordination, evidenceDirectory, "second-turn", playerCount);
             }
-            foreach (Player player in state.Players)
+            WriteJson(resultPath, new
             {
-                if (LocalContext.IsMe(player))
-                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(player, 1));
-                if (player != state.Players[^1])
-                {
-                    await WaitAsync(host, () => CombatManager.Instance.IsPlayerReadyToEndTurn(player));
-                    await BarrierAsync(host, state, coordination, evidenceDirectory,
-                        $"ready-{player.NetId}", playerCount);
-                }
-            }
-            await WaitAsync(host, () => state.Players.All(player =>
-                player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
-            await BarrierAsync(host, state, coordination, evidenceDirectory, "second-turn", playerCount);
-            WriteJson(resultPath, new { SchemaVersion = 1, RunId = runId, Status = "Passed",
-                Stage = "passed", Error = (string?)null });
+                SchemaVersion = 1,
+                RunId = runId,
+                Status = "Passed",
+                Stage = "passed",
+                Error = (string?)null
+            });
             WriteJson(Path.Combine(evidenceDirectory, "result.json"), new
             {
-                SchemaVersion = 1, RunId = runId, Status = "Passed", Stage = "passed",
-                SolverLoaded = false, LoadedMods = combatMods, Error = (string?)null,
+                SchemaVersion = 1,
+                RunId = runId,
+                Status = "Passed",
+                Stage = "passed",
+                SolverLoaded = false,
+                LoadedMods = combatMods,
+                Error = (string?)null,
             });
             host.GetTree().Quit();
         }
         catch (Exception error)
         {
-            object result = new { SchemaVersion = 1, RunId = runId, Status = "Failed",
-                Stage = "no_solver_peer", Error = error.ToString() };
+            object result = new
+            {
+                SchemaVersion = 1,
+                RunId = runId,
+                Status = "Failed",
+                Stage = "no_solver_peer",
+                Error = error.ToString()
+            };
             WriteJson(resultPath, result);
             if (evidenceDirectory != null)
                 WriteJson(Path.Combine(evidenceDirectory, "result.json"), result);
@@ -264,7 +296,8 @@ public static class Entry
             NativeState = NetFullCombatState.FromRun(state.RunState, justFinishedAction: null).ToString(),
             Players = state.Players.Select(player => new
             {
-                player.NetId, Phase = player.PlayerCombatState!.Phase.ToString(),
+                player.NetId,
+                Phase = player.PlayerCombatState!.Phase.ToString(),
                 player.PlayerCombatState.TurnNumber,
                 Ready = CombatManager.Instance.IsPlayerReadyToEndTurn(player),
             }).ToArray(),
@@ -308,7 +341,8 @@ public static class Entry
     private sealed class LobbyListener : IStartRunLobbyListener
     {
         public TaskCompletionSource<(string Seed, List<ActModel> Acts, IReadOnlyList<ModifierModel> Modifiers)>
-            Started { get; } = new();
+            Started
+        { get; } = new();
         public void BeginRun(string seed, List<ActModel> acts, IReadOnlyList<ModifierModel> modifiers)
             => Started.SetResult((seed, acts, modifiers));
         public void LocalPlayerDisconnected(NetErrorInfo info)
