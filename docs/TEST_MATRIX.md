@@ -531,6 +531,8 @@ Release 0/0、Windows 结构门禁 238；GA-SILENT-BOSS-00 与本轮重构基线
 - 旧 `RELIC-HOOKS-BATCH-054` 从已完成原生产球的Play状态取根，只证明既有球与未来回合，不再作为空球准备根的首次产球证据。覆盖分类已改为显式模拟补偿，保留原生验收未完成的说明。
 - Windows Release构建0警告0错误，修改文件JSON解析及格式检查通过。CoverageCatalog原有工程缺少RitsuLib分程序集引用，先因`GetOriginalIl`／`HarmonyIl`编译失败；使用仅本地的额外引用后构建成功，但`--verify-runtime-evidence`在读取既有`LOOP-FINAL-20260921.status=PassedWithDocumentedBoundaries`时抛JsonException，未完成覆盖门禁或重新生成派生目录。此问题不归因于本次产球修复，不伪造Passed状态。本轮不提升版本、不打包或发布；不宣称完整战斗、实机选牌部署或其他Mod组合已验收。
 
+2026-09-29 续验：原生 DEFECT 首回合 `InfusedCore`＋`Toolbox` 选牌入口 Passed，`.local/multiplayer-p2/infused-core-initial-d62e9e529f204c0cbceb6cac8a86ad30/result.json`；该请求只核选牌顺序，没有明确的三球全状态差分。随后虚拟双人第一回合独立调用原版与模拟 `InfusedCore.AfterSideTurnStart`，持有人三颗闪电球、队友零球，全部玩家／敌人状态和九条 RNG 严格一致，Passed：`.local/multiplayer-p2/infused-core-two-5863c058d6364850b690835ce97e76be/peer-0/result.json`。覆盖目录中该 Hook 的运行证据据此更新；真实开战时的完整三球状态差分仍未验证。
+
 ## PR #143 合并上游 0.47.1（2026-09-27）
 
 - 合并基线为上游 `7d9b4bed`，包含 `a59d319d`。手工解决 Opening、Phases 和两份记录文档冲突，保留上游终局／边界候选门禁、前缀异常清理及准备阶段整体补充审计旁路，同时保留本分支选择时点估值、终局前缀统计和七表／缓存校验。代码审阅未发现阻断问题。

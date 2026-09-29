@@ -1,11 +1,11 @@
 {
   "INFUSED-CORE-INITIAL-SETUP-20260927": {
-    "status": "Pending",
-    "level": "OfflineProductionHookDiagnostic",
-    "procedure": "OFFLINE_HARNESS_INFUSED_CORE_CHECKS=1；OfflineSearchHarness --character DEFECT --milestone M1；真实生产Hook的首回合空球根诊断。原生短搜夹具initial-toolbox-infused-core.json未运行。",
-    "expected": "首回合参与者生成3个闪电球、4/9数值与3次产球历史；后续回合不重复；根与父子兄弟隔离；原生准备完成后完整状态匹配。",
-    "observed": "修改前actual=0失败，修改后14项离线检查Passed。用户游戏运行中，未启动原生无人测试，也未将离线诊断当作原生完整状态等价。Windows Release构建0警告0错误。",
-    "evidence": "tools/OfflineSearchHarness/InfusedCoreChecks.cs; coverage/unattended/initial-toolbox-infused-core.json; docs/TEST_MATRIX.md"
+    "status": "Passed",
+    "level": "Virtual2NativeHookDifferentialAndInitialChoiceContract",
+    "procedure": "虚拟双人第一回合给本地玩家注入注能核心及3球槽，从同一原生根分别执行原版AfterSideTurnStart和预测Hook，核对持有人3颗闪电球、队友0颗、全状态与九条RNG；另以DEFECT注能核心加工具箱原生开局确认选牌顺序。",
+    "expected": "首回合参与持有人生成3个闪电球且队友无球；原版与预测全部相关状态及完整RNG一致；原生工具箱选牌入口正常。",
+    "observed": "虚拟双人原版Hook差分Passed，持有人3颗闪电球、队友0颗，全状态及九条RNG一致。DEFECT原生首回合工具箱选牌顺序Passed；该单人夹具未单独断言原生初始产球的完整状态差分。旧离线14项检查不充当本次原生证据。",
+    "evidence": ".local/multiplayer-p2/infused-core-two-5863c058d6364850b690835ce97e76be/peer-0/result.json; .local/multiplayer-p2/infused-core-initial-d62e9e529f204c0cbceb6cac8a86ad30/result.json; src/Testing/UnattendedTestRunner.Executor.Multiplayer.cs; docs/TEST_MATRIX.md"
   },
   "LOOP-GROUP-DISPLAY-20260921": {
     "status": "Passed",

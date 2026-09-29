@@ -218,7 +218,7 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyVisibleSettingsCapture && !input.VerifyControllerStyleSelection
                 || input.ContentRelicId.Length > 0 && (!input.IsVirtual || input.ContentCardIds.Length == 0
                     || input.ContentRelicId is not ("VEXING_PUZZLEBOX" or "ORANGE_DOUGH"
-                        or "TOOLBOX" or "CHOICES_PARADOX"))
+                        or "TOOLBOX" or "CHOICES_PARADOX" or "INFUSED_CORE"))
                 || input.VerifyMidnightExhaustHistory && (!input.IsVirtual
                     || input.ContentCardIds.Length != 1 || input.ContentCardIds[0] != "MIDNIGHT")
                 || input.VerifyInterceptApplierDeathHook && (!input.IsVirtual

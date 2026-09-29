@@ -1905,6 +1905,31 @@ internal sealed partial class UnattendedTestRunner
                     await UnattendedTestRunner.InjectRelicAsync(actor,
                         new UnattendedRelicInjection { RelicId = relicId });
                     RelicModel relic = actor.Relics.Single(candidate => candidate.Id.Entry == relicId);
+                    if (relic is InfusedCore)
+                    {
+                        await OrbCmd.AddSlots(actor, 3);
+                        CombatRootSnapshot orbRoot = CombatRootSnapshot.Capture(combat);
+                        CombatPredictionSimulator orbSimulator = orbRoot.ForkSimulator();
+                        SimulatedCombatState orbCombat = (SimulatedCombatState)orbSimulator.State.CombatState;
+                        if (!orbCombat.TriggerRelicsAfterSideTurnStart(orbSimulator,
+                                CombatSide.Player, [actor.Creature])
+                            || !CombatBeamSolver.SettleReplayActionBoundary(orbSimulator, orbCombat))
+                            throw new InvalidOperationException("Infused Core prediction did not settle.");
+                        ContinuationStamp predictedOrbs = ContinuationStamp.CapturePredicted(
+                            actor, orbSimulator, 1, orbRoot.Forecast, 1);
+                        await relic.AfterSideTurnStart(CombatSide.Player, [actor.Creature], combat);
+                        await runner.MultiplayerProbeBarrierAsync("relic-INFUSED_CORE", combat);
+                        ContinuationStamp actualOrbs = ContinuationStamp.CaptureLive(combat);
+                        if (predictedOrbs != actualOrbs
+                            || actor.PlayerCombatState!.OrbQueue.Orbs.Count != 3
+                            || actor.PlayerCombatState.OrbQueue.Orbs.Any(orb => orb is not LightningOrb)
+                            || combat.Players.Where(member => member != actor)
+                                .Any(member => member.PlayerCombatState!.OrbQueue.Orbs.Count != 0))
+                            throw new InvalidOperationException("Infused Core owner-only channel differs: "
+                                + predictedOrbs.DescribeFirstDifference(actualOrbs));
+                        runner._completedChecks.Add("MultiplayerRelic:InfusedCore:OwnerThreeLightning:TeammateNone:FullState:FullRng");
+                        return new ExecutionOutcome(false, 1, true, true, true, false);
+                    }
                     int actorHandBefore = actor.PlayerCombatState!.Hand.Cards.Count;
                     HashSet<CardModel> actorHandCardsBefore = [.. actor.PlayerCombatState.Hand.Cards];
                     int[] teammateHandsBefore = combat.Players.Where(member => member != actor)

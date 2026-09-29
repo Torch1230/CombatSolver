@@ -141,6 +141,8 @@ Power 目录补扫还发现战斗内多人过滤牌池入口 `SpectrumShiftPower
 
 四种战斗内生成遗物已分别在虚拟双人原生战斗的第一回合独立调用原版 Hook，并从调用前的同一根 Fork 运行预测：`VexingPuzzlebox` `.local/multiplayer-p2/vexing-puzzlebox-c1340ff612aa429bb5bb94118875af5e/peer-0/result.json`、`OrangeDough` `.local/multiplayer-p2/orange-dough-9cf3f4e7f44a4ee6a83b6efd9b7ca256/peer-0/result.json`、`Toolbox` `.local/multiplayer-p2/toolbox-ee6b5d048de340cbb866d33c29bb346b/peer-0/result.json`、`ChoicesParadox` `.local/multiplayer-p2/choices-paradox-retain-bed341a6e59c4a5d9892c6a1c41ad86c/peer-0/result.json` 均 Passed。逐项核对持有人手牌增量、队友手牌不变、生成牌牌主、全状态与完整 RNG；两件选牌遗物固定取原版第一项，`ChoicesParadox` 额外显式核对生成牌带保留。`MassiveScroll` 属战前获得多人牌的来源，仍以卡牌本身的战斗差分为主要验收；遗物在真实开战 Hook 顺序、其他随机候选与跳过选择尚未由这些独立调用证明。
 
+`InfusedCore.AfterSideTurnStart` 补虚拟双人原版 Hook 差分：本地持有人第一回合有 3 个球槽，从同一根执行原版与预测 Hook 后，持有人获得 3 颗闪电球、队友球队列保持空，所有玩家／敌人状态和九条 RNG 一致，Passed：`.local/multiplayer-p2/infused-core-two-5863c058d6364850b690835ce97e76be/peer-0/result.json`。另一个 DEFECT 原生开局 `InfusedCore` 加 `Toolbox` 的选牌顺序请求 Passed：`.local/multiplayer-p2/infused-core-initial-d62e9e529f204c0cbceb6cac8a86ad30/result.json`；该单人请求没有单独断言原生开局三颗球的完整状态差分，故不把它当作上述 Hook 差分。后续回合不重复触发的运行证据仍待补。
+
 `WhisperingEarring` 原版自动出牌时，`AnyAlly` 从其他存活玩家中消耗 `CombatTargets` 随机挑选，`AnyPlayer` 指向持有人。四人原生根只给本地玩家的手牌保留 `Blaze`，分别运行原版遗物效果和同根模拟：显式断言本地没有力量、恰有一名其他玩家获得 5 力量，全部状态及完整 RNG 对齐，Passed：`.local/multiplayer-p2/earring-blaze-other-81734c90e5694861bcfbc628c07048e6/peer-0/result.json`。这次直接调用原版遗物的首回合自动出牌入口，未覆盖开战装载时序、更多自动牌或 13 张上限。
 
 `Blaze` 目标排除补充：四人 Play 阶段把 1 号队友生命设为 0，保留 0 号出牌者和另外两名存活队友；固定选择 0、1 号座位均明确拒绝，固定选择 2 号后原版出牌与模拟全部状态及 RNG 对齐，Passed：`.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`。夹具直接设置生命，没有运行死亡 Hook 和后续回合，不能代替死亡生命周期验收。

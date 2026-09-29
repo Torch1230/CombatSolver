@@ -6212,7 +6212,7 @@
   "Relic|MegaCrit.Sts2.Core.Models.Relics.InfusedCore|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.RelicTurnStart.cs",
-    "notes": "Channels three Lightning orbs for the participating owner on the first turn, including roots captured before Toolbox setup choices. Later predicted turns do not repeat the trigger. Offline hook diagnostics cover empty queues and fork isolation; native initial-setup acceptance remains unverified.",
+    "notes": "Channels three Lightning orbs for the participating owner on the first turn. Virtual two-player direct native Hook and predicted full-state/RNG differential passed with three owner orbs and none for the teammate. A separate native initial Toolbox choice contract passed; full initial-setup state differential remains unverified.",
     "testId": "INFUSED-CORE-INITIAL-SETUP-20260927"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.InfusedCore|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyOrbValue(MegaCrit.Sts2.Core.Models.OrbModel,System.Decimal)": {
