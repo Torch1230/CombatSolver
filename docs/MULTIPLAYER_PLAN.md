@@ -739,3 +739,5 @@ P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，�
 - 下一条具体工作：按[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)剩余原版多人关联分支继续最小机制差分，尤其 `Soulbound`／`ImitationLearning` 多次或死亡引用、`Plating` 苏醒移除、怪物未触发招式和药水生成池；发现通用根因就修对应权威入口。之后按第 9 节逐项验收。Steam 邀请／真实远程延迟及 Linux 游戏运行仍缺外部环境；WSL 仅 `bash -n` 通过，不算 Linux 实机。
 
 随后复用已有三回合差分入口，`SlumberingBeetleNormal` 的 `SlumberPower` 自然耗尽使其苏醒、移除镀层；第四回合甲虫无 Power、格挡 41，全部状态和九条 RNG 对齐，Passed：`.local/multiplayer-p2/slumbering-beetle-awake-1df17160e621452bbd78ca02240370e5/peer-0/result.json`。这条补上自然苏醒，受伤提前苏醒仍未验；上述“下一条工作”中的镀层苏醒项以此更新。
+
+又补受伤提前唤醒：测试注入睡眠 1 层并清除甲虫格挡，双人本地打 `Strike` 后预排 `STUNNED`，下一敌方回合移除镀层；两个稳定边界的全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/beetle-damage-stun-round-cfe4ccec565b479fa2828a6bc2bfed06/peer-0/result.json`。这补足甲虫两种苏醒入口；睡眠层数是夹具注入。

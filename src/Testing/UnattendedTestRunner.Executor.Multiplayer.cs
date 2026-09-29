@@ -107,6 +107,39 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyBeetleDamageWake)
+            {
+                Creature beetle = combat.Enemies.Single(creature => creature.Monster is SlumberingBeetle);
+                SlumberPower slumber = beetle.GetPower<SlumberPower>()
+                    ?? throw new InvalidOperationException("Beetle has no Slumber power.");
+                await PowerCmd.Decrement(slumber);
+                await PowerCmd.Decrement(slumber);
+                await CreatureCmd.LoseBlock(new ThrowingPlayerChoiceContext(), beetle, beetle.Block, null);
+                ContinuationStamp wakePrediction = PredictOrdinaryCard(
+                    scenario.Player, "STRIKE_IRONCLAD", beetle);
+                CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                var attack = new PlayCardAction(strike, beetle);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(attack);
+                await attack.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("beetle-damage-wake", combat);
+                CheckPrediction(wakePrediction, scenario.Player, "BEETLE_DAMAGE_WAKE");
+                if (beetle.Monster!.NextMove.Id != "STUNNED"
+                    || beetle.HasPower<SlumberPower>())
+                    throw new InvalidOperationException("Unblocked damage did not wake and stun the beetle.");
+                ContinuationStamp stunnedPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var end = new EndPlayerTurnAction(scenario.Player, 1);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                await runner.MultiplayerProbeBarrierAsync("beetle-after-stun", combat);
+                CheckPrediction(stunnedPrediction, scenario.Player, "BEETLE_AFTER_STUN");
+                if (beetle.HasPower<PlatingPower>() || !((SlumberingBeetle)beetle.Monster).IsAwake)
+                    throw new InvalidOperationException("Beetle did not remove Plating after its stunned wake move.");
+                runner._completedChecks.Add("MultiplayerContent:BeetleDamageWake:Stun:NextTurnPlatingRemoved:FullState:FullRng");
+                return new ExecutionOutcome(false, 2, true, true, true, false);
+            }
             if (input.VerifyPlayerDoomHook || input.VerifyPlayerDoomRound)
             {
                 Player actor = input.VerifyPlayerDoomRound ? combat.Players[0] : scenario.Player;

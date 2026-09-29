@@ -152,6 +152,8 @@ P2 敌方 `PlatingPower` 生命周期：双人 `SlumberingBeetleNormal` 根及�
 
 P2 甲虫自然苏醒：同类双人根继续第三敌方回合，`SlumberPower` 耗尽、镀层移除，第四回合甲虫无 Power、格挡 41；完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/slumbering-beetle-awake-1df17160e621452bbd78ca02240370e5/peer-0/result.json`。受伤提前唤醒未测。
 
+P2 甲虫受伤提前苏醒：把睡眠层数置 1 并清格挡，本地 `Strike` 打出 `STUNNED`，下一敌方回合执行苏醒并移除镀层；两处完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/beetle-damage-stun-round-cfe4ccec565b479fa2828a6bc2bfed06/peer-0/result.json`。睡眠层数由测试注入。
+
 P2 玩家侧 Doom 群体死亡 Hook：双人直接触发队友 Doom，持 `BookRepairKnife` 的本地玩家由 70 治疗到 73，预测与原版的队友死亡、治疗和九条 RNG 一致，证据 `.local/multiplayer-p2/player-doom-repair-knife-scope-5cf6ac1cd0a94c9789d5c97b79fdacb1/peer-0/result.json`。中途 Hook 的严格全状态因虚拟原版自动切换阶段／移牌而失败，证据 `.local/multiplayer-p2/player-doom-repair-knife-3a883173aff94661bea03a7db5779764/peer-0/result.json`。完整回合改用双进程 ENet，队友 Doom 死亡、房主回血并承受敌方攻击后 HP 69，到第二回合房主全状态／九条 RNG 严格差分及两端原生检查点 Passed：`.local/multiplayer-p2/enet-player-doom-final-d8ff8a78501e43459922097f05076545/peer-0/result.json`、`peer-1/result.json`。
 
 P2 蜈蚣分段复活：双人第二回合击杀一段，原生 `DEAD_MOVE` 保持死亡，随后 `REATTACH_MOVE` 才复活；击杀动作与两次敌方回合的全状态／RNG 均与预测一致，Passed：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。最初 6 HP 夹具未考虑玩家虚弱、下一次夹具误以为死亡回合即复活，均为测试前提错误；全段死亡未验。

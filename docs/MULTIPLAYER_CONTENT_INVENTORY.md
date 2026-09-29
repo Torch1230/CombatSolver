@@ -133,6 +133,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 在同类原生根继续推进第三个敌方回合，`SlumberPower` 到 0 后甲虫苏醒并移除镀层；第四回合原版甲虫无 Power、格挡 41，三个敌方回合的全部状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/slumbering-beetle-awake-1df17160e621452bbd78ca02240370e5/peer-0/result.json`。这补齐该种子自然苏醒路径，未验受伤提前唤醒。
 
+受伤唤醒也在双人原生根单独触发：把甲虫睡眠层数置 1、清除格挡，本地 `Strike` 造成未格挡伤害后原版排 `STUNNED`；随后完整敌方回合执行苏醒，移除 `PlatingPower`。出牌和到第二回合的所有玩家／敌人状态、九条 RNG 均与预测对齐，Passed：`.local/multiplayer-p2/beetle-damage-stun-round-cfe4ccec565b479fa2828a6bc2bfed06/peer-0/result.json`。层数是夹具注入，未靠三次自然受伤降层；此前只验即时边界的 `.local/multiplayer-p2/beetle-damage-wake-044da5cdbf384114b773b12089617b0d/peer-0/result.json` 不重复算完整生命周期。
+
 玩家侧 `DoomPower.AfterSideTurnEnd` 源码按全队同次触发 `DoomKill`，死亡后的 `BookRepairKnife` 对其他玩家所属的遗物持有者回血。预测原先只直接击杀单个 Power 持有者，现走群体 Doom 入口；双人直接调用原版 Hook，队友死亡、持遗物本地玩家 70→73 HP、九条 RNG 与预测一致：`.local/multiplayer-p2/player-doom-repair-knife-scope-5cf6ac1cd0a94c9789d5c97b79fdacb1/peer-0/result.json`。该中途 Hook 探针的全状态差分因原版虚拟局立即切换阶段／移牌而失败，记录 `.local/multiplayer-p2/player-doom-repair-knife-3a883173aff94661bea03a7db5779764/peer-0/result.json`。随后改在完整回合边界以双进程 ENet 验证：加入者 Doom 死亡，房主携遗物回血，怪物攻击后 HP 为 69；双方第二回合状态一致，房主全玩家／敌人／完整 RNG 预测差分 Passed，两端结果 `.local/multiplayer-p2/enet-player-doom-final-d8ff8a78501e43459922097f05076545/peer-0/result.json`、`peer-1/result.json`。独立遗物治疗量由前一 Hook 探针核对；这次 ENet 场景在相同种子下净值包含敌方攻击。
 
 分段死亡与重附另在双人原生根通过：先击杀一段，原版首个敌方回合保持死亡，下一敌方回合 `REATTACH_MOVE` 复活；三个稳定边界的完整玩家／敌人状态及九条 RNG 与预测一致：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。三段全部死亡及整场结束仍未覆盖。
