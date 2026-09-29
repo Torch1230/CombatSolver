@@ -4,7 +4,9 @@
 
 双进程 ENet 无求解器对端：房主加载 CombatSolver，加入者战斗期模组列表为 `NoSolverPeerProbe`、QuickRightPlay、RitsuLib，明确没有 CombatSolver。两端各自出牌、原生联网弃牌选择和结束回合，进入第二回合；九个检查点的全状态、玩家阶段与九条完整 RNG 相等，两端均 Passed：`.local/multiplayer-p0/no-solver-peer-ftue-fixed-4e86ba14daa6402b8b9afea185e92098/peer-0/result.json`、`peer-1/result.json`，装载清单见 `peer-1/environment.json`。测试对端使用独立轻量模组驱动原版接口，且仅在无界面环境跳过教学 UI；不是纯原版可见 Steam 房间或真实网络延迟验收。首次驱动在初始化期错误判断自身未加载，第二次过早读取内容库，第三次无界面教学 UI 阻断回合循环；均未计通过，逐因修正后本次通过。
 
-P4 无求解器对端的生产全自动：房主 CombatSolver 实际搜索／部署自己第一回合的本地牌，加入者只有独立测试驱动并原生结束自己的回合；双端到第二回合，两个检查点的全状态、阶段与九条完整 RNG 一致，两端 Passed：`.local/multiplayer-p4/no-solver-peer-full-auto-5fc2f9442dc54c4a976e5552ad907185/peer-0/result.json`、`peer-1/result.json`。加入者装载清单见同目录 `peer-1/environment.json`。此项没有队友在部署中交错出牌，也没有 Steam 房间或公网延迟。
+P4 无求解器对端的生产全自动：房主 CombatSolver 实际搜索／部署自己第一回合的本地牌，加入者只有独立测试驱动并原生结束自己的回合；双端到第二回合，两个检查点的全状态、阶段与九条完整 RNG 一致，两端 Passed：`.local/multiplayer-p4/no-solver-peer-full-auto-5fc2f9442dc54c4a976e5552ad907185/peer-0/result.json`、`peer-1/result.json`。加入者装载清单见同目录 `peer-1/environment.json`。队友在部署中交错出牌的证据见下文；Steam 房间和公网延迟未验。
+
+P4 无求解器对端部署中交错：`.local/multiplayer-p4/no-solver-peer-rng-9988911741a54045b4652313e315cc0c/peer-0/result.json`、`peer-1/result.json` 均 `Passed`。房主搜索并部署两张本地 `Strike`；加入者战斗期不加载 CombatSolver，在两张之间原生对房主打 `Largesse`。房主收到生成牌，提示共享 RNG 偏差，从新根重评估且不新增完整搜索，继续第二张本地攻击；加入者保持自己的回合控制权。双端检查点全状态、玩家阶段及九条 RNG 一致，加入者装载清单见 `peer-1/environment.json`。首试夹具要求两张攻击同目标，但合法搜索分别指定两只敌人，失败证据与修正见[规划](MULTIPLAYER_PLAN.md)。
 
 ## 多人 P2 首批内容差分（2026-09-28）
 

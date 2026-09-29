@@ -1785,7 +1785,7 @@ internal sealed partial class UnattendedTestRunner
             ScenarioContext scenario, MultiplayerProbeInput input)
         {
             CombatState combat = scenario.CombatState;
-            Creature enemy = combat.Enemies.First();
+            Creature[] enemies = combat.Enemies.ToArray();
             Player hostPlayer = combat.Players[0];
             Player joiningPlayer = combat.Players[1];
             string hostSignal = Path.Combine(input.CoordinationDirectory, "peer-0", "first-attack.signal");
@@ -1805,19 +1805,22 @@ internal sealed partial class UnattendedTestRunner
                     ?? throw new InvalidOperationException("ENet RNG controller produced no route.");
                 PlanAction[] attacks = result.BestNode.Actions.Where(action =>
                     action.Turn == 1 && action.CardId == "STRIKE_IRONCLAD").ToArray();
-                if (attacks.Length != 2 || attacks.Any(action => action.TargetCombatId != enemy.CombatId))
-                    throw new InvalidOperationException("ENet RNG fixture needs two local attacks on the same enemy.");
-                int startingHp = enemy.CurrentHp;
+                if (attacks.Length != 2 || attacks.Any(action =>
+                        enemies.All(target => target.CombatId != action.TargetCombatId)))
+                    throw new InvalidOperationException("ENet RNG fixture needs two local attacks on living enemies.");
+                Creature firstTarget = enemies.Single(target => target.CombatId == attacks[0].TargetCombatId);
+                Dictionary<Creature, int> startingHp = enemies.ToDictionary(target => target, target => target.CurrentHp);
                 SolverController.RequestDeploy(runner._host, combat);
                 await runner.WaitForMultiplayerProbeAsync(() =>
-                    enemy.CurrentHp == startingHp - 6 && SolverController.IsDeploying);
+                    firstTarget.CurrentHp == startingHp[firstTarget] - 6 && SolverController.IsDeploying);
                 File.WriteAllText(hostSignal, "first attack complete");
                 await runner.WaitForMultiplayerProbeAsync(() => File.Exists(joinSignal)
                     && hostPlayer.PlayerCombatState!.AllCards.Any(card => !localCardsBefore.Contains(card)));
                 await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying);
                 CardModel generated = hostPlayer.PlayerCombatState!.AllCards.Single(card =>
                     !localCardsBefore.Contains(card));
-                if (enemy.CurrentHp != startingHp - 12
+                if (enemies.Any(target => target.CurrentHp != startingHp[target]
+                        - 6 * attacks.Count(action => action.TargetCombatId == target.CombatId))
                     || !ReferenceEquals(generated.Owner, hostPlayer)
                     || joiningPlayer.PlayerCombatState!.AllCards.Contains(generated)
                     || !SolverOverlay.MultiplayerRngDeviationSeenForTesting

@@ -83,6 +83,7 @@ public static class Entry
             int seat = probe.GetProperty("seat").GetInt32();
             int port = probe.GetProperty("port").GetInt32();
             int playerCount = probe.GetProperty("playerCount").GetInt32();
+            bool verifyEnetControllerRng = probe.GetProperty("verifyEnetControllerRng").GetBoolean();
             if (seat != 1 || playerCount != 2 || probe.GetProperty("mode").GetString() != "client")
                 throw new InvalidDataException("No Solver peer expects seat 1 in a two-player ENet game.");
             if (NGame.GetGameVersion().TrimStart('v') !=
@@ -103,10 +104,12 @@ public static class Entry
             await WaitAsync(host, () => ModelDb.All.OfType<CharacterModel>()
                 .Any(model => model.Id.Entry == "IRONCLAD")
                 && ModelDb.All.OfType<EncounterModel>()
-                    .Any(model => model.Id.Entry == "FUZZY_WURM_CRAWLER_WEAK"));
+                    .Any(model => model.Id.Entry == (verifyEnetControllerRng
+                        ? "CULTISTS_NORMAL" : "FUZZY_WURM_CRAWLER_WEAK")));
             CharacterModel character = ModelDb.AllCharacters.Single(model => model.Id.Entry == "IRONCLAD");
             EncounterModel encounter = ModelDb.All.OfType<EncounterModel>()
-                .Single(model => model.Id.Entry == "FUZZY_WURM_CRAWLER_WEAK");
+                .Single(model => model.Id.Entry == (verifyEnetControllerRng
+                    ? "CULTISTS_NORMAL" : "FUZZY_WURM_CRAWLER_WEAK"));
             RunState run = await JoinAsync(host, character, coordination, port, playerCount);
             await PreloadManager.LoadRunAssets(run.Players.Select(player => player.Character));
             await PreloadManager.LoadActAssets(run.Acts[0]);
@@ -123,7 +126,8 @@ public static class Entry
                 foreach (CardModel old in oldCards)
                     run.RemoveCard(old);
                 foreach (string id in new[]
-                    { "STRIKE_IRONCLAD", "DEFEND_IRONCLAD", "SURVIVOR", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD" })
+                    { "STRIKE_IRONCLAD", "DEFEND_IRONCLAD", verifyEnetControllerRng && player == run.Players[1]
+                        ? "LARGESSE" : "SURVIVOR", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD" })
                 {
                     CardModel canonical = ModelDb.AllCards.Single(card => card.Id.Entry == id);
                     CardModel card = run.CreateCard(canonical, player);
@@ -155,7 +159,20 @@ public static class Entry
             if (!ReferenceEquals(local, state.Players[seat]))
                 throw new InvalidOperationException("No Solver peer joined the wrong seat.");
             await BarrierAsync(host, state, coordination, evidenceDirectory, "root", playerCount);
-            if (probe.TryGetProperty("verifyControllerFullAuto", out JsonElement fullAuto) && fullAuto.GetBoolean())
+            if (verifyEnetControllerRng)
+            {
+                await WaitAsync(host, () => File.Exists(Path.Combine(coordination, "peer-0", "first-attack.signal")));
+                Player recipient = state.Players[0];
+                CardModel largesse = local.PlayerCombatState!.Hand.Cards.Single(card => card.Id.Entry == "LARGESSE");
+                HashSet<CardModel> recipientCardsBefore = [.. recipient.PlayerCombatState!.AllCards];
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(
+                    new PlayCardAction(largesse, recipient.Creature));
+                await WaitAsync(host, () => !local.PlayerCombatState.Hand.Cards.Contains(largesse)
+                    && recipient.PlayerCombatState.AllCards.Any(card => !recipientCardsBefore.Contains(card)));
+                File.WriteAllText(Path.Combine(evidenceDirectory, "largesse-complete.signal"), "Largesse complete");
+                await BarrierAsync(host, state, coordination, evidenceDirectory, "enet-rng-drift", playerCount);
+            }
+            else if (probe.TryGetProperty("verifyControllerFullAuto", out JsonElement fullAuto) && fullAuto.GetBoolean())
             {
                 await WaitAsync(host, () => CombatManager.Instance.IsPlayerReadyToEndTurn(state.Players[0]));
                 RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(local, 1));
