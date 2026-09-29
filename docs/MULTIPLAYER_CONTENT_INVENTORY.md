@@ -48,6 +48,8 @@
 
 原版目标与受益归属复核：15 张 `AnyAlly` 牌的手动目标均须是另一名存活玩家，依据 `NTargetManager.AllowedToTargetCreature`；`CardModel.CanPlayTargeting` 本身不排除出牌者，不能单独用于搜索候选。8 张 `AllAllies` 牌的 `GetTeammatesOf` 包括出牌者。`ImitationLearning`、`Intercept`、`Mimic` 有自身收益，`DemonicShield` 有自身掉血成本；`Largesse` 给队友生成牌，`Tutor` 需要队友原生选牌。这是原版源码核对，运行证据按下文实际探针分别记录。
 
+再次逐张对照原版 `OnPlay` 与模拟结算：`BelieveInYou`、`Blaze`、`Concoct`、`Constellation`、`Coordinate`、`Fade`、`Ignition`、`Lift`、`Soulbound` 都把资源、能力、球或格挡给所选的另一名玩家；`Tutor` 从目标玩家的抽牌堆选入其手牌；`Largesse` 用目标玩家的无色池生成目标玩家持有的牌。`DemonicShield` 先扣出牌者生命，再给队友格挡；`Intercept` 给出牌者格挡、给队友保护；`Mimic` 读取队友格挡并给出牌者等量格挡；`ImitationLearning` 把能力留在出牌者身上并引用目标队友。此段为本轮源码复核；基础／升级即时差分及少数生命周期实测在下文，未将源码复核计作新增原生测试。
+
 `Largesse` 四人代表：本地 0 号对 3 号队友原生出牌，显式断言生成牌进 3 号手牌且牌主为 3 号，所有玩家状态与完整 RNG 对齐，Passed：`.local/multiplayer-p2/largesse-four-target-seat3-eabd09421fe94b42985aeda221619b15/peer-0/result.json`。基础／升级的双人即时差分与余费支援原生路线证据见下文和规划记录；四人这一请求只验基础版单次出牌。
 
 生产控制器另以本地 `Largesse` 指向队友原生执行，生成牌归目标队友、随机流正常前进且没有旧预测偏差误报，Passed：`.local/multiplayer-p4/own-largesse-rng-final-1127aa6c05374ca293827af5f3f55a4f/peer-0/result.json`。队友反向对本地玩家打 `Largesse` 的交错动作中，目标玩家取得生成牌，控制器观测到外部 RNG 变化并重评估后继续合法攻击，Passed：`.local/multiplayer-p4/mid-deploy-rng-fixed-d1f774413f044e81a46697a326d4a5b0/peer-0/result.json`。即时入手位置由前述内容差分验证；控制器回合结束后的归属断言仅检查目标玩家持有该牌。
@@ -131,7 +133,7 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `TwoTailedRatsNormal` 双人原生战斗中的 `SCREECH_MOVE` 给全部存活目标玩家施加脆弱；模拟修正后连续两个敌方回合的所有玩家／敌人状态和完整 RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rats-round-fixed-9193a1f28b1c4cb6bb0ea3d40685386c/peer-0/result.json`。召唤分支另见下段，其他种子未验。
 
-双尾鼠召唤另验：双人第二回合本地玩家击杀一只鼠，释放一个怪物位置；下一轮原版排出 `CALL_FOR_BACKUP_MOVE`，随后补回一只鼠。击杀、排招、召唤三个边界的全玩家／怪物状态与完整 RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`。召唤次数上限、无空位和新鼠后续行动未验。
+双尾鼠召唤另验：双人第二回合本地玩家击杀一只鼠，释放一个怪物位置；下一轮原版排出 `CALL_FOR_BACKUP_MOVE`，随后补回一只鼠。击杀、排招、召唤三个边界的全玩家／怪物状态与完整 RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`。另在同样的两只存活鼠、有空位状态中把原版召唤计数设到 3，随后一个敌方回合不再排召唤且全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rat-limit-9c30001f1922426f9e87ca0dab9dcf67/peer-0/result.json`。计数由测试夹具注入，未原生连续召唤三次；无空位和新鼠后续行动未验。
 
 原版 `MonsterModel.PerformMove` 把 `CombatState.PlayerCreatures` 全部传给怪物招式。逐项核对直接接收 `targets` 的 `PowerCmd.Apply`、`CardPileCmd.AddToCombatAndPreview` 和显式 `foreach` 后，修正 29 处单玩家减益结算、14 类状态牌分发、力量／敏捷／收缩等单玩家能力、`TheInsatiable` 的逐玩家沙坑与逃生牌、`Aeonglass` 的逐玩家枯萎升级和 `ThievingHopper` 的逐玩家偷牌。源码核对只证明目标范围与结算顺序，逐招效果尚未全部差分。代表性原生双人差分 Passed：`TheKinBoss` 前两招 `.local/multiplayer-p2/the-kin-round-6ed76c8562964caf8d05f9e560ae4660/peer-0/result.json`、`HauntedShipNormal` 群体减益加塞牌 `.local/multiplayer-p2/haunted-ship-round-0653a8921b9249158aeee7769dd155da/peer-0/result.json`、`AeonglassBoss` 到第四回合 `.local/multiplayer-p2/aeonglass-third-93674076c0b3426ca8d9210d192407fa/peer-0/result.json`、`SoulFyshBoss` 到第四回合 `.local/multiplayer-p2/soul-fysh-third-9b2f8e71a58846eeba17ced810298d01/peer-0/result.json`、`TheInsatiableBoss` 首轮 `.local/multiplayer-p2/insatiable-liquify-eb2b7791f691445b8da3d897e97d3492/peer-0/result.json`。`ThievingHopperWeak` 首轮另显式断言两名玩家各被偷一张自己的牌、敌人有两条对应 `SwipePower`，全状态／RNG 差分 Passed：`.local/multiplayer-p2/thieving-hopper-explicit-29c1d391025548ccacad6a46fca9b27c/peer-0/result.json`。其他种子、死人目标、战后归还与未运行招式仍未验。
 

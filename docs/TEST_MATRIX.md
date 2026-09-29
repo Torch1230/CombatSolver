@@ -176,7 +176,7 @@ P2 `KnowledgeDemonBoss` 队友选择边界：预测在每名玩家各自选诅�
 
 P2 `TheInsatiableBoss` 固定双人前四招：逐玩家沙坑／逃生牌、两次攻击和加力量，从首回合到第五回合的全部状态与完整 RNG 差分 Passed：`.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`。玩家死亡和沙坑移除未测。
 
-P2 `TwoTailedRatsNormal` 同伴死亡与召唤：双人第二回合杀一只鼠，余鼠排出召唤并补回空位；击杀、排招与新鼠入场的完整状态／RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`。召唤次数上限未测。
+P2 `TwoTailedRatsNormal` 同伴死亡与召唤：双人第二回合杀一只鼠，余鼠排出召唤并补回空位；击杀、排招与新鼠入场的完整状态／RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`。再将两只存活鼠的原版召唤计数设为 3，有空位时下一回合不再排召唤，完整状态／RNG 差分 Passed：`.local/multiplayer-p2/two-tailed-rat-limit-9c30001f1922426f9e87ca0dab9dcf67/peer-0/result.json`。计数是夹具注入，不代表三次自然召唤已测。
 
 P2 `FabricatorNormal` 满员、召唤物死亡和补位：制造机加三名召唤物时预排解离；击杀一只后先执行预排解离，再重新召唤补回空位。双人到第七回合各动作／回合的完整状态和 RNG 差分 Passed：`.local/multiplayer-p2/fabricator-minion-refill-cc858a950da44a19ae47fbe31073af28/peer-0/result.json`。其他召唤类型未测。
 

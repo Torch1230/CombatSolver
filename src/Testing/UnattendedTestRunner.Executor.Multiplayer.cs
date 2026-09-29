@@ -653,7 +653,7 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerContent:PlayerDeath:TeammateDead:SurvivorNextTurn:FullState:FullRng");
                 return new ExecutionOutcome(false, 2, true, true, true, false);
             }
-            if (input.VerifyRatSummonAfterRound)
+            if (input.VerifyRatSummonAfterRound || input.VerifyRatSummonLimit)
             {
                 Creature rat = combat.Enemies.First(creature => creature.Monster is TwoTailedRat);
                 await CreatureCmd.SetCurrentHp(rat, 1);
@@ -668,6 +668,11 @@ internal sealed partial class UnattendedTestRunner
                 CheckPrediction(deathPrediction, scenario.Player, "RAT_DEATH");
                 if (!rat.IsDead || combat.Enemies.Count(creature => creature.IsAlive) != 2)
                     throw new InvalidOperationException("Two-tailed rat death did not free one monster slot.");
+                if (input.VerifyRatSummonLimit)
+                {
+                    foreach (Creature survivor in combat.Enemies.Where(creature => creature.IsAlive))
+                        ((TwoTailedRat)survivor.Monster!).CallForBackupCount = 3;
+                }
                 ContinuationStamp secondPrediction = PredictMultiplayerRound(combat, scenario.Player);
                 var secondEnd = new EndPlayerTurnAction(scenario.Player, 2);
                 RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(secondEnd);
@@ -676,6 +681,16 @@ internal sealed partial class UnattendedTestRunner
                     member.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
                 await runner.MultiplayerProbeBarrierAsync("rat-summon-ready", combat);
                 CheckPrediction(secondPrediction, scenario.Player, "RAT_SUMMON_READY");
+                if (input.VerifyRatSummonLimit)
+                {
+                    if (combat.Enemies.Count(creature => creature.IsAlive) != 2
+                        || combat.Enemies.Any(creature => creature.IsAlive
+                            && creature.Monster is TwoTailedRat monster
+                            && monster.NextMove.Id == "CALL_FOR_BACKUP_MOVE"))
+                        throw new InvalidOperationException("Rats summoned after reaching the backup limit.");
+                    runner._completedChecks.Add("MultiplayerContent:TwoTailedRat:SummonLimit:FullState:FullRng");
+                    return new ExecutionOutcome(false, 3, true, true, true, false);
+                }
                 if (!combat.Enemies.Any(creature => creature.IsAlive
                     && creature.Monster is TwoTailedRat monster
                     && monster.NextMove.Id.Equals("CALL_FOR_BACKUP_MOVE")))
