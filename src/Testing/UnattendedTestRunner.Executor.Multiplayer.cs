@@ -2272,6 +2272,13 @@ internal sealed partial class UnattendedTestRunner
                         || !combat.Enemies.Select((enemy, index) =>
                             enemy.CurrentHp < enemyHpBeforePotion[index]).All(hit => hit)))
                     throw new InvalidOperationException("Foul Potion did not damage every player and enemy.");
+                if (potion is PotionOfBinding
+                    && (combat.Enemies.Count < 2
+                        || combat.Enemies.Any(enemy => enemy.GetPowerAmount<WeakPower>() != 1
+                            || enemy.GetPowerAmount<VulnerablePower>() != 1)
+                        || combat.Players.Any(member => member.Creature.GetPowerAmount<WeakPower>() != 0
+                            || member.Creature.GetPowerAmount<VulnerablePower>() != 0)))
+                    throw new InvalidOperationException("Potion of Binding did not debuff only both enemies.");
                 if (input.VerifyPotionAccounting)
                 {
                     BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);

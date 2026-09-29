@@ -195,7 +195,7 @@ internal sealed partial class UnattendedTestRunner
                         or "DISTILLED_CHAOS" or "SNECKO_OIL" or "BOTTLED_POTENTIAL"
                         or "CLARITY" or "CURE_ALL" or "GLOWWATER_POTION" or "SWIFT_POTION"
                         or "ENTROPIC_BREW" or "SOLDIERS_STEW" or "BONE_BREW"
-                        or "FOUL_POTION")
+                        or "FOUL_POTION" or "POTION_OF_BINDING")
                 || input.VerifyControllerTargetedDeploy
                     && !input.ContentCardIds.Any(id => id is "BLAZE" or "LARGESSE")
                 || input.VerifyControllerSelfPotionDeploy

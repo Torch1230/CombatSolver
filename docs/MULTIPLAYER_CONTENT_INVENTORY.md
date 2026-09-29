@@ -111,6 +111,8 @@
 
 `FoulPotion` 的战斗内原版 `TargetType` 是 `AllEnemies`，搜索给一项无指定生物的候选；但其 `OnUse` 对所有非伙伴生物造成伤害，包括出牌者、队友和敌人。虚拟双人原生用药后显式核所有两名玩家及敌人 HP 下降，原版／预测全部状态和九条 RNG 差分 Passed：`.local/multiplayer-p2/foul-potion-all-creatures-4119dcc543c24eb392bd38abec48e561/peer-0/result.json`。这里没有对队友指定投药目标；“药水只给自己丢”的玩家目标约束不改变原版的群体效果。此请求只有一个敌人与一组生命值，死亡及伙伴例外未运行。
 
+`PotionOfBinding` 的另一种 `AllEnemies` 群体效果在虚拟双人双敌根验收：搜索只有一个无指定生物候选，原版施药后两名敌人各得 1 层虚弱和易伤，两名玩家均没有对应减益；即时全部状态和九条 RNG 与预测一致，Passed：`.local/multiplayer-p2/binding-potion-two-enemies-ca38a02a2c114c2c811ab8cd0c5a035d/peer-0/result.json`。这与 `FoulPotion` 的所有生物伤害分别按各药水 `OnUse` 建模，不把目标类型直接等同于受影响集合；人工制品、已死敌人及更多敌人未验。
+
 对原版 51 个声明 `TargetType.AnyPlayer` 的药水逐名核对，全部在现有 `PotionOnUseSupport.CanSearch` 直接清单或 `PotionOnUseMirrors` 注册表中有入口；这一条是源码登记核对，不表示 51 瓶的效果均已原生差分通过。需要继续按抽牌、资源、生成、球、召唤、选择与被动 Hook 机制复用测试。
 
 Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower` 和 `PlatingPower`；球目录有 `FrostOrb`。`DoomPower` 的 `GetTeammatesOf` 位于死亡特效等待，结算仍须按全阵营 Doom 生命周期验收；`ReattachPower` 的队友是蜈蚣怪物分段，按怪物死亡／复活验收。怪物目录的结算候选为 `ToughEgg`（卵孵化 HP 缩放）、`WaterfallGiant`／`KnowledgeDemon`（治疗随玩家数变化）、`TheObscura`／`Queen`（怪物同伴能力）、`KinPriest`／`Ovicopter`／`TwoTailedRat`／`LivingShield`／`Fabricator`（同伴存活与召唤条件）、`DecimillipedeSegment`（玩家数与分段 HP／复活）、`TestSubject`（重生 HP 缩放）、`GremlinMerc`（逐玩家创建目标型 `ThieveryPower`）。`Parafright`／`EyeWithTeeth` 的 `GetTeammatesOf` 命中动画死亡条件，不是战斗结算分支。这些实际调用条件与模拟入口仍须逐项验收。
