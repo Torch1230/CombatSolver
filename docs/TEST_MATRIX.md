@@ -224,6 +224,8 @@ P2 自用药水的自动出牌／费用随机化：双人 `DistilledChaos` 原�
 
 P2 自用抽牌／资源药水：`BottledPotential`、`Clarity`、`CureAll`、`GlowwaterPotion`、`SwiftPotion` 各自只有持有人候选，原版效果、队友手牌隔离及全状态／九条 RNG 差分 Passed；逐瓶证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。Glowwater 首次整体 Failed 是夹具在药水耗尽 `Strike` 后继续寻找该牌，修正夹具后 Passed；首试证据保留在内容清单。
 
+P2 自用药水副作用：`EntropicBrew` 的随机药水填槽、`SoldiersStew` 的持有人打击牌重播，以及 `BoneBrew` 的持有人 Osty 召唤分别核对队友隔离，三项原版／预测全状态和九条 RNG 差分 Passed；逐项证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。后续牌／伙伴效果及其他随机结果未验。
+
 P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不增加本地计数，本地第三次仍触发；下一回合本地第一张攻击只造成普通伤害。交错出牌及跨回合完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。
 
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。

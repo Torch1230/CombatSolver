@@ -2128,6 +2128,16 @@ internal sealed partial class UnattendedTestRunner
                 HashSet<CardModel> existingHand = [.. actor.PlayerCombatState!.Hand.Cards];
                 int[] teammateHandCounts = combat.Players.Where(member => member != actor)
                     .Select(member => member.PlayerCombatState!.Hand.Cards.Count).ToArray();
+                var potionRngBefore = combat.RunState.Rng.CombatPotionGeneration.CaptureState();
+                string?[] teammatePotionIds = combat.Players.Where(member => member != actor)
+                    .SelectMany(member => member.PotionSlots).Select(item => item?.Id.Entry).ToArray();
+                (CardModel Card, int Replay)[] holderStrikes = actor.PlayerCombatState.AllCards
+                    .Where(card => card.Tags.Contains(CardTag.Strike))
+                    .Select(card => (card, card.BaseReplayCount)).ToArray();
+                (CardModel Card, int Replay)[] teammateStrikes = combat.Players.Where(member => member != actor)
+                    .SelectMany(member => member.PlayerCombatState!.AllCards)
+                    .Where(card => card.Tags.Contains(CardTag.Strike))
+                    .Select(card => (card, card.BaseReplayCount)).ToArray();
                 int slot = actor.PotionSlots.ToList().IndexOf(potion);
                 if (slot < 0)
                     throw new InvalidOperationException("Injected potion has no slot.");
@@ -2237,6 +2247,23 @@ internal sealed partial class UnattendedTestRunner
                             && actor.PlayerCombatState.ExhaustPile.Cards.Count != exhaustBeforePotion + 1)
                         throw new InvalidOperationException("Draw potion changed the wrong player's cards or resources.");
                 }
+                if (potion is EntropicBrew
+                    && (actor.PotionSlots.Any(item => item == null || item.Owner != actor)
+                        || combat.RunState.Rng.CombatPotionGeneration.CaptureState().Equals(potionRngBefore)
+                        || !combat.Players.Where(member => member != actor)
+                            .SelectMany(member => member.PotionSlots)
+                            .Select(item => item?.Id.Entry).SequenceEqual(teammatePotionIds)))
+                    throw new InvalidOperationException("Entropic Brew did not fill only the holder's potion slots.");
+                if (potion is SoldiersStew
+                    && (holderStrikes.Length == 0
+                        || holderStrikes.Any(item => item.Card.BaseReplayCount != item.Replay + 1)
+                        || teammateStrikes.Any(item => item.Card.BaseReplayCount != item.Replay)))
+                    throw new InvalidOperationException("Soldier's Stew changed the wrong player's Strikes.");
+                if (potion is BoneBrew
+                    && (actor.Osty is not { IsAlive: true, MaxHp: 15 }
+                        || combat.Players.Where(member => member != actor)
+                            .Any(member => member.Osty != null)))
+                    throw new InvalidOperationException("Bone Brew did not summon only the holder's Osty.");
                 if (input.VerifyPotionAccounting)
                 {
                     BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);

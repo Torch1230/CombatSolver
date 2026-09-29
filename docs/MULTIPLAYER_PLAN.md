@@ -761,3 +761,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 原版 51 个 `AnyPlayer` 药水与 `PotionOnUseSupport.CanSearch`／`PotionOnUseMirrors` 注册表逐名核对，入口均存在；这是源码登记，不计为 51 瓶原生通过。P2 新补 `DistilledChaos` 只自动打持有人抽牌堆三张防御，以及 `SneckoOil` 只随机化持有人手牌费用，两者候选均只允许本地自用，原版即时全状态／九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。其他药水机制仍按分类验收。
 
 继续按抽牌／资源机制验 `BottledPotential`、`Clarity`、`CureAll`、`GlowwaterPotion`、`SwiftPotion`：五瓶均只有持有人自用候选，显式核持有人牌／资源效果与队友手牌隔离，原版／预测全部状态和九条 RNG 差分 Passed，逐项证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。Glowwater 首次请求因夹具随后寻找已被药水耗尽的牌而整体 Failed；修正夹具流程后同机制通过，失败记录保留。其余药水机制及 P0 清单仍未封闭。
+
+随后补三种不同副作用的自用药水：`EntropicBrew` 只填持有人药水槽，`SoldiersStew` 只增加持有人 `Strike` 的重播，`BoneBrew` 只召唤持有人的 Osty；虚拟双人原版／预测全状态和九条 RNG 差分均 Passed，逐项证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。这些代表不覆盖全部药水，也不证明后续伙伴或重播生命周期。
