@@ -550,6 +550,17 @@ internal sealed partial class UnattendedTestRunner
                     await runner.MultiplayerProbeBarrierAsync($"choice-{player.NetId}", combat);
                 }
             }
+            Dictionary<Player, CardModel> dampenedCards = new();
+            if (input.VerifyKnightsDampenUpgraded)
+            {
+                foreach (Player member in combat.Players)
+                {
+                    dampenedCards.Add(member, (await UnattendedTestRunner.InjectCardAsync(combat, member,
+                        new UnattendedCardInjection
+                        { CardId = "BASH", Pile = "Discard", UpgradeLevels = 1 })).Single());
+                }
+                await runner.MultiplayerProbeBarrierAsync("knights-upgraded-cards", combat);
+            }
             ContinuationStamp? roundPrediction = input.VerifyRoundDifferential
                 ? PredictMultiplayerRound(combat, scenario.Player) : null;
             foreach (Player player in input.IsVirtual ? new[] { scenario.Player } : combat.Players)
@@ -791,6 +802,32 @@ internal sealed partial class UnattendedTestRunner
                     player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
                 await runner.MultiplayerProbeBarrierAsync("third-turn", combat);
                 CheckPrediction(secondRoundPrediction, scenario.Player, "SECOND_END_TURN");
+                if (input.VerifyKnightsDampenUpgraded)
+                {
+                    Creature mage = combat.Enemies.Single(creature => creature.Monster is MagiKnight);
+                    if (dampenedCards.Any(pair => pair.Value.CurrentUpgradeLevel != 0
+                        || !pair.Key.Creature.HasPower<DampenPower>()))
+                        throw new InvalidOperationException("Magi Knight did not downgrade each player's upgraded card.");
+                    await CreatureCmd.SetCurrentHp(mage, 6);
+                    await CreatureCmd.LoseBlock(new ThrowingPlayerChoiceContext(), mage, mage.Block, null);
+                    await UnattendedTestRunner.InjectCardAsync(combat, scenario.Player,
+                        injection: new UnattendedCardInjection { CardId = "STRIKE_IRONCLAD", Pile = "Hand" });
+                    UnattendedTestRunner.SetEnergy(scenario.Player, 1);
+                    ContinuationStamp deathPrediction = PredictOrdinaryCard(scenario.Player,
+                        "STRIKE_IRONCLAD", mage);
+                    CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                        card.Id.Entry == "STRIKE_IRONCLAD");
+                    var killMage = new PlayCardAction(strike, mage);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(killMage);
+                    await killMage.CompletionTask;
+                    await runner.MultiplayerProbeBarrierAsync("knights-dampen-restored", combat);
+                    CheckPrediction(deathPrediction, scenario.Player, "KNIGHTS_DAMPEN_RESTORED");
+                    if (!mage.IsDead || dampenedCards.Any(pair => pair.Value.CurrentUpgradeLevel != 1
+                        || pair.Key.Creature.HasPower<DampenPower>()))
+                        throw new InvalidOperationException("Magi Knight death did not restore each player's card.");
+                    runner._completedChecks.Add("MultiplayerContent:KnightsDampen:TwoPlayersDowngradedAndRestored:FullState:FullRng");
+                    return new ExecutionOutcome(false, 3, true, true, true, false);
+                }
                 if (input.UseFirstEnemyForProbe && runner._request.EncounterId == "OVICOPTER_NORMAL")
                 {
                     ToughEgg[] eggs = combat.Enemies.Select(creature => creature.Monster)

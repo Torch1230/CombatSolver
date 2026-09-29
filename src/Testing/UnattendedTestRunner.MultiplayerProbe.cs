@@ -31,6 +31,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyWaterfallSiphon { get; init; }
         public bool VerifyMonsterDeathAfterRound { get; init; }
         public bool VerifyThievingHopperPerPlayer { get; init; }
+        public bool VerifyKnightsDampenUpgraded { get; init; }
         public bool VerifyLivingShieldAllyDeath { get; init; }
         public bool VerifyTestSubjectFirstRevive { get; init; }
         public bool VerifyTestSubjectSecondRevive { get; init; }
@@ -134,6 +135,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyWaterfallSiphon && !input.VerifyFourthRoundDifferential
                 || input.VerifyMonsterDeathAfterRound && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyThievingHopperPerPlayer && (!input.VerifyRoundDifferential || !input.IsVirtual)
+                || input.VerifyKnightsDampenUpgraded && (!input.VerifySecondRoundDifferential
+                    || !input.IsVirtual || request.EncounterId != "KNIGHTS_ELITE")
                 || input.VerifyLivingShieldAllyDeath && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyTestSubjectFirstRevive && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyTestSubjectSecondRevive && !input.VerifyTestSubjectFirstRevive
