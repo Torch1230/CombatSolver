@@ -70,6 +70,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerStyleSelection { get; init; }
         public bool VerifyControllerStyleDeploy { get; init; }
         public bool VerifyVisibleOverlayCapture { get; init; }
+        public bool VerifyVisibleSettingsCapture { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -178,6 +179,7 @@ internal sealed partial class UnattendedTestRunner
                     && !input.ContentCardIds.Contains("DEFEND_IRONCLAD")
                 || input.VerifyControllerStyleDeploy && !input.VerifyControllerStyleSelection
                 || input.VerifyVisibleOverlayCapture && !input.VerifyControllerStyleSelection
+                || input.VerifyVisibleSettingsCapture && !input.VerifyControllerStyleSelection
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

@@ -1312,6 +1312,20 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException($"Visible multiplayer overlay capture failed: {captureError}.");
                     runner._completedChecks.Add("MultiplayerOptions:VisibleOverlayImageCaptured");
                 }
+                if (input.VerifyVisibleSettingsCapture)
+                {
+                    SolverOverlay.OpenMultiplayerSettingsForTesting();
+                    await runner.NextFrameAsync();
+                    SolverOverlay.ScrollMultiplayerSettingsIntoViewForTesting();
+                    await Task.Delay(TimeSpan.FromSeconds(3));
+                    await runner.NextFrameAsync();
+                    string screenshotPath = Path.Combine(input.CoordinationDirectory, "settings-visible.png");
+                    Godot.Error captureError = runner._host.GetViewport().GetTexture().GetImage()
+                        .SavePng(screenshotPath);
+                    if (captureError != Godot.Error.Ok)
+                        throw new InvalidOperationException($"Visible multiplayer settings capture failed: {captureError}.");
+                    runner._completedChecks.Add("MultiplayerSettings:VisiblePerformancePageCaptured");
+                }
                 SolverOverlay.PressMultiplayerStyleForTesting(alternativeStyle);
                 if (!ReferenceEquals(SolverController.LastCompletedResultForTesting, options[1])
                     || SolverOverlay.SelectedMultiplayerStyleForTesting != alternativeStyle

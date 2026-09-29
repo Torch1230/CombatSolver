@@ -350,6 +350,9 @@ internal sealed partial class SolverSettingsPanel
            && _multiplayerTimeLimit.Text == SolverSettings.FormatSeconds(
                SolverSettings.Current.MultiplayerTimeLimitSeconds);
 
+    internal void ScrollMultiplayerControlsIntoViewForTesting()
+        => ((ScrollContainer)_performancePage).EnsureControlVisible(_multiplayerTimeLimit);
+
     internal bool ExerciseMultiplayerInputsForTesting()
     {
         SolverSettingsData original = SolverSettings.Current;

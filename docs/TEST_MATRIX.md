@@ -180,7 +180,9 @@ P1／P2 双进程 ENet 玩家死亡：加入者 1 HP 被 `FabricatorNormal` 首�
 
 P3 零能量星能支援：双人同根 0 星能时 `Constellation` 不进入搜索路线；2 星能时本地先 `Strike`，再把该牌补给队友，整条原生路线的全玩家状态与完整 RNG 差分 Passed：`.local/multiplayer-p3/constellation-star-support-fixed-cdc8b8d0ed7b415ab0f99cccf159f809/peer-0/result.json`。未来已计划动作由完整路线回放检查，未穷举所有星能组合。
 
-P5 可见 Steam 中文多人方案窗：1920×1080 游戏视口里输出／启动两方案、两回合动作、收益和队友不再主动出牌的条件说明均可见，按钮没有裁切；随后方案按钮选择断言 Passed：`.local/multiplayer-p5/visible-overlay-settled-a70f3bfc5cae4a44abd1c8ffde30d679/peer-0/result.json`，截图 `.local/multiplayer-p5/visible-overlay-settled-a70f3bfc5cae4a44abd1c8ffde30d679/overlay-visible.png`。画面仍包含原版回合入场字样，设置页、其他分辨率、真实联机房间与人工鼠标操作未验。
+P5 可见 Steam 中文多人方案窗：1920×1080 游戏视口里输出／启动两方案、两回合动作、收益和队友不再主动出牌的条件说明均可见，按钮没有裁切；随后方案按钮选择断言 Passed：`.local/multiplayer-p5/visible-overlay-settled-a70f3bfc5cae4a44abd1c8ffde30d679/peer-0/result.json`，截图 `.local/multiplayer-p5/visible-overlay-settled-a70f3bfc5cae4a44abd1c8ffde30d679/overlay-visible.png`。画面仍包含原版回合入场字样；设置页的独立可见证据见下段，其他分辨率、真实联机房间与人工鼠标操作未验。
+
+P5 可见 Steam 中文多人设置页：同为 1920×1080 游戏视口，打开“性能”页并滚动至“多人搜索”，截图中深度 `2`、时间上限 `3` 秒及说明均可见，未裁切；原生脚本 Passed：`.local/multiplayer-p5/visible-settings-658d5a9c41704fd6847250964c85f0e1/peer-0/result.json`，截图在上级目录 `settings-visible.png`。这是虚拟双人状态；实际 Steam 联机房间、其他分辨率和人工鼠标操作仍未验。
 
 ## 多人 P1 普通状态差分（2026-09-28）
 

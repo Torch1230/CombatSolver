@@ -467,6 +467,18 @@ internal static class SolverOverlay
         => _settingsPanel?.ExercisePerformancePresetPersistenceForTesting() == true;
     internal static bool ExerciseSettingsTabSwitchingForTesting()
         => _settingsPanel?.ExerciseSettingsTabSwitchingForTesting() == true;
+    internal static void OpenMultiplayerSettingsForTesting()
+    {
+        if (_settingsPanel is null)
+            throw new InvalidOperationException("Multiplayer settings panel is missing.");
+        if (!_settingsVisible)
+            ToggleSettings();
+        if (!_settingsVisible || !_settingsPanel.OpenPerformancePage())
+            throw new InvalidOperationException("Multiplayer settings did not open.");
+    }
+    internal static void ScrollMultiplayerSettingsIntoViewForTesting()
+        => (_settingsPanel ?? throw new InvalidOperationException("Multiplayer settings panel is missing."))
+            .ScrollMultiplayerControlsIntoViewForTesting();
     internal static bool ExerciseSearchCompletionNotificationPolicyForTesting()
         => _settingsPanel?.ExerciseSearchCompletionNotificationPolicyForTesting() == true;
     internal static bool ExerciseVisualSettingsForTesting()
