@@ -1201,6 +1201,87 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, input.VerifyStarSupport ? 0 : 5);
+            if (input.ContentRelicId.Length > 0)
+            {
+                    string relicId = input.ContentRelicId;
+                    await UnattendedTestRunner.InjectRelicAsync(actor,
+                        new UnattendedRelicInjection { RelicId = relicId });
+                    RelicModel relic = actor.Relics.Single(candidate => candidate.Id.Entry == relicId);
+                    int actorHandBefore = actor.PlayerCombatState!.Hand.Cards.Count;
+                    HashSet<CardModel> actorHandCardsBefore = [.. actor.PlayerCombatState.Hand.Cards];
+                    int[] teammateHandsBefore = combat.Players.Where(member => member != actor)
+                        .Select(member => member.PlayerCombatState!.Hand.Cards.Count).ToArray();
+                    CombatRootSnapshot relicRoot = CombatRootSnapshot.Capture(combat);
+                    CombatPredictionSimulator relicSimulator = relicRoot.ForkSimulator();
+                    SimulatedCombatState relicCombat = (SimulatedCombatState)relicSimulator.State.CombatState;
+                    string selectedGeneratedCardId = "";
+                    TurnStartChoiceCursor relicChoices = TurnStartChoiceCursor.ForAutomaticPolicy(request =>
+                    {
+                        CardChoiceSpec spec = TurnStartChoiceSupport.BuildSpec(relicSimulator, actor, request);
+                        selectedGeneratedCardId = spec.Options.First().Preview.Id.Entry;
+                        return CardChoiceSupport.BuildRequestedChoice(spec, [selectedGeneratedCardId]) with
+                        {
+                            SourceId = request.SourceId,
+                            ContextId = request.ContextId,
+                            Timing = request.Timing,
+                        };
+                    });
+                    if (relic is VexingPuzzlebox)
+                    {
+                        if (relicCombat.ApplyRelicAfterPlayerTurnStart(relicSimulator, actor,
+                                new TurnStartChoiceCursor(null), relic))
+                            throw new InvalidOperationException("Vexing Puzzlebox prediction requested a choice.");
+                    }
+                    else if (relic is OrangeDough && !relicCombat.TriggerRelicsAfterSideTurnStart(relicSimulator,
+                                 CombatSide.Player, combat.PlayerCreatures))
+                        throw new InvalidOperationException("Orange Dough prediction requested a choice.");
+                    else if (relic is Toolbox && relicCombat.PrepareRelicsBeforeHandDraw(
+                                 relicSimulator, actor, relicChoices))
+                        throw new InvalidOperationException("Toolbox prediction did not resolve its choice.");
+                    else if (relic is ChoicesParadox && relicCombat.TriggerRelicsAfterPlayerTurnStart(
+                                 relicSimulator, actor, relicChoices))
+                        throw new InvalidOperationException("Choices Paradox prediction did not resolve its choice.");
+                    if (!CombatBeamSolver.SettleReplayActionBoundary(relicSimulator, relicCombat))
+                        throw new InvalidOperationException($"{relicId} prediction did not settle.");
+                    ContinuationStamp predictedRelic = ContinuationStamp.CapturePredicted(
+                        actor, relicSimulator, 1, relicRoot.Forecast, 1);
+                    runner.SetStage($"multiplayer_relic_{relicId}");
+                    using var selector = relic is Toolbox or ChoicesParadox
+                        ? CardSelectCmd.UseSelector(new UnattendedCardSelector(["__FIRST__"]), localOnly: false)
+                        : null;
+                    if (relic is VexingPuzzlebox)
+                        await relic.AfterPlayerTurnStart(new ThrowingPlayerChoiceContext(), actor);
+                    else if (relic is OrangeDough)
+                        await relic.AfterSideTurnStart(CombatSide.Player, combat.PlayerCreatures, combat);
+                    else if (relic is Toolbox)
+                        await relic.BeforeHandDraw(actor, new BlockingPlayerChoiceContext(), combat);
+                    else
+                        await relic.AfterPlayerTurnStart(new BlockingPlayerChoiceContext(), actor);
+                    await runner.MultiplayerProbeBarrierAsync($"relic-{relicId}", combat);
+                    ContinuationStamp actualRelic = ContinuationStamp.CaptureLive(combat);
+                    if (predictedRelic != actualRelic)
+                        throw new InvalidOperationException($"{relicId} differs: "
+                            + predictedRelic.DescribeFirstDifference(actualRelic));
+                    int generatedCount = relic is OrangeDough ? 2 : 1;
+                    CardModel[] generatedCards = actor.PlayerCombatState!.Hand.Cards
+                        .Where(card => !actorHandCardsBefore.Contains(card)).ToArray();
+                    if (actor.PlayerCombatState!.Hand.Cards.Count != actorHandBefore + generatedCount
+                        || generatedCards.Length != generatedCount
+                        || combat.Players.Where(member => member != actor)
+                            .Select(member => member.PlayerCombatState!.Hand.Cards.Count)
+                            .Where((count, index) => count != teammateHandsBefore[index]).Any()
+                        || actor.PlayerCombatState.Hand.Cards.Any(card => card.Owner != actor))
+                        throw new InvalidOperationException($"{relicId} generated cards for the wrong player.");
+                    if (relic is Toolbox or ChoicesParadox
+                        && (selectedGeneratedCardId.Length == 0
+                            || generatedCards[0].Id.Entry != selectedGeneratedCardId
+                            || relic is ChoicesParadox
+                                && !generatedCards[0].Keywords.Contains(CardKeyword.Retain)))
+                        throw new InvalidOperationException($"{relicId} choice or retain keyword differs.");
+                    runner._completedChecks.Add($"MultiplayerRelic:{relicId}:OwnerOnly:FullState:FullRng");
+                    await RelicCmd.Remove(relic);
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyWhisperingEarringTarget)
             {
                 await UnattendedTestRunner.ClearPlayerPilesAsync(actor);

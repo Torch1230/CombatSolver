@@ -699,3 +699,7 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 ### 2026-09-29 可见设置页补充
 
 游戏 `0.111.0`、中文 1920×1080 可见 Steam 战斗中，打开求解器设置的“性能”页并滚动到“多人搜索”，截图确认多人回合深度 `2` 与时间上限 `3` 秒控件、标题、说明和页签均可见，未被裁切；同次原生脚本通过。证据 `.local/multiplayer-p5/visible-settings-658d5a9c41704fd6847250964c85f0e1/peer-0/result.json`，截图为上级目录 `settings-visible.png`。此项是虚拟双人状态下的可见排版，不是 Steam 联机房间、人工鼠标操作或其他分辨率验收。
+
+### 2026-09-29 战斗内生成遗物补充
+
+四件使用多人过滤后生成池的遗物 `VexingPuzzlebox`、`OrangeDough`、`Toolbox`、`ChoicesParadox`，在双人第一回合分别从同根调用原版 Hook 与预测 Fork，手牌增量、生成牌归属、全状态和完整 RNG 均 Passed。后两者固定选原版第一项，`ChoicesParadox` 额外显式核对保留关键词；证据目录列于[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。这验证直接 Hook 效果，不宣称真实开战调用顺序或所有选项已验。首个合并探针在第二件遗物前因测试器误读成功返回值失败；根因修正后各项独立请求通过。

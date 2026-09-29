@@ -71,6 +71,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerStyleDeploy { get; init; }
         public bool VerifyVisibleOverlayCapture { get; init; }
         public bool VerifyVisibleSettingsCapture { get; init; }
+        public string ContentRelicId { get; init; } = "";
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -180,6 +181,9 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerStyleDeploy && !input.VerifyControllerStyleSelection
                 || input.VerifyVisibleOverlayCapture && !input.VerifyControllerStyleSelection
                 || input.VerifyVisibleSettingsCapture && !input.VerifyControllerStyleSelection
+                || input.ContentRelicId.Length > 0 && (!input.IsVirtual || input.ContentCardIds.Length == 0
+                    || input.ContentRelicId is not ("VEXING_PUZZLEBOX" or "ORANGE_DOUGH"
+                        or "TOOLBOX" or "CHOICES_PARADOX"))
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

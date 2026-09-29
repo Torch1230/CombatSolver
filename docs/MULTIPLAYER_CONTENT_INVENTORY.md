@@ -97,6 +97,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 遗物目录直接涉及人数或战斗生成池的入口包括 `MassiveScroll`（多人专属牌来源）、`Toolbox`、`VexingPuzzlebox`、`OrangeDough`、`ChoicesParadox`（战斗生成池），以及 `BigHat`、`Crossbow`、`ScrollBoxes`、`DustyTome`、`DistinguishedCape`、`NeowsBones`（战前／局外池）。`WingedBoots` 和 `SilverCrucible` 只允许单人，`LastingCandy` 读取局外玩家集合；`WhisperingEarring` 自动打出 `AnyPlayer` 卡时指向持有人，打出 `AnyAlly` 卡时在其他存活玩家中随机选人。战斗生成物和多人可达牌进入 P2；局外获得路径只登记来源，本批不扩展为战前求解器。
 
+四种战斗内生成遗物已分别在虚拟双人原生战斗的第一回合独立调用原版 Hook，并从调用前的同一根 Fork 运行预测：`VexingPuzzlebox` `.local/multiplayer-p2/vexing-puzzlebox-c1340ff612aa429bb5bb94118875af5e/peer-0/result.json`、`OrangeDough` `.local/multiplayer-p2/orange-dough-9cf3f4e7f44a4ee6a83b6efd9b7ca256/peer-0/result.json`、`Toolbox` `.local/multiplayer-p2/toolbox-ee6b5d048de340cbb866d33c29bb346b/peer-0/result.json`、`ChoicesParadox` `.local/multiplayer-p2/choices-paradox-retain-bed341a6e59c4a5d9892c6a1c41ad86c/peer-0/result.json` 均 Passed。逐项核对持有人手牌增量、队友手牌不变、生成牌牌主、全状态与完整 RNG；两件选牌遗物固定取原版第一项，`ChoicesParadox` 额外显式核对生成牌带保留。`MassiveScroll` 属战前获得多人牌的来源，仍以卡牌本身的战斗差分为主要验收；遗物在真实开战 Hook 顺序、其他随机候选与跳过选择尚未由这些独立调用证明。
+
 `WhisperingEarring` 原版自动出牌时，`AnyAlly` 从其他存活玩家中消耗 `CombatTargets` 随机挑选，`AnyPlayer` 指向持有人。四人原生根只给本地玩家的手牌保留 `Blaze`，分别运行原版遗物效果和同根模拟：显式断言本地没有力量、恰有一名其他玩家获得 5 力量，全部状态及完整 RNG 对齐，Passed：`.local/multiplayer-p2/earring-blaze-other-81734c90e5694861bcfbc628c07048e6/peer-0/result.json`。这次直接调用原版遗物的首回合自动出牌入口，未覆盖开战装载时序、更多自动牌或 13 张上限。
 
 `Blaze` 目标排除补充：四人 Play 阶段把 1 号队友生命设为 0，保留 0 号出牌者和另外两名存活队友；固定选择 0、1 号座位均明确拒绝，固定选择 2 号后原版出牌与模拟全部状态及 RNG 对齐，Passed：`.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`。夹具直接设置生命，没有运行死亡 Hook 和后续回合，不能代替死亡生命周期验收。

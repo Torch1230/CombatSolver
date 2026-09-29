@@ -184,6 +184,8 @@ P5 可见 Steam 中文多人方案窗：1920×1080 游戏视口里输出／启�
 
 P5 可见 Steam 中文多人设置页：同为 1920×1080 游戏视口，打开“性能”页并滚动至“多人搜索”，截图中深度 `2`、时间上限 `3` 秒及说明均可见，未裁切；原生脚本 Passed：`.local/multiplayer-p5/visible-settings-658d5a9c41704fd6847250964c85f0e1/peer-0/result.json`，截图在上级目录 `settings-visible.png`。这是虚拟双人状态；实际 Steam 联机房间、其他分辨率和人工鼠标操作仍未验。
 
+P2 战斗内多人生成遗物：`VexingPuzzlebox`、`OrangeDough`、`Toolbox`、`ChoicesParadox` 在虚拟双人第一回合分别对同根原版 Hook 与预测 Fork 做全玩家／卡牌归属／完整 RNG 差分，四项独立请求均 Passed；后两项选择原版第一项，`ChoicesParadox` 显式核对保留关键词。证据逐项见[多人内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。首个合并探针因把模拟 `AfterSideTurnStart` 的成功返回值误判为等待选择而整体 Failed；改为独立输入后取得四个完整通过结果。原版开战时序及其他选择尚未验证。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。
