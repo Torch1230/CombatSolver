@@ -721,3 +721,5 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 同一无求解器加入者配置再验生产控制器全自动：房主实际搜索并部署本地路线、结束自己的第一回合，测试对端只原生结束自己的回合；两端进入第二回合，根与第二回合两个检查点的全状态、阶段及九条完整 RNG 一致，双方 Passed：`.local/multiplayer-p4/no-solver-peer-full-auto-5fc2f9442dc54c4a976e5552ad907185/peer-0/result.json`、`peer-1/result.json`，加入者装载清单在 `peer-1/environment.json`。输入为同目录 `input-0.json`／`input-1.json`，均增加 `verifyControllerFullAuto=true`。这证明一个持有求解器的房主能与未装求解器的加入者同步执行；队友交错动作与延迟变化的该组合未在这次测试触发。
 
 P2 又补 `TheObscuraNormal` 幻象伙伴死亡／复活：双人原生击倒 `Parafright` 后仍留场并排复活招式，下一敌方回合满血复活；击倒及到第三回合的全状态／完整 RNG 差分 Passed：`.local/multiplayer-p2/obscura-illusion-revive-ad5858ba568e47a1be822d9ba08b48f9/peer-0/result.json`。这封闭该伙伴的第一次幻象复活分支，不扩展到主怪先死亡或其他随机招式。
+
+P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，原版女王立刻改排 `ENRAGE_MOVE`；击杀及下一个敌方回合的全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/queen-amalgam-death-fc1b28efee2b4d618d2e4c784e441c17/peer-0/result.json`。女王自身死亡与其他后续招式仍未验。

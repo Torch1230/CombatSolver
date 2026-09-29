@@ -943,6 +943,40 @@ internal sealed partial class UnattendedTestRunner
                     player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
                 await runner.MultiplayerProbeBarrierAsync("third-turn", combat);
                 CheckPrediction(secondRoundPrediction, scenario.Player, "SECOND_END_TURN");
+                if (input.VerifyQueenAmalgamDeath)
+                {
+                    Creature queen = combat.Enemies.Single(creature => creature.Monster is Queen);
+                    Creature amalgam = combat.Enemies.Single(creature => creature.Monster is TorchHeadAmalgam);
+                    if (queen.Monster!.NextMove.Id != "BURN_BRIGHT_FOR_ME_MOVE")
+                        throw new InvalidOperationException("Queen did not queue Burn Bright before amalgam death.");
+                    await CreatureCmd.SetCurrentHp(amalgam, 1);
+                    await CreatureCmd.LoseBlock(new ThrowingPlayerChoiceContext(), amalgam, amalgam.Block, null);
+                    await UnattendedTestRunner.InjectCardAsync(combat, scenario.Player,
+                        new UnattendedCardInjection { CardId = "STRIKE_IRONCLAD", Pile = "Hand" });
+                    ContinuationStamp deathPrediction = PredictOrdinaryCard(
+                        scenario.Player, "STRIKE_IRONCLAD", amalgam);
+                    CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                        card.Id.Entry == "STRIKE_IRONCLAD");
+                    var strikeAction = new PlayCardAction(strike, amalgam);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(strikeAction);
+                    await strikeAction.CompletionTask;
+                    await runner.MultiplayerProbeBarrierAsync("queen-amalgam-death", combat);
+                    CheckPrediction(deathPrediction, scenario.Player, "QUEEN_AMALGAM_DEATH");
+                    if (!amalgam.IsDead || queen.Monster.NextMove.Id != "ENRAGE_MOVE")
+                        throw new InvalidOperationException("Queen did not replace Burn Bright after amalgam death.");
+                    ContinuationStamp enragePrediction = PredictMultiplayerRound(combat, scenario.Player);
+                    var end = new EndPlayerTurnAction(scenario.Player, 3);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                    await end.CompletionTask;
+                    await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                        player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 4 }));
+                    await runner.MultiplayerProbeBarrierAsync("queen-enraged", combat);
+                    CheckPrediction(enragePrediction, scenario.Player, "QUEEN_ENRAGED");
+                    if (queen.GetPowerAmount<StrengthPower>() < 2)
+                        throw new InvalidOperationException("Queen did not gain strength after enraging.");
+                    runner._completedChecks.Add("MultiplayerContent:QueenAmalgamDeath:QueuedMoveReplaced:Enrage:FullState:FullRng");
+                    return new ExecutionOutcome(false, 4, true, true, true, false);
+                }
                 if (input.VerifyFabricatorFullRoster)
                 {
                     Creature fabricator = combat.Enemies.Single(creature => creature.Monster is Fabricator);

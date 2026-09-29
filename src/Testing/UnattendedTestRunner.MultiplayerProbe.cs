@@ -75,6 +75,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyMidnightExhaustHistory { get; init; }
         public bool VerifyInterceptApplierDeathHook { get; init; }
         public bool VerifyIllusionRevive { get; init; }
+        public bool VerifyQueenAmalgamDeath { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -193,6 +194,8 @@ internal sealed partial class UnattendedTestRunner
                     || input.ContentCardIds.Length != 1 || input.ContentCardIds[0] != "INTERCEPT")
                 || input.VerifyIllusionRevive && (!input.IsVirtual || !input.VerifyRoundDifferential
                     || !input.UseFirstEnemyForProbe || request.EncounterId != "THE_OBSCURA_NORMAL")
+                || input.VerifyQueenAmalgamDeath && (!input.IsVirtual || !input.VerifySecondRoundDifferential
+                    || !input.UseFirstEnemyForProbe || request.EncounterId != "QUEEN_BOSS")
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")
