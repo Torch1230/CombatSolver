@@ -2704,7 +2704,7 @@ internal sealed partial class UnattendedTestRunner
                         || !search.SingleSessionSearch
                         || search.ComparisonRootState != searchRoot.ContinuationStamp.StateText))
                     throw new InvalidOperationException("Multiplayer production search did not use one shared session.");
-                if (input.ContentSearchOnly
+                if (input.ContentSearchOnly && !input.VerifyHybridPlanStyles
                     && input.ContentCardIds.Contains("INFLAME"))
                 {
                     SolverResult? setup = contentPlans.FirstOrDefault(plan =>
@@ -2719,7 +2719,7 @@ internal sealed partial class UnattendedTestRunner
                                     $"{action.Turn}/{action.Kind}/{action.CardId}")))));
                     runner._completedChecks.Add("MultiplayerPlans:OutputAndSetup:DistinctActions:SetupEstimateGain");
                 }
-                if (input.ContentSearchOnly
+                if (input.ContentSearchOnly && !input.VerifyHybridPlanStyles
                     && input.ContentCardIds.Contains("DEFEND_IRONCLAD"))
                 {
                     SolverResult? defense = contentPlans.FirstOrDefault(plan =>
@@ -2731,6 +2731,47 @@ internal sealed partial class UnattendedTestRunner
                             .SequenceEqual(search.BestNode.Actions.Where(action => action.Turn == 1)))
                         throw new InvalidOperationException("Defense search did not preserve a real HP tradeoff.");
                     runner._completedChecks.Add("MultiplayerPlans:OutputAndDefense:DistinctActions:ProjectedHpGain");
+                }
+                if (input.VerifyHybridPlanStyles)
+                {
+                    MultiplayerPlanStyle expectedStyle;
+                    string[] expectedCards;
+                    if (input.ContentCardIds.SequenceEqual(
+                            ["DEFEND_IRONCLAD", "STRIKE_IRONCLAD", "UPPERCUT"])
+                        && input.ContentActorEnergy == 2)
+                    {
+                        expectedStyle = MultiplayerPlanStyle.Defense;
+                        expectedCards = ["DEFEND_IRONCLAD", "STRIKE_IRONCLAD"];
+                    }
+                    else if (input.ContentCardIds.SequenceEqual(
+                            ["INFLAME", "STRIKE_IRONCLAD", "UPPERCUT"])
+                        && input.ContentActorEnergy == 2)
+                    {
+                        expectedStyle = MultiplayerPlanStyle.Setup;
+                        expectedCards = ["INFLAME", "STRIKE_IRONCLAD"];
+                    }
+                    else if (input.ContentCardIds.SequenceEqual(
+                            ["DEFEND_IRONCLAD", "UPPERCUT"])
+                        && input.ContentActorEnergy == 3)
+                    {
+                        expectedStyle = MultiplayerPlanStyle.Output;
+                        expectedCards = ["UPPERCUT", "DEFEND_IRONCLAD"];
+                    }
+                    else
+                        throw new InvalidOperationException("Unknown hybrid style search fixture.");
+                    SolverResult chosen = contentPlans.Single(plan =>
+                        plan.MultiplayerStyle == expectedStyle);
+                    string[] played = chosen.BestNode.Actions
+                        .Where(action => action.Turn == 1
+                            && action.Kind == PlanActionKind.PlayCard)
+                        .Select(action => action.CardId!).ToArray();
+                    if (expectedCards.Except(played).Any()
+                        || chosen.EnergyLeftByTurn[1] != 0)
+                        throw new InvalidOperationException(
+                            $"{expectedStyle} route omitted a useful affordable action: "
+                            + string.Join(',', played));
+                    runner._completedChecks.Add(
+                        $"MultiplayerPlans:{expectedStyle}:HybridActions:{string.Join(',', expectedCards)}");
                 }
                 if (input.VerifyPureSupport)
                 {

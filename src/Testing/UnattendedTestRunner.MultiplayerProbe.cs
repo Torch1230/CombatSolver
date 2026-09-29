@@ -99,6 +99,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyImitationTwice { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
+        public bool VerifyHybridPlanStyles { get; init; }
         public bool VerifyPureSupport { get; init; }
         public bool VerifyNoPureSupport { get; init; }
         public bool VerifyGroupBenefitSearch { get; init; }
@@ -269,6 +270,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")
                     || !input.ContentCardIds.Contains("STRIKE_IRONCLAD"))
+                || input.VerifyHybridPlanStyles && (!input.IsVirtual || !input.VerifySearch
+                    || !input.ContentSearchOnly || input.ContentSearchTurnDepth != 1)
                 || input.VerifyDeadTeammateTarget && (!input.VerifyAllyTarget || input.PlayerCount != 4)
                 || input.ContentCardIds.Length > 0 && (input.Mode != "virtual"
                     || input.ContentCardIds.Length > 5

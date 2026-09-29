@@ -325,6 +325,38 @@ internal sealed partial class CombatBeamSolver
             return snapshot.PersistentBuffValue + snapshot.LatentSetupValue;
         }
 
+        bool BetterMultiplayerFirstTurn(
+            SearchNode candidate, SearchNode? existing, MultiplayerPlanStyle style)
+        {
+            if (existing == null)
+                return true;
+            return style switch
+            {
+                MultiplayerPlanStyle.Output => (
+                    candidate.CumulativeEnemyHpLost,
+                    candidate.Snapshot.ProjectedPlayerHp,
+                    CurrentTurnSetup(candidate)).CompareTo((
+                    existing.CumulativeEnemyHpLost,
+                    existing.Snapshot.ProjectedPlayerHp,
+                    CurrentTurnSetup(existing))) > 0,
+                MultiplayerPlanStyle.Defense => (
+                    candidate.Snapshot.ProjectedPlayerHp,
+                    candidate.CumulativeEnemyHpLost,
+                    CurrentTurnSetup(candidate)).CompareTo((
+                    existing.Snapshot.ProjectedPlayerHp,
+                    existing.CumulativeEnemyHpLost,
+                    CurrentTurnSetup(existing))) > 0,
+                MultiplayerPlanStyle.Setup => (
+                    CurrentTurnSetup(candidate),
+                    candidate.Snapshot.ProjectedPlayerHp,
+                    candidate.CumulativeEnemyHpLost).CompareTo((
+                    CurrentTurnSetup(existing),
+                    existing.Snapshot.ProjectedPlayerHp,
+                    existing.CumulativeEnemyHpLost)) > 0,
+                _ => throw new InvalidOperationException("Unknown multiplayer plan style."),
+            };
+        }
+
         int requiredPotionUses = Math.Max(_minimumPotionUses,
             _potionPolicy == SolverPotionPolicy.RequireAtLeastOne ? 1 : 0);
         int earlyStopPotionUses = policy.MinimumRequiredPotionUses(battleDamage.PotionsUsedSoFar);
@@ -2078,19 +2110,8 @@ internal sealed partial class CombatBeamSolver
                     for (int style = 0; style < multiplayerFirstTurn.Length; style++)
                     {
                         SearchNode? existing = multiplayerFirstTurn[style];
-                        bool better = existing == null || (MultiplayerPlanStyle)style switch
-                        {
-                            MultiplayerPlanStyle.Output => boundary.CumulativeEnemyHpLost
-                                > existing.CumulativeEnemyHpLost,
-                            MultiplayerPlanStyle.Defense => boundary.Snapshot.ProjectedPlayerHp
-                                > existing.Snapshot.ProjectedPlayerHp,
-                            MultiplayerPlanStyle.Setup => boundary.Snapshot.PersistentBuffValue
-                                + boundary.Snapshot.LatentSetupValue
-                                > existing.Snapshot.PersistentBuffValue
-                                + existing.Snapshot.LatentSetupValue,
-                            _ => throw new InvalidOperationException("Unknown multiplayer plan style."),
-                        };
-                        if (better)
+                        if (BetterMultiplayerFirstTurn(
+                                boundary, existing, (MultiplayerPlanStyle)style))
                             multiplayerFirstTurn[style] = boundary;
                     }
                 }
