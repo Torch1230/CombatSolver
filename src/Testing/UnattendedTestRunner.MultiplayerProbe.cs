@@ -36,6 +36,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyRatSummonAfterRound { get; init; }
         public bool VerifyFabricatorFullRoster { get; init; }
         public bool VerifyFabricatorMinionDeath { get; init; }
+        public bool VerifyPlayerDeathRound { get; init; }
         public bool VerifyLivingShieldAllyDeath { get; init; }
         public bool VerifyTestSubjectFirstRevive { get; init; }
         public bool VerifyTestSubjectSecondRevive { get; init; }
@@ -148,6 +149,9 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyFabricatorFullRoster && (!input.VerifySecondRoundDifferential
                     || !input.IsVirtual || request.EncounterId != "FABRICATOR_NORMAL")
                 || input.VerifyFabricatorMinionDeath && !input.VerifyFabricatorFullRoster
+                || input.VerifyPlayerDeathRound && (!input.VerifyRoundDifferential
+                    || input.IsVirtual || input.PlayerCount != 2
+                    || request.EncounterId != "FABRICATOR_NORMAL")
                 || input.VerifyLivingShieldAllyDeath && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyTestSubjectFirstRevive && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyTestSubjectSecondRevive && !input.VerifyTestSubjectFirstRevive

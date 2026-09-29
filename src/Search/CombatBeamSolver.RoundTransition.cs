@@ -37,6 +37,9 @@ internal sealed partial class CombatBeamSolver
         {
             return SearchBoundaryReason.PendingChoice;
         }
+        foreach (Player member in startingPlayers)
+            if (simulator.State.GetCreature(member.Creature).IsDead)
+                simulator.State.GetPlayerCombatState(member).Phase = PlayerTurnPhase.Start;
 
         foreach (Creature creature in startingCreatures)
         {
@@ -55,6 +58,8 @@ internal sealed partial class CombatBeamSolver
 
         foreach (Player member in startingPlayers)
         {
+            if (simulator.State.GetCreature(member.Creature).IsDead)
+                continue;
             SimPlayerCombatState memberState = simulator.State.GetPlayerCombatState(member);
             if (PersistentRelicSupport.ShouldPlayerResetEnergy(simulatedCombat, member))
                 memberState.LoseEnergy(memberState.Energy);
@@ -72,6 +77,8 @@ internal sealed partial class CombatBeamSolver
         }
         foreach (Player member in startingPlayers)
         {
+            if (simulator.State.GetCreature(member.Creature).IsDead)
+                continue;
             var progress = new PlayerStartProgress(member, simulatedCombat.GetPlayerTurnNumber(member),
                 rootSetup: false, takingExtraTurn, processedEnemyDeaths, shufflesCrossed, simulator.ShuffleEventCount);
             SearchBoundaryReason result = ContinuePlayerStart(simulator, simulatedCombat, progress,

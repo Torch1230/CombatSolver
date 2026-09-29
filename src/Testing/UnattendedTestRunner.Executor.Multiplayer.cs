@@ -605,8 +605,19 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerContent:KnowledgeDemon:PostChoiceThreeRounds:TwoPlayerHeal:FullState:FullRng");
                 return new ExecutionOutcome(false, 5, true, true, true, false);
             }
+            if (input.VerifyPlayerDeathRound)
+            {
+                Creature fabricator = combat.Enemies.Single(creature => creature.Monster is Fabricator);
+                if (fabricator.Monster!.NextMove.Id != "FABRICATING_STRIKE_MOVE")
+                    throw new InvalidOperationException("Player death fixture did not queue the group attack.");
+                await CreatureCmd.SetCurrentHp(combat.Players[1].Creature, 1);
+                await runner.MultiplayerProbeBarrierAsync("player-death-ready", combat);
+            }
             ContinuationStamp? roundPrediction = input.VerifyRoundDifferential
+                && (!input.VerifyPlayerDeathRound || input.Seat == 0)
                 ? PredictMultiplayerRound(combat, scenario.Player) : null;
+            if (input.VerifyPlayerDeathRound)
+                await runner.MultiplayerProbeBarrierAsync("player-death-predicted", combat);
             foreach (Player player in input.IsVirtual ? new[] { scenario.Player } : combat.Players)
             {
                 if (input.IsVirtual || LocalContext.IsMe(player))
@@ -625,10 +636,22 @@ internal sealed partial class UnattendedTestRunner
                 }
             }
             runner.SetStage("multiplayer_second_turn");
-            await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
-                player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+            if (input.VerifyPlayerDeathRound)
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players[0].PlayerCombatState is
+                    { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }
+                    && combat.Players[1].Creature.IsDead);
+            else
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
             await runner.MultiplayerProbeBarrierAsync("second-turn", combat);
             CheckPrediction(roundPrediction, scenario.Player, "END_TURN");
+            if (input.VerifyPlayerDeathRound)
+            {
+                if (!combat.Players[0].Creature.IsAlive || !combat.Players[1].Creature.IsDead)
+                    throw new InvalidOperationException("Enemy group attack did not kill only the low-HP teammate.");
+                runner._completedChecks.Add("MultiplayerContent:PlayerDeath:TeammateDead:SurvivorNextTurn:FullState:FullRng");
+                return new ExecutionOutcome(false, 2, true, true, true, false);
+            }
             if (input.VerifyRatSummonAfterRound)
             {
                 Creature rat = combat.Enemies.First(creature => creature.Monster is TwoTailedRat);

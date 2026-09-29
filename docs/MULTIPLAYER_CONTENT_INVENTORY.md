@@ -141,6 +141,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `FabricatorNormal` 满员与召唤物死亡另在固定双人根通过：原版 `GetTeammatesOf` 包含制造机自己，故制造机加三名召唤物时已满足四名存活同伴阈值并预排 `DISINTEGRATE_MOVE`。本地玩家击杀一名 `Stabbot` 后，预排解离照常执行，下一招重新选召唤并补回空位；到第七回合的全部玩家／怪物状态与完整 RNG 差分 Passed：`.local/multiplayer-p2/fabricator-minion-refill-cc858a950da44a19ae47fbe31073af28/peer-0/result.json`。前两次探针错误地把阈值当成四名召唤物并在第五／六回合断言失败，实际回合差分均通过；修正为原版同伴计数后取得通过。其他召唤类型和制造机死亡未验。
 
+玩家死亡边界在本机双进程 ENet 核对：`FabricatorNormal` 首招群体攻击击杀 1 HP 的加入者，房主存活进入第二回合。原版给死者保留 `Start` 阶段、清空牌与资源，并由回合循环把死者标记结束；模拟曾继续为死者重置能量、抽牌并置为 `Play`，现按原版只让存活玩家执行准备。房主严格对账全玩家状态与完整 RNG、两端原生检查点一致，Passed：`.local/multiplayer-p1/enet-player-death-fixed-66898c2c7d5f480a8c87a487d3df1393/peer-0/result.json`、`peer-1/result.json`。先前虚拟多人夹具在死者自动准备后连续推进，不能作为此项证据；其他死亡来源与复活未验。
+
 `TestSubjectBoss` 双人第一阶段两招到第三回合 Passed：`.local/multiplayer-p2/test-subject-second-567130576bb64c859c8d9860b1853170/peer-0/result.json`。再在同一原生战斗中两次击杀并推进两次 `RESPAWN_MOVE`：第二形态带 `PainfulStabsPower`，第三形态改为 `NemesisPower` 且移除 `AdaptablePower`／`PainfulStabsPower`，最后一次击杀结束战斗；各击杀和复活边界的全玩家／怪物状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/test-subject-final-death-fixed-d16c44bc416442c0b6a305f240630a93/peer-0/result.json`。最后一击夹具把第三形态的无实体减伤误当普通伤害，首次设 6 HP 未击杀；改为 1 HP 后通过。其他卡组、额外回合及多人玩家死亡组合未验。
 
 `TheInsatiableBoss` 固定双人根连续推进 `LIQUIFY_GROUND_MOVE`、`THRASH_MOVE`、`LUNGING_BITE_MOVE`、`SALIVATE_MOVE` 到第五回合，包含两名玩家各自的 `SandpitPower` 与 `FranticEscape` 牌、后续攻击和怪物力量；四个回合全部状态及完整 RNG 差分 Passed：`.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`。玩家死亡、沙坑移除和之后重复招式未验。
