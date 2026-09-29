@@ -901,6 +901,38 @@ internal sealed partial class UnattendedTestRunner
                 }
                 return new ExecutionOutcome(false, 2, true, true, true, false);
             }
+            if (input.VerifyIllusionRevive)
+            {
+                Creature illusion = combat.Enemies.Single(creature => creature.Monster is Parafright);
+                await CreatureCmd.SetCurrentHp(illusion, 6);
+                await UnattendedTestRunner.InjectCardAsync(combat, scenario.Player,
+                    new UnattendedCardInjection { CardId = "STRIKE_IRONCLAD", Pile = "Hand" });
+                ContinuationStamp deathPrediction = PredictOrdinaryCard(
+                    scenario.Player, "STRIKE_IRONCLAD", illusion);
+                CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                var strikeAction = new PlayCardAction(strike, illusion);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(strikeAction);
+                await strikeAction.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("illusion-death", combat);
+                CheckPrediction(deathPrediction, scenario.Player, "ILLUSION_DEATH");
+                IllusionPower power = illusion.GetPower<IllusionPower>()
+                    ?? throw new InvalidOperationException("Parafright lost its illusion power after death.");
+                if (!illusion.IsDead || !power.IsReviving || illusion.Monster!.NextMove.Id != "REVIVE_MOVE")
+                    throw new InvalidOperationException("Parafright did not queue its revival after death.");
+                ContinuationStamp revivePrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var end = new EndPlayerTurnAction(scenario.Player, 2);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
+                await runner.MultiplayerProbeBarrierAsync("illusion-revived", combat);
+                CheckPrediction(revivePrediction, scenario.Player, "ILLUSION_REVIVED");
+                if (!illusion.IsAlive || power.IsReviving || illusion.CurrentHp != illusion.MaxHp)
+                    throw new InvalidOperationException("Parafright did not revive at full health.");
+                runner._completedChecks.Add("MultiplayerContent:ParafrightDeathAndRevive:FullState:FullRng");
+                return new ExecutionOutcome(false, 3, true, true, true, false);
+            }
             if (input.VerifySecondRoundDifferential)
             {
                 ContinuationStamp secondRoundPrediction = PredictMultiplayerRound(combat, scenario.Player);

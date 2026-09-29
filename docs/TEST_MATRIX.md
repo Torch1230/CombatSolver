@@ -196,6 +196,8 @@ P2 `Midnight` 跨玩家消耗历史：先两次本地消耗，费用 12→11→1
 
 P2 `Intercept` 保护者死亡 Hook：双人出牌后建立保护引用，原版和模拟直接调用 `AfterDeath`，队友 `CoveredPower` 消失且全状态／完整 RNG 一致，Passed：`.local/multiplayer-p2/intercept-applier-death-hook-8d0cd5c52a234cdda18932c4633ffa3f/peer-0/result.json`。这是 Hook 本身的差分；未实际杀死玩家，完整死亡／后续回合不由此覆盖。
 
+P2 `TheObscura` 幻象伙伴死亡／复活：双人第二回合击倒 `Parafright` 后保留场上并排出 `REVIVE_MOVE`，下一敌方回合复活满血。击倒和第三回合全玩家／怪物状态及九条 RNG 原版／预测一致，Passed：`.local/multiplayer-p2/obscura-illusion-revive-ad5858ba568e47a1be822d9ba08b48f9/peer-0/result.json`。主怪先死亡和其他随机招式未验。
+
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
 
 ## 多人 P1 普通状态差分（2026-09-28）
