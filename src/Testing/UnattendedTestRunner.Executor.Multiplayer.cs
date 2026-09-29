@@ -2772,6 +2772,28 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Soulbound two-stack generation differs: "
                         + predictedSouls.DescribeFirstDifference(actualSouls));
                 runner._completedChecks.Add("MultiplayerSoulbound:TwoStacks:TeammateOwnsTwoSouls:FullState:FullRng");
+                await CreatureCmd.SetCurrentHp(teammate.Creature, 0);
+                await runner.MultiplayerProbeBarrierAsync("soulbound-dead-target-root", combat);
+                int deadTargetSoulsBefore = teammate.PlayerCombatState.DrawPile.Cards.Count(card => card is Soul);
+                CombatRootSnapshot deadRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator deadSimulator = deadRoot.ForkSimulator();
+                deadSimulator.CreateAndAddGeneratedCardsToCombat<Soul>(
+                    actor, PileType.Draw, 1, actor, CardPilePosition.Random);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(
+                    deadSimulator, (SimulatedCombatState)deadSimulator.State.CombatState))
+                    throw new InvalidOperationException("Dead Soulbound target prediction did not settle.");
+                ContinuationStamp predictedDeadTarget = ContinuationStamp.CapturePredicted(
+                    actor, deadSimulator, 1, deadRoot.Forecast, 1);
+                await CardPileCmd.AddGeneratedCardsToCombat(
+                    Soul.Create(actor, 1, combat), PileType.Draw, actor, CardPilePosition.Random);
+                await runner.MultiplayerProbeBarrierAsync("soulbound-dead-target-generation", combat);
+                ContinuationStamp actualDeadTarget = ContinuationStamp.CaptureLive(combat);
+                if (predictedDeadTarget != actualDeadTarget
+                    || teammate.PlayerCombatState.DrawPile.Cards.Count(card => card is Soul)
+                        != deadTargetSoulsBefore)
+                    throw new InvalidOperationException("Dead Soulbound target generation differs: "
+                        + predictedDeadTarget.DescribeFirstDifference(actualDeadTarget));
+                runner._completedChecks.Add("MultiplayerSoulbound:HpZeroTarget:NoInsertedSouls:FullState:FullRng");
                 return new ExecutionOutcome(false, 1, true, true, true, false);
             }
             if (input.ContentReplayTransferredBall)

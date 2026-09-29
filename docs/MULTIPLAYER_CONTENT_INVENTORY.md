@@ -221,6 +221,8 @@ Power 目录补扫还发现战斗内多人过滤牌池入口 `SpectrumShiftPower
 
 `Soulbound` 的多层队友归属另验：本地原版向另一名玩家出牌建立 1 层，再按相同施加者把队友身上能力叠到 2 层；本地玩家生成一张 `Soul` 到自己抽牌堆时，原版给队友自己的抽牌堆随机插入两张 `Soul`，卡牌所有者都是队友，能力层数维持 2。生成后全玩家状态和九条 RNG 与预测一致，Passed：`.local/multiplayer-p2/soulbound-two-stack-generation-503930d530244c098bc41d176a640d4a/peer-0/result.json`。第二层由夹具原生施加，未第二次打同名牌；死亡施加者／目标及其他创建者未验。
 
+同一机制的生命为 0 目标分支：夹具直接把队友生命设为 0 后，持有人再生成一张 `Soul`，原版仍触发关联 Hook，但死者抽牌堆不增加卡牌；预测的全状态和九条 RNG 对齐，Passed：`.local/multiplayer-p2/soulbound-hp0-target-generation-f62865ab0e11420e88cfbe1de281f5da/peer-0/result.json`。第一次探针错误预期死者仍入牌，尽管原版／预测差分一致，整体 Failed：`.local/multiplayer-p2/soulbound-hp0-target-generation-420d5713768f414499b3141560068694/peer-0/result.json`；`CardPileCmd.Add` 原版明确拒绝死亡牌主入堆，修正断言后通过。这里没有真实死亡 Hook 或回合推进。
+
 `CacophonyPower` 抽牌计数与阈值触发已补原生差分：`Cacophony`→`HuddleUp` 常规计数，及原版计数置 2 后跨阈值的随机伤害、重置和第二回合，均在双人完整状态／RNG 对账 Passed；证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。
 
 `ImitationLearningPower` 的目标玩家打普通能力牌触发已补原生差分：队友 `Inflame` 后复制到本地持有者并自动打出，能力递减及第二回合完整状态／RNG Passed；证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。选择型能力与多次耗尽仍待验。

@@ -773,3 +773,7 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 回到 `Soulbound` 的跨玩家能力：本地出牌给队友后，原生叠层到 2，再由本地生成一张 `Soul`，队友自己的抽牌堆新增两张队友持有的 `Soul`；原版／预测全状态与九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。第二层由夹具原生施加，死亡引用仍未验。
 
 `ImitationLearning` 又验两次真实队友能力动作：目标队友依次打 `Inflame` 和 `StoneArmor`，本地分别自动复制力量、镀层，能力两次消费后移除；三次动作的全玩家状态及九条 RNG 原版／预测差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。选择型能力及死亡引用仍是未验分支。
+
+`Soulbound` 再验生命直接置零的队友目标：本地生成 `Soul` 后，原版保留关联触发但不把新牌插进死亡队友抽牌堆；原版／预测全状态与九条 RNG 差分 Passed。首试夹具断言错误而整体 Failed，原版 `CardPileCmd.Add` 的死亡牌主拒绝规则确认后修正断言；两份证据均列在[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。该输入未执行真实死亡 Hook。
+
+尝试推进“无求解器对端在联机部署中给房主打 `Largesse`”时，测试宿主只有约 4.7 GiB 空闲内存，两端各预留 1.5 GiB 加固定 2 GiB 余量的准入条件不成立；房主排队 120 秒后 `launcher_failed`，加入者独自等待并超时。失败证据 `.local/multiplayer-p4/no-solver-peer-rng-cfcfea98f4464ec1be08a40d7baed251/peer-0/launcher-result.json`、`peer-1/launcher-result.json`。该次没有进入双端战斗，不算联机行为通过。未验的测试驱动改动已撤回；不扩大等待时间或降低资源预留掩盖准入失败。

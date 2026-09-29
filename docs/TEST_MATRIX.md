@@ -234,6 +234,8 @@ P2 收尾两瓶普通自用药水：`ShipInABottle` 即时格挡与下回合完�
 
 P2 `Soulbound` 两层跨玩家生成：本地出牌向队友施加能力，再原生叠到 2 层；本地生成一张 `Soul` 后队友的抽牌堆新增两张队友持有的 `Soul`，全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/soulbound-two-stack-generation-503930d530244c098bc41d176a640d4a/peer-0/result.json`。第二层是夹具原生施加，未运行死亡引用。
 
+P2 `Soulbound` 的生命为 0 目标：夹具直接置零目标队友生命，再由施加者生成 `Soul`；原版拒绝给死者抽牌堆插牌，预测全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/soulbound-hp0-target-generation-f62865ab0e11420e88cfbe1de281f5da/peer-0/result.json`。首试因错误断言死者应入牌而 Failed，见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)；死亡 Hook 未验。
+
 P2 `ImitationLearning` 两次队友能力复制：队友原生依次打 `Inflame`、`StoneArmor`，本地分别自动复制 2 力量、4 镀层，能力从 2 层降为 1 层再移除；逐动作全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/imitation-two-teammate-powers-49829cf9a2854e1c81d2eecb54ba66cf/peer-0/result.json`。选择型能力及死亡引用未验。
 
 P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不增加本地计数，本地第三次仍触发；下一回合本地第一张攻击只造成普通伤害。交错出牌及跨回合完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。
