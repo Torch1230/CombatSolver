@@ -517,7 +517,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 `
 | P2 原版内容建模 | 完整清单内卡牌、Power、遗物、药水及普通内容多人差异；机制分类和关联测试 | 每项有原版依据及基础／升级差分证据；复杂机制的生命周期、所有者和引用合同通过；无影响范围内未解释缺口 | 37 张专用卡即时、14 张普通生成牌、代表性 Power／怪物／药水／遗物差分通过；其余分支和内容闭包未完成 |
 | P3 有限回合与多方案 | 深度／时间配置、共享预算、本地候选、队友无主动动作、三类排序、估值、去重、余费支援 | 固定根短搜证明三类目标与去重；预算和深度上限有效；纯支援分类、随机目标固定及自身收益牌正常搜索通过；单人哨兵通过 | 默认深度／时间、多方案、余费支援、队友目标与单人哨兵有代表证据；完整内容准入仍受 P2 限制 |
 | P4 执行与变化处理 | 新状态重评估原序列、RNG 提示、逐步原生执行、选牌等待、当前回合范围、三种计算入口 | 队友交错动作、随机偏差、计划内／外击杀、不可执行暂停及旧任务淘汰在真实联机链路通过 | 虚拟变化／RNG／失效与 ENet 2／4 端部署通过；真实 ENet 交错、无求解器对端等组合未齐 |
-| P5 界面与完整验收 | 设置、方案列表、收益／假设／可信状态、中英文本；四人联调、单人回归、文档与本地部署 | 第 9 节检查项有对应证据；实际未测项明确，只有满足范围的功能对外声明完成 | 无头设置编辑／本地化／方案按钮、四端全自动与本地部署通过；可见 UI、Steam 与 Linux 实机未验 |
+| P5 界面与完整验收 | 设置、方案列表、收益／假设／可信状态、中英文本；四人联调、单人回归、文档与本地部署 | 第 9 节检查项有对应证据；实际未测项明确，只有满足范围的功能对外声明完成 | 无头设置编辑／本地化／方案按钮、四端全自动、本地部署及 1920×1080 可见中文方案窗通过；设置页可见排版、Steam 房间与 Linux 实机未验 |
 
 P2 可按机制小批完成并立即验证，不等待全部内容写完才测试。发现通用根因回到对应职责修复，禁止在单卡里复制底层规则。P0 若某原版测试入口不可用，记录具体失败，调整为可运行的原版建局入口；不能靠自制期望值替代原生验收。
 
@@ -688,10 +688,10 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 ### 2026-09-29 交接记录
 
 - 当前阶段／子任务：P2 原版多人内容分支持续验证，并补 P1 死亡／跨回合证据；P3～P5 既有实现与证据保留。
-- 当前分支及提交：`feat/multiplayer`；死者回合准备修复 `962c06cf`，星能支援修复随本节提交；实际 HEAD 以接手时 Git 为准。
+- 当前分支及提交：`feat/multiplayer`；星能支援修复 `7a265c60`，可见界面取图探针随本节提交；实际 HEAD 以接手时 Git 为准。
 - 未提交文件及用途：本节提交后无本任务待提交文件；实际状态以接手时 `git status` 为准。
 - 本次行为变化：新增四人 `Blaze` 非法目标、双人骑士压制升级牌恢复、知识恶魔外部选牌边界与选择后回合、双尾鼠同伴死亡后召唤、制造机满员及小怪死亡后补位的原生探针；修复模拟在玩家死亡后仍执行其回合准备、星能支援被一概排除的问题。
-- 已通过证据：游戏 `0.111.0`；相应 Release 构建与 Windows 结构门禁通过。`Blaze` `.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`；骑士 `.local/multiplayer-p2/knights-dampen-upgraded-7a33347c0eae4f63a7e48b78ac939dcd/peer-0/result.json`；知识恶魔 `.local/multiplayer-p2/knowledge-demon-post-choice-9b9e0925426b40e597846920c9ea90f7/peer-0/result.json`；贪食者四招 `.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`；双尾鼠召唤 `.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`；制造机满员与补位 `.local/multiplayer-p2/fabricator-minion-refill-cc858a950da44a19ae47fbe31073af28/peer-0/result.json`；ENet 玩家死亡 `.local/multiplayer-p1/enet-player-death-fixed-66898c2c7d5f480a8c87a487d3df1393/peer-0/result.json`、`peer-1/result.json`；星能支援 `.local/multiplayer-p3/constellation-star-support-fixed-cdc8b8d0ed7b415ab0f99cccf159f809/peer-0/result.json`。内容输入同目录 `input.json`，ENet 输入为 `input-0.json`／`input-1.json`；命令沿用第 8 节无人测试入口并指定 `MULTIPLAYER-CONTENT` 或 `MULTIPLAYER-P0`、对应遭遇。
-- 失败／未验证：`CreatureCmd.Kill` 队友后，虚拟多人进入 End 阶段；死者在虚拟回合开始被自动标记结束又连续推进，无法用它稳定验死亡后出牌。当前 `Blaze` 探针只在 Play 阶段直接设 0 HP，未验那张牌与死亡 Hook 的组合；玩家敌方回合死亡已由双进程 ENet 验证。内容闭包、无求解器对端、可见 UI、Steam 邀请、Linux 实机仍未完成。
-- 下一条实际操作：核对战斗内多人关联遗物和药水的剩余机制，再补无求解器对端、可见 UI 与 Linux 等第 9 节未验项；不重复已通过输入。
-- 实例／进程清理及本地部署：本轮各无头实例由运行脚本清理；五个文件已精确覆盖到 `D:\Steam\steamapps\common\Slay the Spire 2\mods\CombatSolver`。双尾鼠测试源码随后重建了 DLL，结束本批前需再覆盖最终 DLL。未提升版本、发包、打标签或推送。
+- 已通过证据：游戏 `0.111.0`；相应 Release 构建与 Windows 结构门禁通过。`Blaze` `.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`；骑士 `.local/multiplayer-p2/knights-dampen-upgraded-7a33347c0eae4f63a7e48b78ac939dcd/peer-0/result.json`；知识恶魔 `.local/multiplayer-p2/knowledge-demon-post-choice-9b9e0925426b40e597846920c9ea90f7/peer-0/result.json`；贪食者四招 `.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`；双尾鼠召唤 `.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`；制造机满员与补位 `.local/multiplayer-p2/fabricator-minion-refill-cc858a950da44a19ae47fbe31073af28/peer-0/result.json`；ENet 玩家死亡 `.local/multiplayer-p1/enet-player-death-fixed-66898c2c7d5f480a8c87a487d3df1393/peer-0/result.json`、`peer-1/result.json`；星能支援 `.local/multiplayer-p3/constellation-star-support-fixed-cdc8b8d0ed7b415ab0f99cccf159f809/peer-0/result.json`；可见 Steam 中文方案窗 `.local/multiplayer-p5/visible-overlay-settled-a70f3bfc5cae4a44abd1c8ffde30d679/peer-0/result.json` 与同目录 `overlay-visible.png`。内容输入同目录 `input.json`，ENet 输入为 `input-0.json`／`input-1.json`；命令沿用第 8 节无人测试入口并指定 `MULTIPLAYER-CONTENT` 或 `MULTIPLAYER-P0`、对应遭遇。
+- 失败／未验证：`CreatureCmd.Kill` 队友后，虚拟多人进入 End 阶段；死者在虚拟回合开始被自动标记结束又连续推进，无法用它稳定验死亡后出牌。当前 `Blaze` 探针只在 Play 阶段直接设 0 HP，未验那张牌与死亡 Hook 的组合；玩家敌方回合死亡已由双进程 ENet 验证。内容闭包、无求解器对端、可见设置页及其他分辨率、Steam 邀请、Linux 实机仍未完成。
+- 下一条实际操作：核对战斗内多人关联遗物和药水的剩余机制，再补无求解器对端、可见设置页与 Linux 等第 9 节未验项；不重复已通过输入。
+- 实例／进程清理及本地部署：本轮各无头实例由运行脚本清理；五个文件已精确覆盖到 `D:\Steam\steamapps\common\Slay the Spire 2\mods\CombatSolver`，随后因行为和可见取图源码更新又精确覆盖最新 DLL。若后续再构建，结束本批前仍需部署最终 DLL。未提升版本、发包、打标签或推送。

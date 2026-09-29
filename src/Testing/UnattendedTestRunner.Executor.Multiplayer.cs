@@ -1301,6 +1301,17 @@ internal sealed partial class UnattendedTestRunner
                     || SolverOverlay.MultiplayerOptionCountForTesting != 2
                     || SolverOverlay.SelectedMultiplayerStyleForTesting != MultiplayerPlanStyle.Output)
                     throw new InvalidOperationException("Multiplayer style options were not shown in the overlay.");
+                if (input.VerifyVisibleOverlayCapture)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(3));
+                    await runner.NextFrameAsync();
+                    string screenshotPath = Path.Combine(input.CoordinationDirectory, "overlay-visible.png");
+                    Godot.Error captureError = runner._host.GetViewport().GetTexture().GetImage()
+                        .SavePng(screenshotPath);
+                    if (captureError != Godot.Error.Ok)
+                        throw new InvalidOperationException($"Visible multiplayer overlay capture failed: {captureError}.");
+                    runner._completedChecks.Add("MultiplayerOptions:VisibleOverlayImageCaptured");
+                }
                 SolverOverlay.PressMultiplayerStyleForTesting(alternativeStyle);
                 if (!ReferenceEquals(SolverController.LastCompletedResultForTesting, options[1])
                     || SolverOverlay.SelectedMultiplayerStyleForTesting != alternativeStyle
