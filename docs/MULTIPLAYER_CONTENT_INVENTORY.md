@@ -139,6 +139,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `TestSubjectBoss` 双人第一阶段两招到第三回合 Passed：`.local/multiplayer-p2/test-subject-second-567130576bb64c859c8d9860b1853170/peer-0/result.json`。再在同一原生战斗中两次击杀并推进两次 `RESPAWN_MOVE`：第二形态带 `PainfulStabsPower`，第三形态改为 `NemesisPower` 且移除 `AdaptablePower`／`PainfulStabsPower`，最后一次击杀结束战斗；各击杀和复活边界的全玩家／怪物状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/test-subject-final-death-fixed-d16c44bc416442c0b6a305f240630a93/peer-0/result.json`。最后一击夹具把第三形态的无实体减伤误当普通伤害，首次设 6 HP 未击杀；改为 1 HP 后通过。其他卡组、额外回合及多人玩家死亡组合未验。
 
+`TheInsatiableBoss` 固定双人根连续推进 `LIQUIFY_GROUND_MOVE`、`THRASH_MOVE`、`LUNGING_BITE_MOVE`、`SALIVATE_MOVE` 到第五回合，包含两名玩家各自的 `SandpitPower` 与 `FranticEscape` 牌、后续攻击和怪物力量；四个回合全部状态及完整 RNG 差分 Passed：`.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`。玩家死亡、沙坑移除和之后重复招式未验。
+
 ## 已通过的卡牌即时差分
 
 虚拟双人 37 张多人专用卡的基础版和升级版，逐张对出牌后所有玩家、敌人、卡牌归属与牌堆、能力、球、资源及完整 RNG 的原生／模拟续用戳。按机制分批，仅对需要的状态设置前置值；以下证据只覆盖即时效果，不覆盖后续回合的能力触发、死亡、网络执行或搜索。
