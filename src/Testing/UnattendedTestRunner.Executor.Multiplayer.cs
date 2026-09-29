@@ -2118,6 +2118,10 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Teammate potion was counted as local use.");
                 }
                 PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, input.SelfPotionId);
+                var costsRngBefore = combat.RunState.Rng.CombatEnergyCosts.CaptureState();
+                int actorBlockBeforePotion = actor.Creature.Block;
+                int[] teammateBlocksBeforePotion = combat.Players.Where(member => member != actor)
+                    .Select(member => member.Creature.Block).ToArray();
                 HashSet<CardModel> existingHand = [.. actor.PlayerCombatState!.Hand.Cards];
                 int[] teammateHandCounts = combat.Players.Where(member => member != actor)
                     .Select(member => member.PlayerCombatState!.Hand.Cards.Count).ToArray();
@@ -2196,6 +2200,19 @@ internal sealed partial class UnattendedTestRunner
                         || combat.Players.Any(member => member != actor
                             && member.PlayerCombatState!.OrbQueue.Orbs.Count != 0)))
                     throw new InvalidOperationException("Dark orb potion did not channel only to its holder.");
+                if (input.SelfPotionId == "DISTILLED_CHAOS"
+                    && (actor.Creature.Block != actorBlockBeforePotion + 15
+                        || combat.Players.Where(member => member != actor)
+                            .Select(member => member.Creature.Block)
+                            .Where((block, index) => block != teammateBlocksBeforePotion[index]).Any()))
+                    throw new InvalidOperationException("Distilled Chaos did not autoplay only the holder's three Defends.");
+                if (input.SelfPotionId == "SNECKO_OIL"
+                    && (actor.PlayerCombatState!.Hand.Cards.Count != 4
+                        || combat.RunState.Rng.CombatEnergyCosts.CaptureState().Equals(costsRngBefore)
+                        || combat.Players.Where(member => member != actor)
+                            .Select(member => member.PlayerCombatState!.Hand.Cards.Count)
+                            .Where((count, index) => count != teammateHandCounts[index]).Any()))
+                    throw new InvalidOperationException("Snecko Oil did not randomize only the holder's hand costs.");
                 if (input.VerifyPotionAccounting)
                 {
                     BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);

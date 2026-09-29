@@ -757,3 +757,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 上述三种随机敌人 Power 随后也在双人双敌同根依序验收：得格挡触发 `JuggernautPower` 3 伤害、打 `Soul` 触发 `HauntPower` 4 伤害、下回合 `CountdownPower` 随机施 5 Doom；每处全玩家／敌人状态与九条 RNG 均对齐，Passed：`.local/multiplayer-p2/random-power-hooks-3aa9cbd891574d8195c59390cea24618/peer-0/result.json`。这封闭各自首次触发的代表路径，不扩展到更多叠层或目标中途死亡。
 
 `Kusarigama` 又在双人双敌原生战斗中验队友插入攻击不增加持有人计数、本地第三击触发、下一回合重置；全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。此前同持有人三击证据保留，后续机制以这次包含交错与重置的输入为准。
+
+原版 51 个 `AnyPlayer` 药水与 `PotionOnUseSupport.CanSearch`／`PotionOnUseMirrors` 注册表逐名核对，入口均存在；这是源码登记，不计为 51 瓶原生通过。P2 新补 `DistilledChaos` 只自动打持有人抽牌堆三张防御，以及 `SneckoOil` 只随机化持有人手牌费用，两者候选均只允许本地自用，原版即时全状态／九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。其他药水机制仍按分类验收。
