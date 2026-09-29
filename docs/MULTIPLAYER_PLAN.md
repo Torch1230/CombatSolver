@@ -686,10 +686,10 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 ### 2026-09-29 交接记录
 
 - 当前阶段／子任务：P2 原版多人内容分支持续验证，并补 P1 死亡／跨回合证据；P3～P5 既有实现与证据保留。
-- 当前分支及提交：`feat/multiplayer`；上一行为探针提交 `d35abb18`，当前双尾鼠召唤探针随本节提交；实际 HEAD 以接手时 Git 为准。
+- 当前分支及提交：`feat/multiplayer`；双尾鼠召唤探针 `ef0e0504`，制造机生命周期探针随本节提交；实际 HEAD 以接手时 Git 为准。
 - 未提交文件及用途：本节提交后无本任务待提交文件；实际状态以接手时 `git status` 为准。
-- 本次行为变化：新增四人 `Blaze` 非法目标、双人骑士压制升级牌恢复、知识恶魔外部选牌边界与选择后回合、双尾鼠同伴死亡后召唤的原生探针；生产代码在本轮未改。
-- 已通过证据：游戏 `0.111.0`；相应 Release 构建与 Windows 结构门禁通过。`Blaze` `.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`；骑士 `.local/multiplayer-p2/knights-dampen-upgraded-7a33347c0eae4f63a7e48b78ac939dcd/peer-0/result.json`；知识恶魔 `.local/multiplayer-p2/knowledge-demon-post-choice-9b9e0925426b40e597846920c9ea90f7/peer-0/result.json`；贪食者四招 `.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`；双尾鼠召唤 `.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`。各自输入同目录 `input.json`，命令沿用第 8 节无人测试入口并指定 `MULTIPLAYER-CONTENT` 或 `MULTIPLAYER-P0`、对应遭遇。
+- 本次行为变化：新增四人 `Blaze` 非法目标、双人骑士压制升级牌恢复、知识恶魔外部选牌边界与选择后回合、双尾鼠同伴死亡后召唤、制造机满员及小怪死亡后补位的原生探针；生产代码在本轮未改。
+- 已通过证据：游戏 `0.111.0`；相应 Release 构建与 Windows 结构门禁通过。`Blaze` `.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`；骑士 `.local/multiplayer-p2/knights-dampen-upgraded-7a33347c0eae4f63a7e48b78ac939dcd/peer-0/result.json`；知识恶魔 `.local/multiplayer-p2/knowledge-demon-post-choice-9b9e0925426b40e597846920c9ea90f7/peer-0/result.json`；贪食者四招 `.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`；双尾鼠召唤 `.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`；制造机满员与补位 `.local/multiplayer-p2/fabricator-minion-refill-cc858a950da44a19ae47fbe31073af28/peer-0/result.json`。各自输入同目录 `input.json`，命令沿用第 8 节无人测试入口并指定 `MULTIPLAYER-CONTENT` 或 `MULTIPLAYER-P0`、对应遭遇。
 - 失败／未验证：`CreatureCmd.Kill` 队友后，虚拟多人进入 End 阶段；直接标记其余玩家结束又连续推进多回合，无法用它稳定验死亡后出牌。当前 `Blaze` 探针只在 Play 阶段直接设 0 HP，未验死亡 Hook。内容闭包、无求解器对端、可见 UI、Steam 邀请、Linux 实机仍未完成。
-- 下一条实际操作：验证 `FabricatorNormal` 的召唤物死亡与满槽分支；随后继续关联遗物机制并核对第 9 节，不重复已通过输入。
+- 下一条实际操作：核对战斗内多人关联遗物和药水的剩余机制，再补无求解器对端、可见 UI 与 Linux 等第 9 节未验项；不重复已通过输入。
 - 实例／进程清理及本地部署：本轮各无头实例由运行脚本清理；五个文件已精确覆盖到 `D:\Steam\steamapps\common\Slay the Spire 2\mods\CombatSolver`。双尾鼠测试源码随后重建了 DLL，结束本批前需再覆盖最终 DLL。未提升版本、发包、打标签或推送。

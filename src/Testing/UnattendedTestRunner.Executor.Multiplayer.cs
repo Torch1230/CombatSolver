@@ -887,6 +887,67 @@ internal sealed partial class UnattendedTestRunner
                     player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
                 await runner.MultiplayerProbeBarrierAsync("third-turn", combat);
                 CheckPrediction(secondRoundPrediction, scenario.Player, "SECOND_END_TURN");
+                if (input.VerifyFabricatorFullRoster)
+                {
+                    Creature fabricator = combat.Enemies.Single(creature => creature.Monster is Fabricator);
+                    for (int turn = 3; turn <= 4; turn++)
+                    {
+                        foreach (Player member in combat.Players)
+                            await UnattendedTestRunner.SetBlockAsync(member.Creature, 100);
+                        ContinuationStamp prediction = PredictMultiplayerRound(combat, scenario.Player);
+                        var end = new EndPlayerTurnAction(scenario.Player, turn);
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                        await end.CompletionTask;
+                        int expectedTurn = turn + 1;
+                        await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(member =>
+                            member.PlayerCombatState is { Phase: PlayerTurnPhase.Play }
+                            && member.PlayerCombatState.TurnNumber == expectedTurn));
+                        await runner.MultiplayerProbeBarrierAsync($"fabricator-turn-{expectedTurn}", combat);
+                        CheckPrediction(prediction, scenario.Player, $"FABRICATOR_TURN_{expectedTurn}");
+                    }
+                    if (combat.GetTeammatesOf(fabricator).Count(creature => creature.IsAlive) != 4
+                        || fabricator.Monster!.NextMove.Id != "DISINTEGRATE_MOVE")
+                        throw new InvalidOperationException("Fabricator did not reach four living teammates and switch to Disintegrate.");
+                    runner._completedChecks.Add("MultiplayerContent:Fabricator:ThreeMinions:FullRosterMove:FullState:FullRng");
+                    if (!input.VerifyFabricatorMinionDeath)
+                        return new ExecutionOutcome(false, 5, true, true, true, false);
+                    Creature minion = combat.Enemies.First(creature => creature.IsAlive
+                        && creature.Monster is Stabbot);
+                    await CreatureCmd.SetCurrentHp(minion, 1);
+                    ContinuationStamp deathPrediction = PredictOrdinaryCard(scenario.Player,
+                        "STRIKE_IRONCLAD", minion);
+                    CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                        card.Id.Entry == "STRIKE_IRONCLAD");
+                    var killMinion = new PlayCardAction(strike, minion);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(killMinion);
+                    await killMinion.CompletionTask;
+                    await runner.MultiplayerProbeBarrierAsync("fabricator-minion-death", combat);
+                    CheckPrediction(deathPrediction, scenario.Player, "FABRICATOR_MINION_DEATH");
+                    if (!minion.IsDead || combat.GetTeammatesOf(fabricator).Count(creature => creature.IsAlive) != 3)
+                        throw new InvalidOperationException("Fabricator minion death did not reopen one roster slot.");
+                    for (int turn = 5; turn <= 6; turn++)
+                    {
+                        foreach (Player member in combat.Players)
+                            await UnattendedTestRunner.SetBlockAsync(member.Creature, 100);
+                        ContinuationStamp prediction = PredictMultiplayerRound(combat, scenario.Player);
+                        var end = new EndPlayerTurnAction(scenario.Player, turn);
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                        await end.CompletionTask;
+                        int expectedTurn = turn + 1;
+                        await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(member =>
+                            member.PlayerCombatState is { Phase: PlayerTurnPhase.Play }
+                            && member.PlayerCombatState.TurnNumber == expectedTurn));
+                        await runner.MultiplayerProbeBarrierAsync($"fabricator-refill-turn-{expectedTurn}", combat);
+                        CheckPrediction(prediction, scenario.Player, $"FABRICATOR_REFILL_TURN_{expectedTurn}");
+                        if (turn == 5 && fabricator.Monster!.NextMove.Id is not
+                            ("FABRICATE_MOVE" or "FABRICATING_STRIKE_MOVE"))
+                            throw new InvalidOperationException("Fabricator did not reselect a summon after its queued attack.");
+                    }
+                    if (combat.GetTeammatesOf(fabricator).Count(creature => creature.IsAlive) < 4)
+                        throw new InvalidOperationException("Fabricator did not refill its roster after minion death.");
+                    runner._completedChecks.Add("MultiplayerContent:Fabricator:MinionDeath:QueuedAttack:Refill:FullState:FullRng");
+                    return new ExecutionOutcome(false, 7, true, true, true, false);
+                }
                 if (input.VerifyKnightsDampenUpgraded)
                 {
                     Creature mage = combat.Enemies.Single(creature => creature.Monster is MagiKnight);

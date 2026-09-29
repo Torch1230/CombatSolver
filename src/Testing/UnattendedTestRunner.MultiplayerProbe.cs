@@ -34,6 +34,8 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyKnightsDampenUpgraded { get; init; }
         public bool VerifyKnowledgeDemonChoiceBoundary { get; init; }
         public bool VerifyRatSummonAfterRound { get; init; }
+        public bool VerifyFabricatorFullRoster { get; init; }
+        public bool VerifyFabricatorMinionDeath { get; init; }
         public bool VerifyLivingShieldAllyDeath { get; init; }
         public bool VerifyTestSubjectFirstRevive { get; init; }
         public bool VerifyTestSubjectSecondRevive { get; init; }
@@ -143,6 +145,9 @@ internal sealed partial class UnattendedTestRunner
                     || request.EncounterId != "KNOWLEDGE_DEMON_BOSS")
                 || input.VerifyRatSummonAfterRound && (!input.VerifyRoundDifferential
                     || !input.IsVirtual || request.EncounterId != "TWO_TAILED_RATS_NORMAL")
+                || input.VerifyFabricatorFullRoster && (!input.VerifySecondRoundDifferential
+                    || !input.IsVirtual || request.EncounterId != "FABRICATOR_NORMAL")
+                || input.VerifyFabricatorMinionDeath && !input.VerifyFabricatorFullRoster
                 || input.VerifyLivingShieldAllyDeath && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyTestSubjectFirstRevive && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyTestSubjectSecondRevive && !input.VerifyTestSubjectFirstRevive
