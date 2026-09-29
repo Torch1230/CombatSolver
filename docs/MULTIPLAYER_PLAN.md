@@ -751,3 +751,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 继续按 P0 原版调用点扫描补入四件随机敌人遗物、`LightningOrb` 与 `SerpentFormPower` 的共享 `CombatTargets` 路径，分类与证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。P2 双人双敌已对 `Tingsha`、`ForgottenSoul`、`ParryingShield` 的三次随机伤害和 `Kusarigama` 第三次持有人攻击做原版全状态／九条 RNG 差分，均 Passed；前三件遗物首个请求虽差分通过但未显式断言触发量，最终以带 3／1／6 断言的请求为准。另五瓶多人过滤生成池药水 `SkillPotion`、`PowerPotion`、`ColorlessPotion`、`OrobicAcid`、`CosmicConcoction` 的本地自用、生成归属与完整状态／RNG 均 Passed。球与形态能力的后续证据见下段。
 
 随后 `LightningOrb` 的随机被动／激发及 `SerpentFormPower` 的持有人打牌后随机伤害均在双人双敌根以显式伤害量、队列归属、全状态／九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。Power 目录定向补扫又发现五项多人过滤牌池和三项随机敌人流触发，已列入待验证范围；因此 P0 清单仍未封闭，P2 仍有实际内容工作。
+
+五项 Power 多人过滤生成池入口已按机制分两组验收：`CreativeAiPower`、`HelloWorldPower`、`SpectrumShiftPower`、`CallOfTheVoidPower` 在同一双人原生根从回合开始前各生成一张，`CalamityPower` 在另一个根由持有人攻击触发生成；均核对牌主、队友手牌、完整状态与九条 RNG，Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。未测所有随机池结果、非持有人触发及更多叠层；随机敌人流的 `JuggernautPower`、`CountdownPower`、`HauntPower` 仍待原生差分。

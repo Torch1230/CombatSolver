@@ -86,6 +86,8 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyKusarigamaRandomTarget { get; init; }
         public bool VerifyLightningOrbTargets { get; init; }
         public bool VerifySerpentFormRandomTarget { get; init; }
+        public bool VerifyPowerGenerationPools { get; init; }
+        public bool VerifyCalamityGeneration { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -224,6 +226,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifySerpentFormRandomTarget && (!input.IsVirtual
                     || request.EncounterId != "CULTISTS_NORMAL"
                     || !input.ContentCardIds.SequenceEqual(["SERPENT_FORM", "STRIKE_IRONCLAD"]))
+                || input.VerifyPowerGenerationPools && (!input.IsVirtual || input.PlayerCount != 2)
+                || input.VerifyCalamityGeneration && (!input.IsVirtual || input.PlayerCount != 2)
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

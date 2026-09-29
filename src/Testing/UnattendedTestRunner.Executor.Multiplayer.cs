@@ -108,6 +108,65 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyCalamityGeneration)
+            {
+                Player actor = scenario.Player;
+                await PowerCmd.Apply<CalamityPower>(new ThrowingPlayerChoiceContext(),
+                    actor.Creature, 1, actor.Creature, null);
+                HashSet<CardModel> cardsBefore = [.. actor.PlayerCombatState!.AllCards];
+                int[] teammateHandCounts = combat.Players.Where(player => player != actor)
+                    .Select(player => player.PlayerCombatState!.Hand.Cards.Count).ToArray();
+                Creature target = combat.Enemies.Single();
+                ContinuationStamp generationPrediction = PredictOrdinaryCard(actor, "STRIKE_IRONCLAD", target);
+                CardModel strike = actor.PlayerCombatState.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                var play = new PlayCardAction(strike, target);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(play);
+                await play.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("calamity-generation", combat);
+                CheckPrediction(generationPrediction, actor, "CALAMITY_GENERATION");
+                CardModel[] generated = actor.PlayerCombatState.AllCards
+                    .Where(card => !cardsBefore.Contains(card)).ToArray();
+                if (generated.Length != 1 || generated[0].Owner != actor
+                    || generated[0].Type != CardType.Attack
+                    || !actor.PlayerCombatState.Hand.Cards.Contains(generated[0])
+                    || combat.Players.Where(player => player != actor)
+                        .Select(player => player.PlayerCombatState!.Hand.Cards.Count)
+                        .Where((count, index) => count != teammateHandCounts[index]).Any())
+                    throw new InvalidOperationException("Calamity generated an attack for the wrong player.");
+                runner._completedChecks.Add("MultiplayerContent:Calamity:OwnerAttackGeneration:FullState:FullRng");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
+            if (input.VerifyPowerGenerationPools)
+            {
+                Player actor = scenario.Player;
+                Creature owner = actor.Creature;
+                await PowerCmd.Apply<CreativeAiPower>(new ThrowingPlayerChoiceContext(), owner, 1, owner, null);
+                await PowerCmd.Apply<HelloWorldPower>(new ThrowingPlayerChoiceContext(), owner, 1, owner, null);
+                await PowerCmd.Apply<SpectrumShiftPower>(new ThrowingPlayerChoiceContext(), owner, 1, owner, null);
+                await PowerCmd.Apply<CallOfTheVoidPower>(new ThrowingPlayerChoiceContext(), owner, 1, owner, null);
+                HashSet<CardModel> cardsBefore = [.. actor.PlayerCombatState!.AllCards];
+                int[] teammateHandCounts = combat.Players.Where(player => player != actor)
+                    .Select(player => player.PlayerCombatState!.Hand.Cards.Count).ToArray();
+                ContinuationStamp generationPrediction = PredictMultiplayerRound(combat, actor);
+                var end = new EndPlayerTurnAction(actor, 1);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                await runner.MultiplayerProbeBarrierAsync("power-generation-pools", combat);
+                CheckPrediction(generationPrediction, actor, "POWER_GENERATION_POOLS");
+                CardModel[] generated = actor.PlayerCombatState!.AllCards
+                    .Where(card => !cardsBefore.Contains(card)).ToArray();
+                if (generated.Length != 4 || generated.Any(card => card.Owner != actor)
+                    || !generated.Any(card => card.Keywords.Contains(CardKeyword.Ethereal))
+                    || combat.Players.Where(player => player != actor)
+                        .Select(player => player.PlayerCombatState!.Hand.Cards.Count)
+                        .Where((count, index) => count != teammateHandCounts[index]).Any())
+                    throw new InvalidOperationException("Turn-start generation powers did not create four owner cards.");
+                runner._completedChecks.Add("MultiplayerContent:FourTurnStartGenerationPowers:Owner:FilteredPools:FullState:FullRng");
+                return new ExecutionOutcome(false, 2, true, true, true, false);
+            }
             if (input.VerifyLightningOrbTargets)
             {
                 Player actor = scenario.Player;
