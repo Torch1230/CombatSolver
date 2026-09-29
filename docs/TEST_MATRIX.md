@@ -244,7 +244,7 @@ P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不�
 
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
 
-P1 `PaelsEye` 双人额外回合探针未通过：注入持有人遗物后，预测转到其第 2 回合；虚拟原生端未在 120 秒内到达稳定额外回合边界。三次定位的严格等待超时、过早取样和放宽目标条件后仍超时证据见[规划最新记录](MULTIPLAYER_PLAN.md)。未定位根因，临时探针已撤回，不把该行为记为已验。
+P1 `PaelsEye` 双人额外回合探针未通过：注入持有人遗物后，预测转到其第 2 回合；虚拟原生端未在 120 秒内到达稳定额外回合边界。三次定位的严格等待超时、过早取样和放宽目标条件后仍超时证据见[规划最新记录](MULTIPLAYER_PLAN.md)。原版源码定位根因：虚拟多人用单人 NetService，`AllPlayersReadyToEndTurn` 恒真；额外回合开始标记被排除的队友结束后提前返回，持有人进不了 `Play`。临时探针已撤回，需双进程 ENet 验收，不把该行为记为已验。
 
 ## 多人 P1 普通状态差分（2026-09-28）
 
