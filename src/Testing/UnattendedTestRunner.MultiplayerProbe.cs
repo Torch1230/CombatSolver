@@ -82,6 +82,8 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyBeetleDamageWake { get; init; }
         public bool VerifyDeadAllyGroupPower { get; init; }
         public bool VerifyDeadAllyGroupEnergy { get; init; }
+        public bool VerifyRandomRelicHooks { get; init; }
+        public bool VerifyKusarigamaRandomTarget { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -182,7 +184,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifySelfPotion && input.SelfPotionId is not
                     ("STRENGTH_POTION" or "BLOCK_POTION" or "ENERGY_POTION"
                         or "BLOOD_POTION" or "FOCUS_POTION" or "ATTACK_POTION"
-                        or "ESSENCE_OF_DARKNESS")
+                        or "SKILL_POTION" or "POWER_POTION" or "COLORLESS_POTION"
+                        or "OROBIC_ACID" or "COSMIC_CONCOCTION" or "ESSENCE_OF_DARKNESS")
                 || input.VerifyControllerTargetedDeploy
                     && !input.ContentCardIds.Any(id => id is "BLAZE" or "LARGESSE")
                 || input.VerifyControllerSelfPotionDeploy
@@ -210,6 +213,10 @@ internal sealed partial class UnattendedTestRunner
                     || request.EncounterId != "SLUMBERING_BEETLE_NORMAL")
                 || input.VerifyDeadAllyGroupPower && (!input.IsVirtual || input.PlayerCount != 2)
                 || input.VerifyDeadAllyGroupEnergy && (!input.IsVirtual || input.PlayerCount != 2)
+                || input.VerifyRandomRelicHooks && (!input.IsVirtual || !input.UseFirstEnemyForProbe
+                    || request.EncounterId != "CULTISTS_NORMAL")
+                || input.VerifyKusarigamaRandomTarget && (!input.IsVirtual || !input.UseFirstEnemyForProbe
+                    || request.EncounterId != "CULTISTS_NORMAL")
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

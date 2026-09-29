@@ -747,3 +747,5 @@ P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，�
 P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围：虚拟双人直接把队友生命置 0 后，本地原版出牌仍给两名玩家各 3 层能力；原版／预测全状态和九条 RNG 差分 Passed：`.local/multiplayer-p2/one-for-all-dead-ally-e1e846c834dc4fe4bf9ce34db069c4b3/peer-0/result.json`。这验证 `OneForAll` 的原版遍历行为，未实际杀死队友或覆盖死亡 Hook。
 
 同一死亡目标机制的相反分支用 `EnergySurge` 独立原生请求核对：已死亡队友能量不变、出牌者净增 1 点，全部状态和九条 RNG 与预测对齐，Passed：`.local/multiplayer-p2/energy-surge-dead-ally-b3728b1c11814e1c9253a15284ccbd06/peer-0/result.json`。因此群体牌必须依各牌原版遍历条件建模；两次夹具均直接置零生命，死亡 Hook 未由此覆盖。
+
+继续按 P0 原版调用点扫描补入四件随机敌人遗物、`LightningOrb` 与 `SerpentFormPower` 的共享 `CombatTargets` 路径，分类与证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。P2 双人双敌已对 `Tingsha`、`ForgottenSoul`、`ParryingShield` 的三次随机伤害和 `Kusarigama` 第三次持有人攻击做原版全状态／九条 RNG 差分，均 Passed；前三件遗物首个请求虽差分通过但未显式断言触发量，最终以带 3／1／6 断言的请求为准。另五瓶多人过滤生成池药水 `SkillPotion`、`PowerPotion`、`ColorlessPotion`、`OrobicAcid`、`CosmicConcoction` 的本地自用、生成归属与完整状态／RNG 均 Passed。球与形态能力尚未运行原生差分。

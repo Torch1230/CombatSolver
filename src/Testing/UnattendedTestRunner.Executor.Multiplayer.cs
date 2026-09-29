@@ -107,6 +107,113 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyKusarigamaRandomTarget)
+            {
+                Player actor = scenario.Player;
+                await UnattendedTestRunner.InjectRelicAsync(actor,
+                    new UnattendedRelicInjection { RelicId = "KUSARIGAMA" });
+                await UnattendedTestRunner.InjectCardAsync(combat, actor,
+                    new UnattendedCardInjection { CardId = "STRIKE_IRONCLAD", Pile = "Hand" });
+                UnattendedTestRunner.SetEnergy(actor, 10);
+                Creature target = combat.Enemies[0];
+                if (combat.Enemies.Count(creature => creature.IsAlive) < 2)
+                    throw new InvalidOperationException("Kusarigama probe requires two live enemies.");
+                for (int index = 0; index < 3; index++)
+                {
+                    int[] hpBefore = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                    ContinuationStamp predicted = PredictOrdinaryCard(actor, "STRIKE_IRONCLAD", target);
+                    CardModel strike = actor.PlayerCombatState!.Hand.Cards.First(card =>
+                        card.Id.Entry == "STRIKE_IRONCLAD");
+                    var play = new PlayCardAction(strike, target);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(play);
+                    await play.CompletionTask;
+                    await runner.MultiplayerProbeBarrierAsync($"kusarigama-attack-{index + 1}", combat);
+                    CheckPrediction(predicted, actor, $"KUSARIGAMA_ATTACK_{index + 1}");
+                    int totalDamage = combat.Enemies.Select((creature, enemyIndex) =>
+                        hpBefore[enemyIndex] - creature.CurrentHp).Sum();
+                    if (totalDamage != (index == 2 ? 12 : 6))
+                        throw new InvalidOperationException("Kusarigama attack threshold dealt incorrect native damage.");
+                }
+                runner._completedChecks.Add("MultiplayerContent:Kusarigama:ThirdOwnerAttack:RandomTarget:FullState:FullRng");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
+            if (input.VerifyRandomRelicHooks)
+            {
+                Player actor = scenario.Player;
+                await UnattendedTestRunner.InjectRelicAsync(actor,
+                    new UnattendedRelicInjection { RelicId = "TINGSHA" });
+                await UnattendedTestRunner.InjectRelicAsync(actor,
+                    new UnattendedRelicInjection { RelicId = "FORGOTTEN_SOUL" });
+                await UnattendedTestRunner.InjectRelicAsync(actor,
+                    new UnattendedRelicInjection { RelicId = "PARRYING_SHIELD" });
+                if (combat.Enemies.Count(creature => creature.IsAlive) < 2)
+                    throw new InvalidOperationException("Random relic probe requires two live native enemies.");
+                int[] hpBeforeDiscard = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                CardModel discardCard = actor.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "DEFEND_IRONCLAD");
+                CombatRootSnapshot discardRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator discardSimulator = discardRoot.ForkSimulator();
+                PredictedCard predictedDiscard = discardSimulator.State.GetPlayerCombatState(actor).Hand.Cards
+                    .Single(card => ReferenceEquals(card.Original, discardCard));
+                discardSimulator.Discard(predictedDiscard);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(discardSimulator,
+                        (SimulatedCombatState)discardSimulator.State.CombatState))
+                    throw new InvalidOperationException("Tingsha discard prediction did not settle.");
+                ContinuationStamp discardPrediction = ContinuationStamp.CapturePredicted(
+                    actor, discardSimulator, 1, discardRoot.Forecast, 1);
+                await CardCmd.Discard(new ThrowingPlayerChoiceContext(), discardCard);
+                await runner.MultiplayerProbeBarrierAsync("tingsha-discard", combat);
+                ContinuationStamp discardActual = ContinuationStamp.CaptureLive(combat);
+                if (discardPrediction != discardActual)
+                    throw new InvalidOperationException("Tingsha discard differs: "
+                        + discardPrediction.DescribeFirstDifference(discardActual));
+                if (combat.Enemies.Where((creature, index) =>
+                        hpBeforeDiscard[index] - creature.CurrentHp == 3).Count() != 1
+                    || combat.Enemies.Where((creature, index) =>
+                        hpBeforeDiscard[index] != creature.CurrentHp).Count() != 1)
+                    throw new InvalidOperationException("Tingsha did not hit exactly one native enemy for 3.");
+                int[] hpBeforeExhaust = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                CardModel exhaustCard = actor.PlayerCombatState.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                CombatRootSnapshot exhaustRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator exhaustSimulator = exhaustRoot.ForkSimulator();
+                PredictedCard predictedExhaust = exhaustSimulator.State.GetPlayerCombatState(actor).Hand.Cards
+                    .Single(card => ReferenceEquals(card.Original, exhaustCard));
+                exhaustSimulator.Exhaust(predictedExhaust);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(exhaustSimulator,
+                        (SimulatedCombatState)exhaustSimulator.State.CombatState))
+                    throw new InvalidOperationException("Forgotten Soul exhaust prediction did not settle.");
+                ContinuationStamp exhaustPrediction = ContinuationStamp.CapturePredicted(
+                    actor, exhaustSimulator, 1, exhaustRoot.Forecast, 1);
+                await CardCmd.Exhaust(new ThrowingPlayerChoiceContext(), exhaustCard);
+                await runner.MultiplayerProbeBarrierAsync("forgotten-soul-exhaust", combat);
+                ContinuationStamp exhaustActual = ContinuationStamp.CaptureLive(combat);
+                if (exhaustPrediction != exhaustActual)
+                    throw new InvalidOperationException("Forgotten Soul exhaust differs: "
+                        + exhaustPrediction.DescribeFirstDifference(exhaustActual));
+                if (combat.Enemies.Where((creature, index) =>
+                        hpBeforeExhaust[index] - creature.CurrentHp == 1).Count() != 1
+                    || combat.Enemies.Where((creature, index) =>
+                        hpBeforeExhaust[index] != creature.CurrentHp).Count() != 1)
+                    throw new InvalidOperationException("Forgotten Soul did not hit exactly one native enemy for 1.");
+                await UnattendedTestRunner.SetBlockAsync(actor.Creature, 10);
+                int[] hpBeforeTurn = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                ContinuationStamp turnPrediction = PredictMultiplayerRound(combat, actor);
+                var end = new EndPlayerTurnAction(actor, 1);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                await end.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                    player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                await runner.MultiplayerProbeBarrierAsync("parrying-shield-turn", combat);
+                CheckPrediction(turnPrediction, actor, "PARRYING_SHIELD_TURN");
+                if (combat.Enemies.Where((creature, index) =>
+                        hpBeforeTurn[index] - creature.CurrentHp == 6).Count() != 1
+                    || combat.Enemies.Where((creature, index) =>
+                        hpBeforeTurn[index] != creature.CurrentHp).Count() != 1)
+                    throw new InvalidOperationException("Parrying Shield did not hit exactly one native enemy for 6.");
+                runner._completedChecks.Add("MultiplayerContent:ThreeRandomRelicHooks:SharedTargetsRng:FullState");
+                return new ExecutionOutcome(false, 2, true, true, true, false);
+            }
             if (input.VerifyDeadAllyGroupPower || input.VerifyDeadAllyGroupEnergy)
             {
                 Player actor = scenario.Player;
@@ -1812,6 +1919,9 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Teammate potion was counted as local use.");
                 }
                 PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, input.SelfPotionId);
+                HashSet<CardModel> existingHand = [.. actor.PlayerCombatState!.Hand.Cards];
+                int[] teammateHandCounts = combat.Players.Where(member => member != actor)
+                    .Select(member => member.PlayerCombatState!.Hand.Cards.Count).ToArray();
                 int slot = actor.PotionSlots.ToList().IndexOf(potion);
                 if (slot < 0)
                     throw new InvalidOperationException("Injected potion has no slot.");
@@ -1831,7 +1941,7 @@ internal sealed partial class UnattendedTestRunner
                 if (!PotionExecutionSupport.Prepare(potionSimulator, potionCombat, potion, slot, null))
                     throw new InvalidOperationException("Self potion prediction did not prepare.");
                 PlanCardChoice? potionChoice = null;
-                if (potion is AttackPotion)
+                if (PotionChoiceSupport.GeneratesCardChoice(potion))
                 {
                     CardChoiceSpec spec = PotionChoiceSupport.GetSpec(potionSimulator, potion);
                     potionChoice = CardChoiceSupport.BuildChoices(
@@ -1870,6 +1980,18 @@ internal sealed partial class UnattendedTestRunner
                     && !actor.PlayerCombatState!.Hand.Cards.Any(card =>
                         card.Id.Entry == potionChoice.Cards[0].CardId && ReferenceEquals(card.Owner, actor)))
                     throw new InvalidOperationException("Choice potion did not give its generated card to its holder.");
+                if (potion is AttackPotion or SkillPotion or PowerPotion or ColorlessPotion
+                    or OrobicAcid or CosmicConcoction)
+                {
+                    CardModel[] generated = actor.PlayerCombatState!.Hand.Cards
+                        .Where(card => !existingHand.Contains(card)).ToArray();
+                    int expectedCount = potion is OrobicAcid or CosmicConcoction ? 3 : 1;
+                    if (generated.Length != expectedCount || generated.Any(card => card.Owner != actor)
+                        || combat.Players.Where(member => member != actor)
+                            .Select(member => member.PlayerCombatState!.Hand.Cards.Count)
+                            .Where((count, index) => count != teammateHandCounts[index]).Any())
+                        throw new InvalidOperationException("Generated potion cards did not belong to the holder.");
+                }
                 if (input.SelfPotionId == "ESSENCE_OF_DARKNESS"
                     && (actor.PlayerCombatState!.OrbQueue.Orbs.Count != 2
                         || combat.Players.Any(member => member != actor
