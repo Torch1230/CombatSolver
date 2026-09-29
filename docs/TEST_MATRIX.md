@@ -150,6 +150,8 @@ P2 四人敌方能力缩放全 12 项：各自原生施加、预测同根 Fork�
 
 P2 敌方 `PlatingPower` 生命周期：双人 `SlumberingBeetleNormal` 根及两个敌方回合的甲虫镀层／格挡为 45／45 → 45／45 → 43／43，完整状态和九条 RNG 差分 Passed：`.local/multiplayer-p2/slumbering-beetle-plating-bc43bf334ea24b7ca47fd14bb490fef2/peer-0/result.json`。未触发苏醒移除。
 
+P2 玩家侧 Doom 群体死亡 Hook：双人直接触发队友 Doom，持 `BookRepairKnife` 的本地玩家由 70 治疗到 73，预测与原版的队友死亡、治疗和九条 RNG 一致，Passed：`.local/multiplayer-p2/player-doom-repair-knife-scope-5cf6ac1cd0a94c9789d5c97b79fdacb1/peer-0/result.json`。**全状态未通过**：原版虚拟局在死亡后切换阶段并移动本地手牌，而预测仍保持原手牌；完整差分失败证据 `.local/multiplayer-p2/player-doom-repair-knife-3a883173aff94661bea03a7db5779764/peer-0/result.json`。需完整回合再验，不作为 P2 收口证据。
+
 P2 蜈蚣分段复活：双人第二回合击杀一段，原生 `DEAD_MOVE` 保持死亡，随后 `REATTACH_MOVE` 才复活；击杀动作与两次敌方回合的全状态／RNG 均与预测一致，Passed：`.local/multiplayer-p2/segment-reattach-full-14c99fc3007b47a08ab9846392e3a262/peer-0/result.json`。最初 6 HP 夹具未考虑玩家虚弱、下一次夹具误以为死亡回合即复活，均为测试前提错误；全段死亡未验。
 
 P2 `TheObscuraNormal` 双人前两回合：原版 `Parafright` 伙伴及全部玩家／敌人状态和九条 RNG 到第三回合与预测一致，Passed：`.local/multiplayer-p2/obscura-second-round-35ee5bad5bbb4718aed927b9cd2325a1/peer-0/result.json`。伙伴死亡与后续幻象分支未验。

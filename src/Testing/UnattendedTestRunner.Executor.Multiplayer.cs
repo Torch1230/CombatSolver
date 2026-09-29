@@ -107,6 +107,39 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyPlayerDoomHook)
+            {
+                Player actor = scenario.Player;
+                Player teammate = combat.Players.Single(player => player != actor);
+                actor.AddRelicInternal(ModelDb.Relic<BookRepairKnife>().ToMutable());
+                await CreatureCmd.SetCurrentHp(actor.Creature, 70);
+                await CreatureCmd.SetCurrentHp(teammate.Creature, 1);
+                DoomPower doom = await PowerCmd.Apply<DoomPower>(
+                    new ThrowingPlayerChoiceContext(), teammate.Creature, 2,
+                    actor.Creature, null)
+                    ?? throw new InvalidOperationException("Doom fixture did not apply power.");
+                CombatRootSnapshot doomRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator doomSimulator = doomRoot.ForkSimulator();
+                SimulatedCombatState doomCombat = (SimulatedCombatState)doomSimulator.State.CombatState;
+                if (!EndTurnPowerSupport.TriggerRegular(doomSimulator, doomCombat,
+                        CombatSide.Player, combat.PlayerCreatures))
+                    throw new InvalidOperationException("Player Doom prediction did not finish.");
+                ContinuationStamp predictedDoom = ContinuationStamp.CapturePredicted(
+                    actor, doomSimulator, 1, doomRoot.Forecast, 1);
+                await doom.AfterSideTurnEnd(new ThrowingPlayerChoiceContext(),
+                    CombatSide.Player, combat.PlayerCreatures);
+                await runner.MultiplayerProbeBarrierAsync("player-doom-hook", combat);
+                ContinuationStamp actualDoom = ContinuationStamp.CaptureLive(combat);
+                if (!doomSimulator.State.GetCreature(teammate.Creature).IsDead
+                    || !teammate.Creature.IsDead
+                    || doomSimulator.State.GetCreature(actor.Creature).CurrentHp != 73
+                    || actor.Creature.CurrentHp != 73
+                    || predictedDoom.RngStateText != actualDoom.RngStateText)
+                    throw new InvalidOperationException("Player Doom or repair knife effect differs: "
+                        + predictedDoom.DescribeFirstDifference(actualDoom));
+                runner._completedChecks.Add("MultiplayerContent:PlayerDoomHook:TeammateDeath:OwnerRelicHeal:FullRng");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyControllerSearchDrift)
             {
                 SolverController.MonitorCombatPresence();

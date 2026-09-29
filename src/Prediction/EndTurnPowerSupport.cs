@@ -129,12 +129,22 @@ internal static partial class EndTurnPowerSupport
                     state.EtherealCount = 0;
                     break;
                 }
-                case DoomPower when ownerParticipates
-                                    && side != CombatSide.Enemy
-                                    && simulator.State.GetCreature(owner).IsAlive
-                                    && simulator.State.GetCreature(owner).CurrentHp <= power.Amount:
-                    simulator.Kill(owner);
+                case DoomPower when ownerParticipates && side == CombatSide.Player
+                                    && !simulator.IsOverOrEnding:
+                {
+                    Creature[] doomed = simulator.State.GetCreaturesOnSide(CombatSide.Player)
+                        .Where(creature => simulator.State.GetCreature(creature).IsAlive
+                            && combat.GetAmount<DoomPower>(creature)
+                                >= simulator.State.GetCreature(creature).CurrentHp)
+                        .ToArray();
+                    if (doomed.Length > 0 && doomed[0] == owner)
+                    {
+                        using (simulator.PushDamageSource(
+                            CombatDamageSource.For(CombatDamageSourceKind.Power, nameof(DoomPower))))
+                            combat.DoomKill(simulator, doomed);
+                    }
                     break;
+                }
                 case PaleBlueDotPower paleBlueDot when ownerParticipates:
                     combat.SetPaleBlueDotActivated(paleBlueDot, activated: false);
                     break;
