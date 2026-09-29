@@ -78,6 +78,12 @@ internal sealed partial class UnattendedTestRunner
                         && ReferenceEquals(player, run.Players[input.ContentTargetSeat])
                         && input.ContentTeammateCardIdAfter.Length > 0)
                         cardIds[2] = input.ContentTeammateCardIdAfter;
+                    if (input.VerifyImitationTwice
+                        && ReferenceEquals(player, run.Players[input.ContentTargetSeat]))
+                    {
+                        cardIds[2] = "INFLAME";
+                        cardIds[3] = "STONE_ARMOR";
+                    }
                     if ((input.VerifyControllerMidDeploymentRng || input.VerifyControllerPreDeployRng
                             || input.VerifyControllerSearchRngDrift)
                         && !ReferenceEquals(player, run.Players[input.Seat]))

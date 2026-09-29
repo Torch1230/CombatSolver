@@ -91,6 +91,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyCalamityGeneration { get; init; }
         public bool VerifyRandomPowerHooks { get; init; }
         public bool VerifySoulboundStack { get; init; }
+        public bool VerifyImitationTwice { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -242,6 +243,8 @@ internal sealed partial class UnattendedTestRunner
                     || request.EncounterId != "CULTISTS_NORMAL")
                 || input.VerifySoulboundStack && (!input.IsVirtual || input.PlayerCount != 2
                     || !input.ContentCardIds.SequenceEqual(["SOULBOUND"]))
+                || input.VerifyImitationTwice && (!input.IsVirtual || input.PlayerCount != 2
+                    || !input.ContentCardIds.SequenceEqual(["IMITATION_LEARNING"]))
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

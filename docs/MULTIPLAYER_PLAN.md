@@ -771,3 +771,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 用户指出近期对普通自用药水测得过细，偏离跨玩家适配主线。已启动的 `ShipInABottle` 下回合和 `FruitJuice` 自用验证均 Passed 并如实登记在[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)；自此停止逐瓶普通药水探针，把工作转回多人专属牌、队友目标／归属、跨玩家生命周期、联机执行与第 9 节实际缺口。
 
 回到 `Soulbound` 的跨玩家能力：本地出牌给队友后，原生叠层到 2，再由本地生成一张 `Soul`，队友自己的抽牌堆新增两张队友持有的 `Soul`；原版／预测全状态与九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。第二层由夹具原生施加，死亡引用仍未验。
+
+`ImitationLearning` 又验两次真实队友能力动作：目标队友依次打 `Inflame` 和 `StoneArmor`，本地分别自动复制力量、镀层，能力两次消费后移除；三次动作的全玩家状态及九条 RNG 原版／预测差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。选择型能力及死亡引用仍是未验分支。

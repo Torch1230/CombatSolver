@@ -2719,6 +2719,25 @@ internal sealed partial class UnattendedTestRunner
                 await PlayTeammateStrikeAsync("after");
             if (input.ContentTeammateCardIdAfter.Length > 0)
                 await PlayTeammateCardAfterAsync(input.ContentTeammateCardIdAfter);
+            if (input.VerifyImitationTwice)
+            {
+                Player teammate = combat.Players[input.ContentTargetSeat];
+                ImitationLearningPower copy = actor.Creature.Powers.OfType<ImitationLearningPower>().Single();
+                if (copy.PlayerTarget != teammate || copy.Amount != 2)
+                    throw new InvalidOperationException("Imitation Learning did not watch the selected teammate twice.");
+                await PlayTeammateCardAfterAsync("INFLAME");
+                if (actor.Creature.GetPowerAmount<StrengthPower>() != 2
+                    || teammate.Creature.GetPowerAmount<StrengthPower>() != 2
+                    || copy.Amount != 1)
+                    throw new InvalidOperationException("Imitation Learning did not copy the first teammate power.");
+                await PlayTeammateCardAfterAsync("STONE_ARMOR");
+                if (actor.Creature.GetPowerAmount<PlatingPower>() != 4
+                    || teammate.Creature.GetPowerAmount<PlatingPower>() != 4
+                    || actor.Creature.HasPower<ImitationLearningPower>())
+                    throw new InvalidOperationException("Imitation Learning did not exhaust after the second teammate power.");
+                runner._completedChecks.Add("MultiplayerImitation:TwoTeammatePowers:OwnerCopies:Consumed:FullState:FullRng");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifySoulboundStack)
             {
                 Player teammate = combat.Players[input.ContentTargetSeat];
