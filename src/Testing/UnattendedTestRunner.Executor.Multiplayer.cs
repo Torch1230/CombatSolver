@@ -2580,6 +2580,19 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Self-benefiting group card was not searched normally.");
                     runner._completedChecks.Add("MultiplayerGroupCard:Rally:NormalDefenseSearch");
                 }
+                if (input.VerifySelfBenefitAllySearch)
+                {
+                    if (!contentPlans.Any(plan => !plan.MultiplayerSupportAdded
+                        && plan.BestNode.Actions.Any(action =>
+                            action.CardId == "MIMIC"
+                            && action.TargetCombatId == combat.Players[input.ContentTargetSeat].Creature.CombatId)))
+                        throw new InvalidOperationException("Mimic's owner benefit did not enter normal search: "
+                            + string.Join("; ", contentPlans.Select(plan =>
+                                $"{plan.MultiplayerStyle}:support={plan.MultiplayerSupportAdded}:hp={plan.MultiplayerCurrentTurnProjectedHp}:"
+                                + string.Join(',', plan.BestNode.Actions.Select(action =>
+                                    $"{action.Kind}/{action.CardId}/{action.TargetCombatId}")))));
+                    runner._completedChecks.Add("MultiplayerSelfBenefitAlly:Mimic:NormalSearch:TeammateTarget");
+                }
                 runner._completedChecks.Add(
                     $"MultiplayerContentSearch:Players={input.PlayerCount}:LocalActions:Budget=3000ms:Styles={string.Join(',', contentPlans.Select(plan => plan.MultiplayerStyle))}");
             }

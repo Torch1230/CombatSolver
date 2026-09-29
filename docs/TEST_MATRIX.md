@@ -40,6 +40,8 @@ P3 选人合同：初版四人探针没有断言目标必须是其他玩家，�
 
 纯支援第一批：`BeaconOfHope` 有余能时在 `Strike` 后补入并按原生执行整条路线；余能不足时不补；独立固定目标的 `Blaze` 补给队友并按原生执行整条路线；`Rally` 群体自身收益走正常搜索。此前 `Blaze` 自指测试违反原版 `AnyAlly` 选人规则，结果作废；修正后 `Blaze` 给队友的原生路线复验 Passed：`.local/multiplayer-p3/support-blaze-other-player-cf876f7b22a84b29b53729e0d1e9e1bb/peer-0/result.json`，其余对应虚拟双人请求 Passed，路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。两张补入在固定机制中已通过，不能推出所有纯支援或额外成本已通过。
 
+P3 `Mimic` 自身收益搜索：双人 1 能量、队友 10 格挡时，生产搜索把指向队友的 `Mimic` 作为正常本地动作纳入唯一输出方案，没有记为余费纯支援，Passed：`.local/multiplayer-p3/mimic-self-benefit-search-31ce8825da574c9e928c660a07f77871/peer-0/result.json`。首试错误要求另有防守方案而 Failed；诊断显示同动作方案被正确合并，路径见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。该请求只验搜索分类和目标，原生即时结算证据另见内容清单。
+
 两张余费支援组合：`Strike` 后依次补 `BeaconOfHope` 和给队友的 `Blaze`，整条原生执行路线／所有玩家状态／RNG Passed；证据 `.local/multiplayer-p3/support-two-cards-ca2a44b61ca94328a437837241a5b660/peer-0/result.json`。
 
 目标与受益归属复核：原版 `NTargetManager` 排除 `AnyAlly` 自指，15 张此类型牌的搜索候选统一排除出牌者；8 张 `AllAllies` 牌包含出牌者。`Largesse` 的目标玩家拥有新牌，`base.Owner` 是创建者。双人 `Largesse` 短搜、原生出牌、队友手牌／牌主显式断言及全状态／RNG 差分 Passed：`.local/multiplayer-p3/largesse-recipient-and-search-c6a5eb6ba3e64c159a0623d0a234e63c/peer-0/result.json`。该证据不覆盖余费补入。
@@ -241,6 +243,8 @@ P2 `ImitationLearning` 两次队友能力复制：队友原生依次打 `Inflame
 P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不增加本地计数，本地第三次仍触发；下一回合本地第一张攻击只造成普通伤害。交错出牌及跨回合完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。
 
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
+
+P1 `PaelsEye` 双人额外回合探针未通过：注入持有人遗物后，预测转到其第 2 回合；虚拟原生端未在 120 秒内到达稳定额外回合边界。三次定位的严格等待超时、过早取样和放宽目标条件后仍超时证据见[规划最新记录](MULTIPLAYER_PLAN.md)。未定位根因，临时探针已撤回，不把该行为记为已验。
 
 ## 多人 P1 普通状态差分（2026-09-28）
 

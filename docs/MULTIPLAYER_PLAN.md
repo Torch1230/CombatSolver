@@ -777,3 +777,7 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 `Soulbound` 再验生命直接置零的队友目标：本地生成 `Soul` 后，原版保留关联触发但不把新牌插进死亡队友抽牌堆；原版／预测全状态与九条 RNG 差分 Passed。首试夹具断言错误而整体 Failed，原版 `CardPileCmd.Add` 的死亡牌主拒绝规则确认后修正断言；两份证据均列在[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。该输入未执行真实死亡 Hook。
 
 尝试推进“无求解器对端在联机部署中给房主打 `Largesse`”时，测试宿主只有约 4.7 GiB 空闲内存，两端各预留 1.5 GiB 加固定 2 GiB 余量的准入条件不成立；房主排队 120 秒后 `launcher_failed`，加入者独自等待并超时。失败证据 `.local/multiplayer-p4/no-solver-peer-rng-cfcfea98f4464ec1be08a40d7baed251/peer-0/launcher-result.json`、`peer-1/launcher-result.json`。该次没有进入双端战斗，不算联机行为通过。未验的测试驱动改动已撤回；不扩大等待时间或降低资源预留掩盖准入失败。
+
+P1 的多人专属额外回合仍有未验缺口：`PaelsEye` 原版源码按持有人筛额外回合参与者。虚拟双人探针注入该遗物后，预测得到本地下一回合，但原生端在 120 秒内没有到达可比较的额外回合边界；首试等待持有人第 2 回合／队友第 1 回合超时，证据 `.local/multiplayer-p1/paels-eye-extra-turn-2964c7d2fae24051aa14d6c9665bba35/peer-0/launcher-result.json`；第二次立即取样过早，仅见两人 `End/1`，Failed：`.local/multiplayer-p1/paels-eye-extra-turn-434a0db8df9d4c20a475756d29606d51/peer-0/result.json`；第三次只等持有人第 2 回合仍超时：`.local/multiplayer-p1/paels-eye-extra-turn-26d29056b3a046688bcd277a95f9dd69/peer-0/launcher-result.json`。根因尚未定位，不能声称额外回合差分通过；该临时探针已撤回，未修改生产逻辑或延长等待。
+
+P3 又核自身受益的队友目标牌：双人 1 能量、队友 10 格挡时，`Mimic` 作为普通本地动作指向队友进入搜索，未记作纯支援，唯一输出方案 Passed。首试断言错误要求额外防守方案，诊断确认同动作方案按合同合并；失败、诊断与最终证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。此项没有重新跑已有基础／升级原生即时差分。

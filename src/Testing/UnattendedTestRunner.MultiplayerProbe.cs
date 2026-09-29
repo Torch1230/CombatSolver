@@ -97,6 +97,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyPureSupport { get; init; }
         public bool VerifyNoPureSupport { get; init; }
         public bool VerifyGroupBenefitSearch { get; init; }
+        public bool VerifySelfBenefitAllySearch { get; init; }
         public bool VerifyTargetedSupport { get; init; }
         public bool VerifyMultipleSupport { get; init; }
         public bool VerifyStarSupport { get; init; }
@@ -245,6 +246,10 @@ internal sealed partial class UnattendedTestRunner
                     || !input.ContentCardIds.SequenceEqual(["SOULBOUND"]))
                 || input.VerifyImitationTwice && (!input.IsVirtual || input.PlayerCount != 2
                     || !input.ContentCardIds.SequenceEqual(["IMITATION_LEARNING"]))
+                || input.VerifySelfBenefitAllySearch && (!input.IsVirtual || input.PlayerCount != 2
+                    || !input.VerifySearch || !input.ContentSearchOnly
+                    || !input.ContentCardIds.SequenceEqual(["MIMIC"])
+                    || input.ContentTargetBlock <= 0)
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

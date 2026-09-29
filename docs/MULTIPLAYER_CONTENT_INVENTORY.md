@@ -66,6 +66,8 @@
 
 同一自用候选与原生即时差分又分别覆盖 `BloodPotion`（先使持有人损失 20 HP，再按自身最大 HP 治疗）`.local/multiplayer-p2/self-blood-potion-7d6f84aee81f41bca80978c306850a21/peer-0/result.json`、`FocusPotion`（自身能力）`.local/multiplayer-p2/self-focus-potion-dab6c067e16048528012a8b01a5fb3fb/peer-0/result.json`、`AttackPotion`（原生三选一，显式断言选中生成牌由持有人持有）`.local/multiplayer-p2/self-attack-potion-choice-f4ecacaab0b34c0ba63b17baa75fba92/peer-0/result.json`、`EssenceOfDarkness`（先给本地玩家两个球位，原生投药后显式断言只在本地两格充入暗球）`.local/multiplayer-p2/self-dark-orb-explicit-31d9a5a5aa194533a3dc52e3f079270f/peer-0/result.json`。这四项均为虚拟双人、本轮原生／模拟全状态与完整 RNG Passed；药水生成池其他选项、球溢出与后续触发未验。
 
+`Mimic` 的自身收益搜索另验：双人首回合给队友 10 格挡，本地只有 1 能量与 `Mimic`；生产搜索把 `Mimic` 指向队友作为普通出牌纳入唯一输出方案，`MultiplayerSupportAdded=false`，Passed：`.local/multiplayer-p3/mimic-self-benefit-search-31ce8825da574c9e928c660a07f77871/peer-0/result.json`。原探针错误要求另有防守方案而 Failed：`.local/multiplayer-p3/mimic-self-benefit-search-4509c774464545459e4f057c3f84d460/peer-0/result.json`；诊断请求显示输出方案已含 `Mimic`、同动作方案按合同合并：`.local/multiplayer-p3/mimic-self-benefit-diagnostic-71642f173ad2444fa4727d35d4fa1beb/peer-0/result.json`。该搜索请求没有原生执行；即时效果复用上文基础／升级差分。
+
 ## 已确认的关联调用链
 
 - 抽牌、生成与格挡 Hook 在现有模拟中分别有 `AfterCardDrawnMirrors`（`CacophonyPower`）、`AfterCardGeneratedForCombatMirrors`（`SoulboundPower`）、`AfterBlockGainedMirrors`（`BeaconOfHopePower`）；当前还需核对这些镜像是否以多人状态和同一个 Fork 上下文结算。
