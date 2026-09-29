@@ -84,6 +84,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyDeadAllyGroupEnergy { get; init; }
         public bool VerifyRandomRelicHooks { get; init; }
         public bool VerifyKusarigamaRandomTarget { get; init; }
+        public bool VerifyKusarigamaOwnerAndReset { get; init; }
         public bool VerifyLightningOrbTargets { get; init; }
         public bool VerifySerpentFormRandomTarget { get; init; }
         public bool VerifyPowerGenerationPools { get; init; }
@@ -221,6 +222,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyRandomRelicHooks && (!input.IsVirtual || !input.UseFirstEnemyForProbe
                     || request.EncounterId != "CULTISTS_NORMAL")
                 || input.VerifyKusarigamaRandomTarget && (!input.IsVirtual || !input.UseFirstEnemyForProbe
+                    || request.EncounterId != "CULTISTS_NORMAL")
+                || input.VerifyKusarigamaOwnerAndReset && (!input.IsVirtual || !input.UseFirstEnemyForProbe
                     || request.EncounterId != "CULTISTS_NORMAL")
                 || input.VerifyLightningOrbTargets && (!input.IsVirtual || !input.UseFirstEnemyForProbe
                     || request.EncounterId != "CULTISTS_NORMAL")

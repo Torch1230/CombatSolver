@@ -109,7 +109,7 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 补扫共享 `CombatTargets` 后，战斗遗物还有 `Tingsha`（持有人弃牌随机敌人）、`ForgottenSoul`（持有人耗牌随机敌人）、`ParryingShield`（持有人回合结束格挡达标后随机敌人）、`Kusarigama`（持有人每第三张攻击随机敌人）；球 `LightningOrb` 的被动／激发及 `SerpentFormPower` 的持有人打牌触发也使用此 RNG 流。它们虽非多人限定，但战斗中共用随机状态和敌人集合，纳入 P2。`FoulPotion` 遍历跑局玩家的入口在战斗外，只登记来源。
 
-前三件随机敌人遗物在虚拟双人双敌根按持有人弃一张、耗一张、带 10 格挡结束回合依次验收：分别只给一名敌人造成 3、1、6 点伤害，三个边界全部状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/random-relic-hooks-assert-8d11c080bfc14a92a60d3199243f3aad/peer-0/result.json`。初次同机制请求 `.local/multiplayer-p2/random-relic-hooks-73f49bd9165546c6be51a59e9f6eb1aa/peer-0/result.json` 未显式断言触发伤害量，最终证据以前者为准。`Kusarigama` 连续三张持有人 `Strike`：前两次各 6 伤害，第三次含遗物随机伤害合计 12；逐次全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-target-1ba4e8ebebe947648e6f26b6b2b15b37/peer-0/result.json`。队友攻击不计数与跨回合重置未验。
+前三件随机敌人遗物在虚拟双人双敌根按持有人弃一张、耗一张、带 10 格挡结束回合依次验收：分别只给一名敌人造成 3、1、6 点伤害，三个边界全部状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/random-relic-hooks-assert-8d11c080bfc14a92a60d3199243f3aad/peer-0/result.json`。初次同机制请求 `.local/multiplayer-p2/random-relic-hooks-73f49bd9165546c6be51a59e9f6eb1aa/peer-0/result.json` 未显式断言触发伤害量，最终证据以前者为准。`Kusarigama` 连续三张持有人 `Strike`：前两次各 6 伤害，第三次含遗物随机伤害合计 12；逐次全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-target-1ba4e8ebebe947648e6f26b6b2b15b37/peer-0/result.json`。队友攻击与跨回合重置的后续证据见下文。
 
 球与形态能力的随机目标又分别验收：虚拟双人双敌中本地玩家充入 `LightningOrb`，回合结束被动只给一名敌人 3 伤害，第二回合主动激发只给一名敌人 8 伤害且球从持有人队列移除；两个边界全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/lightning-passive-evoke-862b76b77ff64aad9c84c283926f8576/peer-0/result.json`。同类双敌根中本地 `SerpentForm` 出牌本身没有追加伤害，随后 `Strike` 的普通 6 伤害之外再随机造成 4 伤害；两次出牌全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/serpent-form-shared-target-ac081f843cb54638823e7207bd2dd99d/peer-0/result.json`。均只覆盖一名持有者、一轮触发和当前敌人集合。
 
@@ -118,6 +118,8 @@ Power 目录补扫还发现战斗内多人过滤牌池入口 `SpectrumShiftPower
 四种回合开始前生成 Power 在双人原生战斗同根各施加 1 层，结束首回合后持有人新增四张牌、其中有虚无关键词牌，队友手牌未增；四种多人过滤牌池按原版顺序消费生成 RNG，第二回合所有玩家／敌人状态及九条 RNG 与预测一致，Passed：`.local/multiplayer-p2/power-generation-pools-28f739c456b040ecad3bc8327516a516/peer-0/result.json`。这一组合证明四个 Hook 共同结算，未单独枚举每个随机池所有结果。`CalamityPower` 在另一双人根中由持有人打一张攻击后生成一张持有人攻击牌入手，队友手牌不变；完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/calamity-owner-generation-bd1a235a9367428a8073e83076ed002c/peer-0/result.json`。非持有人打牌、叠层与跨回合触发未验。
 
 三种共享随机敌人的普通 Power 又在虚拟双人双敌同根验收：持有人施加 `JuggernautPower` 3、`HauntPower` 4、`CountdownPower` 5 后，打 `Defend` 随机给一名敌人 3 伤害，打 `Soul` 随机给一名敌人 4 伤害，下一回合开始随机给一名敌人 5 层 Doom。三个稳定边界各自原版／预测全玩家、敌人和九条 RNG 差分 Passed：`.local/multiplayer-p2/random-power-hooks-3aa9cbd891574d8195c59390cea24618/peer-0/result.json`。这只覆盖一次各自触发，不覆盖队友动作、叠层或敌人死亡后目标池变化。
+
+`Kusarigama` 进一步验所有权和回合重置：本地两次攻击后队友插入一张 `Strike`，只造成普通 6 伤害；本地第三次攻击仍触发随机 6，下一回合第一张本地 `Strike` 又只造成普通 6。出牌与跨回合各边界完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。这封闭一名持有者的队友交错和一次重置，未验多持有者叠加。
 
 四种战斗内生成遗物已分别在虚拟双人原生战斗的第一回合独立调用原版 Hook，并从调用前的同一根 Fork 运行预测：`VexingPuzzlebox` `.local/multiplayer-p2/vexing-puzzlebox-c1340ff612aa429bb5bb94118875af5e/peer-0/result.json`、`OrangeDough` `.local/multiplayer-p2/orange-dough-9cf3f4e7f44a4ee6a83b6efd9b7ca256/peer-0/result.json`、`Toolbox` `.local/multiplayer-p2/toolbox-ee6b5d048de340cbb866d33c29bb346b/peer-0/result.json`、`ChoicesParadox` `.local/multiplayer-p2/choices-paradox-retain-bed341a6e59c4a5d9892c6a1c41ad86c/peer-0/result.json` 均 Passed。逐项核对持有人手牌增量、队友手牌不变、生成牌牌主、全状态与完整 RNG；两件选牌遗物固定取原版第一项，`ChoicesParadox` 额外显式核对生成牌带保留。`MassiveScroll` 属战前获得多人牌的来源，仍以卡牌本身的战斗差分为主要验收；遗物在真实开战 Hook 顺序、其他随机候选与跳过选择尚未由这些独立调用证明。
 

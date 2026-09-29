@@ -262,7 +262,7 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerContent:LightningOrb:PassiveAndEvoke:OwnerQueue:RandomTarget:FullState:FullRng");
                 return new ExecutionOutcome(false, 2, true, true, true, false);
             }
-            if (input.VerifyKusarigamaRandomTarget)
+            if (input.VerifyKusarigamaRandomTarget || input.VerifyKusarigamaOwnerAndReset)
             {
                 Player actor = scenario.Player;
                 await UnattendedTestRunner.InjectRelicAsync(actor,
@@ -288,6 +288,50 @@ internal sealed partial class UnattendedTestRunner
                         hpBefore[enemyIndex] - creature.CurrentHp).Sum();
                     if (totalDamage != (index == 2 ? 12 : 6))
                         throw new InvalidOperationException("Kusarigama attack threshold dealt incorrect native damage.");
+                    if (index == 1 && input.VerifyKusarigamaOwnerAndReset)
+                    {
+                        Player teammate = combat.Players.Single(player => player != actor);
+                        int[] hpBeforeTeammate = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                        ContinuationStamp teammatePrediction = PredictOrdinaryCard(
+                            teammate, "STRIKE_IRONCLAD", target);
+                        CardModel teammateStrike = teammate.PlayerCombatState!.Hand.Cards.First(card =>
+                            card.Id.Entry == "STRIKE_IRONCLAD");
+                        var teammatePlay = new PlayCardAction(teammateStrike, target);
+                        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(teammatePlay);
+                        await teammatePlay.CompletionTask;
+                        await runner.MultiplayerProbeBarrierAsync("kusarigama-teammate-attack", combat);
+                        CheckPrediction(teammatePrediction, teammate, "KUSARIGAMA_TEAMMATE_ATTACK");
+                        if (combat.Enemies.Select((creature, enemyIndex) =>
+                                hpBeforeTeammate[enemyIndex] - creature.CurrentHp).Sum() != 6)
+                            throw new InvalidOperationException("Teammate attack advanced Kusarigama's owner counter.");
+                    }
+                }
+                if (input.VerifyKusarigamaOwnerAndReset)
+                {
+                    ContinuationStamp nextRoundPrediction = PredictMultiplayerRound(combat, actor);
+                    var end = new EndPlayerTurnAction(actor, 1);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                    await end.CompletionTask;
+                    await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(player =>
+                        player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                    await runner.MultiplayerProbeBarrierAsync("kusarigama-next-turn", combat);
+                    CheckPrediction(nextRoundPrediction, actor, "KUSARIGAMA_NEXT_TURN");
+                    await UnattendedTestRunner.InjectCardAsync(combat, actor,
+                        new UnattendedCardInjection { CardId = "STRIKE_IRONCLAD", Pile = "Hand" });
+                    int[] hpBeforeResetAttack = combat.Enemies.Select(creature => creature.CurrentHp).ToArray();
+                    ContinuationStamp resetPrediction = PredictOrdinaryCard(actor, "STRIKE_IRONCLAD", target);
+                    CardModel resetStrike = actor.PlayerCombatState!.Hand.Cards.First(card =>
+                        card.Id.Entry == "STRIKE_IRONCLAD");
+                    var resetPlay = new PlayCardAction(resetStrike, target);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(resetPlay);
+                    await resetPlay.CompletionTask;
+                    await runner.MultiplayerProbeBarrierAsync("kusarigama-reset-attack", combat);
+                    CheckPrediction(resetPrediction, actor, "KUSARIGAMA_RESET_ATTACK");
+                    if (combat.Enemies.Select((creature, enemyIndex) =>
+                            hpBeforeResetAttack[enemyIndex] - creature.CurrentHp).Sum() != 6)
+                        throw new InvalidOperationException("Kusarigama owner counter did not reset next turn.");
+                    runner._completedChecks.Add("MultiplayerContent:Kusarigama:TeammateIgnored:NextTurnReset:FullState:FullRng");
+                    return new ExecutionOutcome(false, 2, true, true, true, false);
                 }
                 runner._completedChecks.Add("MultiplayerContent:Kusarigama:ThirdOwnerAttack:RandomTarget:FullState:FullRng");
                 return new ExecutionOutcome(false, 1, true, true, true, false);

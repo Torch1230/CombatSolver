@@ -210,7 +210,7 @@ P2 `Intercept` 保护者死亡 Hook：双人出牌后建立保护引用，原版
 
 P2 `TheObscura` 幻象伙伴死亡／复活：双人第二回合击倒 `Parafright` 后保留场上并排出 `REVIVE_MOVE`，下一敌方回合复活满血。击倒和第三回合全玩家／怪物状态及九条 RNG 原版／预测一致，Passed：`.local/multiplayer-p2/obscura-illusion-revive-ad5858ba568e47a1be822d9ba08b48f9/peer-0/result.json`。主怪先死亡和其他随机招式未验。
 
-P2 共享随机敌人遗物：双人双敌 `Tingsha` 弃牌、`ForgottenSoul` 耗牌、`ParryingShield` 10 格挡结束回合分别只打中一名敌人，造成 3／1／6 伤害，三个边界全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/random-relic-hooks-assert-8d11c080bfc14a92a60d3199243f3aad/peer-0/result.json`。`Kusarigama` 本地三张攻击前两次各 6、第三次合计 12，逐次全状态／RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-target-1ba4e8ebebe947648e6f26b6b2b15b37/peer-0/result.json`；队友攻击计数和跨回合重置未验。
+P2 共享随机敌人遗物：双人双敌 `Tingsha` 弃牌、`ForgottenSoul` 耗牌、`ParryingShield` 10 格挡结束回合分别只打中一名敌人，造成 3／1／6 伤害，三个边界全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/random-relic-hooks-assert-8d11c080bfc14a92a60d3199243f3aad/peer-0/result.json`。`Kusarigama` 本地三张攻击前两次各 6、第三次合计 12，逐次全状态／RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-target-1ba4e8ebebe947648e6f26b6b2b15b37/peer-0/result.json`；队友攻击计数和跨回合重置见下文补充证据。
 
 P2 多人过滤生成池药水：双人 `SkillPotion`、`PowerPotion`、`ColorlessPotion` 原生三选一及 `OrobicAcid` 三类牌、`CosmicConcoction` 三张升级无色牌，均只枚举持有人自用候选；实际生成张数、牌主及队友手牌不变，完整状态／九条 RNG 差分 Passed。五个证据目录按药水名列于[多人内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)；三选一只覆盖第一项。
 
@@ -219,6 +219,8 @@ P2 共享随机敌人的球与能力：双人双敌 `LightningOrb` 回合结束�
 P2 Power 生成池：双人本地各施加 1 层 `CreativeAiPower`、`HelloWorldPower`、`SpectrumShiftPower`、`CallOfTheVoidPower` 后进入第二回合，四张新牌归持有人，队友手牌不变；全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/power-generation-pools-28f739c456b040ecad3bc8327516a516/peer-0/result.json`。另在独立根验证 `CalamityPower` 持有人打攻击后生成一张持有人攻击牌，全状态／九条 RNG Passed：`.local/multiplayer-p2/calamity-owner-generation-bd1a235a9367428a8073e83076ed002c/peer-0/result.json`。其他池结果和非持有者动作未验。
 
 P2 随机敌人 Power：双人双敌同根，`JuggernautPower` 随持有人得格挡随机打 3、`HauntPower` 随持有人打 `Soul` 随机打 4、`CountdownPower` 下一回合给一名随机敌人 5 Doom；三处原版／预测全状态和九条 RNG 差分 Passed：`.local/multiplayer-p2/random-power-hooks-3aa9cbd891574d8195c59390cea24618/peer-0/result.json`。更高叠层与死人目标变化未测。
+
+P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不增加本地计数，本地第三次仍触发；下一回合本地第一张攻击只造成普通伤害。交错出牌及跨回合完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。
 
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
 

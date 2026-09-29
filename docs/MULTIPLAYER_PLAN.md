@@ -755,3 +755,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 五项 Power 多人过滤生成池入口已按机制分两组验收：`CreativeAiPower`、`HelloWorldPower`、`SpectrumShiftPower`、`CallOfTheVoidPower` 在同一双人原生根从回合开始前各生成一张，`CalamityPower` 在另一个根由持有人攻击触发生成；均核对牌主、队友手牌、完整状态与九条 RNG，Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。未测所有随机池结果、非持有人触发及更多叠层；随机敌人流的 `JuggernautPower`、`CountdownPower`、`HauntPower` 证据见下段。
 
 上述三种随机敌人 Power 随后也在双人双敌同根依序验收：得格挡触发 `JuggernautPower` 3 伤害、打 `Soul` 触发 `HauntPower` 4 伤害、下回合 `CountdownPower` 随机施 5 Doom；每处全玩家／敌人状态与九条 RNG 均对齐，Passed：`.local/multiplayer-p2/random-power-hooks-3aa9cbd891574d8195c59390cea24618/peer-0/result.json`。这封闭各自首次触发的代表路径，不扩展到更多叠层或目标中途死亡。
+
+`Kusarigama` 又在双人双敌原生战斗中验队友插入攻击不增加持有人计数、本地第三击触发、下一回合重置；全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。此前同持有人三击证据保留，后续机制以这次包含交错与重置的输入为准。
