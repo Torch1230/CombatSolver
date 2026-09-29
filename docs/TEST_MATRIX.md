@@ -188,6 +188,10 @@ P2 战斗内多人生成遗物：`VexingPuzzlebox`、`OrangeDough`、`Toolbox`�
 
 P2 队友关联能力跨回合：`Intercept` 首次第二回合差分发现保护者／被保护者能力未按原版敌方回合结束清理；修复后双人全状态／完整 RNG Passed：`.local/multiplayer-p2/intercept-round-fixed-ecfc1cef8fdc435ab87d8ad6639b37ba/peer-0/result.json`。同一入口的 `Flanking`、`Knockdown` 两种敌方能力到第二回合也 Passed：`.local/multiplayer-p2/ally-attack-debuff-expiry-247fefdbb5774c30b1df63dd5203c463/peer-0/result.json`。另验 `Sneaky` 持有者在队友原生攻击后获得 1 格挡，完整状态／RNG Passed：`.local/multiplayer-p2/sneaky-teammate-attack-6674f7a9b4c44d6c8a47c97c85016f67/peer-0/result.json`。`Intercept` 保护者死亡路径、其他叠层与来源组合仍未测。
 
+P2 `Midnight` 跨玩家消耗历史：先两次本地消耗，费用 12→11→10 并原生出牌；新 Fork 内再消耗一张队友牌，然后本地生成新 `Midnight`，原版与预测费用均为 9。各步全部状态／完整 RNG Passed：`.local/multiplayer-p2/midnight-teammate-exhaust-5208e28eda814bf9b930a3b8a93a54c8/peer-0/result.json`。此前预测的卡牌入场镜像漏用累计消耗次数，现从根历史和 Fork 新增计数构成全战斗次数，计数进入 Fork 与状态键。更多跨回合历史未验。
+
+该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

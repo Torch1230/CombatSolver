@@ -24,7 +24,10 @@ internal sealed partial class SimulatedCombatState
         => _rootHistory.CardsDrawn.Count(entry => entry.Actor.Player == player);
 
     public void RecordCardExhausted(Creature actor)
-        => (_cardsExhaustedThisTurn ??= [])[actor] = GetCardsExhaustedThisTurn(actor) + 1;
+    {
+        (_cardsExhaustedThisTurn ??= [])[actor] = GetCardsExhaustedThisTurn(actor) + 1;
+        _cardsExhaustedAfterRoot++;
+    }
 
     public void RecordCardDiscarded(Creature actor)
         => (_cardsDiscardedThisTurn ??= [])[actor] = GetCardsDiscardedThisTurn(actor) + 1;
@@ -149,6 +152,9 @@ internal sealed partial class SimulatedCombatState
         Creature owner = preview.Owner.Creature;
         switch (preview)
         {
+            case Midnight midnight:
+                midnight.EnergyCost.AddThisCombat(-(_rootHistory.CardsExhausted.Length + _cardsExhaustedAfterRoot));
+                break;
             case BansheesCry bansheesCry:
             {
                 int etherealPlays = simulator.History.Entries

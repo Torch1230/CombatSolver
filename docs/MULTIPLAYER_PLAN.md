@@ -705,3 +705,7 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 四件使用多人过滤后生成池的遗物 `VexingPuzzlebox`、`OrangeDough`、`Toolbox`、`ChoicesParadox`，在双人第一回合分别从同根调用原版 Hook 与预测 Fork，手牌增量、生成牌归属、全状态和完整 RNG 均 Passed。后两者固定选原版第一项，`ChoicesParadox` 额外显式核对保留关键词；证据目录列于[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。这验证直接 Hook 效果，不宣称真实开战调用顺序或所有选项已验。首个合并探针在第二件遗物前因测试器误读成功返回值失败；根因修正后各项独立请求通过。
 
 `Intercept` 的敌方回合结束差分揭示预测未移除保护者和被保护者能力；按原版 `AfterSideTurnEnd` 修正逐实例移除后，双人到第二回合全状态／完整 RNG Passed。共用此入口的 `Flanking`、`Knockdown` 敌方能力也在同根到第二回合通过；`Sneaky` 持有者在队友攻击后得格挡的监听单独通过。证据及边界见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。保护者死亡路径尚未验证。
+
+`Midnight` 又补全战斗消耗历史：本地两次消耗逐次降费并打出后，新 Fork 中队友再消耗一张，随后本地生成的新 `Midnight` 应按原版降至 9 费。预测原先只镜像在场牌每次消耗的降费，漏掉新牌进入战斗时的历史累计；现把根历史与 Fork 内总消耗合并，纳入 Fork／状态键，所有边界的原版全状态／完整 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。
+
+同一源码下单人 1 秒短搜哨兵 Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`；这个输入不生成 `Midnight`，只用于核对通用搜索路径。

@@ -206,6 +206,7 @@ internal sealed partial class SimulatedCombatState
     private ForkableDictionary<Creature, int>? _blockCardsPlayedThisTurn;
     private ForkableDictionary<Creature, int>? _skillCardsPlayedThisTurn;
     private ForkableDictionary<Creature, int>? _cardsExhaustedThisTurn;
+    private int _cardsExhaustedAfterRoot;
     private ForkableSet<Creature>? _doomAppliersThisTurn;
     private ForkableSet<Creature>? _unblockedDamageThisTurn;
     private ForkableDictionary<Creature, int>? _cumulativeHpLost;
@@ -2322,6 +2323,7 @@ internal sealed partial class SimulatedCombatState
         AddCreatureIntMap(ref fingerprint, 'b', _blockCardsPlayedThisTurn);
         AddCreatureIntMap(ref fingerprint, 'l', _skillCardsPlayedThisTurn);
         AddCreatureIntMap(ref fingerprint, 'x', _cardsExhaustedThisTurn);
+        fingerprint.Add(_cardsExhaustedAfterRoot);
         AddCreatureSet(ref fingerprint, 'd', _doomAppliersThisTurn);
         AddCreatureSet(ref fingerprint, 'L', _unblockedDamageThisTurn);
         AddPoweredAttackHits(ref fingerprint, _poweredAttackHitsThisTurn);

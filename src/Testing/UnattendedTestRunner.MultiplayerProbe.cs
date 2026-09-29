@@ -72,6 +72,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyVisibleOverlayCapture { get; init; }
         public bool VerifyVisibleSettingsCapture { get; init; }
         public string ContentRelicId { get; init; } = "";
+        public bool VerifyMidnightExhaustHistory { get; init; }
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyPureSupport { get; init; }
@@ -184,6 +185,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.ContentRelicId.Length > 0 && (!input.IsVirtual || input.ContentCardIds.Length == 0
                     || input.ContentRelicId is not ("VEXING_PUZZLEBOX" or "ORANGE_DOUGH"
                         or "TOOLBOX" or "CHOICES_PARADOX"))
+                || input.VerifyMidnightExhaustHistory && (!input.IsVirtual
+                    || input.ContentCardIds.Length != 1 || input.ContentCardIds[0] != "MIDNIGHT")
                 || input.VerifyAllyAfterEnergyGain && !input.VerifyAllyTarget
                 || input.VerifyStarSupport && (!input.VerifySearch || !input.ContentSearchOnly
                     || !input.ContentCardIds.Contains("CONSTELLATION")

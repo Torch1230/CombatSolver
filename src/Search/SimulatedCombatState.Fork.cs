@@ -34,6 +34,7 @@ internal sealed partial class SimulatedCombatState
             _blockCardsPlayedThisTurn = _blockCardsPlayedThisTurn?.Fork(),
             _skillCardsPlayedThisTurn = _skillCardsPlayedThisTurn?.Fork(),
             _cardsExhaustedThisTurn = _cardsExhaustedThisTurn?.Fork(),
+            _cardsExhaustedAfterRoot = _cardsExhaustedAfterRoot,
             _doomAppliersThisTurn = _doomAppliersThisTurn?.Fork(),
             _unblockedDamageThisTurn = _unblockedDamageThisTurn?.Fork(),
             _cumulativeHpLost = _cumulativeHpLost?.Fork(),

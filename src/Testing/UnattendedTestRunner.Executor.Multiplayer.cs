@@ -1201,6 +1201,34 @@ internal sealed partial class UnattendedTestRunner
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
             UnattendedTestRunner.SetStars(actor, input.VerifyStarSupport ? 0 : 5);
+            if (input.VerifyMidnightExhaustHistory)
+            {
+                Midnight midnight = actor.PlayerCombatState!.Hand.Cards.OfType<Midnight>().Single();
+                for (int index = 0; index < 2; index++)
+                {
+                    CardModel toExhaust = (await UnattendedTestRunner.InjectCardAsync(combat, actor,
+                        new UnattendedCardInjection { CardId = "DEFEND_IRONCLAD", Pile = "Hand" })).Single();
+                    CombatRootSnapshot exhaustRoot = CombatRootSnapshot.Capture(combat);
+                    CombatPredictionSimulator exhaustSimulator = exhaustRoot.ForkSimulator();
+                    PredictedCard predictedDefend = exhaustSimulator.State.GetPlayerCombatState(actor).Hand.Cards
+                        .Single(card => ReferenceEquals(card.Original, toExhaust));
+                    exhaustSimulator.Exhaust(predictedDefend);
+                    SimulatedCombatState exhaustCombat = (SimulatedCombatState)exhaustSimulator.State.CombatState;
+                    if (!CombatBeamSolver.SettleReplayActionBoundary(exhaustSimulator, exhaustCombat))
+                        throw new InvalidOperationException("Midnight exhaust prediction did not settle.");
+                    ContinuationStamp predictedExhaust = ContinuationStamp.CapturePredicted(
+                        actor, exhaustSimulator, 1, exhaustRoot.Forecast, 1);
+                    await CardCmd.Exhaust(new ThrowingPlayerChoiceContext(), toExhaust);
+                    await runner.MultiplayerProbeBarrierAsync($"midnight-exhaust-{index}", combat);
+                    ContinuationStamp actualExhaust = ContinuationStamp.CaptureLive(combat);
+                    if (predictedExhaust != actualExhaust)
+                        throw new InvalidOperationException("Midnight exhaust differs: "
+                            + predictedExhaust.DescribeFirstDifference(actualExhaust));
+                    if (midnight.EnergyCost.GetAmountToSpend() != 11 - index)
+                        throw new InvalidOperationException("Midnight did not discount after a card exhaust.");
+                    runner._completedChecks.Add($"MultiplayerMidnight:Exhaust={index + 1}:Cost={11 - index}:FullState:FullRng");
+                }
+            }
             if (input.ContentRelicId.Length > 0)
             {
                     string relicId = input.ContentRelicId;
@@ -2067,6 +2095,38 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException("Transferred Ball was not drawn into the teammate's hand.");
                 await PlayTeammateCardAfterAsync("THE_BALL");
                 runner._completedChecks.Add("MultiplayerBall:Transfer:Draw:Replay:FullState:FullRng");
+            }
+            if (input.VerifyMidnightExhaustHistory)
+            {
+                Player teammate = combat.Players[input.ContentTargetSeat];
+                CardModel thirdExhaust = (await UnattendedTestRunner.InjectCardAsync(combat, teammate,
+                    new UnattendedCardInjection { CardId = "DEFEND_IRONCLAD", Pile = "Hand" })).Single();
+                CombatRootSnapshot entryRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator entrySimulator = entryRoot.ForkSimulator();
+                PredictedCard predictedThirdExhaust = entrySimulator.State.GetPlayerCombatState(teammate).Hand.Cards
+                    .Single(card => ReferenceEquals(card.Original, thirdExhaust));
+                entrySimulator.Exhaust(predictedThirdExhaust);
+                entrySimulator.CreateAndAddGeneratedCardsToCombat<Midnight>(
+                    actor, PileType.Hand, 1, actor);
+                SimulatedCombatState entryCombat = (SimulatedCombatState)entrySimulator.State.CombatState;
+                if (!CombatBeamSolver.SettleReplayActionBoundary(entrySimulator, entryCombat))
+                    throw new InvalidOperationException("Generated Midnight prediction did not settle.");
+                ContinuationStamp predictedEntry = ContinuationStamp.CapturePredicted(
+                    actor, entrySimulator, 1, entryRoot.Forecast, 1);
+                await CardCmd.Exhaust(new ThrowingPlayerChoiceContext(), thirdExhaust);
+                CardModel generated = combat.CreateCard(ModelDb.Card<Midnight>(), actor);
+                CardPileAddResult added = await CardPileCmd.AddGeneratedCardToCombat(
+                    generated, PileType.Hand, actor);
+                if (!added.success)
+                    throw new InvalidOperationException("Generated Midnight did not enter combat.");
+                await runner.MultiplayerProbeBarrierAsync("midnight-generated", combat);
+                ContinuationStamp actualEntry = ContinuationStamp.CaptureLive(combat);
+                if (predictedEntry != actualEntry)
+                    throw new InvalidOperationException("Generated Midnight differs: "
+                        + predictedEntry.DescribeFirstDifference(actualEntry));
+                if (generated.Owner != actor || generated.EnergyCost.GetAmountToSpend() != 9)
+                    throw new InvalidOperationException("Generated Midnight did not inherit combat exhaust history.");
+                runner._completedChecks.Add("MultiplayerMidnight:GeneratedAfterThreeExhausts:Cost=9:FullState:FullRng");
             }
             if (input.VerifyContentRound)
             {
