@@ -561,6 +561,50 @@ internal sealed partial class UnattendedTestRunner
                 }
                 await runner.MultiplayerProbeBarrierAsync("knights-upgraded-cards", combat);
             }
+            if (input.VerifyKnowledgeDemonChoiceBoundary)
+            {
+                bool stoppedAtExternalChoice = false;
+                try { _ = PredictMultiplayerRound(combat, scenario.Player); }
+                catch (NotSupportedException error) when
+                    (error.Message.Contains("每名玩家分别选择诅咒", StringComparison.Ordinal))
+                { stoppedAtExternalChoice = true; }
+                if (!stoppedAtExternalChoice)
+                    throw new InvalidOperationException("Knowledge Demon predicted teammates' unknown curse choices.");
+                using (CardSelectCmd.UseSelector(new UnattendedCardSelector(["__FIRST__"]), localOnly: false))
+                {
+                    var end = new EndPlayerTurnAction(scenario.Player, 1);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                    await end.CompletionTask;
+                    await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(member =>
+                        member.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                }
+                await runner.MultiplayerProbeBarrierAsync("knowledge-demon-native-choices", combat);
+                if (combat.Players.Any(member => !member.Creature.HasPower<DisintegrationPower>()))
+                    throw new InvalidOperationException("Knowledge Demon did not resolve each player's native choice.");
+                runner._completedChecks.Add("MultiplayerContent:KnowledgeDemon:ExternalChoiceBoundary:PerPlayerNativeChoice");
+                Creature demon = combat.Enemies.Single(creature => creature.Monster is KnowledgeDemon);
+                for (int turn = 2; turn <= 4; turn++)
+                {
+                    foreach (Player member in combat.Players)
+                        await UnattendedTestRunner.SetBlockAsync(member.Creature, 100);
+                    if (turn == 4)
+                        await CreatureCmd.SetCurrentHp(demon, demon.MaxHp - 80);
+                    ContinuationStamp prediction = PredictMultiplayerRound(combat, scenario.Player);
+                    var nextTurn = new EndPlayerTurnAction(scenario.Player, turn);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(nextTurn);
+                    await nextTurn.CompletionTask;
+                    int expectedTurn = turn + 1;
+                    await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(member =>
+                        member.PlayerCombatState is { Phase: PlayerTurnPhase.Play }
+                        && member.PlayerCombatState.TurnNumber == expectedTurn));
+                    await runner.MultiplayerProbeBarrierAsync($"knowledge-demon-turn-{expectedTurn}", combat);
+                    CheckPrediction(prediction, scenario.Player, $"KNOWLEDGE_DEMON_TURN_{expectedTurn}");
+                }
+                if (demon.CurrentHp != demon.MaxHp - 20)
+                    throw new InvalidOperationException("Knowledge Demon did not heal 30 HP per player.");
+                runner._completedChecks.Add("MultiplayerContent:KnowledgeDemon:PostChoiceThreeRounds:TwoPlayerHeal:FullState:FullRng");
+                return new ExecutionOutcome(false, 5, true, true, true, false);
+            }
             ContinuationStamp? roundPrediction = input.VerifyRoundDifferential
                 ? PredictMultiplayerRound(combat, scenario.Player) : null;
             foreach (Player player in input.IsVirtual ? new[] { scenario.Player } : combat.Players)
