@@ -1680,7 +1680,24 @@ internal sealed partial class UnattendedTestRunner
             Player joiningPlayer = combat.Players[1];
             await UnattendedTestRunner.InjectRelicAsync(hostPlayer,
                 new UnattendedRelicInjection { RelicId = "PAELS_EYE" });
+            if (input.VerifyEnetPaelsEyeBothOwners)
+                await UnattendedTestRunner.InjectRelicAsync(joiningPlayer,
+                    new UnattendedRelicInjection { RelicId = "PAELS_EYE" });
             await runner.MultiplayerProbeBarrierAsync("paels-eye-equipped", combat);
+            if (input.VerifyEnetPaelsEyeBothOwners)
+            {
+                Creature enemy = combat.Enemies.Single();
+                int enemyHp = enemy.CurrentHp;
+                if (input.Seat == 1)
+                {
+                    CardModel strike = joiningPlayer.PlayerCombatState!.Hand.Cards
+                        .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(
+                        new PlayCardAction(strike, enemy));
+                }
+                await runner.WaitForMultiplayerProbeAsync(() => enemy.CurrentHp == enemyHp - 6);
+                await runner.MultiplayerProbeBarrierAsync("paels-eye-joining-play", combat);
+            }
             string readySignal = Path.Combine(input.CoordinationDirectory, "peer-0", "paels-eye-predicted.signal");
             ContinuationStamp? prediction = null;
             if (input.Seat == 0)
@@ -1714,6 +1731,12 @@ internal sealed partial class UnattendedTestRunner
                     + prediction?.DescribeFirstDifference(actual)
                     + $" round={combat.RoundNumber} host={hostPlayer.PlayerCombatState?.Phase}/{hostPlayer.PlayerCombatState?.TurnNumber}"
                     + $" join={joiningPlayer.PlayerCombatState?.Phase}/{joiningPlayer.PlayerCombatState?.TurnNumber}");
+            if (input.VerifyEnetPaelsEyeBothOwners)
+            {
+                PaelsEye joiningEye = joiningPlayer.Relics.OfType<PaelsEye>().Single();
+                if (joiningEye._wasOwnerPartOfLastPlayerTurn || joiningEye._usedThisCombat)
+                    throw new InvalidOperationException("Excluded Pael's Eye owner retained extra-turn eligibility.");
+            }
             runner._completedChecks.Add($"MultiplayerPaelsEye:Enet:Seat={input.Seat}:OwnerOnlyExtraTurn:FullState:FullRng");
             string followingSignal = Path.Combine(input.CoordinationDirectory,
                 "peer-0", "paels-eye-following-predicted.signal");
@@ -1748,6 +1771,12 @@ internal sealed partial class UnattendedTestRunner
                     + followingPrediction?.DescribeFirstDifference(followingActual)
                     + $" round={combat.RoundNumber} host={hostPlayer.PlayerCombatState?.Phase}/{hostPlayer.PlayerCombatState?.TurnNumber}"
                     + $" join={joiningPlayer.PlayerCombatState?.Phase}/{joiningPlayer.PlayerCombatState?.TurnNumber}");
+            if (input.VerifyEnetPaelsEyeBothOwners)
+            {
+                PaelsEye joiningEye = joiningPlayer.Relics.OfType<PaelsEye>().Single();
+                if (!joiningEye._wasOwnerPartOfLastPlayerTurn || joiningEye._usedThisCombat)
+                    throw new InvalidOperationException("Returning Pael's Eye owner did not regain turn eligibility.");
+            }
             runner._completedChecks.Add($"MultiplayerPaelsEye:Enet:Seat={input.Seat}:FollowingSharedRound:FullState:FullRng");
             return new ExecutionOutcome(false, 3, true, true, true, false);
         }

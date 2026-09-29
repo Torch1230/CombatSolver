@@ -317,6 +317,18 @@ internal sealed partial class SimulatedCombatState
         CombatSide side,
         IReadOnlyList<Creature> participants)
     {
+        if (side == CombatSide.Player)
+        {
+            foreach (Player member in Players)
+            foreach (PaelsEye eye in RelicsOf(member).OfType<PaelsEye>()
+                         .Where(static relic => !relic.IsMelted))
+            {
+                StatefulRelicState state = GetStatefulRelicState(eye);
+                if (state.Current == 0)
+                    SetStatefulRelicState(eye,
+                        state with { Previous = participants.Contains(member.Creature) ? 1 : 0 });
+            }
+        }
         foreach (RelicModel relic in RelicsParticipatingInSideTurn(participants))
         {
             int turn = GetPlayerTurnNumber(relic.Owner);
@@ -406,12 +418,6 @@ internal sealed partial class SimulatedCombatState
                             .GetUnlockedCards(relic.Owner.UnlockState, _cardMultiplayerConstraint),
                         relic.DynamicVars.Cards.IntValue);
                     break;
-                case PaelsEye:
-                {
-                    StatefulRelicState state = GetStatefulRelicState(relic);
-                    SetStatefulRelicState(relic, state with { Previous = 1 });
-                    break;
-                }
                 case PaelsTears:
                 {
                     StatefulRelicState state = GetStatefulRelicState(relic);

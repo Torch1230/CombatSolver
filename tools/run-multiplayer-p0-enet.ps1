@@ -7,6 +7,7 @@ param(
     [switch]$VerifyControllerAutoNextTurn,
     [switch]$VerifyControllerRngDrift,
     [switch]$VerifyPaelsEyeExtraTurn,
+    [switch]$VerifyPaelsEyeBothOwners,
     [ValidateRange(0, 16)]
     [int]$SearchMaxDegreeOfParallelismForTest = 0
 )
@@ -20,6 +21,9 @@ if ($VerifyControllerRngDrift -and ($PlayerCount -ne 2 -or $VerifyControllerFull
 }
 if ($VerifyPaelsEyeExtraTurn -and ($PlayerCount -ne 2 -or $VerifyControllerFullAuto -or $VerifyControllerRngDrift)) {
     throw 'VerifyPaelsEyeExtraTurn requires two players and scripted execution.'
+}
+if ($VerifyPaelsEyeBothOwners -and !$VerifyPaelsEyeExtraTurn) {
+    throw 'VerifyPaelsEyeBothOwners requires VerifyPaelsEyeExtraTurn.'
 }
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $session = Join-Path $repositoryRoot ('.local/multiplayer-p0/enet-' + $PlayerCount + '-' + [Guid]::NewGuid().ToString('N'))
@@ -41,6 +45,7 @@ foreach ($seat in 0..($PlayerCount - 1)) {
         verifyControllerAutoNextTurn = [bool]$VerifyControllerAutoNextTurn
         verifyEnetControllerRng = [bool]$VerifyControllerRngDrift
         verifyEnetPaelsEyeExtraTurn = [bool]$VerifyPaelsEyeExtraTurn
+        verifyEnetPaelsEyeBothOwners = [bool]$VerifyPaelsEyeBothOwners
     } | ConvertTo-Json | Set-Content -LiteralPath $input -Encoding utf8
     $instance = 'mp-p0-' + [Guid]::NewGuid().ToString('N')
     $arguments = @(

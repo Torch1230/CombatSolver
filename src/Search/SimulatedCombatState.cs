@@ -1306,6 +1306,19 @@ internal sealed partial class SimulatedCombatState
     public void BeginSideTurn(Creature owner)
     {
         ResetCardLifecycleTurn(owner);
+        ResetTurnHistoryForOwner(owner);
+    }
+
+    public void BeginExcludedPlayerSideTurn(Player player)
+    {
+        ResetTurnCounter(ref _cardsPlayedThisTurn, player.Creature);
+        ResetTurnCounter(ref _manualCardsPlayedThisTurn, player.Creature);
+        _fetchCardsPlayedThisTurn?.Clear();
+        ResetTurnHistoryForOwner(player.Creature);
+    }
+
+    private void ResetTurnHistoryForOwner(Creature owner)
+    {
         ResetTurnCounter(ref _attacksPlayedThisTurn, owner);
         ResetTurnCounter(ref _shivsPlayedThisTurn, owner);
         ResetTurnCounter(ref _blockCardsPlayedThisTurn, owner);

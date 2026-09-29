@@ -788,6 +788,8 @@ P2 `HibernatePower` 与 `FrostOrb` 的真正跨玩家效果又在虚拟双人原
 
 随后 `.local/multiplayer-p0/enet-2-96cc93775d044a29a460040c6617760d/` 两端原生额外回合状态及九条 RNG 相同，房主持有人进入 `Play/2`，队友保持 `Start/1`，但预测错把队友阶段置为 `End`。按原版 `StartTurn` 给全部玩家设 `Start` 后，`.local/multiplayer-p0/enet-2-ce836a8b0217497da128449256de05c0/` 继续发现预测保留队友上一回合手牌。根因是把“下一额外回合参与者”误用于“当前共同回合结束者”；原版先结束并清空当前全部玩家手牌，随后才确定下一额外回合参与者。现从原生根捕获当前参与者，Fork 时保留并写入多人状态键；回合末按当前参与者结算，回合开始再更新下一参与者。
 
-最终双人 ENet `.local/multiplayer-p0/enet-2-18a7ba08e08442f6b5fc2c9cbfac17cb/peer-0/result.json` 与 `peer-1/result.json` 均 `Passed`：房主第 2 回合独自行动、队友仍第 1 回合，随后房主结束额外回合并经历敌方回合，两人进入普通回合 `Play/3` 与 `Play/2`。两个边界的原版／预测完整状态和九条 RNG 对齐，两端原生状态、玩家阶段与九条 RNG 也逐检查点一致。此项覆盖一名持有人、双人首回合零出牌和一次后续普通回合；多持有人及其他额外回合来源未验。
+最终双人 ENet `.local/multiplayer-p0/enet-2-18a7ba08e08442f6b5fc2c9cbfac17cb/peer-0/result.json` 与 `peer-1/result.json` 均 `Passed`：房主第 2 回合独自行动、队友仍第 1 回合，随后房主结束额外回合并经历敌方回合，两人进入普通回合 `Play/3` 与 `Play/2`。两个边界的原版／预测完整状态和九条 RNG 对齐，两端原生状态、玩家阶段与九条 RNG 也逐检查点一致。此项覆盖一名持有人、双人首回合零出牌和一次后续普通回合；双持有人分支见下文，其他额外回合来源未验。
 
-本次行为源码的 Release 构建 0 警告／0 错误，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=239`；Bash ENet 入口仅做语法检查，未在 Linux 启动游戏。最终 DLL 已覆盖本地 Mod，源文件与部署文件 SHA-256 同为 `26473CED7C1DDB61820CE246DFD713D3120D93B5367FB9FDA514D09EDE1C8A2F`。无头测试进程与实例均已退出清理。本项通过不表示第 9 节其他未勾选条件已完成。
+本次行为源码的 Release 构建 0 警告／0 错误，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=239`；Bash ENet 入口仅做语法检查，未在 Linux 启动游戏。最终 DLL 已覆盖本地 Mod，源文件与部署文件 SHA-256 同为 `0E997D21D5DA0679E79F8A89C0CF499861AB11A11352E224F9A9139E2AC7EBE9`。无头测试进程与实例均已退出清理。本项通过不表示第 9 节其他未勾选条件已完成。
+
+再验原版 `PaelsEye` 注释中特指的双持有人场景：房主与加入者各持有一枚，加入者先原生打 `Strike`，房主零出牌触发独自额外回合。初试 `.local/multiplayer-p0/enet-2-17834e2d7eb14018aa43740ade12e6e7/peer-0/result.json` 在全状态差分发现预测仍保留被排除队友上一共同回合的出牌历史，原版已重置；原版 `AfterSideTurnStart` 还对未参与者的 `PaelsEye` 写入“上一玩家回合未参与”。现按全体玩家更新该遗物的参与标记，并在额外玩家回合开始清空被排除玩家的本回合历史计数，仍只对实际参与者执行能力回合生命周期。修正后 `.local/multiplayer-p0/enet-2-63c67f84932b41f6ad578241f830edfd/peer-0/result.json` 与 `peer-1/result.json` 均 `Passed`：加入者遗物在被排除时保持未使用、参与标记为假，恢复共同回合后参与标记为真；两端原生状态及九条 RNG、原版／预测两个回合边界的完整状态及九条 RNG 全部对齐。这只覆盖两人各持有一枚且仅房主触发第一额外回合，不代表所有额外回合来源已验。

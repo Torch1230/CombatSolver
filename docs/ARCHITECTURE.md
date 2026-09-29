@@ -1,6 +1,6 @@
 # CombatSolver 架构与职责地图
 
-多人开发分支已跑通虚拟 2／4 人、双端／四端本机 ENet 原生链路，以及双人对端不加载 CombatSolver 的代表场景；生产本地搜索、部署和多人界面已有定向证据。双端 ENet 的 `PaelsEye` 持有人额外回合及下一普通回合已做完整状态／RNG 差分。模拟根记录当前玩家回合的参与者，回合末按这组玩家结算，再为下一回合更新参与者；Fork 和多人状态键保留该身份。`UnattendedTestRequest.MultiplayerProbePath` 传入测试配置，`ScenarioBuilder.Multiplayer` 建虚拟或 ENet 战斗，`Executor.Multiplayer` 驱动原生动作与选牌，`MultiplayerProbe` 管理座位、协调与检查点；文件写入复用 `Writer`。内容闭包、其他额外回合来源、Steam 房间、真实网络延迟和 Linux 游戏运行尚未验收，具体状态见[多人实施规划](MULTIPLAYER_PLAN.md)与[测试矩阵](TEST_MATRIX.md)。
+多人开发分支已跑通虚拟 2／4 人、双端／四端本机 ENet 原生链路，以及双人对端不加载 CombatSolver 的代表场景；生产本地搜索、部署和多人界面已有定向证据。双端 ENet 的 `PaelsEye` 单／双持有人额外回合及下一普通回合已做完整状态／RNG 差分。模拟根记录当前玩家回合的参与者，回合末按这组玩家结算，再为下一回合更新参与者；Fork 和多人状态键保留该身份。未参与额外回合的玩家清空本回合历史计数，其个人能力生命周期仍由实际参与身份控制。`UnattendedTestRequest.MultiplayerProbePath` 传入测试配置，`ScenarioBuilder.Multiplayer` 建虚拟或 ENet 战斗，`Executor.Multiplayer` 驱动原生动作与选牌，`MultiplayerProbe` 管理座位、协调与检查点；文件写入复用 `Writer`。内容闭包、其他额外回合来源、Steam 房间、真实网络延迟和 Linux 游戏运行尚未验收，具体状态见[多人实施规划](MULTIPLAYER_PLAN.md)与[测试矩阵](TEST_MATRIX.md)。
 
 `CombatPredictionHistory` 拥有模拟历史及六项累计值；单人身份在模拟器建立时冻结，三类 Fork 按值继承。`CombatHistoryCounterKey` 消费根冻结的读者依赖掩码，不维护第二份账本。测试构建逐事件核对独立全扫描。
 

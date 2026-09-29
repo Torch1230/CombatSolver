@@ -33,6 +33,9 @@ internal sealed partial class CombatBeamSolver
             simulatedCombat.AdvancePlayerTurn(member);
         foreach (Creature creature in startingCreatures)
             simulatedCombat.BeginSideTurn(creature);
+        foreach (Player member in simulatedCombat.Players)
+            if (!startingPlayers.Contains(member))
+                simulatedCombat.BeginExcludedPlayerSideTurn(member);
         simulatedCombat.SnapshotPowerAmountsAtTurnStart(startingCreatures);
 
         if (!CombatSolver.Engine.InCombat.Mirrors.HookMirrors.BeforeSideTurnStart(

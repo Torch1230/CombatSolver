@@ -248,6 +248,8 @@ P1 `PaelsEye` 虚拟双人额外回合探针未通过：注入持有人遗物后
 
 双进程 ENet `PaelsEye` 已通过：`.local/multiplayer-p0/enet-2-18a7ba08e08442f6b5fc2c9cbfac17cb/peer-0/result.json`、`peer-1/result.json` 均 `Passed`。两端逐检查点核对原生完整状态、玩家阶段和九条 RNG；原版／预测差分确认房主独自进入额外回合 `Play/2`、队友保持 `Start/1`，随后额外回合结束、敌方行动，两人进入普通回合 `Play/3` 与 `Play/2`。该测试先后暴露客户端动作实例等待错误、预测把非参与者置为 `End`、预测错误保留队友手牌；对应失败与修复链见[规划最新记录](MULTIPLAYER_PLAN.md)。先前内存准入失败的证据仍为 `.local/multiplayer-p0/enet-2-83af4982d6bd4723865877d37710f5c1/`。Windows 与 Bash 入口均支持探针；Bash 只做语法检查，Linux 游戏未运行。
 
+双持有人 `PaelsEye` 独立分支也已通过：`.local/multiplayer-p0/enet-2-63c67f84932b41f6ad578241f830edfd/peer-0/result.json`、`peer-1/result.json` 均 `Passed`。加入者先打攻击牌，房主独自进入额外回合；加入者遗物的“上一回合参与”标记变假且仍未使用，回到共同回合后变真。被排除队友的上一回合出牌历史不再污染预测；两端原生检查点和原版／预测完整状态、九条 RNG 均一致。修正前首次差分在 `.local/multiplayer-p0/enet-2-17834e2d7eb14018aa43740ade12e6e7/peer-0/result.json` 失败，根因记录见规划。
+
 P2 `HibernatePower`／`FrostOrb` 跨玩家格挡：双人本地球主的霜球被动让两名玩家各得 2 格挡，激发让两人各再得 5，队友没有球、持有人队列清空；两次原版／预测全状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/frost-hibernate-both-players-a809108ca0b64db19510bc03387da4ad/peer-0/result.json`。能力和球由夹具施加，跨回合能力递减未验。
 
 ## 多人 P1 普通状态差分（2026-09-28）
