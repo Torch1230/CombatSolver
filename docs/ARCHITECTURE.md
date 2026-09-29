@@ -1,6 +1,6 @@
 # CombatSolver 架构与职责地图
 
-多人 P0 测试原型：`UnattendedTestRequest.MultiplayerProbePath` 由两端无人脚本传入，`ScenarioBuilder.Multiplayer` 拥有虚拟／ENet 建局，`Executor.Multiplayer` 拥有脚本动作与原生选牌作用域，`MultiplayerProbe` 保存测试配置、大厅回调和跨进程检查点；文件写入复用 `Writer`。目前只编译通过，原生运行及结构门禁待验证，生产搜索仍限制单人。交接入口见 [多人实施规划](MULTIPLAYER_PLAN.md)。
+多人开发分支已跑通虚拟 2／4 人、双端／四端本机 ENet 原生链路，以及双人对端不加载 CombatSolver 的代表场景；生产本地搜索、部署和多人界面已有定向证据。`UnattendedTestRequest.MultiplayerProbePath` 传入测试配置，`ScenarioBuilder.Multiplayer` 建虚拟或 ENet 战斗，`Executor.Multiplayer` 驱动原生动作与选牌，`MultiplayerProbe` 管理座位、协调与检查点；文件写入复用 `Writer`。内容闭包、额外回合、Steam 房间、真实网络延迟和 Linux 游戏运行尚未验收，具体状态见[多人实施规划](MULTIPLAYER_PLAN.md)与[测试矩阵](TEST_MATRIX.md)。
 
 `CombatPredictionHistory` 拥有模拟历史及六项累计值；单人身份在模拟器建立时冻结，三类 Fork 按值继承。`CombatHistoryCounterKey` 消费根冻结的读者依赖掩码，不维护第二份账本。测试构建逐事件核对独立全扫描。
 
@@ -383,7 +383,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 状态键的历史依赖由主线程 `CombatRootSnapshot.HistoryDependencies` 冻结：全部战斗牌（含消耗堆）按读者选择六类计数中的必要项；活动随机生成、变牌、间接生成药水、可能独立于原卡存活的 Nightmare 保存副本以及第三方模型/订阅者/OnPlay 适配保守使用全部六项，覆盖未来读者。`CombatHistoryCounterKey` 的开放生成来源表须与新增原版生成入口同步；固定衍生牌与复制现有牌不引入新的读者类型。分支只读取增量历史和不可变掩码，根之前的历史恒定。
 
-多人状态键按 NetId 追加每名玩家的回合、生命、资源、有序牌堆与球，逐卡指纹含持有人身份；`ContinuationStamp` 对应记录逐玩家状态、Power 施加者／目标及九条 RNG。已在普通 2／4 人动作和回合差分中核对，复杂 Hook／选择生命周期仍须验证。
+多人根在主线程冻结所有玩家及共享敌人状态；`CombatPredictionSimulator` 与 `SimulatedCombatState` 在同一 Fork 中保留玩家身份、牌主、能力来源和跨玩家引用。状态键按 NetId 记录各玩家回合、生命、资源、有序牌堆与球，逐卡指纹含持有人身份；`ContinuationStamp` 逐玩家对账、保留 Power 施加者／目标和九条 RNG。`CombatBeamSolver` 只扩展本地玩家动作，队友目标在合法存活玩家中固定选择；`CombatBeamSolver.MultiplayerSupport` 在主路线后按余费尝试纯支援。`SolverController` 从新根重评估原动作序列并逐步部署当前回合，`SolverOverlaySnapshot`／`SolverOverlay` 展示方案、目标和过期提示，设置由 `SolverSettings`／`SolverSettingsPanel.Performance` 保存与编辑。已有普通 2／4 人、专用卡代表及联机控制器证据；未覆盖的具体原版分支与外部环境见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)和[多人实施规划](MULTIPLAYER_PLAN.md)。
 
 “预知战后药水奖励”是常规设置的显式开关，默认关闭；关闭时根不读取奖励 RNG 前景，所有搜索层取得零折抵，摘要也不显示预测。设置冻结进请求政策和路线缓存键；切换时废弃旧续用并重新计算或提示手动重算。开启时根捕获后立即在搜索中的路线摘要显示掉落结论，候选刷新继续保留；完整获胜路线的结果也显示相同结论。零成本药水维持零门槛，不被折抵函数抬高。`BattleDamageTracker` 冻结本场已用药水身份，终局精确回放冻结后续消耗身份；`SolverResult` 只保留字符串数组，续用按已消费数量切分，UI 投影本地化药名并分别显示已用/后续用药。
 
