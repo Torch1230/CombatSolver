@@ -743,3 +743,5 @@ P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，�
 又补受伤提前唤醒：测试注入睡眠 1 层并清除甲虫格挡，双人本地打 `Strike` 后预排 `STUNNED`，下一敌方回合移除镀层；两个稳定边界的全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/beetle-damage-stun-round-cfe4ccec565b479fa2828a6bc2bfed06/peer-0/result.json`。这补足甲虫两种苏醒入口；睡眠层数是夹具注入。
 
 最新行为提交 `35c15e7d`，当前工作区在随后文档提交后为干净状态。该提交的 Release 构建 0 警告／0 错误、Windows 结构门禁通过，最终 DLL 已覆盖本地 Mod 且哈希一致。恢复后继续未完成的内容闭包及第 9 节验收，不复跑已通过的甲虫场景。
+
+P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围：虚拟双人直接把队友生命置 0 后，本地原版出牌仍给两名玩家各 3 层能力；原版／预测全状态和九条 RNG 差分 Passed：`.local/multiplayer-p2/one-for-all-dead-ally-e1e846c834dc4fe4bf9ce34db069c4b3/peer-0/result.json`。这验证 `OneForAll` 的原版遍历行为，未实际杀死队友或覆盖死亡 Hook。

@@ -107,6 +107,28 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Probe requires an enemy surviving all scripted attacks.");
             if (CardSelectCmd.Selector != null || CardSelectCmd.LocalSelector != null)
                 throw new InvalidOperationException("Probe requires exclusive ownership of the test selector.");
+            if (input.VerifyDeadAllyGroupPower)
+            {
+                Player actor = scenario.Player;
+                Player teammate = combat.Players.Single(player => player != actor);
+                teammate.Creature.SetCurrentHpInternal(0);
+                await UnattendedTestRunner.InjectCardAsync(combat, actor,
+                    new UnattendedCardInjection { CardId = "ONE_FOR_ALL", Pile = "Hand" });
+                ContinuationStamp groupPrediction = PredictOrdinaryCard(actor, "ONE_FOR_ALL", null);
+                CardModel groupCard = actor.PlayerCombatState!.Hand.Cards.Single(card =>
+                    card.Id.Entry == "ONE_FOR_ALL");
+                var play = new PlayCardAction(groupCard, null);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(play);
+                await play.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("dead-ally-group-power", combat);
+                CheckPrediction(groupPrediction, actor, "DEAD_ALLY_GROUP_POWER");
+                if (!teammate.Creature.IsDead
+                    || actor.Creature.GetPowerAmount<OneForAllPower>() != 3
+                    || teammate.Creature.GetPowerAmount<OneForAllPower>() != 3)
+                    throw new InvalidOperationException("One For All did not apply to every original player.");
+                runner._completedChecks.Add("MultiplayerContent:OneForAll:DeadAllyIncluded:FullState:FullRng");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyBeetleDamageWake)
             {
                 Creature beetle = combat.Enemies.Single(creature => creature.Monster is SlumberingBeetle);
