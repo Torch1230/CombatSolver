@@ -1,6 +1,6 @@
 # 多人原版内容工作清单
 
-状态：P0 盘点中，尚未封闭。原版依据为本机只读反编译 `sts2-v0.111.0/MegaCrit/sts2/Core/Models/`，游戏运行版本也由 P0 原生请求核为 `0.111.0`。本表记录源码调查，不表示预测实现或差分已经通过。正式验收逐项补齐“原版入口 → 唯一模拟入口 → 状态所有者／Fork → 基础及升级差分 → 实际结果”。
+状态：37 张多人专用卡的基础／升级即时差分及相关多人机制代表已完成；当前验收结论和环境限制以[多人规划第 9 节](MULTIPLAYER_PLAN.md#9-完成条件与记录方式)为准。原版依据为本机只读反编译 `sts2-v0.111.0/MegaCrit/sts2/Core/Models/`，运行版本为 `0.111.0`。本表保留各机制的原版入口、模拟入口和差分证据。
 
 ## 直接声明 MultiplayerOnly 的 37 张卡
 
@@ -221,7 +221,7 @@ Power 目录补扫还发现战斗内多人过滤牌池入口 `SpectrumShiftPower
 | 目标玩家能力引用 | `ImitationLearning` | `.local/multiplayer-p2/imitation-base-5917619007294ba7a7499b7a2883e2d1/peer-0/`；`.local/multiplayer-p2/imitation-upgrade-8c82f81ae4114de398198a2175eca041/peer-0/` |
 | 队友原生选牌 | `Tutor` | `.local/multiplayer-p2/tutor-base-a97afa936b3c4b3b94b418eb882736f5/peer-0/`；`.local/multiplayer-p2/tutor-upgrade-481f242390d34d10bef949f5d08734d9/peer-0/` |
 
-上述二十二次成功请求状态均为 Passed。上述即时批次未包含 `GangUp` 的队友先行攻击历史和 `Knockdown` 的队友后续攻击；`TheBall` 此批只打出一次；`Midnight` 没有消耗历史；`ImitationLearning` 没有后续复制能力牌。持续能力仅验施加后的状态，不代表格挡、抽牌、锻造、死亡、打牌、伤害或球的后续监听通过。`Tutor` 已验队友原生选牌的结果，但搜索仍无法评价队友的未知选牌，遇到该候选明确失败。另有四人敌方能力缩放代表差分，见上文。37 张专用卡的即时效果已有基础／升级代表证据，内容清单、关联普通卡、怪物、遗物与药水尚未封闭。
+上述二十二次成功请求状态均为 Passed。即时批次未包含 `GangUp` 的队友先行攻击历史和 `Knockdown` 的队友后续攻击；`TheBall` 此批只打出一次；`Midnight` 没有消耗历史；`ImitationLearning` 没有后续复制能力牌。这些后续机制的独立证据见下文。`Tutor` 的生产搜索与执行证据见[测试矩阵](TEST_MATRIX.md)；队友未知选择仍是明确预测边界。其他持续能力和关联内容的机制级结论同样以下文及规划第 9 节为准。
 
 后续机制代表补了 `BeaconOfHope` 格挡传播、`Soulbound` 生成联动、`GangUp` 队友伤害历史、`Concoct`／`Underworld`／`Flanking`／`Knockdown`／`TagTeam` 与队友攻击相互作用，以及 `Hibernate`／`Plot`／`Tank`／`Underworld` 到第二回合的结算；均通过所构造虚拟双人原生差分，具体证据见[规划 0.6 节](MULTIPLAYER_PLAN.md)。这并未覆盖所有叠加、死亡、选牌、特殊回合或怪物组合。
 

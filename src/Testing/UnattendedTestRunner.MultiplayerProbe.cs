@@ -60,8 +60,10 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyControllerTeammateKillsTarget { get; init; }
         public bool VerifyControllerMidDeploymentKill { get; init; }
         public bool VerifyControllerMidDeploymentDamage { get; init; }
+        public bool VerifyControllerProjectedDeathContinuation { get; init; }
         public bool VerifyControllerMidDeploymentRng { get; init; }
         public bool VerifyEnetControllerRng { get; init; }
+        public bool VerifyEnetTutorChoice { get; init; }
         public bool VerifyEnetPaelsEyeExtraTurn { get; init; }
         public bool VerifyEnetPaelsEyeBothOwners { get; init; }
         public bool VerifyControllerManualTakeover { get; init; }
@@ -156,6 +158,9 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifyControllerTeammateKillsTarget && !input.VerifyControllerTeammateDrift
                 || input.VerifyControllerMidDeploymentKill && !input.VerifyControllerDeploy
                 || input.VerifyControllerMidDeploymentDamage && !input.VerifyControllerDeploy
+                || input.VerifyControllerProjectedDeathContinuation
+                    && (!input.IsVirtual || input.PlayerCount != 2
+                        || !input.VerifyControllerSearch || !input.VerifyControllerDeploy)
                 || input.VerifyControllerMidDeploymentRng && !input.VerifyControllerDeploy
                 || input.VerifyControllerManualTakeover && !input.VerifyControllerDeploy
                 || input.VerifyControllerSearchCancel && input.VerifyControllerSearch
@@ -189,6 +194,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.VerifySegmentReattachAfterRound && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyHeistRecoveryAfterRound && !input.VerifyMonsterDeathAfterRound
                 || input.VerifyEnetControllerRng && (input.IsVirtual || input.PlayerCount != 2)
+                || input.VerifyEnetTutorChoice && (input.IsVirtual || input.PlayerCount != 2 || input.Seat != 0
+                    || input.VerifyEnetControllerRng || request.EncounterId != "FUZZY_WURM_CRAWLER_WEAK")
                 || input.VerifyEnetPaelsEyeExtraTurn && (input.IsVirtual || input.PlayerCount != 2
                     || request.EncounterId != "FUZZY_WURM_CRAWLER_WEAK")
                 || input.VerifyEnetPaelsEyeBothOwners && !input.VerifyEnetPaelsEyeExtraTurn

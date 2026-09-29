@@ -90,8 +90,17 @@ internal sealed partial class UnattendedTestRunner
                         cardIds[2] = "LARGESSE";
                     if (input.VerifyEnetControllerRng && ReferenceEquals(player, run.Players[1]))
                         cardIds[2] = "LARGESSE";
+                    if (input.VerifyEnetTutorChoice && ReferenceEquals(player, run.Players[0]))
+                        cardIds = ["TUTOR"];
                     foreach (string cardId in cardIds)
                         await InjectRunCardAsync(run, player, new UnattendedCardInjection { CardId = cardId });
+                    if (input.VerifyEnetTutorChoice && ReferenceEquals(player, run.Players[1]))
+                    {
+                        await InjectRunCardAsync(run, player,
+                            new UnattendedCardInjection { CardId = "BASH" });
+                        await InjectRunCardAsync(run, player,
+                            new UnattendedCardInjection { CardId = "DEFEND_IRONCLAD" });
+                    }
                 }
             }
             runner._writer.WriteGeneratedArtifact("environment.json", new

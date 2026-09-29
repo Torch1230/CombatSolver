@@ -424,6 +424,7 @@
   "启动 · 持续收益估值 {0:F0}": "Setup · persistent value {0:F0}",
   "战斗状态已变化，请重新计算多人方案。": "Combat state changed. Recalculate multiplayer plans.",
   "[color={0}]条件预测：队友后续不主动出牌；仅安排自己的动作。[/color]": "[color={0}]Conditional forecast: teammates take no further voluntary actions; only your actions are planned.[/color]",
+  "等待队友选牌，结果确定后重算": "Waiting for teammate's card choice; recalculate after it resolves.",
   "等待当前原生动作结算后再执行。": "Wait for the current native action to settle before executing.",
   "原路线在当前状态已失效，未执行。请重新计算。": "The original route is invalid in the current state and was not executed. Recalculate.",
   "原路线已在当前状态重评估": "Original route re-evaluated in the current state",

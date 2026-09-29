@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
 
@@ -58,12 +60,27 @@ internal sealed partial class CombatBeamSolver
                             CardChoiceSupport.ChoiceCardKey(prior) == stateKey),
                         CardEnchantmentId: card.Preview.Enchantment?.Id.Entry ?? "",
                         CardUpgradeLevel: card.Preview.CurrentUpgradeLevel);
-                    PlanAction[] insertedActions = [.. actions.Take(insertAt), support, .. actions.Skip(insertAt)];
+                    bool teammateChoice = card.Preview is Tutor;
+                    if (teammateChoice
+                        && card.GetEnergyCostWithModifiers(simulator,
+                            simulator.State.GetPlayerCombatState(_player)) > 0
+                        && !PersistentRelicSupport.ShouldPlayerResetEnergy(
+                            (SimulatedCombatState)simulator.State.CombatState, _player))
+                        continue;
+                    PlanAction[] insertedActions = teammateChoice
+                        ? [.. actions.Take(insertAt), support]
+                        : [.. actions.Take(insertAt), support, .. actions.Skip(insertAt)];
                     SearchNode? inserted = ReplayAdjustedRoute(insertedActions,
                         original.GetTurnSetupChoices(), original.GetTurnSetupPlayState(), originalAnnotations);
                     if (inserted == null)
                         continue;
-                    bool accepted = !inserted.Snapshot.PlayerDead
+                    bool accepted = teammateChoice
+                        ? inserted.Snapshot.BoundaryReason == SearchBoundaryReason.PendingChoice
+                          && !inserted.Snapshot.PlayerDead
+                          && inserted.Snapshot.PlayerHp >= prefix.PlayerHp
+                          && inserted.Snapshot.CumulativePlayerHpLost <= prefix.CumulativePlayerHpLost
+                          && inserted.Snapshot.Stars >= prefix.Stars
+                        : !inserted.Snapshot.PlayerDead
                         && inserted.Snapshot.ProjectedPlayerHp >= original.Snapshot.ProjectedPlayerHp
                         && inserted.Snapshot.PlayerHp >= original.Snapshot.PlayerHp
                         && inserted.Snapshot.CumulativePlayerHpLost <= original.Snapshot.CumulativePlayerHpLost
@@ -111,10 +128,11 @@ internal sealed partial class CombatBeamSolver
             return null;
         try
         {
-            if (replayed.Snapshot.HasRisk || replayed.Snapshot.BoundaryReason != SearchBoundaryReason.None)
+            bool awaitsTeammateChoice = actions[^1].CardId == ModelDb.Card<Tutor>().Id.Entry
+                && replayed.Snapshot.BoundaryReason == SearchBoundaryReason.PendingChoice;
+            if (replayed.Snapshot.HasRisk
+                || replayed.Snapshot.BoundaryReason != SearchBoundaryReason.None && !awaitsTeammateChoice)
                 throw new InvalidOperationException("Multiplayer route replay reached an unmodeled or unresolved boundary.");
-            if (replayed.Snapshot.PlayerDead || replayed.Snapshot.ProjectedPlayerHp <= 0)
-                return null;
             RouteAnnotations updated = BuildRouteAnnotations(replayed);
             int turn = root.StartTurnNumber;
             return new SolverCurrentTurnPreview(

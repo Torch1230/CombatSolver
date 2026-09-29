@@ -1045,7 +1045,7 @@ internal sealed partial class CombatBeamSolver
         return target?.Player != null
             && target.Player != _player
             && card.Preview is (BelieveInYou or Lift or Blaze or Coordinate or Fade
-                or Constellation or Ignition or Largesse or Concoct or Soulbound);
+                or Constellation or Ignition or Largesse or Concoct or Soulbound or Tutor);
     }
 
     private IEnumerable<(int Index, Creature? Target)> TargetsForPotion(

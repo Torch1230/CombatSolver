@@ -3063,7 +3063,7 @@ internal static partial class SolverController
                 Player player = LocalContext.GetMe(state)!;
                 Creature? target = state.GetCreature(action.TargetCombatId);
                 string? expectedRngAfterAction = null;
-                if (state.Players.Count > 1)
+                if (state.Players.Count > 1 && action.CardId != "TUTOR")
                 {
                     CombatRootSnapshot actionRoot = CombatRootSnapshot.Capture(state);
                     SearchPolicySnapshot actionPolicy = CaptureSearchPolicy(
@@ -3254,8 +3254,9 @@ internal static partial class SolverController
             {
                 if (plannedEndTurn == null)
                 {
+                    bool teammateChoiceResolved = actions.LastOrDefault()?.CardId == "TUTOR";
                     Entry.Logger.Warn(
-                        $"[CombatSolver/Test] DEPLOY_REPLAN turn={turn} reason=turn_plan_exhausted " +
+                        $"[CombatSolver/Test] DEPLOY_REPLAN turn={turn} reason={(teammateChoiceResolved ? "teammate_choice_resolved" : "turn_plan_exhausted")} " +
                         $"executed_actions={actions.Count}");
                     _combat.ContinuationSource = null;
                     CompleteDeployment(deployment);
@@ -3263,7 +3264,9 @@ internal static partial class SolverController
                         host,
                         state,
                         SearchReason.PlanExhausted,
-                        deployWhenReady: !_combat.FullAutoEnabled);
+                        deployWhenReady: teammateChoiceResolved
+                            ? _combat.FullAutoEnabled
+                            : !_combat.FullAutoEnabled);
                     return;
                 }
                 if (!await ReevaluateRemainingAsync(actions.Count))

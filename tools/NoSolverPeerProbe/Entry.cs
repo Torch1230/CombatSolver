@@ -84,6 +84,10 @@ public static class Entry
             int port = probe.GetProperty("port").GetInt32();
             int playerCount = probe.GetProperty("playerCount").GetInt32();
             bool verifyEnetControllerRng = probe.GetProperty("verifyEnetControllerRng").GetBoolean();
+            bool verifyEnetTutorChoice = probe.TryGetProperty("verifyEnetTutorChoice", out JsonElement tutorChoice)
+                && tutorChoice.GetBoolean();
+            if (verifyEnetControllerRng && verifyEnetTutorChoice)
+                throw new InvalidDataException("No Solver peer probes require one execution mode.");
             if (seat != 1 || playerCount != 2 || probe.GetProperty("mode").GetString() != "client")
                 throw new InvalidDataException("No Solver peer expects seat 1 in a two-player ENet game.");
             if (NGame.GetGameVersion().TrimStart('v') !=
@@ -125,14 +129,31 @@ public static class Entry
                 player.Deck.Clear(silent: true);
                 foreach (CardModel old in oldCards)
                     run.RemoveCard(old);
-                foreach (string id in new[]
-                    { "STRIKE_IRONCLAD", "DEFEND_IRONCLAD", verifyEnetControllerRng && player == run.Players[1]
-                        ? "LARGESSE" : "SURVIVOR", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD" })
+                string[] cardIds =
+                [
+                    "STRIKE_IRONCLAD", "DEFEND_IRONCLAD",
+                    verifyEnetControllerRng && player == run.Players[1] ? "LARGESSE"
+                        : verifyEnetTutorChoice && player == run.Players[0] ? "TUTOR" : "SURVIVOR",
+                    "STRIKE_IRONCLAD", "DEFEND_IRONCLAD",
+                ];
+                if (verifyEnetTutorChoice && player == run.Players[0])
+                    cardIds = ["TUTOR"];
+                foreach (string id in cardIds)
                 {
                     CardModel canonical = ModelDb.AllCards.Single(card => card.Id.Entry == id);
                     CardModel card = run.CreateCard(canonical, player);
                     if (!(await CardPileCmd.Add(card, PileType.Deck)).success)
                         throw new InvalidOperationException($"Could not inject {id}.");
+                }
+                if (verifyEnetTutorChoice && player == run.Players[1])
+                {
+                    foreach (string id in new[] { "BASH", "DEFEND_IRONCLAD" })
+                    {
+                        CardModel canonical = ModelDb.AllCards.Single(card => card.Id.Entry == id);
+                        CardModel card = run.CreateCard(canonical, player);
+                        if (!(await CardPileCmd.Add(card, PileType.Deck)).success)
+                            throw new InvalidOperationException($"Could not inject {id}.");
+                    }
                 }
             }
             await RunManager.Instance.EnterRoomDebug(RoomType.Monster, MapPointType.Monster,
@@ -159,7 +180,25 @@ public static class Entry
             if (!ReferenceEquals(local, state.Players[seat]))
                 throw new InvalidOperationException("No Solver peer joined the wrong seat.");
             await BarrierAsync(host, state, coordination, evidenceDirectory, "root", playerCount);
-            if (verifyEnetControllerRng)
+            if (verifyEnetTutorChoice)
+            {
+                Player owner = state.Players[0];
+                if (local.PlayerCombatState!.DrawPile.Cards.Count != 2)
+                    throw new InvalidOperationException("No Solver Tutor target needs two draw-pile choices.");
+                var selector = new NetworkSelector(state, tutorChoice: true);
+                using (CardSelectCmd.UseSelector(selector, localOnly: true))
+                {
+                    await WaitAsync(host, () => local.PlayerCombatState.Hand.Cards.Count == 6
+                        && local.PlayerCombatState.DrawPile.Cards.Count == 1);
+                }
+                if (!selector.TutorChoiceUsed || owner.PlayerCombatState!.Hand.Cards.Any(card => card.Owner == local))
+                    throw new InvalidOperationException("Tutor choice was not made by the No Solver teammate.");
+                File.WriteAllText(Path.Combine(evidenceDirectory, "tutor-choice.signal"), "teammate selected");
+                await WaitAsync(host, () => File.Exists(Path.Combine(coordination, "peer-0", "tutor-host-stable.signal")));
+                await WaitAsync(host, () => !CombatManager.Instance.IsPlayerReadyToEndTurn(owner));
+                await BarrierAsync(host, state, coordination, evidenceDirectory, "enet-tutor-choice", playerCount);
+            }
+            else if (verifyEnetControllerRng)
             {
                 await WaitAsync(host, () => File.Exists(Path.Combine(coordination, "peer-0", "first-attack.signal")));
                 Player recipient = state.Players[0];
@@ -374,12 +413,26 @@ public static class Entry
         public void MaxAscensionChanged() { }
     }
 
-    private sealed class NetworkSelector(CombatState combat) : ICardSelector
+    private sealed class NetworkSelector(CombatState combat, bool tutorChoice = false) : ICardSelector
     {
+        public bool TutorChoiceUsed { get; private set; }
+
         public Task<IEnumerable<CardModel>> GetSelectedCards(
             IEnumerable<CardModel> options, int minSelect, int maxSelect)
         {
-            CardModel selected = options.Single(card => card.Id.Entry == "DEFEND_IRONCLAD");
+            CardModel selected;
+            if (tutorChoice)
+            {
+                CardModel[] available = options.ToArray();
+                if (available.Length != 2)
+                    throw new InvalidOperationException("Tutor did not offer the teammate two cards.");
+                selected = available[0];
+                TutorChoiceUsed = true;
+            }
+            else
+            {
+                selected = options.Single(card => card.Id.Entry == "DEFEND_IRONCLAD");
+            }
             Player player = selected.Owner;
             if (!LocalContext.IsMe(player) || minSelect != 1 || maxSelect != 1)
                 throw new InvalidOperationException("No Solver peer received an unexpected choice.");

@@ -29,7 +29,7 @@ internal sealed partial class CombatBeamSolver
         PlanAction Action,
         CardType CardType,
         uint? TargetCombatId,
-        bool RequiresUnsupportedExistingChoice,
+        bool HasExternalTeammateChoice,
         PlanCardChoice? RequiredEmptyChoice);
 
     private readonly record struct PreparedPotionAction(PlanAction Action, PotionModel Potion);
@@ -479,6 +479,13 @@ internal sealed partial class CombatBeamSolver
             SimulationSnapshot snapshot = node.Snapshot;
             using CardChoiceReplayCapture? cardCapture = PrepareCardChoiceCapture(node, action.Action);
             SimulationSnapshot probeSnapshot = ReplayAction(node, action.Action, seed, cardChoiceCapture: cardCapture);
+            if (action.HasExternalTeammateChoice
+                && probeSnapshot.BoundaryReason == SearchBoundaryReason.PendingChoice)
+            {
+                AddResolvedCardCandidates(node, action,
+                    [(action.Action, probeSnapshot)], batch);
+                return null;
+            }
             if (allowPendingChoiceDeferral
                 && probeSnapshot.BoundaryReason == SearchBoundaryReason.PendingChoice)
             {
@@ -551,14 +558,6 @@ internal sealed partial class CombatBeamSolver
         try
         {
             CardChoiceSpec? choiceSpec = BuildPrimaryCardChoiceSpec(snapshot);
-            if (choiceSpec == null && preparedAction.RequiresUnsupportedExistingChoice)
-            {
-                snapshot.ReleaseSimulator();
-                snapshot = null;
-                RecordDeferredRoundChoiceLayer(width: 0);
-                return null;
-            }
-
             CardChoiceSpec? primaryChoiceSpec = choiceSpec
                 ?? BuildRequiredEmptyChoiceSpec(preparedAction.RequiredEmptyChoice);
             IEnumerable<(PlanAction Action, SimulationSnapshot Snapshot)> resolvedBranches;

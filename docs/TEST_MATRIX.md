@@ -8,6 +8,12 @@ P4 无求解器对端的生产全自动：房主 CombatSolver 实际搜索／部
 
 P4 无求解器对端部署中交错：`.local/multiplayer-p4/no-solver-peer-rng-9988911741a54045b4652313e315cc0c/peer-0/result.json`、`peer-1/result.json` 均 `Passed`。房主搜索并部署两张本地 `Strike`；加入者战斗期不加载 CombatSolver，在两张之间原生对房主打 `Largesse`。房主收到生成牌，提示共享 RNG 偏差，从新根重评估且不新增完整搜索，继续第二张本地攻击；加入者保持自己的回合控制权。双端检查点全状态、玩家阶段及九条 RNG 一致，加入者装载清单见 `peer-1/environment.json`。首试夹具要求两张攻击同目标，但合法搜索分别指定两只敌人，失败证据与修正见[规划](MULTIPLAYER_PLAN.md)。
 
+P4 `Tutor` 生产求解与执行：房主搜索选中余费 `Tutor`，结果以 `PendingChoice` 截断、没有计划队友选项；房主实际部署并等待，未加载 CombatSolver 的加入者从两张抽牌堆卡中原生选择。选中牌进入加入者手牌并保持其所有权，双端 `enet-tutor-choice` 全状态、玩家阶段、九条 RNG 一致，双方 `Passed`：`.local/multiplayer-p4/no-solver-tutor-827b68462d3d4aac8b63a8423d5865c5/peer-0/result.json`、`peer-1/result.json`。加入者 `peer-1/environment.json` 的装载清单不含 CombatSolver。队友具体选哪张不由搜索器预测。
+
+P4 预测死亡仍执行合法当前动作：虚拟双人先搜索仅持一张 `Strike` 的路线，再把本地玩家生命设为 1；原版结束回合预测为死亡。原序列重评估仍保留 `Strike`，控制器打出该牌；测试在实际结束回合前手动接管，`Passed`：`.local/multiplayer-p4/projected-death/peer-0/result.json`。这只验“预测结果不佳与当前动作合法性分离”，不把实际死亡视为可继续执行。
+
+最终受影响单人哨兵：原版单人建局后一秒短搜得到合法初始路线，`Passed`：`.local/multiplayer-final/single/result.json`。本轮行为变更集中于多人 `Tutor` 与重评估；已有固定前缀单人回归见规划第 0 节。
+
 ## 多人 P2 首批内容差分（2026-09-28）
 
 虚拟四人对敌方新施加 `Artifact`、`Plating`、`Slippery`、`Skittish`、`CurlUp` 的缩放原生差分 Passed，包含 `Plating` 递减值；证据 `.local/multiplayer-p2/power-scaling-4-dec86567a8d04ddfb9cf15ef9ca0dcbe/peer-0/result.json`。虚拟双人 15 张多人专用卡按指定队友、群体、混合机制分三批，基础版和升级版共六次请求均 Passed，即时全状态与完整 RNG 对账；卡牌和证据目录见 [多人内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。跨回合 Hook、剩余 22 张专用卡、普通多人内容及网络搜索／执行未通过。Windows 结构门禁 238 通过；Bash 门禁仅完成语法检查。
@@ -16,7 +22,7 @@ P4 无求解器对端部署中交错：`.local/multiplayer-p4/no-solver-peer-rng
 
 再追加 12 张持续能力与关联卡的基础版／升级版即时差分，六次请求 Passed，累计 33／37 张。`Hibernate`、`Intercept`、`TagTeam`、`Tank` 的首因修复链及成功证据见[规划第 0.6 节](MULTIPLAYER_PLAN.md)和[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md#已通过的卡牌即时差分)。这些请求没有触发全部关联监听。
 
-`LegionOfBone`、`Midnight`、`ImitationLearning`、`Tutor` 的双人基础／升级即时差分再六次 Passed，37／37 张专用卡即时效果均有证据。`Tutor` 的测试选择来自队友抽牌堆；生产搜索中的未知队友选择尚未支持，候选明确报错。后续触发、普通多人内容、怪物、遗物、药水和生产搜索／执行尚未验收。
+`LegionOfBone`、`Midnight`、`ImitationLearning`、`Tutor` 的双人基础／升级即时差分再六次 Passed，37／37 张专用卡即时效果均有证据。`Tutor` 的即时差分选择来自队友抽牌堆；本轮后续生产求解／执行及无求解器队友原生选择证据见上方 P4 记录。该即时批次未证明后续触发，关联机制的证据见内容清单。
 
 关联机制再按必要输入差分：格挡传播与生成联动、队友先攻击后的 `GangUp`、多种能力施加后的队友攻击、`Hibernate`／`Plot`／`Tank`／`Underworld` 组合的第二回合，四次虚拟双人请求 Passed，路径见[规划 0.6 节](MULTIPLAYER_PLAN.md)。未据此推断其他触发组合通过。
 

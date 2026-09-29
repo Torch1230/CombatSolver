@@ -34,6 +34,8 @@ internal sealed partial class UnattendedTestRunner
             MultiplayerProbeInput input = runner._multiplayerProbe!;
             if (input.ContentCardIds.Length > 0)
                 return await ExecuteMultiplayerContentProbeAsync(scenario, input);
+            if (input.VerifyEnetTutorChoice)
+                return await ExecuteEnetTutorChoiceProbeAsync(scenario, input);
             if (input.VerifyEnetControllerRng)
                 return await ExecuteEnetControllerRngProbeAsync(scenario, input);
             if (input.VerifyEnetPaelsEyeExtraTurn)
@@ -704,6 +706,15 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.VerifyControllerSearch)
             {
+                if (input.VerifyControllerProjectedDeathContinuation)
+                {
+                    CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards
+                        .First(card => card.Id.Entry == "STRIKE_IRONCLAD");
+                    foreach (CardModel other in scenario.Player.PlayerCombatState.Hand.Cards
+                                 .Where(card => card != strike).ToArray())
+                        if (!(await CardPileCmd.Add(other, PileType.Discard)).success)
+                            throw new InvalidOperationException("Projected-death fixture could not isolate Strike.");
+                }
                 SolverController.MonitorCombatPresence();
                 if (!SolverOverlay.IsVisible)
                     throw new InvalidOperationException("Multiplayer manual controls were not attached.");
@@ -721,6 +732,35 @@ internal sealed partial class UnattendedTestRunner
                             card.Id.Entry == action.CardId)))
                     throw new InvalidOperationException("Multiplayer controller published a non-local route.");
                 runner._completedChecks.Add("MultiplayerController:ManualSearch:LocalResult:VisibleOverlay");
+                if (input.VerifyControllerProjectedDeathContinuation)
+                {
+                    if (completed.BestNode.Actions.FirstOrDefault(action => action.Kind == PlanActionKind.PlayCard)
+                        is not { CardId: "STRIKE_IRONCLAD" } plannedStrike)
+                        throw new InvalidOperationException("Projected-death fixture needs a planned Strike.");
+                    await CreatureCmd.SetCurrentHp(scenario.Player.Creature, 1);
+                    if (!LiveEndTurnRiskEvaluator.Evaluate(combat, null).PlayerDead)
+                        throw new InvalidOperationException("Projected-death fixture is not lethal after end turn.");
+                    CombatRootSnapshot changedRoot = CombatRootSnapshot.Capture(combat);
+                    SearchPolicySnapshot changedPolicy = SolverController.CaptureSearchPolicy(
+                        SolverSettings.Capture(), combat, includeTurnSetup: false, theftPolicy: null);
+                    CombatBeamSolver replay = new(changedRoot, SolverDisplayNames.Capture(combat),
+                        BattleDamageTracker.Observe(combat), changedPolicy);
+                    SolverCurrentTurnPreview? revised = replay.ReevaluateMultiplayerCurrentTurn(completed);
+                    if (revised == null || revised.Actions.FirstOrDefault()?.CardId != "STRIKE_IRONCLAD")
+                        throw new InvalidOperationException("Legal Strike was rejected by the projected-death replay.");
+                    Creature target = combat.GetCreature(plannedStrike.TargetCombatId)
+                        ?? throw new InvalidOperationException("Projected-death Strike target is missing.");
+                    int enemyHp = target.CurrentHp;
+                    SolverController.RequestDeploy(runner._host, combat);
+                    await runner.WaitForMultiplayerProbeAsync(() => target.CurrentHp == enemyHp - 6);
+                    SolverController.SetSolverDisabled(true, persist: false);
+                    await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying);
+                    if (!scenario.Player.Creature.IsAlive
+                        || CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player))
+                        throw new InvalidOperationException("Projected death stopped a still-legal current action.");
+                    runner._completedChecks.Add("MultiplayerController:ProjectedDeath:LegalStrikeExecuted:NoPrematureTurnEnd");
+                    return new ExecutionOutcome(false, 1, true, true, true, false);
+                }
                 if (input.VerifyControllerDeploy)
                 {
                     await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsSearching);
@@ -1779,6 +1819,51 @@ internal sealed partial class UnattendedTestRunner
             }
             runner._completedChecks.Add($"MultiplayerPaelsEye:Enet:Seat={input.Seat}:FollowingSharedRound:FullState:FullRng");
             return new ExecutionOutcome(false, 3, true, true, true, false);
+        }
+
+        private async Task<ExecutionOutcome> ExecuteEnetTutorChoiceProbeAsync(
+            ScenarioContext scenario, MultiplayerProbeInput input)
+        {
+            CombatState combat = scenario.CombatState;
+            Player actor = combat.Players[0];
+            Player teammate = combat.Players[1];
+            CardModel tutor = actor.PlayerCombatState!.Hand.Cards.Single(card => card.Id.Entry == "TUTOR");
+            CardModel[] offered = teammate.PlayerCombatState!.DrawPile.Cards.ToArray();
+            if (offered.Length != 2 || teammate.PlayerCombatState.Hand.Cards.Count != 5)
+                throw new InvalidOperationException("ENet Tutor fixture needs two teammate draw-pile choices.");
+            if (actor.PlayerCombatState.Hand.Cards.Count != 1)
+                throw new InvalidOperationException("ENet Tutor fixture needs only Tutor in the host hand.");
+            SolverController.MonitorCombatPresence();
+            SolverController.RequestSearch(runner._host, combat, SearchReason.Manual);
+            await runner.WaitForMultiplayerProbeAsync(() =>
+                SolverController.LastCompletedResultForTesting != null
+                || SolverController.LastSearchFailureForTesting != null);
+            if (SolverController.LastSearchFailureForTesting is { } failure)
+                throw new InvalidOperationException("ENet Tutor search failed.", failure);
+            SolverResult route = SolverController.LastCompletedResultForTesting
+                ?? throw new InvalidOperationException("ENet Tutor search produced no route.");
+            PlanAction[] plays = route.BestNode.Actions.Where(action => action.CardId == "TUTOR").ToArray();
+            if (plays.Length != 1 || plays[0].TargetCombatId != teammate.Creature.CombatId
+                || plays[0].Choice != null || route.BoundaryReason != SearchBoundaryReason.PendingChoice)
+                throw new InvalidOperationException("ENet Tutor search did not retain the external teammate choice boundary.");
+            SolverController.RequestDeploy(runner._host, combat);
+            await runner.WaitForMultiplayerProbeAsync(() =>
+                !actor.PlayerCombatState.Hand.Cards.Contains(tutor));
+            string choiceSignal = Path.Combine(input.CoordinationDirectory, "peer-1", "tutor-choice.signal");
+            await runner.WaitForMultiplayerProbeAsync(() => File.Exists(choiceSignal));
+            await runner.WaitForMultiplayerProbeAsync(() => !SolverController.IsDeploying);
+            File.WriteAllText(Path.Combine(input.CoordinationDirectory, "peer-0", "tutor-host-stable.signal"),
+                "Tutor deployment completed");
+            await runner.MultiplayerProbeBarrierAsync("enet-tutor-choice", combat);
+            CardModel[] selected = offered.Where(card => teammate.PlayerCombatState.Hand.Cards.Contains(card)).ToArray();
+            if (selected.Length != 1 || selected[0].Owner != teammate
+                || teammate.PlayerCombatState.DrawPile.Cards.Count != 1
+                || actor.PlayerCombatState!.AllCards.Contains(selected[0])
+                || teammate.PlayerCombatState.Phase != PlayerTurnPhase.Play
+                || CombatManager.Instance.IsPlayerReadyToEndTurn(teammate))
+                throw new InvalidOperationException("ENet Tutor did not leave the chosen card with its teammate.");
+            runner._completedChecks.Add("MultiplayerTutor:EnetNoSolverPeer:SearchDeploy:TeammateNativeChoice:OwnerAndPile:FullState:FullRng");
+            return new ExecutionOutcome(false, 1, true, true, true, false);
         }
 
         private async Task<ExecutionOutcome> ExecuteEnetControllerRngProbeAsync(

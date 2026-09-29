@@ -54,14 +54,6 @@ internal static partial class CardChoiceSupport
     /// <inheritdoc cref="BasicStrikeRemovalWeight" />
     private const double BasicDefendRemovalWeight = 1.2d;
 
-    private static readonly HashSet<string> UnsupportedExistingChoiceCards =
-    [
-        "Tutor"
-    ];
-
-    public static bool RequiresUnsupportedExistingChoice(CardModel card)
-        => UnsupportedExistingChoiceCards.Contains(card.GetType().Name);
-
     public static PlanCardChoice? BuildRequiredEmptyChoice(CardModel card)
     {
         return card switch
