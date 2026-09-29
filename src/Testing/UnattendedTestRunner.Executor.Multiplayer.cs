@@ -2119,6 +2119,9 @@ internal sealed partial class UnattendedTestRunner
                 }
                 PotionModel potion = UnattendedTestRunner.InjectPotionForTest(actor, input.SelfPotionId);
                 var costsRngBefore = combat.RunState.Rng.CombatEnergyCosts.CaptureState();
+                var shuffleRngBefore = combat.RunState.Rng.Shuffle.CaptureState();
+                int energyBeforePotion = actor.PlayerCombatState!.Energy;
+                int exhaustBeforePotion = actor.PlayerCombatState.ExhaustPile.Cards.Count;
                 int actorBlockBeforePotion = actor.Creature.Block;
                 int[] teammateBlocksBeforePotion = combat.Players.Where(member => member != actor)
                     .Select(member => member.Creature.Block).ToArray();
@@ -2213,6 +2216,27 @@ internal sealed partial class UnattendedTestRunner
                             .Select(member => member.PlayerCombatState!.Hand.Cards.Count)
                             .Where((count, index) => count != teammateHandCounts[index]).Any()))
                     throw new InvalidOperationException("Snecko Oil did not randomize only the holder's hand costs.");
+                if (potion is BottledPotential or Clarity or CureAll or GlowwaterPotion or SwiftPotion)
+                {
+                    int expectedHandCount = potion switch
+                    {
+                        Clarity => 2,
+                        CureAll or GlowwaterPotion => 3,
+                        BottledPotential or SwiftPotion => 4,
+                        _ => throw new InvalidOperationException("Unknown draw potion fixture."),
+                    };
+                    if (actor.PlayerCombatState!.Hand.Cards.Count != expectedHandCount
+                        || combat.Players.Where(member => member != actor)
+                            .Select(member => member.PlayerCombatState!.Hand.Cards.Count)
+                            .Where((count, index) => count != teammateHandCounts[index]).Any()
+                        || potion is BottledPotential
+                            && combat.RunState.Rng.Shuffle.CaptureState().Equals(shuffleRngBefore)
+                        || potion is Clarity && actor.Creature.GetPowerAmount<ClarityPower>() != 3
+                        || potion is CureAll && actor.PlayerCombatState.Energy != energyBeforePotion + 1
+                        || potion is GlowwaterPotion
+                            && actor.PlayerCombatState.ExhaustPile.Cards.Count != exhaustBeforePotion + 1)
+                        throw new InvalidOperationException("Draw potion changed the wrong player's cards or resources.");
+                }
                 if (input.VerifyPotionAccounting)
                 {
                     BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);
@@ -2222,6 +2246,8 @@ internal sealed partial class UnattendedTestRunner
                     runner._completedChecks.Add("MultiplayerPotionAccounting:TeammateIgnored:LocalUseCounted");
                 }
                 runner._completedChecks.Add("MultiplayerSelfPotion:OwnerOnly:FullState:FullRng");
+                if (potion is GlowwaterPotion)
+                    return new ExecutionOutcome(false, 1, true, true, true, false);
             }
             if (input.VerifyEnemyPotionTargets)
             {

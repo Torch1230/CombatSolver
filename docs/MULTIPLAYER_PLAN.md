@@ -759,3 +759,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 `Kusarigama` 又在双人双敌原生战斗中验队友插入攻击不增加持有人计数、本地第三击触发、下一回合重置；全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。此前同持有人三击证据保留，后续机制以这次包含交错与重置的输入为准。
 
 原版 51 个 `AnyPlayer` 药水与 `PotionOnUseSupport.CanSearch`／`PotionOnUseMirrors` 注册表逐名核对，入口均存在；这是源码登记，不计为 51 瓶原生通过。P2 新补 `DistilledChaos` 只自动打持有人抽牌堆三张防御，以及 `SneckoOil` 只随机化持有人手牌费用，两者候选均只允许本地自用，原版即时全状态／九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。其他药水机制仍按分类验收。
+
+继续按抽牌／资源机制验 `BottledPotential`、`Clarity`、`CureAll`、`GlowwaterPotion`、`SwiftPotion`：五瓶均只有持有人自用候选，显式核持有人牌／资源效果与队友手牌隔离，原版／预测全部状态和九条 RNG 差分 Passed，逐项证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。Glowwater 首次请求因夹具随后寻找已被药水耗尽的牌而整体 Failed；修正夹具流程后同机制通过，失败记录保留。其余药水机制及 P0 清单仍未封闭。

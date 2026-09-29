@@ -222,6 +222,8 @@ P2 随机敌人 Power：双人双敌同根，`JuggernautPower` 随持有人得�
 
 P2 自用药水的自动出牌／费用随机化：双人 `DistilledChaos` 原版只自动打出持有人三张防御，持有人得 15 格挡且队友不变，全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/self-distilled-chaos-cf0defee7a3245cbb7b5c405bfea5e57/peer-0/result.json`。`SneckoOil` 持有人手牌变为四张并消费战斗费用 RNG，队友手牌不变，全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/self-snecko-oil-835f2a6fb351474f853b4646591159f2/peer-0/result.json`。均只验当前输入。
 
+P2 自用抽牌／资源药水：`BottledPotential`、`Clarity`、`CureAll`、`GlowwaterPotion`、`SwiftPotion` 各自只有持有人候选，原版效果、队友手牌隔离及全状态／九条 RNG 差分 Passed；逐瓶证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。Glowwater 首次整体 Failed 是夹具在药水耗尽 `Strike` 后继续寻找该牌，修正夹具后 Passed；首试证据保留在内容清单。
+
 P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不增加本地计数，本地第三次仍触发；下一回合本地第一张攻击只造成普通伤害。交错出牌及跨回合完整状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/kusarigama-owner-reset-4c503274feb94487b533f2d81e7fea14/peer-0/result.json`。
 
 该全战斗消耗计数修改后的受影响单人哨兵：原版单人 `IRONCLAD`／`FUZZY_WURM_CRAWLER_WEAK`，1 秒短搜取得首个有效结果，Passed：`.local/multiplayer-p1/single-after-midnight-401bb519dd0e42e8bd1be853bca91382/result.json`。该输入没有生成 `Midnight`，只验通用搜索未因状态字段新增而停止。
