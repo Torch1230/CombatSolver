@@ -737,3 +737,5 @@ P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，�
 - 最近完整构建 0 警告、0 错误；Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=239`，`git diff --check` 通过。最后的 Release DLL 已精确覆盖本地游戏 Mod 并核对哈希；其他四个部署文件在同批早先按仓库规则部署，此后未变。无头实例已由各启动器清理。
 - 最新一次直接 Hook 全状态差分失败的根因是虚拟测试在死亡中途自动推进玩家阶段，已用双进程 ENet 稳定回合边界取得完整通过；失败与通过都保留证据。更早的单进程完整 Doom 回合测试等待第二回合超时，未计为通过；另一次 ENet 首试两个进程共用同一 `HeadlessInstance` 而锁冲突，之后改成各自实例。不要扩大超时或重复运行已通过的最终双进程输入。
 - 下一条具体工作：按[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)剩余原版多人关联分支继续最小机制差分，尤其 `Soulbound`／`ImitationLearning` 多次或死亡引用、`Plating` 苏醒移除、怪物未触发招式和药水生成池；发现通用根因就修对应权威入口。之后按第 9 节逐项验收。Steam 邀请／真实远程延迟及 Linux 游戏运行仍缺外部环境；WSL 仅 `bash -n` 通过，不算 Linux 实机。
+
+随后复用已有三回合差分入口，`SlumberingBeetleNormal` 的 `SlumberPower` 自然耗尽使其苏醒、移除镀层；第四回合甲虫无 Power、格挡 41，全部状态和九条 RNG 对齐，Passed：`.local/multiplayer-p2/slumbering-beetle-awake-1df17160e621452bbd78ca02240370e5/peer-0/result.json`。这条补上自然苏醒，受伤提前苏醒仍未验；上述“下一条工作”中的镀层苏醒项以此更新。
