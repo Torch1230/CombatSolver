@@ -202,6 +202,17 @@ internal static class SolverOverlay
         => _summaryText is { FitContent: true, AutowrapMode: TextServer.AutowrapMode.WordSmart };
     internal static bool UploadProgressConfiguredForTesting
         => _settingsPanel?.UploadProgressConfiguredForTesting == true;
+    internal static bool MultiplayerSettingsQuietForTesting
+    {
+        get
+        {
+            if (_settingsPanel == null)
+                return false;
+            _settingsPanel.Reload();
+            return _settingsPanel.MultiplayerAutomaticTurnSettingForTesting
+                && _settingsPanel.MultiplayerParallelismHintQuietForTesting;
+        }
+    }
     internal static bool SearchCompletionNotificationSettingsConfiguredForTesting
         => _settingsPanel?.SearchCompletionNotificationSettingsConfiguredForTesting == true;
     internal static bool SettingsTabsConfiguredForTesting
@@ -728,7 +739,9 @@ internal static class SolverOverlay
         if (_searchBestSnapshot == null && _lastSnapshot == null)
         {
             SetMessageContent(
-                SolverText.Format($"[color={SolverUiTokens.Palette.DangerHex}]本回合计算已停止。可手动开始计算；进入下一回合后是否自动计算由设置决定。[/color]"));
+                SolverController.IsMultiplayerCombat
+                    ? SolverText.Format($"[color={SolverUiTokens.Palette.DangerHex}]本回合计算已停止；下个本地回合将自动重新计算。[/color]")
+                    : SolverText.Format($"[color={SolverUiTokens.Palette.DangerHex}]本回合计算已停止。可手动开始计算；进入下一回合后是否自动计算由设置决定。[/color]"));
         }
         else if (_summaryText != null)
         {
@@ -1211,6 +1224,7 @@ internal static class SolverOverlay
         => _multiplayerFutureTurnsButton?.Visible == true;
     internal static bool MultiplayerLaterTurnVisibleForTesting
         => RouteRows[1]?.Visible == true;
+    internal static float RouteViewportHeightForTesting => _routeScroll?.Size.Y ?? 0f;
     internal static void PressMultiplayerFutureTurnsForTesting()
     {
         if (_multiplayerFutureTurnsButton?.Visible != true)
@@ -1242,7 +1256,6 @@ internal static class SolverOverlay
                     ? SolverText.Format($"后续 {laterTurns} 回合 · 收起")
                     : SolverText.Format($"后续 {laterTurns} 回合 · 展开");
         }
-        UpdateRouteViewportSize();
         if (_strategyOutcomeRow != null)
         {
             foreach (Node child in _strategyOutcomeRow.GetChildren())
@@ -1516,7 +1529,8 @@ internal static class SolverOverlay
             _summaryText.Text =
                 SolverText.Format($"[color={SolverUiTokens.Palette.DangerHex}]完整路线原预计 {previousProjectedBattleHpLost} HP，") +
                 SolverText.Format($"重算后为 {projectedBattleHpLost} HP；全自动已暂停。[/color]\n") +
-                SolverUiTokens.BugReportUploadInstructionRichText;
+                (SolverController.IsMultiplayerCombat
+                    ? string.Empty : SolverUiTokens.BugReportUploadInstructionRichText);
         }
     }
 
@@ -1538,7 +1552,8 @@ internal static class SolverOverlay
             _summaryText.Text =
                 SolverText.Format($"[color={SolverUiTokens.Palette.DangerHex}]路线预计掉血 {plannedHpLoss} HP，") +
                 SolverText.Format($"结束回合前实机复核为 {liveHpLoss} HP；全自动未提交结束回合。[/color]\n") +
-                SolverUiTokens.BugReportUploadInstructionRichText;
+                (SolverController.IsMultiplayerCombat
+                    ? string.Empty : SolverUiTokens.BugReportUploadInstructionRichText);
         }
     }
 
@@ -2653,7 +2668,12 @@ internal static class SolverOverlay
 
         string? text;
         Color tone;
-        if (SolverController.ManualRouteImprovementDetected)
+        if (SolverController.IsMultiplayerCombat)
+        {
+            text = null;
+            tone = TextMuted;
+        }
+        else if (SolverController.ManualRouteImprovementDetected)
         {
             text = SolverText.Get("你打出了比求解器更好的世界线。") +
                    SolverUiTokens.BugReportUploadInstruction +
@@ -2752,7 +2772,6 @@ internal static class SolverOverlay
             _routeOutcomePanel.Visible = visible;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
             SetRouteRowVisible(index, visible);
-        UpdateRouteViewportSize();
         QueueResponsiveLayout();
     }
 
@@ -2989,25 +3008,15 @@ internal static class SolverOverlay
             _detailsText.Visible = visible;
         if (_detailsButton != null)
             _detailsButton.SetExpanded(visible);
-        UpdateRouteViewportSize();
+        if (_routeScroll != null)
+        {
+            _routeScroll.CustomMinimumSize = new Vector2(
+                0,
+                visible
+                    ? SolverUiTokens.Size.RouteViewportHeightWithDetails
+                    : SolverUiTokens.Size.RouteViewportHeight);
+        }
         QueueResponsiveLayout();
-    }
-
-    private static void UpdateRouteViewportSize()
-    {
-        if (_routeScroll == null)
-            return;
-        bool compact = _presentation == SolverOverlayPresentation.Ready
-            && SolverController.SelectedMultiplayerStyleForUi != null
-            && !_multiplayerFutureTurnsExpanded;
-        _routeScroll.SizeFlagsVertical = compact
-            ? Control.SizeFlags.ShrinkBegin
-            : Control.SizeFlags.ExpandFill;
-        _routeScroll.CustomMinimumSize = new Vector2(0, compact
-            ? SolverUiTokens.Size.RouteRowHeight + SolverUiTokens.Spacing.Sm
-            : _detailsVisible
-                ? SolverUiTokens.Size.RouteViewportHeightWithDetails
-                : SolverUiTokens.Size.RouteViewportHeight);
     }
 
     private static void QueueResponsiveLayout()

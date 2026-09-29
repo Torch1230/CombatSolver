@@ -201,7 +201,7 @@ internal sealed partial class CombatBeamSolver
         bool currentTurnAdoptionReached = false;
         int initialHp = root.InitialPlayerHp;
         int searchedTurnLayers = 0;
-        SearchNode?[] multiplayerFirstTurn = new SearchNode?[3];
+        SearchNode?[] multiplayerStyleRoutes = new SearchNode?[3];
         bool timeBudgetReached = false;
         // 连续无进展的内存回收已用尽本搜索的额度：提前收手，交给既有终局发布当前前沿的最优路线。
         bool memoryNoProgressTruncated = false;
@@ -720,6 +720,7 @@ internal sealed partial class CombatBeamSolver
             ValidateOrderedMutationAdmissionLedger(_run);
             SolverResult result = new()
             {
+                IsMultiplayer = root.PlayerCount > 1,
                 MultiplayerEffectiveDamage = best.CumulativeEnemyHpLost,
                 MultiplayerSetupValue = CurrentTurnSetup(best),
                 MultiplayerCurrentTurnProjectedHp = CurrentTurnSnapshot(best).ProjectedPlayerHp,
@@ -2099,7 +2100,8 @@ internal sealed partial class CombatBeamSolver
             List<SearchNode> unannotatedEnded = ended;
             ended = AnnotateTurnOutcomes(unannotatedEnded);
             ReleaseDroppedSnapshots(unannotatedEnded, ended);
-            if (root.PlayerCount > 1 && searchedTurnLayers == 0)
+            SearchNode?[] layerMultiplayerRoutes = new SearchNode?[3];
+            if (root.PlayerCount > 1)
             {
                 foreach (SearchNode candidate in ended)
                 {
@@ -2107,14 +2109,25 @@ internal sealed partial class CombatBeamSolver
                     if (boundary == null || boundary.Snapshot.PlayerDead
                         || boundary.Snapshot.ProjectedPlayerHp <= 0)
                         continue;
-                    for (int style = 0; style < multiplayerFirstTurn.Length; style++)
+                    for (int style = 0; style < layerMultiplayerRoutes.Length; style++)
                     {
-                        SearchNode? existing = multiplayerFirstTurn[style];
+                        SearchNode? existing = layerMultiplayerRoutes[style];
+                        SearchNode? existingBoundary = existing == null
+                            ? null : FindCurrentTurnBoundary(existing)
+                                ?? throw new InvalidOperationException(
+                                    "Multiplayer route representative has no current-turn boundary.");
                         if (BetterMultiplayerFirstTurn(
-                                boundary, existing, (MultiplayerPlanStyle)style))
-                            multiplayerFirstTurn[style] = boundary;
+                                boundary, existingBoundary, (MultiplayerPlanStyle)style)
+                            || existing != null
+                                && !BetterMultiplayerFirstTurn(
+                                    existingBoundary!, boundary, (MultiplayerPlanStyle)style)
+                                && candidate.Score > existing.Score)
+                            layerMultiplayerRoutes[style] = candidate;
                     }
                 }
+                for (int style = 0; style < layerMultiplayerRoutes.Length; style++)
+                    multiplayerStyleRoutes[style] = layerMultiplayerRoutes[style]
+                        ?? multiplayerStyleRoutes[style];
             }
             if (_earlyTurnScoutObserver != null
                 && searchedTurnLayers < _earlyTurnScoutDepth)
@@ -2150,6 +2163,15 @@ internal sealed partial class CombatBeamSolver
                 ? []
                 : PruneAtMemoryBoundary(ended.Where(node => !node.IsTerminal),
                     turnPruneCandidateCount, "before_turn_prune", playDepth: 0, ended.Count);
+            if (!acceptableBattleHpLossReached)
+            {
+                foreach (SearchNode? representative in layerMultiplayerRoutes)
+                {
+                    if (representative is { IsTerminal: false }
+                        && !frontier.Contains(representative))
+                        frontier.Add(representative);
+                }
+            }
             // 续用戳只供最终选中路线，淘汰候选无需提前拼接字符串。
             List<SearchNode> retainedAfterRound = [.. completed, .. frontier];
             ReleaseDroppedSnapshots(ended, retainedAfterRound);
@@ -2287,11 +2309,11 @@ internal sealed partial class CombatBeamSolver
         ReleaseDroppedSnapshots(finalPool, finalCandidates);
         if (root.PlayerCount > 1)
         {
-            foreach (SearchNode? boundary in multiplayerFirstTurn)
+            foreach (SearchNode? representative in multiplayerStyleRoutes)
             {
-                if (boundary != null && !finalCandidates.Any(candidate =>
-                        candidate.Actions.SequenceEqual(boundary.Actions)))
-                    finalCandidates.Add(RefreshReleasedFallback(boundary));
+                if (representative != null && !finalCandidates.Any(candidate =>
+                        candidate.Actions.SequenceEqual(representative.Actions)))
+                    finalCandidates.Add(RefreshReleasedFallback(representative));
             }
         }
         try
@@ -2335,10 +2357,12 @@ internal sealed partial class CombatBeamSolver
                         .ThenByDescending(candidate => candidate.Snapshot.ProjectedPlayerHp),
                     MultiplayerPlanStyle.Defense => viable
                         .OrderByDescending(candidate => CurrentTurnSnapshot(candidate.Node).ProjectedPlayerHp)
+                        .ThenByDescending(candidate => candidate.Node.Outcome?.Turn ?? _startTurnNumber)
                         .ThenBy(candidate => candidate.Snapshot.CumulativePlayerHpLost)
                         .ThenByDescending(candidate => candidate.Node.CumulativeEnemyHpLost),
                     MultiplayerPlanStyle.Setup => viable
                         .OrderByDescending(candidate => CurrentTurnSetup(candidate.Node))
+                        .ThenByDescending(candidate => candidate.Node.Outcome?.Turn ?? _startTurnNumber)
                         .ThenByDescending(candidate => candidate.Snapshot.ProjectedPlayerHp)
                         .ThenByDescending(candidate => candidate.Node.CumulativeEnemyHpLost),
                     _ => throw new ArgumentOutOfRangeException(nameof(style), style, null),

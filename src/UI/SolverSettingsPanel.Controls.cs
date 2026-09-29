@@ -263,7 +263,7 @@ internal sealed partial class SolverSettingsPanel
             SolverUiTokens.CreateCircleTexture(SolverUiTokens.Palette.TextMuted, 16));
     }
 
-    private static void AddBasicRow(
+    private static Label AddBasicRow(
         GridContainer grid,
         string label,
         Control input,
@@ -279,6 +279,7 @@ internal sealed partial class SolverSettingsPanel
         }
         grid.AddChild(rowLabel);
         grid.AddChild(input);
+        return rowLabel;
     }
 
     private static void ApplyTooltip(Control control, string tooltip)

@@ -154,11 +154,16 @@ internal static partial class SolverController
     public static bool IsMultiplayerSession
         => RunManager.Instance.IsInProgress && RunManager.Instance.NetService.Type.IsMultiplayer();
 
+    internal static bool IsMultiplayerCombat
+        => CombatManager.Instance.IsInProgress
+            && CombatManager.Instance.DebugOnlyGetState()?.Players.Count > 1;
+
     public static bool FullAutoEnabled => _combat.FullAutoEnabled;
     public static bool RouteFrozen => _combat.RouteFrozen;
     public static bool HasRetainedRoute => _combat.LatestResult != null || _combat.ContinuationSource != null;
     public static bool AutomaticSearchPaused => _combat.AutomaticSearchPaused;
-    public static bool AutomaticCalculationEnabled => SolverSettings.Current.AutomaticCalculationEnabled;
+    public static bool AutomaticCalculationEnabled
+        => IsMultiplayerCombat || SolverSettings.Current.AutomaticCalculationEnabled;
     internal static bool ShouldAutomaticallySearchNextTurn
         => FullAutoEnabled || AutomaticCalculationEnabled && !_combat.RouteFrozen;
 
@@ -237,10 +242,10 @@ internal static partial class SolverController
     internal static bool ManualRouteImprovementDetected
         => _combat.ManualRouteImprovementDetected;
     internal static bool BugReportUploadRecommended
-        => UnexpectedReplanCount > 0
+        => !IsMultiplayerCombat && (UnexpectedReplanCount > 0
            || _combat.ReplanCounts.GetValueOrDefault(ReplanCause.ContinuationMissing) > 0
            || _combat.ReplanCounts.GetValueOrDefault(ReplanCause.PlanExhausted) > 0
-           || _combat.BugReportIssues.RequiresPlayerUpload;
+           || _combat.BugReportIssues.RequiresPlayerUpload);
     internal static ManualProjectionComparison? LastManualProjectionComparisonForTesting
         => _combat.LastManualProjectionComparison;
     internal static int NoGcRegionRolloverCountForTesting
@@ -1423,7 +1428,8 @@ internal static partial class SolverController
         if (exception.GetBaseException() is not IncompatibleGameplayModException incompatible)
         {
             return $"{title}\n[color={SolverUiTokens.Palette.DangerHex}]{EscapeRichText(exception.Message)}[/color]" +
-                   $"\n{SolverUiTokens.BugReportUploadInstructionRichText}";
+                   (IsMultiplayerCombat ? string.Empty
+                       : $"\n{SolverUiTokens.BugReportUploadInstructionRichText}");
         }
 
         return FormatIncompatibleModFailure(incompatible);
@@ -2706,7 +2712,8 @@ internal static partial class SolverController
             SolverOverlay.Show(
                 host,
                 "[b]战斗路线求解器[/b]\n战斗状态在计算期间发生变化，已丢弃过期结果。\n" +
-                SolverUiTokens.BugReportUploadInstructionRichText);
+                (searchedState.Players.Count > 1
+                    ? string.Empty : SolverUiTokens.BugReportUploadInstructionRichText));
             SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Stale);
             Entry.Logger.Info($"[CombatSolver/Test] SEARCH_STALE generation={generation}");
             return;
@@ -3755,14 +3762,15 @@ internal static partial class SolverController
            ? FormatIncompatibleModFailure(incompatible)
            : $"[color={SolverUiTokens.Palette.DangerHex}][b]{SolverText.Get("计算失败")}[/b]\n" +
            $"{EscapeRichText(exception.Message)}[/color]\n" +
-           SolverUiTokens.SearchFailureInstructionRichText(parallelSearchWasEnabled);
+           (IsMultiplayerCombat ? string.Empty
+               : SolverUiTokens.SearchFailureInstructionRichText(parallelSearchWasEnabled));
 
     private static string FormatDeploymentFailure(Exception exception)
         => exception.GetBaseException() is IncompatibleGameplayModException incompatible
            ? FormatIncompatibleModFailure(incompatible)
            : $"[color={SolverUiTokens.Palette.DangerHex}][b]{SolverText.Get("自动执行中止")}[/b]\n" +
            $"{EscapeRichText(exception.Message)}[/color]\n" +
-           SolverUiTokens.BugReportUploadInstructionRichText;
+           (IsMultiplayerCombat ? string.Empty : SolverUiTokens.BugReportUploadInstructionRichText);
 
     private static string FormatTurnSetupFailure(
         Exception exception,
@@ -3771,7 +3779,8 @@ internal static partial class SolverController
            ? FormatIncompatibleModFailure(incompatible)
            : $"[color={SolverUiTokens.Palette.DangerHex}][b]{SolverText.Get("回合准备选牌失败")}[/b]\n" +
            $"{EscapeRichText(exception.GetBaseException().Message)}[/color]\n" +
-           SolverUiTokens.SearchFailureInstructionRichText(parallelSearchWasEnabled);
+           (IsMultiplayerCombat ? string.Empty
+               : SolverUiTokens.SearchFailureInstructionRichText(parallelSearchWasEnabled));
 
     private static void CancelDeployment()
     {

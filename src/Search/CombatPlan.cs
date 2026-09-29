@@ -1417,6 +1417,7 @@ internal sealed record CachedContinuation(
 
 internal sealed class SolverResult
 {
+    public bool IsMultiplayer { get; internal set; }
     public MultiplayerPlanStyle? MultiplayerStyle { get; internal set; }
     public IReadOnlyList<SolverResult> MultiplayerAlternatives { get; internal set; } = [];
     public int MultiplayerEffectiveDamage { get; internal set; }
@@ -1749,6 +1750,7 @@ internal sealed class SolverResult
         };
         continuation = new SolverResult
         {
+            IsMultiplayer = IsMultiplayer,
             StartTurnNumber = cached.StartTurnNumber,
             TurnSetupChoices = TurnSetupChoices,
             TurnSetupPlayState = TurnSetupPlayState,

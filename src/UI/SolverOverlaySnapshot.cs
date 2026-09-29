@@ -614,14 +614,16 @@ internal sealed record SolverOverlaySnapshot(
                 SolverText.Format($"[color={SolverUiTokens.Palette.DangerHex}][b]路线失配[/b][/color]  ") +
                 SolverText.Format($"完整路线原预计 {result.PreviousProjectedBattleHpLost} HP，重算后 {result.ProjectedBattleHpLost} HP，") +
                 SolverText.Format($"增加 {result.ProjectedBattleHpLossIncrease} HP。") +
-                SolverUiTokens.BugReportUploadInstruction);
+                (result.IsMultiplayer
+                    ? string.Empty : SolverUiTokens.BugReportUploadInstruction));
         }
         if (unexpectedReplan)
         {
             detailLines.Add(
                 SolverText.Format($"[color={SolverUiTokens.Palette.DangerHex}][b]计划外重算[/b][/color]  ") +
                 SolverText.Get("求解器执行后的预测状态与实机不一致。") +
-                SolverUiTokens.BugReportUploadInstruction);
+                (result.IsMultiplayer
+                    ? string.Empty : SolverUiTokens.BugReportUploadInstruction));
         }
         return string.Join('\n', detailLines);
     }

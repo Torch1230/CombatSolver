@@ -625,6 +625,68 @@ internal sealed partial class UnattendedTestRunner
                     : "MultiplayerController:SearchTimeTeammateDamage:RouteReevaluated:LocalDeployment:NoFullRescan");
                 return new ExecutionOutcome(false, 1, true, true, true, false);
             }
+            if (input.VerifyAutomaticEveryTurnAndQuietFeedback)
+            {
+                SolverSettingsData originalSettings = SolverSettings.Current;
+                SolverSettings.Update(originalSettings with { AutomaticCalculationEnabled = false });
+                try
+                {
+                    SolverController.MonitorCombatPresence();
+                    UnattendedTestRunner.EnableAutomaticTurnSearchForTesting();
+                    if (!SolverController.IsMultiplayerCombat
+                        || !SolverController.AutomaticCalculationEnabled
+                        || !SolverOverlay.MultiplayerSettingsQuietForTesting)
+                        throw new InvalidOperationException("Multiplayer turn-start search still follows the single-player switch.");
+                    int searchesBefore = SolverController.SearchesStartedForTesting;
+                    SolverController.RequestSearch(runner._host, combat, SearchReason.AutoTurnStart);
+                    await runner.WaitForMultiplayerProbeAsync(() =>
+                        SolverController.LastCompletedResultForTesting?.StartTurnNumber == 1
+                        || SolverController.LastSearchFailureForTesting != null);
+                    if (SolverController.LastSearchFailureForTesting is { } firstFailure)
+                        throw new InvalidOperationException("First multiplayer automatic search failed.", firstFailure);
+                    SolverResult first = SolverController.LastCompletedResultForTesting
+                        ?? throw new InvalidOperationException("First multiplayer automatic result is missing.");
+                    SolverController.RecordManualProjectionComparisonForTesting(7, 3);
+                    SolverOverlay.RefreshControls();
+                    string setupFailure = SolverController.FormatSearchSetupFailure(
+                        new InvalidOperationException("test multiplayer setup failure"));
+                    string searchFailure = SolverController.FormatSearchFailureForTesting(
+                        new InvalidOperationException("test multiplayer search failure"),
+                        parallelSearchWasEnabled: true);
+                    string details = SolverOverlaySnapshot.Capture(first, unexpectedReplan: true).DetailsText;
+                    if (!SolverController.ManualRouteImprovementDetected
+                        || SolverController.BugReportUploadRecommended
+                        || SolverOverlay.ManualRouteImprovementVisibleForTesting
+                        || SolverOverlay.UnexpectedReplanWarningVisibleForTesting
+                        || setupFailure.Contains(SolverUiTokens.BugReportUploadInstruction,
+                            StringComparison.Ordinal)
+                        || searchFailure.Contains("上传问题包", StringComparison.Ordinal)
+                        || details.Contains(SolverUiTokens.BugReportUploadInstruction,
+                            StringComparison.Ordinal))
+                        throw new InvalidOperationException("Multiplayer displayed an improvement or log-upload prompt.");
+                    var end = new EndPlayerTurnAction(scenario.Player, 1);
+                    RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(end);
+                    await end.CompletionTask;
+                    await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(member =>
+                        member.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
+                    await runner.WaitForMultiplayerProbeAsync(() =>
+                        SolverController.LastCompletedResultForTesting?.StartTurnNumber == 2
+                        || SolverController.LastSearchFailureForTesting != null);
+                    if (SolverController.LastSearchFailureForTesting is { } secondFailure)
+                        throw new InvalidOperationException("Second multiplayer automatic search failed.", secondFailure);
+                    if (SolverController.SearchesStartedForTesting != searchesBefore + 2
+                        || SolverController.IsDeploying
+                        || CombatManager.Instance.IsPlayerReadyToEndTurn(scenario.Player))
+                        throw new InvalidOperationException("Multiplayer turn start did not search exactly once without deploying.");
+                    runner._completedChecks.Add(
+                        "MultiplayerController:EveryTurnAutoSearch:SinglePlayerSwitchOff:NoDeployment:NoUploadOrBetterRoutePrompt");
+                    return new ExecutionOutcome(false, 2, true, true, true, false);
+                }
+                finally
+                {
+                    SolverSettings.Update(originalSettings);
+                }
+            }
             if (input.VerifyControllerAutomaticCalculation || input.VerifyControllerFullAuto)
             {
                 SolverController.MonitorCombatPresence();
@@ -2218,6 +2280,9 @@ internal sealed partial class UnattendedTestRunner
                         || secondCard.Position.X < firstCard.Position.X + firstCard.Size.X
                         || firstCard.Size.Y < 92 || secondCard.Size.Y < 92)
                         throw new InvalidOperationException("Multiplayer options are not aligned comparison cards.");
+                    if (SolverOverlay.RouteViewportHeightForTesting
+                        < SolverUiTokens.Size.RouteViewportHeight)
+                        throw new InvalidOperationException("Multiplayer route viewport clips the current turn.");
                     if (primary.SearchedTurns > 1)
                     {
                         if (!SolverOverlay.MultiplayerFutureTurnsVisibleForTesting
@@ -2773,6 +2838,18 @@ internal sealed partial class UnattendedTestRunner
                             .SequenceEqual(search.BestNode.Actions.Where(action => action.Turn == 1)))
                         throw new InvalidOperationException("Defense search did not preserve a real HP tradeoff.");
                     runner._completedChecks.Add("MultiplayerPlans:OutputAndDefense:DistinctActions:ProjectedHpGain");
+                }
+                if (input.VerifyDefenseRouteDepth)
+                {
+                    SolverResult defense = contentPlans.Single(plan =>
+                        plan.MultiplayerStyle == MultiplayerPlanStyle.Defense);
+                    if (defense.SearchedTurns != 2
+                        || !defense.BestNode.Actions.Any(action => action.Turn == 2)
+                        || search.SearchedTurns != 2)
+                        throw new InvalidOperationException(
+                            $"Defense route stopped before the searched horizon: output={search.SearchedTurns}, "
+                            + $"defense={defense.SearchedTurns}.");
+                    runner._completedChecks.Add("MultiplayerPlans:Defense:TwoTurnContinuation");
                 }
                 if (input.VerifyHybridPlanStyles)
                 {

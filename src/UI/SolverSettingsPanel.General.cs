@@ -8,6 +8,7 @@ internal sealed partial class SolverSettingsPanel
 {
     private CheckButton _solverEnabled = null!;
     private CheckButton _automaticCalculation = null!;
+    private Label _automaticCalculationLabel = null!;
     private CheckButton _predictPotionReward = null!;
     private CheckButton _stopOnCombatEnd = null!;
     private CheckButton _stopOnDeathTurn = null!;
@@ -37,6 +38,11 @@ internal sealed partial class SolverSettingsPanel
 
     internal bool PotionRewardPredictionConfiguredForTesting
         => _predictPotionReward.ButtonPressed == SolverSettings.Current.PredictPotionReward;
+
+    internal bool MultiplayerAutomaticTurnSettingForTesting
+        => _automaticCalculation.ButtonPressed && _automaticCalculation.Disabled
+            && _automaticCalculation.TooltipText == SolverText.Get(
+                "多人战斗每个本地回合开始后自动计算；此设置仅影响单人。");
 
     internal bool ExerciseBossHpStrategySettingsForTesting()
     {
@@ -183,7 +189,7 @@ internal sealed partial class SolverSettingsPanel
         AddBasicRow(solverGrid, SolverText.Get("启用求解器"), _solverEnabled);
         _automaticCalculation = CreateToggle();
         _automaticCalculation.Toggled += OnAutomaticCalculationToggled;
-        AddBasicRow(
+        _automaticCalculationLabel = AddBasicRow(
             solverGrid,
             SolverText.Get("自动计算"),
             _automaticCalculation,
@@ -285,7 +291,14 @@ internal sealed partial class SolverSettingsPanel
     private void ReloadGeneralPage(SolverSettingsData data)
     {
         _solverEnabled.ButtonPressed = !data.SolverDisabled;
-        _automaticCalculation.ButtonPressed = data.AutomaticCalculationEnabled;
+        bool multiplayer = SolverController.IsMultiplayerCombat;
+        _automaticCalculation.ButtonPressed = multiplayer || data.AutomaticCalculationEnabled;
+        _automaticCalculation.Disabled = multiplayer;
+        string automaticHint = SolverText.Get(multiplayer
+            ? "多人战斗每个本地回合开始后自动计算；此设置仅影响单人。"
+            : "开启后会在进入战斗局面和每个玩家回合自动开始后台计算；关闭后由主面板手动开始计算。");
+        _automaticCalculationLabel.TooltipText = automaticHint;
+        _automaticCalculation.TooltipText = automaticHint;
         _predictPotionReward.ButtonPressed = data.PredictPotionReward;
         _stopOnCombatEnd.ButtonPressed = data.StopFullAutoOnCombatEnd;
         _stopOnDeathTurn.ButtonPressed = data.StopFullAutoOnDeathTurn;

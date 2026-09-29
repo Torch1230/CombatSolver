@@ -9,6 +9,8 @@ internal sealed partial class SolverSettingsPanel
     private CheckButton _beamWidthPortfolioEnabled = null!;
     private CheckButton _noveltyPortfolioEnabled = null!;
     private CheckButton _earlyTurnExplorationEnabled = null!;
+    private Label _parallelismLabel = null!;
+    private OptionButton _parallelismInput = null!;
     private CheckButton _noGcRegionEnabled = null!;
     private LineEdit _noGcRegionBudget = null!;
     private LineEdit _multiplayerTurnDepth = null!;
@@ -17,6 +19,11 @@ internal sealed partial class SolverSettingsPanel
     private Control _advancedParameters = null!;
     private Button _advancedParametersToggle = null!;
     private bool _advancedParametersExpanded;
+
+    internal bool MultiplayerParallelismHintQuietForTesting
+        => _parallelismLabel.TooltipText == SolverText.Get(
+            "关闭时使用单线程搜索；2–16 是并行上限。提高可能加快大型搜索，也会增加 CPU、内存和帧率压力。")
+            && _parallelismInput.TooltipText == _parallelismLabel.TooltipText;
 
     internal bool ExercisePerformancePresetPersistenceForTesting()
     {
@@ -195,11 +202,20 @@ internal sealed partial class SolverSettingsPanel
         AddBasicRow(budgetGrid, SolverText.Get("前两回合深入探索（实验）"),
             _earlyTurnExplorationEnabled,
             SolverText.Get("常规搜索后，保留前两回合不同的合法路线并继续搜索完整战斗。最多使用 40 分钟，可随时取消；只采用战损和用药综合结果更好的完整胜利路线。默认关闭，下次搜索生效。"));
-        AddBasicRow(
+        _parallelismInput = CreateSearchParallelismInput();
+        _parallelismLabel = AddBasicRow(
             budgetGrid,
             SolverText.Get("搜索并行度"),
-            CreateSearchParallelismInput(),
+            _parallelismInput,
             SolverText.Get("关闭时使用单线程搜索；2–16 是并行上限，实际并发还会受可独立分支数和内存安全准入限制，因此 CPU 不一定满载。提高可能加快大型搜索，也会增加 CPU、峰值内存和帧率压力；超过物理核心数通常只有小幅收益。默认按可用逻辑处理器选择：16 个及以上用 8 线程，4–15 个用 4 线程，2–3 个用 2 线程，其余用单线程；遇到疑似并行问题时请先上传问题包，再切换为关闭。"));
+        _reloadInputs.Add(_ =>
+        {
+            string hint = SolverText.Get(SolverController.IsMultiplayerCombat
+                ? "关闭时使用单线程搜索；2–16 是并行上限。提高可能加快大型搜索，也会增加 CPU、内存和帧率压力。"
+                : "关闭时使用单线程搜索；2–16 是并行上限，实际并发还会受可独立分支数和内存安全准入限制，因此 CPU 不一定满载。提高可能加快大型搜索，也会增加 CPU、峰值内存和帧率压力；超过物理核心数通常只有小幅收益。默认按可用逻辑处理器选择：16 个及以上用 8 线程，4–15 个用 4 线程，2–3 个用 2 线程，其余用单线程；遇到疑似并行问题时请先上传问题包，再切换为关闭。");
+            _parallelismLabel.TooltipText = hint;
+            _parallelismInput.TooltipText = hint;
+        });
         _noGcRegionEnabled = CreateToggle();
         _noGcRegionEnabled.Disabled = !SearchGcPolicy.NoGcRegionSupported
             || RuntimeGcProfile.Current.IsActive;

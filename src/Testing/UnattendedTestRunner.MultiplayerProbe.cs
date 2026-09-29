@@ -50,6 +50,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifySearch { get; init; }
         public bool VerifyControllerSearch { get; init; }
         public bool VerifyControllerAutomaticCalculation { get; init; }
+        public bool VerifyAutomaticEveryTurnAndQuietFeedback { get; init; }
         public bool VerifyControllerFullAuto { get; init; }
         public bool VerifyControllerAutoNextTurn { get; init; }
         public bool VerifyControllerSearchDrift { get; init; }
@@ -101,6 +102,7 @@ internal sealed partial class UnattendedTestRunner
         public bool ContentSearchOnly { get; init; }
         public int ContentSearchTurnDepth { get; init; } = 1;
         public bool VerifyHybridPlanStyles { get; init; }
+        public bool VerifyDefenseRouteDepth { get; init; }
         public bool VerifyPureSupport { get; init; }
         public bool VerifyNoPureSupport { get; init; }
         public bool VerifyGroupBenefitSearch { get; init; }
@@ -148,6 +150,8 @@ internal sealed partial class UnattendedTestRunner
                 || input.PlayerCount is not (2 or 4)
                 || input.VerifyControllerDeploy && !input.VerifyControllerSearch
                 || input.VerifyControllerAutomaticCalculation && input.VerifyControllerFullAuto
+                || input.VerifyAutomaticEveryTurnAndQuietFeedback && (!input.IsVirtual
+                    || input.PlayerCount != 2 || input.ContentCardIds.Length != 0)
                 || (input.VerifyControllerAutomaticCalculation || input.VerifyControllerFullAuto)
                     && input.VerifyControllerSearch
                 || input.VerifyControllerSearchDrift
@@ -274,6 +278,10 @@ internal sealed partial class UnattendedTestRunner
                     || !input.ContentCardIds.Contains("STRIKE_IRONCLAD"))
                 || input.VerifyHybridPlanStyles && (!input.IsVirtual || !input.VerifySearch
                     || !input.ContentSearchOnly || input.ContentSearchTurnDepth != 1)
+                || input.VerifyDefenseRouteDepth && (!input.IsVirtual || !input.VerifySearch
+                    || !input.ContentSearchOnly || input.ContentSearchTurnDepth != 2
+                    || !input.ContentCardIds.SequenceEqual(
+                        ["DEFEND_IRONCLAD", "STRIKE_IRONCLAD"]))
                 || input.VerifyDeadTeammateTarget && (!input.VerifyAllyTarget || input.PlayerCount != 4)
                 || input.ContentCardIds.Length > 0 && (input.Mode != "virtual"
                     || input.ContentCardIds.Length > 5
