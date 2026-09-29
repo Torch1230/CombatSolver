@@ -767,3 +767,5 @@ P2 又验 `OneForAll` 与其他七张 `AllAllies` 牌不同的死亡玩家范围
 另核 `FoulPotion` 的特殊范围：战斗中没有对队友指定投药目标，但原版群体效果会伤害所有非伙伴生物，两名玩家及敌人均受伤。双人原生／预测全状态和九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。玩家目标药水的“只给自己丢”约束仍按候选目标实行，不能推成所有药水效果只影响自身。
 
 `PotionOfBinding` 又在双人双敌根验收另一条 `AllEnemies` 分支：唯一无指定生物候选，原版向两名敌人各施虚弱和易伤，玩家无减益，全部状态／九条 RNG 差分 Passed，证据见[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)。药水效果范围以各自原版结算为准；51 个玩家目标药水的源码登记仍不等于运行验收。
+
+用户指出近期对普通自用药水测得过细，偏离跨玩家适配主线。已启动的 `ShipInABottle` 下回合和 `FruitJuice` 自用验证均 Passed 并如实登记在[内容清单](MULTIPLAYER_CONTENT_INVENTORY.md)；自此停止逐瓶普通药水探针，把工作转回多人专属牌、队友目标／归属、跨玩家生命周期、联机执行与第 9 节实际缺口。

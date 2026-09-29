@@ -2139,6 +2139,12 @@ internal sealed partial class UnattendedTestRunner
                     .Where(card => card.Tags.Contains(CardTag.Strike))
                     .Select(card => (card, card.BaseReplayCount)).ToArray();
                 int[] playerHpBeforePotion = combat.Players.Select(member => member.Creature.CurrentHp).ToArray();
+                int actorHpBeforePotion = actor.Creature.CurrentHp;
+                int actorMaxHpBeforePotion = actor.Creature.MaxHp;
+                int[] teammateHpBeforePotion = combat.Players.Where(member => member != actor)
+                    .Select(member => member.Creature.CurrentHp).ToArray();
+                int[] teammateMaxHpBeforePotion = combat.Players.Where(member => member != actor)
+                    .Select(member => member.Creature.MaxHp).ToArray();
                 int[] enemyHpBeforePotion = combat.Enemies.Select(enemy => enemy.CurrentHp).ToArray();
                 int slot = actor.PotionSlots.ToList().IndexOf(potion);
                 if (slot < 0)
@@ -2279,6 +2285,25 @@ internal sealed partial class UnattendedTestRunner
                         || combat.Players.Any(member => member.Creature.GetPowerAmount<WeakPower>() != 0
                             || member.Creature.GetPowerAmount<VulnerablePower>() != 0)))
                     throw new InvalidOperationException("Potion of Binding did not debuff only both enemies.");
+                if (potion is ShipInABottle
+                    && (actor.Creature.Block != actorBlockBeforePotion + 10
+                        || actor.Creature.GetPowerAmount<BlockNextTurnPower>() != 10
+                        || combat.Players.Where(member => member != actor)
+                            .Select(member => member.Creature.Block)
+                            .Where((block, index) => block != teammateBlocksBeforePotion[index]).Any()
+                        || combat.Players.Where(member => member != actor)
+                            .Any(member => member.Creature.HasPower<BlockNextTurnPower>())))
+                    throw new InvalidOperationException("Ship in a Bottle did not protect only its holder.");
+                if (potion is FruitJuice
+                    && (actor.Creature.MaxHp != actorMaxHpBeforePotion + 5
+                        || actor.Creature.CurrentHp != actorHpBeforePotion + 5
+                        || combat.Players.Where(member => member != actor)
+                            .Select(member => member.Creature.MaxHp)
+                            .Where((hp, index) => hp != teammateMaxHpBeforePotion[index]).Any()
+                        || combat.Players.Where(member => member != actor)
+                            .Select(member => member.Creature.CurrentHp)
+                            .Where((hp, index) => hp != teammateHpBeforePotion[index]).Any()))
+                    throw new InvalidOperationException("Fruit Juice changed the wrong player's maximum HP.");
                 if (input.VerifyPotionAccounting)
                 {
                     BattleDamageSnapshot observed = BattleDamageTracker.Observe(combat);
