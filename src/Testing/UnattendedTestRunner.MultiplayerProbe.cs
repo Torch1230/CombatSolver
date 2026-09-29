@@ -33,6 +33,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyThievingHopperPerPlayer { get; init; }
         public bool VerifyKnightsDampenUpgraded { get; init; }
         public bool VerifyKnowledgeDemonChoiceBoundary { get; init; }
+        public bool VerifyRatSummonAfterRound { get; init; }
         public bool VerifyLivingShieldAllyDeath { get; init; }
         public bool VerifyTestSubjectFirstRevive { get; init; }
         public bool VerifyTestSubjectSecondRevive { get; init; }
@@ -140,6 +141,8 @@ internal sealed partial class UnattendedTestRunner
                     || !input.IsVirtual || request.EncounterId != "KNIGHTS_ELITE")
                 || input.VerifyKnowledgeDemonChoiceBoundary && (!input.IsVirtual
                     || request.EncounterId != "KNOWLEDGE_DEMON_BOSS")
+                || input.VerifyRatSummonAfterRound && (!input.VerifyRoundDifferential
+                    || !input.IsVirtual || request.EncounterId != "TWO_TAILED_RATS_NORMAL")
                 || input.VerifyLivingShieldAllyDeath && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyTestSubjectFirstRevive && (!input.VerifyRoundDifferential || !input.IsVirtual)
                 || input.VerifyTestSubjectSecondRevive && !input.VerifyTestSubjectFirstRevive

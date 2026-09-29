@@ -629,6 +629,47 @@ internal sealed partial class UnattendedTestRunner
                 player.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 2 }));
             await runner.MultiplayerProbeBarrierAsync("second-turn", combat);
             CheckPrediction(roundPrediction, scenario.Player, "END_TURN");
+            if (input.VerifyRatSummonAfterRound)
+            {
+                Creature rat = combat.Enemies.First(creature => creature.Monster is TwoTailedRat);
+                await CreatureCmd.SetCurrentHp(rat, 1);
+                ContinuationStamp deathPrediction = PredictOrdinaryCard(scenario.Player,
+                    "STRIKE_IRONCLAD", rat);
+                CardModel strike = scenario.Player.PlayerCombatState!.Hand.Cards.First(card =>
+                    card.Id.Entry == "STRIKE_IRONCLAD");
+                var killRat = new PlayCardAction(strike, rat);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(killRat);
+                await killRat.CompletionTask;
+                await runner.MultiplayerProbeBarrierAsync("rat-death", combat);
+                CheckPrediction(deathPrediction, scenario.Player, "RAT_DEATH");
+                if (!rat.IsDead || combat.Enemies.Count(creature => creature.IsAlive) != 2)
+                    throw new InvalidOperationException("Two-tailed rat death did not free one monster slot.");
+                ContinuationStamp secondPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var secondEnd = new EndPlayerTurnAction(scenario.Player, 2);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(secondEnd);
+                await secondEnd.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(member =>
+                    member.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 3 }));
+                await runner.MultiplayerProbeBarrierAsync("rat-summon-ready", combat);
+                CheckPrediction(secondPrediction, scenario.Player, "RAT_SUMMON_READY");
+                if (!combat.Enemies.Any(creature => creature.IsAlive
+                    && creature.Monster is TwoTailedRat monster
+                    && monster.NextMove.Id.Equals("CALL_FOR_BACKUP_MOVE")))
+                    throw new InvalidOperationException("Rat summon fixture did not queue CALL_FOR_BACKUP_MOVE.");
+                ContinuationStamp summonPrediction = PredictMultiplayerRound(combat, scenario.Player);
+                var thirdEnd = new EndPlayerTurnAction(scenario.Player, 3);
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(thirdEnd);
+                await thirdEnd.CompletionTask;
+                await runner.WaitForMultiplayerProbeAsync(() => combat.Players.All(member =>
+                    member.PlayerCombatState is { Phase: PlayerTurnPhase.Play, TurnNumber: 4 }));
+                await runner.MultiplayerProbeBarrierAsync("rat-summoned", combat);
+                CheckPrediction(summonPrediction, scenario.Player, "RAT_SUMMONED");
+                if (combat.Enemies.Count(creature => creature.IsAlive
+                    && creature.Monster is TwoTailedRat) != 3)
+                    throw new InvalidOperationException("Two-tailed rat did not refill the empty monster slot.");
+                runner._completedChecks.Add("MultiplayerContent:TwoTailedRat:AllyDeathAndSummon:FullState:FullRng");
+                return new ExecutionOutcome(false, 4, true, true, true, false);
+            }
             if (input.VerifyThievingHopperPerPlayer)
             {
                 Creature hopper = combat.Enemies.Single(creature => creature.Monster is ThievingHopper);
