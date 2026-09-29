@@ -741,3 +741,5 @@ P2 `QueenBoss` 预排 `BURN_BRIGHT_FOR_ME_MOVE` 时击杀 `TorchHeadAmalgam`，�
 随后复用已有三回合差分入口，`SlumberingBeetleNormal` 的 `SlumberPower` 自然耗尽使其苏醒、移除镀层；第四回合甲虫无 Power、格挡 41，全部状态和九条 RNG 对齐，Passed：`.local/multiplayer-p2/slumbering-beetle-awake-1df17160e621452bbd78ca02240370e5/peer-0/result.json`。这条补上自然苏醒，受伤提前苏醒仍未验；上述“下一条工作”中的镀层苏醒项以此更新。
 
 又补受伤提前唤醒：测试注入睡眠 1 层并清除甲虫格挡，双人本地打 `Strike` 后预排 `STUNNED`，下一敌方回合移除镀层；两个稳定边界的全状态／九条 RNG 差分 Passed：`.local/multiplayer-p2/beetle-damage-stun-round-cfe4ccec565b479fa2828a6bc2bfed06/peer-0/result.json`。这补足甲虫两种苏醒入口；睡眠层数是夹具注入。
+
+最新行为提交 `35c15e7d`，当前工作区在随后文档提交后为干净状态。该提交的 Release 构建 0 警告／0 错误、Windows 结构门禁通过，最终 DLL 已覆盖本地 Mod 且哈希一致。恢复后继续未完成的内容闭包及第 9 节验收，不复跑已通过的甲虫场景。
