@@ -121,6 +121,8 @@
 
 Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHopePower`、`HammerTimePower`、`TankPower` 和 `PlatingPower`；球目录有 `FrostOrb`。`DoomPower` 的 `GetTeammatesOf` 位于死亡特效等待，结算仍须按全阵营 Doom 生命周期验收；`ReattachPower` 的队友是蜈蚣怪物分段，按怪物死亡／复活验收。怪物目录的结算候选为 `ToughEgg`（卵孵化 HP 缩放）、`WaterfallGiant`／`KnowledgeDemon`（治疗随玩家数变化）、`TheObscura`／`Queen`（怪物同伴能力）、`KinPriest`／`Ovicopter`／`TwoTailedRat`／`LivingShield`／`Fabricator`（同伴存活与召唤条件）、`DecimillipedeSegment`（玩家数与分段 HP／复活）、`TestSubject`（重生 HP 缩放）、`GremlinMerc`（逐玩家创建目标型 `ThieveryPower`）。`Parafright`／`EyeWithTeeth` 的 `GetTeammatesOf` 命中动画死亡条件，不是战斗结算分支。这些实际调用条件与模拟入口仍须逐项验收。
 
+`FrostOrb` 的跨玩家传播在虚拟双人原版根直接验两个实际 Hook：给本地球主施加 `HibernatePower` 并充入霜球后，原版被动让本地与队友各得 2 格挡；随后激发让两人各再得 5 格挡，球仅从本地队列移除。两次稳定边界的全玩家／敌人状态和九条 RNG 与预测一致，Passed：`.local/multiplayer-p2/frost-hibernate-both-players-a809108ca0b64db19510bc03387da4ad/peer-0/result.json`。能力与球由夹具原生施加；这覆盖被动／激发各一次，不覆盖死亡队友、额外触发数或跨回合能力递减。
+
 遗物目录直接涉及人数或战斗生成池的入口包括 `MassiveScroll`（多人专属牌来源）、`Toolbox`、`VexingPuzzlebox`、`OrangeDough`、`ChoicesParadox`（战斗生成池），以及 `BigHat`、`Crossbow`、`ScrollBoxes`、`DustyTome`、`DistinguishedCape`、`NeowsBones`（战前／局外池）。`WingedBoots` 和 `SilverCrucible` 只允许单人，`LastingCandy` 读取局外玩家集合；`WhisperingEarring` 自动打出 `AnyPlayer` 卡时指向持有人，打出 `AnyAlly` 卡时在其他存活玩家中随机选人。战斗生成物和多人可达牌进入 P2；局外获得路径只登记来源，本批不扩展为战前求解器。
 
 补扫共享 `CombatTargets` 后，战斗遗物还有 `Tingsha`（持有人弃牌随机敌人）、`ForgottenSoul`（持有人耗牌随机敌人）、`ParryingShield`（持有人回合结束格挡达标后随机敌人）、`Kusarigama`（持有人每第三张攻击随机敌人）；球 `LightningOrb` 的被动／激发及 `SerpentFormPower` 的持有人打牌触发也使用此 RNG 流。它们虽非多人限定，但战斗中共用随机状态和敌人集合，纳入 P2。`FoulPotion` 遍历跑局玩家的入口在战斗外，只登记来源。

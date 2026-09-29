@@ -262,6 +262,50 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("MultiplayerContent:LightningOrb:PassiveAndEvoke:OwnerQueue:RandomTarget:FullState:FullRng");
                 return new ExecutionOutcome(false, 2, true, true, true, false);
             }
+            if (input.VerifyFrostHibernatePropagation)
+            {
+                Player actor = scenario.Player;
+                Player teammate = combat.Players.Single(player => player != actor);
+                await PowerCmd.Apply<HibernatePower>(new ThrowingPlayerChoiceContext(),
+                    actor.Creature, 1, actor.Creature, null);
+                await OrbCmd.AddSlots(actor, 2);
+                await OrbCmd.Channel<FrostOrb>(new ThrowingPlayerChoiceContext(), actor);
+                FrostOrb orb = actor.PlayerCombatState!.OrbQueue.Orbs.OfType<FrostOrb>().Single();
+                CombatRootSnapshot passiveRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator passiveSimulator = passiveRoot.ForkSimulator();
+                passiveSimulator.TriggerOrbPassive(orb, target: null);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(passiveSimulator,
+                        (SimulatedCombatState)passiveSimulator.State.CombatState))
+                    throw new InvalidOperationException("Frost passive prediction did not settle.");
+                ContinuationStamp passivePrediction = ContinuationStamp.CapturePredicted(
+                    actor, passiveSimulator, 1, passiveRoot.Forecast, 1);
+                await orb.TriggerPassive(new ThrowingPlayerChoiceContext(), null);
+                await runner.MultiplayerProbeBarrierAsync("frost-hibernate-passive", combat);
+                ContinuationStamp passiveActual = ContinuationStamp.CaptureLive(combat);
+                if (passivePrediction != passiveActual
+                    || actor.Creature.Block != 2 || teammate.Creature.Block != 2)
+                    throw new InvalidOperationException("Hibernate Frost passive did not block both players: "
+                        + passivePrediction.DescribeFirstDifference(passiveActual));
+                CombatRootSnapshot evokeRoot = CombatRootSnapshot.Capture(combat);
+                CombatPredictionSimulator evokeSimulator = evokeRoot.ForkSimulator();
+                evokeSimulator.OrbEvokeNext(actor);
+                if (!CombatBeamSolver.SettleReplayActionBoundary(evokeSimulator,
+                        (SimulatedCombatState)evokeSimulator.State.CombatState))
+                    throw new InvalidOperationException("Frost evoke prediction did not settle.");
+                ContinuationStamp evokePrediction = ContinuationStamp.CapturePredicted(
+                    actor, evokeSimulator, 1, evokeRoot.Forecast, 1);
+                await OrbCmd.EvokeNext(new ThrowingPlayerChoiceContext(), actor);
+                await runner.MultiplayerProbeBarrierAsync("frost-hibernate-evoke", combat);
+                ContinuationStamp evokeActual = ContinuationStamp.CaptureLive(combat);
+                if (evokePrediction != evokeActual
+                    || actor.Creature.Block != 7 || teammate.Creature.Block != 7
+                    || actor.PlayerCombatState.OrbQueue.Orbs.Count != 0
+                    || teammate.PlayerCombatState!.OrbQueue.Orbs.Count != 0)
+                    throw new InvalidOperationException("Hibernate Frost evoke did not block both players: "
+                        + evokePrediction.DescribeFirstDifference(evokeActual));
+                runner._completedChecks.Add("MultiplayerFrostHibernate:PassiveAndEvoke:BothPlayers:FullState:FullRng");
+                return new ExecutionOutcome(false, 1, true, true, true, false);
+            }
             if (input.VerifyKusarigamaRandomTarget || input.VerifyKusarigamaOwnerAndReset)
             {
                 Player actor = scenario.Player;

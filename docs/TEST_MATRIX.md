@@ -246,6 +246,8 @@ P2 `Kusarigama` 所有权和重置：本地两次攻击后队友插入攻击不�
 
 P1 `PaelsEye` 双人额外回合探针未通过：注入持有人遗物后，预测转到其第 2 回合；虚拟原生端未在 120 秒内到达稳定额外回合边界。三次定位的严格等待超时、过早取样和放宽目标条件后仍超时证据见[规划最新记录](MULTIPLAYER_PLAN.md)。原版源码定位根因：虚拟多人用单人 NetService，`AllPlayersReadyToEndTurn` 恒真；额外回合开始标记被排除的队友结束后提前返回，持有人进不了 `Play`。临时探针已撤回，需双进程 ENet 验收，不把该行为记为已验。
 
+P2 `HibernatePower`／`FrostOrb` 跨玩家格挡：双人本地球主的霜球被动让两名玩家各得 2 格挡，激发让两人各再得 5，队友没有球、持有人队列清空；两次原版／预测全状态与九条 RNG 差分 Passed：`.local/multiplayer-p2/frost-hibernate-both-players-a809108ca0b64db19510bc03387da4ad/peer-0/result.json`。能力和球由夹具施加，跨回合能力递减未验。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

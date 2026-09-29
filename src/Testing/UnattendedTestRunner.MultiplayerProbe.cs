@@ -86,6 +86,7 @@ internal sealed partial class UnattendedTestRunner
         public bool VerifyKusarigamaRandomTarget { get; init; }
         public bool VerifyKusarigamaOwnerAndReset { get; init; }
         public bool VerifyLightningOrbTargets { get; init; }
+        public bool VerifyFrostHibernatePropagation { get; init; }
         public bool VerifySerpentFormRandomTarget { get; init; }
         public bool VerifyPowerGenerationPools { get; init; }
         public bool VerifyCalamityGeneration { get; init; }
@@ -235,6 +236,8 @@ internal sealed partial class UnattendedTestRunner
                     || request.EncounterId != "CULTISTS_NORMAL")
                 || input.VerifyLightningOrbTargets && (!input.IsVirtual || !input.UseFirstEnemyForProbe
                     || request.EncounterId != "CULTISTS_NORMAL")
+                || input.VerifyFrostHibernatePropagation && (!input.IsVirtual || input.PlayerCount != 2
+                    || request.EncounterId != "FUZZY_WURM_CRAWLER_WEAK")
                 || input.VerifySerpentFormRandomTarget && (!input.IsVirtual
                     || request.EncounterId != "CULTISTS_NORMAL"
                     || !input.ContentCardIds.SequenceEqual(["SERPENT_FORM", "STRIKE_IRONCLAD"]))
