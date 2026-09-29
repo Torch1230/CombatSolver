@@ -68,7 +68,6 @@ internal sealed partial class CombatBeamSolver
                         && inserted.Snapshot.PlayerHp >= original.Snapshot.PlayerHp
                         && inserted.Snapshot.CumulativePlayerHpLost <= original.Snapshot.CumulativePlayerHpLost
                         && inserted.Snapshot.Energy >= original.Snapshot.Energy
-                        && inserted.Snapshot.Stars >= original.Snapshot.Stars
                         && inserted.Snapshot.EnemyHp <= original.Snapshot.EnemyHp
                         && inserted.Snapshot.BoundaryReason == original.Snapshot.BoundaryReason;
                     if (!accepted)

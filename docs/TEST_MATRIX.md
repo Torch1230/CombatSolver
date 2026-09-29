@@ -178,6 +178,8 @@ P2 `FabricatorNormal` 满员、召唤物死亡和补位：制造机加三名召�
 
 P1／P2 双进程 ENet 玩家死亡：加入者 1 HP 被 `FabricatorNormal` 首招击杀，房主存活到第二回合；死者阶段停在 `Start` 且牌与资源清空。房主原版／模拟全玩家状态和完整 RNG 严格差分、双端原生检查点一致，Passed：`.local/multiplayer-p1/enet-player-death-fixed-66898c2c7d5f480a8c87a487d3df1393/peer-0/result.json`、`peer-1/result.json`。虚拟多人在死者自动准备后连续推进，故未用作此项运行证据。
 
+P3 零能量星能支援：双人同根 0 星能时 `Constellation` 不进入搜索路线；2 星能时本地先 `Strike`，再把该牌补给队友，整条原生路线的全玩家状态与完整 RNG 差分 Passed：`.local/multiplayer-p3/constellation-star-support-fixed-cdc8b8d0ed7b415ab0f99cccf159f809/peer-0/result.json`。未来已计划动作由完整路线回放检查，未穷举所有星能组合。
+
 ## 多人 P1 普通状态差分（2026-09-28）
 
 原版 `0.111.0` 虚拟双人／四人：逐玩家普通防御、打击和第二回合固定 EndTurn 的实际／预测完整续用状态一致，包含每名玩家资源、牌堆、球、药水、遗物计数、敌人及九条完整 RNG。四人根中人工改变队友格挡、卡牌所有者和 RNG，续用戳与搜索状态键均检出；兄弟 Fork 未污染根。最终四人请求 `.local/multiplayer-p1/final-4-9ae71f6086b24ead9abe252894479d9a/peer-0/result.json` Passed；单人短搜 `.local/multiplayer-p1/single-sentinel-edc4ce17d5f642ea89dbe1b3c39b3498/result.json` Passed，DLL SHA-256 `3360B56D9CA785383F1119F7DA33A2C513D426334A681217C4511B77DCBB6B25`。Release 0 警告／0 错误，Windows 结构门禁 238 通过。首因失败和修复链见 [规划 0.5 节](MULTIPLAYER_PLAN.md)；复杂 Hook 顺序、额外回合、死亡／复活、跨玩家选牌与正式联机搜索仍未通过。

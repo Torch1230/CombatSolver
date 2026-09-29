@@ -101,6 +101,8 @@ Power 目录中直接遍历玩家集合／队友的战斗候选为 `BeaconOfHope
 
 `Blaze` 目标排除补充：四人 Play 阶段把 1 号队友生命设为 0，保留 0 号出牌者和另外两名存活队友；固定选择 0、1 号座位均明确拒绝，固定选择 2 号后原版出牌与模拟全部状态及 RNG 对齐，Passed：`.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`。夹具直接设置生命，没有运行死亡 Hook 和后续回合，不能代替死亡生命周期验收。
 
+`Constellation` 的零能量、两星能成本另验搜索准入：同一虚拟双人战斗先设 0 星能，搜索明确不选此牌；改设 2 星能后，本地 `Strike` 之后把它作为纯队友支援补入，固定指向另一玩家并原生执行，完整状态与 RNG 对齐，Passed：`.local/multiplayer-p3/constellation-star-support-fixed-cdc8b8d0ed7b415ab0f99cccf159f809/peer-0/result.json`。此前支援插入强制保持结尾星能不下降，使合法星能牌永远不能补入；现由整条动作回放核验未来已计划动作的资源合法性。本次只验固定两张牌、一回合和两点星能。
+
 `GremlinMerc` 的入场 `ThieveryPower` 按每名玩家创建一个实例，首回合 `GIMME_MOVE` 后对每个实例调用 `Steal`。模拟曾只读取首个实例；按原版逐实例扣对应玩家金币并更新每条能力的已偷金币后，双人和四人到第二回合完整状态／RNG 差分 Passed，证据见[规划 0.2 节](MULTIPLAYER_PLAN.md)。其他招式及死亡链路的证据见下文。
 
 第二回合 `DOUBLE_SMASH_MOVE` 又发现虚弱应施给所有存活玩家；模拟由本地单目标改为遍历全体玩家，第三回合完整状态／RNG 差分 Passed：`.local/multiplayer-p2/gremlin-merc-second-fixed-31e35320566f4014b7c3f198bcb80012/peer-0/result.json`。第三招与偷窃返还的证据见下文。

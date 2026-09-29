@@ -113,6 +113,8 @@ P3 纯支援第一批按原版效果和目标身份分类：`BeaconOfHope`／`Ha
 
 补充验证 `Largesse` 的余费支援：双人固定根中本地先 `Strike`，再在不额外消耗能量的情况下把 `Largesse` 补给队友；整条路线按原版执行、所有玩家状态与 RNG 对齐，Passed：`.local/multiplayer-p3/largesse-spare-support-7a83bcf691ce4be98528ac869b670ff4/peer-0/result.json`。
 
+零能量星能成本代表：`Constellation` 在 0 星能时搜索拒绝，在 2 星能时于本地 `Strike` 后补给队友；原版整条路线与预测全状态／完整 RNG 对齐，Passed：`.local/multiplayer-p3/constellation-star-support-fixed-cdc8b8d0ed7b415ab0f99cccf159f809/peer-0/result.json`。原先的结尾星能不下降条件错误地一概排除该牌；现只靠整条回放判断已计划动作的合法性。其他星能组合未逐项测。
+
 P4 首次虚拟双人手动入口探针暴露战报结果记录使用 `Players.Single()`；改为本地玩家后，同一请求在原生战斗内取得可见悬浮窗与本地搜索结果并完成脚本，Passed：`.local/multiplayer-p4/controller-virtual-2-outcome-fix-119a18d17ad54ec38dcac49e76a3f1a6/peer-0/result.json`。这是控制器手动入口证据；该探针未覆盖方案选择、逐步执行和真实联机变化。
 
 同一虚拟双人普通根再实际调用 `RequestDeploy`，执行计划内本地牌并结束本地回合，断言队友未准备结束且没有代出队友牌，Passed：`.local/multiplayer-p4/controller-deploy-virtual-2-e6cc81878d00486cad9ac8e0ebffa4fe/peer-0/result.json`。这只覆盖当前回合的普通牌部署；目标牌、原生队友选择、偏差与 ENet 尚待验证。
@@ -686,10 +688,10 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 ### 2026-09-29 交接记录
 
 - 当前阶段／子任务：P2 原版多人内容分支持续验证，并补 P1 死亡／跨回合证据；P3～P5 既有实现与证据保留。
-- 当前分支及提交：`feat/multiplayer`；制造机生命周期探针 `1d3ab35f`，死者回合准备修复随本节提交；实际 HEAD 以接手时 Git 为准。
+- 当前分支及提交：`feat/multiplayer`；死者回合准备修复 `962c06cf`，星能支援修复随本节提交；实际 HEAD 以接手时 Git 为准。
 - 未提交文件及用途：本节提交后无本任务待提交文件；实际状态以接手时 `git status` 为准。
-- 本次行为变化：新增四人 `Blaze` 非法目标、双人骑士压制升级牌恢复、知识恶魔外部选牌边界与选择后回合、双尾鼠同伴死亡后召唤、制造机满员及小怪死亡后补位的原生探针；修复模拟在玩家死亡后仍执行其回合准备的问题。
-- 已通过证据：游戏 `0.111.0`；相应 Release 构建与 Windows 结构门禁通过。`Blaze` `.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`；骑士 `.local/multiplayer-p2/knights-dampen-upgraded-7a33347c0eae4f63a7e48b78ac939dcd/peer-0/result.json`；知识恶魔 `.local/multiplayer-p2/knowledge-demon-post-choice-9b9e0925426b40e597846920c9ea90f7/peer-0/result.json`；贪食者四招 `.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`；双尾鼠召唤 `.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`；制造机满员与补位 `.local/multiplayer-p2/fabricator-minion-refill-cc858a950da44a19ae47fbe31073af28/peer-0/result.json`；ENet 玩家死亡 `.local/multiplayer-p1/enet-player-death-fixed-66898c2c7d5f480a8c87a487d3df1393/peer-0/result.json`、`peer-1/result.json`。内容输入同目录 `input.json`，ENet 输入为 `input-0.json`／`input-1.json`；命令沿用第 8 节无人测试入口并指定 `MULTIPLAYER-CONTENT` 或 `MULTIPLAYER-P0`、对应遭遇。
+- 本次行为变化：新增四人 `Blaze` 非法目标、双人骑士压制升级牌恢复、知识恶魔外部选牌边界与选择后回合、双尾鼠同伴死亡后召唤、制造机满员及小怪死亡后补位的原生探针；修复模拟在玩家死亡后仍执行其回合准备、星能支援被一概排除的问题。
+- 已通过证据：游戏 `0.111.0`；相应 Release 构建与 Windows 结构门禁通过。`Blaze` `.local/multiplayer-p2/dead-teammate-blaze-excluded-e22b06175e7f45e7898102c76f9e41e8/peer-0/result.json`；骑士 `.local/multiplayer-p2/knights-dampen-upgraded-7a33347c0eae4f63a7e48b78ac939dcd/peer-0/result.json`；知识恶魔 `.local/multiplayer-p2/knowledge-demon-post-choice-9b9e0925426b40e597846920c9ea90f7/peer-0/result.json`；贪食者四招 `.local/multiplayer-p2/insatiable-four-moves-616a05c3a67c422e8e6318bd3a6f2dff/peer-0/result.json`；双尾鼠召唤 `.local/multiplayer-p2/two-tailed-rat-resummon-43a8f4fd67ef49b291142f95fb097c2b/peer-0/result.json`；制造机满员与补位 `.local/multiplayer-p2/fabricator-minion-refill-cc858a950da44a19ae47fbe31073af28/peer-0/result.json`；ENet 玩家死亡 `.local/multiplayer-p1/enet-player-death-fixed-66898c2c7d5f480a8c87a487d3df1393/peer-0/result.json`、`peer-1/result.json`；星能支援 `.local/multiplayer-p3/constellation-star-support-fixed-cdc8b8d0ed7b415ab0f99cccf159f809/peer-0/result.json`。内容输入同目录 `input.json`，ENet 输入为 `input-0.json`／`input-1.json`；命令沿用第 8 节无人测试入口并指定 `MULTIPLAYER-CONTENT` 或 `MULTIPLAYER-P0`、对应遭遇。
 - 失败／未验证：`CreatureCmd.Kill` 队友后，虚拟多人进入 End 阶段；死者在虚拟回合开始被自动标记结束又连续推进，无法用它稳定验死亡后出牌。当前 `Blaze` 探针只在 Play 阶段直接设 0 HP，未验那张牌与死亡 Hook 的组合；玩家敌方回合死亡已由双进程 ENet 验证。内容闭包、无求解器对端、可见 UI、Steam 邀请、Linux 实机仍未完成。
 - 下一条实际操作：核对战斗内多人关联遗物和药水的剩余机制，再补无求解器对端、可见 UI 与 Linux 等第 9 节未验项；不重复已通过输入。
 - 实例／进程清理及本地部署：本轮各无头实例由运行脚本清理；五个文件已精确覆盖到 `D:\Steam\steamapps\common\Slay the Spire 2\mods\CombatSolver`。双尾鼠测试源码随后重建了 DLL，结束本批前需再覆盖最终 DLL。未提升版本、发包、打标签或推送。

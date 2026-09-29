@@ -1200,7 +1200,7 @@ internal sealed partial class UnattendedTestRunner
             await UnattendedTestRunner.SetBlockAsync(
                 combat.Players[input.ContentTargetSeat].Creature, input.ContentTargetBlock);
             UnattendedTestRunner.SetEnergy(actor, input.ContentActorEnergy);
-            UnattendedTestRunner.SetStars(actor, 5);
+            UnattendedTestRunner.SetStars(actor, input.VerifyStarSupport ? 0 : 5);
             if (input.VerifyWhisperingEarringTarget)
             {
                 await UnattendedTestRunner.ClearPlayerPilesAsync(actor);
@@ -1609,7 +1609,7 @@ internal sealed partial class UnattendedTestRunner
                 {
                     MaxTurnLayers = input.ContentSearchOnly
                         ? input.ContentSearchTurnDepth : configured.MaxTurnLayers,
-                    MultiplayerAllyTargetSeatForTesting = input.VerifyTargetedSupport
+                    MultiplayerAllyTargetSeatForTesting = input.VerifyTargetedSupport || input.VerifyStarSupport
                         ? input.ContentTargetSeat
                         : input.VerifyMultipleSupport ? input.ContentTargetSeat : null,
                     Profile = SolverSearchProfile.Default with
@@ -1622,6 +1622,23 @@ internal sealed partial class UnattendedTestRunner
                     UseBeamWidthPortfolio = false,
                     EarlyTurnExplorationBudgetMilliseconds = 0,
                 };
+                if (input.VerifyStarSupport)
+                {
+                    CombatRootSnapshot noStarsRoot = searchRoot;
+                    SolverDisplayNames noStarsNames = SolverDisplayNames.Capture(combat);
+                    BattleDamageSnapshot noStarsDamage = BattleDamageTracker.Observe(combat);
+                    SolverResult withoutStars = await Task.Run(() => CombatSearchCoordinator.Solve(
+                        noStarsRoot, noStarsNames, noStarsDamage,
+                        searchPolicy, CancellationToken.None, null));
+                    if (withoutStars.MultiplayerSupportAdded
+                        || new[] { withoutStars }.Concat(withoutStars.MultiplayerAlternatives)
+                            .SelectMany(plan => plan.BestNode.Actions)
+                            .Any(action => action.CardId == "CONSTELLATION"))
+                        throw new InvalidOperationException("Constellation was planned without its two stars.");
+                    runner._completedChecks.Add("MultiplayerSupport:Constellation:ZeroStarsRejected");
+                    UnattendedTestRunner.SetStars(actor, 2);
+                    searchRoot = CombatRootSnapshot.Capture(combat);
+                }
                 SolverDisplayNames displayNames = SolverDisplayNames.Capture(combat);
                 BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
                 SolverResult search = await Task.Run(() => input.ContentSearchOnly
@@ -1700,6 +1717,18 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Targeted support did not keep the teammate target.");
                     runner._completedChecks.Add("MultiplayerSupport:FixedTeammateTarget:AfterMainAction");
                 }
+                if (input.VerifyStarSupport)
+                {
+                    PlanAction[] current = search.BestNode.Actions
+                        .Where(action => action.Turn == 1).ToArray();
+                    int attack = Array.FindIndex(current, action => action.CardId == "STRIKE_IRONCLAD");
+                    int support = Array.FindIndex(current, action => action.CardId == "CONSTELLATION");
+                    if (attack < 0 || support <= attack || !search.MultiplayerSupportAdded
+                        || current[support].TargetCombatId
+                            != combat.Players[input.ContentTargetSeat].Creature.CombatId)
+                        throw new InvalidOperationException("Constellation did not use the two spare stars on a teammate.");
+                    runner._completedChecks.Add("MultiplayerSupport:Constellation:TwoStars:AfterMainAction:TeammateTarget");
+                }
                 if (input.VerifyMultipleSupport)
                 {
                     PlanAction[] current = search.BestNode.Actions
@@ -1714,7 +1743,8 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException("Multiple support cards did not use spare resources.");
                     runner._completedChecks.Add("MultiplayerSupport:TwoCards:SpareEnergy:FixedTarget");
                 }
-                if (input.VerifyPureSupport || input.VerifyTargetedSupport || input.VerifyMultipleSupport)
+                if (input.VerifyPureSupport || input.VerifyTargetedSupport
+                    || input.VerifyMultipleSupport || input.VerifyStarSupport)
                 {
                     CombatBeamSolver replayDriver = new(searchRoot, SolverDisplayNames.Capture(combat),
                         BattleDamageTracker.Observe(combat), searchPolicy);
@@ -1784,7 +1814,8 @@ internal sealed partial class UnattendedTestRunner
             }
             if (input.ContentSearchOnly)
                 return new ExecutionOutcome(false,
-                    input.VerifyPureSupport || input.VerifyTargetedSupport || input.VerifyMultipleSupport ? 2 : 1,
+                    input.VerifyPureSupport || input.VerifyTargetedSupport
+                        || input.VerifyMultipleSupport || input.VerifyStarSupport ? 2 : 1,
                     true, true, true, false);
             if (input.ContentTeammateStrikeBefore)
                 await PlayTeammateStrikeAsync("before");
