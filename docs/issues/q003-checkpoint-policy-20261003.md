@@ -96,6 +96,17 @@ dotnet .local/tool-build/CheckpointTool/bin/Release/net9.0/CheckpointTool.dll ba
 pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -CheckpointArchivePath <O008报告ZIP> -CheckpointSelector '9a3541d8ef3b4a27b04626ea32f958d3:1' -ReplayMode DeploySolver -ReplayPolicyOverridePath <短预算JSON> -ExpectedReusedTurn 3 -StopAfterExpectedReuse -ExpectedUnexpectedReplansAtMost 0 -Sts2GameRoot <游戏目录> -RitsuWorkshopRoot <Ritsu目录> -HeadlessFastModeForTest Instant -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -TimeoutSeconds 120 -EvidenceDirectory <证据目录> -CleanupInstanceOnExit
 ```
 
+## 上游合并后的交付验证
+
+最终行为源码为 `a2d685a`（合并上游 `2ead87d`），manifest 继承 0.48.1，本任务没有定版或发布。两处当前文档冲突已解决，上游历史卷保持冻结；新增合同移入 `Contracts/Search`。旧工具目录只残留本次构建缓存，已移到忽略目录，未保留旧源码入口。
+
+- Release 构建：CombatSolver 与 MemoryCleaner 零警告、零错误。
+- 当前 `tools/replay/CheckpointTool`：`archive_contract_tests_passed assertions=59`。
+- 当前无人入口：`REPLAY-BOUNDARY-CONTRACT` / `bf7ccd4e164b4a428d57cf41bc13eb59` Passed，覆盖四开关相反默认值、true/false、精确预算、输入不变和缺项拒绝，保留原有回放边界；实例已退出并清理。
+- 静态门禁：结构246个 Search 文件；文档418份/1595链接；工具284文件/35项目；覆盖材料522项/472夹具/37组，均通过。覆盖材料门禁不等于全部原生覆盖测试通过。
+
+本轮只对合并后受影响的入口合同重新验证。上游搜索文件仅更新工具路径注释；既有 O009 成对样本与 O010 整场证据仍对应 `f17f4d9`，不冒充在合并后的 0.48.1 重新执行。正式本机 Mod 部署仅使用当前成功构建的五个内容文件；没有启动可见正式游戏或测量 FPS。
+
 ## 后续验收
 
 先建立有效检查点、同预算/同资源的完整路线比较，再选择有证据支持的搜索修复；不能用不同根的预测、部分路线或额外药水宣称收益。已取得 O009 代表搜索成对证据及 O010 整场原生部署；其他整场质量目标、历史未记录政策及材料限制仍需处理。现阶段提交应保留 Draft，使用 `Refs #183`，不关闭整批任务。
