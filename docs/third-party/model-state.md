@@ -109,4 +109,4 @@ dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks
 
 仓库另有 `MODEL-STATE-INTEGRATION` 专用后台合同，直接使用真实模型、完整模拟器 Fork 和
 原生两回合推进，覆盖遗物/Modifier 状态、卡牌引用重映射及完整 continuation；命令和证据见
-[测试矩阵](TEST_MATRIX.md)。该夹具验证接口接线，不代替具体第三方效果镜像的语义回归。
+[测试矩阵](../TEST_MATRIX.md)。该夹具验证接口接线，不代替具体第三方效果镜像的语义回归。

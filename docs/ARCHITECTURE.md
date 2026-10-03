@@ -57,7 +57,7 @@
 
 Fork 发生在动作、选牌、Power、死亡和出牌事务允许复制的稳定边界。
 
-未知 gameplay subscriber 显式拒绝；已支持来源在主线程捕获，并在分支中消费隔离状态。登记合同与封闭入口见 [第三方适配手册](THIRD_PARTY_ADAPTERS.md)。
+未知 gameplay subscriber 显式拒绝；已支持来源在主线程捕获，并在分支中消费隔离状态。登记合同与封闭入口见 [第三方适配手册](third-party/README.md)。
 
 ## 5. UI
 

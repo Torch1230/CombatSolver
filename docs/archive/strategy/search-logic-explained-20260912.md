@@ -174,7 +174,7 @@ flowchart TD
 
 三层特化对部分交互补了更具体的估值，如 `Pagestorm`、`DanseMacabre`、`Demesne`、`PrepTime`。近期 `Lethality` 的三层估值改为考虑可支付的首张攻击潜力和已识别多段攻击，而非只用平均攻击牌价值；它仍没有穷举所有未来回能和强化组合。
 
-源码：[战略效果](../../../src/Search/StrategicEffectModel.cs)、[战略估值登记说明](../../third-party-strategic-effects.md)。未逐一核对中文译名的内部类型在本文保留代码标识，避免自行翻译。
+源码：[战略效果](../../../src/Search/StrategicEffectModel.cs)、[战略估值登记说明](../../third-party/strategic-effects.md)。未逐一核对中文译名的内部类型在本文保留代码标识，避免自行翻译。
 
 ## 7. Beam 排名：基础分之外还加什么
 

@@ -96,7 +96,7 @@ CrabRagePower 的同伴死亡结算由 `AfterDeathMirrors` 独占：力量、格
 
 ### 2.1 统一形状的镜像注册表（46 张）
 
-详细登记、字段和示例见 [third-party-mirrors](third-party-mirrors.md)。
+详细登记、字段和示例见 [third-party-mirrors](mirrors.md)。
 
 ### 2.2 战略估值：会改变出牌顺序的 Power
 
@@ -107,7 +107,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 ```
 
 只有当你的 Power **收益取决于它和别的动作的先后关系**时才需要。详见
-[第三方 Power 的战略估值登记](third-party-strategic-effects.md)。
+[第三方 Power 的战略估值登记](strategic-effects.md)。
 
 外部战略登记表非空时，搜索仍按旧规则填充首领特化的 `FirstAttackDamage`，即使登记声明 `StrategicEffectRequirements.None`。仅原版且没有致命消费者时省略扫描；不要求已有外部登记新增需求标志，普通政策字段仍为0。
 
@@ -120,27 +120,27 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 
 ### 2.3 药水的玩家选择
 
-详细登记、字段和示例见 [third-party-choices](third-party-choices.md)。
+详细登记、字段和示例见 [third-party-choices](choices.md)。
 
 ### 2.4 从给定牌堆候选中弃牌
 
-详细登记、字段和示例见 [third-party-choices](third-party-choices.md)。
+详细登记、字段和示例见 [third-party-choices](choices.md)。
 
 ### 2.5 卡牌的玩家选择
 
-详细登记、字段和示例见 [third-party-choices](third-party-choices.md)。
+详细登记、字段和示例见 [third-party-choices](choices.md)。
 
 ### 2.6 Power 的隐藏状态进指纹
 
-详细登记、字段和示例见 [third-party-power-state](third-party-power-state.md)。
+详细登记、字段和示例见 [third-party-power-state](power-state.md)。
 
 ### 2.7 局外成长来源的独立额度
 
-详细登记、字段和示例见 [third-party-growth-removal](third-party-growth-removal.md)。
+详细登记、字段和示例见 [third-party-growth-removal](growth-removal.md)。
 
 ### 2.8 移除估值的偏置
 
-详细登记、字段和示例见 [third-party-growth-removal](third-party-growth-removal.md)。
+详细登记、字段和示例见 [third-party-growth-removal](growth-removal.md)。
 
 ### 2.9 遗物与 Modifier 的分支状态
 
@@ -152,7 +152,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 此接口不放行 Mod、补丁或 Hook，不扩展遗物／Modifier 的中途增删。
 卡牌引用可用 `PredictionCardReferences.RequireCard` / `Remap` 与 writer 的 `AddCard` / `AddCards`；
 只支持当前五个战斗牌堆，位置索引按观察惰性建立，缺失或歧义拒绝。无序描述须显式声明。
-完整签名、对象重映射、字段格式及验证边界见[模型状态适配](third-party-model-state.md)。
+完整签名、对象重映射、字段格式及验证边界见[模型状态适配](model-state.md)。
 与其他内部镜像入口一样，外部程序集仍需要 publicizer；本接口尚未发布。
 
 ### 2.10 回合阶段效果
@@ -179,7 +179,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 **只拿得到 `Type` 的适配器（不引用目标 Mod 程序集、运行期反射找类型）用同一张表的按 `Type`
 重载**：`Register(Type, handler)`／`RegisterEarly`／`RegisterLate` 与 `RegisterIgnored(Type)`，
 判据与泛型入口相同；`RegisterIgnored` 用于已复核的纯表现层覆写。
-完整签名、暂停和状态约束见[回合阶段镜像](third-party-turn-phase-mirrors.md)。
+完整签名、暂停和状态约束见[回合阶段镜像](turn-phase-mirrors.md)。
 
 ### 2.11 已适配 OnPlay 补丁组合
 
@@ -189,7 +189,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 配置进入 continuation，旧根及路线沿既有边界核对失效。建根时冻结所有已补丁 OnPlay 方法，
 并审完全部已登记的卡牌类型。战斗中首次出现的未登记类型只按冻结方法集合判定：
 无补丁就交回普通镜像，有补丁则明确拒绝；worker 不读取实时 Harmony 表。
-支持面、条件 descriptor、async／动态卡牌限制及测试见[OnPlay 补丁适配](third-party-onplay-patches.md)。
+支持面、条件 descriptor、async／动态卡牌限制及测试见[OnPlay 补丁适配](onplay-patches.md)。
 
 ### 2.12 还没有登记入口的地方
 
@@ -266,7 +266,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 **每条夹具都要做一次反向对照**：把你要验的那行登记注释掉重新构建，夹具必须不过；加回来必须
 过。没做过反向对照的夹具证明不了任何事。
 
-无头夹具的跑法见 [HEADLESS_TESTING.md](HEADLESS_TESTING.md)。
+无头夹具的跑法见 [HEADLESS_TESTING.md](../HEADLESS_TESTING.md)。
 
 ### 4.3 用玩家的问题包，不要只看描述
 
@@ -321,8 +321,8 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 | `SimulatedCombatState.AfterCardEnteredCombat` → `GhostSeedMirrors` | 幽灵种子按本地基础牌标签处理真实入场；已捕获根卡的关键词不会由后续归一化重新改写，入场镜像仍为原版封闭派发 | 原版封闭派发 |
 | `SimulatedCombatState.ApplyWithBeforeApplied` / `AfterCardEnteredCombat` → `PhantomBladesPowerMirrors` | 幻影之刃的首次施加和卡牌入场直接派发精确镜像体，尚未提供通用 Power.AfterApplied 注册入口；其他来源不得依赖全局归一化重新赋予关键词 | 原版封闭派发 |
 | `CardChoiceSupport.Spec` / `CardChoiceSpec.IsImplicitAllSelection` | 原版固定数量选择在候选不足或恰好全部时，按候选顺序生成唯一计划。第三方使用原版隐式全选规则时必须设置该标记；普通手动确认选择保持自己的顺序策略，Runtime对隐式选择严格核对实例和顺序 | 原版特化；第三方选择已有入口 |
-| `CombatBeamSolver.CaptureEnergyRefundWindow` / `StrategicEffectContext.RecurringEnergyGain` | 原版环绕轨道按花费余数、自动化按剩余抽牌数估计未来返能，包含自然抽牌；与可消费能量缺口共用上限。第三方仍通过 §2.2 登记，详见[估值上下文](third-party-strategic-effects.md) | 原版特化；第三方估值已有入口 |
-| `RelicCounterCatalog` / `SimulatedCombatState.ReadRelicCounter` | 战斗末卡数仅覆盖已核对的十种原版计数；第三方显示计数只列出“尚未适配”，不会被自动当作跨战斗目标。见[计数策略说明](relic-counters.md) | 精确原版适配 |
+| `CombatBeamSolver.CaptureEnergyRefundWindow` / `StrategicEffectContext.RecurringEnergyGain` | 原版环绕轨道按花费余数、自动化按剩余抽牌数估计未来返能，包含自然抽牌；与可消费能量缺口共用上限。第三方仍通过 §2.2 登记，详见[估值上下文](strategic-effects.md) | 原版特化；第三方估值已有入口 |
+| `RelicCounterCatalog` / `SimulatedCombatState.ReadRelicCounter` | 战斗末卡数仅覆盖已核对的十种原版计数；第三方显示计数只列出“尚未适配”，不会被自动当作跨战斗目标。见[计数策略说明](../relic-counters.md) | 精确原版适配 |
 | `SearchPolicySnapshot.IsAct3BossEncounter` / `CombatBeamSolver.CaptureAct3BossInteractionPotential` | 首领范围只含第三幕实验体、永世沙漏、女王；联动上下文只适配原版 Pagestorm、DanseMacabre、Demesne；StrategicEffectModel 对 PrepTimePower 按未来攻击与回合视野估计重复精力收益。这些不是通用第三方触发次数分析。第三方 Power 仍使用 §2.2 登记 | 原版特化；第三方估值已有入口 |
 | `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` | 私有静态白名单，没有公开登记入口 | 待做 |
 | `PredictionModPatchAudit.ValidateLoadedMods` | 明确拒绝 `WheelchairSpire`，没有外部放行入口 | 项目不兼容策略 |
@@ -339,12 +339,12 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 | `GrowthSource` 枚举与 `SolverGrowthStrategyPanel.SourceCard` 的 `switch` | 原版十类成长来源按类型写死。第三方走 §2.7 的 `GrowthSourceMirrors` 拿独立额度、侧栏行和指纹，本行只是记下原版那个枚举本身仍然封闭 | 第三方已有入口 |
 
 **这些开关新增或改动时，必须在同一个提交里更新这张表和本文档对应章节。** 见
-[AGENTS.md](../AGENTS.md) 第 9 节。
+[AGENTS.md](../../AGENTS.md) 第 9 节。
 
 ## 7. 相关文档
 
-- [架构与职责地图](ARCHITECTURE.md)：源码入口和所有权，`§4.2 Mirror` 是镜像层的位置。
-- [战斗钩子覆盖目录](COMBAT_HOOK_COVERAGE.md)：求解器分发哪些 hook。
-- [第三方 Power 的战略估值登记](third-party-strategic-effects.md)。
-- [无头测试](HEADLESS_TESTING.md)：夹具怎么跑。
-- [检查点回放](CHECKPOINT_REPLAY.md)：问题包怎么导入。
+- [架构与职责地图](../ARCHITECTURE.md)：源码入口和所有权，`§4.2 Mirror` 是镜像层的位置。
+- [战斗钩子覆盖目录](../COMBAT_HOOK_COVERAGE.md)：求解器分发哪些 hook。
+- [第三方 Power 的战略估值登记](strategic-effects.md)。
+- [无头测试](../HEADLESS_TESTING.md)：夹具怎么跑。
+- [检查点回放](../CHECKPOINT_REPLAY.md)：问题包怎么导入。

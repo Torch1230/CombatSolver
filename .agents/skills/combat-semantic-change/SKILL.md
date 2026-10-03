@@ -84,7 +84,7 @@ CombatRootSnapshot.Capture（主线程根）
 第三方遗物／Modifier 的根内隐藏状态优先使用 `ModelPredictionStateMirrors`，同时登记 capture、
 writeLive 和 writePredicted，复用 store 的 Fork context。状态描述按有序实例绑定并进入续用核对；
 首次根或续用捕获后不可登记，不允许未捕获时读取 live 或默认初始化。状态登记不代表 Hook 或
-补丁语义已适配，仍需沿实际结算链验证。签名和范围见 `docs/third-party-model-state.md`。
+补丁语义已适配，仍需沿实际结算链验证。签名和范围见 `docs/third-party/model-state.md`。
 
 活动 roster 和已知怪物状态是不同生命周期。怪物死亡或离开可行动阵容后，其正在执行行动仍可能读取根 AI/静态参数；不要随 roster 移除提前删除这些数据。
 
@@ -100,7 +100,7 @@ writeLive 和 writePredicted，复用 store 的 Fork context。状态描述按�
 - 不新增宽泛 catch、静默默认值或“跳过该候选”。未支持行为让搜索明确失败或形成已定义边界。
 - gameplay mod subscriber 必须在根阶段识别所有权；未知来源显式拒绝，不做通用浅拷贝。
 - 根可达卡牌的第三方 OnPlay Harmony 补丁由 `PredictionModPatchAudit` 检查；跨根读取当前补丁表，避免缓存已卸载或后来安装的补丁。新增适配时明确其来源与语义，不能用未知来源放行代替适配；此入口不代表所有第三方方法已覆盖。
-- 已适配 OnPlay 必须登记完整组合，由根冻结唯一标准 registry 镜像；命中后直接返回，不能再运行 vanilla/spec。配置变更只在主线程 live stamp 检查，worker 消费根标记；适配状态机另有 MoveNext 补丁、Inner 补丁及未审计新类型明确失败。条件支持通过标准 descriptor 加组合签名描述，不增加无条件原版覆盖。见 `docs/third-party-onplay-patches.md`。
+- 已适配 OnPlay 必须登记完整组合，由根冻结唯一标准 registry 镜像；命中后直接返回，不能再运行 vanilla/spec。配置变更只在主线程 live stamp 检查，worker 消费根标记；适配状态机另有 MoveNext 补丁、Inner 补丁及未审计新类型明确失败。条件支持通过标准 descriptor 加组合签名描述，不增加无条件原版覆盖。见 `docs/third-party/onplay-patches.md`。
 
 ## 5. 验证选择
 

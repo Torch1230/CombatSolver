@@ -183,7 +183,7 @@ SearchRequestPipeline.Run(root, policy, budgetLedger)
 2. `OpeningActionRegistry`：把 `BuildOpening*` 拆成“触发条件（模拟事实）+ 候选生成 + 保路策略”的登记项；Search 不识别角色/卡池枚举；
 3. `TargetPlanRegistry`：目标选择的分类与代表策略；
 4. ID 字面量集中到 registry/目录；迁移现有常量，未登记保持既有行为；
-5. 同步更新 [`THIRD_PARTY_ADAPTERS.md`](../../THIRD_PARTY_ADAPTERS.md) 的登记点与纪律。
+5. 同步更新 [`THIRD_PARTY_ADAPTERS.md`](../../third-party/README.md) 的登记点与纪律。
 
 **结构门禁**（新增，参考现有 cycle planning 的 pattern 检查）：
 - 除 registry 文件外，Search 不得新增 `"[A-Z][A-Z0-9_]{4,}"` 形式的卡/药/怪 ID（允许清单 + 计数守卫，迁移期逐步收紧）。

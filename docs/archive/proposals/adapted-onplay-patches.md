@@ -6,4 +6,4 @@
 
 未知来源、明确不兼容的 Mod 和未登记组合继续拒绝。登记不解除其他 subscriber、隐藏状态或方法检查，也不代表整个 Mod 已兼容。
 
-合同检查、真实 OnPlay 替换、完整 Fork、T1→T2 对账、缓存执行资格与组合续用通过。接口用法和限制见[OnPlay 补丁适配](../../third-party-onplay-patches.md)，验证范围见[测试清单](../../TEST_MATRIX.md)。
+合同检查、真实 OnPlay 替换、完整 Fork、T1→T2 对账、缓存执行资格与组合续用通过。接口用法和限制见[OnPlay 补丁适配](../../third-party/onplay-patches.md)，验证范围见[测试清单](../../TEST_MATRIX.md)。

@@ -15,6 +15,6 @@ Game model identities, the simulator shell and reference-remapping context are s
 
 Checks cover empty/unmatched compatibility, exact runtime types, duplicate/late registration, frozen root values, same-type instance swaps, zero-valued counters, collection order, null/empty strings, detached Forks, required reference remapping, pending transactions, invalid Fork results, live/predicted continuation text, recapture, invariant formatting and concurrent reads.
 
-These are state contract checks, not a native game differential, full simulator Fork test, turn-lifecycle replay or performance measurement. See [the adapter contract](../../docs/third-party-model-state.md) for the required game-level follow-up.
+These are state contract checks, not a native game differential, full simulator Fork test, turn-lifecycle replay or performance measurement. See [the adapter contract](../../docs/third-party/model-state.md) for the required game-level follow-up.
 
 `--allocation` warms lookup and equality before checking that 1,000 hash-only traversals with scalar/indexed callbacks allocate no managed objects. This isolates the adapter path, not the full game. `--fork-type` isolates the runtime-type slicing regression, also covered by the default contract suite.

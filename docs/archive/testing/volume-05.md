@@ -89,7 +89,7 @@ dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks
 dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --allocation
 ```
 
-接口及手工验收范围见[模型状态适配](../../third-party-model-state.md)。此记录仅对应本项开发改动，不复用下方历史游戏场景作为本轮证据。
+接口及手工验收范围见[模型状态适配](../../third-party/model-state.md)。此记录仅对应本项开发改动，不复用下方历史游戏场景作为本轮证据。
 
 ## 0.35.1：回收后堆空间复用
 

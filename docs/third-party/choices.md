@@ -1,6 +1,6 @@
 # 玩家选择登记合同
 
-[返回适配手册](THIRD_PARTY_ADAPTERS.md)
+[返回适配手册](README.md)
 
 ### 2.3 药水的玩家选择
 

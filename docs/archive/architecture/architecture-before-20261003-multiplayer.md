@@ -269,7 +269,7 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 `CombatSearchCoordinator.FailureRecovery` 在请求级完成主搜索与药水审计后，管理无完整胜利的有限追加搜索。它扩大搜索配置、保留请求剩余时间并比较已有质量；交接结果优先返回，每轮内存观测独立起算。四档内置节点预算由 `SolverSettings` / `SolverSearchProfile` 声明，依次为 60,000 / 120,000 / 250,000 / 500,000；Custom 保留显式设置，节点预算只要求至少 100，不设额外配置上限。设置迁移 244 只强制旧配置开启多宽度路线精炼，不重置性能与其他开关。
 
-根创建时，`PredictionModPatchAudit` 在 Prediction 层检查可达卡牌 OnPlay 的第三方 Harmony 补丁，另外审计已登记但尚未出现的类型，并冻结所有已补丁 OnPlay 方法身份。`AdaptedCardOnPlayMirrors` 只为完整精确组合提供标准 registry 镜像，根选择表及补丁方法集合归 `PredictionModHookSubscriberCapture`，随 `SimulatedCombatState` Fork 共享。OnPlay facade 命中后直接返回，禁止再执行 vanilla/spec。生成的未登记卡牌只凭静态方法身份与根集合决定普通镜像或明确拒绝；worker 不读取 Harmony 表。Runtime 的 live continuation 读取当前配置，预测 continuation 和指纹只读根标记；既有采用／续用／部署检查拒绝配置失配。其他方法和未登记状态机不在完整审计范围。接口见[OnPlay 补丁适配](../../third-party-onplay-patches.md)。
+根创建时，`PredictionModPatchAudit` 在 Prediction 层检查可达卡牌 OnPlay 的第三方 Harmony 补丁，另外审计已登记但尚未出现的类型，并冻结所有已补丁 OnPlay 方法身份。`AdaptedCardOnPlayMirrors` 只为完整精确组合提供标准 registry 镜像，根选择表及补丁方法集合归 `PredictionModHookSubscriberCapture`，随 `SimulatedCombatState` Fork 共享。OnPlay facade 命中后直接返回，禁止再执行 vanilla/spec。生成的未登记卡牌只凭静态方法身份与根集合决定普通镜像或明确拒绝；worker 不读取 Harmony 表。Runtime 的 live continuation 读取当前配置，预测 continuation 和指纹只读根标记；既有采用／续用／部署检查拒绝配置失配。其他方法和未登记状态机不在完整审计范围。接口见[OnPlay 补丁适配](../../third-party/onplay-patches.md)。
 
 `BuildAcceptedEndTurnNodes` 是回合层/软时间预算收尾及普通串行回合尾的共同入口，复用 raw EndTurn 批次生成、跨回合剪枝与循环出口准入。全部直接选择分支在转置准入前结算临时观测；批次持有未转交快照，迭代器提前结束或生成失败时统一释放。
 
@@ -498,7 +498,7 @@ Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕
 ### 4.2 Mirror
 
 > 面向外部 Mod 作者的登记点总表、登记纪律与验收标准见
-> [第三方 Mod 适配手册](../../THIRD_PARTY_ADAPTERS.md)。
+> [第三方 Mod 适配手册](../../third-party/README.md)。
 
 `src/Engine/InCombat/Mirrors/` 精确实现原版 Hook、卡牌、药水、附魔和球方法。Facade 保持原版调用时序，registry 按运行时类型与方法分派。
 
@@ -526,7 +526,7 @@ Search在首回合、EndTurn及已知可能嵌套/重复的卡牌回放建立捕
 
 这里可以保存具体领域规则，但不能决定 Beam 配额、最终路线或 UI 显示。新增补偿前检查 mirror、spec、support 和 `SimulatedCombatState` 的完整调用链，确保只有一个权威结算点。
 
-`PlayerTurnEndLifecycle.RunPhaseTwo` 拥有清空手牌后的玩家回合末顺序：常规 Power、遗物、`HookMirrors.AfterSideTurnEndLate`，最后规范化卡牌词条。Search、风险预估和无人差分共用此入口；每个阶段的挂起选择立即向上传播。敌方晚期入口由 `CorePowerSupport.TriggerEnemySideTurnEndEffects` 调用。晚期阶段按完整分支监听顺序固定成员并跟随卡牌 COW Preview；`AfterSideTurnEndLateMirrors` 独占原版 DisintegrationPower 效果，底层沿用标准 registry/descriptor。登记在首次根捕获或分发后冻结，未知战斗重写明确失败，不扩展状态或 Mod 门禁；见 [回合阶段镜像](../../third-party-turn-phase-mirrors.md)。
+`PlayerTurnEndLifecycle.RunPhaseTwo` 拥有清空手牌后的玩家回合末顺序：常规 Power、遗物、`HookMirrors.AfterSideTurnEndLate`，最后规范化卡牌词条。Search、风险预估和无人差分共用此入口；每个阶段的挂起选择立即向上传播。敌方晚期入口由 `CorePowerSupport.TriggerEnemySideTurnEndEffects` 调用。晚期阶段按完整分支监听顺序固定成员并跟随卡牌 COW Preview；`AfterSideTurnEndLateMirrors` 独占原版 DisintegrationPower 效果，底层沿用标准 registry/descriptor。登记在首次根捕获或分发后冻结，未知战斗重写明确失败，不扩展状态或 Mod 门禁；见 [回合阶段镜像](../../third-party/turn-phase-mirrors.md)。
 
 `PredictionModHookSubscriberCapture` 根据实际加载的 Loadout `PowerGiverSummonHook` 及公开计数快照接口捕获怪物能力配置，不读取 Mod 版本号。接口形状可用且计数为空时放行；接口变化或计数非空时明确失败。根保存空配置条件，`ContinuationStamp` 在 live 与 predicted 两侧记录配置是否仍为空；worker 不读取 Loadout 的全局计数。
 
@@ -540,7 +540,7 @@ Nostalgia 的本回合攻击/技能开始数属于 `SimulatedCombatState`：冻�
 `PredictionStateStore`，随同一 Fork context 复制。模型克隆仅作只读身份，效果镜像通过登记入口的
 `Get<TState>` 读写分支状态。`ModelPredictionStateWriter` 用同一组有序类型字段生成搜索指纹与
 live/predicted continuation 文本，按所属位置绑定同类型实例。该层不拥有 Hook 时序、搜索政策或
-Mod 准入，具体契约见[模型状态适配](../../third-party-model-state.md)。
+Mod 准入，具体契约见[模型状态适配](../../third-party/model-state.md)。
 
 有效 Power 的有序语义值直接进入搜索指纹，`ContinuationStamp` 的 `P` 字段按有效列表顺序输出，保留获得、移除和重新获得形成的 Hook 顺序；动态变量自身仍按无序键值集合比较。根捕获及分支监听表继续拥有顺序，指纹和续用只读取既有状态，不另设按阶段划分的顺序账本。
 

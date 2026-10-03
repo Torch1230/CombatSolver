@@ -1,7 +1,7 @@
 # 回合阶段镜像
 
 当前开放 `AbstractModel.BeforeSideTurnStart`、`AfterPlayerTurnStart`（Early/普通/Late）和 `AfterSideTurnEndLate`。这是效果登记，与
-[模型状态登记](third-party-model-state.md) 分开；不代表其他阶段、ModHelper 订阅者或
+[模型状态登记](model-state.md) 分开；不代表其他阶段、ModHelper 订阅者或
 Harmony 补丁已经受支持。外部程序集使用与其他内部镜像相同的 publicizer 接入方式。
 
 ## 签名与登记
@@ -161,4 +161,4 @@ dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c
 异常、选择暂停和原版镜像调用次数，不证明真实伤害命令、根捕获或原生两回合等价。
 
 玩家晚期伤害及敌我双方 T1→T2 原生完整状态对账通过；末击和多监听器原生顺序未覆盖。
-场景输入与验证范围见[测试清单](TEST_MATRIX.md)。
+场景输入与验证范围见[测试清单](../TEST_MATRIX.md)。

@@ -229,7 +229,7 @@
 - 把散落的 ID 字面量集中到 registry/目录，Search 逻辑只按分类与 Policy 字段分派，不识别具体角色/卡池枚举（沿用 `PowerCardMechanismDispatch` 的做法）；
 - 未登记的卡/药保持既有行为或显式边界；登记不得改变状态键与终局政策。
 
-**改动点**：新增 `PotionValuationRegistry`、`OpeningActionRegistry`；迁移现有 ID 常量；更新 `docs/THIRD_PARTY_ADAPTERS.md` 的登记点。
+**改动点**：新增 `PotionValuationRegistry`、`OpeningActionRegistry`；迁移现有 ID 常量；更新 `docs/third-party/README.md` 的登记点。
 
 **验收**：迁移后同一批固定根结果逐位一致；新增一个测试用登记项能不写 Search 分支地产生行为。
 

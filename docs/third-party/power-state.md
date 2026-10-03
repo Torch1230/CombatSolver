@@ -1,6 +1,6 @@
 # Power 隐藏状态登记合同
 
-[返回适配手册](THIRD_PARTY_ADAPTERS.md)
+[返回适配手册](README.md)
 
 ### 2.6 Power 的隐藏状态进指纹
 

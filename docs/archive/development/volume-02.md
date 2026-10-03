@@ -390,7 +390,7 @@
 - 为根可达卡牌提供完整 Harmony 组合登记，核对来源、方法身份、类别、owner 与实际执行顺序。命中后由唯一镜像执行完整 OnPlay，原版镜像及 spec 不再重复结算。
 - 根选择随 Fork 不可变共享；live 配置标记进入结果采用、续用与部署核对，worker 不读取补丁表。Inner 补丁、重复方法、动态补丁工厂及已登记目标的独立 async MoveNext 补丁明确拒绝。
 - 真实 OnPlay 替换、Fork、增量回放及 T1→T2 对账通过；补丁变化使缓存路线失去执行资格，组合构建第 2 回合精确续用通过，计划外重算为 0。验证范围见[测试清单](../../TEST_MATRIX.md)。
-- 当前没有内置第三方适配声明；接口及限制见[OnPlay 补丁适配](../../third-party-onplay-patches.md)。
+- 当前没有内置第三方适配声明；接口及限制见[OnPlay 补丁适配](../../third-party/onplay-patches.md)。
 
 - 增加严格身份解析、同 Fork context 的引用列表复制，以及 live／predicted writer 的有序／显式无序引用描述。缺失、歧义、外分支及已移出战斗牌堆的引用明确失败；同名实例不会仅按 ID 合并。
 - 引用关系按当前牌堆位置编码；位置索引每次观察按需建立并跨模型共用，标量路径不建立索引。
@@ -399,4 +399,4 @@
 - 开放 `AfterSideTurnEndLateMirrors.Register<TModel>`，复用标准 MethodMirrorRegistry/Descriptor；按精确类型登记，在首次合法根捕获或阶段分发后冻结。
 - 玩家与敌方共用晚期 Hook 入口，固定监听成员并跟随卡牌 COW Preview；选牌挂起立即暂停，未知战斗重写明确失败。DisintegrationPower 由唯一镜像结算，保留伤害来源。
 - 空监听表不分配阶段上下文，单监听器不分配接收者列表；不增加逐节点程序集扫描或反射登记。
-- 合同检查、构建、结构门禁、覆盖目录校验及双方晚期伤害的原生两回合差分通过。验证范围见[测试清单](../../TEST_MATRIX.md)，接口见[回合阶段镜像](../../third-party-turn-phase-mirrors.md)。
+- 合同检查、构建、结构门禁、覆盖目录校验及双方晚期伤害的原生两回合差分通过。验证范围见[测试清单](../../TEST_MATRIX.md)，接口见[回合阶段镜像](../../third-party/turn-phase-mirrors.md)。

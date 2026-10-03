@@ -68,7 +68,7 @@ if (PreCombatForecastApi.IsAvailable)
 
 `0.31.3` 合入 PR #50–#55，提供第三方 Power 战略估值、药水玩家选择与牌堆可选弃牌入口，并补充未镜像可打出条件的覆盖提示。使用这些入口的适配 Mod 应将 CombatSolver 最低依赖设为 `0.31.3`。
 
-各角色的具体战斗效果由适配层实现与验证。登记方式、分支状态要求和验证方法见 [第三方 Mod 适配手册](docs/THIRD_PARTY_ADAPTERS.md)。
+各角色的具体战斗效果由适配层实现与验证。登记方式、分支状态要求和验证方法见 [第三方 Mod 适配手册](docs/third-party/README.md)。
 
 ## 安装与兼容性
 
