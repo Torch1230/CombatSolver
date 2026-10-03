@@ -149,7 +149,7 @@ P0–P6 已按各自固定根和边界证据收口；P7 仅完成单项权重探
 
 ### P0/P1 实施状态（2026-09-27）
 
-P0 建立六个严格恢复的玩家开战根与两个生成场景的固定预算基线；语料入口为 `coverage/strategy-refactor-p0/corpus.json`，完整证据只在 `.local/strategy-refactor-p0/`。P1 已迁入 `RouteQuality` 及比较投影，四个未触及时限的玩家根与两个生成场景逐位一致；#79、#85 因搜索计时贴近 110 秒边界而不参与逐位门槛。验证命令与结果见 `docs/TEST_MATRIX.md`，不把历史长搜数值当作本轮基线。
+P0 建立六个严格恢复的玩家开战根与两个生成场景的固定预算基线；语料入口为 `coverage/corpora/strategy/p0.json`，完整证据只在 `.local/strategy-refactor-p0/`。P1 已迁入 `RouteQuality` 及比较投影，四个未触及时限的玩家根与两个生成场景逐位一致；#79、#85 因搜索计时贴近 110 秒边界而不参与逐位门槛。验证命令与结果见 `docs/TEST_MATRIX.md`，不把历史长搜数值当作本轮基线。
 
 ### P2 实施状态（2026-09-27）
 

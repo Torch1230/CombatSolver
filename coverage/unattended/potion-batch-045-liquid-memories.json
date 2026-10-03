@@ -1,6 +1,0 @@
-{
-  "potionId": "LiquidMemories",
-  "target": "Player",
-  "cards": [{ "cardId": "BASH", "pile": "Discard" }],
-  "choiceCardIds": ["BASH"]
-}

@@ -4,7 +4,7 @@
 
 ## 采样发现
 
-17份既有 `coverage/novelty-search/{dev-*,holdout-*}.json` 开局，High、Beam48、500节点、DOP1、Evaluate、30秒软上限。观察器只跟踪自然到达转置准入的动作序列，不另行强制执行交换次序，不改变准入结果。
+17份既有 `coverage/corpora/novelty/{dev-*,holdout-*}.json` 开局，High、Beam48、500节点、DOP1、Evaluate、30秒软上限。观察器只跟踪自然到达转置准入的动作序列，不另行强制执行交换次序，不改变准入结果。
 
 累计36,524次候选分类、2,175次卡牌转置拒绝。观察到1,144组反向两步序列，其中366组状态指纹和六项转置成本标签相同。各求解器的20,000个两步索引上限均未触及。
 
@@ -34,14 +34,14 @@
 
 ## 离线观测器
 
-新增 `tools/OfflineSearchHarness/EquivalenceProbe.cs`，仅显式设置环境变量时安装宿主内的Harmony观察补丁。生产Mod不包含该工具。它不改方法返回值，输出 `equivalence-probe.json`，只保留分离出的键、标量和有限例子，不保存节点或模型；每个求解器最多20,000个两步索引，超限计数并停止新增。
+新增 `tools/search/OfflineSearchHarness/EquivalenceProbe.cs`，仅显式设置环境变量时安装宿主内的Harmony观察补丁。生产Mod不包含该工具。它不改方法返回值，输出 `equivalence-probe.json`，只保留分离出的键、标量和有限例子，不保存节点或模型；每个求解器最多20,000个两步索引，超限计数并停止新增。
 
 ```bash
 OFFLINE_HARNESS_EQUIVALENCE_PROBE=1 \
 OFFLINE_HARNESS_COMBATSOLVER_DLL=<baseline-or-candidate.dll> \
 DOTNET_TieredCompilation=0 \
-dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
-  --request coverage/unattended/duplicate-choice-pruning-dense-20260929.json \
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+  --request coverage/fixtures/scenarios/choices/duplicate-choice-pruning-dense-20260929.json \
   --out <out> --label equivalence-probe --profile High \
   --beam 48 --nodes 500 --dop 1 --budget-ms 30000 --search-mode Evaluate
 ```

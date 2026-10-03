@@ -47,4 +47,4 @@ GB使用十进制。累计分配仅减少0.143%，高分配问题依然存在。
 - 最终Release构建0警告/0错误，Bash及PowerShell结构门禁通过。已撤回的快照/Power实验不在最终产物中。
 - 依用户要求跳过可见会话；没有运行Windows游戏、逐转移增量、全量覆盖或发布门禁。药水输入是注入的压力组合，不是原存档完整回放。
 
-复跑输入沿用[压力报告](veryhigh-pressure-survey-20260908.md)及`coverage/unattended/search-performance-necrobinder-projected-{run-cards,relics,potions}.json`。结构化证据包含本轮命令，去掉个人artifact/evidence目录后可指定自己的构建目录；药水合同采用同一建局加`--verify-search-policy-snapshot --stop-after-combat-root-snapshot-assertion`。
+复跑输入沿用[压力报告](veryhigh-pressure-survey-20260908.md)及`coverage/fixtures/search/search-performance-necrobinder-projected-{run-cards,relics,potions}.json`。结构化证据包含本轮命令，去掉个人artifact/evidence目录后可指定自己的构建目录；药水合同采用同一建局加`--verify-search-policy-snapshot --stop-after-combat-root-snapshot-assertion`。

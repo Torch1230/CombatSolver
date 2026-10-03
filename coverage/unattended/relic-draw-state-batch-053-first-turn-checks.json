@@ -1,9 +1,0 @@
-[
-  {
-    "monsterId": "BigDummy",
-    "moveId": "NOTHING",
-    "clearPlayerHandBeforeMove": true,
-    "triggerPlayerSetupAfterMove": true,
-    "expectedModifiedHandDrawAfterPlayerSetup": 5
-  }
-]

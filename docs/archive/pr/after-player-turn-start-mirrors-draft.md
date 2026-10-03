@@ -13,5 +13,5 @@
 
 - `TurnPhaseMirrorChecks --after-player-start`：原有 40 项，审计补充普通阶段生成 Late 监听者后为 41 项；纯原版入口 1 项；追加 `--seal`：3 项；生产 DLL `--mask`：61 个独立位。覆盖三阶段顺序、Power/遗物/Modifier、轮间新监听者、卡牌 COW、选择暂停、未知覆写与冻结。
 - Release 和离线宿主构建 0 警告 / 0 错误；Bash 结构门禁 208 个 Search 文件通过。
-- 零第三方监听者的 EQ 10 + FULL 40 + GA 10：**60 对、6341 个确定性字段一致**，全部有效、无时间截断。口径 High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1；一次批次，无补跑。逐根数据见 [等价证据](../../../coverage/equivalence/after-player-turn-start/README.md)。
-- CoverageCatalog 原始证据表有两个上游未知枚举状态，解析失败；仅在隔离副本排除这两条未引用记录后，3035 条 verify 通过。原表未改，具体记录见 [验证摘要](../../../coverage/equivalence/after-player-turn-start/validation.json)。
+- 零第三方监听者的 EQ 10 + FULL 40 + GA 10：**60 对、6341 个确定性字段一致**，全部有效、无时间截断。口径 High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1；一次批次，无补跑。逐根数据见 [等价证据](../../../coverage/archive/equivalence/after-player-turn-start/README.md)。
+- CoverageCatalog 原始证据表有两个上游未知枚举状态，解析失败；仅在隔离副本排除这两条未引用记录后，3035 条 verify 通过。原表未改，具体记录见 [验证摘要](../../../coverage/archive/equivalence/after-player-turn-start/validation.json)。

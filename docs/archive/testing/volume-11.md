@@ -28,7 +28,7 @@
 - `RID/resources still in use at exit` 当前记录为 Godot 退出噪音；任何 `CombatSolver/Unattended FAILED`、`SEARCH_FAILURE`、`DEPLOY_FAILURE` 或状态断言失败均判定场景失败。
 # 0.34.7 跑局战绩验证
 
-- `dotnet run --project tools/RunStatisticsTests -c Release` 通过：胜负/放弃、空胜率、连续段中断、重复事件、离线收据与重启、原生结算恢复、历史快照隔离。
+- `dotnet run --project tools/testing/checks/RunStatisticsTests -c Release` 通过：胜负/放弃、空胜率、连续段中断、重复事件、离线收据与重启、原生结算恢复、历史快照隔离。
 - 在线服务 14 项测试通过，包含旧心跳、管理鉴权、持久登录、统计加权、筛选和战绩数据库重启恢复。
 - 日志服务 19 项测试通过，包含提交时战绩快照及小数百分比筛选；Windows 测试进程退出仍有原有 SQLite 临时文件清理占用提示。
 - UI-LOCALIZATION `42dce92d333e46e482ba556b9959e4eb` Passed，24.85 秒，覆盖 322 条中英资源与 headless 统计节点隔离。不是可见游戏结算/交互或帧率验收。

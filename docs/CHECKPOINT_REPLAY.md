@@ -7,15 +7,15 @@
 Windows：
 
 ```powershell
-pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath <包.zip或目录> -ReplayMode Preflight -OutputDirectory .local/checkpoint-batch/preflight
-pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath <包.zip或目录> -ReplayMode RestoreOnly -Sts2GameRoot <游戏目录> -OutputDirectory .local/checkpoint-batch/restore
+pwsh -NoProfile -File tools/replay/run-checkpoint-batch.ps1 -InputPath <包.zip或目录> -ReplayMode Preflight -OutputDirectory .local/checkpoint-batch/preflight
+pwsh -NoProfile -File tools/replay/run-checkpoint-batch.ps1 -InputPath <包.zip或目录> -ReplayMode RestoreOnly -Sts2GameRoot <游戏目录> -OutputDirectory .local/checkpoint-batch/restore
 ```
 
 Linux：
 
 ```bash
-./tools/run-checkpoint-batch.sh <包.zip或目录> --mode Preflight --output .local/checkpoint-batch/preflight
-./tools/run-checkpoint-batch.sh <包.zip或目录> --mode RestoreOnly --game-root <游戏目录> --output .local/checkpoint-batch/restore
+./tools/replay/run-checkpoint-batch.sh <包.zip或目录> --mode Preflight --output .local/checkpoint-batch/preflight
+./tools/replay/run-checkpoint-batch.sh <包.zip或目录> --mode RestoreOnly --game-root <游戏目录> --output .local/checkpoint-batch/restore
 ```
 
 单包仍可使用 `run-unattended-test.ps1 -CheckpointArchivePath <ZIP> -EvidenceDirectory <目录>` 或 Linux 对应参数。`CheckpointTool` 与游戏共享相同的包读取代码。
@@ -76,7 +76,7 @@ v2 索引保存稳定战斗/检查点 ID、永久递增编号、原生事件位�
 
 ## 验证
 
-包协议与顺序文件：`dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test`。边界门禁使用 `verify-refactor-boundaries.ps1` / `.sh`。
+包协议与顺序文件：`dotnet run --project tools/replay/CheckpointTool/CheckpointTool.csproj -c Release -- self-test`。边界门禁使用 `verify-refactor-boundaries.ps1` / `.sh`。
 
 可见采集测量：`run-visible-steam-benchmark.ps1 -LoggingFixture -TimeoutSeconds 120 -EvidenceDirectory <目录>`，Linux 为 `--logging-fixture --timeout-seconds 120 --evidence-directory <目录>`。该短原生战斗另存 ZIP，索引提供采集累计/最大时间和积压，session.json 提供材料大小。headless 只用于导入和吞吐测量。具体证据及未覆盖场景见 TEST_MATRIX.md。
 

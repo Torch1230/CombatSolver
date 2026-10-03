@@ -36,7 +36,7 @@
   },
   "roots": [
     {
-      "fixture": "coverage/novelty-search/dev-00-ironclad-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-00-ironclad-elite.json",
       "fixtureSha256": "eb714f35621be83ea6d23fe3a1075a6f82dbea9ad1aa3e211ff2f986db2f7c5e",
       "observations": [
         {
@@ -90,7 +90,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-01-silent-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-01-silent-elite.json",
       "fixtureSha256": "074cd67a48b0c880df59635185346713d5f21f1cc0ae351ba74ad48a5aaa67bd",
       "observations": [
         {
@@ -144,7 +144,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-02-defect-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-02-defect-elite.json",
       "fixtureSha256": "485a56b3370977a33cc8d978563bf76cab40fb8428ae06a3d1f80737868d950b",
       "observations": [
         {
@@ -198,7 +198,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-03-regent-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-03-regent-elite.json",
       "fixtureSha256": "2f314d7d2d7d2decbcb37f7a303c41b8519a49a89990e927ac110b0a9e9455f7",
       "observations": [
         {
@@ -252,7 +252,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-04-necrobinder-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-04-necrobinder-elite.json",
       "fixtureSha256": "b019a67e65e43d3ac808adfca7d67b6bcead860604b74a3a75fbd2414ed5156c",
       "observations": [
         {
@@ -306,7 +306,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-05-ironclad-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-05-ironclad-boss.json",
       "fixtureSha256": "0d0d6951d7092a31294f0c7d36ed8e89ad8a435534d9cd7f471f3b75bd369a49",
       "observations": [
         {
@@ -360,7 +360,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-06-silent-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-06-silent-boss.json",
       "fixtureSha256": "0d4af22d89a565a18580038ee2a5cede04474e55ecd7de4fc803a4c205133404",
       "observations": [
         {
@@ -414,7 +414,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-07-defect-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-07-defect-boss.json",
       "fixtureSha256": "7d27e0fce3dca20c0fae82b593f42e05aa0f9c8d7d628cbdf94dad1c95dd5932",
       "observations": [
         {
@@ -468,7 +468,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-08-regent-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-08-regent-boss.json",
       "fixtureSha256": "a82b59ef746c75dbcc754dbb5624b2bea50b900e9784aa12ffff976429ae4413",
       "observations": [
         {
@@ -522,7 +522,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/dev-09-necrobinder-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-09-necrobinder-boss.json",
       "fixtureSha256": "ed60144ec2a03fa99b7acb8b16e963eae82a94ad90181ff2b3ddee822a669431",
       "observations": [
         {
@@ -576,7 +576,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/holdout-00-ironclad.json",
+      "fixture": "coverage/corpora/novelty/holdout-00-ironclad.json",
       "fixtureSha256": "b6927223adeab3a1d4ff7a5826abcc21aaa8899d3c39effb96265a0bf71f3b57",
       "observations": [
         {
@@ -630,7 +630,7 @@
       ]
     },
     {
-      "fixture": "coverage/novelty-search/holdout-03-regent.json",
+      "fixture": "coverage/corpora/novelty/holdout-03-regent.json",
       "fixtureSha256": "dde642cccddedb0e675929352b7280816594bab59ea2d2ae526c794538de90a4",
       "observations": [
         {

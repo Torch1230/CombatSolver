@@ -40,7 +40,7 @@ Search 目录中登记表外的大写 ID 字面量以 P4 当前 645 处为结构
 
 P7a 的单项 Beam 权重敏感度由无人测试请求显式指定，`ProtocolHost` 验证并持有本次扰动，`SolverController.CaptureSearchPolicy` 将其冻结进 `SolverSearchProfile`。Search 只读该 profile；普通请求不注入扰动，终局政策、状态键和转置准入不消费它。
 
-`tools/StrategyCorpus/matrix.py` 读取一次无扰动基线与多份单项扰动结果，复用 `sensitivity.py` 的根和政策核对及冻结的路线质量比较；矩阵只汇总已采集证据，不重新搜索。质量相同时仍显示首个质量字段差异，避免战损／药水相同掩盖末位评分变化。
+`tools/search/StrategyCorpus/matrix.py` 读取一次无扰动基线与多份单项扰动结果，复用 `sensitivity.py` 的根和政策核对及冻结的路线质量比较；矩阵只汇总已采集证据，不重新搜索。质量相同时仍显示首个质量字段差异，避免战损／药水相同掩盖末位评分变化。
 
 复制能力的计划成员使用既有能力承诺档位，并按后续实际打出收益牌的次数保护少量 Beam 代表。这些代表只影响该成员的中途保留，不改变状态键与终局排序。首回合计划的发现数量保存在同一请求的 `SearchPlanDiscoveryState` 中，供末段跨回合入口决定是否启用。
 
@@ -126,7 +126,7 @@ Smart 药水梯度的层前后转移采样及协调器回收开销归入上下�
 
 本文描述当前源码的所有权边界。它面向维护者和 coding agent；玩家功能说明见根目录 `README.md`，历史重构证据见 `docs/refactoring/`。
 
-职责迁移时优先更新本文，并同步更新 Windows 的 `tools/verify-refactor-boundaries.ps1` 与 Linux 的 `tools/verify-refactor-boundaries.sh`。历史审计记录保留当时结论，不承担当前导航职责。
+职责迁移时优先更新本文，并同步更新 Windows 的 `tools/inspection/verify-refactor-boundaries.ps1` 与 Linux 的 `tools/inspection/verify-refactor-boundaries.sh`。历史审计记录保留当时结论，不承担当前导航职责。
 
 ## 当前精简分支的局部合同
 
@@ -154,7 +154,7 @@ Smart 药水梯度的层前后转移采样及协调器回收开销归入上下�
 
 `NodePoolSignalLifetimePatch` 补齐原版 `NodePool<T>` 递归信号清理的包装所有权：返回的 typed array 通过底层 Array 释放；字典、Variant、从原生转换得到的新 StringName 在作用域退出时释放。节点与 Callable 的目标不属于此作用域，保留原解绑条件；原版 Free 的对象池账本和 OnFreedToPool 保持原调用链。NCard 与 NGridCardHolder 的共享泛型方法分别由真实方法合同覆盖。
 
-可选的 `src/Diagnostics/PerformanceRecording.cs` 是主线程标量采样和状态提示入口，由 Dispatcher 安装；`PerformanceSession.cs` 拥有进程级有界队列、后台文件写入及 OS/GC 采样；`PerformanceLifecycle.cs` 仅计量跑局/房间异步生命周期。节点重建复用同一进程写入器，游戏对象只以弱引用追踪。`tools/watch-performance.ps1` 在独立进程采集 EventPipe 和用户明确触发的 Heap dump；配置文件存在时才启用。诊断不修改搜索政策、GC 模式或第三方行为，详情见 [全程性能录制](../../performance/long-session-recording.md)。
+可选的 `src/Diagnostics/PerformanceRecording.cs` 是主线程标量采样和状态提示入口，由 Dispatcher 安装；`PerformanceSession.cs` 拥有进程级有界队列、后台文件写入及 OS/GC 采样；`PerformanceLifecycle.cs` 仅计量跑局/房间异步生命周期。节点重建复用同一进程写入器，游戏对象只以弱引用追踪。`tools/performance/watch-performance.ps1` 在独立进程采集 EventPipe 和用户明确触发的 Heap dump；配置文件存在时才启用。诊断不修改搜索政策、GC 模式或第三方行为，详情见 [全程性能录制](../../performance/long-session-recording.md)。
 
 包装登记探针只捕获 Godot 两个进程级线程安全弱登记容器，后台读取 Count，不遍历目标。watcher 用一个采集器交替运行短 GCHandle 窗口与普通段；GC 关联栈持续保留。补丁清单在同次采集内只解析一次 PatchMethod，避免重复程序集查找。采集完成与解析完整性是不同状态。
 
@@ -263,9 +263,9 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 `CardChoiceSupport.BuildChoices` 的实体令牌缓存只属于一次调用；按卡牌wrapper引用共享不可变令牌，选择容器独立。尾部代表构造按逐键后缀序号直接定位，超过16张保留原分组路径；这是表示与构造成本优化，不改变候选等价、实体补留、分支配额或排序。
 
-策略重构回归语料由 `tools/StrategyCorpus` 编排：玩家包使用 Testing 的严格 `combat_start` 无头恢复，仓库生成场景使用 `OfflineSearchHarness`。Search 在请求完成后提供只读质量和根戳记证据；Testing Writer 与离线宿主把它们写入独立证据文件，不参与候选裁决。原始玩家包与完整输出只留在 `.local`。对照器先核对根、政策和固定预算，再比较完整动作、续用、结果及非时序工作量；时间、分配和 GC 单列观察。
+策略重构回归语料由 `tools/search/StrategyCorpus` 编排：玩家包使用 Testing 的严格 `combat_start` 无头恢复，仓库生成场景使用 `OfflineSearchHarness`。Search 在请求完成后提供只读质量和根戳记证据；Testing Writer 与离线宿主把它们写入独立证据文件，不参与候选裁决。原始玩家包与完整输出只留在 `.local`。对照器先核对根、政策和固定预算，再比较完整动作、续用、结果及非时序工作量；时间、分配和 GC 单列观察。
 
-本地策略迭代通过 `tools/CheckpointTool/StrategySessionRunner.cs` 持有 `start/run/status/stop` 会话和脚本单独编译。所有策略会话使用一个固定私有游戏副本；`start` 提交不建战斗的 `SessionStart` 就绪请求，`run` 直接复用其进程，`stop` 只结束进程和监控。Windows 启动器缓存稳定游戏文件的哈希，仅重算 Mod；停机后按差异替换私有副本。`run-unattended-test.ps1/.sh` 的复用入口跳过快照扫描，仍核对 PID、出生时间与可执行文件。`UnattendedTestRunner.ProtocolHost` 在每次请求开始加载冻结的脚本程序集和参数，`DevelopmentStrategyLoader` 持有可卸载加载上下文，在请求收尾释放。Search 只接收 `SearchPolicySnapshot.DevelopmentStrategy` 中的不可变策略引用和只读分支特征，不读取脚本文件或 live 设置。无脚本时保留既有候选顺序、Beam 评分和组合列表。脚本只接管中途优先级、评分、一个有界保路代表和既有组合成员编排；最终路线质量、预算、状态等价与战斗结算仍属原所有者。
+本地策略迭代通过 `tools/replay/CheckpointTool/StrategySessionRunner.cs` 持有 `start/run/status/stop` 会话和脚本单独编译。所有策略会话使用一个固定私有游戏副本；`start` 提交不建战斗的 `SessionStart` 就绪请求，`run` 直接复用其进程，`stop` 只结束进程和监控。Windows 启动器缓存稳定游戏文件的哈希，仅重算 Mod；停机后按差异替换私有副本。`run-unattended-test.ps1/.sh` 的复用入口跳过快照扫描，仍核对 PID、出生时间与可执行文件。`UnattendedTestRunner.ProtocolHost` 在每次请求开始加载冻结的脚本程序集和参数，`DevelopmentStrategyLoader` 持有可卸载加载上下文，在请求收尾释放。Search 只接收 `SearchPolicySnapshot.DevelopmentStrategy` 中的不可变策略引用和只读分支特征，不读取脚本文件或 live 设置。无脚本时保留既有候选顺序、Beam 评分和组合列表。脚本只接管中途优先级、评分、一个有界保路代表和既有组合成员编排；最终路线质量、预算、状态等价与战斗结算仍属原所有者。
 
 开发监控沿用 Runtime 的进度快照，Testing 的 `DevelopmentMonitorPublisher` 每秒最多一次复制纯标量并原子写入会话文件。独立窗口进程只读该文件，不访问模拟状态或游戏 UI；游戏始终以 `--headless` 启动。`StrategySessionRunner` 管理窗口进程身份、跨包状态和 stop 清理；关闭窗口不改变游戏请求生命周期。Windows 使用 WPF，Linux 入口使用独立终端显示同一状态协议。
 
@@ -306,7 +306,7 @@ RitsuLib 0.6.0 自身拥有 BaseLib 目标类型的外部登记查询、按程�
 
 `CombatSearchCoordinator.PowerRoutes.cs` 在主搜索后、可接受战损提前返回之前，为当前可打的每张已登记能力运行固定前缀完整搜索，并有限补充双能力前缀。前缀结束后重建 `CombatProgressState`、清除临时承诺与有序变异调度元数据，后续按普通 Beam 搜索；能力已经真实在场，不继续套激进承诺。最多三个前缀时分别运行普通宽度、1.5倍宽度、次排名段和基础分四种后验，更多前缀时运行普通与宽 Beam。所有成员只以完整终局和既有战损政策选优。
 
-`BeamPortfolioSelector.cs` 是实验用的组合成员选择器（默认不启用）：Runtime 只有在显式给出模型文件时才注入，Search 只收到解析后的不可变实例。它只在 `BeamWidthPortfolioGate` 已经放行之后决定“这一位成员不跑”，不改评分、状态键、保路通道、必保候选或终局排序；模型缺失、求解器或游戏程序集 MVID 不一致、特征长度不符、特征非有限，或状态与配置超出训练范围时一律运行成员，计时与剩余预算字段不设范围约束，避免把负载漂移当成分布外。判定只用模型自带的常量树，不做 IO、不持有搜索对象。离线宿主用 `--observe-portfolio` 经同一路径导出特征与真实政策标签、用 `--portfolio-model` 应用模型；采集、划分、训练与对照见 [PortfolioSelector 工具](../../../tools/PortfolioSelector/README.md)，实测取舍见[学习型组合门控](../strategy/learned-portfolio-gate-20260917.md)。
+`BeamPortfolioSelector.cs` 是实验用的组合成员选择器（默认不启用）：Runtime 只有在显式给出模型文件时才注入，Search 只收到解析后的不可变实例。它只在 `BeamWidthPortfolioGate` 已经放行之后决定“这一位成员不跑”，不改评分、状态键、保路通道、必保候选或终局排序；模型缺失、求解器或游戏程序集 MVID 不一致、特征长度不符、特征非有限，或状态与配置超出训练范围时一律运行成员，计时与剩余预算字段不设范围约束，避免把负载漂移当成分布外。判定只用模型自带的常量树，不做 IO、不持有搜索对象。离线宿主用 `--observe-portfolio` 经同一路径导出特征与真实政策标签、用 `--portfolio-model` 应用模型；采集、划分、训练与对照见 [PortfolioSelector 工具](../../../tools/search/PortfolioSelector/README.md)，实测取舍见[学习型组合门控](../strategy/learned-portfolio-gate-20260917.md)。
 
 周期候选在最多 32 步的窗口内比较重复动作、控制形状及伤害发生相位，避免把较长周期中的安静阶段当成整个循环。每周期伤害数值可以变化：动作、形状和伤害相位重复且实际刷新敌人耐久低点时，可取得伤害进展证据；精确转移增量是否一致仍单独记录，不把增长伤害伪装成相同增量。已证明刷新逐敌人历史最低耐久的路线可使用独立进展通道：每个 region 每层至多一个代表，最多保留该周期余下的 31 个安静动作，且只由实际保留节点的一个直接后代消费。只有新的最低耐久能续期；普通停滞、试探和顺序选择预算不因此重置。进展准入在最终仲裁后结算，并解除已经完成目标的旧出口探针；所有动作仍逐步模拟并受请求节点与时间限制。
 
@@ -430,7 +430,7 @@ Smart 层间使用 `SmartLayerMemoryForecast` 的同窗分配和转移高水位�
 
 `BeamRetentionPolicy` 决定哪些中间候选继续活着；动作选牌、嵌套选牌和 `EndTurn.TurnStartChoices` 都以来源、效果、卡牌语义状态和上下文形成保路签名。`FinalPlanOrdering` 决定完整候选中最终采用哪条；完整胜利后先比较保命资源消耗次数，再比较偷窃回收和扣除实际成长额度的战略战损，随后比较已实现成长额度、收益次数和结束回合，药水、其他长线资源、敌方状态和分数作为后续尾键。两者不能合并成单一“总分排序”。`SearchFeatures` 是终局排序读取节点状态的只读投影。转置状态键中的九条战斗 RNG 必须包含完整内部状态；相同调用计数不能证明两个 RNG 后续等价。
 
-`ContextualRankingModel` 是默认未注入的离线实验入口：调用方在搜索前解析模型并校验程序集身份，Search 只读已有快照、在栈上计算有界中途排序修正。它不是可采纳下界，不参与终局政策、状态键或转置支配；当前没有通过质量门槛的模型。 独立的 `ContinuousThreatRanking` 试验只在新回合起点、真实存活且仍有可执行手牌时连续计价致死意图；仍默认关闭，不改快照Score或精确支配，也不是可采纳界。独立的 `BeamWeightPerturbation` 通过冻结profile对一个中途排序项做有限倍数敏感度测量，生产为空，终局与base-score成员旁路；不改变快照Score、状态键或精确支配。`OffensiveRefinementPortfolio` 为默认关闭的组合实验，只在默认成员列表中以2/5宽、EnemyHp项1.5倍的成员替换3/2宽成员；原主搜/窄成员、显式宽度配置、能力前缀和终局政策保持，仍共享剩余预算，成员身份单列诊断，新成员不交给旧选择器模型裁决。独立的 `BoundedOffensiveRefinementPortfolio` 实验保留全部原成员，在末尾追加同类进攻成员，节点额度取共享余量与此前组合实际展开1/8的较小值；默认关闭且不增加预留。它仍在后续能力/药水审计之前，不能据此保证整条流水线单调；展开上限也不是时间/转移/内存比例上限。`tools/ContextualOrdering` 拥有场景生成、候选采集配对、离线拟合及对照报告；未知后续保留为未知，标签只表示已观察到的完整后续，不能宣称最优。
+`ContextualRankingModel` 是默认未注入的离线实验入口：调用方在搜索前解析模型并校验程序集身份，Search 只读已有快照、在栈上计算有界中途排序修正。它不是可采纳下界，不参与终局政策、状态键或转置支配；当前没有通过质量门槛的模型。 独立的 `ContinuousThreatRanking` 试验只在新回合起点、真实存活且仍有可执行手牌时连续计价致死意图；仍默认关闭，不改快照Score或精确支配，也不是可采纳界。独立的 `BeamWeightPerturbation` 通过冻结profile对一个中途排序项做有限倍数敏感度测量，生产为空，终局与base-score成员旁路；不改变快照Score、状态键或精确支配。`OffensiveRefinementPortfolio` 为默认关闭的组合实验，只在默认成员列表中以2/5宽、EnemyHp项1.5倍的成员替换3/2宽成员；原主搜/窄成员、显式宽度配置、能力前缀和终局政策保持，仍共享剩余预算，成员身份单列诊断，新成员不交给旧选择器模型裁决。独立的 `BoundedOffensiveRefinementPortfolio` 实验保留全部原成员，在末尾追加同类进攻成员，节点额度取共享余量与此前组合实际展开1/8的较小值；默认关闭且不增加预留。它仍在后续能力/药水审计之前，不能据此保证整条流水线单调；展开上限也不是时间/转移/内存比例上限。`tools/search/ContextualOrdering` 拥有场景生成、候选采集配对、离线拟合及对照报告；未知后续保留为未知，标签只表示已观察到的完整后续，不能宣称最优。
 
 
 `GrowthPolicy.cs` 定义八类局外收益的不可变额度/次数向量，另带 `GrowthExtras` 承载第三方来源那一半（按 id 序数升序、不存 0 值，空表为 `null`，登记表为空时行为与指纹与开这个口子之前逐位相同）。`GrowthSourceMirrors.cs` 是第三方登记表，只持有 id、延迟取牌函数与牌组判据；额度按 id 持久化，认不出的 id 原样保留并写回。Runtime 在主线程冻结额度及当前牌组是否存在成长目标，交给 `SearchPolicySnapshot`；求解器在快照中计算额度，最终排序、阶段仲裁与 Pareto 保留共同消费。`SimulatedCombatState.LongTermResources` 只记录既有结算点产生的成功收益次数，Fork 按值复制，状态指纹保留各来源计数；额度属于搜索政策。计数从每个新根的零值开始，预测分支跨回合保留；续用仍核对原来的金币、最大生命和卡牌永久变量，计数本身不进入 live `ContinuationStamp`。有目标或非零配置时停用纯 HP 的提前终止和 incumbent 下界，沿用原时间/节点预算。
@@ -627,7 +627,7 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 `GeneratedCombatScenario` 只把配置解析为角色/遭遇/装备ID，原版池按ID排序、各类别独立种子流，不推进战斗RNG。`ScenarioBuilder` 的 `GeneratedScenario` 分片在主线程创建实际跑局，核对牌组/进阶之灾/药水槽与原生房间类型；`GeneratedScenarioCardSelector` 只在建局作用域提供确定性或显式选牌，退出建局即释放，不参与正式部署。`Writer` 独占解析配置、目录、战前装备与完整开局状态证据写入。`ProtocolHost.ConfigureSearchOverrides` 在建局配置解析后刷新同一套请求级开关；`Executor` 仍独占实际搜索/部署及设置恢复。批量Python工具只调度各平台原生启动器和证据目录，不接触游戏协议循环或搜索内部。详见[通用场景生成](../../GENERATED_COMBAT_SCENARIOS.md)。
 
-`tools/OfflineSearchHarness` 是不启动 Godot 的测量宿主，只通过 `UnattendedTestRunner.BeginOfflineSession` 和 `OfflineScenarioSession` 复用协议开关、生成或固定场景的同一初始状态注入与结果折叠；`SolverController.DisplayServerNameProvider` 只允许宿主提供固定的 headless 显示服务器名。宿主不拥有正确性断言，也不替代无人测试；搜索行为改动仍由游戏内无人场景验收。详见[离线搜索宿主](../../OFFLINE_SEARCH_HARNESS.md)。
+`tools/search/OfflineSearchHarness` 是不启动 Godot 的测量宿主，只通过 `UnattendedTestRunner.BeginOfflineSession` 和 `OfflineScenarioSession` 复用协议开关、生成或固定场景的同一初始状态注入与结果折叠；`SolverController.DisplayServerNameProvider` 只允许宿主提供固定的 headless 显示服务器名。宿主不拥有正确性断言，也不替代无人测试；搜索行为改动仍由游戏内无人场景验收。详见[离线搜索宿主](../../OFFLINE_SEARCH_HARNESS.md)。
 
 `UnattendedTestRunner.ReplayState.cs` 属于 `ScenarioBuilder` 的状态注入实现。它只接受同检查点的 `run-state` 与 schema 1 `replay-state` 组合，恢复后必须通过完整 `ContinuationStamp`；不能把部分字段相似的建局称为严格重放。
 
@@ -635,13 +635,13 @@ renderer 不得重新读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或
 
 NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 AdvanceAsync 的等待链中止请求，防止生命周期事件分发隔离异常后变成“边界缺失”。开战 RestoreOnly 同时读取并核对首个可操作检查点；CheckpointArchive.Prepare 在既有安全解压边界内携带其材料。模型表 hash 是诊断；ReplayAssertions 先比较二进制，旧表不可解码时明确返回未核验，只有已记录 ContinuationStamp 全部匹配才可输出 `restored_continuation`。完整恢复标志与仅状态通过分开。
 
-`src/Replay/CheckpointArchive.cs` 是不依赖游戏的包协议读取器，负责 v2/v1 索引、旧包目录适配、材料配对校验和按原目录解包。问题包 fixture 的统一默认选择器是 `start`，质量搜索从 combat_start 开始；`latest` 只接受调用方显式选择。`tools/CheckpointTool` 链接同一源文件提供离线预检，两端脚本不复制索引规则。`ScenarioBuilder` 经 `UnattendedTestRunner.CheckpointArchive.cs` 准备请求和临时材料；`Executor` 应用并恢复原包实际策略；`Writer` 输出独立的 `replayVerification`，区分材料检查、检查点恢复和后续执行。checkpoint 稳定 ID 不随六份快照的淘汰重编号。
+`src/Replay/CheckpointArchive.cs` 是不依赖游戏的包协议读取器，负责 v2/v1 索引、旧包目录适配、材料配对校验和按原目录解包。问题包 fixture 的统一默认选择器是 `start`，质量搜索从 combat_start 开始；`latest` 只接受调用方显式选择。`tools/replay/CheckpointTool` 链接同一源文件提供离线预检，两端脚本不复制索引规则。`ScenarioBuilder` 经 `UnattendedTestRunner.CheckpointArchive.cs` 准备请求和临时材料；`Executor` 应用并恢复原包实际策略；`Writer` 输出独立的 `replayVerification`，区分材料检查、检查点恢复和后续执行。checkpoint 稳定 ID 不随六份快照的淘汰重编号。
 
 `CombatReplayRecording` 拥有单场原生输入观察与不可变事件；战前存档在原生 RecordInitialState 边界采集，后台不读取事件的 live 对象。`CombatReplayOutcome` 单独观察玩家HP变化，不推进求解器的战损账本。`UnattendedTestRunner.NativeReplay` 属于ScenarioBuilder/Executor的恢复实现，以单人原生流程、动作和录制选择重建状态，不调用旧字段注入器；`ReplayAssertions` 提供二进制原生状态对账。`UnattendedCombatStartReplay` 只为旧包在最后一个生物加入后、开战Hook前注入已经捕获的开战状态，作用域结束即解除挂钩。
 
 `src/Replay/AppendOnlyEventLog` 的单独后台写入器拥有临时文件，以 FIFO 屏障截取指定前缀；Runtime 只提交已冻结的事件。积压和文件大小有上限，失败与截断进入诊断状态，已保留材料仍可导出。完整快照仅保留六份并单独限制待序列化数量，历史尾片只供诊断，完整执行历史由原生事件重建。
 
-`tools/CheckpointTool/BatchInputs` 负责 ZIP、汇总 ZIP、目录及旧目录的安全枚举和去重；`BatchRunner` 负责请求身份、断点续跑、进程调度、证据与结果口径。Windows/Linux 脚本分别维护本平台进程所有权、隔离环境和启动/停止，均不解析文本战损。`Writer` 在全局协议结果发布前写出每请求独立证据。`ProtocolHost` 只在建局前输入失败且异步静稳后允许继续复用，运行中失败退出。
+`tools/replay/CheckpointTool/BatchInputs` 负责 ZIP、汇总 ZIP、目录及旧目录的安全枚举和去重；`BatchRunner` 负责请求身份、断点续跑、进程调度、证据与结果口径。Windows/Linux 脚本分别维护本平台进程所有权、隔离环境和启动/停止，均不解析文本战损。`Writer` 在全局协议结果发布前写出每请求独立证据。`ProtocolHost` 只在建局前输入失败且异步静稳后允许继续复用，运行中失败退出。
 
 不要从深层 fixture 直接写结果，不要在 entry 中重新建立战斗，也不要让断言负责执行动作。
 
@@ -665,13 +665,13 @@ NativeReplayDriver 保存开战/结束观察器抛出的原始异常，由 Advan
 
 ## 8. 工具与结构门禁
 
-- `tools/start-server-gc.ps1` / `tools/start-server-gc.sh`：显式启动配置入口，只为新游戏子进程设置 CLR GC 与 Mod profile 环境，拒绝同路径游戏已运行，不修改游戏运行库文件、全局环境或持久设置。
-- `tools/run-unattended-test.ps1` / `tools/run-unattended-test.sh`：Windows / Linux 的平台原生入口，保留请求协议、精确进程生命周期、结果与静稳 ACK；同实例同时只有一个 producer。运行库 profile 的实际准备环境进入 process marker，不复用另一模式的进程；重启仍先核验原有进程所有权。`CleanupInstanceOnExit` / `cleanup-instance-on-exit` 在请求收束后删除已验证归属的完整实例。
-- `tools/headless-runtime.ps1` / `tools/headless-runtime.sh`：拥有实例目录、私有游戏/Mod 内容快照与每用户主机租约。实例默认位于当前仓库 `.local/headless-instances/<实例>`；用户目录只保存跨任务互斥所需的小型主机租约，不保存游戏快照。默认 exclusive，显式 parallel 最多两个游戏；CPU/内存预约随游戏进程存活，暖进程也占名额。实例清理要求租约已释放、私有游戏已退出、所有权标记完全匹配且目录不含重解析点/符号链接。它们不改变 Search DOP、NoGC、战斗语义或请求协议。详见 [实例与并行说明](../../HEADLESS_TESTING.md)。
+- `tools/performance/start-server-gc.ps1` / `tools/performance/start-server-gc.sh`：显式启动配置入口，只为新游戏子进程设置 CLR GC 与 Mod profile 环境，拒绝同路径游戏已运行，不修改游戏运行库文件、全局环境或持久设置。
+- `tools/testing/run-unattended-test.ps1` / `tools/testing/run-unattended-test.sh`：Windows / Linux 的平台原生入口，保留请求协议、精确进程生命周期、结果与静稳 ACK；同实例同时只有一个 producer。运行库 profile 的实际准备环境进入 process marker，不复用另一模式的进程；重启仍先核验原有进程所有权。`CleanupInstanceOnExit` / `cleanup-instance-on-exit` 在请求收束后删除已验证归属的完整实例。
+- `tools/testing/headless-runtime.ps1` / `tools/testing/headless-runtime.sh`：拥有实例目录、私有游戏/Mod 内容快照与每用户主机租约。实例默认位于当前仓库 `.local/headless-instances/<实例>`；用户目录只保存跨任务互斥所需的小型主机租约，不保存游戏快照。默认 exclusive，显式 parallel 最多两个游戏；CPU/内存预约随游戏进程存活，暖进程也占名额。实例清理要求租约已释放、私有游戏已退出、所有权标记完全匹配且目录不含重解析点/符号链接。它们不改变 Search DOP、NoGC、战斗语义或请求协议。详见 [实例与并行说明](../../HEADLESS_TESTING.md)。
 
-- `tools/run-visible-steam-benchmark.ps1` / `tools/run-visible-steam-benchmark.sh`：Windows / Linux 的平台原生入口，负责正常可见 Steam 会话的搜索、GC 与帧口径。
-- `tools/CoverageCatalog/Program.cs`：当前程序集和 registry descriptor 的覆盖目录生成/验证。
-- `tools/verify-refactor-boundaries.ps1` / `tools/verify-refactor-boundaries.sh`：Windows / Linux 的等价门禁，阻止 Search 全局依赖、旧 controller 字段、worker live 回读、Beam 职责回流、unattended 编排回流、UI mutable 类型回流和 registry 私有反射；规则变化时必须同步维护两端。
+- `tools/performance/run-visible-steam-benchmark.ps1` / `tools/performance/run-visible-steam-benchmark.sh`：Windows / Linux 的平台原生入口，负责正常可见 Steam 会话的搜索、GC 与帧口径。
+- `tools/inspection/CoverageCatalog/Program.cs`：当前程序集和 registry descriptor 的覆盖目录生成/验证。
+- `tools/inspection/verify-refactor-boundaries.ps1` / `tools/inspection/verify-refactor-boundaries.sh`：Windows / Linux 的等价门禁，阻止 Search 全局依赖、旧 controller 字段、worker live 回读、Beam 职责回流、unattended 编排回流、UI mutable 类型回流和 registry 私有反射；规则变化时必须同步维护两端。
 
 纯职责移动至少运行 Release 编译与当前平台的结构门禁。改变语义、搜索或显示行为时，再按影响面选择严格差分、完整 headless、CoverageCatalog 或可见 Steam。
 

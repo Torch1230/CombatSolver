@@ -1,7 +1,0 @@
-{
-  "potionId": "Ashwater",
-  "target": "Player",
-  "clearPlayerHandBeforeUse": true,
-  "cards": [{ "cardId": "STRIKE_IRONCLAD", "pile": "Hand" }],
-  "choiceCardIds": ["STRIKE_IRONCLAD"]
-}

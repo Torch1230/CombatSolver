@@ -1,6 +1,0 @@
-{
-  "potionId": "FlexPotion",
-  "target": "Player",
-  "triggerPlayerSideTurnEndAfterUse": true,
-  "expectedAbsentPlayerPowers": ["FLEX_POTION_POWER", "STRENGTH_POWER"]
-}

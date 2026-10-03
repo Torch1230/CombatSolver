@@ -13,7 +13,7 @@
     "sequence": "fresh process per variant; cold fixed-short warmup then fixed-short measured request; no overlapping compilation or benchmark"
   },
   "baselineCommand": [
-    "./tools/run-unattended-test.sh",
+    "./tools/testing/run-unattended-test.sh",
     "--scenario-id",
     "VH-STATE-FIXED-WORK",
     "--character-id",
@@ -34,11 +34,11 @@
     "76",
     "--clear-run-deck",
     "--run-cards-path",
-    "coverage/unattended/search-performance-necrobinder-projected-run-cards.json",
+    "coverage/fixtures/search/search-performance-necrobinder-projected-run-cards.json",
     "--relics-path",
-    "coverage/unattended/search-performance-necrobinder-projected-relics.json",
+    "coverage/fixtures/search/search-performance-necrobinder-projected-relics.json",
     "--potions-path",
-    "coverage/unattended/search-performance-necrobinder-projected-potions.json",
+    "coverage/fixtures/search/search-performance-necrobinder-projected-potions.json",
     "--cards-json",
     "[]",
     "--potion-policy-for-test",

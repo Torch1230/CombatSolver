@@ -1,4 +1,0 @@
-[
-  { "relicId": "VENERABLE_TEA_SET", "booleanMembers": { "GainEnergyInNextCombat": true } },
-  { "relicId": "FAKE_VENERABLE_TEA_SET", "booleanMembers": { "GainEnergyInNextCombat": true } }
-]

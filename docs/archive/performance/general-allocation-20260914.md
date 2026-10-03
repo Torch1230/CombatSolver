@@ -28,7 +28,7 @@
 
 最终层在运行前保存十场A1-B1-B2-A2顺序，使用真实VeryHigh（Beam135、100000节点、分支72/42/54），`fixedSearchBudget:false`、原300秒搜索预算、独立420秒请求上限。设置文件中的旧Custom字段不决定VeryHigh预算，以导出的实际政策为准。这不是延长失败的120秒内环；所有TimeLimit和不等工作量必须保留，不能计算成等量提速。
 
-比较器核对原输入、解析配置、配装、完整开局、实际政策、全部动作和逐回合路线，文本结果与结构化指标的所有未知字段默认参与比较。只排除明确列出的耗时/分配/GC/调度量，保留并发上限、质量和工作量字段；验证物理 `forks - round_prefix_captures == transitions`。源码/输入/GC环境与工具使用方式见[研究工具](../../../tools/PerformanceBenchmarks/README.md)。
+比较器核对原输入、解析配置、配装、完整开局、实际政策、全部动作和逐回合路线，文本结果与结构化指标的所有未知字段默认参与比较。只排除明确列出的耗时/分配/GC/调度量，保留并发上限、质量和工作量字段；验证物理 `forks - round_prefix_captures == transitions`。源码/输入/GC环境与工具使用方式见[研究工具](../../../tools/performance/PerformanceBenchmarks/README.md)。
 
 ## 完整极高结果
 

@@ -35,7 +35,7 @@
 - [SolverController](../../../src/Runtime/SolverController.cs)：能力判断（80 起）、`SetFullAuto`（1346 起）、`ApplyCurrentTurn`（1557 起）、`AdoptCurrentRoute`（1581 起）、药水设置（1740 起）、采用完成后的部署分支（2322 起）。
 - [路线行](../../../src/UI/SolverRouteRow.cs)、[动作胶囊](../../../src/UI/SolverActionPill.cs)、[尺寸与标签工厂](../../../src/UI/SolverUiTokens.cs)。
 - [现有路线快照](../../../src/UI/SolverOverlaySnapshot.cs)、[设置页](../../../src/UI/SolverSettingsPanel.cs)、[设置控件布局](../../../src/UI/SolverSettingsPanel.Controls.cs)。
-- [架构地图](../../ARCHITECTURE.md)、[Windows 结构门禁](../../../tools/verify-refactor-boundaries.ps1)、[Linux 结构门禁](../../../tools/verify-refactor-boundaries.sh)。
+- [架构地图](../../ARCHITECTURE.md)、[Windows 结构门禁](../../../tools/inspection/verify-refactor-boundaries.ps1)、[Linux 结构门禁](../../../tools/inspection/verify-refactor-boundaries.sh)。
 
 以上行号对应审计基线，后续修改以方法名定位。
 

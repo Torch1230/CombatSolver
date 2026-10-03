@@ -1,6 +1,6 @@
 # CombatSolver 战斗钩子覆盖目录
 
-生成来源：CombatSolver `0.48.0`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。
+生成来源：CombatSolver `0.48.1`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/inspection/CoverageCatalog` 生成，不手工编辑。
 
 ## 汇总
 

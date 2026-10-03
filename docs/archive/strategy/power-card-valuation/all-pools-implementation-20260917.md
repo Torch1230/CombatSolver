@@ -74,9 +74,9 @@
 ### 2.6 验证现状
 
 - `dotnet build CombatSolver.csproj -c Release`：通过（0 错误，0 警告）。
-- `dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release`：通过，输出 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`。
-- `pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1`：通过，输出 `REFACTOR_BOUNDARIES_OK search_files=191`；门禁已同步为多卡池承诺边界。按用户约束未运行 Bash 门禁。
-- 集成验收：`coverage/novelty-search/dev-00-ironclad-elite`、`dev-01-silent-elite`、`dev-02-defect-elite`、`dev-03-regent-elite`、`dev-04-necrobinder-elite` 五个短场景全部 `Passed`、`error=null`；均使用 `-GeneratedScenarioPath` + `-EvidenceDirectory` + `-CleanupInstanceOnExit`，最终 `headless-instances` 为空。
+- `dotnet run --project tools/testing/checks/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release`：通过，输出 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`。
+- `pwsh -NoProfile -File tools/inspection/verify-refactor-boundaries.ps1`：通过，输出 `REFACTOR_BOUNDARIES_OK search_files=191`；门禁已同步为多卡池承诺边界。按用户约束未运行 Bash 门禁。
+- 集成验收：`coverage/corpora/novelty/dev-00-ironclad-elite`、`dev-01-silent-elite`、`dev-02-defect-elite`、`dev-03-regent-elite`、`dev-04-necrobinder-elite` 五个短场景全部 `Passed`、`error=null`；均使用 `-GeneratedScenarioPath` + `-EvidenceDirectory` + `-CleanupInstanceOnExit`，最终 `headless-instances` 为空。
 - 文档：五份卡池逐卡建模表、总登记状态表、待玩家复核表、`docs/ARCHITECTURE.md`、`docs/DEVELOPMENT_NOTES.md`、`docs/TEST_MATRIX.md` 已更新。
 - 未验证：逐卡玩家复核；复杂机制的逐卡专用兑现证据；可见 Steam 会话下的实际战损对照。
 

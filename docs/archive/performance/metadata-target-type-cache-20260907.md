@@ -16,7 +16,7 @@ PR基于main `0552b33`，仅提取缓存代码、直接合同、职责约束与�
 # local.props指定本机Sts2DataDir、RitsuLibDir，并设置CopyModOnBuild=false。
 dotnet run --project tools/RitsuTargetTypeLookupChecks -c Release -p:NuGetAudit=false
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false -p:NuGetAudit=false
-pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1
+pwsh -NoProfile -File tools/inspection/verify-refactor-boundaries.ps1
 ```
 
 合同直接patch本机Ritsu实际回调，覆盖精确原语义、静态正负查询、live旁路、动态晚创建、2000次并发检查和可卸载程序集。原研究预热后10万次缺失查询分配18400000→0 B；首次冷路径断言因448 B运行时开销失败，失败保留后改用预热同工作量对照。
@@ -33,7 +33,7 @@ pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1
 
 目标固定576节点、13383转移、11133选择；0损/1药，玩家80 HP、敌942 HP。10动作包括9个可执行动作和结束回合。两边为NodeLimit，没有TimeLimit、超时或时间切层标记。
 
-公开目标建局：IRONCLAD / FUZZY_WURM_CRAWLER_WEAK，种子 `M0_PUBLIC_CHOICE_HAND_POTIONS_0111`，A0/Act0；玩家80/80 HP、0格挡、20能量，敌999/999 HP、0格挡、INHALE。清空跑局牌组、战斗牌堆与Power；手牌DUAL_WIELD、BASH、HIDDEN_DAGGERS、DEFEND、STRIKE、PURITY、ANGER、IRON_WAVE各1张，抽牌堆BASH；药水GAMBLERS_BREW、ASHWATER。RequireAtLeastOne政策，Custom使用仓库 `coverage/unattended/gc-issue36-benchmark-settings.json`，固定576节点，ForceShortSearchOnly、首结果停止。卡牌/药水来自现有公开choice-hand和potion夹具。每次运行须指定各自冻结的CombatSolverBuildDir及新输出目录。
+公开目标建局：IRONCLAD / FUZZY_WURM_CRAWLER_WEAK，种子 `M0_PUBLIC_CHOICE_HAND_POTIONS_0111`，A0/Act0；玩家80/80 HP、0格挡、20能量，敌999/999 HP、0格挡、INHALE。清空跑局牌组、战斗牌堆与Power；手牌DUAL_WIELD、BASH、HIDDEN_DAGGERS、DEFEND、STRIKE、PURITY、ANGER、IRON_WAVE各1张，抽牌堆BASH；药水GAMBLERS_BREW、ASHWATER。RequireAtLeastOne政策，Custom使用仓库 `coverage/fixtures/runtime/gc-issue36-benchmark-settings.json`，固定576节点，ForceShortSearchOnly、首结果停止。卡牌/药水来自现有公开choice-hand和potion夹具。每次运行须指定各自冻结的CombatSolverBuildDir及新输出目录。
 
 Aeon哨兵固定576/1883/61、Smart政策；已有公开63牌组 `search-performance-complex-random-aeonglass-cards.json`。该根仍是死亡路线，不能作为胜利或原版严格语义证明。增加的分配主要在回合开始（约24.53 MB），药水执行两边均0 B；尚未严格排除这项性能回退。
 

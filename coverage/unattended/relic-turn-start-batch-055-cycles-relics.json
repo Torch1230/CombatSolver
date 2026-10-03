@@ -1,7 +1,0 @@
-[
-  { "relicId": "ART_OF_WAR" },
-  { "relicId": "CANDELABRA" },
-  { "relicId": "CHANDELIER" },
-  { "relicId": "HAPPY_FLOWER", "integerMembers": { "TurnsSeen": 2 } },
-  { "relicId": "FAKE_HAPPY_FLOWER", "integerMembers": { "TurnsSeen": 4 } }
-]

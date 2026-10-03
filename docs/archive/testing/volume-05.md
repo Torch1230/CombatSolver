@@ -80,7 +80,7 @@
 - 失配基线 `3d174aeadc8942abbe94d88764b30f48` 明确失败于“原生选择被取消”；修复后手动恢复合同通过。此前初版 fixture `d2aca6c8ae944e63915a4b74c6505258` 错把动作队列临时空闲当作重放完成，改为复用生产 GameAction.CompletionTask 捕获后普通/投斧场景 `263cacd38bb74b19a43af1b8a4485927` 已通过；该初版错误不是产品卡死证据。一次编译失败后的旧产物测试启动被中止，未计为验证。
 - 未复现反馈中的所有“整个游戏进程无响应”情况；也未实际调用 BetterSpire2 的 SL 操作。无可见布局/鼠标验收，没有整场性能或所有第三方组合兼容结论。财物显示合同验证投影和布局，不新增怪物偷窃效果语义结论。
 
-复跑入口为 `tools/run-unattended-test.ps1 -ScenarioId <上述ID> -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -HeadlessInstance <独立名称> -ExitOnComplete -TimeoutSeconds 120`；TOOLS 使用 SILENT，并附 `-ShortSearchBudgetOverrideMilliseconds 1000 -DeepSearchBudgetOverrideMilliseconds 1000 -ForceShortSearchOnly`。
+复跑入口为 `tools/testing/run-unattended-test.ps1 -ScenarioId <上述ID> -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -HeadlessInstance <独立名称> -ExitOnComplete -TimeoutSeconds 120`；TOOLS 使用 SILENT，并附 `-ShortSearchBudgetOverrideMilliseconds 1000 -DeepSearchBudgetOverrideMilliseconds 1000 -ForceShortSearchOnly`。
 
 ## 0.35.4：战损目标早停
 
@@ -91,7 +91,7 @@
 - Release 编译 0 警告 / 0 错误，结构门禁 search_files=85。没有可见游戏测试、完整跑局或独立多药水后验场景结论。
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId SEARCH-HP-TARGET-STOP -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -HeadlessInstance hp-target -ExitOnComplete -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId SEARCH-HP-TARGET-STOP -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -HeadlessInstance hp-target -ExitOnComplete -TimeoutSeconds 120
 ```
 
 ## 0.35.4：按钮区与收起显示
@@ -103,7 +103,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId SEARCH-HP-TARGET
 - Release 编译 0 警告 / 0 错误，结构门禁 `search_files=85`。未做可见布局/鼠标验收；该 fixture 不证明整场自动部署或开局选牌完整链。
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId UI-COMPACT-QOL -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -HeadlessInstance compact-qol -ExitOnComplete -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId UI-COMPACT-QOL -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -HeadlessInstance compact-qol -ExitOnComplete -TimeoutSeconds 120
 ```
 
 ### 古代卡牌成长策略与累计成本（本批此前证据）
@@ -115,13 +115,13 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId UI-COMPACT-QOL -
 - 没有可见鼠标/布局验收，没有完整跑局质量结论，也未验证其他 Mod 修改至亮之焰最大生命变量的历史回写语义。
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId GROWTH-ANCIENT-POLICY -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -HeadlessInstance ancient-growth -ExitOnComplete -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GROWTH-ANCIENT-POLICY -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -HeadlessInstance ancient-growth -ExitOnComplete -TimeoutSeconds 120
 ```
 
 ## 0.35.4：PR #83 合并检查与预设节点上限
 
-- `python -X utf8 tools/NoVictoryRecoveryChecks/run.py`：通过 PR 自带 `AssertNoVictoryEscalationPolicy` 的全部策略断言与新增 8 项请求流程检查。直接编译生产 BuildNoVictoryEscalationProfile / EscalateSearchWhenNoVictory；原入口先复现“追加搜索丢弃明确采用结果”，修正后覆盖接管、已有胜利不重搜、胜利退出、停止、拒绝更差结果、两轮封顶、第二轮饱和及仅分支增长。结果、质量排序和根采用确定性替身，未声明整场搜索验证。
-- `python -X utf8 tools/NoVictoryRecoveryChecks/presets.py`：直接编译生产四档声明及 SolverSearchProfile，核对节点加倍、时间及 Beam 保持原值。低/中/高/极高 Short 为 2400/4800/10000/20000，Deep 为 12000/24000/50000/100000。
+- `python -X utf8 tools/testing/checks/NoVictoryRecoveryChecks/run.py`：通过 PR 自带 `AssertNoVictoryEscalationPolicy` 的全部策略断言与新增 8 项请求流程检查。直接编译生产 BuildNoVictoryEscalationProfile / EscalateSearchWhenNoVictory；原入口先复现“追加搜索丢弃明确采用结果”，修正后覆盖接管、已有胜利不重搜、胜利退出、停止、拒绝更差结果、两轮封顶、第二轮饱和及仅分支增长。结果、质量排序和根采用确定性替身，未声明整场搜索验证。
+- `python -X utf8 tools/testing/checks/NoVictoryRecoveryChecks/presets.py`：直接编译生产四档声明及 SolverSearchProfile，核对节点加倍、时间及 Beam 保持原值。低/中/高/极高 Short 为 2400/4800/10000/20000，Deep 为 12000/24000/50000/100000。
 - PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=84`。未启动游戏，本轮没有新增原包恢复、可见 UI 或实战战损验收；下方 PR 附带的检查点记录来自作者此前验证。
 
 ## 无胜利路线时的搜索面升级（贡献者记录）
@@ -148,7 +148,7 @@ Beam 与节点是乘的关系，只抬一边都不够，四组顶格实测（`b2
 | 135 | 100,000 | 赢（第 9 回合、战损 33） | 83,423 |
 | 512 | 100,000 | 赢（第 8 回合、战损 31） | 26,671 |
 
-`tools/verify-refactor-boundaries.ps1`：`REFACTOR_BOUNDARIES_OK search_files=84`。
+`tools/inspection/verify-refactor-boundaries.ps1`：`REFACTOR_BOUNDARIES_OK search_files=84`。
 `dotnet build CombatSolver.csproj -c Release`：0 警告 0 错误。
 
 边界：这三次都是单一检查点的搜索质量证据，不是整包回放、不是完整自动部署，也不覆盖原版角色。
@@ -158,9 +158,9 @@ Beam 与节点是乘的关系，只抬一边都不够，四组顶格实测（`b2
 
 ## 0.35.3：PR 合并与监控版本提醒（本轮验证）
 
-- 合并后的 `dotnet run --project tools/CardHookReceiverChecks -c Release`：78 项通过；`python -X utf8 tools/EndTurnAdmissionChecks/run.py`：33 项通过；`dotnet run --project tools/CardTargetingChecks -c Release`：37 项通过；`python -X utf8 tools/DamageDealerChecks/run.py`：101 项通过；`python -X utf8 tools/PlayerDeathChecks/run.py`：42 项通过。伤害合同替身有一条 CS0649 未赋值警告；共 291 项是生产方法链接合同，尚未执行游戏原包或完整原生结算差分。
-- `dotnet run --project tools/ClientUpdateChecks -c Release`：35 项通过。验证三段数字比较（包括 0.35.10）、相等/更旧/主版本升级、204 旧服务、非法/缺失 JSON、HTTP 失败、取消、服务回撤版本及关闭提醒；失败不覆盖最后有效状态。
-- 已部署工作台基线 5611856 同步后，在 `tools/OnlinePresence` 执行 `npm test`：17 项通过，含管理员登录/Origin、采集端隔离、严格版本验证、旧客户端心跳、设置更新/清除/重启持久化及已有统计逻辑。Node 23.9.0 提示 SQLite experimental warning；线上使用 Node 24.15.0。
+- 合并后的 `dotnet run --project tools/testing/checks/CardHookReceiverChecks -c Release`：78 项通过；`python -X utf8 tools/testing/checks/EndTurnAdmissionChecks/run.py`：33 项通过；`dotnet run --project tools/testing/checks/CardTargetingChecks -c Release`：37 项通过；`python -X utf8 tools/testing/checks/DamageDealerChecks/run.py`：101 项通过；`python -X utf8 tools/testing/checks/PlayerDeathChecks/run.py`：42 项通过。伤害合同替身有一条 CS0649 未赋值警告；共 291 项是生产方法链接合同，尚未执行游戏原包或完整原生结算差分。
+- `dotnet run --project tools/testing/checks/ClientUpdateChecks -c Release`：35 项通过。验证三段数字比较（包括 0.35.10）、相等/更旧/主版本升级、204 旧服务、非法/缺失 JSON、HTTP 失败、取消、服务回撤版本及关闭提醒；失败不覆盖最后有效状态。
+- 已部署工作台基线 5611856 同步后，在 `services/OnlinePresence` 执行 `npm test`：17 项通过，含管理员登录/Origin、采集端隔离、严格版本验证、旧客户端心跳、设置更新/清除/重启持久化及已有统计逻辑。Node 23.9.0 提示 SQLite experimental warning；线上使用 Node 24.15.0。
 - 同目录 `$env:BROWSER_CHANNEL='msedge'; node --test browser.test.mjs`：9 项通过。新增版本维护表单实际 DOM 保存/关闭、刷新不覆盖输入，同时验证现有登录恢复、筛选、布局、延迟请求及统计恢复。默认 Playwright 浏览器未安装导致首轮启动失败，改用已安装的 Edge 后通过；未启动可见浏览器或游戏。
 - 下方 PR 附带检查属于贡献者原始记录。本轮不将独立替身合同表述为游戏状态差分或实机修复的完整验收。
 
@@ -168,7 +168,7 @@ Beam 与节点是乘的关系，只抬一边都不够，四组顶格实测（`b2
 
 - Release 编译 0 警告/0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=84`。没有安装或启动游戏。
 
-- `python3 tools/PlayerDeathChecks/run.py`：42 项通过，提取编译生产 HandlePlayerDeath 和 RemovePowersAfterDeath；旧入口在宠物死亡回调观察到残留能力，失败基线已复现。
+- `python3 tools/testing/checks/PlayerDeathChecks/run.py`：42 项通过，提取编译生产 HandlePlayerDeath 和 RemovePowersAfterDeath；旧入口在宠物死亡回调观察到残留能力，失败基线已复现。
 - 覆盖有/无奥斯提、宠物清理 pending、先清能力再清球/宠物、正负层数移除、允许死后存续能力、其他 owner、重复清理及现有 Illusion 移除否决规则。
 - 测试状态/能力模型/宠物 Kill 为替身；不构成真实根/Fork、AfterRemoved 回调覆盖、死亡阻止或原报告完整回放验收。原版 CreatureCmd 的清理位置及 Creature.RemoveAllPowersAfterDeath 已定向核对。
 
@@ -178,7 +178,7 @@ Beam 与节点是乘的关系，只抬一边都不够，四组顶格实测（`b2
 
 - Release 编译通过，0 警告/0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=84`。未安装或启动游戏。
 
-- `python3 tools/DamageDealerChecks/run.py`：101 项生产伤害入口检查通过。旧代码在分支已死、实机存活的输入下仍产生伤害结果，最小基线失败。
+- `python3 tools/testing/checks/DamageDealerChecks/run.py`：101 项生产伤害入口检查通过。旧代码在分支已死、实机存活的输入下仍产生伤害结果，最小基线失败。
 - 编译生产全部 Damage 重载及 DamageSingleTarget；交错实机/分支死亡状态，覆盖禁止 live getter、独立分支、复活、null 来源、空目标及死亡来源不进入伤害/后续 Hook。
 - 状态和逐目标/后续 Hook 为确定性替身；没有验证真实 Fork、伤害计算、原生死亡时序或报告中完整递归抽牌链。保留原递归安全上限，不把本合同写成整场验收。
 
@@ -188,7 +188,7 @@ Beam 与节点是乘的关系，只抬一边都不够，四组顶格实测（`b2
 
 - Release 编译 0 警告/0 错误；Bash 结构门禁通过，`search_files=84`。同步更新两端门禁的分支模式，PowerShell 因当前环境缺少 `pwsh` 未运行。未安装或启动游戏。
 
-- `dotnet run --project tools/CardTargetingChecks -c Release`：37 项通过，直接编译生产 `CombatPredictionSimulator.CardTargeting.cs`；旧源码复现分支无能力时误用实机全体目标。
+- `dotnet run --project tools/testing/checks/CardTargetingChecks -c Release`：37 项通过，直接编译生产 `CombatPredictionSimulator.CardTargeting.cs`；旧源码复现分支无能力时误用实机全体目标。
 - 两张动态目标牌分别覆盖分支能力缺失/0/1/2/移除、实机能力有无交错、其他角色能力隔离、独立分支，以及普通卡和非影子状态回退。影子状态用例禁止读取原生目标 getter。
 - 游戏 0.111.0 的原版 Shiv / SovereignBlade 目标 getter 已定向核对：对应能力决定 `AnyEnemy` / `AllEnemies`。测试模型和状态为替身，不构成真实根捕获、完整 Fork、原生伤害或原包回放验收。
 
@@ -198,7 +198,7 @@ Beam 与节点是乘的关系，只抬一边都不够，四组顶格实测（`b2
 
 - Release 编译通过，0 警告/0 错误；结构门禁 `REFACTOR_BOUNDARIES_OK search_files=84`。未安装或启动游戏。
 
-- `python3 tools/EndTurnAdmissionChecks/run.py`：33 项通过。直接编译生产结束回合入口、raw 生成、剪枝、准入谓词、materialization 循环和批次所有权容器；旧 `BuildAcceptedEndTurnNodes` 在相同输入下因未结算观测到达转置准入而失败。
+- `python3 tools/testing/checks/EndTurnAdmissionChecks/run.py`：33 项通过。直接编译生产结束回合入口、raw 生成、剪枝、准入谓词、materialization 循环和批次所有权容器；旧 `BuildAcceptedEndTurnNodes` 在相同输入下因未结算观测到达转置准入而失败。
 - 覆盖有效/撤销/无父租约、多选牌子分支单一出口、终结边界、剪枝、转置拒绝、stand-pat 发布，以及提前退出/生成失败时快照释放。
 - 质量计算、单张出口票据签发、模拟与转置判断使用确定性替身；不构成游戏原生差分、预算触发的完整搜索或原报告回放验收。既有展开入口 fail-fast 和循环预算保持不变。
 
@@ -237,14 +237,14 @@ Beam 与节点是乘的关系，只抬一边都不够，四组顶格实测（`b2
 ## 2026-09-10：PR #74 / #75 / #77 合并验证
 
 - #74：直接编译 PR 中生产 profile 与 BuildNarrowBeamRecoveryProfile，剩余 49000 节点/299000 ms 和 2000 节点/1000 ms 正确；预算耗尽与普通 Beam 不产生救援。复用同一行为源码审计阶段的结果，不声明实战战损改善。
-- #75：`pwsh -NoProfile -File tools/verify-unattended-map-points.ps1` Passed，4 种输入；从生产请求哈希表的 AST 取出真实字段表达式，检查省略、空数组、单点、多点的 JSON 往返形状，拒绝 null 和嵌套数组。原 PR 的显式空数组和非空数组均已复现多包一层。
+- #75：`pwsh -NoProfile -File tools/testing/verify-unattended-map-points.ps1` Passed，4 种输入；从生产请求哈希表的 AST 取出真实字段表达式，检查省略、空数组、单点、多点的 JSON 往返形状，拒绝 null 和嵌套数组。原 PR 的显式空数组和非空数组均已复现多包一层。
 - #77：`MODEL-STATE-INTEGRATION` / `444ddec2f3bf49568ece16acf9be80f5` Passed，27.93 秒，T1 → T2。真实游戏身份、CombatRootSnapshot、完整 CombatPredictionSimulator.Fork 和原版回合推进；专用测试为 BurningBlood 与 BigGameHunter 登记状态，持有可变列表及预测卡牌引用。父子对象/列表/卡牌隔离，子分支变更改变指纹与续用文本而父分支保持原值；原生和预测下一回合完整快照（含 continuation）一致。不是第三方 Mod 效果镜像通用正确性的证明。
 - 原 PR 独立 32 项状态合同、3 项空登记及 1000 次 0 字节指纹分配检查在审计阶段通过；同一接口行为不重复。合并后的 Release 编译 0 警告/0 错误，PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=84`。没有打开可见 Steam 游戏，没有发布。
 
 专用模型状态合同必须使用新后台实例，并在请求后退出，避免已冻结的测试登记污染其他请求：
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId MODEL-STATE-INTEGRATION -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -ModifierId BIG_GAME_HUNTER -EnemyCurrentHp 500 -HeadlessInstance model-state-integration -ExitOnComplete -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId MODEL-STATE-INTEGRATION -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -PreserveNativeCombatStateForTest -ModifierId BIG_GAME_HUNTER -EnemyCurrentHp 500 -HeadlessInstance model-state-integration -ExitOnComplete -TimeoutSeconds 120
 ```
 
 ## 遗物与 Modifier 通用状态接口（开发中）
@@ -258,16 +258,16 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId MODEL-STATE-INTE
 - Bash 结构门禁通过：`REFACTOR_BOUNDARIES_OK search_files=84`。PowerShell 对应规则已同步，未执行（本机无 `pwsh`）。未执行游戏内单效果/两回合差分、部署、性能 A/B；具体适配的语义验收仍需这些针对性差分。
 
 ```sh
-dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --empty
-dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release
-dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --allocation
+dotnet run --project tools/testing/checks/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --empty
+dotnet run --project tools/testing/checks/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release
+dotnet run --project tools/testing/checks/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --allocation
 ```
 
 接口及手工验收范围见[模型状态适配](../../third-party/model-state.md)。此记录仅对应本项开发改动，不复用下方历史游戏场景作为本轮证据。
 
 ## 0.35.1：回收后堆空间复用
 
-- `dotnet run --project tools/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- memory`：Passed，直接链接生产策略及信号；玩家采样剩余可复用空间 4,172,872,440 字节，区域容量 6,938,945,322 字节。验证复用空间不重复增加物理用量、三 GB 波次可准入、物理上限立即阻止准入、用户预算上限、回收委托、Disable 探针清理及无实时探针模式。
+- `dotnet run --project tools/testing/checks/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- memory`：Passed，直接链接生产策略及信号；玩家采样剩余可复用空间 4,172,872,440 字节，区域容量 6,938,945,322 字节。验证复用空间不重复增加物理用量、三 GB 波次可准入、物理上限立即阻止准入、用户预算上限、回收委托、Disable 探针清理及无实时探针模式。
 - 同工具默认入口：19 项 GC 策略检查 Passed。Release 编译通过，0 警告/0 错误；版本元数据变化后的最终发布构建不重跑这些合同。
 - 证据：`outputs/centipede-gc-20260910/checkpoints.json`、`trace3-raw.json`。原始第三段完整解析，EventsLost=0；目标战斗 36 次主动回收、102 个 SuspendForGC 暂停区间，总暂停约 6244.8 ms、最大约 861.8 ms。此为旧版现场，不能作为修复后的结果。
 - 按用户要求没有启动实机或无人游戏；没有实际回收次数下降、FPS 或路线质量的新结论。
@@ -282,7 +282,7 @@ dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks
 - 正常可见 Steam `COMBAT-TIMING-LIFETIME` / `5e72da97870d452c821f1b46110b0437` Passed，23.38 秒，T1 到 T2。原版 reverse patch 与生产回调对照涵盖两种特效、开关及三个动画时点，比较返回值、颜色、位移、变换和可见性；4 万次回调的 Godot 临时对象登记为 14178 → 14178，原环境字典仍可读。
 - 原生 Cmd.Wait 在战斗 Instant 下同步完成，在 FollowGame / Normal 下真实等待；执行原生结束回合动作并完成怪物回合后，战斗仍为 Instant，全局偏好保持 Normal。
 - 后续追加战斗结束后的局外等待检查，首次 fixture 直接 Kill 后缺少 CheckWinCondition，120 秒超时；已补齐胜负结算调用。用户要求停止实机测试，修正后的局外检查未执行，不将其记为通过。生产行为与已通过测试相同，最后变更仅为测试补充。
-- 最终 Release 编译通过，0 警告、0 错误。本机更新开发 DLL，未发版。未重现玩家完整两层后的长会话，不声明整体卡顿全部消失或提供 FPS 增幅。可复跑输入为 `coverage/unattended/combat-timing-lifetime.json`。
+- 最终 Release 编译通过，0 警告、0 错误。本机更新开发 DLL，未发版。未重现玩家完整两层后的长会话，不声明整体卡顿全部消失或提供 FPS 增幅。可复跑输入为 `coverage/fixtures/scenarios/state/combat-timing-lifetime.json`。
 
 ## 2026-09-10：SpeedX 横幅告知
 
@@ -293,13 +293,13 @@ dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks
 
 - 自动压缩追加合同：`outputs/performance-compression-contract/` 连续 3 段全部成功采集并压缩，原始总计 8,408,334 字节转为 1,458,408 字节；collector 正常 complete。解压第一段后解析出 10043 个线程采样、8707 个分配事件、538 次 GC start，EventsLost=0。玩家已有段一次性从 280,502,570 字节压为 26,455,804 字节；此次只修改外部存储脚本，不改变 DLL、采样配置或搜索行为。
 
-- 独立 `tools/PerformanceRecordingTests` 合同：36 秒进程采样，刻意停止主线程心跳 3 秒；验证后台仍写入、线程/内存/GC 数据、队列无丢弃、退出排空。10 秒分段连续采集并正常退出；带空格输出路径通过。修正 Windows PowerShell 的 File.Replace 空备份路径及 Process.ExitCode 句柄生命周期问题后最终合同通过。
+- 独立 `tools/testing/checks/PerformanceRecordingTests` 合同：36 秒进程采样，刻意停止主线程心跳 3 秒；验证后台仍写入、线程/内存/GC 数据、队列无丢弃、退出排空。10 秒分段连续采集并正常退出；带空格输出路径通过。修正 Windows PowerShell 的 File.Replace 空备份路径及 Process.ExitCode 句柄生命周期问题后最终合同通过。
 - EventPipe 显式使用 runtime `0x100003C01D:5`，避免多个 profile 合并保留 Informational 而漏掉分配事件。独立样本解析出 10118 个采样事件、8696 个分配事件、538 次 GC start，EventsLost=0；topN 能解析出测试计算方法。采样含等待时间，不当作 CPU 占比。
 - Heap dump 合同：独立进程收到现场请求，dotnet-dump exitCode=0，dumpheap 成功读取 PerformanceSession 等对象；连续轨迹继续分段并收尾。对应本地证据 `outputs/performance-snapshot-contract/`。
 - 正常可见 Steam 短战斗：`f5cf09910c8b46548444922d768076f4` / `VISIBLE-LOGGING-CAPTURE-0300` Passed，31.75 秒，T6 结束，零计划外重算。时间线包含完整搜索/部署事件、16 个生命周期开始事件、引擎资源与主线程样本；dropped=0。抽检游戏轨迹段 63069 个采样事件、3720 个分配事件、8 个竞争事件，EventsLost=0。
 - 最终进程所有权边界：`f6a6db1e04d04bbb9bb19c9b89d0b014` / `PERFORMANCE-RECORDING-LIFETIME` Passed，37.75 秒；生产录制节点移除/重新安装仍引用同一 PerformanceSession。实际时间线只有一个 start、一个 host_reattached、一个 process_recording_end 和 writer_end，采集器 complete，dropped=0。抽检段 67889 个采样、6375 个分配、13 个竞争事件，EventsLost=0。退出后的 ZIP 导出成功。
 - 最终 Release 编译 0 警告/0 错误，结构门禁 `REFACTOR_BOUNDARIES_OK search_files=84`。本机诊断配置最终使用 300 秒分段；不重复五分钟等待验证仅时间参数变化。
-- 复跑节点边界：先在测试安装启用诊断配置，再运行 `tools/run-visible-steam-benchmark.ps1 -RequestFixturePath coverage/unattended/performance-recording-lifetime.json -TimeoutSeconds 120`。这是诊断管线验证，不是对具体快速 SL Mod 的兼容承诺；未复现用户完整两局后的持续卡顿，也未建立诊断开销的完整 A/B 或正式版 FPS 结论。
+- 复跑节点边界：先在测试安装启用诊断配置，再运行 `tools/performance/run-visible-steam-benchmark.ps1 -RequestFixturePath coverage/fixtures/runtime/performance-recording-lifetime.json -TimeoutSeconds 120`。这是诊断管线验证，不是对具体快速 SL Mod 的兼容承诺；未复现用户完整两局后的持续卡顿，也未建立诊断开销的完整 A/B 或正式版 FPS 结论。
 
 ## 0.34.10：撤回新增搜索目标
 
@@ -350,10 +350,10 @@ dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks
 | TEST-SUBJECT-ORIGINAL-REPORT | `3e6e7f796ffa41fcaa6d52c859a12404` | Passed，0.34.8 天际钻头原包首回合至 T2 完整状态回归 |
 | REPORT-ROUND-DOOM-THRESHOLD-CARD | `534b875dd61c47a3a536b32fdde66f3a` | Passed，0.34.8 末日降临临界击杀与复活跨回合完整状态回归 |
 
-- 目标停止探针最初 `3b410fb57dd342a79fc9392c9bfb8950` / `09a49fc244794146be3db2a9c26d82fc` Failed。建局将故障机器人原生 75 HP 降至 70，被累计战损记录为 5 HP，违反探针的零损收益限制，实际选中无收益路线；这是夹具输入问题。固定 75/75 HP 后达标停止通过，提交夹具为 `coverage/unattended/search-objectives-target-stop.json`。没有放宽生产血量限制。
+- 目标停止探针最初 `3b410fb57dd342a79fc9392c9bfb8950` / `09a49fc244794146be3db2a9c26d82fc` Failed。建局将故障机器人原生 75 HP 降至 70，被累计战损记录为 5 HP，违反探针的零损收益限制，实际选中无收益路线；这是夹具输入问题。固定 75/75 HP 后达标停止通过，当时记录的夹具名为 `search-objectives-target-stop.json`（整理前已不在当前树中；该段是历史证据）。没有放宽生产血量限制。
 - 本轮未修改被提取功能的生产语义；仅修正缩进、剥离局外入口并新增停止回归。最后两次构建只改变测试诊断，既有成功场景不重复运行。
 - Release 构建 0 警告／0 错误；SearchObjectiveChecks 227 项、PotionInventoryChecks 21220 项通过；结构门禁 `REFACTOR_BOUNDARIES_OK search_files=86`；CoverageCatalog `--verify-effective --verify-state-fields --verify-state-writes --verify-branch-state-reads` 3035 项通过。
-- 复跑入口为 `tools/run-unattended-test.ps1` / `.sh`：成长用 `SEARCH-OBJECTIVES-GROWTH` / DEFECT，手牌 GENETIC_ALGORITHM、STRIKE_DEFECT；资源用 `SEARCH-OBJECTIVES-RESOURCES` / IRONCLAD，手牌 HAND_OF_GREED、STRIKE_IRONCLAD。两者均 ClearRunDeck、ClearPlayerPiles、初始能量 1、格挡 0、敌生命 6，手牌 TreatAsDeckCard=true，120 秒。UI 用成长建局并指定 `SEARCH-OBJECTIVES-UI-LOCALE`。目标停止输入见上述新 JSON，机制和药水输入见 `coverage/unattended/profile-*.json`、`smart-potion-inventory-*.json`。原包和末日降临沿用 0.34.8 的命令。本轮没有原包整场质量 A/B、可见帧率或发布结论。
+- 复跑入口为 `tools/testing/run-unattended-test.ps1` / `.sh`：成长用 `SEARCH-OBJECTIVES-GROWTH` / DEFECT，手牌 GENETIC_ALGORITHM、STRIKE_DEFECT；资源用 `SEARCH-OBJECTIVES-RESOURCES` / IRONCLAD，手牌 HAND_OF_GREED、STRIKE_IRONCLAD。两者均 ClearRunDeck、ClearPlayerPiles、初始能量 1、格挡 0、敌生命 6，手牌 TreatAsDeckCard=true，120 秒。UI 用成长建局并指定 `SEARCH-OBJECTIVES-UI-LOCALE`。目标停止输入见上述新 JSON，机制和药水输入见 `coverage/fixtures/runtime/profile-*.json`、`smart-potion-inventory-*.json`。原包和末日降临沿用 0.34.8 的命令。本轮没有原包整场质量 A/B、可见帧率或发布结论。
 
 ## 0.34.8 发布集成
 
@@ -378,8 +378,8 @@ dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks
 - 最终Release构建0警告0错误，CoverageCatalog `--verify-effective --verify-runtime-evidence` 通过；HeavenlyDrill/EndOfDays覆盖条目指向本轮针对性证据，未发布。
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId TEST-SUBJECT-ORIGINAL-REPORT -CheckpointArchivePath <5cc95原包.zip> -CheckpointSelector start -ReplayMode RestoreOnly -HeadlessInstance testsubject-batch -TimeoutSeconds 120
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId REPORT-ROUND-DOOM-THRESHOLD-CARD -CharacterId NECROBINDER -EncounterId TEST_SUBJECT_BOSS -EnemyCurrentHp 134 -InitialEnemyMaxHpsJson '[213]' -ClearAllPowers -ClearPlayerPiles -InitialPlayerEnergy 3 -CardsJson '[{"CardId":"END_OF_DAYS","Pile":"Hand","UpgradeLevels":1},{"CardId":"DEFEND_NECROBINDER","Pile":"Draw","Count":7}]' -PowersJson '[{"PowerId":"ADAPTABLE_POWER","Target":"Enemy","Amount":1},{"PowerId":"DOOM_POWER","Target":"Enemy","Amount":34},{"PowerId":"SLEIGHT_OF_FLESH_POWER","Target":"Player","Amount":13},{"PowerId":"DUPLICATION_POWER","Target":"Player","Amount":1}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId TEST-SUBJECT-ORIGINAL-REPORT -CheckpointArchivePath <5cc95原包.zip> -CheckpointSelector start -ReplayMode RestoreOnly -HeadlessInstance testsubject-batch -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId REPORT-ROUND-DOOM-THRESHOLD-CARD -CharacterId NECROBINDER -EncounterId TEST_SUBJECT_BOSS -EnemyCurrentHp 134 -InitialEnemyMaxHpsJson '[213]' -ClearAllPowers -ClearPlayerPiles -InitialPlayerEnergy 3 -CardsJson '[{"CardId":"END_OF_DAYS","Pile":"Hand","UpgradeLevels":1},{"CardId":"DEFEND_NECROBINDER","Pile":"Draw","Count":7}]' -PowersJson '[{"PowerId":"ADAPTABLE_POWER","Target":"Enemy","Amount":1},{"PowerId":"DOOM_POWER","Target":"Enemy","Amount":34},{"PowerId":"SLEIGHT_OF_FLESH_POWER","Target":"Player","Amount":13},{"PowerId":"DUPLICATION_POWER","Target":"Player","Amount":1}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
 ```
 
 ## 2026-09-10：原生恢复边界与编码诊断（开发中）
@@ -424,10 +424,10 @@ Nostalgia 最终夹具另校验包含四项 `Y` 的检查点历史能被读取�
 关键复跑命令（其余使用相同请求入口，夹具专用语义在对应测试文件）：
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId REPORT-ROUND-NOSTALGIA-STRIKE -CharacterId SILENT -EncounterId TEST_SUBJECT_BOSS -EnemyCurrentHp 200 -ClearAllPowers -ClearPlayerPiles -InitialPlayerEnergy 10 -CardsJson '[{"CardId":"STRIKE_SILENT","Pile":"Hand"},{"CardId":"DEFEND_SILENT","Pile":"Draw","Count":7}]' -PowersJson '[{"PowerId":"NOSTALGIA_POWER","Target":"Player","Amount":1},{"PowerId":"ADAPTABLE_POWER","Target":"Enemy","Amount":1}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId REPORT-CARDS-PALE-BLUE-ROOT -CharacterId REGENT -EncounterId TEST_SUBJECT_BOSS -EnemyCurrentHp 200 -ClearAllPowers -ClearPlayerPiles -InitialPlayerEnergy 20 -CardsJson '[{"CardId":"DEFEND_REGENT","Pile":"Hand","Count":6}]' -PowersJson '[{"PowerId":"PALE_BLUE_DOT_POWER","Target":"Player","Amount":1},{"PowerId":"ADAPTABLE_POWER","Target":"Enemy","Amount":1}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId REPORT-ROUND-HOWL-MUSIC-BOX -CharacterId IRONCLAD -EncounterId TEST_SUBJECT_BOSS -EnemyCurrentHp 200 -ClearAllPowers -ClearPlayerPiles -InitialPlayerEnergy 20 -CardsJson '[{"CardId":"DEFEND_IRONCLAD","Pile":"Hand","Count":8},{"CardId":"STRIKE_IRONCLAD","Pile":"Discard"},{"CardId":"HOWL_FROM_BEYOND","Pile":"Exhaust","UpgradeLevels":1}]' -PowersJson '[{"PowerId":"DARK_EMBRACE_POWER","Target":"Player","Amount":1},{"PowerId":"ADAPTABLE_POWER","Target":"Enemy","Amount":1}]' -RelicsJson '[{"RelicId":"MUSIC_BOX"}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId REPORT-TEMPORARY-STATS -CharacterId SILENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 100 -ClearAllPowers -PotionChecksJson '[{"PotionId":"FLEX_POTION","TriggerPlayerSideTurnEndAfterUse":true},{"PotionId":"SPEED_POTION","TriggerPlayerSideTurnEndAfterUse":true}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId REPORT-ROUND-NOSTALGIA-STRIKE -CharacterId SILENT -EncounterId TEST_SUBJECT_BOSS -EnemyCurrentHp 200 -ClearAllPowers -ClearPlayerPiles -InitialPlayerEnergy 10 -CardsJson '[{"CardId":"STRIKE_SILENT","Pile":"Hand"},{"CardId":"DEFEND_SILENT","Pile":"Draw","Count":7}]' -PowersJson '[{"PowerId":"NOSTALGIA_POWER","Target":"Player","Amount":1},{"PowerId":"ADAPTABLE_POWER","Target":"Enemy","Amount":1}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId REPORT-CARDS-PALE-BLUE-ROOT -CharacterId REGENT -EncounterId TEST_SUBJECT_BOSS -EnemyCurrentHp 200 -ClearAllPowers -ClearPlayerPiles -InitialPlayerEnergy 20 -CardsJson '[{"CardId":"DEFEND_REGENT","Pile":"Hand","Count":6}]' -PowersJson '[{"PowerId":"PALE_BLUE_DOT_POWER","Target":"Player","Amount":1},{"PowerId":"ADAPTABLE_POWER","Target":"Enemy","Amount":1}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId REPORT-ROUND-HOWL-MUSIC-BOX -CharacterId IRONCLAD -EncounterId TEST_SUBJECT_BOSS -EnemyCurrentHp 200 -ClearAllPowers -ClearPlayerPiles -InitialPlayerEnergy 20 -CardsJson '[{"CardId":"DEFEND_IRONCLAD","Pile":"Hand","Count":8},{"CardId":"STRIKE_IRONCLAD","Pile":"Discard"},{"CardId":"HOWL_FROM_BEYOND","Pile":"Exhaust","UpgradeLevels":1}]' -PowersJson '[{"PowerId":"DARK_EMBRACE_POWER","Target":"Player","Amount":1},{"PowerId":"ADAPTABLE_POWER","Target":"Enemy","Amount":1}]' -RelicsJson '[{"RelicId":"MUSIC_BOX"}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId REPORT-TEMPORARY-STATS -CharacterId SILENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 100 -ClearAllPowers -PotionChecksJson '[{"PotionId":"FLEX_POTION","TriggerPlayerSideTurnEndAfterUse":true},{"PotionId":"SPEED_POTION","TriggerPlayerSideTurnEndAfterUse":true}]' -HeadlessInstance testsubject-batch -TimeoutSeconds 120
 ```
 
 复活问题的未复现探针：`REPORT-ROUND-END-OF-DAYS-CARD` / `dcd3e25a127345c79b9693f292876b6d`、`REPORT-ROUND-ROOT-DEAD` / `f52b03efa1e74883ae3b29dfcea0f466`、`REPORT-ROUND-SECOND-FORM-CARD` / `4e45a941db034c28ae0d766ace29b9b4`、`REPORT-ROUND-SLEIGHT-DOOM-CARD` / `98fe9ed3bc664a0bb10e28f4b18f3e7b` 均 Passed；昨日直接击杀、毒杀、多段攻击探针也未复现。它们证明这些最小输入的原生状态一致，**不证明两份原始复活报告已修复**。原包 Preflight 材料有效，RestoreOnly 均 `environment_mismatch:mods`，没有恢复成功证据。
@@ -456,7 +456,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId REPORT-TEMPORARY
 - 最终夹具覆盖原生抽牌前后的父分支/Fork 隔离、实际打出谋杀的伤害与完整状态、T1 至 T2 全量状态和下一回合抽牌后的倍率稳定。完整比较包括有序牌堆、卡牌实例、Power、怪物状态、RNG、ContinuationStamp；未正式搜索、未整场回放。
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId MURDER-ROOT-HISTORY -CharacterId SILENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 100 -ClearAllPowers -ClearPlayerPiles -CardsJson '[{"CardId":"MURDER","Pile":"Hand"},{"CardId":"DEFEND_SILENT","Pile":"Draw","Count":7}]' -HeadlessInstance silent-replans -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId MURDER-ROOT-HISTORY -CharacterId SILENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 100 -ClearAllPowers -ClearPlayerPiles -CardsJson '[{"CardId":"MURDER","Pile":"Hand"},{"CardId":"DEFEND_SILENT","Pile":"Draw","Count":7}]' -HeadlessInstance silent-replans -TimeoutSeconds 120
 ```
 
 ## 2026-09-09：温柔与出牌效果内自动牌（开发中）
@@ -466,7 +466,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId MURDER-ROOT-HIST
 - 两项均比较完整 MoveStateSnapshot/ContinuationStamp、逐实例卡牌、有序牌堆与 Power、敌人状态和 RNG，无正式搜索或整包回放。
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId TENDER-DISCARD-ALL-SLY -CharacterId SILENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 100 -ClearAllPowers -ClearPlayerPiles -CardsJson '[{"CardId":"CALCULATED_GAMBLE","Pile":"Hand"},{"CardId":"FLICK_FLACK","Pile":"Hand"},{"CardId":"DEFEND_SILENT","Pile":"Draw","Count":7}]' -PowersJson '[{"PowerId":"TENDER_POWER","Target":"Player","Amount":1}]' -HeadlessInstance silent-replans -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId TENDER-DISCARD-ALL-SLY -CharacterId SILENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 100 -ClearAllPowers -ClearPlayerPiles -CardsJson '[{"CardId":"CALCULATED_GAMBLE","Pile":"Hand"},{"CardId":"FLICK_FLACK","Pile":"Hand"},{"CardId":"DEFEND_SILENT","Pile":"Draw","Count":7}]' -PowersJson '[{"PowerId":"TENDER_POWER","Target":"Player","Amount":1}]' -HeadlessInstance silent-replans -TimeoutSeconds 120
 ```
 
 相邻对照使用 `TENDER-NESTED-SLY`，把手牌换成 PREPARED 和 UNTOUCHABLE，其他参数相同。
@@ -485,14 +485,14 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId TENDER-DISCARD-A
 - 这些是未复现的最小探针；没有失败基线，不能视为 `835b630a19a44c7c897d63dfc56d9a49` 已修复或原包回放通过。
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId STOCK-RESPAWN-HP -CharacterId SILENT -EncounterId AXEBOTS_NORMAL -Ascension 10 -EnemyCurrentHp 1 -InitialEnemyMaxHpsJson '[96]' -ClearAllPowers -ClearPlayerPiles -CardId STRIKE_SILENT -PowersJson '[{"PowerId":"STOCK_POWER","Target":"Enemy","Amount":1}]' -HeadlessInstance silent-replans -TimeoutSeconds 120
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId STOCK-THORNS-RESPAWN-HP -CharacterId SILENT -EncounterId AXEBOTS_NORMAL -Ascension 10 -EnemyCurrentHp 3 -InitialEnemyMaxHpsJson '[96]' -InitialEnemyMoveIdsJson '["ONE_TWO_MOVE"]' -InitialPlayerBlock 20 -ClearAllPowers -ClearPlayerPiles -CardId STRIKE_SILENT -PowersJson '[{"PowerId":"STOCK_POWER","Target":"Enemy","Amount":1},{"PowerId":"THORNS_POWER","Target":"Player","Amount":3}]' -HeadlessInstance silent-replans -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId STOCK-RESPAWN-HP -CharacterId SILENT -EncounterId AXEBOTS_NORMAL -Ascension 10 -EnemyCurrentHp 1 -InitialEnemyMaxHpsJson '[96]' -ClearAllPowers -ClearPlayerPiles -CardId STRIKE_SILENT -PowersJson '[{"PowerId":"STOCK_POWER","Target":"Enemy","Amount":1}]' -HeadlessInstance silent-replans -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId STOCK-THORNS-RESPAWN-HP -CharacterId SILENT -EncounterId AXEBOTS_NORMAL -Ascension 10 -EnemyCurrentHp 3 -InitialEnemyMaxHpsJson '[96]' -InitialEnemyMoveIdsJson '["ONE_TWO_MOVE"]' -InitialPlayerBlock 20 -ClearAllPowers -ClearPlayerPiles -CardId STRIKE_SILENT -PowersJson '[{"PowerId":"STOCK_POWER","Target":"Enemy","Amount":1},{"PowerId":"THORNS_POWER","Target":"Player","Amount":3}]' -HeadlessInstance silent-replans -TimeoutSeconds 120
 ```
 
 ## 2026-09-09：PR #67 / #68 / #72 的 Windows 合并验证（下一版本开发中）
 
 - 集成基线 `2c7bee5`，PR heads 分别为 `0baaf74`、`3c9edc9`、`e9e6103`。两个背包检查工具均链接最终唯一生产实现 `ReachableHandValue`。
-- `dotnet run --project tools/PreCombatRequestChecks -c Release`：10 项通过；这是替换进程边界的 API 合同，未运行真实战前 worker 关闭/空闲期限测试。
+- `dotnet run --project tools/testing/checks/PreCombatRequestChecks -c Release`：10 项通过；这是替换进程边界的 API 合同，未运行真实战前 worker 关闭/空闲期限测试。
 - `ReachableHandValueChecks`：32,551 组原二维递推精确对照通过；`ReachableHandPotentialChecks`：10,000 组子集 oracle、溢出/大数组、零分配通过。三类常见 DP 各 100,000 次调用新增托管分配均为 0 B，仅代表纯计算。
 - `PowerAmountComparisonChecks`：8 项通过，包括 1,568 组原生输出及 getter 顺序、实际 Harmony 重写、未知 IL 保留、100,000 次调用装箱分配 9,600,000 → 0 B。`ExpansionBatchChecks` 8 项及 `CombatSolver.WavePolicyChecks` 容量/溢出/10,000 组边界检查通过。
 - `StateFingerprintChecks`：200,005 个混合/边界输入的原 128 位输出一致；`RitsuTargetTypeLookupChecks` 23 项通过，含程序集加载、动态类型后创建、可回收程序集、并发与 live 查询保留。
@@ -535,7 +535,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId STOCK-THORNS-RES
 - 当前候选 `5d194a22bcc8496c998ba396f9873e83` Passed：55 回调/1,670 Model、ForkBoundaries，包含完整类型/接收者顺序、碰撞与并发替换、默认关键字原生对照、无前段锚点回退、Fork 后卡牌变更、有效前段及 Power 投影保留和父分支隔离。新候选 Release 零警告/错误。
 - 最终候选 Deep 固定1000节点 `8effcf7a2e804c52867335cf32e636aa` Passed（请求56.99秒）：实际641次探针，DOP1/2全结果/动作/评分/续用/非时序指标相同，双lane同步屏障、取消/异常身份和在途排空、部分工作唯一记账、原根复用。
 - Knights Short 哨兵 `9664c01a18084c92afe111f9d47ce7e8` Passed，与基线 `a4683db7ba964e259533372424f94250` 的90项字段/9条动作一致。正常Deep1GB NoGC 基线/候选 `591767d49821417d90d7134ce000d764` / `2345c8785fac4c8fb6d9b81e72aa43ae` 均 Passed：90字段/64动作一致，63/52次回收后保持46,239展开、636,428转移；搜索56.9968/42.4920秒，请求81.80/67.33秒，均在120秒内。
-- `dotnet run --project tools/RitsuTargetTypeLookupChecks -c Release` 23项通过：实际生产回调、AssemblyLoad/动态晚建失效、失败不发布、live旁路、弱所有权。`dotnet run --project tools/PowerAmountComparisonChecks -c Release` 8项通过：1,568组实际原生方法对照、getter调用顺序、未知IL/内部标签旁路，10万次分配9.6MB→0。
+- `dotnet run --project tools/RitsuTargetTypeLookupChecks -c Release` 23项通过：实际生产回调、AssemblyLoad/动态晚建失效、失败不发布、live旁路、弱所有权。`dotnet run --project tools/testing/checks/PowerAmountComparisonChecks -c Release` 8项通过：1,568组实际原生方法对照、getter调用顺序、未知IL/内部标签旁路，10万次分配9.6MB→0。
 - 最终源码 Release 构建4.07秒，零警告/错误；Bash和PowerShell结构门禁均输出 `REFACTOR_BOUNDARIES_OK search_files=82`。
 - 复跑命令、全部runId、撤回原型、线程/GC口径和未验证范围见[报告](../performance/standpat-and-metadata-20260909.md)及JSON。性能只来自正常headless，未运行本轮整场原生部署或可见Steam；增量回放不用于性能测量。
 
@@ -551,7 +551,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId STOCK-THORNS-RES
 
 - 生产基线 DOP8/1/2/4/8 曲线同 10,000 展开/144,368 转移/101,808 选择；正常配置 PMU 请求 `e304caaff9954817ae0e07ca6969277d` Passed，40.3314 秒、平均约 3.02 搜索相关核，仍仅死亡路线。PMU 为含游戏/GC/JIT 的进程用户态窗口，非纯搜索。
 - 指纹改写 ABBA 正式请求：`246844f6fc7b44a0b3f7487fe0ea68c5` / `b3c12fffa86246559cf99069e9500466` / `e9b9f16df72442a0ad0e67c045be0463` / `f84d9e08202049338620882443e4bcb8`，全部 Passed；90 项非耗时/非并发调度字段及 59 步预测动作一致，均值约 −1.91%，每版两个样本，不作显著提速结论。
-- `dotnet run --project tools/StateFingerprintChecks -c Release`：200,005 个边界/混合输入逐步对照旧 128 位公式，通过。相同本地 FullOpts 标量体 107→83 字节；Release 零警告/错误。未测候选正常配置性能、整场原生部署、可见 Steam、Windows 或 IBS/DRAM/伪共享归因。完整配置与局限见[报告](../performance/cpu-microarchitecture-20260908.md)及 JSON。
+- `dotnet run --project tools/testing/checks/StateFingerprintChecks -c Release`：200,005 个边界/混合输入逐步对照旧 128 位公式，通过。相同本地 FullOpts 标量体 107→83 字节；Release 零警告/错误。未测候选正常配置性能、整场原生部署、可见 Steam、Windows 或 IBS/DRAM/伪共享归因。完整配置与局限见[报告](../performance/cpu-microarchitecture-20260908.md)及 JSON。
 
 ## 2026-09-08：较大范围后端性能实验（全部撤回）
 
@@ -624,7 +624,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId STOCK-THORNS-RES
 
 | 验证 | 基线 → 候选 runId / 结果 |
 |---|---|
-| 双资源背包独立 oracle | `dotnet run --project tools/ReachableHandPotentialChecks -c Release` Passed：10,000随机子集最优解、原递推溢出/大容量边界、常见规模零分配 |
+| 双资源背包独立 oracle | `dotnet run --project tools/testing/checks/ReachableHandPotentialChecks -c Release` Passed：10,000随机子集最优解、原递推溢出/大容量边界、常见规模零分配 |
 | HAND-POTENTIAL-COSTS 普通 | `be17b695fd114333baa185bc8e21ba1c` Passed：5张可打出牌费用与原生/重复查询相同，含X费用、条件/不可打出卡，根与分支完整状态不变 |
 | HAND-POTENTIAL-COSTS 虚空形态 | `6bfe3e401e3e4a0b8b8dea7d259bdcc2` Passed：相同查询只读合同 |
 | Steam 可见机甲骑士完整部署 | `2375d506a3ac455e94b6ccf9cefbed96` → `c2c1e8f6ee584fd1bbb5066b1bd98d83`，均Passed，战损8/T7/无药/零重算，27条实际出牌完全相同；初次搜索19.5643→18.7779秒 |
@@ -632,12 +632,12 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId STOCK-THORNS-RES
 
 - 所有性能请求仅VeryHigh，固定DOP4/NoGC16GB，未调搜索预算，未启用增量或详细阶段诊断。Headless机甲骑士各预热一次后各取3次，中位数耗时−4.76%/分配−1.80%；大牌组压力与小啃兽各一组同工作量哨兵，非时序指标/动作完全相同。压力场景仍为死亡边界，不是胜利证明。全部runId及数值见[性能报告](../performance/veryhigh-quality-preserving-20260908.md)与其结构化记录。
 - Release编译0警告0错误；Bash/PowerShell结构门禁Passed（`search_files=78`）；两端可见脚本语法检查Passed。PowerShell本轮仅语法及结构检查，未在Windows启动Steam。
-- 费用合同的100ms收尾搜索不计性能，复现牌组为 `coverage/unattended/hand-potential-cost-cards.json`；命令见性能报告。可见基准新增 `--request-fixture-path` / `-RequestFixturePath`，完整请求为 `coverage/unattended/performance-veryhigh-mecha-native.json`，同报告记录首结果与整场部署两种断言。
+- 费用合同的100ms收尾搜索不计性能，复现牌组为 `coverage/fixtures/cards/setups/hand-potential-cost-cards.json`；命令见性能报告。可见基准新增 `--request-fixture-path` / `-RequestFixturePath`，完整请求为 `coverage/fixtures/runtime/performance-veryhigh-mecha-native.json`，同报告记录首结果与整场部署两种断言。
 - 完整Mod组合的基线在搜索前因未支持的AveMujica subscriber失败（`cd8e58d396344dec8e0b2362f216879b`，120秒超时）。成功可见结果只覆盖原版+RitsuLib+CombatSolver，未延长超时。基线整场采样器在退出时失败而缺少峰值文件，测试结果有效；其整场结束RSS已高于候选记录的VmHWM。Headless复用进程小啃兽曾有+0.07%峰值反向样本，独立可见进程对照未复现；不作全场景逐样本内存保证。
 
 ## 2026-09-09：可达手牌估值分配（开发中）
 
-- `dotnet run --project tools/ReachableHandValueChecks/ReachableHandValueChecks.csproj -c Release`：32,551 组与原二维 DP 精确相等，包含空手牌、免费牌、双资源、较大数组回退、负可用资源、重复牌和价值和溢出。测试直接链接生产纯计算源码，原递推作为对照。
+- `dotnet run --project tools/testing/checks/ReachableHandValueChecks/ReachableHandValueChecks.csproj -c Release`：32,551 组与原二维 DP 精确相等，包含空手牌、免费牌、双资源、较大数组回退、负可用资源、重复牌和价值和溢出。测试直接链接生产纯计算源码，原递推作为对照。
 - 固定 100,000 次调用的局部分配检查：单资源受限 5,600,000 → 0 B；双资源受限 13,600,000 → 0 B；全部可负担 29,600,000 → 0 B。仅统计 DP 计算，不包含游戏模型、候选费用捕获和整个 Snapshot；不代表整场分配降幅或可见帧率收益。
 - 当前可见会话的一条 RESULT 记录：40,105 次总转移、约 2.00 GB 总 worker 分配、2,424 ms 总搜索时间、最大主线程帧间隔 24.6 ms，未记录超过 33 ms 的帧或 GC 暂停。这是在线观察，未作为隔离 A/B 基准。
 - 未启动额外游戏进程，未修改运行中会话；固定战斗搜索 A/B、增量回放和可见性能验收未执行。纯估值等价检查不代替这些项目。

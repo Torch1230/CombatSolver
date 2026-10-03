@@ -1,8 +1,0 @@
-[
-  {
-    "potionId": "FOUL_POTION",
-    "target": "Player",
-    "playerHpBefore": 80,
-    "enemyHpBefore": 1
-  }
-]

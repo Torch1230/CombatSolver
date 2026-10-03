@@ -21,7 +21,7 @@
 | `sel-defect-monster-13`（White Noise 路线） | 428,532,536 → 401,699,856 B（−6.3%） | 5.20 s → 4.73 s |
 | `sel-defect-elite-02`（无色池，前一轮已缓存） | 245,180,664 → 245,212,592 B（噪声） | 3.59 s → 3.24 s |
 
-`tools/OfflineSearchHarness/compare_results.py` 对这 6 个根比较 539 个非时间/非内存字段，`mismatched_roots=0`、无缺根；选中路线、全部 `cachedContinuations` 文本、展开/转移、分数与预计战损逐项一致。
+`tools/search/OfflineSearchHarness/compare_results.py` 对这 6 个根比较 539 个非时间/非内存字段，`mismatched_roots=0`、无缺根；选中路线、全部 `cachedContinuations` 文本、展开/转移、分数与预计战损逐项一致。
 
 ## 保留表当前规模
 

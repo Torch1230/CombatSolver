@@ -4,7 +4,7 @@
 
 起点为用户新整理的 `fork/chore/code-hygiene`：`43e5942`，独立工作树 `CombatSolver-debt` / `chore/tech-debt`。没有写入主检出、hygiene、potion-odds、base-0410、游戏目录或真实存档。继承上一轮对研究工具、反射入口、设置迁移、InlineArray 的裁决，不重新把这些列为待删候选。本文前半部分在生产代码修改前生成；后半部分随提交补齐证据。
 
-完整清单在本工作树 `.local/debt/before/`；复跑入口见 [CodeDebt](../../../tools/CodeDebt/README.md)。原始 SARIF 为 `.local/debt/analyzer.sarif`，诊断日志为 `.local/debt/analyzer.log`。工具与源码各自分开计数；历史性能和原生游戏记录不冒充本轮验收。
+完整清单在本工作树 `.local/debt/before/`；复跑入口见 [CodeDebt](../../../tools/inspection/CodeDebt/README.md)。原始 SARIF 为 `.local/debt/analyzer.sarif`，诊断日志为 `.local/debt/analyzer.log`。工具与源码各自分开计数；历史性能和原生游戏记录不冒充本轮验收。
 
 ## 1. 十项静态分析
 
@@ -48,34 +48,34 @@ Top 30按圈复杂度排序（行数含签名/方法体；参数、局部和嵌�
 
 | 方法与位置 | 行数 | 圈复杂度 | 嵌套 | 参数 | 局部声明 |
 |---|---:|---:|---:|---:|---:|
-| `src/Testing/UnattendedTestRunner.Executor.cs:33` ExecuteAsync | 1394 | 368 | 4 | 1 | 86 |
+| `src/Testing/Host/UnattendedTestRunner.Executor.cs:33` ExecuteAsync | 1394 | 368 | 4 | 1 | 86 |
 | `src/Search/CombatBeamSolver.OrderedMutationRetention.cs:1234` VerifyOrderedMutationRetentionPolicyForTesting | 1441 | 235 | 2 | 0 | 148 |
 | `src/Prediction/MonsterMoveEffects.cs:229` Apply | 724 | 199 | 3 | 6 | 16 |
-| `src/Testing/UnattendedTestRunner.SolverPolicy.cs:182` AssertInitialSolverResultAsync | 708 | 195 | 4 | 1 | 90 |
-| `src/Testing/UnattendedTestRunner.cs:885` RunMonsterMoveDifferentialAsync | 885 | 173 | 3 | 3 | 96 |
+| `src/Testing/Contracts/Search/UnattendedTestRunner.SolverPolicy.cs:182` AssertInitialSolverResultAsync | 708 | 195 | 4 | 1 | 90 |
+| `src/Testing/Host/UnattendedTestRunner.cs:885` RunMonsterMoveDifferentialAsync | 885 | 173 | 3 | 3 | 96 |
 | `src/Search/CombatBeamSolver.Phases.cs:110` SolveCore | 1957 | 158 | 7 | 0 | 118 |
 | `src/Search/CombatBeamSolver.BeamRetentionPolicy.cs:2577` RankBest | 961 | 156 | 5 | 6 | 94 |
-| `src/Testing/UnattendedTestRunner.ControllerSessions.cs:55` AssertControllerSessionLifecycleAsync | 727 | 131 | 2 | 1 | 62 |
-| `src/Testing/UnattendedTestRunner.ScenarioBuilder.cs:48` BuildAsync | 471 | 102 | 3 | 0 | 57 |
-| `src/Testing/UnattendedTestRunner.KnownExoskeletonsRouteReplay.cs:27` RunKnownExoskeletonsRouteReplay | 372 | 102 | 4 | 3 | 52 |
+| `src/Testing/Contracts/Runtime/UnattendedTestRunner.ControllerSessions.cs:55` AssertControllerSessionLifecycleAsync | 727 | 131 | 2 | 1 | 62 |
+| `src/Testing/Host/UnattendedTestRunner.ScenarioBuilder.cs:48` BuildAsync | 471 | 102 | 3 | 0 | 57 |
+| `src/Testing/Regressions/Reports/UnattendedTestRunner.KnownExoskeletonsRouteReplay.cs:27` RunKnownExoskeletonsRouteReplay | 372 | 102 | 4 | 3 | 52 |
 | `src/Prediction/CorePowerSupport.cs:21` ApplyCardPowers | 395 | 100 | 3 | 9 | 23 |
-| `src/Testing/UnattendedTestRunner.ControllerSessions.cs:825` AssertBoundedSmartPotionAuditAsync | 639 | 89 | 2 | 1 | 40 |
-| `src/Testing/UnattendedTestRunner.cs:521` WaitForPlayableCombatAsync | 254 | 78 | 5 | 0 | 23 |
-| `src/Testing/UnattendedTestRunner.SolverPolicy.cs:104` HasInitialSolverExpectation | 77 | 76 | 0 | 0 | 0 |
+| `src/Testing/Contracts/Runtime/UnattendedTestRunner.ControllerSessions.cs:825` AssertBoundedSmartPotionAuditAsync | 639 | 89 | 2 | 1 | 40 |
+| `src/Testing/Host/UnattendedTestRunner.cs:521` WaitForPlayableCombatAsync | 254 | 78 | 5 | 0 | 23 |
+| `src/Testing/Contracts/Search/UnattendedTestRunner.SolverPolicy.cs:104` HasInitialSolverExpectation | 77 | 76 | 0 | 0 | 0 |
 | `src/Search/CombatBeamSolver.BeamRetentionPolicy.cs:7459` MultiObjectiveDominates | 84 | 75 | 1 | 2 | 2 |
 | `src/Search/CombatBeamSolver.BeamRetentionPolicy.cs:5494` VerifyOrderedMutationKeyPolicyForTesting | 717 | 74 | 2 | 0 | 83 |
-| `src/Testing/UnattendedTestRunner.BaseLibCardModifier.cs:19` AssertBaseLibCardModifierBoundaryAsync | 457 | 73 | 1 | 2 | 76 |
+| `src/Testing/Contracts/ThirdParty/UnattendedTestRunner.BaseLibCardModifier.cs:19` AssertBaseLibCardModifierBoundaryAsync | 457 | 73 | 1 | 2 | 76 |
 | `src/Search/CombatBeamSolver.StateEvaluation.cs:43` Snapshot | 552 | 72 | 4 | 6 | 142 |
 | `src/Search/CombatBeamSolver.Expansion.cs:463` Expand | 390 | 72 | 4 | 1 | 60 |
-| `src/Testing/UnattendedTestRunner.KnownSoulGenerationContext.cs:15` RunKnownSoulGenerationContext | 269 | 72 | 4 | 4 | 32 |
+| `src/Testing/Regressions/Reports/UnattendedTestRunner.KnownSoulGenerationContext.cs:15` RunKnownSoulGenerationContext | 269 | 72 | 4 | 4 | 32 |
 | `src/Search/StrategicEffectModel.cs:122` Build | 258 | 70 | 5 | 6 | 58 |
 | `src/Search/CombatBeamSolver.BeamRetentionPolicy.cs:814` AddOrderedMutationPortfolio | 971 | 68 | 3 | 3 | 82 |
 | `src/Search/CombatBeamSolver.CycleRegionRetention.cs:1386` VerifyCycleRegionRetentionPolicyForTesting | 460 | 68 | 3 | 0 | 48 |
 | `src/Prediction/CardEffectSpecRegistry.cs:127` Apply | 340 | 67 | 5 | 4 | 31 |
 | `src/Prediction/PotionOnUseSupport.cs:74` Use | 259 | 67 | 3 | 4 | 51 |
-| `src/Testing/UnattendedTestRunner.KnownCustomRouteReplay.cs:19` RunKnownCustomRouteReplay | 188 | 66 | 3 | 4 | 34 |
+| `src/Testing/Regressions/Reports/UnattendedTestRunner.KnownCustomRouteReplay.cs:19` RunKnownCustomRouteReplay | 188 | 66 | 3 | 4 | 34 |
 | `src/UI/SolverOverlay.cs:1157` RefreshControls | 126 | 64 | 5 | 0 | 12 |
-| `src/Testing/UnattendedTestRunner.Potions.cs:18` RunPotionDifferentialAsync | 234 | 61 | 4 | 3 | 38 |
+| `src/Testing/Support/UnattendedTestRunner.Potions.cs:18` RunPotionDifferentialAsync | 234 | 61 | 4 | 3 | 38 |
 | `src/Search/CombatBeamSolver.Expansion.cs:2499` Replay | 284 | 60 | 3 | 14 | 38 |
 | `src/Prediction/CardPowerOnPlaySupport.cs:10` Apply | 199 | 60 | 2 | 2 | 5 |
 
@@ -102,7 +102,7 @@ Top 30按圈复杂度排序（行数含签名/方法体；参数、局部和嵌�
 | `src/Search/SimulatedCombatState.CardEventHistory.cs` | 14 |
 | `src/Search/SimulatedCombatState.cs` | 14 |
 | `src/Search/CombatBeamSolver.BeamRetentionPolicy.cs` | 13 |
-| `src/Testing/UnattendedTestRunner.Executor.cs` | 11 |
+| `src/Testing/Host/UnattendedTestRunner.Executor.cs` | 11 |
 | `src/Engine/InCombat/Simulation/CombatPredictionHistory.CardContinuation.cs` | 10 |
 
 partial提供导航而非访问隔离：Phases/Expansion对同一solver私有状态有大量跨文件访问；BeamRetentionPolicy原本还在一个8078行文件里内嵌第二个大类型，内部耦合不会表现为“跨文件”。拆文件不会减少类型成员或大方法复杂度，本轮不宣称完成架构解耦。

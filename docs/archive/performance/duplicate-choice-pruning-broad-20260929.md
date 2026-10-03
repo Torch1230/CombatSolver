@@ -28,14 +28,14 @@
 
 ## 可复现配置
 
-广泛根使用 `coverage/novelty-search/{dev-*,holdout-*}.json` 的17份既有生成场景。每个请求只包装 `generatedScenarioPath`，不改变开局。探索轮High、Beam48、2000节点、DOP2、30秒软上限，按根ABBA，共68次；中途构建与部分测量重叠，且DOP2的lane学习导致少数前缀物理Fork计数同版本也波动，这轮用于路线与工作量核查，不作最终提速证据。
+广泛根使用 `coverage/corpora/novelty/{dev-*,holdout-*}.json` 的17份既有生成场景。每个请求只包装 `generatedScenarioPath`，不改变开局。探索轮High、Beam48、2000节点、DOP2、30秒软上限，按根ABBA，共68次；中途构建与部分测量重叠，且DOP2的lane学习导致少数前缀物理Fork计数同版本也波动，这轮用于路线与工作量核查，不作最终提速证据。
 
-最终轮固定 `DOTNET_TieredCompilation=0`，DOP1，其余预算同上，17根各A/B；静默猎手与君王精英另以5000节点ABBA，两个针对性选牌根另以500节点/Beam24做ABBA。所有进程顺序执行，采集PMU，无增量差分、无NoGC、无软件阶段计时。选择相关夹具沿用 `coverage/unattended/duplicate-choice-pruning-{dense,purity}-20260929.json`。
+最终轮固定 `DOTNET_TieredCompilation=0`，DOP1，其余预算同上，17根各A/B；静默猎手与君王精英另以5000节点ABBA，两个针对性选牌根另以500节点/Beam24做ABBA。所有进程顺序执行，采集PMU，无增量差分、无NoGC、无软件阶段计时。选择相关夹具沿用 `coverage/fixtures/scenarios/choices/duplicate-choice-pruning-{dense,purity}-20260929.json`。
 
 ```bash
 DOTNET_TieredCompilation=0 OFFLINE_HARNESS_COMBATSOLVER_DLL=<baseline-or-candidate.dll> \
 perf stat -x, -e cycles:u,instructions:u,branches:u,branch-misses:u -o <out>/perf-stat.csv -- \
-dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
   --request <request.json> --out <out> --label <label> --profile High \
   --beam 48 --nodes 2000 --dop 1 --budget-ms 30000 --search-mode Evaluate
 ```

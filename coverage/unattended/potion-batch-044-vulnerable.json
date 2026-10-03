@@ -1,1 +1,0 @@
-{ "potionId": "VulnerablePotion", "target": "Enemy", "expectedEnemyPowers": { "VULNERABLE_POWER": 3 } }

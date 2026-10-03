@@ -2,7 +2,7 @@
 
 已实现投掷匕首、杂技和早有准备共用的自身弃牌暂停点，优先补齐杂技／早有准备普通及升级版本。它能保留选牌前已经完成的伤害、抽牌和洗牌，从同一检查点生成独立子分支，再执行弃牌与原有出牌收尾。当前交付是独立实验工具，正常构建与默认搜索均未接入；本报告不代表完整蟹战提速。
 
-[可复跑工具](../../../tools/ChoiceContinuationPrototype/README.md) · [结构化证据与全部原始样本](choice-continuation-prototype-20260914.json) · [前一阶段蟹战结果](crab-latency-20260914.md)
+[可复跑工具](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ChoiceContinuationPrototype/README.md) · [结构化证据与全部原始样本](choice-continuation-prototype-20260914.json) · [前一阶段蟹战结果](crab-latency-20260914.md)
 
 ## 修正后的结果
 
@@ -82,4 +82,4 @@
 
 本次窄原型已完成机制、状态隔离、回退与局部成本验证。下一阶段若接入默认搜索，还需要处理节点/预算记账、前缀生命周期与排空、真实搜索资格命中率，并以完整动作/路线和逐场峰值对照决定是否采用。任意卡牌调用栈、复杂 Power 事务、多层选牌的直接续接，以及完整蟹战/其他整搜收益均未实现或未验证。没有运行可见 Steam 或 Windows 性能验证；不提升版本、不发包。
 
-复跑方式见[工具说明](../../../tools/ChoiceContinuationPrototype/README.md)：固定 `1ef4601` 的一次性 worktree、本机 `local.props`、新 build/evidence 目录；`--card acrobatics` 和 `--card prepared` 分别执行普通及升级版本。Linux 专用 runner 使用 SILENT、FUZZY_WURM_CRAWLER_WEAK、敌 HP999、普通 GC，并在结束或失败时关闭专属无头实例。
+复跑方式见[工具说明](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ChoiceContinuationPrototype/README.md)：固定 `1ef4601` 的一次性 worktree、本机 `local.props`、新 build/evidence 目录；`--card acrobatics` 和 `--card prepared` 分别执行普通及升级版本。Linux 专用 runner 使用 SILENT、FUZZY_WURM_CRAWLER_WEAK、敌 HP999、普通 GC，并在结束或失败时关闭专属无头实例。

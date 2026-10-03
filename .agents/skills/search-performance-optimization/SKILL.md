@@ -124,10 +124,10 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 优先避免无价值候选、Fork 和快照产生；No-GC 区内释放引用不会返还预算。
 - 区分 transitions 增长与 bytes/transition 增长，用阶段指标定位实际热点。
 - No-GC 同时观察配置预算、SOH/LOH、是否保持到搜索退出和首次长帧时的 expanded。
-- 准入必须有下限：区域只吸收本次搜索相当一部分分配时才值得进入。`TryStartNoGcRegionWithSizeFallback` 是对半砍到 `MinimumNoGcRegionBudgetBytes`，任何 `Started` 都会被建立，因此**只在尺寸回退循环之前捕获 `Capped`**（该标志等价于「机器给不出配置预算」）并在系统余量缩水到配置的一半以下时拒绝进入、改走默认 GC。平台 SOH 上限造成的缩水是合法机制，不能因此取消区域。拒绝后必须确认分配限额被释放（`RemainingBytes == long.MaxValue`），否则检查点仍会为不存在的区域付拆除成本。检查用 `tools/CombatSolver.GcPolicyChecks -- admission`，它直接编译生产 `SearchGcPolicy.cs`，不需要游戏进程。
+- 准入必须有下限：区域只吸收本次搜索相当一部分分配时才值得进入。`TryStartNoGcRegionWithSizeFallback` 是对半砍到 `MinimumNoGcRegionBudgetBytes`，任何 `Started` 都会被建立，因此**只在尺寸回退循环之前捕获 `Capped`**（该标志等价于「机器给不出配置预算」）并在系统余量缩水到配置的一半以下时拒绝进入、改走默认 GC。平台 SOH 上限造成的缩水是合法机制，不能因此取消区域。拒绝后必须确认分配限额被释放（`RemainingBytes == long.MaxValue`），否则检查点仍会为不存在的区域付拆除成本。检查用 `tools/testing/checks/CombatSolver.GcPolicyChecks -- admission`，它直接编译生产 `SearchGcPolicy.cs`，不需要游戏进程。
 - 修 GC 策略前先确认保留集是否有界：`SearchRunContext` 的转置、StandPat、Coverage、ThreatProjection 等结构无裁剪、无上限，托管堆 52% 碎片时非紧凑回收中位只能拿回 0 MiB。**这类问题改 GC 策略治不了**，把内存从「输出」变成「输入」要落到 `BeamRetentionPolicy` 的容量维度，属语义改动，需完整等价性门禁。不要用准入/回收的复杂度去补保留集的无界。
 - 收益小且扩大语义验证面的微优化保留简单实现。
-- **按类型归因时必须取该类型的调用栈，不能从类型名猜调用点。** 分配 trace 只给出「哪个类型分配了多少」；`Func<CardPile,bool>` 这类泛型名会误导人去找同名形态的代码。先对目标类型取栈定位文件与行号，再改；改完必须用**同一类型**的前后字节数验证是否真的下降（总分配可能被其它来源淹没而看不出变化）。凭类型名推断曾把 `PredictedCard` 谓词当成 `CardPile` 谓词，改错文件：213 行改动换来总分配 +0.069%，只能回退。仓库自带的 `tools/GcTraceAnalysis` 每类型条目不带栈，需要加大 `--top` 后在 `topSearchStacks` 里按类型过滤，或按类别条目交叉核对。
+- **按类型归因时必须取该类型的调用栈，不能从类型名猜调用点。** 分配 trace 只给出「哪个类型分配了多少」；`Func<CardPile,bool>` 这类泛型名会误导人去找同名形态的代码。先对目标类型取栈定位文件与行号，再改；改完必须用**同一类型**的前后字节数验证是否真的下降（总分配可能被其它来源淹没而看不出变化）。凭类型名推断曾把 `PredictedCard` 谓词当成 `CardPile` 谓词，改错文件：213 行改动换来总分配 +0.069%，只能回退。仓库自带的 `tools/performance/GcTraceAnalysis` 每类型条目不带栈，需要加大 `--top` 后在 `topSearchStacks` 里按类型过滤，或按类别条目交叉核对。
 - 反编译核对游戏类型用 `.local/decompiled-tmp/sts2/`（按命名空间分目录）；`ilspycmd` 在本机安装失败（NuGet 包缺 `DotnetToolSettings.xml`），不要重复尝试。核对该目录时要用「实测调用栈里的方法链」交叉验证版本一致性。
 
 ## 5. 实验与验证
@@ -201,7 +201,7 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 
 - GC诊断故障不能跳过状态释放与完成源终结；请求/提升日志失败须撤销未派发状态，排队手动请求也要收到失败。操作异常与收尾异常同时发生时保留两者。此修复不改变上游预算、回收时机或恢复策略，修改后运行 `diagnostic-failure` 的8项真实CLR合同。
 
-- 上下文排序实验只通过显式不可变 profile 注入，默认关闭；加载和程序集校验在搜索前，内环不读文件或 live 设置。修正只影响中途排序，不能进入终局政策、状态等价或精确支配。训练只用有完整后续见证且同根同预算的候选；没有后续的被剪节点保持未知，旧 Score 尾键差异不作为政策收益标签。范围回退、正则和小幅修正都不能证明质量不降；须在训练外根和真实协调器上验收，按当前用户授权的质量门槛决定是否上线；允许少数退化时仍须单列胜负翻转、尾部损失与总体分布，不能仅用平均HP抵消失败。采集诊断不能作为性能样本。工具与首轮反例见 `tools/ContextualOrdering/README.md`。
+- 上下文排序实验只通过显式不可变 profile 注入，默认关闭；加载和程序集校验在搜索前，内环不读文件或 live 设置。修正只影响中途排序，不能进入终局政策、状态等价或精确支配。训练只用有完整后续见证且同根同预算的候选；没有后续的被剪节点保持未知，旧 Score 尾键差异不作为政策收益标签。范围回退、正则和小幅修正都不能证明质量不降；须在训练外根和真实协调器上验收，按当前用户授权的质量门槛决定是否上线；允许少数退化时仍须单列胜负翻转、尾部损失与总体分布，不能仅用平均HP抵消失败。采集诊断不能作为性能样本。工具与首轮反例见 `tools/search/ContextualOrdering/README.md`。
 
 - `ContinuousThreatRanking` 是独立、默认关闭的中途排序实验，只覆盖 EndTurn 后的新回合起点；实际死亡、终局或没有可执行手牌继续旧规则。不得将致死意图等同已完成死亡，但取消离散罚分也不证明更优；全部中途节点版本已有抽牌高压退化。保留原快照Score、终局和转置支配，训练外验证及协调器/性能证据完成前不得默认启用。
 

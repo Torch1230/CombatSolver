@@ -1,8 +1,0 @@
-[
-  {
-    "monsterId": "BowlbugRock",
-    "moveId": "HEADBUTT_MOVE",
-    "playerBlockBefore": 14,
-    "expectedPlayerHpLoss": 0
-  }
-]

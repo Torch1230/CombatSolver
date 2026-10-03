@@ -136,7 +136,7 @@
     "comparatorUnitTests": {
       "passed": 10,
       "failed": 0,
-      "command": "python3 -m unittest discover -s tools/PerformanceBenchmarks -p 'test_*.py'"
+      "command": "python3 -m unittest discover -s tools/performance/PerformanceBenchmarks -p 'test_*.py'"
     },
     "launcherSyntax": {
       "bash": true,
@@ -3038,7 +3038,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -6286,7 +6286,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -9534,7 +9534,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -12782,7 +12782,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -17065,7 +17065,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -21340,7 +21340,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -25615,7 +25615,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -29890,7 +29890,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -33770,7 +33770,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -37654,7 +37654,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -41538,7 +41538,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -45422,7 +45422,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -48765,7 +48765,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -51994,7 +51994,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -55223,7 +55223,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -58464,7 +58464,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -59861,7 +59861,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -61254,7 +61254,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -62647,7 +62647,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -64040,7 +64040,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -67091,7 +67091,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -70150,7 +70150,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -73209,7 +73209,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -76268,7 +76268,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -77584,7 +77584,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -78892,7 +78892,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -80200,7 +80200,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -81508,7 +81508,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -82845,7 +82845,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -84182,7 +84182,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -85519,7 +85519,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -86856,7 +86856,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -88471,7 +88471,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -90200,7 +90200,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -91929,7 +91929,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -93658,7 +93658,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -96701,7 +96701,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -99744,7 +99744,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -102787,7 +102787,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -105830,7 +105830,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -116740,7 +116740,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -118220,7 +118220,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -120542,7 +120542,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -122022,7 +122022,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -124344,7 +124344,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -125824,7 +125824,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -128146,7 +128146,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -129626,7 +129626,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -131948,7 +131948,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -133428,7 +133428,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -135750,7 +135750,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -137230,7 +137230,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -139559,7 +139559,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -140217,7 +140217,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -140557,7 +140557,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -140892,7 +140892,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -141226,7 +141226,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -141561,7 +141561,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -141889,7 +141889,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -142220,7 +142220,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -142566,7 +142566,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -142900,7 +142900,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -143246,7 +143246,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -143567,7 +143567,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -143913,7 +143913,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -144259,7 +144259,7 @@
       },
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-contracts-20260914",
         "--combat-solver-build-dir",
@@ -145357,7 +145357,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -146665,7 +146665,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -147973,7 +147973,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -149281,7 +149281,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -151147,7 +151147,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -153017,7 +153017,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -154329,7 +154329,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -156195,7 +156195,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -158065,7 +158065,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -159947,7 +159947,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -163176,7 +163176,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -166318,7 +166318,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -169665,7 +169665,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -172795,7 +172795,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -176142,7 +176142,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -179272,7 +179272,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -182619,7 +182619,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -185749,7 +185749,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -189098,7 +189098,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -193263,7 +193263,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -197143,7 +197143,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -200387,7 +200387,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -201902,7 +201902,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -204953,7 +204953,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -206269,7 +206269,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -207606,7 +207606,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -209221,7 +209221,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -212264,7 +212264,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -215603,7 +215603,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -219768,7 +219768,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -223648,7 +223648,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -226892,7 +226892,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -228407,7 +228407,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -231458,7 +231458,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -232774,7 +232774,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -234111,7 +234111,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -235726,7 +235726,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -238769,7 +238769,7 @@
       },
       "command": [
         "bash",
-        "$CHECKOUT/tools/run-unattended-test.sh",
+        "$CHECKOUT/tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "perf-general-20260914",
         "--combat-solver-build-dir",
@@ -249149,7 +249149,7 @@
     },
     "command": [
       "bash",
-      "$CHECKOUT/tools/run-unattended-test.sh",
+      "$CHECKOUT/tools/testing/run-unattended-test.sh",
       "--headless-instance",
       "perf-general-20260914",
       "--combat-solver-build-dir",

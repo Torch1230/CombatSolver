@@ -10,7 +10,7 @@
 
 - 基于已含 PR #85–#88 的当前 `main` 合并 PR #92；滚动文档冲突保留双方开发、发布与验证记录，生成器仍限定在 Testing/无人测试边界，不改变正式搜索政策。
 - 修正审查发现的两项输入失败问题：药水请求先按目标槽数验证，通过后才清空并调整槽位；Bash 启动器要求生成场景路径已经存在，并在获取无头运行时前失败，证据目录仍允许新建。
-- `python -m unittest tools/GeneratedCombatScenarios/test_run.py` 2 项通过；PowerShell 与 Bash 结构门禁通过，`search_files=90`；Bash 缺失场景路径负向用例在启动游戏前以退出码 2 拒绝，并保留原始路径；Release 构建 0 警告、0 错误。
+- `python -m unittest tools/search/GeneratedCombatScenarios/test_run.py` 2 项通过；PowerShell 与 Bash 结构门禁通过，`search_files=90`；Bash 缺失场景路径负向用例在启动游戏前以退出码 2 拒绝，并保留原始路径；Release 构建 0 警告、0 错误。
 - Windows 隔离无头 `GENERATED-SCENARIO-CONTRACT` / `71c38e4846144248955e045b121564cf` Passed：SILENT / BYRDONIS_ELITE 完成原生建局，生成解析、单人池、装备、药水顺序及原生开局合同通过；固定 1000ms Search 取得首个结果，541 展开/3065 转移，TimeLimit，不作胜利结论。
 - 药水超槽负向用例 `7dc1e836f1824afb9ba26d33960235bf` 按预期 Failed 于 `inject_run_relics`，明确报告 3 瓶/2 槽。没有运行可见 Steam、完整 Deploy 或发布门禁。
 
@@ -36,13 +36,13 @@
 Linux代表入口（读取完整显式回归配置，显式要求结束后退出进程）：
 
 ```bash
-./tools/run-unattended-test.sh --generated-scenario-path tools/GeneratedCombatScenarios/regression-necrobinder-elite.json --evidence-directory .local/generated-regression --scenario-id GENERATED-SCENARIO-CONTRACT --headless-instance generated-regression --timeout-seconds 120 --exit-on-complete --search-max-degree-of-parallelism-for-test 2 --enable-no-gc-region-for-test 0
+./tools/testing/run-unattended-test.sh --generated-scenario-path tools/search/GeneratedCombatScenarios/regression-necrobinder-elite.json --evidence-directory .local/generated-regression --scenario-id GENERATED-SCENARIO-CONTRACT --headless-instance generated-regression --timeout-seconds 120 --exit-on-complete --search-max-degree-of-parallelism-for-test 2 --enable-no-gc-region-for-test 0
 ```
 
 Windows等价入口：
 
 ```powershell
-./tools/run-unattended-test.ps1 -GeneratedScenarioPath tools/GeneratedCombatScenarios/regression-necrobinder-elite.json -EvidenceDirectory .local/generated-regression -ScenarioId GENERATED-SCENARIO-CONTRACT -HeadlessInstance generated-regression -TimeoutSeconds 120 -ExitOnComplete -SearchMaxDegreeOfParallelismForTest 2 -EnableNoGcRegionForTest 0
+./tools/testing/run-unattended-test.ps1 -GeneratedScenarioPath tools/search/GeneratedCombatScenarios/regression-necrobinder-elite.json -EvidenceDirectory .local/generated-regression -ScenarioId GENERATED-SCENARIO-CONTRACT -HeadlessInstance generated-regression -TimeoutSeconds 120 -ExitOnComplete -SearchMaxDegreeOfParallelismForTest 2 -EnableNoGcRegionForTest 0
 ```
 
 ## PR #85–#88 合并验证（2026-09-14）
@@ -57,10 +57,10 @@ Windows等价入口：
 ## 0.38.2：精确 OnPlay 补丁适配
 
 - 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
-- `AdaptedOnPlayChecks`：35 项合同、2 项空登记检查通过。使用 Harmony 2.4.2，覆盖完整组合、来源、重载、类别、顺序、冻结及拒绝规则；游戏实体和模拟器外壳使用替身。命令见[工具说明](../../../tools/AdaptedOnPlayChecks/README.md)。
-- [原生替换](../../../coverage/unattended/adapted-card-integration.json)：真实防御 OnPlay 替换执行恰好一次，完整快照、增量回放、Fork 与 T1→T2 对账通过；额外补丁改变 continuation，旧根保持冻结，新根拒绝未登记组合。
-- [缓存路线](../../../coverage/unattended/adapted-stale-integration.json)：补丁变化使控制器执行资格失效，移除补丁后恢复。
-- [跨回合续用](../../../coverage/unattended/adapted-reuse-integration.json)：第 2 回合精确续用通过，计划外重算为 0。
+- `AdaptedOnPlayChecks`：35 项合同、2 项空登记检查通过。使用 Harmony 2.4.2，覆盖完整组合、来源、重载、类别、顺序、冻结及拒绝规则；游戏实体和模拟器外壳使用替身。命令见[工具说明](../../../tools/testing/checks/AdaptedOnPlayChecks/README.md)。
+- [原生替换](../../../coverage/fixtures/third-party/adapted-card-integration.json)：真实防御 OnPlay 替换执行恰好一次，完整快照、增量回放、Fork 与 T1→T2 对账通过；额外补丁改变 continuation，旧根保持冻结，新根拒绝未登记组合。
+- [缓存路线](../../../coverage/fixtures/third-party/adapted-stale-integration.json)：补丁变化使控制器执行资格失效，移除补丁后恢复。
+- [跨回合续用](../../../coverage/fixtures/third-party/adapted-reuse-integration.json)：第 2 回合精确续用通过，计划外重算为 0。
 - 游戏验证使用回合阶段、卡牌引用和 OnPlay 适配的组合构建；续用场景同时登记模型状态与 OnPlay，独立场景只登记 OnPlay。注册场景须使用独立新进程。
 - 执行中热换补丁、完整长局和任意第三方 Mod 未覆盖；未作性能验证。
 
@@ -68,8 +68,8 @@ Windows等价入口：
 
 - 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
 - `ModelPredictionStateChecks`：卡牌引用合同 28 项、模型状态合同 32 项、空登记合同 3 项通过。覆盖实例身份、父子兄弟隔离、Fork、两侧描述、空值、重复、顺序及失效引用；游戏对象和模拟器外壳使用替身。
-- [模型状态集成](../../../coverage/unattended/model-state-integration.json)：完整模拟器 Fork、Preview COW、子状态变更隔离、引用列表参与指纹和 continuation，以及 T1→T2 原生完整快照对账通过。
-- [模型状态续用](../../../coverage/unattended/model-state-reuse-integration.json)：控制器第 2 回合精确续用通过，计划外重算为 0。
+- [模型状态集成](../../../coverage/fixtures/scenarios/state/model-state-integration.json)：完整模拟器 Fork、Preview COW、子状态变更隔离、引用列表参与指纹和 continuation，以及 T1→T2 原生完整快照对账通过。
+- [模型状态续用](../../../coverage/fixtures/scenarios/state/model-state-reuse-integration.json)：控制器第 2 回合精确续用通过，计划外重算为 0。
 - 游戏验证使用回合阶段、卡牌引用和 OnPlay 适配的组合构建。任意外部 Mod 的状态语义未覆盖；未作性能验证。注册场景须使用独立新进程。
 
 ## 0.38.2：回合末晚期镜像
@@ -77,13 +77,13 @@ Windows等价入口：
 - 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
 - `TurnPhaseMirrorChecks`：25 项合同、1 项冻结检查及分配回归通过。覆盖精确登记、两侧参数与顺序、空参与者、异常传播、选择暂停、成员快照、COW 和 Disintegration 调用次数。模型与命令使用替身。
 - CoverageCatalog 校验通过，新增镜像识别为 `Registered / Exact / EngineMirror`。
-- [玩家晚期伤害](../../../coverage/unattended/monster-moves-batch-033-disintegration.json)：原生差分通过，2 格挡承受 5 点伤害后掉血 3。
-- [双方晚期伤害](../../../coverage/unattended/late-both-sides.json)：原生 T1→T2 完整快照、Fork 与 continuation 对账通过。
+- [玩家晚期伤害](https://github.com/Torch1230/CombatSolver/blob/fe3edd2f7b4f3a92b266e6b13293810d31ce2e1b/coverage/fixtures/monsters/monster-moves-batch-033-disintegration.json)：原生差分通过，2 格挡承受 5 点伤害后掉血 3。
+- [双方晚期伤害](../../../coverage/fixtures/scenarios/state/late-both-sides.json)：原生 T1→T2 完整快照、Fork 与 continuation 对账通过。
 - 游戏验证使用回合阶段、卡牌引用和 OnPlay 适配的组合构建。末击、多监听器原生顺序和任意第三方晚期 Hook 未覆盖；未作性能验证。
 
 ## 在线 DAU（2026-09-14）
 
-- `node --test tools/OnlinePresence/dau-ui.test.mjs` 通过，验证 Chart.js 风格参数、折叠延迟创建、单点、空值、悬浮状态与实例复用；JavaScript 语法检查通过。
+- `node --test services/OnlinePresence/dau-ui.test.mjs` 通过，验证 Chart.js 风格参数、折叠延迟创建、单点、空值、悬浮状态与实例复用；JavaScript 语法检查通过。
 
 - 按用户澄清把入口移至监控后台后，Docker DAU/启动接入 3 项测试通过，前端两份脚本语法检查通过；日志后台 DAU 提交已回退，保留原有日志功能。未做浏览器视觉验收。
 
@@ -123,7 +123,7 @@ Windows等价入口：
 - 原Smart策略、固定每层20000节点、16GB NoGC的完整三层前后哨兵均Passed，实际60000展开/1162247转移/717525选择，84字段和40动作相等。没有触发恢复，不作该机制的提速证据。
 - `STAND-PAT-MEMORY-BOUNDARY` / `fee97c057e1744dea055fe53ad7da20a` Passed：DOP1/DOP2完整结果与动作一致，取消/异常注入后的worker排空及根复用通过，小区域剪枝内存边界与串行相等。用现有Bowlbugs早期native包、RestoreOnly、该ScenarioId、120秒运行；不加组合VerifySearchPolicySnapshot。
 - 组合VerifySearchPolicySnapshot在女王基线/候选均exit139，Bowlbugs加同开关也exit139；没有结果文件，根因未定位，不计通过。聚焦合同未包含这套额外测试。
-- 独立GC工具基础20项、scope8项、检查点1项、恢复状态机6项、真实CLR恢复2项通过；恢复自身一次预留、零强制收集，包含取消/退出/Dispose拒绝复活。命令见[工具README](../../../tools/CombatSolver.GcPolicyChecks/README.md)。Bash/PowerShell结构门禁通过，89个Search文件；最终正常Release0警告/错误。
+- 独立GC工具基础20项、scope8项、检查点1项、恢复状态机6项、真实CLR恢复2项通过；恢复自身一次预留、零强制收集，包含取消/退出/Dispose拒绝复活。命令见[工具README](../../../tools/testing/checks/CombatSolver.GcPolicyChecks/README.md)。Bash/PowerShell结构门禁通过，89个Search文件；最终正常Release0警告/错误。
 - 全部新数据限Linux headless；未部署Windows、未启动可见Steam，未宣称原100000节点完整请求或最坏暂停改善。
 
 ## 女王原包恢复与性能（2026-09-13）
@@ -164,11 +164,11 @@ Windows等价入口：
 两端原生入口使用同一fixture（隔离headless实例与构建路径按本机参数指定）：
 
 ```bash
-./tools/run-unattended-test.sh --scenario-id HP-MODIFIER-COLLECTIONS --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 999 --initial-player-hp 80 --initial-player-max-hp 80 --relics-json '[{"relicId":"LIZARD_TAIL"}]' --stop-after-combat-root-snapshot-assertion --timeout-seconds 120
+./tools/testing/run-unattended-test.sh --scenario-id HP-MODIFIER-COLLECTIONS --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 999 --initial-player-hp 80 --initial-player-max-hp 80 --relics-json '[{"relicId":"LIZARD_TAIL"}]' --stop-after-combat-root-snapshot-assertion --timeout-seconds 120
 ```
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId HP-MODIFIER-COLLECTIONS -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 999 -InitialPlayerHp 80 -InitialPlayerMaxHp 80 -RelicsJson '[{"relicId":"LIZARD_TAIL"}]' -StopAfterCombatRootSnapshotAssertion -TimeoutSeconds 120
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId HP-MODIFIER-COLLECTIONS -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 999 -InitialPlayerHp 80 -InitialPlayerMaxHp 80 -RelicsJson '[{"relicId":"LIZARD_TAIL"}]' -StopAfterCombatRootSnapshotAssertion -TimeoutSeconds 120
 ```
 
 ## 0.38.0：计划外重算修复
@@ -261,19 +261,19 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId HP-MODIFIER-COLL
 
 本轮选牌迁移：1,024组完整令牌合同、15,003次历史查询身份比较，以及赌博筹码/能力药水/发现三条原生严格差分均Passed；五个runId与覆盖见[报告](../performance/choice-migration-20260912.md)。A-B-B-A八个正式无头请求Passed、93项工作字段与54/136行完整路线一致，3项调度字段单列。机甲3.4294→3.5134秒（慢2.45%），瀑布9.3512→9.3059秒；累计分配分别少1.128%/0.645%。Release和Linux结构门禁通过；无可见性能、完整自动部署或Windows新构建验收。
 
-本轮只读来源扫描：`tools/ChoiceSourceAudit` 读取1,284模型/5,955方法，202匹配调用点、0读取失败；85个显式选择调用点与原目录完全一致。能力授予关系补充后213模型逐项静态评估。该证据不等于模型行为或性能验收；见[来源清单](../performance/choice-source-inventory-20260912.md)。
+本轮只读来源扫描：`tools/inspection/ChoiceSourceAudit` 读取1,284模型/5,955方法，202匹配调用点、0读取失败；85个显式选择调用点与原目录完全一致。能力授予关系补充后213模型逐项静态评估。该证据不等于模型行为或性能验收；见[来源清单](../performance/choice-source-inventory-20260912.md)。
 
 本轮印牌历史查询：`GENERATION-HISTORY-CONTRACT`（`2a1fc39e85884552a90683036f4b3bc2`）通过，覆盖13,328次逐实例查询比较、129个保留历史分支及父子独立追加。瀑布巨兽／机甲A-B-B-A共8个正式无头请求Passed，93项搜索字段与136／54行完整路线一致；3项内存自适应并行批次数单列，不称96项全一致。累计分配下降0.79%／0.30%，稳定提速和峰值内存收益未建立。原包恢复为`restored_continuation`，native-state不可比较；诊断构建MVID绕行未进入生产。Release与结构门禁通过；无完整部署或可见验收。见[报告与数据](../performance/generation-history-20260912.md)。
 
 ## 下一版本（开发中）：精简 fork
 
-快照按需读取：`tools/StrategicKeywordChecks/run.py` 134,930组完整策略上下文比较通过，覆盖全部65,536种需求组合、第三方类型和跨Build修改；还原的基线与原源码一致。原生无头A-B-B-A的8个正式结果全部Passed，每场96项非时序字段及完整路线相等；机甲平均快2.86%、亡灵快2.43%，未建立明显内存收益。`STRATEGIC-KEYWORD-INCREMENTAL` / `f868cb327b9c47d29647446880813f60`（力量1、打击/防御/小刀）最小增量回放通过；Release构建及Linux结构门禁通过，无可见测试。详见[范围与数据](../performance/snapshot-reuse-20260912.md)。
+快照按需读取：`tools/testing/checks/StrategicKeywordChecks/run.py` 134,930组完整策略上下文比较通过，覆盖全部65,536种需求组合、第三方类型和跨Build修改；还原的基线与原源码一致。原生无头A-B-B-A的8个正式结果全部Passed，每场96项非时序字段及完整路线相等；机甲平均快2.86%、亡灵快2.43%，未建立明显内存收益。`STRATEGIC-KEYWORD-INCREMENTAL` / `f868cb327b9c47d29647446880813f60`（力量1、打击/防御/小刀）最小增量回放通过；Release构建及Linux结构门禁通过，无可见测试。详见[范围与数据](../performance/snapshot-reuse-20260912.md)。
 
-热点消除后续：重新采集 `8faa771` 两场CPU栈；快照释放集合候选完成A-B-B-A共8个正式结果，96项非时序字段及完整54／113行路线一致。`tools/SnapshotReleaseChecks/run.py` 864组释放调用序列合同、Release编译和Linux结构门禁通过；`SNAPSHOT-RELEASE-INCREMENTAL` / `d4eeec6d4b7142f59e9f7154ffbd6f4f` 最小DOP1增量回放通过。机甲平均快8.16%，亡灵平均慢1.43%且配对方向不一致，不宣称普遍提速；可见测试未启动，详见[数据与限制](../performance/hotspot-cuts-20260912.md)。
+热点消除后续：重新采集 `8faa771` 两场CPU栈；快照释放集合候选完成A-B-B-A共8个正式结果，96项非时序字段及完整54／113行路线一致。`tools/testing/checks/SnapshotReleaseChecks/run.py` 864组释放调用序列合同、Release编译和Linux结构门禁通过；`SNAPSHOT-RELEASE-INCREMENTAL` / `d4eeec6d4b7142f59e9f7154ffbd6f4f` 最小DOP1增量回放通过。机甲平均快8.16%，亡灵平均慢1.43%且配对方向不一致，不宣称普遍提速；可见测试未启动，详见[数据与限制](../performance/hotspot-cuts-20260912.md)。
 
 精简开发后续：空状态 guard、排名预计算分别完成四次交错无头正式样本，每场 96 项非时序字段及完整路线一致。排序合同 720 组/167,280 条目通过；`CARD-PLAY-CLEANUP-CONTRACT`（`6a59494233984b7582ba6213c528a724`）与小型 DOP1 增量搜索（`4685d92766c04f99ace8f6e3e70da3c3`）通过。大范围 Fork 合同在 `AssertEndTurnPowerChoiceSuspends` 失败，未修改基线也复现，未声称完整门禁通过。可见测试按指令停止，未取得可见性能结果。详见[结果与复跑](../performance/surgical-development-20260912.md)。
 
-后续研究：`dotnet run --project tools/SurgicalResearchChecks -c Release` 通过。直接链接生产 StateStore，以最小模型替身测得空枚举 96→0 B、缺失 int 状态 Peek 24→0 B、8 类辅助表容量构造 992→440 B；每项三块分配读数一致。仅为独立分配机制探针，不覆盖真实模型、Fork 或游戏搜索；未改生产代码、未重跑下列历史场景。见[研究报告](../performance/surgical-research-20260912.md)。
+后续研究：`dotnet run --project tools/testing/checks/SurgicalResearchChecks -c Release` 通过。直接链接生产 StateStore，以最小模型替身测得空枚举 96→0 B、缺失 int 状态 Peek 24→0 B、8 类辅助表容量构造 992→440 B；每项三块分配读数一致。仅为独立分配机制探针，不覆盖真实模型、Fork 或游戏搜索；未改生产代码、未重跑下列历史场景。见[研究报告](../performance/surgical-research-20260912.md)。
 
 基于 `eff8cf4`。本轮独立原生对照全部通过（列表候选撤回前执行；最终分支恢复上游列表，两个列表版本的独立合同和正式搜索等价对照均通过）：
 

@@ -1,6 +1,0 @@
-{
-  "potionId": "EnergyPotion",
-  "target": "Player",
-  "playerEnergyBefore": 1,
-  "expectedPlayerEnergy": 3
-}

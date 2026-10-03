@@ -10,14 +10,14 @@
 
 ```bash
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
-./tools/run-unattended-test.sh --generated-scenario-path tools/GeneratedCombatScenarios/random.json --evidence-directory .local/generated-example --scenario-id GENERATED-EXAMPLE --headless-instance generated-example --timeout-seconds 120 --exit-on-complete
+./tools/testing/run-unattended-test.sh --generated-scenario-path tools/search/GeneratedCombatScenarios/random.json --evidence-directory .local/generated-example --scenario-id GENERATED-EXAMPLE --headless-instance generated-example --timeout-seconds 120 --exit-on-complete
 ```
 
 Windows PowerShell 7入口：
 
 ```powershell
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
-./tools/run-unattended-test.ps1 -GeneratedScenarioPath tools/GeneratedCombatScenarios/random.json -EvidenceDirectory .local/generated-example -ScenarioId GENERATED-EXAMPLE -HeadlessInstance generated-example -TimeoutSeconds 120 -ExitOnComplete
+./tools/testing/run-unattended-test.ps1 -GeneratedScenarioPath tools/search/GeneratedCombatScenarios/random.json -EvidenceDirectory .local/generated-example -ScenarioId GENERATED-EXAMPLE -HeadlessInstance generated-example -TimeoutSeconds 120 -ExitOnComplete
 ```
 
 游戏、RitsuLib和DLL路径继续使用现有 `Sts2GameRoot` / `CombatSolverBuildDir` 等参数。生成模式必须提供证据目录。普通启动器的单进程/复用/清理规则保持原样；请使用本任务专属实例。
@@ -25,7 +25,7 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 可选Python 3批量入口，两端均调用各自原生启动器，默认串行复用同一专属进程、结束时停止：
 
 ```bash
-python3 tools/GeneratedCombatScenarios/run.py --count 10 --seed BENCH-A10 --output .local/generated-suite
+python3 tools/search/GeneratedCombatScenarios/run.py --count 10 --seed BENCH-A10 --output .local/generated-suite
 ```
 
 Windows使用 `python`。每个样本种子为 `BENCH-A10-0000`、`BENCH-A10-0001`……；单个样本不添加序号。`--config` 指定JSON，`--mode Setup|Search|Deploy` 覆盖运行方式，`--build` 选择冻结DLL目录。`--continue-on-failure` 在保存失败后以新进程继续，默认首个失败即停止，已计划但未运行的样本仍在suite.json中。`--write-inputs-only` 只生成输入文件，不启动游戏、不解析实际模型。
@@ -33,14 +33,14 @@ Windows使用 `python`。每个样本种子为 `BENCH-A10-0000`、`BENCH-A10-000
 本地路径/搜索设置可通过尾部 `--` 传给原生启动器，例如Linux：
 
 ```bash
-python3 tools/GeneratedCombatScenarios/run.py --count 3 --output .local/generated-short -- --search-max-degree-of-parallelism-for-test 2 --search-budget-override-milliseconds 1000
+python3 tools/search/GeneratedCombatScenarios/run.py --count 3 --output .local/generated-short -- --search-max-degree-of-parallelism-for-test 2 --search-budget-override-milliseconds 1000
 ```
 
 Windows尾部使用对应的 `-SearchMaxDegreeOfParallelismForTest 2 -SearchBudgetOverrideMilliseconds 1000`。实例、场景ID、证据目录、超时和进程生命周期由批量入口独占，不接受尾部重复覆盖。
 
 ## 配置
 
-[随机示例](../tools/GeneratedCombatScenarios/random.json)与[部分指定示例](../tools/GeneratedCombatScenarios/specified.json)均可直接复制修改。
+[随机示例](../tools/search/GeneratedCombatScenarios/random.json)与[部分指定示例](../tools/search/GeneratedCombatScenarios/specified.json)均可直接复制修改。
 
 ```json
 {
@@ -105,7 +105,7 @@ A10默认两药水槽。请求超过实际槽数时会失败，不沿用旧注�
 重跑单例：
 
 ```bash
-./tools/run-unattended-test.sh --generated-scenario-path .local/generated-example/generated-scenario.resolved.json --evidence-directory .local/generated-replay --scenario-id GENERATED-REPLAY --headless-instance generated-replay --timeout-seconds 120 --exit-on-complete
+./tools/testing/run-unattended-test.sh --generated-scenario-path .local/generated-example/generated-scenario.resolved.json --evidence-directory .local/generated-replay --scenario-id GENERATED-REPLAY --headless-instance generated-replay --timeout-seconds 120 --exit-on-complete
 ```
 
 ## 搜索与验收口径
@@ -116,6 +116,6 @@ A10默认两药水槽。请求超过实际槽数时会失败，不沿用旧注�
 
 NoGC开启的普通断言仍要求区域已经建立且在检查时有效。`--allow-no-gc-fallback-for-test` / `-AllowNoGcFallbackForTest` 允许重场景在曾成功建立后按Runtime现有机制回退，`--expect-no-gc-fallback-for-test` / `-ExpectNoGcFallbackForTest` 则明确要求检查时已回退；两者都继续验证已建立及实际预算不超过配置上限，不改变GC行为，也不能把未曾建立当作通过。
 
-Setup通过只证明生成和建局检查；Search通过只证明取得首个结果，不代表找到胜利；Deploy是实际执行，随机牌组可能弱、不可胜或触发未支持语义。快速迭代请求仍遵守120秒上限，不为了把失败改成通过而延长超时。独立的最终重场景性能对照须在运行前固定完整预算、超时和交错顺序，并保留所有超时/工作量差异；可使用[性能研究入口](../tools/PerformanceBenchmarks/README.md)。
+Setup通过只证明生成和建局检查；Search通过只证明取得首个结果，不代表找到胜利；Deploy是实际执行，随机牌组可能弱、不可胜或触发未支持语义。快速迭代请求仍遵守120秒上限，不为了把失败改成通过而延长超时。独立的最终重场景性能对照须在运行前固定完整预算、超时和交错顺序，并保留所有超时/工作量差异；可使用[性能研究入口](../tools/performance/PerformanceBenchmarks/README.md)。
 
 随机样本适合找新问题，性能A/B应固定同一套解析后样本、搜索预算、DOP和Mod环境，并单列预热/GC/失败。Linux headless数据不代表Windows可见FPS；本批没有运行可见Steam。

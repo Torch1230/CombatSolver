@@ -51,7 +51,7 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 | 目标 | 入口 |
 | --- | --- |
 | 玩家包异常 | 结构化日志；需要恢复时用 `run-checkpoint-batch` |
-| 单效果语义修复 | `coverage/unattended/` 的最小 actual/simulated 严格差分 |
+| 单效果语义修复 | `coverage/fixtures/` 的最小 actual/simulated 严格差分 |
 | Fork、跨回合、续用与选牌执行 | 最小两回合或最早执行边界 |
 | 搜索质量 | 固定同根、同政策、同预算的目标，再选一个回归哨兵 |
 | 试评分、动作优先级或保路 | 常驻开发会话与 C# 策略脚本 |

@@ -48,7 +48,7 @@
 | 自定义第10步别名后缀及整池 v64 | `49a3fb9418d644d3bb4f158b8e0911ec` 诊断通过；实际搜索质量仍失败 | 1个真实Generated别名原根回放及9步原样后缀逐步全状态/增量等价，T1/HP1/损3/1药胜利；非调度历史等价。1024无丢弃事件，355输入/排名、135全局/177最终保留，目标raw172未进route96/quota69，required90；同上下文raw17以更多即时伤害先入。原搜索9412/35298/4699未改变；构建及两端65项门禁通过 |
 | 持久选择上下文SetupFirst v65 | Custom `127761331d114c96b870d61786e6991c` 质量失败，实验撤回 | 原配置/DOP8/NoGC16/无观察器/首结果停止；仍死亡/敌347/4洗牌，9353展开/35073转移/4755选择。只改同context候选顺序且保持集合/评分/预算，不足以恢复完整解；未跑哨兵或部署 |
 | 遗物属性在末击后的命令边界 | v58 `b9edcf8d2c3a416baec2caa6505ea610` 两个最小边界、三遗物均通过 | `relic-stat-terminal-v0111`；苦无/手里剑/彩虹戒指在非致死动作正常加属性，致死动作仍递增计数但不施加属性；原版与全根/增量完整状态一致。每个根只打一张牌，不运行Solve |
-| Windows helper 预约自测 | `tools/test-headless-runtime.ps1` 通过：双 parallel、exclusive、资源不足、未知游戏、归属、stale、warm | Linux 上的 PowerShell 替身测试；非 Windows 游戏进程或快照实测 |
+| Windows helper 预约自测 | `tools/testing/test-headless-runtime.ps1` 通过：双 parallel、exclusive、资源不足、未知游戏、归属、stale、warm | Linux 上的 PowerShell 替身测试；非 Windows 游戏进程或快照实测 |
 | Windows资料复制边界 | `-ProfileOnly` 通过：私有拷贝、源资料不变、重解析点拒绝 | Linux上PowerShell文件系统验证，不是Windows游戏验证 |
 | 两端结构门禁 | Bash / PowerShell 均 `REFACTOR_BOUNDARIES_OK search_files=64` | 只证明结构边界 |
 | Linux helper 原生子进程生命周期 | 11项通过：并发、同实例拒绝、排队、独占、warm、取消/超时、pending/孤儿、stale、PID出生及未知进程 | 真实辅助层 + 私有原生sleep；枚举限定测试域，非游戏协议 |
@@ -83,7 +83,7 @@
 
 | 场景 | 当前结果 | 验证内容 | 日期 |
 | --- | --- | --- | --- |
-| `GC36-ROUND2-SNAPSHOT-LIST` | 通过（实际 helper / 7项） | 嵌套、异常填充、单槽/reset、容量上限、旧/复制lease、owner隔离、弱引用释放。命令见 tools/SnapshotListBufferChecks/README.md。 | 2026-09-05 |
+| `GC36-ROUND2-SNAPSHOT-LIST` | 通过（实际 helper / 7项） | 嵌套、异常填充、单槽/reset、容量上限、旧/复制lease、owner隔离、弱引用释放。命令见 tools/testing/checks/SnapshotListBufferChecks/README.md。 | 2026-09-05 |
 | `GC36-ROUND2-AB` | 通过（三次交替，固定工作量等价） | Silent 分配中位 −3.39%，Necrobinder −1.34%；完整 ACTION/TURN、评分、工作量和非时序剪枝一致，耗时无稳定收益。逐轮runId见 [第二轮证据](../performance/gc-issue36-round2-results.json)。 | 2026-09-05 |
 | `GC36-ROUND2-BOUNDARIES` | 通过（新 parallel 入口） | SearchPolicySnapshot / ForkBoundaries，含DOP1/DOP2等价、实际并发2及历史/根边界；runId `5171caca9cf84baaa3f48884644f3b07`。该并行样本不用于性能。 | 2026-09-05 |
 | `GC36-ROUND2-TRACE` | 产物严格解析通过，runner停止等待超时 | 搜索18,572 allocation ticks，Fork权重43.93%；0缺栈/全未解析/报告丢失，19条含部分未解析帧。清理SIGTERM完成采集，完整经过及失败尝试见 [报告](../performance/gc-issue36-round2.md)。 | 2026-09-05 |
@@ -97,11 +97,11 @@
 | `GC36-AEONGLASS-PREVIEW-OWNERSHIP` | 通过（两步 native 严格差分） | 先只读判型、仅 Wither 写入；第一次生成凋零总伤害6/力量3，第二次升级并生成后总伤害18/力量7。非 Wither preview 身份不变，未执行兄弟的 preview 身份与凋零伤害不变。runId `825d477edaa0456b91934583498388ba`。 | 2026-09-05 |
 | `GC36-FINAL-LONG-SILENT-GC0-DOP4` | 通过（三次 A/B，路线/工作量/剪枝等价） | 每 solver 2,500 节点，请求5,000展开/19,065转移。基线→最终中位：分配2.805→1.829 GB（−34.8%）、时间13,672.4→10,484.7 ms（−23.3%）、暂停3,007.0→1,280.3 ms（−57.4%）、VmHWM2.117→1.684 GB（−20.4%）。最终 runId `d45e986c9fe0490f8a1f03afcb0fecdd` / `658c7729a5a54188bc76bca1a0c55f6c` / `04e508c3b433429ca84b31a69d788576`。 | 2026-09-05 |
 | `GC36-FINAL-SMART-NECRO-NOGC4-DOP4` | 通过（三次 A/B，有峰值代价） | 每 solver 576 节点，请求1,728展开/22,541转移，路线/工作量/剪枝等价。基线→最终中位：分配1.302→1.296 GB、时间5,113.8→5,074.9 ms、暂停153.0→0 ms；VmHWM1.999→2.824 GB（约+0.825 GB）。最终 runId `356f302ce2fb400e9b67834e3989167a` / `c3810131b74546949076723dd3e6769b` / `4bc38f581c224830a51b1548d385744a`。 | 2026-09-05 |
-| `GC36-LISTENER-SLOTS-EAGER-LAZY` | 已拒绝并撤回生产 | helper/游戏 Fork 顺序检查通过，但 lazy 版2,500节点长搜分配增加20.81%，主要反增位于敌方动作中的密集 preview 更新。仅撤回 listener 的候选4控制样本恢复2,801,108,024 B，路线/工作量/剪枝相同。代码归档于 [ExperimentalListenerSlots](../../../tools/ExperimentalListenerSlots/README.md)。 | 2026-09-05 |
+| `GC36-LISTENER-SLOTS-EAGER-LAZY` | 已拒绝并撤回生产 | helper/游戏 Fork 顺序检查通过，但 lazy 版2,500节点长搜分配增加20.81%，主要反增位于敌方动作中的密集 preview 更新。仅撤回 listener 的候选4控制样本恢复2,801,108,024 B，路线/工作量/剪枝相同。代码归档于 [ExperimentalListenerSlots](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ExperimentalListenerSlots/README.md)。 | 2026-09-05 |
 | `GC36-FINAL-PRESSURE-1GB-DOP8` | 通过（合法低预算，单次） | 请求1,728展开/22,541转移，完整路线/工作量/剪枝等价；5,236.773 ms、1,279,327,296 B、暂停160.357 ms、VmHWM1,963,995,136 B。两个 Smart 层因 forecast_exceeds_remaining 回收，forced/start/end/restart/loss=`2/3/2/2/0`。runId `511d89a5ce1c4b378d20fc7bfc90c256`。 | 2026-09-05 |
 | `GC36-FINAL-PRESSURE-0.6GB` | 设置校验拒绝，未执行搜索 | 低于1 GB最小设置，runId `a68a6be47d404e7195e45d3fa47af7d8`；不计为搜索失败或性能数据。 | 2026-09-05 |
 | `GC36-AFTER-PRUNE-PRESSURE` | 代码审查，未有命中实测 | 保留有下一次 parent 准入时才在剪枝后回收的 guard。admitted_parents 同时受过滤和自然 frontier 影响，不将每个缩小的 wave 都归为内存压力事件。 | 2026-09-05 |
-| `GC36-ADAPTIVE-WAVE-EXPERIMENT` | 已撤回生产接线 | 15项合成决策检查通过，真实单轮实验暂无收益依据；控制器和补丁归档于 [ExperimentalAdaptiveGc](../../../tools/ExperimentalAdaptiveGc)，检查仍可运行。 | 2026-09-05 |
+| `GC36-ADAPTIVE-WAVE-EXPERIMENT` | 已撤回生产接线 | 15项合成决策检查通过，真实单轮实验暂无收益依据；控制器和补丁归档于 [ExperimentalAdaptiveGc](https://github.com/Torch1230/CombatSolver/tree/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ExperimentalAdaptiveGc)，检查仍可运行。 | 2026-09-05 |
 | `GC36-FINAL-ADAPTIVE-SILENT` | 通过等价检查，候选未采用 | 每 solver 2,500节点，55个完整窗口、无probe；请求5,000展开/19,065转移，完整路线/工作量/剪枝等价。耗时11,114.4844 ms，相对最终长搜三次中位增加6.01%；单轮不作稳定退化或提升结论。runId `7ced6eed76f745968f0134743d308296`。 | 2026-09-05 |
 | `GC36-FINAL-ADAPTIVE-NECRO` | 通过等价检查，候选未采用 | 每 solver 576节点，35个完整窗口；最后层probeLower=1/rejected=1，4→2核吞吐比0.638、GC duty 0.258→0.146，拒绝后恢复4核且无pending。请求1,728展开/22,541转移，完整路线/工作量/剪枝等价。耗时5,994.7884 ms，相对同代码单轮对照增加1.72%；单轮不作稳定退化或提升结论。runId `20a59a45c3154712981125be355787ae`。 | 2026-09-05 |
 
@@ -124,7 +124,7 @@
 | `NATIVE-REPLAY-MIXED-0300` | 通过 | 刀刃之舞生成牌及力量药水，runId `e866e6c7c24f4223a5c3b20e856c4740`，10事件，原生二进制及续用状态一致，实际0HP/1药，零重算。 | 2026-09-06 |
 | `NATIVE-DEPLOY-FROM-OPENING-0300` | 通过 | runId `e716aea669114d199433daeb1bb8430f`，从原生开战恢复并通过二进制状态对账，求解器T1至T4实际5HP/0药、计划外重算0；记录实际政策及预测指标。 | 2026-09-06 |
 | `LEGACY-OPENING-RANK3-0300` | 通过（开战检查点） | 旧实验体ZIP直接选择start，runId `651be9ae9c4a4e998cac5d9f9c28e774`，17.0秒，通过完整续用状态及原生二进制对账。原生加载跑局保留遗物池和存档属性；校验时点与原始开战导出一致。 | 2026-09-06 |
-| `ARCHIVE-CONTRACT-0300` | 通过 | `dotnet run --project tools/CheckpointTool/CheckpointTool.csproj -c Release -- self-test`，12 项检查覆盖同名文件分离、稳定默认入口、战后选择、旧包无索引、会话错配、重复及不安全路径。 | 2026-09-06 |
+| `ARCHIVE-CONTRACT-0300` | 通过 | `dotnet run --project tools/replay/CheckpointTool/CheckpointTool.csproj -c Release -- self-test`，12 项检查覆盖同名文件分离、稳定默认入口、战后选择、旧包无索引、会话错配、重复及不安全路径。 | 2026-09-06 |
 | `ARCHIVE-V2-EXPORT-0300` / `ARCHIVE-V2-IMPORT-0300` | 通过（检查点） | 导出 runId `7ccbe05b91c441d3a7ff5ebea12ee660`；相同 ZIP 直接导入 runId `30f462a75df5456286fddae1144736aa`，`CheckpointContinuationMatched`，材料准备约29ms。没有运行搜索或整场部署。证据 `.local/replay-validation/batch1/`。 | 2026-09-06 |
 | `CHECKPOINT-INDEX-0300` | 通过 | 导出 runId `b309d78548cd46708a8dcf008af8bd40` 生成唯一 `combat-solver/checkpoint.json`；索引指向的 metadata、replay-state、native-state、run-state 均存在。再以同一 ZIP 直接导入，runId `15fa0e74fee74af787116be3c2bf2dae` 通过开战根状态断言。 | 2026-09-05 |
 
@@ -327,32 +327,32 @@ v30 SearchPolicy 与下列8项最小搜索夹具在同一 headless 进程复用�
 
 | Fixture | 主要边界 |
 | --- | --- |
-| `coverage/unattended/after-stars-gained-black-hole-glow-0111.json` | 通用星能增加 Hook 分发、黑洞单次伤害与完整状态严格差分 |
-| `coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json` | 同牌堆形状的隐藏相位收益、DOP 等价 |
-| `coverage/unattended/generic-cross-turn-hidden-buffer-positive-v0111.json` | 晚于基础观察期兑现的精确隐藏状态、DOP 等价 |
-| `coverage/unattended/generic-cross-turn-stagnant-control-v0111.json` | 真正无收益跨回合路线有界停止 |
-| `coverage/unattended/generic-loop-cross-turn-purity-pillage-positive-v0111.json` | 先净化牌库、下一回合兑现的跨回合收益 |
-| `coverage/unattended/generic-loop-rampage-dynamic-growth-positive-v0111.json` | 动态成长循环、32 动作路线与 DOP 等价 |
-| `coverage/unattended/generic-final-quality-zero-loss-over-faster-blood-sale-v0111.json` | 低战损优先；同战损才比较结束回合 |
-| `coverage/unattended/generic-smart-potion-same-loss-faster-v0111.json` | Smart 付费药未省足战略 HP 时保留无药路线 |
-| `coverage/unattended/generic-smart-potion-three-layer-progress-v0111.json` | 零损终局不启动无收益的付费药梯度 |
-| `coverage/unattended/generic-loop-speedster-discard-draw-positive-v0111.json` | 多动作抽弃循环、洗牌与零损击杀 |
-| `coverage/unattended/generic-loop-speedster-startup-positive-v0111.json` | 先建立能力再进入循环 |
-| `coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-positive-v0111.json` | 卖血/能量启动后兑现 |
-| `coverage/unattended/generic-loop-hellraiser-startup-positive-v0111.json` | 先打能力牌再启动 |
-| `coverage/unattended/generic-loop-hellraiser-pillage-defend-breaker-v0111.json` | 循环被非攻击抽牌打断并跨回合求解 |
-| `coverage/unattended/generic-loop-pale-blue-dot-threshold-cross-turn-v0111.json` | 阈值状态、药水入口与跨回合/出口收益 |
-| `coverage/unattended/generic-loop-regent-star-energy-positive-v0111.json` | 星能与能量循环 |
-| `coverage/unattended/generic-loop-regent-black-hole-startup-positive-v0111.json` | 储君能力启动与循环 |
-| `coverage/unattended/generic-loop-hellraiser-pillage-single-current-v0111.json` | 当前规则单张掠夺的自动转移内连锁；不是数学无限 |
-| `coverage/unattended/generic-loop-hellraiser-pommel-finite-current-v0111.json` | 当前规则有限链负例；不得误判为 T1 无限 |
-| `coverage/unattended/generic-loop-bloodletting-double-pommel-quality-v0111.json` | 卖血启动质量排序；低战损优先于少回合 |
-| `coverage/unattended/generic-loop-silent-prepared-tactician-current-v0111.json` | 当前规则抽弃重复链 |
-| `coverage/unattended/generic-loop-defect-all-for-one-hologram-current-v0111.json` | 当前规则取回重复链；NodeLimit 内有解 |
-| `coverage/unattended/generic-loop-regent-particle-wall-make-it-so-current-v0111.json` | 当前规则技能/格挡重复链；NodeLimit 内有解 |
-| `coverage/unattended/generic-loop-regent-sealed-throne-black-hole-current-v0111.json` | 当前规则双资源重复链 |
+| `coverage/fixtures/powers/after-stars-gained-black-hole-glow-0111.json` | 通用星能增加 Hook 分发、黑洞单次伤害与完整状态严格差分 |
+| `coverage/fixtures/search/generic-loop-letter-opener-hidden-phase-v0111.json` | 同牌堆形状的隐藏相位收益、DOP 等价 |
+| `coverage/fixtures/search/generic-cross-turn-hidden-buffer-positive-v0111.json` | 晚于基础观察期兑现的精确隐藏状态、DOP 等价 |
+| `coverage/fixtures/search/generic-cross-turn-stagnant-control-v0111.json` | 真正无收益跨回合路线有界停止 |
+| `coverage/fixtures/search/generic-loop-cross-turn-purity-pillage-positive-v0111.json` | 先净化牌库、下一回合兑现的跨回合收益 |
+| `coverage/fixtures/search/generic-loop-rampage-dynamic-growth-positive-v0111.json` | 动态成长循环、32 动作路线与 DOP 等价 |
+| `coverage/fixtures/search/generic-final-quality-zero-loss-over-faster-blood-sale-v0111.json` | 低战损优先；同战损才比较结束回合 |
+| `coverage/fixtures/search/generic-smart-potion-same-loss-faster-v0111.json` | Smart 付费药未省足战略 HP 时保留无药路线 |
+| `coverage/fixtures/search/generic-smart-potion-three-layer-progress-v0111.json` | 零损终局不启动无收益的付费药梯度 |
+| `coverage/fixtures/search/generic-loop-speedster-discard-draw-positive-v0111.json` | 多动作抽弃循环、洗牌与零损击杀 |
+| `coverage/fixtures/search/generic-loop-speedster-startup-positive-v0111.json` | 先建立能力再进入循环 |
+| `coverage/fixtures/search/generic-loop-hellraiser-pillage-bloodletting-positive-v0111.json` | 卖血/能量启动后兑现 |
+| `coverage/fixtures/search/generic-loop-hellraiser-startup-positive-v0111.json` | 先打能力牌再启动 |
+| `coverage/fixtures/search/generic-loop-hellraiser-pillage-defend-breaker-v0111.json` | 循环被非攻击抽牌打断并跨回合求解 |
+| `coverage/fixtures/search/generic-loop-pale-blue-dot-threshold-cross-turn-v0111.json` | 阈值状态、药水入口与跨回合/出口收益 |
+| `coverage/fixtures/search/generic-loop-regent-star-energy-positive-v0111.json` | 星能与能量循环 |
+| `coverage/fixtures/search/generic-loop-regent-black-hole-startup-positive-v0111.json` | 储君能力启动与循环 |
+| `coverage/fixtures/search/generic-loop-hellraiser-pillage-single-current-v0111.json` | 当前规则单张掠夺的自动转移内连锁；不是数学无限 |
+| `coverage/fixtures/search/generic-loop-hellraiser-pommel-finite-current-v0111.json` | 当前规则有限链负例；不得误判为 T1 无限 |
+| `coverage/fixtures/search/generic-loop-bloodletting-double-pommel-quality-v0111.json` | 卖血启动质量排序；低战损优先于少回合 |
+| `coverage/fixtures/search/generic-loop-silent-prepared-tactician-current-v0111.json` | 当前规则抽弃重复链 |
+| `coverage/fixtures/search/generic-loop-defect-all-for-one-hologram-current-v0111.json` | 当前规则取回重复链；NodeLimit 内有解 |
+| `coverage/fixtures/search/generic-loop-regent-particle-wall-make-it-so-current-v0111.json` | 当前规则技能/格挡重复链；NodeLimit 内有解 |
+| `coverage/fixtures/search/generic-loop-regent-sealed-throne-black-hole-current-v0111.json` | 当前规则双资源重复链 |
 
-`coverage/unattended/generic-loop-hellraiser-pillage-bloodletting-cards.json` 只是可复用牌堆输入，不是独立场景。未在上表列出 runId 的 fixture 仍须复测，不能因文件存在就宣称当前工作树通过。
+`coverage/fixtures/search/generic-loop-hellraiser-pillage-bloodletting-cards.json` 只是可复用牌堆输入，不是独立场景。未在上表列出 runId 的 fixture 仍须复测，不能因文件存在就宣称当前工作树通过。
 
 ## 0.27.2（已发布）
 

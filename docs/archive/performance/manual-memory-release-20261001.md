@@ -22,7 +22,7 @@ PR固定head `d5100d1c8b79cb82259ca9f151f774c802f5fc01`，合并 `c6e60681`。�
 
 ## 真实CLR合同
 
-`tools/CombatSolver.GcPolicyChecks/GcManualMemoryReleaseChecks.cs` 直接链接生产GC策略。固定1 GiB NoGC预留，200 MiB短命搜索缓冲与64 MiB活数据，手动释放后重新访问活数据。NoGC用于明确建立空闲提交空间，不把这份数字当作游戏ServerGC搜索的峰值。
+`tools/testing/checks/CombatSolver.GcPolicyChecks/GcManualMemoryReleaseChecks.cs` 直接链接生产GC策略。固定1 GiB NoGC预留，200 MiB短命搜索缓冲与64 MiB活数据，手动释放后重新访问活数据。NoGC用于明确建立空闲提交空间，不把这份数字当作游戏ServerGC搜索的峰值。
 
 字节数为各自单次进程的实际采样；工作集不是堆大小，private不是live。修复前后各模式独立进程，时间未用来作性能结论。
 
@@ -36,10 +36,10 @@ PR固定head `d5100d1c8b79cb82259ca9f151f774c802f5fc01`，合并 `c6e60681`。�
 旧实现明确在活页面修剪断言失败。最终同时断言：短命缓冲不可达、Aggressive完成、NoGC已退出、private至少归还512 MiB、活数据再次访问的回涨小于32 MiB。最终托管提交为67215360/67219456字节。日志故障的 `diagnostic-failure` 8项通过。最终Mod Release零警告/错误，Windows结构检查通过；PowerShell启动同时输出一条 `Import-Clixml: Root element is missing.`，门禁本身正常报告完成并返回0，未调查用户shell启动缓存。
 
 ```powershell
-dotnet run --project tools\CombatSolver.GcPolicyChecks\CombatSolver.GcPolicyChecks.csproj -c Release -- manual-release
+dotnet run --project tools\testing\checks\CombatSolver.GcPolicyChecks\CombatSolver.GcPolicyChecks.csproj -c Release -- manual-release
 $env:DOTNET_gcServer = '1'
-dotnet tools\CombatSolver.GcPolicyChecks\bin\Release\net9.0\CombatSolver.GcPolicyChecks.dll manual-release
-dotnet run --project tools\CombatSolver.GcPolicyChecks\CombatSolver.GcPolicyChecks.csproj -c Release -- diagnostic-failure
+dotnet .local\tool-build\CombatSolver.GcPolicyChecks\bin\Release\net9.0\CombatSolver.GcPolicyChecks.dll manual-release
+dotnet run --project tools\testing\checks\CombatSolver.GcPolicyChecks\CombatSolver.GcPolicyChecks.csproj -c Release -- diagnostic-failure
 ```
 
 ## 原生释放后自动部署
@@ -49,7 +49,7 @@ runId `00f77f0bead44df99cd3de3e80093ce0`，Windows自有ServerGC隔离实例，R
 结果Passed：`ManualMemoryReleaseAuto:retainedPlan:liveUnchanged:searches=1:noNewSearch`、`UnexpectedReplans:0`，原生75/75 HP、第1回合胜利。请求总19.06秒，Instant/0秒，启动器已删除整个实例。证据在忽略目录 `.local/manual-memory-release/native/`。
 
 ```powershell
-pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId MANUAL-MEMORY-RELEASE-AUTO-CONTRACT -CharacterId REGENT -Seed RELEASEQUASAR20261001 -EnemyCurrentHp 1 -InitialPlayerEnergy 8 -InitialPlayerStars 10 -ClearPlayerPiles -CardsPath coverage\unattended\manual-memory-release-regent-cards.json -PerformancePresetForTest High -SearchBeamWidthForTest 16 -SearchMaxExpandedNodesForTest 1000 -SearchMaxDegreeOfParallelismForTest 2 -FixedSearchBudget -SearchBudgetOverrideMilliseconds 10000 -ExpectedInitialFirstActionCardId QUASAR -ExpectedInitialExecutableActionCountAtLeast 2 -ExpectedInitialProjectedBattleHpLost 0 -ExpectedUnexpectedReplansAtMost 0 -ExpectedFinishedTurnAtMost 2 -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -HeadlessFastModeForTest Instant -RuntimeProfile server-generational -HeadlessInstance memory-release-auto-20261001 -EvidenceDirectory .local\manual-memory-release\native -TimeoutSeconds 120 -CleanupInstanceOnExit
+pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId MANUAL-MEMORY-RELEASE-AUTO-CONTRACT -CharacterId REGENT -Seed RELEASEQUASAR20261001 -EnemyCurrentHp 1 -InitialPlayerEnergy 8 -InitialPlayerStars 10 -ClearPlayerPiles -CardsPath coverage\unattended\manual-memory-release-regent-cards.json -PerformancePresetForTest High -SearchBeamWidthForTest 16 -SearchMaxExpandedNodesForTest 1000 -SearchMaxDegreeOfParallelismForTest 2 -FixedSearchBudget -SearchBudgetOverrideMilliseconds 10000 -ExpectedInitialFirstActionCardId QUASAR -ExpectedInitialExecutableActionCountAtLeast 2 -ExpectedInitialProjectedBattleHpLost 0 -ExpectedUnexpectedReplansAtMost 0 -ExpectedFinishedTurnAtMost 2 -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -HeadlessFastModeForTest Instant -RuntimeProfile server-generational -HeadlessInstance memory-release-auto-20261001 -EvidenceDirectory .local\manual-memory-release\native -TimeoutSeconds 120 -CleanupInstanceOnExit
 ```
 
 ## 验证边界

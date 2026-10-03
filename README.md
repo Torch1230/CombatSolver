@@ -148,13 +148,13 @@ Combat Solver 使用受时间、节点和内存预算约束的 Beam Search。它
 项目使用 C#、.NET 9 和 Godot。Windows 构建命令：
 
 ```powershell
-pwsh -NoProfile -File tools/build-local-stack.ps1 -Configuration Release
+pwsh -NoProfile -File tools/build/build-local-stack.ps1 -Configuration Release
 ```
 
 Linux 构建命令：
 
 ```bash
-./tools/build-local-stack.sh --configuration Release
+./tools/build/build-local-stack.sh --configuration Release
 ```
 
 构建脚本会探测常见 Steam 安装路径。自动探测不适用时，复制 `local.props.example` 为 `local.props` 并配置本机路径；不要提交个人绝对路径。
@@ -167,7 +167,7 @@ Linux 构建命令：
 - [测试矩阵](docs/TEST_MATRIX.md)
 - [重构路线](docs/refactoring/refactor-roadmap.md)
 
-Windows 和 Linux 的无人测试入口分别为 `tools/run-unattended-test.ps1` 与 `tools/run-unattended-test.sh`。测试会启动隔离的游戏 `--headless` 进程；涉及真实布局、动画、输入和性能的结论仍需在可见 Steam 会话中验证。
+Windows 和 Linux 的无人测试入口分别为 `tools/testing/run-unattended-test.ps1` 与 `tools/testing/run-unattended-test.sh`。测试会启动隔离的游戏 `--headless` 进程；涉及真实布局、动画、输入和性能的结论仍需在可见 Steam 会话中验证。
 
 ## 问题反馈
 

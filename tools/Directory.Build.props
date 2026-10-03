@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <CombatSolverRepositoryRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</CombatSolverRepositoryRoot>
+    <BaseOutputPath>$(CombatSolverRepositoryRoot).local/tool-build/$(MSBuildProjectName)/bin/</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(CombatSolverRepositoryRoot).local/tool-build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/bin/**;**/obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

@@ -11,7 +11,7 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 
 如果任务改变卡牌/怪物结算，叠加 `combat-semantic-change`；改变 Beam 权重或候选政策，叠加 `search-performance-optimization`。纯重构不能借机改变这些行为。
 
-开始前读取 `docs/ARCHITECTURE.md`，并读取 `tools/verify-refactor-boundaries.ps1` 与 `tools/verify-refactor-boundaries.sh` 中对应边界，只读取本次涉及的源码分片。两套门禁分别服务 Windows 和 Linux，规则必须保持等价。
+开始前读取 `docs/ARCHITECTURE.md`，并读取 `tools/inspection/verify-refactor-boundaries.ps1` 与 `tools/inspection/verify-refactor-boundaries.sh` 中对应边界，只读取本次涉及的源码分片。两套门禁分别服务 Windows 和 Linux，规则必须保持等价。
 
 ## 1. 先定义迁移前后的所有权
 
@@ -92,8 +92,10 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 - 问题包 `CombatBugReportMetadata` 在主线程冻结战斗/角色/怪物与比较标量；Uploader 读取归档中的同一份 report.json，发送前核对身份和玩家描述。新包按 report.json、diagnostics/、replay/ 组织，CheckpointArchive 兼容旧包路径，禁止后台重新采样 live 元数据。
 - unattended 的协议、建局、执行、断言和结果写入分别属于 ProtocolHost、ScenarioBuilder、Executor、Assertions、Writer。GeneratedCombatScenario只解析原版目录与独立种子流；ScenarioBuilder执行生成配置并独占临时开局选择器，Writer保存完整配置/装备/开局证据。批量脚本不得把生成随机流写入游戏战斗RNG或把选择器延长到正式部署。
 - `src/Replay` 只依赖标准库：包校验、顺序事件临时文件；Runtime 冻结原生输入，Testing 重放和对账，CheckpointTool 负责批量调度与结果口径。跨平台脚本只承担本平台启动与进程所有权。
-- headless 实例目录、完整游戏/Mod 内容快照和主机资源预约属于 `tools/headless-runtime.ps1/.sh`；默认实例根固定为当前仓库 `.local/headless-instances/<实例>`，不得回到 `%LOCALAPPDATA%` 或 XDG state。用户目录只保留跨任务互斥所需的小型主机租约。启动器保留请求协议、精确 PID/出生身份终止、结果与静稳 ACK。不得把测试协调放入游戏 Search/Runtime，或只删全局进程检查而继续共享 DLL/协议。并行只作正确性/吞吐验证，性能对照使用独占模式。
+- headless 实例目录、完整游戏/Mod 内容快照和主机资源预约属于 `tools/testing/headless-runtime.ps1/.sh`；默认实例根固定为当前仓库 `.local/headless-instances/<实例>`，不得回到 `%LOCALAPPDATA%` 或 XDG state。用户目录只保留跨任务互斥所需的小型主机租约。启动器保留请求协议、精确 PID/出生身份终止、结果与静稳 ACK。不得把测试协调放入游戏 Search/Runtime，或只删全局进程检查而继续共享 DLL/协议。并行只作正确性/吞吐验证，性能对照使用独占模式。
 - CoverageCatalog 只消费 `IMethodMirrorRegistryDescriptorProvider`，不反射 registry 私有字段。
+- 覆盖材料按 `coverage/README.md` 收纳；CoverageCatalog 从 catalog/evidence 读取登记，按完整路径消费 fixtures，替换 catalog/generated 快照，候选输入生成到 .local。移动目录保持证据等级与语义输入，运行器继续由 tools 持有。
+- Testing 按 `src/Testing/README.md` 的 Host、Support、Replay、Contracts 与 Regressions 收纳；移动保持原 partial 类型与协议。退役调查先检查跨层消费者，提取仍复用的 helper，再删除专用路由。一次性测试在 .local/tool-tasks 显式接入，任务结束清理；只有独立、可复跑的机制合同进入正式源码树。
 
 ## 3. 实现方式
 
@@ -122,7 +124,7 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 纯职责移动的最低验证：
 
 - Release 编译；
-- `pwsh -NoProfile -File tools\verify-refactor-boundaries.ps1`（Windows）或 `./tools/verify-refactor-boundaries.sh`（Linux）；
+- `pwsh -NoProfile -File tools\inspection\verify-refactor-boundaries.ps1`（Windows）或 `./tools/inspection/verify-refactor-boundaries.sh`（Linux）；
 - 一个穿过新边界的代表 headless 场景；
 - 若移动 Beam 比较器，比较动作序列、expanded/transitions/choice branches 和各剪枝计数；
 - 若移动 UI 边界，验证 renderer 签名与 ready/deploying/complete 事件，人工视觉项不冒充 headless 通过；

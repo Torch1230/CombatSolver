@@ -4,7 +4,7 @@
 
 ## 样本与测量边界
 
-开发集五职业精英根 `coverage/novelty-search/dev-00..04`，High、Beam48、2000节点、DOP1、Evaluate、Smart药水、30秒上限；.NET 9，`DOTNET_TieredCompilation=0`，不开NoGC。顺序运行进程，未并行运行性能样本。
+开发集五职业精英根 `coverage/corpora/novelty/dev-00..04`，High、Beam48、2000节点、DOP1、Evaluate、Smart药水、30秒上限；.NET 9，`DOTNET_TieredCompilation=0`，不开NoGC。顺序运行进程，未并行运行性能样本。
 
 - 5次快照诊断，统计78,090个快照。诊断开启Harmony观察和阶段计时，时间/分配不用于性能结论。
 - 44次未开启诊断的原型ABBA对照。每个对照组核对完整路线、根、续用、质量、搜索政策、剪枝计数和全部非时序指标，均相同，均未触及时间边界。
@@ -85,8 +85,8 @@ Hook索引将不超过64个监听器的每种单Hook参与位置编译为位图�
 
 ```bash
 OFFLINE_HARNESS_SHUFFLE_WITNESS=1 \
-  dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
-  --request coverage/unattended/duplicate-choice-pruning-dense-20260929.json \
+  dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+  --request coverage/fixtures/scenarios/choices/duplicate-choice-pruning-dense-20260929.json \
   --out /tmp/combat-shuffle-witness --label shuffle-witness --milestone M1
 ```
 

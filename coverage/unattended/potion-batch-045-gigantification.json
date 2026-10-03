@@ -1,5 +1,0 @@
-{
-  "potionId": "GigantificationPotion",
-  "target": "Player",
-  "expectedPlayerPowers": { "GIGANTIFICATION_POWER": 1 }
-}

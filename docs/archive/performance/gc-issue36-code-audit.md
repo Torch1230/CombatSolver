@@ -53,11 +53,11 @@ P1 已有以下机制，不应重复当成未开发工作：
 | 指标或来源 | 当前含义 | 研究时的处理 |
 | --- | --- | --- |
 | `TotalMaxObservedGcPause` | `CombatSearchCoordinator.cs` 的 `1394,1408–1409,1422–1423` 把整个 Smart 边界的累计暂停同时计入 total 和 max。窗口有多次暂停时，这不是单次最大值。 | 区分累计暂停、轮询观测最大暂停和 trace 严格最大暂停；不能用同一数值填充 total/max。 |
-| worker `MaxObservedGcPause` | [SearchWorkPacer.cs](../../../src/Search/SearchWorkPacer.cs) `24–26,57–71` 定期发现代计数变化后，只读取最近 GC 的 `PauseDurations`。轮询间可漏过 GC；搜索退出前也不保证再次采样。 | 继续称为 observed max，不能声称等价于 trace。当前 [SolverPolicy.cs](../../../src/Testing/UnattendedTestRunner.SolverPolicy.cs) `429–434` 却把总字段解释为“单次 GC 最大暂停”，调整指标时应同步测试口径。 |
+| worker `MaxObservedGcPause` | [SearchWorkPacer.cs](../../../src/Search/SearchWorkPacer.cs) `24–26,57–71` 定期发现代计数变化后，只读取最近 GC 的 `PauseDurations`。轮询间可漏过 GC；搜索退出前也不保证再次采样。 | 继续称为 observed max，不能声称等价于 trace。当前 [SolverPolicy.cs](../../../src/Testing/Contracts/Search/UnattendedTestRunner.SolverPolicy.cs) `429–434` 却把总字段解释为“单次 GC 最大暂停”，调整指标时应同步测试口径。 |
 | `gc0/gc1/gc2` | `Phases.cs` 的 `493–496` 记录 `CollectionCount` delta，并独立记录 `GetTotalPauseDuration` delta。 | 各代计数变化不能直接解释为强制 Full GC 次数；NoGC 启动的计数影响也不能换算成暂停。 |
 | 强制回收次数 | 搜索内实际调用在 `SearchGcPolicy.cs` `1596–1602`；后台日志 `1141–1151` 已区分 `collection_requests` 与 `gen2_delta`。 | 建立统一的调用计数与生命周期事件；一次回收请求、一次完成事件、一次暂停是不同概念。失败/取消也需保留已发生的事件。 |
 | `NoGcRegionRolloverCount` | `SearchGcPolicy.cs` 的 `372–386` 仅在下一搜索入口余量不足时增加；不包含搜索内或 Smart 重启 `1507–1515`。 | 保留原名称含义，另计 start/end/restart/loss；不能直接当作 Issue 要求的总 restart。 |
-| 结果内存字段 | [Writer.cs](../../../src/Testing/UnattendedTestRunner.Writer.cs) `79–90` 是捕获结果时的内存/NoGC 状态。回收日志也只是 before/after 样本。 | 不得称为搜索全过程峰值；需要单独采样 managed、working set，并注明采样间隔与口径。 |
+| 结果内存字段 | [Writer.cs](../../../src/Testing/Host/UnattendedTestRunner.Writer.cs) `79–90` 是捕获结果时的内存/NoGC 状态。回收日志也只是 before/after 样本。 | 不得称为搜索全过程峰值；需要单独采样 managed、working set，并注明采样间隔与口径。 |
 | 阶段时间和分配 | [SearchPerformanceMetrics.cs](../../../src/Search/SearchPerformanceMetrics.cs) `46–60,64–75` 按线程计量并合并 worker。阶段可能嵌套，worker 时间可重叠。 | 不把阶段 ticks 的和解释为墙钟；不把嵌套阶段分配相加作为总分配。 |
 | 系统内存余量 | `SearchGcPolicy.cs` `1390–1396,1695–1700` 来源是 `GC.GetGCMemoryInfo()`，signal 再加当前区间的过程分配作预测。 | 这是基于最近 GC 的预测，不能直接称实时 OS 内存采样；系统其他进程变化及区域复用时的估计误差应在实验中记录。 |
 

@@ -9,8 +9,8 @@ on:
     branches: [main]
     paths:
       - docs/community/publication-ledger.json
-      - tools/sync-community-claims.py
-      - tools/test-community-claims.py
+      - tools/community/sync-community-claims.py
+      - tools/community/test-community-claims.py
       - .github/workflows/community-claims.yml
   workflow_dispatch:
 
@@ -33,9 +33,9 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
       - name: Verify community claim synchronization
-        run: python3 tools/test-community-claims.py
+        run: python3 tools/community/test-community-claims.py
       - name: Apply claims and sync labels, queue owners, and completion
         env:
           GH_TOKEN: ${{ github.token }}
           PYTHONIOENCODING: utf-8
-        run: python3 tools/sync-community-claims.py
+        run: python3 tools/community/sync-community-claims.py

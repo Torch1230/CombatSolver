@@ -309,6 +309,6 @@
 ## 可复跑证据
 
 - [逐模型机器清单](choice-source-inventory-20260912.json)：213项、原生方法/调用、能力授予边、独立判断及边界。
-- [只读IL扫描器](../../../tools/ChoiceSourceAudit/Program.cs)：`dotnet run --project tools/ChoiceSourceAudit/ChoiceSourceAudit.csproj -c Release -- <输出.json>`。通过local.props或Sts2DataDir指定本机游戏引用。扫描不启动游戏、不执行模型效果、不写覆盖目录；任何IL读取失败记录并返回非零。
+- [只读IL扫描器](../../../tools/inspection/ChoiceSourceAudit/Program.cs)：`dotnet run --project tools/inspection/ChoiceSourceAudit/ChoiceSourceAudit.csproj -c Release -- <输出.json>`。通过local.props或Sts2DataDir指定本机游戏引用。扫描不启动游戏、不执行模型效果、不写覆盖目录；任何IL读取失败记录并返回非零。
 - 关键源码：[选牌与组合](../../../src/Search/CardChoiceSupport.cs)、[回合开始选牌](../../../src/Prediction/TurnStartChoiceSupport.cs)、[遗物入口](../../../src/Search/SimulatedCombatState.RelicTurnStart.cs)、[药水选择](../../../src/Search/PotionChoiceSupport.cs)、[生成牌](../../../src/Engine/InCombat/Mirrors/Cards/OnPlay/CardGenerationCardMirrors.cs)、[根卡池缓存](../../../src/Search/RootCombatCardGenerationPoolSnapshot.cs)。
 - 本地原始扫描和简中查名证据位于`.local/choice-migration-20260912/`，完整本地化文本不进入源码。

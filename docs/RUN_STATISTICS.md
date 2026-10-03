@@ -24,19 +24,11 @@ RunManager 的新局/Launch 与 SaveManager.SaveRunHistory 补丁只采样主线
 
 开启多人、无头或无人测试不启动跑局统计采集。设置说明有中英文。原生 UI 操作、长时间帧率和真实结算尚需可见游戏验收；自动合同不替代这些项目。
 
-## 服务端
+## 客户端接口与验证
 
-`tools/OnlinePresence/run-statistics.mjs` 维护独立 SQLite 表：`runs` 与 `run_history_snapshots`。复用 HTTPS 和管理登录，兼容旧心跳；昵称保持原在线系统的内存生命周期，离线战绩使用匿名档案标识。
+匿名事件发送至 `POST /v1/runs`（`{sessionId,run}`），首次历史快照发送至 `POST /v1/run-history`（`{sessionId,historical}`）。问题包 report.json 的可选 runStatistics 是提交时快照，后续成绩变化不改旧报告。
 
-- `POST /v1/runs`：`{sessionId,run}`。同一安装＋跑局 ID 幂等；pending 可更新，已结算冲突返回 409。
-- `POST /v1/run-history`：`{sessionId,historical}`。按安装＋档案保留首次历史快照。
-- `GET /api/run-statistics`：管理登录必需。分页 30；source=solver/historical，participation=full/partial/none/all，activity=solve/execute/auto，character、version、ascension、since/until（毫秒）；streak_min/max、best_min/max、rate_min/max（百分比）、wins_min、losses_min、abandoned_min、runs_min；sort=streak/best/rate/wins/losses。
+- `dotnet run --project tools/testing/checks/RunStatisticsTests -c Release`：连胜、放弃、缺口、持久化、去重、补传收据、历史隔离和原生结算恢复。
+- `UI-LOCALIZATION`：中英设置与 headless 统计节点隔离。
 
-问题包 report.json 的可选 `runStatistics` 是提交时快照。日志站数值筛选不匹配旧包 null；不回填、不随后来战绩变化。日志站不以问题包份数统计全站胜率。
-
-## 验证入口
-
-- `dotnet run --project tools/RunStatisticsTests -c Release`：连胜、放弃、缺口、持久化、去重、补传收据、历史隔离、原生结算恢复。
-- `npm test`（tools/OnlinePresence）：统计、筛选、权重、幂等、管理鉴权、旧心跳及持久登录。
-- `UI-LOCALIZATION`：中英设置和 headless 统计节点隔离。
-- 日志站 `test_reports_v2`、`test_agent_api.AgentApiTests`：提交快照、缺失字段、筛选、排序、百分比验证与归档。
+服务存储、管理筛选及 Node 测试在独立私有仓库 [combatsolver-presence-service](https://github.com/Torch1230/combatsolver-presence-service/blob/main/docs/RUN_STATISTICS.md) 维护。

@@ -46,7 +46,7 @@
 | 计算期间状态变化会丢弃整个结果 | [SolverController.cs](../../../src/Runtime/SolverController.cs)、[LiveCombatStamp.cs](../../../src/Runtime/LiveCombatStamp.cs) | 多人需要区分旧数值过期、原序列可重评估、下一步已不可执行 |
 | 卡牌目标枚举未展开队友目标 | [CombatBeamSolver.Expansion.Candidates.cs](../../../src/Search/CombatBeamSolver.Expansion.Candidates.cs) | 使用稳定玩家／生物身份表达目标，区分敌人、队友、自身与群体 |
 | 已捕获九条战斗 RNG 的计数与内部状态 | [ContinuationStamp.cs](../../../src/Runtime/ContinuationStamp.cs) | 复用完整状态比较，增加按已执行前缀判断的多人观测 |
-| 现有差分重点围绕一个指定玩家 | [UnattendedTestRunner.StateDiff.cs](../../../src/Testing/UnattendedTestRunner.StateDiff.cs) | 多人差分必须逐玩家比较，不能仅比较本地玩家与敌人 |
+| 现有差分重点围绕一个指定玩家 | [UnattendedTestRunner.StateDiff.cs](../../../src/Testing/Support/UnattendedTestRunner.StateDiff.cs) | 多人差分必须逐玩家比较，不能仅比较本地玩家与敌人 |
 | 原版存在虚拟多人语义 | 原版 `RunManager.IsSingleplayerOrFakeMultiplayer`、`CombatManager.AllPlayersReadyToEndTurn` | 可作为单进程结算测试起点，但会绕过部分多人结束回合同步 |
 | 原版动作携带玩家身份 | 原版 `PlayCardAction`、`EndPlayerTurnAction` | 脚本指定玩家执行具有源码基础；选牌和完整动作队列链路仍需实测 |
 | 原版提供本机 ENet 联机 | 原版 `NMultiplayerTest` 使用本机地址和房主／客户端服务 | 可验证真实同步；无头启动、多人会话清理与选牌驱动需先做可行性验证 |
@@ -303,12 +303,12 @@ P2 可按机制小批完成并立即验证，不等待全部内容写完才测�
 
 ```powershell
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
-pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1
+pwsh -NoProfile -File tools/inspection/verify-refactor-boundaries.ps1
 ```
 
 ```bash
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
-./tools/verify-refactor-boundaries.sh
+./tools/inspection/verify-refactor-boundaries.sh
 ```
 
 多人建局、联机编排和内容测试参数在 P0/P1 实现并跑通后补入实际命令。普通 `dotnet` 离线宿主只用于搜索指标，不能代替原版结算和联机验收；无头耗时不能外推可见帧率。

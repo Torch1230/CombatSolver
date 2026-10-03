@@ -1,7 +1,0 @@
-node_modules/
-data/
-private/
-*.env
-*.pem
-*.key
-*.sqlite*

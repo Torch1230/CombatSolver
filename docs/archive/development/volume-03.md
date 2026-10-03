@@ -2,13 +2,13 @@
 
 ## 未发布：离线搜索宿主（2026-09-16）
 
-- 新增 `tools/OfflineSearchHarness/`：不启动 Godot，在普通 .NET 9 进程里建出一场战斗、推进到玩家第一回合，再调 `CombatRootSnapshot.Capture` 与 `CombatSearchCoordinator.Solve`（或单次 `CombatBeamSolver`）跑一次固定预算搜索。用途是批量测量搜索量与路线，不做正确性验收；用法、口径、绕过表与限制见 [离线搜索宿主](../../OFFLINE_SEARCH_HARNESS.md)。
+- 新增 `tools/search/OfflineSearchHarness/`：不启动 Godot，在普通 .NET 9 进程里建出一场战斗、推进到玩家第一回合，再调 `CombatRootSnapshot.Capture` 与 `CombatSearchCoordinator.Solve`（或单次 `CombatBeamSolver`）跑一次固定预算搜索。用途是批量测量搜索量与路线，不做正确性验收；用法、口径、绕过表与限制见 [离线搜索宿主](../../OFFLINE_SEARCH_HARNESS.md)。
 - 为此在 `src/` 加了四处入口，都不改搜索、评分、保留与协调器的任何行为，且在宿主不用它们时游戏内路径与改动前一致：
   - `CombatSolver.csproj` 加 `<InternalsVisibleTo Include="OfflineSearchHarness" />`，宿主对模组本体不做公开化。
   - `UnattendedTestRunner.BeginOfflineSession(OfflineSessionOptions)`：把固定预算、预算毫秒、并行度、宽度组合开关按无人测试请求的同一段映射（`ProtocolHost.ConfigureSearchOverrides`）写进协议主机，返回的作用域释放即还原。
   - `UnattendedTestRunner.OfflineScenarioSession`：建一个不挂在 `NGame` 上的 runner，把 `ScenarioBuilder` 的生成场景注入方法与装备注入静态方法原样转出去；宿主因此不再用反射写私有成员或造未初始化实例。
   - `SolverController.DisplayServerNameProvider`：显示服务器名字的取值口，默认仍直接问 Godot，只有离线进程把它换成固定的 `"headless"`。
-- `tools/verify-refactor-boundaries.sh` / `.ps1` 的两条边界声明随之改为 `partial`（`ProtocolHost`、`Writer`），没有新增或删除边界。
+- `tools/inspection/verify-refactor-boundaries.sh` / `.ps1` 的两条边界声明随之改为 `partial`（`ProtocolHost`、`Writer`），没有新增或删除边界。
 - 合并到当前 Windows 主线时补齐离线宿主导入多版本 RitsuLib 引用所需的 `0.111.0` 目标，并让运行期解析器同时查找该版本的兼容程序集与共享程序集；宿主与模组工程现在使用同一完整版本包。
 
 ## 未发布：路线界面复用与语言通知修复（2026-09-15）
@@ -51,7 +51,7 @@
 - 独立实验实现投掷匕首、杂技和早有准备共用的自身弃牌暂停点，优先覆盖杂技／早有准备普通与升级版本。保存明确执行位置与历史身份，从检查点 Fork 独立子分支，复用已完成的抽牌/伤害；选择与出牌尾部继续调用原语义。复杂事务拒绝，后续再次选牌回退完整重放。
 - 杂技 9/10 个选择、早有准备 8/36 个选择或组合全部与完整模拟重放对账，含真实洗牌、历史/九条 RNG、兄弟修改与 DOP2；五个普通/升级计时版本分别通过原生完整结算对照。投掷匕首另覆盖取消、异常、释放和拒绝边界。
 - 修正旧路径误执行原型诊断的对照污染后，同一实验 DLL 的 8 分支单元耗时：杂技普通/升级减少 34.21%/33.92%，早有准备减少 29.11%/30.16%，投掷匕首减少 45.50%。旧性能数据明确作废并保留；全部样本、分配与受控保留堆口径见[报告](../performance/choice-continuation-prototype-20260914.md)。
-- 代码与可复跑 builder/runner 仅在 [ChoiceContinuationPrototype](../../../tools/ChoiceContinuationPrototype/README.md)，正常构建与默认搜索未接入，不改正式搜索预算、策略或第三方登记。整搜收益、真实搜索命中率与峰值未验证；不提升版本、不发包。
+- 代码与可复跑 builder/runner 仅在 [ChoiceContinuationPrototype](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ChoiceContinuationPrototype/README.md)，正常构建与默认搜索未接入，不改正式搜索预算、策略或第三方登记。整搜收益、真实搜索命中率与峰值未验证；不提升版本、不发包。
 
 ## 未发布：蟹战完整搜索延迟继续优化（2026-09-14）
 
@@ -66,13 +66,13 @@
 - 整合研究分支的抽牌后选择前缀学习与九条 RNG 惰性物化。前缀只在当前 lane 实际观察到稳定点后的有效选择后启用，仍属同一父节点；未使用的 RNG 共享完整不可变状态，已有可变实例在 Fork 当时捕获，保留调用方旧引用的隔离。
 - 卡牌首次进场检查迁入 wrapper：Fork 继承、Clone 重查，根身份集合只读共享，污染清除/层数变化仍逐次检查。精确冻结跑局监听前缀省去逐项重映射，其他监听及 Power 保持原映射和失效。
 - 长期资源值相同的完整候选池省去无消费者的祖先排名暂存；非均匀池保持最高值群组、原排序及排名恢复。原内存预测和回收安全系数保持不变。
-- 生成器允许显式 `fixedSearchBudget:false` 测量正常完整请求；NoGC断言可以显式允许已建立后的正常回退。新增[性能研究工具](../../../tools/PerformanceBenchmarks/README.md)，保存真实进程峰值、完整动作/政策及默认拒绝未知质量字段漂移的对照。
+- 生成器允许显式 `fixedSearchBudget:false` 测量正常完整请求；NoGC断言可以显式允许已建立后的正常回退。新增[性能研究工具](../../../tools/performance/PerformanceBenchmarks/README.md)，保存真实进程峰值、完整动作/政策及默认拒绝未知质量字段漂移的对照。
 - 语义合同及短预算固定工作量通过；最终候选十个开局24次完整请求中22次严格oracle相同，亡灵契约师女王两次仅总转移少1、动作/路线一致，未作为严格同工作量提速。储君女王平均耗时−27.97%、峰值−17.00%；蟹战四次/版本耗时−18.05%、峰值−9.57%。轻场景与疑点交错复核未见稳定逐场退化，全部样本、反例和取舍见[本批报告](../performance/general-allocation-20260914.md)。数字限Linux无头，不外推可见/Windows或整场部署；不改变GC配置、不提升版本或发包，可恢复选牌执行器等高成本方案保留待审。
 - 蟹战/静默女王的累计GC暂停均值分别上升48.73%/45.26%，尽管完整计算耗时下降；不宣称GC暂停或实机卡顿改善。
 
 ## 在线监控：离线战绩身份（2026-09-14）
 
-- “查战绩”页面在玩家离线、内存昵称过期后直接显示完整安装 ID，不再显示“离线 · 离线玩家”。昵称仍只存在于在线内存名单，不新增持久化个人信息；在线玩家继续显示当前昵称。核心筛选区新增玩家昵称包含搜索，同名玩家全部返回；因为昵称不落库，该筛选只覆盖当前在线玩家，离线战绩按安装 ID 或档案 ID 查询。
+此服务记录已迁至独立私有仓库的 [历史卷](https://github.com/Torch1230/combatsolver-presence-service/blob/main/docs/archive/history-development-202609.md)；原文与当时验证范围完整保留。
 
 ## 0.38.6：格挡药路线直插与录像收录辅助 Mod 判定（2026-09-14）
 
@@ -91,13 +91,7 @@
 
 ## 在线服务：DAU（2026-09-14）
 
-- DAU 图表改为在线人数曲线同款 Chart.js：绿色单调平滑折线、淡色填充、浅网格及统一高度；保留缺失日空值，采集状态移到 tooltip。展开后创建图表，刷新复用实例。
-
-监控心跳按北京时间和安装标识记录每日去重活跃，保存 90 天；监控后台通过认证 `/api/dau` 展示 7/30/90 天曲线、日环比、周同比。比较按相同已完成分钟对齐，覆盖不足留空；旧表只有最后在线时间，不回填虚构日活。按用户澄清，入口位于监控后台，已移除日志后台入口及跨服务汇总共享。独立于客户端版本，无需更新 Mod。协议与验证见 [DAU 说明](../../../tools/OnlinePresence/DAU.md)。
-
-> 当前定版：`0.39.0`；`0.38.7` 未单独发布，其改动并入本版。
-> 本文是项目的持续记录；历史证据不代表本轮重新验证。
-> “未来构想”均不是已经实现的功能。
+此服务记录已迁至独立私有仓库的 [历史卷](https://github.com/Torch1230/combatsolver-presence-service/blob/main/docs/archive/history-development-202609.md)；原文与当时验证范围完整保留。
 
 ## 0.38.4：孤注一掷与保命资源
 

@@ -64,7 +64,7 @@
 
 任务分支 `fix/silent-unexpected-replans` 从本地 `main` 的 `2c7bee5` 建立。访问远端时默认 TLS 后端及 schannel 均握手失败，因此未能确认远端最新 main；本轮只提交该筛选记录。
 
-本轮 L0 验证：`dotnet build CombatSolver.csproj -c Release` 成功（0 警告、0 错误）；`pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1` 返回 `REFACTOR_BOUNDARIES_OK search_files=78`。无行为变化，开发笔记与测试矩阵没有新增修复或行为证据条目；未启动 headless 进程。
+本轮 L0 验证：`dotnet build CombatSolver.csproj -c Release` 成功（0 警告、0 错误）；`pwsh -NoProfile -File tools/inspection/verify-refactor-boundaries.ps1` 返回 `REFACTOR_BOUNDARIES_OK search_files=78`。无行为变化，开发笔记与测试矩阵没有新增修复或行为证据条目；未启动 headless 进程。
 
 ## 修正版本范围后的静默猎手分诊
 

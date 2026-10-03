@@ -6,19 +6,19 @@
 
 ## 1. 归因：不是 fork，也不是容器增长
 
-对基线（ce868b6）在 `sel-defect-elite-01`、20,000 节点、DOP16、No-GC 16 GB 下做 `dotnet-trace` 分配采样（`Microsoft-Windows-DotNETRuntime:0x1:5`），再用 [GcTraceAnalysis](../../../tools/GcTraceAnalysis/README.md) 按调用栈聚合：
+对基线（ce868b6）在 `sel-defect-elite-01`、20,000 节点、DOP16、No-GC 16 GB 下做 `dotnet-trace` 分配采样（`Microsoft-Windows-DotNETRuntime:0x1:5`），再用 [GcTraceAnalysis](../../../tools/performance/GcTraceAnalysis/README.md) 按调用栈聚合：
 
 ```bash
 mkdir -p /tmp/cstr && TMPDIR=/tmp/cstr ~/.dotnet/tools/dotnet-trace collect \
   --providers Microsoft-Windows-DotNETRuntime:0x1:5 --buffersize 512 \
   --output .local/bench/trace/alloc-20k.nettrace -- \
-  dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+  dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
   --request "$PWD/.local/learned-selector/data3/requests/sel-defect-elite-01.json" \
   --label tr20k-defect --out .local/bench/trace/out-tr20k \
   --profile VeryHigh --nodes 20000 --dop 16 --budget-ms 600000 --search-mode Evaluate \
   --enable-no-gc-region --no-gc-region-budget-gigabytes 16 --milestone M2 --measure-phases
 
-dotnet tools/GcTraceAnalysis/bin/Release/net9.0/GcTraceAnalysis.dll \
+dotnet .local/tool-build/GcTraceAnalysis/bin/Release/net9.0/GcTraceAnalysis.dll \
   --input .local/bench/trace/alloc-20k.nettrace --output .local/bench/trace/alloc-20k-all.json --top 100000
 ```
 
@@ -77,7 +77,7 @@ CardGenerationCardMirrors.SplashOnPlay
 命令模板（每根每种构建各 3 次，交错执行，`--measure-phases` 只在其中一次打开）：
 
 ```bash
-TMPDIR="$PWD/.local/tmp" timeout 900 dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+TMPDIR="$PWD/.local/tmp" timeout 900 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
   --request "$PWD/.local/learned-selector/data3/requests/<root>.json" --label <label> \
   --out .local/learned-selector/memory-e2e/<label> \
   --profile VeryHigh --nodes 100000 --dop 16 --budget-ms 600000 --search-mode Evaluate \

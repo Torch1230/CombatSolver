@@ -9,12 +9,12 @@
 ```bash
 # 1) 构建
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
-dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
-dotnet build tools/GcTraceAnalysis/GcTraceAnalysis.csproj -c Release
+dotnet build tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
+dotnet build tools/performance/GcTraceAnalysis/GcTraceAnalysis.csproj -c Release
 
 # 2) 跑一个有界搜索并录制分配事件（窗口 100 秒）
 OFFLINE_HARNESS_COMBATSOLVER_DLL=.godot/mono/temp/bin/Release/CombatSolver.dll \
-  dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+  dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
   --request <crab request.json> --label ALLOC --out .local/alloc-profile/run --milestone M2 \
   --profile VeryHigh --beam 135 --dop 1 --nodes 8000 &
 
@@ -23,7 +23,7 @@ dotnet-trace collect -p <harness pid> \
   --duration 00:00:01:40 -o .local/alloc-profile/alloc.nettrace
 
 # 3) 解析每个 GCAllocationTick 的调用栈
-dotnet tools/GcTraceAnalysis/bin/Release/net9.0/GcTraceAnalysis.dll \
+dotnet .local/tool-build/GcTraceAnalysis/bin/Release/net9.0/GcTraceAnalysis.dll \
   --input .local/alloc-profile/alloc.nettrace \
   --output .local/alloc-profile/allocation-analysis.json --top 40
 ```

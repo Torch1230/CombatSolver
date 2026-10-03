@@ -1,6 +1,6 @@
 {
  "baseline": "4bfb4407",
- "corpus": "coverage/equivalence/*/inputs/*-request.json（60 根）",
+ "corpus": "https://github.com/Torch1230/CombatSolver/tree/fe3edd2f7b4f3a92b266e6b13293810d31ce2e1b/coverage/corpora/equivalence/turn-start-60/*-request.json（60 根）",
  "configuration": {
   "profile": "VeryHigh",
   "beam": 135,
@@ -4066,7 +4066,7 @@
   }
  },
  "flagshipAbba": {
-  "request": "coverage/equivalence/before-side-turn-start-0433/inputs/EQ-IRONCLAD-ELITE-00-request.json",
+  "request": "https://github.com/Torch1230/CombatSolver/blob/fe3edd2f7b4f3a92b266e6b13293810d31ce2e1b/coverage/corpora/equivalence/turn-start-60/EQ-IRONCLAD-ELITE-00-request.json",
   "configuration": {
    "profile": "VeryHigh",
    "beam": 135,

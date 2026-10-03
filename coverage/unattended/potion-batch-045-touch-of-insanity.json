@@ -1,7 +1,0 @@
-{
-  "potionId": "TouchOfInsanity",
-  "target": "Player",
-  "clearPlayerHandBeforeUse": true,
-  "cards": [{ "cardId": "BASH", "pile": "Hand" }],
-  "choiceCardIds": ["BASH"]
-}

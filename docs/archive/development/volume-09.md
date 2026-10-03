@@ -114,8 +114,8 @@ Beam 中间排序与最终选择分离。稳健预设把 `1 HP` 约视为 `3` �
 - `src/Testing/`：原版游戏进程中的一次性无人测试协议、场景执行器与进度隔离补丁。
 - `src/UI/`：Godot 覆盖层 UI。
 - `docs/`：持续开发笔记与外部审计材料。
-- `tools/run-unattended-test.ps1`：直接启动使用独立用户目录、关闭 Steam 的 `--headless` 游戏进程，并等待同一 `runId` 的结构化结果；检测到玩家进程时拒绝启动。
-- `tools/CoverageCatalog/` 与 `coverage/`：稳定编号的战斗钩子目录、分类和完整性检查。
+- `tools/testing/run-unattended-test.ps1`：直接启动使用独立用户目录、关闭 Steam 的 `--headless` 游戏进程，并等待同一 `runId` 的结构化结果；检测到玩家进程时拒绝启动。
+- `tools/inspection/CoverageCatalog/` 与 `coverage/`：稳定编号的战斗钩子目录、分类和完整性检查。
 - `local.props.example`：本机依赖路径配置示例；真实 `local.props` 不进入版本控制。
 
 ## 5. 性能现状
@@ -218,7 +218,7 @@ Beam 中间排序与最终选择分离。稳健预设把 `1 HP` 约视为 `3` �
 
 ## 9. 原版规则验证与无人闭环
 
-- 开发流程通过 `tools/run-unattended-test.ps1` 直接启动塔 2 自带的 `--headless` 进程；它仍运行原版游戏程序集和动作队列，不是自建 CLI 或重写规则。
+- 开发流程通过 `tools/testing/run-unattended-test.ps1` 直接启动塔 2 自带的 `--headless` 进程；它仍运行原版游戏程序集和动作队列，不是自建 CLI 或重写规则。
 - 无人进程使用 `%LOCALAPPDATA%/CombatSolver/headless-runtime` 下的独立 `APPDATA/LOCALAPPDATA`，通过 `--force-steam=off` 避免 Steam 会话，并在隔离设置中显式允许 Mod 加载，绕过无界面的首次 Mod 警告确认。由于关闭 Steam 后游戏不扫描创意工坊，启动器只在 headless 生命周期内把当前游戏版本的 RitsuLib 投影到带所有权标记的本地临时目录，进程退出后删除；不会复制 RF 或其他创意工坊 Mod。脚本只复用 marker 明确记录的测试 PID；发现任何其他塔 2 进程时立即拒绝启动，不与玩家进程并发。
 - 一次性请求先写入同目录临时文件，再原子发布为 `user://combat_solver_test_request.json`，避免游戏读取半写入或被占用的请求。Mod 建立 `shouldSave:false` 的单人跑局，进入指定遭遇，通过原版 `CreatureCmd`、`CardPileCmd` 和动作队列注入状态，再调用求解器全自动。
 - 测试结果写入 `user://combat_solver_test_result.json`，必须以同一 `runId` 匹配；成功场景会清理跑局并回到主菜单，默认保留进程供下一场复用，只有最后一场显式要求时才退出。

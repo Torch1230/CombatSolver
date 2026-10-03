@@ -36,15 +36,15 @@
 ## 可重跑的基线输入
 
 ```bash
-./tools/run-unattended-test.sh \
+./tools/testing/run-unattended-test.sh \
   --scenario-id BOLD-BACKEND-BASELINE \
   --character-id NECROBINDER --seed SEARCH_PERF_NECROBINDER_POTION \
   --encounter-id AEONGLASS_BOSS --ascension 10 --act-index-for-test 2 \
   --enemy-current-hp 526 --initial-player-hp 41 --initial-player-max-hp 76 \
   --clear-run-deck --cards-json '[]' \
-  --run-cards-path coverage/unattended/search-performance-necrobinder-projected-run-cards.json \
-  --relics-path coverage/unattended/search-performance-necrobinder-projected-relics.json \
-  --potions-path coverage/unattended/search-performance-necrobinder-projected-potions.json \
+  --run-cards-path coverage/fixtures/search/search-performance-necrobinder-projected-run-cards.json \
+  --relics-path coverage/fixtures/search/search-performance-necrobinder-projected-relics.json \
+  --potions-path coverage/fixtures/search/search-performance-necrobinder-projected-potions.json \
   --potion-policy-for-test RequireAtLeastOne \
   --performance-preset-for-test VeryHigh --search-max-degree-of-parallelism-for-test 8 \
   --enable-no-gc-region-for-test 1 --no-gc-region-budget-gigabytes-for-test 16 \

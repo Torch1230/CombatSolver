@@ -1,9 +1,0 @@
-[
-  { "powerId": "DEXTERITY_POWER", "target": "Player", "amount": 1 },
-  { "powerId": "PARRY_POWER", "target": "Player", "amount": 10 },
-  { "powerId": "ARSENAL_POWER", "target": "Player", "amount": 1 },
-  { "powerId": "STRENGTH_POWER", "target": "Player", "amount": 9 },
-  { "powerId": "ORBIT_POWER", "target": "Player", "amount": 1, "dynamicVars": { "Energy": 4 } },
-  { "powerId": "RITUAL_POWER", "target": "Enemy", "amount": 9 },
-  { "powerId": "STRENGTH_POWER", "target": "Enemy", "amount": 18 }
-]

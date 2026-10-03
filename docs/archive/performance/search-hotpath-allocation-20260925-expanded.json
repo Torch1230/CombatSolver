@@ -84,7 +84,7 @@
     {
       "scenario": "dev-00-ironclad-elite",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-00-ironclad-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-00-ironclad-elite.json",
       "fixtureSha256": "eb714f35621be83ea6d23fe3a1075a6f82dbea9ad1aa3e211ff2f986db2f7c5e",
       "character": "IRONCLAD",
       "encounterKind": "Elite",
@@ -153,7 +153,7 @@
     {
       "scenario": "dev-01-silent-elite",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-01-silent-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-01-silent-elite.json",
       "fixtureSha256": "074cd67a48b0c880df59635185346713d5f21f1cc0ae351ba74ad48a5aaa67bd",
       "character": "SILENT",
       "encounterKind": "Elite",
@@ -232,7 +232,7 @@
     {
       "scenario": "dev-02-defect-elite",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-02-defect-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-02-defect-elite.json",
       "fixtureSha256": "485a56b3370977a33cc8d978563bf76cab40fb8428ae06a3d1f80737868d950b",
       "character": "DEFECT",
       "encounterKind": "Elite",
@@ -301,7 +301,7 @@
     {
       "scenario": "dev-03-regent-elite",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-03-regent-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-03-regent-elite.json",
       "fixtureSha256": "2f314d7d2d7d2decbcb37f7a303c41b8519a49a89990e927ac110b0a9e9455f7",
       "character": "REGENT",
       "encounterKind": "Elite",
@@ -377,7 +377,7 @@
     {
       "scenario": "dev-04-necrobinder-elite",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-04-necrobinder-elite.json",
+      "fixture": "coverage/corpora/novelty/dev-04-necrobinder-elite.json",
       "fixtureSha256": "b019a67e65e43d3ac808adfca7d67b6bcead860604b74a3a75fbd2414ed5156c",
       "character": "NECROBINDER",
       "encounterKind": "Elite",
@@ -446,7 +446,7 @@
     {
       "scenario": "dev-05-ironclad-boss",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-05-ironclad-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-05-ironclad-boss.json",
       "fixtureSha256": "0d0d6951d7092a31294f0c7d36ed8e89ad8a435534d9cd7f471f3b75bd369a49",
       "character": "IRONCLAD",
       "encounterKind": "Boss",
@@ -515,7 +515,7 @@
     {
       "scenario": "dev-06-silent-boss",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-06-silent-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-06-silent-boss.json",
       "fixtureSha256": "0d4af22d89a565a18580038ee2a5cede04474e55ecd7de4fc803a4c205133404",
       "character": "SILENT",
       "encounterKind": "Boss",
@@ -584,7 +584,7 @@
     {
       "scenario": "dev-07-defect-boss",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-07-defect-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-07-defect-boss.json",
       "fixtureSha256": "7d27e0fce3dca20c0fae82b593f42e05aa0f9c8d7d628cbdf94dad1c95dd5932",
       "character": "DEFECT",
       "encounterKind": "Boss",
@@ -653,7 +653,7 @@
     {
       "scenario": "dev-08-regent-boss",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-08-regent-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-08-regent-boss.json",
       "fixtureSha256": "a82b59ef746c75dbcc754dbb5624b2bea50b900e9784aa12ffff976429ae4413",
       "character": "REGENT",
       "encounterKind": "Boss",
@@ -722,7 +722,7 @@
     {
       "scenario": "dev-09-necrobinder-boss",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-09-necrobinder-boss.json",
+      "fixture": "coverage/corpora/novelty/dev-09-necrobinder-boss.json",
       "fixtureSha256": "ed60144ec2a03fa99b7acb8b16e963eae82a94ad90181ff2b3ddee822a669431",
       "character": "NECROBINDER",
       "encounterKind": "Boss",
@@ -791,7 +791,7 @@
     {
       "scenario": "dev-10-ironclad-monster",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-10-ironclad-monster.json",
+      "fixture": "coverage/corpora/novelty/dev-10-ironclad-monster.json",
       "fixtureSha256": "d108961c476e34e77f5e2ca36961e863360f227d76bfa8b90b45cd90dee26b68",
       "character": "IRONCLAD",
       "encounterKind": "Monster",
@@ -860,7 +860,7 @@
     {
       "scenario": "dev-11-silent-monster",
       "group": "dev",
-      "fixture": "coverage/novelty-search/dev-11-silent-monster.json",
+      "fixture": "coverage/corpora/novelty/dev-11-silent-monster.json",
       "fixtureSha256": "97122393d9fe7911012d0495f23ec513a56b61d2f830f52241d7fa05d4b467e3",
       "character": "SILENT",
       "encounterKind": "Monster",
@@ -929,7 +929,7 @@
     {
       "scenario": "holdout-00-ironclad",
       "group": "holdout",
-      "fixture": "coverage/novelty-search/holdout-00-ironclad.json",
+      "fixture": "coverage/corpora/novelty/holdout-00-ironclad.json",
       "fixtureSha256": "b6927223adeab3a1d4ff7a5826abcc21aaa8899d3c39effb96265a0bf71f3b57",
       "character": "IRONCLAD",
       "encounterKind": "Monster",
@@ -1004,7 +1004,7 @@
     {
       "scenario": "holdout-01-silent",
       "group": "holdout",
-      "fixture": "coverage/novelty-search/holdout-01-silent.json",
+      "fixture": "coverage/corpora/novelty/holdout-01-silent.json",
       "fixtureSha256": "c6f9aec2710f7cace9d7b94f7e27738ca3a44399b333dd4414b1c66e932e0232",
       "character": "SILENT",
       "encounterKind": "Elite",
@@ -1073,7 +1073,7 @@
     {
       "scenario": "holdout-02-defect",
       "group": "holdout",
-      "fixture": "coverage/novelty-search/holdout-02-defect.json",
+      "fixture": "coverage/corpora/novelty/holdout-02-defect.json",
       "fixtureSha256": "052b863ef3866fbbba816f54cff0dff4c32df30a28b38b2b45b456d0099685f6",
       "character": "DEFECT",
       "encounterKind": "Boss",
@@ -1142,7 +1142,7 @@
     {
       "scenario": "holdout-03-regent",
       "group": "holdout",
-      "fixture": "coverage/novelty-search/holdout-03-regent.json",
+      "fixture": "coverage/corpora/novelty/holdout-03-regent.json",
       "fixtureSha256": "dde642cccddedb0e675929352b7280816594bab59ea2d2ae526c794538de90a4",
       "character": "REGENT",
       "encounterKind": "Monster",
@@ -1211,7 +1211,7 @@
     {
       "scenario": "holdout-04-necrobinder",
       "group": "holdout",
-      "fixture": "coverage/novelty-search/holdout-04-necrobinder.json",
+      "fixture": "coverage/corpora/novelty/holdout-04-necrobinder.json",
       "fixtureSha256": "f3673e44c9cf923f9d96ce9228b0dcc5bd0b5950328b7f5c817ed57bb46aa779",
       "character": "NECROBINDER",
       "encounterKind": "Elite",

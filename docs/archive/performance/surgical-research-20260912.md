@@ -126,7 +126,7 @@ GPU 的适用性取决于批量规模、内存传输、访问布局与分支一�
 
 ## 可复跑证据
 
-探针源码位于 [SurgicalResearchChecks](../../../tools/SurgicalResearchChecks/README.md)，原始结果见 [results.json](../../../tools/SurgicalResearchChecks/results.json)。生产 StateStore 直接作为链接源码编译；模型和 Fork 上下文使用最小替身，Fork 方法显式抛出异常。测量只覆盖分配机制和简单读取值，未声称测试真实模型、生产 Fork 或完整战斗。宿主是独立 Linux x64 .NET 9.0.19，与游戏进程分开。
+探针源码位于 [SurgicalResearchChecks](../../../tools/testing/checks/SurgicalResearchChecks/README.md)，原始结果见 [results.json](../../../tools/testing/checks/SurgicalResearchChecks/results.json)。生产 StateStore 直接作为链接源码编译；模型和 Fork 上下文使用最小替身，Fork 方法显式抛出异常。测量只覆盖分配机制和简单读取值，未声称测试真实模型、生产 Fork 或完整战斗。宿主是独立 Linux x64 .NET 9.0.19，与游戏进程分开。
 
 ## 文献与官方来源
 

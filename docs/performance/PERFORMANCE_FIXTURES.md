@@ -8,13 +8,13 @@ Silent样例可直接脱离原始问题包运行；Necrobinder旧白名单投影
 
 ## Silent 大牌组 Fork/选牌压力
 
-- fixture：`coverage/unattended/search-performance-silent-large-deck-cards.json`
+- fixture：`coverage/fixtures/search/search-performance-silent-large-deck-cards.json`
 - 输入：`44` 条聚合记录，共 `396` 张牌（手牌 `7`、抽牌堆 `389`）。
 - 白名单：仅 `cardId / pile / count / upgradeLevels / treatAsDeckCard`。
 - 排除：存档、RNG、遗物、药水、Power、日志、路径、平台和环境信息。
 
 ```bash
-./tools/run-unattended-test.sh \
+./tools/testing/run-unattended-test.sh \
   --scenario-id SEARCH-PERF-SILENT-LARGE-DECK-5S \
   --character-id SILENT \
   --seed SEARCH_PERF_SILENT_LARGE_DECK \
@@ -27,7 +27,7 @@ Silent样例可直接脱离原始问题包运行；Necrobinder旧白名单投影
   --initial-player-max-hp 65 \
   --initial-player-energy 3 \
   --clear-player-piles \
-  --cards-path coverage/unattended/search-performance-silent-large-deck-cards.json \
+  --cards-path coverage/fixtures/search/search-performance-silent-large-deck-cards.json \
   --performance-preset-for-test VeryHigh \
   --potion-policy-for-test Smart \
   --search-max-degree-of-parallelism-for-test 8 \
@@ -48,18 +48,18 @@ Runner 同时断言 VeryHigh 的 Beam `54/135`、节点 `10000/50000`、出牌�
 
 > 2026-09-08复跑发现：下列历史白名单JSON缺少当前原生反序列化要求的角色身份，原命令会在建局前失败。当前可运行的明确注入版本及命令见[压力筛查](../archive/performance/veryhigh-pressure-survey-20260908.md#复跑示例)；不要将它当作原存档恢复。下文保留历史输入/命令说明。
 
-- fixture：`coverage/unattended/search-performance-necrobinder-potion-heavy-run-snapshot.json`
+- fixture：`coverage/fixtures/regressions/snapshots/search-performance-necrobinder-potion-heavy-run-snapshot.json`
 - 输入：`38` 张战前牌、`20` 件遗物、`2` 瓶药和生命/药水槽；战斗初始化后形成 `41` 张搜索根。
 - 白名单：顶层仅 `players`；玩家只保留 runner 支持的 `deck / relics / potions / max_potion_slot_count / max_hp / current_hp` 及合法子字段。RNG 由下方公开合成 seed 生成。
 - 排除：地图、房间历史、时间、平台、账户、日志、路径和环境信息。
 - 边界：这是战前白名单投影，不能作为原生战斗逐动作 replay。
 
 ```bash
-./tools/run-unattended-test.sh \
+./tools/testing/run-unattended-test.sh \
   --scenario-id SEARCH-PERF-NECROBINDER-POTION-QUICK \
   --character-id NECROBINDER \
   --seed SEARCH_PERF_NECROBINDER_POTION \
-  --run-snapshot-path coverage/unattended/search-performance-necrobinder-potion-heavy-run-snapshot.json \
+  --run-snapshot-path coverage/fixtures/regressions/snapshots/search-performance-necrobinder-potion-heavy-run-snapshot.json \
   --encounter-id AEONGLASS_BOSS \
   --ascension 10 \
   --act-index-for-test 2 \

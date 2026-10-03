@@ -6,4 +6,4 @@ Mod 默认准备下一次 Steam 启动的 ServerGC 配置。首次加载只写�
 
 该配置影响整个游戏进程；实际 CPU、速度和路线质量需要同根同政策数据。无头或离线数据不代表可见 Steam 帧时间。
 
-开发者可运行 `dotnet run --project tools/RuntimeGcProfileChecks -c Release`；隔离原生启动入口为 `tools/test-runtime-gc-startup.ps1`。显式 profile 的启动命令与历史验证见 [启动配置记录](../archive/performance/server-gc-launch-profile-20260924.md)。
+开发者可运行 `dotnet run --project tools/testing/checks/RuntimeGcProfileChecks -c Release`；隔离原生启动入口为 `tools/testing/test-runtime-gc-startup.ps1`。显式 profile 的启动命令与历史验证见 [启动配置记录](../archive/performance/server-gc-launch-profile-20260924.md)。

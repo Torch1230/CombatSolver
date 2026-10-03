@@ -4,7 +4,7 @@
 
 0.40.2 的玩家问题包显示：搜索在内存紧张的机器上会稳定落入「建立 No-GC 区域 → 搜索耗尽它 → 检查点拆除区域并强制回收 → 重建区域」的循环。本轮在准入处加了一道判定：**当系统余量把区域压到配置预算的一半以下时，不再假装预留成立，直接改用默认 GC 跑完本次搜索。**
 
-改动只落在 `src/Runtime/SearchGcPolicy.cs`（职责边界不变），并为 `tools/CombatSolver.GcPolicyChecks` 增加 6 项检查。
+改动只落在 `src/Runtime/SearchGcPolicy.cs`（职责边界不变），并为 `tools/testing/checks/CombatSolver.GcPolicyChecks` 增加 6 项检查。
 
 ## 根因：准入没有下限，而且降级路径必然进入
 
@@ -92,7 +92,7 @@ if (startOutcome == NoGcRegionStartOutcome.Started
 
 ## 验证
 
-`tools/CombatSolver.GcPolicyChecks` 直接编译生产源码（含本次修改的 `SearchGcPolicy.cs`），可无头运行。新增 `GcRegionAdmissionChecks`（6 项）：
+`tools/testing/checks/CombatSolver.GcPolicyChecks` 直接编译生产源码（含本次修改的 `SearchGcPolicy.cs`），可无头运行。新增 `GcRegionAdmissionChecks`（6 项）：
 
 ```
 GC_REGION_ADMISSION_OK declined the reported 12GiB-to-2.97GiB region;

@@ -73,16 +73,16 @@ T019 实际使用[多人实验提交 f1461c7d](https://github.com/Torch1230/Comb
 
 游戏平台MVID与原Windows不同；官方Ritsu0.6.3的MVID也与报告不同，另有QuickRestart等Mod未加载；这些差异写入结果。BaseLib身份相同不能消除其他环境差异。日志缺少候选生成时的父节点标识、准备目标列表及派发记录，当前材料无法区分历史版本差异、完整前沿时序或环境影响。没有新的可判别假说时停止重复健康场景，不扩大120秒预算，不加自动改目标、跳过动作或吞异常补丁。
 
-专项入口为 `coverage/unattended/b015-t016-original-prefix.json`。它只适用于B015官方T016原ZIP，读取唯一指定日志条目且限制1MiB，不执行档案内容；选择以失败日志中的明确记录为依据，报告 `historySource=original_native_root_plus_failed_candidate`，不伪称 ReplayRecorded。旧状态键只允许已审计的费用后缀增量，所有旧字段及实例序号必须匹配；本次6步映射实际没有改键或序号。15秒局部取消是合作式取消，worker排空可能等待，外层120秒仍是硬上限。
+专项入口为 `coverage/fixtures/regressions/community/b015-t016-original-prefix.json`。它只适用于B015官方T016原ZIP，读取唯一指定日志条目且限制1MiB，不执行档案内容；选择以失败日志中的明确记录为依据，报告 `historySource=original_native_root_plus_failed_candidate`，不伪称 ReplayRecorded。旧状态键只允许已审计的费用后缀增量，所有旧字段及实例序号必须匹配；本次6步映射实际没有改键或序号。15秒局部取消是合作式取消，worker排空可能等待，外层120秒仍是硬上限。
 
 本机使用隔离macOS启动器执行；Windows/Linux公共入口可按以下参数复跑（这两平台本轮未执行；完整Mod身份需另按当地隔离实例流程配置）：
 
 ```bash
-./tools/run-unattended-test.sh --scenario-id B015-T016-ORIGINAL-PREFIX --character-id SILENT --encounter-id AXEBOTS_NORMAL --checkpoint-archive-path .local/issue-bundles/174/raw/B015/T016/reports/e63cd12543994bb08b9497e45839005c.zip --checkpoint-selector start --replay-mode RestoreOnly --timeout-seconds 120 --cleanup-instance-on-exit
+./tools/testing/run-unattended-test.sh --scenario-id B015-T016-ORIGINAL-PREFIX --character-id SILENT --encounter-id AXEBOTS_NORMAL --checkpoint-archive-path .local/issue-bundles/174/raw/B015/T016/reports/e63cd12543994bb08b9497e45839005c.zip --checkpoint-selector start --replay-mode RestoreOnly --timeout-seconds 120 --cleanup-instance-on-exit
 ```
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId B015-T016-ORIGINAL-PREFIX -CharacterId SILENT -EncounterId AXEBOTS_NORMAL -CheckpointArchivePath .local/issue-bundles/174/raw/B015/T016/reports/e63cd12543994bb08b9497e45839005c.zip -CheckpointSelector start -ReplayMode RestoreOnly -TimeoutSeconds 120 -CleanupInstanceOnExit
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId B015-T016-ORIGINAL-PREFIX -CharacterId SILENT -EncounterId AXEBOTS_NORMAL -CheckpointArchivePath .local/issue-bundles/174/raw/B015/T016/reports/e63cd12543994bb08b9497e45839005c.zip -CheckpointSelector start -ReplayMode RestoreOnly -TimeoutSeconds 120 -CleanupInstanceOnExit
 ```
 
 ### T016 后处理因果复现与修复
@@ -99,7 +99,7 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId B015-T016-ORIGIN
 
 **相同请求、相同依赖、相同120秒预算**，修后 `t016-afterimage-green-063` 总Passed：六步原生/完整/增量状态与RNG、未重排控制、安全短路线前移、无效前移返回null、共享非前移路径缺失目标拒绝，以及原路线和原生状态不变均通过。游戏0.111.0/Ritsu0.6.3/同MVID BaseLib3.4.7，未扩大搜索预算。环境差异仍如前文；没有验收原完整胜利路线的Solve、最终发布和整场部署，不将六步边界通过外推为这些范围。
 
-专项请求为 `coverage/unattended/b015-t016-afterimage-route.json`；按上一专项复跑参数将ScenarioId替换为 `B015-T016-AFTERIMAGE-ROUTE`。两份专项共享原根恢复和逐步差分工具，旧 `B015-T016-ORIGINAL-PREFIX` 仍保留历史非法动作失败，不改预期以伪造修复。源码与夹具已独立只读审查。
+专项请求为 `coverage/fixtures/regressions/community/b015-t016-afterimage-route.json`；按上一专项复跑参数将ScenarioId替换为 `B015-T016-AFTERIMAGE-ROUTE`。两份专项共享原根恢复和逐步差分工具，旧 `B015-T016-ORIGINAL-PREFIX` 仍保留历史非法动作失败，不改预期以伪造修复。源码与夹具已独立只读审查。
 
 相邻既有 `ADJUSTED-ROUTE-INVALID-SUFFIX` 在同Ritsu0.6.3通过（20.12秒）：失效手牌、终局后缀和合法致胜路线合同保留。较大的 `FIXED-PREFIX-TURN-OUTCOMES` 在120秒外层截止前未产出result，启动器终止进程并删除实例；日志最后为原生回合/洗牌FTUE，不能断定是哪个断言或归因于本修复。此项当时记未验证，不延长预算或宣称通过，另缩小到直接经过固定前缀入口的单动作合同（后续已查明为环境原因并在两侧通过，见“整合上游后复核与PR哨兵”）。 缩小后的 `B015-FIXED-PREFIX-TARGETS` 已Passed（18.33秒）：两个独立根分别经过真实PrepareCardActions与ApplyFixedPrefix，合法目标致胜、缺失目标返回null，原生Continuation不变；没有跨回合等待。窄合同不替代宽用例验收。
 

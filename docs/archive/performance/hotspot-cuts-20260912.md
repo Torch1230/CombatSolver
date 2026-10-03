@@ -50,7 +50,7 @@ RSS及工作集受进程预热、GC保留堆和分配节奏影响。尤其机甲
 ## 验证与产物
 
 - Release 编译：0 warning、0 error；Linux结构门禁通过，search_files=87。
-- 864组生产方法提取合同通过，工具为 `tools/SnapshotReleaseChecks/run.py`。
+- 864组生产方法提取合同通过，工具为 `tools/testing/checks/SnapshotReleaseChecks/run.py`。
 - 两场无头 A-B-B-A 对照，8个正式结果全部 Passed；完整工作量字段和路线相等。
 - `SNAPSHOT-RELEASE-INCREMENTAL` / `d4eeec6d4b7142f59e9f7154ffbd6f4f`：小型DOP1增量回放通过，3节点/8转移，预期第1回合结束、战损0。它是最小生命周期哨兵，大池集合分支由提取合同及上述实际搜索对照覆盖；不引用其时间为性能数据。
 - 未启动可见Steam、未做FPS或可见帧时间结论；没有修改生产预算、节点准入、评分、排序、版本号或发布产物。

@@ -1,8 +1,0 @@
-{
-  "potionId": "WeakPotion",
-  "target": "Enemy",
-  "targetIndex": 0,
-  "enemyHpBefore": 999,
-  "expectedEnemyPowers": { "WEAK_POWER": 3 },
-  "expectedSurroundedFacing": "Left"
-}

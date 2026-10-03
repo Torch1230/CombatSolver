@@ -11,11 +11,11 @@
     "dotnetSdk": "9.0.120",
     "gameVersion": "0.111.0"
   },
-  "settingsArtifact": "coverage/unattended/gc-issue36-benchmark-settings.json",
+  "settingsArtifact": "coverage/fixtures/runtime/gc-issue36-benchmark-settings.json",
   "reproductionDocument": "docs/archive/performance/gc-issue36-reproduce.md",
   "publicFixtures": {
-    "silent": "coverage/unattended/search-performance-silent-large-deck-cards.json",
-    "necro": "coverage/unattended/search-performance-necrobinder-potion-heavy-run-snapshot.json"
+    "silent": "coverage/fixtures/search/search-performance-silent-large-deck-cards.json",
+    "necro": "coverage/fixtures/regressions/snapshots/search-performance-necrobinder-potion-heavy-run-snapshot.json"
   },
   "benchmarkProtocol": {
     "shortWindowMaxExpandedNodesPerSolver": 576,

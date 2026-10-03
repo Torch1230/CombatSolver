@@ -14,7 +14,7 @@ description: 批量回放 CombatSolver 的“找到更优世界线”报告，�
 ## 1. 小批次入口
 
 - 每轮默认取排序最靠前的 `3` 份，先 `Preflight` 再 `RestoreOnly`，需要搜索或完整部署时显式选择 `SearchOnly` / `DeploySolver`。不并发启动游戏。
-- 统一入口 `tools/run-checkpoint-batch.ps1` / `.sh`；旧 `run-strategy-replay-batch.ps1` 转发新入口。输入接受 ZIP、目录、汇总 ZIP 和已解压旧包。
+- 统一入口 `tools/replay/run-checkpoint-batch.ps1` / `.sh`。输入接受 ZIP、目录、汇总 ZIP 和已解压旧包。
 - 原包政策默认生效；缺项由显式政策文件补齐。每请求最多 `120 s`，不自动提高档位、Beam 或预算。
 - 工具按玩家备注优先、已知减战损降序排队。排除包与小于 5 HP 的策略样例由当前任务清单决定，不硬编码玩家包 ID。
 - 输出写入 `.local/checkpoint-batch/`，JSONL、JSON、CSV、Markdown 和逐请求证据同时保存；`-Resume` 复用身份一致的已完成请求，`-RetryFailures` 重试失败项。原始包、结果和日志不提交。
@@ -22,7 +22,7 @@ description: 批量回放 CombatSolver 的“找到更优世界线”报告，�
 示例：
 
 ```powershell
-pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 `
+pwsh -NoProfile -File tools/replay/run-checkpoint-batch.ps1 `
   -InputPath .local/issue-bundles/<batch>/raw/reports `
   -ManifestPath .local/strategy-batch/<batch>.json `
   -MaxReports 3 `

@@ -1,6 +1,6 @@
 # 离线搜索宿主
 
-`tools/OfflineSearchHarness/` 是一个普通的 .NET 9 控制台程序：它加载 `sts2.dll` 但**不启动 Godot
+`tools/search/OfflineSearchHarness/` 是一个普通的 .NET 9 控制台程序：它加载 `sts2.dll` 但**不启动 Godot
 引擎**，用游戏自己的核心层建出一场战斗、推进到玩家第一回合，再在同一个进程里调
 `CombatRootSnapshot.Capture` 与 `CombatSearchCoordinator.Solve`（或单次 `CombatBeamSolver`）跑一次
 固定预算搜索，把指标、选中路线和搜索策略写成 JSON。
@@ -13,7 +13,7 @@
 
 ```
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
-dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
+dotnet build tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 ```
 
 路径解析与 `CombatSolver.csproj` 同一套：先 `Import` 仓库根的 `local.props`，再按操作系统给
@@ -28,7 +28,7 @@ dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 ## 单根用法
 
 ```
-dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
     --request <无人测试请求.json> --label R1 --out <产物目录> \
     --profile VeryHigh --beam 135 --nodes 100000 --dop 1 --budget-ms 600000
 ```
@@ -60,20 +60,20 @@ dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
 
 启用阶段测量时，`BEAM_WIDTH_PORTFOLIO_MEMBER_START` 在进入成员前记录实际运行序号、宽度、次段/基础分/能力承诺身份，以及有效节点/时间额度。`run_index` 只计算实际运行的成员，不能当作包含跳过项的最终成员表索引。即使后续成员超时，配合同步诊断也可识别正在执行的成员；不能仅凭“正在精炼路线”的进度文案推断策略身份。
 
-启用 `OFFLINE_HARNESS_INFUSED_CORE_CHECKS=1` 并使用 `--character DEFECT --milestone M1` 可运行注能核心的生产 Hook 诊断：从空球队列检查首回合生成、后续回合不重复、参与者条件、4/9 数值及 Fork 隔离，结果写入 `infused-core-checks.json`。该入口只修改宿主内的测试战斗；它不经过原生工具箱页面，不能替代 `coverage/unattended/initial-toolbox-infused-core.json` 的原生准备状态验收。
+启用 `OFFLINE_HARNESS_INFUSED_CORE_CHECKS=1` 并使用 `--character DEFECT --milestone M1` 可运行注能核心的生产 Hook 诊断：从空球队列检查首回合生成、后续回合不重复、参与者条件、4/9 数值及 Fork 隔离，结果写入 `infused-core-checks.json`。该入口只修改宿主内的测试战斗；它不经过原生工具箱页面，不能替代 `coverage/fixtures/scenarios/state/initial-toolbox-infused-core.json` 的原生准备状态验收。
 
-启用 `OFFLINE_HARNESS_FIXED_PREFIX_CONTINUATIONS=1` 并以 `coverage/unattended/generic-cross-turn-hidden-buffer-positive-v0111.json` 为 `--request`，使用 `--dop 1 --search-mode Evaluate` 且关闭NoGC／增量验证，可运行4／8／17回合完整固定前缀基准。每根预热一次、测量三次生产 `Solve`，计时外用独立前缀重放对账完整续用戳，输出 `fixed-prefix-continuations.json`。它只度量人工长路线的前缀建立与收尾，不代表普通搜索或原生正确性；用 `OFFLINE_HARNESS_COMBATSOLVER_DLL` 交错切换基线／候选，完整比较根、政策和 `annotatedResult`，见[本轮证据](archive/performance/fixed-dop-20260927.md)。
+启用 `OFFLINE_HARNESS_FIXED_PREFIX_CONTINUATIONS=1` 并以 `coverage/fixtures/search/generic-cross-turn-hidden-buffer-positive-v0111.json` 为 `--request`，使用 `--dop 1 --search-mode Evaluate` 且关闭NoGC／增量验证，可运行4／8／17回合完整固定前缀基准。每根预热一次、测量三次生产 `Solve`，计时外用独立前缀重放对账完整续用戳，输出 `fixed-prefix-continuations.json`。它只度量人工长路线的前缀建立与收尾，不代表普通搜索或原生正确性；用 `OFFLINE_HARNESS_COMBATSOLVER_DLL` 交错切换基线／候选，完整比较根、政策和 `annotatedResult`，见[本轮证据](archive/performance/fixed-dop-20260927.md)。
 
-纯 ETC 外部生命界合同可运行 `dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-early-turn-continuation-bound`，直接调用生产门禁及剪枝谓词，不建游戏状态。当前覆盖 143 条断言。普通 ETC 诊断起始行新增 `incumbent_bound=eligible_strict_hp`，已完成续搜行输出 `incumbent_hp`（`-` 表示旁路）及 `incumbent_pruned`；后者包含原有内部生命界剪枝，不能直接视为外部界的净收益。新版本另输出 `incumbent_certified_healing_bound_pruned`，只归因于根认证治疗上界的边际剪枝；根捕获行记录认证状态、首个拒绝原因和固定战后治疗量。两个计数的口径不同，前者是成员内合计，后者只统计认证上界相对完整缺血余量增加剪掉的候选节点。它不是所有阶段的总剪枝量或节省的节点数。固定根对照及实际适用范围见 [测试矩阵](archive/testing/volume-01.md#早期回合探索的外部生命界2026-10-01)。
+纯 ETC 外部生命界合同可运行 `dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-early-turn-continuation-bound`，直接调用生产门禁及剪枝谓词，不建游戏状态。当前覆盖 143 条断言。普通 ETC 诊断起始行新增 `incumbent_bound=eligible_strict_hp`，已完成续搜行输出 `incumbent_hp`（`-` 表示旁路）及 `incumbent_pruned`；后者包含原有内部生命界剪枝，不能直接视为外部界的净收益。新版本另输出 `incumbent_certified_healing_bound_pruned`，只归因于根认证治疗上界的边际剪枝；根捕获行记录认证状态、首个拒绝原因和固定战后治疗量。两个计数的口径不同，前者是成员内合计，后者只统计认证上界相对完整缺血余量增加剪掉的候选节点。它不是所有阶段的总剪枝量或节省的节点数。固定根对照及实际适用范围见 [测试矩阵](archive/testing/volume-01.md#早期回合探索的外部生命界2026-10-01)。
 
 ## 批量用法
 
 `OFFLINE_HARNESS_EQUIVALENCE_PROBE=1` 可在小预算 `Evaluate` 请求中观察已有转置拒绝、候选分类次数和自然出现的两步反向动作，输出 `equivalence-probe.json`。每个求解器最多保存20,000个分离出的两步索引，不持有节点/模型，也不改变剪枝结果；指纹相同只是研究线索，不是交换性证明。该模式有额外锁和序列化开销，不能用于时间或分配评测。适用范围和复现命令见[准入优化与采样](archive/performance/equivalence-admission-20260929.md)。
 
-`tools/OfflineSearchHarness/run_plan.py` 吃一份 plan JSON（数组），起 N 个宿主进程并行消费：
+`tools/search/OfflineSearchHarness/run_plan.py` 吃一份 plan JSON（数组），起 N 个宿主进程并行消费：
 
 ```
-python3 tools/OfflineSearchHarness/run_plan.py --plan <plan.json> --workspace <dir> --workers 3
+python3 tools/search/OfflineSearchHarness/run_plan.py --plan <plan.json> --workspace <dir> --workers 3
 ```
 
 plan 每项的字段：`label`（必填，简单目录名）、`request`（必填）、`profile`、`beam`、`nodes`、
@@ -84,7 +84,7 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 
 产物在 `<workspace>/runs/<label>/`，另有 `<workspace>/runs.jsonl` 与 `plan-summary.json`。
 
-`tools/OfflineSearchHarness/compare_results.py` 把两份 `runs/` 目录逐字段比较（两侧都提供时还比较选中路径的续用戳；`solverMetrics` 里
+`tools/search/OfflineSearchHarness/compare_results.py` 把两份 `runs/` 目录逐字段比较（两侧都提供时还比较选中路径的续用戳；`solverMetrics` 里
 与时间/内存/GC 无关的字段、选中路线每个动作的 `turn/kind/cardId/potionId/targetCombatId/cardStateKey`、
 根 `ContinuationStamp`、生成场景目录指纹），全等返回 0，有差异返回 1 并把明细写进 `--out`。
 
@@ -125,7 +125,7 @@ plan 每项的字段：`label`（必填，简单目录名）、`request`（必�
 ## Godot 绕过
 
 宿主不启动引擎，凡是会打到 Godot 原生层的入口都要绕开。绕过点全部集中在
-`tools/OfflineSearchHarness/GameBootstrap.cs` 一个类里，类头有完整的表（目标、为什么必须绕、绕过后
+`tools/search/OfflineSearchHarness/GameBootstrap.cs` 一个类里，类头有完整的表（目标、为什么必须绕、绕过后
 返回什么、对搜索结果有没有影响），结果 JSON 的 `bypasses` 字段列出实际装上的那些。摘要：
 
 | 目标 | 绕过后 | 对搜索结果 |

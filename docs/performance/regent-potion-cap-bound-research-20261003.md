@@ -36,7 +36,7 @@ C58主搜索2.439秒、精炼4.710秒，Smart梯度1.148秒；完整请求没有
 
 复现输入已提交：[固定装备与种子](fixtures/regent-c58-20261003-scenario.json)、[离线默认解锁进度](fixtures/regent-c58-20261003-progress.json)、[冻结完整根](fixtures/regent-c58-20261003-root-stamp.txt)。这些是合成夹具，不包含玩家存档。先以公开离线宿主和绝对`generatedScenarioPath`请求运行相同配置；离线`Mode`设为Search，命令行沿用生产预算300000ms、DOP16、Smart、宽度组合和NoGC16GB。
 
-原生完整部署使用仅加载RitsuLib与当前候选的独立、受控headless实例，供给上述进度文件。调用`tools/run-unattended-test.sh`时指定场景`REGENT-FROZEN-POTION-CAP-DEPLOY`、上述Deploy场景文件、`--initial-player-hp 75`、三段行动`["WRITHE_MOVE","BULK_MOVE","CONSTRICT_MOVE"]`及二维行动历史`[["WRITHE_MOVE"],["BULK_MOVE"],["CONSTRICT_MOVE"]]`。预先将冻结根文件复制到该次证据目录的`frozen-root-stamp.txt`；保留完整根比较，使用120秒时限与`--cleanup-instance-on-exit`。断言初始及最终0战损/1瓶钢铁之心/T7、最终生命至少75和意外重算至多0。原生验证包含合成开局对齐，不能称为未经调整的自然开局。
+原生完整部署使用仅加载RitsuLib与当前候选的独立、受控headless实例，供给上述进度文件。调用`tools/testing/run-unattended-test.sh`时指定场景`REGENT-FROZEN-POTION-CAP-DEPLOY`、上述Deploy场景文件、`--initial-player-hp 75`、三段行动`["WRITHE_MOVE","BULK_MOVE","CONSTRICT_MOVE"]`及二维行动历史`[["WRITHE_MOVE"],["BULK_MOVE"],["CONSTRICT_MOVE"]]`。预先将冻结根文件复制到该次证据目录的`frozen-root-stamp.txt`；保留完整根比较，使用120秒时限与`--cleanup-instance-on-exit`。断言初始及最终0战损/1瓶钢铁之心/T7、最终生命至少75和意外重算至多0。原生验证包含合成开局对齐，不能称为未经调整的自然开局。
 
 
 29个冻结根的状态、政策和预算均与原始控制相同，搜索战损无原始基线退化；其余28个为离线搜索结果，完整原生部署只覆盖本次储君目标。原始17个超过20秒的根仍有12个未达到两倍，原上传棱柱按用户认可的约1.98倍例外继续单列。

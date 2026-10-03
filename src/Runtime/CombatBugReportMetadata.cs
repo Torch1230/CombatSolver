@@ -65,6 +65,9 @@ internal static class CombatBugReportMetadata
                 before = comparison.PreviousProjectedBattleHpLost,
                 after = comparison.CurrentProjectedBattleHpLost,
                 reduction = comparison.PreviousProjectedBattleHpLost - comparison.CurrentProjectedBattleHpLost,
+                additionalPotionCount = comparison.AdditionalPotionCount,
+                potionHpCost = comparison.PotionHpCost,
+                potionAdjustedHpReduction = comparison.PotionAdjustedHpReduction,
             },
             bundle = new { schemaVersion = 2, checkpointIndexPath = "replay/checkpoint.json" },
         }, Json);

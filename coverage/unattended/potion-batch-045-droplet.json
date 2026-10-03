@@ -1,6 +1,0 @@
-{
-  "potionId": "DropletOfPrecognition",
-  "target": "Player",
-  "cards": [{ "cardId": "BASH", "pile": "Draw" }],
-  "choiceCardIds": ["BASH"]
-}

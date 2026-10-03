@@ -1,7 +1,0 @@
-[
-  {
-    "monsterId": "BigDummy",
-    "moveId": "NOTHING",
-    "expectedSearchBoundary": "DynamicResolution"
-  }
-]

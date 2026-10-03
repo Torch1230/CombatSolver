@@ -7,13 +7,13 @@
 代表 ZIP 放 `.local/issue-bundles/<issue>/raw/`。先读 `report.json`，再按 `diagnostics/logs/index.json` 指向的本场 JSONL 查首个异常、traceId、动作和状态差异；`history.json` 是历史摘要。新回放索引为 `replay/checkpoint.json`，现有读取器也支持旧包。
 
 ```powershell
-pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath .local/issue-bundles/CASE/raw -ReplayMode Preflight -OutputDirectory .local/checkpoint-batch/CASE-preflight
-pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath .local/issue-bundles/CASE/raw -ReplayMode RestoreOnly -CheckpointSelector start -Sts2GameRoot '<游戏目录>' -OutputDirectory .local/checkpoint-batch/CASE-restore
+pwsh -NoProfile -File tools/replay/run-checkpoint-batch.ps1 -InputPath .local/issue-bundles/CASE/raw -ReplayMode Preflight -OutputDirectory .local/checkpoint-batch/CASE-preflight
+pwsh -NoProfile -File tools/replay/run-checkpoint-batch.ps1 -InputPath .local/issue-bundles/CASE/raw -ReplayMode RestoreOnly -CheckpointSelector start -Sts2GameRoot '<游戏目录>' -OutputDirectory .local/checkpoint-batch/CASE-restore
 ```
 
 ```bash
-./tools/run-checkpoint-batch.sh .local/issue-bundles/CASE/raw --mode Preflight --output .local/checkpoint-batch/CASE-preflight
-./tools/run-checkpoint-batch.sh .local/issue-bundles/CASE/raw --mode RestoreOnly --selector start --game-root '<游戏目录>' --output .local/checkpoint-batch/CASE-restore
+./tools/replay/run-checkpoint-batch.sh .local/issue-bundles/CASE/raw --mode Preflight --output .local/checkpoint-batch/CASE-preflight
+./tools/replay/run-checkpoint-batch.sh .local/issue-bundles/CASE/raw --mode RestoreOnly --selector start --game-root '<游戏目录>' --output .local/checkpoint-batch/CASE-restore
 ```
 
 | 模式 | 验证范围 |
@@ -30,16 +30,16 @@ pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 -InputPath .local/issue-bun
 
 ## 最小差分夹具
 
-`coverage/unattended/` 包含多种 JSON：卡牌列表、怪物动作检查、药水检查、生成配置、完整请求。先核对消费者。`MonsterMoveChecksPath` 接受怪物动作检查数组，`CardsPath` 接受牌组注入数组；协议在 [UnattendedTestProtocol.cs](../../src/Testing/UnattendedTestProtocol.cs)。
+`coverage/fixtures/` 包含多种 JSON：卡牌列表、怪物动作检查、药水检查、生成配置、完整请求。先核对消费者。`MonsterMoveChecksPath` 接受怪物动作检查数组，`CardsPath` 接受牌组注入数组；协议在 [UnattendedTestProtocol.cs](../../src/Testing/Host/UnattendedTestProtocol.cs)。
 
-已有[尖啸生命周期夹具](../../coverage/unattended/card-on-play-batch-035-piercing-wail-lifecycle.json)设置招式、插入一张牌、执行并检查力量恢复与能力移除，通过 `RunMonsterMoveDifferentialAsync` 比较实际与模拟状态：
+已有[尖啸生命周期夹具](../../coverage/fixtures/cards/card-on-play-batch-035-piercing-wail-lifecycle.json)设置招式、插入一张牌、执行并检查力量恢复与能力移除，通过 `RunMonsterMoveDifferentialAsync` 比较实际与模拟状态：
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId CARD-ON-PLAY-BATCH-035-PIERCING-WAIL -CharacterId IRONCLAD -EnemyCurrentHp 50 -MonsterMoveChecksPath coverage/unattended/card-on-play-batch-035-piercing-wail-lifecycle.json -Sts2GameRoot '<游戏目录>' -RitsuWorkshopRoot '<RitsuLib工坊目录>' -EvidenceDirectory .local/community-check/wail -TimeoutSeconds 120 -CleanupInstanceOnExit
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId CARD-ON-PLAY-BATCH-035-PIERCING-WAIL -CharacterId IRONCLAD -EnemyCurrentHp 50 -MonsterMoveChecksPath coverage/fixtures/cards/card-on-play-batch-035-piercing-wail-lifecycle.json -Sts2GameRoot '<游戏目录>' -RitsuWorkshopRoot '<RitsuLib工坊目录>' -EvidenceDirectory .local/community-check/wail -TimeoutSeconds 120 -CleanupInstanceOnExit
 ```
 
 ```bash
-./tools/run-unattended-test.sh --scenario-id CARD-ON-PLAY-BATCH-035-PIERCING-WAIL --character-id IRONCLAD --enemy-current-hp 50 --monster-move-checks-path coverage/unattended/card-on-play-batch-035-piercing-wail-lifecycle.json --sts2-game-root '<游戏目录>' --ritsu-workshop-root '<RitsuLib工坊目录>' --evidence-directory .local/community-check/wail --timeout-seconds 120 --cleanup-instance-on-exit
+./tools/testing/run-unattended-test.sh --scenario-id CARD-ON-PLAY-BATCH-035-PIERCING-WAIL --character-id IRONCLAD --enemy-current-hp 50 --monster-move-checks-path coverage/fixtures/cards/card-on-play-batch-035-piercing-wail-lifecycle.json --sts2-game-root '<游戏目录>' --ritsu-workshop-root '<RitsuLib工坊目录>' --evidence-directory .local/community-check/wail --timeout-seconds 120 --cleanup-instance-on-exit
 ```
 
 复制已有夹具到自己的忽略目录，缩小到首个错误动作，固定状态与断言。修改前实际失败、修改后同输入通过，再提交有价值的最小 JSON。核对 `EncounterId`（遭遇）与 `MonsterId`（单怪模型）。同 ID 多实例、目标、牌堆顺序、私有状态和 RNG 一并保留；只有实际启动搜索的夹具才启用增量搜索等价验证。
@@ -59,33 +59,33 @@ pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId CARD-ON-PLAY-BAT
 
 ## 生成场景
 
-复制 `tools/GeneratedCombatScenarios/specified.json`，指定角色、遭遇、种子、牌、遗物、药水和 `Setup/Search/Deploy`，用于构造已定位机制的回归。
+复制 `tools/search/GeneratedCombatScenarios/specified.json`，指定角色、遭遇、种子、牌、遗物、药水和 `Setup/Search/Deploy`，用于构造已定位机制的回归。
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -GeneratedScenarioPath tools/GeneratedCombatScenarios/specified.json -ScenarioId COMMUNITY-GENERATED -Sts2GameRoot '<游戏目录>' -RitsuWorkshopRoot '<RitsuLib工坊目录>' -EvidenceDirectory .local/community-generated -TimeoutSeconds 120 -CleanupInstanceOnExit
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -GeneratedScenarioPath tools/search/GeneratedCombatScenarios/specified.json -ScenarioId COMMUNITY-GENERATED -Sts2GameRoot '<游戏目录>' -RitsuWorkshopRoot '<RitsuLib工坊目录>' -EvidenceDirectory .local/community-generated -TimeoutSeconds 120 -CleanupInstanceOnExit
 ```
 
 ```bash
-./tools/run-unattended-test.sh --generated-scenario-path tools/GeneratedCombatScenarios/specified.json --scenario-id COMMUNITY-GENERATED --sts2-game-root '<游戏目录>' --ritsu-workshop-root '<RitsuLib工坊目录>' --evidence-directory .local/community-generated --timeout-seconds 120 --cleanup-instance-on-exit
+./tools/testing/run-unattended-test.sh --generated-scenario-path tools/search/GeneratedCombatScenarios/specified.json --scenario-id COMMUNITY-GENERATED --sts2-game-root '<游戏目录>' --ritsu-workshop-root '<RitsuLib工坊目录>' --evidence-directory .local/community-generated --timeout-seconds 120 --cleanup-instance-on-exit
 ```
 
 随机生成后用 `generated-scenario.resolved.json` 重跑并保存实际开局与政策；仅同种子不足以证明同根。格式见 [GENERATED_COMBAT_SCENARIOS.md](../GENERATED_COMBAT_SCENARIOS.md)。
 
 ## C# 策略脚本与常驻开发会话
 
-[tools/strategy-example.cs](../../tools/strategy-example.cs) 实现 `IDevelopmentSearchStrategy`，提供 `Rank`（评分）、`Prioritize`（动作优先级）、`Retain`（有界保路代表）、`OrganizeMembers`（既有组合成员编排）。复制到 `.local/`，编辑脚本并传数值 JSON 参数。新战斗状态或模拟原语修改主程序；终局胜负、战损与资源排序继续由主程序决定。
+[tools/strategy-example.cs](../../tools/replay/strategy-example.cs) 实现 `IDevelopmentSearchStrategy`，提供 `Rank`（评分）、`Prioritize`（动作优先级）、`Retain`（有界保路代表）、`OrganizeMembers`（既有组合成员编排）。复制到 `.local/`，编辑脚本并传数值 JSON 参数。新战斗状态或模拟原语修改主程序；终局胜负、战损与资源排序继续由主程序决定。
 
 ```powershell
 New-Item -ItemType Directory -Force .local | Out-Null
-Copy-Item tools/strategy-example.cs .local/community-strategy.cs
+Copy-Item tools/replay/strategy-example.cs .local/community-strategy.cs
 '{"persistentBuffWeight":2}' | Set-Content -Encoding utf8 .local/community-parameters.json
-pwsh -NoProfile -File tools/strategy-session.ps1 start COMMUNITY --game-root '<游戏目录>' --ritsu-root '<RitsuLib工坊目录>' --no-monitor
-pwsh -NoProfile -File tools/strategy-session.ps1 run COMMUNITY '.local/issue-bundles/CASE/raw/REPORT.zip' --script .local/community-strategy.cs --params .local/community-parameters.json
-pwsh -NoProfile -File tools/strategy-session.ps1 stop COMMUNITY
-pwsh -NoProfile -File tools/remove-strategy-instance.ps1 -Instance strategy-development -SourceGameRoot '<游戏目录>'
+pwsh -NoProfile -File tools/replay/strategy-session.ps1 start COMMUNITY --game-root '<游戏目录>' --ritsu-root '<RitsuLib工坊目录>' --no-monitor
+pwsh -NoProfile -File tools/replay/strategy-session.ps1 run COMMUNITY '.local/issue-bundles/CASE/raw/REPORT.zip' --script .local/community-strategy.cs --params .local/community-parameters.json
+pwsh -NoProfile -File tools/replay/strategy-session.ps1 stop COMMUNITY
+pwsh -NoProfile -File tools/replay/remove-strategy-instance.ps1 -Instance strategy-development -SourceGameRoot '<游戏目录>'
 ```
 
-Linux 用 `tools/strategy-session.sh` 的相同子命令与选项；收尾用 `tools/remove-strategy-instance.sh strategy-development`。
+Linux 用 `tools/replay/strategy-session.sh` 的相同子命令与选项；收尾用 `tools/replay/remove-strategy-instance.sh strategy-development`。
 
 专项会话默认普通请求 180 秒，显式 `--early-turns` 的追加搜索有自己的时限，用于策略探索。常规贡献验证按 120 秒最小请求和固定测试预算选择。所有会话共用 `strategy-development`，同主机协调使用；主 DLL 或依赖改变后 stop 再 start。热更新只在下一请求生效，当前请求保存脚本、参数和 DLL 身份。stop 保留副本，任务结束用专用移除入口清理。
 
@@ -93,7 +93,7 @@ Linux 用 `tools/strategy-session.sh` 的相同子命令与选项；收尾用 `t
 
 ## 离线宿主与收口
 
-`tools/OfflineSearchHarness/` 在普通 .NET 进程量搜索指标，支持生成场景与新跑局。玩家 checkpoint 恢复使用游戏入口；正确性验收走严格差分或原生部署，见 [OFFLINE_SEARCH_HARNESS.md](../OFFLINE_SEARCH_HARNESS.md)。
+`tools/search/OfflineSearchHarness/` 在普通 .NET 进程量搜索指标，支持生成场景与新跑局。玩家 checkpoint 恢复使用游戏入口；正确性验收走严格差分或原生部署，见 [OFFLINE_SEARCH_HARNESS.md](../OFFLINE_SEARCH_HARNESS.md)。
 
 普通语义修复选单效果差分；跨回合/Fork/续用选最小边界；搜索优化固定目标和回归哨兵。完整部署采用 Instant/0 秒并核对计划外重算。PR 列代码版本、输入、命令、状态、比较区间和未验证项；实例生命周期见 [HEADLESS_TESTING.md](../HEADLESS_TESTING.md)。
 

@@ -412,15 +412,19 @@ internal static partial class SolverController
 
     internal static void RecordManualProjectionComparisonForTesting(
         int previousProjectedBattleHpLost,
-        int currentProjectedBattleHpLost)
+        int currentProjectedBattleHpLost,
+        int previousProjectedBattlePotionCount = 0,
+        int currentProjectedBattlePotionCount = 0)
     {
         AssertMainThread();
         if (!UnattendedTestRunner.IsActive)
             throw new InvalidOperationException("手操战损比较入口只能在无人测试中使用。");
         RecordManualProjectionComparison(
-            new ManualProjectionBaseline(1, previousProjectedBattleHpLost, "test_manual_state_change"),
+            new ManualProjectionBaseline(1, previousProjectedBattleHpLost,
+                previousProjectedBattlePotionCount, "test_manual_state_change"),
             currentTurnNumber: 1,
-            currentProjectedBattleHpLost);
+            currentProjectedBattleHpLost,
+            currentProjectedBattlePotionCount);
     }
 
     internal static bool IsCurrentCombatLifecycle(
@@ -487,7 +491,7 @@ internal static partial class SolverController
 
     /// <summary>
     /// 显示服务器名字的取值口。游戏内一律是默认值（直接问 Godot），
-    /// 只有 tools/OfflineSearchHarness 这种不启动 Godot 的进程会把它换成固定的 "headless"。
+    /// 只有 tools/search/OfflineSearchHarness 这种不启动 Godot 的进程会把它换成固定的 "headless"。
     /// </summary>
     internal static Func<string> DisplayServerNameProvider { get; set; } = static () => DisplayServer.GetName();
 
@@ -1058,6 +1062,7 @@ internal static partial class SolverController
                 _combat.PendingManualProjectionBaseline = new ManualProjectionBaseline(
                     previousResult.StartTurnNumber,
                     previousResult.ProjectedBattleHpLost,
+                    previousResult.ProjectedBattlePotionCount,
                     "field=live_combat_stamp expected={solver_result} actual={manual_state_change}",
                     CombatBugReportExporter.LastCompletedSearchRootId);
             }
@@ -1125,6 +1130,7 @@ internal static partial class SolverController
                     _combat.PendingManualProjectionBaseline = new ManualProjectionBaseline(
                         _combat.ContinuationSource.StartTurnNumber,
                         _combat.ContinuationSource.ProjectedBattleHpLost,
+                        _combat.ContinuationSource.ProjectedBattlePotionCount,
                         difference,
                         CombatBugReportExporter.LastCompletedSearchRootId);
                 }
@@ -2653,7 +2659,8 @@ internal static partial class SolverController
             RecordManualProjectionComparison(
                 manualBaseline,
                 result.StartTurnNumber,
-                result.ProjectedBattleHpLost);
+                result.ProjectedBattleHpLost,
+                result.ProjectedBattlePotionCount);
         }
     }
 
@@ -3441,27 +3448,31 @@ internal static partial class SolverController
     private static void RecordManualProjectionComparison(
         ManualProjectionBaseline baseline,
         int currentTurnNumber,
-        int currentProjectedBattleHpLost)
+        int currentProjectedBattleHpLost,
+        int currentProjectedBattlePotionCount)
     {
         ManualProjectionComparison comparison = new(
             baseline.StartTurnNumber,
             currentTurnNumber,
             baseline.ProjectedBattleHpLost,
             currentProjectedBattleHpLost,
+            baseline.ProjectedBattlePotionCount,
+            currentProjectedBattlePotionCount,
             baseline.StateDifference,
             baseline.OriginalCheckpointId,
             CombatBugReportExporter.CurrentSearchRootId);
         _combat.LastManualProjectionComparison = comparison;
         CombatBugReportExporter.RecordComparisonReference(baseline.OriginalCheckpointId);
         string direction;
-        if (comparison.Difference < 0)
+        if (comparison.IsImprovement)
         {
             direction = "IMPROVED";
             _combat.ManualRouteImprovementDetected = true;
             _combat.BugReportIssues.Record(
                 CombatBugReportIssueKind.BetterWorldline,
                 $"预计战损 {comparison.PreviousProjectedBattleHpLost} → {comparison.CurrentProjectedBattleHpLost}，" +
-                $"下降 {-comparison.Difference} HP");
+                $"下降 {-comparison.Difference} HP；多用药 {comparison.AdditionalPotionCount} 瓶，" +
+                $"折算优化 {comparison.PotionAdjustedHpReduction} HP");
         }
         else if (comparison.Difference > 0)
         {
@@ -3470,6 +3481,10 @@ internal static partial class SolverController
                 CombatBugReportIssueKind.ManualHpLossIncreased,
                 $"预计战损 {comparison.PreviousProjectedBattleHpLost} → {comparison.CurrentProjectedBattleHpLost}，" +
                 $"增加 {comparison.Difference} HP");
+        }
+        else if (comparison.Difference < 0)
+        {
+            direction = "POTION_TRADE";
         }
         else
         {
@@ -3481,7 +3496,13 @@ internal static partial class SolverController
             $"original_turn={comparison.OriginalTurnNumber} current_turn={comparison.CurrentTurnNumber} " +
             $"previous_projected_battle_hp_lost={comparison.PreviousProjectedBattleHpLost} " +
             $"current_projected_battle_hp_lost={comparison.CurrentProjectedBattleHpLost} " +
-            $"difference={comparison.Difference} {comparison.StateDifference}");
+            $"difference={comparison.Difference} " +
+            $"previous_projected_battle_potion_count={comparison.PreviousProjectedBattlePotionCount} " +
+            $"current_projected_battle_potion_count={comparison.CurrentProjectedBattlePotionCount} " +
+            $"additional_potion_count={comparison.AdditionalPotionCount} " +
+            $"potion_hp_cost={comparison.PotionHpCost} " +
+            $"potion_adjusted_hp_reduction={comparison.PotionAdjustedHpReduction} " +
+            $"{comparison.StateDifference}");
     }
 
     private static string FormatSearchFailure(

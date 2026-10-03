@@ -64,7 +64,7 @@ Release、结构门禁通过。TranspositionFrontierChecks 共 1,024,010 项通�
 
 ```sh
 python3 docs/archive/performance/transposition-cap-evidence-20260920/materialize_corpus.py --out .local/cap-inputs --dll <待测DLL绝对路径> --prefix diagnostic
-python3 tools/OfflineSearchHarness/run_plan.py --plan .local/cap-inputs/plan.json --workspace .local/cap-fixed --workers 2 --harness tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll
+python3 tools/search/OfflineSearchHarness/run_plan.py --plan .local/cap-inputs/plan.json --workspace .local/cap-fixed --workers 2 --harness .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll
 ```
 
 对 main 使用相同输入另跑一臂，`compare_results.py` 的前缀不带结尾短横。VeryHigh 使用 `materialize_corpus.py --heavy --out .local/cap-heavy-inputs --dll <待测DLL绝对路径> --prefix heavy`，再将 run_plan 的 workers 设为 1。指定单根加 `--root FULL-REGENT-ELITE-00`；只有默认臂触顶才加正整数 `--transposition-entry-limit` 跑放大臂，并确认该臂未触顶。

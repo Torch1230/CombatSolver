@@ -1,8 +1,0 @@
-[
-  {
-    "monsterId": "BigDummy",
-    "moveId": "NOTHING",
-    "clearPlayerHandBeforeMove": true,
-    "expectedSearchBoundary": "None"
-  }
-]

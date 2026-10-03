@@ -54,4 +54,4 @@
 
 ## 复跑
 
-结构化记录 `commands` 提供基线/候选短搜、正常配置、策略合同及整场哨兵的完整参数数组，已将个人路径替换为仓库夹具路径或显式占位符。机甲骑士的临时牌组从 `coverage/unattended/performance-veryhigh-mecha-native.json` 的 `runCards` 提取。构建目录必须固定版本；每版独立进程先短搜预热再正式测量，结束后用 `--stop-instance` 退出，勿让旧DLL跨构建复用。
+结构化记录 `commands` 提供基线/候选短搜、正常配置、策略合同及整场哨兵的完整参数数组，已将个人路径替换为仓库夹具路径或显式占位符。机甲骑士的临时牌组从 `coverage/fixtures/runtime/performance-veryhigh-mecha-native.json` 的 `runCards` 提取。构建目录必须固定版本；每版独立进程先短搜预热再正式测量，结束后用 `--stop-instance` 退出，勿让旧DLL跨构建复用。

@@ -77,7 +77,7 @@ List<SearchNode> probes = nodes.Where(node => node.Parent is { } parent
 - E 是唯一既没有翻转、净战损又不变差的档位，因此取 64。它改变的 3 根：`EQ-DEFECT-ELITE-00` 0→2（更差）、
   `EQ-NECROBINDER-BOSS-00` 7→2、`EQ-REGENT-BOSS-00` 72→68（更好）。
 
-### 逐字段口径（`tools/OfflineSearchHarness/compare_results.py`，A 臂 vs E 臂）
+### 逐字段口径（`tools/search/OfflineSearchHarness/compare_results.py`，A 臂 vs E 臂）
 
 60 根全部对齐、无缺根，比较 6447 个与时间/内存/GC 无关的字段：
 
@@ -95,8 +95,8 @@ List<SearchNode> probes = nodes.Where(node => node.Parent is { } parent
 ## 复现
 
 ```bash
-python tools/OfflineSearchHarness/run_plan.py --plan <plan.json> --workspace <ws> --workers 4
-python tools/OfflineSearchHarness/compare_results.py --left <ws>/left/runs --right <ws>/right/runs \
+python tools/search/OfflineSearchHarness/run_plan.py --plan <plan.json> --workspace <ws> --workers 4
+python tools/search/OfflineSearchHarness/compare_results.py --left <ws>/left/runs --right <ws>/right/runs \
   --left-prefix A --right-prefix E --out compare.json
 ```
 
@@ -113,11 +113,11 @@ python tools/OfflineSearchHarness/compare_results.py --left <ws>/left/runs --rig
   −13.7% 探测、−2.7% 展开，因为多数批次本就不足 64 个。不声称普适百分比，也不外推为可见帧时间或 FPS。
 - 上限是每次 `FindBestFreshResourceStandPat` 调用的前缀长度，不是整场预算；beam 更宽或更窄时受影响的批次数
   不同，收益形状随之变化。
-- 语料只有 `coverage/equivalence` 的 60 根，`FULL-SILENT-ELITE-03` 两臂均 `TimeLimit`、
+- 语料只有 `coverage/corpora/equivalence/turn-start-60` 的 60 根，`FULL-SILENT-ELITE-03` 两臂均 `TimeLimit`、
   `FULL-DEFECT-ELITE-00` E 臂 `TimeLimit`，这 2 根不计入判决。
 - **未验证**：游戏内 `UnattendedTestRunner.StandPatProbes` 契约（双车道探测批次、注入异常传播、并行与串行
   等价）需要实机无人测试，本轮只跑了离线宿主；玩家检查点批量回放（`.local/` 无问题包）；DOP>1 与组合
   （Coordinator/portfolio）路径；可见 Steam 帧时间与 GC 暂停；No-GC 区域行为。
-- 与本轮无关但顺带确认：`tools/BeamRankSortChecks` 在未改动的 `main` 上即报
+- 与本轮无关但顺带确认：`tools/testing/checks/BeamRankSortChecks` 在未改动的 `main` 上即报
   `Update probe for changed snapshot field: PlayerDead`（`BeamRankScore` 已读 `Snapshot.PlayerDead`，其桩件
   仍把所有字段声明为 `int`）。本轮未修改它，只在 PR 中登记。

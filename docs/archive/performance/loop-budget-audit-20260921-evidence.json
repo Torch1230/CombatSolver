@@ -3,7 +3,7 @@
   "preChangeCommit": "b3ed8c11",
   "change": "Split local time/node stop telemetry and classify wall-clock-limited comparisons; no replay admission change",
   "unitTests": {
-    "command": "python3 -m unittest discover -s tools/OfflineSearchHarness -p test_loop_boundaries.py -v",
+    "command": "python3 -m unittest discover -s tools/search/OfflineSearchHarness -p test_loop_boundaries.py -v",
     "passed": 8
   },
   "releaseBuild": {

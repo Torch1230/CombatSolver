@@ -47,7 +47,7 @@ DOP 对照的并行调度计数以及 worker 局部 ThreatProjectionCache 条目
 - `UI-LOCALIZATION`：`275d2dcafd214c62b675f5832a11993d` Passed，eng/zhs/zht；41 个真实动作显示为 4 个控件，保留额外重放、最后一次击杀、全区间高亮、复用和双语标签。
 - `ROUTE-ROW-REUSE`：`5ec0d3f0b90c450b8c43a87b0cdaee25` Passed，完整显示身份、失败重试、语言往返、订阅释放、部署索引和原控件复用均通过。首次运行缺少 evidence-directory，行为合同已通过但证据写入失败；补齐测试输出目录后复跑通过，不是吞掉异常。
 - `LOOP-REPLAY-DEPLOY`：`d4867a3cb9154340a85fe848d1139a56` Passed；40 HP、24 动作，原生完整部署、严格逐动作增量/全前缀续用戳核对、0 非预期重算；这份时间/分配不用于性能表。
-- 独立 `tools/LoopDisplayChecks`：122505 个断言，随机序列逐项还原和执行索引覆盖；8 动作 ×200 + 非循环后缀保持映射。
+- 独立 `tools/testing/checks/LoopDisplayChecks`：122505 个断言，随机序列逐项还原和执行索引覆盖；8 动作 ×200 + 非循环后缀保持映射。
 - 所有原生测试都使用仓库内隔离实例、120 秒请求上限和 cleanup，启动器已报告实例删除。可见排版和动态意图投影与原生面板的一致性未验证。
 
 ## 对原调研证据的修正
@@ -60,15 +60,15 @@ DOP 对照的并行调度计数以及 worker 局部 ThreatProjectionCache 条目
 
 ```bash
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
-dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
-dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
-  --request coverage/unattended/generic-loop-long-damage-hidden-phase-v0111.json \
+dotnet build tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+  --request coverage/fixtures/search/generic-loop-long-damage-hidden-phase-v0111.json \
   --label loop --out .local/loop-check --profile Low --nodes 6000 \
   --budget-ms 20000 --dop 1 --stop-at-zero-loss
-dotnet run --project tools/LoopDisplayChecks -c Release
-./tools/run-unattended-test.sh --scenario-id LOOP-DEFENSIVE-VALUE \
+dotnet run --project tools/testing/checks/LoopDisplayChecks -c Release
+./tools/testing/run-unattended-test.sh --scenario-id LOOP-DEFENSIVE-VALUE \
   --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --cleanup-instance-on-exit
-./tools/run-unattended-test.sh --scenario-id UI-LOCALIZATION --cleanup-instance-on-exit
+./tools/testing/run-unattended-test.sh --scenario-id UI-LOCALIZATION --cleanup-instance-on-exit
 ```
 
 `OFFLINE_HARNESS_COMBATSOLVER_DLL` 指向预先保存的基线 DLL 可做 A/B。`--verify-incremental` 仅用于小根严格回放，不能用于性能表；历史计数修复和格挡保路会改变有相关内容的搜索，不宣称任意未测战斗都逐位等价。

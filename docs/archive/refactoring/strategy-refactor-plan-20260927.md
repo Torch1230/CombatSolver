@@ -68,7 +68,7 @@ SearchRequestPipeline.Run(root, policy, budgetLedger)
 1. **行为冻结优先**：P1/P2/P3/P4/P5 是纯或准纯重构，必须逐位保持终局路线、动作序列、expanded/transitions/choice branches、剪枝计数和协议 schema 不变。
 2. **黄金语料**：P0 产出的固定根语料是唯一“未退化”判据；每个阶段都要跑语料并输出差异表。
 3. **一个提交一个边界**：每批只迁移一个可解释边界，先修 `docs/ARCHITECTURE.md` 与结构门禁，再实现、验证、提交；不等全部设计完。
-4. **门禁双端同步**：任何新约束同时写入 `tools/verify-refactor-boundaries.ps1` 与 `tools/verify-refactor-boundaries.sh`，规则等价。
+4. **门禁双端同步**：任何新约束同时写入 `tools/inspection/verify-refactor-boundaries.ps1` 与 `tools/inspection/verify-refactor-boundaries.sh`，规则等价。
 5. **旧路径删除**：迁移后删除旧所有权与双写路径，不长期并存；并存期必须用允许清单+计数守卫，不得无界积累。
 6. **fail-fast 与日志不变**：stage 名、结构化日志、请求/结果 schema 在纯重构中保持不变；诊断模式名保留以便对照。
 7. **停损条件**：任一阶段若无法在语料上证明行为不变（纯重构）或严格不退化（行为增强），停止并回退，不带着可疑差异继续。
@@ -315,7 +315,7 @@ P0 ──> P1 ──> P2 ──> P3 ──> P4 ──> P5
 
 每阶段提交时必须同步：
 
-1. `tools/verify-refactor-boundaries.ps1` 与 `.sh`（等价规则）：新增对应“禁止回流”检查；
+1. `tools/inspection/verify-refactor-boundaries.ps1` 与 `.sh`（等价规则）：新增对应“禁止回流”检查；
 2. `docs/ARCHITECTURE.md`：更新所有权与职责地图；
 3. `.agents/skills/architecture-boundary-refactor/SKILL.md` 中对应的边界条款；
 4. `docs/refactoring/refactor-roadmap.md`：追加本轮批次状态；

@@ -6,6 +6,8 @@
 
 CombatSolver 是《杀戮尖塔 2》的单人战斗路线求解器 Mod，使用 C# / .NET 9 / Godot。主线提供整场搜索，在主线程捕获稳定根、后台分叉影子状态，最后通过原版公开入口部署当前回合动作。多人研究保留在 [归档入口](docs/archive/multiplayer/README.md)。
 
+在线监控后台与部署文档由独立私有仓库 `combatsolver-presence-service` 维护；本仓库保留模组端上报、战绩采集、更新提醒及相关开发工具和客户端指南。
+
 硬约束：
 
 - 多人研究分支 `archive/multiplayer` 已归档，只作历史参考。日常开发、文档维护与远端同步不修改、推送或合入该分支；只有用户明确要求恢复多人开发时才重新维护。现有提交和验收记录保留。
@@ -47,11 +49,11 @@ CombatSolver 是《杀戮尖塔 2》的单人战斗路线求解器 Mod，使用 
 - [文档总目录](docs/README.md)：当前指南与专题索引；玩家更新日志统一位于 `docs/releases/`，专题资料按目录维护。新增或移动文档时同步索引与引用。
 - [架构与职责地图](docs/ARCHITECTURE.md)：当前源码入口、所有权和禁止依赖的单一维护入口。
 - [滚动重构路线](docs/refactoring/refactor-roadmap.md)：当前状态、待证据项与历史入口。
-- [测试矩阵](docs/TEST_MATRIX.md) 与 `coverage/test-evidence.json`：可重跑场景和结构化证据。
+- [测试矩阵](docs/TEST_MATRIX.md) 与 `coverage/evidence/test-evidence.json`：可重跑场景和结构化证据。
 - [开发笔记](docs/DEVELOPMENT_NOTES.md)：当前未发布行为变化与历史入口。
 - [第三方 Mod 适配手册](docs/third-party/README.md)：面向外部 Mod 作者的登记点总表、登记纪律与验收标准；同时是「哪些位置还是封闭开关」的单一维护入口。
-- `tools/verify-refactor-boundaries.ps1`（Windows / PowerShell 7）与 `tools/verify-refactor-boundaries.sh`（Linux / Bash）：当前架构边界的等价可执行门禁。
-- `tools/OfflineSearchHarness/`：不启动 Godot、在普通 .NET 进程里批量跑搜索的离线宿主，用法与口径见 [离线搜索宿主](docs/OFFLINE_SEARCH_HARNESS.md)。只产指标，不做正确性验收。
+- `tools/inspection/verify-refactor-boundaries.ps1`（Windows / PowerShell 7）与 `tools/inspection/verify-refactor-boundaries.sh`（Linux / Bash）：当前架构边界的等价可执行门禁。
+- `tools/search/OfflineSearchHarness/`：不启动 Godot、在普通 .NET 进程里批量跑搜索的离线宿主，用法与口径见 [离线搜索宿主](docs/OFFLINE_SEARCH_HARNESS.md)。只产指标，不做正确性验收。
 
 源码与当前可重跑结果优先于历史说明。职责发生变化时，同一提交更新 `docs/ARCHITECTURE.md`、相关 skill 和结构门禁，避免多份地图继续漂移。
 
@@ -137,20 +139,20 @@ Windows（PowerShell 7）常用命令：
 
 ```powershell
 dotnet build CombatSolver.csproj -c Release
-pwsh -NoProfile -File tools\verify-refactor-boundaries.ps1
-pwsh -NoProfile -File tools\run-unattended-test.ps1 <fixture 参数> -CleanupInstanceOnExit
-dotnet run --project tools\CoverageCatalog\CoverageCatalog.csproj -c Release -- . <verify 参数>
-pwsh -NoProfile -File tools\run-visible-steam-benchmark.ps1 <固定基准参数>
+pwsh -NoProfile -File tools\inspection\verify-refactor-boundaries.ps1
+pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 <fixture 参数> -CleanupInstanceOnExit
+dotnet run --project tools\inspection\CoverageCatalog\CoverageCatalog.csproj -c Release -- . <verify 参数>
+pwsh -NoProfile -File tools\performance\run-visible-steam-benchmark.ps1 <固定基准参数>
 ```
 
 Linux（Bash）等价命令：
 
 ```bash
 dotnet build CombatSolver.csproj -c Release
-./tools/verify-refactor-boundaries.sh
-./tools/run-unattended-test.sh <fixture 参数> --cleanup-instance-on-exit
-dotnet run --project tools/CoverageCatalog/CoverageCatalog.csproj -c Release -- . <verify 参数>
-./tools/run-visible-steam-benchmark.sh <固定基准参数>
+./tools/inspection/verify-refactor-boundaries.sh
+./tools/testing/run-unattended-test.sh <fixture 参数> --cleanup-instance-on-exit
+dotnet run --project tools/inspection/CoverageCatalog/CoverageCatalog.csproj -c Release -- . <verify 参数>
+./tools/performance/run-visible-steam-benchmark.sh <固定基准参数>
 ```
 
 Windows `.ps1` 与 Linux `.sh` 都是受维护的平台原生入口：PowerShell 使用 PascalCase 参数，Bash 使用 GNU 风格长参数；`.sh` 不调用 PowerShell。两端无人测试脚本均允许覆盖游戏和依赖路径，Linux 脚本还会探测标准 Steam 安装；这些本地入口仍不是可移植 CI。修改协议、门禁或测试能力时同步维护两端脚本，不要提交个人绝对路径更新。
@@ -165,8 +167,31 @@ Windows `.ps1` 与 Linux `.sh` 都是受维护的平台原生入口：PowerShell
 - 普通指南达到 500 行或 64 KiB 时按稳定职责拆分；活动开发/测试记录达到 200 行或 32 KiB 时，将完成批次归档并保留短入口。发布定稿后立即滚动归档，不把新工作追加到已发布章节。确需保留的卡池清单、协议 schema、结构化证据及生成报告按数据完整性维护，入口说明其范围与来源。
 - 同一专题有多份文档时集中到专题目录，以 README.md 为入口；子文档不散落在 docs 根目录。索引只列当前入口和归档入口，不逐条堆报告结论、复制正文或在表格内插入列表。仓库根目录保持必需文件。
 - 历史资料放在 docs/archive/，按专题、版本或批次分卷并冻结。报告与 JSON、fixture 等配套材料一起移动；修正链接或标明历史状态可以更新档案正文，新工作另写当前记录。
-- 移动或拆分文档时，同步 Markdown 相对链接、章节锚点、skill、脚本和结构化证据中的路径。固定 commit/tag 链接仍指向当时版本。提交前运行 tools/verify-documentation.py，并处理当前文档长度与链接错误。
+- 移动或拆分文档时，同步 Markdown 相对链接、章节锚点、skill、脚本和结构化证据中的路径。固定 commit/tag 链接仍指向当时版本。提交前运行 tools/inspection/verify-documentation.py，并处理当前文档长度与链接错误。
 - 版本、依赖、部署和渠道信息来自 manifest、权威源码与实际操作结果。生成报告由工具重新生成；工具失败时明确保留历史结果与失败原因，不手改版本冒充新验证。业务源码、文档源码与已发布客户端版本分别记录来源。
+
+### 工具维护规则
+
+- tools 只保存仍有明确用途、可以重复运行的工具和有效生产回归检查，按 [工具入口](tools/README.md) 的职责目录管理。在线服务由独立仓库维护，本仓库保留模组端代码与开发工具；同一职责先扩展已有工具或 fixture，不为单次排查新增独立项目。
+- 一次性探针、迁移脚本、临时生成器和实验 checkout 放在 .local/tool-tasks/<任务>/，任务结束删除。已撤回、未迁入生产的原型及其专属测试从当前工具树删除，源码由 Git 历史保留。
+- 新工具说明用途、输入输出、依赖、可重跑命令及验收方式；只有当前工作流需要，或有明确可复用价值时才纳入。新增目录或重复入口前先检查现有工具能否承担。
+- .NET 工具统一使用 tools/Directory.Build.props，产物和中间文件写入 .local/tool-build/；问题包、日志、trace、测量结果和生成代码写入 .local/。Python 检查使用 -B，避免在源码目录堆字节码缓存。
+- 移动工具时同步项目引用、平台脚本、CI、skills、文档和结构化证据；删除工具时一并删除废弃依赖和专属模式，现行入口只引用仍可执行的实现，历史证据链接到保存源码的提交。
+- 提交前运行 python tools/inspection/verify-tools.py；涉及项目、启动或路径迁移时编译受影响工具，并运行穿过该入口的最小合同。验证结构与路径时不自动启动游戏、发布版本或维护归档分支。
+
+### 覆盖材料维护规则
+
+- coverage 按 [覆盖材料入口](coverage/README.md) 的职责目录维护分类、证据、可复用输入和固定语料；新材料先复用已有主题，相关配置一起收纳，证据引用完整仓库相对路径。
+- 单次输入、待验证生成材料和完整运行产物写入 .local，完成后清理；运行器放 tools。历史摘要归档，仍有当前消费者的原始语料继续维护。整理目录保持历史结果与验证等级，生成快照由 CoverageCatalog 替换。
+- 迁移同步证据、请求、工具、skills 和文档；提交前运行 python -B tools/inspection/verify-coverage.py。改变覆盖目录读取或生成路径时运行 CoverageCatalog 的相应门禁，不将目录生成当作战斗复测。
+- 每份长期输入具备当前工具消费者、覆盖目录读取用途或独立机制回归价值。文件日期只表示文件更新时间，不能充当最后使用时间。已结束批次的专用输入、重复生成分片和失去消费者的语料从当前树删除；历史报告改用固定提交链接，Git 保存原材料，archive 只保存必要摘要。
+
+### 测试源码维护规则
+
+- src/Testing 按宿主、共享辅助、回放、机制合同和问题回归收纳，入口见 src/Testing/README.md。公共框架、API worker、离线宿主及有效原生回归按实际调用关系维护；新增长期测试须说明独立机制、最小复跑入口和断言，优先扩展已有合同或 fixture。
+- 一次性测试、探针和调查代码放 .local/tool-tasks/<任务>/，仅为本次验证显式接入构建；任务结束清理源码、专用路由、参数、fixture 与产物。普通构建显式排除 .local 源码。
+- 只有可复用合同才纳入正式 Testing；完整玩家路线、硬编码日志步骤和临时路径追踪在调查结束后退出当前树，保留必要失败与未验证摘要及固定提交来源。删除前核对跨层调用和共享 helper，保留仍有消费者的部分。
+- 新测试文件按现有职责目录归类，根目录只放导航。移动同步工具项目、证据、skills、文档和两平台结构门禁；维护任务不以编译代替原生回归证据。
 
 
 - 改动职责边界：更新 `docs/ARCHITECTURE.md`、相关 skill、结构门禁及必要的重构路线/核验记录。
@@ -178,7 +203,7 @@ Windows `.ps1` 与 Linux `.sh` 都是受维护的平台原生入口：PowerShell
 - 用户声明“这一批不发版”“直到我说发版都记入 `X`”或等价要求时，建立活动发布批次。批次内每项改动均写入 `X（开发中）` 并正常提交，不逐项提升版本、构建、打包、创建标签或上传；直到用户明确结束批次。该批次声明优先于“修复后默认最小发包”。
 - 版本创建标签或成功上传创意工坊后即冻结。后续行为改动进入新的“下一版本（开发中）”记录，不追加到已发布版本的更新日志或开发章节；用户尚未指定新版本号时不擅自编造，等下次版本指令再统一命名。
 - 没有活动发布批次时，玩家问题包修复和用户提出的功能修改默认以小版本（末位加一）、提交、一次 Release 构建和一次最小 ZIP 定版；用户明确说不发包时停止在提交。
-- 发布口令按字面分层执行：`准备发版` 完成版本同步、玩家更新日志、提交、一次 Release 构建和一次最小 ZIP，不创建标签、不上传、不推送；带有“给我审核/我拍板后”的请求只整理并提交更新日志草案，等用户批准后再构建定版。`发版/发布` 在必要时补齐准备步骤、创建当前版本的 annotated tag，再用 `tools/publish-release.ps1` 同步发布创意工坊、GitHub Release 与夸克网盘。`上传/更新创意工坊` 只发布当前已定版版本；`推送/同步远端` 只提交明确属于当前任务的跟踪文件并推送当前分支及已存在的当前版本标签。监控后台最新版提示由用户维护，发布流程不读写。只有用户明确要求“完整发布门禁/完整验收/干净安装”才执行完整门禁。
+- 发布口令按字面分层执行：`准备发版` 完成版本同步、玩家更新日志、提交、一次 Release 构建和一次最小 ZIP，不创建标签、不上传、不推送；带有“给我审核/我拍板后”的请求只整理并提交更新日志草案，等用户批准后再构建定版。`发版/发布` 在必要时补齐准备步骤、创建当前版本的 annotated tag，再用 `tools/release/publish-release.ps1` 同步发布创意工坊、GitHub Release 与夸克网盘。`上传/更新创意工坊` 只发布当前已定版版本；`推送/同步远端` 只提交明确属于当前任务的跟踪文件并推送当前分支及已存在的当前版本标签。监控后台最新版提示由用户维护，发布流程不读写。只有用户明确要求“完整发布门禁/完整验收/干净安装”才执行完整门禁。
 - 最小发包链固定为：完成必要行为验证、提交、一次 Release 构建、一次最小 ZIP 创建。后续没有行为源码或构建输入变化时，到 ZIP 创建成功即结束，不追加发布后复测或包内容复核；前一阶段已有成功证据时直接复用，不重做。
 - GitHub Release 的最小 ZIP 统一写入仓库根目录的 `releases/CombatSolver-<版本号>.zip`。夸克网盘由统一脚本另建 `releases/CombatSolver-<版本号>-Quark.zip`：只保留 CombatSolver 最小包内容，不加入 RitsuLib 或其他依赖；不足时增加无压缩的 `QUARK_UPLOAD_PADDING.bin`，使总大小严格超过 15 MiB。填充条目不参与 Mod 加载，解压后可以删除。当前工作区发布目录为 `D:\Desktop\sts2mod\CombatSolver\releases`，所有发布产物均由 Git 忽略。
 - 用户明确要求“上传/更新创意工坊”时，直接上传仓库当前已经定版的最新版，并在创意工坊 `changeNote` 中使用同版本玩家更新日志的完整中英正文，只转换 Steam 排版语法；逐项核对，不能缩写、合并或删减玩家变动、限制与致谢。创意工坊暂存目录中的旧 DLL、manifest 或旧 `changeNote` 不是最新版来源；存在尚未定版的当前改动时，只补齐缺失的最小发包阶段。上传成功后不打开页面或重新下载确认。

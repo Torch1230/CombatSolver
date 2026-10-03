@@ -1,8 +1,0 @@
-{
-  "potionId": "SoldiersStew",
-  "target": "Player",
-  "cards": [
-    { "cardId": "STRIKE_IRONCLAD", "pile": "Hand" },
-    { "cardId": "STRIKE_IRONCLAD", "pile": "Draw" }
-  ]
-}

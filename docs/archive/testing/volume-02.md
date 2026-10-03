@@ -2,9 +2,9 @@
 
 ## 策略重构 P2 请求级预算所有权（2026-09-27）
 
-- 合入 0.47.1 后，`python tools/StrategyCorpus/run.py --manifest coverage/strategy-refactor-p2/corpus.json --out .local/strategy-refactor-p2/baseline-0471` 一次采集 #24、#37、#81、#89 与两个生成场景，六根均为 `comparable`。原始包与完整证据留在 `.local`，实例由启动器清理。
-- `python tools/StrategyCorpus/run.py --manifest coverage/strategy-refactor-p2/corpus.json --out .local/strategy-refactor-p2/ledger-outer` 后，`python tools/StrategyCorpus/compare.py --left .local/strategy-refactor-p2/baseline-0471 --right .local/strategy-refactor-p2/ledger-outer --out .local/strategy-refactor-p2/compare-ledger-outer`：六根动作、续用、结果、expanded、transitions、choice branches 和剪枝计数逐位相同。
-- 运行器修复后 `python -m py_compile tools/StrategyCorpus/run.py tools/StrategyCorpus/compare.py tools/StrategyCorpus/test_compare.py` 通过；本次 Release 编译 0 警告、0 错误，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=215`。按用户要求未运行 Linux 门禁；未做完整自动战斗或大批量回归。
+- 合入 0.47.1 后，`python tools/search/StrategyCorpus/run.py --manifest coverage/corpora/strategy/p2.json --out .local/strategy-refactor-p2/baseline-0471` 一次采集 #24、#37、#81、#89 与两个生成场景，六根均为 `comparable`。原始包与完整证据留在 `.local`，实例由启动器清理。
+- `python tools/search/StrategyCorpus/run.py --manifest coverage/corpora/strategy/p2.json --out .local/strategy-refactor-p2/ledger-outer` 后，`python tools/search/StrategyCorpus/compare.py --left .local/strategy-refactor-p2/baseline-0471 --right .local/strategy-refactor-p2/ledger-outer --out .local/strategy-refactor-p2/compare-ledger-outer`：六根动作、续用、结果、expanded、transitions、choice branches 和剪枝计数逐位相同。
+- 运行器修复后 `python -m py_compile tools/search/StrategyCorpus/run.py tools/search/StrategyCorpus/compare.py tools/search/StrategyCorpus/test_compare.py` 通过；本次 Release 编译 0 警告、0 错误，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=215`。按用户要求未运行 Linux 门禁；未做完整自动战斗或大批量回归。
 - 补充审计改用 `SearchPassContext` 后，#24 `start` 严格恢复与 15 秒配置的 SearchOnly 请求 `286768afb4d14118863cdf5e79239cdd` Passed，实例已清理。此请求只验证上下文边界可执行，不与 110 秒固定语料比较，也不声明整场质量等价。Release 编译 0 警告、0 错误，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=216`；未运行 Linux 门禁。
 - `SearchPassResult` 接管轮次停止状态后，#24 同根 SearchOnly 请求 `7ba221e6f4ef4d48926992768476e17b` Passed，实例已清理；与上一条的预计战损同为 1 HP，请求总展开 157004、转移 460496、选择分支 21493 均一致。这只覆盖普通返回路径，不代替接管或无胜利升级验证。Release 编译 0 警告、0 错误，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=217`；未运行 Linux 门禁。
 - 无胜利升级改用 `SearchPassContext` / `SearchPassResult` 后，#24 `start` 严格恢复与 SearchOnly 请求 `9bcf08de582f4c67a0b6ea61cd03eba0` Passed。非固定预算 110 秒、首轮节点帽 5000；实际日志 `NO_VICTORY_ESCALATION start attempt=1 beam=135->270 nodes=5000->10000`，随后 `won=False improved=False`，保留首轮路线，实例已清理。60 秒配置的诊断请求没有进入升级，因为首轮约 29 秒、下一轮估计约 58 秒超过剩余时间；未把它算作升级路径验证。Release 编译 0 警告、0 错误，Windows 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=217`；未运行 Linux 门禁。
@@ -23,8 +23,8 @@
 
 - P0 对六个 `combat_start` 玩家根及两个生成场景各运行一次 VeryHigh / 每 solver 25,000 节点 / DOP 1 基线；P1 最终源码对同八根各运行一次。六个玩家根的严格恢复、continuation 与原生状态均通过。两轮原始动作及完整证据留在 `.local/strategy-refactor-p0/`；启动器清理无头实例。
 - 基线的战损／用药依次为 #24 0/1、#37 1/0、#79 50/0、#81 31/0、#85 74/0、#89 9/0；生成场景 `GA-IRONCLAD-ELITE-00` 74/1、`GA-SILENT-BOSS-00` 44/0。这是固定短搜口径，不能与历史 180 秒策略成果直接比较。
-- `python tools/StrategyCorpus/compare.py --left .local/strategy-refactor-p0/baseline --right .local/strategy-refactor-p0/after --out .local/strategy-refactor-p0/comparison`：#24、#37、#81、#89 与两个生成场景的动作、结果、续用、expanded、transitions、choice branches 及剪枝逐位相同。#79、#85 的 P0 基线分别用时 109,992 和 109,985 毫秒，贴近 110,000 毫秒限时；两根标为不可比较，不将工作量漂移算作纯重构差异。四个有效玩家根已达到最低门槛，备用 #56/#63 未运行。
-- `python tools/StrategyCorpus/test_compare.py` 的分类、根身份、时限合同通过；最终 Release 构建 0 警告、0 错误。Windows/Linux 结构门禁均通过，Linux 侧 `rg` 解包于系统临时目录运行，无系统安装。未做完整自动战斗或大批量回归。
+- `python tools/search/StrategyCorpus/compare.py --left .local/strategy-refactor-p0/baseline --right .local/strategy-refactor-p0/after --out .local/strategy-refactor-p0/comparison`：#24、#37、#81、#89 与两个生成场景的动作、结果、续用、expanded、transitions、choice branches 及剪枝逐位相同。#79、#85 的 P0 基线分别用时 109,992 和 109,985 毫秒，贴近 110,000 毫秒限时；两根标为不可比较，不将工作量漂移算作纯重构差异。四个有效玩家根已达到最低门槛，备用 #56/#63 未运行。
+- `python tools/search/StrategyCorpus/test_compare.py` 的分类、根身份、时限合同通过；最终 Release 构建 0 警告、0 错误。Windows/Linux 结构门禁均通过，Linux 侧 `rg` 解包于系统临时目录运行，无系统安装。未做完整自动战斗或大批量回归。
 ## GetId 缓存与模组注册时序（#141，2026-09-27）
 
 - macOS 克隆游戏 + 隔离 HOME + `--force-steam=off`，mod_list 为 RitsuLib → CombatSolver → 探针。探针是最小 RitsuLib 内容模组：一张普通卡，在 `ModelRegistryInitializedEvent` 里打印 `GetId`；另编一个含与原版同名 `Leap` 卡的版本。不装求解器：`CARD.GET_ID_PROBE_CARD_PROBE_UNIQUE`，同名版正常启动；工坊 0.47.0：`CARD.PROBE_UNIQUE`，同名版 `DuplicateModelException` 启动失败；修复版：两种都与不装求解器一致。
@@ -39,8 +39,8 @@
 ## 下一版本（开发中）：注能核心首回合产球（2026-09-27）
 
 - 失败来源为0.47.1／`36372d40`的问题包 `0762b1da246243f1936a1e8750be8588`，工具箱选牌完成后第一次差异是预测0球／原生3个闪电球（4/9）。同版本游戏的 `InfusedCore.AfterSideTurnStart` IL核对了参与者、首回合条件及3次产球；原包未恢复。
-- `tools/OfflineSearchHarness/InfusedCoreChecks.cs` 用生产DLL创建根，注入分支空球队列后调用真实遗物Hook。`OFFLINE_HARNESS_INFUSED_CORE_CHECKS=1`、DEFECT、`--milestone M1`：修改前失败 `first turn must channel three orbs; actual=0`；修改后14项Passed，覆盖3球、被动4／激发9、历史新增3次、T2空球不再产球、T2已有球不重复触发、持有者未参与不触发，以及根、父子、兄弟和球Model独占。证据 `.local/issue-bundles/0762b1da246243f1936a1e8750be8588/fix/{baseline,final}/`。这是离线诊断，不是原生actual/simulated验收。
-- 新增 [INITIAL-TOOLBOX-INFUSED-CORE](../../../coverage/unattended/initial-toolbox-infused-core.json)：原生开局注能核心＋工具箱、1500ms固定搜索、增量等价，在首次准备结果完整状态匹配及原生选择顺序断言后停止，总超时120秒。**本轮未执行**：实际游戏进程仍运行，既有无头准入门禁禁止并行启动；未关闭用户游戏、绕过门禁或创建无头实例。
+- `tools/search/OfflineSearchHarness/InfusedCoreChecks.cs` 用生产DLL创建根，注入分支空球队列后调用真实遗物Hook。`OFFLINE_HARNESS_INFUSED_CORE_CHECKS=1`、DEFECT、`--milestone M1`：修改前失败 `first turn must channel three orbs; actual=0`；修改后14项Passed，覆盖3球、被动4／激发9、历史新增3次、T2空球不再产球、T2已有球不重复触发、持有者未参与不触发，以及根、父子、兄弟和球Model独占。证据 `.local/issue-bundles/0762b1da246243f1936a1e8750be8588/fix/{baseline,final}/`。这是离线诊断，不是原生actual/simulated验收。
+- 新增 [INITIAL-TOOLBOX-INFUSED-CORE](../../../coverage/fixtures/scenarios/state/initial-toolbox-infused-core.json)：原生开局注能核心＋工具箱、1500ms固定搜索、增量等价，在首次准备结果完整状态匹配及原生选择顺序断言后停止，总超时120秒。**本轮未执行**：实际游戏进程仍运行，既有无头准入门禁禁止并行启动；未关闭用户游戏、绕过门禁或创建无头实例。
 - 旧 `RELIC-HOOKS-BATCH-054` 从已完成原生产球的Play状态取根，只证明既有球与未来回合，不再作为空球准备根的首次产球证据。覆盖分类已改为显式模拟补偿，保留原生验收未完成的说明。
 - Windows Release构建0警告0错误，修改文件JSON解析及格式检查通过。CoverageCatalog原有工程缺少RitsuLib分程序集引用，先因`GetOriginalIl`／`HarmonyIl`编译失败；使用仅本地的额外引用后构建成功，但`--verify-runtime-evidence`在读取既有`LOOP-FINAL-20260921.status=PassedWithDocumentedBoundaries`时抛JsonException，未完成覆盖门禁或重新生成派生目录。此问题不归因于本次产球修复，不伪造Passed状态。本轮不提升版本、不打包或发布；不宣称完整战斗、实机选牌部署或其他Mod组合已验收。
 
@@ -55,14 +55,14 @@
 ## 下一版本（开发中）：开局弃牌选择时点估值（2026-09-27）
 
 - 失败基线来自本机 `MYTES_NORMAL` / `057a700fd80b4a65ac7f8641b4ad2cbf` 第1回合generation15，18:40:19.858智能用药审计的 `OpeningDiscardChoiceCardValue` 抛 `FLICK_FLACK+0 source=Hand action=ACROBATICS`。根牌组没有该牌；同战另一成功候选记录攻击药水生成该牌、临时0费与后续恢复1费，不把它当作失败分支完整回放。
-- 新增 [OPENING-DISCARD-CHOICE-VALUE](../../../coverage/unattended/opening-discard-choice-value.json)。杂技从抽牌堆抽到两张同名同升级、伤害7／17的临时零费 `FLICK_FLACK` 及升级的中和；逐分支确认弃牌自动打出后旧完整状态键已不在四个牌堆，而估值仍等于选择时的正确物理实例。全部兄弟只建立一份纯值表，命中缓存后伪造状态键或选择上下文继续明确失败。
+- 新增 [OPENING-DISCARD-CHOICE-VALUE](../../../coverage/fixtures/search/opening-discard-choice-value.json)。杂技从抽牌堆抽到两张同名同升级、伤害7／17的临时零费 `FLICK_FLACK` 及升级的中和；逐分支确认弃牌自动打出后旧完整状态键已不在四个牌堆，而估值仍等于选择时的正确物理实例。全部兄弟只建立一份纯值表，命中缓存后伪造状态键或选择上下文继续明确失败。
 - `ea5c7b5bb1b34591b58539e8e9dac298` Passed：真实 `BuildOpeningHandSetupActions` 在DOP1及DOP2配置下成功，DOP1启用增量回放；搜索前后live不变，完成分支Fork状态不变，原生杂技选择和弃牌自动打出结束后完整ContinuationStamp与预测一致。这里的DOP2是入口配置覆盖，不宣称该局部Expand实际双lane并发；没有运行整场搜索质量或性能对照。
 - Windows Release构建0警告0错误、结构门禁 `REFACTOR_BOUNDARIES_OK search_files=212`、静态代码审阅及 `git diff --check` 通过。实例使用仓库 `.local/headless-instances/opening-discard-value-1`，已由启动器输出删除成功；证据 `.local/opening-discard-value-20260927/native-1/`。未恢复原玩家战斗、未覆盖所有第三方及嵌套前置选择组合，未启动可见Steam。
 
 ## 下一版本（开发中）：跨回合固定前缀结果完整性（2026-09-27）
 
 - 原始失败证据是旧日雕像50,537展开的持久路线：预测Continuation为T3 HP70→T4 HP61，末态HP43／累计掉血27，但七张逐回合结果表仅有T4–6。UI求和显示18，结束回合保护缺键读0。没有恢复原玩家战斗或取得已经退休的该场完整live日志，不据此宣称另有怪物／药水模拟偏差。
-- 新增 [FIXED-PREFIX-TURN-OUTCOMES](../../../coverage/unattended/fixed-prefix-turn-outcomes.json)，通过现有无人ScenarioId入口运行。最小构造三次EndTurn固定前缀与第四回合后续搜索，内部DOP1／最多100展开／5秒，开启增量等价；验证每个前缀节点在结果投影前已持有Outcome、显式零及正战损、末回合部分前缀／终局前缀、空前缀、不合法回合和终局后动作仍拒绝，live根不变。独立原节点后备投影验证非零卖血差额、原分数不变和既有比较标注优先。
+- 新增 [FIXED-PREFIX-TURN-OUTCOMES](../../../coverage/fixtures/search/fixed-prefix-turn-outcomes.json)，通过现有无人ScenarioId入口运行。最小构造三次EndTurn固定前缀与第四回合后续搜索，内部DOP1／最多100展开／5秒，开启增量等价；验证每个前缀节点在结果投影前已持有Outcome、显式零及正战损、末回合部分前缀／终局前缀、空前缀、不合法回合和终局后动作仍拒绝，live根不变。独立原节点后备投影验证非零卖血差额、原分数不变和既有比较标注优先。
 - 对同一真实求解结果逐项移除战损、回血、敌方损血、卖血、最大／实际格挡与能量表的第三回合键：七种磁盘缓存均按未命中处理且内容未改，录像导入拒绝；生成结果序列化、内存续用及结束回合预计值查询均拒绝缺项。正确结果序列化往返通过，未删除玩家缓存。
 - 最终 `ea17a1f38de84a3b9b32797923ca1892` Passed，原生从T1逐次推进到T4，每次等待明确的EndPlayerTurnAction完成，完整ContinuationStamp与预测一致，LiveEndTurnRiskEvaluator与计划该回合损失一致，复用及UI求和包含前缀损失。只跑至最早覆盖三段前缀的边界，未执行SolverController全自动停机分支或整场自动部署。证据 `.local/fixed-prefix-outcomes-20260927/prefix-3/`。
 - 首次 `d67f326496fa4f749b9c68d990f39bea` 在新配置的首次洗牌教程等待至120秒，未记通过，启动器停止并清理实例。只在后续私有实例中导入进度模板并关闭教程，不改实机设置；`6feda5c2bbae43649327d0645302ba8f` 通过后，因新增节点所有权及精确异常断言运行最终夹具，未扩大超时。所有实例均在仓库 `.local/headless-instances/`，启动器分别输出删除成功。
@@ -72,7 +72,7 @@
 ## 下一版本（开发中）：回合准备固定前缀边界（2026-09-27）
 
 - 失败基线来自本机原生 `GAMBLING_CHIP` 开局日志：`CombatBeamSolver.SolveCore → CombatSearchCoordinator.RunSearchPass` 抛 `include_turn_setup=True prefix=+STAMPEDE`，对应延后能力 `[EndTurn, STAMPEDE]`。未恢复完整玩家存档；不把后续同遭遇重试当成同一根。
-- 原生短场景先用较强牌组验证页面顺序，`df377b96d5a14c718adbdc21ed3732cd` Passed；该根提前取得零战损，所以另用含6张伤口的 [准备阶段回归夹具](../../../coverage/unattended/turn-setup-fixed-prefix-stampede.json) 覆盖仍需补充搜索的承伤根。最终 `0c96548a196e449e9fa98a7acd6e7422` Passed：12张牌、`GAMBLING_CHIP` 与惊逃，DOP2、20秒固定时间预算，完整胜利投影21 HP／0药、5回合，总展开8,549、转移17,429；原生 `Visible → SearchStarted → PlanReady → Selected` 顺序通过，在首个准备结果与选择执行后停止，没有部署整场战斗。
+- 原生短场景先用较强牌组验证页面顺序，`df377b96d5a14c718adbdc21ed3732cd` Passed；该根提前取得零战损，所以另用含6张伤口的 [准备阶段回归夹具](../../../coverage/fixtures/ui/turn-setup-fixed-prefix-stampede.json) 覆盖仍需补充搜索的承伤根。最终 `0c96548a196e449e9fa98a7acd6e7422` Passed：12张牌、`GAMBLING_CHIP` 与惊逃，DOP2、20秒固定时间预算，完整胜利投影21 HP／0药、5回合，总展开8,549、转移17,429；原生 `Visible → SearchStarted → PlanReady → Selected` 顺序通过，在首个准备结果与选择执行后停止，没有部署整场战斗。
 - 最终日志包含一次 `OPENING_PREFIX_REFINEMENT skipped reason=TurnSetupRoot`，仍进入正常 Smart 梯度（本根无药，返回 `no_potion_acceptable`）；没有把准备前动作送入可选固定前缀成员。夹具中的性能档位／Beam／节点测试覆盖在准备结束后才应用，本次准备搜索实际基线为 Beam60／120,000节点，不能按请求中的Low／24／6,000解释。证据 `.local/turn-setup-fixed-prefix-20260927/native-setup-loss/`。
 - 首次启动在游戏请求提交前因无默认离线 `settings.save` 失败，未计行为验证；只向新建的自有隔离实例复制当前Steam设置作为模板后继续，未修改实机配置或存档。首次失败和两次完成均由启动器输出 `UNATTENDED_INSTANCE_REMOVED` 删除整个实例；所有实例位于仓库 `.local/headless-instances/`。
 - 普通 Play 根哨兵复用本轮修改前保存的故障机器人精英 Coordinator / Smart 输入与政策：Low、Beam24、2,000节点、DOP1、20秒。修复后总展开10,000、转移40,482、10 HP／0药，与基线106项非时间对照、完整 `route.json`（包括选择）、根续用文本、后续续用及策略文件相同，均无时间截断。该对照仅证明此根的原路径保持，不宣称准备根的搜索质量不变或性能改善。证据 `.local/turn-setup-fixed-prefix-20260927/play-sentinel-comparison.json`。
@@ -169,9 +169,9 @@
 
 ## 0.46.3：搜索速度指标与状态行去噪（2026-09-24）
 
-- Windows Release 构建 0 警告、0 错误；PowerShell 结构门禁 `tools\verify-refactor-boundaries.ps1` 校验通过（`REFACTOR_BOUNDARIES_OK search_files=208`）。
+- Windows Release 构建 0 警告、0 错误；PowerShell 结构门禁 `tools\inspection\verify-refactor-boundaries.ps1` 校验通过（`REFACTOR_BOUNDARIES_OK search_files=208`）。
 - `English.json` 447 项词条格式与参数占位符校验全部通过。
-- 控制器会话与 UI 状态生命周期无头测试通过：`pwsh -NoProfile -File tools\run-unattended-test.ps1 -ScenarioId QOL-CONTROLLER-STOP-172 -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1 -VerifyControllerSessionLifecycle -ExpectedFinishedTurn 1 -TimeoutSeconds 120 -CleanupInstanceOnExit` 执行 Passed，验证了世界线数字、速度读数（xx 条/s）与平滑缓动结算断言，临时测试实例已由启动器清理。未做可见 Steam 实机人工验收。
+- 控制器会话与 UI 状态生命周期无头测试通过：`pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId QOL-CONTROLLER-STOP-172 -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1 -VerifyControllerSessionLifecycle -ExpectedFinishedTurn 1 -TimeoutSeconds 120 -CleanupInstanceOnExit` 执行 Passed，验证了世界线数字、速度读数（xx 条/s）与平滑缓动结算断言，临时测试实例已由启动器清理。未做可见 Steam 实机人工验收。
 
 ## 0.46.3：内存回收设置说明（2026-09-24）
 
@@ -182,9 +182,9 @@
 
 - Windows Release 构建 0 警告、0 错误（`-p:CopyModOnBuild=false`，不写实机 Mod 目录）；PowerShell 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`；`git diff --check` 通过。
 - 旗舰根 `EQ-IRONCLAD-ELITE-00` 串行 8 次 ABBA（执行前固定 A B B A A B B A，两臂各 4 次，全部样本保留）：墙钟均值 12.448 → 10.488 s（−15.7%），两臂区间不重叠（9.711–11.191 对 11.769–13.005）；`standPatProbes` −41.2%、展开 −22.7%、转移 −27.7%、`forkCount` −27.2%、累计分配 −27.8%；8 次预计战损、分数与终止边界逐项相同（52 / 9999279964 / `None`）。
-- 60 根 `coverage/equivalence` 语料的上限扫描（VeryHigh / beam 135 / nodes 60000 / DOP1 / 60 s，workers 4）：8 名额三种预排与 32 档前缀均被否决（0～2 根存活/阵亡翻转、净战损 −45～+20），采用的 64 档在 58 可比根上 0 翻转、净战损 −7、更差 1 根（`EQ-DEFECT-ELITE-00` 0→2）、更好 2 根，探测 −13.7%、展开 −2.7%。`FULL-SILENT-ELITE-03` 两臂与 `FULL-DEFECT-ELITE-00` 候选臂为 `TimeLimit`，不计入判决。
-- `tools/OfflineSearchHarness/compare_results.py` 逐字段对照基线臂与采用臂：60 根对齐、无缺根、6447 个非时间/非内存字段；`rootState` 与 `catalog` 差异 0，`route` 231 处/15 根，`continuations` 15 根，`solverMetrics` 非时间字段 399 处/34 根。结构化样本：[fresh-resource-standpat-probe-cap-20260924.json](../performance/fresh-resource-standpat-probe-cap-20260924.json)。
-- 未执行：游戏内 `UnattendedTestRunner.StandPatProbes` 契约（双车道探测、注入异常传播、并行与串行等价）、玩家检查点批量回放、DOP>1 与组合（Coordinator/portfolio）路径、可见 Steam 帧时间与 GC 暂停、No-GC 区域行为。`tools/BeamRankSortChecks` 在未改动的 `main` 上即因 `Snapshot.PlayerDead` 报错，本轮未修改。
+- 60 根 `coverage/corpora/equivalence/turn-start-60` 语料的上限扫描（VeryHigh / beam 135 / nodes 60000 / DOP1 / 60 s，workers 4）：8 名额三种预排与 32 档前缀均被否决（0～2 根存活/阵亡翻转、净战损 −45～+20），采用的 64 档在 58 可比根上 0 翻转、净战损 −7、更差 1 根（`EQ-DEFECT-ELITE-00` 0→2）、更好 2 根，探测 −13.7%、展开 −2.7%。`FULL-SILENT-ELITE-03` 两臂与 `FULL-DEFECT-ELITE-00` 候选臂为 `TimeLimit`，不计入判决。
+- `tools/search/OfflineSearchHarness/compare_results.py` 逐字段对照基线臂与采用臂：60 根对齐、无缺根、6447 个非时间/非内存字段；`rootState` 与 `catalog` 差异 0，`route` 231 处/15 根，`continuations` 15 根，`solverMetrics` 非时间字段 399 处/34 根。结构化样本：[fresh-resource-standpat-probe-cap-20260924.json](../performance/fresh-resource-standpat-probe-cap-20260924.json)。
+- 未执行：游戏内 `UnattendedTestRunner.StandPatProbes` 契约（双车道探测、注入异常传播、并行与串行等价）、玩家检查点批量回放、DOP>1 与组合（Coordinator/portfolio）路径、可见 Steam 帧时间与 GC 暂停、No-GC 区域行为。`tools/testing/checks/BeamRankSortChecks` 在未改动的 `main` 上即因 `Snapshot.PlayerDead` 报错，本轮未修改。
 - 合并审查追加：PR #134 的 Windows Release 构建和结构门禁通过。`STAND-PAT-PROBE-BATCHES` 在默认小牌组未到达剪枝检查点；改用既有死灵药水输入后，PR head `aaf3ab0ce9124430a554535f232c2aa2` 与未改动 `main` `339d90af220949d8aa49fd8ed861c247` 均因同一 DOP1／DOP2 非时序计数差异失败，路线、评分、预计战损及边界相同。因此该合同未通过，失败不能归因于 PR #134；两次私有实例已清理。未由此取得 DOP>1 质量结论。
 
 ## 0.46.3：ServerGC 普通启动自动接入（2026-09-24）
@@ -216,7 +216,7 @@
 ## 0.46.0：UI 视觉层级重构与排版布局优化（2026-09-23）
 
 - Windows Release 构建通过，0 警告、0 错误。
-- PowerShell 结构门禁 `tools\verify-refactor-boundaries.ps1` 校验通过，`REFACTOR_BOUNDARIES_OK search_files=208`。
+- PowerShell 结构门禁 `tools\inspection\verify-refactor-boundaries.ps1` 校验通过，`REFACTOR_BOUNDARIES_OK search_files=208`。
 - `git diff --check` 格式门禁通过，无空白行或悬挂空格。
 - `ROUTE-ROW-REUSE` / `3f480bd1bd3c468a8c0d73799ea1486d`、`e242a10e56dd4ddb8526912435a0c3b8`、`78160d7af1d040f9918539fc22a74f6b`、`8b1cf2751de34bf3a772d3f224501704`、`e1b78931a6644d0683789afdca4fe5f9` 与 `5f37adf0fff947188e17323a4823c926` Passed：动作块构造、路线行复用、执行状态、语言往返等既有布局与状态合同全部通过；已验证回合开始选牌胶囊专属色标与动画、循环组 `LoopBadge` 徽章随卡牌流式排版、消除下沉对齐与大框自适应贴合、循环结束胶囊淡化熄灭生命周期；已指定 `EvidenceDirectory`，无头实例由 `CleanupInstanceOnExit` 自动清理删除。
 - `UI-LOCALIZATION`：在基线提交（0c5f677b）夹具生成怪物时即因 `ConditionalBranchState.GetNextState` 抛出 `No valid next state found`，无法在当前夹具环境完整通过，如实记录未标记为通过。
@@ -255,15 +255,15 @@
 
 - `TurnPhaseMirrorChecks --after-player-start` 原有 40 项，审计补充普通阶段生成 Late 监听者后为 41 项；`--after-player-start --vanilla` 1 项、`--after-player-start --seal` 3 项。覆盖三表登记拒绝、精确类型、冻结、三阶段监听顺序、轮间成员变动、卡牌 COW、选择暂停与未知覆写拒绝；已登记但入口尚无外部监听者时仍进入三轮派发。`--mask <生产 DLL>` 确认 61 个独立 bit。
 - 主 DLL 与离线宿主 Release 0 警告 / 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`。
-- CoverageCatalog 原表两条上游旧证据状态无法解析；仅在隔离副本排除未引用记录后，3035 条通过，无未分类、缺失或非通过引用。生产源码与原证据表未改，详见 [检查摘要](../../../coverage/equivalence/after-player-turn-start/validation.json)。
-- 对照 `523aea57` 的 EQ 10 / FULL 40 / GA 10：60 对有效、无时间截断，6341 个确定性字段 `IDENTICAL`（1069/4212/1060），一次批次无补跑。口径 High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1，逐根数据与命令见 [等价证据](../../../coverage/equivalence/after-player-turn-start/README.md)。
+- CoverageCatalog 原表两条上游旧证据状态无法解析；仅在隔离副本排除未引用记录后，3035 条通过，无未分类、缺失或非通过引用。生产源码与原证据表未改，详见 [检查摘要](../../../coverage/archive/equivalence/after-player-turn-start/validation.json)。
+- 对照 `523aea57` 的 EQ 10 / FULL 40 / GA 10：60 对有效、无时间截断，6341 个确定性字段 `IDENTICAL`（1069/4212/1060），一次批次无补跑。口径 High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1，逐根数据与命令见 [等价证据](../../../coverage/archive/equivalence/after-player-turn-start/README.md)。
 
 ## 0.44.1：回合开始前镜像
 
 - `TurnPhaseMirrorChecks --start` 22 项、`--start --seal` 1 项通过：精确类型、空/重复/抽象/未覆写拒绝、首次派发与首根冻结、Power/遗物/Modifier/卡牌混合顺序、参与者、选择暂停、监听者快照。原晚期回合末 25 项通过。
 - 变基至 `6922828d` 后，主 DLL、宿主及检查工具 Release 均 0 警告 / 0 错误；Bash 结构门禁 `REFACTOR_BOUNDARIES_OK search_files=208`。`--mask <生产 DLL>` 确认 58 个单 bit 互不重叠，BeforeSideTurnStart 不复用 AfterEnergyReset 的 bit 56。
 - CoverageCatalog 原始表解析失败：上游两个未被 classifications 引用的 LOOP 证据使用未知枚举状态。仅在 archive 隔离副本排除两项后，3035 条核验通过、无未分类/缺失/非通过引用；没有改动原表。工具的 RitsuLib 分拆与 SmartFormat 引用只在本地构建补齐。
-- `6922828d` 对照本入口：EQ 10 / FULL 40 / GA 10 一次完成，High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1；60 对均 Passed，6341 个确定性字段 `IDENTICAL`，无时间截断。两侧各一个离线宿主，600 秒软预算，未中断或补跑；输入、DLL 哈希、逐根摘要及复算命令见 [0.43.3 等价证据](../../../coverage/equivalence/before-side-turn-start-0433/README.md)。 变基到 0.44.0（`42e09028`）后重跑 EQ 10 根：`compare_results.py` 1,069 字段 `IDENTICAL`；`TurnPhaseMirrorChecks --start` 22、`--start --seal` 1、`--mask` 58 个单 bit 互不重叠。
+- `6922828d` 对照本入口：EQ 10 / FULL 40 / GA 10 一次完成，High 90 / nodes 250000 / 分支 48/28/36 / Coordinator / Smart / DOP 1；60 对均 Passed，6341 个确定性字段 `IDENTICAL`，无时间截断。两侧各一个离线宿主，600 秒软预算，未中断或补跑；输入、DLL 哈希、逐根摘要及复算命令见 [0.43.3 等价证据](../../../coverage/archive/equivalence/before-side-turn-start-0433/README.md)。 变基到 0.44.0（`42e09028`）后重跑 EQ 10 根：`compare_results.py` 1,069 字段 `IDENTICAL`；`TurnPhaseMirrorChecks --start` 22、`--start --seal` 1、`--mask` 58 个单 bit 互不重叠。
 - 历史 `8be1410` 对照：5 角色 × 精英/首领共 10 根，High（90/50000）、Coordinator、Smart、DOP 1，992 个确定性字段 `IDENTICAL`。变基前的历史数字，原始产物未随分支保留；当前基线证据见下一条。
 
 ## 0.44.0 发布验证范围（2026-09-22）
@@ -296,7 +296,7 @@
   断言能力驱动的这层毒不按卡牌来源记账——不安油灯不触发、毒不被增幅。
 - 改动前对照：本问题包的实机证据即修改前状态（预测毒 11／实机 5、油灯 1／0）。本次未在改动前的
   构建上重跑该夹具的反向对照：无头宿主当时被用户的可见游戏进程占用，未排队等待。
-- 结构门禁 `tools/verify-refactor-boundaries.ps1` 通过；受影响的原版组合（腐蚀波 + 后空翻、吸取、
+- 结构门禁 `tools/inspection/verify-refactor-boundaries.ps1` 通过；受影响的原版组合（腐蚀波 + 后空翻、吸取、
   手里剑/激怒/湮灭/撕裂/温柔等遗物与 Power 触发）走既有夹具与同一差分路径，未新增逐项夹具。
 
 ## 击杀后不再向已离场个体施加 Power（问题包 24b8f299）（2026-09-22）
@@ -310,7 +310,7 @@
     `LampDebuffOnKilledTarget:SkipsDebuffOnRemovedTarget:KeepsCharge:FullContinuationState`
     （预测与实机逐字比较完整 `ContinuationStamp`）。
 - 哨兵（同一构建）：`LAMP-INDIRECT-POISON`、`LAMP-INDIRECT-TEMPORARY-STRENGTH`、`CRAB-RAGE-DEATH-TIMING` 通过。
-- 结构门禁 `tools/verify-refactor-boundaries.ps1` 通过。
+- 结构门禁 `tools/inspection/verify-refactor-boundaries.ps1` 通过。
 - **未建模**：实机里正在执行自己行动的怪物（`IsPerformingMove`）在死亡当时不离场，这个例外求解器不模拟
   （怪物行动不在预测范围内），代码注释已记明。
 
@@ -388,8 +388,8 @@
 - Release 0 警告/0 错误；两项均用 120 秒上限和 `--cleanup-instance-on-exit`，实例已删除。没有改动搜索/模拟/执行数组；每个循环仅多 2 个容器节点。尚未验收可见 Steam 排版。
 
 ```bash
-./tools/run-unattended-test.sh --scenario-id UI-LOCALIZATION --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/run-unattended-test.sh --scenario-id ROUTE-ROW-REUSE --evidence-directory "$PWD/.local/loop-group-row" --timeout-seconds 120 --cleanup-instance-on-exit
+./tools/testing/run-unattended-test.sh --scenario-id UI-LOCALIZATION --timeout-seconds 120 --cleanup-instance-on-exit
+./tools/testing/run-unattended-test.sh --scenario-id ROUTE-ROW-REUSE --evidence-directory "$PWD/.local/loop-group-row" --timeout-seconds 120 --cleanup-instance-on-exit
 ```
 
 - PR #123 / 上游 8826a333 整合：Release 0/0、两端门禁 207；UI-LOCALIZATION `70dae8a331234fcbb6e3a51a40a089f1` 与必要格挡原生部署 `19f8f8ad583b4b029a5c559f759243fa` Passed，实例清理；cap / 多 solver 两组与 656a9608 完整路线、质量 Equivalent。

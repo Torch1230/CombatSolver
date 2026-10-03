@@ -58,7 +58,7 @@
 
 ## 等价性
 
-用仓库自带 `tools/OfflineSearchHarness/compare_results.py` 对 A 与 B 的产物逐字段比较（A1/A2 对 B1/B2，`--left-prefix A --right-prefix B`）：
+用仓库自带 `tools/search/OfflineSearchHarness/compare_results.py` 对 A 与 B 的产物逐字段比较（A1/A2 对 B1/B2，`--left-prefix A --right-prefix B`）：
 
 ```
 roots=2 fields=170 mismatched_roots=0 left_only=0 right_only=0 => IDENTICAL
@@ -82,7 +82,7 @@ parent_live_unchanged=true
 
 ## 结构门禁
 
-Bash 结构门禁 `tools/verify-refactor-boundaries.sh` 通过：
+Bash 结构门禁 `tools/inspection/verify-refactor-boundaries.sh` 通过：
 
 ```
 REFACTOR_BOUNDARIES_OK search_files=114

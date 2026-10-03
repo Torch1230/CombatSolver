@@ -48,7 +48,7 @@ RSS按100ms采样，可能漏掉更短尖峰；累计分配不是同时占用。
 
 ## 输入修正与验证范围
 
-- 旧 `search-performance-necrobinder-potion-heavy-run-snapshot.json` 仅含玩家白名单字段，缺少原生反序列化需要的角色身份。`screen-necro-potions` 在建局前以`ArgumentNullException`失败，未进入搜索，不计性能结果。本轮新增三个明确注入的文件：[牌](../../../coverage/unattended/search-performance-necrobinder-projected-run-cards.json)、[遗物](../../../coverage/unattended/search-performance-necrobinder-projected-relics.json)、[药水](../../../coverage/unattended/search-performance-necrobinder-projected-potions.json)。它们保留38张牌的升级/附魔、19件额外遗物顺序与两瓶药顺序。
+- 旧 `search-performance-necrobinder-potion-heavy-run-snapshot.json` 仅含玩家白名单字段，缺少原生反序列化需要的角色身份。`screen-necro-potions` 在建局前以`ArgumentNullException`失败，未进入搜索，不计性能结果。本轮新增三个明确注入的文件：[牌](../../../coverage/fixtures/search/search-performance-necrobinder-projected-run-cards.json)、[遗物](../../../coverage/fixtures/search/search-performance-necrobinder-projected-relics.json)、[药水](../../../coverage/fixtures/search/search-performance-necrobinder-projected-potions.json)。它们保留38张牌的升级/附魔、19件额外遗物顺序与两瓶药顺序。
 - 四个遭遇的初次调用遗漏敌人HP参数，误用了runner默认1HP；这四条`screen-*`记录全部作废。有效数据只使用修正后的`native-*`请求，原生HP由`preserveNativeCombatStateForTest`保留。
 - 12个有效请求均返回Passed，但这只表示协议与请求断言完成。未找到胜利或有预测风险的行已单独标出；其余战损也是搜索预测，未运行各场完整部署/原生逐动作差分，未证明优化前后质量等价。
 - 未改生产代码，因此复用上一轮已构建的候选DLL，没有重复构建或全量门禁。测试数据的JSON、字段、数量、投影来源和文档链接另行验证。未使用增量/详细诊断模式的时间作为性能数字；测试进程已停止。
@@ -58,15 +58,15 @@ RSS按100ms采样，可能漏掉更短尖峰；累计分配不是同时占用。
 以下从仓库根执行。`<固定构建目录>`必须含同一版本的DLL和manifest，每次请求都显式指定。移除`--force-short-search-only`即可重跑正常配置；仍保持120秒总期限。
 
 ```bash
-./tools/run-unattended-test.sh \
+./tools/testing/run-unattended-test.sh \
   --scenario-id VH-PRESSURE-NECRO-PROJECTED \
   --character-id NECROBINDER --seed SEARCH_PERF_NECROBINDER_POTION \
   --encounter-id AEONGLASS_BOSS --ascension 10 --act-index-for-test 2 \
   --enemy-current-hp 526 --initial-player-hp 41 --initial-player-max-hp 76 \
   --clear-run-deck \
-  --run-cards-path coverage/unattended/search-performance-necrobinder-projected-run-cards.json \
-  --relics-path coverage/unattended/search-performance-necrobinder-projected-relics.json \
-  --potions-path coverage/unattended/search-performance-necrobinder-projected-potions.json \
+  --run-cards-path coverage/fixtures/search/search-performance-necrobinder-projected-run-cards.json \
+  --relics-path coverage/fixtures/search/search-performance-necrobinder-projected-relics.json \
+  --potions-path coverage/fixtures/search/search-performance-necrobinder-projected-potions.json \
   --cards-json '[]' --potion-policy-for-test RequireAtLeastOne \
   --performance-preset-for-test VeryHigh --search-max-degree-of-parallelism-for-test 8 \
   --enable-no-gc-region-for-test 1 --no-gc-region-budget-gigabytes-for-test 16 \
@@ -75,4 +75,4 @@ RSS按100ms采样，可能漏掉更短尖峰；累计分配不是同时占用。
   --combat-solver-build-dir '<固定构建目录>' --headless-instance pressure-survey --keep-game-open
 ```
 
-30张牌组从 `coverage/unattended/performance-veryhigh-mecha-native.json` 的`runCards`字段提取为临时JSON数组，再传给`--run-cards-path`。四遭遇必须加`--preserve-native-combat-state-for-test --pre-combat-player-current-hp-override 65`，不能依赖默认敌人生命。全部12项展开后的参数见结构化记录；Bash/PowerShell入口分别使用现有GNU长参数/PascalCase等价项，Windows游戏本轮未运行。
+30张牌组从 `coverage/fixtures/runtime/performance-veryhigh-mecha-native.json` 的`runCards`字段提取为临时JSON数组，再传给`--run-cards-path`。四遭遇必须加`--preserve-native-combat-state-for-test --pre-combat-player-current-hp-override 65`，不能依赖默认敌人生命。全部12项展开后的参数见结构化记录；Bash/PowerShell入口分别使用现有GNU长参数/PascalCase等价项，Windows游戏本轮未运行。

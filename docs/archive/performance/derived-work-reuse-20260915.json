@@ -10,7 +10,7 @@
       "src/Search/CombatBeamSolver.ParallelExpansion.cs",
       "src/Search/CombatBeamSolver.Phases.cs",
       "src/Search/CombatBeamSolver.StateEvaluation.cs",
-      "src/Testing/UnattendedTestRunner.Executor.cs",
+      "src/Testing/Host/UnattendedTestRunner.Executor.cs",
       "src/UI/SolverActionTextIdentity.cs",
       "src/UI/SolverLocaleRefresh.cs",
       "src/UI/SolverOverlaySnapshot.cs",

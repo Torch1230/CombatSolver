@@ -57,6 +57,6 @@ Linux、AMD Ryzen 7 7840H（8 核/16 线程）、游戏 0.111.0、原版 + Ritsu
 
 ## 复跑
 
-正式性能使用 [机甲骑士请求](../../../coverage/unattended/performance-veryhigh-mecha-native.json) 中的牌组、种子和 VeryHigh 参数。Headless 对每次调用传 `--combat-solver-build-dir <固定构建目录>`，不能只在首个请求传入；分别以 `--search-max-degree-of-parallelism-for-test 4` / `8` 比较，先预热，再各取三次。压力牌组为 `coverage/unattended/search-performance-silent-large-deck-cards.json`；小啃兽复用机甲骑士牌组与 `VH_PERF_NIBBITS` 种子。
+正式性能使用 [机甲骑士请求](../../../coverage/fixtures/runtime/performance-veryhigh-mecha-native.json) 中的牌组、种子和 VeryHigh 参数。Headless 对每次调用传 `--combat-solver-build-dir <固定构建目录>`，不能只在首个请求传入；分别以 `--search-max-degree-of-parallelism-for-test 4` / `8` 比较，先预热，再各取三次。压力牌组为 `coverage/fixtures/search/search-performance-silent-large-deck-cards.json`；小啃兽复用机甲骑士牌组与 `VH_PERF_NIBBITS` 种子。
 
 纯合同使用 `--scenario-id MIRRORED-HOOK-FILTER` 或 `DEFAULT-SEARCH-PARALLELISM`，加 `--performance-preset-for-test VeryHigh --stop-after-combat-root-snapshot-assertion --timeout-seconds 120`。并行等价单独加 `--verify-search-policy-snapshot --enemy-current-hp 500`，不用附带 UI 生命周期合同。

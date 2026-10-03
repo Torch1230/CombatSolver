@@ -3,7 +3,7 @@
   "date": "2026-09-17",
   "subject": "root transform-pool snapshot cache",
   "baselineCommit": "1c31b9f",
-  "harness": "tools/OfflineSearchHarness",
+  "harness": "tools/search/OfflineSearchHarness",
   "fixture": {
     "request": ".local/formal-pr-20260915/measurements/A1/crab/request.json",
     "scenario": "PERFORMANCE-GENERATED (Necrobinder / Kaiser Crab / TOOLBOX, has transform choices)",
@@ -161,7 +161,7 @@
     }
   },
   "equivalence": {
-    "tool": "tools/OfflineSearchHarness/compare_results.py",
+    "tool": "tools/search/OfflineSearchHarness/compare_results.py",
     "prefixes": "A -> B",
     "roots": 2,
     "comparedFields": 170,
@@ -184,7 +184,7 @@
     "Wall-clock labels A1/B1 were each written twice (dir overwritten by the repeat), so the retained per-label artifacts correspond to the 2nd run of that label; timing uses all 8 logged runs.",
     "Peak working set and peak managed heap did NOT improve (slightly higher). The cause was not instrumented; no conclusion is drawn.",
     "Visible-Steam performance was not measured; all figures are headless.",
-    "tools/verify-refactor-boundaries.sh was not executed this round.",
+    "tools/inspection/verify-refactor-boundaries.sh was not executed this round.",
     "Stress fixtures were derived from the working crab generated scenario by swapping only the encounter and its act index; WATERFALL_GIANT_BOSS is unreachable this way because act index 0 is shared by Overgrowth and Underdocks and the resolver only reaches Overgrowth."
   ],
   "stressRoots": [

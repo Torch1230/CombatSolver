@@ -1,1 +1,0 @@
-{ "potionId": "RadiantTincture", "target": "Player", "playerEnergyBefore": 1, "expectedPlayerEnergy": 2, "expectedPlayerPowers": { "RADIANCE_POWER": 3 } }

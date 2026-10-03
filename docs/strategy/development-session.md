@@ -7,14 +7,14 @@
 Windows 示例（在仓库根目录执行）：
 
 ```powershell
-pwsh -NoProfile -File tools/strategy-session.ps1 start ability-work --game-root 'D:\Steam\steamapps\common\Slay the Spire 2' --ritsu-root 'D:\Steam\steamapps\workshop\content\2868840\3747602295'
-pwsh -NoProfile -File tools/strategy-session.ps1 run ability-work '.local/issue-bundles/strategy-0923/raw/<报告 ID>.zip' --script 'tools/strategy-example.cs' --params '.local/strategy-parameters.json'
-pwsh -NoProfile -File tools/strategy-session.ps1 run ability-work '.local/issue-bundles/strategy-0923/raw/<报告 ID>.zip' --early-turns 2
-pwsh -NoProfile -File tools/strategy-session.ps1 status ability-work
-pwsh -NoProfile -File tools/strategy-session.ps1 stop ability-work
+pwsh -NoProfile -File tools/replay/strategy-session.ps1 start ability-work --game-root 'D:\Steam\steamapps\common\Slay the Spire 2' --ritsu-root 'D:\Steam\steamapps\workshop\content\2868840\3747602295'
+pwsh -NoProfile -File tools/replay/strategy-session.ps1 run ability-work '.local/issue-bundles/strategy-0923/raw/<报告 ID>.zip' --script 'tools/replay/strategy-example.cs' --params '.local/strategy-parameters.json'
+pwsh -NoProfile -File tools/replay/strategy-session.ps1 run ability-work '.local/issue-bundles/strategy-0923/raw/<报告 ID>.zip' --early-turns 2
+pwsh -NoProfile -File tools/replay/strategy-session.ps1 status ability-work
+pwsh -NoProfile -File tools/replay/strategy-session.ps1 stop ability-work
 ```
 
-Linux 入口为 `tools/strategy-session.sh`，命令和选项相同。这里保留跨平台入口；本轮没有运行 Linux 门禁。
+Linux 入口为 `tools/replay/strategy-session.sh`，命令和选项相同。这里保留跨平台入口；本轮没有运行 Linux 门禁。
 
 脚本是普通 C# 源文件，实现公开的 `IDevelopmentSearchStrategy`；编译只作用于这个脚本项目。参数文件是数值 JSON 对象，例如 `{"persistentBuffWeight": 2}`。`run` 在提交请求前复制脚本和参数，并按脚本内容及主 DLL 身份缓存编译结果。下一次请求读取新文件；已开始的搜索沿用自己的版本。脚本实现可以通过四个钩子调整候选优先级、中途评分、一个有界保路代表及现有搜索组合成员的编排，也可以在脚本中组合只读特征生成新的估值维度。新游戏状态或新模拟原语仍需扩展主程序；最终胜负、战损和资源排序不交给脚本。
 

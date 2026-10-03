@@ -1,7 +1,0 @@
-[
-  { "cardId": "BEAT_DOWN", "pile": "Hand" },
-  { "cardId": "HEADBUTT", "pile": "Discard" },
-  { "cardId": "STRIKE_IRONCLAD", "pile": "Discard" },
-  { "cardId": "ANGER", "pile": "Discard" },
-  { "cardId": "DEFEND_IRONCLAD", "pile": "Discard" }
-]

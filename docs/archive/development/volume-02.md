@@ -102,7 +102,7 @@
 
 - 增加 `AfterPlayerTurnStartMirrors.RegisterEarly/Register/RegisterLate<TModel>`，接收 AbstractModel 与当前 Player；精确类型登记、首根冻结，未知有效覆写记录风险并拒绝。
 - 扩展路径按原生 Early → 普通 → Late 三轮监听顺序派发，复用原版单项结算；没有外部登记且入口没有第三方覆写时保留原批次与选择续执行帧。已有外部登记即使用三轮派发，使普通阶段新生成的第三方监听者能参与 Late。第三方选择暂停回到稳定父节点完整重放。
-- PR 原有 40 项派发合同、3 项冻结合同与 61 个独立监听位；审计新增 1 项普通阶段生成 Late 监听者合同和 1 项纯原版入口合同。结构门禁、原生顺序、离线等价与 CoverageCatalog 的原始证据见 [验证证据](../../../coverage/equivalence/after-player-turn-start/README.md)。
+- PR 原有 40 项派发合同、3 项冻结合同与 61 个独立监听位；审计新增 1 项普通阶段生成 Late 监听者合同和 1 项纯原版入口合同。结构门禁、原生顺序、离线等价与 CoverageCatalog 的原始证据见 [验证证据](../../../coverage/archive/equivalence/after-player-turn-start/README.md)。
 - 对照 #126 的 `523aea57`：EQ 10 / FULL 40 / GA 10 共 6341 个确定性字段一致，60 对均有效、无时间截断；一次离线批次完成。
 
 ## 0.44.1：第三方回合开始前镜像
@@ -110,7 +110,7 @@
 - 增加 `BeforeSideTurnStartMirrors.Register<TModel>`，两侧在清格挡前按监听顺序派发 Power、遗物和 Modifier；共享既有原版单项结算体，无扩展时保留原批次顺序。
 - 精确类型登记在首根冻结，未知有效覆写按现有晚期表规则记录风险并拒绝；状态仍通过独立的模型状态登记捕获。
 - 基于 0.43.3 重新定位派发；BeforeSideTurnStart 使用独立监听位，与上游新增的 AfterEnergyReset 分开。生产 DLL 位图检查确认 58 位互不重叠；回合开始、冻结及既有晚期合同分别 22/1/25 项通过。
-- 对照 `6922828d` 的 EQ 10 / FULL 40 / GA 10，6341 个确定性字段一致，60 对均有效、无时间截断；零第三方监听者保持旧批次路径。数据与命令见 [等价证据](../../../coverage/equivalence/before-side-turn-start-0433/README.md)。
+- 对照 `6922828d` 的 EQ 10 / FULL 40 / GA 10，6341 个确定性字段一致，60 对均有效、无时间截断；零第三方监听者保持旧批次路径。数据与命令见 [等价证据](../../../coverage/archive/equivalence/before-side-turn-start-0433/README.md)。
 
 ## 0.44.0 定版（2026-09-22）
 
@@ -334,8 +334,8 @@
 - 新增请求/solver 级快速旁路：搜索根牌区不存在任何已登记能力牌时，完整跳过子节点能力承诺检查、Beam 能力席位扫描、泛能力组合成员和开局能力前缀构造与试放。没有能力牌的角色或牌组不再承担逐节点扫描与开局 Replay 成本。
 - 新卡池的触发证据与开局投影只读取冻结后的真实牌区、敌人、Power、球、星星、奥斯提、灾厄、虚无与意图事实；复杂机制的远期值使用有界保守代理（球被动/激发、星星花费、召唤、灾厄结算），保证存在值得搜索的路线而不是预测精确战损。逐卡兑现证据暂统一走通用状态改善回退，尚未像静默猎手那样逐卡专用。全部新模型标为 `QuantifiedDraft`，价值只用于准入与保路，不进入终局胜负/战损排序。
 - 修正故障机器人卡池资料：`WhiteNoise` 是 `CardType.Skill`，不属于能力牌模型范围；原卡池文档把它计入能力牌，现已修订。故障机器人的单人能力牌为20张单人加1张 MultiplayerOnly。
-- 验证：`dotnet run --project tools/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`，覆盖登记数量、唯一性、池/ID 一致、MultiplayerOnly 排除、纯战后收益不创建承诺、未登记不创建承诺、每池五类代表、零触发拒绝、免费与高费硬开差异、单/双能力承诺和静默猎手17张保持；Release 编译0错误；PowerShell 结构门禁输出 `REFACTOR_BOUNDARIES_OK search_files=191`（按用户约束未运行 Bash 门禁，不记为通过）。
-- 集成验收：铁甲战士、静默猎手、故障机器人、储君、亡灵契约师各取一个 `coverage/novelty-search` 精英场景短搜索，全部 `Passed` 且 `error=null`；每次调用使用 `-CleanupInstanceOnExit`，最终 `headless-instances` 为空。本轮未启动可见 Steam、未打包、未提升版本、未推送远端。
+- 验证：`dotnet run --project tools/testing/checks/PowerCardValuationChecks/PowerCardValuationChecks.csproj -c Release` 通过，输出 `POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12`，覆盖登记数量、唯一性、池/ID 一致、MultiplayerOnly 排除、纯战后收益不创建承诺、未登记不创建承诺、每池五类代表、零触发拒绝、免费与高费硬开差异、单/双能力承诺和静默猎手17张保持；Release 编译0错误；PowerShell 结构门禁输出 `REFACTOR_BOUNDARIES_OK search_files=191`（按用户约束未运行 Bash 门禁，不记为通过）。
+- 集成验收：铁甲战士、静默猎手、故障机器人、储君、亡灵契约师各取一个 `coverage/corpora/novelty` 精英场景短搜索，全部 `Passed` 且 `error=null`；每次调用使用 `-CleanupInstanceOnExit`，最终 `headless-instances` 为空。本轮未启动可见 Steam、未打包、未提升版本、未推送远端。
 - 尚未完成：新卡池逐卡玩家复核、复杂机制的可兑现事件逐卡专用证据、以及可见会话下的实际战损对照。工作记录与待复核项见[全卡池实施记录](../strategy/power-card-valuation/all-pools-implementation-20260917.md)和[待玩家复核表](../../strategy/power-card-valuation/player-review-20260917.md)。
 - 玩家与 Gemini 的逐卡联合评审已完成，实现按“玩家意见优先”更新了五个卡池的路线优先级与专搜标记，并同步数值口径：AUTOMATION 改为按实际抽牌量折算每10抽返能、ORBIT 按每回合最大能量折算每4费返能、VICIOUS 按群体/重复易伤叠加抽牌、ITERATION 按能力实际抽牌量；消耗暗影与冷却剂降为低优先级且仅免费或有余费时开；凶恶、环绕轨道、创世之柱、自动化、勒紧、熵、怀旧、计策等上调。专搜标记只作评审数据保留：固定前缀后验已覆盖每张可打出的已登记能力。
 - 回归核对：把专搜标记接入前缀构造顺序或承诺席位排序会让铁甲战士 `BARRICADE` 短场景从 43 战损劣化为 62，因此撤回该接线；最终 `dev-00-ironclad-elite` 仍为 43 战损、实例清理为空。能力估值仍不进入终局胜负与战损排序。
@@ -382,9 +382,9 @@
 - **并行度 8**（生产并行度）复测，预算 12000 节点、同根、顺序 ABBA：厚牌组 KAISER_CRAB_BOSS 46.27→17.91 秒（2.583 倍）、KNOWLEDGE_DEMON_BOSS 26.19→10.92 秒（2.398 倍）、THE_KIN_BOSS 34.40→15.80 秒（2.178 倍）、QUEEN_BOSS 7.26→3.89 秒（1.865 倍）、THE_INSATIABLE_BOSS 13.29→7.84 秒（1.696 倍）；薄牌组对照组 1.000 / 0.989 / 0.983 倍。并行度不会让收益消失，结论与 dop 1 一致。
 - **DOP 8 不能提供字段级等价性证据**：`compare_results.py` 在 DOP 8 下报 `DIFFERENT`，但差异只有 `roundReplayPrefixCaptures` 与 `executionChoiceReuses` 两个调度相关复用计数器，`route` / `rootState` / `catalog` 全部 0 处不同。决定性证据是**基线自比**在 DOP 8 下同样在这一个计数器上不同（A1 vs A2：7808 vs 7794；B1 vs B2：7802 vs 7799），即取决于哪个 worker 先命中复用缓存，是墙钟调度产物而非决策输出。因此该差异是并行非确定性，不可归因于本次改动；字段级等价性仍以 DOP 1 的 7 根全一致为准。
 - 瞬时分配同时减半：每节点总分配 2.06 MB → 1.04 MB。但**峰值工作集约 385 MB → 约 405 MB、峰值托管堆约 157 MB → 约 179 MB，没有改善、反而略升**。本轮只消除了变形路径的重复临时分配，**未触及节点局面的驻留内存**，最初「保存每个节点局面内存太大」的问题本次未处理；峰值上升的成因未取证，不记作结论。
-- 等价性用仓库自带 `tools/OfflineSearchHarness/compare_results.py` 对跑，**7 个根全部逐字段一致**（crab@2000 170 字段、KAISER_CRAB_BOSS@6000 242、silent-discard@6000 192、QUEEN_BOSS@6000 152、THE_KIN_BOSS@6000 174、KNOWLEDGE_DEMON_BOSS@6000 212、THE_INSATIABLE_BOSS@6000 234；`mismatched_roots=0`、无 `left_only`/`right_only`），覆盖 `solverMetrics` 非时间/内存字段、选中路线每个动作、根 `ContinuationStamp` 与 `catalogFingerprint`。
+- 等价性用仓库自带 `tools/search/OfflineSearchHarness/compare_results.py` 对跑，**7 个根全部逐字段一致**（crab@2000 170 字段、KAISER_CRAB_BOSS@6000 242、silent-discard@6000 192、QUEEN_BOSS@6000 152、THE_KIN_BOSS@6000 174、KNOWLEDGE_DEMON_BOSS@6000 212、THE_INSATIABLE_BOSS@6000 234；`mismatched_roots=0`、无 `left_only`/`right_only`），覆盖 `solverMetrics` 非时间/内存字段、选中路线每个动作、根 `ContinuationStamp` 与 `catalogFingerprint`。
 - 契约 `TRANSFORMATION-POOL-CACHE` Passed：缓存序列与上游逐实例同序、跨 `Fork` 不可变共享、可变池/外来约束/外来池被拒绝、规范无色池被正确服务、缓存路径与原生路径产出同一张牌且 `CombatCardSelection` 五字段 RNG 状态与完整预测延续状态一致、父模拟与实机根未被改动。初版契约曾因断言无色池必须被拒绝而失败，查明为契约自身错误（无色池是合法回退池），实现无缺陷。
-- 未验证：可见 Steam 性能未测，上述倍数只是无头数据；峰值内存成因未取证；收益倍数场景相关（0.99–3.667 倍），不能外推为全局面板。Bash 结构门禁 `tools/verify-refactor-boundaries.sh` 通过（`REFACTOR_BOUNDARIES_OK search_files=114`，退出码 0；增量 1 即本次新增的快照文件）。
+- 未验证：可见 Steam 性能未测，上述倍数只是无头数据；峰值内存成因未取证；收益倍数场景相关（0.99–3.667 倍），不能外推为全局面板。Bash 结构门禁 `tools/inspection/verify-refactor-boundaries.sh` 通过（`REFACTOR_BOUNDARIES_OK search_files=114`，退出码 0；增量 1 即本次新增的快照文件）。
 
 ## 0.40.1：多策略回合准备选牌修复（2026-09-16）
 

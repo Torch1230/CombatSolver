@@ -18,7 +18,7 @@
 命令形状（两侧同一宿主二进制，仅用 `OFFLINE_HARNESS_COMBATSOLVER_DLL` 切换模组产物）：
 
 ```bash
-TMPDIR="$PWD/.local/tmp" timeout 900 dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+TMPDIR="$PWD/.local/tmp" timeout 900 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
   --request "$PWD/.local/bench/req/<构造根>.json" --label <label> --out .local/learned-selector/memory-e2e/<label> \
   --profile VeryHigh --nodes 20000 --dop 16 --budget-ms 600000 --search-mode Evaluate \
   --enable-no-gc-region --no-gc-region-budget-gigabytes 12 --milestone M2
@@ -83,7 +83,7 @@ TMPDIR="$PWD/.local/tmp" timeout 900 dotnet tools/OfflineSearchHarness/bin/Relea
 
 ## 4. 验证与限制
 
-- Release 构建 0 警告 / 0 错误；`./tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK`。
+- Release 构建 0 警告 / 0 错误；`./tools/inspection/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK`。
 - 语料侧：`data3` 全部 300 个请求用 `--milestone M1` 解析过遗物（Toolbox 4.3%、VexingPuzzlebox 2.0%、OrangeDough 0.3%；ChoicesParadox / BigHat / Crossbow 不在可随机池里，用显式注入构造根）。
 - 构造根是「同一请求 + 显式注入一件遗物」，不是语料根；构造只影响遗物列表，A/B 两侧完全相同。
 - 只测了离线无头宿主、20k 节点、DOP16/DOP1、No-GC 12 GB；没有可见 Steam 会话、没有 Windows 构建、没有 500k 节点完整 VeryHigh。

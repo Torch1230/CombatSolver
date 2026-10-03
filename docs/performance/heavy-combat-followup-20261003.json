@@ -16,9 +16,9 @@
       "src/Search/SimulatedCombatState.cs",
       "src/Search/StrategicHpRecoveryBound.DefectPrism.cs",
       "src/Search/StrategicHpRecoveryBound.Remaining.cs",
-      "src/Testing/UnattendedTestRunner.DefectPrismHealing.cs",
-      "src/Testing/UnattendedTestRunner.Executor.cs",
-      "src/Testing/UnattendedTestRunner.MirroredHookFilter.cs"
+      "src/Testing/Contracts/Combat/UnattendedTestRunner.DefectPrismHealing.cs",
+      "src/Testing/Host/UnattendedTestRunner.Executor.cs",
+      "src/Testing/Contracts/Combat/UnattendedTestRunner.MirroredHookFilter.cs"
     ],
     "snapshotCommit": "2812a100",
     "comparisonScope": "exact retained transplantation at2812a100; later ef17 opening guard adds separate source/testing changes",

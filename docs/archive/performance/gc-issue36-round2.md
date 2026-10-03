@@ -8,7 +8,7 @@
 
 `using` 保证正常和异常退出均清空引用；嵌套 Snapshot 使用独立 storage。storage 的租用代次同时校验访问与归还，复制的旧 lease 无法清空已经借给后来 Snapshot 的列表。checkpoint 在 worker 排空后丢弃空闲 storage；没有池化 simulator/model，也没有新增静态缓存。
 
-[独立检查](../../../tools/SnapshotListBufferChecks/README.md) 直接编译生产 helper，覆盖嵌套、异常填充、单槽/reset、4096 容量边界、旧 lease 与复制 lease、不同 owner、弱引用回收。它证明容器契约，不替代游戏评分或 RNG 等价。
+[独立检查](../../../tools/testing/checks/SnapshotListBufferChecks/README.md) 直接编译生产 helper，覆盖嵌套、异常填充、单槽/reset、4096 容量边界、旧 lease 与复制 lease、不同 owner、弱引用回收。它证明容器契约，不替代游戏评分或 RNG 等价。
 
 三次交替冷进程对照，全部在 headless 并行设施移植前完成。Silent 固定每 solver 2500 节点、普通 GC / DOP4；Necrobinder 固定每 solver 576 节点、Smart / NoGC 4 GB / DOP4。前者请求累计 5000 展开 / 19065 转移，后者 1728 / 22541。所有完整 ACTION/TURN、评分、工作量和非时序剪枝逐项一致。
 
@@ -29,7 +29,7 @@
 
 ## 分配与存活对象采样
 
-采样独立于计时：`dotnet-trace` / `dotnet-gcdump` 均为本任务本地安装的 `9.0.661903`，未更改全局 GC 设置。[GcTraceAnalysis](../../../tools/GcTraceAnalysis/README.md) 用 TraceEvent `3.1.23`，按真实方法名建立搜索栈锚点，分开搜索、根捕获、lane 基础设施、其他活动和无法归因部分。
+采样独立于计时：`dotnet-trace` / `dotnet-gcdump` 均为本任务本地安装的 `9.0.661903`，未更改全局 GC 设置。[GcTraceAnalysis](../../../tools/performance/GcTraceAnalysis/README.md) 用 TraceEvent `3.1.23`，按真实方法名建立搜索栈锚点，分开搜索、根捕获、lane 基础设施、其他活动和无法归因部分。
 
 第一次 trace 随游戏退出结束，采集器退出码虽为 0，严格转换仍报流尾截断；显式抢救出 26,774 条 allocation tick，且全部无法解析方法。该文件不能提供搜索调用点归因，也不进入性能 A/B。类型标签包含启动等活动，仅作为调查线索。
 
@@ -55,7 +55,7 @@
 
 ## Smart 层间内存实验
 
-[独立实验补丁](../../../tools/ExperimentalSmartSoftLimit/README.md) 在完成层且有下一层时，追加已分配字节软阈值。保留原预测/硬压力优先级，只使用原 Runtime 回收入口。以下每组一个新进程，移植后的新入口显式 exclusive；均固定 Necrobinder / 576 节点 / DOP4 / NoGC 4 GB，完整动作、评分、工作量和非时序剪枝仍相同。
+[独立实验补丁](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ExperimentalSmartSoftLimit/README.md) 在完成层且有下一层时，追加已分配字节软阈值。保留原预测/硬压力优先级，只使用原 Runtime 回收入口。以下每组一个新进程，移植后的新入口显式 exclusive；均固定 Necrobinder / 576 节点 / DOP4 / NoGC 4 GB，完整动作、评分、工作量和非时序剪枝仍相同。
 
 | 软阈值 | 额外层间回收 | 搜索时间 | GC 总 / 最大观察暂停 | VmHWM |
 | --- | ---: | ---: | ---: | ---: |

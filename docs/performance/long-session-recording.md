@@ -13,7 +13,7 @@
 
 ## 配置与产物
 
-配置字段：`TraceToolPath` 指向 dotnet-trace 9.0.661903，`DumpToolPath` 保持 null，`WatcherScriptPath` 指向本仓库 `tools/watch-performance.ps1`，`OutputDirectory` 是本地输出目录，`SourceRevision` 记录源码身份。`SegmentSeconds` 正常使用 300，`HandleWindowSeconds` 默认 10（允许 0—30；实际不超过周期的一半）。单采集器交替录制 10 秒句柄窗口和 290 秒普通段，约每五分钟一次句柄窗口；设 0 恢复普通分段。每段的实际模式、provider 和时长写在 collector.jsonl，不按文件编号猜测采集范围。启动记录另外保存实际 DLL SHA-256，避免把诊断 DLL 和同版本正式 DLL 混淆。
+配置字段：`TraceToolPath` 指向 dotnet-trace 9.0.661903，`DumpToolPath` 保持 null，`WatcherScriptPath` 指向本仓库 `tools/performance/watch-performance.ps1`，`OutputDirectory` 是本地输出目录，`SourceRevision` 记录源码身份。`SegmentSeconds` 正常使用 300，`HandleWindowSeconds` 默认 10（允许 0—30；实际不超过周期的一半）。单采集器交替录制 10 秒句柄窗口和 290 秒普通段，约每五分钟一次句柄窗口；设 0 恢复普通分段。每段的实际模式、provider 和时长写在 collector.jsonl，不按文件编号猜测采集范围。启动记录另外保存实际 DLL SHA-256，避免把诊断 DLL 和同版本正式 DLL 混淆。
 
 每个进程目录包含：
 
@@ -29,7 +29,7 @@
 | `*FAILED.txt` | 记录器、采集器或内存快照失败；不能把这些会话报告成完整记录 |
 | `godot.log` | 正常收尾时复制的游戏主日志 |
 
-`tools/export-performance.ps1 -SessionDirectory <目录>` 在采集和压缩收尾完成后创建相邻 ZIP。会话目录保留。异常退出、工具报错时保留已有目录供分析，不伪造正常完成标记。
+`tools/performance/export-performance.ps1 -SessionDirectory <目录>` 在采集和压缩收尾完成后创建相邻 ZIP。会话目录保留。异常退出、工具报错时保留已有目录供分析，不伪造正常完成标记。
 
 ## 采集范围与口径
 

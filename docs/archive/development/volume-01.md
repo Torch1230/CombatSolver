@@ -2,7 +2,7 @@
 
 ## 0.48.0（2026-10-03）
 
-用户要求“全平台发版”，将已准备的 0.48.0 定稿，版本号保持不变。中英玩家日志以 v0.47.3 为基线，包含社区优化、五角色全原版遭遇回血剪枝及 PR #201 的 T015 追加。复用最终行为源码已经通过的六 PR/五角色最小合同、T015 审计交接与两回合插药原生执行哨兵；本次仅更新发布记录，从提交进行正式 Release 构建与五文件最小 ZIP，并由 `tools/publish-release.ps1` 同步创意工坊、GitHub Release 和夸克网盘。实际渠道结果以忽略目录 `releases/CombatSolver-0.48.0.publish-state.json` 为准，不重跑战斗或完整发布门禁。以下阶段记录保留当时的未发布状态与验证范围。
+用户要求“全平台发版”，将已准备的 0.48.0 定稿，版本号保持不变。中英玩家日志以 v0.47.3 为基线，包含社区优化、五角色全原版遭遇回血剪枝及 PR #201 的 T015 追加。复用最终行为源码已经通过的六 PR/五角色最小合同、T015 审计交接与两回合插药原生执行哨兵；本次仅更新发布记录，从提交进行正式 Release 构建与五文件最小 ZIP，并由 `tools/release/publish-release.ps1` 同步创意工坊、GitHub Release 和夸克网盘。实际渠道结果以忽略目录 `releases/CombatSolver-0.48.0.publish-state.json` 为准，不重跑战斗或完整发布门禁。以下阶段记录保留当时的未发布状态与验证范围。
 
 2026-10-03 PR #201：作者将同一 T015 后续变基到 `45f87cd3`，另开正式 PR #201（head `e11ab12e`）。按用户追加要求完整合并该 PR，保留维护者对测试回放费用比较的修正。最终 `src/`、工具、夹具、项目和 manifest 与已验证的 `a0765da0` 相同，复用刚取得的目标严格合同、两回合插药原生部署、Release 构建与结构门禁，不重复跑相同输入。玩家日志补充 #201 的作者与 PR 链接。
 
@@ -30,7 +30,7 @@ issue #135 的后续策略改为按原版已知回血来源给余量。角色、
 
 ## 下一版本（开发中）：无人测试隔离静音（2026-10-02）
 
-`tools/run-unattended-test.ps1` 与 `.sh` 初始化私有用户配置时，将 `volume_master`、`volume_bgm`、`volume_sfx`、`volume_ambience` 全部设为 `0`，写入后回读核验；非零值导致启动失败，不让未静音的测试继续进入游戏。静音仅作用于隔离实例，缺少音量字段时补齐，复用配置时重新归零；不修改交互游戏的设置、启动参数、战斗行为或测试预算。
+`tools/testing/run-unattended-test.ps1` 与 `.sh` 初始化私有用户配置时，将 `volume_master`、`volume_bgm`、`volume_sfx`、`volume_ambience` 全部设为 `0`，写入后回读核验；非零值导致启动失败，不让未静音的测试继续进入游戏。静音仅作用于隔离实例，缺少音量字段时补齐，复用配置时重新归零；不修改交互游戏的设置、启动参数、战斗行为或测试预算。
 
 Windows PowerShell 7 配置阶段实跑：旧实现保留四项非零音量；修改后已有字段、缺少字段、复用配置三场景通过，其他配置及源模板保持不变。真实交互游戏 `settings.save` 的修改前后 SHA-256 一致。Bash 入口通过 `bash -n`；未运行 Linux 配置阶段或原生游戏，未作实际 FMOD 静音验收。没有构建、部署、发包或重跑 B012 原生测试。
 
@@ -54,7 +54,7 @@ Windows PowerShell 7 配置阶段实跑：旧实现保留四项非零音量；�
 
 ## 0.47.3（2026-10-01）
 
-用户要求“小版本号更新，全平台发版”，版本从0.47.2更新至0.47.3。项目与manifest同步，中英玩家日志定稿于 [0.47.3 更新日志](../../releases/0.47.3-RELEASE_NOTES.md)，以0.47.2为基线包含PR #144、PR #147与手动内存释放改善。保留贡献者链接与用户确认的正文，省去未发布阶段的系统清理移除/恢复过程，不承诺全部高内存卡死已解决。内存修复分支已整合到main，多人规划只保留既有文档，行为源码与已取得的测试输入保持一致。复用下列GC及原生部署证据，按一次发布Release构建和最小ZIP定版，并由 `tools/publish-release.ps1` 发布至创意工坊、GitHub Release与夸克网盘；实际渠道结果以忽略目录的发布状态记录为准。
+用户要求“小版本号更新，全平台发版”，版本从0.47.2更新至0.47.3。项目与manifest同步，中英玩家日志定稿于 [0.47.3 更新日志](../../releases/0.47.3-RELEASE_NOTES.md)，以0.47.2为基线包含PR #144、PR #147与手动内存释放改善。保留贡献者链接与用户确认的正文，省去未发布阶段的系统清理移除/恢复过程，不承诺全部高内存卡死已解决。内存修复分支已整合到main，多人规划只保留既有文档，行为源码与已取得的测试输入保持一致。复用下列GC及原生部署证据，按一次发布Release构建和最小ZIP定版，并由 `tools/release/publish-release.ps1` 发布至创意工坊、GitHub Release与夸克网盘；实际渠道结果以忽略目录的发布状态记录为准。
 
 2026-10-01 审计并合并 PR #147：对固定 head `d5100d1c` 核对单次选牌令牌所有权、完整费用时效与转置准入调用次序；本轮 Windows Release、结构门禁、原生11组费用合同和1200组/5069条组合对照通过，合并提交 `c6e60681`。贡献者既有广泛矩阵保留原口径，不当作本轮重复执行。
 
@@ -356,7 +356,7 @@ P1 将请求级中间结果、协调器选优、终局候选的共同字段和�
 - 修复隔离 worker 崩溃：`SolverDispatcher._Process` 原先无条件驱动 `SolverController.MonitorCombatPresence()` 与 `RefreshSearchProgress()`。预战 worker 的隔离跑局会真正进入战斗，于是该调用链走到 `SolverOverlay.EnsureCreated` → `Create` → 构造 `SolverGrowthStrategyPanel`，在无头进程里创建 UI 面板导致子进程以 `exit code 1` 退出。
 - 后果不止子进程退出：父进程在 `exited with code 1 before becoming reusable` 上失败，并留下被映像文件锁住的 `.combatsolver-precombat/process-<pid>` 镜像；此后该父进程的所有预战预报都只会失败（`Access to the path 'crashpad_handler.exe' is denied.`），必须重启游戏才能恢复。任何调用预战 API 的伴生 Mod 都会连带失去这项能力。
 - 新增 `Entry.IsPreCombatWorker` 作为「本进程是否是预战隔离 worker」的唯一权威实现；`PreCombatForecastApi.IsAvailable` 与 `PreCombatForecastWorker` 中原先各自解析同一个环境变量的两处判断改为复用它。守卫只短路玩家可见的 UI 监控，worker 的模拟与结果写盘路径不变。
-- 验证：结构门禁 `tools/verify-refactor-boundaries.ps1` 通过（`search_files=209`）；主项目 Release 编译通过（0 警告 0 错误）。本机缺少 .NET Framework 4.8 开发包，因此含 `tools/CombatSolver.MemoryCleaner`（net48）的完整 Release 构建与无人测试入口未执行；可见 Steam 会话与完整发布门禁未执行。
+- 验证：结构门禁 `tools/inspection/verify-refactor-boundaries.ps1` 通过（`search_files=209`）；主项目 Release 编译通过（0 警告 0 错误）。本机缺少 .NET Framework 4.8 开发包，因此含 `tools/runtime/CombatSolver.MemoryCleaner`（net48）的完整 Release 构建与无人测试入口未执行；可见 Steam 会话与完整发布门禁未执行。
 
 ## 0.46.4：战损路线筛选与 Loadout 兼容（2026-09-25）
 

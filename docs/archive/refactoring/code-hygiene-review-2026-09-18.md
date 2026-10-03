@@ -33,14 +33,14 @@
 | `src/Search/CombatBeamSolver.Expansion.cs` | 4,396 | 已有展开边界；动作、选牌、回合尾与续执行仍共居，属于边界内继续膨胀，值得后续按所有权拆分。 |
 | `src/Runtime/SolverController.cs` | 3,451 | 会话所有权已抽出；主线程编排、采用、部署、取消集中，当前大小部分自然，后续按生命周期审查。 |
 | `src/UI/SolverOverlay.cs` | 3,303 | 已有 snapshot 隔离；布局、交互和状态刷新集中，存在进一步拆分空间。 |
-| `src/Testing/UnattendedTestRunner.ForkBoundaries.cs` | 3,132 | 专题测试分片，众多独立 Fork/续执行合同导致自然增长；不是缺少运行时层次。 |
+| `src/Testing/Contracts/Runtime/UnattendedTestRunner.ForkBoundaries.cs` | 3,132 | 专题测试分片，众多独立 Fork/续执行合同导致自然增长；不是缺少运行时层次。 |
 | `src/Search/CombatBeamSolver.CyclePlanning.cs` | 2,958 | 周期识别、进展和出口租约同属策略，但仍复杂；先明确政策合同，再考虑拆分。 |
 | `src/Search/SimulatedCombatState.cs` | 2,918 | 领域状态 partial 的主分片，接口和状态所有权集中属自然；不在本轮改镜像或表示。 |
 | `src/Search/CombatBeamSolver.OrderedMutationRetention.cs` | 2,675 | 租约与预算账本的单一所有者，大小有语义原因；可读性债务存在，不能机械切文件。 |
-| `src/Testing/UnattendedTestRunner.SearchPolicy.cs` | 2,484 | 多个策略合同的测试集合，属于自然测试规模；可按合同分文件，但本轮不做。 |
+| `src/Testing/Contracts/Search/UnattendedTestRunner.SearchPolicy.cs` | 2,484 | 多个策略合同的测试集合，属于自然测试规模；可按合同分文件，但本轮不做。 |
 | `src/Runtime/SearchGcPolicy.cs` | 2,413 | 进程级 GC/NoGC 生命周期边界，Recovery 已分片；职责相连且高风险，不能为行数拆开。 |
 | `src/Search/CombatBeamSolver.Phases.cs` | 2,394 | 阶段推进 partial，预算、取消、排空与收尾密切关联；自然边界内偏大。 |
-| `src/Testing/UnattendedTestRunner.cs` | 2,363 | 已有 ProtocolHost/ScenarioBuilder/Executor/Assertions/Writer；共享 fixture helper 较多，后续可按语义归属整理。 |
+| `src/Testing/Host/UnattendedTestRunner.cs` | 2,363 | 已有 ProtocolHost/ScenarioBuilder/Executor/Assertions/Writer；共享 fixture helper 较多，后续可按语义归属整理。 |
 | `src/Search/CombatBeamSolver.Retention.cs` | 2,037 | 保路入口与多组策略比较器混合，存在本轮可抽取的精确重复；其余留待策略合同化。 |
 | `src/Search/CombatSearchCoordinator.cs` | 2,034 | 主搜索、Smart 梯度与组合编排的现有所有者；已有 PowerRoutes/FailureRecovery 等分片，大小部分自然。 |
 

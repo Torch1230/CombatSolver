@@ -10,9 +10,9 @@
 | 1 目标同序键 | `BeamOrderingKeyChecks/` | 否 | 构造性 + 单元判据 |
 
 ```bash
-python3 tools/BeamOrderingAudit/test_monotonicity.py
-python3 tools/BeamOrderingAudit/monotonicity.py --runs <runs 目录> --out <报告.json>
-cd tools/BeamOrderingAudit/BeamOrderingKeyChecks && dotnet run
+python3 tools/search/BeamOrderingAudit/test_monotonicity.py
+python3 tools/search/BeamOrderingAudit/monotonicity.py --runs <runs 目录> --out <报告.json>
+cd tools/search/BeamOrderingAudit/BeamOrderingKeyChecks && dotnet run
 ```
 
 ## 背景：两个不同的函数
@@ -585,7 +585,7 @@ if (EstimateMemberCost(baseline.ElapsedMilliseconds, baseline.BeamWidth, memberB
 ## 四、副产品 B：批量跑批的环境陷阱（会把一整轮样本无声地丢掉）
 
 这一轮 152 场里有 122 场一开始是**失败的**，而报告表面上仍然完整。原因不在搜索：
-`tools/OfflineSearchHarness/GameBootstrap.cs` 用 Harmony 打补丁，而
+`tools/search/OfflineSearchHarness/GameBootstrap.cs` 用 Harmony 打补丁，而
 `HarmonyLib.PatchFunctions.UpdateWrapper` 每次都要写临时文件；`/tmp` 是 tmpfs 且 inode 已被
 **104 万**个历史临时文件占满时，打补丁失败，于是每一场都在同一个地方抛
 `Win32Exception: No space left on device`。

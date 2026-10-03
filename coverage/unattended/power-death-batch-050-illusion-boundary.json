@@ -1,7 +1,0 @@
-[
-  {
-    "monsterId": "Parafright",
-    "useCurrentMove": true,
-    "expectedSearchBoundary": "DynamicResolution"
-  }
-]

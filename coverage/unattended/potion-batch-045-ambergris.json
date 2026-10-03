@@ -1,6 +1,0 @@
-{
-  "potionId": "Ambergris",
-  "target": "Player",
-  "playerHpBefore": 20,
-  "expectedPlayerPowers": { "AMBERGRIS_POWER": 1 }
-}

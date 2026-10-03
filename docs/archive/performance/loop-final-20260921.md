@@ -1,6 +1,6 @@
 # 循环优化收尾：请求额度、前缀续搜与历史依赖
 
-本轮基线为 `a8a90e74`（包含首批循环优化及审计遥测修正），不是原始 `3f4002bd`。原始版本的收益见[首批报告](loop-optimization-20260921.md)。本轮逐次指标、预算原因、路线摘要和原生 runId 见[结构化证据](loop-final-20260921-evidence.json)，固定输入见 `coverage/unattended/loop-final-20260921/suite.json`。不提升版本、不发包、不启动可见 Steam。
+本轮基线为 `a8a90e74`（包含首批循环优化及审计遥测修正），不是原始 `3f4002bd`。原始版本的收益见[首批报告](loop-optimization-20260921.md)。本轮逐次指标、预算原因、路线摘要和原生 runId 见[结构化证据](loop-final-20260921-evidence.json)，固定输入见 `coverage/fixtures/search/loops/loop-final-20260921/suite.json`。不提升版本、不发包、不启动可见 Steam。
 
 ## 设计与质量边界
 
@@ -59,8 +59,8 @@ EQ10 / FULL40 历史根在该工作树不可得，未执行；本轮 28 组不�
 复跑离线对照（DLL 两侧均需支持固定夹具入口）：
 
 ```bash
-python3 tools/OfflineSearchHarness/run_loop_boundaries.py \
-  --suite coverage/unattended/loop-final-20260921/suite.json \
+python3 tools/search/OfflineSearchHarness/run_loop_boundaries.py \
+  --suite coverage/fixtures/search/loops/loop-final-20260921/suite.json \
   --baseline-dll <a8a90e74-DLL> --candidate-dll <candidate-DLL> --out <new-directory>
 # 针对最终四根 ABBA：追加 --cases letter-replay-cap estimate-margin history-banshee-hand history-banshee-drawn --abba
 # 60 秒隔离实验：仅在 suite 副本改 budgetMilliseconds=60000，节点数不改。

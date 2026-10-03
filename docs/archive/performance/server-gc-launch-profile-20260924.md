@@ -16,7 +16,7 @@ Mod 定位已加载游戏程序集旁的 `runtimeconfig.json`，设置 `System.G
 
 实现边界：这是下一次启动自动接入，不能让已经运行的 CLR 热切换。没有启动可见 Steam，因此完整工坊更新、Steam 界面、云存档及可见帧时间仍未验收；不将无头验证称为 Steam 端到端通过。首轮性能数字属于原五场样本，本次不重新声称新的提速幅度。
 
-开发者复现：`dotnet run --project tools/RuntimeGcProfileChecks -c Release` 检查配置字段和三个真实 CLR 启动；Windows 用 `tools/test-runtime-gc-startup.ps1 -GameRoot <游戏目录> -RitsuWorkshopRoot <依赖目录> -Build <构建目录> -Output <新证据目录>` 验证隔离原生进程的三次启动，并自动清理私有实例。测试入口需要 PowerShell，玩家自动接入不需要。
+开发者复现：`dotnet run --project tools/testing/checks/RuntimeGcProfileChecks -c Release` 检查配置字段和三个真实 CLR 启动；Windows 用 `tools/testing/test-runtime-gc-startup.ps1 -GameRoot <游戏目录> -RitsuWorkshopRoot <依赖目录> -Build <构建目录> -Output <新证据目录>` 验证隔离原生进程的三次启动，并自动清理私有实例。测试入口需要 PowerShell，玩家自动接入不需要。
 
 ### 自动接入验证
 
@@ -33,13 +33,13 @@ Windows 原生 CLR 9.0.7 三个有效请求分别验证：首次 Default／NoGC=
 Windows 使用 PowerShell 7.4 或更新版本，直接启动游戏 EXE：
 
 ```powershell
-pwsh -NoProfile -File .\tools\start-server-gc.ps1 -GameExecutable "C:\Games\Slay the Spire 2\SlayTheSpire2.exe"
+pwsh -NoProfile -File .\tools\performance\start-server-gc.ps1 -GameExecutable "C:\Games\Slay the Spire 2\SlayTheSpire2.exe"
 ```
 
 Linux：
 
 ```bash
-bash tools/start-server-gc.sh "/path/to/Slay the Spire 2/SlayTheSpire2"
+bash tools/performance/start-server-gc.sh "/path/to/Slay the Spire 2/SlayTheSpire2"
 ```
 
 脚本可以在可执行文件路径后附加游戏参数。它们只给新游戏子进程设置 `DOTNET_gcServer=1`、兼容前缀 `COMPlus_gcServer=1` 和 `COMBATSOLVER_RUNTIME_PROFILE=server-generational`，不改全局环境、注册表或游戏 `runtimeconfig.json`，不结束已经运行的游戏。不要用向已运行的 Steam 发送 `-applaunch` 替代这里的直接启动：不能据此认定环境已传入游戏。
@@ -71,9 +71,9 @@ profile 生效后的有效 NoGC 为 false；若测试另显式要求 `EnableNoGc
 ## 已有最小合同
 
 ```bash
-dotnet run --project tools/RuntimeGcProfileChecks/RuntimeGcProfileChecks.csproj -c Release
-bash tools/test-runtime-profile-launchers.sh
-pwsh -NoProfile -File tools/test-runtime-profile-launchers.ps1
+dotnet run --project tools/testing/checks/RuntimeGcProfileChecks/RuntimeGcProfileChecks.csproj -c Release
+bash tools/testing/test-runtime-profile-launchers.sh
+pwsh -NoProfile -File tools/testing/test-runtime-profile-launchers.ps1
 ```
 
 - 纯值检查 25 项通过：普通启动、保存关闭、成功激活、CLR 未启用、未知值及不可变选择隔离；不读取测试机器的真实 GC 模式来决定预期结果。
@@ -84,7 +84,7 @@ pwsh -NoProfile -File tools/test-runtime-profile-launchers.ps1
 
 本轮使用 Windows／i7-14700KF（28 个逻辑处理器）／32 GB 内存的实际 Godot 游戏宿主，CLR 为游戏内置 **9.0.7**。两种模式使用同一份 Release DLL，算法基线为上游 `3d45d78f`；没有混入旧研究分支改动，也不将旧 `b41e533d` 离线结果计作本次收益。显卡不参与搜索。
 
-预先选定五角色、两个精英根和三个首领根，其中女王场景包含初始牌组加 32 张角色牌、2 张无色牌、十余件遗物（含沙漏）、三个药水槽。定义位于 `coverage/runtime-gc-profile/`。运行独立冷进程，按根交替 AB／BA；VeryHigh、300 秒／500,000 节点，DOP 分别为 8、16、8、16、8，普通完整协调器及原有药水策略保持一致，性能样本不开严格增量检查。每个场景仅测一个 DOP，本轮不评价同场景从 8 到 16 并行的扩展性。
+预先选定五角色、两个精英根和三个首领根，其中女王场景包含初始牌组加 32 张角色牌、2 张无色牌、十余件遗物（含沙漏）、三个药水槽。定义位于 `coverage/corpora/runtime-gc/`。运行独立冷进程，按根交替 AB／BA；VeryHigh、300 秒／500,000 节点，DOP 分别为 8、16、8、16、8，普通完整协调器及原有药水策略保持一致，性能样本不开严格增量检查。每个场景仅测一个 DOP，本轮不评价同场景从 8 到 16 并行的扩展性。
 
 A 为实际 WorkstationGC＋启用 NoGC（配置预算 16 GB，实际区域可按余量缩小）；B 为实际 ServerGC＋本次有效 NoGC 关闭，保存的 NoGC 仍为 true。每次均核对实际 CLR／模式、正常退出、设置文件字节不变、同 DLL／输入／并行度；严格比较器要求完整 actions、snapshot、policy、作用域、边界、生成开局／牌组／遗物／药水、总展开／转移／选择以及每个成员的身份、预算、工作与选择状态相等，才输出同工作量比率。时间边界或不一致会使比较器退出失败。下表仍保留所有预选场景的观测耗时；被拒绝的两对明确标注，不从总体中删除，也不改写为等价通过。
 
@@ -113,14 +113,14 @@ A 为实际 WorkstationGC＋启用 NoGC（配置预算 16 GB，实际区域可�
 在 Windows 构建本分支，并将 manifest 放在输出目录（Windows 构建同时产出 MemoryCleaner）。每次指定一个未存在的输出目录：
 
 ```powershell
-pwsh -NoProfile -File tools/PerformanceBenchmarks/run-windows.ps1 `
+pwsh -NoProfile -File tools/performance/PerformanceBenchmarks/run-windows.ps1 `
   -GameRoot "C:/Games/Slay the Spire 2" `
   -RitsuWorkshopRoot "C:/Steam/steamapps/workshop/content/2868840/3747602295" `
   -Build "C:/Build/CombatSolver" `
-  -Scenario coverage/runtime-gc-profile/dev-08-regent-boss.json `
+  -Scenario https://github.com/Torch1230/CombatSolver/blob/fe3edd2f7b4f3a92b266e6b13293810d31ce2e1b/coverage/corpora/runtime-gc/dev-08-regent-boss.json `
   -Output .local/gc-ab/regent-A -RuntimeProfile default -Dop 8
 # 换为新输出 regent-B 和 -RuntimeProfile server-generational，保持其它参数相同。
-python tools/PerformanceBenchmarks/compare-runtime-profile.py .local/gc-ab/regent-A .local/gc-ab/regent-B
+python tools/performance/PerformanceBenchmarks/compare-runtime-profile.py .local/gc-ab/regent-A .local/gc-ab/regent-B
 ```
 
 测量脚本只创建和清理带所有权标记的私有实例；`MemoryReservationMiB` 默认 12288 是无人宿主的资源预约，不改变搜索／NoGC 预算或限制进程实际峰值。宿主预约曾因本机可用内存不足而排队失败，未启动搜索的尝试不计入矩阵。早期采样器保活／日志缓冲问题已通过正常退出与显式证据屏障解决，不将其不完整输出纳入数字。

@@ -10,7 +10,7 @@
 
 ## 自生成语料与测量
 
-`tools/ContextualOrdering/generate.py` 生成 105 根：10 种机制 × 低/高压力 × train/validation/test，以及 5 角色 × Monster/Elite/Boss × 3 划分的随机构筑。涉及攻防取舍、卖血换资源、力量、消耗/压缩、毒、持续防御、先抽后花、球、集中与多目标。相关压力变体不跨划分；这是种子留存，不能声称机制族完全隔离。没有玩家问题包、没有伪造最优解。
+`tools/search/ContextualOrdering/generate.py` 生成 105 根：10 种机制 × 低/高压力 × train/validation/test，以及 5 角色 × Monster/Elite/Boss × 3 划分的随机构筑。涉及攻防取舍、卖血换资源、力量、消耗/压缩、毒、持续防御、先抽后花、球、集中与多目标。相关压力变体不跨划分；这是种子留存，不能声称机制族完全隔离。没有玩家问题包、没有伪造最优解。
 
 第一次 v1 的 20 根有 4 次建局失败：旧作卡名不存在，以及最大生命未同步导致压力被原生截断。改用有效原版牌、同时注入最大/当前生命与敌方力量，独立生成 v2；旧失败保留，不并入成功样本。
 
@@ -57,12 +57,12 @@ v2 训练划分固定 beam24、20000 展开上限、60 秒预算、DOP1、Smart�
 ## 复现入口
 
 ```bash
-python3 tools/ContextualOrdering/generate.py --out .local/contextual-ordering/repro-corpus
+python3 tools/search/ContextualOrdering/generate.py --out .local/contextual-ordering/repro-corpus
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
-dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
+dotnet build tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 ```
 
-冻结基线 DLL 后，variant JSON 明确提供 `name,dll,harness,arguments`。旧 DLL 需搭配兼容的旧宿主，新宿主引用实验 profile 成员，不能假设可以加载旧 DLL。所有工具拒绝覆盖已有输出目录。完整参数见 [工具说明](../../../tools/ContextualOrdering/README.md)。
+冻结基线 DLL 后，variant JSON 明确提供 `name,dll,harness,arguments`。旧 DLL 需搭配兼容的旧宿主，新宿主引用实验 profile 成员，不能假设可以加载旧 DLL。所有工具拒绝覆盖已有输出目录。完整参数见 [工具说明](../../../tools/search/ContextualOrdering/README.md)。
 
 本机证据在 `.local/contextual-ordering/`：`screen-v2`、`observed-v2`、`pairs-v2`、`fit-v1`、`fit-v1-train`、`fit-v1-comparison-fixed`、`default-sentinels`、`feature-contract-result.json`。大日志和模型产物不提交源码；重跑必须从精确生成输入及冻结 DLL 开始，不能用当前版本冒充旧基线。
 
@@ -206,7 +206,7 @@ dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 - `CONTEXTUAL-TARGET-STOP-DEPLOY` / `6dfaaebbb5784a0c896fe88c8136c288` Passed，29.85秒；正常默认profile，无候选启用参数，Medium/60宽/120000节点/DOP1，Instant/0执行预测零损路线至T6，0次意外重算，满足结束HP下限65；主搜1.332秒。两实例均自动清理。没有可见Steam验收，也没有Windows实测。
 - Release与宿主构建0警告/错误；Bash/PowerShell结构门禁均208，Python工具语法通过。后续仅清理注释/宿主帮助文本与补文档，不重跑行为或性能。未提升版本、发包或推送。
 
-复现治疗边界：`python3 tools/ContextualOrdering/generate.py --suite target-stop-boundaries --out <新目录>`；manifest的potionPolicy为第7根指定RequireAtLeastOne，其余沿用Smart。独立35根使用 `--seed-namespace TARGET-STOP-HOLDOUT-20260922` 的test划分。完整请求使用Coordinator/--use-portfolio/--stop-at-zero-loss；旧行为可用本版宿主 `--disable-portfolio-hp-target-stop` 消融，跨历史版本严格复现仍使用各自冻结的DLL/兼容宿主。ABBA变体顺序必须是A1/B1/B2/A2，墙钟截断/失败不进性能均值。
+复现治疗边界：`python3 tools/search/ContextualOrdering/generate.py --suite target-stop-boundaries --out <新目录>`；manifest的potionPolicy为第7根指定RequireAtLeastOne，其余沿用Smart。独立35根使用 `--seed-namespace TARGET-STOP-HOLDOUT-20260922` 的test划分。完整请求使用Coordinator/--use-portfolio/--stop-at-zero-loss；旧行为可用本版宿主 `--disable-portfolio-hp-target-stop` 消融，跨历史版本严格复现仍使用各自冻结的DLL/兼容宿主。ABBA变体顺序必须是A1/B1/B2/A2，墙钟截断/失败不进性能均值。
 
 
 ## 三项真实搜索敏感度与完整组合反例
@@ -236,7 +236,7 @@ dotnet build tools/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 
 验证：Release及宿主0警告/错误；两端结构门禁208通过；9个非法/冲突参数在搜索启动前拒绝。20个默认Evaluate结果及展开/转移与原冻结基线完全相同；消耗高压、抽牌高压的1倍扰动控制与本版默认完整route.json、质量、展开/转移一致。实验没有生产启用，新排序未作原生验收；此前原生记录只证明此前版本。完整结构化比较及资源数据见[敏感度证据](contextual-weight-sensitivity-20260922-evidence.json)。当前通用排序目标仍在进行。
 
-复现：沿用 `tools/ContextualOrdering/run.py`，原默认命名空间语料的 `--kind curated --split train`，baseline变体无附加参数，另六个变体分别传 `--beam-weight CurrentEnergy:0.5` 等上述组合。单项只改变Beam的贡献，不修改其他试验开关。实际命令/冻结DLL及所有结果在 `.local/contextual-ordering/sensitivity-*`；比较统一使用生产比较器及同根/预算/政策检查。完整协调器核查的五个根为 energy_investment/strength_setup/exhaust_resources/defense_engine 的train-high与target_order-train-low。
+复现：沿用 `tools/search/ContextualOrdering/run.py`，原默认命名空间语料的 `--kind curated --split train`，baseline变体无附加参数，另六个变体分别传 `--beam-weight CurrentEnergy:0.5` 等上述组合。单项只改变Beam的贡献，不修改其他试验开关。实际命令/冻结DLL及所有结果在 `.local/contextual-ordering/sensitivity-*`；比较统一使用生产比较器及同根/预算/政策检查。完整协调器核查的五个根为 energy_investment/strength_setup/exhaust_resources/defense_engine 的train-high与target_order-train-low。
 
 
 ## 窄进攻精炼替换宽成员：完整请求留存实验
@@ -407,7 +407,7 @@ V3复测上述32个validation根全部Comparable：**2好/30同/0差**，含旧S
 
 托管占用采样尾项为随机Ironclad精英：87457072→117970208 B（+34.89%，+30.51 MB）；工作集尾项为随机Ironclad普通：331583488→349171712 B（+5.30%，+17.59 MB）。准确的逐根基线口径以结构化证据为准：例如Silent普通战转移596549→593176（−0.57%），精英战340961→346553（+1.64%），不是两个场景均减少。
 
-**决定：撤回运行时代码。** 仅1 HP新增收益、不到1%的总转移节省与上述分配/内存代价不足以支持默认优化。原型源码、115项组合合同和两端结构门禁改动归档在[复现补丁](../../../tools/ContextualOrdering/experiments/structural-refinement-20260922.patch)，不继续增加生产开关。原型Release/宿主0警告错误，两端门禁208通过；活动源码恢复本轮前版本。新种子 `STRUCTURAL-HOLDOUT-20260922` 的105根输入已构造，但未运行，不算独立验收。没有为撤回版本执行原生部署或ABBA。
+**决定：撤回运行时代码。** 仅1 HP新增收益、不到1%的总转移节省与上述分配/内存代价不足以支持默认优化。原型源码、115项组合合同和两端结构门禁改动归档在[复现补丁](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ContextualOrdering/experiments/structural-refinement-20260922.patch)，不继续增加生产开关。原型Release/宿主0警告错误，两端门禁208通过；活动源码恢复本轮前版本。新种子 `STRUCTURAL-HOLDOUT-20260922` 的105根输入已构造，但未运行，不算独立验收。没有为撤回版本执行原生部署或ABBA。
 
 [完整结构化证据](contextual-structural-refinement-20260922-evidence.json)保留32根所有质量与成本。下一项测量直接使用已有 `--no-plain-baseline` 消融入口，以量化普通基线成员的独有贡献与可省成本；它可能损失旧好解，不能把少跑一个成员本身称为质量优化。
 

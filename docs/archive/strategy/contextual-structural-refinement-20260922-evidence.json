@@ -3,7 +3,7 @@
   "experiment": "conditional narrow-member structural replacement",
   "parentCommit": "998bf4c7",
   "decision": "reverted_runtime_prototype_insufficient_payoff",
-  "patch": "tools/ContextualOrdering/experiments/structural-refinement-20260922.patch",
+  "patch": "https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ContextualOrdering/experiments/structural-refinement-20260922.patch",
   "design": {
     "condition": "selected complete victory already exists",
     "replacement": "ordinary narrow member becomes existing novelty search",

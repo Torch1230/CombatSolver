@@ -6747,7 +6747,7 @@
     "card-continuation-expanded-incremental": {
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "formal-pr-validation",
         "--sts2-game-root",
@@ -6854,7 +6854,7 @@
     "potion-continuation-incremental": {
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "formal-pr-validation",
         "--sts2-game-root",
@@ -6961,7 +6961,7 @@
     "execution-choice-incremental": {
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "formal-pr-validation",
         "--sts2-game-root",
@@ -7070,7 +7070,7 @@
     "execution-choice-setup-incremental": {
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "formal-pr-validation",
         "--sts2-game-root",
@@ -7179,7 +7179,7 @@
     "execution-choice-round-native": {
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "formal-pr-validation",
         "--sts2-game-root",
@@ -7288,7 +7288,7 @@
     "search-hp-target-stop": {
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "formal-pr-validation",
         "--sts2-game-root",
@@ -7400,7 +7400,7 @@
     "block-potion-native-deploy-fixed": {
       "command": [
         "bash",
-        "tools/run-unattended-test.sh",
+        "tools/testing/run-unattended-test.sh",
         "--headless-instance",
         "formal-pr-validation",
         "--sts2-game-root",

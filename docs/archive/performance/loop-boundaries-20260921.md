@@ -2,7 +2,7 @@
 
 > 后续状态：本文件保留 b3ed8c11/a8a90e74 的历史审计。每 solver 额度、失败不重试及耗尽回放浪费已经由[收尾实现](loop-final-20260921.md)更新；最新数据为 28 组配置、26 个不同根，不以本页旧指标代表当前候选。
 
-首批追加测试和文档，未修改生产 Search／UI。首批候选 `887da7ac`，基线 `3f4002bd`，两侧共享上一轮固定夹具适配。对应[主报告](loop-optimization-20260921.md)、[19 个固定夹具及显式检查](../../../coverage/unattended/loop-boundaries-20260921/suite.json)和[逐次结构化证据](loop-boundaries-20260921-evidence.json)。后续 F1/F2/F3 审计修正了切层遥测和测试分类，见下文追加章节；不改变回放准入或搜索政策。
+首批追加测试和文档，未修改生产 Search／UI。首批候选 `887da7ac`，基线 `3f4002bd`，两侧共享上一轮固定夹具适配。对应[主报告](loop-optimization-20260921.md)、[19 个固定夹具及显式检查](../../../coverage/fixtures/search/loops/loop-boundaries-20260921/suite.json)和[逐次结构化证据](loop-boundaries-20260921-evidence.json)。后续 F1/F2/F3 审计修正了切层遥测和测试分类，见下文追加章节；不改变回放准入或搜索政策。
 
 ## 结论和口径
 
@@ -80,7 +80,7 @@
 
 **F2 不作为安全拒绝条件直接采纳。** `(remaining / damage + 2) * period` 包含保守余量，且历史实测伤害不是未来伤害上界。估算超过额度不能推出实际不能完成；在回放中按上一周期判断也不能证明成长／隐藏触发之后不会加速。
 
-新增[估算余量反例](../../../coverage/unattended/generic-loop-replay-estimate-margin.json)：6835 HP 的 Letter Opener 根，常规 6 次出牌后剩 6825 HP，每 3 动作造成 5 伤害。估算为 `(6825/5+2)*3=4101`，但实际只需 `1365*3=4095` 次额外回放，低于 4096。离线实测 **6 展开／4107 转移、4095 回放、1 次回放胜利、零损 T1**，无任何切层。即使恒定伤害，粗暴按该估算拒绝也会跳过本可成功的这次探测；不能将“可能由更深的普通搜索补回”当作已经证明质量不降。本轮保留现有准入，7200 HP 的无效探测代价仍未修复，不把新增遥测说成性能优化。
+新增[估算余量反例](../../../coverage/fixtures/search/generic-loop-replay-estimate-margin.json)：6835 HP 的 Letter Opener 根，常规 6 次出牌后剩 6825 HP，每 3 动作造成 5 伤害。估算为 `(6825/5+2)*3=4101`，但实际只需 `1365*3=4095` 次额外回放，低于 4096。离线实测 **6 展开／4107 转移、4095 回放、1 次回放胜利、零损 T1**，无任何切层。即使恒定伤害，粗暴按该估算拒绝也会跳过本可成功的这次探测；不能将“可能由更深的普通搜索补回”当作已经证明质量不降。本轮保留现有准入，7200 HP 的无效探测代价仍未修复，不把新增遥测说成性能优化。
 
 **F3 只限定范围，不虚构请求级保证。** suite 和命令显式固定 `Evaluate`；配置 `Coordinator` 会在运行前被拒绝，4096 检查明确是单 solver。请求级 N×4096 风险未由本测试消除，仍需要独立的协调器预算设计与验证。
 
@@ -116,7 +116,7 @@
 基线 DLL 必须具备上一轮共享的固定夹具注入入口；不能直接拿未适配的旧发行 DLL 比较。`--out` 必须不存在，进程串行运行，差异／失败保留并返回非零，不能自动解释为退化。`--abba --cases letter-replay-cap` 用于复核反例。
 
 ```bash
-python3 tools/OfflineSearchHarness/run_loop_boundaries.py \
+python3 tools/search/OfflineSearchHarness/run_loop_boundaries.py \
   --baseline-dll .local/loop-comparison/baseline/CombatSolver.dll \
   --candidate-dll .godot/mono/temp/bin/Release/CombatSolver.dll \
   --out .local/loop-boundaries-rerun

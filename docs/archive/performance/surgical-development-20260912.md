@@ -53,7 +53,7 @@
 
 每个场景在两轮试验中的全部正式样本，96 项非时序字段均一致；机甲 54 行、亡灵 113 行完整 ACTION/TURN_OUTCOME/FORECAST 记录也一致，两轮的参考记录相互一致。比较保留完整路线和工作计数，未仅凭聚合 HP 认定等价。
 
-[排序合同](../../../tools/BeamRankSortChecks/README.md)直接提取当前生产排序、评分和比较方法，链接生产 SolverWeights，以不可变标量输入进行 720 组、167,280 条目对照。覆盖全同分、升序/逆序、重复对象、NaN/无穷/正负零、大小边界和根参数组合，逐槽比较引用身份。它证明这些输入上的排序合同，不冒充完整游戏语义证明。
+[排序合同](../../../tools/testing/checks/BeamRankSortChecks/README.md)直接提取当前生产排序、评分和比较方法，链接生产 SolverWeights，以不可变标量输入进行 720 组、167,280 条目对照。覆盖全同分、升序/逆序、重复对象、NaN/无穷/正负零、大小边界和根参数组合，逐槽比较引用身份。它证明这些输入上的排序合同，不冒充完整游戏语义证明。
 
 `CARD-PLAY-CLEANUP-CONTRACT` 在真实游戏宿主内使用原版模型和生产清理入口，验证空状态不物化、非空配对只清除目标 CardPlay、其他 CardPlay 不变、成功提交、中止清理、删除后零计数以及子分支移除不影响父状态。Passed，runId `6a59494233984b7582ba6213c528a724`。这是定向所有权合同，不是原版命令与模拟的完整差分。
 
@@ -70,9 +70,9 @@ Release 构建通过，Linux 结构门禁通过。生产行为在性能 A/B 之�
 定向清理检查通过通用 scenario-id 接口运行，两端脚本均无需增加参数：
 
 ```bash
-./tools/run-unattended-test.sh --scenario-id CARD-PLAY-CLEANUP-CONTRACT \
+./tools/testing/run-unattended-test.sh --scenario-id CARD-PLAY-CLEANUP-CONTRACT \
   --stop-after-combat-root-snapshot-assertion --timeout-seconds 120
-python3 tools/BeamRankSortChecks/run.py
+python3 tools/testing/checks/BeamRankSortChecks/run.py
 ```
 
-性能夹具分别来自 `coverage/unattended/performance-veryhigh-mecha-native.json` 的原生牌组，以及 `search-performance-necrobinder-projected-*` 的牌组、遗物、药水输入。亡灵档位被明确固定为 Low，不能把结果外推到 VeryHigh；完整请求还固定角色、种子、敌人 HP、玩家 HP、药水政策和 DOP，单独复制牌组并不能复现本轮工作量。
+性能夹具分别来自 `coverage/fixtures/runtime/performance-veryhigh-mecha-native.json` 的原生牌组，以及 `search-performance-necrobinder-projected-*` 的牌组、遗物、药水输入。亡灵档位被明确固定为 Low，不能把结果外推到 VeryHigh；完整请求还固定角色、种子、敌人 HP、玩家 HP、药水政策和 DOP，单独复制牌组并不能复现本轮工作量。

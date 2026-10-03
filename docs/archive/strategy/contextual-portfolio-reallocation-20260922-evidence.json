@@ -14084,7 +14084,7 @@
       },
       "launcherCleanup": "UNATTENDED_INSTANCE_REMOVED .local/headless-instances/contextual-reallocated-deploy",
       "command": [
-        "./tools/run-unattended-test.sh",
+        "./tools/testing/run-unattended-test.sh",
         "--scenario-id",
         "CONTEXTUAL-REALLOCATED-DEPLOY",
         "--character-id",

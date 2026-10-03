@@ -36,7 +36,7 @@
 - `SearchGcPolicy` 已移动到 Runtime；Search 目录不再直接引用设置、logger、Controller、UI 或无人测试 runner。
 - `REFACTOR-FAILURE-BOUNDARIES-001`：runId `94933ce7cbe44f71879440fb1c48ed7d`，失败边界检查和完整自动战斗通过，零非预期重算。
 - `REFACTOR-SEARCH-POLICY-002`：runId `e39073d7512d4b9694382be2dd410b5d`，全局设置改变前后复用同一策略快照，两次搜索结果精确一致；失败边界和完整自动战斗同时通过。
-- `tools/verify-refactor-boundaries.ps1` 当前检查 43 个 Search 文件并通过。
+- `tools/inspection/verify-refactor-boundaries.ps1` 当前检查 43 个 Search 文件并通过。
 - 推断卡 43/43、推断选牌 12/12、CalculatedVar 25/25、药水引擎 17/17 通过；自动生成 X 费夹具改用 1 能量，`HELIX_DRILL` 前置打击夹具用敌方格挡避免提前清场。
 - Smart 反事实 runId `4c8dc991752d46aab8b5a54ed0c28c15` 和 RequireAtLeastOne runId `7ee8ba1941554531b9b289120980597d` 通过，均为零非预期重算。
 - 双小啃兽普通 runId `efa79edb7e48447c81c3840dfc7be60d` 与增量 runId `f03343e6be8b4561890dae0ae930d7f6` 均在第 5 回合结束、两次洗牌、0 药、0 战损并成功复用。

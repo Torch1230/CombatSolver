@@ -71,11 +71,11 @@
 
 ### 批量等价
 
-`tools/OfflineSearchHarness/compare_results.py` 在 5 个不同生成场景根上比较同一份基线/候选 DLL，`mismatched_roots=0`、无 `left_only`/`right_only`、`comparedFields=413`，覆盖路线、根 continuation 与 catalog。另 5 个不同角色/战斗根按相同方式逐项比较，选中路线与全部 `cachedContinuations` 文本完全一致；selected worker 分配逐根减少 2.2–16.9 MB。
+`tools/search/OfflineSearchHarness/compare_results.py` 在 5 个不同生成场景根上比较同一份基线/候选 DLL，`mismatched_roots=0`、无 `left_only`/`right_only`、`comparedFields=413`，覆盖路线、根 continuation 与 catalog。另 5 个不同角色/战斗根按相同方式逐项比较，选中路线与全部 `cachedContinuations` 文本完全一致；selected worker 分配逐根减少 2.2–16.9 MB。
 
 ## 验证与限制
 
-- Release 构建 0 警告、0 错误；Linux `tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。
-- `tools/CombatSolver.GcPolicyChecks recovery` 输出 `GC policy checks passed: 9 scenarios.`，包含无进展计数、阈值、按成员重置等合同。
+- Release 构建 0 警告、0 错误；Linux `tools/inspection/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。
+- `tools/testing/checks/CombatSolver.GcPolicyChecks recovery` 输出 `GC policy checks passed: 9 scenarios.`，包含无进展计数、阈值、按成员重置等合同。
 - 上述性能数字全部来自本机 headless 离线宿主，不是可见 Steam 帧时间或玩家感知延迟；批量对照为单机样本，未做多机器或 Windows 验证。
 - 内存截断端到端使用外部活球压和固定短搜，不能替代原始 VeryHigh 问题包或真实长时间搜索的质量回归。

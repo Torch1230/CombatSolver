@@ -70,6 +70,6 @@ PR 前合并 `upstream/main` 的 `7ac005e`，保留其诊断日志、双语界�
 
 ## 5. 复跑与范围
 
-排序筛查从独立工作树的 `3f2ac26` 构建基线；候选仅应用 JSON 中的 `prototypePatch`。两份产物使用[前次固定输入与命令](perf2-integration-20260909.md#7-复跑)，按本报告 B–C–C–B、每次先 Short 预热再测 Short/normal，不与最新上游合并版混测。三个输入文件使用 `coverage/unattended/search-performance-necrobinder-projected-{run-cards,relics,potions}.json`。
+排序筛查从独立工作树的 `3f2ac26` 构建基线；候选仅应用 JSON 中的 `prototypePatch`。两份产物使用[前次固定输入与命令](perf2-integration-20260909.md#7-复跑)，按本报告 B–C–C–B、每次先 Short 预热再测 Short/normal，不与最新上游合并版混测。三个输入文件使用 `coverage/fixtures/search/search-performance-necrobinder-projected-{run-cards,relics,potions}.json`。
 
 本轮没有新的可见 Steam、Windows 游戏或整场部署结论。已有分支的性能与正确性证据继续按各自源码基线保留；本轮停止追加未证明收益的原型。Profiler、日志、诊断包和构建仅放在忽略目录。

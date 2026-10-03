@@ -17,7 +17,7 @@
 
 位置是当前状态的关系标识，会随移动而改变；与牌堆状态一起参与去重和 continuation，对两张同名牌的引用也可区分。第一次写非 null 引用才建立位置索引，同一次完整观察的所有模型共用一张；复杂度为 O(战斗牌数 + 引用数)，无序列表额外 O(k log k) 及一个临时数组。仅写标量、空列表或 null 不建立索引。不缓存跨观察位置，不逐引用扫描全牌表。回调必须只读且同步，不得修改牌堆或复制并长期持有 writer。
 
-可编译的中性遗物／Modifier 示例见 `tools/ModelPredictionStateChecks/CardReferenceChecks.cs`：同一状态从 live 卡牌列表捕获预测引用，Fork 重映射，两个 writer 分别描述各自一侧。该工具替换游戏身份与模拟器外壳；真实模拟器／COW 断言位于 `MODEL-STATE-INTEGRATION`，本项尚未运行游戏场景。
+可编译的中性遗物／Modifier 示例见 `tools/testing/checks/ModelPredictionStateChecks/CardReferenceChecks.cs`：同一状态从 live 卡牌列表捕获预测引用，Fork 重映射，两个 writer 分别描述各自一侧。该工具替换游戏身份与模拟器外壳；真实模拟器／COW 断言位于 `MODEL-STATE-INTEGRATION`，本项尚未运行游戏场景。
 
 ## 登记与使用
 
@@ -97,9 +97,9 @@ state.Count++;
 独立检查：
 
 ```sh
-dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --empty
-dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release
-dotnet run --project tools/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --allocation
+dotnet run --project tools/testing/checks/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --empty
+dotnet run --project tools/testing/checks/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release
+dotnet run --project tools/testing/checks/ModelPredictionStateChecks/ModelPredictionStateChecks.csproj -c Release -- --allocation
 ```
 
 这些命令使用生产 registry、writer、store 和 fingerprint，替代游戏身份与 Fork context 外壳。

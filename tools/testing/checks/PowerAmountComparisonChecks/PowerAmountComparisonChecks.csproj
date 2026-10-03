@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(CombatSolverRepositoryRoot)local.props" Condition="Exists('$(CombatSolverRepositoryRoot)local.props')" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(OS)' == 'Windows_NT'">$(Sts2Dir)/data_sts2_windows_x86_64</Sts2DataDir>
+    <Sts2DataDir Condition="'$(Sts2DataDir)' == ''">$(Sts2Dir)/data_sts2_linuxbsd_x86_64</Sts2DataDir>
+    <RitsuLibReferenceTarget>0.111.0</RitsuLibReferenceTarget>
+    <RitsuLibReferencesProps>$(RitsuWorkshopRoot)/RitsuLib.References.props</RitsuLibReferencesProps>
+  </PropertyGroup>
+  <Import Project="$(RitsuLibReferencesProps)" Condition="Exists('$(RitsuLibReferencesProps)')" />
+  <ItemGroup>
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Runtime/PowerAmountComparisonPatch.cs" Link="PowerAmountComparisonPatch.cs" />
+    <Reference Include="STS2-RitsuLib" HintPath="$(RitsuLibDir)/STS2-RitsuLib.dll" Condition="!Exists('$(RitsuLibReferencesProps)')" />
+    <Reference Include="sts2" HintPath="$(Sts2DataDir)/sts2.dll" />
+    <Reference Include="0Harmony" HintPath="$(Sts2DataDir)/0Harmony.dll" />
+    <Reference Include="GodotSharp" HintPath="$(Sts2DataDir)/GodotSharp.dll" />
+  </ItemGroup>
+  <Target Name="ValidateReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(Sts2DataDir)/sts2.dll') or (!Exists('$(RitsuLibReferencesProps)') and !Exists('$(RitsuLibDir)/STS2-RitsuLib.dll'))" Text="请通过 local.props 或构建属性指定当前游戏与 RitsuLib。" />
+  </Target>
+</Project>

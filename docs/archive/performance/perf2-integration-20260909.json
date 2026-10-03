@@ -8318,7 +8318,7 @@
   "structureGates": [
     {
       "command": [
-        "./tools/verify-refactor-boundaries.sh"
+        "./tools/inspection/verify-refactor-boundaries.sh"
       ],
       "exitCode": 0,
       "evidence": "REFACTOR_BOUNDARIES_OK search_files=83"
@@ -8328,7 +8328,7 @@
         "pwsh",
         "-NoProfile",
         "-File",
-        "tools/verify-refactor-boundaries.ps1"
+        "tools/inspection/verify-refactor-boundaries.ps1"
       ],
       "exitCode": 0,
       "evidence": "REFACTOR_BOUNDARIES_OK search_files=83"

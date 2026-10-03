@@ -258,7 +258,7 @@
 - 助能自动牌现在复用 Mayhem/历史课的 `AutoPlayWithChoice` 事务：自动出牌后识别弃牌、消耗、生成、移动牌堆及嵌套自动出牌选择，缺计划时形成搜索分支，重放时以牌 ID、升级和助能序号校验上下文，不默认选第一张。
 - 新增独立差分夹具：助能生存者与一张打击在手，计划选择打击；原版实际记录 `Player chose cards [STRIKE_IRONCLAD]`，模拟与原版完整生命、格挡、能量、四牌堆、逐牌状态和 RNG 一致。runId `efeb53600fff4f2296ef47c2b8295d89` 通过。
 - 首回合选择已从 `PlayerTurnPhase.Start` 接管：求解器模拟能量重置、`BeforeHandDraw`、首手抽牌、`AfterPlayerTurnStart`、玩家方开始 Hook 和 `AutoPrePlay`，递归展开整串选择，再让原版 `SetupPlayerTurn + RunAutoPrePlayPhase` 在同一个 `PlannedCardSelector` 事务中消费。完成后比较完整 Play 状态戳，不一致即拒绝预搜结果。
-- 工具盒、选择悖论、烘焙手套首回合、赌博筹码和助能生存者分别通过 `INITIAL-*-394..398` 原版生命周期回归；五场均实际记录 `DEPLOY_CHOICE`、没有玩家界面，并命中 `INITIAL_SETUP_STATE_MATCH validation=exact_state_text`。工具盒、烘焙手套和助能生存者同场的三段选择链另以 runId `64acbb3e98ec41c1a35f07d3cad6d746` 通过。`coverage/pre-play-choice-gaps.json` 的玩家干预欠账现为 `0`；低语耳环继续使用原版确定性 Vakuu 选择器。
+- 工具盒、选择悖论、烘焙手套首回合、赌博筹码和助能生存者分别通过 `INITIAL-*-394..398` 原版生命周期回归；五场均实际记录 `DEPLOY_CHOICE`、没有玩家界面，并命中 `INITIAL_SETUP_STATE_MATCH validation=exact_state_text`。工具盒、烘焙手套和助能生存者同场的三段选择链另以 runId `64acbb3e98ec41c1a35f07d3cad6d746` 通过。`coverage/catalog/generated/pre-play-choice-gaps.json` 的玩家干预欠账现为 `0`；低语耳环继续使用原版确定性 Vakuu 选择器。
 - 复查静态闭环时发现首回合根状态还遗漏宝石面具、节庆礼炮、烦人谜盒与低语耳环。宝石面具按 `CombatCardSelection` 随机挑选非先天能力牌并设为本回合 0 费；谜盒按 `CombatCardGeneration` 生成；礼炮结算全体无倍率伤害；低语耳环在普通 AutoPrePlay 后按 Vakuu 固定策略支付费用、选择最左目标并处理嵌套选牌，最多 13 张。力量电池、扭曲漏斗和石化蟾蜍发生在 Setup 接管点之前，继续从 Start 状态精确继承。
 - 八遗物组合 runId `82fb0ef9c424473d92c6d5d6c7e77ce6` 通过完整状态与 RNG 校验；低语耳环在首回合自动完成击杀，`CombatEndedTurn=1`、`Unmirrored=0`。这也纠正了旧目录把宝石面具写成“玩家选择”的错误：原版实际使用 RNG 自动选择，不需要玩家操作。
 - 低语耳环的 Vakuu 嵌套选择另以高密度生存者牌组强制覆盖。runId `8426e2573f71427fb03e31a3b46aecab` 中原版连续两次记录 `Player chose cards [SURVIVOR]`，模拟按行优先选择同一候选，最终仍命中精确状态。

@@ -4,7 +4,7 @@
   "request": "再研究一下 能不能快速为所有这种具备选牌机制的卡牌 遗物 药水等做该优化？",
   "scope": "Feasibility research only; no broader production enablement. Reuses existing game 0.111.0 native IL inventory and checks current source dispatch / continuation constraints. Not a new exhaustive IL scan.",
   "inventorySource": "choice-source-inventory-20260912.json",
-  "selectionCoverageSource": "../../coverage/combat-choice-sources.json",
+  "selectionCoverageSource": "../../coverage/catalog/generated/combat-choice-sources.json",
   "historicalAudit": {
     "modelsScanned": 1284,
     "methodsScanned": 5955,

@@ -1,9 +1,0 @@
-[
-  {
-    "relicId": "POCKETWATCH",
-    "integerMembers": {
-      "_cardsPlayedThisTurn": 0,
-      "_cardsPlayedLastTurn": 99
-    }
-  }
-]

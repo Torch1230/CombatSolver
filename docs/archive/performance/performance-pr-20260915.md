@@ -67,7 +67,7 @@ UI合同还发现并修正同帧语言往返的通知遗漏：中途新建的控
 
 ### 新验证与证据范围
 
-- 撤回缓存后的交付场景 `ROUTE-ROW-REUSE` / `83d3d63b552f4393b8ffc03e8fba9060` Passed（25.374秒），专门运行下述路线控件、部署、语言及微基准合同；[可重跑fixture](../../../coverage/unattended/route-row-reuse.json)只使用既有双端ScenarioId协议。
+- 撤回缓存后的交付场景 `ROUTE-ROW-REUSE` / `83d3d63b552f4393b8ffc03e8fba9060` Passed（25.374秒），专门运行下述路线控件、部署、语言及微基准合同；[可重跑fixture](../../../coverage/fixtures/ui/route-row-reuse.json)只使用既有双端ScenarioId协议。
 - `DERIVED-WORK-REUSE` / `623c8fcf42574dd98701ed29efbc8093` Passed：6种完整RNG变体、10种牌数（含空、单张、4096/4097边界）、重复身份/逆序输入的120份原生牌序对照；清空、碰撞与worker计数排空；同值新数组、变化字段、回合开始选牌、动作顺序、击杀、空路线、状态页、部署索引/高亮、语言和订阅清理。
 - `UI-LOCALIZATION` / `483a2e7173044a26a730997020c911b3` Passed：保留/恢复路线中文→英文→中文、升级/选牌、序列化计划、415条目录以及eng/zhs/zht控件与标注，搜索状态未变。与前一请求共用同一无头进程，覆盖最初失败的生命周期。
 - `EXECUTION-CHOICE-INCREMENTAL` / `8f5ea770293243c78e36e21dec46c293` Passed：真实动作与EndTurn嵌套搜索严格增量、完整路线/预算及live隔离。

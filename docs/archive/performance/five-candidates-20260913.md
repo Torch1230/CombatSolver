@@ -2,7 +2,7 @@
 
 后续按用户要求使用最终生产构建补跑[完整VeryHigh极高负载样例](veryhigh-final-20260913.md)：1项Passed、3项120秒超时，不能把本页局部收益当作全部极高负载验收通过。
 
-先把前六方向的最终保留代码`415da12`部署到用户Windows，再开展本轮。新研究保留小类型计数表、溢出字典单次查找，以及两个生成入口的已有根缓存复用；未采用deferred top-k和JIT/SIMD原型。**当前Windows仍是先行部署的415da12，本轮新增代码尚未再次部署。** 完整[原始证据](five-candidates-20260913.json)与[可重跑独立原型](../../../tools/PerformanceCandidateProbes/README.md)一并保留。
+先把前六方向的最终保留代码`415da12`部署到用户Windows，再开展本轮。新研究保留小类型计数表、溢出字典单次查找，以及两个生成入口的已有根缓存复用；未采用deferred top-k和JIT/SIMD原型。**当前Windows仍是先行部署的415da12，本轮新增代码尚未再次部署。** 完整[原始证据](five-candidates-20260913.json)与[可重跑独立原型](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/PerformanceCandidateProbes/README.md)一并保留。
 
 ## 1. 工作量评估与授权边界
 

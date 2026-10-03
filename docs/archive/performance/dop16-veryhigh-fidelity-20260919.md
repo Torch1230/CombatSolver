@@ -33,7 +33,7 @@
 命令形状（每根三次，顺序固定）：
 
 ```bash
-dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
   --request .local/learned-selector/data3/requests/<root>.json \
   --profile VeryHigh --nodes 20000 --dop 16 --budget-ms 120000 \
   --search-mode Evaluate --enable-no-gc-region --no-gc-region-budget-gigabytes 16 --milestone M2

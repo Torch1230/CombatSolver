@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "profile": "VeryHigh",
+  "maxExpandedNodes": 25000,
+  "searchBudgetMilliseconds": 110000,
+  "maxDegreeOfParallelism": 1,
+  "cases": [
+    { "label": "report-24", "kind": "report", "reportId": "f88c625680e64a2c99a2ab8844abcbdd", "path": ".local/issue-bundles/strategy-20260925/raw/f88c625680e64a2c99a2ab8844abcbdd.zip" },
+    { "label": "report-37", "kind": "report", "reportId": "bd580e3209034bb294d77eda34eb8705", "path": ".local/issue-bundles/strategy-20260925/raw/bd580e3209034bb294d77eda34eb8705.zip" },
+    { "label": "report-79", "kind": "report", "reportId": "a9d1a29a2f8b49879a0f2a3f9ad1761a", "path": ".local/issue-bundles/worldline-top150-20260926/raw/a9d1a29a2f8b49879a0f2a3f9ad1761a.zip" },
+    { "label": "report-81", "kind": "report", "reportId": "4eb25e79483c462089f9c6088d650c77", "path": ".local/issue-bundles/worldline-top150-20260926/raw/4eb25e79483c462089f9c6088d650c77.zip" },
+    { "label": "report-85", "kind": "report", "reportId": "bb426281cba74e048f2fd79a8e41bb87", "path": ".local/issue-bundles/worldline-top150-20260926/raw/bb426281cba74e048f2fd79a8e41bb87.zip" },
+    { "label": "report-89", "kind": "report", "reportId": "10d01cc2d1f7445c8ff72e76e783aeb0", "path": ".local/issue-bundles/worldline-top150-20260926/raw/10d01cc2d1f7445c8ff72e76e783aeb0.zip" },
+    { "label": "report-56-backup", "kind": "report", "reportId": "5dbdbf0185ee4e3b8ee393d10a35d68d", "path": ".local/issue-bundles/strategy-0923/raw/5dbdbf0185ee4e3b8ee393d10a35d68d.zip", "backup": true },
+    { "label": "report-63-backup", "kind": "report", "reportId": "73ab8686a86d41d3bf31230c739ffc7c", "path": ".local/issue-bundles/strategy-0923/raw/73ab8686a86d41d3bf31230c739ffc7c.zip", "backup": true },
+    { "label": "ga-ironclad-elite", "kind": "generated", "path": "coverage/corpora/strategy/roots/GA-IRONCLAD-ELITE-00-request.json" },
+    { "label": "ga-silent-boss", "kind": "generated", "path": "coverage/corpora/strategy/roots/GA-SILENT-BOSS-00-request.json" }
+  ]
+}

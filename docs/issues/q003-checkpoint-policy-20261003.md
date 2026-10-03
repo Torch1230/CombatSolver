@@ -12,7 +12,7 @@
 
 开战报告的政策只记录设置与数值 profile，缺少 `includeTurnSetup`、`act3BossStrategy`、早期探索预算、新奇度预算及成长目标等派生上下文；实际执行摘要包含这些字段。第三阶段重新核对原始 JSON 后修正了此前对缺项方向的判断。四个开关和数值预算一致不等于所有原记录政策已核验；新比较门槛会保守拒绝这类不完整报告，不能从当前执行反推原先未记录的值。
 
-改动位于 `src/Testing` 与 `tools/CheckpointTool`，未修改生产搜索算法、战斗语义或版本号。协议与兼容说明见 [检查点回放指南](../CHECKPOINT_REPLAY.md)。
+本任务改动位于 `src/Testing` 与 `tools/replay/CheckpointTool`，未修改生产搜索算法或战斗语义，也未独立提升版本。交付前合并上游 `2ead87d9c9e35b1588a760efff0bd6154545a77c`，继承其 0.48.1 元数据和目录调整；发布归档保持冻结，本任务归入下一版本开发记录。下面的历史代表证据仍明确对应 `556e729` / `f17f4d9`，当前复现命令使用合并后的维护路径。协议与兼容说明见 [检查点回放指南](../CHECKPOINT_REPLAY.md)。
 
 ## 直接验证
 
@@ -74,24 +74,26 @@ O010 的 `51c242c740dc4363a043f76d021ba441` Passed：从 combat_start 按原设�
 
 ```powershell
 dotnet build CombatSolver.csproj -c Release
-dotnet build tools/CheckpointTool/CheckpointTool.csproj -c Release
-dotnet tools/CheckpointTool/bin/Release/net9.0/CheckpointTool.dll self-test
-pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1
-python tools/verify-documentation.py
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -ScenarioId REPLAY-BOUNDARY-CONTRACT -EncounterId MockMonsterEncounter -TimeoutSeconds 120 -CleanupInstanceOnExit
+dotnet build tools/replay/CheckpointTool/CheckpointTool.csproj -c Release
+dotnet .local/tool-build/CheckpointTool/bin/Release/net9.0/CheckpointTool.dll self-test
+pwsh -NoProfile -File tools/inspection/verify-refactor-boundaries.ps1
+python tools/inspection/verify-documentation.py
+python tools/inspection/verify-tools.py
+python tools/inspection/verify-coverage.py
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId REPLAY-BOUNDARY-CONTRACT -EncounterId MockMonsterEncounter -TimeoutSeconds 120 -CleanupInstanceOnExit
 ```
 
 有效 O008 前缀与原设置短搜：
 
 ```powershell
-dotnet tools/CheckpointTool/bin/Release/net9.0/CheckpointTool.dll batch <O008报告目录> --mode ReplayRecorded --selector '9a3541d8ef3b4a27b04626ea32f958d3:3' --game-root <游戏目录> --ritsu-root <Ritsu目录> --output <证据目录> --timeout 120
-dotnet tools/CheckpointTool/bin/Release/net9.0/CheckpointTool.dll batch <O008报告目录> --mode SearchOnly --selector '9a3541d8ef3b4a27b04626ea32f958d3:3' --game-root <游戏目录> --ritsu-root <Ritsu目录> --output <另一证据目录> --timeout 120
+dotnet .local/tool-build/CheckpointTool/bin/Release/net9.0/CheckpointTool.dll batch <O008报告目录> --mode ReplayRecorded --selector '9a3541d8ef3b4a27b04626ea32f958d3:3' --game-root <游戏目录> --ritsu-root <Ritsu目录> --output <证据目录> --timeout 120
+dotnet .local/tool-build/CheckpointTool/bin/Release/net9.0/CheckpointTool.dll batch <O008报告目录> --mode SearchOnly --selector '9a3541d8ef3b4a27b04626ea32f958d3:3' --game-root <游戏目录> --ritsu-root <Ritsu目录> --output <另一证据目录> --timeout 120
 ```
 
 最早续用的覆盖 JSON 从 `:1` 的原 profile 复制全部字段，仅将 `softTimeBudgetMilliseconds=1500`、`maxExpandedNodes=3000`，并设置 `fixedBudget=true`，不覆盖四个政策开关或资源策略。执行：
 
 ```powershell
-pwsh -NoProfile -File tools/run-unattended-test.ps1 -CheckpointArchivePath <O008报告ZIP> -CheckpointSelector '9a3541d8ef3b4a27b04626ea32f958d3:1' -ReplayMode DeploySolver -ReplayPolicyOverridePath <短预算JSON> -ExpectedReusedTurn 3 -StopAfterExpectedReuse -ExpectedUnexpectedReplansAtMost 0 -Sts2GameRoot <游戏目录> -RitsuWorkshopRoot <Ritsu目录> -HeadlessFastModeForTest Instant -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -TimeoutSeconds 120 -EvidenceDirectory <证据目录> -CleanupInstanceOnExit
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -CheckpointArchivePath <O008报告ZIP> -CheckpointSelector '9a3541d8ef3b4a27b04626ea32f958d3:1' -ReplayMode DeploySolver -ReplayPolicyOverridePath <短预算JSON> -ExpectedReusedTurn 3 -StopAfterExpectedReuse -ExpectedUnexpectedReplansAtMost 0 -Sts2GameRoot <游戏目录> -RitsuWorkshopRoot <Ritsu目录> -HeadlessFastModeForTest Instant -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -TimeoutSeconds 120 -EvidenceDirectory <证据目录> -CleanupInstanceOnExit
 ```
 
 ## 后续验收

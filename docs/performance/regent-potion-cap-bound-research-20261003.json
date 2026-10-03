@@ -12,8 +12,8 @@
       "src/Search/StrategicHpRecoveryBound.RegentDecimillipede.cs": "eee447df3c85f707201bb569716168a6661ee8767e66146eaf3ae388031c5962",
       "src/Search/StrategicHpRecoveryBound.RegentGenerationClosure.cs": "4b62a264ff7783c100deae12c81c99a5cf2bdca3b532ff5fc889e6fd406ca3c5",
       "src/Search/CombatBeamSolver.Retention.cs": "1965380c074a25375215d353daa86a83c101e5d908c4020d6042f2c04b40578c",
-      "src/Testing/UnattendedTestRunner.RegentPotionCapBound.cs": "c8263d891b1ebb1717409f49da75d6652e9eb26bcc657f6fc72f06d8962e5ac1",
-      "src/Testing/UnattendedTestRunner.Executor.cs": "d4ce8a7543b6bec817859de19fc48c0e7dc5c0fa8c4e010574f45599460c08e6"
+      "src/Testing/Contracts/Search/UnattendedTestRunner.RegentPotionCapBound.cs": "c8263d891b1ebb1717409f49da75d6652e9eb26bcc657f6fc72f06d8962e5ac1",
+      "src/Testing/Host/UnattendedTestRunner.Executor.cs": "d4ce8a7543b6bec817859de19fc48c0e7dc5c0fa8c4e010574f45599460c08e6"
     },
     "dllSha256": "126366c40228ccc140522bf74a9b767f32ca82081b3921be31328f76d02299bb",
     "buildWarnings": 0,
@@ -129,7 +129,7 @@
     }
   ],
   "launcherFix": {
-    "path": "tools/run-unattended-test.sh",
+    "path": "tools/testing/run-unattended-test.sh",
     "sha256": "6386ad0727c85b09afe21eae5f831d558c0fb5f03144ea60202d93d1fea483f0",
     "scope": "retain and validate 2D initial enemy state logs instead of adding a third array dimension",
     "checks": "bash -n; native complete frozen root and deployment"

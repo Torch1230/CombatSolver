@@ -61,7 +61,7 @@ NoGC 实际建立预算为 `4,000,000,000 B`（十进制 4 GB），搜索分配�
 
 ## 重现设置与入口
 
-两个输入复用 [已有公开性能 fixture](../../performance/PERFORMANCE_FIXTURES.md)，没有导入玩家私人问题包。固定设置保存在 [gc-issue36-pilot-settings.json](../../../coverage/unattended/gc-issue36-pilot-settings.json)。本轮本地完整命令保存在 `.local/gc-research/run-pilot.sh`，原始产物留在 Git 忽略目录。
+两个输入复用 [已有公开性能 fixture](../../performance/PERFORMANCE_FIXTURES.md)，没有导入玩家私人问题包。固定设置保存在 [gc-issue36-pilot-settings.json](../../../coverage/fixtures/runtime/gc-issue36-pilot-settings.json)。本轮本地完整命令保存在 `.local/gc-research/run-pilot.sh`，原始产物留在 Git 忽略目录。
 
 先完成隔离构建和游戏目录准备：
 
@@ -77,7 +77,7 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 pilot_root="$PWD/.local/gc-research"
 for case_name in silent necro; do
   mkdir -p "$pilot_root/runtime-$case_name/data/SlayTheSpire2"
-  cp coverage/unattended/gc-issue36-pilot-settings.json \
+  cp coverage/fixtures/runtime/gc-issue36-pilot-settings.json \
     "$pilot_root/runtime-$case_name/data/SlayTheSpire2/combat_solver_settings.json"
 done
 common=(--sts2-game-root "$pilot_root/game"
@@ -89,21 +89,21 @@ common=(--sts2-game-root "$pilot_root/game"
   --stop-after-initial-solver-result-assertion --timeout-seconds 120 --exit-on-complete)
 
 COMBATSOLVER_HEADLESS_ROOT="$pilot_root/runtime-silent" \
-  ./tools/run-unattended-test.sh "${common[@]}" \
+  ./tools/testing/run-unattended-test.sh "${common[@]}" \
   --scenario-id GC36-SILENT-250-GC --character-id SILENT \
   --seed SEARCH_PERF_SILENT_LARGE_DECK --encounter-id AEONGLASS_BOSS \
   --ascension 5 --act-index-for-test 2 --enemy-current-hp 512 \
   --initial-enemy-move-ids-json '["EBB_MOVE"]' \
   --initial-player-hp 65 --initial-player-max-hp 65 --initial-player-energy 3 \
   --clear-player-piles \
-  --cards-path coverage/unattended/search-performance-silent-large-deck-cards.json \
+  --cards-path coverage/fixtures/search/search-performance-silent-large-deck-cards.json \
   --potion-policy-for-test Disabled --enable-no-gc-region-for-test 0
 
 COMBATSOLVER_HEADLESS_ROOT="$pilot_root/runtime-necro" \
-  ./tools/run-unattended-test.sh "${common[@]}" \
+  ./tools/testing/run-unattended-test.sh "${common[@]}" \
   --scenario-id GC36-NECRO-250-SMART-NOGC4 --character-id NECROBINDER \
   --seed SEARCH_PERF_NECROBINDER_POTION \
-  --run-snapshot-path coverage/unattended/search-performance-necrobinder-potion-heavy-run-snapshot.json \
+  --run-snapshot-path coverage/fixtures/regressions/snapshots/search-performance-necrobinder-potion-heavy-run-snapshot.json \
   --encounter-id AEONGLASS_BOSS --ascension 10 --act-index-for-test 2 \
   --enemy-current-hp 526 --initial-player-hp 41 --cards-json '[]' \
   --potion-policy-for-test Smart --enable-no-gc-region-for-test 1 \

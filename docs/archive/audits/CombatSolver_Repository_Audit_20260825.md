@@ -14,7 +14,7 @@ ZIP 注释：`d56f8bd461f928d59ade6ccbcbcc06e79d32e604`，仅记录为“压缩�
 本轮没有游戏安装、`sts2.dll`、RitsuLib DLL、反编译源码、玩家问题包、发布 ZIP，也没有可用的 .NET / PowerShell / Steam 游戏环境。因此：
 
 - 没有执行 `dotnet build`、CoverageCatalog、headless fixture、整战或 Steam 可见基准；
-- `coverage/*.json`、`coverage/test-evidence.json`、`docs/TEST_MATRIX.md` 中的“通过”只被当作仓库内历史证据索引，不被当作本工作树本轮已通过的证明；
+- `coverage/*.json`、`coverage/evidence/test-evidence.json`、`docs/TEST_MATRIX.md` 中的“通过”只被当作仓库内历史证据索引，不被当作本工作树本轮已通过的证明；
 - 对原版方法是否纯读取、模型工厂是否有隐藏副作用、`NetFullCombatState` 是否能跨版本恢复等结论，在没有游戏程序集/源码和实机差分时标为不确定；
 - 本报告不提交战斗语义或搜索代码补丁，只交付职责地图、开发流程、仓库指令和分阶段重构建议。
 
@@ -27,7 +27,7 @@ ZIP 注释：`d56f8bd461f928d59ade6ccbcbcc06e79d32e604`，仅记录为“压缩�
 3. 搜索结果不是只活到本回合。`CombatBeamSolver.BuildContinuations` 为未来玩家回合生成 `CachedContinuation`；`SolverController.RequestSearch` 用 `ContinuationStamp.CaptureLive` 与缓存的完整状态文本逐字段比较，完全一致才复用，否则记录首个和完整差异并重算。
 4. `Score` / `BeamRankScore` 不是最终真实目标。它们用于 Beam 中保留路线；最终选择在药水策略过滤后，以胜利、资源找回、实际/政策 HP 缺口、边界可靠性、药水数、累计卖血、剩余敌方 HP、启发式分数、动作数做词典序排序。
 5. 搜索只输出轻量计划。`SelectedSearchPlan` / `SolverSnapshot` 明确不持有 `SearchNode` 或历史 `CombatPredictionSimulator`；部署时 `SolverController.DeployCurrentTurn` 重新从真实手牌和药水槽解析 `CardId + occurrence` / `slot + PotionId`，再调用原版执行入口。
-6. 严格测试入口运行在游戏进程内。`tools/run-unattended-test.ps1` 启动 `--headless` 游戏并通过结构化请求/结果驱动 `UnattendedTestRunner`；仓库没有普通 `dotnet test` 项目。`tools/build-local-stack.ps1` 名称虽称 “stack”，实现只构建 `CombatSolver.csproj`，CoverageCatalog 必须另行运行。
+6. 严格测试入口运行在游戏进程内。`tools/testing/run-unattended-test.ps1` 启动 `--headless` 游戏并通过结构化请求/结果驱动 `UnattendedTestRunner`；仓库没有普通 `dotnet test` 项目。`tools/build/build-local-stack.ps1` 名称虽称 “stack”，实现只构建 `CombatSolver.csproj`，CoverageCatalog 必须另行运行。
 
 ### 1.2 最需要先处理的风险
 
@@ -138,9 +138,9 @@ ZIP 注释：`d56f8bd461f928d59ade6ccbcbcc06e79d32e604`，仅记录为“压缩�
 
 ### 2.8 测试运行器链
 
-`tools/run-unattended-test.ps1` → 写隔离数据目录中的 `combat_solver_test_request.json` → 启动游戏 `--headless` → `Entry.Initialize` → `UnattendedTestRunner.TryStart` → 创建/加载 run 与 encounter、注入卡/Power/遗物/药水/球/怪物状态 → 同起点执行模拟和原版或运行正式搜索/自动部署 → `UnattendedTestRunner.StateDiff` 捕获 actual/simulated 完整状态 → 写 `combat_solver_test_result.json` → PowerShell 校验状态、超时、结构化事件和退出。
+`tools/testing/run-unattended-test.ps1` → 写隔离数据目录中的 `combat_solver_test_request.json` → 启动游戏 `--headless` → `Entry.Initialize` → `UnattendedTestRunner.TryStart` → 创建/加载 run 与 encounter、注入卡/Power/遗物/药水/球/怪物状态 → 同起点执行模拟和原版或运行正式搜索/自动部署 → `UnattendedTestRunner.StateDiff` 捕获 actual/simulated 完整状态 → 写 `combat_solver_test_result.json` → PowerShell 校验状态、超时、结构化事件和退出。
 
-Steam 可见性能路径由 `tools/run-visible-steam-benchmark.ps1` 写固定 Mecha Knight 请求、通过 Steam 启动游戏、等待同一结构化结果，并校验可见会话的时间、分配、GC 和主线程帧指标。
+Steam 可见性能路径由 `tools/performance/run-visible-steam-benchmark.ps1` 写固定 Mecha Knight 请求、通过 Steam 启动游戏、等待同一结构化结果，并校验可见会话的时间、分配、GC 和主线程帧指标。
 
 ## 3. 职责与依赖表
 
@@ -323,7 +323,7 @@ Steam 可见性能路径由 `tools/run-visible-steam-benchmark.ps1` 写固定 Me
 7. `src/Engine/Common/PredictionForking.cs`、`PredictedCard.cs`、`PredictionStateStore.cs`、`SimCardPile.cs`。
 8. `src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs` 与 `CombatPredictionState` / `SimPlayerCombatState`。
 9. `src/Search/SimulatedCombatState.cs`、`.Fork.cs`、`.PowerLifecycle.cs`、`.MonsterAi.cs`、`.DeathLifecycle.cs`。
-10. `src/Runtime/ContinuationStamp.cs`、`LiveCombatStamp.cs`、`src/Testing/UnattendedTestRunner.StateDiff.cs`：理解“相等”的三套定义。
+10. `src/Runtime/ContinuationStamp.cs`、`LiveCombatStamp.cs`、`src/Testing/Support/UnattendedTestRunner.StateDiff.cs`：理解“相等”的三套定义。
 
 ### 第二阶段：追一条具体语义
 
@@ -501,7 +501,7 @@ flowchart LR
 对当前 Release DLL 和当前目标游戏程序集运行：
 
 ```powershell
-dotnet run --project tools\CoverageCatalog\CoverageCatalog.csproj -c Release -- `
+dotnet run --project tools\inspection\CoverageCatalog\CoverageCatalog.csproj -c Release -- `
   . --verify --verify-effective --verify-no-rescan --verify-runtime-evidence `
   --verify-branch-state-reads --verify-state-fields --verify-state-writes `
   --verify-pre-play-choices --verify-combat-choices --verify-autoplay-sources `
@@ -554,16 +554,16 @@ dotnet run --project tools\CoverageCatalog\CoverageCatalog.csproj -c Release -- 
 
 ## 17. 文档、版本、证据和发布规范
 
-每个用户可见修复至少同时更新：`CombatSolver.csproj`、`CombatSolver.json`、`docs/DEVELOPMENT_NOTES.md`、`docs/TEST_MATRIX.md`、`coverage/test-evidence.json`，必要时重生成所有 coverage 文件和 `docs/COMBAT_HOOK_COVERAGE.md`。测试矩阵应记录命令、fixture/run ID、日期、结果文件位置和目标 DLL hash，而不只写“通过”。
+每个用户可见修复至少同时更新：`CombatSolver.csproj`、`CombatSolver.json`、`docs/DEVELOPMENT_NOTES.md`、`docs/TEST_MATRIX.md`、`coverage/evidence/test-evidence.json`，必要时重生成所有 coverage 文件和 `docs/COMBAT_HOOK_COVERAGE.md`。测试矩阵应记录命令、fixture/run ID、日期、结果文件位置和目标 DLL hash，而不只写“通过”。
 
 已发现的文档/实现不一致：
 
 - `local.props.example` 仍有未使用的 `RandomForeseerSourceDir`；
-- `tools/build-local-stack.ps1` 只构建主项目，名称容易让人误以为 CoverageCatalog 也包含；
+- `tools/build/build-local-stack.ps1` 只构建主项目，名称容易让人误以为 CoverageCatalog 也包含；
 - README/UI/`CombatPlan.Format` 仍出现洗牌边界/停止洗牌分支，而当前搜索无固定洗牌上限，相关计数未见递增；
 - `SearchBoundaryReason.DynamicResolution` 仍被历史 docs/fixtures 大量引用，但当前生产路径未见赋值，`PolicyBoundaryRank` 也未覆盖它；
 - 根目录 `STS2_UNADAPTED_FEATURES_AUDIT.md` 是 v0.6.0 历史快照，不能代表 0.13.23；
-- `coverage/classifications.json` 中仍大量以 RandomForeseer 历史实现作为来源说明。它可保留溯源，但必须明确“来源参考”不等于运行时依赖或当前已验证事实。
+- `coverage/catalog/classifications.json` 中仍大量以 RandomForeseer 历史实现作为来源说明。它可保留溯源，但必须明确“来源参考”不等于运行时依赖或当前已验证事实。
 
 ## 18. 大文件和生成物治理
 
@@ -803,9 +803,9 @@ CombatSolver 是《杀戮尖塔 2》单人战斗路线求解器 Mod，使用 C# 
 ### 2.5 测试、覆盖与取证
 
 - `src/Testing/UnattendedTestRunner*.cs`：运行在真实游戏程序集内的 headless 严格差分、整战、部署和策略测试入口；不是普通 `dotnet test`。
-- `tools/run-unattended-test.ps1`：隔离 APPDATA/LOCALAPPDATA，启动游戏 `--headless`，写请求、读取结构化结果并校验协议。
-- `tools/run-visible-steam-benchmark.ps1`：Steam 可见会话的性能、GC、帧间隔和发布口径。
-- `tools/CoverageCatalog/Program.cs`：根据当前游戏程序集、当前 DLL、分类和证据生成/验证 `coverage/*` 与 `docs/COMBAT_HOOK_COVERAGE.md`。
+- `tools/testing/run-unattended-test.ps1`：隔离 APPDATA/LOCALAPPDATA，启动游戏 `--headless`，写请求、读取结构化结果并校验协议。
+- `tools/performance/run-visible-steam-benchmark.ps1`：Steam 可见会话的性能、GC、帧间隔和发布口径。
+- `tools/inspection/CoverageCatalog/Program.cs`：根据当前游戏程序集、当前 DLL、分类和证据生成/验证 `coverage/*` 与 `docs/COMBAT_HOOK_COVERAGE.md`。
 - `src/Runtime/CombatBugReportExporter.cs`：采集检查点 metadata、`replay-state`、原生 `NetFullCombatState`、run save、开战前存档、日志切片、截图和环境信息。当前仓库没有通用的一键问题包回放器；不要声称 ZIP 可直接回放，除非实际增加并验证导入链。
 
 ## 3. 状态所有权硬约束
@@ -931,7 +931,7 @@ CombatSolver 是《杀戮尖塔 2》单人战斗路线求解器 Mod，使用 C# 
 
 ### 8.1 改动前
 
-- 找到相关既有 fixture、`coverage/test-evidence.json` 条目和 `docs/TEST_MATRIX.md` 场景。历史“通过”只用于回归选择，不等于当前工作树已通过。
+- 找到相关既有 fixture、`coverage/evidence/test-evidence.json` 条目和 `docs/TEST_MATRIX.md` 场景。历史“通过”只用于回归选择，不等于当前工作树已通过。
 - 保存基线命令、结果 JSON、日志和必要性能指标。
 
 ### 8.2 改动后最低门禁
@@ -950,23 +950,23 @@ CombatSolver 是《杀戮尖塔 2》单人战斗路线求解器 Mod，使用 C# 
 根据本机路径配置 `local.props`，然后：
 
 ```powershell
-pwsh -NoProfile -File tools\build-local-stack.ps1
+pwsh -NoProfile -File tools\build\build-local-stack.ps1
 
-dotnet run --project tools\CoverageCatalog\CoverageCatalog.csproj -c Release -- `
+dotnet run --project tools\inspection\CoverageCatalog\CoverageCatalog.csproj -c Release -- `
   . --verify --verify-effective --verify-no-rescan --verify-runtime-evidence `
   --verify-branch-state-reads --verify-state-fields --verify-state-writes `
   --verify-pre-play-choices --verify-combat-choices --verify-autoplay-sources `
   --verify-roster-sources
 
-pwsh -NoProfile -File tools\run-unattended-test.ps1 <fixture 参数> `
+pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 <fixture 参数> `
   -VerifyIncrementalSearch `
   -DeploymentFastModeForTest Instant `
   -DeploymentInterActionDelaySecondsForTest 0
 
-pwsh -NoProfile -File tools\run-visible-steam-benchmark.ps1 <固定基准参数>
+pwsh -NoProfile -File tools\performance\run-visible-steam-benchmark.ps1 <固定基准参数>
 ```
 
-注意：`tools/run-unattended-test.ps1` 和 `tools/run-visible-steam-benchmark.ps1` 目前包含机器特定默认路径。不要把这些默认路径当作可移植 CI；通过参数化或本地配置解决，禁止提交个人绝对路径更新。
+注意：`tools/testing/run-unattended-test.ps1` 和 `tools/performance/run-visible-steam-benchmark.ps1` 目前包含机器特定默认路径。不要把这些默认路径当作可移植 CI；通过参数化或本地配置解决，禁止提交个人绝对路径更新。
 
 ## 9. 回归选择规则
 
@@ -996,7 +996,7 @@ pwsh -NoProfile -File tools\run-visible-steam-benchmark.ps1 <固定基准参数>
 - `CombatSolver.json` 的 `version`；
 - `docs/DEVELOPMENT_NOTES.md` 的版本记录；
 - `docs/TEST_MATRIX.md` 的场景、命令、结果日期和证据位置；
-- `coverage/test-evidence.json` 的结构化证据；必要时更新 classification/fixture；
+- `coverage/evidence/test-evidence.json` 的结构化证据；必要时更新 classification/fixture；
 - 重新生成的 `coverage/*.json` 与 `docs/COMBAT_HOOK_COVERAGE.md`。
 
 发布前：
@@ -1158,12 +1158,12 @@ description: 对 CombatSolver 玩家问题 ZIP 做安全解包、版本归属、
 
 1. 静态定位相关类型、Hook、状态字段及报告版本差异；
 2. 单效果严格差分 fixture；
-3. 使用 `tools/run-unattended-test.ps1` 加 `-VerifyIncrementalSearch` 验证 Fork + 单动作与根完整回放等价；
+3. 使用 `tools/testing/run-unattended-test.ps1` 加 `-VerifyIncrementalSearch` 验证 Fork + 单动作与根完整回放等价；
 4. 用 pre-combat save 或稳定 fixture 跑完整 headless 战斗，固定：
    - `-DeploymentFastModeForTest Instant`
    - `-DeploymentInterActionDelaySecondsForTest 0`
    - 自动部署场景断言零非预期重算；
-5. 只有 UI、真实帧卡顿、Steam 生命周期、输入/动画时序或发布候选验收才使用 `tools/run-visible-steam-benchmark.ps1` 或可见 Steam 会话。
+5. 只有 UI、真实帧卡顿、Steam 生命周期、输入/动画时序或发布候选验收才使用 `tools/performance/run-visible-steam-benchmark.ps1` 或可见 Steam 会话。
 
 ## 停止条件
 
@@ -1269,7 +1269,7 @@ description: 为 CombatSolver 的卡牌、Power、遗物、药水、球、怪物
 先写/更新目标 fixture，再改代码。至少执行：
 
 1. **单效果严格差分**：完整状态，包含有序牌堆、卡牌私有/动态变量、Power 内部状态、怪物 AI、球和九条 RNG；
-2. **增量等价**：`tools/run-unattended-test.ps1 ... -VerifyIncrementalSearch`；
+2. **增量等价**：`tools/testing/run-unattended-test.ps1 ... -VerifyIncrementalSearch`；
 3. **生命周期边界**：叠加/移除、回合开始/结束、死亡/复活/召唤、嵌套选择中与改动相关的边界；
 4. **跨回合**：predicted/live `ContinuationStamp` 相等，完整自动部署零非预期重算；
 5. **整战 headless**：影响跨回合、阵容、搜索候选或部署时必须跑；速度固定 `Instant`，停顿 `0`；
@@ -1327,7 +1327,7 @@ description: 对 CombatSolver 发布候选执行版本、覆盖、headless、Ste
    - 构建后 DLL assembly/file/informational version；
    - `docs/DEVELOPMENT_NOTES.md`；
    - `docs/TEST_MATRIX.md`；
-   - `coverage/test-evidence.json`。
+   - `coverage/evidence/test-evidence.json`。
 3. 游戏最低版本、RitsuLib 最低版本只有在兼容性证据支持时才调整。
 
 ### 2. 干净 Release 构建
@@ -1335,7 +1335,7 @@ description: 对 CombatSolver 发布候选执行版本、覆盖、headless、Ste
 清理当前仓库的 `bin/obj` 后执行：
 
 ```powershell
-pwsh -NoProfile -File tools\build-local-stack.ps1
+pwsh -NoProfile -File tools\build\build-local-stack.ps1
 ```
 
 不要从游戏 Mods 目录复制回 DLL，不要复用未知来源的旧构建。记录编译输出和当前 DLL SHA-256。
@@ -1345,7 +1345,7 @@ pwsh -NoProfile -File tools\build-local-stack.ps1
 对当前 Release DLL 和当前游戏程序集执行全部校验：
 
 ```powershell
-dotnet run --project tools\CoverageCatalog\CoverageCatalog.csproj -c Release -- `
+dotnet run --project tools\inspection\CoverageCatalog\CoverageCatalog.csproj -c Release -- `
   . --verify --verify-effective --verify-no-rescan --verify-runtime-evidence `
   --verify-branch-state-reads --verify-state-fields --verify-state-writes `
   --verify-pre-play-choices --verify-combat-choices --verify-autoplay-sources `
@@ -1377,7 +1377,7 @@ dotnet run --project tools\CoverageCatalog\CoverageCatalog.csproj -c Release -- 
 
 ### 5. Steam 可见验收
 
-使用 `tools/run-visible-steam-benchmark.ps1` 或等价固定场景，至少验证：
+使用 `tools/performance/run-visible-steam-benchmark.ps1` 或等价固定场景，至少验证：
 
 - 正常 Steam 会话加载的是当前候选 DLL；
 - UI/输入/动画/部署和结束回合正常；

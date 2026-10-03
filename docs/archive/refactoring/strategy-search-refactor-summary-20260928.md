@@ -10,11 +10,11 @@
 
 ## P0：固定根语料与逐位对照
 
-- `coverage/strategy-refactor-p0/corpus.json` 固定六个玩家 `combat_start` 根（#24、#37、#79、#81、#85、#89）、两个生成场景，以及备用 #56/#63。玩家原包只由 `.local/` 读取。后续 0.47.1 热修后，以同政策重新采集 P2 基线。
-- `tools/StrategyCorpus/run.py` 调现有无头恢复入口和离线生成场景入口，冻结根身份、游戏与 Mod 身份、完整政策、VeryHigh、节点数与 DOP；`compare.py` 先检查根及政策，再逐字段比动作、嵌套选择、续用、终局、请求工作量和剪枝。墙钟、分配、GC 单列，不参与逐位门槛；结果按当时的路线质量顺序分为变好、变差、不变或不可比较。
+- `coverage/corpora/strategy/p0.json` 固定六个玩家 `combat_start` 根（#24、#37、#79、#81、#85、#89）、两个生成场景，以及备用 #56/#63。玩家原包只由 `.local/` 读取。后续 0.47.1 热修后，以同政策重新采集 P2 基线。
+- `tools/search/StrategyCorpus/run.py` 调现有无头恢复入口和离线生成场景入口，冻结根身份、游戏与 Mod 身份、完整政策、VeryHigh、节点数与 DOP；`compare.py` 先检查根及政策，再逐字段比动作、嵌套选择、续用、终局、请求工作量和剪枝。墙钟、分配、GC 单列，不参与逐位门槛；结果按当时的路线质量顺序分为变好、变差、不变或不可比较。
 - P0 基线各跑一次，P1 最终源码各跑一次。#24/#37/#81/#89 和两个生成根的有效对照逐位相同。#79/#85 的基线用时接近 110 秒边界，标为不可比较，未用不稳定的工作量证明等价。备用根没有运行。
 
-相关入口：`tools/StrategyCorpus/run.py`、`tools/StrategyCorpus/compare.py`、`coverage/strategy-refactor-p0/corpus.json`。提交起点：`3422a1e8`。
+相关入口：`tools/search/StrategyCorpus/run.py`、`tools/search/StrategyCorpus/compare.py`、`coverage/corpora/strategy/p0.json`。提交起点：`3422a1e8`。
 
 ## P1：路线质量模型
 

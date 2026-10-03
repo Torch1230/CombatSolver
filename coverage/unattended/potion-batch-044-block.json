@@ -1,6 +1,0 @@
-{
-  "potionId": "BlockPotion",
-  "target": "Player",
-  "playerBlockBefore": 0,
-  "expectedPlayerBlock": 12
-}

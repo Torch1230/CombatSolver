@@ -1,7 +1,0 @@
-[
-  {
-    "monsterId": "TestSubject",
-    "useCurrentMove": true,
-    "expectedSearchBoundary": "DynamicResolution"
-  }
-]

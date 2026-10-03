@@ -97,7 +97,7 @@
 
 ### 2.6 现有夹具已经覆盖了「防御价值饱和」这个场景
 
-`coverage/unattended/generic-loop-stagnant-block-draw-v0111.json` 的描述就是：
+`coverage/fixtures/search/generic-loop-stagnant-block-draw-v0111.json` 的描述就是：
 
 > A zero-cost draw/block recurrence keeps changing exact pile, history, and block state **after its defensive value is saturated**. Bounded planning must sample the recurrence and then stop without relying on a card-specific rule.
 
@@ -133,9 +133,9 @@
 
 ### 3.5 本机实测尝试（未完成，如实记录）
 
-- 本机具备条件：游戏本体在 `~/.local/share/Steam/steamapps/common/Slay the Spire 2`，RitsuLib 在创意工坊目录，.NET 9 SDK 可用；`dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false` 与 `tools/OfflineSearchHarness` 均 0 警告 0 错误构建通过。
-- 离线宿主**不能**直接喂自定义夹具：它只接受带 `generatedScenarioPath` 的请求，而生成场景是随机配装（`tools/OfflineSearchHarness/GeneratedScenarioSetup.cs:52-55`、`src/Testing/GeneratedCombatScenario.cs:27-50`）。
-- 用 `tools/run-unattended-test.sh` 重建了 2000 HP 的信封开启者长循环（命令行见第 7 节），实例正常创建、`UNATTENDED_STARTED`，但在 `--timeout-seconds` 默认 120 s 处被启动器超时终止，**未产出结果**。按 AGENTS.md §8 不在同一轮把超时继续放大，因此这一项记为未验证。
+- 本机具备条件：游戏本体在 `~/.local/share/Steam/steamapps/common/Slay the Spire 2`，RitsuLib 在创意工坊目录，.NET 9 SDK 可用；`dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false` 与 `tools/search/OfflineSearchHarness` 均 0 警告 0 错误构建通过。
+- 离线宿主**不能**直接喂自定义夹具：它只接受带 `generatedScenarioPath` 的请求，而生成场景是随机配装（`tools/search/OfflineSearchHarness/GeneratedScenarioSetup.cs:52-55`、`src/Testing/Host/GeneratedCombatScenario.cs:27-50`）。
+- 用 `tools/testing/run-unattended-test.sh` 重建了 2000 HP 的信封开启者长循环（命令行见第 7 节），实例正常创建、`UNATTENDED_STARTED`，但在 `--timeout-seconds` 默认 120 s 处被启动器超时终止，**未产出结果**。按 AGENTS.md §8 不在同一轮把超时继续放大，因此这一项记为未验证。
 
 ## 4. 问题 3（展示）：从搜索到界面的断链
 
@@ -223,12 +223,12 @@
 
 | 夹具 | 覆盖什么 | 关键期望 |
 |---|---|---|
-| `coverage/unattended/generic-loop-stagnant-block-draw-v0111.json` | **问题 1 的停滞型格挡循环**：防御价值饱和后仍在改变状态 | `CycleContinuationsStopped ≥ 1`、展开 ≤ 80 |
-| `coverage/unattended/generic-loop-bloodletting-double-pommel-quality-v0111.json` | **卖血＋有限重复链**：立即斩杀要付 6 HP，等一回合只需 3 HP | 战损 3、T2、敌方 HP ≤ 0 |
-| `coverage/unattended/generic-loop-long-damage-hidden-phase-v0111.json` | **问题 2 的核心**：2×急躁 + 信封开启者，3 张技能 3 点伤害打 2000 HP | 可执行动作 ≥ 1200、洗牌 ≥ 1200、T1 击杀 |
-| `coverage/unattended/generic-loop-long-growing-damage-v0111.json` | 50 万 HP、>256 次周期、每周期伤害不同 | 可执行动作 ≥ 800、T1 击杀；已记录 892 动作/1784 展开/0.766 s（`docs/TEST_MATRIX.md:2088`） |
-| `coverage/unattended/generic-loop-letter-opener-hidden-phase-v0111.json` | 隐藏相位（第三次技能才兑现） | T1 击杀、`CycleShapesDetected ≥ 1` |
-| `coverage/unattended/generic-loop-rampage-dynamic-growth-positive-v0111.json` | 动态成长循环、DOP 等价 | 32 动作、T1、DOP1/DOP2 工作量和动作一致 |
+| `coverage/fixtures/search/generic-loop-stagnant-block-draw-v0111.json` | **问题 1 的停滞型格挡循环**：防御价值饱和后仍在改变状态 | `CycleContinuationsStopped ≥ 1`、展开 ≤ 80 |
+| `coverage/fixtures/search/generic-loop-bloodletting-double-pommel-quality-v0111.json` | **卖血＋有限重复链**：立即斩杀要付 6 HP，等一回合只需 3 HP | 战损 3、T2、敌方 HP ≤ 0 |
+| `coverage/fixtures/search/generic-loop-long-damage-hidden-phase-v0111.json` | **问题 2 的核心**：2×急躁 + 信封开启者，3 张技能 3 点伤害打 2000 HP | 可执行动作 ≥ 1200、洗牌 ≥ 1200、T1 击杀 |
+| `coverage/fixtures/search/generic-loop-long-growing-damage-v0111.json` | 50 万 HP、>256 次周期、每周期伤害不同 | 可执行动作 ≥ 800、T1 击杀；已记录 892 动作/1784 展开/0.766 s（`docs/TEST_MATRIX.md:2088`） |
+| `coverage/fixtures/search/generic-loop-letter-opener-hidden-phase-v0111.json` | 隐藏相位（第三次技能才兑现） | T1 击杀、`CycleShapesDetected ≥ 1` |
+| `coverage/fixtures/search/generic-loop-rampage-dynamic-growth-positive-v0111.json` | 动态成长循环、DOP 等价 | 32 动作、T1、DOP1/DOP2 工作量和动作一致 |
 
 复跑（Linux，本机已具备游戏与 RitsuLib）：
 
@@ -236,7 +236,7 @@
 cd CombatSolver-loop-optimization
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 # 信封开启者 2000 HP（问题 2 的最强反例；本次因 120 s 启动器超时未完成）
-./tools/run-unattended-test.sh \
+./tools/testing/run-unattended-test.sh \
   --scenario-id LOOP-LETTER-OPENER-LONG-RESEARCH \
   --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK \
   --seed LOOPLETTEROPENERPHASE0111 \
@@ -250,7 +250,7 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
   --cleanup-instance-on-exit
 ```
 
-注意：`tools/OfflineSearchHarness` 只支持随机生成场景的请求，跑不了上面这些自定义夹具（`GeneratedScenarioSetup.cs:52-55`）；要批量跑这些夹具，需要先用 `run-unattended-test.sh` 的 CLI 组装等价请求，或在宿主里增加「接受完整 request JSON」的入口（属于工具改动，需单独决定）。
+注意：`tools/search/OfflineSearchHarness` 只支持随机生成场景的请求，跑不了上面这些自定义夹具（`GeneratedScenarioSetup.cs:52-55`）；要批量跑这些夹具，需要先用 `run-unattended-test.sh` 的 CLI 组装等价请求，或在宿主里增加「接受完整 request JSON」的入口（属于工具改动，需单独决定）。
 
 ## 8. 未验证 / 需要决策的点
 

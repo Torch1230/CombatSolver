@@ -10,7 +10,7 @@
 
 “设置 > 性能 > 前两回合深入探索（实验）”与多宽度路线精炼、多策略路线搜索并列，默认关闭。常规搜索后，从第一、二回合末各选最多 24 个真实状态，按完整状态键去重、不同开局及跨回合特征分散选择；再从开战根严格重放动作前缀，逐条完整续搜。追加阶段共享最多 100 万展开节点、内存压力检查及整个请求最多 40 分钟的期限；每条续搜没有独立短时限。只有完整胜利且符合强制用药政策的路线才能替换结果。玩家可以取消搜索。常规搜索仍使用原性能预设；不开启时不执行新增阶段。
 
-开发会话使用 `pwsh -NoProfile -File tools/strategy-session.ps1 start <会话名> ...` 启动一个固定无头实例；逐包 `run <会话名> <ZIP> --early-turns 2` 默认 2400 秒，也可用 `--deadline-seconds` 缩短。普通 `run` 仍为 VeryHigh、180 秒、并行度 8。每次只提交一个包；超时明确记为 `timeout`，40 分钟仍未追平人工则记录并跳过。结束后 `stop`。完整命令与参数见[常驻会话](../../strategy/development-session.md)。
+开发会话使用 `pwsh -NoProfile -File tools/replay/strategy-session.ps1 start <会话名> ...` 启动一个固定无头实例；逐包 `run <会话名> <ZIP> --early-turns 2` 默认 2400 秒，也可用 `--deadline-seconds` 缩短。普通 `run` 仍为 VeryHigh、180 秒、并行度 8。每次只提交一个包；超时明确记为 `timeout`，40 分钟仍未追平人工则记录并跳过。结束后 `stop`。完整命令与参数见[常驻会话](../../strategy/development-session.md)。
 
 ## 已有作用证据
 

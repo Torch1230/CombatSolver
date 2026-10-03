@@ -23592,7 +23592,7 @@
       "roundReplayPrefixReuses"
     ],
     "forkNormalization": "physical forks - round prefix captures == transitions; checked for every sample",
-    "source": "tools/PerformanceBenchmarks/compare.py (unchanged in this follow-up)"
+    "source": "tools/performance/PerformanceBenchmarks/compare.py (unchanged in this follow-up)"
   },
   "followupPlans": {
     "combined-followup-plan.json": {
@@ -23630,12 +23630,12 @@
       "log": ".local/crab-latency-20260914/final-release-build.log"
     },
     "bashBoundary": {
-      "command": "bash tools/verify-refactor-boundaries.sh",
+      "command": "bash tools/inspection/verify-refactor-boundaries.sh",
       "status": "Passed",
       "result": "REFACTOR_BOUNDARIES_OK search_files=90"
     },
     "powerShellBoundary": {
-      "command": "pwsh -NoProfile -File tools/verify-refactor-boundaries.ps1",
+      "command": "pwsh -NoProfile -File tools/inspection/verify-refactor-boundaries.ps1",
       "status": "Passed",
       "result": "REFACTOR_BOUNDARIES_OK search_files=90"
     },

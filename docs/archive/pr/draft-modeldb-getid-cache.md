@@ -57,7 +57,7 @@ CardPoolModel.GetUnlockedCards → FilterThroughEpochs → Epoch.get_Cards()
 命令模板（两侧同一宿主二进制，仅用 `OFFLINE_HARNESS_COMBATSOLVER_DLL` 切换模组 DLL）：
 
 ```bash
-TMPDIR="$PWD/.local/tmp" timeout 900 dotnet tools/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+TMPDIR="$PWD/.local/tmp" timeout 900 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
   --request "$PWD/.local/learned-selector/data3/requests/<root>.json" --label <label> \
   --out .local/learned-selector/memory-e2e/<label> \
   --profile VeryHigh --nodes 100000 --dop 16 --budget-ms 600000 --search-mode Evaluate \
@@ -142,7 +142,7 @@ aec373a docs: confirm the dormant turn<=1 relic sites on heavy boss roots
 936957c docs: record the production Coordinator/portfolio verification and drop the other-character pool snapshot
 ```
 
-Release 构建 0 警告 / 0 错误；`./tools/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。本批不提升版本、不打标签、不发包、不推送。
+Release 构建 0 警告 / 0 错误；`./tools/inspection/verify-refactor-boundaries.sh` 输出 `REFACTOR_BOUNDARIES_OK search_files=193`。本批不提升版本、不打标签、不发包、不推送。
 
 ## 详细证据
 

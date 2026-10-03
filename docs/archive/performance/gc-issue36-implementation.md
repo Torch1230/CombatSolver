@@ -44,7 +44,7 @@
 
 ### 独立检查及分配样本
 
-[PredictionStateStoreChecks](../../../tools/PredictionStateStoreChecks/README.md) 直接编译生产 Store 源码，用最小模型身份和 remap context 测试替身隔离游戏初始化。检查覆盖上述契约，最终候选已通过。它不能替代真实模型 Fork、actual/simulated 或增量回放验证。
+[PredictionStateStoreChecks](../../../tools/testing/checks/PredictionStateStoreChecks/README.md) 直接编译生产 Store 源码，用最小模型身份和 remap context 测试替身隔离游戏初始化。检查覆盖上述契约，最终候选已通过。它不能替代真实模型 Fork、actual/simulated 或增量回放验证。
 
 每个场景预热 100 次，再运行 20,000 次 Fork；测试 context 在循环中清空并复用，避免把其容量增长混入 Store 的分配差异。结果包含 Store 容器和测试 state 的复制，不包含完整模拟器。
 
@@ -60,7 +60,7 @@
 
 ### 通用 COW 与 typed buckets 的取舍
 
-通用 COW 无法只在 Store 的 `Get` 入口加一层 `Materialize()` 后安全完成。调用者已经能持有可变 state 并直接修改其属性。现有 [ForkBoundaries](../../../src/Testing/UnattendedTestRunner.ForkBoundaries.cs) 中，`VambracePredictionState` 在 Fork 前取得，Fork 后仍通过原引用修改 `TriggeringCard` 和 `BlockGainedThisCombat`。这种写入不会重新进入 Store，无法由延迟物化拦截。多种 prediction state 还暴露普通可写属性和事务字段。
+通用 COW 无法只在 Store 的 `Get` 入口加一层 `Materialize()` 后安全完成。调用者已经能持有可变 state 并直接修改其属性。现有 [ForkBoundaries](../../../src/Testing/Contracts/Runtime/UnattendedTestRunner.ForkBoundaries.cs) 中，`VambracePredictionState` 在 Fork 前取得，Fork 后仍通过原引用修改 `TriggeringCard` 和 `BlockGainedThisCombat`。这种写入不会重新进入 Store，无法由延迟物化拦截。多种 prediction state 还暴露普通可写属性和事务字段。
 
 此外，[CombatPredictionSimulator.Fork](../../../src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs) 用 `using PredictionForkContext` 在一次完整 Fork 内统一 remap，返回后就 Dispose。延迟到动作执行时才克隆 state，必须重新解决原映射生命周期、引用一致性和跨对象依赖；不能借用已归还数组的 context。
 
@@ -68,7 +68,7 @@
 
 ## 2. listener：两版候选均已撤回生产
 
-eager 分页和 lazy 分页都通过了所有权、顺序与实际游戏 Fork 检查，但完整搜索出现分配和耗时退化，因此生产已恢复原 listener 实现。实验保存在 [ExperimentalListenerSlots](../../../tools/ExperimentalListenerSlots/README.md)：[ImmutableListenerList.cs](../../../tools/ExperimentalListenerSlots/ImmutableListenerList.cs) 是独立容器，[enable.patch](../../../tools/ExperimentalListenerSlots/enable.patch) 保存 observer/slot、三种缓存视图、Fork remap 和游戏内测试的接线。原 `src/Search/SimulatedCombatState.ListenerSlots.cs` 及 listener 专用游戏测试已从生产删除。
+eager 分页和 lazy 分页都通过了所有权、顺序与实际游戏 Fork 检查，但完整搜索出现分配和耗时退化，因此生产已恢复原 listener 实现。实验保存在 [ExperimentalListenerSlots](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ExperimentalListenerSlots/README.md)：[ImmutableListenerList.cs](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ExperimentalListenerSlots/ImmutableListenerList.cs) 是独立容器，[enable.patch](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ExperimentalListenerSlots/enable.patch) 保存 observer/slot、三种缓存视图、Fork remap 和游戏内测试的接线。原 `src/Search/SimulatedCombatState.ListenerSlots.cs` 及 listener 专用游戏测试已从生产删除。
 
 ### 被拒候选的机制与验证范围
 
@@ -78,7 +78,7 @@ eager 分页和 lazy 分页都通过了所有权、顺序与实际游戏 Fork �
 
 首版 eager 分页在每次完整重建后把 `List` 再复制为数组或页，增加了一套暂存分配。第二版 lazy 分页通过 `TakeOwnership` 接管私有 List；32 项以内保留平坦存储，宽列表在首次真实变化时才提升为每页 32 项的不可变结构。原子发布后的页表供后续兄弟 Fork 复用，无变化操作不提升。每次实际替换仍创建新页目录、变化页和快照 wrapper；Fork remap 仍遍历整个 listener 序列。
 
-[HookListenerSnapshotChecks](../../../tools/HookListenerSnapshotChecks/README.md) 现在直接编译归档的实验容器。复制/转移所有权、延迟提升、无变化共享、兄弟复用、跨页替换、remap 顺序，以及并发分支更新期间旧枚举器的稳定性检查均通过。
+[HookListenerSnapshotChecks](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/HookListenerSnapshotChecks/README.md) 现在直接编译归档的实验容器。复制/转移所有权、延迟提升、无变化共享、兄弟复用、跨页替换、remap 顺序，以及并发分支更新期间旧枚举器的稳定性检查均通过。
 
 以下是 20,000 次单点替换的容器样本。其对照是“每次更新都克隆完整引用数组”，并不代表原生产代码的按需重建行为。
 
@@ -116,9 +116,9 @@ Silent / 普通 GC / DOP4，每 solver 2,500 节点，双方各三次交替冷�
 
 生产只在已有 [MonsterMoveEffects](../../../src/Prediction/MonsterMoveEffects.cs) 的递加强度分支调整读取/写入时点：先用 `card.Preview is Wither` 判断，再对匹配者取得 `MutablePreview` 并执行 `FakeUpgrade()`。普通牌不再因只读判型发生 COW；Wither 的写入仍经过原所有权边界。没有恢复 listener slot，也没有添加新的卡牌特例。
 
-[两步 native 差分夹具](../../../coverage/unattended/gc-aeonglass-preview-ownership.json) Passed，runId `825d477edaa0456b91934583498388ba`。第一次效果生成 Wither，凋零总伤害为 6、敌方力量为 3；第二次升级既有 Wither 并生成下一张，总伤害为 18、力量为 7。完整 actual/simulated 差分继续检查实际结算。
+[两步 native 差分夹具](../../../coverage/fixtures/runtime/gc-aeonglass-preview-ownership.json) Passed，runId `825d477edaa0456b91934583498388ba`。第一次效果生成 Wither，凋零总伤害为 6、敌方力量为 3；第二次升级既有 Wither 并生成下一张，总伤害为 18、力量为 7。完整 actual/simulated 差分继续检查实际结算。
 
-同一夹具显式开启 [预览身份与 Fork 断言](../../../src/Testing/UnattendedTestRunner.AeonglassPreviewOwnership.cs)：行动前保留一个未执行的兄弟分支，行动后验证非 Wither 的原 preview 引用不变、已有 Wither 伤害增长，以及兄弟的所有 preview 身份和 Wither 伤害均不变。该检查已通过，不扩展到整场搜索或可见 Steam 验收。
+同一夹具显式开启 [预览身份与 Fork 断言](../../../src/Testing/Contracts/Combat/UnattendedTestRunner.AeonglassPreviewOwnership.cs)：行动前保留一个未执行的兄弟分支，行动后验证非 Wither 的原 preview 引用不变、已有 Wither 伤害增长，以及兄弟的所有 preview 身份和 Wither 伤害均不变。该检查已通过，不扩展到整场搜索或可见 Steam 验收。
 
 ## 3. 空 PowerAmount 同步：复用已有 dirty 集合
 
@@ -131,7 +131,7 @@ PowerAmount 同步会先对相关 state 生成快照，逐条应用变化后从 
 专用命令：
 
 ```bash
-dotnet run --project tools/PredictionStateStoreChecks/PredictionStateStoreChecks.csproj -c Release -- --entry-count-only
+dotnet run --project tools/testing/checks/PredictionStateStoreChecks/PredictionStateStoreChecks.csproj -c Release -- --entry-count-only
 ```
 
 本轮专项检查通过，覆盖空表、Peek 不登记、GetReadOnly 登记、多类型独立计数、Remove 的父子隔离，以及 Fork 后零/非零类型计数。此快路径尚无独立整搜收益归因，归入生产候选 A/B 一并评估。
@@ -152,9 +152,9 @@ Smart 层间使用 [SmartLayerMemoryForecast](../../../src/Search/SmartLayerMemo
 
 外层 [ParallelExpansion](../../../src/Search/CombatBeamSolver.ParallelExpansion.cs) 按输入序号等候已完成前缀，立即提交并释放 raw batch 与父模拟器，后面的 worker 可以继续运行。任一 worker 或提交异常会先排空已经派发的全部工作，再释放并抛出。顺序、transposition、dominance 和预算仍由 coordinator 独占。单个 parent 的 action/round-choice aggregate 仍会累积 raw candidates；这里没有宣称完全消除了峰值驻留。
 
-[OwnedExpansionBatch](../../../src/Search/OwnedExpansionBatch.cs) 仅复用三个 List 和两个所有权 HashSet；每个 `_run` 的池最多留两个 storage，每个容器真实容量不得超过 4096，checkpoint 清空闲池。批次使用独立 lease 和原子 Dispose，先清引用再归还，旧批次的重复释放不能接触新租户。没有池化 simulator、node 或 model。[实际源码工具检查](../../../tools/ExpansionBatchChecks/README.md) 的 7 组所有权、部分失败、并发与 WeakReference 检查通过。
+[OwnedExpansionBatch](../../../src/Search/OwnedExpansionBatch.cs) 仅复用三个 List 和两个所有权 HashSet；每个 `_run` 的池最多留两个 storage，每个容器真实容量不得超过 4096，checkpoint 清空闲池。批次使用独立 lease 和原子 Dispose，先清引用再归还，旧批次的重复释放不能接触新租户。没有池化 simulator、node 或 model。[实际源码工具检查](../../../tools/testing/checks/ExpansionBatchChecks/README.md) 的 7 组所有权、部分失败、并发与 WeakReference 检查通过。
 
-历史 Started/Finished 的卡牌及 DamageReceived 的卡牌来源改用既有不可变快照，保留原生 `CardPlay` 身份；当前动作是否开始改用精确 trace-frame 身份，不能只凭同一个 Original 认定兄弟 Fork 是同一动作。[历史检查](../../../src/Testing/UnattendedTestRunner.HistoryRetention.cs) 覆盖嵌套/重复动作、共享历史 prefix、deferred 事务、快照升级字段，以及仅保留 forkHistory 时祖先 wrapper/分支的 WeakReference 回收。
+历史 Started/Finished 的卡牌及 DamageReceived 的卡牌来源改用既有不可变快照，保留原生 `CardPlay` 身份；当前动作是否开始改用精确 trace-frame 身份，不能只凭同一个 Original 认定兄弟 Fork 是同一动作。[历史检查](../../../src/Testing/Contracts/Combat/UnattendedTestRunner.HistoryRetention.cs) 覆盖嵌套/重复动作、共享历史 prefix、deferred 事务、快照升级字段，以及仅保留 forkHistory 时祖先 wrapper/分支的 WeakReference 回收。
 
 这解除了一条明确的历史到 PredictedCard observer 的持有路径；召唤 Creature、原生目标和伤害来源仍有合法模型引用，完整图去引用需要稳定实体 ID 与统一重映射，不能靠删除这几个历史字段完成。
 
@@ -162,7 +162,7 @@ Smart 层间使用 [SmartLayerMemoryForecast](../../../src/Search/SmartLayerMemo
 
 ## 6. P2 内核原型的结论
 
-[CompactStatePrototype](../../../tools/CompactStatePrototype/README.md) 实现了不可变根、稳定实体 ID、连续标量/RNG、深拷贝、undo journal 与 page COW，对 DFS 和保留完整 frontier 分别做全状态/回放检查及五轮轮换计时。7 组语义检查通过。
+[CompactStatePrototype](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/CompactStatePrototype/README.md) 实现了不可变根、稳定实体 ID、连续标量/RNG、深拷贝、undo journal 与 page COW，对 DFS 和保留完整 frontier 分别做全状态/回放检查及五轮轮换计时。7 组语义检查通过。
 
 在固定 256 实体、5460 转移的 synthetic retained-frontier 样本中，稀疏 page COW 为 1737 B/转移，深拷贝为 8594 B/转移；密集写时 COW 增至 9680 B，时间也约为参考的两倍。Undo 在 DFS 预热后可以零分配，但保留 frontier 仍约 8474 B/转移。原型没有真实 Hook、牌堆、选择或并行 worker，所以本轮不采用完整 P2 生产迁移。
 
@@ -241,7 +241,7 @@ Smart 层间使用 [SmartLayerMemoryForecast](../../../src/Search/SmartLayerMemo
 
 ## 9. 普通 GC 自适应并发：真实探测后不启用
 
-[ExperimentalAdaptiveGc](../../../tools/ExperimentalAdaptiveGc/README.md) 保存唯一控制器源码与真实接线补丁；生产 `Phases` 已撤销该接线，控制器不再编入 Mod。15 项合成检查继续直接编译归档代码。
+[ExperimentalAdaptiveGc](https://github.com/Torch1230/CombatSolver/blob/556e72994303e45ca2b2833aa09ba793d1b096cb/tools/ExperimentalAdaptiveGc/README.md) 保存唯一控制器源码与真实接线补丁；生产 `Phases` 已撤销该接线，控制器不再编入 Mod。15 项合成检查继续直接编译归档代码。
 
 最终生产候选上的两个普通 GC 实验，各一次冷进程，均完整比对路线、评分、工作量与非时序剪枝。大牌组2500节点两个 solver 分别产生33/22个完整窗口（共1304个已完成wave，1211个达到目标宽度的样本），没有触发探测。药水576节点三个 solver 有10/18/7个完整窗口，最后层出现一次4→2降核探测：bytes/transition约52,382→52,026，GC duty约0.258→0.146，但吞吐比仅0.638。控制器按规则拒绝并恢复4；各 solver 正常结束，无悬而未决探测、未知内存或中断wave。
 

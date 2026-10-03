@@ -1,5 +1,0 @@
-{
-  "potionId": "FyshOil",
-  "target": "Player",
-  "expectedPlayerPowers": { "STRENGTH_POWER": 1, "DEXTERITY_POWER": 1 }
-}

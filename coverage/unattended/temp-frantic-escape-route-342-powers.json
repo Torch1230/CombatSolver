@@ -1,9 +1,0 @@
-[
-  {
-    "powerId": "SANDPIT_POWER",
-    "target": "Enemy",
-    "powerTarget": "Player",
-    "applier": "Enemy",
-    "amount": 1
-  }
-]

@@ -146,14 +146,14 @@ AfterPlayerTurnStartMirrors.RegisterLate<TModel>(handler);
 只在扩展路径分配每轮接收者列表，普通战斗保留旧结算体。未作性能验证。
 
 ```sh
-dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release
-dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --seal
-dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --allocation
-dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start
-dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start --seal
-dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --after-player-start
-dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --after-player-start --seal
-dotnet run --project tools/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --mask .godot/mono/temp/bin/Release/CombatSolver.dll
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --seal
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --allocation
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start --seal
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --after-player-start
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --after-player-start --seal
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --mask .godot/mono/temp/bin/Release/CombatSolver.dll
 ```
 
 独立合同链接生产 registry、晚期 facade 和 CardHookReceiver；游戏模型、模拟器命令与

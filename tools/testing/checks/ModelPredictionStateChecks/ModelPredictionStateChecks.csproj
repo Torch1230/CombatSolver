@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Prediction/ModelPredictionStateMirrors.cs" Link="ModelPredictionStateMirrors.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Prediction/ModelPredictionStateWriter.cs" Link="ModelPredictionStateWriter.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Prediction/ModelPredictionStateWriter.CardReferences.cs" Link="ModelPredictionStateWriter.CardReferences.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Prediction/PredictionCardReferences.cs" Link="PredictionCardReferences.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Engine/Common/PredictionStateStore.cs" Link="PredictionStateStore.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Search/StateFingerprint.cs" Link="StateFingerprint.cs" />
+  </ItemGroup>
+</Project>

@@ -3248,7 +3248,7 @@
   "validationBaselineDirectory": ".local/contextual-ordering/offensive-validation",
   "validationDirectory": ".local/contextual-ordering/adaptive-novelty-validation",
   "validationManifest": ".local/contextual-ordering/adaptive-novelty-validation-manifest.json",
-  "validationCommand": "python3 tools/ContextualOrdering/run.py --manifest .local/contextual-ordering/adaptive-novelty-validation-manifest.json --variants .local/contextual-ordering/adaptive-novelty-validation-variants.json --out .local/contextual-ordering/adaptive-novelty-validation --budget-ms 120000 --split validation",
+  "validationCommand": "python3 tools/search/ContextualOrdering/run.py --manifest .local/contextual-ordering/adaptive-novelty-validation-manifest.json --variants .local/contextual-ordering/adaptive-novelty-validation-variants.json --out .local/contextual-ordering/adaptive-novelty-validation --budget-ms 120000 --split validation",
   "contracts": {
     "budgetAssertions": 11,
     "priorNoveltyGeneratedStateComparisons": 12000,

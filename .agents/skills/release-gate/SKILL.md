@@ -21,7 +21,7 @@ description: 用户要求准备或发布 CombatSolver 版本、生成 ZIP、创�
 
 用户声明活动发布批次时，批次规则优先：在用户结束批次前只提交到指定开发版本，不逐项定版。普通“发版”不等于完整发布门禁。
 
-用户已确认：以后正式发版必须通过 `tools/publish-release.ps1` 同步发布创意工坊、GitHub Release 与夸克网盘。`准备发版`、普通开发提交和单独推送源码不运行统一发布脚本；只有进入 `发版/发布` 阶段时执行。监控后台的 `latestVersion` 由用户维护，agent 不读取或写入。
+用户已确认：以后正式发版必须通过 `tools/release/publish-release.ps1` 同步发布创意工坊、GitHub Release 与夸克网盘。`准备发版`、普通开发提交和单独推送源码不运行统一发布脚本；只有进入 `发版/发布` 阶段时执行。监控后台的 `latestVersion` 由用户维护，agent 不读取或写入。
 
 一句请求包含多个口令时，执行覆盖其全部要求的最窄阶段；“给我审核/我拍板后”始终暂停构建、标签和外部动作，直到用户批准。
 
@@ -77,14 +77,14 @@ Windows（PowerShell 7）：
 
 ```powershell
 dotnet clean -c Release
-pwsh -NoProfile -File tools\build-local-stack.ps1 -Configuration Release -ForPublication -PrivateConfigDirectory <私有配置目录>
+pwsh -NoProfile -File tools\build\build-local-stack.ps1 -Configuration Release -ForPublication -PrivateConfigDirectory <私有配置目录>
 ```
 
 Linux（Bash）：
 
 ```bash
 dotnet clean -c Release
-./tools/build-local-stack.sh --configuration Release --for-publication --private-config-directory <私有配置目录>
+./tools/build/build-local-stack.sh --configuration Release --for-publication --private-config-directory <私有配置目录>
 ```
 
 私有配置目录必须包含 `presence.props` 和 `showcase.props`，可从本机部署定位文件确认；它不进入仓库或发布包。发布构建与统一发布脚本都会检查 DLL 中的在线连接元数据，缺失时停止。不要输出配置值。
@@ -151,7 +151,7 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 
 ### 必做：统一发布脚本
 
-正式发版只使用 `tools/publish-release.ps1` 作为三个渠道的执行入口。外部服务无法组成原子事务，脚本按创意工坊、GitHub、夸克网盘顺序执行，并在 `releases/CombatSolver-<版本号>.publish-state.json` 记录成功阶段；失败后从未完成阶段恢复，不重复已经成功的渠道。
+正式发版只使用 `tools/release/publish-release.ps1` 作为三个渠道的执行入口。外部服务无法组成原子事务，脚本按创意工坊、GitHub、夸克网盘顺序执行，并在 `releases/CombatSolver-<版本号>.publish-state.json` 记录成功阶段；失败后从未完成阶段恢复，不重复已经成功的渠道。
 
 脚本执行前必须满足：
 
@@ -164,7 +164,7 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 Windows 入口：
 
 ```powershell
-pwsh -NoProfile -File tools\publish-release.ps1 -Version <版本号> -QuarkSessionInput "<用户本次发布原话>" -QuarkSessionId "<timestamp-random>"
+pwsh -NoProfile -File tools\release\publish-release.ps1 -Version <版本号> -QuarkSessionInput "<用户本次发布原话>" -QuarkSessionId "<timestamp-random>"
 ```
 
 夸克网盘固定使用 `战斗路线求解器` 下三个发布子目录：
@@ -196,7 +196,7 @@ pwsh -NoProfile -File tools\publish-release.ps1 -Version <版本号> -QuarkSessi
 
 只有用户明确说“完整发布门禁”“完整验收”或“干净安装”时执行：
 
-1. 运行 `tools/verify-refactor-boundaries.ps1`；
+1. 运行 `tools/inspection/verify-refactor-boundaries.ps1`；
 2. 对当前 DLL 运行 CoverageCatalog 全 verify；
 3. 运行目标严格差分、相关类型族、增量等价和至少一场完整自动部署；
 4. 跑一场稳定长线质量基准，断言跨回合复用与零非预期重算；

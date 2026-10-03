@@ -25,7 +25,7 @@ internal readonly record struct BeamWidthPortfolioBaseline(
 /// 时间预算、共享节点预算要还够一轮、内存余量不足就不精炼。
 /// </summary>
 /// <remarks>
-/// 这里只做算术与比较，没有任何搜索状态，因此可以被 <c>tools/BeamWidthPortfolioChecks</c> 原样编译检查。
+/// 这里只做算术与比较，没有任何搜索状态，因此可以被 <c>tools/testing/checks/BeamWidthPortfolioChecks</c> 原样编译检查。
 /// 门控只决定「跑不跑」，跑起来之后的比较仍是 <c>BeamWidthPortfolio</c> 里既有的那一条规则。
 /// </remarks>
 internal static class BeamWidthPortfolioGate

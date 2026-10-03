@@ -1,9 +1,0 @@
-[
-  {
-    "enemyIndex": 0,
-    "useCurrentMove": true,
-    "playerEnergyBefore": 0,
-    "triggerPlayerSideTurnStartAfterMove": true,
-    "expectedPlayerEnergy": 1
-  }
-]

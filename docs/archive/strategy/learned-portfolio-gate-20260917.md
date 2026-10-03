@@ -15,7 +15,7 @@
 
 产物：`src/Search/BeamPortfolioSelector.cs`（纯值模型与判定）、协调器里基线完成后的准入处、
 `src/Runtime/PortfolioSelectorRuntime.cs`（`COMBATSOLVER_PORTFOLIO_SELECTOR` 指向模型 JSON 时才加载）、
-`tools/PortfolioSelector/`（采集、分层划分、训练、对照、成员价值分析）。
+`tools/search/PortfolioSelector/`（采集、分层划分、训练、对照、成员价值分析）。
 
 ## 数据
 
@@ -96,6 +96,6 @@
 
 ## 复跑
 
-见 [PortfolioSelector 工具说明](../../../tools/PortfolioSelector/README.md)。关键顺序：
+见 [PortfolioSelector 工具说明](../../../tools/search/PortfolioSelector/README.md)。关键顺序：
 采集 → `resplit.py` 分层划分 → `train.py`（`status` 必须是 `selected` 才有可用模型）→
 `evaluate.py` 独立进程 A/B → `member_value.py` 成员取舍统计。

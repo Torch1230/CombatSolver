@@ -67,6 +67,8 @@ Fork 发生在动作、选牌、Power、死亡和出牌事务允许复制的稳�
 
 ## 6. Testing
 
+源码按 [Testing 入口](../src/Testing/README.md) 收纳：Host 持有编排与协议，Support 持有共享差分辅助，Replay 持有恢复；Contracts 按 Combat/Search/Runtime/UI/ThirdParty 分组，Regressions 保存社区和报告回归。各目录沿用原程序集与 partial 类型。
+
 | 入口 | 所有权 |
 | --- | --- |
 | `UnattendedTestRunner` | 请求级编排与共享 fixture helper |
@@ -78,8 +80,14 @@ Fork 发生在动作、选牌、Power、死亡和出牌事务允许复制的稳�
 
 原生与模拟核对完整状态、顺序、引用、RNG 和续用合同。离线宿主只产搜索指标；headless 不证明真实可见布局或帧时间。入口见 [无人测试](HEADLESS_TESTING.md)、[离线宿主](OFFLINE_SEARCH_HARNESS.md)、[测试证据](TEST_MATRIX.md)。
 
+旧批次的硬编码路径调查退出当前树，仍被原生回归、生成上下文与搜索合同调用的快照辅助保留在 Support。一次性验证代码由 .local/tool-tasks 持有并在任务结束清理，普通构建显式排除 .local 源码。
+
 ## 7. 工具与维护
 
-`tools/verify-refactor-boundaries.ps1` 和 `.sh` 维护同一职责边界。CoverageCatalog 从公开描述与结构化证据生成覆盖报告，报告的生成版本与测试来源分别说明。
+工具按 [职责目录](../tools/README.md) 管理。testing 持有无人实例与生产回归检查，replay 持有包恢复与会话，search/performance 持有离线指标与采样，inspection 持有目录和结构检查；build/release/community 分别维护构建、发布与社区流程。Windows MemoryCleaner 由 tools/runtime 提供，在线监控后台由独立私有仓库 combatsolver-presence-service 持有，本仓库仅维护模组端上报和提醒。
+
+tools/Directory.Build.props 统一工具项目的仓库根与构建产物路径，生成内容放在 .local/。`tools/inspection/verify-refactor-boundaries.ps1` 和 `.sh` 维护同一职责边界。CoverageCatalog 从公开描述与结构化证据生成覆盖报告，报告的生成版本与测试来源分别说明。
+
+[coverage](../coverage/README.md) 持有手工分类、证据、复用输入、固定语料和归档摘要。CoverageCatalog 读取 catalog/classifications.json 与 evidence/test-evidence.json，替换 catalog/generated 的现行快照；候选 fixture 写入 .local/coverage-fixtures。证据按完整仓库相对路径读取，缺失材料显式失败。脚本与完整运行产物分别属于 tools 和 .local。
 
 修改职责时在同一提交替换本文对应章节，并同步相关 skill 与结构门禁。开发进度写入当前开发记录，测试细节写入证据，历史报告冻结归档。

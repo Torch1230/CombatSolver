@@ -37,7 +37,7 @@
 
 ## 验证口径
 
-- [冻结方案](bounded-novelty-search-plan-20260916.json) 包含 14 个开发/哨兵根和 5 个在选参数前生成、未参与选型的新根；[固定输入](../../../coverage/novelty-search) 与 [复跑说明](../../../tools/BfwsResearchChecks/README.md) 一并提交。
+- [冻结方案](bounded-novelty-search-plan-20260916.json) 包含 14 个开发/哨兵根和 5 个在选参数前生成、未参与选型的新根；[固定输入](../../../coverage/corpora/novelty) 与 [复跑说明](../../../tools/testing/checks/BfwsResearchChecks/README.md) 一并提交。
 - 全部质量/成本样本使用完整 Smart 协调器、正常 Release、同一 10 秒与节点预算、DOP1、NoGC 关闭、保留成长/遗物与目标战损早停。A 为关闭开关，B 为开启；每份样本单独进程，逐根交替 AB/BA，核对五份输入/原生开局 JSON。
 - 不比较热启动探索批次的耗时。累计分配不等于存活堆，Linux `VmHWM` 包括游戏初始化；限时工作量不同也不称为同工作量加速。超时和失败样本保留，不当成通过。
 - 无头原生部署使用冻结的首份完整结果、Instant/0 秒，记录战损、药水、结束回调和计划外重算；根不变合同同时核对完整 live 与 shadow 状态。

@@ -22,7 +22,7 @@
 
 Runtime 的 `CanRecord` 在帧更新、入队及跑局启动入口识别已结束的消费者。首次命中时终止本次统计、清空内存队列与有效快照、关闭上传并保留原异常诊断和原始文件。后续事件不能继续累积到失效队列；不会以零统计或成功恢复替代损坏数据。存储解析仍显式失败，未改变统计聚合、存储格式、健康队列容量、战斗模拟或搜索预算。
 
-最小夹具 `coverage/unattended/run-statistics-worker-failure.json` 启动真实 `RunStatistics.ProcessAsync` 读取四个NUL字节的 `.run.json`，确认原始 JsonException，经过实际 `_Process` 观察点，再提交300个 execute 信号；断言有效跑局与快照被清除、队列为空、损坏文件字节未变。它不启用线上遥测，也不依赖玩家真实统计目录。
+最小夹具 `coverage/fixtures/runtime/run-statistics-worker-failure.json` 启动真实 `RunStatistics.ProcessAsync` 读取四个NUL字节的 `.run.json`，确认原始 JsonException，经过实际 `_Process` 观察点，再提交300个 execute 信号；断言有效跑局与快照被清除、队列为空、损坏文件字节未变。它不启用线上遥测，也不依赖玩家真实统计目录。
 
 ## 实际验证
 
@@ -34,13 +34,13 @@ Runtime 的 `CanRecord` 在帧更新、入队及跑局启动入口识别已结�
 | 同输入 T018 修改前，runId=b015-t018-before | Failed；Run statistics queue capacity exceeded；请求21.97秒 |
 | 同输入 T018 修改后，runId=b015-t018-after | Passed；请求25.15秒；300次后续事件、快照失效及源文件保留断言通过 |
 | 最终行为源码 Release 构建 | 0警告/0错误 |
-| `dotnet run --project tools/RunStatisticsTests/RunStatisticsTests.csproj -c Release` | streaks/gaps/abandonment/dedup/persistence/historical separation/recovery合同通过 |
+| `dotnet run --project tools/testing/checks/RunStatisticsTests/RunStatisticsTests.csproj -c Release` | streaks/gaps/abandonment/dedup/persistence/historical separation/recovery合同通过 |
 
 两个请求均使用120秒总预算，夹具与输入相同，仅runId和证据目录不同。macOS隔离启动器保留在 `.local/run-macos.py`，实际命令：
 
 ```sh
-python3 .local/run-macos.py coverage/unattended/run-statistics-worker-failure.json t018-before
-python3 .local/run-macos.py coverage/unattended/run-statistics-worker-failure.json t018-after
+python3 .local/run-macos.py coverage/fixtures/runtime/run-statistics-worker-failure.json t018-before
+python3 .local/run-macos.py coverage/fixtures/runtime/run-statistics-worker-failure.json t018-after
 ```
 
 它参考仓库现有macOS启动器，克隆正版app到本仓库 `.local/headless-instances/b015`，使用隔离HOME、只装RitsuLib及当前构建、禁用Steam，并在每次结束删除整个实例。沙箱内第一次启动在进入测试前退出，随后获允许在沙箱外运行；这次启动失败不计语义基线。正式两个请求都得到结构化结果；Godot退出时仍有静态字符串/RID清理错误，因此不声称游戏进程退出健康性通过。两次实例目录均已删除。

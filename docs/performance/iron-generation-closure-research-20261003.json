@@ -16,11 +16,11 @@
       "src/Search/StrategicHpRecoveryBound.NativeGenerationPools.cs": "ca024dae71cfa0dcd89379cd75eefadf408b1364ec1986403dcadf917ed75ad0",
       "src/Search/StrategicHpRecoveryBound.RegentDecimillipede.cs": "db1ae9785ab6095c0723eab5105647b4230c111fe9d8127597b5899498db5654",
       "src/Search/StrategicHpRecoveryBound.Remaining.cs": "f30440082322226c197af34168322b923d97fc6a99f84f82a24e9158ae921799",
-      "src/Testing/UnattendedTestRunner.IronRemainingHealing.cs": "c40c9cf0c9f0326d6d2ecb666c234a8f0213299a754f86022519affe3c82ef6c",
-      "src/Testing/UnattendedTestRunner.RegentRemainingHealing.cs": "564ccdfb4f721afe553b1abe6569cab62d9974581546e280eec7df274db4f66a",
-      "src/Testing/UnattendedTestRunner.Executor.cs": "87880bba2a3bf5a0f13c602c9a73861f2df5126f27f89fc55c91f308d39c8b4f",
-      "src/Testing/UnattendedTestRunner.FrozenHealingBoundDeployment.cs": "910905c779af2b213698a7606414b5b59b304cb569f7d9e3d5771debb2dedda9",
-      "src/Testing/UnattendedTestRunner.RegentPotionCapBound.cs": "4e49e43ae8bd7e0aceebc5a127cda275b565d034b60b92c97177faded4e9da58"
+      "src/Testing/Contracts/Search/UnattendedTestRunner.IronRemainingHealing.cs": "c40c9cf0c9f0326d6d2ecb666c234a8f0213299a754f86022519affe3c82ef6c",
+      "src/Testing/Contracts/Search/UnattendedTestRunner.RegentRemainingHealing.cs": "564ccdfb4f721afe553b1abe6569cab62d9974581546e280eec7df274db4f66a",
+      "src/Testing/Host/UnattendedTestRunner.Executor.cs": "87880bba2a3bf5a0f13c602c9a73861f2df5126f27f89fc55c91f308d39c8b4f",
+      "src/Testing/Contracts/Search/UnattendedTestRunner.FrozenHealingBoundDeployment.cs": "910905c779af2b213698a7606414b5b59b304cb569f7d9e3d5771debb2dedda9",
+      "src/Testing/Contracts/Search/UnattendedTestRunner.RegentPotionCapBound.cs": "4e49e43ae8bd7e0aceebc5a127cda275b565d034b60b92c97177faded4e9da58"
     },
     "auditedClosureReusedFrom": "C58 545cards 178powers eightpools",
     "productionIntegrated": false,
