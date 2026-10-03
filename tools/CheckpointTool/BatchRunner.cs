@@ -302,8 +302,21 @@ internal static class BatchRunner
             ? ["profile", "fixedBudget"]
             : ["shortProfile", "deepProfile", "forceShortOnly"];
         string[] fields = ["potionPolicy", "potionDirectives", "actTransitionBossHpStrategy", "finalBossHpStrategy",
-            "acceptableBattleHpLoss", "searchMaxDegreeOfParallelism", .. budgetFields];
-        return fields.All(field => actual?[field] != null && recorded?[field] != null && JsonNode.DeepEquals(actual[field], recorded[field]));
+            "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism",
+            "growthBudgets", "relicStrategyEnabled", "relicCounterRules", "brightestFlameMaxHpLossLimit",
+            "ignoreLongTermRewards", "predictPotionReward", "useNoveltyPortfolio", "useBeamWidthPortfolio",
+            "useEarlyTurnExploration", .. budgetFields];
+        // A nullable recorded limit is meaningful; an absent setting is not proof of equivalence.
+        return actual is JsonObject actualPolicy && recorded is JsonObject recordedPolicy
+            && fields.All(field => actualPolicy.ContainsKey(field) && recordedPolicy.ContainsKey(field)
+                && (field == "brightestFlameMaxHpLossLimit" || actualPolicy[field] != null && recordedPolicy[field] != null)
+                && JsonNode.DeepEquals(actualPolicy[field], recordedPolicy[field]))
+            // Recorded request context and future policy fields must not disappear
+            // behind the required settings list. Preset labels are not numeric budgets.
+            && actualPolicy.Select(pair => pair.Key).Union(recordedPolicy.Select(pair => pair.Key))
+                .Where(field => field != "performancePreset")
+                .All(field => actualPolicy.ContainsKey(field) && recordedPolicy.ContainsKey(field)
+                    && JsonNode.DeepEquals(actualPolicy[field], recordedPolicy[field]));
     }
 
     private static JsonObject CaptureEnvironment(string project, Dictionary<string, string> options, string mode)

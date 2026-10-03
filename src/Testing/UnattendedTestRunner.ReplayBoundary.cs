@@ -6,6 +6,7 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertReplayBoundaryContractAsync(Player player)
     {
+        AssertCheckpointPolicyContract();
         HashSet<uint> completed = [6];
         if (!IsRecordedActionWindow(6, 6, true, completed)
             || !IsRecordedActionWindow(null, 6, false, completed)

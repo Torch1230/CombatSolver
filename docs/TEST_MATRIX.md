@@ -4,6 +4,12 @@
 
 历史记录见 [归档索引](archive/testing/README.md)。
 
+## Q003 检查点政策与比较（2026-10-03）
+
+`CheckpointTool self-test` 的失败基线为 `different_switch_not_comparable:predictPotionReward`，最终 `archive_contract_tests_passed assertions=59`，含缺失/不同派生上下文、未来字段及预设标签比较。`REPLAY-BOUNDARY-CONTRACT` / `b4c0cbeb24964595b3aed0cbb74b4417` Passed：true/false 均覆盖与本机相反的四开关、精确预算、输入不变与缺项拒绝，并保留既有回放边界合同。
+
+O008 / `f92387e90f7745cfb5ec74f55f46dcea` 验证有效 `:3` 检查点的 16 项事件、完整 continuation 与原生状态；`c3a2b0d8add74484ba310e5e539ac182` 从 `:1` 以固定短预算执行到第 3 回合，原生存活、`UnexpectedReplans:0`。只覆盖最早续用，不代表整场胜利。政策恢复后的 O007/O008/O010 开战搜索记录原预算与开关，O008 返回部分路线；有效第 3 回合搜索只找到死亡路线。Release 零警告/错误、结构门禁通过（246 个 Search 文件），自有实例已清理；未进行五主题整场验收或可见性能测试。复现命令、源码/DLL 来源和材料限制见 [Q003 记录](issues/q003-checkpoint-policy-20261003.md)。
+
 ## 倾泻与手空效果边界（2026-10-03）
 
 `CASCADE-EMPTY-HAND-NATIVE` 使用报告 d9c106 的倾泻前牌堆顺序及 Shuffle 完整内部状态，单独保留倾泻+和无尽陀螺；无需恢复原包中的重生个体及历史 Power 施加者。未改行为源码上的 `cc37414e00274b6baaf0d877a60e3ac9` 出现原生/模拟手牌偏差；选择痛击的 `e3bac4a083574686b1e9d018ccc23f80` 复现 `NativeChoicePlanMismatchException`，计划 BASH+1、原生仅 STRIKE_IRONCLAD。修复后 `53ba69afa54544f3a1322b42367d5e90` Passed：嵌套坚毅原生页面完成，完整 continuation（有序牌堆、逐实例状态、Power、怪物和九条 RNG）一致；完整动作回放与执行检查点恢复、完成后 Fork、live 不变对账通过。该场景不运行 Solve，不带增量搜索开关，不代表原包整场部署通过。
