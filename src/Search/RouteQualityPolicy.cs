@@ -75,15 +75,29 @@ internal static class RouteQualityPolicy
         if (comparison != 0)
             return comparison;
 
-        if (projection == RouteQualityProjection.PotionPolicy
-            && candidate.Won && current.Won
-            && candidate.StrategicHpDeficit == current.StrategicHpDeficit
-            && candidate.PotionStrategicCost == current.PotionStrategicCost
-            && candidate.ProjectedBattlePotionCount == current.ProjectedBattlePotionCount
-            && candidate.GrowthHpCredit == current.GrowthHpCredit
-            && candidate.GrowthRewardCount == current.GrowthRewardCount
-            && candidate.ProjectedBattleHpLost != current.ProjectedBattleHpLost)
-            return candidate.ProjectedBattleHpLost.CompareTo(current.ProjectedBattleHpLost);
+        if (projection == RouteQualityProjection.PotionPolicy)
+        {
+            if (candidate.Won && current.Won)
+            {
+                if (SolverInterimResultOrdering.IsResourceTradeImprovement(
+                        candidate.StrategicHpDeficit, candidate.PotionStrategicCost,
+                        current.StrategicHpDeficit, current.PotionStrategicCost))
+                    return -1;
+                if (SolverInterimResultOrdering.IsResourceTradeImprovement(
+                        current.StrategicHpDeficit, current.PotionStrategicCost,
+                        candidate.StrategicHpDeficit, candidate.PotionStrategicCost))
+                    return 1;
+            }
+
+            if (candidate.Won && current.Won
+                && candidate.StrategicHpDeficit == current.StrategicHpDeficit
+                && candidate.PotionStrategicCost == current.PotionStrategicCost
+                && candidate.ProjectedBattlePotionCount == current.ProjectedBattlePotionCount
+                && candidate.GrowthHpCredit == current.GrowthHpCredit
+                && candidate.GrowthRewardCount == current.GrowthRewardCount
+                && candidate.ProjectedBattleHpLost != current.ProjectedBattleHpLost)
+                return candidate.ProjectedBattleHpLost.CompareTo(current.ProjectedBattleHpLost);
+        }
 
         comparison = ComparePrimary(candidate, current);
         if (comparison != 0)
