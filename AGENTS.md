@@ -1,23 +1,10 @@
 # CombatSolver 仓库工作指令
 
-> **多人适配交接（2026-09-28）：** 用户指定由接手窗口 GPT-6-sol 完成全部多人适配，实施入口为 [多人适配实施规划](docs/MULTIPLAYER_PLAN.md)。当前 `feat/multiplayer` 已有 P0 原型，只有编译证据，尚未运行原生多人测试。按文档继续 P0～P5；严格遵守其中禁止过度设计、防御性兜底和重复测试的约束。不要把历史批次或原型编译通过当作本轮行为验收。
-
-> **当前批次（2026-09-16）：** 用户授权实现无需训练的搜索改进并提交新PR；基线为上游 `7f806de`（0.39.0）。新增可选有界新颖性／Beam组合，独立队列、共享请求预算及既有终局政策；说明与本轮证据见 [有界新颖性组合](docs/strategy/bounded-novelty-search-20260916.md)。不启动可见Steam、不提升版本、不发包或上传创意工坊。
-
-
-> **本轮追加（2026-09-15）：** 用户授权继续完成成本较低且有收益的复用，并更新正式PR #96。保留路线行按完整显示值/本地化身份复用，以及同帧语言往返通知修复；投影洗牌缓存经两场8份完整对照后撤回，追加提交不改变Search/Engine/Runtime。路线、语言、部署显示合同及两端门禁通过，记录见 `docs/performance/performance-pr-20260915.md` 的后续追加章节。本批不启动可见Steam、不提升版本、不发包或上传创意工坊。
-
-> **当前工作重点（2026-09-15）：** `perf/general-allocation-20260914` 已整合上游 `cd66b1d`（0.38.6）的搜索、药水、复活与录像改动，完成通用分配、生成池及选牌续执行三阶段优化，合并验证与当前上游三场完整ABBA均已通过，已提交正式 PR #96。早期对照使用各报告明确记录的基线，不把旧基线数字当作当前上游的收益。通用优化见 `docs/performance/general-allocation-20260914.md`，生成池与抽牌前缀见 `docs/performance/crab-latency-20260914.md`，三阶段实施见 `docs/performance/choice-continuation-expansion-implementation-20260914.md`。用户已授权推送任务分支并提交正式 PR；本批不另提升版本、不发包或上传创意工坊。正式发布规则继续由下文统一脚本管理，监控后台最新版提示由用户维护。
-
-> **当前批次验证约束：** 用户于 2026-09-12 明确停止可见测试，本批后续不启动可见 Steam 会话。性能报告限定为实际取得的无头数据，不外推 FPS、可见帧时间或可见性能收益。
-
-> **批量扩展完成（2026-09-15）：** 用户已要求完成[批量扩展研究](docs/performance/choice-continuation-expansion-20260914.md)中的卡牌、药水及回合/嵌套三阶段。已完成41张原版单人卡、9种手动选牌药水，以及回合来源/抽牌/自动与重复子出牌的嵌套检查点；原生/搜索合同、三场12份完整请求和最终原生部署通过，验证场景未见决策质量下降。用户随后明确：质量未下降且未发现具体bug时不必继续深挖；因此保留蟹战逻辑工作量差异并报告实际耗时，不称为同工作量提速。进度与证据见 `docs/performance/choice-continuation-expansion-implementation-20260914.md`。此前不启动可见Steam、不提升版本或发包的约束继续有效。
-
 本文件约束所有在本仓库中工作的 coding agent。开始处理任务前完整阅读；子目录若有更具体的 `AGENTS.md`，其规则只补充对应目录，不能放宽这里的硬约束。
 
 ## 1. 项目边界
 
-CombatSolver 当前正式功能是《杀戮尖塔 2》的单人战斗路线求解器 Mod，使用 C# / .NET 9 / Godot。它在主线程捕获稳定战斗根，在后台分叉影子状态并跨回合搜索，最后通过原版公开入口部署当前回合动作。用户已于 2026-09-28 授权规划多人适配，需求与后续阶段见 [多人适配实施规划](docs/MULTIPLAYER_PLAN.md)；规划不代表多人功能已经实现或验证。
+CombatSolver 是《杀戮尖塔 2》的战斗路线求解器。本分支 `feat/multiplayer` 面向 2～4 人的本地动作搜索与当前回合部署，单人继续保持整场搜索和严格续用。分支状态与实际验收范围由 [多人状态](docs/MULTIPLAYER_PLAN.md) 维护。
 
 硬约束：
 
@@ -51,65 +38,20 @@ CombatSolver 当前正式功能是《杀戮尖塔 2》的单人战斗路线求�
 
 - [文档总目录](docs/README.md)：当前指南与专题索引；玩家更新日志统一位于 `docs/releases/`，专题资料按目录维护。新增或移动文档时同步索引与引用。
 - [架构与职责地图](docs/ARCHITECTURE.md)：当前源码入口、所有权和禁止依赖的单一维护入口。
-- [滚动重构路线](docs/refactoring/refactor-roadmap.md)：已完成批次和明确不做项。
-- [核验审计](docs/refactoring/verified-audit-4117eb0.md)：本轮重构的逐阶段证据；它是历史结果，不是持续规则。
+- [滚动重构路线](docs/refactoring/refactor-roadmap.md)：当前状态、待证据项与历史入口。
 - [测试矩阵](docs/TEST_MATRIX.md) 与 `coverage/test-evidence.json`：可重跑场景和结构化证据。
-- [开发笔记](docs/DEVELOPMENT_NOTES.md)：版本历史与未发布行为变化。
+- [开发笔记](docs/DEVELOPMENT_NOTES.md)：当前未发布行为变化与历史入口。
 - [第三方 Mod 适配手册](docs/THIRD_PARTY_ADAPTERS.md)：面向外部 Mod 作者的登记点总表、登记纪律与验收标准；同时是「哪些位置还是封闭开关」的单一维护入口。
 - `tools/verify-refactor-boundaries.ps1`（Windows / PowerShell 7）与 `tools/verify-refactor-boundaries.sh`（Linux / Bash）：当前架构边界的等价可执行门禁。
 - `tools/OfflineSearchHarness/`：不启动 Godot、在普通 .NET 进程里批量跑搜索的离线宿主，用法与口径见 [离线搜索宿主](docs/OFFLINE_SEARCH_HARNESS.md)。只产指标，不做正确性验收。
 
 源码与当前可重跑结果优先于历史说明。职责发生变化时，同一提交更新 `docs/ARCHITECTURE.md`、相关 skill 和结构门禁，避免多份地图继续漂移。
 
-## 4. 核心职责摘要
+## 4. 职责边界
 
-完整地图见 `docs/ARCHITECTURE.md`。以下边界不可混写：
+当前源码入口和所有权由 [架构地图](docs/ARCHITECTURE.md) 统一维护。Runtime 捕获根与编排部署，Search 决定候选政策，模拟引擎执行通用语义，Prediction 持有领域补偿，UI 消费只读 snapshot，Testing 分层持有协议、建局、执行、断言和输出。
 
-### 4.1 Runtime 与搜索根
-
-- `src/Runtime/Entry.cs`：Mod 初始化和战斗生命周期入口。
-- `src/Runtime/SolverController.cs`：主线程编排；创建搜索请求、处理结果、续用、部署和全自动。
-- `src/Runtime/SolverControllerSessions.cs`：`SolverCombatSession`、`SolverSearchSession`、`SolverDeploymentSession` 的生命周期所有权。
-- `src/Runtime/CombatRootSnapshot.cs`：只能在主线程捕获并验证 live 状态稳定；后台搜索只接收该根。
-- `src/Runtime/ContinuationStamp.cs`：跨回合 live/predicted 一致性和字段级差异。
-- `src/Runtime/SearchGcPolicy.cs`：进程级 GC / No-GC 生命周期、搜索内后台回收续搜和跨战斗回收协调，不属于 Search 算法。
-- `src/Runtime/SearchMemoryPressureSignal.cs`：Runtime 注入 Search 的分配边界与回收续搜入口；Search 不直接读取设置或操作 GC 模式。
-- `src/Runtime/PlayerTurnSetupPatches.cs`：首回合选牌后搜索、全自动后续回合的计划重放，以及单步执行在下一回合原生选牌页交还玩家并允许执行/全自动入口接管既有选择。
-- `src/Runtime/NativeChoiceRuntime.cs`：原生选牌页面观察与计划卡牌逐实例匹配；不枚举搜索分支。
-- `src/Runtime/BaseLibCloneConcurrencyPatch.cs`：BaseLib 克隆扩展已加载时，串行保护原版 `MutableClone` 的第三方扩展段；预测克隆只允许 `NativeModelCloneConcurrency` 核对过的隔离域普通原版卡牌及默认内部初始化 Power 旁路；不得扩大成整段搜索串行化。
-- `src/Runtime/PowerDynamicVarWarmup.cs`：主线程捕获根状态时物化规范 Power 与当前战斗 Power 的显示变量，禁止把惰性本地化工作带入 worker。
-- `src/Runtime/PowerDynamicVarMaterializationGuardPatch.cs`：搜索模拟期间禁止惰性创建 Power 显示变量；命中表示根捕获缺少必要实例的物化。
-
-### 4.2 Search
-
-- `CombatSearchCoordinator`：主搜索、无药和强制用药反事实审计。
-- `CombatBeamSolver.cs`：构造参数、不可变根配置及各策略对象接线，不承载 `Solve` 循环。
-- `CombatBeamSolver.Models.cs`：节点、快照、`SearchFeatures` 和单次运行的 `SearchRunContext`。
-- `CombatBeamSolver.Phases.cs`：`Solve` 与阶段推进。
-- `CombatBeamSolver.Expansion.cs`：候选展开与动作回放入口。
-- `CombatBeamSolver.ParallelExpansion.cs`：固定 worker lane、动作准备/原始候选物化与确定性串行提交。
-- `CombatBeamSolver.AdmittedExpansion.cs`：已准入父节点的动作、选择链、药水与回合尾部作业；有界派发、唯一快照所有权和在途排空。
-- `CombatBeamSolver.PrimaryChoiceReplay.cs`：保证原预算必经的首层选择回放、快照暂存与原序消费；不并发消费动态选择预算。
-- `CombatBeamSolver.Retention.cs`：剪枝调用边界；具体中间保路属于 `BeamRetentionPolicy`。
-- `CombatBeamSolver.BeamRetentionPolicy.cs`：状态去重、Beam 排名、多样性通道、动作/回合开始选牌保路、药水配额和小型 Pareto。
-- `CombatBeamSolver.FinalPlanOrdering.cs`：终局胜负、战损、药水、偷窃、卖血和边界排序。
-- `CombatBeamSolver.StateEvaluation.cs`：快照、威胁与评分特征。
-- `CombatBeamSolver.Terminal.cs`：终局回放、回合结果和路线标注。
-- `SimulatedCombatState*.cs`：搜索面对的分支战斗领域状态；不得把候选政策塞进这里。
-
-### 4.3 模拟、Mirror 与领域补偿
-
-- `src/Engine/InCombat/Simulation/*`：通用命令时序、历史、RNG、牌堆、伤害和 Fork。
-- `src/Engine/InCombat/Mirrors/*`：原版 Hook / Model 方法的精确镜像。
-- `src/Engine/Common/Mirrors/MethodMirrorRegistryDescriptor.cs`：registry 对 CoverageCatalog 提供支持元数据的唯一接口。CoverageCatalog 不反射 registry 私有字段。
-- `src/Prediction/*`：跨 Hook 生命周期、怪物 AI/行动、隐藏状态、死亡/召唤、选择和第三方 subscriber 捕获等领域补偿。
-
-### 4.4 UI 与测试
-
-- `SolverOverlaySnapshot.Capture` 是搜索结果到 UI 的转换边界；它可以读取 `SolverResult` 和显示元数据。
-- `SolverOverlay`、`SolverRouteRow`、`SolverActionPill` 只渲染只读 snapshot，不读取 `SolverResult`、`PlanAction`、`PlanCardChoice` 或 `ModelDb`。
-- `UnattendedTestRunner` 负责请求级编排和共享 fixture helper。
-- `ProtocolHost` 独占请求循环与每请求开关；`ScenarioBuilder` 独占建局和状态注入；`Executor` 独占差分/搜索/部署执行和临时设置；`Assertions` 独占执行前后断言；`Writer` 独占结果协议与原子写入。
+职责迁移在同一提交更新架构地图、相关 skill 和结构门禁；规则文件只保留长期边界，不复制整份源码目录。
 
 ## 5. 状态所有权
 
@@ -206,6 +148,18 @@ dotnet run --project tools/CoverageCatalog/CoverageCatalog.csproj -c Release -- 
 Windows `.ps1` 与 Linux `.sh` 都是受维护的平台原生入口：PowerShell 使用 PascalCase 参数，Bash 使用 GNU 风格长参数；`.sh` 不调用 PowerShell。两端无人测试脚本均允许覆盖游戏和依赖路径，Linux 脚本还会探测标准 Steam 安装；这些本地入口仍不是可移植 CI。修改协议、门禁或测试能力时同步维护两端脚本，不要提交个人绝对路径更新。
 
 ## 9. 文档、提交与发布
+
+### 文档维护规则
+
+- 每份文档只有一个职责：规则、现行指南、当前进度、测试证据、玩家日志或历史资料。内容写入对应入口与章节；新增文件前先确认已有入口是否足够。
+- AGENTS.md 与 skill 只保存长期约束和任务路由。批次授权、交接、临时禁令、当前分支进度、runId、性能数字与测试流水账留在对话或所属证据中，不在规则开头前插提示块。
+- 修改现行行为时直接替换过时说明，合并同主题内容。已发布历史、原始玩家意见、失败证据和未验证项完整保留；归档不代表问题修复，也不代表本轮复测。
+- 普通指南达到 500 行或 64 KiB 时按稳定职责拆分；活动开发/测试记录达到 200 行或 32 KiB 时，将完成批次归档并保留短入口。发布定稿后立即滚动归档，不把新工作追加到已发布章节。确需保留的卡池清单、协议 schema、结构化证据及生成报告按数据完整性维护，入口说明其范围与来源。
+- 索引只列当前入口和归档入口，不逐条堆报告结论、复制正文或在表格内插入列表。根目录保持仓库必需文件，专题文档放在所属目录。
+- 历史资料放在 docs/archive/，按专题、版本或批次分卷并冻结。报告与 JSON、fixture 等配套材料一起移动；修正链接或标明历史状态可以更新档案正文，新工作另写当前记录。
+- 移动或拆分文档时，同步 Markdown 相对链接、章节锚点、skill、脚本和结构化证据中的路径。固定 commit/tag 链接仍指向当时版本。提交前运行 tools/verify-documentation.py，并处理当前文档长度与链接错误。
+- 版本、依赖、部署和渠道信息来自 manifest、权威源码与实际操作结果。生成报告由工具重新生成；工具失败时明确保留历史结果与失败原因，不手改版本冒充新验证。业务源码、文档源码与已发布客户端版本分别记录来源。
+
 
 - 改动职责边界：更新 `docs/ARCHITECTURE.md`、相关 skill、结构门禁及必要的重构路线/核验记录。
 - 改动语义、搜索、性能、UI 或测试方式：更新 `docs/DEVELOPMENT_NOTES.md` 与 `docs/TEST_MATRIX.md`；需要进入覆盖目录时同步结构化证据。

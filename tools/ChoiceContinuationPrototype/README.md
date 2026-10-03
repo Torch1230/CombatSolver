@@ -1,6 +1,6 @@
 # Choice continuation prototype
 
-An executable, experimental **own-discard checkpoint for Dagger Throw, Acrobatics and Prepared**, pinned to source `1ef4601` / game `0.111.0`. [Results and limits](../../docs/performance/choice-continuation-prototype-20260914.md).
+An executable, experimental **own-discard checkpoint for Dagger Throw, Acrobatics and Prepared**, pinned to source `1ef4601` / game `0.111.0`. [Results and limits](../../docs/archive/performance/choice-continuation-prototype-20260914.md).
 
 Normal builds exclude `tools/**/*.cs`. Nothing here enables a production search policy, changes search budgets, or runs in the shipped executor. `engine.patch` is the reviewable experimental engine diff; the four C# files are injected only by the dedicated builder.
 

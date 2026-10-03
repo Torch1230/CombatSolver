@@ -1,0 +1,24 @@
+# strategy 历史资料
+
+[返回归档](../README.md)。以下文件保持各自的源码基线、失败和未验证项；归档不表示已修复。
+
+- [0.17.0-optimization-plan](0.17.0-optimization-plan.md)
+- [0.17.0-raw-requirements](0.17.0-raw-requirements.md)
+- [beam-ordering-audit-20261003](beam-ordering-audit-20261003.md)
+- [beam-width-portfolio](beam-width-portfolio.md)
+- [bounded-novelty-search-20260916](bounded-novelty-search-20260916.md)
+- [contextual-ordering-20260922](contextual-ordering-20260922.md)
+- [incremental-history-counters](incremental-history-counters.md)
+- [learned-portfolio-gate-20260917](learned-portfolio-gate-20260917.md)
+- [player-worldlines-20260905](player-worldlines-20260905.md)
+- [potion-reward-outlook-20260918](potion-reward-outlook-20260918.md)
+- [power-card-valuation-plan-20260917](power-card-valuation-plan-20260917.md)
+- [search-logic-explained-20260912](search-logic-explained-20260912.md)
+- [SEARCH_RECOVERY_RESEARCH](SEARCH_RECOVERY_RESEARCH.md)
+- [solver-search-strategy-analysis-20260927](solver-search-strategy-analysis-20260927.md)
+- [state-key-history-counters-20260919](state-key-history-counters-20260919.md)
+- [strategy-optimization-20260923](strategy-optimization-20260923.md)
+- [strategy-optimization-directions-20260927](strategy-optimization-directions-20260927.md)
+- [strategy-optimization-part1-handoff-20260927](strategy-optimization-part1-handoff-20260927.md)
+- [STRATEGY_OPTIMIZATION_LOG](STRATEGY_OPTIMIZATION_LOG.md)
+- [worldline-top150-20260926](worldline-top150-20260926.md)

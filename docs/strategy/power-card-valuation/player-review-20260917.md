@@ -84,7 +84,7 @@ CombatSolver 在单人战斗中搜索多回合路线，天然倾向“本回合�
 
 ## 静默猎手（17）
 
-静默猎手 17 张已由玩家逐卡复核并接入第二版生产模型，权威判断见[第二版量化与路线保护方案](silent-v2-valuation-and-retention-plan-20260917.md)的“玩家逐卡建模输入”。本表不再重复，仅保留索引。
+静默猎手 17 张已由玩家逐卡复核并接入第二版生产模型，权威判断见[第二版量化与路线保护方案](../../archive/strategy/power-card-valuation/silent-v2-valuation-and-retention-plan-20260917.md)的“玩家逐卡建模输入”。本表不再重复，仅保留索引。
 
 
 ---

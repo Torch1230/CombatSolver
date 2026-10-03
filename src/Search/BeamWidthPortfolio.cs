@@ -90,7 +90,7 @@ internal sealed record BeamWidthPortfolioOutcome<TResult>(
 /// <remarks>
 /// <para>
 /// 动机是已测到的噪声：同一根只改 Beam 宽度就能让结果双向变化，且没有"更宽必然更好"的方向性
-/// （数据来源见 <c>docs/strategy/beam-width-portfolio.md</c>）。既然宽度差一格不是单调的，
+/// （数据来源见 <c>docs/archive/strategy/beam-width-portfolio.md</c>）。既然宽度差一格不是单调的，
 /// 那就把若干次搜索当成若干个抽样，按既有比较规则整条选优。
 /// </para>
 /// <para>

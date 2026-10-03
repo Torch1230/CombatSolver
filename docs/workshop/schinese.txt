@@ -42,7 +42,7 @@ Combat Solver 源码：在 GitHub 搜索 Torch1230/CombatSolver 即可找到。
 [h2]依赖与兼容性[/h2]
 
 [list]
-[*]需要 RitsuLib 0.5.18 或更高版本。
+[*]需要 RitsuLib 0.6.0 或更高版本。
 [*]当前适配《杀戮尖塔 2》0.111.0。
 [*]仅支持单人战斗，不支持多人模式。
 [*]不修改游戏 RNG。

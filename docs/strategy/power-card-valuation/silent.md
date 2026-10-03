@@ -2,7 +2,7 @@
 
 本表列出游戏版本 0.111.0 的 SilentCardPool 中全部 18 张能力牌：17 张属于 CombatSolver 单人建模范围，1 张由游戏标记为 MultiplayerOnly。中英文名称与效果原文来自同版本 PCK 的 localization/zhs/cards.json 和 localization/eng/cards.json；数值、固有与奇巧属性由同版本原版卡牌实例按普通/升级状态核对。表中把能量图片图标写成文字，卡牌属性单列在效果中，效果语义不改写。
 
-本轮用户明确授权先按实现者理解量化静默猎手，因此17张单人牌标为 `QuantifiedDraft`。第一版公式和合同已经建立，但经复核确认静态乘法不足以处理跨回合阈值与组合收益，禁止直接接入生产搜索；后续以[第二版量化与路线保护方案](silent-v2-valuation-and-retention-plan-20260917.md)为准。`OutOfScopeMultiplayer` 只保留完整卡池资料，不进入单人求解器建模。
+本轮用户明确授权先按实现者理解量化静默猎手，因此17张单人牌标为 `QuantifiedDraft`。第一版公式和合同已经建立，但经复核确认静态乘法不足以处理跨回合阈值与组合收益，禁止直接接入生产搜索；后续以[第二版量化与路线保护方案](../../archive/strategy/power-card-valuation/silent-v2-valuation-and-retention-plan-20260917.md)为准。`OutOfScopeMultiplayer` 只保留完整卡池资料，不进入单人求解器建模。
 
 用户已逐张给出17张单人能力牌的强弱、启动条件与兑现理解，权威记录位于第二版方案的“玩家逐卡建模输入”一节。卡池表继续只记录原版效果，避免把官方语义、玩家策略判断和实现状态混成一列。
 

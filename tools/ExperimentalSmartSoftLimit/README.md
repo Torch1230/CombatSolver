@@ -2,7 +2,7 @@
 
 这是独立冷进程实验补丁，未接入生产。保持原 NoGC 硬预算、下一层预测安全检查、搜索预算及候选顺序；仅在原策略允许继续、仍有下一层且当前信号累计分配超过阈值时，额外做一次已有 Runtime 层间回收。硬压力/预测回收原因优先，最后一层不新增回收。软阈值只在层间观察，允许超过一层分配量，不是严格峰值上限。
 
-`enable-512mib.patch` 阈值为 512 MiB；`enable-192mib.patch` 为较积极对照。一次只应用其中一个补丁。对照组不应用补丁。三组均固定 Necrobinder 公开药水 fixture、每 solver 576 节点、DOP4、NoGC 4 GB、60 秒搜索/120 秒请求，在初次结果处退出。完整参数见 [重现说明](../../docs/performance/gc-issue36-reproduce.md)，本轮结果见 [第二轮报告](../../docs/performance/gc-issue36-round2.md)。
+`enable-512mib.patch` 阈值为 512 MiB；`enable-192mib.patch` 为较积极对照。一次只应用其中一个补丁。对照组不应用补丁。三组均固定 Necrobinder 公开药水 fixture、每 solver 576 节点、DOP4、NoGC 4 GB、60 秒搜索/120 秒请求，在初次结果处退出。完整参数见 [重现说明](../../docs/archive/performance/gc-issue36-reproduce.md)，本轮结果见 [第二轮报告](../../docs/archive/performance/gc-issue36-round2.md)。
 
 在无其他修改的独立 worktree 根目录应用：
 

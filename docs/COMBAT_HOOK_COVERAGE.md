@@ -1,6 +1,6 @@
 # CombatSolver 战斗钩子覆盖目录
 
-> CombatSolver `0.47.2`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。
+生成来源：CombatSolver `0.47.2`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。
 
 ## 汇总
 
@@ -24,6 +24,9 @@
 | OutOfScope | 733 | 11 | 126 | 596 |
 
 ## 主动效果运行证据
+
+带边界或性能退化的证据状态分别保留，不计入无条件 Runtime 通过；生成目录只核对登记和历史证据，不重新执行战斗测试。
+带已记录边界的 Hook：0；带已记录性能退化的 Hook：0。
 
 只有 `EngineMirror` 与 `SolverCompensation` 的运行时差分证据才计入本节；仅完成注册或静态分类不代表跨回合时序正确。
 

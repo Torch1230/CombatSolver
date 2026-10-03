@@ -66,6 +66,10 @@ using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(manifestPath))
 string combatSolverVersion = manifest.RootElement.GetProperty("version").GetString()
     ?? throw new InvalidOperationException("CombatSolver.json version is null.");
 
+Type[] gameModelTypes = typeof(AbstractModel).Assembly.GetTypes()
+    .Where(type => !type.IsAbstract && typeof(AbstractModel).IsAssignableFrom(type))
+    .ToArray();
+ModelDb.Init(gameModelTypes);
 EngineMirrorInventory engine = ReadEngineMirrorInventory();
 HashSet<string> compensatedCardTypes = ReadCompensatedCardTypes();
 Dictionary<string, string> machineCardEvidence = ReadMachineCardEvidence();
@@ -130,7 +134,7 @@ Dictionary<string, string> machineMonsterMoveEvidence = ReadFixtureMonsterMoveEv
 HashSet<string> calculatedCardTypes = ReadCalculatedCardTypes();
 string[] discoveredCalculatedCardTypes = typeof(CardModel).Assembly.GetTypes()
     .Where(type => !type.IsAbstract && typeof(CardModel).IsAssignableFrom(type))
-    .Select(type => (Type: type, Card: Activator.CreateInstance(type) as CardModel))
+    .Select(type => (Type: type, Card: CanonicalModel(type) as CardModel))
     .Where(pair => pair.Card?.DynamicVars.Values.Any(value => value is CalculatedVar) == true)
     .Select(pair => pair.Type.FullName!)
     .Order(StringComparer.Ordinal)
@@ -1280,7 +1284,7 @@ static string[] AuditPersistentRelicPredictionStates()
     List<string> gaps = [];
     foreach (Type relicType in dedicatedRelics.OrderBy(type => type.FullName, StringComparer.Ordinal))
     {
-        if (Activator.CreateInstance(relicType) is not RelicModel relic)
+        if (CanonicalModel(relicType) is not RelicModel relic)
         {
             gaps.Add($"{relicType.FullName}:cannot_construct");
             continue;
@@ -1320,8 +1324,7 @@ static List<CoverageEntry> DiscoverMonsterMoves(
                                 && !type.Name.Contains("Test", StringComparison.Ordinal))
                  .OrderBy(type => type.FullName, StringComparer.Ordinal))
     {
-        MonsterModel canonical = (MonsterModel)(Activator.CreateInstance(type)
-            ?? throw new InvalidOperationException($"Could not instantiate monster model {type.FullName}."));
+        MonsterModel canonical = (MonsterModel)CanonicalModel(type);
         MonsterModel monster = canonical.ToMutable();
         MethodInfo generate = type.GetMethod(
             "GenerateMoveStateMachine",
@@ -1404,7 +1407,7 @@ static List<CoverageEntry> DiscoverGameHooks(
     {
         string category = Category(type, entityBases);
         bool multiplayerOnly = category == "Card"
-            && Activator.CreateInstance(type) is CardModel card
+            && CanonicalModel(type) is CardModel card
             && card.MultiplayerConstraint == MegaCrit.Sts2.Core.Entities.Cards.CardMultiplayerConstraint.MultiplayerOnly;
         bool deprecatedPlaceholder = type == typeof(DeprecatedCard);
         foreach (MethodInfo method in type.GetMethods(
@@ -1511,6 +1514,8 @@ static CoverageEntry EnrichEffectiveSupport(
         verification = item.Status switch
         {
             VerificationStatus.Passed => VerificationKind.Runtime,
+            VerificationStatus.PassedWithDocumentedBoundaries => VerificationKind.RuntimeWithDocumentedBoundaries,
+            VerificationStatus.PassedWithDocumentedPerformanceRegression => VerificationKind.RuntimeWithDocumentedPerformanceRegression,
             VerificationStatus.StaticPassed => VerificationKind.Static,
             _ => VerificationKind.None,
         };
@@ -1656,7 +1661,7 @@ static Dictionary<string, string> ReadFixtureCardEvidence(
 {
     Dictionary<string, string> cardTypeById = typeof(CardModel).Assembly.GetTypes()
         .Where(type => !type.IsAbstract && typeof(CardModel).IsAssignableFrom(type))
-        .Select(type => (Type: type, Card: (CardModel?)Activator.CreateInstance(type)))
+        .Select(type => (Type: type, Card: (CardModel?)CanonicalModel(type)))
         .Where(pair => pair.Card != null)
         .ToDictionary(pair => pair.Card!.Id.Entry, pair => pair.Type.FullName!, StringComparer.Ordinal);
     Dictionary<string, string> result = new(StringComparer.Ordinal);
@@ -1685,7 +1690,7 @@ static Dictionary<string, string> ReadFixtureMonsterMoveEvidence(
 {
     Dictionary<string, string> monsterTypeByIdentifier = typeof(MonsterModel).Assembly.GetTypes()
         .Where(type => !type.IsAbstract && typeof(MonsterModel).IsAssignableFrom(type))
-        .Select(type => (Type: type, Monster: (MonsterModel?)Activator.CreateInstance(type)))
+        .Select(type => (Type: type, Monster: (MonsterModel?)CanonicalModel(type)))
         .Where(pair => pair.Monster != null)
         .SelectMany(pair => new[]
         {
@@ -1721,7 +1726,7 @@ static Dictionary<string, string> ReadFixtureModelHookEvidence<TModel>(
 {
     Dictionary<string, string> modelTypeById = typeof(AbstractModel).Assembly.GetTypes()
         .Where(type => !type.IsAbstract && typeof(TModel).IsAssignableFrom(type))
-        .Select(type => (Type: type, Model: (TModel?)Activator.CreateInstance(type)))
+        .Select(type => (Type: type, Model: (TModel?)CanonicalModel(type)))
         .Where(pair => pair.Model != null)
         .ToDictionary(pair => pair.Model!.Id.Entry, pair => pair.Type.FullName!, StringComparer.Ordinal);
     Dictionary<string, string> result = new(StringComparer.Ordinal);
@@ -1894,7 +1899,7 @@ static RuntimeEvidenceGapEntry ToRuntimeEvidenceGap(CoverageEntry entry)
 {
     Type? type = typeof(AbstractModel).Assembly.GetType(entry.EntityType, throwOnError: false);
     AbstractModel? model = type is { IsAbstract: false }
-        ? ModelDb.All.Single(candidate => candidate.GetType() == type)
+        ? CanonicalModel(type)
         : null;
     return new RuntimeEvidenceGapEntry(
         entry.Key,
@@ -1925,7 +1930,7 @@ static IReadOnlyList<SimpleCardAuditCheck> BuildSimpleCardAuditChecks(IEnumerabl
                  && !choiceCards.Contains(entry.EntityName)))
     {
         Type type = typeof(CardModel).Assembly.GetType(gap.EntityType, throwOnError: true)!;
-        CardModel card = (CardModel)Activator.CreateInstance(type)!;
+        CardModel card = (CardModel)CanonicalModel(type);
         IReadOnlyDictionary<string, string>? enumMembers = card is MadScience
             ? new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -1967,7 +1972,7 @@ static IReadOnlyList<SimpleCardAuditCheck> BuildExactCardAuditChecks(IEnumerable
                  && !manualFixtureCards.Contains(entry.EntityName)))
     {
         Type type = typeof(CardModel).Assembly.GetType(gap.EntityType, throwOnError: true)!;
-        CardModel card = (CardModel)Activator.CreateInstance(type)!;
+        CardModel card = (CardModel)CanonicalModel(type);
         IReadOnlyDictionary<string, string>? enumMembers = card is MadScience
             ? new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -2037,6 +2042,9 @@ static string HashMethod(MethodInfo method)
             hash.AppendData(Encoding.UTF8.GetBytes(local.LocalType.FullName ?? local.LocalType.Name));
     }
 }
+
+static AbstractModel CanonicalModel(Type type)
+    => ModelDb.GetById<AbstractModel>(ModelDb.GetId(type));
 
 static EngineMirrorInventory ReadEngineMirrorInventory()
 {
@@ -2220,7 +2228,7 @@ static string BuildReport(
     StringBuilder text = new();
     text.AppendLine("# CombatSolver 战斗钩子覆盖目录");
     text.AppendLine();
-    text.AppendLine($"> CombatSolver `{catalog.CombatSolverVersion}`，游戏 `{catalog.GameVersion}`，模拟核心 `{catalog.SimulationEngine}`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。");
+    text.AppendLine($"生成来源：CombatSolver `{catalog.CombatSolverVersion}`，游戏 `{catalog.GameVersion}`，模拟核心 `{catalog.SimulationEngine}`。本文件由 `tools/CoverageCatalog` 生成，不手工编辑。");
     text.AppendLine();
     text.AppendLine("## 汇总");
     text.AppendLine();
@@ -2248,6 +2256,9 @@ static string BuildReport(
     }
     text.AppendLine();
     text.AppendLine("## 主动效果运行证据");
+    text.AppendLine();
+    text.AppendLine("带边界或性能退化的证据状态分别保留，不计入无条件 Runtime 通过；生成目录只核对登记和历史证据，不重新执行战斗测试。");
+    text.AppendLine($"带已记录边界的 Hook：{catalog.Entries.Count(entry => entry.Verification == VerificationKind.RuntimeWithDocumentedBoundaries)}；带已记录性能退化的 Hook：{catalog.Entries.Count(entry => entry.Verification == VerificationKind.RuntimeWithDocumentedPerformanceRegression)}。");
     text.AppendLine();
     text.AppendLine("只有 `EngineMirror` 与 `SolverCompensation` 的运行时差分证据才计入本节；仅完成注册或静态分类不代表跨回合时序正确。");
     text.AppendLine();
@@ -2376,6 +2387,8 @@ internal enum VerificationKind
     None,
     Static,
     Runtime,
+    RuntimeWithDocumentedBoundaries,
+    RuntimeWithDocumentedPerformanceRegression,
 }
 
 internal enum VerificationStatus

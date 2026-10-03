@@ -46,7 +46,7 @@ Runner 同时断言 VeryHigh 的 Beam `54/135`、节点 `10000/50000`、出牌�
 
 ## Necrobinder 药水/高分支压力
 
-> 2026-09-08复跑发现：下列历史白名单JSON缺少当前原生反序列化要求的角色身份，原命令会在建局前失败。当前可运行的明确注入版本及命令见[压力筛查](veryhigh-pressure-survey-20260908.md#复跑示例)；不要将它当作原存档恢复。下文保留历史输入/命令说明。
+> 2026-09-08复跑发现：下列历史白名单JSON缺少当前原生反序列化要求的角色身份，原命令会在建局前失败。当前可运行的明确注入版本及命令见[压力筛查](../archive/performance/veryhigh-pressure-survey-20260908.md#复跑示例)；不要将它当作原存档恢复。下文保留历史输入/命令说明。
 
 - fixture：`coverage/unattended/search-performance-necrobinder-potion-heavy-run-snapshot.json`
 - 输入：`38` 张战前牌、`20` 件遗物、`2` 瓶药和生命/药水槽；战斗初始化后形成 `41` 张搜索根。

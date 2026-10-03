@@ -96,47 +96,7 @@ CrabRagePower 的同伴死亡结算由 `AfterDeathMirrors` 独占：力量、格
 
 ### 2.1 统一形状的镜像注册表（46 张）
 
-绝大多数登记走同一个形状：
-
-```csharp
-XxxMirrors.Registry.Register<TYourType>(handler);
-```
-
-46 张注册表按域分布在 `src/Engine/InCombat/Mirrors/` 下：
-
-死亡后生成单位的镜像应保持原生生成时点。例如补货由 `AfterDeathMirrors` 调用分支生成入口，旧个体仍在阵容中，其最大生命参与替补生命判重。把生成延后到阵容清理后，即使 RNG 调用次数相同也会改变抽样结果；登记镜像时应同步移除原领域补偿中的同一生成动作。
-
-逐次出牌完成效果也应由 `AfterCardPlayedMirrors` 的对应分派独占。温柔在该 Hook 更新计数并扣除属性，回合末仍使用既有领域计数恢复；父牌的历史扫描可能包含已经结算的内层自动牌，不能再通过该范围给内层牌重复施加效果。属性施加需遵守每次原生命令的战斗结束条件。
-
-历史敏感计算变量需要冻结根历史并加上分支新增事件。谋杀的实现读取 `RootCombatHistorySnapshot.CardsDrawn` 与模拟器抽牌事件；原生完成初始抽牌或后续动作后，旧预测根的倍率仍保持不变。只在实机停住时做一次差分会漏掉这类问题，验证时应包含根捕获后的实机推进与 Fork 隔离。
-
-| 目录 | 注册表数 | 覆盖什么 | 你多半要用的 |
-|---|---|---|---|
-| `Hooks/` | 39 | 战斗 hook：攻击、格挡、伤害、死亡、卡牌、球体、回合边界 | 按你重写了哪个 hook 挑，例如 `AfterDamageGivenMirrors` |
-| `Cards/` | 4 | 出牌、可打出性、回合结束留手、结算落点 | `CardOnPlayMirrors`、`CardIsPlayableMirrors` |
-| `Potions/` | 1 | 药水使用 | `PotionOnUseMirrors` |
-| `Enchantments/`、`Afflictions/` | 各 1 | 附魔与病症的出牌效果 | 少见 |
-
-**回合开始重置能量之后的能力结算走 `Hooks/Resources/AfterEnergyResetMirrors`。** 这一张是从
-`PersistentPowerSupport` 里那个写死五个原版类型的 switch 改过来的，所以以前第三方能力在这个
-时点既没有登记入口，漏了也不报——别的钩子漏登记会记一条 `MethodNotMirrored` 风险，那个 switch
-不经过注册表，只是静默跳过。重写了 `AfterEnergyReset` 的能力（每回合少一点能量、多一点能量、
-多抽一张这一类）现在必须在这里登记。层数为零的能力不分发，和原版每个重写第一件事都是空转一致。
-
-**注意目录里的文件数比注册表多。** `Cards/` 下有十几个 `*Mirrors.cs`，但注册表只有 4 张——
-`BespokeCardMirrors`、`CardGenerationCardMirrors` 这些是**处理器文件**，它们往
-`CardOnPlayMirrors.Registry` 这张共享注册表里登记，自己不持有注册表。找登记入口时认
-`static readonly Registry Registry` 这个字段，不要认文件名。
-
-**怎么知道自己要登记哪几个。** 把你的每个类型对基类虚方法的重写列出来，和这 46 张表逐一对照。
-只重写了求解器不分发的方法，不用登记；重写了它分发的方法，就要登记。这一步不要靠印象，
-要交叉核对——漏一个的表现是「效果看起来正常但其实没发生」。
-
-同一张表里 `Register` 用的是 `Dictionary.Add`，**重复登记会抛异常**，不会静默覆盖。
-
-Hook 分发会省略当前原版类型继承的默认空回调，但保留第三方/动态类型的完整回调顺序和既有登记流程。原生与领域监听表仍保留全部成员；关键字查询仅在所有接收者均未参与 `TryModifyKeywordsInCombat` 时省去原生空调用。每次根捕获重新检查相关 `AbstractModel` 基方法和 `Hook.ModifyKeywordsInCombat` 的 Harmony 补丁，有补丁或不透明 BaseLib CardModifier 时旁路。类型布局在同一根的有界表中复用，完整类型顺序逐项相等才命中，只存元数据、不保留任何分支 Model。原生监听表可在内部按前段与卡牌/球后段拼接，但顺序不变；不透明 CardModifier 仍完整重建，附着监听追加器拿到完整列表，不能把新增 Power 的插入位置限定在原生前段。该优化没有增加原本不支持的补丁或 subscriber 适配。
-
-`PowerModel.GetTypeForAmount` 的局部 IL 优化只移除两处同类型枚举比较的装箱。虚拟 `StackType`、`Type`、`AllowNegative` getter 的次数与顺序及 decimal 分支保持原样；方法体不符合精确指令形状或比较内部存在控制流入口时保留原 IL。这没有增加 Power 登记点，也不缓存第三方 getter 的结果。
+详细登记、字段和示例见 [third-party-mirrors](third-party-mirrors.md)。
 
 ### 2.2 战略估值：会改变出牌顺序的 Power
 
@@ -160,268 +120,27 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 
 ### 2.3 药水的玩家选择
 
-```csharp
-PotionChoiceMirrors.Register<TYourPotion>(spec, apply);
-```
-
-只有当你的药水会让玩家当场做选择时才需要。不登记的后果很硬：`PotionChoiceSupport.RequiresChoice`
-对第三方类型恒为 `false`，于是求解器**根本不为它开搜索分支**——它会把这瓶药当成一个没有收益的
-动作，随手插在路线里的某个位置。药水自己的 `PotionOnUseMirrors` 镜像补不了这个：等那个钩子触发
-的时候，「要不要开分支」早就已经被否决了。
-
-两个委托：
-
-- `spec(simulator, potion)` 返回一个 `CardChoiceSpec`：候选、上下界、效果。候选**必须是玩家在
-  原生页面上真正看到的那几张，顺序也要一致**，否则部署时按卡牌令牌在页面上定位会错位。
-  下界给 0 表示「可以一张都不选」。
-- `apply(simulator, potion, choice)` 按选中的结果在模拟里施加效果，返回是否已经结算完
-  （还有嵌套选择挂起时返回 `false`，和原版同一口径）。
-
-效果用 `PlanChoiceEffect.ModDefined`。部署侧按卡牌令牌在原生页面上定位，本来就与效果无关；
-这个值只是明确表示「结算由登记方负责」，别的效果分支不会误接手。求解器自己从不产生这个值。
-
-登记之后，你的药水和原版带选择的药水走同一条通道：搜索按你的 spec 展开分支、把选中的结果记进
-计划、部署时照常应答原生页面，而效果由你的 `apply` 施加——求解器不需要认识任何第三方效果。
-
-**一个真实例子。** 观者的形态药剂让玩家在平静和愤怒之间二选一。原版实现里比的是引用相等
-（`val == calmChoice`），但两张选项牌是两个不同的类型、各只有一张，所以按类型判完全等价。
-
-不登记的代价实测过：鬼祟珊瑚群那一场，求解器第 1 回合 `max_block=14 actual_block=3`、掉 11 血；
-手打是「爆发+ 进愤怒 → 停顿 3+9=12 甲 → 如水 → 药水选平静退出愤怒」，如水在回合结束因为平静
-再给 5 甲，17 甲挡掉 14 点，0 掉血。求解器不肯进愤怒的判断在它自己的世界观里是对的——进去了
-退不出来就是挨双倍伤害；它只是不知道那瓶药能退出来。
+详细登记、字段和示例见 [third-party-choices](third-party-choices.md)。
 
 ### 2.4 从给定牌堆候选中弃牌
 
-`ICombatPredictionChoiceSink.ResolvePileDiscardChoice(simulator, sourceId, player, sourcePile, options, maxBranches)`
-供镜像处理器提交可选弃牌请求。`options` 是效果当时真正展示的有序候选，例如抽牌堆顶的几张牌。
-允许空选，选中牌进入弃牌堆，数量范围为 `0..options.Count`。返回 `false` 表示选择挂起，调用方
-应向上传播未完成状态；搜索补齐选择后会从稳定父节点重放，返回 `true` 才继续后续效果。
-
-该入口沿用已有动作选择、计划记录和原生页面部署通道。手牌之外的弃牌排序使用源牌堆平均牌值
-减去被弃牌牌值，并加上弃牌触发收益。`maxBranches` 对排序后的候选设置保留上限，省略时沿用
-现有枚举策略；传 `1` 只保留排序第一项，会牺牲其他选择路线，适配者应使用目标场景验证取舍。
+详细登记、字段和示例见 [third-party-choices](third-party-choices.md)。
 
 ### 2.5 卡牌的玩家选择
 
-此入口随 PR #56 合入，并于 `0.32.0` 发布。使用此入口的适配 Mod 应将 CombatSolver 最低依赖设为 `0.32.0`。
-
-```csharp
-CardChoiceMirrors.Register<TYourCard>(spec, apply);
-```
-
-和药水那条是同一堵墙的两面。`CardChoiceSupport.GetSpec` 是按原版卡牌类型写死的 `switch`，
-默认分支返回 `null`，也就是「这张牌没有选择」。第三方卡牌落到那里就是这个答案，于是它的选牌
-效果**永远不会被展开成搜索分支**：牌照样打得出去，效果在模拟里静默变成空操作。卡牌自己的
-`CardOnPlayMirrors` 补不了这个——选择的展开发生在出牌路径上，不在效果镜像里。
-
-两个委托：
-
-- `spec(simulator, playedCard, card)` 返回一个 `CardChoiceSpec`。
-- `apply(simulator, combat, playedCard, card, choice)` 施加效果，返回是否已经结算完。
-
-比药水那条多两件要注意的事：
-
-1. **升级等级必须对。** 部署时按 CardId 加升级等级在原生页面上定位选项。三选一这类牌通常会让
-   三张选项跟着本牌一起升级，`spec` 里就要把选项牌也升级，否则部署定位不到。
-2. **选项牌不在任何模拟牌堆里。** 所以 `apply` 拿到的是计划里的 `PlanCardToken`，不是
-   `PredictedCard`；按 CardId 自己认，求解器不会替你解析。数值要读就从选项牌自己的
-   `DynamicVars` 上读，不要写死。
-
-效果同样用 `PlanChoiceEffect.ModDefined`。求解器自己从不产生这个值；如果它出现在卡牌选牌上
-而没有登记方认领，结算会直接抛，不会静默空操作。
-
-**一个真实例子。** 观者的许愿是 3 费，打出后在「力量 +3」「多层护甲 6」「金币 25」之间三选一
-（升级后 4 / 8 / 30，三张选项牌各自的 `MagicNumber` 就是这三个数）。三个选项的单位完全不同，
-但都不需要新的估值刻度：力量和多层护甲本来就是 Power，金币走求解器现成的长期资源刻度
-（`GainPlayerGold` 加 `RecordLongTermResource`，`贪婪之手` 就是面值直记）。登记成三个真分支之后，
-「值不值这 3 点能量」和「三个里挑哪个」都由搜索自己比出来，不需要写任何策略规则。
+详细登记、字段和示例见 [third-party-choices](third-party-choices.md)。
 
 ### 2.6 Power 的隐藏状态进指纹
 
-随 PR #58 于 `0.33.0` 发布。登记应在 Mod 初始化、任何根捕获和后台搜索之前完成；搜索期间保持登记表不变。依赖此入口的适配 Mod 应要求 CombatSolver `0.33.0`。
-
-```csharp
-// 状态在普通私有字段里：只要这一条。
-PowerHiddenStateMirrors.Register<TYourPower>(
-    "TotalMantraGained",
-    (simulator, power) => power.某个私有计数);
-
-// 状态在 _internalData 里：还要这一条，否则模拟一开始读到的是初值。
-PowerHiddenStateMirrors.RegisterRootCapture<TYourPower>(
-    (simulator, clone, original) =>
-        simulator.StateStore.GetReadOnly(clone, () => new MyState(original)));
-PowerHiddenStateMirrors.Register<TYourPower>(
-    "InstanceCount",
-    (simulator, power) => simulator.StateStore.Peek(power, static p => new MyState(p)).Count);
-```
-
-状态指纹里 Power 的通用部分只收 `DynamicVars`。把语义状态放在 `_internalData` 或普通私有字段里
-的 Power 走的是另一条路：`AddTurnStartStates` 按原版类型 `switch`，从 `StateStore` 里的预测状态
-取一个计数塞进指纹（虚空形态、硬化外壳、自动机、束缚锁链……）。那个 `switch` 没有第三方入口。
-
-**后果和别的缺口不一样，要分清：**
-
-- **续用核对尚未覆盖此状态。** 两侧通用 Power 字段一致不能证明隐藏状态一致；跨回合适配需要单独验证原生与预测状态。
-- **对搜索去重有害。** 只在这个状态上不同的两条分支指纹相同，会被当成同一个状态**去掉一条**。
-  你的镜像算出来的数值是对的，但搜索可能把算得对的那条丢了。
-
-所以这不是「记个 `Unmirrored` 就行」的事——红字只是显示，不会让被去重掉的分支回来。
-
-#### 续用核对边界
-
-`PowerModel.DeepCloneFields` 会把 `_internalData` 重置成 `InitInternalData()`。续用核对若要覆盖隐藏状态，需要分别读取原生状态和已捕获的预测状态。本入口仅提供搜索指纹与根捕获登记，尚未提供这两侧的续用追加入口。
-
-#### 靠 `_internalData` 的必须登记根捕获
-
-同样因为克隆会重置，这类 Power 必须用 `RegisterRootCapture` 在根捕获时把实机实例的值搬进
-`simulator.StateStore`，此后一律读预测状态，**不要再读克隆上的 `GetInternalData`**。这正是原版
-`PowerPredictionStateSupport.CaptureRootState` 在做的事，照它的形状写即可。搜索途中新施加的实例
-不走根捕获，它们的 `_internalData` 本来就是初值，预测状态首次取用时按初值起算就是对的。
-
-状态放在普通私有字段里的 Power 不受影响（`MemberwiseClone` 会带过去），只登记读取函数就够了。
-
-#### 三条约束
-
-1. **只收整数。** 原版那个隐藏计数段里全部是整数或枚举；字符串只会出现在展示用的名字上，那类
-   字段按 `SemanticStateFieldPolicy` 本来就不该进指纹。
-2. **读取函数必须是纯读取。** 它在搜索热路径上被调用很多次，不得有副作用，也不要在里面分配。
-3. **返回值只能取决于这个 Power 自己的状态**（含它在 `StateStore` 里的预测状态）。它参与状态
-   等价判断，读别处会让等价判断不自洽。
-
-登记多个状态就多调几次 `Register`，名字在同一类型内不得重复，下游按名字排序后依次进指纹。
-
-**两个真实例子，都在观者。** 光辉的伤害等于牌面值加上本场战斗累计获得的真言，累计值在
-`WatcherStatePower` 的一个普通私有 `int` 里，只需要读取函数；登记之后「先攒真言再打光辉」和
-「直接打光辉」不再被当成同一个状态。天人形态的那个 Power 用 `_internalData` 存一个实例表，每回合
-给「总和」点能量再把每个实例加一——总和就是 `Amount`，本来就在指纹里，缺的只是**实例个数**，
-也就是下一回合总和的增量；它要根捕获加读取函数两条，登记一个 `InstanceCount` 就够了，不需要把
-整张表塞进去。
+详细登记、字段和示例见 [third-party-power-state](third-party-power-state.md)。
 
 ### 2.7 局外成长来源的独立额度
 
-下一版本的成长早停按逐来源的可证明实际可打次数判断。第三方登记新增可选 `opportunityTarget`；旧登记不需要修改，但命中旧登记时继续完整搜索，不推断完成次数。战损目标早停默认开启；成长来源仅在本场实际可用卡牌命中 `hasTarget` 且考虑局外收益时形成目标，只保存非零额度不算实际目标。
-原版禁忌魔典已包含独立删牌收益额度，按每次成功增加战后删牌奖励计数。至亮之焰的单场最大生命消耗上限属于独立成本约束，不使用成长收益向量表示负收益，也不受 IgnoreLongTermRewards 影响；它不改变第三方成长来源登记接口。
+详细登记、字段和示例见 [third-party-growth-removal](third-party-growth-removal.md)。
 
-尚未发布，登记入口在下一版本。登记应在 Mod 初始化、任何搜索之前完成；搜索期间保持登记表不变。
-
-```csharp
-// 加载时登记一次，把句柄存下来。
-private static GrowthSourceHandle _diligence;
-
-_diligence = GrowthSourceMirrors.Register(
-    "YourMod.Diligence",                        // 持久化键，建议带 mod 前缀
-    () => ModelDb.Card<YourDiligenceCard>(),    // 侧栏这一行的图标和标题，延迟调用
-    card => card is YourDiligenceCard && card.DeckVersion != null,
-    opportunityTarget: context => GrowthOpportunityTarget.Bounded(
-        context.MatchingCards.Sum(card => 1 + card.FixedReplayCount)));
-
-// 第四个参数是标题覆盖，也是延迟调用，参数就是上面那个函数取回来的牌。
-// 只在「牌名说明不了这个来源」时才填，比如原版把黏稠强化那一行显示成「防御 + 强化名」。
-_wishGold = GrowthSourceMirrors.Register(
-    "YourMod.WishGold",
-    () => ModelDb.Card<YourGoldWishOption>(),
-    card => card is YourWishCard,
-    card => ModelDb.Card<YourWishCard>().Title + "·" + card.Title);
-
-// 收益真的到手时记一次。
-combat.RecordGrowthReward(_diligence);
-```
-
-`opportunityTarget` 只收到冻结值：匹配牌的 id、运行时类型名、是否有永久牌组实例、牌自身固定重放次数，以及当前敌人数。它不能取得 `CombatState` 或实机 `CardModel`。能够证明有限上限时返回 `Bounded(非负次数)`；存在循环、动态重放、复制、生成或回收时返回 `Unbounded("稳定原因")`。返回负数或无效结果会在搜索开始前明确失败，不会替换成默认值。全局已知的动态次数风险由求解器统一判定，不能在具体成长牌的计算器里绕过。
-
-成长策略解决的是这类问题：贪婪之手、巨镰、遗传算法这些牌，收益落在**这场战斗之外**——金币、
-永久升级、局外强化。求解器默认只看本场战斗的血量与胜负，于是「多挨几点伤害换一次永久升级」
-一律判成亏。侧栏让玩家给每个来源单独填一份「每次收益允许的额外战损」，搜索据此在打分里给这条
-线路记一笔 HP 信用额度。
-
-原版十个来源写死在 `GrowthSource` 枚举里，`GrowthValues` 是与之对应的十个 int 字段（疯狂科学仅能力／改进变体）。局外成长类
-卡牌很多 mod 都有，它们全部落不进那个枚举：既拿不到自己的额度栏，收益也记不进
-`SimulatedCombatState.GrowthRewards`。**表现不是「少了个选项」，而是搜索必然避开这张牌**——
-付出的血看得见，换回来的东西在打分里根本不存在。
-
-登记之后你会得到四样东西；提供可证明的目标计算器时还会启用第五项：
-
-- 成长策略侧栏多一行，有自己的图标、标题和额度输入框，排在原版十行之后、按登记顺序；
-- 额度按你给的 id 存进设置文件，也进问题包的有效策略和路线缓存；
-- `GrowthValues.HasTarget` 认得你的牌，于是「打到可接受战损就提早收手」那条捷径会被关掉——
-  否则搜索会在还没摸到你这张牌之前就收手；
-- 计数进状态指纹，只在「有没有拿到这次收益」上不同的两条分支不会被当成同一个状态去重；
-- 所有活动成长来源都有界并全部兑现后，允许在完整胜利及其余政策目标也满足时提前结束搜索。
-
-#### 五条约束
-
-1. **id 要稳定。** 它是持久化键，改 id 等于换来源，玩家原来填的额度不再生效。为此额度按 id
-   存而不是按登记序号存：玩家临时停用你的 mod 时，那份额度会原样留在设置文件里，重新启用后
-   还在，不需要再填一遍。
-2. **`RecordGrowthReward` 只在收益真的到手时调用。** 额度是「每次成功收益」的单价，多记一次
-   就等于凭空多出一份额度，搜索会拿它去换真实的血。原版的口径可以照抄：斩杀类要求满足致命
-   条件（`WasFatalKill`），永久成长类要求那张牌有局外牌组实例（`card.DeckVersion != null`），
-   炼制药水要求成功入槽。
-3. **`hasTarget` 必须是纯判断。** 它会对玩家牌组里每张牌调用。永久成长一类记得跟原版一样要求
-   `DeckVersion != null`——战斗里临时生成的副本升级了也带不出战斗。
-4. **金币一类要两处都记。** 局外成长额度和长期资源刻度是两回事：`RecordLongTermResource` 记的是
-   「这条线路带走了多少局外价值」，`RecordGrowthReward` 记的是「为这次收益可以额外付多少血」。
-   原版贪婪之手两个都调，第三方的金币收益照做。
-5. **目标次数必须是可证明上限。** 能力牌、消耗牌和固定重放可以按冻结实例计算；普通非消耗牌、
-   动态重放、复制、生成同名牌和消耗回收不能按牌张数封顶。证明不了就返回 `Unbounded`，旧登记留空
-   也具有相同的“不早停”语义。
-
-取牌或取标题函数抛异常不会连带侧栏起不来：那一行退化成「没有图标、标题显示 id」，额度照样能
-填、照样进搜索，日志里留一条 warn。这是这个入口唯一一处「装一半」，因为它只影响显示。
-
-**两个真实例子，都在观者。** 勤学精进是永久升级，和原版遗传算法、巨镰同一类，直接登记就位。
-许愿三选一里的金币那一支和贪婪之手同一类，除了原来就有的 `RecordLongTermResource` 还要补一次
-`RecordGrowthReward`——只记长期资源的话，搜索知道这条线路带走了金币，却不知道玩家愿意为它付血。
 ### 2.8 移除估值的偏置
 
-尚未发布，登记入口在下一版本。加载时登记一次即可。
-
-```csharp
-CardRemovalValueMirrors.Register<YourStrike>(-10d);
-CardRemovalValueMirrors.Register<YourDefend>(-10d);
-```
-
-净化、洗炼这类**移除**选择按 `CardChoiceSupport.RemovalPriority` 从低到高排序，估值低的先被
-移除。通用估值把伤害记满、格挡打八折，于是一张 6 伤害的起手打击得 `6.0`，比一张 5 格挡的起手
-防御（`4.0`）还高——按通用估值排，先被烧掉的会是防御。原版五个角色的实战优先级正相反，所以
-`BasicCardRemovalValue` 用一张按类型写死的表把这十张起手牌压回正确的相对位置。
-
-那张表**只列原版十张**。它的注释里写明了理由：其他来源的打击、防御「强弱取决于各自的机制，
-这里没有依据替它们排序」。这个判断对求解器成立，**对你不成立**——你知道自己那张牌是不是起手牌。
-所以这里开一个登记点，让你自己声明。
-
-**登记的是偏置，不是绝对值。** 最终估值 = 通用估值 + 你给的偏置，所以牌自身的梯度保住了：
-升级过的起手打击伤害更高，加同一个偏置之后仍然比未升级的那张更靠后被烧。
-
-**负偏置是这个入口的重点。** `ChoicePriority` 对消耗返回 `-Σ RemovalPriority` 并按降序取分支，
-所有估值都是正数时，「一张都不选」（0）永远排第一——消耗在选择排序里从来只有「少亏一点」，
-没有正收益。把一张真正的废牌压到负值，「烧它」这条分支才会排到「不烧」前面。
-
-**为什么不是让你声明「这是起手打击」。** 原版那张表把起手防御排在起手打击之后（格挡 × 1.2、
-伤害 × 2/3），因为原版五个角色留防御更划算。这个相对顺序**不通用**：观者靠姿态和心灵堡垒起甲，
-一张普通防御比一张打击更该烧。类别抽象会把原版的假设强加给你，偏置不会——通用估值本来就把格挡
-打了八折，同样偏置下防御自然排在打击前面。
-
-**这个入口不怕被滥用。** 把自己的牌估低等于让求解器优先烧掉它，估高等于让它留在牌库里堵手，
-两个方向的代价都由你自己承担。绝对值上限 `100`，够表达「这张牌白占位置」，又不至于一次手滑让
-求解器烧光牌库。
-
-**不登记的后果是静默的。** 你的起手打击按通用估值算成一张有伤害的好攻击牌，于是净化永远不会
-先烧它——它不报错、不打红字，只是求解器再也不会替你压牌库。实测一场女王：玩家手打消耗掉三张
-观者打击、把全知与内心宁静留在牌库里；求解器反过来消耗了全知、内心宁静、痛击，把四张打击留着。
-两边同样有疾风连击 4，只有前者的牌库能持续转起来。
-
-**负偏置还有第二个作用：那张牌按牌库杂质计。** 状态牌和诅咒本来就进 `liveDeckClutter`，只要还
-占着牌堆就扣分，所以消耗掉它们是正收益。别的牌不进那一项——于是消耗一张非状态非诅咒的牌在打分
-里的收益**正好是零**（`retainedAttackValue` 有上限，攻击牌多的时候早就顶满，少一张也不掉），
-「打出净化消耗两张废牌」严格劣于「不打净化」，省下那点能量总是更划算。排序偏置排不出一个本来就
-不存在的收益，所以负偏置同时表示「这张牌占着牌堆就是负担」。
-
-原版那张写死的表优先：已经列进去的类型不会被登记表改写。登记表为空时下游一行都不多走。
-
-**这个入口解决的是「别烧错、该烧的要烧」，不解决「为了压出无限而主动烧牌」。** 后者要的是对
-「移除之后牌库能不能自持」的判断，那是求解器的估值主干，见第 6 节。
+详细登记、字段和示例见 [third-party-growth-removal](third-party-growth-removal.md)。
 
 ### 2.9 遗物与 Modifier 的分支状态
 

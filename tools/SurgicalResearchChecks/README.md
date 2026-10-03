@@ -10,4 +10,4 @@ dotnet run --project tools/SurgicalResearchChecks -c Release
 
 每项预热 10,000 次，三块各 100,000 次；报告当前线程累计分配，不报告吞吐或 RSS。委托/结果序列化在测量外。`results.json` 为 Linux x64 .NET 9.0.19 本轮结果；其他运行时布局可能不同。简单 int 状态的 24 B 不能套用于全部状态类型。
 
-[研究报告](../../docs/performance/surgical-research-20260912.md) 包含源码切口、适用条件和未验证范围。
+[研究报告](../../docs/archive/performance/surgical-research-20260912.md) 包含源码切口、适用条件和未验证范围。

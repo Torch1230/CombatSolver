@@ -42,7 +42,7 @@ Combat Solver source: search for Torch1230/CombatSolver on GitHub.
 [h2]Requirements and compatibility[/h2]
 
 [list]
-[*]Requires RitsuLib 0.5.18 or later.
+[*]Requires RitsuLib 0.6.0 or later.
 [*]Targets Slay the Spire 2 version 0.111.0.
 [*]Single-player combat only; multiplayer is not supported.
 [*]Background search does not modify the live game's RNG.

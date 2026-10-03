@@ -62,7 +62,7 @@ pwsh -NoProfile -File tools/run-checkpoint-batch.ps1 `
 
 ## 4. 数字记录与收口
 
-`docs/strategy/STRATEGY_OPTIMIZATION_LOG.md` 只维护两张表：
+`docs/archive/strategy/STRATEGY_OPTIMIZATION_LOG.md` 只维护两张表：
 
 - 汇总：日期、样例、玩家备注、优化前求解器、当前求解器、人工、优化幅度、相对人工、是否更优；
 - 待处理：样例、当前数字或阻塞证据、状态。

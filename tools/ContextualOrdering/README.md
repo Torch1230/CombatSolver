@@ -43,7 +43,7 @@
 
 variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用新增 profile 成员的候选宿主不能直接假定兼容旧 DLL。模型与当前程序集绑定，修改行为代码并重编后须重新生成候选并验证，不能直接修改 MVID 冒充已验收模型。
 
-第一轮模型已因 20 根中的 4 项退化（含胜转败）被拒绝。实际结果与限制见 [实验记录](../../docs/strategy/contextual-ordering-20260922.md)。训练没有消除未知后续和搜索分布漂移，正则/小幅修正并不保证不退化。
+第一轮模型已因 20 根中的 4 项退化（含胜转败）被拒绝。实际结果与限制见 [实验记录](../../docs/archive/strategy/contextual-ordering-20260922.md)。训练没有消除未知后续和搜索分布漂移，正则/小幅修正并不保证不退化。
 
 `first_loss.py --baseline <root/baseline> --witness <root/better> --out <new-json>` 对照完整动作前缀和外层最终保留池。边界按 `(solverId, boundaryId)` 配对，分别报告全局 Beam 落选与后续仲裁落选、同状态别名前缀及政策标签，并逐求解器忽略可能被采集上限截断的最后一个边界。前缀缺席不自动等于状态/最优解丢失；输入仍须是已采集的离线观察和见证前缀，不能直接把玩家 ZIP 当成该工具的输入。
 
@@ -85,4 +85,4 @@ variant 可指定自己的 `harness`。旧 DLL 需要兼容的旧宿主；引用
 模型选择器不使用旧成员布局训练的模型裁决新布局。这个开关不是训练模型、可达界或质量保证。
 新接线须与冻结的两个开关组合核对根、路线、质量和工作量；独立种子的实验参数不随结果调整。
 
-最终默认接线已通过冻结组合等价、Low/High代表、4根ABBA和原生完整部署。独立test34可比根2早结束/31同/1多损2 HP，总转移−6.52%；不称为普遍战损改善。完整成本尾项与原生命令见 `docs/strategy/contextual-portfolio-reallocation-20260922-evidence.json`。
+最终默认接线已通过冻结组合等价、Low/High代表、4根ABBA和原生完整部署。独立test34可比根2早结束/31同/1多损2 HP，总转移−6.52%；不称为普遍战损改善。完整成本尾项与原生命令见 `docs/archive/strategy/contextual-portfolio-reallocation-20260922-evidence.json`。

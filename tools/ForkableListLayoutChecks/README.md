@@ -27,4 +27,4 @@ python3 tools/ForkableListLayoutChecks/make_candidate.py .local/list-layout-cand
 DOTNET_TieredCompilation=0 dotnet run --project tools/ForkableListLayoutChecks -c Release -p:CollectionsSource="$PWD/.local/list-layout-candidate/ForkableCollections.cs"
 ```
 
-报告与完整搜索口径见 [精简分支报告](../../docs/performance/surgical-fixes-20260912.md)。
+报告与完整搜索口径见 [精简分支报告](../../docs/archive/performance/surgical-fixes-20260912.md)。

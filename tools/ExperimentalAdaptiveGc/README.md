@@ -8,7 +8,7 @@
 
 两个固定公开 fixture 各一次真实 headless 搜索：大牌组每 solver2500节点，共55完整窗口，没有触发降核；药水每 solver576节点，共35窗口，最后层触发4→2，观测吞吐比0.638、GC duty约0.258→0.146，控制器拒绝该探测并恢复4。所有动作、评分、工作量、非时序剪枝与同代码未启用对照一致。整请求耗时分别相对同代码对照+6.01%（对照3轮中位数）和+1.72%（对照1轮）。这些单轮不足以证明稳定性能变化，也没有支持默认启用的收益。
 
-[机器证据](../../docs/performance/gc-issue36-results.json) 保存逐轮数值、runId与窗口计数；[重现说明](../../docs/performance/gc-issue36-reproduce.md) 给出输入。没有 Windows/可见 Steam 性能证据。
+[机器证据](../../docs/archive/performance/gc-issue36-results.json) 保存逐轮数值、runId与窗口计数；[重现说明](../../docs/archive/performance/gc-issue36-reproduce.md) 给出输入。没有 Windows/可见 Steam 性能证据。
 
 独立、无其他修改的实验 worktree 中从仓库根启用：
 

@@ -1,6 +1,6 @@
 # 能力牌逐卡建模目录
 
-[返回总计划](../power-card-valuation-plan-20260917.md)
+[返回总计划](../../archive/strategy/power-card-valuation-plan-20260917.md)
 
 本目录记录原版能力牌的官方资料和逐卡模型。卡名必须先从当前游戏 `zhs` / `eng` 本地化核对。通常由用户逐卡说明理解后建模；用户明确授权按实现者理解先做时，模型标为 `QuantifiedDraft`，与已经复核的模型区分。
 
@@ -37,19 +37,19 @@
 - 公共承诺结构已重构为卡池无关的 `PowerCommitmentDescriptor`；公共搜索层不依赖静默猎手枚举。
 - 无已登记能力牌的根走请求级快速旁路，跳过子节点承诺检查、Beam 能力席位扫描、泛能力组合成员与开局能力前缀构造和试放。
 - `ROYALTIES`、`FORBIDDEN_GRIMOIRE` 属纯战后收益，登记资料与估值但不创建战斗内承诺。
-- 新卡池触发证据读取冻结后的真实状态；复杂机制（球、星星、召唤、灾厄、随机生成）的远期值使用有界保守代理，标为 Draft，等待玩家逐卡复核。逐卡判断见[待玩家复核表](player-review-20260917.md)，实施记录见[全卡池实施记录](all-pools-implementation-20260917.md)。
+- 新卡池触发证据读取冻结后的真实状态；复杂机制（球、星星、召唤、灾厄、随机生成）的远期值使用有界保守代理，标为 Draft，等待玩家逐卡复核。逐卡判断见[待玩家复核表](player-review-20260917.md)，实施记录见[全卡池实施记录](../../archive/strategy/power-card-valuation/all-pools-implementation-20260917.md)。
 
 ## 卡池索引
 
 - [铁甲战士](ironclad.md)
 - [静默猎手](silent.md)
-- [静默猎手首版量化规格](silent-quantification-20260917.md)
-- [静默猎手第二版量化与路线保护方案](silent-v2-valuation-and-retention-plan-20260917.md)
+- [静默猎手首版量化规格](../../archive/strategy/power-card-valuation/silent-quantification-20260917.md)
+- [静默猎手第二版量化与路线保护方案](../../archive/strategy/power-card-valuation/silent-v2-valuation-and-retention-plan-20260917.md)
 - [故障机器人](defect.md)
 - [储君](regent.md)
 - [亡灵契约师](necrobinder.md)
 - [无色](colorless.md)
 - [待玩家复核表（2026-09-17）](player-review-20260917.md)
-- [全卡池实施记录](all-pools-implementation-20260917.md)
+- [全卡池实施记录](../../archive/strategy/power-card-valuation/all-pools-implementation-20260917.md)
 
 进入逐卡建模后，每张单人卡的条目继续补充：用户理解或明确授权的实现者假设、奖励公式、惩罚公式、时机、上下文需求、正例、反例、实现位置和验证证据。卡池清单是官方资料基线；状态为 `QuantifiedDraft` 表示已有实现者草案模型并登记、但尚未经玩家复核，只有 `Modeled` 才代表用户理解已经记录并完成当前阶段验证。
