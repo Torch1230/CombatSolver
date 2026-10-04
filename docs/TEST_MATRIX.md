@@ -4,6 +4,8 @@
 
 历史记录见 [归档索引](archive/testing/README.md)，0.48.1 的验证、失败与未验证项见 [历史卷 12](archive/testing/volume-12.md)。
 
+0.49.0 的行为验证沿用本页 PR #203、#204 合并验收与 [战斗状态修复验证](archive/testing/volume-13.md)。版本及发布文档调整采用 L0 检查和发布构建；原有未验证项保留。
+
 ## Q003 检查点政策与比较（2026-10-03）
 
 `CheckpointTool self-test` 的失败基线为 `different_switch_not_comparable:predictPotionReward`，最终 `archive_contract_tests_passed assertions=59`，含缺失/不同派生上下文、未来字段及预设标签比较。`REPLAY-BOUNDARY-CONTRACT` / `b4c0cbeb24964595b3aed0cbb74b4417` Passed：true/false 均覆盖与本机相反的四开关、精确预算、输入不变与缺项拒绝，并保留既有回放边界合同。
@@ -14,7 +16,7 @@ O008 / `f92387e90f7745cfb5ec74f55f46dcea` 验证有效 `:3` 检查点的 16 项�
 
 合并上游后，`a2d685a` 的 Release 零警告/错误，59 项工具断言及 `REPLAY-BOUNDARY-CONTRACT` / `bf7ccd4e164b4a428d57cf41bc13eb59` Passed，实例已清理；结构、文档、工具与覆盖材料门禁通过。旧整场/性能样本仍按原提交归属，未冒充合并后重跑。
 
-0.49.0 的行为验证沿用本页 PR #203、#204 合并验收与 [战斗状态修复验证](archive/testing/volume-13.md)。版本及发布文档调整采用 L0 检查和发布构建；原有未验证项保留。
+PR #206 冲突修复合入上游 `4533f6b` / 0.49.1：`946591ec` 的 Release 零警告/错误，59 项工具断言通过，`REPLAY-BOUNDARY-CONTRACT` / `a141c6b4b37446c49bf127f4224980fe` Passed（约20.1秒），实例清理完成。上述旧整场与性能样本仍保留原提交来源；十阶段计划第 3–5 阶段补充证据见 [Q003 记录](issues/q003-checkpoint-policy-20261003.md)，整批质量验收未完成。
 
 ## 0.49.1 内存提交回归（2026-10-04）
 
