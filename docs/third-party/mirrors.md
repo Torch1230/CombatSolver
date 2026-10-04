@@ -42,6 +42,10 @@ XxxMirrors.Registry.Register<TYourType>(handler);
 
 同一张表里 `Register` 用的是 `Dictionary.Add`，**重复登记会抛异常**，不会静默覆盖。
 
+历史敏感的原版变量使用`RootCombatHistorySnapshot`的主线程冻结数据加模拟器事件；电流相生的效果和计算变量共用同一闪电计数。卡牌监听按照各分支Hand/Draw/Discard/Exhaust/Play的有序牌堆派发，移动牌时刷新后段。持有旧COW预览的Hook仍关联同一战斗卡身份，真实生成的复制牌拥有独立身份；登记钩子应按具体实例和原生时点结算。
+
 Hook 分发会省略当前原版类型继承的默认空回调，但保留第三方/动态类型的完整回调顺序和既有登记流程。原生与领域监听表仍保留全部成员；关键字查询仅在所有接收者均未参与 `TryModifyKeywordsInCombat` 时省去原生空调用。每次根捕获重新检查相关 `AbstractModel` 基方法和 `Hook.ModifyKeywordsInCombat` 的 Harmony 补丁，有补丁或不透明 BaseLib CardModifier 时旁路。类型布局在同一根的有界表中复用，完整类型顺序逐项相等才命中，只存元数据、不保留任何分支 Model。原生监听表可在内部按前段与卡牌/球后段拼接，但顺序不变；不透明 CardModifier 仍完整重建，附着监听追加器拿到完整列表，不能把新增 Power 的插入位置限定在原生前段。该优化没有增加原本不支持的补丁或 subscriber 适配。
 
 `PowerModel.GetTypeForAmount` 的局部 IL 优化只移除两处同类型枚举比较的装箱。虚拟 `StackType`、`Type`、`AllowNegative` getter 的次数与顺序及 decimal 分支保持原样；方法体不符合精确指令形状或比较内部存在控制流入口时保留原 IL。这没有增加 Power 登记点，也不缓存第三方 getter 的结果。
+
+金币新增的三个标准 descriptor 见手册 §6 的 `GoldGainedMirrors` 封闭入口。它们记录原版支持状态，尚未提供外部 Register；不属于上表 46 张开放登记表。未知 override 不能因为 manifest 非 gameplay 而省略，null-child 跑局监听序列与战斗 child 修改序列必须区分。

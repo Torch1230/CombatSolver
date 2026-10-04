@@ -1385,15 +1385,18 @@ internal sealed partial class UnattendedTestRunner
             await transitionManualGc.WaitAsync(cancellationToken);
             if (SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting != 0
                 || GCSettings.LatencyMode != initialLatencyMode
-                || disabledSignal.AllocationLimitBytes != long.MaxValue
+                || disabledSignal.AllocationLimitBytes <= 0
+                || disabledSignal.AllocationLimitBytes > budgetBytes
+                || disabledSignal.SystemMemoryLimitBytes <= 0
                 || disabledSignal.ConservativeParallelismRequired
                 || disabledCheckpointInvoked)
             {
                 throw new InvalidOperationException(
-                    $"关闭 NoGC 后没有恢复 CLR 常规 GC：" +
+                    $"关闭 NoGC 后没有恢复带系统上限的 CLR 常规 GC：" +
                     $"budget={SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting} " +
                     $"latency={GCSettings.LatencyMode} " +
-                    $"limit={disabledSignal.AllocationLimitBytes}。");
+                    $"limit={disabledSignal.AllocationLimitBytes} " +
+                    $"system_limit={disabledSignal.SystemMemoryLimitBytes}。");
             }
 
             SearchMemoryPressureSignal fallbackSignal = new();
@@ -1420,11 +1423,19 @@ internal sealed partial class UnattendedTestRunner
             try
             {
                 disabledSignal.ReclaimAndContinue(cancellationToken);
-                throw new InvalidOperationException("关闭 NoGC 后仍保留了搜索内存检查点回调。");
             }
             catch (InvalidOperationException ex) when (
                 ex.Message == "搜索内存回收信号尚未配置。")
             {
+                throw new InvalidOperationException("关闭 NoGC 后丢失了搜索内存检查点回调。");
+            }
+            if (!disabledSignal.IsEnabled
+                || disabledSignal.AllocationLimitBytes <= 0
+                || SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting != 0
+                || GCSettings.LatencyMode == GCLatencyMode.NoGCRegion)
+            {
+                throw new InvalidOperationException(
+                    "默认 GC 回收检查点没有保持系统内存上限或错误重建了 NoGC。");
             }
 
             manualGc = SearchGcPolicy.ForceManualGc();

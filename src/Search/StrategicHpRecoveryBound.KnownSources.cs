@@ -57,10 +57,13 @@ internal static partial class StrategicHpRecoveryBound
         var state = simulator.State.GetPlayerCombatState(player);
         // Not Yet can be copied or recovered; native Feed belongs to growth policy.
         // Recurring relic heals and death saves retain the complete HP allowance.
+        // Max-HP gains also heal: permanent-deck curse additions and combat-end
+        // callbacks must stay conservative until their complete source chains are closed.
         if (state.AllCards.Any(card => card.Preview is NotYet or Feed)
             || combat.PendingReturningCards.Any(card => card.Preview is NotYet or Feed)
             || combat.RelicsOf(player).Any(relic => !relic.IsMelted
-                && relic is DemonTongue or BookOfFiveRings or BookRepairKnife or LizardTail))
+                && relic is DemonTongue or BookOfFiveRings or BookRepairKnife or LizardTail
+                    or DragonFruit or DarkstonePeriapt or ChosenCheese))
             return int.MaxValue;
 
         long regen = combat.EffectivePowers().OfType<RegenPower>()

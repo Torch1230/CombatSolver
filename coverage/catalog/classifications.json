@@ -30,136 +30,202 @@
     "testId": "TEST-SUBJECT-ORIGINAL-REPORT"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.EmotionChip|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 EmotionChip source audit",
-    "notes": "Only changes RelicStatus and flashes; the next-turn orb trigger reads combat DamageReceivedEntry history directly.", "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 EmotionChip source audit",
+    "notes": "Only changes RelicStatus and flashes; the next-turn orb trigger reads combat DamageReceivedEntry history directly.",
+    "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.ChemicalX|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeCardPlayed(MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 ChemicalX source audit",
-    "notes": "Only flashes for an X-cost card; the combat-relevant X-value increase is implemented by ModifyXValue.", "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 ChemicalX source audit",
+    "notes": "Only flashes for an X-cost card; the combat-relevant X-value increase is implemented by ModifyXValue.",
+    "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.PaelsEye|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeCardPlayed(MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 PaelsEye source audit",
-    "notes": "Only changes the relic status indicator; card history independently controls the extra-turn condition.", "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 PaelsEye source audit",
+    "notes": "Only changes the relic status indicator; card history independently controls the extra-turn condition.",
+    "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.RippleBasin|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 RippleBasin source audit",
-    "notes": "Only changes the relic status indicator; the turn-end block condition reads combat card history.", "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 RippleBasin source audit",
+    "notes": "Only changes the relic status indicator; the turn-end block condition reads combat card history.",
+    "testId": "STATIC-RELIC-CARD-PRESENTATION-HOOK-AUDIT-328"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.BeatingRemnant|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingHpLostAfterOsty()": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 BeatingRemnant source audit",
-    "notes": "Only flashes after the separate per-turn HP-loss cap is applied.", "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 BeatingRemnant source audit",
+    "notes": "Only flashes after the separate per-turn HP-loss cap is applied.",
+    "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.LavaLamp|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 LavaLamp source audit",
-    "notes": "Records whether post-combat card rewards should be upgraded; it does not alter the current combat.", "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 LavaLamp source audit",
+    "notes": "Records whether post-combat card rewards should be upgraded; it does not alter the current combat.",
+    "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.MeatOnTheBone|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCurrentHpChanged(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 MeatOnTheBone source audit",
-    "notes": "Only updates the relic's post-combat healing indicator; healing runs after combat victory.", "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 MeatOnTheBone source audit",
+    "notes": "Only updates the relic's post-combat healing indicator; healing runs after combat victory.",
+    "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.TheBoot|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingHpLostAfterOsty()": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 TheBoot source audit",
-    "notes": "Only flashes after the separate minimum-damage modifier is applied.", "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 TheBoot source audit",
+    "notes": "Only flashes after the separate minimum-damage modifier is applied.",
+    "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.TungstenRod|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingHpLostAfterOsty()": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 TungstenRod source audit",
-    "notes": "Only flashes after the separate HP-loss reduction modifier is applied.", "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 TungstenRod source audit",
+    "notes": "Only flashes after the separate HP-loss reduction modifier is applied.",
+    "testId": "STATIC-RELIC-OUTSIDE-COMBAT-AND-PRESENTATION-AUDIT-327"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.HeistPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeDeath(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 HeistPower source audit",
-    "notes": "Returns stolen gold as a post-combat reward and updates map history only.", "testId": "STATIC-POWER-OUTSIDE-COMBAT-HOOK-AUDIT-326"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 HeistPower source audit",
+    "notes": "Returns stolen gold as a post-combat reward and updates map history only.",
+    "testId": "STATIC-POWER-OUTSIDE-COMBAT-HOOK-AUDIT-326"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.SwipePower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeDeath(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 SwipePower source audit",
-    "notes": "Returns a stolen deck card as a post-combat reward and updates map history only.", "testId": "STATIC-POWER-OUTSIDE-COMBAT-HOOK-AUDIT-326"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 SwipePower source audit",
+    "notes": "Returns a stolen deck card as a post-combat reward and updates map history only.",
+    "testId": "STATIC-POWER-OUTSIDE-COMBAT-HOOK-AUDIT-326"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.SandpitPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 SandpitPower source audit",
-    "notes": "Only updates combat-node positions and tweens; TestMode skips it entirely.", "testId": "STATIC-POWER-OUTSIDE-COMBAT-HOOK-AUDIT-326"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 SandpitPower source audit",
+    "notes": "Only updates combat-node positions and tweens; TestMode skips it entirely.",
+    "testId": "STATIC-POWER-OUTSIDE-COMBAT-HOOK-AUDIT-326"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.FastenPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingBlockAmount(System.Decimal,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 FastenPower source audit",
-    "notes": "The callback only flashes after the separate block modifier runs.", "testId": "STATIC-POWER-PRESENTATION-HOOK-AUDIT-323"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 FastenPower source audit",
+    "notes": "The callback only flashes after the separate block modifier runs.",
+    "testId": "STATIC-POWER-PRESENTATION-HOOK-AUDIT-323"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.IntangiblePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingHpLostAfterOsty()": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 IntangiblePower source audit",
-    "notes": "The callback only flashes after the separate HP-loss cap runs.", "testId": "STATIC-POWER-PRESENTATION-HOOK-AUDIT-323"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 IntangiblePower source audit",
+    "notes": "The callback only flashes after the separate HP-loss cap runs.",
+    "testId": "STATIC-POWER-PRESENTATION-HOOK-AUDIT-323"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.HellraiserPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeAttack(MegaCrit.Sts2.Core.Commands.Builders.AttackCommand)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 HellraiserPower source audit",
-    "notes": "Only replaces attack animation and hit VFX for Hellraiser auto-plays.", "testId": "STATIC-POWER-PRESENTATION-HOOK-AUDIT-323"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 HellraiserPower source audit",
+    "notes": "Only replaces attack animation and hit VFX for Hellraiser auto-plays.",
+    "testId": "STATIC-POWER-PRESENTATION-HOOK-AUDIT-323"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.BeaconOfHopePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterBlockGained(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 BeaconOfHope source audit",
-    "notes": "BeaconOfHopePower is produced only by the MultiplayerOnly BeaconOfHope card.", "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 BeaconOfHope source audit",
+    "notes": "BeaconOfHopePower is produced only by the MultiplayerOnly BeaconOfHope card.",
+    "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.CacophonyPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardDrawn(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 Cacophony source audit",
-    "notes": "CacophonyPower is produced only by the MultiplayerOnly Cacophony card.", "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Cacophony source audit",
+    "notes": "CacophonyPower is produced only by the MultiplayerOnly Cacophony card.",
+    "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.ImitationLearningPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeCardPlayed(MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 ImitationLearning source audit",
-    "notes": "ImitationLearningPower is produced only by the MultiplayerOnly ImitationLearning card.", "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 ImitationLearning source audit",
+    "notes": "ImitationLearningPower is produced only by the MultiplayerOnly ImitationLearning card.",
+    "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.ImitationLearningPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 ImitationLearning source audit",
-    "notes": "ImitationLearningPower is produced only by the MultiplayerOnly ImitationLearning card.", "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 ImitationLearning source audit",
+    "notes": "ImitationLearningPower is produced only by the MultiplayerOnly ImitationLearning card.",
+    "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.TagTeamPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyCardPlayCount(MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 TagTeam source audit",
-    "notes": "TagTeamPower is produced only by the MultiplayerOnly TagTeam card.", "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 TagTeam source audit",
+    "notes": "TagTeamPower is produced only by the MultiplayerOnly TagTeam card.",
+    "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.TagTeamPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingCardPlayCount(MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 TagTeam source audit",
-    "notes": "TagTeamPower is produced only by the MultiplayerOnly TagTeam card.", "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 TagTeam source audit",
+    "notes": "TagTeamPower is produced only by the MultiplayerOnly TagTeam card.",
+    "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.Aeonglass|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 Aeonglass source audit",
-    "notes": "Only updates the queen_progress music parameter.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Aeonglass source audit",
+    "notes": "Only updates the queen_progress music parameter.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.Crusher|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCurrentHpChanged(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 Crusher source audit",
-    "notes": "Only plays the left-arm background hurt animation.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Crusher source audit",
+    "notes": "Only plays the left-arm background hurt animation.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.Crusher|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeDeath(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 Crusher source audit",
-    "notes": "Only plays audio, background death animation, and music parameters.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Crusher source audit",
+    "notes": "Only plays audio, background death animation, and music parameters.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.KinPriest|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 KinPriest source audit",
-    "notes": "Only updates music and plays the all-followers-dead dialogue line.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 KinPriest source audit",
+    "notes": "Only updates music and plays the all-followers-dead dialogue line.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.LagavulinMatriarch|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 LagavulinMatriarch source audit",
-    "notes": "Stops sleeping VFX and controls eye animation; combat wake logic is governed by AsleepPower.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 LagavulinMatriarch source audit",
+    "notes": "Stops sleeping VFX and controls eye animation; combat wake logic is governed by AsleepPower.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.LagavulinMatriarch|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 LagavulinMatriarch source audit",
-    "notes": "Only stops sleeping VFX and changes the eye animation.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 LagavulinMatriarch source audit",
+    "notes": "Only stops sleeping VFX and changes the eye animation.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.Rocket|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCurrentHpChanged(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 Rocket source audit",
-    "notes": "Only plays the right-arm background hurt animation.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Rocket source audit",
+    "notes": "Only plays the right-arm background hurt animation.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.Rocket|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeDeath(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 Rocket source audit",
-    "notes": "Only plays audio, background death animation, and music parameters.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Rocket source audit",
+    "notes": "Only plays audio, background death animation, and music parameters.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.SoulFysh|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 SoulFysh source audit",
-    "notes": "Only updates the soulfysh_progress music parameter.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 SoulFysh source audit",
+    "notes": "Only updates the soulfysh_progress music parameter.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 TheInsatiable source audit",
-    "notes": "Only updates its music track parameter.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 TheInsatiable source audit",
+    "notes": "Only updates its music track parameter.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.Vantom|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 Vantom source audit",
-    "notes": "Only updates the vantom_progress music parameter.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Vantom source audit",
+    "notes": "Only updates the vantom_progress music parameter.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.WaterfallGiant|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant", "source": "Game 0.111.0 WaterfallGiant source audit",
-    "notes": "Only updates music and stops the ambient sound loop.", "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 WaterfallGiant source audit",
+    "notes": "Only updates music and stops the ambient sound loop.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Card|MegaCrit.Sts2.Core.Models.Cards.ParticleWall|MegaCrit.Sts2.Core.Models.CardModel.GetResultLocationForCardPlay()": {
     "status": "EngineExact",
@@ -2735,7 +2801,7 @@
     "notes": "Applies 3 Constrict to the player. Visible-game differential also verifies its turn-end and source-death lifecycle.",
     "testId": "MONSTER-MOVES-BATCH-027"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.ConstrictPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)": {
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ConstrictPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/CorePowerSupport.cs + src/Search/CombatBeamSolver.cs",
     "notes": "Deals the current Constrict amount as unpowered damage when the owning player ends their turn. Verified against the real power callback.",
@@ -2765,7 +2831,7 @@
     "notes": "Afflicts newly generated combat cards while Hex remains active, preserving the current Hex amount. Verified with a generated Body Slam in the visible game.",
     "testId": "MONSTER-MOVES-BATCH-028"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.HexPower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyKeywordsInCombat(MegaCrit.Sts2.Core.Models.CardModel,System.Collections.Generic.ISet\u003CMegaCrit.Sts2.Core.Entities.Cards.CardKeyword\u003E)": {
+  "Power|MegaCrit.Sts2.Core.Models.Powers.HexPower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyKeywordsInCombat(MegaCrit.Sts2.Core.Models.CardModel,System.Collections.Generic.ISet<MegaCrit.Sts2.Core.Entities.Cards.CardKeyword>)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.cs",
     "notes": "The simulated Hex power remains in the combat hook listener set, so Hexed cards gain Ethereal through the native hook. Verified in card-state snapshots and a full turn-end exhaust differential.",
@@ -2801,7 +2867,7 @@
     "notes": "Removes Shrink when its original applier dies. Verified against the real death callback.",
     "testId": "MONSTER-MOVES-BATCH-029"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.ShrinkPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)": {
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ShrinkPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.cs + src/Prediction/CorePowerSupport.cs",
     "notes": "Preserves negative infinite Shrink across side-turn endings instead of decrementing it. Verified against the real callback.",
@@ -2825,7 +2891,7 @@
     "notes": "Only restores the creature node's visual scale.",
     "testId": "MONSTER-MOVES-BATCH-029"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.ArtifactPower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyPowerAmountReceived(MegaCrit.Sts2.Core.Models.PowerModel,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal\u0026)": {
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ArtifactPower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyPowerAmountReceived(MegaCrit.Sts2.Core.Models.PowerModel,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal&)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.cs",
     "notes": "Blocks any incoming power whose type for the applied amount is Debuff, including negative infinite amounts such as Shrink -1.",
@@ -2855,13 +2921,13 @@
     "notes": "Afflicts newly entered player Attack cards while Tangled is active. Verified with a generated Body Slam.",
     "testId": "MONSTER-MOVES-BATCH-029"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.TangledPower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyEnergyCostInCombat(MegaCrit.Sts2.Core.Models.CardModel,System.Decimal,System.Decimal\u0026)": {
+  "Power|MegaCrit.Sts2.Core.Models.Powers.TangledPower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyEnergyCostInCombat(MegaCrit.Sts2.Core.Models.CardModel,System.Decimal,System.Decimal&)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.cs + RandomForeseer 0.13.7 fallback dispatch",
     "notes": "The simulated Tangled listener invokes the original cost hook for Entangled cards. A base-cost-3 Bludgeon was unplayable at 3 energy in prediction and the visible game.",
     "testId": "MONSTER-MOVES-BATCH-029"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.TangledPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)": {
+  "Power|MegaCrit.Sts2.Core.Models.Powers.TangledPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
     "notes": "Removes Tangled at the owning player's side-turn end and clears Entangled from all combat cards.",
@@ -2891,7 +2957,7 @@
     "notes": "Mirrors the original CardPlaysStarted gate for manual and automatic plays. The branch-local started count is captured from the root, incremented before OnPlay, forked, fingerprinted, and reset at side-turn start.",
     "testId": "RINGING-HAVOC-AUTOPLAY-0160"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.RingingPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)": {
+  "Power|MegaCrit.Sts2.Core.Models.Powers.RingingPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
     "notes": "Removes Ringing at the owning player's side-turn end and clears all Ringing afflictions.",
@@ -2915,7 +2981,7 @@
     "notes": "Caps actual simulated HP loss at 1 while Intangible is active. Verified with two visible-game attacks.",
     "testId": "MONSTER-MOVES-BATCH-029"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.IntangiblePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)": {
+  "Power|MegaCrit.Sts2.Core.Models.Powers.IntangiblePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
     "notes": "Decrements Intangible once at each enemy side-turn end. A two-stack lifecycle was verified to reach one and then zero.",
@@ -6031,33 +6097,33 @@
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.BowlerHat|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingGoldGained(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)": {
     "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 BowlerHat source audit",
-    "notes": "Only flashes after run-level gold gain, which is outside an already-started combat search.",
-    "testId": "STATIC-RELIC-SCOPE-BATCH-052"
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Resources/GoldGainedMirrors.cs",
+    "notes": "Native in-combat gold command; modifier notification only flashes, actual modify/gain affect gold/max HP/healing. Reviewed on game 0.111.0; no out-of-combat-only assumption.",
+    "testId": "GOLD-HEALING-MECHANISMS"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.BowlerHat|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyGoldGained(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 BowlerHat source audit",
-    "notes": "Modifies run-level gold gain and cannot affect a route inside an already-started combat.",
-    "testId": "STATIC-RELIC-SCOPE-BATCH-052"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Resources/GoldGainedMirrors.cs",
+    "notes": "Native in-combat gold command; modifier notification only flashes, actual modify/gain affect gold/max HP/healing. Reviewed on game 0.111.0; no out-of-combat-only assumption.",
+    "testId": "GOLD-HEALING-MECHANISMS"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.DragonFruit|MegaCrit.Sts2.Core.Models.AbstractModel.AfterGoldGained(MegaCrit.Sts2.Core.Entities.Players.Player)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 DragonFruit source audit",
-    "notes": "Responds to run-level gold gain after combat, not to combat actions.",
-    "testId": "STATIC-RELIC-SCOPE-BATCH-052"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Resources/GoldGainedMirrors.cs",
+    "notes": "Native in-combat gold command; modifier notification only flashes, actual modify/gain affect gold/max HP/healing. Reviewed on game 0.111.0; no out-of-combat-only assumption.",
+    "testId": "GOLD-HEALING-MECHANISMS"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.Ectoplasm|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingGoldGained(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)": {
     "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 Ectoplasm source audit",
-    "notes": "Only flashes after run-level gold gain modification outside combat.",
-    "testId": "STATIC-RELIC-SCOPE-BATCH-052"
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Resources/GoldGainedMirrors.cs",
+    "notes": "Native in-combat gold command; modifier notification only flashes, actual modify/gain affect gold/max HP/healing. Reviewed on game 0.111.0; no out-of-combat-only assumption.",
+    "testId": "GOLD-HEALING-MECHANISMS"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.Ectoplasm|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyGoldGained(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 Ectoplasm source audit",
-    "notes": "Prevents run-level gold gain and cannot affect an in-combat route.",
-    "testId": "STATIC-RELIC-SCOPE-BATCH-052"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Resources/GoldGainedMirrors.cs",
+    "notes": "Native in-combat gold command; modifier notification only flashes, actual modify/gain affect gold/max HP/healing. Reviewed on game 0.111.0; no out-of-combat-only assumption.",
+    "testId": "GOLD-HEALING-MECHANISMS"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.Fiddle|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPreventingDraw()": {
     "status": "NotCombatRelevant",

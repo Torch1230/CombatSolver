@@ -2,6 +2,65 @@ namespace CombatSolver;
 
 internal static class GcRecoveryChecks
 {
+    public static void RunDefaultScopeIndivisibleExit()
+    {
+        UnattendedTestRunner.IsActive = true;
+        using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(15));
+        SearchMemoryPressureSignal signal = new();
+        ISearchGcScope? scope = null;
+        try
+        {
+            SearchGcPolicy.ReclaimIfPendingAsync("default_commit_setup", true).GetAwaiter().GetResult();
+            scope = SearchGcPolicy.EnterSearchScope(false, 1_000_000_000, signal, deadline.Token);
+            PolicyCheck.Require(signal.IsEnabled, "Ordinary searches establish their allocation bound.");
+
+            int collectionsBefore = GC.CollectionCount(GC.MaxGeneration);
+            signal.ReclaimAndContinue(deadline.Token, "default_commit_regular_checkpoint");
+            PolicyCheck.Require(signal.IsEnabled && signal.ReclaimCount == 1
+                && GC.CollectionCount(GC.MaxGeneration) > collectionsBefore,
+                "A regular drained checkpoint refreshes the bounded search after actual collection.");
+
+            long reserve = checked(signal.AllocationLimitBytes + 1);
+            PolicyCheck.Require(!signal.CanReachCommit(reserve), "The indivisible reservation exceeds a fresh allocation window.");
+            signal.UseDefaultGcAndContinue(deadline.Token);
+            PolicyCheck.Require(!signal.IsEnabled && signal.CanReachCommit(reserve)
+                && signal.RemainingBytes == long.MaxValue && signal.ReclaimCount == 2
+                && System.Runtime.GCSettings.LatencyMode != System.Runtime.GCLatencyMode.NoGCRegion,
+                "The explicit indivisible exit transfers allocation ownership to the CLR before search resumes.");
+            SearchGcLifecycleSnapshot before = SearchGcPolicy.CaptureLifecycle();
+            signal.TryRecoverNoGc(reserve, deadline.Token);
+            PolicyCheck.Require(SearchGcPolicy.CaptureLifecycle().DeltaFrom(before).NoGcStartAttempts == 0,
+                "This ordinary-GC scope remains CLR-owned at later commit boundaries.");
+
+            scope.Dispose();
+            scope = null;
+            using ISearchGcScope next = SearchGcPolicy.EnterSearchScope(false, 1_000_000_000, signal, deadline.Token);
+            PolicyCheck.Require(signal.IsEnabled && signal.AllocationLimitBytes <= 1_000_000_000,
+                "The next search establishes its own bound after the previous scope closes.");
+        }
+        finally
+        {
+            scope?.Dispose();
+            SearchGcPolicy.ReclaimIfPendingAsync("default_commit_cleanup", true).GetAwaiter().GetResult();
+            UnattendedTestRunner.IsActive = false;
+        }
+    }
+
+    public static void RunCanceledDefaultScopeExit()
+    {
+        UnattendedTestRunner.IsActive = true;
+        try
+        {
+            SearchMemoryPressureSignal signal = new();
+            using ISearchGcScope scope = SearchGcPolicy.EnterSearchScope(false, 1_000_000_000, signal, CancellationToken.None);
+            long limit = signal.AllocationLimitBytes;
+            PolicyCheck.Throws<OperationCanceledException>(() => signal.UseDefaultGcAndContinue(new CancellationToken(canceled: true)));
+            PolicyCheck.Require(signal.IsEnabled && signal.AllocationLimitBytes == limit && signal.ReclaimCount == 0,
+                "A canceled exit preserves the admitted allocation window until its scope closes.");
+        }
+        finally { UnattendedTestRunner.IsActive = false; }
+    }
+
     public static void RunLifecycle()
     {
         UnattendedTestRunner.IsActive = true;

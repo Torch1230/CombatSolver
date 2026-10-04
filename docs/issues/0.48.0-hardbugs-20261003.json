@@ -1,0 +1,1363 @@
+{
+  "schemaVersion": 1,
+  "reportedVersion": "0.48.0",
+  "baselineSource": "13f37989",
+  "baselineVersion": "0.48.1",
+  "fixedSelectionCount": 83,
+  "downloadedCount": 73,
+  "validationScope": "按共享首因的最小原生完整状态/Fork/跨回合合同；整场原包未重放。",
+  "counts": {
+    "Resolved": 48,
+    "PlayerInput": 11,
+    "QualityOnly": 10,
+    "ThirdPartyContent": 10,
+    "ExpectedBoundary": 1,
+    "Unresolved": 2,
+    "NoHardSignal": 1
+  },
+  "entries": [
+    {
+      "id": "db1a17d110d143a5b7fcf7b11ab84713",
+      "character": "IRONCLAD",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "生成虚无牌的金纸计数",
+      "validationScenarios": [
+        "AXEBOT-JOSS-LATE-ETHEREAL"
+      ],
+      "evidenceNote": "0.48.1 已修；首差金纸3/4与回合末生成牌计数同机制，沿用已保存的原生差分证据。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=3 previous_boundary=None diff_count=1 field=mirrorRelics expected={CENTENNIAL_PUZZLE/1,JOSS_PAPER/3,PERMAFROST/1} actual={CENTENNIAL_PUZZLE/1,JOSS_PAPER/4,PERMAFROST/1}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "c4e4a10de8434e33b01c2cf1ab119541",
+      "character": "SILENT",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [
+        "RecalculationHpLossIncreased",
+        "FullAutoStoppedAfterWorseRecalculation"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "回合末临时星能清理",
+      "validationScenarios": [
+        "AXEBOT-FOLLY-STAR-CLEANUP"
+      ],
+      "evidenceNote": "0.48.1 已修；首差仅临时星能层，子弹时间后只含星能费用修改的牌也按原生清理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=15 previous_boundary=None diff_count=1 field=X[2] expected={ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-|cost-state=-1:0[]/stars=-1:1[0:True:True,]/keywords=[Ethereal,Unplayable,Eternal]/baselib=-} actual={ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-} expected_count=3 actual_count=3",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "5d4da455bfdb43bcb25869ff4a6e90f0",
+      "character": "REGENT",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_STALE generation=2",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "36887d83370d445d80961a2b2e50456f",
+      "character": "NECROBINDER",
+      "encounter": "KNIGHTS_ELITE",
+      "reportedIssues": [
+        "SearchFailure",
+        "RelicReplayMismatch"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "卡牌 COW 身份与减幅恢复时序",
+      "validationScenarios": [
+        "DAMPEN-REACTIVE-MELANCHOLY",
+        "DAMPEN-REACTIVE-ROCKET-PUNCH",
+        "CARD-COST-IDENTITY-CONTRACT"
+      ],
+      "evidenceNote": "减幅施法者死亡/生成牌触发成本钩子；旧预览与当前wrapper共享逐实例身份，真实复制牌保持独立；严格成本层差分保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=1 exception=System.InvalidOperationException: 最终路线的遗物标注回放与选中状态不一致：field=D[10] expected={MELANCHOLY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=17,Energy=1,]/private=-|cost-state=3:4[-1:2:0:False,-1:2:0:False,-1:2:0:False,-1:2:0:False,]/stars=-1:0…} actual={MELANCHOLY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=17,Energy=1,]/private=-|cost-state=3:5[-1:2:0:False,-1:2:0:False,-1:2:0:False,-1:2:0:False,-1:2:0:False…} expected_count=11 actual_count=11；hp=28/28 enemy_hp=0/0 boundary=None/None。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "945cf86811964c899df994ca9c06140a",
+      "character": "SILENT",
+      "encounter": "MECHA_KNIGHT_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 2,
+      "classification": "Resolved",
+      "mechanism": "回合末临时星能清理",
+      "validationScenarios": [
+        "AXEBOT-FOLLY-STAR-CLEANUP"
+      ],
+      "evidenceNote": "0.48.1 已修；首差仅临时星能层，子弹时间后只含星能费用修改的牌也按原生清理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=4 reason=state_mismatch cached_turns=6 previous_boundary=None diff_count=4 field=C[13] expected={BURN+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=2,]/private=-|cost-state=-1:0[]/stars=-1:1[0:True:True,]/keywords=[Unplayable]/baselib=-} actual={BURN+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[Damage=2,]/private=-/keywords=[Unplayable]/baselib=-} expected_count=17 actual_count=17",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "ab9d9aebad1c41ddb597ae515ab551ae",
+      "character": "NECROBINDER",
+      "encounter": "CONSTRUCT_MENAGERIE_NORMAL",
+      "reportedIssues": [
+        "FullAutoStoppedAtLiveRiskWorsening"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "苦难攻击前的减益快照",
+      "validationScenarios": [
+        "CONSTRUCT-REAPER-ARTIFACT"
+      ],
+      "evidenceNote": "Misery先克隆减益，再攻击及逐目标传播；ReaperForm本次攻击新增Doom不进入快照。路线、风险复核和原生跨回合均损13HP。",
+      "firstSignal": "[CombatSolver/Test] FULL_AUTO_STOP reason=live_end_turn_risk turn=3 planned_hp_lost=0 live_hp_lost=13 hp_before=19 hp_after=6 player_dead=False moves=PUNCH_CONSTRUCT:STRONG_PUNCH_MOVE,CUBEX_CONSTRUCT:REPEATER_BLAST_MOVE_2",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "2d93ffac537243cb9fd9c1c802c29306",
+      "character": "SILENT",
+      "encounter": "DEVOTED_SCULPTOR_WEAK",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "回合末临时星能清理",
+      "validationScenarios": [
+        "AXEBOT-FOLLY-STAR-CLEANUP"
+      ],
+      "evidenceNote": "0.48.1 已修；首差仅临时星能层，子弹时间后只含星能费用修改的牌也按原生清理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=6 previous_boundary=None diff_count=2 field=X[0] expected={CLUMSY+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-|cost-state=-1:0[]/stars=-1:1[0:True:True,]/keywords=[Ethereal,Unplayable]/baselib=-} actual={CLUMSY+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-} expected_count=2 actual_count=2",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "e1fe4132374f469cb8136ed189d565aa",
+      "character": "REGENT",
+      "encounter": "KNOWLEDGE_DEMON_BOSS",
+      "reportedIssues": [
+        "SearchFailure",
+        "UnexpectedChoice",
+        "ChoiceExecutionFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "虚无形态强制跨回合选牌",
+      "validationScenarios": [
+        "VOID-FORM-TURN-CHOICES"
+      ],
+      "evidenceNote": "卡牌选择cursor在动作结束时消费；Tyranny/Stratagem下一回合选择由AdvanceRound消费一次。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=108 exception=CombatSolver.InvalidPlannedChoiceBranchException: 回合开始仍有 1 个计划选牌没有触发；下一个=STRATAGEM_POWER/MoveToHand/Draw/。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "0e81c03ab5884011ada98e5d65f1ad55",
+      "character": "NECROBINDER",
+      "encounter": "SCROLLS_OF_BITING_WEAK",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "压扁复制牌入场成本",
+      "validationScenarios": [
+        "FLATTEN-MUSIC-BOX-ENTRY"
+      ],
+      "evidenceNote": "原生复制牌入场也依据本回合Osty攻击设置0费；成本层数量与顺序完整核对。",
+      "firstSignal": "[CombatSolver/Test] DEPLOY_REPLAN turn=1 reason=card_missing message=部署时找不到计划中的手牌状态 FLATTEN@0；当前手牌=PULL_FROM_BELOW+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=CalculationBase=0;CalculationExtra=1;Damage=7|-|:0|baselib=-,MELANCHOLY+0|energy=False:3|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=13;Energy=1|-|:0|baselib=-,HANG+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=10|-|:0|baselib=-,SHRUG_IT_OFF+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=8;Cards=1|-|:0|baselib=-,FLATTEN+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Ethereal|vars=OstyDamage=12|-|:0|baselib=-|cost-state=2:2[0:1:2:False,0:1:2:False,]/stars=-1:0[]。",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "a964724f023540c7a6291b4ea297c579",
+      "character": "DEFECT",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [
+        "BetterWorldline",
+        "ManualHpLossIncreased",
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=manual_divergence cached_turns=6 previous_boundary=None diff_count=25 field=E0.hp expected={209} actual={187}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "2e39c1b9bbbe41ea9223a4575f71fa95",
+      "character": "NECROBINDER",
+      "encounter": "SCROLLS_OF_BITING_WEAK",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "ad442f69de5e40838c16e9de636a670d",
+      "character": "SILENT",
+      "encounter": "FABRICATOR_NORMAL",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "7b7ccf3e60fa4ee496294bb18d751db0",
+      "character": "IRONCLAD",
+      "encounter": "ACTSFROMTHEPAST-TWO_THIEVES_WEAK",
+      "reportedIssues": [
+        "SearchFailure",
+        "UnsupportedCombatSemantic"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=11 exception=CombatSolver.SearchTransitionException: 搜索动作回放失败：turn=1 action_count=0 kind=EndTurn end_turn=true target=- parent_state=StateFingerprint { First = 17008502776232578814, Second = 13797044156740567122 }。\r\n ---> CombatSolver.Engine.Common.PredictionUnsupportedException: Unsupported monster state ActsFromThePast.ConditionalBranchState for ACTSFROMTHEPAST-LOOTER.\r",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "4b6eb02baa7e49588c96a933eca08af9",
+      "character": "IRONCLAD",
+      "encounter": "BOWLBUGS_WEAK",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "路线外用药后的终局前缀",
+      "validationScenarios": [
+        "FIXED-PREFIX-TURN-OUTCOMES"
+      ],
+      "evidenceNote": "录制Sequence2使用EXPLOSIVE_AMPOULE，部署路线无该药；Origin=solver表示部署期间输入。目标失效后继续套用旧前缀的计算失败已修；保留路线外用药的直接事件证据。",
+      "firstSignal": "[CombatSolver/Test] DEPLOY_REPLAN turn=1 reason=card_unplayable card=STRIKE_IRONCLAD occurrence=0 target_valid=False can_play=True unplayable_reason=None preventer=- energy=0 stars=0 energy_cost=0 star_cost=-1",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "bc67320af0a742919126d9ff28555c52",
+      "character": "REGENT",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [
+        "TurnSetupFailure",
+        "UnexpectedChoice",
+        "ChoiceExecutionFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "虚无形态强制跨回合选牌",
+      "validationScenarios": [
+        "VOID-FORM-TURN-CHOICES"
+      ],
+      "evidenceNote": "卡牌选择cursor在动作结束时消费；Tyranny/Stratagem下一回合选择由AdvanceRound消费一次。",
+      "firstSignal": "[CombatSolver/Test] TURN_SETUP_FAILURE exception=CombatSolver.InvalidPlannedChoiceBranchException: 回合开始仍有 1 个计划选牌没有触发；下一个=TYRANNY_POWER/Exhaust/Hand/。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "96135b441aa14321bc01d94252590e24",
+      "character": "NECROBINDER",
+      "encounter": "PHROG_PARASITE_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "三选一原生接受结果",
+      "validationScenarios": [
+        "NATIVE-CHOOSE-OPEN-GATE"
+      ],
+      "evidenceNote": "录制选择Production(index2)，驱动记录JOAT(index1)。按真实开页门等待，核对页面候选序列及接受实例；重开门失败基线和最终原生合同已验证。原包开页重置的具体来源未证明。",
+      "firstSignal": "[CombatSolver/Test] DEPLOY_REPLAN turn=3 reason=card_missing message=部署时找不到计划中的手牌状态 JACK_OF_ALL_TRADES@0；当前手牌=DEATHS_DOOR+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=6;Repeat=2|-|:0|baselib=-,ASCENDERS_BANE+0|energy=False:-1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=Ethereal,Unplayable,Eternal|vars=|-|:0|baselib=-,REAVE+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Cards=1;Damage=10|-|:0|baselib=-,STRIKE_NECROBINDER+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=6|-|:0|baselib=-,DEFEND_NECROBINDER+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-,PRODUCTION+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Energy=2|-|:0|baselib=-|cost-state=0:1[0:1:6:False,]/stars=-1:1[0:True:True,]。",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "10ca4d4192904ad49b82fd3ec1014857",
+      "character": "NECROBINDER",
+      "encounter": "TURRET_OPERATOR_WEAK",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 2,
+      "classification": "Resolved",
+      "mechanism": "毒雾与花样百出结算顺序",
+      "validationScenarios": [
+        "NOXIOUS-RAMPART-ORDER"
+      ],
+      "evidenceNote": "每个Poison施加立即完成反应伤害，再运行Rampart的25格挡；原生/模拟首差9HP已复现并修正。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=5 previous_boundary=None diff_count=1 field=E1.hp expected={48} actual={39}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "120cacf49568406788e8539c00c8f0fb",
+      "character": "IRONCLAD",
+      "encounter": "WATERFALL_GIANT_BOSS",
+      "reportedIssues": [
+        "BetterWorldline",
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=manual_divergence cached_turns=10 previous_boundary=None diff_count=3 field=E0.hp expected={214} actual={202}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "18358214ad234e7bb4a22b2a8c294153",
+      "character": "IRONCLAD",
+      "encounter": "WATERFALL_GIANT_BOSS",
+      "reportedIssues": [
+        "BetterWorldline",
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=manual_divergence cached_turns=10 previous_boundary=None diff_count=3 field=E0.hp expected={214} actual={202}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "995a8e006f7746a59ba4e48e5a6f32cf",
+      "character": "NECROBINDER",
+      "encounter": "BOWLBUGS_WEAK",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "失衡阻挡后的怪物意图",
+      "validationScenarios": [
+        "REPORT-ROUND-IMBALANCED"
+      ],
+      "evidenceNote": "原生被完全格挡的失衡攻击立即显示STUNNED；石虫保留既有HEADBUTT恢复行动，其余虫的下一行动由原生状态机保存。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=5 reason=state_mismatch cached_turns=5 previous_boundary=None diff_count=2 field=E1.move expected={BITE_MOVE} actual={STUNNED}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "34a3949fb8754277ba2375a67bf1148c",
+      "character": "DEFECT",
+      "encounter": "KNOWLEDGE_DEMON_BOSS",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "77cbcfb795b74cb1a98a4af611f1de41",
+      "character": "NECROBINDER",
+      "encounter": "MECHA_KNIGHT_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "压扁复制牌入场成本",
+      "validationScenarios": [
+        "FLATTEN-MUSIC-BOX-ENTRY"
+      ],
+      "evidenceNote": "原生复制牌入场也依据本回合Osty攻击设置0费；成本层数量与顺序完整核对。",
+      "firstSignal": "[CombatSolver/Test] DEPLOY_REPLAN turn=1 reason=card_missing message=部署时找不到计划中的手牌状态 FLATTEN@0；当前手牌=DEFEND_NECROBINDER+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-,GRAVE_WARDEN+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=8;Cards=1|-|:0|baselib=-,SOUL+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Cards=2|-|:0|baselib=-,FLATTEN+0|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Ethereal|vars=OstyDamage=12|-|:0|baselib=-|cost-state=2:4[0:1:2:False,0:1:2:False,0:1:2:False,0:1:2:False,]/stars=-1:0[]。",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "a4e57dd2880a47b5bb70a05c845da0cd",
+      "character": "NECROBINDER",
+      "encounter": "KNIGHTS_ELITE",
+      "reportedIssues": [
+        "SearchFailure",
+        "RelicReplayMismatch"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "卡牌 COW 身份与减幅恢复时序",
+      "validationScenarios": [
+        "DAMPEN-REACTIVE-MELANCHOLY",
+        "DAMPEN-REACTIVE-ROCKET-PUNCH",
+        "CARD-COST-IDENTITY-CONTRACT"
+      ],
+      "evidenceNote": "减幅施法者死亡/生成牌触发成本钩子；旧预览与当前wrapper共享逐实例身份，真实复制牌保持独立；严格成本层差分保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=26 exception=System.InvalidOperationException: 最终路线的遗物标注回放与选中状态不一致：field=C[5] expected={MELANCHOLY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=17,Energy=1,]/private=-|cost-state=3:5[-1:2:0:False,-1:2:0:False,-1:2:0:False,-1:2:0:False,-1:2:0:False…} actual={MELANCHOLY+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=17,Energy=1,]/private=-|cost-state=3:6[-1:2:0:False,-1:2:0:False,-1:2:0:False,-1:2:0:False,-1:2:0:False…} expected_count=12 actual_count=12；hp=66/66 enemy_hp=0/0 boundary=None/None。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "6cf04e45af8f419e85f5999275532a2b",
+      "character": "IRONCLAD",
+      "encounter": "AEONGLASS_BOSS",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "同次出牌的额外格挡",
+      "validationScenarios": [
+        "EVIL-EYE-EXHAUST-HISTORY",
+        "BLOCK-SPEC-CARD-PLAY-IDENTITY"
+      ],
+      "evidenceNote": "EvilEye/DeathsDoor/Glitterstream补偿携带当前CardPlay，不动如山按同次出牌判断既有格挡。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=6 reason=state_mismatch cached_turns=9 previous_boundary=None diff_count=1 field=block expected={56} actual={68}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "3918246336e84f6c9d1f2ba29872eaf8",
+      "character": "IRONCLAD",
+      "encounter": "DECIMILLIPEDE_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "群体减益的逐目标反应",
+      "validationScenarios": [
+        "SECOND-WIND-REPORT-ROOT",
+        "GROUP-DEBUFF-REACTIVE-DRAW"
+      ],
+      "evidenceNote": "Thunderclap每个目标易伤后立即完成Vicious抽牌及Hellraiser自动牌；原生与预测42/42，完整状态与Fork一致。",
+      "firstSignal": "[CombatSolver/Test] DEPLOY_REPLAN turn=3 reason=card_missing message=部署时找不到计划中的手牌状态 SECOND_WIND@0；当前手牌=CINDER+1|energy=False:2|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=24|-|:0|baselib=-,SHRUG_IT_OFF+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Block=11;Cards=1|-|:0|baselib=-,CINDER+1|energy=False:2|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Damage=24|-|:0|baselib=-,EXPECT_A_FIGHT+1|energy=False:3|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=CalculationBase=16;CalculationExtra=8|-|:0|baselib=-,STOKE+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=|-|:0|baselib=-,BLOODLETTING+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=|vars=Energy=3;HpLoss=3|-|:0|baselib=-,DEFEND_IRONCLAD+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-。",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "dfee11ca6dbe4c8cb3154e24c57a9823",
+      "character": "DEFECT",
+      "encounter": "AEONGLASS_BOSS",
+      "reportedIssues": [
+        "FullAutoStoppedAtLiveRiskWorsening"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "复活时的受伤量轴",
+      "validationScenarios": [
+        "END-TURN-RISK-LOSS-ACCOUNTING"
+      ],
+      "evidenceNote": "风险复核与正式路线统一累计受伤量，复活后的最终HP另记；HP净变化与受伤量分开。",
+      "firstSignal": "[CombatSolver/Test] FULL_AUTO_STOP reason=live_end_turn_risk turn=11 planned_hp_lost=12 live_hp_lost=16 hp_before=38 hp_after=22 player_dead=False moves=AEONGLASS:EYE_LASERS_MOVE",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "60c409853dfb4702bf7a2cea96090a40",
+      "character": "REGENT",
+      "encounter": "SOUL_FYSH_BOSS",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 0,
+      "classification": "ExpectedBoundary",
+      "mechanism": "可执行部分路线耗尽",
+      "validationScenarios": [],
+      "evidenceNote": "最终预测敌HP65、combat_ended_turn=-、engine_risk=True；最后Stardust后实际敌HP65与预测一致。部分路线耗尽触发继续搜索，首个状态差异为0。",
+      "firstSignal": "[CombatSolver/Test] DEPLOY_REPLAN turn=4 reason=turn_plan_exhausted executed_actions=1",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "e56ac10e1db64421985fc635d7f2ac56",
+      "character": "DEFECT",
+      "encounter": "MYSTERIOUS_KNIGHT_EVENT_ENCOUNTER",
+      "reportedIssues": [
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=manual_divergence cached_turns=3 previous_boundary=NodeLimit diff_count=3 field=E0.hp expected={108} actual={105}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "6bf6c34dccd04bf9b3aac239e19ecb19",
+      "character": "SILENT",
+      "encounter": "TERROR_EEL_ELITE",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "9d1fcd608d06409f960f48c0dd742716",
+      "character": "IRONCLAD",
+      "encounter": "SLIMES_WEAK",
+      "reportedIssues": [
+        "SearchFailure",
+        "UnsupportedCombatSemantic"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=1 exception=CombatSolver.SearchTransitionException: 搜索动作回放失败：turn=1 action_count=0 kind=EndTurn end_turn=true target=- parent_state=StateFingerprint { First = 11383957679369911628, Second = 1347032694398000519 }。\r\n ---> System.NotSupportedException: No BeforeSideTurnStart mirror is registered for HextechRunes.HextechMayhemModifier.\r",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "f5da9331b7944cc9b2d4d695169f5e6a",
+      "character": "IRONCLAD",
+      "encounter": "KNOWLEDGE_DEMON_BOSS",
+      "reportedIssues": [
+        "TurnSetupStateMismatch"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "光耀珍珠首回合生成牌",
+      "validationScenarios": [
+        "RADIANT-PEARL-ENTRY"
+      ],
+      "evidenceNote": "首回合BeforeHandDraw按遗物监听位置向手牌生成Luminesce；有序手牌与生成历史一致。",
+      "firstSignal": "[CombatSolver/Test] TURN_SETUP_STATE_MISMATCH turn=1 field=H[0] expected={THE_BOMB+0/False:2/False:-1/0/False/False/False/False/False/-:0:0/-:0[BombDamage=40,Turns=3,]/private=-/keywords=[]/baselib=-} actual={LUMINESCE+0/False:0/False:-1/0/False/False/True/False/False/-:0:0/-:0[Energy=2,]/private=-/keywords=[Exhaust,Retain]/baselib=-} expected_count=8 actual_count=9",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "bd7017dcb9e7421f85c171e53998f7af",
+      "character": "DEFECT",
+      "encounter": "LAGAVULIN_MATRIARCH_BOSS",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "1bf5191fcda44b948305fa3b0daf2729",
+      "character": "IRONCLAD",
+      "encounter": "ENTOMANCER_ELITE",
+      "reportedIssues": [
+        "TurnSetupStateMismatch"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "光耀珍珠首回合生成牌",
+      "validationScenarios": [
+        "RADIANT-PEARL-ENTRY"
+      ],
+      "evidenceNote": "首回合BeforeHandDraw按遗物监听位置向手牌生成Luminesce；有序手牌与生成历史一致。",
+      "firstSignal": "[CombatSolver/Test] TURN_SETUP_STATE_MISMATCH turn=1 field=H[0] expected={SCRAWL+0/False:1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-} actual={LUMINESCE+0/False:0/False:-1/0/False/False/True/False/False/-:0:0/-:0[Energy=2,]/private=-/keywords=[Exhaust,Retain]/baselib=-} expected_count=8 actual_count=9",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "f06298977e474ed181239290f223ad2e",
+      "character": "REGENT",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [
+        "RecalculationHpLossIncreased",
+        "FullAutoStoppedAfterWorseRecalculation"
+      ],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "生成牌计算历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE"
+      ],
+      "evidenceNote": "Supermassive使用冻结根生成历史加分支事件。f062首回合DivineRight生成SovereignBlade，GammaBlast易伤下重复计一次对应5点偏差；另两包3点。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=10 previous_boundary=None diff_count=1 field=E0.hp expected={3} actual={8}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "27c45215b7bb4efeaa396e5c0125ba36",
+      "character": "DEFECT",
+      "encounter": "BYGONE_EFFIGY_ELITE",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "bf37a1778c96424ca117b7c74c2d58aa",
+      "character": "NECROBINDER",
+      "encounter": "ACTSFROMTHEPAST-AWAKENED_ONE_BOSS",
+      "reportedIssues": [
+        "SearchFailure",
+        "UnsupportedCombatSemantic"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=1 exception=CombatSolver.SearchTransitionException: 搜索动作回放失败：turn=1 action_count=0 kind=EndTurn end_turn=true target=- parent_state=StateFingerprint { First = 3160179366640242154, Second = 2339264942088301807 }。\r\n ---> CombatSolver.Engine.Common.PredictionUnsupportedException: Unsupported monster state ActsFromThePast.ConditionalBranchState for ACTSFROMTHEPAST-AWAKENED_ONE.\r",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "1df2a03640914611978e8d287feadedc",
+      "character": "DEFECT",
+      "encounter": "KNIGHTS_ELITE",
+      "reportedIssues": [
+        "TurnSetupFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "卡牌 COW 身份与减幅恢复时序",
+      "validationScenarios": [
+        "DAMPEN-REACTIVE-MELANCHOLY",
+        "DAMPEN-REACTIVE-ROCKET-PUNCH",
+        "CARD-COST-IDENTITY-CONTRACT"
+      ],
+      "evidenceNote": "减幅施法者死亡/生成牌触发成本钩子；旧预览与当前wrapper共享逐实例身份，真实复制牌保持独立；严格成本层差分保留。",
+      "firstSignal": "[CombatSolver/Test] TURN_SETUP_FAILURE exception=System.InvalidOperationException: 回放时找不到手牌 ROCKET_PUNCH#0：turn=4 action_index=25 state_occurrence=0 state_key=ROCKET_PUNCH+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Cards=2;Damage=14|-|HEXED:2|baselib=-|cost-state=2:2[-1:2:4:False,-1:2:4:False,]/stars=-1:0[] hand=ITERATION#0:ITERATION+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=IterationPower=2|-|HEXED:2|baselib=-,ROCKET_PUNCH#1:ROCKET_PUNCH+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Cards=2;Damage=14|-|HEXED:2|baselib=-|cost-state=2:3[-1:2:4:False,-1:2:4:False,-1:2:4:False,]/stars=-1:0[],STRIKE_DEFECT#0:STRIKE_DEFECT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Damage=6|-|HEXED:2|baselib=-,CHARGE_BATTERY#0:CHARGE_BATTERY+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=7;Energy=1|-|HEXED:2|baselib=-。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "417001c095ad4eebb5cbde3d2d0a8ff6",
+      "character": "IRONCLAD",
+      "encounter": "INFESTED_PRISMS_ELITE",
+      "reportedIssues": [
+        "TurnSetupFailure",
+        "UnsupportedCombatSemantic"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] TURN_SETUP_FAILURE exception=System.NotSupportedException: No AfterPlayerTurnStartLate mirror is registered for HextechRunes.HextechMayhemModifier.\r",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "5fa897d5d9fb46558afaf87d04023600",
+      "character": "SILENT",
+      "encounter": "PHANTASMAL_GARDENERS_ELITE",
+      "reportedIssues": [
+        "SearchFailure",
+        "PotionPolicyUnsatisfied"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "固定药水前缀的政策准入",
+      "validationScenarios": [
+        "FIXED-PREFIX-POTION-POLICY"
+      ],
+      "evidenceNote": "无Force的禁药搜索曾接受含BLOCK_POTION前缀；现在统一候选政策、配额、最早回合、目标和保护指令。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=83 exception=CombatSolver.PotionPolicyUnsatisfiedException: 本场药水策略没有可执行路线。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "2e04b87eb5904faf9e37d1ad6a584def",
+      "character": "IRONCLAD",
+      "encounter": "TUNNELER_WEAK",
+      "reportedIssues": [
+        "TurnSetupFailure",
+        "UnsupportedCombatSemantic"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] TURN_SETUP_FAILURE exception=System.NotSupportedException: No AfterPlayerTurnStartLate mirror is registered for HextechRunes.HextechMayhemModifier.\r",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "9c9aa7b7f5194b71a56d8152fc7effbb",
+      "character": "IRONCLAD",
+      "encounter": "ENTOMANCER_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "探寻打击同名候选顺序",
+      "validationScenarios": [
+        "SEEKER-ORDERED-OPTIONS"
+      ],
+      "evidenceNote": "StableShuffle只决定采样集合，原生页面按抽牌堆过滤顺序呈现候选；保留RNG和同名实例身份。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=3 previous_boundary=None diff_count=6 field=H[4] expected={DAZED+0/False:-1/False:-1/0/False/False/False/False/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable]/baselib=-} actual={SWORD_BOOMERANG+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=3,Repeat=4,]/private=-/keywords=[]/baselib=-} expected_count=5 actual_count=5",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "5404de8a0d8f40548f79e1345a11440d",
+      "character": "IRONCLAD",
+      "encounter": "BOWLBUGS_WEAK",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "探寻打击同名候选顺序",
+      "validationScenarios": [
+        "SEEKER-ORDERED-OPTIONS"
+      ],
+      "evidenceNote": "StableShuffle只决定采样集合，原生页面按抽牌堆过滤顺序呈现候选；保留RNG和同名实例身份。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=3 previous_boundary=None diff_count=4 field=H[0] expected={STRIKE_IRONCLAD+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-} actual={SHRUG_IT_OFF+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=8,Cards=1,]/private=-/keywords=[]/baselib=-} expected_count=5 actual_count=5",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "c2cf958e40394abe87753e7dd63a3ecc",
+      "character": "IRONCLAD",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "e163211efc314e7aa1c2c9c2fff6ccec",
+      "character": "IRONCLAD",
+      "encounter": "PHANTASMAL_GARDENERS_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "探寻打击同名候选顺序",
+      "validationScenarios": [
+        "SEEKER-ORDERED-OPTIONS"
+      ],
+      "evidenceNote": "StableShuffle只决定采样集合，原生页面按抽牌堆过滤顺序呈现候选；保留RNG和同名实例身份。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=5 reason=state_mismatch cached_turns=5 previous_boundary=None diff_count=2 field=H[0] expected={STRIKE_IRONCLAD+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Damage=6,]/private=-/keywords=[]/baselib=-} actual={DEFEND_IRONCLAD+0/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Block=5,]/private=-/keywords=[]/baselib=-} expected_count=5 actual_count=5",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "49a5945117674c918f4bc4461d012069",
+      "character": "REGENT",
+      "encounter": "TERROR_EEL_ELITE",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "固定前缀的搜索边界",
+      "validationScenarios": [
+        "FIXED-PREFIX-TURN-OUTCOMES"
+      ],
+      "evidenceNote": "前缀只在仍进行且BoundaryReason=None的父状态继续，失效前缀由既有拒绝路径处理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=16 exception=System.InvalidOperationException: 不能从已抵达搜索边界的模拟状态继续分叉。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "19c4dbb47f2b43319b5646d521437b7d",
+      "character": "IRONCLAD",
+      "encounter": "THE_OBSCURA_NORMAL",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "固定前缀的搜索边界",
+      "validationScenarios": [
+        "FIXED-PREFIX-TURN-OUTCOMES"
+      ],
+      "evidenceNote": "前缀只在仍进行且BoundaryReason=None的父状态继续，失效前缀由既有拒绝路径处理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=16 exception=System.InvalidOperationException: 不能从已抵达搜索边界的模拟状态继续分叉。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "391ffe4498294323bf5d31f37afff862",
+      "character": "DEFECT",
+      "encounter": "TURRET_OPERATOR_WEAK",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "固定前缀的搜索边界",
+      "validationScenarios": [
+        "FIXED-PREFIX-TURN-OUTCOMES"
+      ],
+      "evidenceNote": "前缀只在仍进行且BoundaryReason=None的父状态继续，失效前缀由既有拒绝路径处理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=124 exception=System.InvalidOperationException: 不能从已抵达搜索边界的模拟状态继续分叉。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "a45d5cc2bcd54f908173c719dd5dcea3",
+      "character": "IRONCLAD",
+      "encounter": "DECIMILLIPEDE_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=manual_divergence cached_turns=5 previous_boundary=None diff_count=2 field=E0.hp expected={28} actual={46}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "87a2815d9d104cdc8af56f87a8ce0084",
+      "character": "IRONCLAD",
+      "encounter": "FLYCONID_NORMAL",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "固定前缀的搜索边界",
+      "validationScenarios": [
+        "FIXED-PREFIX-TURN-OUTCOMES"
+      ],
+      "evidenceNote": "前缀只在仍进行且BoundaryReason=None的父状态继续，失效前缀由既有拒绝路径处理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=7 exception=System.InvalidOperationException: 不能从已抵达搜索边界的模拟状态继续分叉。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "fe7659729c17439fb5f1e64384c56d99",
+      "character": "IRONCLAD",
+      "encounter": "FLYCONID_NORMAL",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "固定前缀的搜索边界",
+      "validationScenarios": [
+        "FIXED-PREFIX-TURN-OUTCOMES"
+      ],
+      "evidenceNote": "前缀只在仍进行且BoundaryReason=None的父状态继续，失效前缀由既有拒绝路径处理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=7 exception=System.InvalidOperationException: 不能从已抵达搜索边界的模拟状态继续分叉。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "a71a97865d11427882a8c6ff49bd4665",
+      "character": "SILENT",
+      "encounter": "CHOMPERS_NORMAL",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Unresolved",
+      "mechanism": "精巧谋划消耗牌缺失",
+      "validationScenarios": [
+        "PAELS-LEGION-FINISHED-REFERENCE",
+        "CALCULATED-GAMBLE-ORDERED-DISCARD"
+      ],
+      "evidenceNote": "佩尔军团已完成引用导致的Fork失败已修。原报告首次CG后缺消耗牌；原生9手/14抽、Sly、两次不同实例和相关遗物严格合同通过，首个偏差来源仍未证明；CardAdvisor程序集本地缺失。整包保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=5 previous_boundary=None diff_count=1 field=X[1] expected={CALCULATED_GAMBLE+0/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Exhaust]/baselib=-} actual={<missing>} expected_count=2 actual_count=1",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "96d89d9dc6d3406f981de2e2ba184223",
+      "character": "REGENT",
+      "encounter": "INFESTED_PRISMS_ELITE",
+      "reportedIssues": [
+        "RecalculationHpLossIncreased",
+        "FullAutoStoppedAfterWorseRecalculation"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "仪式与临时力量监听顺序",
+      "validationScenarios": [
+        "RITUAL-TEMPORARY-STRENGTH"
+      ],
+      "evidenceNote": "回收临时力量后移除旧Strength，再按Ritual自己的监听位置追加；Power有序状态一致。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=3 previous_boundary=None diff_count=2 field=P[0] expected={0:STRENGTH_POWER=1/0[]} actual={0:RITUAL_POWER=1/0[]} expected_count=5 actual_count=5",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "0c4bc68bb3d74acdbb55ac33e89f1514",
+      "character": "REGENT",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "生成牌计算历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE"
+      ],
+      "evidenceNote": "Supermassive使用冻结根生成历史加分支事件。f062首回合DivineRight生成SovereignBlade，GammaBlast易伤下重复计一次对应5点偏差；另两包3点。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=5 reason=state_mismatch cached_turns=6 previous_boundary=None diff_count=1 field=E0.hp expected={58} actual={61}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "0df267b169da4ff39621b93f304556f3",
+      "character": "SILENT",
+      "encounter": "LAGAVULIN_MATRIARCH_BOSS",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "回合末临时星能清理",
+      "validationScenarios": [
+        "AXEBOT-FOLLY-STAR-CLEANUP"
+      ],
+      "evidenceNote": "0.48.1 已修；首差仅临时星能层，子弹时间后只含星能费用修改的牌也按原生清理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=8 previous_boundary=None diff_count=2 field=C[1] expected={SPOILS_MAP+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Gold=600,]/private=-|cost-state=-1:0[]/stars=-1:1[0:True:True,]/keywords=[Unplayable]/baselib=-} actual={SPOILS_MAP+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Gold=600,]/private=-/keywords=[Unplayable]/baselib=-} expected_count=5 actual_count=5",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "3b0e0a9f857849f2ae5f1f93bfe7625c",
+      "character": "DEFECT",
+      "encounter": "DECIMILLIPEDE_ELITE",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "采用路线的请求生命周期",
+      "validationScenarios": [
+        "ROUTE-ADOPTION-LIFETIME"
+      ],
+      "evidenceNote": "已发布预览的材料化使用有效请求token；单轮搜索结束后的token不再错误取消采用路线回放。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=21 exception=System.OperationCanceledException: The operation was canceled.\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "a711c6fe19ef44f1bc446e592e1670b9",
+      "character": "REGENT",
+      "encounter": "AEONGLASS_BOSS",
+      "reportedIssues": [
+        "SearchFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "固定前缀的搜索边界",
+      "validationScenarios": [
+        "FIXED-PREFIX-TURN-OUTCOMES"
+      ],
+      "evidenceNote": "前缀只在仍进行且BoundaryReason=None的父状态继续，失效前缀由既有拒绝路径处理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=54 exception=System.InvalidOperationException: 不能从已抵达搜索边界的模拟状态继续分叉。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "c682c2dbc2be43ccac26c79a8e39d1c7",
+      "character": "SILENT",
+      "encounter": "DEVOTED_SCULPTOR_WEAK",
+      "reportedIssues": [
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_STALE generation=11",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "513db8f7e20e4a85a2ffa4a4eb49aa39",
+      "character": "SILENT",
+      "encounter": "CEREMONIAL_BEAST_BOSS",
+      "reportedIssues": [
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_STALE generation=38",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "66447795f1974a0eadfe8efad3e112d3",
+      "character": "NECROBINDER",
+      "encounter": "BOWLBUGS_NORMAL",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "失衡阻挡后的怪物意图",
+      "validationScenarios": [
+        "REPORT-ROUND-IMBALANCED"
+      ],
+      "evidenceNote": "原生被完全格挡的失衡攻击立即显示STUNNED；石虫保留既有HEADBUTT恢复行动，其余虫的下一行动由原生状态机保存。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=4 reason=state_mismatch cached_turns=7 previous_boundary=None diff_count=2 field=E1.move expected={THRASH2_MOVE} actual={STUNNED}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "1feead439d0f45389bec2e7dfd6c0f27",
+      "character": "IRONCLAD",
+      "encounter": "QUEEN_BOSS",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "同次出牌的额外格挡",
+      "validationScenarios": [
+        "EVIL-EYE-EXHAUST-HISTORY",
+        "BLOCK-SPEC-CARD-PLAY-IDENTITY"
+      ],
+      "evidenceNote": "EvilEye/DeathsDoor/Glitterstream补偿携带当前CardPlay，不动如山按同次出牌判断既有格挡。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=6 reason=state_mismatch cached_turns=7 previous_boundary=None diff_count=1 field=hp expected={55} actual={59}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "a264b9d20a6c4461b53feba7bd69b885",
+      "character": "SILENT",
+      "encounter": "AEONGLASS_BOSS",
+      "reportedIssues": [
+        "RecalculationHpLossIncreased",
+        "FullAutoStoppedAfterWorseRecalculation"
+      ],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "回合末临时星能清理",
+      "validationScenarios": [
+        "AXEBOT-FOLLY-STAR-CLEANUP"
+      ],
+      "evidenceNote": "0.48.1 已修；首差仅临时星能层，子弹时间后只含星能费用修改的牌也按原生清理。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=7 previous_boundary=None diff_count=1 field=X[1] expected={ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-|cost-state=-1:0[]/stars=-1:1[0:True:True,]/keywords=[Ethereal,Unplayable,Eternal]/baselib=-} actual={ASCENDERS_BANE+0/False:-1/False:-1/0/False/False/False/True/False/-:0:0/-:0[]/private=-/keywords=[Ethereal,Unplayable,Eternal]/baselib=-} expected_count=2 actual_count=2",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "129dcbc62e814cf48669385381a64451",
+      "character": "WATCHER",
+      "encounter": "SHRINKER_BEETLE_WEAK",
+      "reportedIssues": [
+        "SearchSetupFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_SETUP_FAILURE stage=display_names reason=AutoTurnStart exception=MegaCrit.Sts2.Core.Models.Exceptions.CanonicalModelException: Canonical model of type takemon.Core.Models.Powers.TakemonArtificialTraitPower used in incorrect place.\r",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "9a3876439a0e4ea79e00fe6116ebf143",
+      "character": "DEFECT",
+      "encounter": "SOUL_NEXUS_ELITE",
+      "reportedIssues": [
+        "FullAutoStoppedAtLiveRiskWorsening"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "闪电生成历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE",
+        "FROZEN-LIGHTNING-CHANNELS"
+      ],
+      "evidenceNote": "Voltaic效果与计算变量共用冻结根历史加分支事件。包内包含Voltaic及闪电数量/伤害偏差；本轮原生完整差分验证捕获后live推进不重复计入。",
+      "firstSignal": "[CombatSolver/Test] FULL_AUTO_STOP reason=live_end_turn_risk turn=2 planned_hp_lost=0 live_hp_lost=18 hp_before=41 hp_after=23 player_dead=False moves=SOUL_NEXUS:DRAIN_LIFE_MOVE",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "66f8143b9644498eb81f2e6db8e5521a",
+      "character": "DEFECT",
+      "encounter": "MECHA_KNIGHT_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "闪电生成历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE",
+        "FROZEN-LIGHTNING-CHANNELS"
+      ],
+      "evidenceNote": "Voltaic效果与计算变量共用冻结根历史加分支事件。包内包含Voltaic及闪电数量/伤害偏差；本轮原生完整差分验证捕获后live推进不重复计入。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=3 previous_boundary=None diff_count=2 field=E0.hp expected={216} actual={243}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "cb89023850a24cf4b2bf86ad0329853f",
+      "character": "DEFECT",
+      "encounter": "MECHA_KNIGHT_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "闪电生成历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE",
+        "FROZEN-LIGHTNING-CHANNELS"
+      ],
+      "evidenceNote": "Voltaic效果与计算变量共用冻结根历史加分支事件。包内包含Voltaic及闪电数量/伤害偏差；本轮原生完整差分验证捕获后live推进不重复计入。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=3 previous_boundary=None diff_count=2 field=E0.hp expected={216} actual={243}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "d4bbfa8caf6a44059ca90ee7f1731adf",
+      "character": "DEFECT",
+      "encounter": "KNIGHTS_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "闪电生成历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE",
+        "FROZEN-LIGHTNING-CHANNELS"
+      ],
+      "evidenceNote": "Voltaic效果与计算变量共用冻结根历史加分支事件。包内包含Voltaic及闪电数量/伤害偏差；本轮原生完整差分验证捕获后live推进不重复计入。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=3 previous_boundary=None diff_count=4 field=E0.hp expected={74} actual={89}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "ccb5229a2334485088b67f3a67a8845b",
+      "character": "DEFECT",
+      "encounter": "FROG_KNIGHT_NORMAL",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "闪电生成历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE",
+        "FROZEN-LIGHTNING-CHANNELS"
+      ],
+      "evidenceNote": "Voltaic效果与计算变量共用冻结根历史加分支事件。包内包含Voltaic及闪电数量/伤害偏差；本轮原生完整差分验证捕获后live推进不重复计入。",
+      "firstSignal": "[CombatSolver/Test] DEPLOY_REPLAN turn=2 reason=turn_plan_exhausted executed_actions=7",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "5f702a34efa84d2cb7ff9ee0d86257ac",
+      "character": "SILENT",
+      "encounter": "TURRET_OPERATOR_WEAK",
+      "reportedIssues": [
+        "SearchSetupFailure"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Unresolved",
+      "mechanism": "战斗监听器后缀变化",
+      "validationScenarios": [
+        "FROZEN-ROOT-LISTENERS",
+        "MIRRORED-HOOK-FILTER"
+      ],
+      "evidenceNote": "加载MultiEnchantmentMod和sts_2_punch_tea_master。公开MultiEnchantment源码在ModSubscribers后追加额外附魔，符合后缀失败机制；原包缺补丁/额外附魔审计，具体实例来源仍未证明。整包保留，未改断言。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_SETUP_FAILURE stage=combat_root_snapshot reason=AutoTurnStart exception=System.InvalidOperationException: Combat hook listener snapshot does not end with mod subscribers.\r",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "b14df99675294ea89045ddf3d9bfe69a",
+      "character": "DEFECT",
+      "encounter": "DEVOTED_SCULPTOR_WEAK",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "闪电生成历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE",
+        "FROZEN-LIGHTNING-CHANNELS"
+      ],
+      "evidenceNote": "Voltaic效果与计算变量共用冻结根历史加分支事件。包内包含Voltaic及闪电数量/伤害偏差；本轮原生完整差分验证捕获后live推进不重复计入。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=1 previous_boundary=None diff_count=2 field=E0.hp expected={45} actual={72}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "ecae7fc029214dfdb22ceea485a8668b",
+      "character": "REGENT",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 2,
+      "classification": "Resolved",
+      "mechanism": "满手牌时同名返牌次序",
+      "validationScenarios": [
+        "MAKE-IT-SO-FULL-HAND"
+      ],
+      "evidenceNote": "音乐盒复制牌先入弃牌时，MakeItSo按分支有序牌堆监听；最后一个手牌空位保留正确实例。",
+      "firstSignal": "[CombatSolver/Test] DEPLOY_REPLAN turn=2 reason=card_missing message=部署时找不到计划中的手牌状态 MAKE_IT_SO@0；当前手牌=DEFEND_REGENT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-,DEFEND_REGENT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-,DEFEND_REGENT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Block=5|-|:0|baselib=-,SOUL+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Cards=3|-|:0|baselib=-,CAPTURE_SPIRIT+0|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Cards=3;Damage=3|-|:0|baselib=-,TERRAFORMING+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=VigorPower=10|-|:0|baselib=-,VENERATE+1|energy=False:1|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=True|keywords=|vars=Stars=3|-|:0|baselib=-,SOUL+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Cards=3|-|:0|baselib=-,SOUL+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Exhaust|vars=Cards=3|-|:0|baselib=-,MAKE_IT_SO+1|energy=False:0|stars=False:-1|replay=0|exhaust=False|sly=False|retain=False|deck=False|keywords=Ethereal|vars=Cards=3;Damage=9|-|:0|baselib=-。",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "d8767426235b4a04a6ef75db53bf794d",
+      "character": "SILENT",
+      "encounter": "KNIGHTS_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 0,
+      "classification": "NoHardSignal",
+      "mechanism": "搜索期间导出",
+      "validationScenarios": [],
+      "evidenceNote": "报告issues为空、unexpectedReplans=0；审计searches/state_mismatch均0，当前258条战斗日志无错误，只有搜索阶段输出。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "42e8af7403e94f58b9a05309bbf5c0f7",
+      "character": "DEFECT",
+      "encounter": "MYSTERIOUS_KNIGHT_EVENT_ENCOUNTER",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "2938e80070144ca8b3eaf4b368b9e3bd",
+      "character": "IRONCLAD",
+      "encounter": "CHOMPERS_NORMAL",
+      "reportedIssues": [
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_STALE generation=9",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "12f3198b8cec440780b77959ae839305",
+      "character": "IRONCLAD",
+      "encounter": "WATERFALL_GIANT_BOSS",
+      "reportedIssues": [
+        "BetterWorldline",
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_STALE generation=15",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "ece9d9615b6c4a8a82467ed39ce5f5ec",
+      "character": "WATCHER",
+      "encounter": "DECIMILLIPEDE_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=state_mismatch cached_turns=2 previous_boundary=None diff_count=1 field=hp expected={48} actual={50}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "75e57bfb2f9a40269c5ff884f5c7e651",
+      "character": "WATCHER",
+      "encounter": "INFESTED_PRISMS_ELITE",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=4 reason=state_mismatch cached_turns=4 previous_boundary=None diff_count=1 field=hp expected={5} actual={14}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "841582d8d22a403cb060bc0eed669f88",
+      "character": "SILENT",
+      "encounter": "VANTOM_BOSS",
+      "reportedIssues": [
+        "SearchResultStale"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "PlayerInput",
+      "mechanism": "手动输入后的根失效",
+      "validationScenarios": [],
+      "evidenceNote": "录制/审计存在人工出牌、结束回合或用药，旧根过期或manual_divergence符合预期；513为锻造祝福，293为混沌特酿。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=2 reason=manual_divergence cached_turns=9 previous_boundary=None diff_count=11 field=E0.hp expected={174} actual={175}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "05a3117fc29c4b3b930a4aca6619944e",
+      "character": "WATCHER",
+      "encounter": "ACTSFROMTHEPAST-JAW_WORM_WEAK",
+      "reportedIssues": [
+        "SearchFailure",
+        "UnsupportedCombatSemantic"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=1 exception=CombatSolver.SearchTransitionException: 搜索动作回放失败：turn=1 action_count=0 kind=EndTurn end_turn=true target=- parent_state=StateFingerprint { First = 5347659401643882699, Second = 15490086101136630499 }。\r\n ---> System.NotSupportedException: No BeforeSideTurnStart mirror is registered for ActsFromThePast.JawWorm.\r",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "b66a2bfc35124c55a37c421ededff50f",
+      "character": "IRONCLAD",
+      "encounter": "SLUMBERING_BEETLE_NORMAL",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "1210fe9341834510a3912e73a32e02c4",
+      "character": "DEFECT",
+      "encounter": "KNIGHTS_ELITE",
+      "reportedIssues": [
+        "SearchFailure",
+        "RelicReplayMismatch"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "Resolved",
+      "mechanism": "卡牌 COW 身份与减幅恢复时序",
+      "validationScenarios": [
+        "DAMPEN-REACTIVE-MELANCHOLY",
+        "DAMPEN-REACTIVE-ROCKET-PUNCH",
+        "CARD-COST-IDENTITY-CONTRACT"
+      ],
+      "evidenceNote": "减幅施法者死亡/生成牌触发成本钩子；旧预览与当前wrapper共享逐实例身份，真实复制牌保持独立；严格成本层差分保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_FAILURE generation=1 exception=System.InvalidOperationException: 最终路线的遗物标注回放与选中状态不一致：field=D[2] expected={ROCKET_PUNCH+1/False:1/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=2,Damage=14,]/private=-|cost-state=2:1[-1:2:4:False,]/stars=-1:0[]/keywords=[]/baselib=-} actual={ROCKET_PUNCH+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/-:0[Cards=2,Damage=14,]/private=-|cost-state=2:2[-1:2:4:False,-1:2:4:False,]/stars=-1:0[]/keywords=[]/baselib=-} expected_count=16 actual_count=16；hp=69/69 enemy_hp=0/0 boundary=None/None。\r",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "01f74b58ff6a4ab2a129daa177fe3983",
+      "character": "WATCHER",
+      "encounter": "MYTES_NORMAL",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "ThirdPartyContent",
+      "mechanism": "第三方战斗内容",
+      "validationScenarios": [],
+      "evidenceNote": "异常涉及ActsFromThePast、HextechRunes、takemon，或第三方Watcher角色的战斗；按用户范围保留。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=4 previous_boundary=None diff_count=1 field=hp expected={81} actual={84}",
+      "serverPackage": "Retained"
+    },
+    {
+      "id": "ccf3c77a46c840dc9c23ab5064dbb18a",
+      "character": "REGENT",
+      "encounter": "TEST_SUBJECT_BOSS",
+      "reportedIssues": [],
+      "reportedUnexpectedReplans": 1,
+      "classification": "Resolved",
+      "mechanism": "生成牌计算历史冻结",
+      "validationScenarios": [
+        "CALCULATED-HISTORY-FREEZE"
+      ],
+      "evidenceNote": "Supermassive使用冻结根生成历史加分支事件。f062首回合DivineRight生成SovereignBlade，GammaBlast易伤下重复计一次对应5点偏差；另两包3点。",
+      "firstSignal": "[CombatSolver/Test] SEARCH_REUSE_MISS turn=3 reason=state_mismatch cached_turns=4 previous_boundary=None diff_count=1 field=E0.hp expected={94} actual={97}",
+      "serverPackage": "Deleted"
+    },
+    {
+      "id": "630463289bdc4dd28e9f11f405928a6c",
+      "character": "IRONCLAD",
+      "encounter": "TURRET_OPERATOR_WEAK",
+      "reportedIssues": [
+        "BetterWorldline"
+      ],
+      "reportedUnexpectedReplans": 0,
+      "classification": "QualityOnly",
+      "mechanism": "更优世界线",
+      "validationScenarios": [],
+      "evidenceNote": "按用户范围跳过。",
+      "firstSignal": "",
+      "serverPackage": "Retained"
+    }
+  ],
+  "packageDeletion": {
+    "deletedCount": 48,
+    "remainingTargetIds": 0,
+    "completedAtUtc": "2026-10-03T14:50:42.9709988Z",
+    "interface": "/admin/reports/delete",
+    "scope": "48 explicit IDs, authenticated service handler"
+  },
+  "delivery": {
+    "version": "0.48.2",
+    "releaseSourceCommit": "58427631",
+    "releaseBuild": "Passed, 0 warnings, 0 errors",
+    "minimalZip": "releases/CombatSolver-0.48.2.zip",
+    "localDeployment": "Five files copied successfully",
+    "localCleanup": "Rejected by automatic approval: blocked by policy",
+    "retainedMaterialDirectory": ".local/issue-bundles/0.48.0-hardbugs"
+  }
+}

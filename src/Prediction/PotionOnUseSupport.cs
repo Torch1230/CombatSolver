@@ -197,10 +197,8 @@ internal static class PotionOnUseSupport
                 break;
             case FruitJuice value:
             {
-                SimCreatureState creature = simulator.State.GetCreature(playerTarget);
                 int gained = value.DynamicVars.MaxHp.IntValue;
-                creature.SetMaxHp(creature.MaxHp + gained);
-                creature.Heal(gained);
+                simulator.GainMaxHp(playerTarget, gained);
                 break;
             }
             case FyshOil value:

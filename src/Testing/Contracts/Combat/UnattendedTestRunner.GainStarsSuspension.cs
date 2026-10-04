@@ -48,7 +48,14 @@ internal sealed partial class UnattendedTestRunner
             fixture.Simulator,
             fixture.Combat,
             card,
-            target: null);
+            target: null,
+            cardPlay: new MegaCrit.Sts2.Core.Entities.Cards.CardPlay
+            {
+                Card = card.Preview, Player = player, Target = null,
+                ResultPile = MegaCrit.Sts2.Core.Entities.Cards.PileType.Discard,
+                Resources = new() { EnergySpent = 0, EnergyValue = 0, StarsSpent = 0, StarValue = 0 },
+                IsAutoPlay = false, PlayIndex = 0, PlayCount = 1
+            });
 
         if (!supported)
             throw new InvalidOperationException("资源效果挂起回归没有进入确定性处理器。");

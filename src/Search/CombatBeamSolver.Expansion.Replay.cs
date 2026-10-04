@@ -409,7 +409,7 @@ internal sealed partial class CombatBeamSolver
                 throw new InvalidOperationException("回放包含已锁定战斗终局之后的动作。");
             PlanAction action = actions[actionOffset];
             triggerRecorder?.BeginAction(priorActionCount + actionOffset);
-            cancellationToken.ThrowIfCancellationRequested();
+            ReplayCancellationToken.ThrowIfCancellationRequested();
             if (action.Kind == PlanActionKind.EndTurn)
             {
                 SearchMeasurement roundMeasurement = _run.Performance.Begin();
@@ -694,12 +694,12 @@ internal sealed partial class CombatBeamSolver
     {
         if (parentSnapshot.BoundaryReason != SearchBoundaryReason.None)
             throw new InvalidOperationException("不能从已抵达搜索边界的模拟状态准备 Fork seed。");
-        cancellationToken.ThrowIfCancellationRequested();
+        ReplayCancellationToken.ThrowIfCancellationRequested();
         if (forkGate != null)
         {
             lock (forkGate)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                ReplayCancellationToken.ThrowIfCancellationRequested();
                 return PrepareReplayForkSeedCore(parentSnapshot);
             }
         }
@@ -770,7 +770,7 @@ internal sealed partial class CombatBeamSolver
             {
                 if (replayForkSeed != null || _parallelActionReplayForkGate == null)
                     throw new InvalidOperationException("Round checkpoint requires its owning replay gate.");
-                gatedSeed = roundCheckpoint.Fork(this, _parallelActionReplayForkGate, cancellationToken);
+                gatedSeed = roundCheckpoint.Fork(this, _parallelActionReplayForkGate, ReplayCancellationToken);
                 replayForkSeed = gatedSeed;
             }
             else if (replayForkSeed == null && _parallelActionReplayForkGate != null)

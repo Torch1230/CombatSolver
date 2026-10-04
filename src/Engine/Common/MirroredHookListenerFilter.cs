@@ -75,6 +75,11 @@ internal sealed class MirroredHookListenerFilter(bool enabled)
         [nameof(AbstractModel.AfterDamageReceivedLate)] = MirroredHookMask.AfterDamageReceivedLate,
         [nameof(AbstractModel.AfterDeath)] = MirroredHookMask.AfterDeath,
         [nameof(AbstractModel.AfterEnergyReset)] = MirroredHookMask.AfterEnergyReset,
+        // A shared bit conservatively retains any receiver of the gold callback family.
+        // Exact registries still distinguish each method; unrelated default calls are no-ops.
+        [nameof(AbstractModel.ModifyGoldGained)] = MirroredHookMask.GoldCallbacks,
+        [nameof(AbstractModel.AfterModifyingGoldGained)] = MirroredHookMask.GoldCallbacks,
+        [nameof(AbstractModel.AfterGoldGained)] = MirroredHookMask.GoldCallbacks,
         [nameof(AbstractModel.AfterModifyingBlockAmount)] = MirroredHookMask.AfterModifyingBlockAmount,
         [nameof(AbstractModel.AfterModifyingCardPlayCount)] = MirroredHookMask.AfterModifyingCardPlayCount,
         [nameof(AbstractModel.AfterModifyingCardPlayResultLocation)] = MirroredHookMask.AfterModifyingCardPlayResultLocation,
@@ -297,6 +302,7 @@ internal enum MirroredHookMask : ulong
     AfterPlayerTurnStart = 1UL << 59,
     AfterPlayerTurnStartLate = 1UL << 60,
     ModifyOrbValue = 1UL << 61,
+    GoldCallbacks = 1UL << 62,
     All = ulong.MaxValue,
 }
 

@@ -46,7 +46,8 @@ internal static class AfterModifyingBlockAmountMirrors
         }
 
         var state = context.StateStore.Get(relic, () => new PaelsLegionPredictionState(relic));
-        state.AffectedCardPlay ??= context.CardPlay;
+        if (!state.HasCompletedAffectedCardPlay)
+            state.AffectedCardPlay ??= context.CardPlay;
     }
 
     private static void HandleVambrace(Vambrace relic, AfterModifyingBlockAmountMirrorContext context)

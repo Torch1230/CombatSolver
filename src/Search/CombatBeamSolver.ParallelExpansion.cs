@@ -10,7 +10,7 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
-    private CancellationToken SearchCancellationToken => cancellationToken;
+    private CancellationToken SearchCancellationToken => ReplayCancellationToken;
     private SearchMemoryPressureSignal SearchMemoryPressure => policy.MemoryPressureSignal;
     private object? _parallelActionReplayForkGate;
 

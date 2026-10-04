@@ -21,11 +21,15 @@ internal sealed partial class SimulatedCombatState
         (_simulatedPlayerGold ??= [])[player] = Math.Max(0, GetPlayerGold(player) - amount);
     }
 
-    public void GainPlayerGold(Player player, int amount)
+    public int GainPlayerGold(CombatPredictionSimulator simulator, Player player, decimal amount)
     {
-        if (amount <= 0)
-            return;
-        (_simulatedPlayerGold ??= [])[player] = checked(GetPlayerGold(player) + amount);
+        amount = GoldGainSupport.ModifyGoldGained(simulator, this, player, amount);
+        if (amount <= 0m)
+            return 0;
+        int gained = (int)amount;
+        (_simulatedPlayerGold ??= [])[player] = checked(GetPlayerGold(player) + gained);
+        GoldGainSupport.AfterGoldGained(simulator, this, player);
+        return gained;
     }
 
     public bool TriggerRelicsAfterStarsSpent(

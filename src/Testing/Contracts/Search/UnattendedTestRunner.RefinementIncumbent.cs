@@ -148,6 +148,15 @@ internal sealed partial class UnattendedTestRunner
         }, original.Debug, original.PathObserver) };
         SolverResult candidate = await Task.Run(() => CombatSearchCoordinator.Solve(root,
             displayNames, damage, observed, deadline.Token, null));
+        int earlyOpeningRuns = messages.Count(message =>
+            message.Contains("EARLY_OPENING_PLAN_INCUMBENT start", StringComparison.Ordinal));
+        int planSearchRuns = messages.Count(message =>
+            message.Contains("PLAN_SEARCH result ", StringComparison.Ordinal));
+        bool openingScheduleValid = knownSourcePolicy
+            ? earlyOpeningRuns == 0 && planSearchRuns <= 1
+            : earlyOpeningRuns == 1 && planSearchRuns == 1
+                && messages.Any(message => message.Contains(
+                    "BEAM_REFINEMENT_INCUMBENT member=0 ", StringComparison.Ordinal));
         if (!(root.CanCertifyRemainingHealing || root.UsesKnownNativeHealingPolicy)
             || knownSourcePolicy && root.CanCertifyRemainingHealing
             || !control.Snapshot.AllEnemiesDead
@@ -155,13 +164,15 @@ internal sealed partial class UnattendedTestRunner
             || !candidate.Snapshot.AllEnemiesDead || candidate.Snapshot.PlayerDead
             || candidate.Snapshot.HasRisk || candidate.ProjectedBattleHpLost > control.ProjectedBattleHpLost
             || candidate.ExplicitPotionCount != 0
-            || messages.Count(message => message.Contains("EARLY_OPENING_PLAN_INCUMBENT start", StringComparison.Ordinal)) != 1
-            || !messages.Any(message => message.Contains("BEAM_REFINEMENT_INCUMBENT member=0 ", StringComparison.Ordinal))
-            || messages.Count(message => message.Contains("PLAN_SEARCH result ", StringComparison.Ordinal)) != 1
+            || !openingScheduleValid
             || ContinuationStamp.CaptureLive(live).StateText != before)
             throw new InvalidOperationException($"Early opening plans lost native control quality, isolation, or single execution: "
                 + $"control={control.ProjectedBattleHpLost}/{control.BoundaryReason}/{control.Snapshot.AllEnemiesDead} "
                 + $"candidate={candidate.ProjectedBattleHpLost}/{candidate.BoundaryReason}/{candidate.Snapshot.AllEnemiesDead}.");
-        _completedChecks.Add("OpeningPlanIncumbent:NativeRoot:Dop2:StrictIncremental:ControlQuality:FirstMemberSeed:SingleExecution:LiveIsolation");
+        _completedChecks.Add(knownSourcePolicy
+            ? $"KnownOpeningPlans:NativeRoot:Dop2:StrictIncremental:Deferred:ControlQuality:"
+                + $"loss={control.ProjectedBattleHpLost}/{candidate.ProjectedBattleHpLost}:"
+                + "NoDuplicatePlanSearch:LiveIsolation"
+            : "OpeningPlanIncumbent:NativeRoot:Dop2:StrictIncremental:ControlQuality:FirstMemberSeed:SingleExecution:LiveIsolation");
     }
 }

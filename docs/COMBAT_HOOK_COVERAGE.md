@@ -1,27 +1,27 @@
 # CombatSolver 战斗钩子覆盖目录
 
-生成来源：CombatSolver `0.48.1`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/inspection/CoverageCatalog` 生成，不手工编辑。
+生成来源：CombatSolver `0.48.2`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/inspection/CoverageCatalog` 生成，不手工编辑。
 
 ## 汇总
 
 | 分类 | 条目 | 未分析 | 待实现 | 引擎精确 | 引擎推断 | 引擎不支持 |
 |---|---:|---:|---:|---:|---:|---:|
 | Affliction | 3 | 0 | 0 | 0 | 0 | 1 |
-| Card | 1186 | 0 | 0 | 218 | 153 | 226 |
+| Card | 1186 | 0 | 0 | 219 | 152 | 226 |
 | Enchantment | 42 | 0 | 0 | 11 | 0 | 0 |
 | MonsterMove | 339 | 0 | 0 | 0 | 0 | 0 |
 | Monster | 352 | 0 | 0 | 15 | 0 | 0 |
 | Orb | 18 | 0 | 0 | 14 | 0 | 3 |
 | Potion | 67 | 0 | 0 | 17 | 0 | 50 |
-| Power | 520 | 0 | 0 | 188 | 0 | 59 |
-| Relic | 508 | 0 | 0 | 116 | 0 | 9 |
+| Power | 520 | 0 | 0 | 189 | 0 | 58 |
+| Relic | 508 | 0 | 0 | 121 | 0 | 9 |
 
 ## 有效支持状态
 
 | 状态 | Hook 数 | 实机/运行时证据 | 静态证据 | 无独立证据 |
 |---|---:|---:|---:|---:|
-| Exact | 2302 | 1710 | 1 | 591 |
-| OutOfScope | 733 | 11 | 126 | 596 |
+| Exact | 2305 | 1713 | 1 | 591 |
+| OutOfScope | 730 | 13 | 121 | 596 |
 
 ## 主动效果运行证据
 
@@ -40,7 +40,7 @@
 | Orb | 15 | 15 | 0 |
 | Potion | 66 | 66 | 0 |
 | Power | 370 | 370 | 0 |
-| Relic | 194 | 193 | 1 |
+| Relic | 197 | 196 | 1 |
 
 ## 分支内计算变量
 
@@ -57,7 +57,7 @@
 
 ## 明确排除范围
 
-- Combat：415 Hook
+- Combat：412 Hook
 - DeprecatedPlaceholder：1 Hook
 - MultiplayerOnly：77 Hook
 - OutOfCombat：166 Hook

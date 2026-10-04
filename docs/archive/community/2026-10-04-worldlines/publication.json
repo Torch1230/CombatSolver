@@ -1,0 +1,70 @@
+{
+  "repository": "Torch1230/CombatSolver",
+  "releaseTag": "community-tasks-2026-10-02",
+  "publishedAt": "2026-10-03T17:23:19.099830+00:00",
+  "batches": [
+    {
+      "batchId": "Q008",
+      "title": "[更优世界线 Q008] 总折算战损改善量：34 HP",
+      "themeIds": [
+        "O031",
+        "O032",
+        "O033",
+        "O034",
+        "O035"
+      ],
+      "totalPotionAdjustedHpReduction": 34,
+      "asset": {
+        "id": 608215726,
+        "name": "Q008.zip",
+        "size": 1276803,
+        "browser_download_url": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q008.zip",
+        "state": "uploaded"
+      },
+      "issueNumber": 208,
+      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/208"
+    },
+    {
+      "batchId": "Q009",
+      "title": "[更优世界线 Q009] 总折算战损改善量：25 HP",
+      "themeIds": [
+        "O036",
+        "O037",
+        "O038",
+        "O039",
+        "O040"
+      ],
+      "totalPotionAdjustedHpReduction": 25,
+      "asset": {
+        "id": 608215805,
+        "name": "Q009.zip",
+        "size": 1375656,
+        "browser_download_url": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q009.zip",
+        "state": "uploaded"
+      },
+      "issueNumber": 209,
+      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/209"
+    },
+    {
+      "batchId": "Q010",
+      "title": "[更优世界线 Q010] 总折算战损改善量：19 HP",
+      "themeIds": [
+        "O041",
+        "O042",
+        "O043",
+        "O044",
+        "O045"
+      ],
+      "totalPotionAdjustedHpReduction": 19,
+      "asset": {
+        "id": 608215993,
+        "name": "Q010.zip",
+        "size": 1403699,
+        "browser_download_url": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q010.zip",
+        "state": "uploaded"
+      },
+      "issueNumber": 210,
+      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/210"
+    }
+  ]
+}

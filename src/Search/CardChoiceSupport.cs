@@ -880,11 +880,12 @@ internal static partial class CardChoiceSupport
         PredictedCard playedCard,
         SimPlayerCombatState owner)
     {
-        List<PredictedCard> options = owner.DrawPile.Cards
+        List<PredictedCard> sampled = owner.DrawPile.Cards
             .ToList()
             .StableShuffle(simulator.Rng.CombatCardSelection)
             .Take(playedCard.Preview.DynamicVars.Cards.IntValue)
             .ToList();
+        List<PredictedCard> options = owner.DrawPile.Cards.Where(sampled.Contains).ToList();
         if (options.Count == 0)
             return null;
         simulator.History.CardsSelected(options);

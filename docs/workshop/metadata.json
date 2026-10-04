@@ -1,0 +1,14 @@
+{
+  "appId": 2868840,
+  "publishedFileId": 3790899961,
+  "languages": {
+    "english": {
+      "title": "Combat Solver",
+      "descriptionFile": "english.txt"
+    },
+    "schinese": {
+      "title": "战斗路线求解器 / Combat Solver",
+      "descriptionFile": "schinese.txt"
+    }
+  }
+}

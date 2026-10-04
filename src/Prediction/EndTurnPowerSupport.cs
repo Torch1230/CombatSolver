@@ -44,6 +44,9 @@ internal static partial class EndTurnPowerSupport
                 case TemporaryStrengthPower temporaryStrength when ownerParticipates:
                     combat.RetireTemporaryStat(temporaryStrength);
                     break;
+                case RitualPower when ownerParticipates:
+                    PersistentPowerSupport.TriggerRitual(combat, owner);
+                    break;
                 case ColossusPower when side == CombatSide.Enemy:
                     combat.SetAmount<ColossusPower>(owner, power.Amount - 1);
                     break;

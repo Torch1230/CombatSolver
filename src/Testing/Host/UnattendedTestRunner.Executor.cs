@@ -39,6 +39,16 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId == "CALCULATED-HISTORY-FREEZE")
+            {
+                await runner.AssertCalculatedHistoryFreezeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "FLATTEN-MUSIC-BOX-ENTRY")
+            {
+                await runner.AssertFlattenMusicBoxEntryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "KNOWN-HEALING-POLICY")
             {
                 runner.SetStage("known_healing_policy");
@@ -155,6 +165,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertDampenDeathTimingAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId is "DAMPEN-REACTIVE-MELANCHOLY" or "DAMPEN-REACTIVE-ROCKET-PUNCH")
+            {
+                await runner.AssertDampenReactiveCardAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "PHANTOM-RETAIN-LIFECYCLE")
             {
                 await runner.AssertPhantomRetainLifecycleAsync(combatState, player);
@@ -249,6 +264,36 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId == "SIGNED-GOLD-LOSS")
             {
                 await runner.AssertSignedGoldLossAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "GOLD-HEALING-CALLBACK")
+            {
+                await runner.AssertGoldHealingCallbackAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "GOLD-HEALING-MECHANISMS")
+            {
+                await runner.AssertGoldHealingMechanismsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "GOLD-HEALING-BOUNDARIES")
+            {
+                await runner.AssertGoldHealingMechanismsAsync(combatState, player, includeBasicCases: false);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "MAX-HP-HEALING-CALLBACKS")
+            {
+                await runner.AssertMaxHpHealingCallbacksAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "FEED-MAX-HP-CAP")
+            {
+                await runner.AssertFeedMaxHpCapAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "RELIC-MAX-HP-HEALING-BOUNDS")
+            {
+                await runner.AssertRelicMaxHpHealingBoundsAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "NIGHTMARE-CAPTURED-ROOT")
@@ -771,6 +816,101 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(request.ScenarioId);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "VOID-FORM-TURN-CHOICES")
+            {
+                await runner.AssertVoidFormTurnChoicesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "ROUTE-ADOPTION-LIFETIME")
+            {
+                await runner.AssertRouteAdoptionLifetimeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "RADIANT-PEARL-ENTRY")
+            {
+                await runner.AssertRadiantPearlEntryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "SEEKER-ORDERED-OPTIONS")
+            {
+                await runner.AssertSeekerOrderedOptionsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "EVIL-EYE-EXHAUST-HISTORY")
+            {
+                await runner.AssertEvilEyeExhaustHistoryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "RITUAL-TEMPORARY-STRENGTH")
+            {
+                await runner.AssertRitualTemporaryStrengthOrderAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "NOXIOUS-RAMPART-ORDER")
+            {
+                await runner.AssertNoxiousRampartOrderAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "BLOCK-SPEC-CARD-PLAY-IDENTITY")
+            {
+                await runner.AssertBlockSpecCardPlayIdentityAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "MAKE-IT-SO-MUSIC-BOX" or "MAKE-IT-SO-FULL-HAND")
+            {
+                await runner.AssertMakeItSoMusicBoxAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "SECOND-WIND-NESTED-DRAW" or "SECOND-WIND-FULL-HAND" or "SECOND-WIND-REPORT-ROOT")
+            {
+                await runner.AssertSecondWindNestedDrawAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "CALCULATED-GAMBLE-INSTANCES" or "CALCULATED-GAMBLE-SLY" or "CALCULATED-GAMBLE-ORDERED-DISCARD")
+            {
+                await runner.AssertCalculatedGambleInstancesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "FROZEN-LIGHTNING-CHANNELS")
+            {
+                await runner.AssertFrozenLightningChannelsAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "PAELS-LEGION-FINISHED-REFERENCE")
+            {
+                await runner.AssertPaelsLegionFinishedReferenceAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "END-TURN-RISK-LOSS-ACCOUNTING")
+            {
+                await runner.AssertEndTurnRiskLossAccountingAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "CONSTRUCT-OSTY-RISK")
+            {
+                await runner.AssertConstructOstyRiskAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "CONSTRUCT-REAPER-ARTIFACT")
+            {
+                await runner.AssertConstructReaperArtifactAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "GROUP-DEBUFF-REACTIVE-DRAW")
+            {
+                await runner.AssertGroupDebuffReactiveDrawAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "NATIVE-CHOOSE-OPEN-GATE")
+            {
+                await runner.AssertNativeChooseOpenGateAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "FIXED-PREFIX-POTION-POLICY")
+            {
+                await runner.AssertFixedPrefixPotionPolicyAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId.StartsWith("REPORT-CARDS-", StringComparison.Ordinal))
             {
                 await runner.AssertReportCardSequenceAsync(combatState, player);
@@ -890,6 +1030,41 @@ internal sealed partial class UnattendedTestRunner
             {
                 runner.SetStage("opening_power_boundary");
                 await runner.AssertOpeningPowerBoundaryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "B013-BLOCK-DECIMAL-BOUNDARY")
+            {
+                runner.SetStage("b013_block_decimal_boundary");
+                await runner.AssertB013BlockDecimalBoundaryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "B013-FIXED-PREFIX-TERMINAL-BOUNDARY")
+            {
+                runner.SetStage("b013_fixed_prefix_terminal_boundary");
+                await runner.AssertB013FixedPrefixTerminalBoundaryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "B013-FIXED-PREFIX-TURN-END-CARD")
+            {
+                runner.SetStage("b013_fixed_prefix_turn_end_card");
+                await runner.AssertB013FixedPrefixTurnEndCardAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "B013-RADIANT-PEARL-HAND-DRAW")
+            {
+                runner.SetStage("b013_radiant_pearl_hand_draw");
+                await runner.AssertB013RadiantPearlHandDrawAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "B013-DEFAULT-GC-LIMIT")
+            {
+                runner.SetStage("b013_default_gc_limit");
+                await runner.AssertB013DefaultGcAllocationLimitAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
 

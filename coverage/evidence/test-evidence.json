@@ -42,10 +42,10 @@
   "AXEBOT-JOSS-DEFERRED-FORK": {
     "status": "Passed",
     "level": "HeadlessRootStateAndForkContract",
-    "procedure": "金纸根含1次已计数与2次延迟消耗，捕获后推进live，核对父子/兄弟、指纹与续用文本。",
+    "procedure": "金纸根含1次已计数与2次延迟消耗，捕获后推进live，核对父子/兄弟、指纹与续用文本；追加零待结算分支与非零分支的区分及消费。",
     "expected": "延迟计数从主线程根冻结，在StateStore按值Fork；各分支只消费自身计数一次，live保持。",
-    "observed": "e7c0363924e74211b043ebfaca50ac0c Passed；根计数、live推进隔离、父子/兄弟Fork、指纹/续用文本及逐分支消费通过。初次e3faadd893c74974af6060628bbf13ec在测试自身的隔离域内捕获根，触发Power显示变量保护；修正测试捕获时点后通过。",
-    "evidence": "coverage/fixtures/regressions/axebot/axebot-joss-deferred-relics.json; src/Testing/Contracts/Combat/UnattendedTestRunner.JossPaperDeferred.cs; docs/issues/axebot-reports-20261003.md"
+    "observed": "e7c0363924e74211b043ebfaca50ac0c Passed；根计数、live推进隔离、父子/兄弟Fork、指纹/续用文本及逐分支消费通过。初次e3faadd893c74974af6060628bbf13ec在测试自身的隔离域内捕获根，触发Power显示变量保护；修正测试捕获时点后通过。指纹零状态兼容修复的6bf2b7299eae440ba42c87d18f27f290 Passed，新增零/非零分支区分、消费与父子隔离；未运行完整原生战斗。；2026-10-04合并验收：0fd9902a8a594e36a0a9fbf533ceee65 Passed；根计数、零状态指纹、父子/兄弟Fork与逐分支消费；实例已删除。",
+    "evidence": "coverage/fixtures/regressions/axebot/axebot-joss-deferred-relics.json; src/Testing/Contracts/Combat/UnattendedTestRunner.JossPaperDeferred.cs; docs/issues/axebot-reports-20261003.md; docs/performance/gold-max-hp-healing-20261003.md"
   },
   "AXEBOT-TRANSFORM-SENTINEL": {
     "status": "Passed",
@@ -526,7 +526,7 @@
     "procedure": "从问题包回放状态导入有序牌堆、升级、附魔、苦难与疯狂科学枚举状态；分别恢复多尼斯异鸟和实验体的开战根。另在中档预设上覆盖出牌分支与 No-GC 预算，断言实际自定义值。",
     "expected": "复现器不再依赖手写牌表；导入后得到包内精确首手与有序抽牌堆。性能覆盖将设置标记为自定义，并按实际覆盖值断言。质量基线只记录，不改变搜索策略。",
     "observed": "多尼斯异鸟 runId b4e2837cecc04cb59dad6a4e4be6cb37 Passed，预计战损 55；实验体 runId cad36ba7007d40e392ee882c49be2308 Passed，预计战损 20；自定义覆盖 runId 011e9c0e7daa4564867e8195a6299a11 Passed，Branches=23/37、NoGC=7000000000。",
-    "evidence": "tools/run-unattended-test.ps1；src/Testing/Host/UnattendedTestRunner.Executor.cs；src/Testing/Contracts/Search/UnattendedTestRunner.SolverPolicy.cs；三个上述 runId；验证日期 2026-08-30。"
+    "evidence": "tools/testing/run-unattended-test.ps1；src/Testing/Host/UnattendedTestRunner.Executor.cs；src/Testing/Contracts/Search/UnattendedTestRunner.SolverPolicy.cs；三个上述 runId；验证日期 2026-08-30。"
   },
   "POST018-DETAILED-PLAN-REPLAY-STATE": {
     "status": "Passed",
@@ -598,7 +598,7 @@
     "procedure": "将 RankBest/RankFinal、Beam 多样性通道、药水配额、Pareto 和相关比较器移入 BeamRetentionPolicy；通过窄 stand-pat 委托保留延迟伤害评估，复跑固定机甲完整自动战斗。",
     "expected": "动作序列、expanded、transitions、choice branches、所有保留/剪枝计数和终局结果精确不变；策略不读取全局设置或拥有模拟器。",
     "observed": "第 5 回合结束；动作序列不变，expanded=4624、transitions=33432、choice_branches=17735 及全部剪枝计数与基线一致；11.64 s / 3.55 GB / 0 ms GC / 17.1 ms 最大帧，UnexpectedReplans=0。",
-    "evidence": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs；src/Search/CombatBeamSolver.Retention.cs；src/Search/CombatBeamSolver.Phases.cs；tools/verify-refactor-boundaries.ps1；coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；验证日期 2026-08-26。"
+    "evidence": "src/Search/CombatBeamSolver.BeamRetentionPolicy.cs；src/Search/CombatBeamSolver.Retention.cs；src/Search/CombatBeamSolver.Phases.cs；tools/inspection/verify-refactor-boundaries.ps1；coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；验证日期 2026-08-26。"
   },
   "SEARCH-RUN-CONTEXT-537": {
     "status": "Passed",
@@ -606,7 +606,7 @@
     "procedure": "将 solver 实例上的单次搜索计数、性能统计、帧节流、转置表及 stand-pat/威胁/coverage/路由缓存迁入 SearchRunContext；不池化集合或改变算法，复跑固定机甲完整自动战斗。",
     "expected": "动作序列、expanded、transitions、choice branches、所有剪枝计数、终局结果和零非预期重算精确不变。",
     "observed": "第 5 回合结束；动作序列不变，expanded=4624、transitions=33432、choice_branches=17735 及全部剪枝计数与纯拆分基线一致；11.52 s / 3.55 GB / 0 ms GC / 17.4 ms 最大帧，UnexpectedReplans=0。",
-    "evidence": "src/Search/CombatBeamSolver.cs；src/Search/CombatBeamSolver.Models.cs；src/Search/CombatBeamSolver.*.cs；tools/verify-refactor-boundaries.ps1；coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；验证日期 2026-08-26。"
+    "evidence": "src/Search/CombatBeamSolver.cs；src/Search/CombatBeamSolver.Models.cs；src/Search/CombatBeamSolver.*.cs；tools/inspection/verify-refactor-boundaries.ps1；coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；验证日期 2026-08-26。"
   },
   "BEAM-PARTIAL-SPLIT-536": {
     "status": "Passed",
@@ -614,7 +614,7 @@
     "procedure": "只移动 CombatBeamSolver 现有成员到 Entry/Models/Phases/Expansion/Retention/Terminal/StateEvaluation partial 文件；运行结构门禁、固定机甲完整 headless 和 Defect Lightning/Frost + Synchronize 严格差分。",
     "expected": "字段、方法体、集合与迭代顺序不变；固定场景动作序列、expanded、transitions、choice branches、剪枝计数和终局结果精确一致；严格差分不退化。",
     "observed": "固定机甲第 5 回合结束并零非预期重算；动作序列与拆分前一致，expanded=4624、transitions=33432、choice_branches=17735、dominance_pruned=214、transposition_pruned=700、repeatable_no_progress_pruned=0，11.35 s / 3.55 GB / 0 ms GC / 17.2 ms 最大帧。Defect 球与 Synchronize 严格差分 Passed。",
-    "evidence": "src/Search/CombatBeamSolver*.cs；tools/verify-refactor-boundaries.ps1；coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；无人场景 BEAM-PARTIAL-SPLIT-STRICT-536；验证日期 2026-08-26。"
+    "evidence": "src/Search/CombatBeamSolver*.cs；tools/inspection/verify-refactor-boundaries.ps1；coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；无人场景 BEAM-PARTIAL-SPLIT-STRICT-536；验证日期 2026-08-26。"
   },
   "MOD-SUBSCRIBER-BOUNDARY-534": {
     "status": "Passed",
@@ -1366,7 +1366,7 @@
     "procedure": "固定机甲跑局以 5s/60s 搜索运行 headless 与 Steam 正常可见完整 Mod 栈；核对搜索时间、分配、GC、帧间隔、路线质量和跨回合复用。",
     "expected": "搜索低于 20 秒，0 搜索期 GC，无超过 100ms 慢帧；第 8 回合内、0 药、预计战损不高于 31。",
     "observed": "headless runId 032a6d03ed9d44879f67308ac9f14830 Passed：8.207s/2,212,442,352B、GC 0ms、17.7ms 最大帧间隔。Steam 可见 runId 6d264252aef049928f8d07813f822f0e Passed：9.208s/2,291,229,384B、GC 0ms、11.0ms 最大帧间隔。两者均第 8 回合、预计战损 31、0 药并精确复用。",
-    "evidence": "coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；tools/run-visible-steam-benchmark.ps1；上述两个 runId；验证日期 2026-08-23。"
+    "evidence": "coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；tools/performance/run-visible-steam-benchmark.ps1；上述两个 runId；验证日期 2026-08-23。"
   },
   "LAGAVULIN-DEPLOY-REPLAN-175": {
     "status": "Passed",
@@ -1398,7 +1398,7 @@
     "procedure": "先以固定双小啃兽快照验证零药零战损长线和第 3 回合复用，再以固定机甲快照分别运行 headless 与 Steam 正常可见完整 Mod 栈。",
     "expected": "双小啃兽保持第 6 回合 0/0；机甲保持预计战损 31、0 药、第 8 回合结束、搜索低于 20 秒、无搜索期 GC 和明显慢帧。",
     "observed": "双小啃兽 runId f3398d7307b6492aadeaaeea2b7b66fc Passed：2.288s/386,064,304B，第 6 回合、两次洗牌、0 药、0 战损、0 卖血并第 3 回合复用。机甲 headless runId a673959490eb4f7c8f4fb09998402155 为 9.820s/2,266,224,376B；Steam 可见 runId 442db1253b7143fb913213c009b32820 为 9.818s/2,350,113,424B，GC 0ms、最大帧间隔 8.4ms，均第 8 回合、预计战损 31、0 药并第 3 回合复用。",
-    "evidence": "coverage/fixtures/regressions/snapshots/solver-longline-run-snapshot.json、coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；tools/run-visible-steam-benchmark.ps1；上述三个 runId；验证日期 2026-08-22。"
+    "evidence": "coverage/fixtures/regressions/snapshots/solver-longline-run-snapshot.json、coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json；tools/performance/run-visible-steam-benchmark.ps1；上述三个 runId；验证日期 2026-08-22。"
   },
   "VITAL-SPARK-LIFECYCLE-160": {
     "status": "Passed",
@@ -1438,7 +1438,7 @@
     "procedure": "使用 Steam 正常可见会话、用户完整 Mod 组合、固定机甲跑局、5s/60s 搜索和 6GB No-GC，执行首轮正式后台搜索并无人值守完成战斗。",
     "expected": "总时间不超过 15 秒，分配不超过 2.6GB，最大帧间隔不超过 100ms、无超过 100ms 帧；路线无药、无主动卖血并在 9 回合内结束。",
     "observed": "runId 051f690ba3554ad0baa6fb5518fad668 Passed：首轮 14.736s / 2,438,441,472B，GC 0ms，最大帧间隔 42.5ms、无 >50ms 帧；第 8 回合结束，1 次洗牌，0 药、0 卖血、Unmirrored=0，预计战损 31（旧 0.11.3 基线为 43）。战斗结束后托管堆 258,696,640B、碎片 102,672B、工作集约 2.30GB。",
-    "evidence": "tools/run-visible-steam-benchmark.ps1；runId 051f690ba3554ad0baa6fb5518fad668 的 SEARCH_PHASE/MAIN_THREAD_FRAMES/RESULT；验证日期 2026-08-22。"
+    "evidence": "tools/performance/run-visible-steam-benchmark.ps1；runId 051f690ba3554ad0baa6fb5518fad668 的 SEARCH_PHASE/MAIN_THREAD_FRAMES/RESULT；验证日期 2026-08-22。"
   },
   "STRATAGEM-DYNAMIC-BOUNDARY-144": {
     "status": "Passed",
@@ -2445,5 +2445,317 @@
     "procedure": "合并ce17a40，保留战略上下文双方变量；直接字段及回合前缀合同。",
     "observed": "合并上游ce17a40（0.38.0）后，保留双方战略上下文变量与各自消费者，文档冲突合并保留两批记录。正常Release零警告/错误，Bash/PowerShell结构门禁均90文件通过；STRATEGIC-CONTEXT-DEMAND / eae143ef4e3a4e32a23be62f060b937b Passed，END-TURN-CHOICE-REPLAY / 26494f1f7a1341a589f3a8ac35b54812 Passed。未重测性能，前述收益只属于原基线，不套用到上游新增语义后的产物。",
     "evidence": "docs/archive/performance/pr90-attempts-20260913.md"
+  },
+  "NATIVE-CHOOSE-OPEN-GATE": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.SILENT/ENCOUNTER.CHOMPERS_NORMAL，NATIVE-CHOOSE-OPEN-GATE，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "NativeChoose:ReopenedPage:NativeOpenGate:AcceptedIdentity；NativeChoose:CandidateOrderMismatch:PageRetained；NativeChoose:Skip:NativeAccepted",
+    "observed": "失败9ddd9db4268546d8a9901df6b6e2c6a1：System.InvalidOperationException: Native choose driver returned before the reopened page accepted JackOfAllTrades.\r；最终99fcd144f0a54855b91b17d2c523bc91 Passed，23.50秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Runtime/UnattendedTestRunner.NativeChoiceSurfaces.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "CALCULATED-GAMBLE-ORDERED-DISCARD": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.SILENT/ENCOUNTER.CHOMPERS_NORMAL，CALCULATED-GAMBLE-ORDERED-DISCARD，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "CalculatedGamble:OrderedDiscard:NineCardHand:FourteenCardDraw:NestedSly:Relics:TwoExhaustedInstances:Native:Fork",
+    "observed": "最终fde97e1259f14f3785da09d1d3b1c8b6 Passed，32.01秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "FROZEN-LIGHTNING-CHANNELS": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.DEFECT/ENCOUNTER.MECHA_KNIGHT_ELITE，FROZEN-LIGHTNING-CHANNELS，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "FrozenLightning:RootBeforeNativeAdvance:ThreeBranchChannels:Voltaic:NativeFullState:Fork",
+    "observed": "最终2b84ba4f29e040beb90d67c8c4135e5f Passed，25.66秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "REPORT-ROUND-IMBALANCED": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.NECROBINDER/ENCOUNTER.BOWLBUGS_NORMAL，REPORT-ROUND-IMBALANCED，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "REPORT-ROUND-IMBALANCED",
+    "observed": "最终9a57db29c3074e77a3eed74a61d24a9a Passed，32.68秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.ReportRound.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "SECOND-WIND-REPORT-ROOT": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.DECIMILLIPEDE_ELITE，SECOND-WIND-REPORT-ROOT，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "SecondWind:NestedDraw:ThreeEnemies:Reattach:Native:Fork",
+    "observed": "失败416a37d5d91e448784ddf2bc3536bb47：System.InvalidOperationException: SECOND-WIND-REPORT-ROOT.THUNDERCLAP 一步模拟与真实行动不一致；首个差异：field=E0.hp expected={12} actual={42}\r；最终72d8b0a8afca4b34bfffd3b62934f2bf Passed，32.67秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "GROUP-DEBUFF-REACTIVE-DRAW": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.NECROBINDER/ENCOUNTER.CHOMPERS_NORMAL，GROUP-DEBUFF-REACTIVE-DRAW，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "GroupDebuff:FourSources:Vicious:Hellraiser:PerTargetEffects:Native:Fork",
+    "observed": "失败dd57fdf540c941aba6cc7146ced466c4：System.InvalidOperationException: GROUP-DEBUFF-REACTIVE-DRAW.SHOCKWAVE 一步模拟与真实行动不一致；首个差异：none\r；最终749d07146e794926b05aab629d136865 Passed，61.16秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "CONSTRUCT-REAPER-ARTIFACT": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.NECROBINDER/ENCOUNTER.CONSTRUCT_MENAGERIE_NORMAL，CONSTRUCT-REAPER-ARTIFACT，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "ReaperForm:Osty:Artifact:PenNib:MultiTargetDoom:TimesUp:RouteRisk13:NativeTurn:Fork",
+    "observed": "失败830f843415c940d4a7943cb53399cbf9：System.InvalidOperationException: CONSTRUCT-REAPER-ARTIFACT.MISERY 一步模拟与真实行动不一致；首个差异：field=P[5] expected={1:DOOM_POWER=36/0[]} actual={2:STRENGTH_POWER=4/0[]} expected_count=11 act；最终d57b75f8d6d643b48f6316af432c0481 Passed，39.98秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "FIXED-PREFIX-POTION-POLICY": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，FIXED-PREFIX-POTION-POLICY，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "FixedPotionPrefix:Disabled:Quota:EarliestTurn:Target:Protect:RequiredPair",
+    "observed": "失败ea980c051f3a44929ebaf9c25ab25aee：System.InvalidOperationException: Fixed potion prefix policy failed: disabled potion use\r；最终5e650223cc7546d896f206c10bd98f8a Passed，22.28秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.FixedPrefixOutcomes.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "FIXED-PREFIX-TURN-OUTCOMES": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，FIXED-PREFIX-TURN-OUTCOMES，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "FixedPrefixOutcomes:NodeOwnedBeforeProjection:RawFallbackSoldDelta:ExistingOutcomePreserved；FixedPrefixContinuations:IndependentPrefixOracle:FullStateText:Turn:ForecastOffset:Order；FixedPrefixOutcomes:ThreeTurns:ZeroAndPositiveLoss:PartialTail:Terminal:Empty:InvalidSuffix:RootUnchanged；FixedPrefixOutcomes:SevenTables:CacheRoundtrip:InvalidCachePreserved:ImportAndContinuationRejected:MissingLossNotZero；FixedPrefixOutcomes:NativeThreeTurnContinuation:LiveEndTurnRiskMatches:ReuseAndDisplayTotals；FixedPrefixContinuations:N4:IndependentPrefixOracle:FullStateText:Turn:ForecastOffset:RootUnchanged；FixedPrefixContinuations:N8:IndependentPrefixOracle:FullStateText:Turn:ForecastOffset:RootUnchanged；FixedPrefixContinuations:N17:IndependentPrefixOracle:FullStateText:Turn:ForecastOffset:RootUnchanged",
+    "observed": "最终75437f09fab94d62b82336e2cc2af221 Passed，44.71秒；完整断言按场景执行，实例已清理。；2026-10-04合并验收：b18d23d1829b4438a557a5f75acf6425 Passed；独立前缀完整状态oracle、多回合结果与终局截断；实例已删除。",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.FixedPrefixOutcomes.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "MIRRORED-HOOK-FILTER": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，MIRRORED-HOOK-FILTER，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "MirroredHookFilter:Methods=62:Models=1671:OrderDuplicatesExternalForkInvalidationPatchRefreshSharedLayoutsSegmentsNoAnchorEffectivePrefixReuse",
+    "observed": "最终dd238590831d4fc5b0a862ea2589ea07 Passed，47.64秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.MirroredHookFilter.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "FROZEN-ROOT-LISTENERS": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，FROZEN-ROOT-LISTENERS，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "FrozenRootRunListeners:ParentChildGrandchild:CardMutation:PowerRemap",
+    "observed": "最终92375939aa64442b8b489ec81f5f9624 Passed，45.21秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.FrozenRootListeners.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "CALCULATED-HISTORY-FREEZE": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，CALCULATED-HISTORY-FREEZE，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "CalculatedHistory:SixReaders:NativeAdvance:Parent:Sibling:Fork:BranchIncrement",
+    "observed": "最终0e251ee661f24c399ed18697c9e66ee3 Passed，23.41秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "VOID-FORM-TURN-CHOICES": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.REGENT/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，VOID-FORM-TURN-CHOICES，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "VoidForm:ForcedTurn:Tyranny:Stratagem:FullReplay:ExecutionContinuation:Native",
+    "observed": "最终52eb373400cf4154959105a39ebac915 Passed，31.60秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "FLATTEN-MUSIC-BOX-ENTRY": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.NECROBINDER/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，FLATTEN-MUSIC-BOX-ENTRY，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "FlattenMusicBox:NativeCloneEntry:OrderedCostLayers:Fork",
+    "observed": "最终85219286175447c8bb0a28b4e371e66e Passed，23.17秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "SEEKER-ORDERED-OPTIONS": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，SEEKER-ORDERED-OPTIONS，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "SeekerStrike:RandomSample:FilteredPileOrder:DuplicateInstances:Native:Fork",
+    "observed": "失败01da2e3ba70e44d4a60b8018922a788e：System.InvalidOperationException: Seeker candidates differ from the native filtered draw-pile order.\r；最终2fa365c9cfb346cb946b356030be11d7 Passed，23.49秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.OrderedSelection.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "RITUAL-TEMPORARY-STRENGTH": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，RITUAL-TEMPORARY-STRENGTH，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "Ritual:TemporaryStrength:BothListenerOrders:Native:Fork",
+    "observed": "失败89ac521a2a794c35b80b15278fb18d6d：System.InvalidOperationException: Ritual.TemporaryStrengthOrder:False 一步模拟与真实行动不一致；首个差异：field=P[0] expected={0:STRENGTH_POWER=1/0[]} actual={0:RITUAL_POWER=1/0[]} expected_count=2 ；最终e6dbee4c63964b12b2de0493dde79f73 Passed，27.02秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.OrderedSelection.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "NOXIOUS-RAMPART-ORDER": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.TURRET_OPERATOR_WEAK，NOXIOUS-RAMPART-ORDER，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "NoxiousFumes:SleightOfFlesh:PerTargetDamage:BeforeRampart:Native:Fork",
+    "observed": "失败f1713e9840ec4e84bbcc6ca273889a59：System.InvalidOperationException: NoxiousFumes.SleightOfFleshBeforeRampart 一步模拟与真实行动不一致；首个差异：field=E1.hp expected={41} actual={32}\r；最终d3bf363e7ede4c329633476dcdbb2f35 Passed，25.52秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.OrderedSelection.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "EVIL-EYE-EXHAUST-HISTORY": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，EVIL-EYE-EXHAUST-HISTORY，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "EvilEye:ExhaustedHistory:SingleAndDoubleBlock:Native",
+    "observed": "失败c40a9d0550b64e04bf0fc7b43a53044c：System.InvalidOperationException: EVIL-EYE-EXHAUST-HISTORY.EvilEye:EVIL_EYE 一步模拟与真实行动不一致；首个差异：field=block expected={45} actual={54}\r；最终e82fd9610dbc46b8883ee8aa3609e322 Passed，25.72秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.OrderedSelection.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "BLOCK-SPEC-CARD-PLAY-IDENTITY": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，BLOCK-SPEC-CARD-PLAY-IDENTITY，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "BlockSpecIdentity:DeathsDoor:Glitterstream:Unmovable:Native:Fork",
+    "observed": "最终b87b54a38fb04bc6bc6267e56a44e371 Passed，25.84秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.OrderedSelection.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "ROUTE-ADOPTION-LIFETIME": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，ROUTE-ADOPTION-LIFETIME，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "RouteAdoption:PublishedPreview:ExpiredPass:ActiveRequest:ExactActions",
+    "observed": "最终602a34d3a6954e7987515ad8e003a213 Passed，23.14秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "PAELS-LEGION-FINISHED-REFERENCE": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.SILENT/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，PAELS-LEGION-FINISHED-REFERENCE，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "PaelsLegion:FinishedNativeReference:FrozenRoot:LaterBlock:Cooldown:Native:Fork",
+    "observed": "失败d6c44ccfbe9e4296bcf14558b3472dc0：System.InvalidOperationException: Cannot fork Pael's Legion during card-play resolution.\r；最终efa60d3c846f49ffa55c8d513bb3e2fa Passed，23.64秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "END-TURN-RISK-LOSS-ACCOUNTING": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.DEFECT/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，END-TURN-RISK-LOSS-ACCOUNTING，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "EndTurnRisk:DamageLossAxis:Revival:FinalHp:Native",
+    "observed": "失败37bdabd521cf4fd7ba7579ef15cb9162：System.InvalidOperationException: End-turn risk and route loss differ: 16/4; hp=38/22.\r；最终561bb22639aa446d91d3d531711e573e Passed，27.46秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "MAKE-IT-SO-FULL-HAND": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.REGENT/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，MAKE-IT-SO-FULL-HAND，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "MakeItSo:MusicBox:FullHand:OrderedReturns:Native:Fork",
+    "observed": "失败778939bdc0aa4bb3bf7fb375f91306f6：System.InvalidOperationException: MAKE-IT-SO-FULL-HAND.MASTER_OF_STRATEGY 一步模拟与真实行动不一致；首个差异：field=H[9] expected={MAKE_IT_SO+1/False:0/False:-1/0/False/False/False/True/False/-:0:0/；最终0c83cce4e34244ca9af503848b4709db Passed，25.37秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "CARD-COST-IDENTITY-CONTRACT": {
+    "status": "Passed",
+    "level": "HeadlessNativeMechanismContract",
+    "procedure": "CHARACTER.IRONCLAD/ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK，CARD-COST-IDENTITY-CONTRACT，120秒上限、串行及CleanupInstanceOnExit。",
+    "expected": "CardCostIdentity:comparisons=11:nativeTurnAndPlayCleanup:stars:fork:choice:continuation",
+    "observed": "最终65bcb61bc6d34f5f8d04dd21b64e6aa0 Passed，45.39秒；完整断言按场景执行，实例已清理。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardCostIdentity.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "DAMPEN-REACTIVE-ROCKET-PUNCH": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateAndForkContract",
+    "procedure": "共享首因单效果严格差分，120秒上限，CleanupInstanceOnExit。",
+    "expected": "逐实例有序状态、费用/升级或生成历史、父根及Fork一致。",
+    "observed": "2180067a1f424092b3617d4da6c59a77 Passed；实际输出与实例清理已在批次前段确认。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.DampenDeath.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "DAMPEN-REACTIVE-MELANCHOLY": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateAndForkContract",
+    "procedure": "共享首因单效果严格差分，120秒上限，CleanupInstanceOnExit。",
+    "expected": "逐实例有序状态、费用/升级或生成历史、父根及Fork一致。",
+    "observed": "1eb75a3bf3144624a8c744445ed4e4f8 Passed；实际输出与实例清理已在批次前段确认。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.DampenDeath.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "RADIANT-PEARL-ENTRY": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateAndForkContract",
+    "procedure": "共享首因单效果严格差分，120秒上限，CleanupInstanceOnExit。",
+    "expected": "逐实例有序状态、费用/升级或生成历史、父根及Fork一致。",
+    "observed": "afd4056a2fff4fb4aef3a17d76496efd Passed；实际输出与实例清理已在批次前段确认。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.48.0-hardbugs-20261003.md"
+  },
+  "GOLD-HEALING-MECHANISMS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndForkIsolation",
+    "procedure": "Game 0.111.0, merged upstream 56b6d6ee; IRONCLAD 50/80, minimum native effect, 120 seconds, owned instance cleanup; no Solve/diagnostics.",
+    "expected": "Complete state/RNG and parent/live isolation; preserve gold modifiers, healing callbacks and growth.",
+    "observed": "e45b785e58be408eb24a058cea44cddc Passed; GoldHealing:NoHealing:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:DragonNegative:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:DragonZero:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:DragonFractional:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:DragonPositive:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:BowlerDragon:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:BowlerDragonFractional:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:EctoplasmBlocksDragon:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:BowlerThenEctoplasm:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:EctoplasmThenBowler:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:MeltedDragon:FullNativeStateRng:ForkParentLiveIsolation; GoldHealing:UnknownThreeCallbacksRejectedWithoutExecution:ParentIsolation; GoldHealing:HandOfGreedFatal:NativePlay:Gold=25:GrowthResource:FullStateRng:ParentLiveIsolation; GoldHealing:HandOfGreedFatal:NativePlay:Gold=0:GrowthResource:FullStateRng:ParentLiveIsolation；2026-10-04合并验收：3bc7928290c343cca88248c0c28dd95e Passed；金币修正、三个回调、完整原生状态/RNG和父分支隔离；实例已删除。",
+    "evidence": "docs/performance/gold-max-hp-healing-20261003.md; src/Testing/Contracts/Combat/UnattendedTestRunner.GoldHealing.cs; src/Testing/Contracts/Combat/UnattendedTestRunner.MaxHpHealing.cs"
+  },
+  "MAX-HP-HEALING-CALLBACKS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndForkIsolation",
+    "procedure": "Game 0.111.0, merged upstream 56b6d6ee; IRONCLAD 50/80, minimum native effect, 120 seconds, owned instance cleanup; no Solve/diagnostics.",
+    "expected": "Complete state/RNG and parent/live isolation; preserve gold modifiers, healing callbacks and growth.",
+    "observed": "1e611f0aa1624d908d7c4f07d893fde4 Passed; MaxHpHealing:Zero:FullNativeStateRng:ParentLiveIsolation; MaxHpHealing:FractionalTruncated:FullNativeStateRng:ParentLiveIsolation; MaxHpHealing:Positive:FullNativeStateRng:ParentLiveIsolation; MaxHpHealing:PartialCap:FullNativeStateRng:ParentLiveIsolation; MaxHpHealing:FullCapGold:FullNativeStateRng:ParentLiveIsolation; MaxHpHealing:WrongOwnerNativeCallbackIdentity:NoStateChanges; MaxHpHealing:RedSkullThresholdCrossing:FullNativeStateRng:ParentLiveIsolation; MaxHpHealing:FruitJuiceNativeUse:RedSkullHpCallback:FullStateRng:ParentLiveIsolation；2026-10-04合并验收：cd6549478924451882fc600e67724a53 Passed；最大生命实际增量、封顶与回复回调的原生差分；实例已删除。",
+    "evidence": "docs/performance/gold-max-hp-healing-20261003.md; src/Testing/Contracts/Combat/UnattendedTestRunner.GoldHealing.cs; src/Testing/Contracts/Combat/UnattendedTestRunner.MaxHpHealing.cs"
+  },
+  "FEED-MAX-HP-CAP": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndForkIsolation",
+    "procedure": "Game 0.111.0, merged upstream 56b6d6ee; IRONCLAD 50/80, minimum native effect, 120 seconds, owned instance cleanup; no Solve/diagnostics.",
+    "expected": "Complete state/RNG and parent/live isolation; preserve gold modifiers, healing callbacks and growth.",
+    "observed": "de2062aa4fc847f98b7293a8d848d22b Passed; MaxHpHealing:FeedNativeFatal:ActualGain=2:GrowthProtected:FullStateRng:ParentLiveIsolation; MaxHpHealing:FeedNativeFatal:ActualGain=0:GrowthProtected:FullStateRng:ParentLiveIsolation；2026-10-04合并验收：ddcf661e391c4013a0aa87861f8542f3 Passed；两次致命出牌的实际增量与成长计数；实例已删除。",
+    "evidence": "docs/performance/gold-max-hp-healing-20261003.md; src/Testing/Contracts/Combat/UnattendedTestRunner.GoldHealing.cs; src/Testing/Contracts/Combat/UnattendedTestRunner.MaxHpHealing.cs"
+  },
+  "RELIC-MAX-HP-HEALING-BOUNDS": {
+    "status": "Passed",
+    "level": "HeadlessNativeCallbackFullStateDifferentialAndForkIsolation",
+    "procedure": "Game 0.111.0, exact ChosenCheese.AfterCombatEnd / DarkstonePeriapt.AfterCardChangedPiles callback; IRONCLAD 50/80, 120-second owned instance cleanup, no Solve.",
+    "expected": "Unclosed held sources retain healing allowance; melted sources excluded; full state/RNG, parent/live isolation. Does not assert whole combat-end dispatch or permanent-deck mutation simulation.",
+    "observed": "35f61a69acf74cc3b6cc56f6e5269f8d Failed: bound=0 vs native heal=1. b16bb21caa4441bda3f931705fc0dddd Passed: two native callbacks, actual HP/max-HP +1/+6, and two melted-source exclusions.；2026-10-04合并验收：bee94b31824d449e8f7e9fa55cbe94f5 Passed；两项直接原生遗物回调与熔化来源排除；实例已删除。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.RelicMaxHpHealing.cs; docs/performance/gold-max-hp-healing-20261003.md"
+  },
+  "KNOWN-HEALING-MEMBERS": {
+    "status": "Passed",
+    "level": "HeadlessMechanismBoundaryContract",
+    "procedure": "平台原生无人入口，固定请求、120秒上限和CleanupInstanceOnExit。",
+    "expected": "严格增量、DOP2、控制质量、成长门与live隔离",
+    "observed": "2026-10-04合并验收：fab7a8170a3942e9920e09fa466aa34e Passed；严格增量、DOP2、控制质量、成长门与live隔离；实例已删除。",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.RefinementIncumbent.cs; docs/TEST_MATRIX.md"
+  },
+  "B013-FIXED-PREFIX-TERMINAL-BOUNDARY": {
+    "status": "Passed",
+    "level": "HeadlessMechanismBoundaryContract",
+    "procedure": "平台原生无人入口，固定请求、120秒上限和CleanupInstanceOnExit。",
+    "expected": "终局前缀截断与可交付胜利",
+    "observed": "2026-10-04合并验收：5b097fd5f17745a0868a6b49d7af3b37 Passed；终局前缀截断与可交付胜利；实例已删除。",
+    "evidence": "src/Testing/Regressions/Community/B013FixedPrefixTerminalBoundaryChecks.cs; docs/TEST_MATRIX.md"
+  },
+  "B013-FIXED-PREFIX-TURN-END-CARD": {
+    "status": "Passed",
+    "level": "HeadlessMechanismBoundaryContract",
+    "procedure": "平台原生无人入口，固定请求、120秒上限和CleanupInstanceOnExit。",
+    "expected": "强制结束回合卡的固定前缀推进",
+    "observed": "2026-10-04合并验收：c778f285a52a4b9fbbe0e370688e6ec1 Passed；强制结束回合卡的固定前缀推进；实例已删除。",
+    "evidence": "src/Testing/Regressions/Community/B013FixedPrefixTurnEndCardChecks.cs; docs/TEST_MATRIX.md"
+  },
+  "B013-RADIANT-PEARL-HAND-DRAW": {
+    "status": "Passed",
+    "level": "HeadlessMechanismBoundaryContract",
+    "procedure": "平台原生无人入口，固定请求、120秒上限和CleanupInstanceOnExit。",
+    "expected": "抽牌前生成的原生数量、升级与归属对账",
+    "observed": "2026-10-04合并验收：ca904a20eafd43b690d8c824f60e2069 Passed；抽牌前生成的原生数量、升级与归属对账；实例已删除。",
+    "evidence": "src/Testing/Regressions/Community/B013RadiantPearlHandDrawChecks.cs; docs/TEST_MATRIX.md"
+  },
+  "B013-DEFAULT-GC-LIMIT": {
+    "status": "Passed",
+    "level": "HeadlessMechanismBoundaryContract",
+    "procedure": "平台原生无人入口，固定请求、120秒上限和CleanupInstanceOnExit。",
+    "expected": "限额、真实Gen2回收续搜、退出清理与CLR模式",
+    "observed": "2026-10-04合并验收：3e440c65f9564b5ea6a65d094521b8d7 Passed；限额、真实Gen2回收续搜、退出清理与CLR模式；实例已删除。",
+    "evidence": "src/Testing/Regressions/Community/B013DefaultGcAllocationLimitChecks.cs; docs/TEST_MATRIX.md"
+  },
+  "KNOWN-HEALING-OPENING": {
+    "status": "Passed",
+    "level": "HeadlessMechanismBoundaryContract",
+    "procedure": "平台原生无人入口，固定请求、120秒上限和CleanupInstanceOnExit。",
+    "expected": "非认证根延后计划、单次执行与控制质量",
+    "observed": "2026-10-04合并验收：3fecd35f80a34cb792a43ca3b5bc3b1c Passed；非认证根延后计划、单次执行与控制质量；实例已删除。",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.RefinementIncumbent.cs; docs/TEST_MATRIX.md"
+  },
+  "B013-BLOCK-DECIMAL-BOUNDARY": {
+    "status": "Passed",
+    "level": "HeadlessMechanismBoundaryContract",
+    "procedure": "平台原生无人入口，固定请求、120秒上限和CleanupInstanceOnExit。",
+    "expected": "原生虚弱倍率、完整状态/RNG；模拟96/95/200层与零格挡",
+    "observed": "2026-10-04合并验收：b556026e627c4153bb3d2bf23948a095 Passed；原生虚弱倍率、完整状态/RNG；模拟96/95/200层与零格挡；实例已删除。",
+    "evidence": "src/Testing/Regressions/Community/B013BlockDecimalBoundaryChecks.cs; docs/TEST_MATRIX.md"
+  },
+  "GC-DEFAULT-ENTRY-FAILURE": {
+    "status": "Passed",
+    "level": "StandaloneClrFaultInjectionAndScopeLifecycleContract",
+    "procedure": "CombatSolver.GcPolicyChecks：default-entry、diagnostic-failure、scopes。",
+    "expected": "原异常传播、信号释放、后续独占准入与作用域收尾。",
+    "observed": "default-entry未修复基线失败：限额日志抛错后压力信号仍启用；最终2项通过。既有diagnostic-failure 8项、scopes 8项通过。",
+    "evidence": "tools/testing/checks/CombatSolver.GcPolicyChecks/GcDiagnosticFailureChecks.cs; src/Runtime/SearchGcPolicy.cs; docs/TEST_MATRIX.md"
   }
 }

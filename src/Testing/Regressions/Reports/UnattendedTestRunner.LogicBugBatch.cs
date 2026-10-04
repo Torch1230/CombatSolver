@@ -15,6 +15,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using System.Reflection;
 using HarmonyLib;
@@ -25,6 +26,206 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertRouteAdoptionLifetimeAsync(CombatState combat, Player player)
+    {
+        await ClearPlayerPilesAsync(player);
+        foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
+        foreach (string id in new[] { "STRIKE_IRONCLAD", "DEFEND_IRONCLAD", "ANGER", "SHRUG_IT_OFF", "BATTLE_TRANCE", "POMMEL_STRIKE" })
+            await InjectCardAsync(combat, player, new() { CardId = id, Pile = "Hand" });
+        for (int index = 0; index < 8; index++)
+            await InjectCardAsync(combat, player, new() { CardId = "STRIKE_IRONCLAD", Pile = "Draw" });
+        SetEnergy(player, 3);
+        var root = CombatRootSnapshot.Capture(combat);
+        var names = SolverDisplayNames.Capture(combat);
+        var damage = BattleDamageTracker.Observe(combat);
+        using CancellationTokenSource request = new();
+        using CancellationTokenSource pass = CancellationTokenSource.CreateLinkedTokenSource(request.Token);
+        var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null)
+            with { RouteAdoptionCancellationToken = request.Token, FixedBudget = true, StopAtAcceptableBattleHpLoss = false,
+                MaxDegreeOfParallelism = 1, DetailedDiagnostics = false, VerifyIncrementalSearch = false };
+        SolverRouteAdoptionSeed? seed = null;
+        var profile = policy.Profile with { BeamWidth = 24, MaxExpandedNodes = 800, SoftTimeBudgetMilliseconds = 5000 };
+        await Task.Run(() =>
+        {
+            var driver = new CombatBeamSolver(root, names, damage, policy, pass.Token, progress =>
+            {
+                if (seed == null && progress.RouteAdoptionSeed is { Actions.Count: > 0 } available)
+                {
+                    seed = available;
+                    pass.Cancel();
+                }
+            }, profile);
+            try { driver.Solve(); }
+            catch (OperationCanceledException) when (pass.IsCancellationRequested && !request.IsCancellationRequested) { }
+        });
+        if (seed == null || !pass.IsCancellationRequested)
+            throw new InvalidOperationException("Route adoption fixture did not publish an expiring pass preview.");
+        SolverResult adopted = await Task.Run(seed.Materialize);
+        if (adopted.ResultScope != SolverResultScope.RouteAdoption
+            || !seed.Actions.SequenceEqual(adopted.BestNode.Actions))
+            throw new InvalidOperationException("Adopted route differs from its displayed preview.");
+        _completedChecks.Add("RouteAdoption:PublishedPreview:ExpiredPass:ActiveRequest:ExactActions");
+    }
+
+    private async Task AssertVoidFormTurnChoicesAsync(CombatState combat, Player player)
+    {
+        await ClearPlayerPilesAsync(player);
+        foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
+        foreach (var power in combat.Creatures.SelectMany(creature => creature.Powers).ToArray()) await PowerCmd.Remove(power);
+        await InjectCardAsync(combat, player, new() { CardId = "VOID_FORM", Pile = "Hand" });
+        for (int index = 0; index < 8; index++)
+            await InjectCardAsync(combat, player, new() { CardId = "DEFEND_REGENT", Pile = "Discard" });
+        foreach (string id in new[] { "STRATAGEM_POWER", "TYRANNY_POWER" })
+            await InjectPowerAsync(combat, player, new() { PowerId = id, Amount = 1, Target = "Player" });
+        SetEnergy(player, 3);
+        var root = CombatRootSnapshot.Capture(combat);
+        var driver = new CombatBeamSolver(root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
+            SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null));
+        var (action, snapshot) = driver.VerifyForcedTurnChoiceReplayForTesting();
+        var originalSettings = SolverSettings.Current;
+        SolverSettings.ApplyForTesting(originalSettings with { AutomaticCalculationEnabled = false });
+        try
+        {
+            var expected = CaptureSimulated(snapshot.Simulator, (SimulatedCombatState)snapshot.Simulator.State.CombatState,
+                player, combat.Enemies[0]);
+            using var session = NativeChoiceRuntime.Begin(combat, player, "test:void-form-turn-choices");
+            using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(30));
+            session.SetPlanAndStartDriving(NGame.Instance!, action.TurnStartChoices!, deadline.Token);
+            async Task AdvanceNative()
+            {
+                if (!FindActualHandCard(player, "VOID_FORM", 0).TryManualPlay(null))
+                    throw new InvalidOperationException("Native Void Form was not playable.");
+                await RunManager.Instance.ActionExecutor.FinishedExecutingActions().WaitAsync(deadline.Token);
+                while (player.PlayerCombatState!.TurnNumber == action.Turn || player.PlayerCombatState.Phase != PlayerTurnPhase.Play)
+                {
+                    deadline.Token.ThrowIfCancellationRequested();
+                    await NextFrameAsync();
+                }
+            }
+            try { await session.AwaitProducerAndCompleteAsync(AdvanceNative()).WaitAsync(deadline.Token); }
+            catch (OperationCanceledException error) when (deadline.IsCancellationRequested)
+            {
+                throw new InvalidOperationException($"Native forced turn stalled: turn={player.PlayerCombatState?.TurnNumber} phase={player.PlayerCombatState?.Phase}; "
+                    + $"setup={PlayerTurnSetupCoordinator.DescribeControlsForTesting()}; choices={string.Join(';', NativeChoiceRuntime.TraceSnapshotForTesting)}", error);
+            }
+            AssertSnapshotEqual(expected, CaptureActual(combat, player, combat.Enemies[0]), "VoidForm", "NextTurnChoices");
+        }
+        finally { SolverSettings.ApplyForTesting(originalSettings); snapshot.ReleaseSimulator(); }
+        _completedChecks.Add("VoidForm:ForcedTurn:Tyranny:Stratagem:FullReplay:ExecutionContinuation:Native");
+    }
+
+    private async Task AssertRadiantPearlEntryAsync(CombatState combat, Player player)
+    {
+        await ClearPlayerPilesAsync(player);
+        foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
+        await InjectRelicAsync(player, new() { RelicId = "RADIANT_PEARL" });
+        var simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
+        var shadow = (SimulatedCombatState)simulator.State.CombatState;
+        var cursor = shadow.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
+        try { shadow.PrepareBeforeHandDraw(simulator, player, cursor); }
+        finally { shadow.EndActionChoices(); }
+        var expected = CaptureSimulated(simulator, shadow, player, combat.Enemies[0]);
+        var fork = simulator.Fork();
+        AssertSnapshotEqual(expected, CaptureSimulated(fork, (SimulatedCombatState)fork.State.CombatState, player, combat.Enemies[0]),
+            "RadiantPearl", "Fork");
+        await MegaCrit.Sts2.Core.Hooks.Hook.BeforeHandDraw(combat, player, new BlockingPlayerChoiceContext());
+        AssertSnapshotEqual(expected, CaptureActual(combat, player, combat.Enemies[0]), "RadiantPearl", "NativeBeforeDraw");
+        _completedChecks.Add("RadiantPearl:FirstTurnBeforeHandDraw:GeneratedHistory:OrderedHand:Fork:Native");
+    }
+
+    private async Task AssertCalculatedHistoryFreezeAsync(CombatState combat, Player player)
+    {
+        await ClearPlayerPilesAsync(player);
+        foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
+        foreach (var power in combat.Creatures.SelectMany(creature => creature.Powers).ToArray())
+            await PowerCmd.Remove(power);
+        foreach (string id in new[] { "VOLTAIC", "SUPERMASSIVE", "TEAR_ASUNDER", "PULL_FROM_BELOW", "GOLD_AXE", "MURDER" })
+            await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = id, Pile = "Draw" });
+        await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "STRIKE_IRONCLAD", Pile = "Hand" });
+        CardModel liveStrike = FindActualHandCard(player, "STRIKE_IRONCLAD", 0);
+        CardCmd.ApplyKeyword(liveStrike, CardKeyword.Ethereal);
+        SetEnergy(player, 3);
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        CombatPredictionSimulator parent = root.ForkSimulator();
+        CombatPredictionSimulator child = parent.Fork();
+        Dictionary<string, decimal> Values(CombatPredictionSimulator simulator)
+        {
+            Dictionary<string, decimal> values = [];
+            foreach (PredictedCard card in simulator.State.GetPlayerCombatState(player).AllCards
+                         .Where(card => card.Preview is Voltaic or Supermassive or TearAsunder or PullFromBelow or GoldAxe or Murder))
+            {
+                var variable = card.Preview.DynamicVars.Values
+                    .OfType<MegaCrit.Sts2.Core.Localization.DynamicVars.CalculatedVar>().Single();
+                if (!CalculatedVarSpecRegistry.TryCalculate(variable, simulator, card, combat.Enemies[0], out decimal value))
+                    throw new InvalidOperationException("Calculated history fixture has an unsupported variable.");
+                values.Add(card.Preview.Id.Entry, value);
+            }
+            return values;
+        }
+        Dictionary<string, decimal> before = Values(parent);
+        await OrbCmd.Channel<LightningOrb>(new BlockingPlayerChoiceContext(), player);
+        CardModel generated = combat.CreateCard(ModelDb.Card<Wound>(), player);
+        await CardPileCmd.AddGeneratedCardToCombat(generated, PileType.Hand, player);
+        await CreatureCmd.Damage(new BlockingPlayerChoiceContext(), player.Creature, 1,
+            ValueProp.Unblockable | ValueProp.Unpowered, player.Creature);
+        if (!liveStrike.TryManualPlay(combat.Enemies[0]))
+            throw new InvalidOperationException("Calculated history native strike was not playable.");
+        await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+        await CardPileCmd.Draw(new BlockingPlayerChoiceContext(), 1, player);
+        foreach (CombatPredictionSimulator simulator in new[] { parent, child, parent.Fork() })
+            foreach (var (id, value) in Values(simulator))
+                if (value != before[id])
+                    throw new InvalidOperationException($"Frozen calculated history changed after live advance: {id}={before[id]}/{value}.");
+        Dictionary<string, decimal> liveValues = Values(CombatRootSnapshot.Capture(combat).ForkSimulator());
+        foreach (var (id, value) in liveValues)
+            if (value <= before[id])
+                throw new InvalidOperationException($"Native history fixture did not advance {id}: {before[id]}/{value}.");
+        child.OrbChannel(player, ModelDb.Orb<LightningOrb>().ToMutable());
+        child.AddGeneratedCardToCombat(PredictedCard.Create(ModelDb.Card<Wound>(), player), PileType.Hand, player);
+        child.Damage(player.Creature, 1, ValueProp.Unblockable | ValueProp.Unpowered, player.Creature);
+        PlaySimulatedCard(child, (SimulatedCombatState)child.State.CombatState,
+            FindSimulatedHandCard(child, player, "STRIKE_IRONCLAD", 0), combat.Enemies[0], combat.Enemies);
+        child.Draw(player, 1);
+        foreach (CombatPredictionSimulator simulator in new[] { child, child.Fork() })
+            foreach (var (id, value) in Values(simulator))
+                if (value != liveValues[id])
+                    throw new InvalidOperationException($"Branch history differs from native history: {id}={liveValues[id]}/{value}.");
+        foreach (var (id, value) in Values(parent))
+            if (value != before[id])
+                throw new InvalidOperationException($"Branch history changed its parent: {id}.");
+        _completedChecks.Add("CalculatedHistory:SixReaders:NativeAdvance:Parent:Sibling:Fork:BranchIncrement");
+    }
+
+    private async Task AssertFlattenMusicBoxEntryAsync(CombatState combat, Player player)
+    {
+        Creature enemy = combat.Enemies[0];
+        await ClearPlayerPilesAsync(player);
+        foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
+        await InjectRelicAsync(player, new UnattendedRelicInjection { RelicId = "MUSIC_BOX" });
+        await InjectCardAsync(combat, player, new UnattendedCardInjection { CardId = "FLATTEN", Pile = "Hand" });
+        SetEnergy(player, 3);
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        CombatPredictionSimulator simulator = root.ForkSimulator();
+        SimulatedCombatState shadow = (SimulatedCombatState)simulator.State.CombatState;
+        PlaySimulatedCard(simulator, shadow, FindSimulatedHandCard(simulator, player, "FLATTEN", 0), enemy, combat.Enemies);
+        MoveStateSnapshot expected = CaptureSimulated(simulator, shadow, player, enemy);
+        string[] expectedHand = simulator.State.GetPlayerCombatState(player).Hand.Cards
+            .Select(CardChoiceSupport.ChoiceCardKey).ToArray();
+        CombatPredictionSimulator fork = simulator.Fork();
+        if (!fork.State.GetPlayerCombatState(player).Hand.Cards.Select(CardChoiceSupport.ChoiceCardKey).SequenceEqual(expectedHand))
+            throw new InvalidOperationException("Flatten clone cost changed during Fork.");
+        if (!FindActualHandCard(player, "FLATTEN", 0).TryManualPlay(enemy))
+            throw new InvalidOperationException("Flatten native fixture was not playable.");
+        await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+        AssertSnapshotEqual(expected, CaptureActual(combat, player, enemy), "FlattenMusicBox", "NativeClone");
+        string[] actualHand = player.PlayerCombatState!.Hand.Cards
+            .Select(card => CardChoiceSupport.ChoiceCardKey(new PredictedCard(card))).ToArray();
+        if (!expectedHand.SequenceEqual(actualHand))
+            throw new InvalidOperationException("Flatten clone entry cost differs: expected=" + string.Join(";", expectedHand)
+                + " actual=" + string.Join(";", actualHand));
+        _completedChecks.Add("FlattenMusicBox:NativeCloneEntry:OrderedCostLayers:Fork");
+    }
+
     private async Task AssertTurnStartDamageSpiteAsync(CombatState combat, Player player, string cardId = "SPITE")
     {
         Creature source = combat.Enemies.Single();

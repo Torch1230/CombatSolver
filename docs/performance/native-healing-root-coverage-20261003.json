@@ -1,0 +1,1417 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "a32c983b",
+  "dllSha256": "89a8e2c204afe1456884b0f924f979808dca4f3f86aa6e6ab0fbca46a8068ea9",
+  "scope": "root-only source diagnostics; does not launch Solve, change budget or measure search performance; prior pruning counters reused with their original DLL provenance",
+  "gameDllSha256": "2b40d2df538db1ceb5fa48d958c80ab730ada1e07db88a870aff01a661768b9f",
+  "coverage": {
+    "roots": 29,
+    "strictEnvironmentEligible": 6,
+    "finiteInitialHealingUpperBound": 6,
+    "knownNativePolicyEligible": 29,
+    "legacyFixedHealingEligible": 0,
+    "rootStateMatches": 29,
+    "liveUnchanged": 29,
+    "newProductionCertificates": 0,
+    "legacyFirstBlockingReasons": {
+      "potion_present": 13,
+      "unsupported_character": 8,
+      "unsupported_card": 7,
+      "unsupported_player_power": 1
+    },
+    "strictBlockingReasons": "not measured: current API does not expose individual strict rejection reasons"
+  },
+  "priorPruning": {
+    "sourceDllSha256": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+    "totalPrimaryIncumbentBranchesPruned": 5922,
+    "rootsWithPrimaryPrunes": 21,
+    "scope": "selected-result counters from prior 29-root regression; include current native-known policy; not total coordinator requests or exclusively strict-healing certificate prunes; no new pruning experiment"
+  },
+  "certificationCost": "not measured; captureElapsedMilliseconds covers root capture/JIT and is not isolated certification overhead",
+  "pilotSourceProvenance": {
+    "gameDllSha256": "2b40d2df538db1ceb5fa48d958c80ab730ada1e07db88a870aff01a661768b9f",
+    "mvid": "8a76776c-0ce1-4d4f-90bd-8cce653dad8e",
+    "sources": [
+      {
+        "type": "MegaCrit.Sts2.Core.Models.Monsters.Nibbit",
+        "source": ".local/general-healing-audit/component-pilot-sources/Models.Monsters.Nibbit.cs",
+        "sourceSha256": "17d410c952468b338117015afe630c95ef4adcce51c0c2c34ed48f4f3f9a78f4",
+        "reuse": false
+      },
+      {
+        "type": "MegaCrit.Sts2.Core.Models.Relics.Brimstone",
+        "source": ".local/general-healing-audit/component-pilot-sources/Models.Relics.Brimstone.cs",
+        "sourceSha256": "a731ffaedc04210884033d0289dd44ff150a9b3129737918892b9a47dde3c3db",
+        "reuse": false
+      },
+      {
+        "type": "MegaCrit.Sts2.Core.Models.Relics.Cauldron",
+        "source": ".local/general-healing-audit/component-pilot-sources/Models.Relics.Cauldron.cs",
+        "sourceSha256": "a26a835918f9da14ce173ceceaac0a3990950b8385121e2c656ede24eede35dd",
+        "reuse": false
+      },
+      {
+        "type": "MegaCrit.Sts2.Core.Models.Potions.BottledPotential",
+        "source": ".local/general-healing-audit/component-pilot-sources/Models.Potions.BottledPotential.cs",
+        "sourceSha256": "b2c3698f7bc063e584acc29e32fd13f24a1969a510e41a8a9c62aef37661ccc8",
+        "reuse": false
+      },
+      {
+        "type": "MegaCrit.Sts2.Core.Models.Potions.ColorlessPotion",
+        "source": ".local/general-healing-audit/component-pilot-sources/Models.Potions.ColorlessPotion.cs",
+        "sourceSha256": "facfe0ef53918e9bb15382aa0f998a4b3f83079926975793f24fbb1afe21b67d",
+        "reuse": false
+      },
+      {
+        "type": "MegaCrit.Sts2.Core.Models.Potions.SpeedPotion",
+        "source": ".local/general-healing-audit/component-pilot-sources/Models.Potions.SpeedPotion.cs",
+        "sourceSha256": "f88a4cbdf0fda81069fc923d670becfb38889fb96453c2edd8680eb8a63de2e3",
+        "reuse": false
+      },
+      {
+        "type": "MegaCrit.Sts2.Core.Models.Relics.BeatingRemnant",
+        "source": ".local/general-healing-audit/component-pilot-sources/Models.Relics.BeatingRemnant.cs",
+        "sourceSha256": "a5ec3b017a4b8712596632a36223df0ca77b526660c6948d279084da61bf9651",
+        "reuse": false
+      },
+      {
+        "type": "MegaCrit.Sts2.Core.Models.Relics.GamePiece",
+        "source": ".local/general-healing-audit/component-pilot-sources/Models.Relics.GamePiece.cs",
+        "sourceSha256": "0b9b973d01ca5179c06e84fc546aa010d332c0c837797deb5610c9a1106a3a65",
+        "reuse": false
+      }
+    ]
+  },
+  "pilotSourceReviews": [
+    {
+      "type": "Nibbit",
+      "mechanism": "Butt attacks; Slice attacks and gains own Block; Hiss applies own Strength; no card/potion/relic/creature generation in reviewed native class",
+      "status": "native class body reviewed; damage/Power and complete environment callbacks still must compose"
+    },
+    {
+      "type": "Brimstone",
+      "mechanism": "owner side-turn start adds own Strength 2 and Strength 1 to alive opponents",
+      "status": "no direct HP restoration; Power callbacks must compose"
+    },
+    {
+      "type": "Cauldron",
+      "mechanism": "on acquisition offers five PotionRewards; TestMode uses fixed potions, normal mode random PotionRewards",
+      "status": "initial held pickup already occurred; future acquisition/reward claims cannot be default-safe"
+    },
+    {
+      "type": "ColorlessPotion",
+      "mechanism": "native unlock/multiplayer constraint; distinct three combat-filtered colorless cards using CombatCardGeneration RNG; choose/skip; add selected free-this-turn card to combat",
+      "status": "reuse C58 pool only with original premises; initial, attachments, chosen card and card-entry/pile callbacks compose"
+    },
+    {
+      "type": "BottledPotential",
+      "mechanism": "target player: move hand to Draw, shuffle, draw five; does not generate new cards",
+      "status": "pile/shuffle/draw callbacks and all initial/returning sources required"
+    },
+    {
+      "type": "SpeedPotion",
+      "mechanism": "applies SpeedPotionPower amount 5 to targeted player",
+      "status": "SpeedPotionPower not in C58 generated-Power set; dependency remains unreviewed and prevents a new closed certificate"
+    },
+    {
+      "type": "BeatingRemnant",
+      "mechanism": "limits owner HP loss after Osty using remaining per-turn allowance 20; accumulates damage and resets on owner side-turn start",
+      "status": "does not directly call healing; preserve hidden counter/Fork; complete damage/HP-write chain still required"
+    },
+    {
+      "type": "GamePiece",
+      "mechanism": "owner Power card played during ongoing combat draws one",
+      "status": "draw and card-entry callbacks compose; no generic zero certificate solely from method body"
+    }
+  ],
+  "rows": [
+    {
+      "scene": "dev-00-ironclad-elite",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": true,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "BEETLE_JUICE",
+        "initialRemainingHealingUpperBound": 0,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 106.0539
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BurningBlood",
+        "MegaCrit.Sts2.Core.Models.Relics.IceCream",
+        "MegaCrit.Sts2.Core.Models.Relics.TungstenRod",
+        "MegaCrit.Sts2.Core.Models.Relics.Kunai"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.BeetleJuice",
+        "MegaCrit.Sts2.Core.Models.Potions.GamblersBrew"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentFront",
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentMiddle",
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentBack"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-00-ironclad-elite/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-00-ironclad-elite-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "84de5bf67c281fb20ec8678ac5bf4e0df9adc2a25c688ca87754ecb40b8f8afe",
+      "priorPrimaryIncumbentBranchesPruned": 240,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-01-silent-elite",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": true,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "STABLE_SERUM",
+        "initialRemainingHealingUpperBound": 0,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 101.4344
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake",
+        "MegaCrit.Sts2.Core.Models.Relics.PotionBelt",
+        "MegaCrit.Sts2.Core.Models.Relics.Shovel",
+        "MegaCrit.Sts2.Core.Models.Relics.IceCream"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.StableSerum",
+        "MegaCrit.Sts2.Core.Models.Potions.BlessingOfTheForge"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.InfestedPrism"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-01-silent-elite/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-01-silent-elite-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "99fc7ff10fb18073dcacff22658e2186f2d7e5920ea79aee0eaa23d67ea0636a",
+      "priorPrimaryIncumbentBranchesPruned": 272,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-02-defect-elite",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_character",
+        "healingBoundCertificationSourceId": "DEFECT",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 103.6263
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.CrackedCore",
+        "MegaCrit.Sts2.Core.Models.Relics.Bread",
+        "MegaCrit.Sts2.Core.Models.Relics.RippleBasin",
+        "MegaCrit.Sts2.Core.Models.Relics.CaptainsWheel"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.SkillPotion",
+        "MegaCrit.Sts2.Core.Models.Potions.FruitJuice"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.InfestedPrism"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-02-defect-elite/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-02-defect-elite-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "28ba9e1d2aa2901671f10eb7999418b45d842a8019643238d683fe9844a27b68",
+      "priorPrimaryIncumbentBranchesPruned": 524,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-03-regent-elite",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": true,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_character",
+        "healingBoundCertificationSourceId": "REGENT",
+        "initialRemainingHealingUpperBound": 15,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 98.677
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.DivineRight",
+        "MegaCrit.Sts2.Core.Models.Relics.Girya",
+        "MegaCrit.Sts2.Core.Models.Relics.OldCoin",
+        "MegaCrit.Sts2.Core.Models.Relics.VitruvianMinion"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.HeartOfIron",
+        "MegaCrit.Sts2.Core.Models.Potions.RegenPotion"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentFront",
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentMiddle",
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentBack"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-03-regent-elite/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-03-regent-elite-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "6a467a96ee516c88c741372ee504913bd788d491afe502384bf34cada9d2d369",
+      "priorPrimaryIncumbentBranchesPruned": 702,
+      "priorPrimaryIncumbentUpdates": 2,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-04-necrobinder-elite",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "POTION_OF_DOOM",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 101.3873
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE",
+        "HAND_OF_GREED"
+      ],
+      "growthCards": [
+        "HAND_OF_GREED"
+      ],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BoundPhylactery",
+        "MegaCrit.Sts2.Core.Models.Relics.RainbowRing",
+        "MegaCrit.Sts2.Core.Models.Relics.HornCleat",
+        "MegaCrit.Sts2.Core.Models.Relics.GnarledHammer"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.PotionOfDoom",
+        "MegaCrit.Sts2.Core.Models.Potions.WeakPotion"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.InfestedPrism"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-04-necrobinder-elite/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-04-necrobinder-elite-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "e5801bd34840a0f935c2890ffe9071d2ee018b20d1ee0f2149f4e72159d66f63",
+      "priorPrimaryIncumbentBranchesPruned": 0,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-05-ironclad-boss",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "CURE_ALL",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 98.3568
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BurningBlood",
+        "MegaCrit.Sts2.Core.Models.Relics.Whetstone",
+        "MegaCrit.Sts2.Core.Models.Relics.PenNib",
+        "MegaCrit.Sts2.Core.Models.Relics.DemonTongue"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.CureAll",
+        "MegaCrit.Sts2.Core.Models.Potions.LiquidBronze"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-05-ironclad-boss/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-05-ironclad-boss-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "b4223845e3d422f26ce7591cf65bbb1a9229f7ef5c4a52f50c2c4ae13ebe3d78",
+      "priorPrimaryIncumbentBranchesPruned": 350,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-06-silent-boss",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "FORTIFIER",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 94.0902
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "THE_HUNT",
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [
+        "THE_HUNT"
+      ],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake",
+        "MegaCrit.Sts2.Core.Models.Relics.BowlerHat",
+        "MegaCrit.Sts2.Core.Models.Relics.FestivePopper",
+        "MegaCrit.Sts2.Core.Models.Relics.SparklingRouge"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.Fortifier",
+        "MegaCrit.Sts2.Core.Models.Potions.LuckyTonic"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-06-silent-boss/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-06-silent-boss-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "10854947c25b74d99685569ce2bae3490a2c46addad89644ec734bf24cf2f123",
+      "priorPrimaryIncumbentBranchesPruned": 0,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-07-defect-boss",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_character",
+        "healingBoundCertificationSourceId": "DEFECT",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 98.2089
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.CrackedCore",
+        "MegaCrit.Sts2.Core.Models.Relics.RazorTooth",
+        "MegaCrit.Sts2.Core.Models.Relics.StrikeDummy",
+        "MegaCrit.Sts2.Core.Models.Relics.BookOfFiveRings"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.TouchOfInsanity",
+        "MegaCrit.Sts2.Core.Models.Potions.OrobicAcid"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-07-defect-boss/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-07-defect-boss-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "119dd64fc7015d5e14e5ecc0655b1ae2a184fce1737257f2862d1d5542270624",
+      "priorPrimaryIncumbentBranchesPruned": 219,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-08-regent-boss",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_character",
+        "healingBoundCertificationSourceId": "REGENT",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 90.536
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.DivineRight",
+        "MegaCrit.Sts2.Core.Models.Relics.MercuryHourglass",
+        "MegaCrit.Sts2.Core.Models.Relics.VexingPuzzlebox",
+        "MegaCrit.Sts2.Core.Models.Relics.MembershipCard"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.SpeedPotion",
+        "MegaCrit.Sts2.Core.Models.Potions.SwiftPotion"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-08-regent-boss/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-08-regent-boss-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "3551c3433120ea1084e3ebb0438af4765ebe048dcbf537bc1076b77f513cca82",
+      "priorPrimaryIncumbentBranchesPruned": 408,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-09-necrobinder-boss",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "SHACKLING_POTION",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 101.3331
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE",
+        "TRANSFIGURE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BoundPhylactery",
+        "MegaCrit.Sts2.Core.Models.Relics.LetterOpener",
+        "MegaCrit.Sts2.Core.Models.Relics.BowlerHat",
+        "MegaCrit.Sts2.Core.Models.Relics.WhiteStar"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.ShacklingPotion",
+        "MegaCrit.Sts2.Core.Models.Potions.CureAll"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-09-necrobinder-boss/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-09-necrobinder-boss-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "01f40b86e913845ba01eb08473b20fd152c19e3767ed8d9a910abfea10454e0b",
+      "priorPrimaryIncumbentBranchesPruned": 25,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-10-ironclad-monster",
+      "sourceDiagnosticReused": true,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "COLORLESS_POTION",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 100.2534
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BurningBlood",
+        "MegaCrit.Sts2.Core.Models.Relics.EternalFeather",
+        "MegaCrit.Sts2.Core.Models.Relics.Cauldron",
+        "MegaCrit.Sts2.Core.Models.Relics.Brimstone"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.ColorlessPotion",
+        "MegaCrit.Sts2.Core.Models.Potions.BottledPotential"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.Nibbit"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-10-ironclad-monster/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-10-ironclad-monster-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "75058094d955ff29f2380afde8de2c36fbcb3ec0d12ccaae56fd1ac1d434f299",
+      "priorPrimaryIncumbentBranchesPruned": 137,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "dev-11-silent-monster",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "REGEN_POTION",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 94.992
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake",
+        "MegaCrit.Sts2.Core.Models.Relics.TinyMailbox",
+        "MegaCrit.Sts2.Core.Models.Relics.GamblingChip",
+        "MegaCrit.Sts2.Core.Models.Relics.HelicalDart"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.RegenPotion",
+        "MegaCrit.Sts2.Core.Models.Potions.BottledPotential"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.ShrinkerBeetle",
+        "MegaCrit.Sts2.Core.Models.Monsters.FuzzyWurmCrawler"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/dev-11-silent-monster/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/dev-11-silent-monster-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "fcba450d6b3d6315afdf5c8de4a78943fd7cd5c0c36ffe1474d2219ad8ccae4e",
+      "priorPrimaryIncumbentBranchesPruned": 239,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "holdout-00-ironclad",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "ASHWATER",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 87.0135
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BurningBlood",
+        "MegaCrit.Sts2.Core.Models.Relics.RippleBasin",
+        "MegaCrit.Sts2.Core.Models.Relics.PunchDagger",
+        "MegaCrit.Sts2.Core.Models.Relics.Orichalcum"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.Ashwater",
+        "MegaCrit.Sts2.Core.Models.Potions.FlexPotion"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.ShrinkerBeetle"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/holdout-00-ironclad/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/holdout-00-ironclad-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "e26537b71aae41f24730d53c2ff3238dbd73bfdf9afc258810993e123a0bafc5",
+      "priorPrimaryIncumbentBranchesPruned": 207,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "holdout-01-silent",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "OROBIC_ACID",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 97.2052
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake",
+        "MegaCrit.Sts2.Core.Models.Relics.OddlySmoothStone",
+        "MegaCrit.Sts2.Core.Models.Relics.Lantern",
+        "MegaCrit.Sts2.Core.Models.Relics.MummifiedHand"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.OrobicAcid",
+        "MegaCrit.Sts2.Core.Models.Potions.HeartOfIron"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.PhrogParasite"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/holdout-01-silent/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/holdout-01-silent-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "bcb9cd8035e25d8486160c9f262bddc351c2bec02d7feaf9fe4c18f1ba35326c",
+      "priorPrimaryIncumbentBranchesPruned": 139,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "holdout-02-defect",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_character",
+        "healingBoundCertificationSourceId": "DEFECT",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 98.0788
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.CrackedCore",
+        "MegaCrit.Sts2.Core.Models.Relics.CloakClasp",
+        "MegaCrit.Sts2.Core.Models.Relics.Cauldron",
+        "MegaCrit.Sts2.Core.Models.Relics.GamePiece"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.PotionOfBinding",
+        "MegaCrit.Sts2.Core.Models.Potions.SwiftPotion"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/holdout-02-defect/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/holdout-02-defect-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "2a7630e2b3f39429d04594a5df96e72beb62481e2394f18bce0c7f230101dfee",
+      "priorPrimaryIncumbentBranchesPruned": 34,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "holdout-03-regent",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": true,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_character",
+        "healingBoundCertificationSourceId": "REGENT",
+        "initialRemainingHealingUpperBound": 0,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 102.0941
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.DivineRight",
+        "MegaCrit.Sts2.Core.Models.Relics.Cauldron",
+        "MegaCrit.Sts2.Core.Models.Relics.BurningSticks",
+        "MegaCrit.Sts2.Core.Models.Relics.Kusarigama"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.PowderedDemise",
+        "MegaCrit.Sts2.Core.Models.Potions.MazalethsGift"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.LouseProgenitor"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/holdout-03-regent/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/holdout-03-regent-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "5d4a86f3ad924d18b0c7e6dca0ed968979414f91622f902d19eeef1ff115bd78",
+      "priorPrimaryIncumbentBranchesPruned": 147,
+      "priorPrimaryIncumbentUpdates": 2,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "holdout-04-necrobinder",
+      "sourceDiagnosticReused": true,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "SPEED_POTION",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 103.0312
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "HIDDEN_GEM",
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [
+        "THE_SCYTHE"
+      ],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BoundPhylactery",
+        "MegaCrit.Sts2.Core.Models.Relics.BeatingRemnant",
+        "MegaCrit.Sts2.Core.Models.Relics.MealTicket",
+        "MegaCrit.Sts2.Core.Models.Relics.GamePiece"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.SpeedPotion",
+        "MegaCrit.Sts2.Core.Models.Potions.BottledPotential"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentFront",
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentMiddle",
+        "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegmentBack"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/holdout-04-necrobinder/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/holdout-04-necrobinder-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "2120f99126a40409fae459cfadfa6efb402588a6b27e4053fb0fcd48ed7b672e",
+      "priorPrimaryIncumbentBranchesPruned": 0,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "native-exoskeletons",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_card",
+        "healingBoundCertificationSourceId": "SUPPRESS",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 96.7601
+      },
+      "cardsOutsideC58GeneratedSet": [],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.Exoskeleton",
+        "MegaCrit.Sts2.Core.Models.Monsters.Exoskeleton",
+        "MegaCrit.Sts2.Core.Models.Monsters.Exoskeleton",
+        "MegaCrit.Sts2.Core.Models.Monsters.Exoskeleton"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/native-exoskeletons/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/native-exoskeletons-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "8e02b78b62a4737c4ed490b8030037f5e2aa82195847e94c5fe8c582c4fb2844",
+      "priorPrimaryIncumbentBranchesPruned": 332,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "native-infested",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": true,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_card",
+        "healingBoundCertificationSourceId": "SUPPRESS",
+        "initialRemainingHealingUpperBound": 0,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 94.5009
+      },
+      "cardsOutsideC58GeneratedSet": [],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.InfestedPrism"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/native-infested/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/native-infested-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "1b26e619930fe716a91b7140b535109adb3c9e6d02fca2f3e005e2c229110a8a",
+      "priorPrimaryIncumbentBranchesPruned": 473,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "native-phantasmal",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_card",
+        "healingBoundCertificationSourceId": "SUPPRESS",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 103.7614
+      },
+      "cardsOutsideC58GeneratedSet": [],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.PhantasmalGardener",
+        "MegaCrit.Sts2.Core.Models.Monsters.PhantasmalGardener",
+        "MegaCrit.Sts2.Core.Models.Monsters.PhantasmalGardener",
+        "MegaCrit.Sts2.Core.Models.Monsters.PhantasmalGardener"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/native-phantasmal/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/native-phantasmal-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "a796bedcb829873840c21f09d3bb838c3a9324b08da4285aa4186e701ed95f6b",
+      "priorPrimaryIncumbentBranchesPruned": 137,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "native-soul-nexus",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": true,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_card",
+        "healingBoundCertificationSourceId": "SUPPRESS",
+        "initialRemainingHealingUpperBound": 0,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 86.2589
+      },
+      "cardsOutsideC58GeneratedSet": [],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.SoulNexus"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/native-soul-nexus/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/native-soul-nexus-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "cbd04aff8b880bc57b5eb6cec1b6d7b570fe1939df287a3c61b9204f48879788",
+      "priorPrimaryIncumbentBranchesPruned": 419,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "pressure-queen",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "ATTACK_POTION",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 102.287
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "FEED",
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [
+        "FEED"
+      ],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BurningBlood",
+        "MegaCrit.Sts2.Core.Models.Relics.MercuryHourglass",
+        "MegaCrit.Sts2.Core.Models.Relics.MummifiedHand",
+        "MegaCrit.Sts2.Core.Models.Relics.ChemicalX",
+        "MegaCrit.Sts2.Core.Models.Relics.CentennialPuzzle",
+        "MegaCrit.Sts2.Core.Models.Relics.CloakClasp",
+        "MegaCrit.Sts2.Core.Models.Relics.RegalPillow",
+        "MegaCrit.Sts2.Core.Models.Relics.Strawberry",
+        "MegaCrit.Sts2.Core.Models.Relics.Akabeko",
+        "MegaCrit.Sts2.Core.Models.Relics.Pantograph",
+        "MegaCrit.Sts2.Core.Models.Relics.VenerableTeaSet",
+        "MegaCrit.Sts2.Core.Models.Relics.PunchDagger",
+        "MegaCrit.Sts2.Core.Models.Relics.BowlerHat"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.AttackPotion",
+        "MegaCrit.Sts2.Core.Models.Potions.ShipInABottle",
+        "MegaCrit.Sts2.Core.Models.Potions.PotionOfBinding"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TorchHeadAmalgam",
+        "MegaCrit.Sts2.Core.Models.Monsters.Queen"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/pressure-queen/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/pressure-queen-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "41980b09ec369bf34011f86e459bca7600a1cdc7aa795e74337c2e9704fe1d0b",
+      "priorPrimaryIncumbentBranchesPruned": 0,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "screen-aeonglass-random",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_player_power",
+        "healingBoundCertificationSourceId": "CALL_OF_THE_VOID_POWER",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 97.4799
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "TRANSFIGURE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BoundPhylactery"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.Aeonglass"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/screen-aeonglass-random/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/screen-aeonglass-random-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "5550482a6eed027eb0ed1afdf850d327b6306a72f9b696f794127ef57d97ed4e",
+      "priorPrimaryIncumbentBranchesPruned": 0,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "screen-huge-deck",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_card",
+        "healingBoundCertificationSourceId": "ENTROPY",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 990.2712
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ABUNDANCE",
+        "ABUNDANCE",
+        "ABUNDANCE",
+        "ABUNDANCE",
+        "ABUNDANCE",
+        "ABUNDANCE",
+        "ASCENDERS_BANE",
+        "ASCENDERS_BANE",
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BurningBlood"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.MechaKnight"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/screen-huge-deck/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/screen-huge-deck-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "90de1af9c94019b2be083643cb5f99bb45a5af40534c7d78de692ed34e1d414e",
+      "priorPrimaryIncumbentBranchesPruned": 307,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "screen-knights",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_card",
+        "healingBoundCertificationSourceId": "INFERNAL_BLADE",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 96.1032
+      },
+      "cardsOutsideC58GeneratedSet": [],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BurningBlood"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.FlailKnight",
+        "MegaCrit.Sts2.Core.Models.Monsters.SpectralKnight",
+        "MegaCrit.Sts2.Core.Models.Monsters.MagiKnight"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/screen-knights/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/screen-knights-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "7d52a1b00de6d88797368b2334e8f436eefbb51cded4126203471000732f159c",
+      "priorPrimaryIncumbentBranchesPruned": 0,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "screen-necro-projected",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "potion_present",
+        "healingBoundCertificationSourceId": "GAMBLERS_BREW",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 102.1842
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.BoundPhylactery",
+        "MegaCrit.Sts2.Core.Models.Relics.NeowsBones",
+        "MegaCrit.Sts2.Core.Models.Relics.LargeCapsule",
+        "MegaCrit.Sts2.Core.Models.Relics.OrnamentalFan",
+        "MegaCrit.Sts2.Core.Models.Relics.CloakClasp",
+        "MegaCrit.Sts2.Core.Models.Relics.Pomander",
+        "MegaCrit.Sts2.Core.Models.Relics.JossPaper",
+        "MegaCrit.Sts2.Core.Models.Relics.JuzuBracelet",
+        "MegaCrit.Sts2.Core.Models.Relics.Candelabra",
+        "MegaCrit.Sts2.Core.Models.Relics.Gorget",
+        "MegaCrit.Sts2.Core.Models.Relics.BoneFlute",
+        "MegaCrit.Sts2.Core.Models.Relics.BiiigHug",
+        "MegaCrit.Sts2.Core.Models.Relics.FestivePopper",
+        "MegaCrit.Sts2.Core.Models.Relics.TinyMailbox",
+        "MegaCrit.Sts2.Core.Models.Relics.Vajra",
+        "MegaCrit.Sts2.Core.Models.Relics.BrilliantScarf",
+        "MegaCrit.Sts2.Core.Models.Relics.RippleBasin",
+        "MegaCrit.Sts2.Core.Models.Relics.PrayerWheel",
+        "MegaCrit.Sts2.Core.Models.Relics.WarPaint",
+        "MegaCrit.Sts2.Core.Models.Relics.FuneraryMask"
+      ],
+      "potionTypes": [
+        "MegaCrit.Sts2.Core.Models.Potions.GamblersBrew",
+        "MegaCrit.Sts2.Core.Models.Potions.ColorlessPotion"
+      ],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.Aeonglass"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/screen-necro-projected/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/screen-necro-projected-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "6b7ccfe7f93a341ea11d517d66d83fe0d1a9ebf12472fb0743fc850e5e4aa401",
+      "priorPrimaryIncumbentBranchesPruned": 0,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "screen-queen",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_character",
+        "healingBoundCertificationSourceId": "REGENT",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 98.2323
+      },
+      "cardsOutsideC58GeneratedSet": [],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.DivineRight"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TorchHeadAmalgam",
+        "MegaCrit.Sts2.Core.Models.Monsters.Queen"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/screen-queen/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/screen-queen-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "59e81fd2a4b90de9b46b99f129f394b67b079d6315253e67052b91f17aae1ef0",
+      "priorPrimaryIncumbentBranchesPruned": 206,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "screen-test-subject",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_character",
+        "healingBoundCertificationSourceId": "DEFECT",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 103.7804
+      },
+      "cardsOutsideC58GeneratedSet": [],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.CrackedCore"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.TestSubject"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/screen-test-subject/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/screen-test-subject-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "ae3331e7e9fcb2bf8ef89ab5d0c06c366a24d4e611e39e968cf94ffaeeb805de",
+      "priorPrimaryIncumbentBranchesPruned": 405,
+      "priorPrimaryIncumbentUpdates": 1,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    },
+    {
+      "scene": "silent-large-deck",
+      "sourceDiagnosticReused": false,
+      "rootIdenticalToFinalRegression": true,
+      "liveUnchanged": true,
+      "rootEligibility": {
+        "playerCount": 1,
+        "canCertifyRemainingHealing": false,
+        "usesKnownNativeHealingPolicy": true,
+        "hasOnlyPostCombatHealing": false,
+        "healingBoundCertificationReason": "unsupported_card",
+        "healingBoundCertificationSourceId": "ADRENALINE",
+        "initialRemainingHealingUpperBound": 2147483647,
+        "capturedRunModSubscriberCount": 0,
+        "capturedCombatModSubscriberCount": 0,
+        "capturedBaseLibCardModifiers": false,
+        "captureElapsedMilliseconds": 197.9417
+      },
+      "cardsOutsideC58GeneratedSet": [
+        "ASCENDERS_BANE",
+        "ASCENDERS_BANE",
+        "ASCENDERS_BANE",
+        "ASCENDERS_BANE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE",
+        "EXTERMINATE"
+      ],
+      "growthCards": [],
+      "relicTypes": [
+        "MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake"
+      ],
+      "potionTypes": [],
+      "enemyTypes": [
+        "MegaCrit.Sts2.Core.Models.Monsters.Aeonglass"
+      ],
+      "runtimePruneSourceDll": "e44c15bee6dd498c3ebe5bb93dc8e7967ae868ab12afb6ac3374375e29ccad1b",
+      "diagnosticPath": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/root-source-probe/runs/silent-large-deck/root-healing-sources.json",
+      "regressionResult": "/home/ltlly/Code/nmslmod/CombatSolver-healing-bound-general-20261003/.local/general-healing-audit/relic-max-hp-bound/final-regression/runs/silent-large-deck-6f4d8f6e-final/result.json",
+      "status": "diagnostic only; no Solve and no performance measurement",
+      "rootStampSha256": "5b7f3465903f3a6aa632fc21a57452aa239cf21367e695a0930815fceb4e5095",
+      "priorPrimaryIncumbentBranchesPruned": 0,
+      "priorPrimaryIncumbentUpdates": 0,
+      "strictBlockingReasons": "not captured; healingBoundCertificationReason is the separate legacy fixed-healing assessment, not the strict certificate blocker"
+    }
+  ],
+  "unverified": [
+    "component runtime integration",
+    "native/sim differential for new eligibility",
+    "individual strict unknown-source rejection counts",
+    "isolated certification overhead",
+    "new whole-request performance acceptance"
+  ]
+}

@@ -373,7 +373,7 @@ internal static partial class SearchGcPolicy
         ArgumentNullException.ThrowIfNull(memoryPressureSignal);
         memoryPressureSignal.SetGcLifecycleProbe(CaptureLifecycle);
         if (!enableNoGcRegion || !platformSupportsNoGc)
-            return EnterDefaultGcSearch(memoryPressureSignal, cancellationToken);
+            return EnterDefaultGcSearch(noGcRegionBudgetBytes, memoryPressureSignal, cancellationToken);
         lock (Gate)
             _automaticGcLifecycleUsed = true;
         long noGcRegionLohBudgetBytes = Math.Max(
@@ -652,6 +652,7 @@ internal static partial class SearchGcPolicy
     }
 
     private static ISearchGcScope EnterDefaultGcSearch(
+        long configuredBudgetBytes,
         SearchMemoryPressureSignal memoryPressureSignal,
         CancellationToken cancellationToken)
     {
@@ -678,12 +679,24 @@ internal static partial class SearchGcPolicy
                     && !_manualReclaimRequested)
                 {
                     SearchGcLifecycleSnapshot lifecycleAtEntry = CaptureLifecycle();
-                    _activeSearches++;
-                    _defaultGcSearches++;
-                    memoryPressureSignal.Disable();
-                    Entry.Logger.Info(
-                        "[CombatSolver/Test] GC_LATENCY policy=clr_default no_gc_enabled=false");
-                    return new DefaultGcSearchScope(lifecycleAtEntry);
+                    DefaultGcSearchScope? admittedScope = null;
+                    try
+                    {
+                        // Publish admission only after the limit and diagnostics succeed.
+                        ConfigureDefaultGcSearchLimit(memoryPressureSignal, configuredBudgetBytes);
+                        Entry.Logger.Info(
+                            "[CombatSolver/Test] GC_LATENCY policy=clr_default no_gc_enabled=false " +
+                            $"configured_budget={configuredBudgetBytes}");
+                        admittedScope = new DefaultGcSearchScope(lifecycleAtEntry, memoryPressureSignal);
+                        _activeSearches++;
+                        _defaultGcSearches++;
+                        return admittedScope;
+                    }
+                    finally
+                    {
+                        if (admittedScope is null)
+                            memoryPressureSignal.Disable();
+                    }
                 }
             }
             if (!waitLogged)
@@ -695,6 +708,64 @@ internal static partial class SearchGcPolicy
             }
             Thread.Sleep(ConcurrentSearchExitPollMilliseconds);
         }
+    }
+
+    private const long MinimumDefaultGcSearchAllocationBytes = 256L * 1024 * 1024;
+
+    /// <summary>
+    /// Bounds a default-GC search request by system memory headroom instead of a No-GC region
+    /// budget. A No-GC region grants a large contiguous allocation allowance; without one the
+    /// only remaining bound used to be none at all, which exhausted low-memory hosts. The
+    /// allocation limit is the effective capacity of the configured budget under the current
+    /// physical headroom, and the reclaim checkpoint performs an ordinary Gen2 collection and
+    /// re-derives the limit instead of touching region ownership.
+    /// </summary>
+    private static void ConfigureDefaultGcSearchLimit(
+        SearchMemoryPressureSignal signal,
+        long configuredBudgetBytes)
+    {
+        GCMemoryInfo memory = GC.GetGCMemoryInfo();
+        long systemLimit = ResolveSystemMemoryLimit(memory);
+        long memoryLoad = OperatingSystem.IsWindows()
+            ? PhysicalMemoryUsage.Capture(memory).UsedBytes
+            : Math.Max(0, memory.MemoryLoadBytes);
+        long reusableHeap = OperatingSystem.IsWindows()
+            ? CalculateReusableHeapBytes(memory.HeapSizeBytes, memory.FragmentedBytes,
+                GC.GetTotalMemory(forceFullCollection: false))
+            : 0;
+        long capacity = CalculateAllocationCapacity(
+            configuredBudgetBytes, systemLimit, memoryLoad, reusableHeap);
+        long allocationLimit = Math.Max(MinimumDefaultGcSearchAllocationBytes, capacity);
+        long allocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
+        signal.Configure(
+            allocatedAtStart,
+            allocationLimit,
+            memoryLoad,
+            systemLimit,
+            (checkpointToken, reason) => ReclaimWithinSearch(
+                signal,
+                configuredBudgetBytes,
+                Math.Max(1, configuredBudgetBytes / 6),
+                restartNoGcRegion: false,
+                checkpointToken,
+                reason,
+                keepDefaultGcLimit: true),
+            // Explicit indivisible commits transfer allocation ownership to the CLR.
+            checkpointToken => ReclaimWithinSearch(
+                signal,
+                configuredBudgetBytes,
+                Math.Max(1, configuredBudgetBytes / 6),
+                restartNoGcRegion: false,
+                checkpointToken,
+                "default_gc_indivisible_commit",
+                keepDefaultGcLimit: false),
+            unexpectedNoGcLossProbe: null,
+            OperatingSystem.IsWindows() ? CaptureCurrentPhysicalMemoryLoad : null,
+            reusableHeap);
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] GC_DEFAULT_SEARCH_ALLOCATION_LIMIT limit={allocationLimit} " +
+            $"configured_budget={configuredBudgetBytes} system_memory_load={memoryLoad} " +
+            $"system_memory_limit={systemLimit} reusable_heap={reusableHeap}");
     }
 
     internal static Task ExitNoGcRegionWhenSearchesIdleAsync(string reason)
@@ -1994,7 +2065,7 @@ internal static partial class SearchGcPolicy
         }
     }
 
-    private static void ExitDefaultGcSearch(SearchGcScope scope)
+    private static void ExitDefaultGcSearch(DefaultGcSearchScope scope)
     {
         lock (Gate)
         {
@@ -2002,6 +2073,7 @@ internal static partial class SearchGcPolicy
                 return;
             if (_defaultGcSearches <= 0 || _activeSearches <= 0)
                 throw new InvalidOperationException("CLR 常规 GC 搜索作用域计数失衡。");
+            scope.MemoryPressureSignal.Disable();
             scope.CompleteLifecycle(CaptureLifecycle());
             _defaultGcSearches--;
             if (--_activeSearches != 0)
@@ -2081,7 +2153,8 @@ internal static partial class SearchGcPolicy
         long configuredLohBudgetBytes,
         bool restartNoGcRegion,
         CancellationToken cancellationToken,
-        string reason)
+        string reason,
+        bool keepDefaultGcLimit = false)
     {
         SearchGcLifecycleSnapshot lifecycleBefore = CaptureLifecycle();
         TaskCompletionSource checkpointCompletion;
@@ -2209,11 +2282,22 @@ internal static partial class SearchGcPolicy
                     RestoreLatencyModeLocked();
                     if (!cancellationToken.IsCancellationRequested)
                         restartOutcome = NoGcRegionStartOutcome.DefaultGcRequested;
-                    // Explicit exit, cancellation and a timed-out collection keep ordinary
-                    // GC for this scope. Memory-driven failures below retain recovery permission.
-                    signal.UseDefaultGcFallback(
-                        !cancellationToken.IsCancellationRequested
-                        && fallbackSystemHeadroomConstrained);
+                    if (keepDefaultGcLimit
+                        && !cancellationToken.IsCancellationRequested
+                        && !completedCollection.TimedOut)
+                    {
+                        // A default-GC scope keeps its system-memory bound after reclaiming;
+                        // only the allocation baseline and headroom-derived limit refresh.
+                        ConfigureDefaultGcSearchLimit(signal, configuredRegionBudgetBytes);
+                    }
+                    else
+                    {
+                        // Explicit exit, cancellation and a timed-out collection keep ordinary
+                        // GC for this scope. Memory-driven failures below retain recovery permission.
+                        signal.UseDefaultGcFallback(
+                            !cancellationToken.IsCancellationRequested
+                            && fallbackSystemHeadroomConstrained);
+                    }
                 }
                 else
                 {
@@ -2599,9 +2683,13 @@ internal static partial class SearchGcPolicy
         _latencyModeOwned = false;
     }
 
-    private sealed class DefaultGcSearchScope(SearchGcLifecycleSnapshot lifecycleAtEntry)
+    private sealed class DefaultGcSearchScope(
+        SearchGcLifecycleSnapshot lifecycleAtEntry,
+        SearchMemoryPressureSignal memoryPressureSignal)
         : SearchGcScope(lifecycleAtEntry, SearchGcLifecycleAttribution.SharedProcessWindow)
     {
+        public SearchMemoryPressureSignal MemoryPressureSignal { get; } = memoryPressureSignal;
+
         public override void Dispose() => ExitDefaultGcSearch(this);
     }
 

@@ -230,14 +230,7 @@ internal static class OrbCardMirrors
 
     public static void VoltaicOnPlay(Voltaic card, CardOnPlayMirrorContext context)
     {
-        var count = CombatManager.Instance.History.Entries
-            .OfType<OrbChanneledEntry>()
-            .Count(entry => entry.Actor.Player == card.Owner && entry.Orb is LightningOrb);
-
-        count += context.Simulator.History
-            .OfType<CombatPredictionOrbChanneledEntry>()
-            .Count(entry => entry.Orb.Owner == card.Owner && entry.Orb is LightningOrb);
-
+        int count = CalculatedVarSpecRegistry.CountLightningChannels(context.Simulator, card.Owner);
         context.Simulator.OrbChannel<LightningOrb>(card.Owner, count);
     }
 

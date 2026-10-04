@@ -73,6 +73,10 @@ internal sealed partial class SimulatedCombatState
                         simulator.CreateAndAddGeneratedCardsToCombat<Soul>(
                             player, PileType.Draw, 1, player, CardPilePosition.Random);
                     break;
+                case RadiantPearl when turn == 1:
+                    simulator.CreateAndAddGeneratedCardsToCombat<Luminesce>(
+                        player, PileType.Hand, relic.DynamicVars.Cards.IntValue, player);
+                    break;
                 case JeweledMask when turn <= 1:
                 {
                     SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(player);

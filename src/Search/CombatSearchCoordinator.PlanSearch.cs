@@ -35,7 +35,10 @@ internal static partial class CombatSearchCoordinator
         SearchPassContext context, SolverPotionPolicy? potionPolicyOverride)
     {
         SearchPolicySnapshot policy = context.Policy;
-        if (!(context.Root.CanCertifyRemainingHealing || context.Root.UsesKnownNativeHealingPolicy)
+        // Broad known-source eligibility permits pruning after a victory is found;
+        // it does not establish that a speculative plan search is cheap enough to
+        // run before the primary member. Keep the existing certified-root schedule.
+        if (!context.Root.CanCertifyRemainingHealing
             || !policy.UseBeamWidthPortfolio
             || policy.UseNoveltyPortfolio || policy.IncludeTurnSetup
             || policy.PortfolioExperiment != null || policy.DevelopmentStrategy != null

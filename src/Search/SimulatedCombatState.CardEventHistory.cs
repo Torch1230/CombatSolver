@@ -7,6 +7,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
@@ -22,6 +23,24 @@ internal sealed partial class SimulatedCombatState
 
     public int GetCardsDrawnBeforePrediction(Player player)
         => _rootHistory.CardsDrawn.Count(entry => entry.Actor.Player == player);
+
+    internal int GetCardsGeneratedBeforePrediction(Player player)
+        => _rootHistory.CardsGenerated.Count(entry => entry.Creator == player);
+
+    internal int GetLightningChannelsBeforePrediction(Player player)
+        => _rootHistory.OrbsChanneled.Count(entry => entry.Actor.Player == player && entry.Orb is LightningOrb);
+
+    internal int GetUnblockedHitsBeforePrediction(Creature owner)
+        => _rootHistory.DamageReceived.Count(entry => entry.Receiver == owner && entry.Result.UnblockedDamage > 0);
+
+    internal int GetEtherealPlaysBeforePrediction(Player player)
+        => _rootHistory.CardPlaysFinished.Count(entry => entry.CardPlay.Player == player && entry.WasEthereal);
+
+    internal int GetFinishedPlaysBeforePrediction()
+        => _rootHistory.CardPlaysFinished.Length;
+
+    internal bool WasCardPlayFinishedBeforePrediction(CardPlay play)
+        => _rootHistory.CardPlaysFinished.Any(entry => ReferenceEquals(entry.CardPlay, play));
 
     public void RecordCardExhausted(Creature actor)
         => (_cardsExhaustedThisTurn ??= [])[actor] = GetCardsExhaustedThisTurn(actor) + 1;
@@ -144,6 +163,9 @@ internal sealed partial class SimulatedCombatState
             if (!relic.IsMelted)
                 CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.GhostSeedMirrors.AfterCardEnteredCombat(relic, card);
         CardModel preview = card.MutablePreview;
+        if (preview is Flatten flatten && simulator.State.GetOsty(preview.Owner) is { } osty
+            && GetCreatureAttacksThisTurn(osty) > 0)
+            flatten.EnergyCost.SetThisTurn(0);
         if (preview.IsClone)
             return;
         Creature owner = preview.Owner.Creature;
@@ -162,10 +184,6 @@ internal sealed partial class SimulatedCombatState
                 break;
             case Stomp stomp:
                 stomp.EnergyCost.AddThisTurn(-GetAttacksPlayedThisTurn(owner));
-                break;
-            case Flatten flatten when simulator.State.GetOsty(preview.Owner) is { } osty
-                                      && GetCreatureAttacksThisTurn(osty) > 0:
-                flatten.EnergyCost.SetThisTurn(0);
                 break;
         }
         NormalizeCardAfflictions(simulator);

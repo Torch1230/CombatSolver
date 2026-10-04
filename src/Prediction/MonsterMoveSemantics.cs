@@ -50,7 +50,7 @@ internal static class MonsterMoveSemantics
                 simulator.AddAttackContextHit(attackContext!, results);
                 foreach (DamageResult result in results)
                 {
-                    if (ReferenceEquals(result.Receiver, player) && result.WasFullyBlocked)
+                    if (result.WasFullyBlocked)
                         fullyBlockedAttack = true;
                 }
                 CorePowerSupport.ApplyEnemyDeathPowers(
@@ -85,6 +85,8 @@ internal static class MonsterMoveSemantics
         {
             if (move.Owner.Monster is BowlbugRock)
                 combat.ForceStunnedMove(move.Owner, "HEADBUTT_MOVE");
+            else
+                combat.ForceStunnedMove(move.Owner);
             combat.StunNextMove(move.Owner);
         }
         MonsterMoveEffects.Apply(

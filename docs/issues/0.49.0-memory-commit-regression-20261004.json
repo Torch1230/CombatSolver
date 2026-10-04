@@ -1,0 +1,249 @@
+{
+  "version": "0.49.0",
+  "fixedVersion": "0.49.1",
+  "queriedAt": "2026-10-04",
+  "reportCount": 18,
+  "combatSessionCount": 16,
+  "mechanism": "default_gc_indivisible_commit_retains_allocation_limit",
+  "reports": [
+    {
+      "id": "1194e0dec5454aedaf82efcdd9521f90",
+      "sessionId": "6b0c7c8478cd4c7c98971da50346c79b",
+      "characterId": "IRONCLAD",
+      "encounterId": "INFESTED_PRISMS_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "13126546354642739ca5e83395a8ffce",
+      "sessionId": "946a6cbbc509473fa4591094967561f6",
+      "characterId": "IRONCLAD",
+      "encounterId": "DECIMILLIPEDE_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "14354a00a1cc498296835c7d0b80c9cd",
+      "sessionId": "c3dcb0db5c5e431a855556e803d0fed1",
+      "characterId": "DEFECT",
+      "encounterId": "KNIGHTS_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "3644a169a1d34b119caf91e0ec85ca3d",
+      "sessionId": "33ddc03651224ec1bd7105f6bf427c45",
+      "characterId": "IRONCLAD",
+      "encounterId": "KAISER_CRAB_BOSS",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "3a5376fa0a63464fa43619b3fbf81404",
+      "sessionId": "9e8617ef45564ffaa1e3e9deacf5bd58",
+      "characterId": "REGENT",
+      "encounterId": "DECIMILLIPEDE_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "45f9d8754ac64df6a344dd967c9688ba",
+      "sessionId": "7af47ad712a2447aa3b5c8c198545daf",
+      "characterId": "IRONCLAD",
+      "encounterId": "DECIMILLIPEDE_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        },
+        {
+          "kind": "SearchResultStale",
+          "count": 1,
+          "detail": "第 1 回合"
+        }
+      ]
+    },
+    {
+      "id": "48897c5182ff4029aa7ebc9252f00bad",
+      "sessionId": "53d635ae862545bc8bb543cb0b284088",
+      "characterId": "IRONCLAD",
+      "encounterId": "INFESTED_PRISMS_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 2,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "5d48cd3ded994a1982fe18201c18e78e",
+      "sessionId": "854dff67f6e14939aa29bacdcfc9bfac",
+      "characterId": "IRONCLAD",
+      "encounterId": "INFESTED_PRISMS_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "5ddf84cdb71b4112bce2a2eaf81faf4f",
+      "sessionId": "229724259c654d2181eb723c5b9361e8",
+      "characterId": "IRONCLAD",
+      "encounterId": "BOWLBUGS_WEAK",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "764d9f3bcf6346ac9b89d4802643f3b5",
+      "sessionId": "469ad1da4563491988b4f927f48c44d6",
+      "characterId": "IRONCLAD",
+      "encounterId": "DECIMILLIPEDE_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 2,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "789b180862a94d40a0eb526268809119",
+      "sessionId": "073aeb77964149ae957ef0f72d2bdbe6",
+      "characterId": "NECROBINDER",
+      "encounterId": "QUEEN_BOSS",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "91043efec9074a279a6342575fbbce84",
+      "sessionId": "2497c8ce8ef04864b351e3eca7ce77cb",
+      "characterId": "IRONCLAD",
+      "encounterId": "SEAPUNK_WEAK",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "c311f9f5c8da45d98a27114b6cd21438",
+      "sessionId": "62389038530c43449bdd71979b59b151",
+      "characterId": "REGENT",
+      "encounterId": "MYSTERIOUS_KNIGHT_EVENT_ENCOUNTER",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "e012d9cabce74fdbb2d7f3a7d069b32b",
+      "sessionId": "8eaf74f0d63f4b46945b114f5b68e21c",
+      "characterId": "SILENT",
+      "encounterId": "TEST_SUBJECT_BOSS",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "f22eba821a1748b8a4ae95db1f60b82c",
+      "sessionId": "58cfa5e85cfb40008c6dd9fecc047d41",
+      "characterId": "SILENT",
+      "encounterId": "SEAPUNK_NORMAL",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "f5d187ca15f1423aab618c8b1411ec66",
+      "sessionId": "53d635ae862545bc8bb543cb0b284088",
+      "characterId": "IRONCLAD",
+      "encounterId": "INFESTED_PRISMS_ELITE",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 7,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "f9899a46abe34822a715cac05742fc88",
+      "sessionId": "073aeb77964149ae957ef0f72d2bdbe6",
+      "characterId": "NECROBINDER",
+      "encounterId": "QUEEN_BOSS",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 3,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    },
+    {
+      "id": "fae1ec15395c4d91a9b213636b36c64f",
+      "sessionId": "bf1ab36d7a894007a2e945bd9cab4168",
+      "characterId": "DEFECT",
+      "encounterId": "TEST_SUBJECT_BOSS",
+      "issues": [
+        {
+          "kind": "SearchFailure",
+          "count": 1,
+          "detail": "InvalidOperationException：不可分割的搜索提交在 NoGC 回退后仍受分配上限约束。"
+        }
+      ]
+    }
+  ]
+}

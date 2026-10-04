@@ -51,6 +51,13 @@ internal sealed partial class UnattendedTestRunner
 
         PredictedCard plain = NewCard(), other = NewCard();
         Compare(plain, other, true, "ordinary duplicates");
+        CardModel originalPreview = plain.Preview;
+        PredictedCard sibling = plain.Fork(new PredictionForkContext());
+        plain.MutablePreview.EnergyCost.AddThisCombat(1);
+        Check(plain.References(originalPreview) && sibling.References(plain.Preview), "COW preview aliases retain instance identity");
+        PredictedCard gameplayClone = plain.CreateClone();
+        Check(!gameplayClone.References(originalPreview) && !plain.References(gameplayClone.Preview), "gameplay clones have distinct identities");
+        plain = NewCard();
         StateFingerprint plainFingerprint = CombatBeamSolver.CaptureCardStateFingerprintForTesting(plain);
         string plainChoice = CardChoiceSupport.ChoiceCardKey(plain);
         string plainContinuation = Continuation(plain, false);

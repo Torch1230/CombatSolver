@@ -139,7 +139,7 @@ Linux 不使用上述 Windows 路径。上传前必须设置 `COMBATSOLVER_MOD_U
 3. 按第 1 节“Steam 更新日志排版合同”将该版本完整简中和英文正文写入 `workshop.json` 的 `changeNote`，完成允许标签、正文与链接核对；
 4. Windows 执行一次 `ModUploader.exe upload -w .\CombatSolverWorkshop`；Linux 执行一次 `"$COMBATSOLVER_MOD_UPLOADER" upload -w "$COMBATSOLVER_WORKSHOP_DIR"`。
 
-创意工坊介绍已有 English / 简体中文两套，正文维护于 `docs/workshop/`。官方 ModUploader 未指定语言时写 English，因此本地 workshop.json 的默认标题和 description 必须保持英文；简中介绍通过明确的 `SetItemUpdateLanguage("schinese")` 独立维护，不能把中文塞回默认 description，或仅改 tags 代替语言字段。只更新介绍时提交元数据，不顺带上传二进制。
+创意工坊介绍已有 English / 简体中文两套，标题与正文来源维护于 `docs/workshop/`。官方 ModUploader 未指定语言时写 English，因此本地 workshop.json 的默认标题和 description 必须保持英文。单独维护任一种语言的标题或介绍时使用 `tools/release/WorkshopMetadata`（[工具说明](../../../tools/release/WorkshopMetadata/README.md)），以 `docs/workshop/metadata.json` 和完整介绍为输入：先设置语言，再成对设置非空标题与完整介绍，最后提交并检查结果。简中使用明确的 `schinese`；不能把中文塞回默认 description，或仅改 tags 代替语言字段。标题与介绍按完整语言记录维护，单字段更新返回 OK 不能证明遗漏字段保持原值。元数据维护使用空 changeNote，只更新该语言的标题与介绍。
 
 英文界面发布时语言 tags 包含 English 与 Simplified Chinese，保留其他标签；tags 用于发现，不能代替上述介绍语言字段。仅发包且介绍未变化时保留既有两种语言，不重复提交介绍。英文介绍和中文介绍各自保留依赖、单人限制、代码来源与许可署名。
 

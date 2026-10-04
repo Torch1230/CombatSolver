@@ -21,6 +21,7 @@ internal static partial class CombatSearchCoordinator
         BeamWidthPortfolioTelemetry portfolioTelemetry = new();
         policy = policy with
         {
+            RouteAdoptionCancellationToken = cancellationToken,
             RequestWorkTotals = requestWorkTotals,
             PortfolioTelemetry = portfolioTelemetry,
         };

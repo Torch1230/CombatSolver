@@ -37,6 +37,18 @@ internal sealed partial class UnattendedTestRunner
             childCombat.AppendFingerprint(ref childKey, child);
             if (parentKey.Finish() == childKey.Finish())
                 throw new InvalidOperationException("Deferred Joss Paper exhausts did not distinguish branch fingerprints.");
+            CombatPredictionSimulator emptyDeferred = parent.Fork();
+            SimulatedCombatState emptyCombat = (SimulatedCombatState)emptyDeferred.State.CombatState;
+            JossPaper emptyRelic = emptyCombat.RelicsOf(player).OfType<JossPaper>().Single();
+            RelicPredictionStateSupport.SetJossPaperEtherealCount(emptyDeferred, emptyRelic, 0);
+            StateFingerprintBuilder emptyKey = new();
+            emptyCombat.AppendFingerprint(ref emptyKey, emptyDeferred);
+            if (emptyKey.Finish() == parentKey.Finish() || emptyKey.Finish() == childKey.Finish())
+                throw new InvalidOperationException("Zero deferred Joss Paper exhausts aliased a pending branch.");
+            if (!PlayerTurnEndLifecycle.RunPhaseTwo(emptyDeferred, emptyCombat, [player.Creature])
+                || RelicPredictionStateSupport.GetJossPaperCardsExhausted(emptyDeferred, emptyRelic) != 1
+                || RelicPredictionStateSupport.GetJossPaperEtherealCount(emptyDeferred, emptyRelic) != 0)
+                throw new InvalidOperationException("Zero deferred Joss Paper exhausts changed its counted total.");
             AssertSnapshotEqual(before, CaptureSimulated(sibling, siblingCombat, player, combat.Enemies[0]),
                 "JossPaper", "SiblingBeforeConsumption");
             if (!PlayerTurnEndLifecycle.RunPhaseTwo(child, childCombat, [player.Creature])
@@ -51,6 +63,7 @@ internal sealed partial class UnattendedTestRunner
                 || live._etherealCount != 7 || live.CardsExhausted != 1)
                 throw new InvalidOperationException("Joss Paper consumption changed another branch or the live relic.");
             _completedChecks.Add("JossPaper:RootDeferredCount:LiveAdvance:Fingerprint:Continuation:SiblingFork:ConsumeOnce");
+            _completedChecks.Add("JossPaper:ZeroDeferred:DistinctFingerprint:ConsumeZero:ParentSiblingIsolation");
         }
         finally { live._etherealCount = 2; }
     }

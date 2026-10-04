@@ -696,9 +696,15 @@ internal sealed class NativeChoiceSurfaceLock(
 internal static class NativeChoiceSurface
 {
     private const long SurfaceTimeoutMilliseconds = 30_000;
-    private const ulong ChooseCardMinimumOpenMilliseconds = 400;
+    private const ulong ChooseCardMinimumOpenMilliseconds = 350;
     private const ulong OtherSurfaceMinimumOpenMilliseconds = 250;
     private const ulong MultiSelectStepMilliseconds = 150;
+    private static readonly FieldInfo ChooseCardOptionsField = AccessTools.Field(typeof(NChooseACardSelectionScreen), "_cards")
+        ?? throw new MissingFieldException(typeof(NChooseACardSelectionScreen).FullName, "_cards");
+    private static readonly FieldInfo ChooseCardOpenedTicksField = AccessTools.Field(typeof(NChooseACardSelectionScreen), "_openedTicks")
+        ?? throw new MissingFieldException(typeof(NChooseACardSelectionScreen).FullName, "_openedTicks");
+    private static readonly FieldInfo ChooseCardCompletionField = AccessTools.Field(typeof(NChooseACardSelectionScreen), "_completionSource")
+        ?? throw new MissingFieldException(typeof(NChooseACardSelectionScreen).FullName, "_completionSource");
 
     public static bool IsVisible(NativeChoiceSurfaceKind kind)
         => GetState(kind, out _) == NativeChoiceSurfaceState.ExpectedVisible;
@@ -789,20 +795,19 @@ internal static class NativeChoiceSurface
         IReadOnlyList<CardModel> selected,
         CancellationToken token)
     {
-        ulong minimumOpenMilliseconds = request.Surface == NativeChoiceSurfaceKind.ChooseCard
-            ? ChooseCardMinimumOpenMilliseconds
-            : OtherSurfaceMinimumOpenMilliseconds;
+        if (request.Surface == NativeChoiceSurfaceKind.ChooseCard)
+        {
+            await SelectChooseCardAsync(host, surfaceLock.Surface, request, selected, token);
+            return;
+        }
         ulong openedAt = Time.GetTicksMsec();
-        while (Time.GetTicksMsec() - openedAt < minimumOpenMilliseconds)
+        while (Time.GetTicksMsec() - openedAt < OtherSurfaceMinimumOpenMilliseconds)
         {
             token.ThrowIfCancellationRequested();
             await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
         }
         switch (request.Surface)
         {
-            case NativeChoiceSurfaceKind.ChooseCard:
-                SelectChooseCard(surfaceLock.Surface, request, selected);
-                break;
             case NativeChoiceSurfaceKind.SimpleGrid:
             case NativeChoiceSurfaceKind.CombatPile:
                 await SelectGridAsync(host, surfaceLock.Surface, request, selected, token);
@@ -817,26 +822,53 @@ internal static class NativeChoiceSurface
         await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
-    private static void SelectChooseCard(
+    private static async Task SelectChooseCardAsync(
+        NGame host,
         Node surface,
         NativeChoiceRequest request,
-        IReadOnlyList<CardModel> selected)
+        IReadOnlyList<CardModel> selected,
+        CancellationToken token)
     {
+        var screen = (NChooseACardSelectionScreen)surface;
+        var options = (IReadOnlyList<CardModel>)ChooseCardOptionsField.GetValue(screen)!;
+        if (!options.SequenceEqual(request.Options, ReferenceEqualityComparer.Instance))
+            throw new NativeChoiceSurfaceMismatchException("原生三选一页面的候选实例与当前选择请求不一致。");
+        var completion = ((TaskCompletionSource<IEnumerable<CardModel>>)ChooseCardCompletionField.GetValue(screen)!).Task;
+        long started = System.Environment.TickCount64;
+        while (true)
+        {
+            token.ThrowIfCancellationRequested();
+            if (GetState(request.Surface, out Node? current) != NativeChoiceSurfaceState.ExpectedVisible
+                || !ReferenceEquals(current, screen))
+                throw new NativeChoiceSurfaceMismatchException("原生三选一页面在计划提交前发生变化。");
+            ulong openedAt = (ulong)ChooseCardOpenedTicksField.GetValue(screen)!;
+            if (Time.GetTicksMsec() - openedAt > ChooseCardMinimumOpenMilliseconds)
+                break;
+            if (System.Environment.TickCount64 - started >= SurfaceTimeoutMilliseconds)
+                throw new NativeChoiceSurfaceTimeoutException("原生三选一页面在 30 秒内仍未完成开启。");
+            await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
         if (selected.Count == 0)
         {
             if (!request.CanSkip)
                 throw new InvalidOperationException("原生三选一页面不可跳过，但计划没有选择卡牌。");
             NChoiceSelectionSkipButton skip = surface.GetNode<NChoiceSelectionSkipButton>("SkipButton");
             skip.EmitSignal(NClickableControl.SignalName.Released, skip);
-            return;
         }
-        if (selected.Count != 1)
-            throw new InvalidOperationException($"原生三选一页面计划选择了 {selected.Count} 张牌。");
-        NCardHolder holder = Descendants<NCardHolder>(surface)
-            .FirstOrDefault(candidate => ReferenceEquals(candidate.CardModel, selected[0]))
-            ?? throw new NativeChoicePlanMismatchException(
-                $"原生三选一页面没有 {selected[0].Id.Entry} 的卡牌节点。");
-        holder.EmitSignal(NCardHolder.SignalName.Pressed, holder);
+        else
+        {
+            if (selected.Count != 1)
+                throw new InvalidOperationException($"原生三选一页面计划选择了 {selected.Count} 张牌。");
+            NCardHolder holder = Descendants<NCardHolder>(surface)
+                .FirstOrDefault(candidate => ReferenceEquals(candidate.CardModel, selected[0]))
+                ?? throw new NativeChoicePlanMismatchException(
+                    $"原生三选一页面没有 {selected[0].Id.Entry} 的卡牌节点。");
+            holder.EmitSignal(NCardHolder.SignalName.Pressed, holder);
+        }
+        if (!completion.IsCompleted)
+            throw new NativeChoiceSurfaceMismatchException("原生三选一页面未接受计划选择。");
+        if (!(await completion).SequenceEqual(selected, ReferenceEqualityComparer.Instance))
+            throw new NativeChoicePlanMismatchException("原生三选一页面接受的卡牌实例与计划不一致。");
     }
 
     private static async Task SelectGridAsync(

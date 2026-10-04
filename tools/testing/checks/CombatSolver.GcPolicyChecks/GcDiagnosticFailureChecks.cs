@@ -2,6 +2,34 @@ namespace CombatSolver;
 
 internal static class GcDiagnosticFailureChecks
 {
+    public static void RunDefaultEntry()
+    {
+        PolicyCheck.Run("default-GC limit diagnostic failure releases admission", () => DefaultEntry("GC_DEFAULT_SEARCH_ALLOCATION_LIMIT"));
+        PolicyCheck.Run("default-GC entry diagnostic failure releases admission", () => DefaultEntry("GC_LATENCY policy=clr_default"));
+    }
+
+    private static void DefaultEntry(string marker)
+    {
+        using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(12));
+        SearchMemoryPressureSignal signal = new();
+        Exception injected = new InvalidOperationException("Injected default-GC entry failure.");
+        try
+        {
+            InjectOnce(marker, injected);
+            ExpectFailure(() => SearchGcPolicy.EnterSearchScope(false, 1_000_000_000,
+                signal, deadline.Token), injected);
+            PolicyCheck.Require(!signal.IsEnabled, "A failed entry must release its allocation signal.");
+            using ISearchGcScope next = SearchGcPolicy.EnterSearchScope(true, 1,
+                new SearchMemoryPressureSignal(), deadline.Token);
+            next.Dispose();
+            PolicyCheck.Require(next.IsLifecycleCompleted, "A failed default-GC entry must release exclusive admission.");
+        }
+        finally
+        {
+            Entry.Logger.InfoSink = null;
+        }
+    }
+
     public static void Run()
     {
         PolicyCheck.Run("checkpoint diagnostics cannot strand post-search reclamation", Checkpoint);

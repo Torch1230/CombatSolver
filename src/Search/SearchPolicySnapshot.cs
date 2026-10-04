@@ -19,6 +19,7 @@ internal sealed record SearchPolicySnapshot(
     SearchFramePressureSignal FramePressureSignal,
     SearchMemoryPressureSignal MemoryPressureSignal)
 {
+    internal CancellationToken? RouteAdoptionCancellationToken { get; init; }
     public bool UseNoveltyPortfolio { get; init; }
     public int EarlyTurnExplorationDepth { get; init; }
     public int EarlyTurnExplorationBudgetMilliseconds { get; init; }

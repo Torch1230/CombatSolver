@@ -590,7 +590,7 @@
     },
     {
       "batchId": "Q003",
-      "title": "[更优世界线 Q003] 5 个遭遇主题：灵魂枢纽、仪式兽、帝皇蟹、残杀千足虫、知识恶魔",
+      "title": "[更优世界线 Q003] 总折算战损改善量：69 HP",
       "kind": "optimization",
       "themeIds": [
         "O006",
@@ -661,161 +661,12 @@
           "evidenceLevel": "shared_mechanism",
           "legacyTaskIds": []
         }
-      ]
-    },
-    {
-      "batchId": "Q004",
-      "title": "[更优世界线 Q004] 5 个遭遇主题：机甲骑士、异蛙寄生虫、旧日雕像、盛碗虫群、多尼斯异鸟",
-      "kind": "optimization",
-      "themeIds": [
-        "O011",
-        "O012",
-        "O013",
-        "O014",
-        "O015"
       ],
-      "claimUnit": "batch",
-      "themesPerBatch": 5,
-      "representativeCount": 5,
-      "versionScope": "0.47.x",
-      "verification": "static_only",
-      "archive": "Q004.zip",
-      "issueNumber": 184,
-      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/184",
-      "assetId": 605225097,
-      "assetUrl": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q004.zip",
-      "assetSizeBytes": 1667877,
-      "themes": [
-        {
-          "themeId": "O011",
-          "title": "机甲骑士战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:MECHA_KNIGHT_ELITE",
-          "representativeIds": [
-            "38eff40a9b3145c78a18846d4fdbe20e"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        },
-        {
-          "themeId": "O012",
-          "title": "异蛙寄生虫战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:PHROG_PARASITE_ELITE",
-          "representativeIds": [
-            "4f4bbba076974da88eb308b5398e55b9"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        },
-        {
-          "themeId": "O013",
-          "title": "旧日雕像战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:BYGONE_EFFIGY_ELITE",
-          "representativeIds": [
-            "c27f3e301dbd4a66a1a2a1a4bd2da885"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        },
-        {
-          "themeId": "O014",
-          "title": "盛碗虫群战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:BOWLBUGS_NORMAL",
-          "representativeIds": [
-            "fdeff387600d43b6b9d402aa832aa330"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        },
-        {
-          "themeId": "O015",
-          "title": "多尼斯异鸟战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:BYRDONIS_ELITE",
-          "representativeIds": [
-            "5a4088bbc2864a58af963fcfb9dc11a7"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        }
-      ]
-    },
-    {
-      "batchId": "Q005",
-      "title": "[更优世界线 Q005] 5 个遭遇主题：感染棱柱、灵魂异鱼、墨影幻灵、花园幽灵鳗、拳击构装体",
-      "kind": "optimization",
-      "themeIds": [
-        "O016",
-        "O017",
-        "O018",
-        "O019",
-        "O020"
-      ],
-      "claimUnit": "batch",
-      "themesPerBatch": 5,
-      "representativeCount": 5,
-      "versionScope": "0.47.x",
-      "verification": "static_only",
-      "archive": "Q005.zip",
-      "issueNumber": 185,
-      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/185",
-      "assetId": 605225174,
-      "assetUrl": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q005.zip",
-      "assetSizeBytes": 1474486,
-      "themes": [
-        {
-          "themeId": "O016",
-          "title": "感染棱柱战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:INFESTED_PRISMS_ELITE",
-          "representativeIds": [
-            "67ad4fc605164b66b93d8b77f13a222e"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        },
-        {
-          "themeId": "O017",
-          "title": "灵魂异鱼战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:SOUL_FYSH_BOSS",
-          "representativeIds": [
-            "604d7330bac9443caa3d89fd5a06b42c"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        },
-        {
-          "themeId": "O018",
-          "title": "墨影幻灵战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:VANTOM_BOSS",
-          "representativeIds": [
-            "a4201ea911ae41389ec8333f14081f76"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        },
-        {
-          "themeId": "O019",
-          "title": "花园幽灵鳗战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:PHANTASMAL_GARDENERS_ELITE",
-          "representativeIds": [
-            "1e40d2a74f8c40b983370884dd0c4255"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        },
-        {
-          "themeId": "O020",
-          "title": "拳击构装体战斗的路线搜索质量",
-          "mechanismKey": "encounter-route-quality:PUNCH_OFF_EVENT_ENCOUNTER",
-          "representativeIds": [
-            "97495b8bffcf401bb7995f8034b4bc13"
-          ],
-          "evidenceLevel": "shared_mechanism",
-          "legacyTaskIds": []
-        }
-      ]
+      "totalPotionAdjustedHpReduction": 69
     },
     {
       "batchId": "Q006",
-      "title": "[更优世界线 Q006] 5 个遭遇主题：地道虫、瀑布巨兽、蜂群术士、墨宝、Knight Gang",
+      "title": "[更优世界线 Q006] 总折算战损改善量：24 HP",
       "kind": "optimization",
       "themeIds": [
         "O021",
@@ -886,11 +737,12 @@
           "evidenceLevel": "shared_mechanism",
           "legacyTaskIds": []
         }
-      ]
+      ],
+      "totalPotionAdjustedHpReduction": 24
     },
     {
       "batchId": "Q007",
-      "title": "[更优世界线 Q007] 5 个遭遇主题：一群异螨、骇鳗、巨斧机器人、下水道蚌、鬼祟珊瑚群",
+      "title": "[更优世界线 Q007] 总折算战损改善量：10 HP",
       "kind": "optimization",
       "themeIds": [
         "O026",
@@ -961,7 +813,236 @@
           "evidenceLevel": "shared_mechanism",
           "legacyTaskIds": []
         }
-      ]
+      ],
+      "totalPotionAdjustedHpReduction": 10
+    },
+    {
+      "batchId": "Q008",
+      "title": "[更优世界线 Q008] 总折算战损改善量：34 HP",
+      "kind": "optimization",
+      "themeIds": [
+        "O031",
+        "O032",
+        "O033",
+        "O034",
+        "O035"
+      ],
+      "claimUnit": "batch",
+      "themesPerBatch": 5,
+      "representativeCount": 5,
+      "versionScope": "0.44.0–0.48.0",
+      "verification": "static_only",
+      "archive": "Q008.zip",
+      "totalPotionAdjustedHpReduction": 34,
+      "themes": [
+        {
+          "themeId": "O031",
+          "title": "高塔炮手与活体盾战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:TURRET_OPERATOR",
+          "representativeIds": [
+            "630463289bdc4dd28e9f11f405928a6c"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O032",
+          "title": "神秘骑士战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:MYSTERIOUS_KNIGHT_EVENT_ENCOUNTER",
+          "representativeIds": [
+            "42e8af7403e94f58b9a05309bbf5c0f7"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O033",
+          "title": "两只小啃兽战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:NIBBITS",
+          "representativeIds": [
+            "ef0609b147064dda8851705a9e858a96"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O034",
+          "title": "地精佣兵战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:GREMLIN_MERC",
+          "representativeIds": [
+            "bac565acc9004dda9e7d2cd5bb42fcc0"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O035",
+          "title": "组装师战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:FABRICATOR",
+          "representativeIds": [
+            "ad442f69de5e40838c16e9de636a670d"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        }
+      ],
+      "issueNumber": 208,
+      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/208",
+      "assetId": 608215726,
+      "assetUrl": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q008.zip",
+      "assetSizeBytes": 1276803
+    },
+    {
+      "batchId": "Q009",
+      "title": "[更优世界线 Q009] 总折算战损改善量：25 HP",
+      "kind": "optimization",
+      "themeIds": [
+        "O036",
+        "O037",
+        "O038",
+        "O039",
+        "O040"
+      ],
+      "claimUnit": "batch",
+      "themesPerBatch": 5,
+      "representativeCount": 5,
+      "versionScope": "0.44.0–0.48.0",
+      "verification": "static_only",
+      "archive": "Q009.zip",
+      "totalPotionAdjustedHpReduction": 25,
+      "themes": [
+        {
+          "themeId": "O036",
+          "title": "雾菇与利齿之眼战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:FOGMOG",
+          "representativeIds": [
+            "26fd23b7213d4aa988736ddd428f485e"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O037",
+          "title": "许多咬人卷轴战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:SCROLLS_OF_BITING",
+          "representativeIds": [
+            "721e17a8d7fa4f9283ed4714310a494b"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O038",
+          "title": "扼杀者与伙伴战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:SLITHERING_STRANGLER",
+          "representativeIds": [
+            "42f86b66b9c3464eabf986f03461fa48"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O039",
+          "title": "许多外骨骼虫战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:EXOSKELETONS",
+          "representativeIds": [
+            "e4460d3a3b894444922b712e43346c41"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O040",
+          "title": "同族小队战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:THE_KIN_BOSS",
+          "representativeIds": [
+            "e6609669f8f04a148086dfaf9c04b990"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        }
+      ],
+      "issueNumber": 209,
+      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/209",
+      "assetId": 608215805,
+      "assetUrl": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q009.zip",
+      "assetSizeBytes": 1375656
+    },
+    {
+      "batchId": "Q010",
+      "title": "[更优世界线 Q010] 总折算战损改善量：19 HP",
+      "kind": "optimization",
+      "themeIds": [
+        "O041",
+        "O042",
+        "O043",
+        "O044",
+        "O045"
+      ],
+      "claimUnit": "batch",
+      "themesPerBatch": 5,
+      "representativeCount": 5,
+      "versionScope": "0.44.0–0.48.0",
+      "verification": "static_only",
+      "archive": "Q010.zip",
+      "totalPotionAdjustedHpReduction": 19,
+      "themes": [
+        {
+          "themeId": "O041",
+          "title": "猎人杀手战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:HUNTER_KILLER",
+          "representativeIds": [
+            "7113e143fecf424ab8419924a649d2e1"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O042",
+          "title": "偷窃草蜢战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:THIEVING_HOPPER",
+          "representativeIds": [
+            "85ef4e1d1bb04f7e93a126c05ffc2cdd"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O043",
+          "title": "棘刺蟾蜍战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:SPINY_TOAD",
+          "representativeIds": [
+            "e87d5139cbc94eafb8b8de07334f80a7"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O044",
+          "title": "熟睡派对战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:SLUMBERING_BEETLE",
+          "representativeIds": [
+            "4dc0ba71acec4d1499eaeea48cd29458"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O045",
+          "title": "虱虫之祖战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:LOUSE_PROGENITOR",
+          "representativeIds": [
+            "38d72af359ba4163abd73e297cb6727a"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        }
+      ],
+      "issueNumber": 210,
+      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/210",
+      "assetId": 608215993,
+      "assetUrl": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q010.zip",
+      "assetSizeBytes": 1403699
     }
   ],
   "retiredArchives": {
@@ -7570,6 +7651,186 @@
       "reason": "published",
       "themeId": "O030",
       "reportDeletedAt": "2026-10-02T09:09:56.398221+00:00"
+    },
+    "630463289bdc4dd28e9f11f405928a6c": {
+      "reportId": "630463289bdc4dd28e9f11f405928a6c",
+      "batchId": "Q008",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "42e8af7403e94f58b9a05309bbf5c0f7": {
+      "reportId": "42e8af7403e94f58b9a05309bbf5c0f7",
+      "batchId": "Q008",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "ef0609b147064dda8851705a9e858a96": {
+      "reportId": "ef0609b147064dda8851705a9e858a96",
+      "batchId": "Q008",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "bac565acc9004dda9e7d2cd5bb42fcc0": {
+      "reportId": "bac565acc9004dda9e7d2cd5bb42fcc0",
+      "batchId": "Q008",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "ad442f69de5e40838c16e9de636a670d": {
+      "reportId": "ad442f69de5e40838c16e9de636a670d",
+      "batchId": "Q008",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "26fd23b7213d4aa988736ddd428f485e": {
+      "reportId": "26fd23b7213d4aa988736ddd428f485e",
+      "batchId": "Q009",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "721e17a8d7fa4f9283ed4714310a494b": {
+      "reportId": "721e17a8d7fa4f9283ed4714310a494b",
+      "batchId": "Q009",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "42f86b66b9c3464eabf986f03461fa48": {
+      "reportId": "42f86b66b9c3464eabf986f03461fa48",
+      "batchId": "Q009",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "e4460d3a3b894444922b712e43346c41": {
+      "reportId": "e4460d3a3b894444922b712e43346c41",
+      "batchId": "Q009",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "e6609669f8f04a148086dfaf9c04b990": {
+      "reportId": "e6609669f8f04a148086dfaf9c04b990",
+      "batchId": "Q009",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "7113e143fecf424ab8419924a649d2e1": {
+      "reportId": "7113e143fecf424ab8419924a649d2e1",
+      "batchId": "Q010",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "85ef4e1d1bb04f7e93a126c05ffc2cdd": {
+      "reportId": "85ef4e1d1bb04f7e93a126c05ffc2cdd",
+      "batchId": "Q010",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "e87d5139cbc94eafb8b8de07334f80a7": {
+      "reportId": "e87d5139cbc94eafb8b8de07334f80a7",
+      "batchId": "Q010",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "4dc0ba71acec4d1499eaeea48cd29458": {
+      "reportId": "4dc0ba71acec4d1499eaeea48cd29458",
+      "batchId": "Q010",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
+    },
+    "38d72af359ba4163abd73e297cb6727a": {
+      "reportId": "38d72af359ba4163abd73e297cb6727a",
+      "batchId": "Q010",
+      "localDeleted": true,
+      "cosDeleted": false,
+      "reportRetained": false,
+      "reportDeleted": true,
+      "resolvedBeforeDeletion": false,
+      "reason": "published",
+      "themeId": null,
+      "reportDeletedAt": "2026-10-03T17:25:52.072915+00:00"
     }
   },
   "contentPolicy": "base_game_content_only; no proactive third_party_gameplay_adaptation",
@@ -7612,8 +7873,8 @@
       "sourceEvidenceRequiredForGenericExceptions": "passed"
     }
   },
-  "totalRetiredArchives": 571,
-  "actualServerFilesDeleted": 571,
+  "totalRetiredArchives": 586,
+  "actualServerFilesDeleted": 586,
   "localCleanup": {
     "directory": ".local/community-tasks/20261002",
     "completed": true,
@@ -9096,6 +9357,168 @@
           "publicationSignature": "InvalidOperationException：回放时找不到手牌 ROCKET_PUNCH"
         }
       ]
+    },
+    {
+      "batchId": "Q004",
+      "title": "[更优世界线 Q004] 5 个遭遇主题：机甲骑士、异蛙寄生虫、旧日雕像、盛碗虫群、多尼斯异鸟",
+      "kind": "optimization",
+      "themeIds": [
+        "O011",
+        "O012",
+        "O013",
+        "O014",
+        "O015"
+      ],
+      "claimUnit": "batch",
+      "themesPerBatch": 5,
+      "representativeCount": 5,
+      "versionScope": "0.47.x",
+      "verification": "static_only",
+      "archive": "Q004.zip",
+      "issueNumber": 184,
+      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/184",
+      "assetId": 605225097,
+      "assetUrl": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q004.zip",
+      "assetSizeBytes": 1667877,
+      "themes": [
+        {
+          "themeId": "O011",
+          "title": "机甲骑士战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:MECHA_KNIGHT_ELITE",
+          "representativeIds": [
+            "38eff40a9b3145c78a18846d4fdbe20e"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O012",
+          "title": "异蛙寄生虫战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:PHROG_PARASITE_ELITE",
+          "representativeIds": [
+            "4f4bbba076974da88eb308b5398e55b9"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O013",
+          "title": "旧日雕像战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:BYGONE_EFFIGY_ELITE",
+          "representativeIds": [
+            "c27f3e301dbd4a66a1a2a1a4bd2da885"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O014",
+          "title": "盛碗虫群战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:BOWLBUGS_NORMAL",
+          "representativeIds": [
+            "fdeff387600d43b6b9d402aa832aa330"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O015",
+          "title": "多尼斯异鸟战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:BYRDONIS_ELITE",
+          "representativeIds": [
+            "5a4088bbc2864a58af963fcfb9dc11a7"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        }
+      ],
+      "status": "withdrawn",
+      "withdrawnAt": "2026-10-03T17:13:15.958761+00:00",
+      "withdrawalReason": "maintainer_withdrawal",
+      "issueState": "closed",
+      "issueStateReason": "not_planned",
+      "archiveAvailable": false
+    },
+    {
+      "batchId": "Q005",
+      "title": "[更优世界线 Q005] 5 个遭遇主题：感染棱柱、灵魂异鱼、墨影幻灵、花园幽灵鳗、拳击构装体",
+      "kind": "optimization",
+      "themeIds": [
+        "O016",
+        "O017",
+        "O018",
+        "O019",
+        "O020"
+      ],
+      "claimUnit": "batch",
+      "themesPerBatch": 5,
+      "representativeCount": 5,
+      "versionScope": "0.47.x",
+      "verification": "static_only",
+      "archive": "Q005.zip",
+      "issueNumber": 185,
+      "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/185",
+      "assetId": 605225174,
+      "assetUrl": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/Q005.zip",
+      "assetSizeBytes": 1474486,
+      "themes": [
+        {
+          "themeId": "O016",
+          "title": "感染棱柱战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:INFESTED_PRISMS_ELITE",
+          "representativeIds": [
+            "67ad4fc605164b66b93d8b77f13a222e"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O017",
+          "title": "灵魂异鱼战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:SOUL_FYSH_BOSS",
+          "representativeIds": [
+            "604d7330bac9443caa3d89fd5a06b42c"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O018",
+          "title": "墨影幻灵战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:VANTOM_BOSS",
+          "representativeIds": [
+            "a4201ea911ae41389ec8333f14081f76"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O019",
+          "title": "花园幽灵鳗战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:PHANTASMAL_GARDENERS_ELITE",
+          "representativeIds": [
+            "1e40d2a74f8c40b983370884dd0c4255"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        },
+        {
+          "themeId": "O020",
+          "title": "拳击构装体战斗的路线搜索质量",
+          "mechanismKey": "encounter-route-quality:PUNCH_OFF_EVENT_ENCOUNTER",
+          "representativeIds": [
+            "97495b8bffcf401bb7995f8034b4bc13"
+          ],
+          "evidenceLevel": "shared_mechanism",
+          "legacyTaskIds": []
+        }
+      ],
+      "status": "withdrawn",
+      "withdrawnAt": "2026-10-03T17:13:15.958761+00:00",
+      "withdrawalReason": "maintainer_withdrawal",
+      "issueState": "closed",
+      "issueStateReason": "not_planned",
+      "archiveAvailable": false
     }
   ],
   "themesPerBatch": 5,
@@ -9103,7 +9526,7 @@
     1,
     2
   ],
-  "versionPrefix": "0.47.",
+  "versionPrefix": "per_batch",
   "duplicateThemeAction": "delete_report_and_archive_and_skip",
   "migration": {
     "mode": "static_root_theme_regrouping",
@@ -9218,106 +9641,941 @@
     "cosObjectsDeleted": 0
   },
   "latestPublicIndex": {
-    "assetId": 605230216,
+    "assetId": 608232980,
     "assetUrl": "https://github.com/Torch1230/CombatSolver/releases/download/community-tasks-2026-10-02/community-task-index.json",
-    "assetSizeBytes": 1725139,
+    "assetSizeBytes": 1963092,
     "cleanupCompleted": true
   },
   "latestLocalCleanup": {
-    "run": "publish-047-20261002-q003-q007",
-    "completedAt": "2026-10-02T09:11:01.2608303Z",
-    "deletedFiles": 248,
-    "deletedZipFiles": 65,
-    "deletedZipBytes": 32439526,
-    "taskScratchFilesRetained": 0,
-    "privateSnapshotsRemoved": true,
-    "emptyDirectoriesMayRemain": true
+    "run": "publish-q008-q010",
+    "completedAt": "2026-10-03T17:26:16.822730+00:00",
+    "deletedZipFiles": 3,
+    "deletedZipBytes": 4056158,
+    "files": [
+      {
+        "file": "Q008.zip",
+        "sizeBytes": 1276803
+      },
+      {
+        "file": "Q009.zip",
+        "sizeBytes": 1375656
+      },
+      {
+        "file": "Q010.zip",
+        "sizeBytes": 1403699
+      }
+    ],
+    "verification": "filesystem_deletion_receipts"
   },
   "contributionPriority": [
     "bugfix",
     "better_worldline_optimization"
   ],
   "latestOptimizationPublication": {
+    "publishedAt": "2026-10-03T17:23:19.099830+00:00",
     "batchIds": [
-      "Q003",
-      "Q004",
-      "Q005",
-      "Q006",
-      "Q007"
+      "Q008",
+      "Q009",
+      "Q010"
     ],
     "themeIds": [
-      "O006",
-      "O007",
-      "O008",
-      "O009",
-      "O010",
-      "O011",
-      "O012",
-      "O013",
-      "O014",
-      "O015",
-      "O016",
-      "O017",
-      "O018",
-      "O019",
-      "O020",
-      "O021",
-      "O022",
-      "O023",
-      "O024",
-      "O025",
-      "O026",
-      "O027",
-      "O028",
-      "O029",
-      "O030"
+      "O031",
+      "O032",
+      "O033",
+      "O034",
+      "O035",
+      "O036",
+      "O037",
+      "O038",
+      "O039",
+      "O040",
+      "O041",
+      "O042",
+      "O043",
+      "O044",
+      "O045"
     ],
-    "representativeReports": 25,
+    "representativeReports": 15,
+    "totalPotionAdjustedHpReduction": 78,
     "verification": "static_only",
     "snapshot": {
-      "at": "2026-10-02T08:59:11.191400+00:00",
-      "versionScope": "0.47.x",
-      "reportCount": 103,
-      "eligibleReportCount": 98,
-      "newEncounterCount": 34
+      "preparedAt": "2026-10-03T16:48:36.321300+00:00",
+      "minimumVersion": "0.44.0",
+      "snapshotCandidateCount": 175,
+      "availableNewThemes": 27,
+      "rankMetric": "potionAdjustedHpReduction"
     },
     "validation": {
-      "themes": 25,
-      "batches": 5,
-      "representativeReports": 25,
-      "versionScope": "0.47.x",
-      "replayBytesPreserved": true,
-      "replayNetIds": [
-        "1"
-      ],
-      "privacyChecks": "passed",
+      "batches": 3,
+      "themes": 15,
+      "representativeReports": 15,
       "comparisonLogs": "matched",
+      "potionAdjustment": "reconstructed",
+      "privacyChecks": "passed",
+      "replayBytesPreserved": true,
       "runtimeVerification": "not_run"
     },
-    "excluded": [
-      {
-        "reportId": "5cf547c84b7d4479856421e4f14a07d2",
-        "reason": "recorded_Ascension100_modifier_and_ascension_18",
-        "action": "retained_on_backend; not_distributed"
-      }
-    ],
     "cleanupCompleted": true,
     "localCleanupCompleted": true
   },
   "latestOptimizationCleanup": {
     "batchIds": [
-      "Q003",
-      "Q004",
-      "Q005",
-      "Q006",
-      "Q007"
+      "Q008",
+      "Q009",
+      "Q010"
     ],
-    "completedAt": "2026-10-02T09:09:56.398221+00:00",
-    "publishedReports": 25,
-    "duplicateThemeReports": 59,
-    "serverZipFilesDeleted": 84,
-    "backendReportsDeleted": 84,
+    "completedAt": "2026-10-03T17:25:52.072915+00:00",
+    "publishedReports": 15,
+    "duplicateThemeReports": 0,
+    "serverZipFilesDeleted": 15,
+    "backendReportsDeleted": 15,
     "cosObjectsDeleted": 0,
-    "verification": "server_deletion_receipts"
+    "alreadyAbsentReports": 0,
+    "verification": "server_deletion_receipts",
+    "results": [
+      {
+        "reportId": "630463289bdc4dd28e9f11f405928a6c",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "42e8af7403e94f58b9a05309bbf5c0f7",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "ef0609b147064dda8851705a9e858a96",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "bac565acc9004dda9e7d2cd5bb42fcc0",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "ad442f69de5e40838c16e9de636a670d",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "26fd23b7213d4aa988736ddd428f485e",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "721e17a8d7fa4f9283ed4714310a494b",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "42f86b66b9c3464eabf986f03461fa48",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "e4460d3a3b894444922b712e43346c41",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "e6609669f8f04a148086dfaf9c04b990",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "7113e143fecf424ab8419924a649d2e1",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "85ef4e1d1bb04f7e93a126c05ffc2cdd",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "e87d5139cbc94eafb8b8de07334f80a7",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "4dc0ba71acec4d1499eaeea48cd29458",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "38d72af359ba4163abd73e297cb6727a",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      }
+    ]
+  },
+  "activePublicationSummary": {
+    "batchCount": 12,
+    "themeCount": 60,
+    "representativeReportCount": 68,
+    "updatedAt": "2026-10-03T17:23:43.743508+00:00"
+  },
+  "latestBatchTitleUpdate": {
+    "calculatedAt": "2026-10-03T17:33:02.113076+00:00",
+    "source": "published_representative_report_archives",
+    "hpPerAdditionalPotion": 9,
+    "verification": "static_only",
+    "batches": [
+      {
+        "batchId": "Q003",
+        "title": "[更优世界线 Q003] 总折算战损改善量：69 HP",
+        "issueNumber": 183,
+        "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/183",
+        "updatedAt": "2026-10-03T17:34:11Z",
+        "totalPotionAdjustedHpReduction": 69,
+        "representatives": [
+          {
+            "batchId": "Q003",
+            "themeId": "O006",
+            "reportId": "f0b95f7e77a14cb789e09384f371829a",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 19,
+              "after": 0,
+              "reduction": 19
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 1,
+              "potionHpCost": 9,
+              "potionAdjustedHpReduction": 10,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "a82c5f61aa5647158dd586da52ee3f29:2",
+                  "metadataPath": "replay/current/checkpoints/000002-search_request_FullAuto.json",
+                  "projectedBattleHpLost": 19,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "a82c5f61aa5647158dd586da52ee3f29:2",
+                  "projectedBattleHpLost": 0,
+                  "matchingRecords": 1,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 1,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q003",
+            "themeId": "O007",
+            "reportId": "173d0857dd004072a8dac415706240dd",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 33,
+              "after": 15,
+              "reduction": 18
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 1,
+              "potionHpCost": 9,
+              "potionAdjustedHpReduction": 9,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "c27972f452d845f7ba3dfaa77ee3c873:3",
+                  "metadataPath": "replay/current/checkpoints/000003-search_request_AutoTurnStart.json",
+                  "projectedBattleHpLost": 33,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "c27972f452d845f7ba3dfaa77ee3c873:3",
+                  "projectedBattleHpLost": 15,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 2,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q003",
+            "themeId": "O008",
+            "reportId": "29663bc0e94849febefa59892e89c8de",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 70,
+              "after": 52,
+              "reduction": 18
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 1,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 0,
+              "potionHpCost": 0,
+              "potionAdjustedHpReduction": 18,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "9a3541d8ef3b4a27b04626ea32f958d3:7",
+                  "metadataPath": "replay/current/checkpoints/000007-search_request_Manual.json",
+                  "projectedBattleHpLost": 70,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 2
+                },
+                "current": {
+                  "checkpointId": "9a3541d8ef3b4a27b04626ea32f958d3:7",
+                  "projectedBattleHpLost": 52,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 2,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q003",
+            "themeId": "O009",
+            "reportId": "ae7639e24b2749f49d0aa3830c265152",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 91,
+              "after": 74,
+              "reduction": 17
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 0,
+              "additionalPotionCount": 0,
+              "potionHpCost": 0,
+              "potionAdjustedHpReduction": 17,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "53d5a0f3205844c0ae10a919cf904e46:3",
+                  "metadataPath": "replay/current/checkpoints/000003-search_request_AutoTurnStart.json",
+                  "projectedBattleHpLost": 91,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "53d5a0f3205844c0ae10a919cf904e46:3",
+                  "projectedBattleHpLost": 74,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 2,
+                  "actualPotionsUsed": 0
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q003",
+            "themeId": "O010",
+            "reportId": "e4d1776875df467ea81ec81b9e63e123",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 47,
+              "after": 32,
+              "reduction": 15
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 1,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 0,
+              "potionHpCost": 0,
+              "potionAdjustedHpReduction": 15,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "84ed4afa0f954cfb98bd6b24c39c5b78:2",
+                  "projectedBattleHpLost": 47,
+                  "matchingRecords": 1,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": null,
+                  "actualPotionsUsed": null
+                },
+                "current": {
+                  "checkpointId": "84ed4afa0f954cfb98bd6b24c39c5b78:6",
+                  "projectedBattleHpLost": 32,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 4,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "batchId": "Q006",
+        "title": "[更优世界线 Q006] 总折算战损改善量：24 HP",
+        "issueNumber": 186,
+        "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/186",
+        "updatedAt": "2026-10-03T17:34:13Z",
+        "totalPotionAdjustedHpReduction": 24,
+        "representatives": [
+          {
+            "batchId": "Q006",
+            "themeId": "O021",
+            "reportId": "293f87ea0067408697affdb18cef10e1",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 19,
+              "after": 10,
+              "reduction": 9
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 1,
+              "potionHpCost": 9,
+              "potionAdjustedHpReduction": 0,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "ac300db6edba4d3fa0261e2cd5f0986b:1",
+                  "projectedBattleHpLost": 19,
+                  "matchingRecords": 1,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": null,
+                  "actualPotionsUsed": null
+                },
+                "current": {
+                  "checkpointId": "ac300db6edba4d3fa0261e2cd5f0986b:7",
+                  "projectedBattleHpLost": 10,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 4,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q006",
+            "themeId": "O022",
+            "reportId": "4ba79941b1924bb7acba5eded84dcab7",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 51,
+              "after": 42,
+              "reduction": 9
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 0,
+              "additionalPotionCount": 0,
+              "potionHpCost": 0,
+              "potionAdjustedHpReduction": 9,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "2f3ca9cd0d8844968c064744a472873b:1",
+                  "projectedBattleHpLost": 51,
+                  "matchingRecords": 1,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": null,
+                  "actualPotionsUsed": null
+                },
+                "current": {
+                  "checkpointId": "2f3ca9cd0d8844968c064744a472873b:7",
+                  "projectedBattleHpLost": 42,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 4,
+                  "actualPotionsUsed": 0
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q006",
+            "themeId": "O023",
+            "reportId": "f9145411ceae439a8e1c866eef9d6758",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 18,
+              "after": 10,
+              "reduction": 8
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 0,
+              "additionalPotionCount": 0,
+              "potionHpCost": 0,
+              "potionAdjustedHpReduction": 8,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "87d57be6a28d43faa60fa340cfea6dde:3",
+                  "metadataPath": "replay/current/checkpoints/000003-search_request_AutoTurnStart.json",
+                  "projectedBattleHpLost": 18,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "87d57be6a28d43faa60fa340cfea6dde:3",
+                  "projectedBattleHpLost": 10,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 2,
+                  "actualPotionsUsed": 0
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q006",
+            "themeId": "O024",
+            "reportId": "b8afaf43b4be40548f2b258205555201",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 15,
+              "after": 7,
+              "reduction": 8
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 1,
+              "potionHpCost": 9,
+              "potionAdjustedHpReduction": -1,
+              "isImprovement": false,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "6e08fc74407f4871a8d6728d99078535:3",
+                  "metadataPath": "replay/current/checkpoints/000003-search_request_Manual.json",
+                  "projectedBattleHpLost": 15,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "6e08fc74407f4871a8d6728d99078535:3",
+                  "projectedBattleHpLost": 7,
+                  "matchingRecords": 1,
+                  "scope": "RouteAdoption",
+                  "startTurnNumber": 1,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q006",
+            "themeId": "O025",
+            "reportId": "e86e7a3502f64e19b1c493e174a85cc4",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 29,
+              "after": 21,
+              "reduction": 8
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 2,
+              "currentProjectedBattlePotionCount": 2,
+              "additionalPotionCount": 0,
+              "potionHpCost": 0,
+              "potionAdjustedHpReduction": 8,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "99cbc24bef204cd88a8bd61d29cbdb20:3",
+                  "metadataPath": "replay/current/checkpoints/000003-search_request_Manual.json",
+                  "projectedBattleHpLost": 29,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "99cbc24bef204cd88a8bd61d29cbdb20:3",
+                  "projectedBattleHpLost": 21,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 1,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "batchId": "Q007",
+        "title": "[更优世界线 Q007] 总折算战损改善量：10 HP",
+        "issueNumber": 187,
+        "issueUrl": "https://github.com/Torch1230/CombatSolver/issues/187",
+        "updatedAt": "2026-10-03T17:34:16Z",
+        "totalPotionAdjustedHpReduction": 10,
+        "representatives": [
+          {
+            "batchId": "Q007",
+            "themeId": "O026",
+            "reportId": "b403a3eada4f4ab4821e2b01bfb362ae",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 17,
+              "after": 9,
+              "reduction": 8
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 1,
+              "potionHpCost": 9,
+              "potionAdjustedHpReduction": -1,
+              "isImprovement": false,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "7a0c49d4894843acb9776a42c583ab1a:3",
+                  "metadataPath": "replay/current/checkpoints/000003-search_request_AutoTurnStart.json",
+                  "projectedBattleHpLost": 17,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "7a0c49d4894843acb9776a42c583ab1a:3",
+                  "projectedBattleHpLost": 9,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 2,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q007",
+            "themeId": "O027",
+            "reportId": "fa3213e6c5ac4f16aaa07d444014192a",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 13,
+              "after": 5,
+              "reduction": 8
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 1,
+              "potionHpCost": 9,
+              "potionAdjustedHpReduction": -1,
+              "isImprovement": false,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "e263ed87d03b40aa8bc772ee8841630a:3",
+                  "metadataPath": "replay/current/checkpoints/000003-search_request_AutoTurnStart.json",
+                  "projectedBattleHpLost": 13,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "e263ed87d03b40aa8bc772ee8841630a:3",
+                  "projectedBattleHpLost": 5,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 2,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q007",
+            "themeId": "O028",
+            "reportId": "07cf331c24dc4bada2b3c868363cc350",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 12,
+              "after": 5,
+              "reduction": 7
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 0,
+              "additionalPotionCount": 0,
+              "potionHpCost": 0,
+              "potionAdjustedHpReduction": 7,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "b44004ec04274a83b93e3ffb38c3769f:11",
+                  "metadataPath": "replay/current/checkpoints/000011-search_request_Manual.json",
+                  "projectedBattleHpLost": 12,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 3
+                },
+                "current": {
+                  "checkpointId": "b44004ec04274a83b93e3ffb38c3769f:11",
+                  "projectedBattleHpLost": 5,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 5,
+                  "actualPotionsUsed": 0
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q007",
+            "themeId": "O029",
+            "reportId": "e5e178066fd9485387c2bdf3d6eecc6c",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 7,
+              "after": 0,
+              "reduction": 7
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 0,
+              "additionalPotionCount": 0,
+              "potionHpCost": 0,
+              "potionAdjustedHpReduction": 7,
+              "isImprovement": true,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "fcdd1b8763c341bfb8e5c4348b4d4383:1",
+                  "projectedBattleHpLost": 7,
+                  "matchingRecords": 1,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": null,
+                  "actualPotionsUsed": null
+                },
+                "current": {
+                  "checkpointId": "fcdd1b8763c341bfb8e5c4348b4d4383:7",
+                  "projectedBattleHpLost": 0,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 4,
+                  "actualPotionsUsed": 0
+                }
+              }
+            }
+          },
+          {
+            "batchId": "Q007",
+            "themeId": "O030",
+            "reportId": "ec10f6479c3a461ba96c7025d34809ad",
+            "hpLoss": {
+              "kind": "manual_projection",
+              "before": 7,
+              "after": 0,
+              "reduction": 7
+            },
+            "potionAdjustment": {
+              "status": "reconstructed",
+              "source": "recorded_checkpoints_and_search_results",
+              "rule": {
+                "hpPerAdditionalPotion": 9
+              },
+              "previousProjectedBattlePotionCount": 0,
+              "currentProjectedBattlePotionCount": 1,
+              "additionalPotionCount": 1,
+              "potionHpCost": 9,
+              "potionAdjustedHpReduction": -2,
+              "isImprovement": false,
+              "evidence": {
+                "indexPath": "replay/checkpoint.json",
+                "previous": {
+                  "checkpointId": "5f113d52074247588f88f4c19cf8e565:3",
+                  "metadataPath": "replay/current/checkpoints/000003-search_request_Manual.json",
+                  "projectedBattleHpLost": 7,
+                  "scope": "RequestBaseline",
+                  "startTurnNumber": 1
+                },
+                "current": {
+                  "checkpointId": "5f113d52074247588f88f4c19cf8e565:3",
+                  "projectedBattleHpLost": 0,
+                  "matchingRecords": 2,
+                  "scope": "SearchCompletion",
+                  "startTurnNumber": 1,
+                  "actualPotionsUsed": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
   }
 }

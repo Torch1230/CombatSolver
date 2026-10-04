@@ -62,9 +62,9 @@ internal static partial class CardOnPlayMirrors
                 CardPlay = cardPlay
             });
         if (simulator.HasPendingChoice)
-            simulator.AppendExecutionContinuation(new CardSpecExecutionFrame(card, cardPlay.Target));
+            simulator.AppendExecutionContinuation(new CardSpecExecutionFrame(card, cardPlay));
         else
-            ApplyRemainingCardSpec(simulator, card, cardPlay.Target);
+            ApplyRemainingCardSpec(simulator, card, cardPlay);
         return result;
     }
 
@@ -86,6 +86,7 @@ internal static partial class CardOnPlayMirrors
         registry.Register<FiendFire>(BespokeCardMirrors.FiendFireOnPlay);
         registry.Register<LeadingStrike>(BespokeCardMirrors.LeadingStrikeOnPlay);
         registry.Register<Maul>(BespokeCardMirrors.MaulOnPlay);
+        registry.Register<Misery>(BespokeCardMirrors.MiseryOnPlay);
         registry.Register<Sacrifice>(BespokeCardMirrors.SacrificeOnPlay);
         registry.Register<Spite>(BespokeCardMirrors.SpiteOnPlay);
         registry.Register<TheScythe>(BespokeCardMirrors.TheScytheOnPlay);

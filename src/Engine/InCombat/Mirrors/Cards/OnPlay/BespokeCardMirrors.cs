@@ -18,6 +18,41 @@ internal static class BespokeCardMirrors
     public static void DaggerSprayOnPlay(DaggerSpray _, CardOnPlayMirrorContext context)
         => context.AttackAllOpponents(hitCount: 2);
 
+    public static void MiseryOnPlay(Misery _, CardOnPlayMirrorContext context)
+    {
+        SimulatedCombatState combat = context.CombatState as SimulatedCombatState
+            ?? throw new InvalidOperationException("Misery requires simulated combat state.");
+        Dictionary<PowerModel, int> debuffs = combat.EffectivePowers()
+            .Where(power => power.Owner == context.Target
+                && power.TypeForCurrentAmount == MegaCrit.Sts2.Core.Entities.Powers.PowerType.Debuff)
+            .ToDictionary(power => PredictionUtils.CloneModelForSimulation(power), power => power.Amount);
+        foreach (var (power, amount) in debuffs)
+        {
+            if (power is not ITemporaryPower temporary)
+                continue;
+            PowerModel? internalPower = debuffs.Keys.FirstOrDefault(candidate => candidate.Id == temporary.InternallyAppliedPower.Id);
+            if (internalPower != null)
+                debuffs[internalPower] += amount;
+        }
+        context.AttackSingle();
+        if (context.Simulator.HasPendingChoice)
+            return;
+        foreach (Creature enemy in context.State.HittableEnemies.ToArray())
+        {
+            if (enemy == context.Target)
+                continue;
+            foreach (var (power, amount) in debuffs)
+            {
+                if (amount == 0)
+                    continue;
+                combat.ApplyClonedPower(power, enemy, amount, power.Applier);
+                PowerLifecycleSupport.ResolvePowerAmountChanges(context.Simulator, combat);
+                if (context.Simulator.HasPendingChoice)
+                    return;
+            }
+        }
+    }
+
     // Vanilla wraps the whole body in Osty.CheckMissingWithAnim, so the attack and the block are both
     // skipped once the Osty is gone. The sacrifice stays in CardEffectSpecRegistry, which runs after
     // this mirror and is gated on the same condition.

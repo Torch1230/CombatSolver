@@ -1,0 +1,205 @@
+{
+  "server": {
+    "batchIds": [
+      "Q008",
+      "Q009",
+      "Q010"
+    ],
+    "completedAt": "2026-10-03T17:25:52.072915+00:00",
+    "publishedReports": 15,
+    "duplicateThemeReports": 0,
+    "serverZipFilesDeleted": 15,
+    "backendReportsDeleted": 15,
+    "cosObjectsDeleted": 0,
+    "alreadyAbsentReports": 0,
+    "verification": "server_deletion_receipts",
+    "results": [
+      {
+        "reportId": "630463289bdc4dd28e9f11f405928a6c",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "42e8af7403e94f58b9a05309bbf5c0f7",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "ef0609b147064dda8851705a9e858a96",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "bac565acc9004dda9e7d2cd5bb42fcc0",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "ad442f69de5e40838c16e9de636a670d",
+        "batchId": "Q008",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "26fd23b7213d4aa988736ddd428f485e",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "721e17a8d7fa4f9283ed4714310a494b",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "42f86b66b9c3464eabf986f03461fa48",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "e4460d3a3b894444922b712e43346c41",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "e6609669f8f04a148086dfaf9c04b990",
+        "batchId": "Q009",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "7113e143fecf424ab8419924a649d2e1",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "85ef4e1d1bb04f7e93a126c05ffc2cdd",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "e87d5139cbc94eafb8b8de07334f80a7",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "4dc0ba71acec4d1499eaeea48cd29458",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      },
+      {
+        "reportId": "38d72af359ba4163abd73e297cb6727a",
+        "batchId": "Q010",
+        "localDeleted": true,
+        "cosDeleted": false,
+        "reportRetained": false,
+        "reportDeleted": true,
+        "resolvedBeforeDeletion": false,
+        "reason": "published",
+        "themeId": null
+      }
+    ]
+  },
+  "local": {
+    "run": "publish-q008-q010",
+    "completedAt": "2026-10-03T17:26:16.822730+00:00",
+    "deletedZipFiles": 3,
+    "deletedZipBytes": 4056158,
+    "files": [
+      {
+        "file": "Q008.zip",
+        "sizeBytes": 1276803
+      },
+      {
+        "file": "Q009.zip",
+        "sizeBytes": 1375656
+      },
+      {
+        "file": "Q010.zip",
+        "sizeBytes": 1403699
+      }
+    ],
+    "verification": "filesystem_deletion_receipts"
+  }
+}

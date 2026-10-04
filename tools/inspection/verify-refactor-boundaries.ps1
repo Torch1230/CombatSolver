@@ -1360,13 +1360,31 @@ if (-not (Select-String -LiteralPath $beamRetentionFacadePath -SimpleMatch "root
 if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot "src/Runtime/CombatRootSnapshot.cs") -SimpleMatch "CanUseKnownNativeHealingPolicy(" -Quiet)) {
     $violations.Add("CombatRootSnapshot.cs: native healing policy eligibility must be frozen at the root")
 }
+foreach ($goldBoundary in @(
+    @('src/Search/SimulatedCombatState.cs', '_goldRunHookSnapshot = GoldRunHookSnapshot.Capture('),
+    @('src/Search/SimulatedCombatState.cs', '_goldRunHookSnapshot = source._goldRunHookSnapshot;'),
+    @('src/Search/SimulatedCombatState.GoldHooks.cs', 'run.IterateHookListeners(null)'),
+    @('src/Search/SimulatedCombatState.GoldHooks.cs', 'GetPotionAtSlot(player, slot)'),
+    @('src/Prediction/GoldGainSupport.cs', 'combat.GoldAfterGainHookListeners(simulator)'),
+    @('src/Search/SimulatedCombatState.RelicResources.cs', 'GoldGainSupport.ModifyGoldGained(simulator, this, player, amount)'),
+    @('src/Engine/InCombat/Mirrors/Hooks/Resources/GoldGainedMirrors.cs', 'allowReviewedIgnored: listener is BowlerHat or Ectoplasm'),
+    @('src/Engine/InCombat/Simulation/CombatPredictionSimulator.Heal.cs', 'Heal(creature, state.MaxHp - before)'),
+    @('src/Prediction/PotionOnUseSupport.cs', 'simulator.GainMaxHp(playerTarget, gained)'),
+    @('src/Prediction/CorePowerSupport.cs', 'if (gainedGold > 0)'),
+    @('src/Search/StrategicHpRecoveryBound.KnownSources.cs', 'or DragonFruit'),
+    @('src/Search/StrategicHpRecoveryBound.KnownSources.cs', 'or DarkstonePeriapt or ChosenCheese')
+)) {
+    if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $goldBoundary[0]) -SimpleMatch $goldBoundary[1] -Quiet)) {
+        $violations.Add("Missing gold/max-HP command ownership: $($goldBoundary[0])")
+    }
+}
 $beamPhasesPath = Join-Path $searchRoot "CombatBeamSolver.Phases.cs"
 foreach ($healingBoundary in @(
     @('src/Search/CombatBeamSolver.Retention.cs', '_strictHpBoundWithRelicTargets = CanUseStrictHpRelicBound(root, policy)'),
     @('src/Search/CombatBeamSolver.Retention.cs', 'targets.All(target => target.HpAllowance == 0)'),
     @('src/Search/CombatBeamSolver.Retention.cs', 'allowTurnTieBound: !_strictHpBoundWithRelicTargets'),
     @('src/Search/CombatSearchCoordinator.cs', '!CombatBeamSolver.CanUseStrictHpRelicBound(root, policy)'),
-    @('src/Search/CombatSearchCoordinator.PlanSearch.cs', 'context.Root.CanCertifyRemainingHealing || context.Root.UsesKnownNativeHealingPolicy')
+    @('src/Search/CombatSearchCoordinator.PlanSearch.cs', 'if (!context.Root.CanCertifyRemainingHealing')
 )) {
     if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot $healingBoundary[0]) -SimpleMatch $healingBoundary[1] -Quiet)) {
         $violations.Add("Missing common healing-bound policy: $($healingBoundary[0])")

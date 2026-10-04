@@ -45,6 +45,22 @@ internal sealed partial class CombatBeamSolver(
     ContinuationPurpose? attributionPurpose = null,
     DirectSearchPurpose? directSearchPurpose = null)
 {
+    private CancellationToken? _routeMaterializationCancellationToken;
+    private CancellationToken ReplayCancellationToken => _routeMaterializationCancellationToken ?? cancellationToken;
+
+    private SolverResult MaterializeAdoptableRoute(Func<SolverResult> materialize)
+    {
+        if (_routeMaterializationCancellationToken.HasValue)
+            throw new InvalidOperationException("Route materialization already owns this solver's replay context.");
+        _routeMaterializationCancellationToken = policy.RouteAdoptionCancellationToken ?? cancellationToken;
+        try
+        {
+            ReplayCancellationToken.ThrowIfCancellationRequested();
+            return materialize();
+        }
+        finally { _routeMaterializationCancellationToken = null; }
+    }
+
     private readonly SolverSearchProfile _profile = searchProfile ?? SolverSearchProfile.Default;
     private readonly SearchRunContext _run = new(
         policy.MeasurePhasePerformance,

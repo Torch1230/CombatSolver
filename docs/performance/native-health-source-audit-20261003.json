@@ -1,0 +1,2067 @@
+{
+  "schemaVersion": 1,
+  "scope": "Versioned source inventory and reviewed behavior; no new runtime certification",
+  "upstreamCommit": "a789aad2",
+  "game": {
+    "version": "v0.111.0",
+    "commit": "41cef1ea",
+    "dllSha256": "2b40d2df538db1ceb5fa48d958c80ab730ada1e07db88a870aff01a661768b9f",
+    "mvid": "8a76776c-0ce1-4d4f-90bd-8cce653dad8e",
+    "assembly": "sts2, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null"
+  },
+  "inventory": {
+    "typeCount": 9760,
+    "methodCount": 51602,
+    "methodsWithBody": 50816,
+    "staticReferences": 339688,
+    "asyncMappings": 2657,
+    "healthEntries": [
+      "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+      "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+      "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+      "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+      "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxAndCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+      "System.Threading.Tasks.Task`1<System.Decimal> MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+      "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::HealInternal(System.Decimal)",
+      "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetCurrentHpInternal(System.Decimal)",
+      "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetMaxHpInternal(System.Decimal)",
+      "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::set_CurrentHp(System.Int32)",
+      "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::set_MaxHp(System.Int32)"
+    ],
+    "directReferences": 103,
+    "sourceOwners": 75,
+    "selectedHealthCallbacks": 312,
+    "allVirtualModelMethods": 8340,
+    "hookDispatchReferences": 301,
+    "fieldWrites": [
+      {
+        "Caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::set_CurrentHp(System.Int32)",
+        "Target": "System.Int32 MegaCrit.Sts2.Core.Entities.Creatures.Creature::_currentHp",
+        "Kind": "stfld",
+        "Offset": 39,
+        "Owner": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+        "GenericArguments": null
+      },
+      {
+        "Caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::set_MaxHp(System.Int32)",
+        "Target": "System.Int32 MegaCrit.Sts2.Core.Entities.Creatures.Creature::_maxHp",
+        "Kind": "stfld",
+        "Offset": 19,
+        "Owner": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+        "GenericArguments": null
+      },
+      {
+        "Caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::.ctor(MegaCrit.Sts2.Core.Models.MonsterModel,MegaCrit.Sts2.Core.Combat.CombatSide,System.String)",
+        "Target": "System.Int32 MegaCrit.Sts2.Core.Entities.Creatures.Creature::_maxHp",
+        "Kind": "stfld",
+        "Offset": 162,
+        "Owner": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+        "GenericArguments": null
+      },
+      {
+        "Caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::.ctor(MegaCrit.Sts2.Core.Models.MonsterModel,MegaCrit.Sts2.Core.Combat.CombatSide,System.String)",
+        "Target": "System.Int32 MegaCrit.Sts2.Core.Entities.Creatures.Creature::_currentHp",
+        "Kind": "stfld",
+        "Offset": 169,
+        "Owner": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+        "GenericArguments": null
+      },
+      {
+        "Caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::.ctor(MegaCrit.Sts2.Core.Entities.Players.Player,System.Int32,System.Int32)",
+        "Target": "System.Int32 MegaCrit.Sts2.Core.Entities.Creatures.Creature::_currentHp",
+        "Kind": "stfld",
+        "Offset": 26,
+        "Owner": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+        "GenericArguments": null
+      },
+      {
+        "Caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::.ctor(MegaCrit.Sts2.Core.Entities.Players.Player,System.Int32,System.Int32)",
+        "Target": "System.Int32 MegaCrit.Sts2.Core.Entities.Creatures.Creature::_maxHp",
+        "Kind": "stfld",
+        "Offset": 33,
+        "Owner": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+        "GenericArguments": null
+      },
+      {
+        "Caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetUniqueMonsterHpValue(System.Collections.Generic.IReadOnlyList`1<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Random.Rng)",
+        "Target": "System.Int32 MegaCrit.Sts2.Core.Entities.Creatures.Creature::_maxHp",
+        "Kind": "stfld",
+        "Offset": 144,
+        "Owner": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+        "GenericArguments": null
+      },
+      {
+        "Caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetUniqueMonsterHpValue(System.Collections.Generic.IReadOnlyList`1<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Random.Rng)",
+        "Target": "System.Int32 MegaCrit.Sts2.Core.Entities.Creatures.Creature::_currentHp",
+        "Kind": "stfld",
+        "Offset": 151,
+        "Owner": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+        "GenericArguments": null
+      }
+    ],
+    "fieldAddresses": []
+  },
+  "inventoryChecks": {
+    "status": "Passed",
+    "checks": [
+      "Models.Cards.Feed -> GainMaxHp",
+      "Models.Cards.NotYet -> Heal",
+      "Models.Cards.Spur -> Heal",
+      "Models.Relics.MeatOnTheBone -> Heal",
+      "Models.Relics.ChosenCheese -> GainMaxHp",
+      "Models.Relics.DragonFruit -> GainMaxHp",
+      "Models.Powers.RegenPower -> Heal",
+      "Models.Potions.FairyInABottle -> Heal",
+      "Creature-only health field writes",
+      "no health field addresses",
+      "EntropicBrew indirect out-of-combat potion factory captured",
+      "DragonFruit virtual gold callback captured"
+    ],
+    "semanticDifferential": false
+  },
+  "sourceExtraction": [
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.AncientEventModel",
+      "exitCode": 0,
+      "sourceSha256": "4bfa80cdec231e7542bcc18b223b9965227963e5368603006e91f7cc9c05d042",
+      "bytes": 9033
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.BrightestFlame",
+      "exitCode": 0,
+      "sourceSha256": "f3faa9cf300daa8ae56efa2d5572ad115e59c7e2a207e19e9ee4e11135fe1cd2",
+      "bytes": 1433
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Feed",
+      "exitCode": 0,
+      "sourceSha256": "3af45b55be17068554838d6f072a6375ef97b5792e65fa86e527da2ee835d479",
+      "bytes": 2149
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.NotYet",
+      "exitCode": 0,
+      "sourceSha256": "73f51c645b90a7ef2efc7b3ed1508181931ce0f2f6773964be18a0a4e6b0b830",
+      "bytes": 1234
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Spur",
+      "exitCode": 0,
+      "sourceSha256": "92f71669356f1cf9e5efe2754b879f5378f6a58f192b6eb8e7964eabca20a9e4",
+      "bytes": 1700
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.AbyssalBaths",
+      "exitCode": 0,
+      "sourceSha256": "8125bf4931eb81dafcf4c24b59642ff5a6c08bfd5055af090c36919110d7a0f5",
+      "bytes": 3511
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.ByrdonisNest",
+      "exitCode": 0,
+      "sourceSha256": "c43d0047f4c922651006d090e0d1806bdf06b75c311480aa52a28434f4f8c78e",
+      "bytes": 1800
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.DrowningBeacon",
+      "exitCode": 0,
+      "sourceSha256": "1470ae4f8ed78aed0595ebe972a6809889ff27beb3b4202b410a7b364b12dc59",
+      "bytes": 2331
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.EndlessConveyor",
+      "exitCode": 0,
+      "sourceSha256": "6a924b8ff5ceb21a7d67fb3be7c4452be494e6ebd69389494973926fc26ed6a1",
+      "bytes": 8802
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.MorphicGrove",
+      "exitCode": 0,
+      "sourceSha256": "0a18202ac79b1b5ff2f9ef40d0385e24eeef5bbdf3f6889c49f14732f8390097",
+      "bytes": 2100
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.RoundTeaParty",
+      "exitCode": 0,
+      "sourceSha256": "eb3515ecb3740637ef5945a347c150b0e0031c498b94cf5d82ac7ed88c3993f9",
+      "bytes": 2557
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.SapphireSeed",
+      "exitCode": 0,
+      "sourceSha256": "2a7440a9a0a488de60fb7ec2b382017d6252bf88d264de034a56acdbee345902",
+      "bytes": 2495
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.SpiralingWhirlpool",
+      "exitCode": 0,
+      "sourceSha256": "6c562c9a8908a8686c481fc3de3ecdf7cacc390477aa26b6b52b580cecc8581e",
+      "bytes": 2418
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.SpiritGrafter",
+      "exitCode": 0,
+      "sourceSha256": "92ed040216a9fc3c2c0308aad197f505c7bc079fff7ec669c49a4ac13624f3b3",
+      "bytes": 2355
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.StoneOfAllTime",
+      "exitCode": 0,
+      "sourceSha256": "94c4bb01354c7a4ea8406fdcddfd589b4f3147e37a979b5e5d068bbc5274ab11",
+      "bytes": 4370
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.TabletOfTruth",
+      "exitCode": 0,
+      "sourceSha256": "47c1300043b3d60041c77eae8adb5c5dfda79426b77788ce67f3e75e15a50c14",
+      "bytes": 4010
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.Trial",
+      "exitCode": 0,
+      "sourceSha256": "99582372abd46a6379d9a2cca1353d00a9f7ab41686e73c3069cc3dca781f3a9",
+      "bytes": 7873
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.UnrestSite",
+      "exitCode": 0,
+      "sourceSha256": "ddd6dfe22de0d2badb7984e9d9b4bcd30554b4fb4fbbd9a9c99bd7596154a17d",
+      "bytes": 2315
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.WaterloggedScriptorium",
+      "exitCode": 0,
+      "sourceSha256": "741db4f12230ae4f82f1d7bcfed9a291e8e3c6e928aedf6aa8727e97b0dab0c5",
+      "bytes": 4149
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Modifiers.NightTerrors",
+      "exitCode": 0,
+      "sourceSha256": "c423c64d0b20b8100dca2901d8b1a9ccb05bb752095d2bf185a6644ac3c663c1",
+      "bytes": 1525
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Modifiers.Terminal",
+      "exitCode": 0,
+      "sourceSha256": "e7613cb6dd3b30adb7c7fd69fe1880aad32e04a5241fc8c090aed310d6934f2e",
+      "bytes": 1152
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegment",
+      "exitCode": 0,
+      "sourceSha256": "6959c3047e0e82961b27e4a5e66089fd64bf19c8171f3a313148d6462be65a75",
+      "bytes": 9995
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.KnowledgeDemon",
+      "exitCode": 0,
+      "sourceSha256": "c79a6c07acb4b68becee061923ef07d859c9e2e98a5912a471793eca7d85c3b8",
+      "bytes": 9878
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.PunchConstruct",
+      "exitCode": 0,
+      "sourceSha256": "e23e847b28f3ce214345d3f4cdeb9425106197cbf2ddba101568e1902d30ee68",
+      "bytes": 5232
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.TestSubject",
+      "exitCode": 0,
+      "sourceSha256": "e9cd7389248d06dd4b28bc312689360c8e1c03db57c3f302aba78c21a9e7f981",
+      "bytes": 15924
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.ToughEgg",
+      "exitCode": 0,
+      "sourceSha256": "a66127f4ae639183a117b0872718fe6941c0339d3f7dc08884ffcc5cda549c60",
+      "bytes": 6493
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.WaterfallGiant",
+      "exitCode": 0,
+      "sourceSha256": "b3c65f69736d9ab6d6ea42bd8d168a383f863368803fcd0bc3c882551f4c02b2",
+      "bytes": 13597
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Potions.Ambergris",
+      "exitCode": 0,
+      "sourceSha256": "5442933a78c00692f0c3950f0845c9a060c6c1dd61e81dbf2c10c636bc4811d9",
+      "bytes": 1526
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Potions.BloodPotion",
+      "exitCode": 0,
+      "sourceSha256": "0b2053f00b35c304ff8b6c71020fd2be14436b22e05730d2d9430e1cdbfe62e3",
+      "bytes": 1310
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Potions.FairyInABottle",
+      "exitCode": 0,
+      "sourceSha256": "6bcc4b32aca1fd7f240980c3c0c204dc4b7f91d702f0bbaceeaa4370867642e0",
+      "bytes": 1607
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Potions.FruitJuice",
+      "exitCode": 0,
+      "sourceSha256": "c3b2e21d5de80ba98db92a0dea1551d7464f5e040857b08186e448e92a813e69",
+      "bytes": 1144
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.IllusionPower",
+      "exitCode": 0,
+      "sourceSha256": "cb4eb3cadd0e5dbb84be6ad42373ab74df752c3c5496c87e2bb7e5cc970ff193",
+      "bytes": 3600
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.PaperCutsPower",
+      "exitCode": 0,
+      "sourceSha256": "df233f10ff7f58f1976d9feed7fbc27b8765dbb7124c47fcef887d21fdbf2495",
+      "bytes": 961
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.ReattachPower",
+      "exitCode": 0,
+      "sourceSha256": "52de07daeac9c81418836bf1f703c81a87225ab4cafbbdb6a6320aa4b08c62df",
+      "bytes": 4428
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.RegenPower",
+      "exitCode": 0,
+      "sourceSha256": "f507358d924e933fc057f1170f36dc250c066248cc16cc14feb996426c0c6733",
+      "bytes": 997
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BigMushroom",
+      "exitCode": 0,
+      "sourceSha256": "0f458b942f63aa276341a1df08a95e63b45777c65c62e2fe2610748eb1d0820e",
+      "bytes": 1449
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BlackBlood",
+      "exitCode": 0,
+      "sourceSha256": "5144630380e1f58a374e54837a34d8ebe41fbaa0cd09f901205489bdd39fbfaa",
+      "bytes": 839
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BloodVial",
+      "exitCode": 0,
+      "sourceSha256": "f333a46a9aad5149ba72af8090fbaa94963c3f899e6b03b5a893673e8c949559",
+      "bytes": 967
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BookOfFiveRings",
+      "exitCode": 0,
+      "sourceSha256": "552e308e3d4eff901b53b0487f179035fc8bb8dfa1953f85a9567522b3c31d5e",
+      "bytes": 2213
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BookRepairKnife",
+      "exitCode": 0,
+      "sourceSha256": "653b17643a1e7eb63238fbd85d86742223fe05f02c251d3b8a6baab180bfc584",
+      "bytes": 1370
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BurningBlood",
+      "exitCode": 0,
+      "sourceSha256": "3141680a2a5a359691662db2cd3d097fb7b032186410f4d63b9a8b7aa8cfbe47",
+      "bytes": 840
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.ChosenCheese",
+      "exitCode": 0,
+      "sourceSha256": "8cec319068c477d5067cc190d887dab9c543511f42f35138354df6c02bd9c603",
+      "bytes": 796
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.DarkstonePeriapt",
+      "exitCode": 0,
+      "sourceSha256": "dd64455769617cf64bd41554f9d981378bf8244a7876b6f611ac3fec78925c1d",
+      "bytes": 1014
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.DemonTongue",
+      "exitCode": 0,
+      "sourceSha256": "04d0c13009abb1ff8290903b59c41d629f8a5b49a4b5e0dae40316e5113dd9b2",
+      "bytes": 1462
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.DragonFruit",
+      "exitCode": 0,
+      "sourceSha256": "915177a752f973877923353b04084cf6956a11f6c4547b0a638a6ede859a6642",
+      "bytes": 992
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.EternalFeather",
+      "exitCode": 0,
+      "sourceSha256": "94943e6a454df464249b33afebc6e8df6bfe4972704a25ad885e68d614433baf",
+      "bytes": 1296
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.FakeBloodVial",
+      "exitCode": 0,
+      "sourceSha256": "c5af15d2e53f60e918fb99ac257270e0476ed0e5d2d9e0acbcd8dec54b584b4a",
+      "bytes": 1012
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.FakeLeesWaffle",
+      "exitCode": 0,
+      "sourceSha256": "741c41911ef70637b3ad374c88e40685aa9ebd733345a4b9778b0505fc604ebc",
+      "bytes": 876
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.FakeMango",
+      "exitCode": 0,
+      "sourceSha256": "62a305f543bb129f3717ec79032bb1a10ee9727172fd2686020567523ffbcdee",
+      "bytes": 831
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.FurCoat",
+      "exitCode": 0,
+      "sourceSha256": "bf3453952d66cb45b207c871ec2caf63913ea0312485a07b17e59d271423dc49",
+      "bytes": 4998
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LeafyPoultice",
+      "exitCode": 0,
+      "sourceSha256": "dcaa97a1a193a18f20ed37032d8cce7611b193733c2ff98545fbf75f75f8ed93",
+      "bytes": 1737
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LeesWaffle",
+      "exitCode": 0,
+      "sourceSha256": "1e608c46f3c3c5314553edf60d2d5e9a29a71661748fdb45b227bd0e56e2ecbc",
+      "bytes": 939
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LizardTail",
+      "exitCode": 0,
+      "sourceSha256": "51a91778bf80c72dac89d2447be0d766498d17509c003b050eddc9cf2985a0f7",
+      "bytes": 1396
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LoomingFruit",
+      "exitCode": 0,
+      "sourceSha256": "ac14e6fe1ec077fa0dc4e6b6d779e27b09f0a2ab3b23af14ff6de66a3549a2d1",
+      "bytes": 1468
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Mango",
+      "exitCode": 0,
+      "sourceSha256": "f05612e520a87123d4c0171c445a64e12fc7f2aad5d109e7aa7bcfd6d3591156",
+      "bytes": 785
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.MealTicket",
+      "exitCode": 0,
+      "sourceSha256": "7805b7c2a4d5451e90b45013e2cc62a4eae00e8587c387608ea57ca48c591fab",
+      "bytes": 1012
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.MeatOnTheBone",
+      "exitCode": 0,
+      "sourceSha256": "96bbd94fafbf1701db26d71d860e8461e116f0ca23ae63c4e94bcd3245d4da35",
+      "bytes": 1877
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.NutritiousOyster",
+      "exitCode": 0,
+      "sourceSha256": "728b142717a785c5861666cfeb26755a070de02b37a6e9e9161616d0c52af243",
+      "bytes": 799
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Pantograph",
+      "exitCode": 0,
+      "sourceSha256": "134c3e504815db0756d77c48046099d8d0e0f06930d8a3de7948dbaf5ea5f107",
+      "bytes": 1226
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Pear",
+      "exitCode": 0,
+      "sourceSha256": "c7d9b90f69213142be7bf395b7c03bc817a500fff5bc7f5ae352ec118a8dc599",
+      "bytes": 788
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Planisphere",
+      "exitCode": 0,
+      "sourceSha256": "899cc215d35b235cb277c5a5f5e93b017646cb61a8230032aad9a822019c12bc",
+      "bytes": 1230
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.SereTalon",
+      "exitCode": 0,
+      "sourceSha256": "1e07d1cd6f24f5a21e12c18b6f962cd4bab3d5dd9e3b7b72f10f59d6bae751b9",
+      "bytes": 1617
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.StoneHumidifier",
+      "exitCode": 0,
+      "sourceSha256": "8b68e6c2f7eb8176440cdc0bb47a7fd9dc83d85cace3fc38f99b2e34850eb61e",
+      "bytes": 1427
+    },
+    {
+      "batch": "native-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Strawberry",
+      "exitCode": 0,
+      "sourceSha256": "67c2e80e8a7ef2b885e934e77dff600fd7d7edae5dbee99fbca8f1ec4310a0a6",
+      "bytes": 791
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Commands.CreatureCmd",
+      "exitCode": 0,
+      "sourceSha256": "cf5e4ddcb3cb765ade90e812d9f7169d7a789f9477d6a1c7665798803629d5a7",
+      "bytes": 41919
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Commands.OstyCmd",
+      "exitCode": 0,
+      "sourceSha256": "1081fa0d011976838544830068e3dc0607a54859a9e846dfae3604d29bba5468",
+      "bytes": 3561
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.HealConsoleCmd",
+      "exitCode": 0,
+      "sourceSha256": "1d8d59b9d4402dd8c71f795a1150e143a54470ef52e76a32602e9431ac043deb",
+      "bytes": 2060
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+      "exitCode": 0,
+      "sourceSha256": "e31108a975d94da5cceb83e8db11f10c8312d754098cfee2d4df52cbff1f5e47",
+      "bytes": 20396
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Entities.Players.Player",
+      "exitCode": 0,
+      "sourceSha256": "a2260b11cc63e218b3fd25943a362fd97971b15ea05880b3eb36496c2e42bda6",
+      "bytes": 29938
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Entities.RestSite.CookRestSiteOption",
+      "exitCode": 0,
+      "sourceSha256": "6bacd2e6da4d6fee71e5c6efcafaed28c52c5b477f144a81c4b2d6b425d2f679",
+      "bytes": 1920
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Entities.RestSite.HealRestSiteOption",
+      "exitCode": 0,
+      "sourceSha256": "328a90e8a816003cfab653c5c326d4159b49aeae5aef9265a03196d7a357360e",
+      "bytes": 3792
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Entities.RestSite.MendRestSiteOption",
+      "exitCode": 0,
+      "sourceSha256": "e19406be54a63774df8dcc8c05f3ec02543a8367032e46101ff21f67499858e2",
+      "bytes": 7034
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.Mocks.MockInvincibleOnDeathPower",
+      "exitCode": 0,
+      "sourceSha256": "7984a562f44d24fea7b2e6cb4c33a9ba9f37e079fdd782382b415eddb7d81a75",
+      "bytes": 1186
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.Mocks.MockPreventDeathPower",
+      "exitCode": 0,
+      "sourceSha256": "2d7ac297f87959ca1b9fbfec24e44d5606eb8f83cc62fdfbff2e46c86c16fff8",
+      "bytes": 827
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.Mocks.MockRevivePower",
+      "exitCode": 0,
+      "sourceSha256": "7b1ef530c3a3d706153e3878a07547b4e03a68796a9746dc9119c3992ece94dc",
+      "bytes": 1895
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Commands.PlayerCmd",
+      "exitCode": 0,
+      "sourceSha256": "dabb0caa75f20b73c6af66e2d22a3a2c69cc425726a380184618fa23f775dc7f",
+      "bytes": 9734
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Commands.PotionCmd",
+      "exitCode": 0,
+      "sourceSha256": "f2b843f3466ca967c981a9b0dc316c9290f4618655fa96c5128b7892fb9e23b5",
+      "bytes": 2470
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Commands.RelicCmd",
+      "exitCode": 0,
+      "sourceSha256": "a5d0852efe82ea8a96d823a636e2d08ec49d48913f26dffed1db4621df946d86",
+      "bytes": 3231
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BoundPhylactery",
+      "exitCode": 0,
+      "sourceSha256": "215e6b14b04e7e07e795f768619aab583a4738ae9210dcfcd7124d5d75a978a0",
+      "bytes": 2011
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Potions.RegenPotion",
+      "exitCode": 0,
+      "sourceSha256": "8fd5923c7cbc19bf4ccdeb93e428d91bc7f392582990898b23737645adb6aa1b",
+      "bytes": 1450
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.AmbergrisPower",
+      "exitCode": 0,
+      "sourceSha256": "e43122abaafb9136e0edc1ee5ccda29502b77527efa6a757e82e1a01eba47a01",
+      "bytes": 843
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Alchemize",
+      "exitCode": 0,
+      "sourceSha256": "2920df84880e6e5bff9b7e0bb786378392218b5c413aecc0f2b2f19a13855b49",
+      "bytes": 1156
+    },
+    {
+      "batch": "additional-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Combat.CombatManager",
+      "exitCode": 0,
+      "sourceSha256": "52e1ac27fe7d5a801b60b85153d4cd5d3ffdfb7d08f496c06a684b5d0e4c490d",
+      "bytes": 76031
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Afterlife",
+      "exitCode": 0,
+      "sourceSha256": "a7273bb37d0dc9876fd96f6f58ddb8935ec7a07feec676d71d2e0a4b52a9f384",
+      "bytes": 1556
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Bodyguard",
+      "exitCode": 0,
+      "sourceSha256": "77a11b2d51f5f8bf44401dc03bbdfbd3b7f05ea2c1a8aff4ae1780462c28dec6",
+      "bytes": 1413
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Cleanse",
+      "exitCode": 0,
+      "sourceSha256": "0c99754d5bf3f2832f49a164e373a1ebffcb657ccc9181bae1e8bfe9ef2d7ef2",
+      "bytes": 1830
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Dirge",
+      "exitCode": 0,
+      "sourceSha256": "f6ce3a8ef730ba81620c5ffef9d7217e21ecaa5a27a9aecb56f2df9a1f92df48",
+      "bytes": 1954
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.LegionOfBone",
+      "exitCode": 0,
+      "sourceSha256": "0ad2f09cb50826a5c11a70bc436a64c6949ed6b66e22c7e1f28ac5972cae356e",
+      "bytes": 1776
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.NecroMastery",
+      "exitCode": 0,
+      "sourceSha256": "49cc965ea8a92d24797a44706eb21c6fc32307b7bed5e84ccef0716c26ac7eac",
+      "bytes": 1451
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.PullAggro",
+      "exitCode": 0,
+      "sourceSha256": "1b9803894ddd56f64f8733b0851c85b2d0e80b0ca8282b9e3e55dbfbac018d8f",
+      "bytes": 1675
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Reanimate",
+      "exitCode": 0,
+      "sourceSha256": "3b1adad62412a36a7a63db7c7b05b58c236c17a7fa9ff6d666b785d89fad66d9",
+      "bytes": 1555
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.EventModel",
+      "exitCode": 0,
+      "sourceSha256": "2db7d056b638a0a801f1798297ddd303ddcb317dbdff43f6e33827c6d8e725bd",
+      "bytes": 23113
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Events.DenseVegetation",
+      "exitCode": 0,
+      "sourceSha256": "2aea1c5b894d1dd2732f2764202b6db568288e9b1bebd49a64825482c0eeb662",
+      "bytes": 4226
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.EyeWithTeeth",
+      "exitCode": 0,
+      "sourceSha256": "3266537cb2917227d7f588f6e5a378913e8e5a1e916e1bffb8007a75b7bfca2f",
+      "bytes": 2504
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.Parafright",
+      "exitCode": 0,
+      "sourceSha256": "3d0817618de3b4ba721d47ae72ace52c2e92f49304cdad72bc273bf49387b3ab",
+      "bytes": 3594
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Potions.BoneBrew",
+      "exitCode": 0,
+      "sourceSha256": "a36fac628b9a9a351fb58ebefa93c8922cca54a970315ccaae627d9be29fff3c",
+      "bytes": 1465
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Potions.EntropicBrew",
+      "exitCode": 0,
+      "sourceSha256": "d5a71d48aa251b43275fd77f118904db46762a66717181c718adbbfa909b9519",
+      "bytes": 1200
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.DevourLifePower",
+      "exitCode": 0,
+      "sourceSha256": "4353cb1ef8b6926993244dd85d6d040e08faf2197bad2db61db89c56b2340fb8",
+      "bytes": 1135
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.DieForYouPower",
+      "exitCode": 0,
+      "sourceSha256": "fad3fa8cb2adcef548f0748a7d21ac8b9d59b45907df9f029ddc8a09a56e534b",
+      "bytes": 1262
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.DoomPower",
+      "exitCode": 0,
+      "sourceSha256": "55425b2543a42cd3ea7edb36b85e0478b9adcfb1319d2e58f94c1d68764946a8",
+      "bytes": 6457
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.SicEmPower",
+      "exitCode": 0,
+      "sourceSha256": "bc2c2bb065ec6dafc001bd3695154eda9fb277f1b8c8339f0dbdec1326b87e3b",
+      "bytes": 1568
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Powers.SummonNextTurnPower",
+      "exitCode": 0,
+      "sourceSha256": "4671fed9e43eaa54243e47d6f726e687a2dfc64a01155058259c1add1f5a13cf",
+      "bytes": 1075
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.AlchemicalCoffer",
+      "exitCode": 0,
+      "sourceSha256": "0c12c4c98a990301ca0d5019edfe94ea5fcb16e16a5cc5cb3175dbe438465b41",
+      "bytes": 1312
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.DelicateFrond",
+      "exitCode": 0,
+      "sourceSha256": "7e9ae1cdef5e7c0bac4cd37d755fa8f892180a591647bebf185513edbe3978c9",
+      "bytes": 765
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LargeCapsule",
+      "exitCode": 0,
+      "sourceSha256": "2f995883fa196a354ea3274f8ef0d413bba3b0a83b58e61740052c4b7813d02c",
+      "bytes": 2197
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.NeowsSacrifice",
+      "exitCode": 0,
+      "sourceSha256": "df52cea571fd28c945ce3cb90f6c3209cc365a5d400fa74d1b1d9ac2880a30e9",
+      "bytes": 1250
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.PaelsWing",
+      "exitCode": 0,
+      "sourceSha256": "047d0c1cf4c6f76ffc3a457f427c68364a318bab4b449aea3c08728ab369a005",
+      "bytes": 2457
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.PetrifiedToad",
+      "exitCode": 0,
+      "sourceSha256": "1feffb2c8656614de32f009f1cb288fef5d9f4ea84bc3f57194b56a7d2388278",
+      "bytes": 794
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.PhialHolster",
+      "exitCode": 0,
+      "sourceSha256": "b8ebd0fc3bcc37bae4a33853de37f9eb4ea7a20c9d650bbe0efec352207ac066",
+      "bytes": 1306
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.PhylacteryUnbound",
+      "exitCode": 0,
+      "sourceSha256": "3d3478775b2230cd9293e7a9925c9ffc5662316c4577460e5a26255a6942e755",
+      "bytes": 1681
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.SwordOfStone",
+      "exitCode": 0,
+      "sourceSha256": "0362b35a284e6529088f231bd4d9648a91b18cfb15d8f08fd0ded299770b7354",
+      "bytes": 1356
+    },
+    {
+      "batch": "indirect-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Models.Relics.TouchOfOrobas",
+      "exitCode": 0,
+      "sourceSha256": "482cfc382e52ef8f5d88a9a04952eb77891786b22634b2b2c9e6a98fbb23ff7c",
+      "bytes": 4373
+    },
+    {
+      "batch": "factory-hook-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Factories.PotionFactory",
+      "exitCode": 0,
+      "sourceSha256": "b99e5850d9c4129b5e962bd7049e3770a0ac328defddc9f72cde4d94a0fccc88",
+      "bytes": 4030
+    },
+    {
+      "batch": "factory-hook-source-provenance.json",
+      "type": "MegaCrit.Sts2.Core.Hooks.Hook",
+      "exitCode": 0,
+      "sourceSha256": "01e13b66dc18a7a6f24d85ceefa5eba1aa62d038ecee6d319e6ffd6ad78acd04",
+      "bytes": 100383
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Cards.HandOfGreed",
+      "exitCode": 0,
+      "bytes": 2500,
+      "sourceSha256": "abc8986483f42c078ad3bb181f187c79470513afdfee8638983514a6f7cec47a",
+      "batch": "gold-source-audit/provenance.json"
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BowlerHat",
+      "exitCode": 0,
+      "bytes": 1208,
+      "sourceSha256": "6d9c86f3f2591f5711142ac32dd262d66c52d9aad71cb30bbb38f5ee87349e8c",
+      "batch": "gold-source-audit/provenance.json"
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Ectoplasm",
+      "exitCode": 0,
+      "bytes": 1262,
+      "sourceSha256": "15a3fca3059f5128a30fc81ceb29e1f428934b62354ebd05bb8a6683b2b5612f",
+      "batch": "gold-source-audit/provenance.json"
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Runs.RunState",
+      "exitCode": 0,
+      "bytes": 24576,
+      "sourceSha256": "cb27d007ef1fff57394fe7805fb51a8e7abfeec7a8854374f59deced3e85f043",
+      "batch": "gold-source-audit/provenance.json"
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Runs.IRunState",
+      "exitCode": 0,
+      "bytes": 10888,
+      "sourceSha256": "0b295b40548ddbb4901e7c35bb7c0edee05349c8f415984555503c8b78aac49f",
+      "batch": "gold-source-audit/provenance.json"
+    }
+  ],
+  "directSources": [
+    {
+      "type": "MegaCrit.Sts2.Core.Commands.CreatureCmd",
+      "targetClassification": "command_lifecycle_restore_or_sync",
+      "reviewStatus": "context_and_callback_chain_review_required",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<GainMaxHp>d__22::MoveNext()",
+          "target": "System.Threading.Tasks.Task`1<System.Decimal> MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 79
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<GainMaxHp>d__22::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 255
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<Heal>d__20::MoveNext()",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::HealInternal(System.Decimal)",
+          "ilOffset": 233
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<KillWithoutCheckingWinCondition>d__15::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 295
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<LoseMaxHp>d__23::MoveNext()",
+          "target": "System.Threading.Tasks.Task`1<System.Decimal> MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 364
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<SetCurrentHp>d__21::MoveNext()",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetCurrentHpInternal(System.Decimal)",
+          "ilOffset": 82
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<SetMaxAndCurrentHp>d__25::MoveNext()",
+          "target": "System.Threading.Tasks.Task`1<System.Decimal> MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 29
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<SetMaxAndCurrentHp>d__25::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 132
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.CreatureCmd/<SetMaxHp>d__24::MoveNext()",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetMaxHpInternal(System.Decimal)",
+          "ilOffset": 52
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Commands.OstyCmd",
+      "targetClassification": "osty",
+      "reviewStatus": "direct_target_reviewed_callback_closure_required",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.OstyCmd/<Summon>d__0::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 292
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.OstyCmd/<Summon>d__0::MoveNext()",
+          "target": "System.Threading.Tasks.Task`1<System.Decimal> MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 891
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Commands.OstyCmd/<Summon>d__0::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 1003
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.HealConsoleCmd",
+      "targetClassification": "test_or_console_context",
+      "reviewStatus": "outside_normal_search_requires_boundary_guard",
+      "evidence": [
+        {
+          "caller": "MegaCrit.Sts2.Core.DevConsole.CmdResult MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.HealConsoleCmd::Process(MegaCrit.Sts2.Core.Entities.Players.Player,System.String[])",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 257
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Entities.Creatures.Creature",
+      "targetClassification": "command_lifecycle_restore_or_sync",
+      "reviewStatus": "context_and_callback_chain_review_required",
+      "evidence": [
+        {
+          "caller": "MegaCrit.Sts2.Core.Entities.Creatures.DamageResult MegaCrit.Sts2.Core.Entities.Creatures.Creature::LoseHpInternal(System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::set_CurrentHp(System.Int32)",
+          "ilOffset": 79
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::HealInternal(System.Decimal)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetCurrentHpInternal(System.Decimal)",
+          "ilOffset": 25
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::ScaleMonsterHpForMultiplayer(MegaCrit.Sts2.Core.Models.EncounterModel,System.Int32,System.Int32)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetMaxHpInternal(System.Decimal)",
+          "ilOffset": 25
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::ScaleMonsterHpForMultiplayer(MegaCrit.Sts2.Core.Models.EncounterModel,System.Int32,System.Int32)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetCurrentHpInternal(System.Decimal)",
+          "ilOffset": 42
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetCurrentHpInternal(System.Decimal)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::set_CurrentHp(System.Int32)",
+          "ilOffset": 23
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetMaxHpInternal(System.Decimal)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::set_MaxHp(System.Int32)",
+          "ilOffset": 41
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetMaxHpInternal(System.Decimal)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::set_CurrentHp(System.Int32)",
+          "ilOffset": 64
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Entities.Players.Player",
+      "targetClassification": "command_lifecycle_restore_or_sync",
+      "reviewStatus": "context_and_callback_chain_review_required",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Players.Player/<ReviveBeforeCombatEnd>d__164::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 42
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Players.Player::SyncWithSerializedPlayer(MegaCrit.Sts2.Core.Saves.Runs.SerializablePlayer)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetMaxHpInternal(System.Decimal)",
+          "ilOffset": 200
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.Players.Player::SyncWithSerializedPlayer(MegaCrit.Sts2.Core.Saves.Runs.SerializablePlayer)",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetCurrentHpInternal(System.Decimal)",
+          "ilOffset": 222
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Entities.RestSite.CookRestSiteOption",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.RestSite.CookRestSiteOption/<OnSelect>d__9::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 379
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Entities.RestSite.HealRestSiteOption",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.RestSite.HealRestSiteOption/<ExecuteRestSiteHeal>d__13::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 48
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Entities.RestSite.MendRestSiteOption",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Entities.RestSite.MendRestSiteOption/<OnSelect>d__10::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 1242
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.AncientEventModel",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.AncientEventModel/<BeforeEventStarted>d__62::MoveNext()",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetCurrentHpInternal(System.Decimal)",
+          "ilOffset": 57
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.AncientEventModel/<BeforeEventStarted>d__62::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 166
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Cards.BrightestFlame",
+      "targetClassification": "player_loss",
+      "reviewStatus": "loss_reviewed_callbacks_and_indirect_sources_still_require_certification",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Cards.BrightestFlame/<OnPlay>d__5::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 303
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Feed",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Cards.Feed/<OnPlay>d__9::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 396
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Cards.NotYet",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Cards.NotYet/<OnPlay>d__7::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 174
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Cards.Spur",
+      "targetClassification": "osty",
+      "reviewStatus": "direct_target_reviewed_callback_closure_required",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Cards.Spur/<OnPlay>d__7::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 313
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.AbyssalBaths",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.AbyssalBaths/<Abstain>d__10::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 50
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.AbyssalBaths/<OnImmerse>d__14::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 51
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.ByrdonisNest",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.ByrdonisNest/<Eat>d__5::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.DrowningBeacon",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.DrowningBeacon/<ClimbOption>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 57
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.EndlessConveyor",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.EndlessConveyor/<Caviar>d__23::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 54
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.EndlessConveyor/<ClamRoll>d__22::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 55
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.MorphicGrove",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.MorphicGrove/<Loner>d__7::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.RoundTeaParty",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.RoundTeaParty/<EnjoyTea>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 173
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.SapphireSeed",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.SapphireSeed/<Eat>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 57
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.SpiralingWhirlpool",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.SpiralingWhirlpool/<Drink>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 50
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.SpiritGrafter",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.SpiritGrafter/<LetItIn>d__5::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 57
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.StoneOfAllTime",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.StoneOfAllTime/<Lift>d__14::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 152
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.TabletOfTruth",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.TabletOfTruth/<LoseMaxHpAndUpgrade>d__13::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 97
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.TabletOfTruth/<LoseMaxHpAndUpgrade>d__13::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 232
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.TabletOfTruth/<Smash>d__9::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 52
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.Trial",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.Trial/<NobleGuilty>d__18::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 36
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.UnrestSite",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.UnrestSite/<Kill>d__7::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 62
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.UnrestSite/<Rest>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 52
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Events.WaterloggedScriptorium",
+      "targetClassification": "event_or_rest_player_effect",
+      "reviewStatus": "boundary_reviewed_not_a_generic_zero_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Events.WaterloggedScriptorium/<BloodyInk>d__8::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Modifiers.NightTerrors",
+      "targetClassification": "player_or_rules",
+      "reviewStatus": "unknown_environment_rejected_by_existing_certificates",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Modifiers.NightTerrors/<AfterRestSiteHeal>d__2::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 71
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Modifiers.Terminal",
+      "targetClassification": "player_or_rules",
+      "reviewStatus": "unknown_environment_rejected_by_existing_certificates",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Modifiers.Terminal/<AfterRoomEntered>d__0::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 138
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegment",
+      "targetClassification": "enemy_creature",
+      "reviewStatus": "direct_target_reviewed_indirect_generation_and_callbacks_pending",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Monsters.DecimillipedeSegment/<AfterAddedToRoom>d__46::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxAndCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 499
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.KnowledgeDemon",
+      "targetClassification": "enemy_creature",
+      "reviewStatus": "direct_target_reviewed_indirect_generation_and_callbacks_pending",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Monsters.KnowledgeDemon/<PonderMove>d__42::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 336
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.PunchConstruct",
+      "targetClassification": "enemy_creature",
+      "reviewStatus": "direct_target_reviewed_indirect_generation_and_callbacks_pending",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Monsters.PunchConstruct/<AfterAddedToRoom>d__24::MoveNext()",
+          "target": "System.Void MegaCrit.Sts2.Core.Entities.Creatures.Creature::SetCurrentHpInternal(System.Decimal)",
+          "ilOffset": 274
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.TestSubject",
+      "targetClassification": "enemy_creature",
+      "reviewStatus": "direct_target_reviewed_indirect_generation_and_callbacks_pending",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Monsters.TestSubject/<Revive>d__81::MoveNext()",
+          "target": "System.Threading.Tasks.Task`1<System.Decimal> MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 110
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Monsters.TestSubject/<Revive>d__81::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 214
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.ToughEgg",
+      "targetClassification": "enemy_creature",
+      "reviewStatus": "direct_target_reviewed_indirect_generation_and_callbacks_pending",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Monsters.ToughEgg/<Hatch>d__36::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxAndCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 221
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Monsters.WaterfallGiant",
+      "targetClassification": "enemy_creature",
+      "reviewStatus": "direct_target_reviewed_indirect_generation_and_callbacks_pending",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Monsters.WaterfallGiant/<SiphonMove>d__73::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 188
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Monsters.WaterfallGiant/<TriggerAboutToBlowState>d__77::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxAndCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 55
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Potions.Ambergris",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Potions.Ambergris/<OnUse>d__9::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 126
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Potions.BloodPotion",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Potions.BloodPotion/<OnUse>d__9::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 119
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Potions.FairyInABottle",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Potions.FairyInABottle/<OnUse>d__8::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 69
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Potions.FruitJuice",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Potions.FruitJuice/<OnUse>d__10::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 50
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Powers.IllusionPower",
+      "targetClassification": "power_owner",
+      "reviewStatus": "native_enemy_target_reviewed_other_ownership_unknown",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Powers.IllusionPower/<ReviveMove>d__22::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 177
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Powers.Mocks.MockInvincibleOnDeathPower",
+      "targetClassification": "test_or_console_context",
+      "reviewStatus": "outside_normal_search_requires_boundary_guard",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Powers.Mocks.MockInvincibleOnDeathPower/<AfterDeath>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetMaxAndCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 65
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Powers.Mocks.MockPreventDeathPower",
+      "targetClassification": "test_or_console_context",
+      "reviewStatus": "outside_normal_search_requires_boundary_guard",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Powers.Mocks.MockPreventDeathPower/<AfterPreventingDeath>d__7::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 42
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Powers.Mocks.MockRevivePower",
+      "targetClassification": "test_or_console_context",
+      "reviewStatus": "outside_normal_search_requires_boundary_guard",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Powers.Mocks.MockRevivePower/<AfterPreventingDeath>d__15::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 60
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Powers.PaperCutsPower",
+      "targetClassification": "player_loss",
+      "reviewStatus": "loss_reviewed_callbacks_and_indirect_sources_still_require_certification",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Powers.PaperCutsPower/<AfterDamageGiven>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 118
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Powers.ReattachPower",
+      "targetClassification": "power_owner",
+      "reviewStatus": "native_enemy_target_reviewed_other_ownership_unknown",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Powers.ReattachPower/<DoReattach>d__10::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 135
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Powers.RegenPower",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Powers.RegenPower/<BeforeSideTurnEndEarly>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 93
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BigMushroom",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.BigMushroom/<AfterObtained>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BlackBlood",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.BlackBlood/<AfterCombatVictory>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 74
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BloodVial",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.BloodVial/<AfterPlayerTurnStartLate>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 96
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BookOfFiveRings",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.BookOfFiveRings/<AfterCardChangedPiles>d__19::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 167
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BookRepairKnife",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Models.Relics.BookRepairKnife::AfterDiedToDoom(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,System.Collections.Generic.IReadOnlyList`1<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 73
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.BurningBlood",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.BurningBlood/<AfterCombatVictory>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 74
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.ChosenCheese",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.ChosenCheese/<AfterCombatEnd>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 50
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.DarkstonePeriapt",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.DarkstonePeriapt/<AfterCardChangedPiles>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 132
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.DemonTongue",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.DemonTongue/<AfterDamageReceived>d__3::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 184
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.DragonFruit",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.DragonFruit/<AfterGoldGained>d__5::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 69
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.EternalFeather",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.EternalFeather/<AfterRoomEntered>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 135
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.FakeBloodVial",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.FakeBloodVial/<AfterPlayerTurnStartLate>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 96
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.FakeLeesWaffle",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.FakeLeesWaffle/<AfterObtained>d__8::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 83
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.FakeMango",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.FakeMango/<AfterObtained>d__8::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.FurCoat",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.FurCoat/<AfterCreatureAddedToCombat>d__27::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 116
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.FurCoat/<BeforeCombatStart>d__26::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::SetCurrentHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 187
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LeafyPoultice",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.LeafyPoultice/<AfterObtained>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 57
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LeesWaffle",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.LeesWaffle/<AfterObtained>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 63
+        },
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.LeesWaffle/<AfterObtained>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 188
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LizardTail",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.LizardTail/<AfterPreventingDeath>d__11::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 101
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.LoomingFruit",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.LoomingFruit/<AfterObtained>d__9::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Mango",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.Mango/<AfterObtained>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.MealTicket",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.MealTicket/<AfterRoomEntered>d__5::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 92
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.MeatOnTheBone",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.MeatOnTheBone/<AfterCombatVictoryEarly>d__7::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 90
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.NutritiousOyster",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.NutritiousOyster/<AfterObtained>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Pantograph",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.Pantograph/<BeforeCombatStart>d__5::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 106
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Pear",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.Pear/<AfterObtained>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Planisphere",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.Planisphere/<AfterRoomEntered>d__5::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::Heal(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 142
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.SereTalon",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.SereTalon/<AfterObtained>d__10::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::LoseMaxHp(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,System.Boolean)",
+          "ilOffset": 65
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.StoneHumidifier",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.StoneHumidifier/<AfterRestSiteHeal>d__4::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 69
+        }
+      ]
+    },
+    {
+      "type": "MegaCrit.Sts2.Core.Models.Relics.Strawberry",
+      "targetClassification": "player_or_target_player",
+      "reviewStatus": "behavior_reviewed_not_a_general_search_certificate",
+      "evidence": [
+        {
+          "caller": "System.Void MegaCrit.Sts2.Core.Models.Relics.Strawberry/<AfterObtained>d__6::MoveNext()",
+          "target": "System.Threading.Tasks.Task MegaCrit.Sts2.Core.Commands.CreatureCmd::GainMaxHp(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)",
+          "ilOffset": 44
+        }
+      ]
+    }
+  ],
+  "reusedCertificate": {
+    "path": "docs/performance/regent-potion-cap-bound-semantic-audit-20261003.json",
+    "scope": "Original C58 single-player, native canonical pools and callback guards only",
+    "cardCount": 545,
+    "powerCount": 178
+  },
+  "pending": [
+    "Virtual and extension callback reachability closure",
+    "Out-of-combat potion and relic acquisition closure",
+    "All enemy indirect generation and attachments",
+    "Finite repetition bounds",
+    "New source-specific strict native/simulation differential",
+    "General certificate coverage and rejection telemetry",
+    "Certification overhead measurement"
+  ],
+  "rawInventory": ".local/general-healing-audit/native-health-references-v5.json",
+  "productionIntegrated": false,
+  "reviewedCallbackDispatch": {
+    "ShouldDie": "Two ordered IterateHookListeners passes: ShouldDie then ShouldDieLate; first preventer stops death",
+    "AfterCurrentHpChanged": "All IterateHookListeners(runState,combatState), then InvokeExecutionFinished",
+    "AfterCombatEnd": "All IterateHookListeners(runState,combatState), then InvokeExecutionFinished",
+    "AfterGoldGained": "IterateHookListeners(runState,null); run-listener closure required",
+    "dispatchEnumeration": "RunState.IterateHookListeners: active-player permanent Deck cards/enchantments; null child adds unmelted Relics, held Potions, Modifiers, Badges and multiplayer scaling, with Contains checks; appends ModHelper subscribers. Non-null child appends combat listeners instead. Root capture and branch mapping must preserve this distinction."
+  },
+  "reviewedPotionFactory": {
+    "pools": "Character and shared GetUnlockedPotions(player.UnlockState)",
+    "inCombat": "Filters each option by CanBeGeneratedInCombat before random selection",
+    "outOfCombat": "Does not apply CanBeGeneratedInCombat; blacklist optional",
+    "random": "Select rarity and NextItem, remove selected item within a multi-selection call",
+    "EntropicBrew": "Repeated single out-of-combat calls; no cross-call exclusion proof"
+  },
+  "goldHealingDifferential": {
+    "runId": "88843d10d5b94471ad61d36d0efd20f4",
+    "status": "Failed",
+    "fixture": "GOLD-HEALING-CALLBACK; IRONCLAD; FUZZY_WURM_CRAWLER_WEAK; HEALING_AUDIT_GOLD_20261003; held DRAGON_FRUIT; player 50/80; initial gold 137; GainGold20",
+    "gameDllSha256": "2b40d2df538db1ceb5fa48d958c80ab730ada1e07db88a870aff01a661768b9f",
+    "build": "Release Passed 0 warnings 0 errors; Testing-only extension on 4fe876cf",
+    "elapsedMilliseconds": 27039.0618,
+    "native": {
+      "hp": 51,
+      "maxHp": 81,
+      "gold": 157
+    },
+    "predicted": {
+      "hp": 50,
+      "maxHp": 80,
+      "gold": 157
+    },
+    "strictCertifiedBound": 2147483647,
+    "canCertifyRemainingHealing": false,
+    "knownSourceEstimateWithPostCombatHeal0": 0,
+    "usesKnownNativeHealingPolicy": true,
+    "forkParentAndLiveBeforeNativeUnchanged": true,
+    "exactStateComparison": "First mismatch hp expected50 actual51; both full snapshots retained locally",
+    "implication": "Positive gold gain can heal through GainMaxHp, omitted by current simulated GainPlayerGold and known-source estimate; strict certificate correctly rejects this root",
+    "scope": "Direct native GainGold command plus source audit of the HandOfGreed fatal path; complete HandOfGreed native play route not run",
+    "productionFixIntegrated": false,
+    "diagnosticFixtureRetainedInLocalPatch": true,
+    "instanceCleaned": true,
+    "visibleGameStarted": false,
+    "rawEvidence": ".local/general-healing-audit/gold-native-differential/native/gold-healing-difference.json",
+    "nextRequired": [
+      "Implement native gold modifier and after-gain callbacks with frozen branch ownership",
+      "Protect recurring max-HP healing until a finite total is proven",
+      "Strict differential for positive/zero/negative gold, BowlerHat and Ectoplasm, held/melted/wrong owner, HandOfGreed fatal route, Fork/RNG/parent/live",
+      "Re-run relevant final regression if production semantics change"
+    ]
+  }
+}

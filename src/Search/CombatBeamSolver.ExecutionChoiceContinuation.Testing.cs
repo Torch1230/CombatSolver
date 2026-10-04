@@ -2,6 +2,49 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
+    internal (PlanAction Action, SimulationSnapshot Snapshot) VerifyForcedTurnChoiceReplayForTesting()
+    {
+        SimulationSnapshot initial = Replay([]);
+        SearchNode parent = new(null, 0, initial.PotionUseCount, initial.PotionStrategicCost,
+            initial.Turn, SearchRouteTraits.None, 0, initial.Score, initial.StateKey, initial.HasRisk,
+            initial.BoundaryReason, false, null, initial, CombatProgressState.Capture(initial));
+        PlanAction action = new(PlanActionKind.PlayCard, initial.Turn,
+            CardId: MegaCrit.Sts2.Core.Models.ModelDb.Card<MegaCrit.Sts2.Core.Models.Cards.VoidForm>().Id.Entry, EndsPlayerTurn: true);
+        SimulationSnapshot current = ReplayAction(parent, action);
+        try
+        {
+            int steps = 0;
+            while (current.BoundaryReason == SearchBoundaryReason.PendingChoice)
+            {
+                if (++steps > 8) throw new InvalidOperationException("Forced turn choice fixture exceeded its choice chain.");
+                var combat = (SimulatedCombatState)current.Simulator.State.CombatState;
+                var request = combat.PendingTurnStartChoice
+                    ?? throw new InvalidOperationException("Forced turn fixture lost its pending choice.");
+                PlanCardChoice choice = CardChoiceSupport.BuildChoices(request.Spec!, displayNames, 12, 12).First()
+                    with { SourceId = request.SourceId, ContextId = request.ContextId, Timing = request.Timing };
+                using var checkpoint = TakeExecutionChoiceCheckpoint(parent, action, current)
+                    ?? throw new InvalidOperationException("Forced turn fixture did not capture execution.");
+                action = action with { TurnStartChoices = [.. action.TurnStartChoices ?? [], choice] };
+                _executionChoiceReplayCheckpoint = checkpoint;
+                SimulationSnapshot resumed;
+                try { resumed = ReplayAction(parent, action); }
+                finally { _executionChoiceReplayCheckpoint = null; }
+                current.ReleaseSimulator();
+                current = resumed;
+            }
+            if (action.TurnStartChoices is not { Count: >= 2 }
+                || !action.TurnStartChoices.Any(choice => choice.SourceId == MegaCrit.Sts2.Core.Models.ModelDb.Power<MegaCrit.Sts2.Core.Models.Powers.TyrannyPower>().Id.Entry)
+                || !action.TurnStartChoices.Any(choice => choice.SourceId == MegaCrit.Sts2.Core.Models.ModelDb.Power<MegaCrit.Sts2.Core.Models.Powers.StratagemPower>().Id.Entry))
+                throw new InvalidOperationException("Forced turn fixture must consume shuffle and hand choices.");
+            SimulationSnapshot reference = Replay([action], allowExecutionCapture: false);
+            try { AssertIncrementalEquivalent(action, [action], current, reference); }
+            finally { reference.ReleaseSimulator(); }
+            return (action, current);
+        }
+        catch { current.ReleaseSimulator(); throw; }
+        finally { initial.ReleaseSimulator(); }
+    }
+
     private bool _verifyChoiceContinuationStepsForTesting;
     internal bool VerifyChoiceContinuationStepsForTesting
     { init => _verifyChoiceContinuationStepsForTesting = value; }

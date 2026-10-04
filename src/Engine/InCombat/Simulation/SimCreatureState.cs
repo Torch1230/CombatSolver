@@ -6,6 +6,13 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 
 internal sealed class SimCreatureState
 {
+    /// <summary>
+    /// Settlement ceiling for block. Predicted block is an integer in the native game; the
+    /// simulation keeps every block value inside this magnitude so arithmetic and casts stay
+    /// defined when a modifier chain would otherwise leave the representable range.
+    /// </summary>
+    internal const decimal BlockSettlementCeiling = 999_999_999m;
+
     public Creature Creature { get; }
 
     public int CurrentHp { get; internal set; }
@@ -71,7 +78,7 @@ internal sealed class SimCreatureState
             throw new ArgumentException("amount must be positive. Use LoseBlock for block loss.", nameof(amount));
         }
 
-        Block = (int)Math.Min(Block + amount, 999999999m);
+        Block = (int)Math.Min(Block + amount, BlockSettlementCeiling);
     }
 
     public void Heal(decimal amount)

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "combatSolverVersion": "0.48.1",
+  "combatSolverVersion": "0.48.2",
   "gameVersion": "0.111.0",
   "unverifiedCount": 1,
   "snapshotOnlyWithoutRuntimeEvidenceCount": 22,
@@ -15326,6 +15326,19 @@
       "runtimeVerified": true,
       "writes": [
         "call:MegaCrit.Sts2.Core.Commands.PlayerCmd.GainStars"
+      ]
+    },
+    {
+      "key": "Relic|MegaCrit.Sts2.Core.Models.Relics.DragonFruit|MegaCrit.Sts2.Core.Models.AbstractModel.AfterGoldGained(MegaCrit.Sts2.Core.Entities.Players.Player)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.DragonFruit",
+      "hook": "AfterGoldGained(MegaCrit.Sts2.Core.Entities.Players.Player)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "EngineMirror",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.CreatureCmd.GainMaxHp"
       ]
     },
     {

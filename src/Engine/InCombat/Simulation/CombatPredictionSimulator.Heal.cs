@@ -6,6 +6,17 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 
 internal sealed partial class CombatPredictionSimulator
 {
+    // CreatureCmd.GainMaxHp heals the actual, possibly capped max-HP delta.
+    public void GainMaxHp(Creature creature, decimal amount)
+    {
+        if (amount < 0m)
+            throw new ArgumentException("amount must be non-negative. Use LoseMaxHp for max HP loss.", nameof(amount));
+        var state = State.GetCreature(creature);
+        int before = state.MaxHp;
+        state.SetMaxHp((int)(before + amount));
+        Heal(creature, state.MaxHp - before);
+    }
+
     // Mirrors CreatureCmd.Heal's state mutation and HP-change hook without mutating real Creature state.
     // VFX/SFX, map-point history, waits, and player hook activation on revive are intentionally omitted.
     public void Heal(Creature creature, decimal amount)

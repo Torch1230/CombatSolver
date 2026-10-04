@@ -5,7 +5,7 @@
 | 目录 | 用途与入口 |
 | --- | --- |
 | [build](build/) | `build-local-stack.ps1` / `.sh`：构建本地依赖与 Mod |
-| [release](release/) | `publish-release.ps1`：渠道发布；连接元数据与夸克包检查 |
+| [release](release/) | `publish-release.ps1`：渠道发布；[WorkshopMetadata](release/WorkshopMetadata/README.md)：工坊标题与介绍成对维护；连接元数据与夸克包检查 |
 | [testing](testing/) | 无人启动、实例所有权、矩阵及 `checks/` 中的生产回归检查 |
 | [replay](replay/) | 检查点批量恢复、CheckpointTool、常驻会话及开发监控 |
 | [search](search/) | 离线宿主、固定根语料、生成场景、排序与组合模型分析 |

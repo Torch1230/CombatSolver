@@ -202,20 +202,19 @@ internal static class LiveEndTurnRiskEvaluator
         }
 
         return BuildProjection(hpBefore, simulatedPlayer, moves);
-    }
-
-    private static LiveEndTurnRiskProjection BuildProjection(
-        int hpBefore,
-        SimCreatureState simulatedPlayer,
-        IReadOnlyList<ForecastMove> moves)
-    {
-        int hpAfter = simulatedPlayer.CurrentHp;
-        return new LiveEndTurnRiskProjection(
-            hpBefore,
-            hpAfter,
-            Math.Max(0, hpBefore - hpAfter),
-            simulatedPlayer.IsDead,
-            string.Join(',', moves.Select(move =>
-                $"{move.Owner.Monster?.Id.Entry ?? "?"}:{move.Move.Id}")));
+        LiveEndTurnRiskProjection BuildProjection(
+            int hpBefore,
+            SimCreatureState simulatedPlayer,
+            IReadOnlyList<ForecastMove> moves)
+        {
+            int hpAfter = simulatedPlayer.CurrentHp;
+            return new LiveEndTurnRiskProjection(
+                hpBefore,
+                hpAfter,
+                combat.GetCumulativeHpLost(player.Creature),
+                simulatedPlayer.IsDead,
+                string.Join(',', moves.Select(move =>
+                    $"{move.Owner.Monster?.Id.Entry ?? "?"}:{move.Move.Id}")));
+        }
     }
 }

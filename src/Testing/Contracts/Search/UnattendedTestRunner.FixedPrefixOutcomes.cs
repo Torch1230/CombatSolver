@@ -12,6 +12,49 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertFixedPrefixPotionPolicyAsync(CombatState combat, Player player)
+    {
+        await ClearOrderedEffectFixtureAsync(combat, player);
+        foreach (var potion in player.Potions.OfType<MegaCrit.Sts2.Core.Models.PotionModel>().ToArray())
+            potion.Discard();
+        for (int i = 0; i < 2; i++) InjectPotionForTest(player, "BLOCK_POTION");
+        var root = CombatRootSnapshot.Capture(combat);
+        var names = SolverDisplayNames.Capture(combat);
+        var damage = BattleDamageTracker.Observe(combat);
+        var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null) with
+        {
+            PotionPolicy = SolverPotionPolicy.Smart,
+            PotionStrategy = new PotionStrategySnapshot(SolverPotionPolicy.Smart, [])
+        };
+        var first = new PlanAction(PlanActionKind.UsePotion, root.StartTurnNumber, PotionId: "BLOCK_POTION", PotionSlot: 0);
+        var second = first with { PotionSlot = 1 };
+        void Check(bool condition, string label)
+        {
+            if (!condition) throw new InvalidOperationException("Fixed potion prefix policy failed: " + label);
+        }
+        var disabled = new CombatBeamSolver(root, names, damage, policy, potionPolicyOverride: SolverPotionPolicy.Disabled);
+        Check(!disabled.CanReplayOpeningPrefix([first]), "disabled potion use");
+        var zero = new CombatBeamSolver(root, names, damage, policy, maximumPotionUses: 0);
+        Check(!zero.CanReplayOpeningPrefix([first]), "zero explicit uses");
+        var one = new CombatBeamSolver(root, names, damage, policy, maximumPotionUses: 1);
+        Check(one.CanReplayOpeningPrefix([first]), "one permitted use");
+        Check(!one.CanReplayOpeningPrefix([first, second]), "total explicit-use quota");
+        var later = new CombatBeamSolver(root, names, damage, policy, earliestPotionTurn: root.StartTurnNumber + 1);
+        Check(!later.CanReplayOpeningPrefix([first]), "earliest use turn");
+        Check(!one.CanReplayOpeningPrefix([first with { TargetCombatId = combat.Enemies[0].CombatId }]), "target identity");
+        var protectedPolicy = policy with
+        {
+            PotionStrategy = new PotionStrategySnapshot(SolverPotionPolicy.Smart,
+                [new(0, "BLOCK_POTION", SolverPotionDirective.Disabled)])
+        };
+        var protectedDriver = new CombatBeamSolver(root, names, damage, protectedPolicy);
+        Check(!protectedDriver.CanReplayOpeningPrefix([first]), "protected potion directive");
+        var required = new CombatBeamSolver(root, names, damage, policy,
+            potionPolicyOverride: SolverPotionPolicy.RequireAtLeastOne, maximumPotionUses: 2);
+        Check(required.CanReplayOpeningPrefix([first, second]), "required opening potion pair");
+        _completedChecks.Add("FixedPotionPrefix:Disabled:Quota:EarliestTurn:Target:Protect:RequiredPair");
+    }
+
     private async Task AssertFixedPrefixTurnOutcomesAsync(CombatState combat, Player player)
     {
         static void Check(bool condition, string message)
@@ -57,9 +100,19 @@ internal sealed partial class UnattendedTestRunner
         PlanAction strike = new(PlanActionKind.PlayCard, firstTurn + 3,
             CardId: "STRIKE_IRONCLAD", TargetCombatId: combat.Enemies.Single().CombatId);
         PlanAction defend = new(PlanActionKind.PlayCard, firstTurn + 3, CardId: "DEFEND_IRONCLAD");
+        CombatBeamSolver prefixProbe = new(root, names, damage, policy, searchProfile: policy.Profile);
+        PlanAction immediateStrike = strike with { Turn = firstTurn };
+        Check(prefixProbe.CanReplayOpeningPrefix([immediateStrike, new PlanAction(PlanActionKind.EndTurn, firstTurn)]),
+            "opening discovery accepts the prefix truncated at terminal victory");
         SolverResult Solve(IReadOnlyList<PlanAction> prefix, bool reset = false)
             => new CombatBeamSolver(root, names, damage, policy, searchProfile: policy.Profile,
                 fixedPrefixActions: prefix, resetFixedPrefixSchedulingBaseline: reset).Solve();
+        SolverResult immediateVictory = await Task.Run(() => Solve(
+            [immediateStrike, new PlanAction(PlanActionKind.EndTurn, firstTurn)]));
+        Check(immediateVictory.Snapshot.AllEnemiesDead
+              && immediateVictory.BestNode.Actions.Count == 1
+              && immediateVictory.CombatEndedTurn == firstTurn,
+            "opening terminal suffix preserves the victory action and combat end turn");
 
         CombatBeamSolver inspection = new(root, names, damage, policy, searchProfile: policy.Profile);
         SimulationSnapshot seedSnapshot = InvokeForcedTerminalReplay(inspection, [], null, 0, null);
@@ -123,13 +176,17 @@ internal sealed partial class UnattendedTestRunner
             await Task.Run(() => AssertIndependentPrefixContinuations(root, names, damage, policy, candidate, label));
         }
         _completedChecks.Add("FixedPrefixContinuations:IndependentPrefixOracle:FullStateText:Turn:ForecastOffset:Order");
-        await Task.Run(() => Reject(() => Solve([.. turns, strike, new PlanAction(PlanActionKind.EndTurn, firstTurn + 3)]),
-            "回放包含已锁定战斗终局之后的动作"));
+        SolverResult truncated = await Task.Run(() => Solve(
+            [.. turns, strike, new PlanAction(PlanActionKind.EndTurn, firstTurn + 3)]));
+        Check(truncated.Snapshot.AllEnemiesDead
+              && truncated.BestNode.Actions.Count == terminal.BestNode.Actions.Count
+              && truncated.CombatEndedTurn == terminal.CombatEndedTurn,
+            "prefix actions after a locked combat outcome are truncated");
         await Task.Run(() => Reject(() => Solve([new PlanAction(PlanActionKind.EndTurn, firstTurn + 1)]), "固定搜索前缀动作无效"));
         await Task.Run(() => Reject(() => Solve([new PlanAction(PlanActionKind.PlayCard, firstTurn,
-            CardId: "STRIKE_IRONCLAD", EndsPlayerTurn: true)]), "固定搜索前缀动作无效"));
+            CardId: "DEFEND_IRONCLAD", EndsPlayerTurn: true)]), "固定搜索前缀动作无效"));
         Check(ContinuationStamp.CaptureLive(combat).StateText == liveBefore, "search changed live root");
-        _completedChecks.Add("FixedPrefixOutcomes:ThreeTurns:ZeroAndPositiveLoss:PartialTail:Terminal:Empty:InvalidSuffix:RootUnchanged");
+        _completedChecks.Add("FixedPrefixOutcomes:ThreeTurns:ZeroAndPositiveLoss:PartialTail:Terminal:TruncatedSuffix:Empty:InvalidFlag:RootUnchanged");
 
         byte[] validBytes = SolvedRouteCache.SerializeRoute(result);
         SolverResult copy = SolvedRouteCache.DeserializeRoute(validBytes, root.Forecast);

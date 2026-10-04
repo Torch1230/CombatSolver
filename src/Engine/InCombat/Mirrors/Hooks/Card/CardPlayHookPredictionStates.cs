@@ -73,14 +73,19 @@ internal sealed class PenNibPredictionState(PenNib relic) : IPredictionStateFork
     }
 }
 
-internal sealed class PaelsLegionPredictionState(PaelsLegion relic)
+internal sealed class PaelsLegionPredictionState(PaelsLegion relic, bool affectedCardPlayFinished = false)
     : IPredictionStateForkable, IPredictionForkBoundary
 {
     public int Cooldown { get; set; } = relic._cooldown;
 
     public bool TriggeredBlockLastTurn { get; set; } = relic._triggeredBlockLastTurn;
 
-    public CardPlay? AffectedCardPlay { get; set; } = relic._affectedCardPlay;
+    // A finished native reference still prevents the relic from pairing with another play.
+    public bool HasCompletedAffectedCardPlay { get; } = affectedCardPlayFinished;
+
+    public CardPlay? AffectedCardPlay { get; set; } = affectedCardPlayFinished ? null : relic._affectedCardPlay;
+
+    public bool HasAffectedCardPlay => HasCompletedAffectedCardPlay || AffectedCardPlay != null;
 
     public object Fork(PredictionForkContext context)
     {

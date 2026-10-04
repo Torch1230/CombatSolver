@@ -561,7 +561,7 @@ internal sealed partial class CombatBeamSolver
             {
                 if (replayFailed)
                     replayEvidence.Publish(policy.Diagnostics,
-                        cancellationToken.IsCancellationRequested ? "replay_cancelled" : "replay_failed", relicTriggerRecorder);
+                        ReplayCancellationToken.IsCancellationRequested ? "replay_cancelled" : "replay_failed", relicTriggerRecorder);
                 annotationRoot?.ReleaseSimulator();
             }
             if (annotationReplay.StateKey != finalSnapshot.StateKey
@@ -1007,13 +1007,13 @@ internal sealed partial class CombatBeamSolver
             routeAdoptionSeed = new SolverRouteAdoptionSeed(
                 candidateVersion,
                 adoptionActions,
-                () => MaterializeSelectedRoute(
+                () => MaterializeAdoptableRoute(() => MaterializeSelectedRoute(
                     ordering,
                     onlyDeathRoutesFound,
                     SolverResultScope.RouteAdoption,
                     candidateSearchedTurnLayers,
                     candidateTimeBudgetReached: false,
-                    routeAdoptionActions: adoptionActions));
+                    routeAdoptionActions: adoptionActions)));
             lastRoutePreviewAt = System.Environment.TickCount64;
         }
 
@@ -2308,7 +2308,7 @@ internal sealed partial class CombatBeamSolver
         {
             foreach (PlanAction action in prefix)
             {
-                if (action.EndsPlayerTurn || action.Turn != node.Turn)
+                if (action.Turn != node.Turn)
                 {
                     throw new InvalidOperationException(
                         $"固定搜索前缀动作无效：kind={action.Kind} actionTurn={action.Turn} " +
@@ -2331,6 +2331,23 @@ internal sealed partial class CombatBeamSolver
                 bool terminal = snapshot.PlayerDead
                     || snapshot.AllEnemiesDead
                     || snapshot.BoundaryReason != SearchBoundaryReason.None;
+                // Routes freeze "this play ended the turn" on card actions. The prefix may
+                // contain such an action; it must still end the turn here, otherwise the
+                // prefix was built from a different state than this root.
+                if (action.Kind == PlanActionKind.PlayCard
+                    && action.EndsPlayerTurn
+                    && snapshot.Turn <= node.Turn
+                    && !snapshot.PlayerDead
+                    && !snapshot.AllEnemiesDead)
+                {
+                    snapshot.ReleaseSimulator();
+                    throw new InvalidOperationException(
+                        $"固定搜索前缀动作无效：kind={action.Kind} actionTurn={action.Turn} " +
+                        $"nodeTurn={node.Turn} endsPlayerTurn={action.EndsPlayerTurn} " +
+                        $"turnAdvanced=False " +
+                        $"card={(string.IsNullOrEmpty(action.CardId) ? "-" : action.CardId)} " +
+                        $"potion={(string.IsNullOrEmpty(action.PotionId) ? "-" : action.PotionId)}。");
+                }
                 SearchRouteTraits traits = action.Kind == PlanActionKind.UsePotion
                     ? ClassifyPotionTraits(node.Traits, node.Snapshot, snapshot)
                     : node.Traits;
@@ -2360,7 +2377,14 @@ internal sealed partial class CombatBeamSolver
                     // Fixed prefixes have no sibling alternatives for comparative HP investment or block.
                     node = node with { Outcome = CreateUncomparedTurnOutcome(node) };
                 }
+                bool combatOutcomeLocked = snapshot.PlayerDead || snapshot.AllEnemiesDead;
                 node.Parent!.Snapshot.ReleaseSimulator();
+                if (combatOutcomeLocked)
+                {
+                    // The remaining prefix actions are unreachable once the combat outcome is
+                    // locked; replaying them from a stopped simulator is the reported failure.
+                    break;
+                }
             }
             if (resetSchedulingBaseline && prefix.Count > 0)
             {
@@ -2389,15 +2413,17 @@ internal sealed partial class CombatBeamSolver
     private bool CanApplyFixedPrefixAction(SearchNode node, PlanAction action)
     {
         CombatPredictionSimulator simulator = (CombatPredictionSimulator)node.Snapshot.Simulator;
+        if (node.Snapshot.BoundaryReason != SearchBoundaryReason.None || !simulator.IsInProgress)
+            return false;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         if (action.Kind == PlanActionKind.EndTurn)
             return true;
         if (action.Kind == PlanActionKind.UsePotion)
         {
-            PotionModel? potion = combat.GetPotionAtSlot(_player, action.PotionSlot);
-            return potion != null
-                && string.Equals(potion.Id.Entry, action.PotionId, StringComparison.Ordinal)
-                && combat.IsPotionAvailable(_player, action.PotionSlot);
+            return EnumeratePlannedPotionActions(new ExpansionPlan(node, CardNameFirst: false))
+                .Any(candidate => candidate.Action.PotionSlot == action.PotionSlot
+                    && string.Equals(candidate.Action.PotionId, action.PotionId, StringComparison.Ordinal)
+                    && candidate.Action.TargetCombatId == action.TargetCombatId);
         }
 
         SimPlayerCombatState player = simulator.State.GetPlayerCombatState(_player);

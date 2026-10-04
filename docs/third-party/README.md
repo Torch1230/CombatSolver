@@ -13,6 +13,8 @@ HeavenlyDrill 的 OnPlay 使用精确镜像，先解析分支 X 值及修正，�
 
 战利品、Adrenaline、Offering、Neurosurge 的完整 OnPlay 由 `CardDrawCardMirrors` 在共享注册表登记，按原版命令顺序处理铸造、扣血、返能、抽牌与能力施加。适配其效果时保留抽牌前后的边界：抽牌可以触发虚空失能量、自动出牌及满手限制。对应的 `CardEffectSpecRegistry` 后置补偿已经移除，第三方应在同一权威镜像内描述有序结算。
 
+苦难（Misery）的完整OnPlay在共享`CardOnPlayMirrors.Registry`登记：攻击前冻结有序减益实例及临时Power的金额调整，攻击后传播克隆。追加格挡的内部`CardEffectSpecRegistry.Apply`要求当前`CardPlay`，续执行用同一Fork上下文重映射；外部镜像同样应保留实际出牌身份。群体减益施加后逐目标完成金额变化Hook，再进入下一目标，抽牌和嵌套自动牌保持原生结算位置。
+
 ## 0. 先判断你要不要读下去
 
 内置遗物目标新增 MeatOnTheBone 半血目标与 1～3 优先级，仍属于 RelicCounterCatalog 的封闭表。CardEnchantmentId 是路线显示元数据，当前额外展示原版 Inky；不代表未知附魔已获得战斗模拟支持。
@@ -328,6 +330,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 | `CombatBeamSolver.CaptureEnergyRefundWindow` / `StrategicEffectContext.RecurringEnergyGain` | 原版环绕轨道按花费余数、自动化按剩余抽牌数估计未来返能，包含自然抽牌；与可消费能量缺口共用上限。第三方仍通过 §2.2 登记，详见[估值上下文](strategic-effects.md) | 原版特化；第三方估值已有入口 |
 | `RelicCounterCatalog` / `SimulatedCombatState.ReadRelicCounter` | 战斗末卡数仅覆盖已核对的十种原版计数；第三方显示计数只列出“尚未适配”，不会被自动当作跨战斗目标。见[计数策略说明](../relic-counters.md) | 精确原版适配 |
 | `SearchPolicySnapshot.IsAct3BossEncounter` / `CombatBeamSolver.CaptureAct3BossInteractionPotential` | 首领范围只含第三幕实验体、永世沙漏、女王；联动上下文只适配原版 Pagestorm、DanseMacabre、Demesne；StrategicEffectModel 对 PrepTimePower 按未来攻击与回合视野估计重复精力收益。这些不是通用第三方触发次数分析。第三方 Power 仍使用 §2.2 登记 | 原版特化；第三方估值已有入口 |
+| `GoldGainedMirrors` / `GoldGainSupport` | 三个标准 descriptor 描述金币 Modify、AfterModify、AfterGain；当前只有原版 BowlerHat、Ectoplasm、DragonFruit 的精确登记，registry 未开放外部注册。仅明确审计的展示通知可 Ignored；未知 override 即使非 gameplay manifest 也拒绝。修改用 combat child，获得后使用根冻结的 null-child 跑局序列；金币/遗物/药水/HP 属当前分支。 | 原版封闭派发 |
 | `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` | 私有静态白名单，没有公开登记入口 | 待做 |
 | `PredictionModPatchAudit.ValidateLoadedMods` | 明确拒绝 `WheelchairSpire`，没有外部放行入口 | 项目不兼容策略 |
 | `NativeModelCloneConcurrency` | 预测克隆只放行已核对原版阶段、原版变量及 BaseLib/Ritsu 稀疏元数据复制补丁组合的普通原版卡牌；附魔/灾厄、第三方模型/变量和未知补丁保留原锁。Power 只放行已物化原版变量、继承默认克隆及 InitInternalData 的原版类型，同时核对基阶段与变量 getter 补丁；自定义初始化保持原锁。每个线程最外层模拟隔离域重新核对，不支持求解中安装补丁；原版 MutableClone 保护不变。没有新增外部注册入口 | 精确框架适配 |

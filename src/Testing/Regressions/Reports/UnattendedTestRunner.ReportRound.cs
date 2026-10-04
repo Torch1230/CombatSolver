@@ -2,6 +2,7 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Runs;
 
@@ -28,7 +29,25 @@ internal sealed partial class UnattendedTestRunner
 
     private async Task AssertReportRoundAsync(CombatState combat, Player player)
     {
-        var enemy = combat.Enemies.Single();
+        if (_request.ScenarioId == "REPORT-ROUND-IMBALANCED")
+        {
+            foreach (Creature creature in combat.Enemies)
+            {
+                ConfigureMonsterMove(creature, new UnattendedMonsterMoveCheck
+                {
+                    MoveId = creature.Monster switch
+                    {
+                        MegaCrit.Sts2.Core.Models.Monsters.BowlbugEgg => "BITE_MOVE",
+                        MegaCrit.Sts2.Core.Models.Monsters.BowlbugNectar => "THRASH2_MOVE",
+                        _ => "HEADBUTT_MOVE"
+                    }
+                });
+                await PowerCmd.Apply<MegaCrit.Sts2.Core.Models.Powers.ImbalancedPower>(
+                    new MegaCrit.Sts2.Core.GameActions.Multiplayer.ThrowingPlayerChoiceContext(), creature, 1, player.Creature, null);
+            }
+            await CreatureCmd.GainBlock(player.Creature, 100, MegaCrit.Sts2.Core.ValueProps.ValueProp.Unpowered, null);
+        }
+        var enemy = _request.ScenarioId == "REPORT-ROUND-IMBALANCED" ? combat.Enemies[0] : combat.Enemies.Single();
         if (_request.ScenarioId == "REPORT-ROUND-DOOM-THRESHOLD-CARD")
         {
             if (enemy.CurrentHp != 134
