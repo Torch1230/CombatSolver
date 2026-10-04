@@ -21,6 +21,9 @@ internal static class ArchiveContractTests
             Check(CheckpointArchive.Inspect(valid)["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:1", "default_selector_is_combat_start");
             Check(CheckpointArchive.Inspect(valid, "end")["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:3", "explicit_end_selector");
             Check(CheckpointArchive.Inspect(valid, "recorded")["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:3", "explicit_recorded_selector");
+            string policyTimeline = WriteFixture(root, "policy-timeline", false, policyTimeline: true);
+            Check(CheckpointArchive.Inspect(policyTimeline, "latest")["recordedPolicy"]!["includeTurnSetup"]!.GetValue<bool>() == false,
+                "policy_at_checkpoint_excludes_later_setup_search");
             string legacy = WriteFixture(root, "legacy", true);
             Check(CheckpointArchive.Inspect(legacy)["status"]!.GetValue<string>() == "materials_valid", "legacy_without_index");
             string mismatch = WriteFixture(root, "mismatch", false, wrongSession: true);
@@ -207,7 +210,7 @@ internal static class ArchiveContractTests
         }
     }
 
-    private static string WriteFixture(string directory, string name, bool legacy, bool wrongSession = false, bool duplicate = false)
+    private static string WriteFixture(string directory, string name, bool legacy, bool wrongSession = false, bool duplicate = false, bool policyTimeline = false)
     {
         string path = Path.Combine(directory, name + ".zip");
         using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
@@ -227,6 +230,7 @@ internal static class ArchiveContractTests
             {
                 ["sessionId"] = wrongSession ? "other" : "s", ["label"] = label,
                 ["encounterId"] = "e", ["exactContinuationState"] = "root", ["playerPhase"] = "Play",
+                ["searchRootId"] = policyTimeline && sequence == 2 ? "s:2" : null,
             }.ToJsonString());
             Write(prefix + "replay-state/" + file,
                 """{"schemaVersion":1,"encounterId":"e","exactContinuationState":"root","ascensionLevel":0,"currentActIndex":0,"runRng":{"seed":"seed"},"players":[{"characterId":"c"}]}""");
@@ -237,6 +241,7 @@ internal static class ArchiveContractTests
                 ["checkpointId"] = "s:" + sequence,
                 ["label"] = label,
                 ["canSearch"] = label != "combat_end",
+                ["eventCursor"] = policyTimeline && sequence == 2 ? 4 : null,
                 ["metadataPath"] = prefix + "checkpoints/" + file,
                 ["replayStatePath"] = prefix + "replay-state/" + file,
                 ["nativeStatePath"] = prefix + "native-state/" + Path.ChangeExtension(file, ".bin"),
@@ -248,6 +253,13 @@ internal static class ArchiveContractTests
             {
                 ["schemaVersion"] = 2, ["sessionId"] = "s", ["defaultCheckpointId"] = "s:2",
                 ["combatStartCheckpointId"] = "s:1", ["combatEndCheckpointId"] = "s:3", ["checkpoints"] = checkpoints,
+                ["searchPolicies"] = policyTimeline ? new JsonArray
+                {
+                    new JsonObject { ["checkpointId"] = "s:2", ["eventCursor"] = 4,
+                        ["policy"] = new JsonObject { ["includeTurnSetup"] = false } },
+                    new JsonObject { ["checkpointId"] = "s:2", ["eventCursor"] = 6,
+                        ["policy"] = new JsonObject { ["includeTurnSetup"] = true } },
+                } : null,
             }.ToJsonString());
         if (duplicate)
             Write(prefix + "session.json", "{}");

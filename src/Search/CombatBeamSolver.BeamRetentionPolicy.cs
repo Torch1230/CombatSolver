@@ -429,7 +429,8 @@ internal sealed partial class CombatBeamSolver
         Func<SearchNode, StandPatEvaluation> _evaluateStandPat,
         Action<IEnumerable<SearchNode>>? _prepareStandPat = null,
         DevelopmentSearchStrategy? _developmentStrategy = null,
-        PlanCommitment? _planCommitment = null)
+        PlanCommitment? _planCommitment = null,
+        bool _hasFixedPrefix = false)
     {
         private void ForEachRetentionIndex(
             int count,
@@ -998,11 +999,22 @@ internal sealed partial class CombatBeamSolver
                             .ToList();
                         int actionsSinceChoice = optionNodes.Min(ActionsSinceRetainedRoutingChoice);
                         SearchNode? optionLeader;
-                        if (actionsSinceChoice <= 1)
+                        if (actionsSinceChoice == 0
+                            && (_profile.BaseScoreOnly || _hasFixedPrefix
+                                || family[0].Key.Effect != PlanChoiceEffect.MoveToDrawTop))
                         {
-                            // A strong parent rank need not carry the setup that makes this
-                            // choice useful. Preserve setup at the choice boundary as well as
-                            // its first follow-up, within the same per-option routing seat.
+                            optionLeader = optionGroup
+                                .OrderBy(pair => RoutingParentRetentionRank(pair.Value))
+                                .ThenByDescending(pair => RoutingParentScore(pair.Value))
+                                .First()
+                                .Value
+                                .MaxBy(BeamRankScore);
+                        }
+                        else if (actionsSinceChoice <= 1)
+                        {
+                            // Draw-top effects need a setup witness until the selected card
+                            // is drawn. Keep independent base-score and fixed-prefix searches
+                            // on their original parent anchors; other effects are unchanged.
                             optionLeader = FindBestSetup(optionNodes);
                         }
                         else
