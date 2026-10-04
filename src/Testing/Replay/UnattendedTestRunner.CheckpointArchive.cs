@@ -104,6 +104,11 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidDataException("legacy_missing_effective_policy");
             return current;
         }
+        return RestoreCheckpointPolicy(current, recorded);
+    }
+
+    private static SolverSettingsData RestoreCheckpointPolicy(SolverSettingsData current, JsonObject recorded)
+    {
         JsonObject settings = JsonSerializer.SerializeToNode(current, UnattendedTestFiles.JsonOptions)!.AsObject();
         // Archives recorded before growth policy existed used zero willingness for this feature.
         settings["growthBudgets"] = recorded["growthBudgets"]?.DeepClone()
@@ -115,7 +120,8 @@ internal sealed partial class UnattendedTestRunner
         // Archives recorded before the ignore switch existed considered long-term rewards.
         settings["ignoreLongTermRewards"] = recorded["ignoreLongTermRewards"]?.DeepClone()
             ?? JsonSerializer.SerializeToNode(false, UnattendedTestFiles.JsonOptions);
-        foreach (string name in new[] { "potionDirectives", "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism" })
+        foreach (string name in new[] { "potionDirectives", "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism",
+                     "predictPotionReward", "useNoveltyPortfolio", "useBeamWidthPortfolio", "useEarlyTurnExploration" })
             settings[name] = recorded[name]?.DeepClone() ?? throw new InvalidDataException($"missing_policy:{name}");
         SolverSearchProfile profile = recorded["profile"]!.Deserialize<SolverSearchProfile>(UnattendedTestFiles.JsonOptions)!;
         SolverSettingsData restored = settings.Deserialize<SolverSettingsData>(UnattendedTestFiles.JsonOptions)!;
@@ -179,7 +185,8 @@ internal sealed partial class UnattendedTestRunner
         JsonObject policy = recorded == null ? new JsonObject() : (JsonObject)recorded.DeepClone();
         if (recorded == null && _checkpointImport["legacySettings"] is JsonObject legacy)
         {
-            foreach (string key in new[] { "potionPolicy", "potionDirectives", "growthBudgets", "relicStrategyEnabled", "relicCounterRules", "brightestFlameMaxHpLossLimit", "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism" })
+            foreach (string key in new[] { "potionPolicy", "potionDirectives", "growthBudgets", "relicStrategyEnabled", "relicCounterRules", "brightestFlameMaxHpLossLimit", "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism",
+                         "predictPotionReward", "useNoveltyPortfolio", "useBeamWidthPortfolio", "useEarlyTurnExploration" })
                 if (legacy[key] != null)
                     policy[key] = legacy[key]!.DeepClone();
             if (_checkpointImport["legacySearchProfiles"] is JsonObject profiles)
@@ -194,6 +201,7 @@ internal sealed partial class UnattendedTestRunner
             {
                 "potionPolicy", "potionDirectives", "growthBudgets", "relicStrategyEnabled", "relicCounterRules", "brightestFlameMaxHpLossLimit", "actTransitionBossHpStrategy", "finalBossHpStrategy",
                 "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism", "profile", "fixedBudget", "act3BossStrategy",
+                "predictPotionReward", "useNoveltyPortfolio", "useBeamWidthPortfolio", "useEarlyTurnExploration",
             };
             foreach ((string key, JsonNode? value) in overrides)
             {
@@ -206,7 +214,8 @@ internal sealed partial class UnattendedTestRunner
         policy["profile"] ??= policy["deepProfile"]?.DeepClone();
         policy["fixedBudget"] ??= policy["forceShortOnly"]?.DeepClone() ?? JsonValue.Create(false);
         string[] required = ["potionPolicy", "potionDirectives", "actTransitionBossHpStrategy", "finalBossHpStrategy",
-            "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism", "profile"];
+            "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "searchMaxDegreeOfParallelism", "profile",
+            "predictPotionReward", "useNoveltyPortfolio", "useBeamWidthPortfolio", "useEarlyTurnExploration"];
         string[] missing = required.Where(key => policy[key] == null).ToArray();
         _writer.ReplayVerification!["missingPolicyFields"] = JsonSerializer.SerializeToNode(missing);
         if (missing.Length > 0 && _request.ReplayMode is "SearchOnly" or "DeploySolver")
