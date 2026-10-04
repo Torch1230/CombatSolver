@@ -6,6 +6,10 @@
 
 0.49.0 的行为验证沿用本页 PR #203、#204 合并验收与 [战斗状态修复验证](archive/testing/volume-13.md)。版本及发布文档调整采用 L0 检查和发布构建；原有未验证项保留。
 
+## PR #206 上游同步（2026-10-04）
+
+合并 `387863d0` / 0.49.2 后，`bf2ae1f1` 的 Release 构建零警告/错误；初次 .NET 6 命令失败，显式使用既有 .NET 9 SDK 后成功。本轮仅处理三处文档冲突并进行 L0 集成检查，没有重跑原生恢复、整场或性能样本；Q003 的历史合同和整场数字仍归属下列原始源码，24/26请求额度未变化。
+
 ## Q003 检查点政策与比较（2026-10-03）
 
 检查点恢复四个搜索开关并严格比较资源与搜索政策。`CheckpointTool self-test` 59 项合同及原生 `REPLAY-BOUNDARY-CONTRACT` 的历史来源见 [Q003 验收记录](issues/q003-checkpoint-policy-20261003.md)；完整阶段记录保留于 [合并前测试矩阵](https://github.com/jojomiseta-hub/CombatSolver/blob/41e6124b5d9f5b79269d03987e92a81d4adb55b2/docs/TEST_MATRIX.md#q003-检查点政策与比较2026-10-03)。
