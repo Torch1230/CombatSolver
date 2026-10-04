@@ -189,7 +189,14 @@ internal static partial class TurnStartChoiceSupport
     {
         if (options.Count == 0)
             return true;
-
+        if (combat.PendingTurnStartChoice is { } pending && pending.SourceId != sourceId)
+        {
+            string detail = $"Prediction callback must finish the pending choice before requesting another: pending={pending.SourceId} new={sourceId}.";
+            NotSupportedException failure = PredictionUnsupportedException.ForContent(detail,
+                simulator.CurrentFrame?.Ancestors().Select(frame => frame.Source.GetType()).ToArray() ?? []);
+            if (failure is IncompatibleGameplayModException) throw failure;
+            throw new InvalidOperationException(detail);
+        }
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(player);
         IReadOnlyList<PredictedCard> sourceCards = state.GetCardPile(sourcePile)?.Cards
             ?? throw new InvalidOperationException($"丢弃选择不支持牌堆 {sourcePile}。");

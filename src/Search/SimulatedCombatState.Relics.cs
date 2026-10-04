@@ -77,6 +77,10 @@ internal sealed partial class SimulatedCombatState
                     simulator.CreateAndAddGeneratedCardsToCombat<Luminesce>(
                         player, PileType.Hand, relic.DynamicVars.Cards.IntValue, player);
                     break;
+                case NinjaScroll when turn <= 1:
+                    simulator.CreateAndAddGeneratedCardsToCombat<Shiv>(
+                        player, PileType.Hand, relic.DynamicVars["Shivs"].IntValue, player);
+                    break;
                 case JeweledMask when turn <= 1:
                 {
                     SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(player);
@@ -208,12 +212,6 @@ internal sealed partial class SimulatedCombatState
         cardThreshold = pocketwatch.DynamicVars["CardThreshold"].IntValue;
         return true;
     }
-
-    public static decimal GetLiveStatefulRelicHandDrawContribution(
-        RelicModel relic,
-        Player player,
-        int turn)
-        => GetStatefulRelicHandDrawContribution(relic, player, turn, CaptureLiveState(relic));
 
     private static decimal GetStatefulRelicHandDrawContribution(
         RelicModel relic,

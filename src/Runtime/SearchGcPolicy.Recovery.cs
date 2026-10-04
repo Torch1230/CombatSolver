@@ -7,13 +7,17 @@ internal static partial class SearchGcPolicy
     private static long _noGcRecoveryGeneration;
     private static long _searchRecoveryBudgetCapBytes;
     private static bool IsRecoverableNoGcOutcome(NoGcRegionStartOutcome outcome)
-        => outcome is NoGcRegionStartOutcome.InsufficientMemory
-            or NoGcRegionStartOutcome.SystemHeadroomInsufficient
-            or NoGcRegionStartOutcome.SkippedAfterUnexpectedLoss;
+        => SearchGcRuntimeInfo.SupportsDetailedInfo
+            && outcome is (NoGcRegionStartOutcome.InsufficientMemory
+                or NoGcRegionStartOutcome.SystemHeadroomInsufficient
+                or NoGcRegionStartOutcome.SkippedAfterUnexpectedLoss);
 
     private static void InstallNoGcRecoveryProbe(
         SearchMemoryPressureSignal signal, long configuredBudget, long configuredLohBudget)
     {
+        // Recovery requires a completed collection index from the runtime.
+        if (!SearchGcRuntimeInfo.SupportsDetailedInfo)
+            return;
         NoGcRecoveryBackoff backoff = new();
         long generation = ++_noGcRecoveryGeneration;
         _searchRecoveryBudgetCapBytes = 0;
@@ -29,7 +33,7 @@ internal static partial class SearchGcPolicy
             long now = Environment.TickCount64;
             if (!backoff.ShouldObserve(now))
                 return;
-            GCMemoryInfo memory = GC.GetGCMemoryInfo(GCKind.Any);
+            GCMemoryInfo memory = GC.GetGCMemoryInfo();
             long gen2Index = CaptureCompletedGen2Index();
             if (!backoff.ObserveCompletedCollection(now, gen2Index))
                 return;
@@ -99,8 +103,8 @@ internal static partial class SearchGcPolicy
 
     private static long CaptureCompletedGen2Index()
     {
-        GCMemoryInfo background = GC.GetGCMemoryInfo(GCKind.Background);
-        GCMemoryInfo blocking = GC.GetGCMemoryInfo(GCKind.FullBlocking);
+        GCMemoryInfo background = SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.Background);
+        GCMemoryInfo blocking = SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.FullBlocking);
         return Math.Max(background.Generation == GC.MaxGeneration ? background.Index : 0,
             blocking.Generation == GC.MaxGeneration ? blocking.Index : 0);
     }

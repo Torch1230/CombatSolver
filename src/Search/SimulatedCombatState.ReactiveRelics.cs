@@ -12,47 +12,9 @@ namespace CombatSolver;
 
 internal sealed partial class SimulatedCombatState
 {
-    public bool TryPrepareExtraPlayerTurn(
-        CombatPredictionSimulator simulator,
-        Player player,
-        out bool extraTurn,
-        out bool hasActiveEmotionChip)
-    {
-        extraTurn = GetAmount<AmbergrisPower>(player.Creature) > 0;
-        hasActiveEmotionChip = false;
-        foreach (RelicModel relic in RelicsOf(player))
-        {
-            if (relic.IsMelted)
-                continue;
-            if (relic is EmotionChip)
-                hasActiveEmotionChip = true;
-            if (relic is not PaelsEye paelsEye || !ShouldTriggerPaelsEye(paelsEye))
-                continue;
-            if (!TriggerPaelsEye(simulator, player, paelsEye))
-                return false;
-            extraTurn = true;
-        }
-        return true;
-    }
-
-    public bool TryPrepareLiveExtraPlayerTurn(
-        CombatPredictionSimulator simulator,
-        Player player,
-        bool paelsEyeTriggers,
-        out bool extraTurn)
-    {
-        extraTurn = GetAmount<AmbergrisPower>(player.Creature) > 0;
-        if (!paelsEyeTriggers)
-            return true;
-
-        PaelsEye relic = RelicsOf(player)
-            .OfType<PaelsEye>()
-            .Single(static relic => !relic.IsMelted);
-        if (!TriggerPaelsEye(simulator, player, relic))
-            return false;
-        extraTurn = true;
-        return true;
-    }
+    public bool ShouldTakeExtraPlayerTurn(Player player)
+        => GetAmount<AmbergrisPower>(player.Creature) > 0
+            || RelicsOf(player).OfType<PaelsEye>().Any(relic => !relic.IsMelted && ShouldTriggerPaelsEye(relic));
 
     public bool ShouldTriggerPaelsEye(PaelsEye relic)
     {
@@ -68,7 +30,7 @@ internal sealed partial class SimulatedCombatState
     public bool IsPaelsEyeUnused(PaelsEye relic)
         => GetStatefulRelicState(relic).Current == 0;
 
-    private static bool TriggerPaelsEye(
+    public static bool TriggerPaelsEye(
         CombatPredictionSimulator simulator,
         Player player,
         PaelsEye relic)

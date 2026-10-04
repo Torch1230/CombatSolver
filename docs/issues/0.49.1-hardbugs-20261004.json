@@ -1,0 +1,752 @@
+{
+  "schemaVersion": 1,
+  "reportVersion": "0.49.1",
+  "queryScope": "查询时未归档的 104 份报告",
+  "classifiedAt": "2026-10-04T15:00:56.936424+08:00",
+  "sourceBaseline": "40f60a79",
+  "clientVersion": "0.49.2",
+  "originalCounts": {
+    "hard_logic": 32,
+    "implemented_shared_fix": 26,
+    "third_party_content": 11,
+    "excluded_signals": 32,
+    "no_hard_evidence": 2,
+    "pending_boundary": 1
+  },
+  "reportCount": 104,
+  "evidenceDocument": "docs/issues/0.49.1-hardbugs-20261004.md",
+  "reports": [
+    {
+      "id": "e7c2522e90864953b5d6648ca4af7ff4",
+      "sessionId": "bea3ebafa390457b8b982b76b1fc9132",
+      "initialCategory": "hard_logic",
+      "theme": "H04",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "adcc880a106b47c7a10c80e0156f8dff",
+      "sessionId": "7da5431862a144c481e6f4ad76fe13c8",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "410c630a68d14c87949b15cd3c18fa14",
+      "sessionId": "4a06c18f6db84a32be02d2fe06c50cc8",
+      "initialCategory": "no_hard_evidence",
+      "theme": "N01",
+      "status": "no_hard_error_evidence"
+    },
+    {
+      "id": "197099ac0bc3426c925f765725d7846a",
+      "sessionId": "eb445e44d98f42b9b1c4500be9154274",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "977a8c41f472499f97d1803e3f6758b8",
+      "sessionId": "b4fbe97fb4b04df895a5616ca1a880fd",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "f738295459e94db78d1ee340fae3dfc7",
+      "sessionId": "4675f43310a24ad78d1af5473bfa754f",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "ffc3e112748c4f12924f934a634bf463",
+      "sessionId": "9a8c0255a1b84e2b87ec2c8d59e6c1c4",
+      "initialCategory": "hard_logic",
+      "theme": "H07",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "70a2682df4b446d79df41fff44ed2ba1",
+      "sessionId": "d31eb45c13b74849912fbb264bcd01cd",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "0b0feb3f7a6f4e499a7295e3103b0469",
+      "sessionId": "565cf29d2aba42a2ac6aafc4e7a5832f",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "e2fb81e0943c425cbe1635c8a5105761",
+      "sessionId": "512e6a0a81344620ae685e240eead7dd",
+      "initialCategory": "hard_logic",
+      "theme": "H08",
+      "status": "content_boundary_verified"
+    },
+    {
+      "id": "98b7913dec054f81b3a242b43456ccd5",
+      "sessionId": "7a30a2a9d2c24352ac697434c2ba0351",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "acfe57a40adb48e292684606f24f2731",
+      "sessionId": "2f9ced591f1246428ddfa20b445aa16b",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "a9dd58dda98e4c05a9ebe2a5b6f90107",
+      "sessionId": "c0a2da82d26f412fb1480001fb4b84d9",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "d21f758db23541b997bd1b6d9e68e633",
+      "sessionId": "511b61d682674eb5bab60e7d571d4014",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "504ca03bc26b404d9597b8f3926220ff",
+      "sessionId": "e6ac8403ccf14f6c894db4f340ebe3d9",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "d8684db2b132467db42db6bf08626ade",
+      "sessionId": "3cd59f1f3e614c679f344bc8303332db",
+      "initialCategory": "hard_logic",
+      "theme": "H04",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "547cfa14015249fbae38fea07acf8af3",
+      "sessionId": "e6ac8403ccf14f6c894db4f340ebe3d9",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "412f269222644ed58b77db352a015d94",
+      "sessionId": "faf7c2ecffb647be8268218de7464348",
+      "initialCategory": "hard_logic",
+      "theme": "H04",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "e3578c93dffb4ff9b5bf012fac04901e",
+      "sessionId": "f4fd22eea100476b8baee2c466f6f95a",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "aa1b049b2dc841caa70aa99f168a0efc",
+      "sessionId": "5edf39a57ddd47229fe51307fb4bfa6b",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "a9f982d6185b4aa8b09607bd794a97c0",
+      "sessionId": "d460f934c60047f189714949c703c8b1",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "aa78f7d8f746486d982397a93bed3ab2",
+      "sessionId": "5d632577b5e3451780cc2c047b5e9915",
+      "initialCategory": "hard_logic",
+      "theme": "H02",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "19ca68cb02de4e26a03e124c581d2f9b",
+      "sessionId": "5d632577b5e3451780cc2c047b5e9915",
+      "initialCategory": "hard_logic",
+      "theme": "H02",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "3ccd7b10cdf14b4097c0aad6c2405859",
+      "sessionId": "bd50b96bf0cf4bb9a265ba018b51a5ef",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "72683d935af3470c8e39a37bb7bc60f3",
+      "sessionId": "867ab14c3f4e434f81af45a1ce735a30",
+      "initialCategory": "hard_logic",
+      "theme": "H12",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "8c577e48a8cc45eda0d1de35dad9aad1",
+      "sessionId": "7ed0827fe99949b9abe784aed4b36dae",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "d0b26648e053481ba86dd51ed1357173",
+      "sessionId": "7ed0827fe99949b9abe784aed4b36dae",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "0312158218e7402ca348841dc06d74fe",
+      "sessionId": "5c85ce02ea534cc0bf78fc0cd053f414",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "8d7f2d812fe849d2822f110e6a4825ed",
+      "sessionId": "7368c8ee6509414b93c8e679706db35f",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "88bf17dccaa94f978b5f67c6fe11ab9d",
+      "sessionId": "00dd565c0de74209bda1de56c9206b47",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "29bfff65dc3947ab8530d824fba96b7d",
+      "sessionId": "38d37bc646a04a2097162436a702af56",
+      "initialCategory": "pending_boundary",
+      "theme": "P01",
+      "status": "partial_route_expiry_confirmed"
+    },
+    {
+      "id": "33c478412f2d41a0a45585c9d145bb47",
+      "sessionId": "f79eabd3137c418b91ed89543a959800",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "5a87da00f26648e8961e2cee0f3551c0",
+      "sessionId": "8e435599b6c447aa85bcec03f9f11aec",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "1ce156475ceb430789215b14c4dbe03f",
+      "sessionId": "5ca8de10f04240c9b81f444ab900b07f",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "0d83e3d4443043658b413e846eb8a6a8",
+      "sessionId": "5cc2866fbb4345388df74aa51802facd",
+      "initialCategory": "hard_logic",
+      "theme": "H06",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "57ee41178f124d0f882f86b0885e8915",
+      "sessionId": "806b5c38f2244556b646c424beb8bd73",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "1528ffbcc4734224b65da10270e17b01",
+      "sessionId": "b0a7834f0be84a999bf4c7c623e0bdf2",
+      "initialCategory": "hard_logic",
+      "theme": "H04",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "3126436c23c14eabaf0bd8def001e039",
+      "sessionId": "5fb9f630889249368f46fdcaf97e88e5",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "8ac8341b0502446b956dd2ae7c689357",
+      "sessionId": "57ff87ce87ea4a8fbf0f327abf5f74c2",
+      "initialCategory": "no_hard_evidence",
+      "theme": "N01",
+      "status": "no_hard_error_evidence"
+    },
+    {
+      "id": "34f1a5a3d94a47dfaf7ef0212db06c0e",
+      "sessionId": "bde39cce214d4f418c531c3afd1d0fd3",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "1fb288b3ffb74aa99dd3d0436bd5e860",
+      "sessionId": "06169c0901ae4a0d9a08cfd6215113f1",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "1406ab02e99548fca172b93a68ed6bb5",
+      "sessionId": "32012607edd042eeba39a32ba2b558f9",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "c1fc21ee277f4d1a9997d847406b2030",
+      "sessionId": "b92a1a1744cc4fec880d01a70516af6a",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "2fc6461bbb894bc5b550a78a341f483c",
+      "sessionId": "14c9366f0d99453e9119380d07290679",
+      "initialCategory": "third_party_content",
+      "theme": "M03",
+      "status": "callback_overlap_boundary_verified"
+    },
+    {
+      "id": "33f18785ebfa47ed8a302110d7632ca7",
+      "sessionId": "136f1d944de446b6931d75b8f5c94a1f",
+      "initialCategory": "third_party_content",
+      "theme": "M01",
+      "status": "existing_content_boundary"
+    },
+    {
+      "id": "0cea9bf1f8c146c498bedd751c3608f2",
+      "sessionId": "0701a1b884f44f1b9d41a2f1dcbfac67",
+      "initialCategory": "third_party_content",
+      "theme": "M01",
+      "status": "existing_content_boundary"
+    },
+    {
+      "id": "ab95cbefef954fb7b60f1fce8f576d36",
+      "sessionId": "d9b713968a7e45e49eaa738573902b19",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "21bf587bded54adb866c11ab231ca7d6",
+      "sessionId": "fedf9f7ab41e490f959961005dc7bb3e",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "c161808608624a3ea31bd018effcd6c2",
+      "sessionId": "50046a4273ad4c308533d01febac4c67",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "4b6c971d24c0413d882e46262a4b9bb5",
+      "sessionId": "fedf9f7ab41e490f959961005dc7bb3e",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "4cf2bc57a28143e18a448886140351f6",
+      "sessionId": "2719bca12090488ab62a9d7330da8c43",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "9be6fa60ed6643438b0d52aa343d9fa5",
+      "sessionId": "d1424cd30d1743a38cbc9c7dbc3e34a1",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "443abb47d06c453c95856bf9800c0e82",
+      "sessionId": "db28c5e6aa224757a5f4f01c6d1a4078",
+      "initialCategory": "hard_logic",
+      "theme": "H02",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "0629ef19de144022bc4799464916a91d",
+      "sessionId": "d0d3e018b6f248c6ac671a1b58f4db4e",
+      "initialCategory": "hard_logic",
+      "theme": "H03",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "88e11da8b51e400b8c1afec753cfa055",
+      "sessionId": "d8c83d41ade641eba0f2468e123dafda",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "e401cd2b9e7947f1b42691c5fa594105",
+      "sessionId": "9a1306b25b0a4a95b26bd34ca35c2333",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "53794a2e8a9f48638ebba400c5ed32f0",
+      "sessionId": "5cf50dbfcd114e4894baddb79a58468b",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "9d005a976b5e4e00be8c11ad49d3a4d6",
+      "sessionId": "1f50f68bce9448e28778bd7cca4b43d5",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "0243b75ff31c41d5a4568ed400ac601f",
+      "sessionId": "7f1dfefb81d24418bf4f2d98cf970de9",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "36e93d4492f1415fbfb8d6b51e4c2829",
+      "sessionId": "8de09142fdda4bd7aca0513cb1296625",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "51c4baf3e479455c8181da757d2f39e2",
+      "sessionId": "df159015a17d45dbb4762fa0384eeaec",
+      "initialCategory": "excluded_signals",
+      "theme": "X03",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "accb7bf804d147688ad67eccbda60f1e",
+      "sessionId": "18c7b32426e648c9919f49e9d7037b28",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "688a6ba37df24eabbeda948ecab2a183",
+      "sessionId": "b39da0b308e0424db32d230ef4a197b9",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "18bdb87bb2f64cacabd0aa9a7213dfed",
+      "sessionId": "118b23dccd1a4970bbd3cae2a9ba9460",
+      "initialCategory": "third_party_content",
+      "theme": "M04",
+      "status": "monster_content_boundary_verified"
+    },
+    {
+      "id": "e0361f798b7a43e4adbca977e6ae643d",
+      "sessionId": "40ce3b09d99940e69e8781ba1759628f",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "f7141c8924104e20a8c87ae15e30d8bd",
+      "sessionId": "3f3c06e27a6b4f30b0a6cc8c54e2efaa",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "f0b4a1b580514c8288ce31220f6be033",
+      "sessionId": "bbe6c8daebcc45a3b0c7658c8c00922f",
+      "initialCategory": "hard_logic",
+      "theme": "H03",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "e3034c247d8c414aa45f06a14e00e60a",
+      "sessionId": "bbe6c8daebcc45a3b0c7658c8c00922f",
+      "initialCategory": "hard_logic",
+      "theme": "H03",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "d84e9df75a7a4c48bfbedde15dee3ff5",
+      "sessionId": "fa014621a3a545e5bf4c89b78c5dffb9",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "9c810b9ff98b4678a4e59c6e8fbe3f0e",
+      "sessionId": "fa014621a3a545e5bf4c89b78c5dffb9",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "4a299f4b379e4ffdbc8f6cdb0e7d2ec5",
+      "sessionId": "fa014621a3a545e5bf4c89b78c5dffb9",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "1e9346c534a04ef49ab178bc9e7e93aa",
+      "sessionId": "5496f0fcea82405799bce512c6e7cf56",
+      "initialCategory": "third_party_content",
+      "theme": "M01",
+      "status": "existing_content_boundary"
+    },
+    {
+      "id": "eca5053b972a48bb824cf895018301e4",
+      "sessionId": "172fbd805ad74d6aa3555d6b5d367524",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "5e6bb68c34244de3b0e720632859979e",
+      "sessionId": "bce496d8e0ae4eed88ff200f23f9072d",
+      "initialCategory": "hard_logic",
+      "theme": "H03",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "77b89542df1e4fea806d77de9d74b162",
+      "sessionId": "f459cae42531422e9bc3443d3f9f8ad7",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "bc6ab827557b4dbe8d898e00a3bbdc89",
+      "sessionId": "88b0563261884c118ae7974563a9e588",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "e08b5d7750aa4d8783471daf369deaed",
+      "sessionId": "88b0563261884c118ae7974563a9e588",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "a01b0d98defb4b3cbd4c3bca62d76143",
+      "sessionId": "75e2c26a2d1943479c179984b2b8b64e",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "c15f825c42e1460d80ea3671e048fe55",
+      "sessionId": "1332f27add4e48f7afb6ffb9c55737f5",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "bb60656f2b2744619236b4732ea22323",
+      "sessionId": "7559c8ade43f4cada6a752cccbe2983d",
+      "initialCategory": "hard_logic",
+      "theme": "H13",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "301ddd3c5a4848d8acb9027351103058",
+      "sessionId": "263a00e258414da99c0f471b31823e08",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "e57ba40b131e48e697f5c8f5d85daa25",
+      "sessionId": "7bf9c834ce784e6bb2e999446689ac29",
+      "initialCategory": "hard_logic",
+      "theme": "H13",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "1cda807be2394408ab4da93a5ab0d73f",
+      "sessionId": "52a546fc961345868ddcd305e32e89bd",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "fbf963939c6743588a376a35d6b41063",
+      "sessionId": "10a694f80f414ca7851885be46342f5e",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "417774733ada434d85b7e1caf984a497",
+      "sessionId": "7745a967ae7d4a6d92706b220e2cc488",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "23b7eded27f940fcb0970bdd5f5d9639",
+      "sessionId": "57f04b6a097b476da8001d07b517e8ce",
+      "initialCategory": "third_party_content",
+      "theme": "M01",
+      "status": "existing_content_boundary"
+    },
+    {
+      "id": "de6ecfd3f4d54cd09026a156e745e06b",
+      "sessionId": "a58895bcfc3a4294ba50788671d98901",
+      "initialCategory": "third_party_content",
+      "theme": "M02",
+      "status": "owner_lifecycle_interface_verified"
+    },
+    {
+      "id": "f75dbae2cc1b44729c4cb8a159c8d77e",
+      "sessionId": "861ac4eebfec436b848a3eb903f4f69d",
+      "initialCategory": "third_party_content",
+      "theme": "M02",
+      "status": "owner_lifecycle_interface_verified"
+    },
+    {
+      "id": "d494e9f5e9f74b02bae69b5f8f3835a7",
+      "sessionId": "9ef824badfe64e8c9c5717137adc2d8c",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "4161987358834bf0aef6ad42e7d5db95",
+      "sessionId": "61269d2706cd40f28f77d08b40eee52e",
+      "initialCategory": "hard_logic",
+      "theme": "H11",
+      "status": "diagnostic_boundary_original_failure_unverified",
+      "restoredContinuationRunId": "3229c1abda0e4f16b6c7ca7ea072fd49",
+      "vanillaSearchRunId": "e6ae901119254c2bb8791cd974b26dc0",
+      "nativeStateVerified": false,
+      "originalEnvironmentFailureReproduced": false
+    },
+    {
+      "id": "3678276aab8d4f2a9b6c1e48e7a1554d",
+      "sessionId": "83a3eaaaabed446a88a73369de73a997",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "303c9fbb3c8645a99a6f4dbdbc066826",
+      "sessionId": "67f88609d1494c4483c16f6f215cd1f6",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "2eab8755efba4182b4f86ee97dc1a00f",
+      "sessionId": "f6bb062e2df14610a8d7e30a08d37d26",
+      "initialCategory": "excluded_signals",
+      "theme": "X02",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "15e61d2399174009a7195cb7190800d3",
+      "sessionId": "0f099790d5b94711ad5e0aab6e496b00",
+      "initialCategory": "third_party_content",
+      "theme": "M01",
+      "status": "existing_content_boundary"
+    },
+    {
+      "id": "b942e3f7a9ca4ff2a06efe9a78d3d952",
+      "sessionId": "5ca9bf260de34ab8893a0a2f5d7a9550",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "2a60497eb89949d09034c2cbd59241d3",
+      "sessionId": "30e9b45c68d04e4aab70692d0fc7c40f",
+      "initialCategory": "hard_logic",
+      "theme": "H09",
+      "status": "content_boundary_original_interaction_unverified"
+    },
+    {
+      "id": "477628211c144110ac44172aed5d5dfd",
+      "sessionId": "9e4f598db0674af2b7b5eb478b09b986",
+      "initialCategory": "hard_logic",
+      "theme": "H10",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "e0730f66e66e4288a63c2f12fb0ab1e0",
+      "sessionId": "7730f07f5101480d971bf84ee59b64fe",
+      "initialCategory": "implemented_shared_fix",
+      "theme": "GC",
+      "status": "existing_gc_shared_fix"
+    },
+    {
+      "id": "3b063df3672a4b8f83c830ce8f3d18cf",
+      "sessionId": "59fdf282350c41918265c592aa8d3f49",
+      "initialCategory": "excluded_signals",
+      "theme": "X01",
+      "status": "excluded_player_or_expiry_signal"
+    },
+    {
+      "id": "00b3ba1556cb4f1098c099ce632bbbcd",
+      "sessionId": "edaa85c49843464296de6cadf9f831b0",
+      "initialCategory": "hard_logic",
+      "theme": "H01",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "81d407e4bd0441a489b64ea871ef0433",
+      "sessionId": "551948b9aed64077b49481d699025770",
+      "initialCategory": "hard_logic",
+      "theme": "H05",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "0e9d61e2f3d4402a98f66c6354da3018",
+      "sessionId": "fca2087f9a8946fbb06addca7b1db291",
+      "initialCategory": "hard_logic",
+      "theme": "H05",
+      "status": "native_root_cause_verified"
+    },
+    {
+      "id": "b02dca7884f74b7285e24791f534bbf2",
+      "sessionId": "095dec53371b4c3f8e75f57d44a9fff3",
+      "initialCategory": "third_party_content",
+      "theme": "M01",
+      "status": "existing_content_boundary"
+    },
+    {
+      "id": "d3a1ccee0531493bb3534ef763174df3",
+      "sessionId": "098a640ff1084d9db4918f95971bb154",
+      "initialCategory": "third_party_content",
+      "theme": "M01",
+      "status": "existing_content_boundary"
+    }
+  ]
+}

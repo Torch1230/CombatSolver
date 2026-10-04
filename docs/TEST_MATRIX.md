@@ -8,33 +8,43 @@
 
 ## Q003 检查点政策与比较（2026-10-03）
 
-`CheckpointTool self-test` 的失败基线为 `different_switch_not_comparable:predictPotionReward`，最终 `archive_contract_tests_passed assertions=59`，含缺失/不同派生上下文、未来字段及预设标签比较。`REPLAY-BOUNDARY-CONTRACT` / `b4c0cbeb24964595b3aed0cbb74b4417` Passed：true/false 均覆盖与本机相反的四开关、精确预算、输入不变与缺项拒绝，并保留既有回放边界合同。
+检查点恢复四个搜索开关并严格比较资源与搜索政策。`CheckpointTool self-test` 59 项合同及原生 `REPLAY-BOUNDARY-CONTRACT` 的历史来源见 [Q003 验收记录](issues/q003-checkpoint-policy-20261003.md)；完整阶段记录保留于 [合并前测试矩阵](https://github.com/jojomiseta-hub/CombatSolver/blob/41e6124b5d9f5b79269d03987e92a81d4adb55b2/docs/TEST_MATRIX.md#q003-检查点政策与比较2026-10-03)。
 
-O008 / `f92387e90f7745cfb5ec74f55f46dcea` 验证有效 `:3` 检查点的 16 项事件、完整 continuation 与原生状态；`c3a2b0d8add74484ba310e5e539ac182` 从 `:1` 以固定短预算执行到第 3 回合，原生存活、`UnexpectedReplans:0`。只覆盖最早续用，不代表整场胜利。政策恢复后的 O007/O008/O010 开战搜索记录原预算与开关，O008 返回部分路线；有效第 3 回合搜索只找到死亡路线。Release 零警告/错误、结构门禁通过（246 个 Search 文件），自有实例已清理；未进行五主题整场验收或可见性能测试。复现命令、源码/DLL 来源和材料限制见 [Q003 记录](issues/q003-checkpoint-policy-20261003.md)。
+`e9f66da0` 的 O010 T2 三对同根、同政策、同预算原生对照均战损45→32、锻造祝福1、计划外重算0；平均总搜索11.379→11.396秒（+0.15%），仅该哨兵未发现超出同批波动的稳定明显增加。相邻T4原生战损32，开战/首可操作恢复通过；T1战损44/零药水仍缺完整资源比较。O009 T1战损91并触发瓶中精灵，缺同版未改开局基线；O006–O008材料与质量缺口仍未解决。
 
-第三阶段 O009 独立冷启动成对样本：基线 `1ae32d83b86f42c3b8cd3bb83cd72f64`（`556e729`），候选 `49d4b5073799448ab996d93b00ce1bbd`（`f17f4d9` 行为源码）。原生根及 continuation 通过，执行政策、完整动作序列与预测 snapshot 相同；均为 120000 节点/481427 转移、预测战损85、药水0、第14回合。总搜索工作 29008.463→29793.7552 ms（+2.7%），仅一对样本，未外推普遍性能。O010 `51c242c740dc4363a043f76d021ba441` 完成原设置整场原生部署：第10回合存活结束、战损43、治疗1、药水0、计划外重算0；战斗末HP18与夹具战后HP24分别记录。真实执行政策包含派生上下文，缺项在开战报告侧；不将缺项视为默认值。上述第三阶段代表证据来自 `f17f4d9`；随后合并上游 `2ead87d`，保留其 0.48.1 发布归档与工具布局。合并后的入口合同验证另行记录，不把旧证据写成新版重新通过。
+三次采样后实例清理失败均经既有StopInstance恢复，未重跑样本；全部六个实例已清理，临时基线checkout删除被自动审批拦截而保留。十阶段累计24/26请求，剩余2；整批未完成，保持Draft / Refs #183。上游0.49.2合并后的检查结果单独记录，历史整场和性能数字不冒充本次重跑。
 
-合并上游后，`a2d685a` 的 Release 零警告/错误，59 项工具断言及 `REPLAY-BOUNDARY-CONTRACT` / `bf7ccd4e164b4a428d57cf41bc13eb59` Passed，实例已清理；结构、文档、工具与覆盖材料门禁通过。旧整场/性能样本仍按原提交归属，未冒充合并后重跑。
+## 移动运行库内存回收（2026-10-04）
 
-PR #206 冲突修复合入上游 `4533f6b` / 0.49.1：`946591ec` 的 Release 零警告/错误，59 项工具断言通过，`REPLAY-BOUNDARY-CONTRACT` / `a141c6b4b37446c49bf127f4224980fe` Passed（约20.1秒），实例清理完成。上述旧整场与性能样本仍保留原提交来源；十阶段计划第 3–5 阶段补充证据见 [Q003 记录](issues/q003-checkpoint-policy-20261003.md)，整批质量验收未完成。
+`portable-runtime` 先在原回收逻辑复现 Mono 同形的 API 拒绝，修复后 5 项 Passed。直接链接生产代码并注入被拒绝的按类型 GC 信息接口，验证一次检测后不再调用、普通检查点及不可分割提交续行、取消、自动及手动真实阻塞回收、不可用暂停观测和其他异常继续传播。
 
-十阶段第6阶段沿用 `946591ec`：O009 `2eb1c82303af475fbf2e0060d74bb5f5`（T2/11事件→T5胜利，累计战损66、药水0），O010 `58bee016fd4443228f1186e42e8a25f0`（T4/26事件→T7胜利，累计战损32、全场锻造祝福1、后缀用药0）均 Passed、计划外重算0。恢复根的完整 continuation/原生状态以及各自27项政策通过；O010正常求解14动作与历史32 HP计划逐字段一致。仅建立录制人工前缀+正常求解后缀的原生参照，同版早期根自主质量对照及每步独立全状态冻结尚未完成；详见同一 Q003 记录。
+```bash
+dotnet run --project tools/testing/checks/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- portable-runtime
+```
 
-第7阶段 `ef1413c73ac740f3bcc2a6bf18692523`：同版O010 T2自主原生胜利、战损45、全场既有锻造祝福1、计划外重算0，确认13 HP缺口。诊断 `90b62aac1bd24828a878c57a56ea95bb` Passed：原始选牌解码为巍然不动+，25步完整/增量模拟一致，T4原生完整状态吻合；682条纯值观测定位头槌/挑衅前缀在最终保留丢失。另两次探针失败不算生产缺陷；4/4请求后暂停，累计13/26。没有修改后验收或相邻回归，诊断不是原生整场复测或性能样本。
+桌面实际 CLR 相邻合同 `default-commit` 2 项、`checkpoint` 1 项、`diagnostic-failure` 8 项、`recovery-lifecycle` 3 项 Passed。模式均由同一 GC 工具运行，方法见[工具入口](../tools/testing/checks/CombatSolver.GcPolicyChecks/README.md)。
 
-第8阶段 `e9f66da0`：O010 T2 `b1381e5ad1f244588e984fe45beb2f31` 原生战损32（基线45），T4 `5f9216fb604346178ba472ee9b22adbe` 仍32；27项政策与各自基线相同、根完整状态匹配、全场既有锻造祝福1、计划外重算0。O009 T1 `09ab16f636ff46ceafe9f6e5297cd093` 原生胜利/重算0，但战损91、治疗40、自伤12、瓶中精灵自动触发1，未达66/零药水目标；同版未改T1自主基线未建立，不能判定修复导致退化。3/3请求后暂停，累计16/26。两份O010单样本总搜索工作分别10.767→11.399秒、7.269→7.774秒，未证明性能不退化；复现与五主题覆盖缺口见Q003记录。
+原生 `B013-DEFAULT-GC-LIMIT` Passed，runId `ac4ee495b5ad48158c0d709a49b0abd2`，22.883 秒；包含限额、真实回收续行、退出和暂停观测缺失时的工作量累计。PowerShell 入口为 `tools/testing/run-unattended-test.ps1 -ScenarioId B013-DEFAULT-GC-LIMIT -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit`；Bash 对应 `tools/testing/run-unattended-test.sh --scenario-id B013-DEFAULT-GC-LIMIT --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit`。实例已删除。
 
-第9阶段同e9f66da0/B825…20B7F：O010 T1 abe8ea24e6664f6aaf7828af611b9426 原生T10胜利、战损44/治疗1/自伤6/药水0/重算0，战斗HP17与战后23分列；27项原政策仅预设标签不同、根完整文本/原生状态通过。combat_start RestoreOnly e27c5f0167ca41ea87b49b7c940e9c3b 同时核验:0与ready :1，原生/continuation/readyCheckpointVerified均通过。32 HP/一瓶参照按默认成本折算尚差3，炼制药水0对1且根/资源不同，完整开局质量未通过、无未改同版T1基线不能归因退化。2/5请求、累计18/26、剩余8；无新行为/构建，成功门禁与部署按来源复用，PR保持Draft。
+原 Android 设备与原包整场回放未执行；来源、失败基线及验证范围见[开发记录](archive/development/volume-15.md#移动运行库内存回收2026-10-04)。
 
-第10阶段O010 T2三对独立冷启动AB/BA/AB：基线946591ec、候选e9f66da0，六次均原生胜利、战损45→32、全场既有锻造祝福1、重算0，根完整状态与27项政策逐对相同。
+## 0.49.1 日志站硬逻辑（2026-10-04）
 
-| 对照 | 基线总搜索秒 | 候选总搜索秒 | 变化 |
-| --- | ---: | ---: | ---: |
-| 1 | 10.879 | 11.126 | +2.27% |
-| 2 | 11.459 | 11.438 | -0.19% |
-| 3 | 11.799 | 11.624 | -1.49% |
+强制结束回合选牌、群体 Power、死亡金币回调、延迟能量／等离子球、开局小刀、回合末自动出牌、行动意图、资源隔离、反应格挡和界面归属的原生差分见 [逐类验收](issues/0.49.1-hardbugs-20261004.md#原生验收证据)。该记录保留失败基线、runId、复跑入口、第三方边界及未验证项；生产部署合同包含增量验证和计划外重算断言。
 
-平均总搜索11.379→11.396秒（+0.15%），基线范围10.879–11.799秒/波动0.921秒；成对变化+2.27%/-0.19%/-1.49%，预定有限样本判据未见超出同批波动的稳定增加。请求展开合计+4.90%、转移+5.33%，不声称提速或全根性能通过；T4仍只有单样本成本证据，T1质量未完成。A/B runId：32b0b9cd9ca742a2a13c2abc9ac9bf40/d863b6b2fb2844d2ac84a45edd5c85d2；d424d60d5cda48cfa5542e71caa71037/1fae421a074447b89578e4be96296cdf；d5c915959763461ba74eb752d6557997/b0903c7676e640f28078ae4dd860932d。三次结果后清理访问拒绝均恢复，无样本重跑；基线构建修正为已有net48缓存后通过，候选构建/部署复用。临时checkout清理被自动审批拦截，产物留忽略目录；6/6请求、累计24/26、剩余2。整批与文档门禁仍未完成，Draft/Refs #183。
+## 0.49.2 内容性 Mod 失败分类（2026-10-04）
+
+`CONTENT-MOD-FAILURES` 与 `VerifyPredictionFailureBoundaries` 同进程 Passed，runId `849fb38580474f7881c05d113beef5d3`，24.505 秒。合同直接调用五个回合阶段、三个金币回调与计算型变量的生产拒绝入口，断言确认的第三方来源、原生回调保持未执行、包装异常、eng/zhs/zht 的 Mod 名称与方括号转义、四类失败账本仅记录暂未适配且不触发上传。原版、共享计算框架与运行库失败继续提示诊断上传；平台接口错误保留主失败类别。
+
+```powershell
+pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId CONTENT-MOD-FAILURES -EnemyCurrentHp 1000 -VerifyPredictionFailureBoundaries -TimeoutSeconds 120 -CleanupInstanceOnExit
+```
+
+```bash
+./tools/testing/run-unattended-test.sh --scenario-id CONTENT-MOD-FAILURES --enemy-current-hp 1000 --verify-prediction-failure-boundaries --timeout-seconds 120 --cleanup-instance-on-exit
+```
+
+来源与验证边界见 [开发历史卷 14](archive/development/volume-14.md)。最终行为源码在版本同步前通过；后续只改版本元数据和文档，采用最终 Release 构建。测试启动器已删除实例，未执行可见 Steam 弹窗排版验收或第三方原包整场回放。
 
 ## 0.49.1 内存提交回归（2026-10-04）
 

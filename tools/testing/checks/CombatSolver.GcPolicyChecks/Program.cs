@@ -1,6 +1,8 @@
 using CombatSolver;
 
-if (args is ["manual-release"])
+if (args is ["portable-runtime"])
+    GcPortableRuntimeChecks.Run();
+else if (args is ["manual-release"])
     PolicyCheck.Run("manual memory release keeps live pages resident", GcManualMemoryReleaseChecks.Run);
 else if (args is ["diagnostic-failure"])
     GcDiagnosticFailureChecks.Run();
@@ -33,5 +35,5 @@ else if (args.Length == 0)
     GcRegionAdmissionChecks.Run();
 }
 else
-    throw new ArgumentException("Expected no arguments, 'admission', 'scopes', 'checkpoint', 'diagnostic-failure', 'default-entry', 'default-commit', 'manual-release', 'memory', 'recovery' or 'recovery-lifecycle'.");
+    throw new ArgumentException("Expected no arguments, 'admission', 'scopes', 'checkpoint', 'diagnostic-failure', 'default-entry', 'default-commit', 'manual-release', 'portable-runtime', 'memory', 'recovery' or 'recovery-lifecycle'.");
 Console.WriteLine($"GC policy checks passed: {PolicyCheck.Completed} scenarios.");

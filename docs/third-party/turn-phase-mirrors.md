@@ -68,7 +68,10 @@ AfterSideTurnEndLateMirrors.RegisterIgnored(Type modelType);
 阶段写入对应表；三个阶段都没重写的类型会被拒绝，而不是被静默接受。
 
 **这三张表是硬门禁**：战斗监听表里出现未登记的第三方覆写时，派发会抛
-`NotSupportedException` 并中止整次搜索。因此每个重写这些阶段的第三方类型都必须三选一——
+按模型来源分类的 `NotSupportedException` 并中止整次搜索。已确认的第三方来源使用
+`IncompatibleGameplayModException`，弹窗显示“求解器暂未适配此内容性 Mod：名称，无法求解。”，
+不引导上传问题包；原版或来源未知时使用 `PredictionUnsupportedException` 并保留诊断提示。
+因此每个重写这些阶段的第三方类型都必须三选一——
 登记处理器、登记忽略，或明确不进这场战斗（例如让适配自检失败）。漏掉一个的表现是整场给不出
 路线，而不是「近似一下继续算」。
 
@@ -132,7 +135,7 @@ AfterPlayerTurnStartMirrors.RegisterLate<TModel>(handler);
   调用者依照现有动作重放机制处理选择，不可在部分执行后的同一分支上直接重调以“续跑”。
   本接口没有新增通用选牌 UI 或选择类型；不支持的选择仍需单独建模。
 - 回调异常直接传播。没有原生重写则保持基类空操作；纯表现 Mod 沿用既有镜像忽略政策；
-  其他未知重写先记录未镜像风险，再抛出带类型名的 `NotSupportedException`。
+  其他未知重写先记录未镜像风险，再抛出带类型名和来源分类的 `NotSupportedException`。
 - 原版 `DisintegrationPower` 只由本镜像结算；旧 `TriggerLate` 补偿已移除。
   注册只覆盖该方法的原生重写，不自动表示其 Harmony 前后缀也已镜像。
 

@@ -19,6 +19,8 @@ using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using System.Reflection;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Context;
+using MegaCrit.Sts2.Core.Entities.Multiplayer;
 
 using MegaCrit.Sts2.Core.ValueProps;
 
@@ -26,6 +28,118 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertTurnBoundaryOrderAsync(CombatState combat, Player player)
+    {
+        bool setup = _request.ScenarioId == "TURN-SETUP-DELAYED-ENERGY";
+        await ClearOrderedEffectFixtureAsync(combat, player);
+        if (setup)
+        {
+            await InjectPowerAsync(combat, player, new() { PowerId = "ENERGY_NEXT_TURN_POWER", Amount = 1, Target = "Player" });
+            player.PlayerCombatState!.TurnNumber = 5;
+            player.PlayerCombatState.Phase = PlayerTurnPhase.Start;
+            SetEnergy(player, 2);
+        }
+        else
+        {
+            await InjectRelicAsync(player, new() { RelicId = "PAELS_EYE" });
+            await InjectCardAsync(combat, player, new() { CardId = "HOWL_FROM_BEYOND", Pile = "Hand" });
+        }
+        for (int i = 0; i < 10; i++)
+            await InjectCardAsync(combat, player, new() { CardId = "STRIKE_IRONCLAD", Pile = "Draw" });
+        var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, setup, null);
+        var driver = new CombatBeamSolver(CombatRootSnapshot.Capture(combat), SolverDisplayNames.Capture(combat),
+            BattleDamageTracker.Observe(combat), policy);
+        var snapshot = setup ? driver.ReplayTurnSetupForTesting() : driver.ReplayEndTurnForTesting();
+        var settings = SolverSettings.Current;
+        SolverSettings.ApplyForTesting(settings with { AutomaticCalculationEnabled = false });
+        try
+        {
+            var expected = CaptureSimulated(snapshot.Simulator, (SimulatedCombatState)snapshot.Simulator.State.CombatState, player, combat.Enemies[0]);
+            var fork = snapshot.Simulator.Fork();
+            AssertSnapshotEqual(expected, CaptureSimulated(fork, (SimulatedCombatState)fork.State.CombatState, player, combat.Enemies[0]), _request.ScenarioId, "Fork");
+            if (setup)
+            {
+                CombatManager manager = CombatManager.Instance;
+                object turnState = AccessTools.Field(typeof(CombatManager), "_turnState").GetValue(manager)!;
+                var context = new HookPlayerChoiceContext(player, LocalContext.NetId!.Value, GameActionType.Combat);
+                await (Task)AccessTools.Method(typeof(CombatManager), "SetupPlayerTurn").Invoke(manager, [turnState, player, context])!;
+                await MegaCrit.Sts2.Core.Hooks.Hook.AfterSideTurnStart(combat, CombatSide.Player, [player.Creature]);
+            }
+            else
+            {
+                int turn = player.PlayerCombatState!.TurnNumber;
+                CombatManager.Instance.OnEndedTurnLocally();
+                RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(player, turn));
+                using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(30));
+                while (player.PlayerCombatState.TurnNumber == turn || player.PlayerCombatState.Phase != PlayerTurnPhase.Play)
+                {
+                    deadline.Token.ThrowIfCancellationRequested();
+                    await NextFrameAsync();
+                }
+            }
+            AssertSnapshotEqual(expected, CaptureActual(combat, player, combat.Enemies[0]), _request.ScenarioId, "NativeBoundary");
+        }
+        finally { SolverSettings.ApplyForTesting(settings); snapshot.ReleaseSimulator(); }
+        _completedChecks.Add(_request.ScenarioId + ":FullState:Native:Fork");
+    }
+
+    private static bool ForceResourcePredictionAfterLiveCombat(ref bool __result)
+    {
+        if (!SimulationNotificationIsolation.IsActive) return true;
+        __result = true;
+        return false;
+    }
+
+    private async Task AssertTurnResourceHookIsolationAsync(CombatState combat, Player player)
+    {
+        await ClearOrderedEffectFixtureAsync(combat, player);
+        foreach (string id in new[] { "PHILOSOPHERS_STONE", "BREAD", "BAG_OF_PREPARATION" })
+            await InjectRelicAsync(player, new() { RelicId = id });
+        int nativeEnergy = (int)MegaCrit.Sts2.Core.Hooks.Hook.ModifyMaxEnergy(combat, player, player.MaxEnergy);
+        int nativeDraw = (int)MegaCrit.Sts2.Core.Hooks.Hook.ModifyHandDraw(combat, player, 5, out _);
+        CombatPredictionSimulator simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
+        CombatPredictionSimulator fork = simulator.Fork();
+        Harmony probe = new("CombatSolver.Testing.ResourceHookIsolation." + _request.RunId);
+        probe.Patch(AccessTools.PropertyGetter(typeof(CombatManager), nameof(CombatManager.IsOverOrEnding)),
+            prefix: new HarmonyMethod(typeof(UnattendedTestRunner), nameof(ForceResourcePredictionAfterLiveCombat)));
+        int baseEnergy = player.MaxEnergy;
+        int liveTurn = player.PlayerCombatState!.TurnNumber;
+        try
+        {
+            using (SimulationNotificationIsolation.Enter())
+            {
+                foreach (CombatPredictionSimulator branch in new[] { simulator, fork })
+                {
+                    SimulatedCombatState state = (SimulatedCombatState)branch.State.CombatState;
+                    int predictedEnergy = PersistentPowerSupport.GetModifiedMaxEnergy(state, player);
+                    int predictedDraw = PersistentPowerSupport.GetModifiedHandDraw(state, player, 5);
+                    if (predictedEnergy != nativeEnergy || predictedDraw != nativeDraw)
+                        throw new InvalidOperationException($"Live combat completion changed captured resources: energy={nativeEnergy}/{predictedEnergy} draw={nativeDraw}/{predictedDraw}.");
+                }
+            }
+            player.MaxEnergy += 2;
+            player.PlayerCombatState.TurnNumber = 3;
+            using (SimulationNotificationIsolation.Enter())
+            {
+                SimulatedCombatState parent = (SimulatedCombatState)simulator.State.CombatState;
+                SimulatedCombatState child = (SimulatedCombatState)fork.State.CombatState;
+                child.AdvancePlayerTurn(player);
+                if (PersistentPowerSupport.GetModifiedMaxEnergy(parent, player) != nativeEnergy
+                    || PersistentPowerSupport.GetModifiedHandDraw(parent, player, 5) != nativeDraw
+                    || PersistentPowerSupport.GetModifiedMaxEnergy(child, player) != nativeEnergy + 1
+                    || PersistentPowerSupport.GetModifiedHandDraw(child, player, 5) != 5)
+                    throw new InvalidOperationException("Live resources or turn number leaked into the captured parent and future-turn fork.");
+            }
+        }
+        finally
+        {
+            player.MaxEnergy = baseEnergy;
+            player.PlayerCombatState.TurnNumber = liveTurn;
+            probe.UnpatchAll(probe.Id);
+        }
+        _completedChecks.Add("TurnResources:NativeValues:LiveCombatCompletion:LiveMaxEnergy:LiveTurnAdvance:FutureTurn:ForkIsolation");
+    }
+
     private async Task AssertRouteAdoptionLifetimeAsync(CombatState combat, Player player)
     {
         await ClearPlayerPilesAsync(player);
@@ -69,6 +183,8 @@ internal sealed partial class UnattendedTestRunner
 
     private async Task AssertVoidFormTurnChoicesAsync(CombatState combat, Player player)
     {
+        bool deployResolved = _request.ScenarioId == "VOID-FORM-DEPLOY-CHOICES";
+        bool enemyChoices = deployResolved || _request.ScenarioId == "VOID-FORM-ENEMY-CHOICES";
         await ClearPlayerPilesAsync(player);
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
         foreach (var power in combat.Creatures.SelectMany(creature => creature.Powers).ToArray()) await PowerCmd.Remove(power);
@@ -77,24 +193,59 @@ internal sealed partial class UnattendedTestRunner
             await InjectCardAsync(combat, player, new() { CardId = "DEFEND_REGENT", Pile = "Discard" });
         foreach (string id in new[] { "STRATAGEM_POWER", "TYRANNY_POWER" })
             await InjectPowerAsync(combat, player, new() { PowerId = id, Amount = 1, Target = "Player" });
+        if (enemyChoices)
+            ConfigureMonsterMove(combat.Enemies[0], new() { MoveId = "CURSE_OF_KNOWLEDGE_MOVE" });
         SetEnergy(player, 3);
         var root = CombatRootSnapshot.Capture(combat);
         var driver = new CombatBeamSolver(root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat),
             SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null));
         var (action, snapshot) = driver.VerifyForcedTurnChoiceReplayForTesting();
+        SolverResult? deploymentResult = null;
+        if (deployResolved)
+        {
+            var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null)
+                with { FixedBudget = true, MaxDegreeOfParallelism = 1, VerifyIncrementalSearch = true, StopAtAcceptableBattleHpLoss = false };
+            var deploymentDriver = new CombatBeamSolver(root, SolverDisplayNames.Capture(combat), BattleDamageTracker.Observe(combat), policy,
+                searchProfile: policy.Profile with { BeamWidth = 12, MaxExpandedNodes = 120, SoftTimeBudgetMilliseconds = 1500 }, fixedPrefixActions: [action]);
+            deploymentResult = await Task.Run(deploymentDriver.Solve);
+            if (deploymentResult.BestNode.Actions.First().CardId != "VOID_FORM")
+                throw new InvalidOperationException("Forced deployment fixture lost its required action.");
+        }
         var originalSettings = SolverSettings.Current;
         SolverSettings.ApplyForTesting(originalSettings with { AutomaticCalculationEnabled = false });
         try
         {
             var expected = CaptureSimulated(snapshot.Simulator, (SimulatedCombatState)snapshot.Simulator.State.CombatState,
                 player, combat.Enemies[0]);
-            using var session = NativeChoiceRuntime.Begin(combat, player, "test:void-form-turn-choices");
             using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(30));
-            session.SetPlanAndStartDriving(NGame.Instance!, action.TurnStartChoices!, deadline.Token);
+            CardModel nativeCard = FindActualHandCard(player, "VOID_FORM", 0);
+            using var session = NativeChoiceRuntime.Begin(combat, player, "test:void-form-turn-choices");
+            session.SetPlanAndStartDriving(NGame.Instance!, action.TurnStartChoices!
+                .Where(choice => choice.Timing == PlanChoiceTiming.PlayerTurnStart).ToArray(), deadline.Token);
+            if (deploymentResult != null)
+            {
+                int replans = SolverController.UnexpectedReplanCount;
+                await SolverController.DeployResolvedTurnForTesting(NGame.Instance!, combat, deploymentResult).WaitAsync(deadline.Token);
+                if (SolverController.UnexpectedReplanCount != replans)
+                    throw new InvalidOperationException("Forced-turn deployment requested an unplanned recalculation.");
+            }
+            else using (var actionSession = NativeChoiceRuntime.Begin(combat, player, "test:void-form-action"))
+            {
+                var actionChoices = SolverController.CaptureDeploymentActionChoices(action);
+                var endTurnChoices = SolverController.CaptureDeploymentEndTurnChoices(action);
+                actionChoices.AddRange(endTurnChoices);
+                if (enemyChoices && endTurnChoices.Length == 0)
+                    throw new InvalidOperationException("Forced turn fixture requires an enemy-phase choice.");
+                actionSession.SetPlanAndStartDriving(NGame.Instance!,
+                    actionChoices, deadline.Token, detachOnLastSelection: endTurnChoices.Length > 0);
+                GameAction queued = await SolverController.EnqueueAndCaptureActionAsync(
+                    candidate => candidate is PlayCardAction play && ReferenceEquals(play.NetCombatCard.ToCardModelOrNull(), nativeCard),
+                    () => { if (!nativeCard.TryManualPlay(null)) throw new InvalidOperationException("Native Void Form was not playable."); }, deadline.Token);
+                await SolverController.AwaitDeploymentActionChoicesAsync(actionSession, queued.CompletionTask,
+                    endTurnChoices.Length, deadline.Token).WaitAsync(deadline.Token);
+            }
             async Task AdvanceNative()
             {
-                if (!FindActualHandCard(player, "VOID_FORM", 0).TryManualPlay(null))
-                    throw new InvalidOperationException("Native Void Form was not playable.");
                 await RunManager.Instance.ActionExecutor.FinishedExecutingActions().WaitAsync(deadline.Token);
                 while (player.PlayerCombatState!.TurnNumber == action.Turn || player.PlayerCombatState.Phase != PlayerTurnPhase.Play)
                 {
@@ -116,9 +267,10 @@ internal sealed partial class UnattendedTestRunner
 
     private async Task AssertRadiantPearlEntryAsync(CombatState combat, Player player)
     {
+        string relicId = _request.ScenarioId == "NINJA-SCROLL-ENTRY" ? "NINJA_SCROLL" : "RADIANT_PEARL";
         await ClearPlayerPilesAsync(player);
         foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
-        await InjectRelicAsync(player, new() { RelicId = "RADIANT_PEARL" });
+        await InjectRelicAsync(player, new() { RelicId = relicId });
         var simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
         var shadow = (SimulatedCombatState)simulator.State.CombatState;
         var cursor = shadow.BeginActionChoices((IReadOnlyList<PlanCardChoice>?)null);
@@ -127,10 +279,10 @@ internal sealed partial class UnattendedTestRunner
         var expected = CaptureSimulated(simulator, shadow, player, combat.Enemies[0]);
         var fork = simulator.Fork();
         AssertSnapshotEqual(expected, CaptureSimulated(fork, (SimulatedCombatState)fork.State.CombatState, player, combat.Enemies[0]),
-            "RadiantPearl", "Fork");
+            relicId, "Fork");
         await MegaCrit.Sts2.Core.Hooks.Hook.BeforeHandDraw(combat, player, new BlockingPlayerChoiceContext());
-        AssertSnapshotEqual(expected, CaptureActual(combat, player, combat.Enemies[0]), "RadiantPearl", "NativeBeforeDraw");
-        _completedChecks.Add("RadiantPearl:FirstTurnBeforeHandDraw:GeneratedHistory:OrderedHand:Fork:Native");
+        AssertSnapshotEqual(expected, CaptureActual(combat, player, combat.Enemies[0]), relicId, "NativeBeforeDraw");
+        _completedChecks.Add($"{relicId}:FirstTurnBeforeHandDraw:GeneratedHistory:OrderedHand:Fork:Native");
     }
 
     private async Task AssertCalculatedHistoryFreezeAsync(CombatState combat, Player player)

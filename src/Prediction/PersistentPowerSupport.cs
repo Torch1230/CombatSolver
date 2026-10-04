@@ -42,36 +42,39 @@ internal static class PersistentPowerSupport
         Player player,
         int baseDraw)
     {
-        decimal result = Hook.ModifyHandDraw(combat, player, baseDraw, out _);
-        result = AdjustTurnBasedRelicHandDraw(combat, player, result);
+        decimal result = baseDraw;
+        int turn = combat.GetPlayerTurnNumber(player);
+        foreach (AbstractModel listener in combat.IterateHookListeners())
+        {
+            if (listener is RelicModel relic && ReferenceEquals(relic.Owner, player))
+            {
+                if (relic is BagOfPreparation or BigMushroom or BoomingConch or RingOfTheDrake or RingOfTheSnake)
+                {
+                    result += GetTurnBasedHandDrawContribution(relic, combat, turn);
+                    continue;
+                }
+                if (relic is Pendulum or Pocketwatch or PollinousCore)
+                {
+                    result += combat.GetStatefulRelicHandDrawContribution(relic, player, turn);
+                    continue;
+                }
+            }
+            result = listener.ModifyHandDraw(player, result);
+        }
         return Math.Max(0, (int)result);
     }
 
     public static int GetModifiedMaxEnergy(SimulatedCombatState combat, Player player)
     {
-        decimal result = Hook.ModifyMaxEnergy(combat, player, player.MaxEnergy);
-        result = AdjustTurnBasedRelicMaxEnergy(combat, player, result);
-        return Math.Max(0, (int)result);
-    }
-
-    private static decimal AdjustTurnBasedRelicHandDraw(
-        SimulatedCombatState combat,
-        Player player,
-        decimal result)
-    {
-        int rootTurn = combat.GetRootPlayerTurnNumber(player);
-        int simulatedTurn = combat.GetPlayerTurnNumber(player);
-        foreach (RelicModel relic in combat.RelicsOf(player).Where(static relic => !relic.IsMelted))
+        decimal result = combat.GetBaseMaxEnergy(player);
+        int turn = combat.GetPlayerTurnNumber(player);
+        foreach (AbstractModel listener in combat.IterateHookListeners())
         {
-            result -= GetTurnBasedHandDrawContribution(relic, combat, rootTurn);
-            result -= SimulatedCombatState.GetLiveStatefulRelicHandDrawContribution(
-                relic,
-                player,
-                rootTurn);
-            result += GetTurnBasedHandDrawContribution(relic, combat, simulatedTurn);
-            result += combat.GetStatefulRelicHandDrawContribution(relic, player, simulatedTurn);
+            result = listener is RelicModel relic && ReferenceEquals(relic.Owner, player) && relic is Bread or PaelsFlesh
+                ? result + GetTurnBasedMaxEnergyContribution(relic, turn)
+                : listener.ModifyMaxEnergy(player, result);
         }
-        return result;
+        return Math.Max(0, (int)result);
     }
 
     private static decimal GetTurnBasedHandDrawContribution(
@@ -90,24 +93,6 @@ internal static class PersistentPowerSupport
             RingOfTheSnake when turn <= 1 => relic.DynamicVars.Cards.BaseValue,
             _ => 0m,
         };
-
-    private static decimal AdjustTurnBasedRelicMaxEnergy(
-        SimulatedCombatState combat,
-        Player player,
-        decimal result)
-    {
-        int rootTurn = combat.GetRootPlayerTurnNumber(player);
-        int simulatedTurn = combat.GetPlayerTurnNumber(player);
-        if (rootTurn == simulatedTurn)
-            return result;
-
-        foreach (RelicModel relic in combat.RelicsOf(player).Where(static relic => !relic.IsMelted))
-        {
-            result -= GetTurnBasedMaxEnergyContribution(relic, rootTurn);
-            result += GetTurnBasedMaxEnergyContribution(relic, simulatedTurn);
-        }
-        return result;
-    }
 
     private static decimal GetTurnBasedMaxEnergyContribution(RelicModel relic, int turn)
         => relic switch

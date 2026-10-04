@@ -1247,7 +1247,7 @@ internal static class SolverOverlay
             _progressText.Visible = false;
         if (_searchProgressBar != null)
             _searchProgressBar.Visible = false;
-        ShowDeploymentStep(0, actionCount, null);
+        ShowDeploymentStep(turn, 0, actionCount, null);
         if (_routeScroll != null)
             _routeScroll.ScrollVertical = 0;
         ShowLayer();
@@ -1255,8 +1255,11 @@ internal static class SolverOverlay
         Entry.Logger.Info($"[CombatSolver/Test] UI_STATE state=deploying turn={turn} card_count={actionCount}");
     }
 
-    public static void ShowDeploymentStep(int completedActions, int actionCount, string? currentCardTitle)
+    public static void ShowDeploymentStep(int turn, int completedActions, int actionCount, string? currentCardTitle)
     {
+        if (_presentation != SolverOverlayPresentation.Deploying || _lastDeploymentTurn != turn
+            || _lastSnapshot?.StartTurnNumber != turn)
+            return;
         if (RouteRows[0] == null)
             return;
         if (RouteRows[0].DeploymentActionCount != actionCount)
@@ -1294,13 +1297,19 @@ internal static class SolverOverlay
 
     public static void ShowDeploymentComplete(Node host, int turn, int actionCount, bool endedTurn)
     {
+        if (_presentation != SolverOverlayPresentation.Deploying || _lastDeploymentTurn != turn
+            || _lastSnapshot?.StartTurnNumber != turn)
+        {
+            Entry.Logger.Info($"[CombatSolver/Test] UI_DEPLOYMENT_COMPLETION turn={turn} current_turn={_lastSnapshot?.StartTurnNumber} presentation={_presentation}");
+            return;
+        }
+        ShowDeploymentStep(turn, actionCount, actionCount, null);
         _presentation = SolverOverlayPresentation.ExecutedHistory;
         _waitingForNextTurnPlan = false;
         _lastDeploymentTurn = turn;
         _lastDeploymentActionCount = actionCount;
         _lastDeploymentEndedTurn = endedTurn;
         EnsureCreated(host);
-        ShowDeploymentStep(actionCount, actionCount, null);
         RouteRows[0].SetEndTurnDeploymentState(active: false, completed: endedTurn);
         _deployQueued = false;
         SetStatus(SolverText.Get("执行完成"), Accent, SolverText.Format($"第 {turn} 回合"));

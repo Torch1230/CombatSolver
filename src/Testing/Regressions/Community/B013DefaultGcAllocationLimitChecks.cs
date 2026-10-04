@@ -12,6 +12,7 @@ internal sealed partial class UnattendedTestRunner
     // while never starting a No-GC region.
     private async Task AssertB013DefaultGcAllocationLimitAsync(CombatState combat, Player player)
     {
+        AssertRequiredPotionAuditSelectionAndTotals();
         const long budgetBytes = 1_000_000_000L;
         using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(60));
         await SearchGcPolicy.ReclaimIfPendingAsync(

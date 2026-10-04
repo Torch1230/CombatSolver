@@ -1,3 +1,4 @@
+using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
 using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Combat;
@@ -87,8 +88,9 @@ internal static class AfterSideTurnEndLateMirrors
     {
         Seal();
         if (Registry.Invoke(listener, context).Kind == MirrorDispatchKind.Unsupported)
-            throw new NotSupportedException(
-                $"No AfterSideTurnEndLate mirror is registered for {listener.GetType().FullName}.");
+            throw PredictionUnsupportedException.ForContent(
+                $"No AfterSideTurnEndLate mirror is registered for {listener.GetType().FullName}.",
+                listener.GetType());
     }
 
     private static Registry CreateRegistry()

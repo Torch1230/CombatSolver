@@ -16,6 +16,21 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertWaterfallIntentChangeAsync(CombatState combat, Player player)
+    {
+        await ClearOrderedEffectFixtureAsync(combat, player);
+        Creature enemy = combat.Enemies[0];
+        ConfigureMonsterMove(enemy, new() { MoveId = "RAM_MOVE" });
+        await CreatureCmd.SetCurrentHp(enemy, 2);
+        await InjectPowerAsync(combat, player, new() { PowerId = "STEAM_ERUPTION_POWER", Target = "Enemy", Amount = 20 });
+        await InjectCardAsync(combat, player, new() { CardId = "GO_FOR_THE_EYES", Pile = "Hand" });
+        await InjectCardAsync(combat, player, new() { CardId = "GO_FOR_THE_EYES", Pile = "Hand" });
+        var simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
+        simulator = await PlayLifecycleCardAsync(simulator, combat, player, FindActualHandCard(player, "GO_FOR_THE_EYES", 0));
+        await PlayLifecycleCardAsync(simulator, combat, player, FindActualHandCard(player, "GO_FOR_THE_EYES", 0));
+        _completedChecks.Add("WaterfallIntent:AttackToAboutToBlow:DamageBeforeWeak:NativeFullState:Fork");
+    }
+
     private async Task AssertFrozenLightningChannelsAsync(CombatState combat, Player player)
     {
         await ClearOrderedEffectFixtureAsync(combat, player);
@@ -30,30 +45,35 @@ internal sealed partial class UnattendedTestRunner
         _completedChecks.Add("FrozenLightning:RootBeforeNativeAdvance:ThreeBranchChannels:Voltaic:NativeFullState:Fork");
     }
 
-    private async Task<CombatPredictionSimulator> PlayLifecycleCardAsync(CombatPredictionSimulator simulator, CombatState combat, Player player, CardModel card, int targetIndex = 0)
+    private async Task<CombatPredictionSimulator> PlayLifecycleCardAsync(CombatPredictionSimulator simulator, CombatState combat, Player player, CardModel card, int targetIndex = 0, IReadOnlyList<string>? choiceCardIds = null)
     {
+        Creature comparisonTarget = combat.Enemies[0];
         string key = CardChoiceSupport.ChoiceCardKey(card);
         var predicted = simulator.State.GetPlayerCombatState(player).Hand.Cards
             .First(candidate => CardChoiceSupport.ChoiceCardKey(candidate) == key);
         var shadow = (SimulatedCombatState)simulator.State.CombatState;
         var target = card.TargetType == TargetType.AnyEnemy ? combat.Enemies[targetIndex] : null;
-        PlaySimulatedCard(simulator, shadow, predicted, target, combat.Enemies);
+        var choiceSpec = choiceCardIds == null ? null : CardChoiceSupport.GetSpec(simulator, predicted)!;
+        var choicePlan = choiceSpec == null ? null : CardChoiceSupport.BuildRequestedChoice(choiceSpec, choiceCardIds!);
+        PlaySimulatedCard(simulator, shadow, predicted, target, combat.Enemies, choiceCardIds);
         if (simulator.HasPendingChoice)
             throw new InvalidOperationException($"Lifecycle fixture requires a choice for {card.Id.Entry}.");
-        var expected = CaptureSimulated(simulator, shadow, player, combat.Enemies[0]);
+        var expected = CaptureSimulated(simulator, shadow, player, comparisonTarget);
+        using var session = NativeChoiceRuntime.Begin(combat, player, "test:lifecycle:" + card.Id.Entry);
+        session.SetPlanAndStartDriving(_host, choicePlan == null ? [] : [choicePlan], CancellationToken.None);
         GameAction native = await SolverController.EnqueueAndCaptureActionAsync(
             candidate => candidate is PlayCardAction play && ReferenceEquals(play.NetCombatCard.ToCardModelOrNull(), card),
             () =>
             {
                 if (!card.TryManualPlay(target)) throw new InvalidOperationException($"Native lifecycle card was refused: {card.Id.Entry}.");
             }, CancellationToken.None);
-        await native.CompletionTask;
+        await session.AwaitProducerAndCompleteAsync(native.CompletionTask);
         await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
-        var actual = CaptureActual(combat, player, combat.Enemies[0]);
+        var actual = CaptureActual(combat, player, comparisonTarget);
         _completedChecks.Add($"Lifecycle:{card.Id.Entry}:EnemyHp={expected.EnemyHp}/{actual.EnemyHp}:NativePlayPile={string.Join(',', player.PlayerCombatState!.PlayPile.Cards.Select(c => c.Id.Entry))}");
         AssertSnapshotEqual(expected, actual, _request.ScenarioId, card.Id.Entry);
         var fork = simulator.Fork();
-        AssertSnapshotEqual(expected, CaptureSimulated(fork, (SimulatedCombatState)fork.State.CombatState, player, combat.Enemies[0]),
+        AssertSnapshotEqual(expected, CaptureSimulated(fork, (SimulatedCombatState)fork.State.CombatState, player, comparisonTarget),
             _request.ScenarioId, "Fork");
         return fork;
     }
@@ -351,6 +371,82 @@ internal sealed partial class UnattendedTestRunner
         }
         finally { next.ReleaseSimulator(); }
         _completedChecks.Add("ReaperForm:Osty:Artifact:PenNib:MultiTargetDoom:TimesUp:RouteRisk13:NativeTurn:Fork");
+    }
+
+    private async Task AssertGroupDebuffRosterChangeAsync(CombatState combat, Player player)
+    {
+        await ClearOrderedEffectFixtureAsync(combat, player);
+        if (combat.Enemies.Count < 2 || player.Osty is null)
+            throw new InvalidOperationException("群体效果阵容变化夹具要求奥斯提与两名敌人。");
+        Creature first = combat.Enemies[0];
+        foreach (Creature enemy in combat.Enemies)
+        {
+            await CreatureCmd.SetMaxHp(enemy, 500);
+            await CreatureCmd.SetCurrentHp(enemy, 500);
+        }
+        await CreatureCmd.SetCurrentHp(first, 12);
+        await InjectPowerAsync(combat, player, new() { PowerId = "VICIOUS_POWER", Target = "Player", Amount = 2 });
+        await InjectPowerAsync(combat, player, new() { PowerId = "HELLRAISER_POWER", Target = "Player", Amount = 1 });
+        await InjectCardAsync(combat, player, new() { CardId = "HIGH_FIVE", Pile = "Hand" });
+        for (int i = 0; i < 4; i++)
+            await InjectCardAsync(combat, player, new() { CardId = "STRIKE_IRONCLAD", Pile = "Draw" });
+        CombatPredictionSimulator simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
+        SimulatedCombatState shadow = (SimulatedCombatState)simulator.State.CombatState;
+        CardModel source = FindActualHandCard(player, "HIGH_FIVE", 0);
+        shadow.SetEnemyIndex(first, 0);
+        // Enter the group command before any damage has materialized death phases.
+        System.Reflection.MethodInfo applyGroup = typeof(CorePowerSupport).GetMethod("ApplyAll",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
+            .MakeGenericMethod(typeof(MegaCrit.Sts2.Core.Models.Powers.VulnerablePower));
+        if ((bool)applyGroup.Invoke(null, [simulator, shadow, source, 2])! != true)
+            throw new InvalidOperationException("群体 Power 命令意外挂起选择。");
+        var expected = CaptureSimulated(simulator, shadow, player, first);
+        await PowerCmd.Apply<MegaCrit.Sts2.Core.Models.Powers.VulnerablePower>(
+            new BlockingPlayerChoiceContext(), combat.HittableEnemies, 2, player.Creature, source);
+        AssertSnapshotEqual(expected, CaptureActual(combat, player, first), _request.ScenarioId, "ApplyGroupVulnerable");
+        var fork = simulator.Fork();
+        AssertSnapshotEqual(expected, CaptureSimulated(fork, (SimulatedCombatState)fork.State.CombatState, player, first),
+            _request.ScenarioId, "Fork");
+        if (first.IsAlive)
+            throw new InvalidOperationException("群体效果夹具未在逐敌结算期间杀死第一个目标。");
+        _completedChecks.Add("GroupDebuff:RosterChange:ReactiveDraw:AutoPlayDeath:RemainingTarget:NativeFullState:Fork");
+    }
+
+    private async Task AssertBlockCardReactiveDamageAsync(CombatState combat, Player player)
+    {
+        foreach (var (id, upgrade) in new[] { ("IRON_WAVE", 0), ("IRON_WAVE", 1), ("ARMAMENTS", 1), ("TAUNT", 0) })
+        {
+            await ClearOrderedEffectFixtureAsync(combat, player);
+            await CreatureCmd.LoseBlock(new BlockingPlayerChoiceContext(), player.Creature, player.Creature.Block, null);
+            await CreatureCmd.GainBlock(player.Creature, 14, MegaCrit.Sts2.Core.ValueProps.ValueProp.Unpowered, null);
+            await InjectPowerAsync(combat, player, new() { PowerId = "THORNS_POWER", Target = "Enemy", Amount = 5 });
+            await InjectCardAsync(combat, player, new() { CardId = id, UpgradeLevels = upgrade, Pile = "Hand" });
+            await InjectCardAsync(combat, player, new() { CardId = "DEFEND_IRONCLAD", Pile = "Hand" });
+            CombatPredictionSimulator simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
+            await PlayLifecycleCardAsync(simulator, combat, player, FindActualHandCard(player, id, 0));
+        }
+        _completedChecks.Add("BlockCards:IronWaveThorns:ArmamentsUpgrade:Taunt:NativeFullState:Fork");
+    }
+
+    private async Task AssertDirgeReplayResourcesAsync(CombatState combat, Player player)
+    {
+        await ClearOrderedEffectFixtureAsync(combat, player);
+        await InjectPowerAsync(combat, player, new() { PowerId = "VITAL_SPARK_POWER", Target = "Enemy", Amount = 3 });
+        await InjectCardAsync(combat, player, new() { CardId = "DIRGE", UpgradeLevels = 1, Pile = "Hand" });
+        for (int index = 0; index < 8; index++)
+            await InjectCardAsync(combat, player, new() { CardId = "DEFEND_NECROBINDER", Pile = "Draw" });
+        CardModel dirge = FindActualHandCard(player, "DIRGE", 0);
+        bool transfigure = _request.ScenarioId == "DIRGE-TRANSFIGURE-X-RESOURCES";
+        if (transfigure)
+            await InjectCardAsync(combat, player, new() { CardId = "TRANSFIGURE", UpgradeLevels = 1, Pile = "Hand" });
+        else
+            dirge.BaseReplayCount = 1;
+        SetEnergy(player, transfigure ? 2 : 1);
+        CombatPredictionSimulator simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
+        if (transfigure)
+            simulator = await PlayLifecycleCardAsync(simulator, combat, player, FindActualHandCard(player, "TRANSFIGURE", 0), choiceCardIds: ["DIRGE"]);
+        await PlayLifecycleCardAsync(simulator, combat, player, dirge);
+        _completedChecks.Add("Dirge:EnergyX:Replay:UpgradedSouls:VitalSpark:OrderedDrawPile:ShuffleRng:NativeFullState:Fork");
     }
 
     private async Task AssertGroupDebuffReactiveDrawAsync(CombatState combat, Player player)

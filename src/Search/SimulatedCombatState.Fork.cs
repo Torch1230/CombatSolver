@@ -50,8 +50,6 @@ internal sealed partial class SimulatedCombatState
             _attackPlayStartsThisTurn = _attackPlayStartsThisTurn?.Fork(),
             _cardPlayStartsThisTurn = _cardPlayStartsThisTurn?.Fork(),
             _attackSkillStartsThisTurn = _attackSkillStartsThisTurn?.Fork(),
-            _enemiesIntendingAttack = _enemiesIntendingAttack?.Fork(),
-            _hasPredictedEnemyIntents = _hasPredictedEnemyIntents,
             _playerTurnNumbers = _playerTurnNumbers?.Fork(),
             _knowledgeDemonCurseCounters = _knowledgeDemonCurseCounters?.Fork(),
             _monsterAiStates = _monsterAiStates?.Fork(),

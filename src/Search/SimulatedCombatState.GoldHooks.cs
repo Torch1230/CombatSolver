@@ -32,13 +32,13 @@ internal sealed partial class SimulatedCombatState
 
     internal IEnumerable<AbstractModel> GoldAfterGainHookListeners(CombatPredictionSimulator simulator)
     {
-        foreach (Player player in _goldRunHookSnapshot.ActivePlayers)
-            if (simulator.State.GetCreature(player.Creature).CurrentHp <= 0)
-                throw new PredictionUnsupportedException("Gold callbacks for an inactive player require hook lifecycle modeling.");
         foreach (AbstractModel listener in _rootRunHookListeners)
-            yield return listener;
+            if (GoldHookOwnerIsActive(simulator, listener))
+                yield return listener;
         foreach (Player player in _goldRunHookSnapshot.ActivePlayers)
         {
+            if (!simulator.State.GetPlayerCombatState(player).HooksActive)
+                continue;
             foreach (RelicModel relic in RelicsOf(player))
                 if (!relic.IsMelted)
                     yield return relic;
@@ -50,5 +50,26 @@ internal sealed partial class SimulatedCombatState
             yield return listener;
         foreach (AbstractModel listener in _modHookSubscribers.RunSubscribers)
             yield return listener;
+    }
+
+    internal IEnumerable<AbstractModel> GoldModifierHookListeners(CombatPredictionSimulator simulator)
+    {
+        foreach (AbstractModel listener in ((ICombatPredictionHookListenerSource)this).RunHookListeners)
+            if (GoldHookOwnerIsActive(simulator, listener))
+                yield return listener;
+    }
+
+    private static bool GoldHookOwnerIsActive(CombatPredictionSimulator simulator, AbstractModel listener)
+    {
+        Player? owner = listener switch
+        {
+            CardModel card => card.Owner,
+            EnchantmentModel enchantment when enchantment.HasCard => enchantment.Card.Owner,
+            RelicModel relic => relic.Owner,
+            PotionModel potion => potion.Owner,
+            PowerModel power => power.Owner.Player,
+            _ => null,
+        };
+        return owner is null || simulator.State.GetPlayerCombatState(owner).HooksActive;
     }
 }

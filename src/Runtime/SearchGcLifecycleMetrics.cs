@@ -149,18 +149,18 @@ internal readonly record struct SearchGcPauseSnapshot(
     long FullBlockingIndex,
     long BackgroundIndex)
 {
-    public static SearchGcPauseSnapshot Capture()
-        => new(
-            GC.GetGCMemoryInfo(GCKind.Ephemeral).Index,
-            GC.GetGCMemoryInfo(GCKind.FullBlocking).Index,
-            GC.GetGCMemoryInfo(GCKind.Background).Index);
+    public static SearchGcPauseSnapshot? Capture()
+        => SearchGcRuntimeInfo.SupportsDetailedInfo ? new(
+            SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.Ephemeral).Index,
+            SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.FullBlocking).Index,
+            SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.Background).Index) : null;
 
     public TimeSpan ObserveMaximumSince()
     {
         TimeSpan maximum = TimeSpan.Zero;
-        Observe(GC.GetGCMemoryInfo(GCKind.Ephemeral), EphemeralIndex, ref maximum);
-        Observe(GC.GetGCMemoryInfo(GCKind.FullBlocking), FullBlockingIndex, ref maximum);
-        Observe(GC.GetGCMemoryInfo(GCKind.Background), BackgroundIndex, ref maximum);
+        Observe(SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.Ephemeral), EphemeralIndex, ref maximum);
+        Observe(SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.FullBlocking), FullBlockingIndex, ref maximum);
+        Observe(SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.Background), BackgroundIndex, ref maximum);
         return maximum;
     }
 
@@ -185,5 +185,45 @@ internal readonly record struct SearchGcPauseSnapshot(
                 maximum = pause;
         }
         return maximum;
+    }
+}
+
+internal static class SearchGcRuntimeInfo
+{
+    private static readonly DetailedInfoProvider NativeProvider = new(GC.GetGCMemoryInfo);
+    private static DetailedInfoProvider _provider = NativeProvider;
+
+    internal static bool SupportsDetailedInfo => Volatile.Read(ref _provider).Supported;
+
+    internal static GCMemoryInfo GetDetailedMemoryInfo(GCKind kind)
+        => Volatile.Read(ref _provider).Read(kind);
+
+    internal static string FormatPauseDelta(TimeSpan before)
+        => SupportsDetailedInfo
+            ? (GC.GetTotalPauseDuration() - before).TotalMilliseconds.ToString("F1")
+            : "unavailable";
+
+    internal static void SetDetailedReaderForTesting(Func<GCKind, GCMemoryInfo>? reader)
+        => Volatile.Write(ref _provider, reader is null ? NativeProvider : new(reader));
+
+    private sealed class DetailedInfoProvider
+    {
+        internal Func<GCKind, GCMemoryInfo> Read { get; }
+        internal bool Supported { get; }
+
+        internal DetailedInfoProvider(Func<GCKind, GCMemoryInfo> reader)
+        {
+            Read = reader;
+            try
+            {
+                foreach (GCKind kind in new[] { GCKind.Ephemeral, GCKind.FullBlocking, GCKind.Background })
+                    _ = reader(kind);
+                Supported = true;
+            }
+            catch (PlatformNotSupportedException)
+            {
+                Supported = false;
+            }
+        }
     }
 }

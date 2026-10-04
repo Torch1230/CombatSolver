@@ -1,5 +1,11 @@
 # GC 与并发决策检查
 
+`portable-runtime` 注入 .NET 9 Mono 按类型查询 GC 信息时的 `PlatformNotSupportedException`，直接执行生产回收路径。5 项合同覆盖检测后 API 不再调用、默认 GC 检查点及不可分割提交续行、取消后完整回收和准入释放、自动及手动阻塞回收、暂停观测不可用以及其他异常继续传播；共享 20 秒截止时间。实际回收使用本机 CLR，Android 原机执行仍须单独验证。
+
+```bash
+dotnet run --project tools/testing/checks/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- portable-runtime
+```
+
 `default-entry` 在默认 GC 的限额和入口诊断各注入一次异常，断言原异常传播、压力信号释放以及下一次独占搜索准入；每项最多 12 秒。实际回收续搜由 `B013-DEFAULT-GC-LIMIT` 原生合同覆盖。
 
 `default-commit` 通过真实 CLR 验证普通 GC 请求的回收与不可分割提交：常规检查点刷新限额，显式退出后由 CLR 接管分配，下一请求重新建立限额；取消保留当前准入。每项最多 15 秒。

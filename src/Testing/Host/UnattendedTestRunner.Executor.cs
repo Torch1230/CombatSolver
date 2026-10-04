@@ -149,6 +149,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertRouteRowReuseAndMeasureAsync();
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "DEPLOYMENT-PRESENTATION-TURN")
+            {
+                runner.AssertDeploymentPresentationTurn();
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "ORBIT-SEARCH-QUALITY" or "ORBIT-SEARCH-QUALITY-SHORT" or "ORBIT-SEARCH-QUALITY-DEPLOY"
                 or "AUTOMATION-SEARCH-QUALITY" or "AUTOMATION-SEARCH-QUALITY-SHORT" or "AUTOMATION-SEARCH-QUALITY-DEPLOY")
             {
@@ -234,6 +239,11 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId == "ORB-VALUE-NATIVE-HOOK-ESCAPE")
             {
                 await runner.AssertOrbValueStaysOffNativeHookAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "PLASMA-TURN-START-PASSIVES")
+            {
+                await runner.AssertPlasmaTurnStartPassivesAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "FIXED-PREFIX-TURN-LOSS")
@@ -376,6 +386,17 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId == "THIRD-PARTY-CALCULATED-FAILURE")
             {
                 runner.AssertThirdPartyCalculatedFailure(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "CONTENT-MOD-FAILURES")
+            {
+                runner.AssertThirdPartyCalculatedFailure(combatState, player);
+                runner.AssertContentModFailures(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "ROOT-CONTENT-SOURCES")
+            {
+                await runner.AssertRootContentSourcesAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "LAMP-INDIRECT-POISON")
@@ -816,7 +837,7 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add(request.ScenarioId);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId == "VOID-FORM-TURN-CHOICES")
+            if (request.ScenarioId is "VOID-FORM-TURN-CHOICES" or "VOID-FORM-ENEMY-CHOICES" or "VOID-FORM-DEPLOY-CHOICES")
             {
                 await runner.AssertVoidFormTurnChoicesAsync(combatState, player);
                 return Observation(combatEnded: false);
@@ -826,9 +847,14 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertRouteAdoptionLifetimeAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId == "RADIANT-PEARL-ENTRY")
+            if (request.ScenarioId is "RADIANT-PEARL-ENTRY" or "NINJA-SCROLL-ENTRY")
             {
                 await runner.AssertRadiantPearlEntryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "TURN-RESOURCE-HOOK-ISOLATION")
+            {
+                await runner.AssertTurnResourceHookIsolationAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "SEEKER-ORDERED-OPTIONS")
@@ -894,6 +920,36 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId == "CONSTRUCT-REAPER-ARTIFACT")
             {
                 await runner.AssertConstructReaperArtifactAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "GROUP-DEBUFF-ROSTER-CHANGE")
+            {
+                await runner.AssertGroupDebuffRosterChangeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "BLOCK-CARD-REACTIVE-DAMAGE")
+            {
+                await runner.AssertBlockCardReactiveDamageAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "DIRGE-REPLAY-X-RESOURCES" or "DIRGE-TRANSFIGURE-X-RESOURCES")
+            {
+                await runner.AssertDirgeReplayResourcesAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId is "TURN-SETUP-DELAYED-ENERGY" or "PAELS-EYE-AUTOPOST-ORDER")
+            {
+                await runner.AssertTurnBoundaryOrderAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "WATERFALL-ATTACK-INTENT-CHANGE")
+            {
+                await runner.AssertWaterfallIntentChangeAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "GOLD-INACTIVE-LIFECYCLE")
+            {
+                await runner.AssertGoldInactiveLifecycleAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "GROUP-DEBUFF-REACTIVE-DRAW")

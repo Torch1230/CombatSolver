@@ -16,7 +16,7 @@ internal sealed partial class UnattendedTestRunner
 {
     private static void AssertKnownGameplayModBoundary()
     {
-        foreach (string modId in new[] { "WheelchairSpire", "PengoTarot", "BetterCharacterRelics" })
+        foreach (string modId in new[] { "WheelchairSpire", "PengoTarot", "BetterCharacterRelics", "BetterVanillaSTS2" })
             AssertKnownGameplayModBoundary(modId);
         PredictionModPatchAudit.ValidateLoadedMods([]);
     }
@@ -101,9 +101,29 @@ internal sealed partial class UnattendedTestRunner
             AssemblyInfo.MockTypes[typeof(ForeignCardPatch)] = (mod, false);
             harmony.Unpatch(method, prefix);
             _ = CombatRootSnapshot.Capture(combat);
+            var stateMachine = method.GetCustomAttributes(typeof(System.Runtime.CompilerServices.AsyncStateMachineAttribute), false)
+                .Cast<System.Runtime.CompilerServices.AsyncStateMachineAttribute>().Single().StateMachineType;
+            var moveNext = AccessTools.Method(stateMachine, "MoveNext");
+            harmony.Patch(moveNext, prefix: new HarmonyMethod(prefix));
+            try
+            {
+                try
+                {
+                    _ = CombatRootSnapshot.Capture(combat);
+                    throw new InvalidOperationException("异步 OnPlay 玩法补丁没有被拒绝。");
+                }
+                catch (IncompatibleGameplayModException ex)
+                {
+                    if (ex.ModId != manifest.id || !ex.Subject.Contains("MoveNext", StringComparison.Ordinal))
+                        throw new InvalidOperationException("异步补丁失败缺少来源上下文。", ex);
+                }
+                manifest.affectsGameplay = false;
+                _ = CombatRootSnapshot.Capture(combat);
+            }
+            finally { harmony.Unpatch(moveNext, prefix); manifest.affectsGameplay = true; }
             if (ContinuationStamp.CaptureLive(combat) != before)
                 throw new InvalidOperationException("补丁审计修改了真实战斗状态。");
-            _completedChecks.Add("ForeignOnPlay:LatePatch:Neutral:Unknown:Unpatch:RootUnchanged");
+            _completedChecks.Add("ForeignOnPlay:LatePatch:AsyncMoveNext:Neutral:Unknown:Unpatch:RootUnchanged");
         }
         finally
         {

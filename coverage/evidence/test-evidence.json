@@ -1,4 +1,52 @@
 {
+  "NINJA-SCROLL-ENTRY": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndFork",
+    "procedure": "SILENT / CHOMPERS_NORMAL，首回合 BeforeHandDraw，冻结有序手牌与生成历史，再调用原生 Hook。",
+    "expected": "生成三张 SHIV，父、Fork 与原生完整状态一致。",
+    "observed": "6c835c4da43e4431ac2f3546816082d6 Failed，预测缺三张 SHIV；b499bf8ad45f4553adf8273f73b47415 Passed。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.49.1-hardbugs-20261004.md"
+  },
+  "PAELS-EYE-AUTOPOST-ORDER": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndFork",
+    "procedure": "IRONCLAD / CHOMPERS_NORMAL，PAELS_EYE、手牌 HOWL_FROM_BEYOND、原生结束回合推进至下一回合。",
+    "expected": "自动出牌先于手牌消耗，额外回合、牌序、HP、历史和 RNG 一致。",
+    "observed": "c2d7d24da6644641b732ad4c3e24c79d Failed，敌 HP46/64；27c50a41c69b41e9a0d38cf2cafc22b1 Passed，20.252秒。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.49.1-hardbugs-20261004.md"
+  },
+  "WATERFALL-ATTACK-INTENT-CHANGE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndFork",
+    "procedure": "DEFECT / WATERFALL_GIANT_BOSS，击败触发 ABOUT_TO_BLOW_MOVE 后再打一张 GO_FOR_THE_EYES。",
+    "expected": "攻击意图随分支行动即时变化，第二张牌的虚弱、完整状态与 Fork 对账。",
+    "observed": "eca3bee2645347609e5766d4cbfdfe12 Failed，多算 WEAK_POWER；a9e4e1c1eb674ef6b4c0a4f80a1cc1f7 Passed，19.750秒。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardInstanceLifecycles.cs; docs/issues/0.49.1-hardbugs-20261004.md"
+  },
+  "TURN-SETUP-DELAYED-ENERGY": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndFork",
+    "procedure": "第5回合准备根保留 ENERGY_NEXT_TURN_POWER，模拟准备阶段后调用原生 SetupPlayerTurn。",
+    "expected": "延迟能量只消费一次，完整状态和 Fork 一致。",
+    "observed": "b1a48fdde4bd4c9092ed2061dbbcce4e Failed，energy3/4；4f924c933fe7479f90639cf7042b55bf Passed，20.110秒。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.49.1-hardbugs-20261004.md"
+  },
+  "VOID-FORM-DEPLOY-CHOICES": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndIncrementalReplay",
+    "procedure": "REGENT / KNOWLEDGE_DEMON_BOSS，VoidForm固定前缀、1500毫秒和120节点短搜、增量验证，调用生产当前回合部署。",
+    "expected": "动作会话消费玩家结束／敌方选择，下一回合独立接管，完整原生状态及计划外重算计数保持。",
+    "observed": "99a04b583d884957a1670e4364e90587 复现卡牌完成后残留敌方选择；b381e23086ed44c5b62372ca275fecb0 Passed，23.097秒。",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/issues/0.49.1-hardbugs-20261004.md"
+  },
+  "ROOT-CONTENT-SOURCES": {
+    "status": "Passed",
+    "level": "HeadlessNativeInterfaceAndSourceContract",
+    "procedure": "原生缩小甲虫、实际来源映射与 Harmony 测试补丁；Owner依赖的规范／附着 Power、怪物、意图构造器、AI补丁及选牌重叠。",
+    "expected": "内容来源清楚，原 pending保持，实际附着实例物化，eng/zhs/zht 和失败账本不要求内容日志上传。",
+    "observed": "52c013fae2154e78a3da258d36d0745e Passed，23.006秒；包含空选牌操作保持原pending。第三方原包整场和缩小甲虫具体失效引用未验证；H11原版检查点恢复与短搜结果见逐类记录。",
+    "evidence": "src/Testing/Contracts/ThirdParty/UnattendedTestRunner.ContentModFailures.cs; docs/issues/0.49.1-hardbugs-20261004.md"
+  },
   "CASCADE-EMPTY-HAND-NATIVE": {
     "status": "Passed",
     "level": "HeadlessNativeFullStateDifferentialAndExecutionContinuation",

@@ -55,21 +55,11 @@ internal static class CorePowerSupport
         }
         combat.ResolveMonologues(owner, pendingMonologues);
         combat.SynchronizePanacheState(simulator, owner);
-        if (card is Armaments or IronWave or Taunt)
+        if (card is Armaments && card.IsUpgraded)
         {
-            SimCreatureState ownerState = simulator.State.GetCreature(owner);
-            if (ownerState.Block <= ownerBlockBefore)
-            {
-                simulator.GainBlock(owner, card.DynamicVars.Block, playedCard, cardPlay);
-                if (simulator.HasPendingChoice)
-                    return false;
-            }
-            if (card is Armaments && card.IsUpgraded)
-            {
-                SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(card.Owner);
-                foreach (PredictedCard handCard in playerState.Hand.Cards.Where(item => item.Preview.IsUpgradable))
-                    handCard.Upgrade();
-            }
+            SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(card.Owner);
+            foreach (PredictedCard handCard in playerState.Hand.Cards.Where(item => item.Preview.IsUpgradable))
+                handCard.Upgrade();
         }
         switch (card)
         {
@@ -745,7 +735,8 @@ internal static class CorePowerSupport
     private static bool ApplyAll<T>(CombatPredictionSimulator simulator, SimulatedCombatState combat, CardModel card, int amount)
         where T : PowerModel
     {
-        foreach (Creature enemy in combat.HittableEnemies)
+        Creature[] targets = combat.HittableEnemies.ToArray();
+        foreach (Creature enemy in targets)
         {
             combat.Apply<T>(enemy, amount, card.Owner.Creature);
             PowerLifecycleSupport.ResolvePowerAmountChanges(simulator, combat);

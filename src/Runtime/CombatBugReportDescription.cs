@@ -71,7 +71,7 @@ internal sealed class CombatBugReportIssueLedger
             Record(CombatBugReportIssueKind.PotionPolicyUnsatisfied, detail);
         if (failure is TimeoutException)
             Record(CombatBugReportIssueKind.TimeoutFailure, detail);
-        if (failure is NotSupportedException and not IncompatibleGameplayModException)
+        if (failure is NotSupportedException and not PlatformNotSupportedException)
             Record(CombatBugReportIssueKind.UnsupportedCombatSemantic, detail);
         if (IsUnexpectedChoiceFailure(failure.Message))
             Record(CombatBugReportIssueKind.UnexpectedChoice, detail);
@@ -220,7 +220,7 @@ internal static class CombatBugReportDescription
             CombatBugReportIssueKind.ManualHpLossIncreased => "手操后预计战损上升",
             CombatBugReportIssueKind.RecalculationHpLossIncreased => "重算后预计战损上升",
             CombatBugReportIssueKind.SearchSetupFailure => "搜索初始化失败",
-            CombatBugReportIssueKind.IncompatibleGameplayMod => "第三方 Mod 不兼容",
+            CombatBugReportIssueKind.IncompatibleGameplayMod => "内容性 Mod 暂未适配",
             CombatBugReportIssueKind.SearchFailure => "计算失败",
             CombatBugReportIssueKind.SearchActionReplayFailure => "搜索动作回放失败",
             CombatBugReportIssueKind.SearchCapacityFailure => "搜索内存或容量错误",

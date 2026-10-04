@@ -1570,7 +1570,7 @@ $rootModelBoundaryChecks = @(
     },
     @{
         Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"
-        Text = "Root intent state was not captured"
+        Text = "GetMonsterAiState(enemy).Current.Intents"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Prediction\MonsterMoveEffects.StaticValues.cs"

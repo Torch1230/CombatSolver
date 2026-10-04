@@ -1116,7 +1116,7 @@ internal static partial class CombatSearchCoordinator
             // Retain that completed work in request totals even when cancellation then unwinds.
             stopwatch.Stop();
             TimeSpan gcPause = GC.GetTotalPauseDuration() - pauseBefore;
-            TimeSpan maxObservedGcPause = signal.LastReclaimMaxObservedGcPause;
+            TimeSpan? maxObservedGcPause = signal.LastReclaimMaxObservedGcPause;
             long allocatedBytes = Math.Max(
                 0,
                 GC.GetAllocatedBytesForCurrentThread() - allocatedBefore);
@@ -1130,8 +1130,8 @@ internal static partial class CombatSearchCoordinator
             totalsCarrier.TotalGen1Collections += gen1Collections;
             totalsCarrier.TotalGen2Collections += gen2Collections;
             totalsCarrier.TotalGcPauseDuration += gcPause;
-            if (maxObservedGcPause > totalsCarrier.TotalMaxObservedGcPause)
-                totalsCarrier.TotalMaxObservedGcPause = maxObservedGcPause;
+            if (maxObservedGcPause is { } observedPause && observedPause > totalsCarrier.TotalMaxObservedGcPause)
+                totalsCarrier.TotalMaxObservedGcPause = observedPause;
             totalsCarrier.TotalSearchElapsed += stopwatch.Elapsed;
             context.Budget.WorkTotals.RecordCoordinatorOverhead(
                 stopwatch.Elapsed,
@@ -1148,7 +1148,7 @@ internal static partial class CombatSearchCoordinator
                 $"allocated_before={pressureBefore} limit_before={limitBefore} " +
                 $"allocated_after={signal.AllocatedBytes} limit_after={signal.AllocationLimitBytes} " +
                 $"gc_pause_ms={gcPause.TotalMilliseconds:F1} " +
-                $"max_observed_gc_pause_ms={maxObservedGcPause.TotalMilliseconds:F1} " +
+                $"max_observed_gc_pause_ms={maxObservedGcPause?.TotalMilliseconds.ToString("F1") ?? "unavailable"} " +
                 signal.CaptureGcLifecycle().DeltaFrom(lifecycleBefore).ToDiagnosticString() + " " +
                 $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
                 $"canceled={cancellationToken.IsCancellationRequested.ToString().ToLowerInvariant()}");

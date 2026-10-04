@@ -6,6 +6,34 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private void AssertDeploymentPresentationTurn()
+    {
+        SolverOverlayTurnSnapshot first = ProbeRoute() with { Turn = 1 };
+        SolverOverlayActionSnapshot action = first.Actions[0];
+        first = first with { Actions = [action, action, action, action] };
+        SolverOverlaySnapshot Snapshot(SolverOverlayTurnSnapshot turn)
+            => new(turn.Turn, "Ready", SolverOverlayTone.Success, "", "", 0, 0, true, "0 HP", 0, 0,
+                false, [turn], "", false, null);
+        SolverOverlay.ShowResult(_host, Snapshot(first));
+        SolverOverlay.ShowDeploying(_host, 1, 4);
+        SolverOverlayTurnSnapshot second = first with { Turn = 2, Actions = [action] };
+        SolverOverlay.ShowResult(_host, Snapshot(second));
+        SolverOverlay.ShowDeploymentStep(1, 4, 4, null);
+        SolverOverlay.ShowDeploymentComplete(_host, 1, 4, endedTurn: true);
+        if (SolverOverlay.CurrentSnapshotTurnForTesting != 2
+            || SolverOverlay.PresentationForTesting != SolverOverlayPresentation.Ready)
+            throw new InvalidOperationException("Previous-turn completion changed the new ready route.");
+        SolverOverlay.ShowDeploying(_host, 2, 1);
+        SolverOverlay.ShowDeploymentStep(1, 4, 4, null);
+        SolverOverlay.ShowDeploymentComplete(_host, 1, 4, endedTurn: true);
+        if (SolverOverlay.PresentationForTesting != SolverOverlayPresentation.Deploying)
+            throw new InvalidOperationException("Previous-turn completion changed the new deployment.");
+        SolverOverlay.ShowDeploymentComplete(_host, 2, 1, endedTurn: true);
+        if (SolverOverlay.PresentationForTesting != SolverOverlayPresentation.ExecutedHistory)
+            throw new InvalidOperationException("Current-turn completion did not update the route.");
+        _completedChecks.Add("DeploymentPresentation:FourActionsToOne:NewReadyRoute:NewDeployment:MatchingCompletion");
+    }
+
     private async Task AssertRouteRowReuseAndMeasureAsync()
     {
         await AssertRouteRowReuseAsync();

@@ -105,6 +105,15 @@ internal sealed partial class UnattendedTestRunner
                 $" elapsed={withCoordinatorOverhead.Elapsed}" +
                 $" allocated={withCoordinatorOverhead.WorkerAllocatedBytes}。");
         }
+
+        requestTotals.RecordCoordinatorOverhead(TimeSpan.FromTicks(5), 7, 0, 0, 1,
+            TimeSpan.Zero, maxObservedGcPause: null);
+        SearchRequestWorkSnapshot withoutPauseSample = requestTotals.Snapshot();
+        if (withoutPauseSample.Elapsed != TimeSpan.FromTicks(27)
+            || withoutPauseSample.WorkerAllocatedBytes != 30
+            || withoutPauseSample.Gen2Collections != 13
+            || withoutPauseSample.MaxObservedGcPause != TimeSpan.FromTicks(23))
+            throw new InvalidOperationException("暂停统计不可用时仍须保留实际工作量及已有最大暂停。");
     }
 
     private static async Task AssertInProgressCanceledExactLayerWorkRecordedOnceAsync(

@@ -88,7 +88,7 @@
   "计算失败": "Search failed",
   "自动执行中止": "Execution aborted",
   "回合准备选牌失败": "Turn-start choice failed",
-  "检测到不兼容的第三方 Mod：{0}。建议卸载该 Mod 并重启游戏后再使用求解器。": "Incompatible gameplay mod: {0}. Remove it and restart the game before using the solver.",
+  "求解器暂未适配此内容性 Mod：{0}，无法求解。": "The solver does not yet support this content mod: {0}. This combat cannot be solved.",
   "请在设置中点击“上传问题包”提交日志。": "Open Settings > Upload report to submit your logs. ",
   "请先在设置中点击“上传问题包”提交日志，再将“搜索并行度”改为“关闭（单线程）”后重试。": "First upload a report in Settings. Then set Search parallelism to Off (one thread) and retry.",
   "问题描述（选填，最多 {0} 字）": "Description (optional, up to {0} characters)",

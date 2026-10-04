@@ -33,6 +33,7 @@ JSONL 每行包含 Time（UTC 毫秒）、Level、Message。ROUTE_REPLAY 给出 
 - `playerDescription` 只包含玩家文字，最多 4000 字符。联系方式只在表单 `contact` 中传输，最多 64 字符；不写入问题包设置或 report.json。
 - `combat`：sessionId、encounterId/encounterName/encounterType、characterId/characterName、monsters（去重的 id/name）、ascension、act（从 1 开始）、floor、controlMode。主线程随取证冻结，怪物集合保留这场战斗已观察到的种类；战后导出使用这场战斗的缓存。没有战斗为 null。
 - `classification`：状态不一致、执行漂移、续接缺失、计划耗尽、手操偏离的重算次数，以及带 kind/count/detail 的异常列表。计划外重算 = 状态不一致 + 执行漂移。
+- 失败入口确认模型来自尚未适配的内容 Mod 时，分类只记 `IncompatibleGameplayMod`，detail 保存 Mod 名称及 ID；弹窗显示暂未适配并停止求解，这个类别不触发上传提醒。原版或来源未知的未支持效果继续记录 `UnsupportedCombatSemantic` 并提示上传。`PlatformNotSupportedException` 记录主失败类别，保留上传提醒。
 - `manualProjectionComparison` 保留比较前后检查点身份、回合、预测总战损与整场预计总用药（已喝与后续计划之和）。`hpLoss.kind=manual_projection`，before/after 为这次比较的预测总战损；`reduction=before-after`，正数下降、负数上升、0 相等。`additionalPotionCount=max(0,当前预计总用药−原预计总用药)`，`potionHpCost=additionalPotionCount×9`，`potionAdjustedHpReduction=reduction−potionHpCost`。原预测战损下降且折算优化量≥0时，才记录 BetterWorldline 并显示反馈提示；多用一瓶药省8 HP不提示，省9 HP提示。原路线计划喝的药不重复收费。日志的 `additional_potion_count`、`potion_hp_cost`、`potion_adjusted_hp_reduction` 与元数据一致；省血不足用药成本时记录 `MANUAL_ROUTE_POTION_TRADE`。比较表示最近一次手操前后预测，不是实测战损或最大历史改善；无比较时 hpLoss 为 null，旧包缺少用药差字段时保持未知。
 - `bundle` 声明包结构版本及 `checkpointIndexPath=replay/checkpoint.json`。元数据筛选与恢复成功是不同概念，是否能恢复须由回放工具验证。
 

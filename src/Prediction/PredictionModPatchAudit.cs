@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using CombatSolver.Engine.Common;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -21,7 +22,7 @@ namespace CombatSolver;
 /// </remarks>
 internal static class PredictionModPatchAudit
 {
-    private static readonly string[] IncompatibleModIds = ["WheelchairSpire", "PengoTarot", "BetterCharacterRelics"];
+    private static readonly string[] IncompatibleModIds = ["WheelchairSpire", "PengoTarot", "BetterCharacterRelics", "BetterVanillaSTS2"];
 
     internal readonly record struct ForeignPatch(string ModId, string ModName, string Description);
 
@@ -100,6 +101,18 @@ internal static class PredictionModPatchAudit
                     ForeignPatch? foreign = TryDescribeForeignPatch(patch, target);
                     firstForeign ??= foreign;
                 }
+        if (target.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType is { } stateMachine)
+        {
+            MethodInfo moveNext = AccessTools.Method(stateMachine, "MoveNext")
+                ?? throw new PredictionUnsupportedException($"Async OnPlay state machine has no MoveNext: {type.FullName}.");
+            if (Harmony.GetPatchInfo(moveNext) is { } asyncPatches)
+                foreach (var group in AdaptedCardOnPlayMirrors.Groups(asyncPatches))
+                    foreach (Patch patch in group.Patches)
+                    {
+                        if (TryDescribeForeignPatch(patch, moveNext) is not { } foreign) continue;
+                        throw new IncompatibleGameplayModException(foreign.ModId, foreign.ModName, foreign.Description, "combat");
+                    }
+        }
         return adapted ? AdaptedCardOnPlayMirrors.Select(type, target, patches) : null;
     }
 
@@ -121,7 +134,29 @@ internal static class PredictionModPatchAudit
         }
     }
 
-    private static ForeignPatch? TryDescribeForeignPatch(Patch patch, MethodInfo target)
+    internal static void ValidateMonsterModels(IEnumerable<MonsterModel> monsters)
+    {
+        foreach (MonsterModel monster in monsters)
+        {
+            _ = AssemblyInfo.ModForType(monster.GetType(), out bool isBaseGame);
+            if (!isBaseGame)
+                throw PredictionUnsupportedException.ForContent(
+                    $"Monster AI and move effects require a prediction implementation: {monster.GetType().FullName}.", monster.GetType());
+            RejectForeignPatches([AccessTools.Method(monster.GetType(), "GenerateMoveStateMachine")]);
+        }
+    }
+
+    internal static void RejectForeignPatches(IEnumerable<MethodBase> methods)
+    {
+        foreach (MethodBase target in methods.Distinct())
+            if (Harmony.GetPatchInfo(target) is { } patches)
+                foreach (var group in AdaptedCardOnPlayMirrors.Groups(patches))
+                    foreach (Patch patch in group.Patches)
+                        if (TryDescribeForeignPatch(patch, target) is { } foreign)
+                            throw new IncompatibleGameplayModException(foreign.ModId, foreign.ModName, foreign.Description, "combat");
+    }
+
+    private static ForeignPatch? TryDescribeForeignPatch(Patch patch, MethodBase target)
     {
         Type? patchType = patch.PatchMethod.DeclaringType;
         if (patchType == null)

@@ -1390,7 +1390,7 @@ internal static partial class SolverController
 
     private static string FormatIncompatibleModFailure(IncompatibleGameplayModException incompatible)
         => $"[color={SolverUiTokens.Palette.DangerHex}]" +
-           SolverText.Format($"检测到不兼容的第三方 Mod：{EscapeRichText(incompatible.PlayerFacingModName)}。建议卸载该 Mod 并重启游戏后再使用求解器。") + "[/color]";
+           SolverText.Format($"求解器暂未适配此内容性 Mod：{EscapeRichText(incompatible.PlayerFacingModName)}，无法求解。") + "[/color]";
 
     internal static string FormatSearchFailureForTesting(
         Exception exception,
@@ -2802,6 +2802,40 @@ internal static partial class SolverController
         TaskHelper.RunSafely(deploymentTask);
     }
 
+    internal static List<PlanCardChoice> CaptureDeploymentActionChoices(PlanAction action)
+        => [.. action.GetActionChoicesInExecutionOrder()];
+
+    internal static async Task DeployResolvedTurnForTesting(NGame host, CombatState state, SolverResult result)
+    {
+        AssertMainThread();
+        if (!UnattendedTestRunner.IsActive || _deployment != null)
+            throw new InvalidOperationException("Resolved-turn deployment requires an idle unattended request.");
+        SolverOverlay.ShowResult(host, SolverOverlaySnapshot.CaptureWithReviewedWorldlines(result, false, 0));
+        int count = result.BestNode.Actions.Count(action => action.Turn == result.StartTurnNumber && action.IsExecutable);
+        SolverOverlay.ShowDeploying(host, result.StartTurnNumber, count);
+        SolverDeploymentSession deployment = new() { State = state, StartTurnNumber = result.StartTurnNumber };
+        _deployment = deployment;
+        deployment.Operation = DeployCurrentTurn(host, state, result, SolverSettings.Capture(), deployment, deployment.Cancellation.Token);
+        await deployment.Operation;
+    }
+
+    internal static PlanCardChoice[] CaptureDeploymentEndTurnChoices(PlanAction action)
+        => action.TurnStartChoices?.Where(choice =>
+            choice.Timing is PlanChoiceTiming.PlayerTurnEnd or PlanChoiceTiming.EnemyTurn).ToArray() ?? [];
+
+    internal static async Task AwaitDeploymentActionChoicesAsync(NativeChoiceSession session, Task actionCompletion,
+        int endTurnChoiceCount, CancellationToken token)
+    {
+        if (endTurnChoiceCount == 0)
+        {
+            await session.AwaitProducerAndCompleteAsync(actionCompletion);
+            return;
+        }
+        await session.AwaitPhaseAsync(actionCompletion);
+        await session.WaitForAllPlansConsumedAsync(token);
+        await session.CompleteAndDetachAsync();
+    }
+
     private static async Task DeployCurrentTurn(
         NGame host,
         CombatState state,
@@ -2843,16 +2877,10 @@ internal static partial class SolverController
                 string actionTitle = action.Kind == PlanActionKind.UsePotion
                     ? SolverUiModelNames.Potion(action.PotionId, action.PotionTitle)
                     : SolverUiModelNames.Card(action.CardId, action.CardUpgradeLevel, action.CardTitle);
-                SolverOverlay.ShowDeploymentStep(actionIndex, actions.Count, actionTitle);
-                List<PlanCardChoice> actionChoices = [.. action.GetActionChoicesInExecutionOrder()];
-                // A card can advance the turn directly or through a nested auto-play, so its
-                // next-turn choices belong to this native UI session.
-                if (action.EndsPlayerTurn && action.TurnStartChoices is { Count: > 0 })
-                {
-                    // Keep the session open through the enemy turn so Knowledge Demon's
-                    // Choose A Card page is driven by the same planned sequence.
-                    actionChoices.AddRange(action.TurnStartChoices);
-                }
+                SolverOverlay.ShowDeploymentStep(turn, actionIndex, actions.Count, actionTitle);
+                List<PlanCardChoice> actionChoices = CaptureDeploymentActionChoices(action);
+                PlanCardChoice[] phaseChoices = CaptureDeploymentEndTurnChoices(action);
+                actionChoices.AddRange(phaseChoices);
                 if (actionChoices.Count > 0)
                 {
                     Entry.Logger.Info(
@@ -2867,7 +2895,8 @@ internal static partial class SolverController
                     state,
                     player,
                     $"deployment:{turn}:{actionIndex}:{action.CardId ?? action.PotionId}");
-                choiceSession.SetPlanAndStartDriving(host, actionChoices, token);
+                choiceSession.SetPlanAndStartDriving(host, actionChoices, token,
+                    detachOnLastSelection: phaseChoices.Length > 0);
                 long actionStartedAt = measureDeploymentTiming
                     ? Stopwatch.GetTimestamp()
                     : 0;
@@ -2954,7 +2983,7 @@ internal static partial class SolverController
                 }
                 try
                 {
-                    await choiceSession.AwaitProducerAndCompleteAsync(actionCompletion);
+                    await AwaitDeploymentActionChoicesAsync(choiceSession, actionCompletion, phaseChoices.Length, token);
                     RunStatistics.Activity(state, execution: true, auto: _combat.FullAutoEnabled);
                 }
                 catch (NativeChoicePlanMismatchException)
@@ -2989,7 +3018,7 @@ internal static partial class SolverController
                         $"powers={string.Join(',', player.Creature.Powers.Select(power =>
                             $"{power.Id.Entry}:{power.Amount}/{power.AmountOnTurnStart}"))}");
                 }
-                SolverOverlay.ShowDeploymentStep(actionIndex + 1, actions.Count, null);
+                SolverOverlay.ShowDeploymentStep(turn, actionIndex + 1, actions.Count, null);
                 await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
                 if (actionIndex + 1 < actions.Count
                     && deploymentSettings.DeploymentInterActionDelaySeconds > 0d)
@@ -3056,9 +3085,7 @@ internal static partial class SolverController
                 SolverOverlay.ShowEndTurnDeploymentStep();
                 await host.ToSignal(host.GetTree(), SceneTree.SignalName.ProcessFrame);
                 token.ThrowIfCancellationRequested();
-                PlanCardChoice[] endTurnChoices = plannedEndTurn.TurnStartChoices?
-                    .Where(choice => choice.Timing is PlanChoiceTiming.PlayerTurnEnd or PlanChoiceTiming.EnemyTurn)
-                    .ToArray() ?? [];
+                PlanCardChoice[] endTurnChoices = CaptureDeploymentEndTurnChoices(plannedEndTurn);
                 if (endTurnChoices.Length > 0)
                 {
                     Entry.Logger.Info(
@@ -3068,7 +3095,7 @@ internal static partial class SolverController
                         state,
                         player,
                         $"deployment_end_turn:{turn}");
-                    choiceSession.SetPlanAndStartDriving(host, endTurnChoices, token);
+                    choiceSession.SetPlanAndStartDriving(host, endTurnChoices, token, detachOnLastSelection: true);
                     CombatManager.Instance.OnEndedTurnLocally();
                     RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(player, turn));
                     try

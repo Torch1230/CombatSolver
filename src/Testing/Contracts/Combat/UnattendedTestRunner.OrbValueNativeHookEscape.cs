@@ -35,6 +35,39 @@ namespace CombatSolver;
 /// </summary>
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertPlasmaTurnStartPassivesAsync(CombatState combat, Player player)
+    {
+        await ClearPlayerPilesAsync(player);
+        foreach (PowerModel power in combat.Creatures.SelectMany(creature => creature.Powers).ToArray())
+            await PowerCmd.Remove(power);
+        foreach (bool cables in new[] { true, false })
+        foreach (bool plasmaFirst in new[] { true, false })
+        {
+            foreach (RelicModel relic in player.Relics.ToArray())
+                await RelicCmd.Remove(relic);
+            if (cables)
+                await InjectRelicAsync(player, new() { RelicId = "GOLD_PLATED_CABLES" });
+            foreach (OrbModel orb in player.PlayerCombatState!.OrbQueue.Orbs.ToArray())
+                player.PlayerCombatState.OrbQueue.Remove(orb);
+            var choiceContext = new BlockingPlayerChoiceContext();
+            foreach (string id in new[] { plasmaFirst ? "PLASMA_ORB" : "LIGHTNING_ORB", "PLASMA_ORB", "PLASMA_ORB" })
+                await OrbCmd.Channel(choiceContext, ResolveOrbForTest(id).ToMutable(), player);
+            SetEnergy(player, 3);
+            CombatPredictionSimulator simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
+            CombatPredictionSimulator fork = simulator.Fork();
+            foreach (CombatPredictionSimulator branch in new[] { simulator, fork })
+                EnchantmentLifecycleSupport.TriggerAfterTurnStartOrbs(branch, player);
+            string variant = $"cables={cables}:plasmaFirst={plasmaFirst}";
+            var expected = CaptureSimulated(simulator, (SimulatedCombatState)simulator.State.CombatState, player, combat.Enemies[0]);
+            AssertSnapshotEqual(expected, CaptureSimulated(fork, (SimulatedCombatState)fork.State.CombatState, player, combat.Enemies[0]),
+                "PlasmaTurnStart", variant + ":Fork");
+            foreach (OrbModel orb in player.PlayerCombatState.OrbQueue.Orbs.ToArray())
+                await orb.AfterTurnStartOrbTrigger(choiceContext);
+            AssertSnapshotEqual(expected, CaptureActual(combat, player, combat.Enemies[0]), "PlasmaTurnStart", variant);
+        }
+        _completedChecks.Add("PlasmaTurnStart:FirstAndLaterOrbs:CablesAndBase:NativeFullState:Fork");
+    }
+
     private static int _orbValueNativeHookEntries;
 
     private static void ObserveOrbValueNativeHookPrefix() => _orbValueNativeHookEntries++;

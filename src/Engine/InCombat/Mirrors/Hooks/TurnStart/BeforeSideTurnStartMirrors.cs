@@ -1,3 +1,4 @@
+using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
 using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Combat;
@@ -85,8 +86,9 @@ internal static partial class BeforeSideTurnStartMirrors
     {
         Seal();
         if (Registry.Invoke(listener, context).Kind == MirrorDispatchKind.Unsupported)
-            throw new NotSupportedException(
-                $"No BeforeSideTurnStart mirror is registered for {listener.GetType().FullName}.");
+            throw PredictionUnsupportedException.ForContent(
+                $"No BeforeSideTurnStart mirror is registered for {listener.GetType().FullName}.",
+                listener.GetType());
     }
 
     private static partial void RegisterVanilla(Registry registry);

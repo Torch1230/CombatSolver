@@ -324,7 +324,8 @@ internal static class PotionOnUseSupport
                     break;
                 }
 
-                throw new NotSupportedException($"药水 {potion.Id.Entry} 尚未进入确定性搜索支持表。");
+                throw PredictionUnsupportedException.ForContent(
+                    $"药水 {potion.Id.Entry} 尚未进入确定性搜索支持表。", potion.GetType());
         }
         return !simulator.HasPendingChoice;
     }

@@ -11,7 +11,7 @@ internal static class GoldGainSupport
     internal static decimal ModifyGoldGained(CombatPredictionSimulator simulator,
         SimulatedCombatState combat, Player player, decimal amount)
     {
-        IReadOnlyList<AbstractModel> listeners = ((ICombatPredictionHookListenerSource)combat).RunHookListeners;
+        IEnumerable<AbstractModel> listeners = combat.GoldModifierHookListeners(simulator);
         List<AbstractModel>? modifiers = null;
         var context = new GoldGainMirrorContext { Simulator = simulator, Player = player, Amount = amount };
         foreach (AbstractModel listener in listeners)
@@ -25,7 +25,7 @@ internal static class GoldGainSupport
         {
             // Native code re-enumerates the listeners and dispatches only models
             // whose integer amount changed, preserving original listener order.
-            foreach (AbstractModel listener in ((ICombatPredictionHookListenerSource)combat).RunHookListeners)
+            foreach (AbstractModel listener in combat.GoldModifierHookListeners(simulator))
                 if (modifiers.Contains(listener))
                     GoldGainedMirrors.AfterModify(listener, context);
         }

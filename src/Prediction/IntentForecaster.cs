@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.MonsterMoves;
 using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using MegaCrit.Sts2.Core.Random;
+using CombatSolver.Engine.Common;
 
 namespace CombatSolver;
 
@@ -27,6 +28,21 @@ internal sealed class IntentForecast
 
 internal static class IntentForecaster
 {
+    internal static int CaptureBaseDamage(AttackIntent attack, MonsterModel monster, string moveId)
+    {
+        if (attack.DamageCalc is null)
+            PredictionModPatchAudit.RejectForeignPatches(
+                attack.GetType().GetConstructors(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+                    .Cast<System.Reflection.MethodBase>()
+                    .Append(HarmonyLib.AccessTools.Method(typeof(AttackIntent), nameof(AttackIntent.GetSingleDamage)))
+                    .Append(HarmonyLib.AccessTools.Method(monster.GetType(), "GenerateMoveStateMachine")));
+        Func<decimal> calculate = attack.DamageCalc
+            ?? throw PredictionUnsupportedException.ForContent(
+                $"Attack intent has no prediction damage calculation: {monster.GetType().FullName}.{moveId}/{attack.GetType().FullName}.",
+                attack.GetType(), monster.GetType());
+        return Math.Max(0, (int)calculate());
+    }
+
     private sealed class Cursor(MonsterModel monster)
     {
         public MonsterModel Monster { get; } = monster;
@@ -105,8 +121,8 @@ internal static class IntentForecaster
         {
             if (intent is AttackIntent attack)
             {
+                int baseDamage = CaptureBaseDamage(attack, monster, move.Id);
                 int single = attack.GetSingleDamage(state.PlayerCreatures, monster.Creature);
-                int baseDamage = Math.Max(0, (int)(attack.DamageCalc?.Invoke() ?? single));
                 for (int i = 0; i < Math.Max(attack.Repeats, 1); i++)
                     hits.Add(new ForecastAttackHit(single, baseDamage));
                 if (attack.DamageCalc?.Target != null && !IsKnownStableAttack(monster, move.Id))

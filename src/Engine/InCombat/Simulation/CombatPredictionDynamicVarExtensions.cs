@@ -3,7 +3,6 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using CombatSolver.Engine.Common;
 using STS2RitsuLib.Cards.DynamicVars;
-using MegaCrit.Sts2.Core.Modding;
 
 namespace CombatSolver.Engine.InCombat.Simulation;
 
@@ -43,12 +42,9 @@ internal static class CombatPredictionDynamicVarExtensions
         if (CalculatedVarSpecRegistry.TryCalculate(calculatedVar, simulator, card, target, out decimal value))
             return value;
         simulator.History.RecordRisk(PredictionRiskReason.MethodMirrorIncomplete);
-        var mod = AssemblyInfo.ModForType(card.Preview.GetType(), out bool isBaseGame);
-        if (!isBaseGame && mod?.manifest?.id is { Length: > 0 } modId)
-            throw new IncompatibleGameplayModException(modId, mod.manifest.name ?? modId,
-                $"card {card.Preview.Id.Entry}: calculated variable has no branch-local specification", "combat");
-        throw new NotSupportedException(
-            $"Card {card.Preview.Id.Entry} has no branch-local calculated variable specification.");
+        throw PredictionUnsupportedException.ForContent(
+            $"Card {card.Preview.Id.Entry} has no branch-local calculated variable specification.",
+            card.Preview.GetType());
     }
 
     public static decimal InvokeCalculate(
@@ -59,8 +55,13 @@ internal static class CombatPredictionDynamicVarExtensions
     {
         using var _ = simulator.PushActionSource(card.Original, PredictionActionKind.DynamicVariableCalculation);
         simulator.History.RecordRisk(PredictionRiskReason.MethodMirrorIncomplete);
-        throw new PredictionUnsupportedException(
+        Type variableType = computedDynamicVar.GetType();
+        Type cardType = card.Preview.GetType();
+        // The shared wrapper identifies the calculation framework; the card owns its content.
+        Type contentType = variableType == typeof(ComputedDynamicVar) ? cardType : variableType;
+        throw PredictionUnsupportedException.ForContent(
             $"Card {card.Preview.Id.Entry} uses computed dynamic variable " +
-            $"{computedDynamicVar.GetType().FullName}, which has no branch-local calculation mirror.");
+            $"{variableType.FullName}, which has no branch-local calculation mirror.",
+            cardType, contentType);
     }
 }

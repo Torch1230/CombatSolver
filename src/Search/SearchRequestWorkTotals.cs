@@ -93,15 +93,17 @@ internal sealed class SearchRequestWorkTotals
 
     public void RecordCoordinatorOverhead(TimeSpan elapsed, long allocatedBytes,
         int gen0Collections, int gen1Collections, int gen2Collections,
-        TimeSpan gcPauseDuration, TimeSpan maxObservedGcPause)
+        TimeSpan gcPauseDuration, TimeSpan? maxObservedGcPause)
     {
-        ValidateWork(elapsed, allocatedBytes, gen0Collections, gen1Collections, gen2Collections, gcPauseDuration, maxObservedGcPause);
+        // An absent sample contributes no pause to the observed-maximum aggregate.
+        TimeSpan observedMaximum = maxObservedGcPause is { } observed ? observed : TimeSpan.Zero;
+        ValidateWork(elapsed, allocatedBytes, gen0Collections, gen1Collections, gen2Collections, gcPauseDuration, observedMaximum);
         lock (_gate)
         {
-            Accumulate(elapsed, allocatedBytes, gen0Collections, gen1Collections, gen2Collections, gcPauseDuration, maxObservedGcPause);
+            Accumulate(elapsed, allocatedBytes, gen0Collections, gen1Collections, gen2Collections, gcPauseDuration, observedMaximum);
             RecordAttribution("CoordinatorOverhead", new SearchSolverWorkContribution(
                 0, 0, 0, elapsed, allocatedBytes, gen0Collections, gen1Collections,
-                gen2Collections, gcPauseDuration, maxObservedGcPause), 0);
+                gen2Collections, gcPauseDuration, observedMaximum), 0);
         }
     }
 

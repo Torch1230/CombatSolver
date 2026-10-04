@@ -71,8 +71,10 @@ internal sealed class SearchWorkPacer(SearchFramePressureSignal framePressureSig
         }
     }
 
-    internal void ObserveGcPause(TimeSpan pause)
+    internal void ObserveGcPause(TimeSpan? observation)
     {
+        if (observation is not { } pause)
+            return;
         if (pause > MaxObservedGcPause)
             MaxObservedGcPause = pause;
     }

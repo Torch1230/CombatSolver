@@ -63,17 +63,6 @@ internal static class LiveEndTurnRiskEvaluator
         SimCreatureState simulatedPlayer = simulator.State.GetCreature(player.Creature);
         int hpBefore = simulatedPlayer.CurrentHp;
         HashSet<uint> processedEnemyDeaths = [];
-        bool paelsEyeTriggers = player.Relics
-            .OfType<PaelsEye>()
-            .Any(relic => !relic.IsMelted && relic.ShouldTakeExtraTurn(player));
-        if (!combat.TryPrepareLiveExtraPlayerTurn(
-                simulator,
-                player,
-                paelsEyeTriggers,
-                out bool takingExtraTurn))
-        {
-            return BuildProjection(hpBefore, simulatedPlayer, []);
-        }
         int etherealExhaustCount = combat.CountEtherealCardsInHand(simulator, player);
 
         if (!PlayerTurnEndLifecycle.RunPhaseOne(
@@ -113,7 +102,7 @@ internal static class LiveEndTurnRiskEvaluator
             return BuildProjection(hpBefore, simulatedPlayer, []);
         }
 
-        if (takingExtraTurn || simulatedPlayer.IsDead)
+        if (combat.ShouldTakeExtraPlayerTurn(player) || simulatedPlayer.IsDead)
             return BuildProjection(hpBefore, simulatedPlayer, []);
 
         combat.CurrentSide = CombatSide.Enemy;

@@ -4,8 +4,8 @@
 
 主项目开发与社区任务面向原版游戏内容，不主动实现修改游戏内容的第三方 Mod 适配。本文记录已有扩展入口，供第三方作者自主实现和验证；适配请求单独留档。
 
-求解器不认识任何第三方内容。它靠一套**镜像**（mirror）在自己的模拟里重现游戏行为，而镜像是
-按类型登记的。你的牌、Power、遗物、药水没有登记，求解器就只能退化处理，路线会算错。
+求解器通过按类型登记的**镜像**（mirror）重现游戏行为。第三方牌、Power、遗物、药水需要
+为相关效果提供预测实现；触发未适配的强制门禁时，求解器会停止并说明来源。
 
 这份文档讲：默认会发生什么、有哪些登记点、登记的纪律、怎么验证自己做对了。
 
@@ -26,9 +26,9 @@ HeavenlyDrill 的 OnPlay 使用精确镜像，先解析分支 X 值及修正，�
 | 加了牌、Power、遗物、药水、敌人，或改了战斗数值 | 往下读 |
 
 前两条是自动的。第三条不做适配的话，装上你的 Mod 之后求解器会直接停在
-「检测到不兼容的第三方 Mod」，玩家用不了。
+「求解器暂未适配此内容性 Mod：名称，无法求解。」
 
-项目明确拒绝的玩法 Mod 优先于上述通用放行条件。当前 `WheelchairSpire`、`PengoTarot`、`BetterCharacterRelics` 按 Mod ID 或已加载程序集名识别，在根捕获时直接报告名称和不兼容原因；不依据 `affects_gameplay: false` 放行。本批不为这些 Mod 提供战斗适配。搜索、部署和回合准备捕获此异常时均使用专用提示，报告账本只记录不兼容类别，不引导玩家上传日志。包内仅出现其他 Mod 的名字或恢复环境不匹配，均不足以认定该 Mod 是某个偏差的原因。
+项目明确拒绝的玩法 Mod 优先于上述通用放行条件。当前 `WheelchairSpire`、`PengoTarot`、`BetterCharacterRelics` 按 Mod ID 或已加载程序集名识别，在根捕获时报告名称并说明暂未适配；不依据 `affects_gameplay: false` 放行。搜索、部署和回合准备捕获此异常时均使用专用提示，报告账本只记录 `IncompatibleGameplayMod`，显示为“内容性 Mod 暂未适配”，不引导玩家上传日志。包内仅出现其他 Mod 的名字或恢复环境不匹配，均不足以认定该 Mod 是某个偏差的原因。
 
 Power 的原版克隆会重置 `_internalData`。跨根保留的数据必须从原生来源捕获：例如本批苍蓝星球的已触发标记，以及 DarkEmbrace 的虚无消耗延迟计数。DarkEmbrace 后续按实际事件累计并在回合末清零，不能用结束回合前的牌数代替此状态。
 
@@ -36,7 +36,15 @@ Power 的原版克隆会重置 `_internalData`。跨根保留的数据必须从�
 
 格挡清空被阻止后的上限结算目前只显式识别原版 `SturdyClamp`；其他已准入的 preventer 在 `PersistentRelicSupport.BlockAfterPreventingClear` 中按全额保留计算。搜索的保留格挡估值与实际影子清空共用此规则，二者一致不等于已支持第三方的额外上限。新增“保留至多 N 点”等语义时，必须同时适配清空后的结算和估值，并验证原生状态与分支状态；仅登记 `ShouldClearBlock=false` 不足以实现该上限。这是既有适配边界，不表示未知第三方会自动通过兼容门禁。
 
-计算型动态变量必须有分支规则。第三方卡牌进入 `CalculatedVar` 求值且没有 `CalculatedVarSpecRegistry` 支持时，按卡牌所属 Mod 报不兼容，日志包含卡牌 ID；界面和报告账本不引导玩家上传。不能回退调用会读取 live 状态的原生计算器。20260911 的 `LIFEMASTERMOD-TENTACLES` 属于该情况，本次没有为该 Mod 提供适配。
+计算型动态变量必须有分支规则。第三方卡牌进入 `CalculatedVar` 求值且没有 `CalculatedVarSpecRegistry` 支持时，按卡牌所属 Mod 报暂未适配，日志包含卡牌 ID。`IComputedDynamicVar` 先核对卡牌来源，再核对自定义变量类型的来源；共享的 `ComputedDynamicVar` 包装器由卡牌提供内容来源，框架程序集不能代替内容作者。已确认第三方来源的失败使用专用提示，界面和报告账本不引导玩家上传。原版及来源未知的失败保留诊断上传提示；不能回退调用会读取 live 状态的原生计算器。
+
+未登记的回合阶段、金币回调以及搜索支持表外的药水在拒绝执行时，同样按实际模型所属 Mod 分类。识别依据是失败入口的类型及游戏已加载程序集映射；已登记的处理器继续执行，不依据已安装 Mod 列表猜测失败来源。运行库的 `PlatformNotSupportedException` 记入实际失败类别，保留上传提示。
+
+规范 Power 的动态变量预热只访问原版来源。第三方 CanonicalVars 可以依赖附着后的 Owner；实际战斗实例仍在主线程物化，后台消费捕获值。规范实例和战斗实例的生命周期必须分别处理。
+
+第三方怪物当前没有完整 AI／行动登记合同，根捕获按 MonsterModel 的实际来源拒绝；修改原版 GenerateMoveStateMachine 的玩法补丁也需要对应合同。AttackIntent 必须提供可捕获的 DamageCalc；缺失时审计意图类型、构造器及原生意图计算补丁，不生成零伤害。确认来源时使用暂未适配提示，来源未知时保留明确的类型与行动诊断。BetterVanillaSTS2 的 TargetedStrengthPower 已由原包证明替换原版语义，属于已确认的玩法边界。
+
+原版卡牌异步 OnPlay 的 MoveNext 和 OnPlay 方法本体分别审计；现有 OnPlay 登记不覆盖 MoveNext 补丁。外部回调在已有 pending choice 时只能恢复同一选择；请求另一来源的选择会在写入前失败并保留原 pending。预见、伤害后抽牌和洗牌选择相互嵌套时，适配器必须停止当前派发并保存剩余程序阶段。基础卡牌／框架不能替代活动内容模型的来源。
 
 Power 来源也是语义的一部分：精确镜像可通过 `ICombatPredictionEffectSink.ApplyPowerFromSource` 显式提供 `CardModel? cardSource`，原版传 null 时必须保持 null，避免能力附带效果被误判成外层卡牌直接效果。普通 `ApplyPower` 仍沿用当前卡牌作用域；两者不能按调用栈有无卡牌随意替代。
 
@@ -178,8 +186,9 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 底层沿用 `MethodMirrorRegistry` 和覆盖描述元数据，外部仍需 publicizer。
 
 登记必须在首次 `CombatRootSnapshot.Capture` 或本阶段分发之前完成，此后明确拒绝登记。
-与多数旧镜像不同，这些阶段遇到未登记且非纯表现的重写会记录风险并抛出
-`NotSupportedException`，不会只标记风险后继续生成路线。
+这些阶段遇到未登记且非纯表现的重写会记录风险并停止搜索。来源属于已加载第三方
+内容模型时抛出 `IncompatibleGameplayModException`，向玩家说明该 Mod 暂未适配；
+原版或来源未知时抛出 `PredictionUnsupportedException` 并保留诊断上传提示。
 **只拿得到 `Type` 的适配器（不引用目标 Mod 程序集、运行期反射找类型）用同一张表的按 `Type`
 重载**：`Register(Type, handler)`／`RegisterEarly`／`RegisterLate` 与 `RegisterIgnored(Type)`，
 判据与泛型入口相同；`RegisterIgnored` 用于已复核的纯表现层覆写。

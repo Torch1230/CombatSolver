@@ -6234,10 +6234,16 @@
     "testId": "RELIC-DRAW-STATE-BATCH-053"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.NinjaScroll|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
-    "status": "NativeRuntimeState",
-    "source": "Game 0.111.0 NinjaScroll; combat-start snapshot boundary",
-    "notes": "The three native first-turn Shivs are already present in the captured hand and the turn guard prevents future regeneration.",
-    "testId": "RELIC-DRAW-STATE-BATCH-053"
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.Relics.cs",
+    "notes": "BeforeHandDraw roots generate the native first-turn Shivs in ordered hand and combat history; later turns preserve the native turn guard.",
+    "testId": "NINJA-SCROLL-ENTRY"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.PaelsEye|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeSideTurnEndEarly(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/BeforeSideTurnEndMirrors.cs",
+    "notes": "Native early end-of-turn hand exhaustion follows AutoPostPlay; extra-turn eligibility is evaluated after end-of-turn phases.",
+    "testId": "PAELS-EYE-AUTOPOST-ORDER"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.RadiantPearl|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
     "status": "NativeRuntimeState",

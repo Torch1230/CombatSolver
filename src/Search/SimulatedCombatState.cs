@@ -56,6 +56,7 @@ internal sealed partial class SimulatedCombatState
     private IReadOnlyList<ModifierModel>? _rootModifierSources;
     private readonly IReadOnlyDictionary<Player, int> _rootPotionSlotCounts;
     private readonly IReadOnlyDictionary<Player, int> _rootPlayerTurnNumbers;
+    private readonly IReadOnlyDictionary<Player, int> _rootMaxEnergies;
     private readonly IReadOnlyDictionary<(Creature Owner, Type Type), int> _rootPowerAmounts;
     private readonly IReadOnlySet<PowerModel> _rootMultiInstancePowers;
     private readonly IReadOnlyDictionary<Player, string> _playerNames;
@@ -231,8 +232,6 @@ internal sealed partial class SimulatedCombatState
     private ForkableDictionary<Creature, int>? _attackPlayStartsThisTurn;
     private ForkableDictionary<Creature, int>? _cardPlayStartsThisTurn;
     private ForkableDictionary<Creature, int>? _attackSkillStartsThisTurn;
-    private ForkableSet<Creature>? _enemiesIntendingAttack;
-    private bool _hasPredictedEnemyIntents;
     private ForkableDictionary<Player, int>? _playerTurnNumbers;
     private ForkableList<Creature> _allies;
     private ForkableList<Creature> _enemies;
@@ -326,6 +325,7 @@ internal sealed partial class SimulatedCombatState
             player => player.PlayerCombatState is { } state
                 ? state.TurnNumber
                 : throw new InvalidOperationException($"Player {player.NetId} has no combat state to capture."));
+        _rootMaxEnergies = inner.Players.ToDictionary(player => player, player => player.MaxEnergy);
         PowerModel[] rootPowers = _rootCreatures
             .SelectMany(creature => creature.Powers)
             .ToArray();
@@ -478,6 +478,7 @@ internal sealed partial class SimulatedCombatState
         _rootModifierSources = source._rootModifierSources;
         _rootPotionSlotCounts = source._rootPotionSlotCounts;
         _rootPlayerTurnNumbers = source._rootPlayerTurnNumbers;
+        _rootMaxEnergies = source._rootMaxEnergies;
         _rootPowerAmounts = source._rootPowerAmounts;
         _rootMultiInstancePowers = source._rootMultiInstancePowers;
         _playerNames = source._playerNames;
@@ -600,19 +601,9 @@ internal sealed partial class SimulatedCombatState
     }
 
     public bool IsEnemyIntendingToAttack(Creature enemy)
-    {
-        if (_hasPredictedEnemyIntents)
-            return _enemiesIntendingAttack?.Contains(enemy) == true;
-        if (_rootMaterialized && _rootCreatures.Contains(enemy))
-            throw new InvalidOperationException($"Root intent state was not captured for {enemy.Name}.");
-        return enemy.Monster?.IntendsToAttack == true;
-    }
-
-    public void SetPredictedEnemyIntents(IEnumerable<Creature> attackingEnemies)
-    {
-        _enemiesIntendingAttack = [.. attackingEnemies];
-        _hasPredictedEnemyIntents = true;
-    }
+        => enemy.Monster != null && GetMonsterAiState(enemy).Current.Intents.Any(intent =>
+            intent.IntentType is MegaCrit.Sts2.Core.MonsterMoves.Intents.IntentType.Attack
+                or MegaCrit.Sts2.Core.MonsterMoves.Intents.IntentType.DeathBlow);
 
     public void MarkBattlewornDummyTimedOut()
         => _battlewornDummyTimedOut = true;
@@ -628,6 +619,8 @@ internal sealed partial class SimulatedCombatState
         => _rootPlayerTurnNumbers.TryGetValue(player, out int turn)
             ? turn
             : throw new InvalidOperationException($"Player {player.NetId} is outside the captured root turn state.");
+
+    public int GetBaseMaxEnergy(Player player) => _rootMaxEnergies[player];
 
     public void AdvancePlayerTurn(Player player)
     {
@@ -2178,8 +2171,6 @@ internal sealed partial class SimulatedCombatState
         }
         _ = GetFetchCardsPlayedThisTurn();
         NormalizeSwordSageReplays(simulator);
-        _enemiesIntendingAttack = [.. Enemies.Where(enemy => enemy.Monster?.IntendsToAttack == true)];
-        _hasPredictedEnemyIntents = true;
         if (ModelPredictionStateMirrors.HasAny)
         {
             // Capture after the built-in root is materialized. Adapter factories may resolve
@@ -2292,6 +2283,9 @@ internal sealed partial class SimulatedCombatState
         ref StateFingerprintBuilder fingerprint,
         CombatPredictionSimulator simulator)
     {
+        fingerprint.Add("player_hooks");
+        foreach (Player player in simulator.State.Players)
+            fingerprint.Add(simulator.State.GetPlayerCombatState(player).HooksActive);
         if (AdaptedOnPlay is { } adaptedOnPlay)
         {
             fingerprint.Add("onplay_configuration");
@@ -2341,8 +2335,6 @@ internal sealed partial class SimulatedCombatState
         AddCreatureIntMap(ref fingerprint, 'J', _cardPlayStartsThisTurn);
         AddCreatureIntMap(ref fingerprint, 'N', _attackSkillStartsThisTurn);
         AddCreatureIntMap(ref fingerprint, 'k', _knowledgeDemonCurseCounters);
-        AddCreatureSet(ref fingerprint, 'i', _enemiesIntendingAttack);
-        fingerprint.Add(_hasPredictedEnemyIntents);
         fingerprint.Add(HasPendingChoice);
         fingerprint.Add(_battlewornDummyTimedOut);
         fingerprint.Add('g');

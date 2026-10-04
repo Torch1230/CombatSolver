@@ -51,7 +51,7 @@ internal sealed record BranchMonsterStaticSnapshot(
                 attacks[move.Id] = move.Intents
                     .OfType<AttackIntent>()
                     .Select(attack => new BranchMonsterAttack(
-                        Math.Max(0, (int)(attack.DamageCalc?.Invoke() ?? 0m)),
+                        IntentForecaster.CaptureBaseDamage(attack, monster, move.Id),
                         Math.Max(1, attack.Repeats)))
                     .ToArray();
             }

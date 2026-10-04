@@ -168,6 +168,9 @@ internal sealed class CombatRootSnapshot
         Engine.InCombat.Mirrors.Hooks.TurnStart.AfterPlayerTurnStartMirrors.Seal();
         Stopwatch stopwatch = Stopwatch.StartNew();
 
+        PredictionModPatchAudit.ValidateLoadedMods(MegaCrit.Sts2.Core.Modding.ModManager.GetLoadedMods());
+        PredictionModPatchAudit.ValidateMonsterModels(state.Enemies.Select(enemy => enemy.Monster).OfType<MonsterModel>());
+
         PowerDynamicVarWarmup.EnsureMaterialized(state);
         CardDynamicVarWarmup.EnsureMaterialized(state);
 

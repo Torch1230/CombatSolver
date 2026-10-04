@@ -233,6 +233,7 @@ internal sealed class NativeChoiceSession : IDisposable
     private readonly TaskCompletionSource _allPlansConsumed = new(
         TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly HashSet<long> _visibleTraceSequences = [];
+    private bool _detachOnLastSelection;
     private NativeChoiceSurfaceLock? _surfaceLock;
     private CancellationTokenSource? _driverCancellation;
     private IReadOnlyList<PlanCardChoice>? _plans;
@@ -350,11 +351,13 @@ internal sealed class NativeChoiceSession : IDisposable
     public void SetPlanAndStartDriving(
         NGame host,
         IReadOnlyList<PlanCardChoice> plans,
-        CancellationToken token)
+        CancellationToken token,
+        bool detachOnLastSelection = false)
     {
         if (_plans != null)
             throw new InvalidOperationException($"原生选牌会话 {Owner} 已经安装计划。");
         _plans = plans;
+        _detachOnLastSelection = detachOnLastSelection;
         if (plans.Count == 0)
             _allPlansConsumed.TrySetResult();
         _driverCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -508,7 +511,10 @@ internal sealed class NativeChoiceSession : IDisposable
                 {
                     planIndex++;
                     if (planIndex == plans.Count)
+                    {
+                        if (_detachOnLastSelection) Detach();
                         _allPlansConsumed.TrySetResult();
+                    }
                 }
                 Entry.Logger.Info(
                     $"[CombatSolver/Test] NATIVE_CHOICE_NO_OP owner={Owner} sequence={request.Sequence} " +
@@ -536,6 +542,8 @@ internal sealed class NativeChoiceSession : IDisposable
                 try
                 {
                     selected = ResolvePlannedCards(plan, request, useObservedIdentity: false);
+                    // Confirming the final phase choice can synchronously enter the next player's setup.
+                    if (_detachOnLastSelection && planIndex + 1 == plans.Count) Detach();
                     await NativeChoiceSurface.SelectAsync(host, surfaceLock, request, selected, token);
                 }
                 finally
@@ -549,6 +557,7 @@ internal sealed class NativeChoiceSession : IDisposable
                 // consumes the request. Preserve the identity seen at the actual choice boundary.
                 selected = ResolvePlannedCards(plan, request, useObservedIdentity: true);
                 ValidateImplicitSelection(request, selected);
+                if (_detachOnLastSelection && planIndex + 1 == plans.Count) Detach();
                 Entry.Logger.Info(
                     $"[CombatSolver/Test] NATIVE_CHOICE_IMPLICIT owner={Owner} sequence={request.Sequence} " +
                     $"source={plan.SourceId} cards={string.Join(',', plan.Cards.Select(card => card.CardId))}");

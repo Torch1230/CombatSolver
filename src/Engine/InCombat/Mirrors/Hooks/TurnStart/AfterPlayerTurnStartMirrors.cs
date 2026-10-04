@@ -1,3 +1,4 @@
+using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -128,7 +129,9 @@ internal static partial class AfterPlayerTurnStartMirrors
         Registry registry = phase switch { 0 => EarlyRegistry, 1 => Registry, 2 => LateRegistry,
             _ => throw new ArgumentOutOfRangeException(nameof(phase)) };
         if (registry.Invoke(listener, context).Kind == MirrorDispatchKind.Unsupported)
-            throw new NotSupportedException($"No {registry.DescribeMirrorSupport().BaseMethod.Name} mirror is registered for {listener.GetType().FullName}.");
+            throw PredictionUnsupportedException.ForContent(
+                $"No {registry.DescribeMirrorSupport().BaseMethod.Name} mirror is registered for {listener.GetType().FullName}.",
+                listener.GetType());
     }
 
     private static partial void RegisterVanilla(Registry registry, string hook);

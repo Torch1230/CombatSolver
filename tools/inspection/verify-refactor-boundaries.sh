@@ -1311,7 +1311,7 @@ src/Prediction/BranchMonsterAi.cs	BranchMonsterStaticSnapshot.Capture(monster)
 src/Prediction/BranchMonsterAi.cs	state.Static.AttacksByMove
 src/Search/SimulatedCombatState.cs	_encounterSlots = inner.Encounter?.Slots.ToArray()
 src/Search/SimulatedCombatState.MonsterAi.cs	Root monster AI state was not captured
-src/Search/SimulatedCombatState.cs	Root intent state was not captured
+src/Search/SimulatedCombatState.cs	GetMonsterAiState(enemy).Current.Intents
 src/Prediction/MonsterMoveEffects.StaticValues.cs	CaptureStaticIntValues(MonsterModel monster)
 src/Search/SimulatedCombatState.MonsterAi.cs	GetMonsterStaticInt(Creature creature, string name)
 src/Engine/InCombat/Simulation/CombatPredictionState.cs	boundary.AssertCanCaptureCreature(creature)

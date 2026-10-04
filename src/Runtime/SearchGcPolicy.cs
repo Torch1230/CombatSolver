@@ -1729,7 +1729,7 @@ internal static partial class SearchGcPolicy
                         $"no_gc_region_ended={endNoGcRegion} " +
                         $"forced_gen2=true gen2_delta={generation2Collections} " +
                         $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
-                        $"gc_pause_delta_ms={(GC.GetTotalPauseDuration() - pauseBefore).TotalMilliseconds:F1} " +
+                        $"gc_pause_delta_ms={SearchGcRuntimeInfo.FormatPauseDelta(pauseBefore)} " +
                         $"completion_kind={completedCollection.Kind} " +
                         $"observed_concurrent={completedCollection.Concurrent.ToString().ToLowerInvariant()} " +
                         $"completion_index={completedCollection.Index} " +
@@ -1749,7 +1749,7 @@ internal static partial class SearchGcPolicy
                         $"no_gc_region_ended={endNoGcRegion} forced_gen2=false " +
                         $"gen2_delta={generation2Collections} " +
                         $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
-                        $"gc_pause_delta_ms={(GC.GetTotalPauseDuration() - pauseBefore).TotalMilliseconds:F1} " +
+                        $"gc_pause_delta_ms={SearchGcRuntimeInfo.FormatPauseDelta(pauseBefore)} " +
                         $"managed_live_before={liveBefore} managed_live_after={managedLiveAfter} " +
                         $"working_set_before={workingSetBefore} working_set_after={processAfter.WorkingSet64} " +
                         $"private_before={privateBefore} private_after={processAfter.PrivateMemorySize64}");
@@ -1864,8 +1864,8 @@ internal static partial class SearchGcPolicy
         // LOH sentinel distinguishes that case: only a Gen2 that began after this method's
         // reference-release boundary can clear it.
         WeakReference completionSentinel = CreateBackgroundCollectionSentinel();
-        long backgroundIndexBefore = GC.GetGCMemoryInfo(GCKind.Background).Index;
-        long fullBlockingIndexBefore = GC.GetGCMemoryInfo(GCKind.FullBlocking).Index;
+        long backgroundIndexBefore = SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.Background).Index;
+        long fullBlockingIndexBefore = SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.FullBlocking).Index;
         long deadline = Environment.TickCount64 + ReclaimCompletionTimeoutMilliseconds;
         int requests = 0;
         bool confirmedOrDrained = false;
@@ -1876,8 +1876,8 @@ internal static partial class SearchGcPolicy
             {
                 // Observe before requesting. Periodic blind re-requests can start another GC
                 // immediately before observing completion of the preceding one.
-                GCMemoryInfo background = GC.GetGCMemoryInfo(GCKind.Background);
-                GCMemoryInfo fullBlocking = GC.GetGCMemoryInfo(GCKind.FullBlocking);
+                GCMemoryInfo background = SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.Background);
+                GCMemoryInfo fullBlocking = SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.FullBlocking);
                 BackgroundCollectionObservation observation = ObserveBackgroundCollection(
                     backgroundIndexBefore,
                     fullBlockingIndexBefore,
@@ -1908,7 +1908,7 @@ internal static partial class SearchGcPolicy
                     confirmedOrDrained = true;
                     if (completionSentinel.IsAlive)
                         throw new InvalidOperationException("阻塞 Gen2 排空后完成哨兵仍然存活。");
-                    GCMemoryInfo drained = GC.GetGCMemoryInfo(GCKind.FullBlocking);
+                    GCMemoryInfo drained = SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.FullBlocking);
                     Entry.Logger.Warn(
                         $"[CombatSolver/Test] GC_BACKGROUND_CONFIRMATION_TIMEOUT " +
                         $"injected={timeoutForTesting.ToString().ToLowerInvariant()} " +
@@ -1953,13 +1953,27 @@ internal static partial class SearchGcPolicy
 
     private static Task<BackgroundGen2Completion> CollectGeneration2ForAutomaticReclaimAsync(
         bool inSearchCheckpoint = false)
-        => CollectGeneration2InBackgroundAsync(inSearchCheckpoint);
+        => SearchGcRuntimeInfo.SupportsDetailedInfo
+            ? CollectGeneration2InBackgroundAsync(inSearchCheckpoint)
+            : Task.FromResult(CollectGeneration2Portable());
+
+    private static BackgroundGen2Completion CollectGeneration2Portable()
+    {
+        WeakReference completionSentinel = CreateBackgroundCollectionSentinel();
+        CollectGeneration2ForSearch();
+        if (completionSentinel.IsAlive)
+            throw new InvalidOperationException("阻塞完整回收后完成哨兵仍然存活。");
+        return new BackgroundGen2Completion(
+            "full_blocking_portable", GC.CollectionCount(GC.MaxGeneration), Requests: 1);
+    }
 
     internal static async Task<string> CollectAutomaticReclaimForTesting()
         => (await CollectGeneration2ForAutomaticReclaimAsync()).Kind;
 
     private static BackgroundGen2Completion CollectGeneration2ForManualMemoryRelease()
     {
+        if (!SearchGcRuntimeInfo.SupportsDetailedInfo)
+            return CollectGeneration2Portable();
         GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
         // Return unused heap pages to the OS. EmptyWorkingSet only pages out live data;
         // execution and the next GC would fault those same pages back into memory.
@@ -1967,7 +1981,7 @@ internal static partial class SearchGcPolicy
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
         return new BackgroundGen2Completion(
             "full_blocking_aggressive",
-            GC.GetGCMemoryInfo(GCKind.FullBlocking).Index,
+            SearchGcRuntimeInfo.GetDetailedMemoryInfo(GCKind.FullBlocking).Index,
             Requests: 1);
     }
 
@@ -2219,8 +2233,7 @@ internal static partial class SearchGcPolicy
         long workingSetBefore = 0;
         long privateBefore = 0;
         TimeSpan pauseBefore = GC.GetTotalPauseDuration();
-        SearchGcPauseSnapshot pauseObservation = default;
-        bool pauseObservationAvailable = false;
+        SearchGcPauseSnapshot? pauseObservation = null;
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
@@ -2229,7 +2242,6 @@ internal static partial class SearchGcPolicy
             workingSetBefore = processBefore.WorkingSet64;
             privateBefore = processBefore.PrivateMemorySize64;
             pauseObservation = SearchGcPauseSnapshot.Capture();
-            pauseObservationAvailable = true;
             PauseInSearchCheckpointForTesting();
             if (endNoGcRegion)
                 EndNoGcRegion();
@@ -2261,7 +2273,7 @@ internal static partial class SearchGcPolicy
             }
             // Capture the forced collection before TryStartNoGCRegion can replace the latest
             // GC info with a bookkeeping collection that has no pause of its own.
-            signal.ObserveReclaimGcPause(pauseObservation.ObserveMaximumSince());
+            signal.ObserveReclaimGcPause(pauseObservation?.ObserveMaximumSince());
 
             lock (Gate)
             {
@@ -2386,8 +2398,7 @@ internal static partial class SearchGcPolicy
                 try
                 {
                     stopwatch.Stop();
-                    if (pauseObservationAvailable)
-                        signal.ObserveReclaimGcPause(pauseObservation.ObserveMaximumSince());
+                    signal.ObserveReclaimGcPause(pauseObservation?.ObserveMaximumSince());
                     using Process processAfter = Process.GetCurrentProcess();
                     processAfter.Refresh();
                     Entry.Logger.Info(
@@ -2403,8 +2414,8 @@ internal static partial class SearchGcPolicy
                         $"no_gc_region_restart={FormatStartOutcome(restartOutcome)} " +
                         $"fallback_latched={(restartOutcome != NoGcRegionStartOutcome.Started).ToString().ToLowerInvariant()} " +
                         $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
-                        $"gc_pause_delta_ms={(GC.GetTotalPauseDuration() - pauseBefore).TotalMilliseconds:F1} " +
-                        $"max_observed_gc_pause_ms={signal.LastReclaimMaxObservedGcPause.TotalMilliseconds:F1} " +
+                        $"gc_pause_delta_ms={SearchGcRuntimeInfo.FormatPauseDelta(pauseBefore)} " +
+                        $"max_observed_gc_pause_ms={signal.LastReclaimMaxObservedGcPause?.TotalMilliseconds.ToString("F1") ?? "unavailable"} " +
                         CaptureLifecycle().DeltaFrom(lifecycleBefore).ToDiagnosticString() + " " +
                         $"collection_completed={collectionCompleted.ToString().ToLowerInvariant()} " +
                         $"managed_live_after_collect={liveAfterCollection} " +

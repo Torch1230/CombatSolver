@@ -8,11 +8,48 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.Runs;
 
 namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertGoldInactiveLifecycleAsync(CombatState live, Player player)
+    {
+        await ClearOrderedEffectFixtureAsync(live, player);
+        await InjectRelicAsync(player, new() { RelicId = "DRAGON_FRUIT" });
+        player.Gold = 137;
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(live);
+        CombatPredictionSimulator parent = root.ForkSimulator();
+        CombatPredictionSimulator child = parent.Fork();
+        string before = DescribeContinuationContractState(parent, root, player);
+        SimulatedCombatState shadow = (SimulatedCombatState)child.State.CombatState;
+        int maxHp = child.State.GetCreature(player.Creature).MaxHp;
+        if (!child.Kill(player.Creature, force: true))
+            throw new InvalidOperationException("金币生命周期夹具意外挂起死亡。");
+        int gained = shadow.GainPlayerGold(child, player, 20);
+        if (gained != 20 || shadow.GetPlayerGold(player) != 157
+            || child.State.GetCreature(player.Creature).MaxHp != maxHp
+            || child.State.GetCreature(player.Creature).CurrentHp != 0
+            || DescribeContinuationContractState(parent, root, player) != before)
+            throw new InvalidOperationException("失活玩家金币回调未保持金币、死亡与父分支隔离。");
+        player.DeactivateHooks();
+        try
+        {
+            string[] actualListeners = RunManager.Instance.DebugOnlyGetState()!.IterateHookListeners(null)
+                .Select(model => model.GetType().FullName!).ToArray();
+            string[] predictedListeners = shadow.GoldAfterGainHookListeners(child)
+                .Select(model => model.GetType().FullName!).ToArray();
+            if (!actualListeners.SequenceEqual(predictedListeners))
+                throw new InvalidOperationException("失活玩家的金币跑局监听序列与原版不同。");
+            await PlayerCmd.GainGold(20, player);
+            if (player.Gold != 157 || player.Creature.MaxHp != maxHp)
+                throw new InvalidOperationException("原版失活玩家金币命令未保留收益或触发了玩家遗物。");
+        }
+        finally { player.ActivateHooks(); }
+        _completedChecks.Add("GoldHooks:PlayerDeath:NativeDeactivation:OrderedRunListeners:GainGold:RelicInactive:ForkIsolation");
+    }
+
     private async Task AssertGoldHealingMechanismsAsync(CombatState live, Player player, bool includeBasicCases = true)
     {
         var evidence = new List<object>();

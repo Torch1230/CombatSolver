@@ -2,6 +2,9 @@ namespace CombatSolver;
 
 internal sealed partial class CombatBeamSolver
 {
+    internal SimulationSnapshot ReplayTurnSetupForTesting() => ReplayTurnSetup([]);
+    internal SimulationSnapshot ReplayEndTurnForTesting() => Replay([new(PlanActionKind.EndTurn, _startTurnNumber)]);
+
     internal (PlanAction Action, SimulationSnapshot Snapshot) VerifyForcedTurnChoiceReplayForTesting()
     {
         SimulationSnapshot initial = Replay([]);
@@ -14,16 +17,28 @@ internal sealed partial class CombatBeamSolver
         try
         {
             int steps = 0;
+            bool crossedEnemyChoice = false;
             while (current.BoundaryReason == SearchBoundaryReason.PendingChoice)
             {
                 if (++steps > 8) throw new InvalidOperationException("Forced turn choice fixture exceeded its choice chain.");
                 var combat = (SimulatedCombatState)current.Simulator.State.CombatState;
+                if (combat.PendingKnowledgeDemonChoice is { } knowledge)
+                {
+                    crossedEnemyChoice = true;
+                    var enemyChoice = KnowledgeDemonChoiceSupport.BuildChoices(knowledge, displayNames).First();
+                    action = action with { TurnStartChoices = [.. action.TurnStartChoices ?? [], enemyChoice] };
+                    SimulationSnapshot full = ReplayAction(parent, action);
+                    current.ReleaseSimulator();
+                    current = full;
+                    continue;
+                }
                 var request = combat.PendingTurnStartChoice
                     ?? throw new InvalidOperationException("Forced turn fixture lost its pending choice.");
                 PlanCardChoice choice = CardChoiceSupport.BuildChoices(request.Spec!, displayNames, 12, 12).First()
                     with { SourceId = request.SourceId, ContextId = request.ContextId, Timing = request.Timing };
-                using var checkpoint = TakeExecutionChoiceCheckpoint(parent, action, current)
-                    ?? throw new InvalidOperationException("Forced turn fixture did not capture execution.");
+                using var checkpoint = TakeExecutionChoiceCheckpoint(parent, action, current);
+                if (checkpoint is null && !crossedEnemyChoice)
+                    throw new InvalidOperationException("Forced turn fixture did not capture execution.");
                 action = action with { TurnStartChoices = [.. action.TurnStartChoices ?? [], choice] };
                 _executionChoiceReplayCheckpoint = checkpoint;
                 SimulationSnapshot resumed;

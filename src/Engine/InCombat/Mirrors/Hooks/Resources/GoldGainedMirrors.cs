@@ -38,7 +38,8 @@ internal static class GoldGainedMirrors
         // from a mod manifest. That label is not a proof about gold or healing.
         if (kind is not (MirrorDispatchKind.NotOverridden or MirrorDispatchKind.Handled)
             && !(kind == MirrorDispatchKind.Ignored && allowReviewedIgnored))
-            throw new PredictionUnsupportedException($"Gold callback {listener.GetType().FullName}.{method} is not mirrored.");
+            throw PredictionUnsupportedException.ForContent(
+                $"Gold callback {listener.GetType().FullName}.{method} is not mirrored.", listener.GetType());
     }
 
     private static MethodMirrorRegistry<AbstractModel, GoldGainMirrorContext, decimal> CreateModifyRegistry()

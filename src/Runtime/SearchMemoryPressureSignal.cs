@@ -62,8 +62,14 @@ internal sealed class SearchMemoryPressureSignal
     /// </summary>
     internal const long NoProgressReclaimThresholdBytes = 1024L * 1024;
 
-    public TimeSpan LastReclaimMaxObservedGcPause
-        => TimeSpan.FromTicks(Volatile.Read(ref _lastReclaimMaxObservedGcPauseTicks));
+    public TimeSpan? LastReclaimMaxObservedGcPause
+    {
+        get
+        {
+            long ticks = Volatile.Read(ref _lastReclaimMaxObservedGcPauseTicks);
+            return ticks >= 0 ? TimeSpan.FromTicks(ticks) : null;
+        }
+    }
 
     public SearchGcLifecycleSnapshot CaptureGcLifecycle()
         => Volatile.Read(ref _gcLifecycleProbe)?.Invoke() ?? default;
@@ -74,8 +80,13 @@ internal sealed class SearchMemoryPressureSignal
         Volatile.Write(ref _gcLifecycleProbe, probe);
     }
 
-    internal void ObserveReclaimGcPause(TimeSpan pause)
+    internal void ObserveReclaimGcPause(TimeSpan? observation)
     {
+        if (observation is not { } pause)
+        {
+            Volatile.Write(ref _lastReclaimMaxObservedGcPauseTicks, -1);
+            return;
+        }
         if (pause < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(pause));
         long previous = Volatile.Read(ref _lastReclaimMaxObservedGcPauseTicks);

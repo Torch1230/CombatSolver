@@ -70,7 +70,7 @@ internal static partial class EnchantmentLifecycleSupport
     public static void TriggerAfterTurnStartOrbs(CombatPredictionSimulator simulator, Player player)
     {
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(player);
-        foreach (PlasmaOrb orb in state.OrbQueue.Orbs.OfType<PlasmaOrb>())
-            simulator.GainEnergy(player, orb.PassiveVal);
+        foreach (PlasmaOrb orb in state.OrbQueue.Orbs.OfType<PlasmaOrb>().ToArray())
+            simulator.TriggerOrbPassive(orb, null);
     }
 }
