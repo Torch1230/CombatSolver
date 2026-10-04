@@ -2409,7 +2409,8 @@ internal static partial class SolverController
     internal static SolverProgress? CaptureDevelopmentMonitorProgress()
     {
         SolverSearchSession? search = Volatile.Read(ref _search);
-        return search == null ? null : Volatile.Read(ref search.Interaction.Progress);
+        return (search == null ? null : Volatile.Read(ref search.Interaction.Progress))
+            ?? PlayerTurnSetupCoordinator.CaptureDevelopmentMonitorProgress();
     }
 
     private static string DescribeReplanAudit()

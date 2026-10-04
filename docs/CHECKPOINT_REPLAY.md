@@ -44,7 +44,11 @@ Linux：
 
 旧包没有完整输入记录时 `ReplayRecorded` 返回 `missing_native_event_recording`，仍可尝试 RestoreOnly、SearchOnly、DeploySolver。缺失的历史或复杂内部状态不能凭计数补造；导入不一致时保留首个差异。旧包兼容不代表所有历史包都已逐包验证。
 
-旧包政策从 settings 和 searchProfiles 恢复。`missingPolicyFields` 列明缺项，搜索/部署需用 `-ReplayPolicyOverridePath <JSON>` / `--policy <JSON>` 明确补齐。允许字段：`potionPolicy`、`potionDirectives`、`actTransitionBossHpStrategy`、`finalBossHpStrategy`、`acceptableBattleHpLoss`、`searchMaxDegreeOfParallelism`、`shortProfile`、`deepProfile`、`forceShortOnly`。覆盖文件保留在结果目录；原值、覆盖值和实际执行值分别记录。
+旧包政策从 settings 和 searchProfiles 恢复。`missingPolicyFields` 列明缺项，搜索/部署需用 `-ReplayPolicyOverridePath <JSON>` / `--policy <JSON>` 明确补齐。允许字段：`potionPolicy`、`potionDirectives`、`growthBudgets`、`relicStrategyEnabled`、`relicCounterRules`、`brightestFlameMaxHpLossLimit`、`actTransitionBossHpStrategy`、`finalBossHpStrategy`、`acceptableBattleHpLoss`、`stopAtAcceptableBattleHpLoss`、`searchMaxDegreeOfParallelism`、`profile`、`fixedBudget`、`act3BossStrategy`，以及下面四个开关。旧归档仍可读取 `deepProfile` / `forceShortOnly`；覆盖文件使用统一的 `profile` / `fixedBudget`。覆盖文件保留在结果目录；原值、覆盖值和实际执行值分别记录。
+
+报告中的 `predictPotionReward`、`useNoveltyPortfolio`、`useBeamWidthPortfolio`、`useEarlyTurnExploration` 按记录的 true/false 恢复，不能继承本机默认值。旧包没有记录这些开关时，搜索/部署明确报缺失政策，需通过覆盖文件补齐。恢复材料与录制动作仍可单独核验，不把未知政策补成默认值后声称同条件比较。
+
+批量工具只有在搜索预算、药水、成长、遗物、局外收益、可接受战损停止条件和四个搜索开关一致时，才允许生成相对人工路线的收益字段。缺失或 null 的必要字段不能证明一致；明确记录的可空 `brightestFlameMaxHpLossLimit` 可以为 null。两侧政策中的其他已记录字段也必须存在且相等，不能忽略派生搜索上下文或后来新增的字段。内部预设名称不参与比较，以实际数值 profile 为准。
 
 ## 批量与证据
 

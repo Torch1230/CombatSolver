@@ -154,8 +154,13 @@ internal static class CheckpointArchive
             ["checkpoint"] = checkpoint,
             ["request"] = request,
             ["recordedPolicy"] = (index["searchPolicies"]?.AsArray().OfType<JsonObject>()
-                .LastOrDefault(item => item["checkpointId"]?.GetValue<string>() != null
-                    && item["checkpointId"]?.GetValue<string>() == metadata["searchRootId"]?.GetValue<string>())?["policy"]
+                .Where(item => item["checkpointId"]?.GetValue<string>() != null
+                    && item["checkpointId"]?.GetValue<string>() == metadata["searchRootId"]?.GetValue<string>()
+                    && (checkpoint["eventCursor"]?.GetValue<long>() is long cursor
+                        ? item["eventCursor"]?.GetValue<long>() is long policyCursor && policyCursor <= cursor
+                        : item["eventCursor"] == null))
+                .OrderBy(item => item["eventCursor"]?.GetValue<long>())
+                .LastOrDefault()?["policy"]
                 ?? metadata["effectivePolicy"])?.DeepClone(),
             ["legacySettings"] = metadata["settings"]?.DeepClone(),
             ["legacySearchProfiles"] = replay["searchProfiles"]?.DeepClone(),

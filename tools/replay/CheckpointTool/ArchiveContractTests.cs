@@ -21,6 +21,9 @@ internal static class ArchiveContractTests
             Check(CheckpointArchive.Inspect(valid)["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:1", "default_selector_is_combat_start");
             Check(CheckpointArchive.Inspect(valid, "end")["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:3", "explicit_end_selector");
             Check(CheckpointArchive.Inspect(valid, "recorded")["checkpoint"]!["checkpointId"]!.GetValue<string>() == "s:3", "explicit_recorded_selector");
+            string policyTimeline = WriteFixture(root, "policy-timeline", false, policyTimeline: true);
+            Check(CheckpointArchive.Inspect(policyTimeline, "latest")["recordedPolicy"]!["includeTurnSetup"]!.GetValue<bool>() == false,
+                "policy_at_checkpoint_excludes_later_setup_search");
             string legacy = WriteFixture(root, "legacy", true);
             Check(CheckpointArchive.Inspect(legacy)["status"]!.GetValue<string>() == "materials_valid", "legacy_without_index");
             string mismatch = WriteFixture(root, "mismatch", false, wrongSession: true);
@@ -101,6 +104,12 @@ internal static class ArchiveContractTests
             bounded.Dispose();
             bounded.Completion.GetAwaiter().GetResult();
             JsonObject policy = JsonNode.Parse("""{"potionPolicy":"Smart","potionDirectives":[],"actTransitionBossHpStrategy":"ProgressionFirst","finalBossHpStrategy":"ProgressionFirst","acceptableBattleHpLoss":0,"searchMaxDegreeOfParallelism":4,"shortProfile":{},"deepProfile":{},"forceShortOnly":true}""")!.AsObject();
+            foreach (string field in new[] { "stopAtAcceptableBattleHpLoss", "predictPotionReward", "useNoveltyPortfolio", "useBeamWidthPortfolio", "useEarlyTurnExploration", "relicStrategyEnabled" })
+                policy[field] = true;
+            policy["growthBudgets"] = new JsonObject();
+            policy["relicCounterRules"] = new JsonArray();
+            policy["brightestFlameMaxHpLossLimit"] = null;
+            policy["ignoreLongTermRewards"] = false;
             JsonObject candidate = JsonNode.Parse("""{"status":"deployment_completed","inputIdentity":"same","comparisonScope":"full_combat","environment":{},"verification":{"actualOutcome":{"combatEnded":true,"survived":true,"hpLost":47}}}""")!.AsObject();
             candidate["verification"]!["executedPolicy"] = policy.DeepClone();
             candidate["verification"]!["recordedPolicy"] = policy.DeepClone();
@@ -120,6 +129,51 @@ internal static class ArchiveContractTests
             JsonObject overridden = (JsonObject)policy.DeepClone();
             overridden["potionPolicy"] = "Disabled";
             Check(!BatchRunner.EquivalentPolicy(policy, overridden), "different_potion_policy_is_not_comparable");
+            candidate["verification"]!["actualOutcome"]!["combatEnded"] = true;
+            foreach (string field in new[] { "predictPotionReward", "useNoveltyPortfolio", "useBeamWidthPortfolio", "useEarlyTurnExploration", "stopAtAcceptableBattleHpLoss", "relicStrategyEnabled", "ignoreLongTermRewards" })
+            {
+                JsonObject changed = (JsonObject)policy.DeepClone();
+                changed[field] = !changed[field]!.GetValue<bool>();
+                Check(!BatchRunner.EquivalentPolicy(changed, policy), "different_switch_not_comparable:" + field);
+                candidate["verification"]!["executedPolicy"] = changed;
+                BatchRunner.CompareVerifiedRoute(candidate, [reference], inspection);
+                Check(candidate["relativeToManual"] == null, "different_switch_has_no_manual_gain:" + field);
+            }
+            foreach (string field in new[] { "growthBudgets", "relicCounterRules", "brightestFlameMaxHpLossLimit" })
+            {
+                JsonObject changed = (JsonObject)policy.DeepClone();
+                changed[field] = field switch
+                {
+                    "growthBudgets" => new JsonObject { ["feed"] = 8 },
+                    "relicCounterRules" => new JsonArray(new JsonObject { ["relicId"] = "NUNCHAKU", ["target"] = 9 }),
+                    _ => JsonValue.Create(2),
+                };
+                Check(!BatchRunner.EquivalentPolicy(changed, policy), "different_resource_policy_not_comparable:" + field);
+            }
+            JsonObject incomplete = (JsonObject)policy.DeepClone();
+            incomplete.Remove("predictPotionReward");
+            Check(!BatchRunner.EquivalentPolicy(incomplete, incomplete.DeepClone()), "missing_switch_is_not_proof_of_same_policy");
+            incomplete["predictPotionReward"] = null;
+            Check(!BatchRunner.EquivalentPolicy(incomplete, incomplete.DeepClone()), "null_switch_is_not_proof_of_same_policy");
+            JsonObject context = (JsonObject)policy.DeepClone();
+            context["act3BossStrategy"] = true;
+            Check(!BatchRunner.EquivalentPolicy(context, policy), "missing_recorded_request_context_not_comparable");
+            JsonObject differentContext = (JsonObject)context.DeepClone();
+            differentContext["act3BossStrategy"] = false;
+            Check(!BatchRunner.EquivalentPolicy(context, differentContext), "different_request_context_not_comparable");
+            candidate["verification"]!["executedPolicy"] = differentContext;
+            candidate["verification"]!["recordedPolicy"] = context;
+            BatchRunner.CompareVerifiedRoute(candidate, [reference], inspection);
+            Check(candidate["relativeToManual"] == null, "different_request_context_has_no_manual_gain");
+            differentContext = (JsonObject)context.DeepClone();
+            context["futurePolicyField"] = new JsonObject { ["enabled"] = true };
+            Check(!BatchRunner.EquivalentPolicy(context, differentContext), "unrecognized_recorded_policy_field_not_ignored");
+            differentContext = (JsonObject)context.DeepClone();
+            differentContext["performancePreset"] = "Custom";
+            context["performancePreset"] = "Medium";
+            Check(BatchRunner.EquivalentPolicy(context, differentContext), "preset_label_can_differ_with_same_numeric_policy");
+            candidate["verification"]!["executedPolicy"] = policy.DeepClone();
+            candidate["verification"]!["recordedPolicy"] = policy.DeepClone();
             JsonObject unified = (JsonObject)policy.DeepClone();
             unified.Remove("shortProfile");
             unified.Remove("deepProfile");
@@ -156,7 +210,7 @@ internal static class ArchiveContractTests
         }
     }
 
-    private static string WriteFixture(string directory, string name, bool legacy, bool wrongSession = false, bool duplicate = false)
+    private static string WriteFixture(string directory, string name, bool legacy, bool wrongSession = false, bool duplicate = false, bool policyTimeline = false)
     {
         string path = Path.Combine(directory, name + ".zip");
         using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
@@ -176,6 +230,7 @@ internal static class ArchiveContractTests
             {
                 ["sessionId"] = wrongSession ? "other" : "s", ["label"] = label,
                 ["encounterId"] = "e", ["exactContinuationState"] = "root", ["playerPhase"] = "Play",
+                ["searchRootId"] = policyTimeline && sequence == 2 ? "s:2" : null,
             }.ToJsonString());
             Write(prefix + "replay-state/" + file,
                 """{"schemaVersion":1,"encounterId":"e","exactContinuationState":"root","ascensionLevel":0,"currentActIndex":0,"runRng":{"seed":"seed"},"players":[{"characterId":"c"}]}""");
@@ -186,6 +241,7 @@ internal static class ArchiveContractTests
                 ["checkpointId"] = "s:" + sequence,
                 ["label"] = label,
                 ["canSearch"] = label != "combat_end",
+                ["eventCursor"] = policyTimeline && sequence == 2 ? 4 : null,
                 ["metadataPath"] = prefix + "checkpoints/" + file,
                 ["replayStatePath"] = prefix + "replay-state/" + file,
                 ["nativeStatePath"] = prefix + "native-state/" + Path.ChangeExtension(file, ".bin"),
@@ -197,6 +253,13 @@ internal static class ArchiveContractTests
             {
                 ["schemaVersion"] = 2, ["sessionId"] = "s", ["defaultCheckpointId"] = "s:2",
                 ["combatStartCheckpointId"] = "s:1", ["combatEndCheckpointId"] = "s:3", ["checkpoints"] = checkpoints,
+                ["searchPolicies"] = policyTimeline ? new JsonArray
+                {
+                    new JsonObject { ["checkpointId"] = "s:2", ["eventCursor"] = 4,
+                        ["policy"] = new JsonObject { ["includeTurnSetup"] = false } },
+                    new JsonObject { ["checkpointId"] = "s:2", ["eventCursor"] = 6,
+                        ["policy"] = new JsonObject { ["includeTurnSetup"] = true } },
+                } : null,
             }.ToJsonString());
         if (duplicate)
             Write(prefix + "session.json", "{}");
