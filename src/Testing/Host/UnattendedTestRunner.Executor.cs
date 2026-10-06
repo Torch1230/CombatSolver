@@ -1452,6 +1452,8 @@ internal sealed partial class UnattendedTestRunner
                 SolverController.BeginCombat(combatState);
             if (request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-DEPLOYMENT")
                 await runner.PrepareRecordedPlanDeploymentAsync(combatState);
+            if (request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME")
+                await runner.PrepareRecordedPlanDeploymentAsync(combatState, compareCurrentOutcome: true);
             if (request.TheftPolicyForTest is { } theftPolicy)
                 SolverController.SetTheftPolicyForTesting(combatState, theftPolicy);
             SolverController.SetStopFullAutoOnCombatEnd(false, persist: false);
@@ -1960,7 +1962,7 @@ internal sealed partial class UnattendedTestRunner
                 && !stoppedAfterWorseRecalculationPause
                 && !stoppedAfterLiveRiskPause
                 && !stoppedAfterExpectedUnexpectedReplan;
-            if (request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-DEPLOYMENT")
+            if (request.ScenarioId is "CHECKPOINT-RECORDED-PLAN-DEPLOYMENT" or "CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME")
                 runner.AssertRecordedPlanDeployment(combatState);
             return Observation(combatEnded);
 

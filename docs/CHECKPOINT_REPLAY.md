@@ -78,6 +78,8 @@ v2 索引保存稳定战斗/检查点 ID、永久递增编号、原生事件位�
 
 完整预测路线可用无人测试场景 `CHECKPOINT-RECORDED-PLAN-DEPLOYMENT` 验证：传原 ZIP、含获胜预测的检查点 selector、`ReplayMode=DeploySolver`、显式政策文件和 EvidenceDirectory。测试按事件游标及起始回合选择最后一条完整获胜预测，保留所有动作、完整牌身份与选择，逐步对账增量/完整回放，再通过正常原生部署入口执行。断言真实胜负、战损、药水数量/身份及终局回合；后台搜索代次跨战斗结束保留，用于确认执行期间没有额外搜索。此模式证明保存预测的可执行性，不能称为纯玩家录制通关或搜索自主发现。
 
+历史预测数字与当前严格动作回放不同时，先保留该失败及 `recorded-plan-replayed-outcome.json`，再用显式诊断场景 `CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME` 比较当前预测和原生结果。它仍要求完整根、所有原始动作身份、逐步增量/完整状态等价、完整胜利及零额外搜索/重算；只有历史战损/终局回合作为比较数据，不要求与当前预测相等。`recordedPredictionOutcomeMatched=false` 和专用 comparisonScope 明确保留历史差异，不能将此诊断 Passed 当作旧数字成立或搜索自主发现。普通部署和路径场景继续严格拒绝历史预测差异。
+
 同一输入使用 `CHECKPOINT-RECORDED-PLAN-PATH`、`ReplayMode=SearchOnly`，将冻结路线作为只读观察目标运行正常协调器；不把参照动作注入候选或评分。`RecordedPrediction-path-trace.json` 保存准确动作和完整状态的生成、转置、保留与展开事件，观察器丢事件时显式失败。路径诊断耗时不能作正常性能证据。两种模式都要求原生录制和对应检查点的完整获胜预测，旧身份不匹配时失败，不删去费用层或改写录制内容。Power Potion 等已录制前缀与未来预测用药分别计算，不能漏掉前缀消耗。
 
 Q002 专属固定路线/成员诊断已在任务收尾移除；失败证据与[历史用法](archive/testing/q002-pre-0492-validation-20261004.md#一次性诊断入口的历史用法)保留，当前使用上述通用保存预测及正常搜索/部署入口。
