@@ -68,6 +68,7 @@ internal static partial class CombatSearchCoordinator
         List<BeamWidthPortfolioMemberCost> costs = [];
         BeamWidthPortfolioBaseline baseline = default;
         bool baselineObserved = false;
+        bool? hasPersistentOpeningPotion = null;
         long expandedByMembers = 0;
         BeamPortfolioExperiment? experiment = policy.PortfolioExperiment;
         SolverResult? baselineResult = null;
@@ -207,6 +208,29 @@ internal static partial class CombatSearchCoordinator
                 return null;
             if (incumbent != null && CanFinishTargetPortfolio(root, policy, profile, incumbent))
                 return "AcceptableBattleHpLoss";
+            // Optional potion layers and their opening posteriors share this request's
+            // ledger. Do not spend their measured headroom on another cold refinement.
+            if (!member.AggressivePowerCommitment && !policy.IncludeTurnSetup
+                && policy.PotionPolicy == SolverPotionPolicy.Smart
+                && !policy.PotionStrategy.HasForcedDirectives && context.BattleDamage.PotionsUsedSoFar == 0
+                && root.SearchablePotions.Any(potion => PotionUsePolicy.RequiresOpeningUse(potion.PotionId))
+                && incumbent != null && IsCompleteVictory(incumbent)
+                && incumbent.ExplicitPotionCount == 0
+                && incumbent.ProjectedBattleHpLost >= SolverWeights.PotionMinimumHpSaved)
+            {
+                hasPersistentOpeningPotion ??= new CombatBeamSolver(root, context.DisplayNames,
+                    context.BattleDamage, policy, cancellationToken, context.ProgressCallback, profile,
+                    potionPolicyOverride: SolverPotionPolicy.RequireAtLeastOne, maximumPotionUses: 1)
+                    .BuildOpeningPotionActions().Any(action => action.Choice == null
+                        && PotionUsePolicy.RequiresOpeningUse(action.PotionId));
+                long openingReserve = 2 * BeamWidthPortfolioGate.EstimateMemberCost(
+                    baseline.ElapsedMilliseconds, baseline.BeamWidth, baseline.BeamWidth);
+                long refinementCost = BeamWidthPortfolioGate.EstimateMemberCost(
+                    baseline.ElapsedMilliseconds, baseline.BeamWidth, member.BeamWidth);
+                if (hasPersistentOpeningPotion.Value
+                    && context.Budget.RemainingRequestMilliseconds < openingReserve + refinementCost)
+                    return "SmartOpeningPotionReserve";
+            }
             // 能力牌成员走自己的门控（它只要求确实存在可达的能力牌），其余成员走宽度余量门控。
             string? rejection = member.AggressivePowerCommitment
                 ? PowerCommitmentPortfolioGate.Reject(hasReachablePower)

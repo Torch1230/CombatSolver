@@ -1,0 +1,144 @@
+{
+  "potionPolicy": "Smart",
+  "potionDirectives": [
+    {
+      "slot": 0,
+      "potionId": "HEART_OF_IRON",
+      "directive": "Smart"
+    }
+  ],
+  "growthBudgets": {
+    "handOfGreed": 0,
+    "theHunt": 2,
+    "feed": 6,
+    "royalties": 0,
+    "alchemize": 1,
+    "geneticAlgorithm": 0,
+    "theScythe": 0,
+    "goopy": 0,
+    "forbiddenGrimoire": 0,
+    "madScience": 0
+  },
+  "relicStrategyEnabled": true,
+  "relicCounterRules": [
+    {
+      "id": "HappyFlower",
+      "enabled": false,
+      "minimum": 2,
+      "maximum": 2,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "FakeHappyFlower",
+      "enabled": false,
+      "minimum": 4,
+      "maximum": 4,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "Pendulum",
+      "enabled": false,
+      "minimum": 2,
+      "maximum": 2,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "PollinousCore",
+      "enabled": false,
+      "minimum": 3,
+      "maximum": 3,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "PenNib",
+      "enabled": false,
+      "minimum": 9,
+      "maximum": 9,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "Nunchaku",
+      "enabled": false,
+      "minimum": 9,
+      "maximum": 9,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "TuningFork",
+      "enabled": false,
+      "minimum": 9,
+      "maximum": 9,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "JossPaper",
+      "enabled": false,
+      "minimum": 4,
+      "maximum": 4,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "IronClub",
+      "enabled": false,
+      "minimum": 3,
+      "maximum": 3,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "GalacticDust",
+      "enabled": false,
+      "minimum": 9,
+      "maximum": 9,
+      "hpAllowance": 0,
+      "priority": 1
+    },
+    {
+      "id": "MeatOnTheBone",
+      "enabled": true,
+      "minimum": 1,
+      "maximum": 1,
+      "hpAllowance": 0,
+      "priority": 1
+    }
+  ],
+  "actTransitionBossHpStrategy": "ProgressionFirst",
+  "finalBossHpStrategy": "ProgressionFirst",
+  "acceptableBattleHpLoss": 0,
+  "stopAtAcceptableBattleHpLoss": true,
+  "searchMaxDegreeOfParallelism": 1,
+  "profile": {
+    "beamWidth": 90,
+    "maxExpandedNodes": 250000,
+    "maxCardBranchesPerNode": 48,
+    "maxPileChoiceBranchesPerAction": 28,
+    "maxHandChoiceBranchesPerAction": 36,
+    "softTimeBudgetMilliseconds": 10000,
+    "secondRankBand": false,
+    "contextualRanking": null,
+    "continuousThreatRanking": false,
+    "baseScoreTacticalTies": false,
+    "adaptiveNoveltyRefinement": false,
+    "beamWeightPerturbation": null,
+    "offensiveRefinementPortfolio": false,
+    "boundedOffensiveRefinementPortfolio": false,
+    "reallocatedRefinementPortfolio": true,
+    "stopPortfolioAtHpTarget": true,
+    "baseScoreOnly": false,
+    "aggressivePowerCommitment": false
+  },
+  "fixedBudget": true,
+  "act3BossStrategy": false,
+  "useNoveltyPortfolio": true,
+  "useBeamWidthPortfolio": true,
+  "useEarlyTurnExploration": false,
+  "predictPotionReward": false
+}

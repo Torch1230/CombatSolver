@@ -2845,5 +2845,53 @@
     "expected": "原异常传播、信号释放、后续独占准入与作用域收尾。",
     "observed": "default-entry未修复基线失败：限额日志抛错后压力信号仍启用；最终2项通过。既有diagnostic-failure 8项、scopes 8项通过。",
     "evidence": "tools/testing/checks/CombatSolver.GcPolicyChecks/GcDiagnosticFailureChecks.cs; src/Runtime/SearchGcPolicy.cs; docs/TEST_MATRIX.md"
+  },
+  "Q014-O064-SMART-OPENING-DEADLINE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullDeployment",
+    "procedure": "原O064 ZIP，combat_start/cursor0，显式短政策，10000ms/90Beam/250000节点/DOP1/Smart/NoGC关闭；Instant/0秒。",
+    "expected": "完整根/原生状态严格一致，完整胜利、药水身份和零非预期重算；不提高预算。",
+    "observed": "基线eb65082a262b4bf0b3202fbfe9ccfd7d原生29/0/T11；保留截止前已选14/1的修复后1d46394ebf594a1aa8a05f2d095eec58为14/1/T10。最终ecb0584456aa439baca830d8922eeeda Passed，54→40/70HP，HEART_OF_IRON一瓶，T10，零重算。折算29→23，追平人工成本23，人工T9。原180秒未验证。",
+    "evidence": "src/Search/CombatSearchCoordinator.Audits.cs; src/Search/CombatSearchCoordinator.BeamPortfolio.cs; src/Search/PotionValuationRegistry.cs; coverage/fixtures/search/q014-o064-policy.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-PERSISTENT-POTION-SENTINEL": {
+    "status": "Passed",
+    "level": "PairedNormalHeadlessNativeQualityAndCost",
+    "procedure": "固定独立SILENT/BYRDONIS_ELITE哨兵，60Beam/120000节点/请求覆盖30000ms/DOP2/Smart/NoGC关闭；独立基线、候选进程。",
+    "expected": "同根同政策同预算，正常搜索路线质量不降，原生胜利及零重算；不将诊断模式时间作为性能。",
+    "observed": "35d355fedef443198fcc038cfc150a03与3115e70c137a42e6be5987fee8cea24e均5HP/1BLOCK_POTION/T4/零重算，根、政策和完整动作相同；7918.323→8125.1884ms(+2.61%)，节点19858/转移75893相同，分配2715568224→2734561176B(+0.70%)。单样本，不证明普遍提速或Steam可见FPS。后续仅Testing诊断变化。",
+    "evidence": "coverage/fixtures/search/q014-persistent-potion-sentinel.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-O061-QUALITY-GAP": {
+    "status": "Unresolved",
+    "level": "NativeFeasibilityWithUnresolvedRootSearch",
+    "procedure": "原O061 ZIP，开战基线；原生前缀到T5及25步后缀严格等价/原生部署。",
+    "expected": "从同开战根自主找到扣除药水后不差于27/0的完整胜利。",
+    "observed": "620cdc147b35431797fc09b589727b9d基线45/2/T9；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。T5自主27不等于开战发现；旧预测前缀拼接失败，未移除身份键。攻击续段试验7a52dcf94c224fc3a5a462e39f2fa848仍45/2，已撤回。未追平。",
+    "evidence": "coverage/fixtures/search/q014-o061-policy.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-O062-QUALITY-GAP": {
+    "status": "Unresolved",
+    "level": "NativeFeasibilityAndDetachedPathDiagnosis",
+    "procedure": "原O062 ZIP，开战基线；T2检查点参照原生部署；原始身份按原生T1顺序重排的独立派生诊断。",
+    "expected": "自主找到7/1/T3，不能写包中固定顺序或提高预算。",
+    "observed": "ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。1a653df50f8745bf8a5c64935adb9f30派生13步严格回放通过，352只读路径事件无丢失；第7步COLORLESS_POTION生成VICIOUS进入PruneInput但无PruneFinal/Expanded，后续未观察。攻击续段试验22/0折算无收益，已撤回。",
+    "evidence": "coverage/fixtures/search/q014-o062-policy.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-O063-RESTORATION-BLOCK": {
+    "status": "Blocked",
+    "level": "StrictCheckpointRestoration",
+    "procedure": "原O063 ZIP，不主动增加内容Mod支持，完整续用戳及原生编码检查。",
+    "expected": "只有完整原生状态严格可比后才接受限定旧格式差异；其他未知保持失败。",
+    "observed": "add07521e4e546919d8fed95af98a556 Failed；旧loadout_summon_powers=empty额外字段，原生模型编码hash4186358368/1568834832不同，完整原生bytes不可比较。限定空标记试验7aa7510ad4424f50948ec0ef863c7a9c仍Failed并已撤回。本机缺Loadout.dll及对应模型编码材料，未验证后续质量。",
+    "evidence": "coverage/fixtures/search/q014-o063-policy.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-O065-HISTORICAL-OUTCOME-DRIFT": {
+    "status": "Passed",
+    "level": "ExplicitCurrentNativeComparisonNotHistoricalFeasibility",
+    "procedure": "原O065 ZIP开战，先普通严格预测模式，再显式CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME诊断，保持原28步完整身份。",
+    "expected": "普通模式保留旧数字不符失败；诊断模式只比较当前严格回放与原生，完整胜利且零额外搜索/重算。",
+    "observed": "987853e022e84c1ea232b9451edd0580 Failed：28步合法、增量/完整一致，当前8HP/T7与历史3HP/T7不符。bcc36e64859142f786148642e55450db显式诊断Passed：原生62→54/75HP，8/0/T7、零搜索/重算，recordedPredictionOutcomeMatched=false。自主基线f039543f267c49c2be45dbc4ff7c18a8为5/0/T7，历史3不是当前有效质量参照。",
+    "evidence": "src/Testing/Replay/UnattendedTestRunner.RecordedPlan.cs; docs/CHECKPOINT_REPLAY.md; coverage/fixtures/search/q014-o065-policy.json; docs/issues/q014-route-quality.md"
   }
 }

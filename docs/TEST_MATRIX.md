@@ -77,7 +77,6 @@ pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId EFFECT-S
 ./tools/testing/run-unattended-test.sh --scenario-id EFFECT-SCOPE-ADJACENT-CONTRACT --enemy-current-hp 1000 --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
 ```
 
-
 ## 0.48.0 硬错误机制合同
 
 这些场景各自停止在共享首因或必要跨回合边界。完整runId、失败基线和未验证项见[历史卷13](archive/testing/volume-13.md)，逐包分类见[问题记录](issues/0.48.0-hardbugs-20261003.md)。
@@ -185,7 +184,6 @@ L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描�
 
 范围：本轮没有重跑作者长预算全根性能筛查，没有验证低内存玩家宿主、原生整场部署或可见Steam性能；原作者失败与未验证项保留在所属报告。
 
-
 ## 性能研究分支
 
 既有组件、药水、魂枢及未达标原型的合同与历史结果见[历史卷18](archive/testing/volume-18.md)。PR #207最新上游整合、逐次ABBA、23根品质回归及NoGC波动/超时限制见[当前验收](performance/pr207-upstream-0494-integration-20261005.md)。
@@ -197,3 +195,5 @@ L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描�
 当前原版根／Fork 复跑：PowerShell 使用 `tools/testing/run-unattended-test.ps1 -ScenarioId HAND-LIMIT-ROOT-CONSISTENCY -EnemyCurrentHp 1000 -VerifyCombatRootSnapshot -StopAfterCombatRootSnapshotAssertion -EnableNoGcRegionForTest 0 -TimeoutSeconds 120 -CleanupInstanceOnExit`；Bash 使用 `./tools/testing/run-unattended-test.sh --scenario-id HAND-LIMIT-ROOT-CONSISTENCY --enemy-current-hp 1000 --verify-combat-root-snapshot --stop-after-combat-root-snapshot-assertion --enable-no-gc-region-for-test 0 --timeout-seconds 120 --cleanup-instance-on-exit`，两端默认 IRONCLAD／FUZZY_WURM_CRAWLER_WEAK。
 
 2026-10-06 合并验证：SDK 9.0.300 Release 构建零警告／错误；上述原版合同 runId `63b5712a8b034b8388dbf4d71f42c311` Passed（22.56 秒），核对基础手牌上限、根与 Fork 的 live/predicted 续用文本及捕获隔离，实例目录已删除。动态上限 13→16、Dredge／CrashLanding 与耗时对照本轮未复测，历史 NotPassed 保留。
+
+Q014：持续药水开局余量、智能后验截止时保留已选完整路线及旧默认手牌上限恢复，目标／独立哨兵、正常搜索数字和未验证项见[逐包记录](issues/q014-route-quality.md)。
