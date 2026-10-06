@@ -2917,5 +2917,13 @@
     "expected": "逐步增量/完整等价、原生5/1/T3、无额外搜索/重算；保留继承历史7不符，不计自主优化。",
     "observed": "9cad1022eff94028afe49ab86c09dc20普通模式Failed5/7；首个原生请求7cd65693ab9445d2a8cfc6f4ba7de028因误用SearchOnly在模式检查Failed。修正DeploySolver后47f07160374c459eb4bc9c3722c5b539 Passed12步严格回放/原生5/1/T3、终局71/80HP、零搜索/重算。ee1b6e7578bd4a639b69e433831cbe93只读路径377事件/e512ab4877da4429b671f13933bf0f3e整池848事件均无丢失、根/live不变；第9步MoltenFist边界17排名68/190无代表，实际新生选项代表排名85/路由4/选中65。自主仍13，未完成。 下一单因素17a012aa492c488494abb6a48d370fdf正常22/0/T7，折算无收益，已撤回；686a416d63924f16af018fd5e437a0cd只读370事件无丢失，5点准确路线第8步落选，但现有数据偏好原7点前缀，不能把该落选单独判为根因。",
     "evidence": "src/Testing/Replay/UnattendedTestRunner.RecordedPlan.cs; src/Testing/Host/UnattendedTestRunner.Executor.cs; docs/CHECKPOINT_REPLAY.md; docs/issues/q014-route-quality.md"
+  },
+  "Q014-HEADLESS-IMAGE-IDENTITY": {
+    "status": "Passed",
+    "level": "OwnedProcessIdentityInfrastructure",
+    "procedure": "共同系统镜像路径查询替代宿主MainModule.FileName；保留句柄、出生时间、私有路径和读取失败拒绝。",
+    "expected": "新进程真实路径可读；同PID出生时间不同程序仍拒绝；无关程序不能作为私有游戏。",
+    "observed": "1b3455265a4e492bb542f8f21d44126d/9ba9a56e350d4dd580243f40f88125cf启动失败；cb3c08fe548941ec9a993d807328d5a8诊断确认宿主actual为空，而启动器系统镜像读取已返回路径。test-headless-runtime.ps1 Passed全部宿主合同及新增错误镜像/无关程序拒绝，verify-tools.py Passed293文件37项目；实际游戏启动恢复待记录。 修复后9ca4e24ddf0b4ebc90f7fabbbe4f6004实际启动并完成同根正常搜索，Passed并清理；策略候选仍22/0/T7，8920.7255ms/19667节点/66655转移/3184370088B，无质量收益，已撤回。宿主修复与策略结果分开记录。",
+    "evidence": "tools/testing/headless-runtime.ps1; tools/testing/run-unattended-test.ps1; tools/testing/test-headless-runtime.ps1; docs/HEADLESS_TESTING.md; docs/issues/q014-route-quality.md"
   }
 }

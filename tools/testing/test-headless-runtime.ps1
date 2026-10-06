@@ -150,6 +150,21 @@ try {
 
     # A reused PID with a different birth is stale, not permission to stop it.
     $identity = Get-HeadlessProcessIdentity ([Diagnostics.Process]::GetCurrentProcess())
+    Assert-HostFixture ([IO.File]::Exists($identity.exe)) 'process image query did not return a real executable'
+    $wrongImage = $identity.Clone()
+    $wrongImage.exe = Join-Path $testRoot 'wrong-process.exe'
+    $imageRejected = $false
+    try { Get-HeadlessIdentityState $wrongImage | Out-Null } catch {
+        if ($_.Exception.Message -ne 'Live process birth matches but executable changed; preserving its lease.') { throw }
+        $imageRejected = $true
+    }
+    Assert-HostFixture $imageRejected 'matching PID birth accepted a different executable'
+    $privateGameRejected = $false
+    try { Set-HeadlessHostGame $a ([Diagnostics.Process]::GetCurrentProcess()) } catch {
+        if ($_.Exception.Message -notlike "Started headless executable is not the instance's private game:*") { throw }
+        $privateGameRejected = $true
+    }
+    Assert-HostFixture $privateGameRejected 'host claimed an unrelated executable as its private game'
     $staleIdentity = $identity.Clone()
     $staleIdentity.birth = ([DateTimeOffset]$identity.birth).AddSeconds(-1).ToString('O')
     Assert-HostFixture (-not (Get-HeadlessIdentityState $staleIdentity).alive) 'PID birth was ignored'

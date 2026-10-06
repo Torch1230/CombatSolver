@@ -30,6 +30,8 @@ macOS 有一个最小入口 `tools/testing/run-unattended-test-macos.sh <请求 
 
 Windows 使用 PowerShell 7.4 或更新版本，参数对应 `-HeadlessInstance`、`-HeadlessExecutionMode Parallel`、`-HeadlessMemoryReservationMiB`、`-HeadlessCpuReservation`、`-HeadlessQueueTimeoutSeconds`；场景参数与已有原生启动器相同。
 
+Windows 启动器与宿主共用 `headless-runtime.ps1` 的系统进程镜像路径读取器，按持有的进程句柄调用 `QueryFullProcessImageName`；新进程的 `MainModule.FileName` 可能为空，不能作为已启动镜像的唯一依据。PID、出生时间及私有可执行文件路径仍全部核验，读取失败或不符时保留严格拒绝。`test-headless-runtime.ps1` 覆盖真实镜像路径、同出生时间不同程序拒绝，以及不得将当前PowerShell认作私有游戏。
+
 Windows 与 Linux 首次初始化隔离配置时优先复制玩家的 `default` 目录；没有该目录时，将唯一包含 `settings.save` 的 Steam 账号配置复制到私有 `default/1`。没有可用配置或有多个 Steam 账号配置时明确失败，不猜测测试账号。静音、启用 Mod 和测试状态写入仅作用于私有副本，后续请求复用该副本。Windows 配置选择的独立验证入口为 `pwsh -File tools/testing/test-headless-profile.ps1`，不启动游戏。
 
 Coding agent 运行无头游戏测试时必须加 `-CleanupInstanceOnExit`，Bash 对应 `--cleanup-instance-on-exit`。它会强制请求在完成后退出，并在成功、失败、取消或超时的收束路径释放租约和实例锁，再删除完整私有实例。仅停止进程的 `ExitOnComplete` 不删除实例目录。批量复用只允许发生在同一批次内部，批次最后一次请求必须带清理开关。
