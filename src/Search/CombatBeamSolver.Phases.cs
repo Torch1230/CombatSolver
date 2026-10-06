@@ -135,7 +135,10 @@ internal sealed partial class CombatBeamSolver
         // 上一份搜索用剩的计数不能把下一份搜索提前截断。
         policy.MemoryPressureSignal.ResetNoProgressReclaimTracking();
         if (policy.Diagnostics.PathObserver != null)
+        {
             _run.PathDiagnosticsSolverId = Guid.NewGuid();
+            _run.PathDiagnosticsSearchScope = CaptureSearchPathSearchScope();
+        }
         if (_minimumPotionUses < 0
             || _maximumPotionUses is { } maximumPotionUses
                 && _minimumPotionUses > maximumPotionUses)

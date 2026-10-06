@@ -141,6 +141,14 @@ internal sealed record SearchPathRetentionDetails(
 
 // Arrays/choices are detached value copies. This must not acquire a SearchNode, snapshot,
 // simulator, model, ledger, lazy enumerable, or callback that retains one of those objects.
+internal readonly record struct SearchPathSearchScope(
+    SolverPotionPolicy PotionPolicy,
+    int RequiredExplicitPotionUses,
+    int? MaximumExplicitPotionUses,
+    bool AggressivePowerCommitment,
+    ContinuationPurpose? ContinuationPurpose,
+    DirectSearchPurpose? DirectSearchPurpose);
+
 internal sealed record SearchPathObservation(
     Guid SolverId,
     int BeamWidth,
@@ -166,6 +174,7 @@ internal sealed record SearchPathObservation(
     IReadOnlyList<PlanAction> Actions,
     IReadOnlyList<PlanCardChoice> RootTurnSetupChoices)
 {
+    public SearchPathSearchScope? SearchScope { get; init; }
     public SearchPathRetentionDetails? Retention { get; init; }
     public PowerCommitment? PowerCommitment { get; init; }
 

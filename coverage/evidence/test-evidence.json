@@ -2925,5 +2925,13 @@
     "expected": "新进程真实路径可读；同PID出生时间不同程序仍拒绝；无关程序不能作为私有游戏。",
     "observed": "1b3455265a4e492bb542f8f21d44126d/9ba9a56e350d4dd580243f40f88125cf启动失败；cb3c08fe548941ec9a993d807328d5a8诊断确认宿主actual为空，而启动器系统镜像读取已返回路径。test-headless-runtime.ps1 Passed全部宿主合同及新增错误镜像/无关程序拒绝，verify-tools.py Passed293文件37项目；实际游戏启动恢复待记录。 修复后9ca4e24ddf0b4ebc90f7fabbbe4f6004实际启动并完成同根正常搜索，Passed并清理；策略候选仍22/0/T7，8920.7255ms/19667节点/66655转移/3184370088B，无质量收益，已撤回。宿主修复与策略结果分开记录。",
     "evidence": "tools/testing/headless-runtime.ps1; tools/testing/run-unattended-test.ps1; tools/testing/test-headless-runtime.ps1; docs/HEADLESS_TESTING.md; docs/issues/q014-route-quality.md"
+  },
+  "Q014-PATH-SEARCH-SCOPE": {
+    "status": "Passed",
+    "level": "DetachedDiagnosticContractNotQualityOrPerformance",
+    "procedure": "O061严格49步及第6步整池，O062派生12步当前结果路径；SearchOnly、原生开战、显式短政策、NoGC关闭、120秒清理。",
+    "expected": "各真实搜索实例的纯值用药约束和策略用途保持一致；worker继承所有者，诊断构造器身份独立，完整动作/状态与实战根不变。",
+    "observed": "ce1ed74239d046ada69bd99b7b09f125 Passed49步历史27/0/T9、8716事件无丢失、5实例约束一致；无药主搜第6步落选，别名来自必须1/2药的梯度成员。91a8ad8d7dd84907a2e4c0945fa5bbef Passed12步当前结果路径、370事件无丢失、11实例一致；历史不符保留。3413初版合同因worker局部参数漂移Failed；3600错误DeploySolver模式Failed，修正SearchOnly后通过。该诊断不证明自主优化、原生部署或性能。",
+    "evidence": "src/Search/SearchDiagnosticsSink.cs; src/Search/CombatBeamSolver.PathDiagnostics.cs; src/Search/CombatBeamSolver.ParallelExpansion.cs; src/Testing/Support/UnattendedTestRunner.KnownRoutePathTrace.cs; docs/CHECKPOINT_REPLAY.md; docs/issues/q014-route-quality.md"
   }
 }

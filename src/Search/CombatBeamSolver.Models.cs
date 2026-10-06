@@ -92,6 +92,7 @@ internal sealed partial class CombatBeamSolver
     {
         public NoveltySearchRun? Novelty;
         public Guid PathDiagnosticsSolverId;
+        public SearchPathSearchScope? PathDiagnosticsSearchScope;
         public int PathDiagnosticsBoundaryId;
         public long RoutingChoiceSummaryBuilds;
         public long RoutingChoiceSummaryHits;

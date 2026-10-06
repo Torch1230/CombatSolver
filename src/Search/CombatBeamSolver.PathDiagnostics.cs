@@ -80,12 +80,28 @@ internal sealed partial class CombatBeamSolver
         }
     }
 
+    private SearchPathSearchScope CaptureSearchPathSearchScope() => new(
+        _potionPolicy,
+        Math.Max(_minimumPotionUses,
+            _potionPolicy == SolverPotionPolicy.RequireAtLeastOne ? 1 : 0),
+        _maximumPotionUses,
+        _profile.AggressivePowerCommitment,
+        _attributionPurpose,
+        _directSearchPurpose);
+
     private SearchPathObservation CaptureSearchPathObservation(
         SearchNode node,
         SearchPathObservationStage stage,
         string reason,
         int boundaryId)
     {
+        // Expansion workers inherit the owning search's frozen limits and purpose.
+        // Diagnostic builders which do not call Solve still need a distinct identity.
+        if (_run.PathDiagnosticsSolverId == Guid.Empty)
+        {
+            _run.PathDiagnosticsSolverId = Guid.NewGuid();
+            _run.PathDiagnosticsSearchScope = CaptureSearchPathSearchScope();
+        }
         // Do not use the cached Actions property: even a read would populate that cache.
         // Only an explicitly watched state pays for this detached path walk and deep copy.
         PlanAction[] actions = new PlanAction[node.ActionCount];
@@ -134,6 +150,7 @@ internal sealed partial class CombatBeamSolver
             Array.AsReadOnly(actions),
             CopyObservedChoices(rootChoices))
         {
+            SearchScope = _run.PathDiagnosticsSearchScope,
             PowerCommitment = node.PowerCommitment is { } commitment
                 ? commitment with { Cards = Array.AsReadOnly(commitment.Cards.ToArray()) }
                 : null,

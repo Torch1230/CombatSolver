@@ -411,6 +411,7 @@ internal sealed partial class CombatBeamSolver
         worker._run.InitialEnemyWeakTurns = _run.InitialEnemyWeakTurns;
         worker._run.InitialRetainedAttackValue = _run.InitialRetainedAttackValue;
         worker._run.PathDiagnosticsSolverId = _run.PathDiagnosticsSolverId;
+        worker._run.PathDiagnosticsSearchScope = _run.PathDiagnosticsSearchScope;
         worker._disableCardChoiceContinuationsForTesting = _disableCardChoiceContinuationsForTesting;
         worker._disablePotionChoiceContinuationsForTesting = _disablePotionChoiceContinuationsForTesting;
         worker._disableExecutionChoiceContinuationsForTesting = _disableExecutionChoiceContinuationsForTesting;
