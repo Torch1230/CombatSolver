@@ -1601,7 +1601,9 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("回血上界错误地剪掉了遗物回血或未知治疗路线。");
         }
 
-        PrimarySearchIncumbent incumbent = new(StrategicHpDeficit: 0, CombatEndedTurn: 3);
+        // Turn ties are closed only by a witness whose explicit potion cost is known.
+        PrimarySearchIncumbent incumbent = new(
+            StrategicHpDeficit: 0, CombatEndedTurn: 3, ExplicitPotionStrategicCost: 0);
         // All nodes have zero accumulated loss; their turns exercise the second primary key.
         SimulationSnapshot snapshot = new(
             score: 0,
@@ -1696,6 +1698,14 @@ internal sealed partial class UnattendedTestRunner
         SearchNode keepSecond = keepFirst with { Turn = 3 };
         SearchNode rejectFirst = keepFirst with { Turn = 4 };
         SearchNode rejectSecond = keepFirst with { Turn = 5 };
+
+        List<SearchNode> openCost = [rejectFirst, rejectSecond, keepFirst];
+        if (!ReferenceEquals(openCost, CombatBeamSolver.ApplyPrimaryIncumbentBound(
+                openCost, incumbent with { ExplicitPotionStrategicCost = null }, out int openPruned))
+            || openPruned != 0)
+        {
+            throw new InvalidOperationException("药水成本未知的主结果错误关闭了同战损路线。");
+        }
 
         foreach ((List<SearchNode> input, SearchNode[] expected) in new[]
                  {

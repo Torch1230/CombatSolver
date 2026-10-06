@@ -82,6 +82,12 @@ v2 索引保存稳定战斗/检查点 ID、永久递增编号、原生事件位�
 
 同一输入使用 `CHECKPOINT-RECORDED-PLAN-PATH`、`ReplayMode=SearchOnly`，将冻结路线作为只读观察目标运行正常协调器；不把参照动作注入候选或评分。`RecordedPrediction-path-trace.json` 保存准确动作和完整状态的生成、转置、保留与展开事件，观察器丢事件时显式失败。路径诊断耗时不能作正常性能证据。两种模式都要求原生录制和对应检查点的完整获胜预测，旧身份不匹配时失败，不删去费用层或改写录制内容。Power Potion 等已录制前缀与未来预测用药分别计算，不能漏掉前缀消耗。
 
+需要定位药水生成选项的剪枝时，使用 `CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH`（同样 `SearchOnly`）。它对严格回放路线中的首个带牌选择的主动药水动作观察完整外层剪枝池，输出排名、路由签名、选项代表、必保/路由/选中位置和估值；不增加生产容量，也不注入路线。无此药水选择或观察事件溢出时明确失败。相近前缀存活不等于后缀可替代，须另外严格验证后续动作与终局。
+
+一般动作边界使用 `CHECKPOINT-RECORDED-PLAN-RETENTION-PATH-N`，`N`为严格回放路线从1开始的动作序号；例如末尾`-8`观察第8步所在完整剪枝池。非正整数或超过路线长度明确失败。它与药水场景共用同一只读观察器及严格回放，不改变候选、评分、预算或默认路径场景。
+
+原生录制顺序与旧预测不同时，可以使用 `CHECKPOINT-NATIVE-INPUT-IDENTITIES`、`ReplayMode=RestoreOnly` 和明确的中途检查点。严格执行原生前缀后，`native-input-identities.json` 输出每次主动输入前的完整手牌身份、同名／同状态出现序号、实际选中手牌位置及敌方编号；采集前后续用戳必须一致，最终原生状态必须已严格验证，编码不可比较时失败。它只帮助构造独立参照夹具，不能把身份采集当作模拟等价、完整胜利或自主搜索证据；原始包保持不变，派生动作须重新逐步严格回放。
+
 Q002 专属固定路线/成员诊断已在任务收尾移除；失败证据与[历史用法](archive/testing/q002-pre-0492-validation-20261004.md#一次性诊断入口的历史用法)保留，当前使用上述通用保存预测及正常搜索/部署入口。
 
 包协议与顺序文件：`dotnet run --project tools/replay/CheckpointTool/CheckpointTool.csproj -c Release -- self-test`。边界门禁使用 `verify-refactor-boundaries.ps1` / `.sh`。

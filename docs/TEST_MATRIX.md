@@ -196,4 +196,4 @@ L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描�
 
 2026-10-06 合并验证：SDK 9.0.300 Release 构建零警告／错误；上述原版合同 runId `63b5712a8b034b8388dbf4d71f42c311` Passed（22.56 秒），核对基础手牌上限、根与 Fork 的 live/predicted 续用文本及捕获隔离，实例目录已删除。动态上限 13→16、Dredge／CrashLanding 与耗时对照本轮未复测，历史 NotPassed 保留。
 
-Q014：持续药水开局余量、智能后验截止时保留已选完整路线及旧默认手牌上限恢复，目标／独立哨兵、正常搜索数字和未验证项见[逐包记录](issues/q014-route-quality.md)。
+Q014：持续药水开局余量、智能后验截止保留结果、旧默认手牌上限恢复及并行能力计数汇总，目标／独立哨兵、正常搜索数字和未验证项见[逐包记录](issues/q014-route-quality.md)。能力哨兵 `coverage/fixtures/search/q014-parallel-power-sentinel.json` 使用 Custom／Beam60／节点120000／请求覆盖10000ms／DOP2／禁药／NoGC关闭／Instant0／零重算／120秒清理；成对原生18／0／T7；早期计数修复对旁路基线耗时+20.39%未通过，最终组内排序对正确计数基线−12.26%；单对样本。加 `-VerifySearchPolicySnapshot` 验证固定250节点DOP1／DOP2完整结果及非时序剪枝、实际并发≥2；旧药水成本合同补齐后通过。

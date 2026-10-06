@@ -2851,7 +2851,7 @@
     "level": "HeadlessNativeFullDeployment",
     "procedure": "原O064 ZIP，combat_start/cursor0，显式短政策，10000ms/90Beam/250000节点/DOP1/Smart/NoGC关闭；Instant/0秒。",
     "expected": "完整根/原生状态严格一致，完整胜利、药水身份和零非预期重算；不提高预算。",
-    "observed": "基线eb65082a262b4bf0b3202fbfe9ccfd7d原生29/0/T11；保留截止前已选14/1的修复后1d46394ebf594a1aa8a05f2d095eec58为14/1/T10。最终ecb0584456aa439baca830d8922eeeda Passed，54→40/70HP，HEART_OF_IRON一瓶，T10，零重算。折算29→23，追平人工成本23，人工T9。原180秒未验证。",
+    "observed": "基线eb65082a262b4bf0b3202fbfe9ccfd7d原生29/0/T11；保留截止前已选14/1的修复后1d46394ebf594a1aa8a05f2d095eec58为14/1/T10。最终ecb0584456aa439baca830d8922eeeda Passed，54→40/70HP，HEART_OF_IRON一瓶，T10，零重算。折算29→23，追平人工成本23，人工T9。原180秒未验证。 并行汇总及组内潜力排序后15100fcc43664a8894270c2d90f2fcd8原生回归Passed14/1/T10、54→40/70HP、零重算，9920.6622ms/21598展开/79728转移/2921326080B，未退化。",
     "evidence": "src/Search/CombatSearchCoordinator.Audits.cs; src/Search/CombatSearchCoordinator.BeamPortfolio.cs; src/Search/PotionValuationRegistry.cs; coverage/fixtures/search/q014-o064-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-PERSISTENT-POTION-SENTINEL": {
@@ -2865,9 +2865,9 @@
   "Q014-O061-QUALITY-GAP": {
     "status": "Unresolved",
     "level": "NativeFeasibilityWithUnresolvedRootSearch",
-    "procedure": "原O061 ZIP，开战基线；原生前缀到T5及25步后缀严格等价/原生部署。",
+    "procedure": "原O061 ZIP开战/cursor0，固定10000ms政策；从真实原生输入取得身份的独立49步派生路线严格回放；并行能力计数汇总修复后自主原生部署。",
     "expected": "从同开战根自主找到扣除药水后不差于27/0的完整胜利。",
-    "observed": "620cdc147b35431797fc09b589727b9d基线45/2/T9；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。T5自主27不等于开战发现；旧预测前缀拼接失败，未移除身份键。攻击续段试验7a52dcf94c224fc3a5a462e39f2fa848仍45/2，已撤回。未追平。",
+    "observed": "620cdc147b35431797fc09b589727b9d基线45/2/T9（折算63）；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。db52da63a7654223a2ce9205543838fa严格原生输入采集24动作/30事件，原包不修改；98010bbe146d498b911d415cbcaf7b37派生49步严格回放27/0/T9。真实保留别名前缀33860b34ab8e479aaed83533cacfdb7c同样严格兑现27。并行worker创建计数遗漏汇总导致既有保护旁路，补齐汇总/清零后正常147f052ac81d4d4495efd2e9ac0cece9为39/0/T10，9939.6411ms、15384展开/95027转移/5191997400B；完整原生c0786ffc9aec465c8826ff31d576e9d6同为39/0/T10、52→13/87HP、零重算。折算改善24，仍差12。此前能力排序试验入口未启用，不能归因；均撤回。独立能力哨兵性能门槛未通过。 保护实际启用后仅能力偏好组内优先净未兑现潜力：正常ec39eca2e5ac4bf59cd02682bfa28a2f为28/0/T10；原生ee1c56962c81412a9fb92c4e6b6c2e29同为28/0/T10，52→24/87HP、零重算，9945.6089ms/13047节点/92234转移/5249993648B。折算63→28，改善35，仍差1；不得宣称追平。",
     "evidence": "coverage/fixtures/search/q014-o061-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O062-QUALITY-GAP": {
@@ -2875,7 +2875,7 @@
     "level": "NativeFeasibilityAndDetachedPathDiagnosis",
     "procedure": "原O062 ZIP，开战基线；T2检查点参照原生部署；原始身份按原生T1顺序重排的独立派生诊断。",
     "expected": "自主找到7/1/T3，不能写包中固定顺序或提高预算。",
-    "observed": "ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。1a653df50f8745bf8a5c64935adb9f30派生13步严格回放通过，352只读路径事件无丢失；第7步COLORLESS_POTION生成VICIOUS进入PruneInput但无PruneFinal/Expanded，后续未观察。攻击续段试验22/0折算无收益，已撤回。",
+    "observed": "ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。原派生路线药水生成SALVO后落选，但493b3362add6430194003cfc98d1852e及4caa6f81c2cf4b1084c0b29fd1da637b证实两条已保留别名前缀均严格兑现7HP/T3，不能把准确第7步丢失当根因。后者第9步ARMAMENTS升级攻击价值77→91，在409候选中排名187后落选；先升级再生成的别名留下SALVO+0，不能替代后缀SALVO+1身份。三版准备代表试验：c2257d6956fb48b299f4f3cb535780c9为22/0折算无收益；deddb18ba4fe41379ed863803979590d与d582f0d79b214946bbc0306b927fa6a4原生仍13/1/T5、零重算。全部无效搜索改动已撤回。 并行计数汇总修复后256197b82e39468ea8d44b94fc871951原生仍13/1/T5，零重算，7871.9757ms；未追平。 组内潜力排序后10c13000f2004c0d967f765cee4729de原生仍13/1/T5、零重算，8454.5994ms/19583节点/66512转移/3198672680B。",
     "evidence": "coverage/fixtures/search/q014-o062-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O063-RESTORATION-BLOCK": {
@@ -2893,5 +2893,21 @@
     "expected": "普通模式保留旧数字不符失败；诊断模式只比较当前严格回放与原生，完整胜利且零额外搜索/重算。",
     "observed": "987853e022e84c1ea232b9451edd0580 Failed：28步合法、增量/完整一致，当前8HP/T7与历史3HP/T7不符。bcc36e64859142f786148642e55450db显式诊断Passed：原生62→54/75HP，8/0/T7、零搜索/重算，recordedPredictionOutcomeMatched=false。自主基线f039543f267c49c2be45dbc4ff7c18a8为5/0/T7，历史3不是当前有效质量参照。",
     "evidence": "src/Testing/Replay/UnattendedTestRunner.RecordedPlan.cs; docs/CHECKPOINT_REPLAY.md; coverage/fixtures/search/q014-o065-policy.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-PARALLEL-POWER-SENTINEL": {
+    "status": "Passed",
+    "level": "PairedNormalHeadlessNativeQualityAndCost",
+    "procedure": "固定独立IRONCLAD/BYRDONIS_ELITE能力场景，Custom/Beam60/节点120000/请求覆盖10000ms/DOP2/禁药/NoGC关闭/Instant0/零重算/120秒清理；基线Search fbd18e17，候选仅补齐并行能力计数汇总。",
+    "expected": "完整开局及搜索根、政策和预算相同，原生质量不降，正常搜索耗时无明显增加。",
+    "observed": "基线2d6cd48c90e74b3093cf4163fbbdc408和候选6d9c04ec9d08424eb8ea785aa4da7b34均Passed18战损/0药/T7，原生68/80HP（战后起始遗物回复6），零重算；完整开局、search-result.rootContinuationStamp、policy及loadout相同，动作序列不同。5864.6118→7060.6621ms(+20.39%)，节点16129→18649(+15.62%)，转移41219→47317(+14.79%)，分配1488109728→1708411248B(+14.80%)。质量通过，性能门槛未通过；单对样本，不声称普遍提速或可见Steam性能。 组内潜力排序2fbf85c489854578b33823bee759aaef原生同为18/0/T7、零重算，与已正确启用保护的计数修复版完整根、政策和动作相同；6195.1472ms/17594节点/44858转移/1620074736B，对正确基线耗时−12.26%、工作及分配约−5%；对旁路版耗时+5.64%、节点+9.08%、转移+8.83%、分配+8.87%。旁路版不独立作为正确性能基线；固定节点DOP对账待运行。 最终固定工作量合同ab29d3b8fbbc4ed8b65c424ca554e6d9 Passed，比较250节点上限的DOP1/DOP2动作、评分、续用及非时序剪枝，断言真实并发≥2。当前候选对正确计数修复基线的单对质量及耗时通过；原旁路基线差异和早期NotPassed保留，不证明普遍性能。",
+    "evidence": "coverage/fixtures/search/q014-parallel-power-sentinel.json; src/Search/CombatBeamSolver.ParallelExpansion.cs; docs/issues/q014-route-quality.md"
+  },
+  "Q014-FIXED-WORK-PARALLEL-POWER": {
+    "status": "Passed",
+    "level": "NativeRootFrozenPolicyFixedNodeDopContract",
+    "procedure": "独立能力哨兵启动既有VerifySearchPolicySnapshot，合同将profile节点上限固定250，并在同一原生根比较DOP2/DOP1与冻结设置。",
+    "expected": "动作、评分、完整续用及非时序剪枝相同；DOP2真实并发≥2；节点上限释放快照；全局设置修改不影响已捕获政策。",
+    "observed": "e3d8d809a66c4d01bc880fb118a48326与c895e049201c45dda5bfd78d571b88b4先后在静态过滤/资格合同Failed，未到DOP。旧预期遗漏已新增药水成本字段；补齐零成本见证、未知成本不得剪枝反例，以及有药成本9和无药成本0完整结果预期，生产资格/剪枝不改。ab29d3b8fbbc4ed8b65c424ca554e6d9 Passed SearchPolicySnapshot和CombatRootSnapshot，固定工作量及实际并发断言执行通过；生成场景随后完整原生18/0/T7、零重算。",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.SearchPolicy.cs; src/Testing/Contracts/Runtime/UnattendedTestRunner.ControllerSessions.cs; coverage/fixtures/search/q014-parallel-power-sentinel.json; docs/issues/q014-route-quality.md"
   }
 }

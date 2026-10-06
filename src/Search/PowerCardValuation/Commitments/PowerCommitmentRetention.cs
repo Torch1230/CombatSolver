@@ -4,7 +4,8 @@ internal static class PowerCommitmentRetention
 {
     internal static IReadOnlyList<SearchNode> RankRepresentatives(
         IReadOnlyList<SearchNode> pool,
-        int quota)
+        int quota,
+        bool preferUnrealizedPotential = false)
     {
         if (quota <= 0)
             return [];
@@ -18,10 +19,14 @@ internal static class PowerCommitmentRetention
                 node.Turn,
                 node.PowerCommitment.Cards), CapabilityComparer.Instance)
             .Select(group => group
-                .OrderByDescending(node => node.PowerCommitment!.RealizedEvidence)
+                .OrderByDescending(node => preferUnrealizedPotential
+                    ? node.PowerCommitment!.NetUnrealizedValue
+                    : node.PowerCommitment!.RealizedEvidence)
                 .ThenByDescending(node => node.PowerCommitment!.Priority)
                 .ThenByDescending(node => node.PowerCommitment!.ProgressEvidence)
-                .ThenByDescending(node => node.PowerCommitment!.NetUnrealizedValue)
+                .ThenByDescending(node => preferUnrealizedPotential
+                    ? node.PowerCommitment!.RealizedEvidence
+                    : node.PowerCommitment!.NetUnrealizedValue)
                 .ThenBy(node => node.PowerCommitment!.OpenedActionCount)
                 .ThenBy(node => node.PowerCommitment!.RoundTransitions)
                 .ThenByDescending(node => node.Snapshot.ProjectedPlayerHp)

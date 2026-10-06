@@ -229,7 +229,8 @@ internal sealed partial class UnattendedTestRunner
             int deficit = 5,
             int? endedTurn = 3,
             PotionFreePolicyBaseline? baseline = null,
-            PrimarySearchIncumbent? initial = null)
+            PrimarySearchIncumbent? initial = null,
+            int? explicitCost = null)
         {
             PrimarySearchIncumbent? incumbent = initial;
             bool changed = CombatBeamSolver.TryTightenPrimarySearchIncumbent(
@@ -242,9 +243,11 @@ internal sealed partial class UnattendedTestRunner
                 deficit,
                 endedTurn,
                 ref incumbent,
-                effectivePolicy);
+                effectivePolicy,
+                candidateExplicitPotionStrategicCost: explicitCost);
             PrimarySearchIncumbent? expectedIncumbent = expected
-                ? new PrimarySearchIncumbent(deficit, endedTurn!.Value)
+                ? new PrimarySearchIncumbent(deficit, endedTurn!.Value,
+                    minimumUses == 0 ? 0 : explicitCost)
                 : initial;
             if (changed != expected || incumbent != expectedIncumbent)
             {
@@ -304,6 +307,8 @@ internal sealed partial class UnattendedTestRunner
         PotionFreePolicyBaseline audited = new(true, 5, 75, 3);
         AssertCandidate(null, expected: true, minimumUses: 1, maximumUses: 1,
             explicitUses: 1, deficit: 4, endedTurn: 99, baseline: audited);
+        AssertCandidate(null, expected: true, minimumUses: 1, maximumUses: 1,
+            explicitUses: 1, deficit: 4, endedTurn: 99, baseline: audited, explicitCost: 9);
         AssertCandidate(null, expected: true, minimumUses: 1, maximumUses: 1,
             explicitUses: 1, endedTurn: 2, baseline: audited);
         AssertCandidate(SolverPotionPolicy.Smart, expected: false,

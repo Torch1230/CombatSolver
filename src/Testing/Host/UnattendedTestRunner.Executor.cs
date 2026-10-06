@@ -44,9 +44,20 @@ internal sealed partial class UnattendedTestRunner
                 runner.AssertCheckpointProfileContract(combatState);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-PATH")
+            if (request.ScenarioId is "CHECKPOINT-RECORDED-PLAN-PATH" or "CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH")
             {
-                await runner.PrepareRecordedPlanDeploymentAsync(combatState, deploy: false);
+                await runner.PrepareRecordedPlanDeploymentAsync(combatState, deploy: false,
+                    observeFirstPotionChoice: request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH");
+                return Observation(combatEnded: false);
+            }
+            const string recordedRetentionPrefix = "CHECKPOINT-RECORDED-PLAN-RETENTION-PATH-";
+            if (request.ScenarioId.StartsWith(recordedRetentionPrefix, StringComparison.Ordinal))
+            {
+                if (!int.TryParse(request.ScenarioId.AsSpan(recordedRetentionPrefix.Length), out int step)
+                    || step < 1)
+                    throw new InvalidDataException("Recorded retention path requires a positive action step.");
+                await runner.PrepareRecordedPlanDeploymentAsync(combatState, deploy: false,
+                    observedRetentionStep: step);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "CALCULATED-HISTORY-FREEZE")

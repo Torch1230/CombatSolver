@@ -13,7 +13,8 @@ internal sealed partial class UnattendedTestRunner
     // A saved prediction is a feasibility witness, never evidence of search discovery.
     // Keep every recorded state key and choice; incompatible legacy identities fail.
     private async Task PrepareRecordedPlanDeploymentAsync(CombatState combat, bool deploy = true,
-        bool compareCurrentOutcome = false)
+        bool compareCurrentOutcome = false, bool observeFirstPotionChoice = false,
+        int? observedRetentionStep = null)
     {
         if (_checkpointImport == null || !HasNativeRecording
             || _request.ReplayMode != (deploy ? "DeploySolver" : "SearchOnly"))
@@ -110,8 +111,18 @@ internal sealed partial class UnattendedTestRunner
             _completedChecks.Add("RecordedPrediction:HistoricalOutcomeMismatch:CurrentNativeComparisonOnly");
         if (!deploy)
         {
+            int? observedStep = observedRetentionStep;
+            if (observeFirstPotionChoice)
+            {
+                int index = Array.FindIndex(actions, action => action.Kind == PlanActionKind.UsePotion
+                    && action.Choice is { Cards.Count: > 0 });
+                if (index < 0)
+                    throw new InvalidDataException("Recorded plan has no potion choice to observe.");
+                observedStep = index + 1;
+            }
             await RunKnownRoutePathTraceAsync(combat, player, prefixes, "RecordedPrediction",
-                "recorded_plan_search_path", frozenSearchContext: new(root, names, damage, policy));
+                "recorded_plan_search_path", observedRetentionStep: observedStep,
+                frozenSearchContext: new(root, names, damage, policy));
             return;
         }
         _writer.CaptureSolverResult(result);

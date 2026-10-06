@@ -167,6 +167,20 @@ internal sealed partial class UnattendedTestRunner
             .GroupBy(item => item.Kind ?? "legacy_unspecified").ToDictionary(group => group.Key, group => group.Count()));
         _writer.ReplayVerification["comparisonScope"] = "checkpoint";
         RecordCheckpointRestored();
+        if (_request.ScenarioId == "CHECKPOINT-NATIVE-INPUT-IDENTITIES")
+        {
+            if (_request.ReplayMode is not ("RestoreOnly" or "ReplayRecorded"))
+                throw new InvalidDataException("native_input_identities_require_recorded_replay_mode");
+            if (_writer.ReplayVerification!["nativeStateVerified"]?.GetValue<bool>() != true)
+                throw new InvalidDataException("native_input_identities_require_verified_native_checkpoint");
+            _writer.WriteGeneratedArtifact("native-input-identities.json", new
+            {
+                comparisonScope = "strict_recorded_native_prefix",
+                replayedEvents = driver.Cursor,
+                inputs = driver.InputIdentities,
+            });
+            _completedChecks.Add($"NativeInputIdentities:StrictNativePrefix:Inputs={driver.InputIdentities.Count}");
+        }
         if (_request.ReplayMode == "RestoreOnly" && _request.ScenarioId == "HAND-DRAW-RELICS-PROBE")
             await AssertOwnedHandDrawRelicQueriesAsync(combatState, player);
         if (_request.ReplayMode == "ReplayRecorded")
@@ -254,6 +268,7 @@ internal sealed partial class UnattendedTestRunner
         private bool _openingTakeoverRequested;
         private readonly bool _allowLegacyCosts;
         public List<int> LegacyCostChoices { get; } = [];
+        public List<NativeInputIdentity> InputIdentities { get; } = [];
         public int Cursor { get; private set; }
 
         public NativeReplayDriver(UnattendedTestRunner runner, RecordedCombatEvent[] events, int target, Player player,
@@ -356,6 +371,12 @@ internal sealed partial class UnattendedTestRunner
                         && _player.PlayerCombatState?.Phase.ToString() == "Play")
                     {
                         GameAction action = value.action!.ToGameAction(_player);
+                        if (_runner._request.ScenarioId == "CHECKPOINT-NATIVE-INPUT-IDENTITIES")
+                        {
+                            if (InputIdentities.Count >= 4096)
+                                throw new InvalidDataException("native_input_identity_limit_exceeded");
+                            InputIdentities.Add(CaptureNativeInputIdentity(action, next, Cursor, _player));
+                        }
                         RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
                     }
                 }

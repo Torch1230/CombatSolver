@@ -1779,7 +1779,8 @@ internal sealed partial class CombatBeamSolver
                 limit,
                 _profile.AggressivePowerCommitment);
             _run.PowerValuationCandidates += pool.Count(node => node.PowerCommitment != null);
-            IReadOnlyList<SearchNode> representatives = PowerCommitmentRetention.RankRepresentatives(pool, quota);
+            IReadOnlyList<SearchNode> representatives = PowerCommitmentRetention.RankRepresentatives(
+                pool, quota, preferUnrealizedPotential: _profile.AggressivePowerCommitment);
             int retained = 0;
             foreach (SearchNode candidate in representatives)
             {
