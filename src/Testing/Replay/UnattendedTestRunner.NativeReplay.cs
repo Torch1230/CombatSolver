@@ -200,10 +200,17 @@ internal sealed partial class UnattendedTestRunner
                 actual,
                 allowLegacyBattleStart || nativeVerified,
                 legacyCardKeywords,
-                legacyCardCosts))
+                legacyCardCosts,
+                allowLegacyDefaultHandLimit: nativeVerified))
         {
             _writer.ReplayVerification["continuationVerified"] = true;
             _writer.ReplayVerification["nativeStateVerified"] = nativeVerified;
+            if (nativeVerified
+                && !expected.Contains("max_hand_size=", StringComparison.Ordinal)
+                && actual.EndsWith(";max_hand_size=10", StringComparison.Ordinal))
+            {
+                _writer.ReplayVerification["legacyDefaultHandLimitVerified"] = true;
+            }
             if (legacyCardCosts != null)
                 _writer.ReplayVerification["legacyCostLayersVerified"] = true;
             if (!nativeVerified && differentEncoding && !string.IsNullOrWhiteSpace(nativePath))

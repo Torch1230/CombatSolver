@@ -493,13 +493,24 @@ internal sealed partial class UnattendedTestRunner
         string actual,
         bool allowLegacyZeroCounter = false,
         IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardKeywords = null,
-        IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardCosts = null)
+        IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardCosts = null,
+        bool allowLegacyDefaultHandLimit = false)
     {
         if (string.Equals(expected, actual, StringComparison.Ordinal))
             return true;
 
         string[] expectedFields = expected.Split(';');
         string[] actualFields = actual.Split(';');
+        // Old vanilla reports omitted the default hand limit. The caller must
+        // first verify the complete native checkpoint; non-default, explicit,
+        // duplicate, and non-canonical fields still compare strictly.
+        if (allowLegacyDefaultHandLimit
+            && !expectedFields.Any(field => field.StartsWith("max_hand_size=", StringComparison.Ordinal))
+            && actualFields.Length > 0 && actualFields[^1] == "max_hand_size=10"
+            && actualFields.Count(field => field.StartsWith("max_hand_size=", StringComparison.Ordinal)) == 1)
+        {
+            actualFields = actualFields[..^1];
+        }
         if (allowLegacyZeroCounter)
         {
             int historyIndex = Array.FindIndex(expectedFields, field => field.StartsWith("Y=", StringComparison.Ordinal));

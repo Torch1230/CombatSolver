@@ -26,6 +26,25 @@ internal sealed partial class UnattendedTestRunner
         foreach (string recorded in new[] { "H=A;Y=2/1;R=9", "H=A;Y=2/1/3;R=9" })
             if (!ReplayContinuationMatches(recorded, "H=A;Y=2/1/3/2;R=9"))
                 throw new InvalidOperationException("Legacy history schema was rejected.");
+        const string legacyLimit = "H=A;Y=0/0/0/0;R=9";
+        const string currentLimit = legacyLimit + ";max_hand_size=10";
+        if (!ReplayContinuationMatches(legacyLimit, currentLimit, allowLegacyDefaultHandLimit: true)
+            || ReplayContinuationMatches(legacyLimit, currentLimit))
+            throw new InvalidOperationException("Legacy default hand limit requires a verified native checkpoint.");
+        foreach (string invalid in new[] {
+            legacyLimit + ";max_hand_size=13", legacyLimit + ";max_hand_size=0",
+            legacyLimit + ";max_hand_size=10;max_hand_size=10",
+            "H=A;Y=0/0/0/0;max_hand_size=10;R=9", "H=B;Y=0/0/0/0;R=9;max_hand_size=10",
+            "H=A;Y=0/0/0/0;R=10;max_hand_size=10",
+        })
+            if (ReplayContinuationMatches(legacyLimit, invalid, allowLegacyDefaultHandLimit: true))
+                throw new InvalidOperationException("Legacy hand-limit migration accepted a real state difference.");
+        if (ReplayContinuationMatches(currentLimit,
+                legacyLimit + ";max_hand_size=13", allowLegacyDefaultHandLimit: true)
+            || ReplayContinuationMatches(legacyLimit + ";max_hand_size=13",
+                currentLimit, allowLegacyDefaultHandLimit: true))
+            throw new InvalidOperationException("Explicit recorded hand limits must remain strict.");
+        _completedChecks.Add("ReplayLegacyDefaultHandLimit:NativeGate:RejectNonDefaultExplicitDuplicateAndStateDrift");
         string[] legacyStarts = ["H=A;Y=0/0/0;R=9", "H=A;Y=0/0/0/0;R=9"];
         const string currentStart = "H=A;Y=0/0/0/0;FlameHp=0;AttackStarts=0;R=9";
         foreach (string legacyStart in legacyStarts)
