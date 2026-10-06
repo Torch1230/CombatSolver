@@ -194,5 +194,7 @@ L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描�
 
 ## Q014 路线研究
 
+官方0.50.1本地整合：药水比较118项、`SMART-OPENING-POTION-ADMISSION` `95e8932e02724340b684ad4f2c988417` Passed；O062 `c2bd87c700c9417a8f99b00196d89b93` 13／1／T5、O064 `c92b25b99ba141e884a04e58c4cffd40` 14／1／T10，均同根10秒、Instant0、NoGC0、零重算。其他包不计本轮复测。
+
 Q014：持续药水开局余量、智能后验截止保留结果、旧默认手牌上限恢复及并行能力计数汇总，目标／独立哨兵、正常搜索数字和未验证项见[逐包记录](issues/q014-route-quality.md)。能力哨兵 `coverage/fixtures/search/q014-parallel-power-sentinel.json` 使用 Custom／Beam60／节点120000／请求覆盖10000ms／DOP2／禁药／NoGC关闭／Instant0／零重算／120秒清理；成对原生18／0／T7；早期计数修复对旁路基线耗时+20.39%未通过，最终组内排序对正确计数基线−12.26%；单对样本。加 `-VerifySearchPolicySnapshot` 验证固定250节点DOP1／DOP2完整结果及非时序剪枝、实际并发≥2；旧药水成本合同补齐后通过。
 派生动作当前结果路径：`CHECKPOINT-RECORDED-PLAN-CURRENT-PATH` 或 `CHECKPOINT-RECORDED-PLAN-CURRENT-RETENTION-PATH-N` 使用 SearchOnly，只在完整身份、增量/完整状态等价和获胜动作通过后观察正常协调器；显式保留继承历史终局不符。O062 12步派生路线原生5／1／T3、零搜索/重算；只读377／848事件无丢失、根/live不变，未证明自主5点或性能。成员约束诊断通过O061 5实例／8716事件、O062 11实例／370事件；worker继承所有者纯值，跨层保留先核对最低用药资格。严格12前缀现成估值冻结与同身份对照通过，手牌24→89仅作诊断，试验规则已撤回。历史模式仍因5与7不同Failed，详见[检查点指南](CHECKPOINT_REPLAY.md)。
