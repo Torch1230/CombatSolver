@@ -75,6 +75,15 @@ internal static class RouteQualityPolicy
         if (comparison != 0)
             return comparison;
 
+        if (projection == RouteQualityProjection.PotionPolicy)
+        {
+            long candidateCost = (long)candidate.StrategicHpDeficit + candidate.PotionStrategicCost;
+            long currentCost = (long)current.StrategicHpDeficit + current.PotionStrategicCost;
+            comparison = candidateCost.CompareTo(currentCost);
+            if (comparison != 0)
+                return comparison;
+        }
+
         if (projection == RouteQualityProjection.PotionPolicy
             && candidate.Won && current.Won
             && candidate.StrategicHpDeficit == current.StrategicHpDeficit

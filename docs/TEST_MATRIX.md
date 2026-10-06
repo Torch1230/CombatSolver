@@ -18,17 +18,15 @@ PR #213 的贡献者分阶段验证见 [Q002 历史入口](issues/q002-route-qua
 
 ## Ctrl+F9 面板可见性（PR #226）
 
-`OVERLAY-VISIBILITY-LIFECYCLE` 在原生单人战斗中验证快捷键输入、已有及新建 CanvasLayer 的隐藏状态、禁用／手动／搜索中／停止显示、监控刷新，以及 `BeginCombat` 重置后的初始化消费与恢复显示。初始化置位在重置返回时断言，可操作边界的初始化完成在等待旧会话释放后断言。使用现有停止开关在初始合同后结束，搜索状态显示通过 UI 入口注入。
-
-PowerShell：`pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId OVERLAY-VISIBILITY-LIFECYCLE -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -StopAfterCombatRootSnapshotAssertion -EnableNoGcRegionForTest 0 -TimeoutSeconds 120 -CleanupInstanceOnExit`；Bash：`./tools/testing/run-unattended-test.sh --scenario-id OVERLAY-VISIBILITY-LIFECYCLE --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --stop-after-combat-root-snapshot-assertion --enable-no-gc-region-for-test 0 --timeout-seconds 120 --cleanup-instance-on-exit`。
-
-2026-10-06 本轮失败证据：PR 头 `0725fe21` 加入新图层断言后，runId `2f55f493930144c6800f6835042f134a` 在新建 CanvasLayer 默认可见边界 Failed。直接应用快捷键隐藏意图后，runId `53fc7f11eff84cb4b2d6b7e9cb27ddc4` 通过快捷键、新图层及各显示入口，随后重置断言 Failed：等待旧会话释放期间监控已消费初始化请求。合同按实际生命周期在重置返回时检查置位，在释放后检查完成状态。
-
-最终 runId `37ee21f7569a43c3b5fed01a4e5b4d28` Passed（22.66 秒），三组界面合同全部通过；玩家原生结果保持回合 1、80/80 HP。全部三次请求均完成实例目录清理。本轮 .NET SDK 9.0.300 Release 构建为 0 警告、0 错误，结构门禁、工具检查和文档检查通过。可见 Steam 人工操作、完整 SL 场景和 Linux 运行未验证；贡献者提供的实机记录保留在 PR 正文。
+快捷键、新图层、重置和监控合同的通过、失败与可见验证范围见[历史卷21](archive/testing/volume-21.md#ctrlf9-面板可见性pr-226)。
 
 ## 社区批次 Q010 与组合补搜
 
 现行组合入口按共享节点与时间准入，执行期间在每批提交边界处理内存预约、回收和停止。原包 SearchOnly、Beam 组合检查及真实 CLR 合同的结果、失败与未验证项见 [历史卷 20](archive/testing/volume-20.md#社区批次-q010-与组合补搜)。
+
+## 0.50.1 智能药水机会成本
+
+终局单药／双药低收益拒绝与 Force、奖励抵扣、原价高收益哨兵由 `SMART-OPENING-POTION-ADMISSION` 覆盖；跨成员比较由 `python -B tools/testing/checks/BeamWidthPortfolioChecks/run.py` 覆盖（118项通过）。原生 runId `d9629992ac31423586c7465510c18f6d` Passed（23.63秒，含建局），实例已清理。失败基线、同根材料与未验证范围见[问题记录](issues/potion-opportunity-20261006.md)。
 
 ## 开局药水补搜准入
 
@@ -76,6 +74,7 @@ pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId EFFECT-S
 ./tools/testing/run-unattended-test.sh --scenario-id CASCADE-EMPTY-HAND-NATIVE --enemy-current-hp 1000 --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
 ./tools/testing/run-unattended-test.sh --scenario-id EFFECT-SCOPE-ADJACENT-CONTRACT --enemy-current-hp 1000 --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
 ```
+
 
 ## 0.48.0 硬错误机制合同
 
@@ -184,17 +183,16 @@ L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描�
 
 范围：本轮没有重跑作者长预算全根性能筛查，没有验证低内存玩家宿主、原生整场部署或可见Steam性能；原作者失败与未验证项保留在所属报告。
 
+
 ## 性能研究分支
 
 既有组件、药水、魂枢及未达标原型的合同与历史结果见[历史卷18](archive/testing/volume-18.md)。PR #207最新上游整合、逐次ABBA、23根品质回归及NoGC波动/超时限制见[当前验收](performance/pr207-upstream-0494-integration-20261005.md)。
 
 ## 手牌上限状态一致性（PR #224）
 
-贡献者[测试记录](https://github.com/tianyilt/HextechSolverCompat/blob/main/docs/TESTING-PR-HAND-LIMIT-20261003.md)来自 0.48.1：可选 BaseLib `IMaxHandSizeModifier` 的上限 13→16→13 验证旧根／兄弟隔离、新根指纹区分与续用戳恢复，Dredge 13、CrashLanding 5 完整实际／预测状态通过，兼容层同项修复关闭。基线 `2ead87d9c9e35b1588a760efff0bd6154545a77c`，候选 SHA-256 `04c70a0c0ff4d9169a8184a327beae1e246bca75179ed8bd521331e08d384d1c`。耗时门槛 NotPassed：中位数 17.0191→24.3435 ms，保留 76.4900 ms 尾项，CPU 负载未测，因果归属未知。重定基至 0.50.0 `0d290fbee7e2779d2cebd8b8f652d82d00b6e8fc` 后仅构建通过（SDK 9.0.318、RitsuLib 0.6.5、游戏 0.111.0、零警告／错误、关闭自动部署与祖先 props/targets 导入），原生与耗时证据仍属 0.48.1。
+原版根／Fork 合同与贡献者的动态上限及耗时证据见[历史卷21](archive/testing/volume-21.md#手牌上限状态一致性pr-224)。
 
-当前原版根／Fork 复跑：PowerShell 使用 `tools/testing/run-unattended-test.ps1 -ScenarioId HAND-LIMIT-ROOT-CONSISTENCY -EnemyCurrentHp 1000 -VerifyCombatRootSnapshot -StopAfterCombatRootSnapshotAssertion -EnableNoGcRegionForTest 0 -TimeoutSeconds 120 -CleanupInstanceOnExit`；Bash 使用 `./tools/testing/run-unattended-test.sh --scenario-id HAND-LIMIT-ROOT-CONSISTENCY --enemy-current-hp 1000 --verify-combat-root-snapshot --stop-after-combat-root-snapshot-assertion --enable-no-gc-region-for-test 0 --timeout-seconds 120 --cleanup-instance-on-exit`，两端默认 IRONCLAD／FUZZY_WURM_CRAWLER_WEAK。
-
-2026-10-06 合并验证：SDK 9.0.300 Release 构建零警告／错误；上述原版合同 runId `63b5712a8b034b8388dbf4d71f42c311` Passed（22.56 秒），核对基础手牌上限、根与 Fork 的 live/predicted 续用文本及捕获隔离，实例目录已删除。动态上限 13→16、Dredge／CrashLanding 与耗时对照本轮未复测，历史 NotPassed 保留。
+## Q014 路线研究
 
 Q014：持续药水开局余量、智能后验截止保留结果、旧默认手牌上限恢复及并行能力计数汇总，目标／独立哨兵、正常搜索数字和未验证项见[逐包记录](issues/q014-route-quality.md)。能力哨兵 `coverage/fixtures/search/q014-parallel-power-sentinel.json` 使用 Custom／Beam60／节点120000／请求覆盖10000ms／DOP2／禁药／NoGC关闭／Instant0／零重算／120秒清理；成对原生18／0／T7；早期计数修复对旁路基线耗时+20.39%未通过，最终组内排序对正确计数基线−12.26%；单对样本。加 `-VerifySearchPolicySnapshot` 验证固定250节点DOP1／DOP2完整结果及非时序剪枝、实际并发≥2；旧药水成本合同补齐后通过。
 派生动作当前结果路径：`CHECKPOINT-RECORDED-PLAN-CURRENT-PATH` 或 `CHECKPOINT-RECORDED-PLAN-CURRENT-RETENTION-PATH-N` 使用 SearchOnly，只在完整身份、增量/完整状态等价和获胜动作通过后观察正常协调器；显式保留继承历史终局不符。O062 12步派生路线原生5／1／T3、零搜索/重算；只读377／848事件无丢失、根/live不变，未证明自主5点或性能。成员约束诊断通过O061 5实例／8716事件、O062 11实例／370事件；worker继承所有者纯值，跨层保留先核对最低用药资格。严格12前缀现成估值冻结与同身份对照通过，手牌24→89仅作诊断，试验规则已撤回。历史模式仍因5与7不同Failed，详见[检查点指南](CHECKPOINT_REPLAY.md)。

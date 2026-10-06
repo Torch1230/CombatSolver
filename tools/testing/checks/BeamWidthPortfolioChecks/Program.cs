@@ -293,6 +293,46 @@ Require(Portfolio([24, 23, 25], 1000,
         [Finished(10, Outcome(true, 30)), Finished(10, Outcome(true, 30)), Finished(10, Outcome(true, 30))]).SelectedIndex == 0,
     "A three-way tie did not keep the baseline member.");
 
+// Optional potion spending competes on HP plus opportunity cost across every member.
+static SolverInterimResult PotionOutcome(int hpDeficit, int cost, int potions, int turn = 7)
+    => Outcome(true, hpDeficit, potions) with
+    {
+        PotionStrategicCost = cost, CombatEndedTurn = turn, Survives = true,
+    };
+foreach (var sample in new[] { (Baseline: 4, Loss: 3, Cost: 18), (Baseline: 12, Loss: 0, Cost: 90) })
+{
+    var free = PotionOutcome(sample.Baseline, 0, 0);
+    var used = PotionOutcome(sample.Loss, sample.Cost, 2);
+    Require(!CombatSearchCoordinator.IsBetterPotionPolicyResult(null, used, free)
+        && CombatSearchCoordinator.IsBetterPotionPolicyResult(null, free, used),
+        $"Low savings {sample.Baseline - sample.Loss}/{sample.Cost} promoted potion spending.");
+    Require(Portfolio([24, 23], 1000, [Finished(10, free), Finished(10, used)]).SelectedIndex == 0,
+        "A supplemental member replaced the potion-free victory with low-value spending.");
+}
+var paid = PotionOutcome(0, 9, 1);
+Require(CombatSearchCoordinator.IsBetterPotionPolicyResult(null, paid, PotionOutcome(12, 0, 0)),
+    "Sufficient potion savings were rejected.");
+Require(CombatSearchCoordinator.IsBetterPotionPolicyResult(null, paid, PotionOutcome(9, 0, 0)),
+    "Savings at the opportunity-cost threshold were rejected.");
+Require(!CombatSearchCoordinator.IsBetterPotionPolicyResult(null,
+    PotionOutcome(4, 9, 1, turn: 1), PotionOutcome(4, 0, 0, turn: 7)),
+    "Earlier victory bypassed the potion cost.");
+Require(CombatSearchCoordinator.IsBetterPotionPolicyResult(null,
+    PotionOutcome(0, 1, 1), PotionOutcome(3, 0, 0)), "Replacement credit lost its value.");
+Require(CombatSearchCoordinator.IsBetterPotionPolicyResult(null,
+    PotionOutcome(0, 0, 1), PotionOutcome(3, 0, 0)), "Forced or free potion use gained an optional cost.");
+Require(CombatSearchCoordinator.IsBetterPotionPolicyResult(null, paid, Outcome(false, 0)),
+    "A necessary potion victory lost to an incomplete route.");
+Require(CombatSearchCoordinator.IsBetterPotionPolicyResult(null,
+    paid, PotionOutcome(0, 0, 0) with { DeathSaveUseCount = 1 }),
+    "Preserving a death-save resource lost priority.");
+Require(CombatSearchCoordinator.IsBetterPotionPolicyResult(SolverTheftPolicy.PreserveResources,
+    paid, PotionOutcome(0, 0, 0) with { OutstandingStolenResource = 1 }),
+    "Recovering stolen resources lost priority.");
+Require(!CombatSearchCoordinator.IsBetterPotionPolicyResult(null,
+    PotionOutcome(0, int.MaxValue, 1), PotionOutcome(4, 0, 0)),
+    "An unbounded boss potion cost overflowed the comparison.");
+
 // The comparator is the only selection authority: an independent scan must agree.
 SolverInterimResult[] scripted =
 [

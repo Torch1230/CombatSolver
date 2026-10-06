@@ -1,30 +1,12 @@
 # CombatSolver 开发笔记
 
-这里只记录当前未发布的行为变化。发布定稿后将该批次完整移入历史卷；已有章节中的错误直接修正，不追加互相矛盾的“后续说明”。
+这里只记录当前未发布的行为变化。发布定稿后将该批次完整移入历史卷。
 
-历史记录见 [归档索引](archive/development/README.md)。0.50.0 的 PR #207、PR #211、智能药水与组合补搜定稿见 [历史卷 20](archive/development/volume-20.md)，玩家说明见 [0.50.0 更新日志](releases/0.50.0-RELEASE_NOTES.md)。各渠道发布结果以 `releases/CombatSolver-0.50.0.publish-state.json` 的统一发布记录为准。
+0.50.1 本地定稿的智能药水修复及 PR #213、#224、#226 见[历史卷22](archive/development/volume-22.md)，玩家说明见[0.50.1 更新日志](releases/0.50.1-RELEASE_NOTES.md)。外部发布状态以对应标签及发布记录为准。
 
-性能研究的逐次结果、失败与未验证项保留在同卷及 [性能专题](performance/README.md)。
+0.50.0 的 PR #207、PR #211、智能药水与组合补搜定稿及性能研究见[历史卷20](archive/development/volume-20.md)。其他记录见[归档索引](archive/development/README.md)。
 
 ## 下一版本（开发中）
-
-### 手牌上限状态一致性（PR #224）
-
-接入 [tianyilt](https://github.com/tianyilt) 的 [PR #224](https://github.com/Torch1230/CombatSolver/pull/224)：实战续用文本记录框架返回的最终手牌上限，预测续用文本与搜索指纹记录根捕获的上限，使不同上限的状态在续用和判重时可区分。
-
-根和 Fork 继续共享捕获时冻结的玩家顺序与上限，后台匹配读取分支已有值。贡献者使用可选手牌上限接口的历史原生证据、未通过的耗时门槛和本轮验证范围见[测试矩阵](TEST_MATRIX.md#手牌上限状态一致性pr-224)。
-
-### Ctrl+F9 面板可见性（PR #226）
-
-接入 [link20031019](https://github.com/link20031019) 的 [PR #226](https://github.com/Torch1230/CombatSolver/pull/226)：Ctrl+F9 选择的隐藏状态在界面刷新和战斗重置后持续生效，再次按键恢复显示，游戏重启后重置。
-
-UI 独立保存快捷键隐藏意图与初始化请求，Runtime 在战斗重置后登记下一可操作边界的初始化。每次呈现直接应用用户选择的可见性，覆盖已有图层与新建图层的默认可见状态。最小合同与本轮审计证据见[测试矩阵](TEST_MATRIX.md#ctrlf9-面板可见性pr-226)。
-
-### Q002 能力与药水边界续搜（PR #213）
-
-接入 [shun-tong](https://github.com/shun-tong) 的 [PR #213](https://github.com/Torch1230/CombatSolver/pull/213)：在现有组合成员及共享节点、时间预算内，从搜索自主生成的能力、用药和后续损血边界继续求解，改善长战斗路线。整合沿用 0.50.0 的组件回复证明、药水成本保护与智能开局药水准入。回放入口恢复完整搜索 profile 与录制开关，历史阶段见 [卷 21](archive/development/volume-21.md)，当前主线的同根质量及耗时证据见 [Q002 记录](issues/q002-route-quality.md#0500-主线整合2026-10-05)。
-
-强制用药续搜按实际回合边界的完整回放状态准入：即使已生成路线在之后走到死亡，也可复用此前满足用药政策、仍存活的稳定边界。死亡、胜利和未完整应用的前缀由边界验证拒绝，`FIXED-PREFIX-TURN-OUTCOMES` 覆盖该合同及实机状态隔离。
 
 ### Q014 智能药水开局与审计截止
 

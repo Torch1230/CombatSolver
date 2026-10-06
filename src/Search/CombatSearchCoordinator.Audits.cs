@@ -921,20 +921,7 @@ internal static partial class CombatSearchCoordinator
         SearchPolicySnapshot policy,
         SolverResult candidate,
         SolverResult current)
-    {
-        if (!IsCompleteVictory(candidate) || !IsCompleteVictory(current)
-            || candidate.Snapshot.StrategyGoalHpCredit != current.Snapshot.StrategyGoalHpCredit
-            || policy.TheftPolicy == SolverTheftPolicy.PreserveResources)
-            return IsBetterCompletedResult(root, policy, candidate, current);
-
-        int candidateCost = StrategicHpDeficit(root, policy, candidate)
-            + SmartPotionHpRequired(root, policy, candidate);
-        int currentCost = StrategicHpDeficit(root, policy, current)
-            + SmartPotionHpRequired(root, policy, current);
-        return candidateCost != currentCost
-            ? candidateCost < currentCost
-            : IsBetterCompletedResult(root, policy, candidate, current);
-    }
+        => IsBetterPotionPolicyResult(root, policy, candidate, current);
 
     private static SolverResult SearchSmartPotionGradient(
         SearchPassContext context,
@@ -1095,12 +1082,15 @@ internal static partial class CombatSearchCoordinator
             int hpRequired = SmartPotionHpRequired(root, policy, candidate);
             bool protectsLoot = policy.TheftPolicy == SolverTheftPolicy.PreserveResources
                 && candidate.OutstandingStolenResource < potionFree.OutstandingStolenResource;
+            bool protectsDeathSave = candidate.Snapshot.ProjectedDeathSaveUseCount
+                < potionFree.Snapshot.ProjectedDeathSaveUseCount;
             bool acceptable = IsSmartPotionGradientCandidateAcceptable(
                 potionFreeWon,
                 candidateWon,
                 hpSaved,
                 hpRequired,
-                protectsLoot);
+                protectsLoot,
+                protectsDeathSave);
             bool improvesSelection = acceptable
                 && IsBetterPotionPolicyResult(root, policy, candidate, selected);
             if (improvesSelection)
@@ -1145,9 +1135,10 @@ internal static partial class CombatSearchCoordinator
         bool candidateWon,
         int hpSaved,
         int hpRequired,
-        bool protectsLoot)
+        bool protectsLoot,
+        bool protectsDeathSave = false)
         => candidateWon
-            && (!potionFreeWon || hpSaved >= hpRequired || protectsLoot);
+            && (!potionFreeWon || hpSaved >= hpRequired || protectsLoot || protectsDeathSave);
 
     private static void ObserveSmartLayerMemory(
         SearchPassContext context,

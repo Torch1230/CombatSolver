@@ -169,9 +169,6 @@ internal sealed partial class CombatBeamSolver
             int potionFreePlayerHp = hasPotionFreeBaseline
                 ? policyCandidates[potionFreeBaselineIndex].Snapshot.PlayerHp
                 : 0;
-            int? potionFreeCombatEndedTurn = hasPotionFreeBaseline
-                ? policyCandidates[potionFreeBaselineIndex].CombatEndedTurn
-                : null;
             int potionFreeOutstandingResource = hasPotionFreeBaseline
                 ? policyCandidates[potionFreeBaselineIndex].Features.OutstandingStolenResource
                 : int.MaxValue;
@@ -184,7 +181,6 @@ internal sealed partial class CombatBeamSolver
                 potionFreeWon = auditedBaseline.Won;
                 potionFreeStrategicHpDeficit = auditedBaseline.HpDeficit;
                 potionFreePlayerHp = auditedBaseline.PlayerHp;
-                potionFreeCombatEndedTurn = auditedBaseline.CombatEndedTurn;
                 potionFreeDeathSaveUseCount = auditedBaseline.DeathSaveUseCount;
             }
             bool anyRouteWon = potionFreeWon
@@ -217,18 +213,12 @@ internal sealed partial class CombatBeamSolver
             var policyEligibleCandidates = policyCandidates
                 .Where(candidate =>
                 {
-                    bool strictPrimaryImprovement = hasPotionFreeBaseline
+                    bool protectsDeathSave = hasPotionFreeBaseline
+                        && potionFreeWon
+                        && candidate.CompleteVictory
                         && potionPolicy != SolverPotionPolicy.Disabled
                         && candidate.OptionalPotionCount > 0
-                        && SolverInterimResultOrdering.ComparePrimaryQuality(
-                            candidate.CompleteVictory,
-                            candidate.StrategicHpDeficit,
-                            candidate.CombatEndedTurn,
-                            potionFreeWon,
-                            potionFreeStrategicHpDeficit,
-                            potionFreeCombatEndedTurn,
-                            candidateDeathSaveUseCount: candidate.Snapshot.ProjectedDeathSaveUseCount,
-                            currentDeathSaveUseCount: potionFreeDeathSaveUseCount) < 0;
+                        && candidate.Snapshot.ProjectedDeathSaveUseCount < potionFreeDeathSaveUseCount;
                     bool passesSoftPotionPolicy = PotionUsePolicy.IsEligible(
                             candidate.EffectivePotionPolicy,
                             candidate.OptionalPotionCount,
@@ -238,12 +228,12 @@ internal sealed partial class CombatBeamSolver
                             anyRouteWon,
                             candidate.CompleteVictory,
                             candidate.StrategicHpDeficit)
-                        || strictPrimaryImprovement
+                        || protectsDeathSave
                         || theftPolicy == SolverTheftPolicy.PreserveResources
                             && candidate.PotionCount > 0
                             && candidate.Features.OutstandingStolenResource
                                 < potionFreeOutstandingResource;
-                    bool passesAmbergrisPolicy = strictPrimaryImprovement
+                    bool passesAmbergrisPolicy = protectsDeathSave
                         || theftPolicy == SolverTheftPolicy.PreserveResources
                             && candidate.Features.OutstandingStolenResource < potionFreeOutstandingResource
                         || PotionUsePolicy.MeetsAmbergrisRestriction(

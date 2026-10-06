@@ -137,6 +137,43 @@ internal sealed partial class UnattendedTestRunner
             InjectPotionForTest(player, "FIRE_POTION");
             InjectPotionForTest(player, "STRENGTH_POTION");
             names = SolverDisplayNames.Capture(combat);
+            CombatRootSnapshot paidRoot = ForecastRoot(PotionRewardForecast.NoDrop);
+            PotionFreePolicyBaseline baseline = new(true, 3, lowLoss.Result.Snapshot.PlayerHp,
+                lowLoss.Result.CombatEndedTurn);
+            PlanAction fire = new(PlanActionKind.UsePotion, paidRoot.StartTurnNumber,
+                PotionId: "FIRE_POTION", PotionSlot: 0, TargetCombatId: combat.Enemies.Single().CombatId);
+            PlanAction strength = new(PlanActionKind.UsePotion, paidRoot.StartTurnNumber,
+                PotionId: "STRENGTH_POTION", PotionSlot: 1);
+            string beforePaidPrefixes = ContinuationStamp.CaptureLive(combat).StateText;
+            foreach (PlanAction[] prefix in new[] { new[] { fire }, new[] { strength, fire } })
+            {
+                bool rejected = false;
+                try
+                {
+                    await Task.Run(() => new CombatBeamSolver(paidRoot, names,
+                        new BattleDamageSnapshot(0, 0, 0, []), policy,
+                        searchProfile: policy.Profile, potionFreePolicyBaseline: baseline,
+                        maximumPotionUses: prefix.Length, minimumPotionUses: prefix.Length,
+                        fixedPrefixActions: prefix).Solve());
+                }
+                catch (PotionPolicyUnsatisfiedException) { rejected = true; }
+                Check(rejected, $"fixed {prefix.Length}-potion victory must justify its opportunity cost");
+            }
+            SearchPolicySnapshot forcedPolicy = policy with
+            {
+                PotionStrategy = new(SolverPotionPolicy.Smart,
+                    [new(0, "FIRE_POTION", SolverPotionDirective.Force)]),
+            };
+            SolverResult forced = await Task.Run(() => new CombatBeamSolver(paidRoot, names,
+                new BattleDamageSnapshot(0, 0, 0, []), forcedPolicy,
+                searchProfile: policy.Profile, potionFreePolicyBaseline: baseline,
+                maximumPotionUses: 1, minimumPotionUses: 1, fixedPrefixActions: [fire]).Solve());
+            Check(forced.Snapshot.AllEnemiesDead && forced.ExplicitPotionCount == 1,
+                "the explicit Force directive permits the selected potion");
+            Check(ContinuationStamp.CaptureLive(combat).StateText == beforePaidPrefixes,
+                "paid and forced prefixes preserve native state");
+            _completedChecks.Add("SmartOpeningAdmission:PaidPrefixes:RejectOne:RejectTwo:ForceAccepted");
+
             CombatRootSnapshot drop = ForecastRoot(PotionRewardForecast.Drop);
             Check(drop.PotionRewardOutlook.BeltFull && drop.PotionRewardOutlook.ReplacementHpCredit >= 9,
                 "confirmed reward credits one freed slot");
