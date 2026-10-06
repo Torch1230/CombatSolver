@@ -44,19 +44,26 @@ internal sealed partial class UnattendedTestRunner
                 runner.AssertCheckpointProfileContract(combatState);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId is "CHECKPOINT-RECORDED-PLAN-PATH" or "CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH")
+            if (request.ScenarioId is "CHECKPOINT-RECORDED-PLAN-PATH"
+                or "CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH"
+                or "CHECKPOINT-RECORDED-PLAN-CURRENT-PATH")
             {
                 await runner.PrepareRecordedPlanDeploymentAsync(combatState, deploy: false,
+                    compareCurrentOutcome: request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-CURRENT-PATH",
                     observeFirstPotionChoice: request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH");
                 return Observation(combatEnded: false);
             }
             const string recordedRetentionPrefix = "CHECKPOINT-RECORDED-PLAN-RETENTION-PATH-";
-            if (request.ScenarioId.StartsWith(recordedRetentionPrefix, StringComparison.Ordinal))
+            const string currentRetentionPrefix = "CHECKPOINT-RECORDED-PLAN-CURRENT-RETENTION-PATH-";
+            bool currentRetention = request.ScenarioId.StartsWith(currentRetentionPrefix, StringComparison.Ordinal);
+            if (currentRetention || request.ScenarioId.StartsWith(recordedRetentionPrefix, StringComparison.Ordinal))
             {
-                if (!int.TryParse(request.ScenarioId.AsSpan(recordedRetentionPrefix.Length), out int step)
+                string retentionPrefix = currentRetention ? currentRetentionPrefix : recordedRetentionPrefix;
+                if (!int.TryParse(request.ScenarioId.AsSpan(retentionPrefix.Length), out int step)
                     || step < 1)
                     throw new InvalidDataException("Recorded retention path requires a positive action step.");
                 await runner.PrepareRecordedPlanDeploymentAsync(combatState, deploy: false,
+                    compareCurrentOutcome: currentRetention,
                     observedRetentionStep: step);
                 return Observation(combatEnded: false);
             }

@@ -263,7 +263,15 @@ internal sealed partial class CombatBeamSolver
                         snapshot.FutureResourceValue, snapshot.DelayedDamageValue, snapshot.ReactiveDamageValue,
                         snapshot.EnemyStrengthSuppression, snapshot.EnemyWeakTurns, snapshot.EnemyVulnerableTurns,
                         snapshot.SandpitRemaining, snapshot.FocusTargetPressure,
-                        snapshot.ProjectedShuffleOrderValue, snapshot.LongTermResourceValue)),
+                        snapshot.ProjectedShuffleOrderValue, snapshot.LongTermResourceValue),
+                    Transition: node.Parent is { } parent
+                        ? new SearchPathTransitionValues(
+                            parent.ActionCount, parent.Snapshot.HandCount, snapshot.HandCount,
+                            parent.Snapshot.RawEnemyHp, snapshot.RawEnemyHp,
+                            parent.Snapshot.EnemyBlock, snapshot.EnemyBlock,
+                            parent.Snapshot.RetainedAttackValue, snapshot.RetainedAttackValue,
+                            BeamRetentionPolicy.ObservedRoutingActionsSinceChoice(node))
+                        : null),
             });
         }
     }

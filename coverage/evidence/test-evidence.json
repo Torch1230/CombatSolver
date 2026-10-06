@@ -2867,7 +2867,7 @@
     "level": "NativeFeasibilityWithUnresolvedRootSearch",
     "procedure": "原O061 ZIP开战/cursor0，固定10000ms政策；从真实原生输入取得身份的独立49步派生路线严格回放；并行能力计数汇总修复后自主原生部署。",
     "expected": "从同开战根自主找到扣除药水后不差于27/0的完整胜利。",
-    "observed": "620cdc147b35431797fc09b589727b9d基线45/2/T9（折算63）；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。db52da63a7654223a2ce9205543838fa严格原生输入采集24动作/30事件，原包不修改；98010bbe146d498b911d415cbcaf7b37派生49步严格回放27/0/T9。真实保留别名前缀33860b34ab8e479aaed83533cacfdb7c同样严格兑现27。并行worker创建计数遗漏汇总导致既有保护旁路，补齐汇总/清零后正常147f052ac81d4d4495efd2e9ac0cece9为39/0/T10，9939.6411ms、15384展开/95027转移/5191997400B；完整原生c0786ffc9aec465c8826ff31d576e9d6同为39/0/T10、52→13/87HP、零重算。折算改善24，仍差12。此前能力排序试验入口未启用，不能归因；均撤回。独立能力哨兵性能门槛未通过。 保护实际启用后仅能力偏好组内优先净未兑现潜力：正常ec39eca2e5ac4bf59cd02682bfa28a2f为28/0/T10；原生ee1c56962c81412a9fb92c4e6b6c2e29同为28/0/T10，52→24/87HP、零重算，9945.6089ms/13047节点/92234转移/5249993648B。折算63→28，改善35，仍差1；不得宣称追平。",
+    "observed": "620cdc147b35431797fc09b589727b9d基线45/2/T9（折算63）；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。db52da63a7654223a2ce9205543838fa严格原生输入采集24动作/30事件，原包不修改；98010bbe146d498b911d415cbcaf7b37派生49步严格回放27/0/T9。真实保留别名前缀33860b34ab8e479aaed83533cacfdb7c同样严格兑现27。并行worker创建计数遗漏汇总导致既有保护旁路，补齐汇总/清零后正常147f052ac81d4d4495efd2e9ac0cece9为39/0/T10，9939.6411ms、15384展开/95027转移/5191997400B；完整原生c0786ffc9aec465c8826ff31d576e9d6同为39/0/T10、52→13/87HP、零重算。折算改善24，仍差12。此前能力排序试验入口未启用，不能归因；均撤回。独立能力哨兵性能门槛未通过。 保护实际启用后仅能力偏好组内优先净未兑现潜力：正常ec39eca2e5ac4bf59cd02682bfa28a2f为28/0/T10；原生ee1c56962c81412a9fb92c4e6b6c2e29同为28/0/T10，52→24/87HP、零重算，9945.6089ms/13047节点/92234转移/5249993648B。折算63→28，改善35，仍差1；不得宣称追平。 提交67fb8314后跨组潜力排序实际生效试验0da37cc1ac9445acb9362f0bac2877ad退化37/0/T9，已撤回，仅保留原生28版本。",
     "evidence": "coverage/fixtures/search/q014-o061-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O062-QUALITY-GAP": {
@@ -2875,7 +2875,7 @@
     "level": "NativeFeasibilityAndDetachedPathDiagnosis",
     "procedure": "原O062 ZIP，开战基线；T2检查点参照原生部署；原始身份按原生T1顺序重排的独立派生诊断。",
     "expected": "自主找到7/1/T3，不能写包中固定顺序或提高预算。",
-    "observed": "ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。原派生路线药水生成SALVO后落选，但493b3362add6430194003cfc98d1852e及4caa6f81c2cf4b1084c0b29fd1da637b证实两条已保留别名前缀均严格兑现7HP/T3，不能把准确第7步丢失当根因。后者第9步ARMAMENTS升级攻击价值77→91，在409候选中排名187后落选；先升级再生成的别名留下SALVO+0，不能替代后缀SALVO+1身份。三版准备代表试验：c2257d6956fb48b299f4f3cb535780c9为22/0折算无收益；deddb18ba4fe41379ed863803979590d与d582f0d79b214946bbc0306b927fa6a4原生仍13/1/T5、零重算。全部无效搜索改动已撤回。 并行计数汇总修复后256197b82e39468ea8d44b94fc871951原生仍13/1/T5，零重算，7871.9757ms；未追平。 组内潜力排序后10c13000f2004c0d967f765cee4729de原生仍13/1/T5、零重算，8454.5994ms/19583节点/66512转移/3198672680B。",
+    "observed": "ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。原派生路线药水生成SALVO后落选，但493b3362add6430194003cfc98d1852e及4caa6f81c2cf4b1084c0b29fd1da637b证实两条已保留别名前缀均严格兑现7HP/T3，不能把准确第7步丢失当根因。后者第9步ARMAMENTS升级攻击价值77→91，在409候选中排名187后落选；先升级再生成的别名留下SALVO+0，不能替代后缀SALVO+1身份。三版准备代表试验：c2257d6956fb48b299f4f3cb535780c9为22/0折算无收益；deddb18ba4fe41379ed863803979590d与d582f0d79b214946bbc0306b927fa6a4原生仍13/1/T5、零重算。全部无效搜索改动已撤回。 并行计数汇总修复后256197b82e39468ea8d44b94fc871951原生仍13/1/T5，零重算，7871.9757ms；未追平。 组内潜力排序后10c13000f2004c0d967f765cee4729de原生仍13/1/T5、零重算，8454.5994ms/19583节点/66512转移/3198672680B。 当前基线9b44972dcd9e401ba747efeaa6933007路径411事件无丢失，7/8步保留，9升级落选；83bbfcf48860416b8c1d8324525468f5整池1366事件、无丢失，边界16、排名187/409。混合深度首步准备代表试验0a906fb72f0b43a38810dc205a4b17cb正常仍13/1/T5、7708.4197ms/20405/68628/3389564400B，源码已撤回，忽略目录试验二进制只作路径诊断。",
     "evidence": "coverage/fixtures/search/q014-o062-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O063-RESTORATION-BLOCK": {
@@ -2909,5 +2909,13 @@
     "expected": "动作、评分、完整续用及非时序剪枝相同；DOP2真实并发≥2；节点上限释放快照；全局设置修改不影响已捕获政策。",
     "observed": "e3d8d809a66c4d01bc880fb118a48326与c895e049201c45dda5bfd78d571b88b4先后在静态过滤/资格合同Failed，未到DOP。旧预期遗漏已新增药水成本字段；补齐零成本见证、未知成本不得剪枝反例，以及有药成本9和无药成本0完整结果预期，生产资格/剪枝不改。ab29d3b8fbbc4ed8b65c424ca554e6d9 Passed SearchPolicySnapshot和CombatRootSnapshot，固定工作量及实际并发断言执行通过；生成场景随后完整原生18/0/T7、零重算。",
     "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.SearchPolicy.cs; src/Testing/Contracts/Runtime/UnattendedTestRunner.ControllerSessions.cs; coverage/fixtures/search/q014-parallel-power-sentinel.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-O062-CURRENT-ALIAS-FEASIBILITY": {
+    "status": "Passed",
+    "level": "StrictCurrentNativeFeasibilityNotSearchDiscovery",
+    "procedure": "实际选中的8动作前缀接未改身份的4动作后缀，原包未修改；显式当前预测比较并原生部署。",
+    "expected": "逐步增量/完整等价、原生5/1/T3、无额外搜索/重算；保留继承历史7不符，不计自主优化。",
+    "observed": "9cad1022eff94028afe49ab86c09dc20普通模式Failed5/7；首个原生请求7cd65693ab9445d2a8cfc6f4ba7de028因误用SearchOnly在模式检查Failed。修正DeploySolver后47f07160374c459eb4bc9c3722c5b539 Passed12步严格回放/原生5/1/T3、终局71/80HP、零搜索/重算。ee1b6e7578bd4a639b69e433831cbe93只读路径377事件/e512ab4877da4429b671f13933bf0f3e整池848事件均无丢失、根/live不变；第9步MoltenFist边界17排名68/190无代表，实际新生选项代表排名85/路由4/选中65。自主仍13，未完成。 下一单因素17a012aa492c488494abb6a48d370fdf正常22/0/T7，折算无收益，已撤回；686a416d63924f16af018fd5e437a0cd只读370事件无丢失，5点准确路线第8步落选，但现有数据偏好原7点前缀，不能把该落选单独判为根因。",
+    "evidence": "src/Testing/Replay/UnattendedTestRunner.RecordedPlan.cs; src/Testing/Host/UnattendedTestRunner.Executor.cs; docs/CHECKPOINT_REPLAY.md; docs/issues/q014-route-quality.md"
   }
 }

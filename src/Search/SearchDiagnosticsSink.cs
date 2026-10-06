@@ -102,6 +102,18 @@ internal readonly record struct SearchPathEvaluationValues(
     int ProjectedShuffleOrderValue,
     int LongTermResourceValue);
 
+internal readonly record struct SearchPathTransitionValues(
+    int ParentActionCount,
+    int ParentHandCount,
+    int HandCount,
+    int ParentRawEnemyHp,
+    int RawEnemyHp,
+    int ParentEnemyBlock,
+    int EnemyBlock,
+    int ParentRetainedAttackValue,
+    int RetainedAttackValue,
+    int RoutingActionsSinceChoice);
+
 // All indexes, including RawRank, are zero-based; null means absent or not evaluated.
 // ParentRetentionRank is the immediate parent's value, not a routing-family minimum.
 // An option leader may still be excluded from routing or required by their original caps.
@@ -124,7 +136,8 @@ internal sealed record SearchPathRetentionDetails(
     int? SelectedCount = null,
     SearchPathRoutingChoiceSignature? RoutingChoiceSignature = null,
     bool? IsRoutingOptionLeader = null,
-    SearchPathEvaluationValues? Evaluation = null);
+    SearchPathEvaluationValues? Evaluation = null,
+    SearchPathTransitionValues? Transition = null);
 
 // Arrays/choices are detached value copies. This must not acquire a SearchNode, snapshot,
 // simulator, model, ledger, lazy enumerable, or callback that retains one of those objects.

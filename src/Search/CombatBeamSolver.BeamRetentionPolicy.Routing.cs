@@ -484,6 +484,9 @@ internal sealed partial class CombatBeamSolver
             return count;
         }
 
+        internal static int ObservedRoutingActionsSinceChoice(SearchNode node)
+            => ActionsSinceRetainedRoutingChoice(node);
+
         private static bool TryBuildRoutingChoice(
             SearchNode node,
             SearchNode cursor,

@@ -33,7 +33,8 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidDataException("Recorded winning prediction has no actions.");
         _writer.ReplayVerification!["recordedPrediction"] = recorded.DeepClone();
         _writer.ReplayVerification["comparisonScope"] = compareCurrentOutcome
-            ? "recorded_actions_current_native_outcome_not_historical_feasibility"
+            ? deploy ? "recorded_actions_current_native_outcome_not_historical_feasibility"
+                : "recorded_actions_current_strict_outcome_not_historical_feasibility"
             : "recorded_prediction_feasibility";
         _writer.WriteGeneratedArtifact("recorded-plan.json", recorded);
         string liveBefore = ContinuationStamp.CaptureLive(combat).StateText;
@@ -108,7 +109,9 @@ internal sealed partial class UnattendedTestRunner
         if (historicalOutcomeMatched)
             _completedChecks.Add("RecordedPrediction:HistoricalOutcomeMatched");
         else
-            _completedChecks.Add("RecordedPrediction:HistoricalOutcomeMismatch:CurrentNativeComparisonOnly");
+            _completedChecks.Add(deploy
+                ? "RecordedPrediction:HistoricalOutcomeMismatch:CurrentNativeComparisonOnly"
+                : "RecordedPrediction:HistoricalOutcomeMismatch:CurrentStrictComparisonOnly");
         if (!deploy)
         {
             int? observedStep = observedRetentionStep;
