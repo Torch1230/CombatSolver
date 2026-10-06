@@ -2933,5 +2933,13 @@
     "expected": "各真实搜索实例的纯值用药约束和策略用途保持一致；worker继承所有者，诊断构造器身份独立，完整动作/状态与实战根不变。",
     "observed": "ce1ed74239d046ada69bd99b7b09f125 Passed49步历史27/0/T9、8716事件无丢失、5实例约束一致；无药主搜第6步落选，别名来自必须1/2药的梯度成员。91a8ad8d7dd84907a2e4c0945fa5bbef Passed12步当前结果路径、370事件无丢失、11实例一致；历史不符保留。3413初版合同因worker局部参数漂移Failed；3600错误DeploySolver模式Failed，修正SearchOnly后通过。该诊断不证明自主优化、原生部署或性能。",
     "evidence": "src/Search/SearchDiagnosticsSink.cs; src/Search/CombatBeamSolver.PathDiagnostics.cs; src/Search/CombatBeamSolver.ParallelExpansion.cs; src/Testing/Support/UnattendedTestRunner.KnownRoutePathTrace.cs; docs/CHECKPOINT_REPLAY.md; docs/issues/q014-route-quality.md"
+  },
+  "Q014-STRICT-PREFIX-EVALUATION": {
+    "status": "Passed",
+    "level": "FrozenScalarDiagnosticNotStrategyAcceptance",
+    "procedure": "O062同根12步派生动作，SearchOnly当前结果路径；基线及临时重建旧Fiend Fire估值版，回放后比较逐前缀身份及现成标量。",
+    "expected": "只冻结已计算值、不重新评分；所有动作、状态、回合、HP、药水和洗牌身份不变；不将特征变化计为实际保留或自主优化。",
+    "observed": "08d8e92041fa4d908bba7069e3bb87b6与06dcea0623c0435a9ca56ca93772afed均Passed12步/370事件/11成员约束一致/root/live不变，12前缀evaluation齐全、动作状态及累计身份完全相同。第11步可出手牌24→89、存续攻击77→147；真实用药成员第7步潜力18→11、兑现16→23，提示准备估值与释放计数耦合。aa6c6a3362dd4dff9f070ef9e20f28b5因补丁未应用是重复基线，不计对照；估值试验已撤回，保留值诊断，不证明路线质量或性能收益。",
+    "evidence": "src/Search/CombatBeamSolver.PathDiagnostics.cs; src/Testing/Support/UnattendedTestRunner.RouteSnapshots.cs; src/Testing/Support/UnattendedTestRunner.KnownRoutePathTrace.cs; docs/CHECKPOINT_REPLAY.md; docs/issues/q014-route-quality.md"
   }
 }

@@ -17,6 +17,7 @@ internal sealed partial class UnattendedTestRunner
         public CombatTerminalStamp? TerminalStamp { get; init; }
         public bool PlayerDead { get; init; }
         public bool AllEnemiesDead { get; init; }
+        public SearchPathEvaluationValues? Evaluation { get; init; }
     }
 
     private static MoveStateSnapshot[] CaptureKnownRouteRootStates(
@@ -53,6 +54,7 @@ internal sealed partial class UnattendedTestRunner
             TerminalStamp = snapshot.TerminalStamp,
             PlayerDead = snapshot.PlayerDead,
             AllEnemiesDead = snapshot.AllEnemiesDead,
+            Evaluation = CombatBeamSolver.CaptureDiagnosticEvaluation(snapshot),
         };
     }
 

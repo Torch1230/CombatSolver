@@ -193,7 +193,7 @@ internal sealed partial class UnattendedTestRunner
                 prefixes = prefixes.Select((prefix, index) => new
                 {
                     step = index + 1, prefix.Action, prefix.StateKey, prefix.Turn,
-                    prefix.HpLost, prefix.PotionsUsed, prefix.ShufflesCrossed,
+                    prefix.HpLost, prefix.PotionsUsed, prefix.ShufflesCrossed, prefix.Evaluation,
                 }).ToArray(),
                 events = observations.Select(observation => new
                 {

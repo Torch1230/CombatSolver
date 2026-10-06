@@ -271,16 +271,7 @@ internal sealed partial class CombatBeamSolver
                     SelectedCount: decision.Selected.Count,
                     RoutingChoiceSignature: routingSignature,
                     IsRoutingOptionLeader: decision.OptionLeaders?.Contains(node),
-                    Evaluation: new SearchPathEvaluationValues(
-                        snapshot.Energy, snapshot.Stars, snapshot.PlayerBlock,
-                        snapshot.ProjectedPlayerHp, snapshot.HandCount, snapshot.ReachableHandValue,
-                        snapshot.ZeroCostPlayableCount, snapshot.LiveDeckSize, snapshot.LiveDeckClutter,
-                        snapshot.PersistentBuffValue, snapshot.StrategicEffects.RetentionValue,
-                        snapshot.LatentSetupValue, snapshot.RetainedAttackValue, snapshot.ReplayPotentialValue,
-                        snapshot.FutureResourceValue, snapshot.DelayedDamageValue, snapshot.ReactiveDamageValue,
-                        snapshot.EnemyStrengthSuppression, snapshot.EnemyWeakTurns, snapshot.EnemyVulnerableTurns,
-                        snapshot.SandpitRemaining, snapshot.FocusTargetPressure,
-                        snapshot.ProjectedShuffleOrderValue, snapshot.LongTermResourceValue),
+                    Evaluation: CaptureDiagnosticEvaluation(snapshot),
                     Transition: node.Parent is { } parent
                         ? new SearchPathTransitionValues(
                             parent.ActionCount, parent.Snapshot.HandCount, snapshot.HandCount,
@@ -292,6 +283,18 @@ internal sealed partial class CombatBeamSolver
             });
         }
     }
+
+    // Copy already computed scalar guidance; never replay or reevaluate for diagnosis.
+    internal static SearchPathEvaluationValues CaptureDiagnosticEvaluation(SimulationSnapshot snapshot)
+        => new(snapshot.Energy, snapshot.Stars, snapshot.PlayerBlock,
+            snapshot.ProjectedPlayerHp, snapshot.HandCount, snapshot.ReachableHandValue,
+            snapshot.ZeroCostPlayableCount, snapshot.LiveDeckSize, snapshot.LiveDeckClutter,
+            snapshot.PersistentBuffValue, snapshot.StrategicEffects.RetentionValue,
+            snapshot.LatentSetupValue, snapshot.RetainedAttackValue, snapshot.ReplayPotentialValue,
+            snapshot.FutureResourceValue, snapshot.DelayedDamageValue, snapshot.ReactiveDamageValue,
+            snapshot.EnemyStrengthSuppression, snapshot.EnemyWeakTurns, snapshot.EnemyVulnerableTurns,
+            snapshot.SandpitRemaining, snapshot.FocusTargetPressure,
+            snapshot.ProjectedShuffleOrderValue, snapshot.LongTermResourceValue);
 
     private static int? ObservedReferenceIndex(IReadOnlyList<SearchNode> nodes, SearchNode candidate)
     {
