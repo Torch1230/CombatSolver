@@ -461,6 +461,18 @@ Require(PowerCommitmentRetention.RankRepresentatives(retentionPool, quota: 2).Co
     && twoCapabilities.PowerCommitment!.Cards.SequenceEqual(["TEST_A", "TEST_B"]),
     "能力代表选择超出配额或修改了候选池/激活历史。");
 
+SearchNode freshInvestment = oneCapability with
+{
+    PowerCommitment = oneCapability.PowerCommitment! with { ProvisionalPotential = 30 },
+};
+SearchNode alreadyProgressed = RetentionNode(["TEST_A"], realized: 5);
+SearchNode[] investmentPool = [freshInvestment, alreadyProgressed];
+Require(PowerCommitmentRetention.RankRepresentatives(investmentPool, 1).Single() == alreadyProgressed
+    && PowerCommitmentRetention.RankRepresentatives(investmentPool, 1,
+        preferUnrealizedPotential: true).Single() == freshInvestment
+    && investmentPool.SequenceEqual([freshInvestment, alreadyProgressed]),
+    "能力偏好成员未保留未兑现投资，或改变了普通成员/候选池。");
+
 // 11. 逐卡估值合同：升级差异、零触发稀缺、机制取值。
 PowerCardValuationResult inflameNormal = Evaluate(new Inflame(), Context());
 PowerCardValuationResult inflameUpgraded = Evaluate(new Inflame { IsUpgraded = true }, Context());

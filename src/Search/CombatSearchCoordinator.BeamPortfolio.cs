@@ -73,6 +73,7 @@ internal static partial class CombatSearchCoordinator
         List<BeamWidthPortfolioMemberCost> costs = [];
         BeamWidthPortfolioBaseline baseline = default;
         bool baselineObserved = false;
+        bool? hasPersistentOpeningPotion = null;
         long expandedByMembers = 0;
         BeamPortfolioExperiment? experiment = policy.PortfolioExperiment;
         SolverResult? baselineResult = null;
@@ -143,7 +144,39 @@ internal static partial class CombatSearchCoordinator
             if (primaryIncumbent is { } bound)
                 policy.Diagnostics.Info($"[CombatSolver/Test] BEAM_REFINEMENT_INCUMBENT "
                     + $"member={costs.Count} deficit={bound.StrategicHpDeficit} turn={bound.CombatEndedTurn}");
-            SolverResult memberResult = solveMember(effectiveProfile, baselineObserved, primaryIncumbent);
+            PlanAction[]? victoryBoundary = null;
+            if (baselineObserved && memberProfile.BaseScoreOnly
+                && experiment == null && !policy.PotionStrategy.HasForcedDirectives
+                && (memberPotionPolicyOverride ?? policy.PotionPolicy)
+                    is SolverPotionPolicy.Disabled or SolverPotionPolicy.Smart
+                && incumbent is { ExplicitPotionCount: 0 }
+                && IsCompleteVictory(incumbent) && !incumbent.Snapshot.HasRisk
+                && incumbent.ProjectedBattleHpLost > 0)
+            {
+                int lossTurn = incumbent.HpLostByTurn
+                    .Where(outcome => outcome.Value > 0 && outcome.Key > root.StartTurnNumber)
+                    .OrderByDescending(outcome => outcome.Key)
+                    .Select(outcome => outcome.Key).FirstOrDefault();
+                PlanAction[] prefix = incumbent.BestNode.Actions
+                    .TakeWhile(action => action.Turn < lossTurn).ToArray();
+                if (lossTurn > root.StartTurnNumber
+                    && prefix.LastOrDefault() is { Kind: PlanActionKind.EndTurn } end
+                    && end.Turn == lossTurn - 1
+                    && prefix.All(action => action.Kind != PlanActionKind.UsePotion))
+                    victoryBoundary = prefix;
+            }
+            SolverResult memberResult = victoryBoundary == null
+                ? solveMember(effectiveProfile, baselineObserved, primaryIncumbent)
+                : new FrontierContinuationScheduler(context).Dispatch(
+                    new ContinuationSearchRequest(context, ContinuationPurpose.MidCombatRefinement,
+                        victoryBoundary, effectiveProfile, SolverPotionPolicy.Disabled, 0, 0)
+                    {
+                        PrimaryIncumbent = primaryIncumbent,
+                    });
+            if (victoryBoundary != null)
+                policy.Diagnostics.Info($"[CombatSolver/Test] BEAM_VICTORY_BOUNDARY "
+                    + $"member={costs.Count} prefix_actions={victoryBoundary.Length} "
+                    + $"turn={victoryBoundary[^1].Turn + 1} hp_lost={memberResult.ProjectedBattleHpLost}");
             long memberElapsed = Math.Max(0, passClock.ElapsedMilliseconds - startedMilliseconds);
             long memberAllocated = Math.Max(
                 0, GC.GetTotalAllocatedBytes(precise: false) - allocatedBefore);
@@ -209,6 +242,29 @@ internal static partial class CombatSearchCoordinator
                 return null;
             if (incumbent != null && CanFinishTargetPortfolio(root, policy, profile, incumbent))
                 return "AcceptableBattleHpLoss";
+            // Optional potion layers and their opening posteriors share this request's
+            // ledger. Do not spend their measured headroom on another cold refinement.
+            if (!member.AggressivePowerCommitment && !policy.IncludeTurnSetup
+                && policy.PotionPolicy == SolverPotionPolicy.Smart
+                && !policy.PotionStrategy.HasForcedDirectives && context.BattleDamage.PotionsUsedSoFar == 0
+                && root.SearchablePotions.Any(potion => PotionUsePolicy.RequiresOpeningUse(potion.PotionId))
+                && incumbent != null && IsCompleteVictory(incumbent)
+                && incumbent.ExplicitPotionCount == 0
+                && incumbent.ProjectedBattleHpLost >= SolverWeights.PotionMinimumHpSaved)
+            {
+                hasPersistentOpeningPotion ??= new CombatBeamSolver(root, context.DisplayNames,
+                    context.BattleDamage, policy, cancellationToken, context.ProgressCallback, profile,
+                    potionPolicyOverride: SolverPotionPolicy.RequireAtLeastOne, maximumPotionUses: 1)
+                    .BuildOpeningPotionActions().Any(action => action.Choice == null
+                        && PotionUsePolicy.RequiresOpeningUse(action.PotionId));
+                long openingReserve = 2 * BeamWidthPortfolioGate.EstimateMemberCost(
+                    baseline.ElapsedMilliseconds, baseline.BeamWidth, baseline.BeamWidth);
+                long refinementCost = BeamWidthPortfolioGate.EstimateMemberCost(
+                    baseline.ElapsedMilliseconds, baseline.BeamWidth, member.BeamWidth);
+                if (hasPersistentOpeningPotion.Value
+                    && context.Budget.RemainingRequestMilliseconds < openingReserve + refinementCost)
+                    return "SmartOpeningPotionReserve";
+            }
             // 能力牌成员走自己的门控（它只要求确实存在可达的能力牌），其余成员走宽度余量门控。
             string? rejection = member.AggressivePowerCommitment
                 ? PowerCommitmentPortfolioGate.Reject(hasReachablePower)

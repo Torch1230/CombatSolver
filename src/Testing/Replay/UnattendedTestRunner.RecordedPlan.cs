@@ -12,7 +12,9 @@ internal sealed partial class UnattendedTestRunner
 
     // A saved prediction is a feasibility witness, never evidence of search discovery.
     // Keep every recorded state key and choice; incompatible legacy identities fail.
-    private async Task PrepareRecordedPlanDeploymentAsync(CombatState combat, bool deploy = true)
+    private async Task PrepareRecordedPlanDeploymentAsync(CombatState combat, bool deploy = true,
+        bool compareCurrentOutcome = false, bool observeFirstPotionChoice = false,
+        int? observedRetentionStep = null)
     {
         if (_checkpointImport == null || !HasNativeRecording
             || _request.ReplayMode != (deploy ? "DeploySolver" : "SearchOnly"))
@@ -30,7 +32,10 @@ internal sealed partial class UnattendedTestRunner
         if (actions.Length == 0)
             throw new InvalidDataException("Recorded winning prediction has no actions.");
         _writer.ReplayVerification!["recordedPrediction"] = recorded.DeepClone();
-        _writer.ReplayVerification["comparisonScope"] = "recorded_prediction_feasibility";
+        _writer.ReplayVerification["comparisonScope"] = compareCurrentOutcome
+            ? deploy ? "recorded_actions_current_native_outcome_not_historical_feasibility"
+                : "recorded_actions_current_strict_outcome_not_historical_feasibility"
+            : "recorded_prediction_feasibility";
         _writer.WriteGeneratedArtifact("recorded-plan.json", recorded);
         string liveBefore = ContinuationStamp.CaptureLive(combat).StateText;
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
@@ -80,22 +85,47 @@ internal sealed partial class UnattendedTestRunner
             searchProfile: policy.Profile, fixedPrefixActions: actions).Solve());
         if (ContinuationStamp.CaptureLive(combat).StateText != liveBefore)
             throw new InvalidOperationException("Recorded prediction replay changed the live root.");
+        _writer.WriteGeneratedArtifact("recorded-plan-replayed-outcome.json", new
+        {
+            recordedHpLost = recorded["projectedBattleHpLost"]!.GetValue<int>(),
+            recordedCombatEndedTurn = recorded["combatEndedTurn"]!.GetValue<int>(),
+            result.ProjectedBattleHpLost, result.ProjectedBattlePotionCount,
+            result.CombatEndedTurn, result.DeathTurn, result.Snapshot.AllEnemiesDead,
+            actionCount = result.BestNode.Actions.Count, recordedActionCount = actions.Length,
+            result.ExpandedNodes,
+        });
+        bool historicalOutcomeMatched = result.CombatEndedTurn == recorded["combatEndedTurn"]!.GetValue<int>()
+            && result.ProjectedBattleHpLost == recorded["projectedBattleHpLost"]!.GetValue<int>();
+        _writer.ReplayVerification["recordedPredictionOutcomeMatched"] = historicalOutcomeMatched;
         if (!result.Snapshot.AllEnemiesDead || result.DeathTurn != null
-            || result.CombatEndedTurn != recorded["combatEndedTurn"]!.GetValue<int>()
-            || result.ProjectedBattleHpLost != recorded["projectedBattleHpLost"]!.GetValue<int>()
+            || !compareCurrentOutcome && !historicalOutcomeMatched
             || result.BestNode.Actions.Count != actions.Length || result.ExpandedNodes != 0)
-            throw new InvalidOperationException("Strict recorded prediction differs from its saved winning outcome: "
-                + $"actual won={result.Snapshot.AllEnemiesDead}, deathTurn={result.DeathTurn}, "
-                + $"turn={result.CombatEndedTurn}, hpLost={result.ProjectedBattleHpLost}, "
-                + $"actions={result.BestNode.Actions.Count}, expanded={result.ExpandedNodes}; "
-                + $"expected turn={recorded["combatEndedTurn"]}, "
-                + $"hpLost={recorded["projectedBattleHpLost"]}, actions={actions.Length}.");
-        _completedChecks.Add($"RecordedPrediction:StrictReplay:IncrementalEquivalent:Actions={actions.Length}:Expanded=0");
+            throw new InvalidOperationException($"Strict recorded prediction differs from its saved winning outcome: "
+                + $"HP loss={result.ProjectedBattleHpLost}/{recorded["projectedBattleHpLost"]}, "
+                + $"terminal turn={result.CombatEndedTurn}/{recorded["combatEndedTurn"]}, "
+                + $"actions={result.BestNode.Actions.Count}/{actions.Length}, "
+                + $"victory={result.Snapshot.AllEnemiesDead}, death={result.DeathTurn}, expanded={result.ExpandedNodes}.");
+        _completedChecks.Add($"RecordedActions:StrictReplay:IncrementalEquivalent:Actions={actions.Length}:Expanded=0");
+        if (historicalOutcomeMatched)
+            _completedChecks.Add("RecordedPrediction:HistoricalOutcomeMatched");
+        else
+            _completedChecks.Add(deploy
+                ? "RecordedPrediction:HistoricalOutcomeMismatch:CurrentNativeComparisonOnly"
+                : "RecordedPrediction:HistoricalOutcomeMismatch:CurrentStrictComparisonOnly");
         if (!deploy)
         {
+            int? observedStep = observedRetentionStep;
+            if (observeFirstPotionChoice)
+            {
+                int index = Array.FindIndex(actions, action => action.Kind == PlanActionKind.UsePotion
+                    && action.Choice is { Cards.Count: > 0 });
+                if (index < 0)
+                    throw new InvalidDataException("Recorded plan has no potion choice to observe.");
+                observedStep = index + 1;
+            }
             await RunKnownRoutePathTraceAsync(combat, player, prefixes, "RecordedPrediction",
                 "recorded_plan_search_path",
-                observedRetentionStep: _request.RecordedPlanRetentionStepForTest
+                observedRetentionStep: observedStep ?? _request.RecordedPlanRetentionStepForTest
                     ?? (actions.Length > 1 ? actions.Length - 1 : null),
                 frozenSearchContext: new(root, names, damage, policy));
             return;

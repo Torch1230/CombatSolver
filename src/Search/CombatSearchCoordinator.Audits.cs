@@ -687,11 +687,13 @@ internal static partial class CombatSearchCoordinator
         Action<SolverResult>? interimResultCallback = context.InterimResultCallback;
         if (policy.PotionPolicy != SolverPotionPolicy.Smart)
             return primary;
+        SolverResult selected = primary;
         try
         {
             SolverResult gradient = SearchSmartPotionGradient(
                 context, callerCancellationToken, primary, memoryForecast,
                 out int maximumOptionalPotionUses);
+            selected = gradient;
             if (policy.IncludeTurnSetup
                 || gradient.ResultScope != SolverResultScope.SearchCompletion
                 || maximumOptionalPotionUses == 0
@@ -723,8 +725,37 @@ internal static partial class CombatSearchCoordinator
                     .Take(8)
                     .Select(potion => new[] { potion }))
                 .ToList();
+            HashSet<string> deferredGeneratedPrefixes = [];
+            PlanAction[] firstTurnBoundary = primary.BestNode.Actions
+                .TakeWhile(action => action.Turn == root.StartTurnNumber).ToArray();
+            if (generatedPotions.Count > 0
+                && IsCompleteVictory(primary) && primary.ExplicitPotionCount == 0
+                && !primary.Snapshot.HasRisk
+                && firstTurnBoundary.LastOrDefault()?.Kind == PlanActionKind.EndTurn
+                && builder.CanContinueAtPrefix(firstTurnBoundary))
+            {
+                IReadOnlyList<PlanAction> deferredPotions = builder.BuildPotionActionsAfterPrefix(firstTurnBoundary);
+                for (int index = 0; index < prefixes.Count; index++)
+                {
+                    PlanAction opening = prefixes[index][0];
+                    if (opening.Choice?.Effect != PlanChoiceEffect.GenerateToHand
+                        || PotionUsePolicy.RequiresOpeningUse(opening.PotionId))
+                        continue;
+                    PlanAction? deferred = deferredPotions.FirstOrDefault(action =>
+                        action.PotionSlot == opening.PotionSlot
+                        && action.Choice?.Effect == PlanChoiceEffect.GenerateToHand
+                        && action.Choice.Cards.Count == 1
+                        && action.Choice.Cards[0].CardId == opening.Choice.Cards[0].CardId);
+                    if (deferred == null)
+                        continue;
+                    prefixes[index] = [.. firstTurnBoundary, deferred];
+                    deferredGeneratedPrefixes.Add(PowerPrefixKey(prefixes[index]));
+                }
+            }
             foreach (PlanAction[] openingPotion in prefixes.ToArray())
             {
+                if (deferredGeneratedPrefixes.Contains(PowerPrefixKey(openingPotion)))
+                    continue;
                 if (openingPotion[0].PotionId == "BLOCK_POTION")
                 {
                     foreach (PlanAction attack in builder
@@ -791,7 +822,6 @@ internal static partial class CombatSearchCoordinator
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] SMART_OPENING_POTION_PREFIXES " +
                 $"generated={generatedPotions.Count} total={prefixes.Count}");
-            SolverResult selected = gradient;
             int prefixLimit = prefixes.Any(prefix => prefix[0].PotionId == "BLOCK_POTION"
                 || prefix[0].Choice?.Effect == PlanChoiceEffect.SetFreeThisCombat) ? 12 : 8;
             FrontierContinuationScheduler continuationScheduler = new(context);
@@ -857,6 +887,7 @@ internal static partial class CombatSearchCoordinator
                               ? $":{chosen.CardId}" : "")
                         : action.CardId));
                 SolverSearchProfile routeProfile = prefix.Length > 1
+                    && !deferredGeneratedPrefixes.Contains(PowerPrefixKey(prefix))
                     ? profile with
                     {
                         MaxExpandedNodes = Math.Min(profile.MaxExpandedNodes, 120_000),
@@ -949,13 +980,25 @@ internal static partial class CombatSearchCoordinator
             }
             return selected;
         }
+        catch (OperationCanceledException)
+            when (searchCancellationToken.IsCancellationRequested
+                && !callerCancellationToken.IsCancellationRequested)
+        {
+            // The supplemental deadline belongs to this audit. A completed, eligible
+            // posterior remains valid when a later candidate runs out of time.
+            policy.Diagnostics.Info(
+                $"[CombatSolver/Test] SMART_POTION_AUDIT result stop=deadline " +
+                $"selected_hp_lost={selected.ProjectedBattleHpLost} selected_potions={selected.PotionCount}");
+            return selected;
+        }
         catch (PotionPolicyUnsatisfiedException)
             when (policy.PotionPolicy == SolverPotionPolicy.Smart
                 && !policy.PotionStrategy.HasForcedDirectives)
         {
             policy.Diagnostics.Info(
-                "[CombatSolver/Test] SMART_POTION_AUDIT result optional_route_missing=true selected=primary");
-            return primary;
+                $"[CombatSolver/Test] SMART_POTION_AUDIT result optional_route_missing=true " +
+                $"selected_hp_lost={selected.ProjectedBattleHpLost} selected_potions={selected.PotionCount}");
+            return selected;
         }
     }
 

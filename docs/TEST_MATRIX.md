@@ -81,7 +81,6 @@ pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId EFFECT-S
 ./tools/testing/run-unattended-test.sh --scenario-id EFFECT-SCOPE-ADJACENT-CONTRACT --enemy-current-hp 1000 --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
 ```
 
-
 ## 0.48.0 硬错误机制合同
 
 这些场景各自停止在共享首因或必要跨回合边界。完整runId、失败基线和未验证项见[历史卷13](archive/testing/volume-13.md)，逐包分类见[问题记录](issues/0.48.0-hardbugs-20261003.md)。
@@ -183,17 +182,18 @@ pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId RADIANT-
 
 真实CLR工具：`default-entry` 2项、`diagnostic-failure` 8项、`scopes` 8项 Passed。入口失败基线为日志抛错后信号仍启用；修复后同异常传播、信号清理及后续独占准入均通过。
 
-失败记录：首次无头启动在私有进程身份检查处失败并清理，未进入游戏测试，原因未确定；金币首轮14项对账已通过，但缺EvidenceDirectory导致产物写入失败；金纸首轮缺遗物输入。补齐请求参数后仅重跑失败请求，成功记录在上表。固定前缀09f94286012d420d81242f480ebd1803仍执行旧的终局拒绝断言，合同更新为开局探测和完整搜索共同截断，并断言终局动作数及回合。新增格挡夹具初次编译因原生调用参数及私有setter失败，修正后Release零警告/错误。
-
-L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描通过。CoverageCatalog重新生成3035项目录，状态字段未分类为0；`--verify-state-writes`仍因既有InfusedCore.AfterSideTurnStart缺运行证据失败（1项）。PowerShell结构检查247文件通过，工具检查290文件/37项目通过，文档427文件/1635链接及覆盖目录检查通过。额外Bash结构检查因运行耗时停止，未完成；两平台脚本静态语法检查通过。
+失败记录：首次无头启动在私有进程身份检查处失败并清理，未进入游戏测试，原因未确定；金币首轮14项对账已通过，但缺EvidenceDirectory导致产物写入失败；金纸首轮缺遗物输入。补齐请求参数后仅重跑失败请求，成功记录在上表。固定前缀09f94286012d420d81242f480ebd1803仍执行旧的终局拒绝断言，合同更新为开局探测和完整搜索共同截断，并断言终局动作数及回合。新增格挡夹具初次编译因原生调用参数及私有setter失败，修正后Release零警告/错误。 L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描通过。CoverageCatalog重新生成3035项目录，状态字段未分类为0；`--verify-state-writes`仍因既有InfusedCore.AfterSideTurnStart缺运行证据失败（1项）。PowerShell结构检查247文件通过，工具检查290文件/37项目通过，文档427文件/1635链接及覆盖目录检查通过。额外Bash结构检查因运行耗时停止，未完成；两平台脚本静态语法检查通过。
 
 范围：本轮没有重跑作者长预算全根性能筛查，没有验证低内存玩家宿主、原生整场部署或可见Steam性能；原作者失败与未验证项保留在所属报告。
 
+## 性能与已归档状态合同
 
-## 性能研究分支
-
-既有组件、药水、魂枢及未达标原型的合同与历史结果见[历史卷18](archive/testing/volume-18.md)。PR #207最新上游整合、逐次ABBA、23根品质回归及NoGC波动/超时限制见[当前验收](performance/pr207-upstream-0494-integration-20261005.md)。
+手牌上限原版根／Fork及动态上限合同见[历史卷21](archive/testing/volume-21.md#手牌上限状态一致性pr-224)。既有组件、药水、魂枢及未达标原型的合同与历史结果见[历史卷18](archive/testing/volume-18.md)。PR #207最新上游整合、逐次ABBA、23根品质回归及NoGC波动/超时限制见[当前验收](performance/pr207-upstream-0494-integration-20261005.md)。
 
 ## 手牌上限状态一致性（PR #224）
 
 原版根／Fork 合同与贡献者的动态上限及耗时证据见[历史卷21](archive/testing/volume-21.md#手牌上限状态一致性pr-224)。
+
+## Q014 路线研究
+
+原政策自主原生O061 `676b9048442a47d6be1c88da5353e3d3` 27／0／T10，O062 `c9730bc20bc74d539ac8a186d02d700c` 7／1／T3，均零重算；基线、原生完整状态／RNG、独立成对哨兵及失败与未验证项见[逐包记录](issues/q014-route-quality.md)和 `coverage/evidence/test-evidence.json`。以上为接入2026-10-07最新主线之前的源码证据，合入main5c773caa后四主题完整原生及成对哨兵在逐包记录单独更新，旧证据不冒充复测。 固定能力哨兵 `coverage/fixtures/search/q014-parallel-power-sentinel.json` 使用Custom／Beam60／节点120000／10000ms／DOP2／Disabled；生成药水哨兵 `coverage/fixtures/search/q014-generated-potion-boundary-sentinel.json` 使用同Beam与节点、30000ms／DOP2／Smart。均NoGC0／Instant0／零重算／120秒清理；完整复跑命令及实际工作量见逐包记录。能力哨兵成对18／0／T7，生成药水成对0／1／T4，候选新边界实际执行；单对性能不能外推普遍提速或可见Steam表现。固定250节点DOP1／DOP2完整结果、非时序剪枝及真实并发≥2合同通过，旧药水成本合同已补齐。 当前结果路径诊断只观察正常协调器，保留完整身份、逐步增量／完整状态等价、历史终局差异及根/live不变；O062派生5点路线只证明可行性，不计自主发现。入口、所属成员约束和前缀冻结合同见[检查点指南](CHECKPOINT_REPLAY.md)及逐包记录。O063环境恢复阻塞、O065历史3点不成立；按实际证据报告。

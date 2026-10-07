@@ -44,9 +44,27 @@ internal sealed partial class UnattendedTestRunner
                 runner.AssertCheckpointProfileContract(combatState);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-PATH")
+            if (request.ScenarioId is "CHECKPOINT-RECORDED-PLAN-PATH"
+                or "CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH"
+                or "CHECKPOINT-RECORDED-PLAN-CURRENT-PATH")
             {
-                await runner.PrepareRecordedPlanDeploymentAsync(combatState, deploy: false);
+                await runner.PrepareRecordedPlanDeploymentAsync(combatState, deploy: false,
+                    compareCurrentOutcome: request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-CURRENT-PATH",
+                    observeFirstPotionChoice: request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH");
+                return Observation(combatEnded: false);
+            }
+            const string recordedRetentionPrefix = "CHECKPOINT-RECORDED-PLAN-RETENTION-PATH-";
+            const string currentRetentionPrefix = "CHECKPOINT-RECORDED-PLAN-CURRENT-RETENTION-PATH-";
+            bool currentRetention = request.ScenarioId.StartsWith(currentRetentionPrefix, StringComparison.Ordinal);
+            if (currentRetention || request.ScenarioId.StartsWith(recordedRetentionPrefix, StringComparison.Ordinal))
+            {
+                string retentionPrefix = currentRetention ? currentRetentionPrefix : recordedRetentionPrefix;
+                if (!int.TryParse(request.ScenarioId.AsSpan(retentionPrefix.Length), out int step)
+                    || step < 1)
+                    throw new InvalidDataException("Recorded retention path requires a positive action step.");
+                await runner.PrepareRecordedPlanDeploymentAsync(combatState, deploy: false,
+                    compareCurrentOutcome: currentRetention,
+                    observedRetentionStep: step);
                 return Observation(combatEnded: false);
             }
             if (request.ScenarioId == "CALCULATED-HISTORY-FREEZE")
@@ -1457,6 +1475,8 @@ internal sealed partial class UnattendedTestRunner
                 SolverController.BeginCombat(combatState);
             if (request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-DEPLOYMENT")
                 await runner.PrepareRecordedPlanDeploymentAsync(combatState);
+            if (request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME")
+                await runner.PrepareRecordedPlanDeploymentAsync(combatState, compareCurrentOutcome: true);
             if (request.TheftPolicyForTest is { } theftPolicy)
                 SolverController.SetTheftPolicyForTesting(combatState, theftPolicy);
             SolverController.SetStopFullAutoOnCombatEnd(false, persist: false);
@@ -1965,7 +1985,7 @@ internal sealed partial class UnattendedTestRunner
                 && !stoppedAfterWorseRecalculationPause
                 && !stoppedAfterLiveRiskPause
                 && !stoppedAfterExpectedUnexpectedReplan;
-            if (request.ScenarioId == "CHECKPOINT-RECORDED-PLAN-DEPLOYMENT")
+            if (request.ScenarioId is "CHECKPOINT-RECORDED-PLAN-DEPLOYMENT" or "CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME")
                 runner.AssertRecordedPlanDeployment(combatState);
             return Observation(combatEnded);
 

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "seed": "SPECIFIED-COMBAT-001",
+  "characterId": "IRONCLAD",
+  "ascension": 0,
+  "actIndex": 0,
+  "encounterId": "BYRDONIS_ELITE",
+  "encounterKind": "Elite",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "applyRelicObtainEffects": false,
+  "characterCards": {
+    "count": 8,
+    "ids": ["DARK_EMBRACE", "CORRUPTION", "INFLAME", "SECOND_WIND", "FIEND_FIRE", "STRIKE_IRONCLAD", "DEFEND_IRONCLAD", "TRUE_GRIT"],
+    "upgradeLevels": 1
+  },
+  "colorlessCards": { "count": 0, "ids": [], "upgradeLevels": 0 },
+  "relics": { "count": 0, "ids": [], "upgradeLevels": 0 },
+  "potions": { "count": 0, "ids": [], "upgradeLevels": 0 },
+  "setupChoices": [],
+  "playerCurrentHp": null,
+  "potionSlotCount": null,
+  "mode": "Deploy",
+  "fixedSearchBudget": true
+}

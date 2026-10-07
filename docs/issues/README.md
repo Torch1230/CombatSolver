@@ -12,3 +12,4 @@
 - [玩家反馈](player-feedback-20260919.md)：保留玩家原始描述和待核对事项。
 - [社区主题登记](../community/theme-registry.json) 与 [发布账本](../community/publication-ledger.json)：开放主题的当前状态。
 - [历史排查](../archive/issues/README.md)：旧批次及其失败、未解决和材料限制。归档状态与修复状态分别判断。
+- [Q014 路线质量](q014-route-quality.md)：五主题逐包验证，持续药水开局余量与截止时保留已验证路线；最终哨兵及其他主题仍在推进。

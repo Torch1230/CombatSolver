@@ -323,20 +323,6 @@ using System.Threading;
 
 public static class CombatSolverUnattendedLauncherCancellation
 {
-    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
-    private static extern bool QueryFullProcessImageName(
-        Microsoft.Win32.SafeHandles.SafeProcessHandle process, int flags,
-        System.Text.StringBuilder path, ref int size);
-
-    public static string GetExecutablePath(System.Diagnostics.Process process)
-    {
-        var path = new System.Text.StringBuilder(32768);
-        int size = path.Capacity;
-        if (!QueryFullProcessImageName(process.SafeHandle, 0, path, ref size))
-            throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error());
-        return path.ToString();
-    }
-
     private static int requested;
     private static int installed;
 
@@ -515,11 +501,7 @@ function Get-ProcessStartTimeUtc([Diagnostics.Process]$TestProcess) {
 }
 
 function Get-ProcessExecutablePath([Diagnostics.Process]$TestProcess) {
-    $executable = [CombatSolverUnattendedLauncherCancellation]::GetExecutablePath($TestProcess)
-    if ([string]::IsNullOrWhiteSpace($executable)) {
-        throw "Process $($TestProcess.Id) did not expose its executable path."
-    }
-    return [IO.Path]::GetFullPath($executable)
+    return Get-HeadlessProcessExecutablePath $TestProcess
 }
 
 function ConvertTo-NormalizedUtcTimestamp([object]$Value) {

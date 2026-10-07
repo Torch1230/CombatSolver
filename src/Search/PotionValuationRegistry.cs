@@ -36,6 +36,7 @@ internal sealed class PotionValuationRegistry
         typeof(DexterityPotion),
         typeof(FocusPotion),
         typeof(FyshOil),
+        typeof(HeartOfIron),
         typeof(LiquidBronze),
         typeof(MazalethsGift),
         typeof(PotionOfCapacity),

@@ -1,0 +1,60 @@
+{
+  "potionPolicy": "Smart",
+  "potionDirectives": [
+    {
+      "slot": 0,
+      "potionId": "STAR_POTION",
+      "directive": "Smart"
+    },
+    {
+      "slot": 1,
+      "potionId": "STAR_POTION",
+      "directive": "Smart"
+    }
+  ],
+  "growthBudgets": {
+    "handOfGreed": 0,
+    "theHunt": 4,
+    "feed": 0,
+    "royalties": 0,
+    "alchemize": 0,
+    "geneticAlgorithm": 0,
+    "theScythe": 0,
+    "goopy": 0,
+    "forbiddenGrimoire": 0,
+    "madScience": 0
+  },
+  "relicStrategyEnabled": true,
+  "relicCounterRules": [],
+  "actTransitionBossHpStrategy": "ProgressionFirst",
+  "finalBossHpStrategy": "ProgressionFirst",
+  "acceptableBattleHpLoss": 0,
+  "stopAtAcceptableBattleHpLoss": true,
+  "searchMaxDegreeOfParallelism": 8,
+  "profile": {
+    "beamWidth": 60,
+    "maxExpandedNodes": 120000,
+    "maxCardBranchesPerNode": 32,
+    "maxPileChoiceBranchesPerAction": 18,
+    "maxHandChoiceBranchesPerAction": 24,
+    "softTimeBudgetMilliseconds": 10000,
+    "secondRankBand": false,
+    "contextualRanking": null,
+    "continuousThreatRanking": false,
+    "baseScoreTacticalTies": false,
+    "adaptiveNoveltyRefinement": false,
+    "beamWeightPerturbation": null,
+    "offensiveRefinementPortfolio": false,
+    "boundedOffensiveRefinementPortfolio": false,
+    "reallocatedRefinementPortfolio": true,
+    "stopPortfolioAtHpTarget": true,
+    "baseScoreOnly": false,
+    "aggressivePowerCommitment": false
+  },
+  "fixedBudget": true,
+  "act3BossStrategy": true,
+  "useNoveltyPortfolio": false,
+  "useBeamWidthPortfolio": true,
+  "useEarlyTurnExploration": false,
+  "predictPotionReward": true
+}

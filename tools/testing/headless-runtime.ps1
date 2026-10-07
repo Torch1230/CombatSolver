@@ -328,7 +328,7 @@ function Set-HeadlessGameSnapshot([hashtable]$Context, [hashtable]$Plan) {
     # lock and an admitted pending host lease. Never overwrite a loaded image.
     foreach ($candidate in @(Get-Process -Name 'SlayTheSpire2' -ErrorAction SilentlyContinue)) {
         $candidateHandle = $candidate.SafeHandle
-        if (-not $candidate.HasExited -and [string]::Equals($candidate.MainModule.FileName,
+        if (-not $candidate.HasExited -and [string]::Equals((Get-HeadlessProcessExecutablePath $candidate),
                 (Join-Path $Context.GameRoot 'SlayTheSpire2.exe'), [StringComparison]::OrdinalIgnoreCase)) {
             throw "Cannot replace a private game snapshot while its process is alive."
         }
@@ -430,11 +430,39 @@ function Set-HeadlessGameSnapshot([hashtable]$Context, [hashtable]$Plan) {
     }
 }
 
+function Get-HeadlessProcessExecutablePath([Diagnostics.Process]$Process) {
+    if (-not ('CombatSolverHeadlessProcessImage' -as [type])) {
+        Add-Type -TypeDefinition @'
+public static class CombatSolverHeadlessProcessImage
+{
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+    private static extern bool QueryFullProcessImageName(
+        Microsoft.Win32.SafeHandles.SafeProcessHandle process, int flags,
+        System.Text.StringBuilder path, ref int size);
+
+    public static string GetExecutablePath(System.Diagnostics.Process process)
+    {
+        var path = new System.Text.StringBuilder(32768);
+        int size = path.Capacity;
+        if (!QueryFullProcessImageName(process.SafeHandle, 0, path, ref size))
+            throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error());
+        return path.ToString();
+    }
+}
+'@
+    }
+    $executable = [CombatSolverHeadlessProcessImage]::GetExecutablePath($Process)
+    if ([string]::IsNullOrWhiteSpace($executable)) {
+        throw "Process $($Process.Id) did not expose its executable path."
+    }
+    return [IO.Path]::GetFullPath($executable)
+}
+
 function Get-HeadlessProcessIdentity([Diagnostics.Process]$Process) {
     $handle = $Process.SafeHandle
     $Process.Refresh()
     if ($Process.HasExited) { throw "Cannot claim an exited headless process." }
-    return @{ pid = $Process.Id; birth = $Process.StartTime.ToUniversalTime().ToString('O'); exe = $Process.MainModule.FileName }
+    return @{ pid = $Process.Id; birth = $Process.StartTime.ToUniversalTime().ToString('O'); exe = Get-HeadlessProcessExecutablePath $Process }
 }
 
 function Get-HeadlessIdentityState([object]$Identity) {
@@ -451,7 +479,7 @@ function Get-HeadlessIdentityState([object]$Identity) {
     if ($candidate.HasExited) { return @{ alive = $false; workingSetMiB = 0 } }
     $birth = ([DateTimeOffset]$Identity.birth).UtcDateTime.ToString('O')
     $matches = $candidate.StartTime.ToUniversalTime().ToString('O') -eq $birth
-    if ($matches -and -not [string]::Equals($candidate.MainModule.FileName, [string]$Identity.exe, [StringComparison]::OrdinalIgnoreCase)) {
+    if ($matches -and -not [string]::Equals((Get-HeadlessProcessExecutablePath $candidate), [string]$Identity.exe, [StringComparison]::OrdinalIgnoreCase)) {
         throw 'Live process birth matches but executable changed; preserving its lease.'
     }
     return @{ alive = $matches; workingSetMiB = if ($matches) { [math]::Ceiling($candidate.WorkingSet64 / 1MB) } else { 0 } }
@@ -515,7 +543,7 @@ function Test-HeadlessUnboundGame([string]$RuntimeRoot) {
     foreach ($candidate in @(Get-Process -Name 'SlayTheSpire2' -ErrorAction SilentlyContinue)) {
         $handle = $candidate.SafeHandle
         $candidate.Refresh()
-        if (-not $candidate.HasExited -and [string]::Equals($candidate.MainModule.FileName, $executable, [StringComparison]::OrdinalIgnoreCase)) {
+        if (-not $candidate.HasExited -and [string]::Equals((Get-HeadlessProcessExecutablePath $candidate), $executable, [StringComparison]::OrdinalIgnoreCase)) {
             return $true
         }
     }
@@ -597,7 +625,7 @@ function Enter-HeadlessHostLease([hashtable]$Context, [Diagnostics.Process]$Exis
 function Set-HeadlessHostGame([hashtable]$Context, [Diagnostics.Process]$Game) {
     $identity = Get-HeadlessProcessIdentity $Game
     if (-not [string]::Equals($identity.exe, (Join-Path $Context.GameRoot 'SlayTheSpire2.exe'), [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Started headless executable is not the instance's private game."
+        throw "Started headless executable is not the instance's private game: pid=$($identity.pid), actual=$($identity.exe), expected=$(Join-Path $Context.GameRoot 'SlayTheSpire2.exe')."
     }
     $hostLock = Open-HeadlessHostLock $Context
     try {

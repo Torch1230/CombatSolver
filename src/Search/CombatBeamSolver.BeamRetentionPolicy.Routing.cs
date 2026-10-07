@@ -484,6 +484,9 @@ internal sealed partial class CombatBeamSolver
             return count;
         }
 
+        internal static int ObservedRoutingActionsSinceChoice(SearchNode node)
+            => ActionsSinceRetainedRoutingChoice(node);
+
         private static SearchNode? FindBestSafeDiscardContinuation(IReadOnlyList<SearchNode> nodes)
         {
             SearchNode? best = null;

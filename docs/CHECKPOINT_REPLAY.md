@@ -78,7 +78,21 @@ v2 索引保存稳定战斗/检查点 ID、永久递增编号、原生事件位�
 
 完整预测路线可用无人测试场景 `CHECKPOINT-RECORDED-PLAN-DEPLOYMENT` 验证：传原 ZIP、含获胜预测的检查点 selector、`ReplayMode=DeploySolver`、显式政策文件和 EvidenceDirectory。测试按事件游标及起始回合选择最后一条完整获胜预测，保留所有动作、完整牌身份与选择，逐步对账增量/完整回放，再通过正常原生部署入口执行。断言真实胜负、战损、药水数量/身份及终局回合；后台搜索代次跨战斗结束保留，用于确认执行期间没有额外搜索。此模式证明保存预测的可执行性，不能称为纯玩家录制通关或搜索自主发现。
 
+历史预测数字与当前严格动作回放不同时，先保留该失败及 `recorded-plan-replayed-outcome.json`，再用显式诊断场景 `CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME` 比较当前预测和原生结果。它仍要求完整根、所有原始动作身份、逐步增量/完整状态等价、完整胜利及零额外搜索/重算；只有历史战损/终局回合作为比较数据，不要求与当前预测相等。`recordedPredictionOutcomeMatched=false` 和专用 comparisonScope 明确保留历史差异，不能将此诊断 Passed 当作旧数字成立或搜索自主发现。普通部署和路径场景继续严格拒绝历史预测差异。
+
 同一输入使用 `CHECKPOINT-RECORDED-PLAN-PATH`、`ReplayMode=SearchOnly`，将冻结路线作为只读观察目标运行正常协调器；不把参照动作注入候选或评分。`RecordedPrediction-path-trace.json` 保存准确动作和完整状态的生成、转置、保留与展开事件，并默认观察倒数第二步对应的完整候选池（单动作路线不采池）。可通过 `-RecordedPlanRetentionStepForTest N`（Linux：`--recorded-plan-retention-step-for-test N`）指定从1开始的动作步数；越界显式失败，输出记录实际观察步数，观察器丢事件时同样失败。候选池按 solverId 与 boundaryId 联合分组，边界编号不能跨成员直接合并。路径诊断耗时不能作正常性能证据。两种模式都要求原生录制和对应检查点的完整获胜预测，旧身份不匹配时失败，不删去费用层或改写录制内容。Power Potion 等已录制前缀与未来预测用药分别计算，不能漏掉前缀消耗。
+
+需要定位药水生成选项的剪枝时，使用 `CHECKPOINT-RECORDED-PLAN-POTION-RETENTION-PATH`（同样 `SearchOnly`）。它对严格回放路线中的首个带牌选择的主动药水动作观察完整外层剪枝池，输出排名、路由签名、选项代表、必保/路由/选中位置和估值；不增加生产容量，也不注入路线。无此药水选择或观察事件溢出时明确失败。相近前缀存活不等于后缀可替代，须另外严格验证后续动作与终局。
+
+一般动作边界使用 `CHECKPOINT-RECORDED-PLAN-RETENTION-PATH-N`，`N`为严格回放路线从1开始的动作序号；例如末尾`-8`观察第8步所在完整剪枝池。非正整数或超过路线长度明确失败。它与药水场景共用同一只读观察器及严格回放，不改变候选、评分、预算或默认路径场景。
+
+当派生前缀改变当前终局数字时，可显式使用 `CHECKPOINT-RECORDED-PLAN-CURRENT-PATH` 或 `CHECKPOINT-RECORDED-PLAN-CURRENT-RETENTION-PATH-N`，同样为 `SearchOnly`。两者保留历史数字不符标志，只按当前严格获胜动作构建观察目标，不改写归档预测，也不证明自主发现或原生部署。整池的 `Transition` 仅复制父子快照的手牌、敌人生命/格挡、攻击价值和距路由选择的动作数；无路由选择时动作数为 `int.MaxValue`。默认关闭观察器时不创建这些诊断值。
+
+`SearchScope` 复制每个搜索成员的有效药水政策、胜利所需的最少显式用药数、最大显式用药数、能力偏好标记及用途；所有者开始搜索时冻结，展开worker随SolverId继承同一纯值，不以worker局部参数替代；不经过Solve的诊断构造器也分配独立身份。同一SolverId必须约束一致。允许用药层里的零药中间节点，不一定能作为该成员的完整胜利：必须对照成员最少用药要求，不能把跨层的前缀保留当成零药目标仍在搜索。
+
+路径文件的每个严格回放前缀附带 `evaluation`，与候选池共用现成快照标量的冻结器，不重新计算评分。可比较已被真实搜索丢弃的合法状态在不同估值试验下的特征；先核对完整动作、状态身份及累计指标，特征变化不表示实际保留、原生部署或自主优化。
+
+原生录制顺序与旧预测不同时，可以使用 `CHECKPOINT-NATIVE-INPUT-IDENTITIES`、`ReplayMode=RestoreOnly` 和明确的中途检查点。严格执行原生前缀后，`native-input-identities.json` 输出每次主动输入前的完整手牌身份、同名／同状态出现序号、实际选中手牌位置及敌方编号；采集前后续用戳必须一致，最终原生状态必须已严格验证，编码不可比较时失败。它只帮助构造独立参照夹具，不能把身份采集当作模拟等价、完整胜利或自主搜索证据；原始包保持不变，派生动作须重新逐步严格回放。
 
 Q002 专属固定路线/成员诊断已在任务收尾移除；失败证据与[历史用法](archive/testing/q002-pre-0492-validation-20261004.md#一次性诊断入口的历史用法)保留，当前使用上述通用保存预测及正常搜索/部署入口。
 

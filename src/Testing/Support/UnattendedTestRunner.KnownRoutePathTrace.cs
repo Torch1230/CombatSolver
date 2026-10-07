@@ -133,6 +133,20 @@ internal sealed partial class UnattendedTestRunner
         }
 
         // All workers have joined; no callback can still append to the value-only collector.
+        IGrouping<Guid, SearchPathObservation>[] observedSolvers = observations
+            .GroupBy(observation => observation.SolverId).ToArray();
+        foreach (IGrouping<Guid, SearchPathObservation> solver in observedSolvers)
+        {
+            SearchPathSearchScope?[] scopes = solver.Select(item => item.SearchScope).Distinct().ToArray();
+            if (scopes.Length != 1 || scopes[0] is not { } scope
+                || scope.RequiredExplicitPotionUses < 0
+                || scope.MaximumExplicitPotionUses is { } maximum
+                    && maximum < scope.RequiredExplicitPotionUses)
+            {
+                throw new InvalidOperationException("路径观察的搜索成员约束缺失、不一致或无效。");
+            }
+        }
+        _completedChecks.Add($"{sample}PathTrace:SearchScopes:ConsistentPerSolver={observedSolvers.Length}:DetachedPolicyLimits");
         Dictionary<SearchPathObservation, int[]> exactSteps = new(ReferenceEqualityComparer.Instance);
         Dictionary<SearchPathObservation, KnownRouteVariantStep[]>? variantSteps = variants == null
             ? null : new(ReferenceEqualityComparer.Instance);
@@ -180,7 +194,7 @@ internal sealed partial class UnattendedTestRunner
                 prefixes = prefixes.Select((prefix, index) => new
                 {
                     step = index + 1, prefix.Action, prefix.StateKey, prefix.Turn,
-                    prefix.HpLost, prefix.PotionsUsed, prefix.ShufflesCrossed,
+                    prefix.HpLost, prefix.PotionsUsed, prefix.ShufflesCrossed, prefix.Evaluation,
                 }).ToArray(),
                 events = observations.Select(observation => new
                 {

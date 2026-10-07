@@ -411,6 +411,7 @@ internal sealed partial class CombatBeamSolver
         worker._run.InitialEnemyWeakTurns = _run.InitialEnemyWeakTurns;
         worker._run.InitialRetainedAttackValue = _run.InitialRetainedAttackValue;
         worker._run.PathDiagnosticsSolverId = _run.PathDiagnosticsSolverId;
+        worker._run.PathDiagnosticsSearchScope = _run.PathDiagnosticsSearchScope;
         worker._disableCardChoiceContinuationsForTesting = _disableCardChoiceContinuationsForTesting;
         worker._disablePotionChoiceContinuationsForTesting = _disablePotionChoiceContinuationsForTesting;
         worker._disableExecutionChoiceContinuationsForTesting = _disableExecutionChoiceContinuationsForTesting;
@@ -820,6 +821,16 @@ internal sealed partial class CombatBeamSolver
             return;
         _run.OffThreadAllocatedBytes += allocatedBytes;
         SearchRunContext source = worker._run;
+        // Retention uses Created as its fast-path gate, so these are not merely
+        // diagnostic totals. Drain them before reusing the lane, just like transitions.
+        _run.PowerValuationCandidates += source.PowerValuationCandidates;
+        _run.PowerFrontierEvaluations += source.PowerFrontierEvaluations;
+        _run.PowerCommitmentsCreated += source.PowerCommitmentsCreated;
+        _run.PowerCommitmentsAdmitted += source.PowerCommitmentsAdmitted;
+        _run.PowerCommitmentsExpired += source.PowerCommitmentsExpired;
+        _run.PowerCommitmentsRealized += source.PowerCommitmentsRealized;
+        _run.PowerCommitmentSeatsPeak = Math.Max(
+            _run.PowerCommitmentSeatsPeak, source.PowerCommitmentSeatsPeak);
         _run.DuplicateCardBranchesPruned += source.DuplicateCardBranchesPruned;
         _run.ActionAdmissionRepresentativesProtected +=
             source.ActionAdmissionRepresentativesProtected;
@@ -879,6 +890,13 @@ internal sealed partial class CombatBeamSolver
         _run.DeferredRoundChoiceFinitePendingFallbacks +=
             source.DeferredRoundChoiceFinitePendingFallbacks;
         source.DuplicateCardBranchesPruned = 0;
+        source.PowerValuationCandidates = 0;
+        source.PowerFrontierEvaluations = 0;
+        source.PowerCommitmentsCreated = 0;
+        source.PowerCommitmentsAdmitted = 0;
+        source.PowerCommitmentsExpired = 0;
+        source.PowerCommitmentsRealized = 0;
+        source.PowerCommitmentSeatsPeak = 0;
         source.ActionAdmissionRepresentativesProtected = 0;
         source.ChoiceBranchesEvaluated = 0;
         source.ChoiceReplayAttempts = 0;
