@@ -1675,6 +1675,58 @@ internal sealed partial class CombatBeamSolver
                 AddRequired(required, scripted, limit);
             }
 
+            if (preserveDefensiveRoute && !finalQualityFirst)
+            {
+                if (endTurnFrontier)
+                {
+                    SearchNode[] routingBoundaries = required
+                        .Where(node => TryGetRoutingChoice(node, node.Turn - 1, out _, out _))
+                        .Take(Math.Clamp(limit / 8, 1, 8)).ToArray();
+                    foreach (SearchNode routed in routingBoundaries)
+                    {
+                        SearchNode? alternative = ranked.Where(node =>
+                                node.Turn == routed.Turn
+                                && node.PotionCount == routed.PotionCount
+                                && node.PotionStrategicCost == routed.PotionStrategicCost
+                                && node.FutureSoldHp == routed.FutureSoldHp
+                                && node.Snapshot.CumulativePlayerHpLost == routed.Snapshot.CumulativePlayerHpLost
+                                && node.Snapshot.PlayerHp == routed.Snapshot.PlayerHp
+                                && node.Snapshot.ProjectedPlayerHp == routed.Snapshot.ProjectedPlayerHp
+                                && node.Snapshot.EnemyCombatDistributionKey == routed.Snapshot.EnemyCombatDistributionKey
+                                && node.Snapshot.EnemyControlDistributionKey == routed.Snapshot.EnemyControlDistributionKey
+                                && node.Snapshot.Energy == routed.Snapshot.Energy
+                                && node.Snapshot.Stars == routed.Snapshot.Stars
+                                && node.Snapshot.ReachableHandValue > routed.Snapshot.ReachableHandValue
+                                && node.Score >= routed.Score)
+                            .OrderByDescending(node => node.Snapshot.ReachableHandValue)
+                            .ThenByDescending(BeamRankScore).FirstOrDefault();
+                        AddRequired(required, alternative, limit);
+                    }
+                }
+                else
+                {
+                    // Crossing into a new enemy phase changes the damage target and can
+                    // strand ordinary score leaders with no remaining playable hand.
+                    // Keep one immediate continuation per new active-enemy set using
+                    // existing seats; this is a heuristic, not exact-state dominance.
+                    foreach (var phase in ranked.Where(node => node.Parent is { } parent
+                                 && (node.Snapshot.AliveEnemyMask & ~parent.Snapshot.AliveEnemyMask) != 0
+                                 && node.Snapshot.Energy > 0
+                                 && node.Snapshot.ReachableHandValue > 0)
+                             .GroupBy(node => (node.Turn, node.PotionCount,
+                                 node.Snapshot.CumulativePlayerHpLost, node.FutureSoldHp,
+                                 node.Snapshot.AliveEnemyMask))
+                             .OrderBy(group => group.Min(node => node.Parent!.RetentionRank))
+                             .Take(Math.Clamp(limit / 8, 1, 8)))
+                    {
+                        AddRequired(required, phase
+                            .OrderByDescending(node => node.Snapshot.ProjectedPlayerHp)
+                            .ThenByDescending(node => node.Snapshot.ReachableHandValue)
+                            .ThenByDescending(BeamRankScore).First(), limit);
+                    }
+                }
+            }
+
             List<SearchNode> quotaPool = ranked.ToList();
             // 次段成员（见 SolverSearchProfile.SecondRankBand）：只由全局剪枝入口显式启用，
             // 把分数序前 effectiveLimit 位挪到队尾再截断，于是普通席位落在第 W+1 至 2W 位；挪走的
