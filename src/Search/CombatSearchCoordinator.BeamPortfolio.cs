@@ -142,7 +142,39 @@ internal static partial class CombatSearchCoordinator
             if (primaryIncumbent is { } bound)
                 policy.Diagnostics.Info($"[CombatSolver/Test] BEAM_REFINEMENT_INCUMBENT "
                     + $"member={costs.Count} deficit={bound.StrategicHpDeficit} turn={bound.CombatEndedTurn}");
-            SolverResult memberResult = solveMember(effectiveProfile, baselineObserved, primaryIncumbent);
+            PlanAction[]? victoryBoundary = null;
+            if (baselineObserved && memberProfile.BaseScoreOnly
+                && experiment == null && !policy.PotionStrategy.HasForcedDirectives
+                && (memberPotionPolicyOverride ?? policy.PotionPolicy)
+                    is SolverPotionPolicy.Disabled or SolverPotionPolicy.Smart
+                && incumbent is { ExplicitPotionCount: 0 }
+                && IsCompleteVictory(incumbent) && !incumbent.Snapshot.HasRisk
+                && incumbent.ProjectedBattleHpLost > 0)
+            {
+                int lossTurn = incumbent.HpLostByTurn
+                    .Where(outcome => outcome.Value > 0 && outcome.Key > root.StartTurnNumber)
+                    .OrderByDescending(outcome => outcome.Key)
+                    .Select(outcome => outcome.Key).FirstOrDefault();
+                PlanAction[] prefix = incumbent.BestNode.Actions
+                    .TakeWhile(action => action.Turn < lossTurn).ToArray();
+                if (lossTurn > root.StartTurnNumber
+                    && prefix.LastOrDefault() is { Kind: PlanActionKind.EndTurn } end
+                    && end.Turn == lossTurn - 1
+                    && prefix.All(action => action.Kind != PlanActionKind.UsePotion))
+                    victoryBoundary = prefix;
+            }
+            SolverResult memberResult = victoryBoundary == null
+                ? solveMember(effectiveProfile, baselineObserved, primaryIncumbent)
+                : new FrontierContinuationScheduler(context).Dispatch(
+                    new ContinuationSearchRequest(context, ContinuationPurpose.MidCombatRefinement,
+                        victoryBoundary, effectiveProfile, SolverPotionPolicy.Disabled, 0, 0)
+                    {
+                        PrimaryIncumbent = primaryIncumbent,
+                    });
+            if (victoryBoundary != null)
+                policy.Diagnostics.Info($"[CombatSolver/Test] BEAM_VICTORY_BOUNDARY "
+                    + $"member={costs.Count} prefix_actions={victoryBoundary.Length} "
+                    + $"turn={victoryBoundary[^1].Turn + 1} hp_lost={memberResult.ProjectedBattleHpLost}");
             long memberElapsed = Math.Max(0, passClock.ElapsedMilliseconds - startedMilliseconds);
             long memberAllocated = Math.Max(
                 0, GC.GetTotalAllocatedBytes(precise: false) - allocatedBefore);
