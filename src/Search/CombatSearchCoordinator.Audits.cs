@@ -669,8 +669,37 @@ internal static partial class CombatSearchCoordinator
                     .Take(8)
                     .Select(potion => new[] { potion }))
                 .ToList();
+            HashSet<string> deferredGeneratedPrefixes = [];
+            PlanAction[] firstTurnBoundary = primary.BestNode.Actions
+                .TakeWhile(action => action.Turn == root.StartTurnNumber).ToArray();
+            if (generatedPotions.Count > 0
+                && IsCompleteVictory(primary) && primary.ExplicitPotionCount == 0
+                && !primary.Snapshot.HasRisk
+                && firstTurnBoundary.LastOrDefault()?.Kind == PlanActionKind.EndTurn
+                && builder.CanContinueAtPrefix(firstTurnBoundary))
+            {
+                IReadOnlyList<PlanAction> deferredPotions = builder.BuildPotionActionsAfterPrefix(firstTurnBoundary);
+                for (int index = 0; index < prefixes.Count; index++)
+                {
+                    PlanAction opening = prefixes[index][0];
+                    if (opening.Choice?.Effect != PlanChoiceEffect.GenerateToHand
+                        || PotionUsePolicy.RequiresOpeningUse(opening.PotionId))
+                        continue;
+                    PlanAction? deferred = deferredPotions.FirstOrDefault(action =>
+                        action.PotionSlot == opening.PotionSlot
+                        && action.Choice?.Effect == PlanChoiceEffect.GenerateToHand
+                        && action.Choice.Cards.Count == 1
+                        && action.Choice.Cards[0].CardId == opening.Choice.Cards[0].CardId);
+                    if (deferred == null)
+                        continue;
+                    prefixes[index] = [.. firstTurnBoundary, deferred];
+                    deferredGeneratedPrefixes.Add(PowerPrefixKey(prefixes[index]));
+                }
+            }
             foreach (PlanAction[] openingPotion in prefixes.ToArray())
             {
+                if (deferredGeneratedPrefixes.Contains(PowerPrefixKey(openingPotion)))
+                    continue;
                 if (openingPotion[0].PotionId == "BLOCK_POTION")
                 {
                     foreach (PlanAction attack in builder
@@ -802,6 +831,7 @@ internal static partial class CombatSearchCoordinator
                               ? $":{chosen.CardId}" : "")
                         : action.CardId));
                 SolverSearchProfile routeProfile = prefix.Length > 1
+                    && !deferredGeneratedPrefixes.Contains(PowerPrefixKey(prefix))
                     ? profile with
                     {
                         MaxExpandedNodes = Math.Min(profile.MaxExpandedNodes, 120_000),
