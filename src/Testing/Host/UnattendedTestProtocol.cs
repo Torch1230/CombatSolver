@@ -612,6 +612,8 @@ internal sealed class UnattendedSolverMetrics
     public double ElapsedMilliseconds { get; init; }
     public double TotalElapsedMilliseconds { get; init; }
     public SearchWorkAttribution[] SearchWorkAttributions { get; init; } = [];
+    public BossTempoSearchTelemetry? BossTempoSearch { get; init; }
+    public BossTempoIterationTelemetry? BossTempoIteration { get; init; }
     public long WorkerAllocatedBytes { get; init; }
     public long TotalWorkerAllocatedBytes { get; init; }
     public int TotalGen0Collections { get; init; }

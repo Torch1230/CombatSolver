@@ -107,6 +107,8 @@ internal sealed partial class UnattendedTestRunner
                 ElapsedMilliseconds = result.Elapsed.TotalMilliseconds,
                 TotalElapsedMilliseconds = result.TotalSearchElapsed.TotalMilliseconds,
                 SearchWorkAttributions = result.SearchWorkAttributions,
+                BossTempoSearch = result.BossTempoSearch,
+                BossTempoIteration = result.BossTempoIteration,
                 WorkerAllocatedBytes = result.WorkerAllocatedBytes,
                 TotalWorkerAllocatedBytes = result.TotalWorkerAllocatedBytes,
                 TotalGen0Collections = result.TotalGen0Collections,

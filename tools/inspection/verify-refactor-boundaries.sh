@@ -972,6 +972,7 @@ expected_beam_files=(
     CombatBeamSolver.FinalPlanOrdering.cs
     CombatBeamSolver.Models.cs
     CombatBeamSolver.NoveltySearch.cs
+    CombatBeamSolver.BossTempo.cs
     CombatBeamSolver.Transpositions.cs
     CombatBeamSolver.OrderedMutationRetention.cs
     CombatBeamSolver.ParallelExpansion.cs
@@ -1240,7 +1241,7 @@ require_fixed "$repository_root/src/Search/StrategicHpRecoveryBound.KnownSources
 beam_phases_path="$search_root/CombatBeamSolver.Phases.cs"
 require_fixed "$beam_retention_facade_path" '_strictHpBoundWithRelicTargets = CanUseStrictHpRelicBound(root, policy)' 'missing common relic healing bound:'
 require_fixed "$beam_retention_facade_path" 'targets.All(target => target.HpAllowance == 0)' 'missing zero-allowance objective gate:'
-require_fixed "$beam_retention_facade_path" 'allowTurnTieBound: !_strictHpBoundWithRelicTargets' 'equal-HP counter routes must keep later turns:'
+require_fixed "$beam_retention_facade_path" 'allowTurnTieBound: policy.BossTempoSearch == null && !_strictHpBoundWithRelicTargets' 'equal-HP counter routes must keep later turns:'
 require_fixed "$search_root/CombatSearchCoordinator.cs" '!CombatBeamSolver.CanUseStrictHpRelicBound(root, policy)' 'shared incumbent must retain objective eligibility:'
 require_fixed "$search_root/CombatSearchCoordinator.PlanSearch.cs" 'if (!root.CanCertifyRemainingHealing' 'speculative early plans require the existing certified-root schedule:'
 require_fixed \

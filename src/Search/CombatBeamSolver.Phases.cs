@@ -44,6 +44,7 @@ internal sealed partial class CombatBeamSolver
             var transpositions = _run.TranspositionDiagnostics.Capture(
                 policy.TranspositionEntryLimit, _run.Expanded, _run.TranspositionLimitBypasses,
                 _run.Transpositions.Values.Concat(_run.ExpandedTranspositions.Values)
+                    .Concat(_run.BossTempo?.Expanded.Values.AsEnumerable() ?? Enumerable.Empty<TranspositionFrontier>())
                     .Select(static frontier => frontier.LabelCount));
             policy.Diagnostics.Info("[CombatSolver/Test] TRANSPOSITION_CAP " +
                 System.Text.Json.JsonSerializer.Serialize(transpositions));
@@ -159,7 +160,7 @@ internal sealed partial class CombatBeamSolver
                     : "只能在玩家出牌阶段计算。");
         }
 
-        int expansionParallelism = _detailedDiagnostics || policy.VerifyIncrementalSearch
+        int expansionParallelism = _detailedDiagnostics || policy.VerifyIncrementalSearch || policy.BossTempoSearch != null
             ? 1
             : Math.Clamp(
                 policy.MaxDegreeOfParallelism,
@@ -876,6 +877,9 @@ internal sealed partial class CombatBeamSolver
                 Continuations = resultScope == SolverResultScope.CurrentTurnAdoption ? [] : continuations,
             };
             finalSnapshot.ReleaseSimulator();
+            if (policy.BossTempoSearch is { } tempo)
+                result.BossTempoIteration = new(Tempo.Stop, tempo.DiscrepancyAllowance,
+                    Tempo.Deferred, Tempo.PeakPending);
             result.AssertCompleteTurnOutcomes();
             return result;
         }
@@ -1431,7 +1435,7 @@ internal sealed partial class CombatBeamSolver
                 ? SolverWeights.BossEnemyStrengthSuppressionHorizon
                 : SolverWeights.StandardEnemyStrengthSuppressionHorizon;
 
-        if (policy.NoveltySearch != null)
+        if (policy.NoveltySearch != null || policy.BossTempoSearch != null)
         {
             long noveltyParentAllocatedAtStart = 0;
             bool BeforeNoveltyParent(SearchNode node, int openCount, int completedCount)
@@ -1452,7 +1456,7 @@ internal sealed partial class CombatBeamSolver
                 EnsureMemoryForIndivisibleCommit(ParentAllocationReserve(),
                     "before_novelty_parent", node.ActionCount, openCount + 1, completedCount);
                 noveltyParentAllocatedAtStart = policy.MemoryPressureSignal.AllocatedBytes;
-                return true;
+                return !memoryNoProgressTruncated;
             }
             void ObserveNoveltyBoundary(SearchNode node)
             {
@@ -1471,9 +1475,13 @@ internal sealed partial class CombatBeamSolver
                 PublishProgress(node.Turn, Math.Max(0, node.Turn - _startTurnNumber),
                     node.ActionCount, openCount, completedCount, "探索不同路线");
             }
-            timeBudgetReached = RunNoveltyOpen(frontier, completed, stopwatch, ref fallback,
-                MeetsHpTarget, BeforeNoveltyParent, AfterNoveltyParent, ObserveNoveltyBoundary,
-                out acceptableBattleHpLossReached, out searchedTurnLayers);
+            timeBudgetReached = policy.BossTempoSearch != null
+                ? RunBossTempoDepthFirst(frontier, completed, stopwatch, ref fallback,
+                    MeetsHpTarget, BeforeNoveltyParent, AfterNoveltyParent, ObserveNoveltyBoundary,
+                    out acceptableBattleHpLossReached, out searchedTurnLayers)
+                : RunNoveltyOpen(frontier, completed, stopwatch, ref fallback,
+                    MeetsHpTarget, BeforeNoveltyParent, AfterNoveltyParent, ObserveNoveltyBoundary,
+                    out acceptableBattleHpLossReached, out searchedTurnLayers);
         }
 
         while (frontier.Count > 0

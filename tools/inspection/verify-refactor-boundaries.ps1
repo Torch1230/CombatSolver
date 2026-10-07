@@ -1094,6 +1094,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.FinalPlanOrdering.cs",
     "CombatBeamSolver.Models.cs",
     "CombatBeamSolver.NoveltySearch.cs",
+    "CombatBeamSolver.BossTempo.cs",
     "CombatBeamSolver.Transpositions.cs",
     "CombatBeamSolver.OrderedMutationRetention.cs",
     "CombatBeamSolver.ParallelExpansion.cs",
@@ -1397,7 +1398,7 @@ $beamPhasesPath = Join-Path $searchRoot "CombatBeamSolver.Phases.cs"
 foreach ($healingBoundary in @(
     @('src/Search/CombatBeamSolver.Retention.cs', '_strictHpBoundWithRelicTargets = CanUseStrictHpRelicBound(root, policy)'),
     @('src/Search/CombatBeamSolver.Retention.cs', 'targets.All(target => target.HpAllowance == 0)'),
-    @('src/Search/CombatBeamSolver.Retention.cs', 'allowTurnTieBound: !_strictHpBoundWithRelicTargets'),
+    @('src/Search/CombatBeamSolver.Retention.cs', 'allowTurnTieBound: policy.BossTempoSearch == null && !_strictHpBoundWithRelicTargets'),
     @('src/Search/CombatSearchCoordinator.cs', '!CombatBeamSolver.CanUseStrictHpRelicBound(root, policy)'),
     @('src/Search/CombatSearchCoordinator.PlanSearch.cs', 'if (!root.CanCertifyRemainingHealing')
 )) {
