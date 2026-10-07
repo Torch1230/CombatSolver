@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-10-07用户明确要求完成O063之外的四个主题。该范围现已收口：O061战损、O062路线及O064药水折算目标达到合法参照；O065历史3点目标被严格原生证据否定，当前自主5点优于合法人工8点。O061／O064仍比人工晚一回合，不声明次级回合指标追平。O063仅留材料阻塞，整批仍不能用Closes #221。修复、最小哨兵、结构化证据、测试矩阵与本地Mod部署已同步，外部推送与PR创建未执行。
+
 2026-10-06 接入官方0.50.1 `6031debd`，保留本批未发布行为与旧证据。上游只修改药水准入和机会成本比较；代码自动合并，开发／测试记录冲突按上游归档入口加本批现行记录解决。Release零错误／3条NU1900（漏洞数据源不可达），药水比较118项、原生准入 `95e8932e02724340b684ad4f2c988417` Passed，Windows结构252、工具293／37、文档485／1957、覆盖536／486／37通过。结构脚本输出成功，包装命令误读末次无匹配rg的LASTEXITCODE=1；该扫描允许1，脚本无异常。
 
 同根／同政策／10秒／NoGC0原生复跑：O062 `c2bd87c700c9417a8f99b00196d89b93` 13／1／T5，实际63/80HP、零重算；8029.8872ms／19893展开／67301转移／3283569904B。O064 `c92b25b99ba141e884a04e58c4cffd40` 14／1铁之心／T10，实际40/70HP、零重算；9929.3726ms／24907展开／90651转移／3294370664B。质量与接入前相同，单次时间不作性能提升结论；其余包旧证据未冒充本轮0.50.1验收。
@@ -199,7 +201,10 @@ O064原政策完整原生 `3cb319788b3e4465bd0c1a46b6ef8c30` Passed，14损／1�
 ```powershell
 pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId Q014-O064-final-native -CheckpointArchivePath $o064OriginalZip -CheckpointSelector start -ReplayMode DeploySolver -ReplayPolicyOverridePath coverage/fixtures/search/q014-o064-policy.json -EnableNoGcRegionForTest 0 -EnableDetailedDiagnosticLogsForTest 0 -TimeoutSeconds 120 -CleanupInstanceOnExit
 pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId SPECIFIED-COMBAT-001 -GeneratedScenarioPath coverage/fixtures/search/q014-persistent-potion-sentinel.json -PerformancePresetForTest Custom -SearchBeamWidthForTest 60 -SearchMaxExpandedNodesForTest 120000 -SearchBudgetOverrideMilliseconds 30000 -FixedSearchBudget -SearchMaxDegreeOfParallelismForTest 2 -PotionPolicyForTest Smart -EnableNoGcRegionForTest 0 -EnableDetailedDiagnosticLogsForTest 0 -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -ExpectedUnexpectedReplansAtMost 0 -TimeoutSeconds 120 -CleanupInstanceOnExit
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId SPECIFIED-COMBAT-001 -GeneratedScenarioPath coverage/fixtures/search/q014-generated-potion-boundary-sentinel.json -PerformancePresetForTest Custom -SearchBeamWidthForTest 60 -SearchMaxExpandedNodesForTest 120000 -SearchBudgetOverrideMilliseconds 30000 -FixedSearchBudget -SearchMaxDegreeOfParallelismForTest 2 -PotionPolicyForTest Smart -EnableNoGcRegionForTest 0 -EnableDetailedDiagnosticLogsForTest 0 -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -ExpectedUnexpectedReplansAtMost 0 -TimeoutSeconds 120 -CleanupInstanceOnExit
 ```
+
+最终O061／O062／O064／O065原政策复跑使用上述CheckpointArchivePath/start/DeploySolver入口，省略ReplayPolicyOverridePath直接继承原包，并加ExpectedUnexpectedReplansAtMost 0及NoGC0；不使用这里的10秒调查政策文件。参数中的原包路径及游戏／Ritsu目录由复跑者本机提供。成对哨兵基线、候选与源码阶段详见后续记录。
 
 首轮基线为限定旧手牌上限兼容的 `ff3e275e`，主线行为源 `b2d23a05`；并行计数续轮以 `fbd18e17` 为基线，原生材料及短政策保持相同。当前工作保留O064共享机制、限定旧报告兼容、通用只读身份及路径诊断和并行能力计数修复，并新增O061和O062的通用边界续搜。O061原政策追平27点战损，O062原政策追平7／1／T3，两者固定独立哨兵通过；O063原环境材料不足、300秒政策未验证，O065历史目标无效。正常可见Steam性能未验证，不能声明全批完成或关闭Issue。
 

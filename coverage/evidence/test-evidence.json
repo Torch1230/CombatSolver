@@ -2851,7 +2851,7 @@
     "level": "HeadlessNativeFullDeployment",
     "procedure": "原O064 ZIP，combat_start/cursor0，显式短政策，10000ms/90Beam/250000节点/DOP1/Smart/NoGC关闭；Instant/0秒。",
     "expected": "完整根/原生状态严格一致，完整胜利、药水身份和零非预期重算；不提高预算。",
-    "observed": "基线eb65082a262b4bf0b3202fbfe9ccfd7d原生29/0/T11；保留截止前已选14/1的修复后1d46394ebf594a1aa8a05f2d095eec58为14/1/T10。最终ecb0584456aa439baca830d8922eeeda Passed，54→40/70HP，HEART_OF_IRON一瓶，T10，零重算。折算29→23，追平人工成本23，人工T9。原180秒未验证。 并行汇总及组内潜力排序后15100fcc43664a8894270c2d90f2fcd8原生回归Passed14/1/T10、54→40/70HP、零重算，9920.6622ms/21598展开/79728转移/2921326080B，未退化。",
+    "observed": "基线eb65082a262b4bf0b3202fbfe9ccfd7d原生29/0/T11；保留截止前已选14/1的修复后1d46394ebf594a1aa8a05f2d095eec58为14/1/T10。最终ecb0584456aa439baca830d8922eeeda Passed，54→40/70HP，HEART_OF_IRON一瓶，T10，零重算。折算29→23，追平人工成本23，人工T9。原180秒未验证。 并行汇总及组内潜力排序后15100fcc43664a8894270c2d90f2fcd8原生回归Passed14/1/T10、54→40/70HP、零重算，9920.6622ms/21598展开/79728转移/2921326080B，未退化。 最终0.50.1原政策完整原生85ace28ccbeb4cb2902b177ef7e948c2 Passed14/1HEART_OF_IRON/T10、40/70HP、零重算，13879.55ms/45576展开/161204转移/5705741392B；折算追平，人工T9而当前T10。此前原180秒未验证描述仅属于早期短政策阶段。",
     "evidence": "src/Search/CombatSearchCoordinator.Audits.cs; src/Search/CombatSearchCoordinator.BeamPortfolio.cs; src/Search/PotionValuationRegistry.cs; coverage/fixtures/search/q014-o064-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-PERSISTENT-POTION-SENTINEL": {
@@ -2863,19 +2863,19 @@
     "evidence": "coverage/fixtures/search/q014-persistent-potion-sentinel.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O061-QUALITY-GAP": {
-    "status": "Unresolved",
-    "level": "NativeFeasibilityWithUnresolvedRootSearch",
-    "procedure": "原O061 ZIP开战/cursor0，固定10000ms政策；从真实原生输入取得身份的独立49步派生路线严格回放；并行能力计数汇总修复后自主原生部署。",
+    "status": "Passed",
+    "level": "HeadlessNativeFullDeployment",
+    "procedure": "原包combat_start/cursor0；原政策直接继承，无短政策覆盖、不提高预算；NoGC0、Instant/0秒、计划外重算上限0、请求120秒并清理实例。先前短政策及可行性试验作为历史记录。",
     "expected": "从同开战根自主找到扣除药水后不差于27/0的完整胜利。",
-    "observed": "620cdc147b35431797fc09b589727b9d基线45/2/T9（折算63）；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。db52da63a7654223a2ce9205543838fa严格原生输入采集24动作/30事件，原包不修改；98010bbe146d498b911d415cbcaf7b37派生49步严格回放27/0/T9。真实保留别名前缀33860b34ab8e479aaed83533cacfdb7c同样严格兑现27。并行worker创建计数遗漏汇总导致既有保护旁路，补齐汇总/清零后正常147f052ac81d4d4495efd2e9ac0cece9为39/0/T10，9939.6411ms、15384展开/95027转移/5191997400B；完整原生c0786ffc9aec465c8826ff31d576e9d6同为39/0/T10、52→13/87HP、零重算。折算改善24，仍差12。此前能力排序试验入口未启用，不能归因；均撤回。独立能力哨兵性能门槛未通过。 保护实际启用后仅能力偏好组内优先净未兑现潜力：正常ec39eca2e5ac4bf59cd02682bfa28a2f为28/0/T10；原生ee1c56962c81412a9fb92c4e6b6c2e29同为28/0/T10，52→24/87HP、零重算，9945.6089ms/13047节点/92234转移/5249993648B。折算63→28，改善35，仍差1；不得宣称追平。 提交67fb8314后跨组潜力排序实际生效试验0da37cc1ac9445acb9362f0bac2877ad退化37/0/T9，已撤回，仅保留原生28版本。",
+    "observed": "此前过程：620cdc147b35431797fc09b589727b9d基线45/2/T9（折算63）；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。db52da63a7654223a2ce9205543838fa严格原生输入采集24动作/30事件，原包不修改；98010bbe146d498b911d415cbcaf7b37派生49步严格回放27/0/T9。真实保留别名前缀33860b34ab8e479aaed83533cacfdb7c同样严格兑现27。并行worker创建计数遗漏汇总导致既有保护旁路，补齐汇总/清零后正常147f052ac81d4d4495efd2e9ac0cece9为39/0/T10，9939.6411ms、15384展开/95027转移/5191997400B；完整原生c0786ffc9aec465c8826ff31d576e9d6同为39/0/T10、52→13/87HP、零重算。折算改善24，仍差12。此前能力排序试验入口未启用，不能归因；均撤回。独立能力哨兵性能门槛未通过。 保护实际启用后仅能力偏好组内优先净未兑现潜力：正常ec39eca2e5ac4bf59cd02682bfa28a2f为28/0/T10；原生ee1c56962c81412a9fb92c4e6b6c2e29同为28/0/T10，52→24/87HP、零重算，9945.6089ms/13047节点/92234转移/5249993648B。折算63→28，改善35，仍差1；不得宣称追平。 提交67fb8314后跨组潜力排序实际生效试验0da37cc1ac9445acb9362f0bac2877ad退化37/0/T9，已撤回，仅保留原生28版本。 最终2026-10-07自主完整原生676b9048442a47d6be1c88da5353e3d3 Passed27/0/T10，25/87HP、零计划外重算，15710.1263ms/39259展开/249996转移/13641552920B。追平合法人工27/0战损，人工T9，当前T10未追平回合数。",
     "evidence": "coverage/fixtures/search/q014-o061-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O062-QUALITY-GAP": {
-    "status": "Unresolved",
-    "level": "NativeFeasibilityAndDetachedPathDiagnosis",
-    "procedure": "原O062 ZIP，开战基线；T2检查点参照原生部署；原始身份按原生T1顺序重排的独立派生诊断。",
+    "status": "Passed",
+    "level": "HeadlessNativeFullDeployment",
+    "procedure": "原包combat_start/cursor0；原政策直接继承，无短政策覆盖、不提高预算；NoGC0、Instant/0秒、计划外重算上限0、请求120秒并清理实例。先前短政策及可行性试验作为历史记录。",
     "expected": "自主找到7/1/T3，不能写包中固定顺序或提高预算。",
-    "observed": "ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。原派生路线药水生成SALVO后落选，但493b3362add6430194003cfc98d1852e及4caa6f81c2cf4b1084c0b29fd1da637b证实两条已保留别名前缀均严格兑现7HP/T3，不能把准确第7步丢失当根因。后者第9步ARMAMENTS升级攻击价值77→91，在409候选中排名187后落选；先升级再生成的别名留下SALVO+0，不能替代后缀SALVO+1身份。三版准备代表试验：c2257d6956fb48b299f4f3cb535780c9为22/0折算无收益；deddb18ba4fe41379ed863803979590d与d582f0d79b214946bbc0306b927fa6a4原生仍13/1/T5、零重算。全部无效搜索改动已撤回。 并行计数汇总修复后256197b82e39468ea8d44b94fc871951原生仍13/1/T5，零重算，7871.9757ms；未追平。 组内潜力排序后10c13000f2004c0d967f765cee4729de原生仍13/1/T5、零重算，8454.5994ms/19583节点/66512转移/3198672680B。 当前基线9b44972dcd9e401ba747efeaa6933007路径411事件无丢失，7/8步保留，9升级落选；83bbfcf48860416b8c1d8324525468f5整池1366事件、无丢失，边界16、排名187/409。混合深度首步准备代表试验0a906fb72f0b43a38810dc205a4b17cb正常仍13/1/T5、7708.4197ms/20405/68628/3389564400B，源码已撤回，忽略目录试验二进制只作路径诊断。",
+    "observed": "此前过程：ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。原派生路线药水生成SALVO后落选，但493b3362add6430194003cfc98d1852e及4caa6f81c2cf4b1084c0b29fd1da637b证实两条已保留别名前缀均严格兑现7HP/T3，不能把准确第7步丢失当根因。后者第9步ARMAMENTS升级攻击价值77→91，在409候选中排名187后落选；先升级再生成的别名留下SALVO+0，不能替代后缀SALVO+1身份。三版准备代表试验：c2257d6956fb48b299f4f3cb535780c9为22/0折算无收益；deddb18ba4fe41379ed863803979590d与d582f0d79b214946bbc0306b927fa6a4原生仍13/1/T5、零重算。全部无效搜索改动已撤回。 并行计数汇总修复后256197b82e39468ea8d44b94fc871951原生仍13/1/T5，零重算，7871.9757ms；未追平。 组内潜力排序后10c13000f2004c0d967f765cee4729de原生仍13/1/T5、零重算，8454.5994ms/19583节点/66512转移/3198672680B。 当前基线9b44972dcd9e401ba747efeaa6933007路径411事件无丢失，7/8步保留，9升级落选；83bbfcf48860416b8c1d8324525468f5整池1366事件、无丢失，边界16、排名187/409。混合深度首步准备代表试验0a906fb72f0b43a38810dc205a4b17cb正常仍13/1/T5、7708.4197ms/20405/68628/3389564400B，源码已撤回，忽略目录试验二进制只作路径诊断。 最终2026-10-07自主完整原生c9730bc20bc74d539ac8a186d02d700c Passed7/1/T3，69/80HP、零计划外重算，7221.1676ms/15624展开/53621转移/2695299136B。追平合法人工7/1/T3；战后回复6HP，净扣血1不等于整场战损7。",
     "evidence": "coverage/fixtures/search/q014-o062-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O063-RESTORATION-BLOCK": {
@@ -2883,7 +2883,7 @@
     "level": "StrictCheckpointRestoration",
     "procedure": "原O063 ZIP，不主动增加内容Mod支持，完整续用戳及原生编码检查。",
     "expected": "只有完整原生状态严格可比后才接受限定旧格式差异；其他未知保持失败。",
-    "observed": "add07521e4e546919d8fed95af98a556 Failed；旧loadout_summon_powers=empty额外字段，原生模型编码hash4186358368/1568834832不同，完整原生bytes不可比较。限定空标记试验7aa7510ad4424f50948ec0ef863c7a9c仍Failed并已撤回。本机缺Loadout.dll及对应模型编码材料，未验证后续质量。",
+    "observed": "add07521e4e546919d8fed95af98a556 Failed；旧loadout_summon_powers=empty额外字段，原生模型编码hash4186358368/1568834832不同，完整原生bytes不可比较。限定空标记试验7aa7510ad4424f50948ec0ef863c7a9c仍Failed并已撤回。本机缺Loadout.dll及对应模型编码材料，未验证后续质量。 2026-10-07用户明确排除此主题，仅记录阻塞，不对外留言或研究内容Mod。",
     "evidence": "coverage/fixtures/search/q014-o063-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O065-HISTORICAL-OUTCOME-DRIFT": {
@@ -2891,7 +2891,7 @@
     "level": "ExplicitCurrentNativeComparisonNotHistoricalFeasibility",
     "procedure": "原O065 ZIP开战，先普通严格预测模式，再显式CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME诊断，保持原28步完整身份。",
     "expected": "普通模式保留旧数字不符失败；诊断模式只比较当前严格回放与原生，完整胜利且零额外搜索/重算。",
-    "observed": "987853e022e84c1ea232b9451edd0580 Failed：28步合法、增量/完整一致，当前8HP/T7与历史3HP/T7不符。bcc36e64859142f786148642e55450db显式诊断Passed：原生62→54/75HP，8/0/T7、零搜索/重算，recordedPredictionOutcomeMatched=false。自主基线f039543f267c49c2be45dbc4ff7c18a8为5/0/T7，历史3不是当前有效质量参照。",
+    "observed": "987853e022e84c1ea232b9451edd0580 Failed：28步合法、增量/完整一致，当前8HP/T7与历史3HP/T7不符。bcc36e64859142f786148642e55450db显式诊断Passed：原生62→54/75HP，8/0/T7、零搜索/重算，recordedPredictionOutcomeMatched=false。自主基线f039543f267c49c2be45dbc4ff7c18a8为5/0/T7，历史3不是当前有效质量参照。 最终0.50.1原政策自主完整原生780ec5f3100143f084c5f4d78688ec56 Passed5/0/T7、57/75HP、零重算；4956.8033ms/17507展开/67512转移/2599531088B。原历史3不作为未完成优化目标，当前5优于严格合法人工8。",
     "evidence": "src/Testing/Replay/UnattendedTestRunner.RecordedPlan.cs; docs/CHECKPOINT_REPLAY.md; coverage/fixtures/search/q014-o065-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-PARALLEL-POWER-SENTINEL": {
@@ -2915,7 +2915,7 @@
     "level": "StrictCurrentNativeFeasibilityNotSearchDiscovery",
     "procedure": "实际选中的8动作前缀接未改身份的4动作后缀，原包未修改；显式当前预测比较并原生部署。",
     "expected": "逐步增量/完整等价、原生5/1/T3、无额外搜索/重算；保留继承历史7不符，不计自主优化。",
-    "observed": "9cad1022eff94028afe49ab86c09dc20普通模式Failed5/7；首个原生请求7cd65693ab9445d2a8cfc6f4ba7de028因误用SearchOnly在模式检查Failed。修正DeploySolver后47f07160374c459eb4bc9c3722c5b539 Passed12步严格回放/原生5/1/T3、终局71/80HP、零搜索/重算。ee1b6e7578bd4a639b69e433831cbe93只读路径377事件/e512ab4877da4429b671f13933bf0f3e整池848事件均无丢失、根/live不变；第9步MoltenFist边界17排名68/190无代表，实际新生选项代表排名85/路由4/选中65。自主仍13，未完成。 下一单因素17a012aa492c488494abb6a48d370fdf正常22/0/T7，折算无收益，已撤回；686a416d63924f16af018fd5e437a0cd只读370事件无丢失，5点准确路线第8步落选，但现有数据偏好原7点前缀，不能把该落选单独判为根因。",
+    "observed": "9cad1022eff94028afe49ab86c09dc20普通模式Failed5/7；首个原生请求7cd65693ab9445d2a8cfc6f4ba7de028因误用SearchOnly在模式检查Failed。修正DeploySolver后47f07160374c459eb4bc9c3722c5b539 Passed12步严格回放/原生5/1/T3、终局71/80HP、零搜索/重算。ee1b6e7578bd4a639b69e433831cbe93只读路径377事件/e512ab4877da4429b671f13933bf0f3e整池848事件均无丢失、根/live不变；第9步MoltenFist边界17排名68/190无代表，实际新生选项代表排名85/路由4/选中65。自主仍13，未完成。 下一单因素17a012aa492c488494abb6a48d370fdf正常22/0/T7，折算无收益，已撤回；686a416d63924f16af018fd5e437a0cd只读370事件无丢失，5点准确路线第8步落选，但现有数据偏好原7点前缀，不能把该落选单独判为根因。 上述“自主仍13、未完成”仅为该历史可行性调查阶段；最终自主7/1/T3见Q014-O062-QUALITY-GAP。本条5点结果仍不能计为自主发现。",
     "evidence": "src/Testing/Replay/UnattendedTestRunner.RecordedPlan.cs; src/Testing/Host/UnattendedTestRunner.Executor.cs; docs/CHECKPOINT_REPLAY.md; docs/issues/q014-route-quality.md"
   },
   "Q014-HEADLESS-IMAGE-IDENTITY": {
@@ -2941,5 +2941,21 @@
     "expected": "只冻结已计算值、不重新评分；所有动作、状态、回合、HP、药水和洗牌身份不变；不将特征变化计为实际保留或自主优化。",
     "observed": "08d8e92041fa4d908bba7069e3bb87b6与06dcea0623c0435a9ca56ca93772afed均Passed12步/370事件/11成员约束一致/root/live不变，12前缀evaluation齐全、动作状态及累计身份完全相同。第11步可出手牌24→89、存续攻击77→147；真实用药成员第7步潜力18→11、兑现16→23，提示准备估值与释放计数耦合。aa6c6a3362dd4dff9f070ef9e20f28b5因补丁未应用是重复基线，不计对照；估值试验已撤回，保留值诊断，不证明路线质量或性能收益。",
     "evidence": "src/Search/CombatBeamSolver.PathDiagnostics.cs; src/Testing/Support/UnattendedTestRunner.RouteSnapshots.cs; src/Testing/Support/UnattendedTestRunner.KnownRoutePathTrace.cs; docs/CHECKPOINT_REPLAY.md; docs/issues/q014-route-quality.md"
+  },
+  "Q014-VICTORY-BOUNDARY-POWER-SENTINEL": {
+    "status": "Passed",
+    "level": "PairedNormalHeadlessNativeQualityAndCost",
+    "procedure": "Custom/Beam60/120000节点/10000ms/DOP2/Disabled；同版本同根同政策同预算，独立基线/候选进程，NoGC0/Instant0/零重算/120秒清理。",
+    "expected": "完整原生及RNG对账通过、可执行质量不降、正常搜索耗时无明显增加；新边界实际执行。",
+    "observed": "基线e793d69cbb7c4bac8c7e4516aecee36b与候选850c8f172d48430bb99a2265506c1c42均Passed18/0/T7、68/80HP、零重算；候选确实从T8边界续搜。基线6105.4608ms/17594展开/44858转移/1646665896B；候选5937.0277ms/16007/40751/1498615664B。 单对样本，结论仅限固定机制和输入，不证明普遍性能或可见Steam帧时间。",
+    "evidence": "coverage/fixtures/search/q014-parallel-power-sentinel.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-GENERATED-POTION-BOUNDARY-SENTINEL": {
+    "status": "Passed",
+    "level": "PairedNormalHeadlessNativeQualityAndCost",
+    "procedure": "Custom/Beam60/120000节点/30000ms/DOP2/Smart；同版本同根同政策同预算，独立基线/候选进程，NoGC0/Instant0/零重算/120秒清理。",
+    "expected": "完整原生及RNG对账通过、可执行质量不降、正常搜索耗时无明显增加；新边界实际执行。",
+    "observed": "基线dec336d8b9f2491ab4d344d79607afd5与候选43651f08ef8848f1aad2a168b66feaa1均Passed0/1/T4、70/70HP、零重算；候选日志确认执行延期生成药水成员，后验成员8→3，无新增额度。基线4761.0252ms/5391展开/27166转移/1017527968B；候选4629.8855ms/5386/27123/987098472B。 单对样本，结论仅限固定机制和输入，不证明普遍性能或可见Steam帧时间。",
+    "evidence": "coverage/fixtures/search/q014-generated-potion-boundary-sentinel.json; docs/issues/q014-route-quality.md"
   }
 }
