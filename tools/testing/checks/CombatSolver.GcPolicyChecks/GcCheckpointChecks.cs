@@ -17,7 +17,14 @@ internal static class GcCheckpointChecks
         using ISearchGcScope scope = SearchGcPolicy.EnterSearchScope(true, 1_000_000_000, signal, deadline.Token);
         PolicyCheck.Require(signal.IsEnabled && GCSettings.LatencyMode == GCLatencyMode.NoGCRegion,
             "Checkpoint smoke must exercise an actual NoGC region.");
+        long blockingIndexBefore = GC.GetGCMemoryInfo(GCKind.FullBlocking).Index;
+        SearchGcLifecycleSnapshot beforeResume = SearchGcPolicy.CaptureLifecycle();
         await Task.Run(() => signal.ReclaimAndContinue(deadline.Token, "smoke_resume")).WaitAsync(deadline.Token);
+        GCMemoryInfo completed = GC.GetGCMemoryInfo(GCKind.FullBlocking);
+        PolicyCheck.Require(completed.Index > blockingIndexBefore && completed.Compacted
+            && completed.Generation == GC.MaxGeneration
+            && SearchGcPolicy.CaptureLifecycle().DeltaFrom(beforeResume).ForcedCollections == 1,
+            "NoGC rebuild must confirm one compacting full collection without a second forced collection.");
         PolicyCheck.Require(signal.ReclaimCount == 1 && signal.IsEnabled && GCSettings.LatencyMode == GCLatencyMode.NoGCRegion,
             "Completed reclaim must re-establish the region before returning.");
         using CancellationTokenSource canceled = new();

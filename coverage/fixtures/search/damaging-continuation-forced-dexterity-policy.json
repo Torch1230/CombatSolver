@@ -1,0 +1,35 @@
+{
+  "profile": {
+    "beamWidth": 90,
+    "maxExpandedNodes": 250000,
+    "maxCardBranchesPerNode": 48,
+    "maxPileChoiceBranchesPerAction": 28,
+    "maxHandChoiceBranchesPerAction": 36,
+    "softTimeBudgetMilliseconds": 10000,
+    "secondRankBand": false,
+    "contextualRanking": null,
+    "continuousThreatRanking": false,
+    "baseScoreTacticalTies": false,
+    "adaptiveNoveltyRefinement": false,
+    "beamWeightPerturbation": null,
+    "offensiveRefinementPortfolio": false,
+    "boundedOffensiveRefinementPortfolio": false,
+    "reallocatedRefinementPortfolio": true,
+    "stopPortfolioAtHpTarget": true,
+    "baseScoreOnly": false,
+    "aggressivePowerCommitment": false
+  },
+  "potionDirectives": [
+    {
+      "slot": 0,
+      "potionId": "SWIFT_POTION",
+      "directive": "Smart"
+    },
+    {
+      "slot": 1,
+      "potionId": "DEXTERITY_POTION",
+      "directive": "Force"
+    }
+  ],
+  "fixedBudget": true
+}

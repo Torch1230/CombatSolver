@@ -40,6 +40,7 @@ param(
     [ValidateSet("Preflight", "RestoreOnly", "ReplayRecorded", "SearchOnly", "DeploySolver", "SessionStart")]
     [string]$ReplayMode = "RestoreOnly",
     [string]$ReplayPolicyOverridePath = "",
+    [int]$RecordedPlanRetentionStepForTest = -1,
     [string]$DevelopmentStrategyAssemblyPath = "",
     [string]$DevelopmentStrategyParametersPath = "",
     [string]$DevelopmentStrategyScriptHash = "",
@@ -777,6 +778,7 @@ $request = [ordered]@{
     checkpointArchivePath = if ($CheckpointArchivePath) { $CheckpointArchivePath } else { $null }
     evidenceDirectory = if ($EvidenceDirectory) { $EvidenceDirectory } else { $null }
     checkpointSelector = $CheckpointSelector
+    recordedPlanRetentionStepForTest = if ($RecordedPlanRetentionStepForTest -ge 0) { $RecordedPlanRetentionStepForTest } else { $null }
     replayMode = $ReplayMode
     replayPolicyOverridePath = if ($ReplayPolicyOverridePath) { (Resolve-Path -LiteralPath $ReplayPolicyOverridePath).Path } else { $null }
     developmentStrategyAssemblyPath = if ($DevelopmentStrategyAssemblyPath) { (Resolve-Path -LiteralPath $DevelopmentStrategyAssemblyPath).Path } else { $null }

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "Q013-O058-SAME-ROOT-TARGET",
+  "description": "女王 / 铁甲战士；当前同根实测判死（63 满血全损），哨兵只锁『不劣于现状』，缺口另行立项。同根口径：combat_start 起搜、SearchOnly、包内原策略，未改包内字节。指标取自 solverMetrics.projectedBattleHpLost / potionCount / finalEnemyHp / onlyDeathRoutes。",
+  "characterId": "IRONCLAD",
+  "encounterId": "QUEEN_BOSS",
+  "seed": "8Y5Y4ADBJK8N",
+  "ascension": 10,
+  "actIndexForTest": 2,
+  "checkpointArchivePath": ".local/issue-bundles/Q013-O058/raw/764b1b7856f448efab85b13538c67cd8.zip",
+  "checkpointSelector": "start",
+  "replayMode": "SearchOnly",
+  "enemyCurrentHp": 1,
+  "expectedInitialProjectedBattleHpLostAtMost": 63,
+  "stopAfterInitialSolverResultAssertion": true,
+  "headlessFastModeForTest": "Instant",
+  "timeoutSeconds": 120,
+  "exitOnComplete": true
+}

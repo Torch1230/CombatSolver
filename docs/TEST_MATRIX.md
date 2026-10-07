@@ -1,5 +1,9 @@
 # CombatSolver 测试入口
 
+2026-10-07 PR #227–#230 的本机 `SMART-POTION-AUDIT-BUDGET`、旧报告、GC 合同，以及 O068 和固定哨兵整场部署通过。O056 最终与当前主线同为 62 战损，历史界 42 未达成；组件证明合同被 native-version 门禁拒绝。最小复跑入口、同根对照、失败及未验证范围见[整合验证](archive/testing/pr-integration-20261007.md)。
+
+贡献者 2026-10-06 的 Linux [计划续搜完整胜利证明](performance/plan-witness-propagation-20261006.md)：原生计划循环与最终 GC 合同 Passed；政策门禁、16 Fork、DOP1/16 实际成员派发与一次压缩完整回收通过，实例清理。11 根 44 次纯交错质量及峰值通过；2 次完整诊断、9 次根审计单列。未做全29根、上传包或可见性能，历史战损差异保留。
+
 0.50.0 定稿沿用 PR #207、PR #211 与开局药水准入的既有行为证据，来源和范围见 [历史卷 20](archive/testing/volume-20.md)。
 
 按改动选择最小验证层，方法见 [无人测试](HEADLESS_TESTING.md) 与 [社区验收](community/testing-guide.md)。以下命令提供当前复跑入口，不表示本轮已执行。单人共享损血剪枝的新基线验证见[策略证据](strategy/hp-loss-pruning/README.md#单人共享损血剪枝2026-10-05)。
@@ -7,14 +11,6 @@
 历史记录见 [归档索引](archive/testing/README.md)，0.48.1 的验证、失败与未验证项见 [历史卷 12](archive/testing/volume-12.md)。
 
 PR #213 的贡献者分阶段验证见 [Q002 历史入口](issues/q002-route-quality.md#0494-重新验证2026-10-05)。当前 0.50.0 主线整合使用 O003、O004、O005 同根、同政策对照，结果与复跑预算见 [当前验收](issues/q002-route-quality.md#0500-主线整合2026-10-05)。
-
-0.49.4 的额外回合镜像顺序、同根成长胜利续用、整场自动部署与上传引导验证见 [历史卷 16](archive/testing/volume-16.md)。
-
-0.49.0 的行为验证沿用本页 PR #203、#204 合并验收与 [战斗状态修复验证](archive/testing/volume-13.md)。版本及发布文档调整采用 L0 检查和发布构建；原有未验证项保留。
-
-0.49.3 的框架、局外 Mod 与 BaseLib 验证见 [历史卷 14](archive/testing/volume-14.md)。
-
-移动运行库内存回收验证见 [历史卷 15](archive/testing/volume-15.md)。
 
 ## Ctrl+F9 面板可见性（PR #226）
 
@@ -27,6 +23,16 @@ PR #213 的贡献者分阶段验证见 [Q002 历史入口](issues/q002-route-qua
 ## 0.50.1 智能药水机会成本
 
 终局单药／双药低收益拒绝与 Force、奖励抵扣、原价高收益哨兵由 `SMART-OPENING-POTION-ADMISSION` 覆盖；跨成员比较由 `python -B tools/testing/checks/BeamWidthPortfolioChecks/run.py` 覆盖（118项通过）。原生 runId `d9629992ac31423586c7465510c18f6d` Passed（23.63秒，含建局），实例已清理。失败基线、同根材料与未验证范围见[问题记录](issues/potion-opportunity-20261006.md)。
+
+## 社区批次 Q015：路线保留
+
+贡献者五主题的同根短搜、原生部署、固定哨兵及失败记录见[Q015 记录](issues/q015-route-quality.md)。维护的开战政策输入为 [High](../coverage/fixtures/search/damaging-continuation-replay-policy.json)、[Medium](../coverage/fixtures/search/damaging-continuation-medium-replay-policy.json) 与 [Force](../coverage/fixtures/search/damaging-continuation-forced-dexterity-policy.json)，原生部署使用 Instant／0 秒，断言计划外重算。本机最终整合收窄破盾收尾资格，O068 保持 3 战损、0 药、T4，独立哨兵保持 5 战损、1 药、T4，均完整部署、零重算；其余贡献者旧结果保留原验证范围。旧报告默认手牌上限兼容合同通过，详细同根对照见[本机验证](archive/testing/pr-integration-20261007.md)。
+
+## 社区批次 Q013 同根哨兵与部署夹具
+
+Q013（O056–O060，#220 / PR #228）的五条同根 `SearchOnly` 质量界夹具与两条 `DeploySolver` 夹具位于 `coverage/fixtures/regressions/community/q013-*.json`；逐条结果、失败基线与未验证项见 `coverage/evidence/test-evidence.json` 的 `Q013-*` 条目与[认领者记录](community/drafts/2026-10-06/Q013-claim-reproduction.md)。夹具依赖不入库的玩家原包 ZIP，故本页不提供行首可执行命令（与 Q010 同口径，矩阵可复跑清单条数不变）：复跑时把夹具 JSON 字段逐个传给 `tools/testing/run-unattended-test.ps1`，显式带 `-Sts2GameRoot` / `-RitsuWorkshopRoot` / `-CleanupInstanceOnExit`，判定以 `result.json.status` 为准（带实例清理时 launcher 退出码 1 不代表失败）。
+
+认领提交未改 `src`（`git diff --name-only 0d290fbe 0143d82f -- src` 为空），七条夹具在基点 `0d290fbe` 上按夹具本体全部 Passed；界锁各主题当时的实际产出，不构成改良值达标声明（O056/O057/O059 未达包内改良值，O060 默认预算下终值 35～43 摆动，O058 缺口在同一次请求内后续搜索的运行态）。合并 `6031debd` 后（`89798a78` 把 `max_hand_size` 写进续用指纹）七条全部在 `native_replay_events` 报 `restore_mismatch` 而未进入搜索，属旧包容兼容性边界，逐条 runId 与包内取证见[调查流水](archive/community/q013-claim-reproduction-20261006.md)；PR #227 的默认手牌上限兼容已进入整合，本机 O056 原生恢复通过，但历史质量界 42 未达成；其他六条夹具在最终整合上未复跑，见本页整合验证。
 
 ## 开局药水补搜准入
 
@@ -74,7 +80,6 @@ pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId EFFECT-S
 ./tools/testing/run-unattended-test.sh --scenario-id CASCADE-EMPTY-HAND-NATIVE --enemy-current-hp 1000 --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
 ./tools/testing/run-unattended-test.sh --scenario-id EFFECT-SCOPE-ADJACENT-CONTRACT --enemy-current-hp 1000 --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
 ```
-
 
 ## 0.48.0 硬错误机制合同
 
@@ -177,16 +182,13 @@ pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId RADIANT-
 
 真实CLR工具：`default-entry` 2项、`diagnostic-failure` 8项、`scopes` 8项 Passed。入口失败基线为日志抛错后信号仍启用；修复后同异常传播、信号清理及后续独占准入均通过。
 
-失败记录：首次无头启动在私有进程身份检查处失败并清理，未进入游戏测试，原因未确定；金币首轮14项对账已通过，但缺EvidenceDirectory导致产物写入失败；金纸首轮缺遗物输入。补齐请求参数后仅重跑失败请求，成功记录在上表。固定前缀09f94286012d420d81242f480ebd1803仍执行旧的终局拒绝断言，合同更新为开局探测和完整搜索共同截断，并断言终局动作数及回合。新增格挡夹具初次编译因原生调用参数及私有setter失败，修正后Release零警告/错误。
-
-L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描通过。CoverageCatalog重新生成3035项目录，状态字段未分类为0；`--verify-state-writes`仍因既有InfusedCore.AfterSideTurnStart缺运行证据失败（1项）。PowerShell结构检查247文件通过，工具检查290文件/37项目通过，文档427文件/1635链接及覆盖目录检查通过。额外Bash结构检查因运行耗时停止，未完成；两平台脚本静态语法检查通过。
+失败记录：首次无头启动在私有进程身份检查处失败并清理，未进入游戏测试，原因未确定；金币首轮14项对账已通过，但缺EvidenceDirectory导致产物写入失败；金纸首轮缺遗物输入。补齐请求参数后仅重跑失败请求，成功记录在上表。固定前缀09f94286012d420d81242f480ebd1803仍执行旧的终局拒绝断言，合同更新为开局探测和完整搜索共同截断，并断言终局动作数及回合。新增格挡夹具初次编译因原生调用参数及私有setter失败，修正后Release零警告/错误。 L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描通过。CoverageCatalog重新生成3035项目录，状态字段未分类为0；`--verify-state-writes`仍因既有InfusedCore.AfterSideTurnStart缺运行证据失败（1项）。PowerShell结构检查247文件通过，工具检查290文件/37项目通过，文档427文件/1635链接及覆盖目录检查通过。额外Bash结构检查因运行耗时停止，未完成；两平台脚本静态语法检查通过。
 
 范围：本轮没有重跑作者长预算全根性能筛查，没有验证低内存玩家宿主、原生整场部署或可见Steam性能；原作者失败与未验证项保留在所属报告。
 
+## 性能与已归档状态合同
 
-## 性能研究分支
-
-既有组件、药水、魂枢及未达标原型的合同与历史结果见[历史卷18](archive/testing/volume-18.md)。PR #207最新上游整合、逐次ABBA、23根品质回归及NoGC波动/超时限制见[当前验收](performance/pr207-upstream-0494-integration-20261005.md)。
+手牌上限原版根／Fork及动态上限合同见[历史卷21](archive/testing/volume-21.md#手牌上限状态一致性pr-224)。既有组件、药水、魂枢及未达标原型的合同与历史结果见[历史卷18](archive/testing/volume-18.md)。PR #207最新上游整合、逐次ABBA、23根品质回归及NoGC波动/超时限制见[当前验收](performance/pr207-upstream-0494-integration-20261005.md)。
 
 ## 手牌上限状态一致性（PR #224）
 
@@ -194,7 +196,4 @@ L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描�
 
 ## Q014 路线研究
 
-2026-10-07 生成药水首回合边界：O062原政策完整原生 `c9730bc20bc74d539ac8a186d02d700c` Passed7／1／T3、69/80HP、零重算，基线13；独立夹具 `coverage/fixtures/search/q014-generated-potion-boundary-sentinel.json` 使用Custom／Beam60／节点120000／30000ms／DOP2／Smart／NoGC0／Instant0／零重算／120秒清理，基线 `dec336d8b9f2491ab4d344d79607afd5` 与候选 `43651f08ef8848f1aad2a168b66feaa1` 均Passed0／1／T4，候选实际执行延期成员，4629.8855ms对4761.0252ms；单对样本。 2026-10-07 基础分精炼成员的胜利损血边界续搜：O061原政策完整原生 `676b9048442a47d6be1c88da5353e3d3` 为27／0／T10、25/87HP、零重算，基线28；固定能力哨兵沿下述同一夹具及政策，基线 `e793d69cbb7c4bac8c7e4516aecee36b` 与候选 `850c8f172d48430bb99a2265506c1c42` 均18／0／T7、零重算。候选日志确认实际从T8边界续搜，5937.0277ms／16007展开／40751转移，基线6105.4608ms／17594／44858；不把单对结果当作普遍性能结论。 官方0.50.1本地整合：药水比较118项、`SMART-OPENING-POTION-ADMISSION` `95e8932e02724340b684ad4f2c988417` Passed；O062 `c2bd87c700c9417a8f99b00196d89b93` 13／1／T5、O064 `c92b25b99ba141e884a04e58c4cffd40` 14／1／T10，均同根10秒、Instant0、NoGC0、零重算。其他包不计本轮复测。
-
-Q014：持续药水开局余量、智能后验截止保留结果、旧默认手牌上限恢复及并行能力计数汇总，目标／独立哨兵、正常搜索数字和未验证项见[逐包记录](issues/q014-route-quality.md)。能力哨兵 `coverage/fixtures/search/q014-parallel-power-sentinel.json` 使用 Custom／Beam60／节点120000／请求覆盖10000ms／DOP2／禁药／NoGC关闭／Instant0／零重算／120秒清理；成对原生18／0／T7；早期计数修复对旁路基线耗时+20.39%未通过，最终组内排序对正确计数基线−12.26%；单对样本。加 `-VerifySearchPolicySnapshot` 验证固定250节点DOP1／DOP2完整结果及非时序剪枝、实际并发≥2；旧药水成本合同补齐后通过。
-派生动作当前结果路径：`CHECKPOINT-RECORDED-PLAN-CURRENT-PATH` 或 `CHECKPOINT-RECORDED-PLAN-CURRENT-RETENTION-PATH-N` 使用 SearchOnly，只在完整身份、增量/完整状态等价和获胜动作通过后观察正常协调器；显式保留继承历史终局不符。O062 12步派生路线原生5／1／T3、零搜索/重算；只读377／848事件无丢失、根/live不变，未证明自主5点或性能。成员约束诊断通过O061 5实例／8716事件、O062 11实例／370事件；worker继承所有者纯值，跨层保留先核对最低用药资格。严格12前缀现成估值冻结与同身份对照通过，手牌24→89仅作诊断，试验规则已撤回。历史模式仍因5与7不同Failed，详见[检查点指南](CHECKPOINT_REPLAY.md)。
+原政策自主原生O061 `676b9048442a47d6be1c88da5353e3d3` 27／0／T10，O062 `c9730bc20bc74d539ac8a186d02d700c` 7／1／T3，均零重算；基线、原生完整状态／RNG、独立成对哨兵及失败与未验证项见[逐包记录](issues/q014-route-quality.md)和 `coverage/evidence/test-evidence.json`。以上为接入2026-10-07最新主线之前的源码证据，合入main5c773caa后四主题完整原生及成对哨兵在逐包记录单独更新，旧证据不冒充复测。 固定能力哨兵 `coverage/fixtures/search/q014-parallel-power-sentinel.json` 使用Custom／Beam60／节点120000／10000ms／DOP2／Disabled；生成药水哨兵 `coverage/fixtures/search/q014-generated-potion-boundary-sentinel.json` 使用同Beam与节点、30000ms／DOP2／Smart。均NoGC0／Instant0／零重算／120秒清理；完整复跑命令及实际工作量见逐包记录。能力哨兵成对18／0／T7，生成药水成对0／1／T4，候选新边界实际执行；单对性能不能外推普遍提速或可见Steam表现。固定250节点DOP1／DOP2完整结果、非时序剪枝及真实并发≥2合同通过，旧药水成本合同已补齐。 当前结果路径诊断只观察正常协调器，保留完整身份、逐步增量／完整状态等价、历史终局差异及根/live不变；O062派生5点路线只证明可行性，不计自主发现。入口、所属成员约束和前缀冻结合同见[检查点指南](CHECKPOINT_REPLAY.md)及逐包记录。O063环境恢复阻塞、O065历史3点不成立；按实际证据报告。

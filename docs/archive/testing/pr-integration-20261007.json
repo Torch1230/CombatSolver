@@ -1,0 +1,577 @@
+{
+  "date": "2026-10-07",
+  "baseCommit": "6031debd7e08f75b7ceb3e44bc9095e60411ab7d",
+  "behaviorSourceCommit": "5d9a2d927d66a6f08d1d6f0d72e9a240ee37ecb6",
+  "pullRequestHeads": {
+    "227": "d5f139137ca44b315c4b53f17bdf3c38721f35e2",
+    "228": "c9fd639e5c3d5a8cdcd498a5d9ebdca0ea346373",
+    "229": "ed666326ba06cdab2faadceb2fe55410fb9f543b",
+    "230": "605e738d3f588e25c485146163a332b80169bfe9"
+  },
+  "controlCompatibility": "Q013 control keeps 6031debd production and adds only the two native replay compatibility files from PR227.",
+  "comparisons": {
+    "q013-control / q013-candidate": {
+      "rootContinuationStamp": true,
+      "policy": true,
+      "runtime": true,
+      "actions": false,
+      "snapshot": false,
+      "comparisonQuality": false,
+      "continuations": false
+    },
+    "q013-control / q013-finish-continuation": {
+      "rootContinuationStamp": true,
+      "policy": true,
+      "runtime": true,
+      "actions": true,
+      "snapshot": true,
+      "comparisonQuality": true,
+      "continuations": true
+    },
+    "sentinel-control / sentinel-finish-continuation": {
+      "rootContinuationStamp": true,
+      "policy": true,
+      "runtime": true,
+      "actions": true,
+      "snapshot": true,
+      "comparisonQuality": true,
+      "continuations": true
+    }
+  },
+  "runs": {
+    "q013-control": {
+      "runId": "557e518a93d3478786707c37dd5f0825",
+      "status": "Failed",
+      "scenarioId": "PR-AUDIT-Q013-CONTROL",
+      "elapsedMilliseconds": 32552.0038,
+      "completedChecks": [
+        "CheckpointContinuationMatched",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary"
+      ],
+      "error": "System.InvalidOperationException: 首轮路线预计整场掉血 62，超过预期上限 42。\r\n   at CombatSolver.UnattendedTestRunner.AssertInitialSolverResultAsync(Int32 startedTurn)\r\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\r\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "metrics": {
+        "projectedBattleHpLost": 62,
+        "potionCount": 0,
+        "combatEndedTurn": 13,
+        "totalExpanded": 52329,
+        "totalTransitions": 219773,
+        "totalElapsedMilliseconds": 13313.1022,
+        "totalWorkerAllocatedBytes": 10487734272
+      },
+      "replay": {
+        "status": "execution_failed",
+        "nativeStateVerified": true,
+        "continuationVerified": true,
+        "legacyDefaultHandLimitVerified": true
+      },
+      "actualOutcome": null
+    },
+    "q013-candidate": {
+      "runId": "c2ef9f65446f44808fbe6948d859dbfb",
+      "status": "Failed",
+      "scenarioId": "PR-AUDIT-Q013-CANDIDATE",
+      "elapsedMilliseconds": 31489.8244,
+      "completedChecks": [
+        "CheckpointContinuationMatched",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary"
+      ],
+      "error": "System.InvalidOperationException: 首轮路线预计整场掉血 67，超过预期上限 42。\r\n   at CombatSolver.UnattendedTestRunner.AssertInitialSolverResultAsync(Int32 startedTurn)\r\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\r\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "metrics": {
+        "projectedBattleHpLost": 67,
+        "potionCount": 0,
+        "combatEndedTurn": 7,
+        "totalExpanded": 51022,
+        "totalTransitions": 210983,
+        "totalElapsedMilliseconds": 13591.8578,
+        "totalWorkerAllocatedBytes": 10168647240
+      },
+      "replay": {
+        "status": "execution_failed",
+        "nativeStateVerified": true,
+        "continuationVerified": true,
+        "legacyDefaultHandLimitVerified": true
+      },
+      "actualOutcome": null
+    },
+    "q013-block-continuation": {
+      "runId": "134c3202cd3e4b3a80581c2fdb0d00e4",
+      "status": "Failed",
+      "scenarioId": "PR-AUDIT-Q013-BLOCK-CONTINUATION",
+      "elapsedMilliseconds": 31456.3311,
+      "completedChecks": [
+        "CheckpointContinuationMatched",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary"
+      ],
+      "error": "System.InvalidOperationException: 首轮路线预计整场掉血 65，超过预期上限 62。\r\n   at CombatSolver.UnattendedTestRunner.AssertInitialSolverResultAsync(Int32 startedTurn)\r\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\r\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "metrics": {
+        "projectedBattleHpLost": 65,
+        "potionCount": 0,
+        "combatEndedTurn": 10,
+        "totalExpanded": 50780,
+        "totalTransitions": 209643,
+        "totalElapsedMilliseconds": 13515.4061,
+        "totalWorkerAllocatedBytes": 10147972368
+      },
+      "replay": {
+        "status": "execution_failed",
+        "nativeStateVerified": true,
+        "continuationVerified": true,
+        "legacyDefaultHandLimitVerified": true
+      },
+      "actualOutcome": null
+    },
+    "q013-retention": {
+      "runId": "5d5993a3311843d794e14947a30fc794",
+      "status": "Passed",
+      "scenarioId": "PR-AUDIT-Q013-RETENTION",
+      "elapsedMilliseconds": 31596.1328,
+      "completedChecks": [
+        "CheckpointContinuationMatched",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=1;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=13;Shuffles=3;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=62;Block=45/56;Pruned=0;Total=13531.6ms/10377551080B;Gc=1258.9ms/52.6msMax;Frame=254.7msMax/4Over50;CacheHits=0;ChoiceBranches=3889;Actions=4;OnlyDeath=False;CombatEndedTurn=13;DeathTurn=-;ActEndingBoss=True;BossHpRelief=RunEnding",
+        "NativeOutcome:combatEnded=False:turn=1:hp=97:maxHp=106"
+      ],
+      "error": null,
+      "metrics": {
+        "projectedBattleHpLost": 62,
+        "potionCount": 0,
+        "combatEndedTurn": 13,
+        "totalExpanded": 52153,
+        "totalTransitions": 217021,
+        "totalElapsedMilliseconds": 13531.5515,
+        "totalWorkerAllocatedBytes": 10377551080
+      },
+      "replay": {
+        "status": "restored",
+        "nativeStateVerified": true,
+        "continuationVerified": true,
+        "legacyDefaultHandLimitVerified": true
+      },
+      "actualOutcome": null
+    },
+    "q013-finish-continuation": {
+      "runId": "06aea9a0d5914c2f90ebb1e5f20ccae7",
+      "status": "Passed",
+      "scenarioId": "PR-AUDIT-Q013-FINISH-CONTINUATION",
+      "elapsedMilliseconds": 31951.4087,
+      "completedChecks": [
+        "CheckpointContinuationMatched",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=1;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=13;Shuffles=3;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=62;Block=45/56;Pruned=0;Total=13791.4ms/10498080104B;Gc=1081.4ms/50.4msMax;Frame=249.1msMax/5Over50;CacheHits=0;ChoiceBranches=3889;Actions=4;OnlyDeath=False;CombatEndedTurn=13;DeathTurn=-;ActEndingBoss=True;BossHpRelief=RunEnding",
+        "NativeOutcome:combatEnded=False:turn=1:hp=97:maxHp=106"
+      ],
+      "error": null,
+      "metrics": {
+        "projectedBattleHpLost": 62,
+        "potionCount": 0,
+        "combatEndedTurn": 13,
+        "totalExpanded": 52329,
+        "totalTransitions": 219773,
+        "totalElapsedMilliseconds": 13791.443,
+        "totalWorkerAllocatedBytes": 10498080104
+      },
+      "replay": {
+        "status": "restored",
+        "nativeStateVerified": true,
+        "continuationVerified": true,
+        "legacyDefaultHandLimitVerified": true
+      },
+      "actualOutcome": null
+    },
+    "q015-block-continuation": {
+      "runId": "b6f6b8ee4e7741c891fd716ebb9312f1",
+      "status": "Passed",
+      "scenarioId": "PR-AUDIT-Q015-O068-BLOCK-CONTINUATION",
+      "elapsedMilliseconds": 22340.5804,
+      "completedChecks": [
+        "CheckpointContinuationMatched",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=1;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=3;Block=10/15;Pruned=0;Total=855.2ms/171310552B;Gc=33.6ms/26.6msMax;Frame=1024.3msMax/1Over50;CacheHits=0;ChoiceBranches=0;Actions=4;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+        "UnexpectedReplans:0",
+        "NativeOutcome:combatEnded=True:turn=4:hp=57:maxHp=75"
+      ],
+      "error": null,
+      "metrics": {
+        "projectedBattleHpLost": 3,
+        "potionCount": 0,
+        "combatEndedTurn": 4,
+        "totalExpanded": 1858,
+        "totalTransitions": 4933,
+        "totalElapsedMilliseconds": 855.2082,
+        "totalWorkerAllocatedBytes": 171310552
+      },
+      "replay": {
+        "status": "deployment_completed",
+        "nativeStateVerified": true,
+        "continuationVerified": true,
+        "legacyDefaultHandLimitVerified": true,
+        "unexpectedReplans": 0,
+        "actualOutcome": {
+          "initialHp": 60,
+          "finalHp": 57,
+          "hpLost": 3,
+          "hpHealed": 0,
+          "selfDamage": 0,
+          "combatEnded": true,
+          "survived": true,
+          "finalEnemyHp": 0,
+          "potions": [],
+          "unattributedHpLoss": 0
+        }
+      },
+      "actualOutcome": null
+    },
+    "q015-retention": {
+      "runId": "11ceca34b18043cb9f80bad2cef2e888",
+      "status": "Failed",
+      "scenarioId": "PR-AUDIT-Q015-O068-RETENTION",
+      "elapsedMilliseconds": 22076.4664,
+      "completedChecks": [
+        "CheckpointContinuationMatched",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary"
+      ],
+      "error": "System.InvalidOperationException: 首轮路线预计整场掉血 7，超过预期上限 3。\r\n   at CombatSolver.UnattendedTestRunner.AssertInitialSolverResultAsync(Int32 startedTurn)\r\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\r\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "metrics": {
+        "projectedBattleHpLost": 7,
+        "potionCount": 0,
+        "combatEndedTurn": 4,
+        "totalExpanded": 7653,
+        "totalTransitions": 19898,
+        "totalElapsedMilliseconds": 2267.0823,
+        "totalWorkerAllocatedBytes": 661002824
+      },
+      "replay": {
+        "status": "execution_failed",
+        "nativeStateVerified": true,
+        "continuationVerified": true,
+        "legacyDefaultHandLimitVerified": true
+      },
+      "actualOutcome": null
+    },
+    "q015-finish-continuation": {
+      "runId": "ccc373dd614f4be083ab80b762f6c02b",
+      "status": "Passed",
+      "scenarioId": "PR-AUDIT-Q015-O068-FINISH-CONTINUATION",
+      "elapsedMilliseconds": 22662.9377,
+      "completedChecks": [
+        "CheckpointContinuationMatched",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=1;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=3;Block=10/15;Pruned=0;Total=853.6ms/171328904B;Gc=33.1ms/26.2msMax;Frame=1009.0msMax/1Over50;CacheHits=0;ChoiceBranches=0;Actions=4;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+        "UnexpectedReplans:0",
+        "NativeOutcome:combatEnded=True:turn=4:hp=57:maxHp=75"
+      ],
+      "error": null,
+      "metrics": {
+        "projectedBattleHpLost": 3,
+        "potionCount": 0,
+        "combatEndedTurn": 4,
+        "totalExpanded": 1858,
+        "totalTransitions": 4933,
+        "totalElapsedMilliseconds": 853.5791,
+        "totalWorkerAllocatedBytes": 171328904
+      },
+      "replay": {
+        "status": "deployment_completed",
+        "nativeStateVerified": true,
+        "continuationVerified": true,
+        "legacyDefaultHandLimitVerified": true,
+        "unexpectedReplans": 0,
+        "actualOutcome": {
+          "initialHp": 60,
+          "finalHp": 57,
+          "hpLost": 3,
+          "hpHealed": 0,
+          "selfDamage": 0,
+          "combatEnded": true,
+          "survived": true,
+          "finalEnemyHp": 0,
+          "potions": [],
+          "unattributedHpLoss": 0
+        }
+      },
+      "actualOutcome": null
+    },
+    "sentinel-control": {
+      "runId": "677caeb54591414a9373fc0cd53f38bd",
+      "status": "Passed",
+      "scenarioId": "PR-AUDIT-SENTINEL-CONTROL",
+      "elapsedMilliseconds": 33597.8902,
+      "completedChecks": [
+        "GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng",
+        "GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder",
+        "GeneratedScenario:NativeOpeningCaptured",
+        "PerformancePreset:Custom:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=0;Potion=1,Saved=9/9,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=1;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=5;Block=19/29;Pruned=0;Total=8999.8ms/2424296008B;Gc=375.2ms/30.5msMax;Frame=1047.9msMax/1Over50;CacheHits=0;ChoiceBranches=605;Actions=4;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+        "UnexpectedReplans:0",
+        "NativeOutcome:combatEnded=True:turn=4:hp=65:maxHp=70"
+      ],
+      "error": null,
+      "metrics": {
+        "projectedBattleHpLost": 5,
+        "potionCount": 1,
+        "combatEndedTurn": 4,
+        "totalExpanded": 17511,
+        "totalTransitions": 68063,
+        "totalElapsedMilliseconds": 8999.8481,
+        "totalWorkerAllocatedBytes": 2424296008
+      },
+      "replay": {},
+      "actualOutcome": {
+        "initialHp": 70,
+        "finalHp": 65,
+        "hpLost": 5,
+        "hpHealed": 0,
+        "selfDamage": 0,
+        "combatEnded": true,
+        "survived": true,
+        "finalEnemyHp": 0,
+        "potions": [
+          {
+            "potionId": "BLOCK_POTION",
+            "targetCombatId": 0,
+            "turn": 1,
+            "slotIndex": 1,
+            "origin": "solver"
+          }
+        ],
+        "unattributedHpLoss": 0
+      }
+    },
+    "sentinel-candidate": {
+      "runId": "77d41ae4392a4d2ab553c33208108338",
+      "status": "Passed",
+      "scenarioId": "PR-AUDIT-SENTINEL-CANDIDATE",
+      "elapsedMilliseconds": 32125.4967,
+      "completedChecks": [
+        "GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng",
+        "GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder",
+        "GeneratedScenario:NativeOpeningCaptured",
+        "PerformancePreset:Custom:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=0;Potion=1,Saved=9/9,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=1;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=5;Block=19/29;Pruned=0;Total=7468.5ms/2429083336B;Gc=297.8ms/34.2msMax;Frame=1076.6msMax/1Over50;CacheHits=0;ChoiceBranches=609;Actions=4;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+        "UnexpectedReplans:0",
+        "NativeOutcome:combatEnded=True:turn=4:hp=65:maxHp=70"
+      ],
+      "error": null,
+      "metrics": {
+        "projectedBattleHpLost": 5,
+        "potionCount": 1,
+        "combatEndedTurn": 4,
+        "totalExpanded": 17608,
+        "totalTransitions": 67835,
+        "totalElapsedMilliseconds": 7468.5164,
+        "totalWorkerAllocatedBytes": 2429083336
+      },
+      "replay": {},
+      "actualOutcome": {
+        "initialHp": 70,
+        "finalHp": 65,
+        "hpLost": 5,
+        "hpHealed": 0,
+        "selfDamage": 0,
+        "combatEnded": true,
+        "survived": true,
+        "finalEnemyHp": 0,
+        "potions": [
+          {
+            "potionId": "BLOCK_POTION",
+            "targetCombatId": 0,
+            "turn": 1,
+            "slotIndex": 1,
+            "origin": "solver"
+          }
+        ],
+        "unattributedHpLoss": 0
+      }
+    },
+    "sentinel-retention": {
+      "runId": "f08617b6fd494290b7e1efd7b601d5a7",
+      "status": "Passed",
+      "scenarioId": "PR-AUDIT-SENTINEL-RETENTION",
+      "elapsedMilliseconds": 32512.9653,
+      "completedChecks": [
+        "GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng",
+        "GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder",
+        "GeneratedScenario:NativeOpeningCaptured",
+        "PerformancePreset:Custom:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=0;Potion=1,Saved=9/9,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=1;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=5;Block=19/29;Pruned=0;Total=7724.0ms/2443441848B;Gc=306.4ms/28.4msMax;Frame=1053.5msMax/1Over50;CacheHits=0;ChoiceBranches=609;Actions=4;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+        "UnexpectedReplans:0",
+        "NativeOutcome:combatEnded=True:turn=4:hp=65:maxHp=70"
+      ],
+      "error": null,
+      "metrics": {
+        "projectedBattleHpLost": 5,
+        "potionCount": 1,
+        "combatEndedTurn": 4,
+        "totalExpanded": 17483,
+        "totalTransitions": 68030,
+        "totalElapsedMilliseconds": 7724.018,
+        "totalWorkerAllocatedBytes": 2443441848
+      },
+      "replay": {},
+      "actualOutcome": {
+        "initialHp": 70,
+        "finalHp": 65,
+        "hpLost": 5,
+        "hpHealed": 0,
+        "selfDamage": 0,
+        "combatEnded": true,
+        "survived": true,
+        "finalEnemyHp": 0,
+        "potions": [
+          {
+            "potionId": "BLOCK_POTION",
+            "targetCombatId": 0,
+            "turn": 1,
+            "slotIndex": 1,
+            "origin": "solver"
+          }
+        ],
+        "unattributedHpLoss": 0
+      }
+    },
+    "sentinel-finish-continuation": {
+      "runId": "d56ff887ec4d413eb662f8091d14690a",
+      "status": "Passed",
+      "scenarioId": "PR-AUDIT-SENTINEL-FINISH-CONTINUATION",
+      "elapsedMilliseconds": 32293.1224,
+      "completedChecks": [
+        "GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng",
+        "GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder",
+        "GeneratedScenario:NativeOpeningCaptured",
+        "PerformancePreset:Custom:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=0;Potion=1,Saved=9/9,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=1;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=5;Block=19/29;Pruned=0;Total=7527.2ms/2438494760B;Gc=298.2ms/32.5msMax;Frame=1022.3msMax/1Over50;CacheHits=0;ChoiceBranches=609;Actions=4;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+        "UnexpectedReplans:0",
+        "NativeOutcome:combatEnded=True:turn=4:hp=65:maxHp=70"
+      ],
+      "error": null,
+      "metrics": {
+        "projectedBattleHpLost": 5,
+        "potionCount": 1,
+        "combatEndedTurn": 4,
+        "totalExpanded": 17483,
+        "totalTransitions": 68030,
+        "totalElapsedMilliseconds": 7527.2486,
+        "totalWorkerAllocatedBytes": 2438494760
+      },
+      "replay": {},
+      "actualOutcome": {
+        "initialHp": 70,
+        "finalHp": 65,
+        "hpLost": 5,
+        "hpHealed": 0,
+        "selfDamage": 0,
+        "combatEnded": true,
+        "survived": true,
+        "finalEnemyHp": 0,
+        "potions": [
+          {
+            "potionId": "BLOCK_POTION",
+            "targetCombatId": 0,
+            "turn": 1,
+            "slotIndex": 1,
+            "origin": "solver"
+          }
+        ],
+        "unattributedHpLoss": 0
+      }
+    },
+    "audit230-final.log": {
+      "runId": "b6331d73efae4f4f8ead3eca0fd34061",
+      "status": "Passed",
+      "scenarioId": "SMART-POTION-AUDIT-BUDGET",
+      "elapsedMilliseconds": 23099.5162,
+      "completedChecks": [
+        "SmartPotionAuditBudget:ExhaustedLedger:Loss21To0:OnePotion:OneMember:PolicyGuards:FullReplay:LiveIsolation",
+        "NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80"
+      ],
+      "error": null,
+      "metrics": {},
+      "replay": {},
+      "actualOutcome": null
+    },
+    "component-test.log": {
+      "runId": "f2e5871333214ca28b5d38ae30fd8e0e",
+      "status": "Failed",
+      "scenarioId": "COMPONENT-SMART-BOUND",
+      "elapsedMilliseconds": 21567.8171,
+      "completedChecks": [],
+      "error": "System.InvalidOperationException: Smart component root rejected: native-version\r\n   at CombatSolver.UnattendedTestRunner.AssertComponentSmartBoundAsync(CombatState live, Player player)\r\n   at CombatSolver.UnattendedTestRunner.Executor.ExecuteAsync(ScenarioContext scenario)\r\n   at CombatSolver.UnattendedTestRunner.RunAsync()",
+      "metrics": {},
+      "replay": {},
+      "actualOutcome": null
+    },
+    "gc-native-test.log": {
+      "runId": "c0c563197f084cffb8e1825c34fc7f3e",
+      "status": "Passed",
+      "scenarioId": "GC-CHECKPOINT-BACKGROUND-V0111",
+      "elapsedMilliseconds": 27712.7575,
+      "completedChecks": [
+        "GcCheckpointBackground:ObserveBeforeReissue:NewestCompletedKind",
+        "GcCheckpointBackground:ConfirmedRestart:NoContextCapture",
+        "GcCheckpointBackground:CanceledConfirmation:LateManual:PostReleaseEpoch",
+        "GcCheckpointBackground:TimeoutDrained:DefaultGc:ManualCompletion",
+        "GcCheckpointBackground:ExistingEarlyManualAbsorption",
+        "GcCheckpointBackground:ExistingPreCollectionFailure",
+        "GcCheckpointBackground:ExistingPostSearchEpochBeforeCoverageCapture",
+        "GcCheckpointBackground:ExistingPostSearchEpochAfterCoverageCapture",
+        "NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80"
+      ],
+      "error": null,
+      "metrics": {},
+      "replay": {},
+      "actualOutcome": null
+    },
+    "replay-contract.log": {
+      "runId": "c38e6549d8b8494c8be1fcb5a23e7c7c",
+      "status": "Passed",
+      "scenarioId": "REPLAY-BOUNDARY-CONTRACT",
+      "elapsedMilliseconds": 22303.6582,
+      "completedChecks": [
+        "ReplayLegacyDefaultHandLimit:NativeGate:RejectNonDefaultExplicitDuplicateAndStateDrift",
+        "ReplayLegacyHistoryAndBoundaryFailure",
+        "NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80"
+      ],
+      "error": null,
+      "metrics": {},
+      "replay": {},
+      "actualOutcome": null
+    }
+  },
+  "portableChecks": {
+    "BeamWidthPortfolioChecks": 118,
+    "GcPolicyChecks portable-runtime": 6,
+    "GcPolicyChecks checkpoint": 1
+  },
+  "unverified": [
+    "COMPONENT-SMART-BOUND on this host is rejected by the native-version certificate gate.",
+    "The O056 historical loss bound 42 is missed by both current control and candidate (62).",
+    "Other Q013 roots and Q015 targets were not rerun on the final integration.",
+    "The original O049 long-budget package was not rerun on the final integration.",
+    "Visible Steam and cross-platform performance are unverified."
+  ]
+}

@@ -1,6 +1,6 @@
 # GC 与并发决策检查
 
-`portable-runtime` 注入 .NET 9 Mono 按类型查询 GC 信息时的 `PlatformNotSupportedException`，直接执行生产回收路径。5 项合同覆盖检测后 API 不再调用、默认 GC 检查点及不可分割提交续行、取消后完整回收和准入释放、自动及手动阻塞回收、暂停观测不可用以及其他异常继续传播；共享 20 秒截止时间。实际回收使用本机 CLR，Android 原机执行仍须单独验证。
+`portable-runtime` 注入 .NET 9 Mono 按类型查询 GC 信息时的 `PlatformNotSupportedException`，直接执行生产回收路径。6 项合同覆盖检测后 API 不再调用、默认 GC 检查点及不可分割提交续行、取消后完整回收和准入释放、自动及手动阻塞回收、暂停观测不可用以及其他异常继续传播；共享 20 秒截止时间。新增夹具在本机真实建立1GB No-GC区域并穿过重建，证明No-GC可用不能作为详细GC信息可用的依据。实际回收使用本机 CLR，Android 原机执行仍须单独验证；不要与性能验收同时运行。
 
 ```bash
 dotnet run --project tools/testing/checks/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- portable-runtime
@@ -32,7 +32,7 @@ dotnet run --project tools/testing/checks/CombatSolver.GcPolicyChecks/CombatSolv
 
 2026-09-17：新增 `admission` 6项，基础运行同时包含（无参数=基础26项），覆盖No-GC区域准入下限：系统余量把区域压到配置预算一半以下时拒绝进入（含问题包原文的12GiB→2 967 362 558），部分缩水、小机器预算与阈值等号仍进入，且拒绝后内存压力信号必须释放分配限额（`RemainingBytes == long.MaxValue`）使检查点在构造上无法触发。准入判定只对 headroom 缩水生效；平台SOH预留上限造成的缩水在尺寸回退循环之前捕获标志，照旧建立区域。
 
-`checkpoint` 与 `recovery-lifecycle` 会执行真实CLR收集；后者实际建立1GB NoGC，以测试主动GC制造意外退出，再穿过生产检查点和恢复入口，断言恢复自身一次预留、零额外强制收集，并验证取消、退出请求和Dispose不能复活旧区域。需有足够可用内存，不适合与性能采样同时运行。状态机检查不等于真实游戏或Windows的性能证明。
+`checkpoint` 与 `recovery-lifecycle` 会执行真实CLR收集；前者实际建立1GB NoGC，断言重建前完成一次压缩完整回收、新的完成Index及唯一一次强制收集。后者以测试主动GC制造意外退出，再穿过生产检查点和恢复入口，断言恢复自身一次预留、零额外强制收集，并验证取消、退出请求和Dispose不能复活旧区域。需有足够可用内存，不适合与性能采样同时运行。状态机检查不等于真实游戏或Windows的性能证明。
 
 本轮游戏对照及失败夹具见[NoGC回退恢复报告](../../../../docs/archive/performance/queen-gc-recovery-20260913.md)；旧研究见[GC与并发调查](../../../../docs/archive/performance/gc-issue36-implementation.md)。
 

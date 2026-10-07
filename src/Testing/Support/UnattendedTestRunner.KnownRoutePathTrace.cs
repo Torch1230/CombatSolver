@@ -190,6 +190,7 @@ internal sealed partial class UnattendedTestRunner
             _writer.WriteGeneratedArtifact(sample + "-path-trace.json", new
             {
                 sample, dropped, firstObservedIndex,
+                observedRetentionStep = observedRetentionStep ?? requiredRetentionStep,
                 prefixes = prefixes.Select((prefix, index) => new
                 {
                     step = index + 1, prefix.Action, prefix.StateKey, prefix.Turn,

@@ -56,7 +56,7 @@ internal sealed partial class UnattendedTestRunner
         var advance = typeof(CombatBeamSolver).GetMethod("AdvanceRound", BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new MissingMethodException(nameof(CombatBeamSolver), "AdvanceRound");
         var boundary = (SearchBoundaryReason)advance.Invoke(driver,
-            [simulator, shadow, 0, new HashSet<uint>(), 0, null])!;
+            [simulator, shadow, 0, new HashSet<uint>(), 0, null, null])!;
         if (boundary != SearchBoundaryReason.None || shadow.HasPendingChoice)
             throw new InvalidOperationException($"Ghost seed fixture reached {boundary}.");
         CombatManager.Instance.OnEndedTurnLocally();

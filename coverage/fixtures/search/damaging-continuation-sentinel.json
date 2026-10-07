@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "seed": "SPECIFIED-COMBAT-001",
+  "characterId": "SILENT",
+  "ascension": 10,
+  "actIndex": 0,
+  "encounterId": "BYRDONIS_ELITE",
+  "encounterKind": "Elite",
+  "includeStartingDeck": true,
+  "includeStartingRelics": true,
+  "includeAscendersBane": true,
+  "applyRelicObtainEffects": false,
+  "characterCards": {
+    "count": 6,
+    "ids": [
+      "ACROBATICS",
+      "DAGGER_THROW",
+      "POUNCE",
+      "PREDATOR",
+      "DEFLECT",
+      "KNIFE_TRAP"
+    ],
+    "upgradeLevels": 1
+  },
+  "colorlessCards": {
+    "count": 1,
+    "ids": [
+      "PREP_TIME"
+    ],
+    "upgradeLevels": 0
+  },
+  "relics": {
+    "count": 3,
+    "ids": [
+      "VAJRA",
+      "PEAR",
+      "HORN_CLEAT"
+    ],
+    "upgradeLevels": 0
+  },
+  "potions": {
+    "count": 2,
+    "ids": [
+      "FIRE_POTION",
+      "BLOCK_POTION"
+    ],
+    "upgradeLevels": 0
+  },
+  "setupChoices": [],
+  "playerCurrentHp": null,
+  "potionSlotCount": null,
+  "mode": "Search",
+  "fixedSearchBudget": true
+}

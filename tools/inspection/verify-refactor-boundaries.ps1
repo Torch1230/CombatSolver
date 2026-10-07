@@ -851,7 +851,8 @@ foreach ($forbiddenRecoveryCall in @("GC.Collect(", "CollectGeneration2")) {
 }
 foreach ($gcChainRule in @(
     "return WaitForReclaimChainAsync(_reclaimTask)",
-    "CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)",
+    "CollectGeneration2ForAutomaticReclaimAsync(",
+    "compactSmallObjectHeap: restartNoGcRegion",
     "_inSearchManualReclaimTask = manualCompletion.Task",
     "failure == null && (_regionExitRequired || _reclaimRequired)")) {
     if (-not (Select-String -LiteralPath $searchGcPolicyPath -SimpleMatch $gcChainRule -Quiet)) {

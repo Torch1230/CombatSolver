@@ -838,7 +838,8 @@ forbid_fixed "$repository_root/src/Runtime/SearchGcPolicy.Recovery.cs" \
     'CollectGeneration2' 'NoGC recovery must not enter the reclaim chain:'
 for gc_chain_rule in \
     'return WaitForReclaimChainAsync(_reclaimTask)' \
-    'CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)' \
+    'CollectGeneration2ForAutomaticReclaimAsync(' \
+    'compactSmallObjectHeap: restartNoGcRegion' \
     '_inSearchManualReclaimTask = manualCompletion.Task' \
     'failure == null && (_regionExitRequired || _reclaimRequired)'; do
     require_fixed "$search_gc_policy_path" "$gc_chain_rule" 'missing serialized reclaim-chain rule'

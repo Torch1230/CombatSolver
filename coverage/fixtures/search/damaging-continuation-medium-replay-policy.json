@@ -1,0 +1,23 @@
+{
+  "fixedBudget": true,
+  "profile": {
+    "beamWidth": 60,
+    "maxExpandedNodes": 120000,
+    "maxCardBranchesPerNode": 32,
+    "maxPileChoiceBranchesPerAction": 18,
+    "maxHandChoiceBranchesPerAction": 24,
+    "softTimeBudgetMilliseconds": 10000,
+    "secondRankBand": false,
+    "contextualRanking": null,
+    "continuousThreatRanking": false,
+    "baseScoreTacticalTies": false,
+    "adaptiveNoveltyRefinement": false,
+    "beamWeightPerturbation": null,
+    "offensiveRefinementPortfolio": false,
+    "boundedOffensiveRefinementPortfolio": false,
+    "reallocatedRefinementPortfolio": true,
+    "stopPortfolioAtHpTarget": true,
+    "baseScoreOnly": false,
+    "aggressivePowerCommitment": false
+  }
+}

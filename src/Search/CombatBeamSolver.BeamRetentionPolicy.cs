@@ -939,6 +939,11 @@ internal sealed partial class CombatBeamSolver
                         routingNodes,
                         FindBestTargetPressure(routingNodes));
                     List<SearchNode> candidates = [];
+                    if (orderedRoutingContexts[contextIndex].Key.Effect
+                        is PlanChoiceEffect.Discard or PlanChoiceEffect.DiscardAndDraw)
+                    {
+                        AddRoutingCandidate(candidates, FindBestSafeDiscardContinuation(routingNodes));
+                    }
                     if (routingNodes.Min(ActionsSinceRetainedRoutingChoice) <= 1)
                     {
                         AddRoutingCandidate(candidates, group.BestSetup);
@@ -1245,6 +1250,7 @@ internal sealed partial class CombatBeamSolver
                              .OrderBy(group => group.Key))
                 {
                     IReadOnlyList<SearchNode> group = potionGroup.ToList();
+                    AddRequired(required, FindBestDamagingContinuation(group), limit);
                     AddRequired(required, FindBestFreshResourceStandPat(group), limit);
                     AddRequired(required, FindBestStandPat(group, SearchRouteTraits.Scaling), limit);
                     AddRequired(required, FindBestStandPat(group, SearchRouteTraits.Resource), limit);

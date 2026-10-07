@@ -117,5 +117,6 @@ internal sealed partial class UnattendedTestRunner
             + bound.ComponentSmartBoundPrunedForTesting
             + ":PosteriorPrefixPrunes=" + posterior.ComponentSmartBoundPrunedForTesting
             + ":SmartDisabledRequiredForcedGrowthRelicTheftGuards:Dop2:StrictIncremental:WholeCoordinator:LiveIsolation");
+        await AssertPlanMemberIncumbentAsync(live, player, smart, deadline.Token);
     }
 }

@@ -1,5 +1,7 @@
 # 性能工作入口
 
+- [计划续搜复用完整胜利证明](plan-witness-propagation-20261006.md)：单次压缩检查点组合通过 11 根 44 次交错，铁甲整请求 3.726 倍；质量字段一致、全部峰值通过。严格组件覆盖 2/11，历史猎手 54 战损及亡灵 0 战损缺口仍保留。
+
 - [全程录制](long-session-recording.md)：现行采集方法。
 - [性能夹具](PERFORMANCE_FIXTURES.md)：固定输入与比较口径。
 - [ServerGC 启动](server-gc.md)：现行使用与恢复方式。

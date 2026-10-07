@@ -1,4 +1,44 @@
 {
+  "DAMAGING-CONTINUATION-Q015-O070": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndSearchQuality",
+    "procedure": "O070 原包start，完整ContinuationStamp与原生状态恢复，原Medium/60/120000/DOP8政策仅固定10000ms，正常搜索与Instant/0秒原生整场部署。",
+    "expected": "零药完胜、整场战损≤20，无计划外重算；不以结束回合替代战损目标。",
+    "observed": "主线同开战根36/0/T12；宽选牌21/0与44/0失败版本已取代；最终限定弃牌、延迟伤害实际探测及死亡增援窗口识别，同源自主原生e8ebefd702364afabdf763bb7b3c5dd2为20/0/T11，实际54HP、零重算；81957展开/333181转移/19042.4303ms/19742803040B。人工6754c133原生20/0/T10，含13自伤；当前晚1回合。",
+    "evidence": "docs/issues/q015-route-quality.md; coverage/fixtures/search/damaging-continuation-medium-replay-policy.json"
+  },
+  "DAMAGING-CONTINUATION-Q015-O067": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndSearchQuality",
+    "procedure": "原包start、原比较Force敏捷药政策，90/250000/DOP4固定10000ms；正常自主搜索后Instant/0秒原生整场执行，保存T6后缀与派生完整见证只作对照。",
+    "expected": "自主零死亡完胜、1敏捷药，整场战损≤7。",
+    "observed": "主线12/1/T7，攻击续路9/1；宽选牌版本因O070退步被限定弃牌范围取代；最终限定弃牌、延迟伤害实际探测及死亡增援窗口识别，同源自主原生de73b24602e146858527361186b28789为7/1/T7，实际49HP、零重算；68008展开/342121转移/21164.1224ms/15145573792B。人工42820d98原生7/1/T7，参照动作未注入生产；最终固定哨兵f1ecad1682dd49b397489a5f4214fad2保持5/1/T4、7475.2308ms/2435604896B，首结果验证，单样本不外推普遍提速。",
+    "evidence": "docs/issues/q015-route-quality.md; coverage/fixtures/search/damaging-continuation-forced-dexterity-policy.json"
+  },
+  "DAMAGING-CONTINUATION-Q015-O069": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndSearchQuality",
+    "procedure": "O069 原包 start，完整 ContinuationStamp 和原生状态恢复；原High/90/250000/DOP8政策仅固定10000ms，正常搜索后Instant/0秒完整原生部署。",
+    "expected": "零药获胜、战损≤41，按每药9HP不劣于人工32战损/1格挡药；无计划外重算。",
+    "observed": "主线同开战根62/0/T11；宽选牌31/0试验未通过O070兼容，不作最终结果；最终限定弃牌、延迟伤害实际探测及死亡增援窗口识别，同源自主原生08b7b882dcb64ed48640f4e5964cf4e5为40/0/T13，实际33HP、零重算；40584展开/201764转移/9942.3624ms/8587474376B。人工45061c6b原生32/1/T7，折算41；当前折算40，裸战损与回合差分别记录，不外推普遍性能收益。",
+    "evidence": "docs/issues/q015-route-quality.md; coverage/fixtures/search/damaging-continuation-replay-policy.json"
+  },
+  "DAMAGING-CONTINUATION-Q015-O066-T4": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndSearchQuality",
+    "procedure": "O066 原包 :9/cursor19/T4，严格 ContinuationStamp 与原生状态恢复，原Medium政策仅固定为10000ms；9a4489d8和攻击续路候选独立进程正常搜索。候选自主路线原生整场执行。",
+    "expected": "保持主线已取得的同根3战损/1异鱼之油/T9，无部署漂移或计划外重算；不把开战旧计划混入T4比较。",
+    "observed": "主线同T4根已3/1/T9；最终限定弃牌、延迟伤害实际探测及死亡增援窗口识别，同源自主原生47029c7049664b59b8e81a50b6a945cb为3/1/T9，实际38HP、零重算；6610展开/22888转移/3591.7788ms/1054352448B。此T4结果不计新增修复收益；额外开战最终0/1/T6、折算9优于人工12，见独立START记录。",
+    "evidence": "docs/issues/q015-route-quality.md; coverage/fixtures/search/damaging-continuation-medium-replay-policy.json"
+  },
+  "DAMAGING-CONTINUATION-Q015-O068": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndSearchQuality",
+    "procedure": "原始 O068 ZIP 的 start，完整 ContinuationStamp 与原生二进制恢复；原 profile 仅固定为10000ms，自主协调器搜索与整场原生部署，Instant/0秒。",
+    "expected": "同根0药路线追平合法人工3战损；无状态漂移或计划外重算。独立生成哨兵保持5战损/1药/T4。",
+    "observed": "主线同开战根7/0/T4；最终限定弃牌、延迟伤害实际探测及死亡增援窗口识别，同源自主原生bda4c827af34449e94a680d16a4acc02为3/0/T4，实际57HP、零重算；1858展开/4935转移/869.8396ms/175002488B。",
+    "evidence": "docs/issues/q015-route-quality.md; coverage/fixtures/search/damaging-continuation-replay-policy.json; coverage/fixtures/search/damaging-continuation-sentinel.json"
+  },
   "EXTRA-TURN-MIRROR-ORDER": {
     "status": "Passed",
     "level": "HeadlessNativeFullStateDifferentialAndFork",
@@ -2846,12 +2886,100 @@
     "observed": "default-entry未修复基线失败：限额日志抛错后压力信号仍启用；最终2项通过。既有diagnostic-failure 8项、scopes 8项通过。",
     "evidence": "tools/testing/checks/CombatSolver.GcPolicyChecks/GcDiagnosticFailureChecks.cs; src/Runtime/SearchGcPolicy.cs; docs/TEST_MATRIX.md"
   },
+  "DAMAGING-CONTINUATION-Q015-O066-START": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndSearchQuality",
+    "procedure": "原始O066 ZIP start，完整ContinuationStamp与原生状态恢复；原Medium/60/120000/DOP4政策仅固定10000ms，正常自主搜索与Instant/0秒原生整场部署。",
+    "expected": "按每瓶9HP，整场折算成本不劣于原生完整人工3损/1异鱼之油的12；无计划外重算。",
+    "observed": "主线42f90c67为36/0/T12，限定弃牌版本3449f77d为7/1/T8、折算16。仅追加死亡增援窗口识别后7e3d9c9ff0df468fada865f1aa33e5b4自主原生0/1异鱼之油/T6，实际41/75HP，损血/回血/自伤/未归因损血均0，零重算；28791展开/103540转移/8387.9231ms/4767277264B。28动作，T1用药，折算9较人工12少3。人工e2995e4e37动作原生3/1/T9、零额外搜索和重算，参照动作未注入生产。",
+    "evidence": "docs/issues/q015-route-quality.md; coverage/fixtures/search/damaging-continuation-medium-replay-policy.json"
+  },
+  "DAMAGING-CONTINUATION-Q015-SENTINEL-DEPLOY": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndSearchQuality",
+    "procedure": "BYRDONIS_ELITE/SILENT维护输入仅改mode=Deploy；独立进程基线9a4489d8与合并版d30f95c4，同Custom60/120000/固定30000ms/DOP2/Smart/ServerGC/NoGC关闭/无详细日志，Instant/0秒整场部署。",
+    "expected": "完整原生开局、ContinuationStamp及执行政策相等，双方获胜、5损/1药/T4、零重算；正常搜索耗时无明显增加。",
+    "observed": "基线d3a448e499ba47c2905aca0f610f5fbe与候选abe046108c234fad8d8d6bff20aef6c0均Passed、51/70HP、零重算；完整开局/根/政策/runtime相等。17480/68036/8250.8126ms/2445527152B → 17589/67841/7998.459ms/2437694640B。单对样本不外推普遍性能收益。合并版O068 c885cebc3ca74a2eb761320f9ee188f0原生3/0/T4、57/75HP、零重算通过；其余生产搜索未变的原五主题证据复用。",
+    "evidence": "docs/issues/q015-route-quality.md; coverage/fixtures/search/damaging-continuation-sentinel.json"
+  },
+  "Q015-LEGACY-DEFAULT-HAND-LIMIT": {
+    "status": "Passed",
+    "level": "HeadlessNativeReplayAndStrictBoundaryContract",
+    "procedure": "合入main b2d23a05/PR224后，仅Testing在完整原生checkpoint核验且旧期望缺字段、实际唯一末尾默认10时迁移max_hand_size。现行生产续用/指纹不变，原包不改。",
+    "expected": "无门禁、非默认、显式冲突、重复、错位和其他状态漂移严格拒绝；原O068原生恢复及整场3/0/T4，固定哨兵5/1/T4，无计划外重算。",
+    "observed": "旧O068 7c3af4f4151e435aaedf168e098fc1d3在搜索前field_count24/25失败。严格合同584dceb12637437fb6d5b39e813e4913 Passed；原O0684dddc0ccdab04f9497d28baa4509442c Passed、57/75HP、完整native-state核验及迁移标记true；哨兵319191f08dce419ca14845719a2d421f Passed、51/70HP；后两项零重算，旧根字段除新增默认字段外及政策完整一致。新版本仅复测列出范围，其余主题沿用上游更新前证据。非默认旧上限不作为已验证。",
+    "evidence": "docs/issues/q015-route-quality.md; docs/CHECKPOINT_REPLAY.md; coverage/fixtures/search/damaging-continuation-sentinel.json"
+  },
+  "Q013-O056-SAME-ROOT-TARGET": {
+    "status": "Passed",
+    "level": "HeadlessSameRootCheckpointSearchOnlyCommunityRegression",
+    "procedure": "O056 永世沙漏 / 铁甲战士 0.111.0 原包从 combat_start 同根 SearchOnly，Instant、300 秒上限与实例清理；Smart 用药与 useBeamWidthPortfolio 按包内录制政策恢复，未改包内字节。",
+    "expected": "同根质量界（不是包内改良值）：预计整场战损 ≤42、0 瓶、完胜（final_enemy_hp ≤0）、非仅死亡路线。包内人工改良值 32 本批未达成，界锁当前实际产出。",
+    "observed": "2026-10-06 首轮 Passed（runId b763665600884c82b8c88ce498d34d32）：proj=42、0 瓶、boundary=None、搜索 16406.8ms、score=10000049964。此前两次 launcher_failed（exit_code=-1073741571）的根因是残留无头实例占住宿主准入与未退出的 headless 进程，清理后同参数稳定通过，不是包或代码缺陷。夹具本体复认（actIndexForTest 由 3 更正为 2，与已通过的实跑配置一致）Passed：c53aabca2dd94e9183d3500158d4fe83，proj=42、0 瓶、T7、必然受击 27、卖血 15、搜索 18187.3ms；加载件 SHA256 前缀 5CFA2B35B8872997B5E9（哈希仅作该 run 的加载件身份，本仓库 Release 构建非字节可复现）。加宽到 240 档实测 30 属离线单变量对照，不入断言。 【合并复跑 2026-10-06】本条目上列的 Passed 限定在基点 0d290fbe（0.50.0 定稿，本批认领时的主线状态）。合并 origin/main 6031debd 后（merge aa99e0d6；含 89798a78「Include captured hand limits in continuation and combat fingerprints」）以新二进制 760E4D65A0E41058E3EC4F92A6D77F65ADD263E7B3B0FB82DD43B472E757ADC5 重跑本夹具，得到 status=Failed / replayVerification=restore_mismatch（runId 50ffffe330fa42e6b4f7bc64c92c7597 expected=24 actual=25，first_extra_actual={max_hand_size=10}），阶段 native_replay_events，未进入搜索。根因是 src/Runtime/ContinuationStamp.cs:115 与 :181 无条件追加 max_hand_size，而 :58-64 要求 Split(';') 后字段数相等；玩家包录制于该提交之前，包内不含该字段（解包取证：本包全部文件 max_hand_size 命中数 0，原 ZIP 未改）。同法取证的 Q010 批次包同样不含该字段，因此 Q010 四条同根夹具在新主线上同样不可复跑（静态推断加包内取证；q010-o044 的无头实测被用户可见游戏占住宿主准入而未完成，记为未验证）。该兼容性边界不属于本批五个主题，也不属于 docs/CHECKPOINT_REPLAY.md 已登记的 cost-state 旧格式比较、FlameHp 零值迁移或政策覆盖补齐三条既有兼容路径，该回归已有修复在 PR #227 的 952778fd4（allowLegacyDefaultHandLimit），尚未进入 main，登记用的 #231 已按重复关闭。 【2026-10-07本机整合】原生恢复、完整续用及legacyDefaultHandLimitVerified通过，历史质量界42仍Failed：当前6031debd生产对照62，原整合67；最终破盾收尾资格后62、0药、T13，与对照完整根/政策/runtime/动作/快照/质量/续用边界相等。最终对当前主线界62的请求06aea9a0d5914c2f90ebb1e5f20ccae7 Passed；其他Q013夹具未复跑。详见docs/archive/testing/pr-integration-20261007.md。",
+    "evidence": "coverage/fixtures/regressions/community/q013-o056-same-root.json; docs/community/drafts/2026-10-06/Q013-claim-reproduction.md; docs/TEST_MATRIX.md"
+  },
+  "Q013-O057-SAME-ROOT-TARGET": {
+    "status": "Passed",
+    "level": "HeadlessSameRootCheckpointSearchOnlyCommunityRegression",
+    "procedure": "O057 残杀千足虫 / 故障机器人 0.111.0 原包从 combat_start 同根 SearchOnly，Instant、300 秒上限与实例清理；包内原策略。",
+    "expected": "同根质量界：预计整场战损 ≤40、完胜、非仅死亡路线。用药轴不断言（实测 2 瓶、省血 5/23），断言用药会把更差但合法的路线判 Failed。",
+    "observed": "2026-10-06 首轮 Passed（runId 2545f789ac604427b88e3f0281aa3217）：proj=40、2 瓶、boundary=NodeLimit、45813.9ms、score=9999323974。夹具本体复认（actIndexForTest 由 2 更正为 1）Passed：f0dd96a64ba54ce4930a1453cf4a343a，proj=40、2 瓶、NodeLimit、41650.4ms，加载件 5CFA2B35B8872997B5E9…，与首轮同值。包内改良值 22 未达成；加宽 240 档给 35 且不用药，仍差 13，是否存在宽度之外的第二机制本批未定位。 【合并复跑 2026-10-06】本条目上列的 Passed 限定在基点 0d290fbe（0.50.0 定稿，本批认领时的主线状态）。合并 origin/main 6031debd 后（merge aa99e0d6；含 89798a78「Include captured hand limits in continuation and combat fingerprints」）以新二进制 760E4D65A0E41058E3EC4F92A6D77F65ADD263E7B3B0FB82DD43B472E757ADC5 重跑本夹具，得到 status=Failed / replayVerification=restore_mismatch（runId 04247c2698c74dfc9f58db34f219f4c8 expected=30 actual=31，first_extra_actual={max_hand_size=10}），阶段 native_replay_events，未进入搜索。根因是 src/Runtime/ContinuationStamp.cs:115 与 :181 无条件追加 max_hand_size，而 :58-64 要求 Split(';') 后字段数相等；玩家包录制于该提交之前，包内不含该字段（解包取证：本包全部文件 max_hand_size 命中数 0，原 ZIP 未改）。同法取证的 Q010 批次包同样不含该字段，因此 Q010 四条同根夹具在新主线上同样不可复跑（静态推断加包内取证；q010-o044 的无头实测被用户可见游戏占住宿主准入而未完成，记为未验证）。该兼容性边界不属于本批五个主题，也不属于 docs/CHECKPOINT_REPLAY.md 已登记的 cost-state 旧格式比较、FlameHp 零值迁移或政策覆盖补齐三条既有兼容路径，该回归已有修复在 PR #227 的 952778fd4（allowLegacyDefaultHandLimit），尚未进入 main，登记用的 #231 已按重复关闭。",
+    "evidence": "coverage/fixtures/regressions/community/q013-o057-same-root.json; docs/community/drafts/2026-10-06/Q013-claim-reproduction.md; docs/TEST_MATRIX.md"
+  },
+  "Q013-O058-SAME-ROOT-TARGET": {
+    "status": "Passed",
+    "level": "HeadlessSameRootCheckpointSearchOnlyCommunityRegression",
+    "procedure": "O058 女王 / 铁甲战士 0.111.0 原包从 combat_start 同根 SearchOnly，Instant、300 秒上限与实例清理；包内原策略。",
+    "expected": "只锁现状界：预计整场战损 ≤63。该包 onlyDeathRoutes=true、finalHp=0，63 是满血全损，包内「63 → 57」实为「判死 → 剩 6 血」，不是 6 HP 的质量差。缺口（同一次请求内后续搜索提前收手的运行态）另行立项，本夹具不锁结论。",
+    "observed": "2026-10-06 首轮 Passed（runId 1b4178c609274bc9a2a13c4b6cfc41d5）：proj=63、判死、boundary=None、20802.3ms、score=-1000006340020、final_enemy_hp=445。夹具本体复认（actIndexForTest 由 3 更正为 2）Passed：28d78d2e12944f0f863941bcfcfcd941，proj=63、判死、None、22620.0ms，加载件 5CFA2B35B8872997B5E9…。单变量对照：整体宽度 120 连跑两次都得 61（剩 2 血、完整胜利），同请求内追加的 120 宽重跑在时间余量 111675ms、节点余量 109214 的情况下只跑 1108ms/4553 节点就 None 收敛并判死，同期 forcedCollections 12→15，因此排除预算与跑法，剩运行态（内存压力为头号嫌疑）。该实现尝试已回退，未留代码。 【合并复跑 2026-10-06】本条目上列的 Passed 限定在基点 0d290fbe（0.50.0 定稿，本批认领时的主线状态）。合并 origin/main 6031debd 后（merge aa99e0d6；含 89798a78「Include captured hand limits in continuation and combat fingerprints」）以新二进制 760E4D65A0E41058E3EC4F92A6D77F65ADD263E7B3B0FB82DD43B472E757ADC5 重跑本夹具，得到 status=Failed / replayVerification=restore_mismatch（runId f918beb6b0ce4566ba502670bb762dd6 expected=27 actual=28，first_extra_actual={max_hand_size=10}），阶段 native_replay_events，未进入搜索。根因是 src/Runtime/ContinuationStamp.cs:115 与 :181 无条件追加 max_hand_size，而 :58-64 要求 Split(';') 后字段数相等；玩家包录制于该提交之前，包内不含该字段（解包取证：本包全部文件 max_hand_size 命中数 0，原 ZIP 未改）。同法取证的 Q010 批次包同样不含该字段，因此 Q010 四条同根夹具在新主线上同样不可复跑（静态推断加包内取证；q010-o044 的无头实测被用户可见游戏占住宿主准入而未完成，记为未验证）。该兼容性边界不属于本批五个主题，也不属于 docs/CHECKPOINT_REPLAY.md 已登记的 cost-state 旧格式比较、FlameHp 零值迁移或政策覆盖补齐三条既有兼容路径，该回归已有修复在 PR #227 的 952778fd4（allowLegacyDefaultHandLimit），尚未进入 main，登记用的 #231 已按重复关闭。",
+    "evidence": "coverage/fixtures/regressions/community/q013-o058-same-root.json; docs/community/drafts/2026-10-06/Q013-claim-reproduction.md; docs/TEST_MATRIX.md"
+  },
+  "Q013-O059-SAME-ROOT-TARGET": {
+    "status": "Passed",
+    "level": "HeadlessSameRootCheckpointSearchOnlyCommunityRegression",
+    "procedure": "O059 感染棱柱 / 铁甲战士 0.111.0 原包从 combat_start 同根 SearchOnly，Instant、300 秒上限与实例清理；包内原策略。",
+    "expected": "同根质量界：预计整场战损 ≤30、0 瓶、完胜、非仅死亡路线。包内改良值 24 本批未达成。",
+    "observed": "2026-10-06 首轮 Passed（runId 0d8d53087769406a8339fe82a0ef9a04）：proj=30、0 瓶、boundary=None、32459.3ms、score=10001039973。夹具本体复认（actIndexForTest 由 2 更正为 1）Passed：0f57c86faf60420ba4de1bdf317e5be0，proj=30、0 瓶、None、28173.9ms，加载件 5CFA2B35B8872997B5E9…，与首轮同值。加宽 240 档得 28，仍差 4，未达包内改良值。 【合并复跑 2026-10-06】本条目上列的 Passed 限定在基点 0d290fbe（0.50.0 定稿，本批认领时的主线状态）。合并 origin/main 6031debd 后（merge aa99e0d6；含 89798a78「Include captured hand limits in continuation and combat fingerprints」）以新二进制 760E4D65A0E41058E3EC4F92A6D77F65ADD263E7B3B0FB82DD43B472E757ADC5 重跑本夹具，得到 status=Failed / replayVerification=restore_mismatch（runId 51a293ddee5f48808ac4961d2ee745a7 expected=24 actual=25，first_extra_actual={max_hand_size=10}），阶段 native_replay_events，未进入搜索。根因是 src/Runtime/ContinuationStamp.cs:115 与 :181 无条件追加 max_hand_size，而 :58-64 要求 Split(';') 后字段数相等；玩家包录制于该提交之前，包内不含该字段（解包取证：本包全部文件 max_hand_size 命中数 0，原 ZIP 未改）。同法取证的 Q010 批次包同样不含该字段，因此 Q010 四条同根夹具在新主线上同样不可复跑（静态推断加包内取证；q010-o044 的无头实测被用户可见游戏占住宿主准入而未完成，记为未验证）。该兼容性边界不属于本批五个主题，也不属于 docs/CHECKPOINT_REPLAY.md 已登记的 cost-state 旧格式比较、FlameHp 零值迁移或政策覆盖补齐三条既有兼容路径，该回归已有修复在 PR #227 的 952778fd4（allowLegacyDefaultHandLimit），尚未进入 main，登记用的 #231 已按重复关闭。",
+    "evidence": "coverage/fixtures/regressions/community/q013-o059-same-root.json; docs/community/drafts/2026-10-06/Q013-claim-reproduction.md; docs/TEST_MATRIX.md"
+  },
+  "Q013-O060-SAME-ROOT-TARGET": {
+    "status": "Passed",
+    "level": "HeadlessSameRootCheckpointSearchOnlyCommunityRegression",
+    "procedure": "O060 女王 / 储君 0.111.0 原包从 combat_start 同根 SearchOnly，Instant、300 秒上限与实例清理；包内 softTimeBudgetMilliseconds=120000 保持默认，不靠放宽预算换通过。",
+    "expected": "默认预算下的质量界：预计整场战损 ≤43、0 瓶、完胜、非仅死亡路线。包内原值 43、人工改良值 28（1 瓶）。界 43 是「默认预算下不劣于包内原值」，不是达标声明。",
+    "observed": "2026-10-06 三轮同配置给出两个不同终值，按事实分列：一次 Failed（runId 6c829e44423c42a1b17ab4bb055d8136，误按 32 为界，实测 proj=43、None、119647.4ms）；一次 Passed（353da220d6a8433fa147b19bfb767686，proj=43、0 瓶、boundary=TimeLimit、251746.0ms）。夹具本体复认（actIndexForTest 由 3 更正为 2）Passed：e7efcfdf67524d3d9d7b650932aad6ec，proj=35、0 瓶、boundary=None、193981.6ms、score=9998859929、GC 26517.4ms/4813.5msMax，加载件 5CFA2B35B8872997B5E9…。35 优于界 43，即该主题在同根同政策下终值随运行态在 35～43 之间摆动，界不能收到 35；原「300 秒外部超时后得 32」属比默认更宽的时间预算，按 AGENTS 第 8 节不计为默认预算达标。包内改良值 28 仍未达成。 【合并复跑 2026-10-06】本条目上列的 Passed 限定在基点 0d290fbe（0.50.0 定稿，本批认领时的主线状态）。合并 origin/main 6031debd 后（merge aa99e0d6；含 89798a78「Include captured hand limits in continuation and combat fingerprints」）以新二进制 760E4D65A0E41058E3EC4F92A6D77F65ADD263E7B3B0FB82DD43B472E757ADC5 重跑本夹具，得到 status=Failed / replayVerification=restore_mismatch（runId 5a164002c7064a36a7920a8f8f28e11d expected=27 actual=28，first_extra_actual={max_hand_size=10}），阶段 native_replay_events，未进入搜索。根因是 src/Runtime/ContinuationStamp.cs:115 与 :181 无条件追加 max_hand_size，而 :58-64 要求 Split(';') 后字段数相等；玩家包录制于该提交之前，包内不含该字段（解包取证：本包全部文件 max_hand_size 命中数 0，原 ZIP 未改）。同法取证的 Q010 批次包同样不含该字段，因此 Q010 四条同根夹具在新主线上同样不可复跑（静态推断加包内取证；q010-o044 的无头实测被用户可见游戏占住宿主准入而未完成，记为未验证）。该兼容性边界不属于本批五个主题，也不属于 docs/CHECKPOINT_REPLAY.md 已登记的 cost-state 旧格式比较、FlameHp 零值迁移或政策覆盖补齐三条既有兼容路径，该回归已有修复在 PR #227 的 952778fd4（allowLegacyDefaultHandLimit），尚未进入 main，登记用的 #231 已按重复关闭。",
+    "evidence": "coverage/fixtures/regressions/community/q013-o060-same-root.json; docs/community/drafts/2026-10-06/Q013-claim-reproduction.md; docs/TEST_MATRIX.md"
+  },
+  "Q013-O056-DEPLOY": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentContract",
+    "procedure": "O056 永世沙漏 / 铁甲战士：combat_start 恢复后原生执行求解器路线，DeploySolver、Instant / 0 秒，核对计划外重算。",
+    "expected": "部署侧质量界：结束回合 ≤7、部署后生存血量 ≥55、计划外重算 =0。",
+    "observed": "2026-10-06 Passed（runId 2a25601b508c4afa8d3db08e31e50292）：NativeOutcome combatEnded=True、turn=7、hp=62（maxHp=107）、UnexpectedReplans=0，预测 proj=42。夹具本体复认（actIndexForTest 由 3 更正为 2）Passed：e14c6673a859417fb72978e23c3a80a3，同样 turn=7、hp=62、0 重算，加载件 5CFA2B35B8872997B5E9…。部署原生实测 62 血（maxHp 107，即 107 − 45）与搜索预测 42 相差 3，两个口径分别记录、不互相替换；认领记录前一轮把夹具断言下界 55 误记成实测值，已就地更正。 【合并复跑 2026-10-06】本条目上列的 Passed 限定在基点 0d290fbe（0.50.0 定稿，本批认领时的主线状态）。合并 origin/main 6031debd 后（merge aa99e0d6；含 89798a78「Include captured hand limits in continuation and combat fingerprints」）以新二进制 760E4D65A0E41058E3EC4F92A6D77F65ADD263E7B3B0FB82DD43B472E757ADC5 重跑本夹具，得到 status=Failed / replayVerification=restore_mismatch（runId c3487e835ecf4558985aafa2a0b6792b expected=24 actual=25，first_extra_actual={max_hand_size=10}），阶段 native_replay_events，未进入搜索。根因是 src/Runtime/ContinuationStamp.cs:115 与 :181 无条件追加 max_hand_size，而 :58-64 要求 Split(';') 后字段数相等；玩家包录制于该提交之前，包内不含该字段（解包取证：本包全部文件 max_hand_size 命中数 0，原 ZIP 未改）。同法取证的 Q010 批次包同样不含该字段，因此 Q010 四条同根夹具在新主线上同样不可复跑（静态推断加包内取证；q010-o044 的无头实测被用户可见游戏占住宿主准入而未完成，记为未验证）。该兼容性边界不属于本批五个主题，也不属于 docs/CHECKPOINT_REPLAY.md 已登记的 cost-state 旧格式比较、FlameHp 零值迁移或政策覆盖补齐三条既有兼容路径，该回归已有修复在 PR #227 的 952778fd4（allowLegacyDefaultHandLimit），尚未进入 main，登记用的 #231 已按重复关闭。",
+    "evidence": "coverage/fixtures/regressions/community/q013-o056-deploy.json; docs/community/drafts/2026-10-06/Q013-claim-reproduction.md; docs/TEST_MATRIX.md"
+  },
+  "Q013-O060-DEPLOY": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentContract",
+    "procedure": "O060 女王 / 储君：combat_start 恢复后原生执行求解器路线，DeploySolver、Instant / 0 秒。",
+    "expected": "部署侧质量界：部署后生存血量 ≥9、计划外重算 =0。结束回合随搜索路由变化，不是稳定轴，只作观测。",
+    "observed": "2026-10-06 三次部署实测分别为 T10 剩 9 血（runId d4a22dd5…，deploy-o060）、T11 剩 11 血（75e0f8763ca345f2ba523b644c470db3，首版夹具按「结束回合 ≤10」锁时 Failed，失败原因即该回合轴不稳定）、T10 剩 11 血（e0cb7edc98f24ecbac3f018b59dd2f4f）。夹具改为质量界后本体复认（actIndexForTest 由 3 更正为 2）Passed：d94b96b013214aa591e54ca98cf90a82，T8、剩 14 血（maxHp=38）、UnexpectedReplans=0、预测 proj=32，加载件 5CFA2B35B8872997B5E9…。四次部署都完胜且 0 重算，回合在 8～11 之间摆动，据此确认回合数不可作为断言轴。 【合并复跑 2026-10-06】本条目上列的 Passed 限定在基点 0d290fbe（0.50.0 定稿，本批认领时的主线状态）。合并 origin/main 6031debd 后（merge aa99e0d6；含 89798a78「Include captured hand limits in continuation and combat fingerprints」）以新二进制 760E4D65A0E41058E3EC4F92A6D77F65ADD263E7B3B0FB82DD43B472E757ADC5 重跑本夹具，得到 status=Failed / replayVerification=restore_mismatch（runId 24d7b169dc224ffa82c094006d285b3d expected=27 actual=28，first_extra_actual={max_hand_size=10}），阶段 native_replay_events，未进入搜索。根因是 src/Runtime/ContinuationStamp.cs:115 与 :181 无条件追加 max_hand_size，而 :58-64 要求 Split(';') 后字段数相等；玩家包录制于该提交之前，包内不含该字段（解包取证：本包全部文件 max_hand_size 命中数 0，原 ZIP 未改）。同法取证的 Q010 批次包同样不含该字段，因此 Q010 四条同根夹具在新主线上同样不可复跑（静态推断加包内取证；q010-o044 的无头实测被用户可见游戏占住宿主准入而未完成，记为未验证）。该兼容性边界不属于本批五个主题，也不属于 docs/CHECKPOINT_REPLAY.md 已登记的 cost-state 旧格式比较、FlameHp 零值迁移或政策覆盖补齐三条既有兼容路径，该回归已有修复在 PR #227 的 952778fd4（allowLegacyDefaultHandLimit），尚未进入 main，登记用的 #231 已按重复关闭。",
+    "evidence": "coverage/fixtures/regressions/community/q013-o060-deploy.json; docs/community/drafts/2026-10-06/Q013-claim-reproduction.md; docs/TEST_MATRIX.md"
+  },
+  "SMART-POTION-AUDIT-BUDGET-CONTRACT": {
+    "status": "Passed",
+    "level": "NativeSearchBudgetContract",
+    "procedure": "SMART-POTION-AUDIT-BUDGET，固定最小建局，耗尽请求账本后进入实际补充审计；120秒启动器上限、默认GC、完整预测回放、实例清理。",
+    "expected": "实际无药胜利21战损，单层Smart审计给出0战损/1药；只执行一个成员；其他用药及回合准备政策保持，live与根隔离。",
+    "observed": "2026-10-07 b6331d73efae4f4f8ead3eca0fd34061 Passed；枚举与命名空间编译错误、首轮建局失败及最终范围见整合验证。",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.SmartPotionAuditBudget.cs; docs/archive/testing/pr-integration-20261007.md; docs/TEST_MATRIX.md"
+  },
   "Q014-O064-SMART-OPENING-DEADLINE": {
     "status": "Passed",
     "level": "HeadlessNativeFullDeployment",
     "procedure": "原O064 ZIP，combat_start/cursor0，显式短政策，10000ms/90Beam/250000节点/DOP1/Smart/NoGC关闭；Instant/0秒。",
     "expected": "完整根/原生状态严格一致，完整胜利、药水身份和零非预期重算；不提高预算。",
-    "observed": "基线eb65082a262b4bf0b3202fbfe9ccfd7d原生29/0/T11；保留截止前已选14/1的修复后1d46394ebf594a1aa8a05f2d095eec58为14/1/T10。最终ecb0584456aa439baca830d8922eeeda Passed，54→40/70HP，HEART_OF_IRON一瓶，T10，零重算。折算29→23，追平人工成本23，人工T9。原180秒未验证。 并行汇总及组内潜力排序后15100fcc43664a8894270c2d90f2fcd8原生回归Passed14/1/T10、54→40/70HP、零重算，9920.6622ms/21598展开/79728转移/2921326080B，未退化。 最终0.50.1原政策完整原生85ace28ccbeb4cb2902b177ef7e948c2 Passed14/1HEART_OF_IRON/T10、40/70HP、零重算，13879.55ms/45576展开/161204转移/5705741392B；折算追平，人工T9而当前T10。此前原180秒未验证描述仅属于早期短政策阶段。",
+    "observed": "基线eb65082a262b4bf0b3202fbfe9ccfd7d原生29/0/T11；保留截止前已选14/1的修复后1d46394ebf594a1aa8a05f2d095eec58为14/1/T10。最终ecb0584456aa439baca830d8922eeeda Passed，54→40/70HP，HEART_OF_IRON一瓶，T10，零重算。折算29→23，追平人工成本23，人工T9。原180秒未验证。 并行汇总及组内潜力排序后15100fcc43664a8894270c2d90f2fcd8原生回归Passed14/1/T10、54→40/70HP、零重算，9920.6622ms/21598展开/79728转移/2921326080B，未退化。 最终0.50.1原政策完整原生85ace28ccbeb4cb2902b177ef7e948c2 Passed14/1HEART_OF_IRON/T10、40/70HP、零重算，13879.55ms/45576展开/161204转移/5705741392B；折算追平，人工T9而当前T10。此前原180秒未验证描述仅属于早期短政策阶段。 最新main5c773caa合并后bf60e4d32c3c4f9ea077749dffa11a6e原政策完整原生Passed14/1/T10、零重算，13928.8132ms/45787展开/161705转移/5715821480B，保持已验证质量。",
     "evidence": "src/Search/CombatSearchCoordinator.Audits.cs; src/Search/CombatSearchCoordinator.BeamPortfolio.cs; src/Search/PotionValuationRegistry.cs; coverage/fixtures/search/q014-o064-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-PERSISTENT-POTION-SENTINEL": {
@@ -2867,7 +2995,7 @@
     "level": "HeadlessNativeFullDeployment",
     "procedure": "原包combat_start/cursor0；原政策直接继承，无短政策覆盖、不提高预算；NoGC0、Instant/0秒、计划外重算上限0、请求120秒并清理实例。先前短政策及可行性试验作为历史记录。",
     "expected": "从同开战根自主找到扣除药水后不差于27/0的完整胜利。",
-    "observed": "此前过程：620cdc147b35431797fc09b589727b9d基线45/2/T9（折算63）；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。db52da63a7654223a2ce9205543838fa严格原生输入采集24动作/30事件，原包不修改；98010bbe146d498b911d415cbcaf7b37派生49步严格回放27/0/T9。真实保留别名前缀33860b34ab8e479aaed83533cacfdb7c同样严格兑现27。并行worker创建计数遗漏汇总导致既有保护旁路，补齐汇总/清零后正常147f052ac81d4d4495efd2e9ac0cece9为39/0/T10，9939.6411ms、15384展开/95027转移/5191997400B；完整原生c0786ffc9aec465c8826ff31d576e9d6同为39/0/T10、52→13/87HP、零重算。折算改善24，仍差12。此前能力排序试验入口未启用，不能归因；均撤回。独立能力哨兵性能门槛未通过。 保护实际启用后仅能力偏好组内优先净未兑现潜力：正常ec39eca2e5ac4bf59cd02682bfa28a2f为28/0/T10；原生ee1c56962c81412a9fb92c4e6b6c2e29同为28/0/T10，52→24/87HP、零重算，9945.6089ms/13047节点/92234转移/5249993648B。折算63→28，改善35，仍差1；不得宣称追平。 提交67fb8314后跨组潜力排序实际生效试验0da37cc1ac9445acb9362f0bac2877ad退化37/0/T9，已撤回，仅保留原生28版本。 最终2026-10-07自主完整原生676b9048442a47d6be1c88da5353e3d3 Passed27/0/T10，25/87HP、零计划外重算，15710.1263ms/39259展开/249996转移/13641552920B。追平合法人工27/0战损，人工T9，当前T10未追平回合数。",
+    "observed": "此前过程：620cdc147b35431797fc09b589727b9d基线45/2/T9（折算63）；b75b9dd47aae487db3eb0cf1153fda8e参照27/0/T9原生通过、零重算。db52da63a7654223a2ce9205543838fa严格原生输入采集24动作/30事件，原包不修改；98010bbe146d498b911d415cbcaf7b37派生49步严格回放27/0/T9。真实保留别名前缀33860b34ab8e479aaed83533cacfdb7c同样严格兑现27。并行worker创建计数遗漏汇总导致既有保护旁路，补齐汇总/清零后正常147f052ac81d4d4495efd2e9ac0cece9为39/0/T10，9939.6411ms、15384展开/95027转移/5191997400B；完整原生c0786ffc9aec465c8826ff31d576e9d6同为39/0/T10、52→13/87HP、零重算。折算改善24，仍差12。此前能力排序试验入口未启用，不能归因；均撤回。独立能力哨兵性能门槛未通过。 保护实际启用后仅能力偏好组内优先净未兑现潜力：正常ec39eca2e5ac4bf59cd02682bfa28a2f为28/0/T10；原生ee1c56962c81412a9fb92c4e6b6c2e29同为28/0/T10，52→24/87HP、零重算，9945.6089ms/13047节点/92234转移/5249993648B。折算63→28，改善35，仍差1；不得宣称追平。 提交67fb8314后跨组潜力排序实际生效试验0da37cc1ac9445acb9362f0bac2877ad退化37/0/T9，已撤回，仅保留原生28版本。 最终2026-10-07自主完整原生676b9048442a47d6be1c88da5353e3d3 Passed27/0/T10，25/87HP、零计划外重算，15710.1263ms/39259展开/249996转移/13641552920B。追平合法人工27/0战损，人工T9，当前T10未追平回合数。 最新main5c773caa合并后5e971c3711a346bbad2d90d82bfd11f8原政策完整原生Passed27/0/T10、零重算，16000.1533ms/39259展开/249996转移/13637987616B，保持已验证质量。",
     "evidence": "coverage/fixtures/search/q014-o061-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O062-QUALITY-GAP": {
@@ -2875,7 +3003,7 @@
     "level": "HeadlessNativeFullDeployment",
     "procedure": "原包combat_start/cursor0；原政策直接继承，无短政策覆盖、不提高预算；NoGC0、Instant/0秒、计划外重算上限0、请求120秒并清理实例。先前短政策及可行性试验作为历史记录。",
     "expected": "自主找到7/1/T3，不能写包中固定顺序或提高预算。",
-    "observed": "此前过程：ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。原派生路线药水生成SALVO后落选，但493b3362add6430194003cfc98d1852e及4caa6f81c2cf4b1084c0b29fd1da637b证实两条已保留别名前缀均严格兑现7HP/T3，不能把准确第7步丢失当根因。后者第9步ARMAMENTS升级攻击价值77→91，在409候选中排名187后落选；先升级再生成的别名留下SALVO+0，不能替代后缀SALVO+1身份。三版准备代表试验：c2257d6956fb48b299f4f3cb535780c9为22/0折算无收益；deddb18ba4fe41379ed863803979590d与d582f0d79b214946bbc0306b927fa6a4原生仍13/1/T5、零重算。全部无效搜索改动已撤回。 并行计数汇总修复后256197b82e39468ea8d44b94fc871951原生仍13/1/T5，零重算，7871.9757ms；未追平。 组内潜力排序后10c13000f2004c0d967f765cee4729de原生仍13/1/T5、零重算，8454.5994ms/19583节点/66512转移/3198672680B。 当前基线9b44972dcd9e401ba747efeaa6933007路径411事件无丢失，7/8步保留，9升级落选；83bbfcf48860416b8c1d8324525468f5整池1366事件、无丢失，边界16、排名187/409。混合深度首步准备代表试验0a906fb72f0b43a38810dc205a4b17cb正常仍13/1/T5、7708.4197ms/20405/68628/3389564400B，源码已撤回，忽略目录试验二进制只作路径诊断。 最终2026-10-07自主完整原生c9730bc20bc74d539ac8a186d02d700c Passed7/1/T3，69/80HP、零计划外重算，7221.1676ms/15624展开/53621转移/2695299136B。追平合法人工7/1/T3；战后回复6HP，净扣血1不等于整场战损7。",
+    "observed": "此前过程：ea63b671b11e43dbb8f15ec81ad7f967基线13/1/T5；7a6fcd4923a64958b12942cdbc3def2c原生参照7/1/T3、零重算。原派生路线药水生成SALVO后落选，但493b3362add6430194003cfc98d1852e及4caa6f81c2cf4b1084c0b29fd1da637b证实两条已保留别名前缀均严格兑现7HP/T3，不能把准确第7步丢失当根因。后者第9步ARMAMENTS升级攻击价值77→91，在409候选中排名187后落选；先升级再生成的别名留下SALVO+0，不能替代后缀SALVO+1身份。三版准备代表试验：c2257d6956fb48b299f4f3cb535780c9为22/0折算无收益；deddb18ba4fe41379ed863803979590d与d582f0d79b214946bbc0306b927fa6a4原生仍13/1/T5、零重算。全部无效搜索改动已撤回。 并行计数汇总修复后256197b82e39468ea8d44b94fc871951原生仍13/1/T5，零重算，7871.9757ms；未追平。 组内潜力排序后10c13000f2004c0d967f765cee4729de原生仍13/1/T5、零重算，8454.5994ms/19583节点/66512转移/3198672680B。 当前基线9b44972dcd9e401ba747efeaa6933007路径411事件无丢失，7/8步保留，9升级落选；83bbfcf48860416b8c1d8324525468f5整池1366事件、无丢失，边界16、排名187/409。混合深度首步准备代表试验0a906fb72f0b43a38810dc205a4b17cb正常仍13/1/T5、7708.4197ms/20405/68628/3389564400B，源码已撤回，忽略目录试验二进制只作路径诊断。 最终2026-10-07自主完整原生c9730bc20bc74d539ac8a186d02d700c Passed7/1/T3，69/80HP、零计划外重算，7221.1676ms/15624展开/53621转移/2695299136B。追平合法人工7/1/T3；战后回复6HP，净扣血1不等于整场战损7。 最新main5c773caa合并后772ac63cc6734784bbc803a5862e3787原政策完整原生Passed7/1/T3、零重算，7163.555ms/15585展开/53495转移/2687837640B，保持已验证质量。",
     "evidence": "coverage/fixtures/search/q014-o062-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-O063-RESTORATION-BLOCK": {
@@ -2891,7 +3019,7 @@
     "level": "ExplicitCurrentNativeComparisonNotHistoricalFeasibility",
     "procedure": "原O065 ZIP开战，先普通严格预测模式，再显式CHECKPOINT-RECORDED-PLAN-CURRENT-OUTCOME诊断，保持原28步完整身份。",
     "expected": "普通模式保留旧数字不符失败；诊断模式只比较当前严格回放与原生，完整胜利且零额外搜索/重算。",
-    "observed": "987853e022e84c1ea232b9451edd0580 Failed：28步合法、增量/完整一致，当前8HP/T7与历史3HP/T7不符。bcc36e64859142f786148642e55450db显式诊断Passed：原生62→54/75HP，8/0/T7、零搜索/重算，recordedPredictionOutcomeMatched=false。自主基线f039543f267c49c2be45dbc4ff7c18a8为5/0/T7，历史3不是当前有效质量参照。 最终0.50.1原政策自主完整原生780ec5f3100143f084c5f4d78688ec56 Passed5/0/T7、57/75HP、零重算；4956.8033ms/17507展开/67512转移/2599531088B。原历史3不作为未完成优化目标，当前5优于严格合法人工8。",
+    "observed": "987853e022e84c1ea232b9451edd0580 Failed：28步合法、增量/完整一致，当前8HP/T7与历史3HP/T7不符。bcc36e64859142f786148642e55450db显式诊断Passed：原生62→54/75HP，8/0/T7、零搜索/重算，recordedPredictionOutcomeMatched=false。自主基线f039543f267c49c2be45dbc4ff7c18a8为5/0/T7，历史3不是当前有效质量参照。 最终0.50.1原政策自主完整原生780ec5f3100143f084c5f4d78688ec56 Passed5/0/T7、57/75HP、零重算；4956.8033ms/17507展开/67512转移/2599531088B。原历史3不作为未完成优化目标，当前5优于严格合法人工8。 最新main5c773caa合并后2ee5cbd650784fe282b0bf5b50e926ba原政策完整原生Passed5/0/T7、零重算，5095.3237ms/17507展开/67512转移/2603637232B，保持已验证质量。",
     "evidence": "src/Testing/Replay/UnattendedTestRunner.RecordedPlan.cs; docs/CHECKPOINT_REPLAY.md; coverage/fixtures/search/q014-o065-policy.json; docs/issues/q014-route-quality.md"
   },
   "Q014-PARALLEL-POWER-SENTINEL": {
@@ -2956,6 +3084,22 @@
     "procedure": "Custom/Beam60/120000节点/30000ms/DOP2/Smart；同版本同根同政策同预算，独立基线/候选进程，NoGC0/Instant0/零重算/120秒清理。",
     "expected": "完整原生及RNG对账通过、可执行质量不降、正常搜索耗时无明显增加；新边界实际执行。",
     "observed": "基线dec336d8b9f2491ab4d344d79607afd5与候选43651f08ef8848f1aad2a168b66feaa1均Passed0/1/T4、70/70HP、零重算；候选日志确认执行延期生成药水成员，后验成员8→3，无新增额度。基线4761.0252ms/5391展开/27166转移/1017527968B；候选4629.8855ms/5386/27123/987098472B。 单对样本，结论仅限固定机制和输入，不证明普遍性能或可见Steam帧时间。",
+    "evidence": "coverage/fixtures/search/q014-generated-potion-boundary-sentinel.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-LATEST-MAIN-POWER-SENTINEL": {
+    "status": "Passed",
+    "level": "PairedNormalHeadlessNativeQualityAndCost",
+    "procedure": "最新main5c773caa纯上游/完整合并候选，Custom60/120000/10000ms/DOP2/Disabled，独立冷进程NoGC0/Instant0/零重算/120秒清理。",
+    "expected": "完整根、policy、runtime、原生开局与loadout相同，原生质量无退化、正常搜索成本无明显增加。",
+    "observed": "基线59190be33b834b4091b89deaf950befc Passed18/0/T7、零重算，5609.8174ms/16129展开/41219转移/1488891768B；候选4e9f4f1b0f7c4cd6b0759564ff9d7f4b Passed18/0/T7、零重算，5629.178ms/16007展开/40751转移/1491789640B。完整比较字段逐项相等，耗时变化+0.345%；单对样本，不外推普遍性能或可见Steam。",
+    "evidence": "coverage/fixtures/search/q014-parallel-power-sentinel.json; docs/issues/q014-route-quality.md"
+  },
+  "Q014-LATEST-MAIN-GENERATION-SENTINEL": {
+    "status": "Passed",
+    "level": "PairedNormalHeadlessNativeQualityAndCost",
+    "procedure": "最新main5c773caa纯上游/完整合并候选，Custom60/120000/30000ms/DOP2/Smart，独立冷进程NoGC0/Instant0/零重算/120秒清理。",
+    "expected": "完整根、policy、runtime、原生开局与loadout相同，原生质量无退化、正常搜索成本无明显增加。",
+    "observed": "基线8876c0421dfa4876ab1543c2549a1ef7 Passed0/1/T4、零重算，4599.965ms/5961展开/29916转移/1087602800B；候选4d814d22825e4a7a8c46d61ffe682c99 Passed0/1/T4、零重算，4653.7007ms/5427展开/27308转移/1009957392B。完整比较字段逐项相等，耗时变化+1.168%；单对样本，不外推普遍性能或可见Steam。",
     "evidence": "coverage/fixtures/search/q014-generated-potion-boundary-sentinel.json; docs/issues/q014-route-quality.md"
   }
 }

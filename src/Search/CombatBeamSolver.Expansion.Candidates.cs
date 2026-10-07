@@ -415,7 +415,11 @@ internal sealed partial class CombatBeamSolver
         SimulationSnapshot before,
         SimulationSnapshot after)
         => after.RevivingEnemyCount > before.RevivingEnemyCount
-            || after.RawEnemyHp < before.RawEnemyHp && after.EnemyHp >= before.EnemyHp;
+            || after.RawEnemyHp < before.RawEnemyHp && after.EnemyHp >= before.EnemyHp
+            // A death that introduces new enemies is also a hand-off window;
+            // aggregate HP can rise even though the previous enemy was defeated.
+            || (before.AliveEnemyMask & ~after.AliveEnemyMask) != 0
+                && (after.AliveEnemyMask & ~before.AliveEnemyMask) != 0;
 
     private static bool IsPureHistoryEntry(CombatPredictionHistoryEntry entry)
     {

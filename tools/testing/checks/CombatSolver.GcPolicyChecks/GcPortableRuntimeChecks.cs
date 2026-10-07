@@ -69,6 +69,18 @@ internal static class GcPortableRuntimeChecks
                     && SearchGcPolicy.CaptureLifecycle().DeltaFrom(lifecycle).ForcedCollections == 1,
                     "Portable completion must come from one actual blocking full collection.");
             });
+            PolicyCheck.Run("portable NoGC restart avoids unavailable detailed information", () =>
+            {
+                SearchMemoryPressureSignal signal = new();
+                using ISearchGcScope scope = SearchGcPolicy.EnterSearchScope(
+                    true, 1_000_000_000, signal, deadline.Token);
+                PolicyCheck.Require(GCSettings.LatencyMode == GCLatencyMode.NoGCRegion,
+                    "The capability fixture must exercise an actual NoGC region.");
+                signal.ReclaimAndContinue(deadline.Token, "portable_no_gc_restart");
+                PolicyCheck.Require(signal.ReclaimCount == 1
+                    && GCSettings.LatencyMode == GCLatencyMode.NoGCRegion && reads == 1,
+                    "NoGC capability must not imply support for detailed GC information.");
+            });
             PolicyCheck.Run("portable manual memory release completes", () =>
             {
                 string? completion = null;

@@ -141,7 +141,7 @@ internal static partial class CombatSearchCoordinator
                             : SolverPotionPolicy.Disabled,
                         plan.UsesPotion ? 1 : 0,
                         AllowUnsatisfiedPotion: true),
-                    out SolverResult? candidate))
+                    out SolverResult? candidate, selected))
                 break;
             attempted++;
             if (candidate == null)
@@ -256,7 +256,7 @@ internal static partial class CombatSearchCoordinator
                     PotionPolicyOverride: null,
                     MaximumPotionUses: null,
                     AllowUnsatisfiedPotion: false),
-                out SolverResult? memberResult))
+                out SolverResult? memberResult, baseline))
             return baseline;
         SolverResult candidate = memberResult!;
         if (candidate.ResultScope != SolverResultScope.SearchCompletion)
@@ -277,7 +277,8 @@ internal static partial class CombatSearchCoordinator
         FrontierContinuationScheduler scheduler,
         PlanCommitment plan,
         PlanMemberExecution execution,
-        out SolverResult? candidate)
+        out SolverResult? candidate,
+        SolverResult? incumbent = null)
     {
         SearchBudgetWindow window = context.Budget.RequestWindow(context.Profile);
         if (!window.CanStart(7_000))
@@ -297,12 +298,22 @@ internal static partial class CombatSearchCoordinator
             execution.PotionPolicyOverride, execution.MaximumPotionUses, null)
         {
             Commitment = plan,
+            PrimaryIncumbent = incumbent is null ? null : BuildPlanMemberPrimaryIncumbent(
+                context.Root, context.Policy, execution.PotionPolicyOverride, incumbent),
         };
         candidate = execution.AllowUnsatisfiedPotion
             ? scheduler.DispatchOptional(request, "PlanCommitment")
             : scheduler.Dispatch(request);
         return true;
     }
+
+    internal static PrimarySearchIncumbent? BuildPlanMemberPrimaryIncumbent(
+        CombatRootSnapshot root, SearchPolicySnapshot policy,
+        SolverPotionPolicy? potionPolicyOverride, SolverResult incumbent)
+        => root.UsesComponentHealingCertificate
+            && policy.TheftPolicy != SolverTheftPolicy.PreserveResources
+                ? BuildRefinementPrimarySearchIncumbent(root, policy, potionPolicyOverride, incumbent)
+                : null;
 
     private static IReadOnlyList<PlanCommitment> DiscoverOpeningPlanCommitments(
         SearchPassContext context)

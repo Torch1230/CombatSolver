@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "Q013-O060-SAME-ROOT-TARGET",
+  "description": "女王 / 储君；同根口径：combat_start 起搜、SearchOnly、包内原策略。默认搜索预算（profile softTimeBudgetMilliseconds=120000）下实测 43（0 瓶，0 死亡路线），与包内原值相同；把外部超时放宽到 300 秒、让搜索自然收敛后得 32（0 瓶，T8），即 32 需要超过默认软时间预算。包内原值 43、人工改良值 28（1 瓶）。哨兵按默认预算锁 <=43。",
+  "characterId": "REGENT",
+  "encounterId": "QUEEN_BOSS",
+  "seed": "XMD0LUW0S3GK",
+  "ascension": 10,
+  "actIndexForTest": 2,
+  "checkpointArchivePath": ".local/issue-bundles/Q013-O060/raw/f5425cbe14a543c7b8edebad7de5d941.zip",
+  "checkpointSelector": "start",
+  "replayMode": "SearchOnly",
+  "enemyCurrentHp": 1,
+  "expectedInitialProjectedBattleHpLostAtMost": 43,
+  "stopAfterInitialSolverResultAssertion": true,
+  "headlessFastModeForTest": "Instant",
+  "timeoutSeconds": 120,
+  "exitOnComplete": true,
+  "expectedInitialPotionCount": 0,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "expectedInitialOnlyDeathRoutesFound": false
+}

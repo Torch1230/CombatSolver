@@ -1323,6 +1323,7 @@ internal sealed class SimulationSnapshot(
     public int HistoryEntryCount { get; } = historyEntryCount;
     public int HandCount { get; } = handCount;
     public int ReachableHandValue { get; } = reachableHandValue;
+    public int PlayableAttackCount { get; init; }
     public int ZeroCostPlayableCount { get; } = zeroCostPlayableCount;
     public bool CanTriggerArtOfWarNextTurn { get; } = canTriggerArtOfWarNextTurn;
     public int PocketwatchCardsPlayedThisTurn { get; } = pocketwatchCardsPlayedThisTurn;

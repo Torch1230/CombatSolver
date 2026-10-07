@@ -6,6 +6,11 @@ namespace CombatSolver;
 
 internal static partial class CombatSearchCoordinator
 {
+    // A member whose search surface the time-bound primary cannot cover keeps this floor even after the
+    // primary has spent the shared request budget; otherwise it would never run on exactly those roots.
+    internal static long DedicatedMemberMilliseconds(SolverSearchProfile profile)
+        => Math.Clamp(profile.SoftTimeBudgetMilliseconds / 5L, 1_000L, 30_000L);
+
     internal static PrimarySearchIncumbent? BuildRefinementPrimarySearchIncumbent(
         CombatRootSnapshot root, SearchPolicySnapshot policy,
         SolverPotionPolicy? memberPotionPolicyOverride, SolverResult incumbent)
@@ -101,10 +106,7 @@ internal static partial class CombatSearchCoordinator
             // 精炼成员沿用现有的软时间预算取消：把它收紧到本轮预算的剩余部分，成员自己就会在
             // 预算耗尽时停下，不必另造一套超时。基线成员原样不动。
             long remainingMilliseconds = RemainingMilliseconds();
-            long dedicatedPowerMilliseconds = Math.Clamp(
-                profile.SoftTimeBudgetMilliseconds / 5L,
-                1_000L,
-                30_000L);
+            long dedicatedPowerMilliseconds = DedicatedMemberMilliseconds(profile);
             SolverSearchProfile effectiveProfile = baselineObserved
                 ? memberProfile with
                 {

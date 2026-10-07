@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "Q013-O059-SAME-ROOT-TARGET",
+  "description": "感染棱柱 / 铁甲战士；同根实测 30（0 瓶，T5）。同根口径：combat_start 起搜、SearchOnly、包内原策略，未改包内字节。指标取自 solverMetrics.projectedBattleHpLost / potionCount / finalEnemyHp / onlyDeathRoutes。",
+  "characterId": "IRONCLAD",
+  "encounterId": "INFESTED_PRISMS_ELITE",
+  "seed": "4FRTH7LNJNFS",
+  "ascension": 10,
+  "actIndexForTest": 1,
+  "checkpointArchivePath": ".local/issue-bundles/Q013-O059/raw/6b865d22c24d4b0890dd0e79a03d82a9.zip",
+  "checkpointSelector": "start",
+  "replayMode": "SearchOnly",
+  "enemyCurrentHp": 1,
+  "expectedInitialProjectedBattleHpLostAtMost": 30,
+  "stopAfterInitialSolverResultAssertion": true,
+  "headlessFastModeForTest": "Instant",
+  "timeoutSeconds": 120,
+  "exitOnComplete": true,
+  "expectedInitialPotionCount": 0,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "expectedInitialOnlyDeathRoutesFound": false
+}

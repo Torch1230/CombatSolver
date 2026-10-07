@@ -70,6 +70,7 @@ add_option pre-combat-intervening-map-points-json "" string none
 add_option replay-state-path "" string none
 add_option checkpoint-archive-path "" string raw_string
 add_option checkpoint-selector "start" string raw_string
+add_option recorded-plan-retention-step-for-test -1 int nonnegative_int
 add_option replay-mode "RestoreOnly" string raw_string "Preflight|RestoreOnly|ReplayRecorded|SearchOnly|DeploySolver|SessionStart"
 add_option replay-policy-override-path "" string raw_string
 add_option development-strategy-assembly-path "" string optional_string

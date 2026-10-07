@@ -487,6 +487,32 @@ internal sealed partial class CombatBeamSolver
         internal static int ObservedRoutingActionsSinceChoice(SearchNode node)
             => ActionsSinceRetainedRoutingChoice(node);
 
+        private static SearchNode? FindBestSafeDiscardContinuation(IReadOnlyList<SearchNode> nodes)
+        {
+            SearchNode? best = null;
+            foreach (SearchNode node in nodes)
+            {
+                // Within one discard context, keep a continuation that covers incoming
+                // damage while advancing damage (including delayed damage). This is a
+                // frozen heuristic, not a proof that ending the turn is safe.
+                if (node.IsTerminal || node.Parent == null
+                    || node.Action is not { Kind: PlanActionKind.PlayCard, EndsPlayerTurn: false }
+                    || ActionsSinceRetainedRoutingChoice(node) < 1
+                    || node.Snapshot.ProjectedPlayerHp < node.Snapshot.PlayerHp)
+                    continue;
+                if (best == null
+                    || node.Snapshot.ProjectedPlayerHp > best.Snapshot.ProjectedPlayerHp
+                    || node.Snapshot.ProjectedPlayerHp == best.Snapshot.ProjectedPlayerHp
+                        && (node.Snapshot.OffensiveProgressValue > best.Snapshot.OffensiveProgressValue
+                            || node.Snapshot.OffensiveProgressValue == best.Snapshot.OffensiveProgressValue
+                                && (node.Snapshot.ReachableHandValue > best.Snapshot.ReachableHandValue
+                                    || node.Snapshot.ReachableHandValue == best.Snapshot.ReachableHandValue
+                                        && IsBetterOffensive(node, best))))
+                    best = node;
+            }
+            return best;
+        }
+
         private static bool TryBuildRoutingChoice(
             SearchNode node,
             SearchNode cursor,

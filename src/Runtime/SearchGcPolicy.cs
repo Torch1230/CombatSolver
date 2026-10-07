@@ -1857,7 +1857,8 @@ internal static partial class SearchGcPolicy
             "已通过阻塞回收排空，未恢复 NoGC。");
 
     private static async Task<BackgroundGen2Completion> CollectGeneration2InBackgroundAsync(
-        bool inSearchCheckpoint = false)
+        bool inSearchCheckpoint = false,
+        bool compactSmallObjectHeap = false)
     {
         // A forced background collection can join an automatic Gen2 that was already marking.
         // Such a collection cannot reclaim allocations created after its mark began. A fresh
@@ -1886,13 +1887,15 @@ internal static partial class SearchGcPolicy
                     completionSentinel.IsAlive);
                 if (!timeoutForTesting)
                 {
-                    if (observation == BackgroundCollectionObservation.CompletedBackground)
+                    if (!compactSmallObjectHeap
+                        && observation == BackgroundCollectionObservation.CompletedBackground)
                     {
                         confirmedOrDrained = true;
                         return new BackgroundGen2Completion(
                             "background", background.Index, requests, background.Concurrent);
                     }
-                    if (observation == BackgroundCollectionObservation.CompletedFullBlocking)
+                    if (observation == BackgroundCollectionObservation.CompletedFullBlocking
+                        && (!compactSmallObjectHeap || fullBlocking.Compacted))
                     {
                         confirmedOrDrained = true;
                         return new BackgroundGen2Completion(
@@ -1925,12 +1928,9 @@ internal static partial class SearchGcPolicy
                     backgroundIndexBefore = background.Index;
                     fullBlockingIndexBefore = fullBlocking.Index;
                     requests++;
-                    Lifecycle.RecordForcedCollection();
-                    GC.Collect(
-                        GC.MaxGeneration,
-                        GCCollectionMode.Forced,
-                        blocking: false,
-                        compacting: false);
+                    // Rebuilding NoGC needs reusable SOH regions. Request one
+                    // compacting collection instead of sweeping and then collecting again.
+                    CollectGeneration2(blocking: compactSmallObjectHeap, compacting: compactSmallObjectHeap);
                     if (inSearchCheckpoint && requests == 1)
                         timeoutForTesting = await PauseInSearchCollectionForTestingAsync()
                             .ConfigureAwait(false);
@@ -1952,15 +1952,16 @@ internal static partial class SearchGcPolicy
     }
 
     private static Task<BackgroundGen2Completion> CollectGeneration2ForAutomaticReclaimAsync(
-        bool inSearchCheckpoint = false)
+        bool inSearchCheckpoint = false,
+        bool compactSmallObjectHeap = false)
         => SearchGcRuntimeInfo.SupportsDetailedInfo
-            ? CollectGeneration2InBackgroundAsync(inSearchCheckpoint)
-            : Task.FromResult(CollectGeneration2Portable());
+            ? CollectGeneration2InBackgroundAsync(inSearchCheckpoint, compactSmallObjectHeap)
+            : Task.FromResult(CollectGeneration2Portable(compactSmallObjectHeap));
 
-    private static BackgroundGen2Completion CollectGeneration2Portable()
+    private static BackgroundGen2Completion CollectGeneration2Portable(bool compactSmallObjectHeap = false)
     {
         WeakReference completionSentinel = CreateBackgroundCollectionSentinel();
-        CollectGeneration2ForSearch();
+        CollectGeneration2(blocking: true, compacting: compactSmallObjectHeap);
         if (completionSentinel.IsAlive)
             throw new InvalidOperationException("阻塞完整回收后完成哨兵仍然存活。");
         return new BackgroundGen2Completion(
@@ -2260,7 +2261,8 @@ internal static partial class SearchGcPolicy
                 // reference-release epochs. Those retain their post-search completion chain.
                 _activeGeneration2CollectionStarted = true;
             }
-            completedCollection = CollectGeneration2ForAutomaticReclaimAsync(inSearchCheckpoint: true)
+            completedCollection = CollectGeneration2ForAutomaticReclaimAsync(
+                inSearchCheckpoint: true, compactSmallObjectHeap: restartNoGcRegion)
                 .GetAwaiter().GetResult();
             collectionCompleted = true;
             liveAfterCollection = GC.GetTotalMemory(false);
@@ -2404,7 +2406,8 @@ internal static partial class SearchGcPolicy
                     Entry.Logger.Info(
                         $"[CombatSolver/Test] HEAP_RECLAIM reason=in_search_memory_checkpoint " +
                         $"trigger={reason} " +
-                        $"mode=background_requested_non_compacting no_gc_region_ended={endNoGcRegion} " +
+                        $"mode={(restartNoGcRegion ? "full_blocking_compacting" : "background_requested_non_compacting")} "
+                        + $"no_gc_region_ended={endNoGcRegion} " +
                         $"completion_kind={completedCollection.Kind ?? "none"} " +
                         $"completion_index={completedCollection.Index} " +
                         $"collection_requests={completedCollection.Requests} " +

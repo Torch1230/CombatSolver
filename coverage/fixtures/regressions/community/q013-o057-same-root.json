@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "Q013-O057-SAME-ROOT-TARGET",
+  "description": "残杀千足虫 / 故障机器人；同根实测 40（2 瓶，T4），只锁战损上界。同根口径：combat_start 起搜、SearchOnly、包内原策略，未改包内字节。指标取自 solverMetrics.projectedBattleHpLost / potionCount / finalEnemyHp / onlyDeathRoutes。",
+  "characterId": "DEFECT",
+  "encounterId": "DECIMILLIPEDE_ELITE",
+  "seed": "9C3SJMGEYPJ2",
+  "ascension": 10,
+  "actIndexForTest": 1,
+  "checkpointArchivePath": ".local/issue-bundles/Q013-O057/raw/94c22bac17d64d2fb376653b6a91faae.zip",
+  "checkpointSelector": "start",
+  "replayMode": "SearchOnly",
+  "enemyCurrentHp": 1,
+  "expectedInitialProjectedBattleHpLostAtMost": 40,
+  "stopAfterInitialSolverResultAssertion": true,
+  "headlessFastModeForTest": "Instant",
+  "timeoutSeconds": 120,
+  "exitOnComplete": true,
+  "expectedInitialFinalEnemyHpAtMost": 0,
+  "expectedInitialOnlyDeathRoutesFound": false
+}
