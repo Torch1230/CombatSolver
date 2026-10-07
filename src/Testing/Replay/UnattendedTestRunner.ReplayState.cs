@@ -494,16 +494,33 @@ internal sealed partial class UnattendedTestRunner
         bool allowLegacyZeroCounter = false,
         IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardKeywords = null,
         IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardCosts = null,
-        bool allowLegacyDefaultHandLimit = false)
+        bool allowLegacyDefaultHandLimit = false,
+        bool allowLegacyEmptyLoadout = false)
     {
         if (string.Equals(expected, actual, StringComparison.Ordinal))
             return true;
 
         string[] expectedFields = expected.Split(';');
         string[] actualFields = actual.Split(';');
+        // An absent Loadout hook has no state to compare with an old empty
+        // marker. Never migrate active, duplicate or misplaced hook state.
+        int loadoutIndex = Array.FindIndex(expectedFields, field =>
+            field.StartsWith("loadout_summon_powers=", StringComparison.Ordinal));
+        if (allowLegacyEmptyLoadout && loadoutIndex > 0
+            && expectedFields[loadoutIndex] == "loadout_summon_powers=empty"
+            && expectedFields.Count(field => field.StartsWith(
+                "loadout_summon_powers=", StringComparison.Ordinal)) == 1
+            && loadoutIndex + 1 < expectedFields.Length
+            && expectedFields[loadoutIndex + 1].StartsWith("P=", StringComparison.Ordinal)
+            && !actualFields.Any(field => field.StartsWith(
+                "loadout_summon_powers=", StringComparison.Ordinal)))
+        {
+            expectedFields = expectedFields.Where((_, index) => index != loadoutIndex).ToArray();
+        }
         // Old vanilla reports omitted the default hand limit. The caller must
-        // first verify the complete native checkpoint; non-default, explicit,
-        // duplicate, and non-canonical fields still compare strictly.
+        // verify the complete native checkpoint or explicitly report a
+        // RestoreOnly comparison of recorded fields with an unknown old limit.
+        // Non-default, explicit, duplicate and non-canonical fields stay strict.
         if (allowLegacyDefaultHandLimit
             && !expectedFields.Any(field => field.StartsWith("max_hand_size=", StringComparison.Ordinal))
             && actualFields.Length > 0 && actualFields[^1] == "max_hand_size=10"
