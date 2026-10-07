@@ -53,12 +53,15 @@ internal sealed class CombatReplayOutcome : IDisposable
             return _finished;
         Creature player = _player ?? throw new InvalidOperationException("Outcome observation has been disposed.");
         var history = CombatManager.Instance.History.Entries.Skip(_historyStart).ToArray();
+        // UnblockedDamage is already capped at the receiver's actual HP loss.
+        // OverkillDamage is the separate excess; subtracting it again hides real
+        // damage, including lethal hits followed by a death-save revival.
         int accountedDamage = history.OfType<DamageReceivedEntry>().Where(entry => ReferenceEquals(entry.Receiver, player))
-            .Sum(entry => Math.Max(0, entry.Result.UnblockedDamage - entry.Result.OverkillDamage));
+            .Sum(entry => Math.Max(0, entry.Result.UnblockedDamage));
         return new CombatReplayOutcomeSnapshot(
             _initialHp, player.CurrentHp, _hpLost, _hpHealed,
             history.OfType<DamageReceivedEntry>().Where(entry => ReferenceEquals(entry.Receiver, player)
-                && ReferenceEquals(entry.Dealer, player)).Sum(entry => Math.Max(0, entry.Result.UnblockedDamage - entry.Result.OverkillDamage)),
+                && ReferenceEquals(entry.Dealer, player)).Sum(entry => Math.Max(0, entry.Result.UnblockedDamage)),
             ended, player.CurrentHp > 0, state.Enemies.Sum(enemy => Math.Max(0, enemy.CurrentHp)),
             history.OfType<PotionUsedEntry>().Where(entry => ReferenceEquals(entry.Actor, player))
                 .Select(entry => _potionInputs.TryGetValue(entry.Potion, out var input)

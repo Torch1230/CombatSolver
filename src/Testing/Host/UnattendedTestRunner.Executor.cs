@@ -1023,6 +1023,11 @@ internal sealed partial class UnattendedTestRunner
                 runner._completedChecks.Add("ReplayLegacyHistoryAndBoundaryFailure");
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "COMBAT-REPLAY-OUTCOME-OVERKILL")
+            {
+                await runner.AssertCombatReplayOutcomeOverkillAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "CLONE-EVENT-ISOLATION")
             {
                 runner.AssertCloneEventIsolation(player);

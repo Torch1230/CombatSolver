@@ -1,4 +1,12 @@
 {
+  "COMBAT-REPLAY-OUTCOME-OVERKILL": {
+    "status": "Passed",
+    "level": "HeadlessNativeOutcomeAttribution",
+    "procedure": "原生伤害9/初始HP6/蜥蜴尾巴回复40，敌伤与自伤分别取新观察账本；另外直接减生命1，断言未知损血仍显式保留。",
+    "expected": "累计损血6、回复40、最终40、未知损血0；自伤分别0和6。额外未记账生命下降1仍为未知损血1。",
+    "observed": "独立合成根04dba26a5ef04d4e88459ccdef58631f与O051严格恢复根合同e7e73651f89041bdadc631b1f1c1372c均Passed；整场37动作修复前未知损血3，修复后9435e6a25a1e41769236eda203238d17 Passed：63损血/0药/T11、0重算、0未知。整场参照不代表自主搜索发现。",
+    "evidence": "docs/issues/q012-route-quality.md; coverage/fixtures/runtime/combat-replay-outcome-overkill.json"
+  },
   "DAMAGING-CONTINUATION-Q015-O070": {
     "status": "Passed",
     "level": "HeadlessNativeDeploymentAndSearchQuality",
