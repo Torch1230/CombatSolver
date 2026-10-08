@@ -44,7 +44,8 @@ internal sealed partial class CombatBeamSolver(
     Action<int, IReadOnlyList<EarlyTurnFrontierCandidate>>? earlyTurnScoutObserver = null,
     PlanCommitment? planCommitment = null,
     ContinuationPurpose? attributionPurpose = null,
-    DirectSearchPurpose? directSearchPurpose = null)
+    DirectSearchPurpose? directSearchPurpose = null,
+    Action<IReadOnlyList<EnemyPhaseFrontierCandidate>>? enemyPhaseFrontierObserver = null)
 {
     private CancellationToken? _routeMaterializationCancellationToken;
     private CancellationToken ReplayCancellationToken => _routeMaterializationCancellationToken ?? cancellationToken;
@@ -106,6 +107,7 @@ internal sealed partial class CombatBeamSolver(
     private readonly bool _resetFixedPrefixSchedulingBaseline = resetFixedPrefixSchedulingBaseline;
     private readonly int _earlyTurnScoutDepth = earlyTurnScoutDepth;
     private readonly Action<int, IReadOnlyList<EarlyTurnFrontierCandidate>>? _earlyTurnScoutObserver = earlyTurnScoutObserver;
+    private readonly Action<IReadOnlyList<EnemyPhaseFrontierCandidate>>? _enemyPhaseFrontierObserver = enemyPhaseFrontierObserver;
     private readonly string? _progressPhaseOverride = DescribePotionProgressPhase(
         displayNames,
         potionPolicyOverride,

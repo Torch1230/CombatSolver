@@ -1,4 +1,12 @@
 {
+  "COMBAT-REPLAY-OUTCOME-OVERKILL": {
+    "status": "Passed",
+    "level": "HeadlessNativeOutcomeAttribution",
+    "procedure": "原生伤害9/初始HP6/蜥蜴尾巴回复40，敌伤与自伤分别取新观察账本；另外直接减生命1，断言未知损血仍显式保留。",
+    "expected": "累计损血6、回复40、最终40、未知损血0；自伤分别0和6。额外未记账生命下降1仍为未知损血1。",
+    "observed": "独立合成根04dba26a5ef04d4e88459ccdef58631f与O051严格恢复根合同e7e73651f89041bdadc631b1f1c1372c均Passed；整场37动作修复前未知损血3，修复后9435e6a25a1e41769236eda203238d17 Passed：63损血/0药/T11、0重算、0未知。整场参照不代表自主搜索发现。",
+    "evidence": "docs/issues/q012-route-quality.md; coverage/fixtures/runtime/combat-replay-outcome-overkill.json"
+  },
   "DAMAGING-CONTINUATION-Q015-O070": {
     "status": "Passed",
     "level": "HeadlessNativeDeploymentAndSearchQuality",
@@ -443,10 +451,10 @@
   "REPLAY-BOUNDARY-CONTRACT": {
     "status": "Passed",
     "level": "HeadlessReplaySchemaAndFailureBoundaryContract",
-    "procedure": "比较旧两项/三项与当前四项历史，反例覆盖已记录计数和其他状态字段；边界观察器抛出异常后等待原生回放驱动。",
-    "expected": "只迁移旧格式缺失的派生字段，实际已记录差异均拒绝；观察器原异常使回放失败。",
-    "observed": "2ed7ea141baa48748df3b3fcaea69cb7 Passed。另两份原包开战/首个可操作状态对账通过，其中5cc95原生二进制也通过，e476旧编号表缺失明确未核验。",
-    "evidence": "src/Testing/Replay/UnattendedTestRunner.ReplayBoundary.cs；docs/TEST_MATRIX.md；2026-09-10。"
+    "procedure": "比较旧两项/三项与当前四项历史及空Loadout字段；反例覆盖已记录Power、牌堆、RNG、活动/重复/错位字段；边界观察器抛出异常后等待原生回放驱动。",
+    "expected": "已记录差异均拒绝；旧默认手牌上限的完整native门禁保留，缺原生证明的格式对账仅RestoreOnly诊断且明确未核验；观察器原异常使回放失败。",
+    "observed": "历史2ed7ea141baa48748df3b3fcaea69cb7 Passed，5cc95原生二进制也通过，e476旧编号表缺失未核验。2026-10-07扩展合同48d6c72f2bb04319b97d9ede1fe3433b Passed；O052 7f7fb3aa65dc4fcca076e115075a1a41和O053 4343570808af4e6ca2ad99adc8078a1f仅已记录字段对账通过，restorationVerified/nativeStateVerified=false。O053 SearchOnly负向8de40e2d20274ce08efc326e44e13ee7在原门禁Failed，未搜索。",
+    "evidence": "src/Testing/Replay/UnattendedTestRunner.ReplayBoundary.cs；docs/CHECKPOINT_REPLAY.md；docs/issues/q012-route-quality.md；docs/TEST_MATRIX.md。"
   },
   "REPORT-ROUND-NOSTALGIA-STRIKE": {
     "status": "Passed",

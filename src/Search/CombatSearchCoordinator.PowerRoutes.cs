@@ -6,6 +6,22 @@ internal static partial class CombatSearchCoordinator
     private const int MinimumPowerRouteNodes = 25_000;
     private const int MinimumPowerRouteMilliseconds = 10_000;
 
+    // Novelty already has a bounded scout. On long adaptive requests with a
+    // registered power, keep the primary from monopolizing the request before
+    // the existing opening-power members can test that different search surface.
+    // Explicit fixed budgets and experimental layouts retain their old schedule.
+    private static bool CanReserveOpeningPowerBudget(CombatRootSnapshot root,
+        SearchPolicySnapshot policy, SolverSearchProfile profile)
+        => policy.UseNoveltyPortfolio && policy.UseBeamWidthPortfolio
+            && !policy.FixedBudget && !policy.IncludeTurnSetup
+            && policy.PortfolioExperiment == null && policy.DevelopmentStrategy == null
+            && !policy.PotionStrategy.HasForcedDirectives
+            && policy.BeamWidthPortfolioWidths is not { Count: > 0 }
+            && !profile.AdaptiveNoveltyRefinement && profile.ContextualRanking == null
+            && profile.BeamWeightPerturbation == null
+            && profile.SoftTimeBudgetMilliseconds >= MinimumPowerRouteMilliseconds * 6
+            && root.PlayerCardIds.Any(PowerCardValuationModels.Registry.ContainsCardId);
+
     private static SolverResult RunOpeningNightmarePortfolio(
         SearchPassContext context,
         SolverResult baseline)
@@ -246,6 +262,8 @@ internal static partial class CombatSearchCoordinator
             Math.Max(
                 MinimumPowerRouteMilliseconds,
                 profile.SoftTimeBudgetMilliseconds / totalMembers));
+        if (CanReserveOpeningPowerBudget(root, policy, profile))
+            perRouteMilliseconds = Math.Min(perRouteMilliseconds, MinimumPowerRouteMilliseconds);
         // Replace two ordinary compound-prefix pairs, retaining the same member
         // count, total widths and per-member allowances. Forced potion layers have
         // no eligible potion-free incumbent; their generated windows stay separate.

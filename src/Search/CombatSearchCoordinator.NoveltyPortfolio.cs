@@ -61,6 +61,15 @@ internal static partial class CombatSearchCoordinator
             return exploration;
         }
         cancellation.ThrowIfCancellationRequested();
+        if (CanReserveOpeningPowerBudget(root, policy, profile))
+        {
+            policy.Diagnostics.Info("[CombatSolver/Test] OPENING_POWER_BUDGET_RESERVE primary_ms=20000");
+            remaining = remaining with
+            {
+                SoftTimeBudgetMilliseconds = Math.Min(MinimumPowerRouteMilliseconds * 2,
+                    remaining.SoftTimeBudgetMilliseconds),
+            };
+        }
         SolverResult baseline = solveBaseline(remaining);
         bool selectExploration = baseline.ResultScope == SolverResultScope.SearchCompletion
             && exploration != null && IsCompleteVictory(exploration)

@@ -45,6 +45,30 @@ internal sealed partial class UnattendedTestRunner
                 currentLimit, allowLegacyDefaultHandLimit: true))
             throw new InvalidOperationException("Explicit recorded hand limits must remain strict.");
         _completedChecks.Add("ReplayLegacyDefaultHandLimit:NativeGate:RejectNonDefaultExplicitDuplicateAndStateDrift");
+        const string legacyEmptyLoadout = "H=A;loadout_summon_powers=empty;P=1:SHRIEK_POWER=75/0[];R=9";
+        const string absentLoadout = "H=A;P=1:SHRIEK_POWER=75/0[];R=9";
+        if (!ReplayContinuationMatches(legacyEmptyLoadout, absentLoadout, allowLegacyEmptyLoadout: true)
+            || ReplayContinuationMatches(legacyEmptyLoadout, absentLoadout)
+            || !ReplayContinuationMatches(legacyEmptyLoadout, absentLoadout + ";max_hand_size=10",
+                allowLegacyDefaultHandLimit: true, allowLegacyEmptyLoadout: true))
+            throw new InvalidOperationException("Legacy empty hook migration needs an explicit comparison scope.");
+        foreach (string invalid in new[] {
+            absentLoadout.Replace("75/0", "74/0", StringComparison.Ordinal),
+            absentLoadout.Replace("H=A", "H=B", StringComparison.Ordinal),
+            absentLoadout.Replace("R=9", "R=10", StringComparison.Ordinal),
+            absentLoadout.Replace("P=", "loadout_summon_powers=active;P=", StringComparison.Ordinal),
+        })
+            if (ReplayContinuationMatches(legacyEmptyLoadout, invalid, allowLegacyEmptyLoadout: true))
+                throw new InvalidOperationException("Legacy empty hook migration hid a recorded state difference.");
+        foreach (string invalid in new[] {
+            legacyEmptyLoadout.Replace("=empty", "=active", StringComparison.Ordinal),
+            legacyEmptyLoadout.Replace(";P=", ";loadout_summon_powers=empty;P=", StringComparison.Ordinal),
+            "loadout_summon_powers=empty;" + absentLoadout,
+            absentLoadout + ";loadout_summon_powers=empty",
+        })
+            if (ReplayContinuationMatches(invalid, absentLoadout, allowLegacyEmptyLoadout: true))
+                throw new InvalidOperationException("Legacy hook migration accepted active or non-canonical fields.");
+        _completedChecks.Add("ReplayLegacyEmptyLoadout:ExplicitScope:RejectActiveDuplicateMisplacedAndStateDrift");
         string[] legacyStarts = ["H=A;Y=0/0/0;R=9", "H=A;Y=0/0/0/0;R=9"];
         const string currentStart = "H=A;Y=0/0/0/0;FlameHp=0;AttackStarts=0;R=9";
         foreach (string legacyStart in legacyStarts)

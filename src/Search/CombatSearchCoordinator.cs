@@ -258,6 +258,8 @@ internal static partial class CombatSearchCoordinator
         // The progress bar represents the whole request. Individual Beam, novelty,
         // refinement and potion-audit searches all consume this same time budget.
         SolverSearchProfile profile = policy.Profile;
+        EnemyPhasePrefixRefinement? enemyPhasePrefixes = EnemyPhasePrefixRefinement.IsEnabled(policy)
+            ? new() : null;
         if (policy.BudgetOverrideMilliseconds is { } deepBudget)
             profile = profile with { SoftTimeBudgetMilliseconds = deepBudget };
         if (progressCallback != null)
@@ -326,6 +328,21 @@ internal static partial class CombatSearchCoordinator
                 && (initialPlanIncumbent == null || IsBetterPotionPolicyResult(
                     root, beamPolicy, previousVictory, initialPlanIncumbent)))
                 initialPlanIncumbent = previousVictory;
+            EnemyPhaseFrontierCandidate? pendingPhasePrefix = null;
+            SolverSearchProfile PrepareMemberProfile(SolverSearchProfile memberProfile, bool refinement)
+            {
+                pendingPhasePrefix = enemyPhasePrefixes?.TryTake(memberProfile,
+                    passProfile, policy.Profile, refinement, initialPlanIncumbent != null);
+                if (pendingPhasePrefix != null)
+                {
+                    policy.Diagnostics.Info($"[CombatSolver/Test] ENEMY_PHASE_PREFIX_REFINEMENT "
+                        + $"turn={pendingPhasePrefix.Turn} hp={pendingPhasePrefix.ProjectedPlayerHp} "
+                        + $"enemy_hp={pendingPhasePrefix.EnemyHp} beam={memberProfile.BeamWidth} "
+                        + $"nodes={memberProfile.MaxExpandedNodes} prefix={pendingPhasePrefix.Actions.Length}");
+                    return memberProfile with { BaseScoreOnly = false };
+                }
+                return memberProfile;
+            }
             SolverResult SolveMember(SolverSearchProfile memberProfile, bool refinement,
                 PrimarySearchIncumbent? primaryIncumbent)
             {
@@ -339,7 +356,17 @@ internal static partial class CombatSearchCoordinator
                 Action<SolverProgress>? memberProgressCallback = refinement && progressCallback != null
                     ? progress => progressCallback(progress with { Phase = "正在精炼路线" })
                     : progressCallback;
-                SolverResult memberResult = new CombatBeamSolver(
+                EnemyPhaseFrontierCandidate? phasePrefix = pendingPhasePrefix;
+                SolverResult memberResult = phasePrefix != null
+                    ? continuationScheduler.Dispatch(new ContinuationSearchRequest(
+                        passContext, ContinuationPurpose.EnemyPhasePrefixRefinement,
+                        phasePrefix.Actions, memberProfile, initialPotionPolicyOverride, null, null)
+                    {
+                        PolicyOverride = beamPolicy,
+                        ProgressCallbackOverride = memberProgressCallback,
+                        PrimaryIncumbent = primaryIncumbent,
+                    })
+                    : new CombatBeamSolver(
                     root,
                     displayNames,
                     battleDamage,
@@ -351,7 +378,9 @@ internal static partial class CombatSearchCoordinator
                     primaryIncumbent: primaryIncumbent,
                     directSearchPurpose: refinement
                         ? DirectSearchPurpose.RefinementBeam
-                        : DirectSearchPurpose.PrimaryBeam).Solve();
+                        : DirectSearchPurpose.PrimaryBeam,
+                    enemyPhaseFrontierObserver: enemyPhasePrefixes is { Attempted: false }
+                        ? enemyPhasePrefixes.Observe : null).Solve();
                 PlanAction[] firstTurn = memberResult.BestNode.Actions
                     .TakeWhile(action => action.Turn == root.StartTurnNumber)
                     .ToArray();
@@ -399,7 +428,8 @@ internal static partial class CombatSearchCoordinator
                         Profile = effectiveBaseline,
                         Clock = ReferenceEquals(baselineProfile, passProfile)
                             ? passClock : Stopwatch.StartNew(),
-                    }, SolveMember, publishBaseline, initialPotionPolicyOverride, initialPlanIncumbent);
+                    }, SolveMember, publishBaseline, initialPotionPolicyOverride, initialPlanIncumbent,
+                    PrepareMemberProfile);
             }
             SolverResult RunPrimary()
                 => policy.UseNoveltyPortfolio

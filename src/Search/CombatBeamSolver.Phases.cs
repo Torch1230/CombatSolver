@@ -2093,6 +2093,8 @@ internal sealed partial class CombatBeamSolver
             // 续用戳只供最终选中路线，淘汰候选无需提前拼接字符串。
             List<SearchNode> retainedAfterRound = [.. completed, .. frontier];
             ReleaseDroppedSnapshots(ended, retainedAfterRound);
+            if (_enemyPhaseFrontierObserver != null)
+                _enemyPhaseFrontierObserver(SelectEnemyPhaseFrontier(frontier));
             // Save only a genuinely retained, annotated safe boundary: raw EndTurn
             // children have not yet received sold-HP accounting or hard-policy pruning.
             // A later interrupted layer may replace all live candidates with deaths.

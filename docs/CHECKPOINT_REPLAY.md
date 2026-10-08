@@ -92,4 +92,6 @@ Q002 专属固定路线/成员诊断已在任务收尾移除；失败证据与[�
 
 游戏模块标识（MVID）仅记录在 `replayVerification.gameModuleComparison` 的 `expected`、`actual` 与 `matches` 中，不因标识不同提前拒绝恢复。同一版本的不同平台构建可以有不同MVID；兼容性由实际模型/事件解码和状态对账决定，标识相同也不跳过对账。旧包缺少模型编号映射且编号表不同时，原生二进制仍标为不可比较，只有全部已记录ContinuationStamp字段匹配才报告 `restored_continuation`，不宣称完整原生状态恢复。
 
-旧原版录制缺少PR #224新增的`max_hand_size`字段时，仅Testing原生回放在完整native-state核验通过、实际最终字段为唯一默认`max_hand_size=10`时迁移该缺失字段，并记录`legacyDefaultHandLimitVerified`。所有已记录字段仍逐项比较；无完整原生核验、非默认上限、显式冲突、重复或错位字段继续失败。该兼容不恢复历史未记录的非默认上限，不修改原始包、生产续用或搜索状态等价。
+旧原版录制缺少PR #224新增的`max_hand_size`字段时，Testing原生回放在完整native-state核验通过、实际最终字段为唯一默认`max_hand_size=10`时迁移该缺失字段，并记录`legacyDefaultHandLimitVerified=true`。所有已记录字段仍逐项比较；非默认上限、显式冲突、重复或错位字段继续失败。该兼容不恢复历史未记录的非默认上限，不修改原始包、生产续用或搜索状态等价。
+
+旧编号映射未记录、native-state不可比较时，`RestoreOnly`另可执行仅针对已记录字段的格式对账：缺失手牌上限只接受当前唯一默认10，结果明确写`legacyCompatibilityScope=recorded_fields_only`、`legacyDefaultHandLimitVerified=false`及`legacyHandLimitComparison.status=not_recorded`。旧包中位于Power字段之前的唯一`loadout_summon_powers=empty`可与当前缺少该Hook字段对账，记录`legacyEmptyLoadoutMigrated`；非空、重复、错位或当前仍有Hook字段不迁移。其余记录字段、牌堆、Power、RNG继续严格比较。结果仍为`restored_continuation`、`restorationVerified=false`、`nativeStateVerified=false`；这是诊断成功，不是完整恢复、搜索或整场验收通过。`SearchOnly`、`DeploySolver`和`ReplayRecorded`不开放此诊断例外。

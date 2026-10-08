@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using STS2RitsuLib;
 using Godot;
 using MegaCrit.Sts2.Core.Assets;
 using MegaCrit.Sts2.Core.Combat;
@@ -188,6 +189,11 @@ internal sealed partial class UnattendedTestRunner
         string actual = ContinuationStamp.CaptureLive(state).StateText;
         bool differentEncoding = _writer.ReplayVerification!["modelSerializationComparison"] != null;
         bool nativeVerified = AssertNativeCheckpoint(state, nativePath, differentEncoding);
+        // Old reports can still provide a strict comparison of every recorded
+        // field. Missing hand-limit evidence is diagnostic only: search and
+        // deployment retain the fully verified native-checkpoint requirement.
+        bool legacyContinuationDiagnostic = !nativeVerified && differentEncoding
+            && _request.ReplayMode == "RestoreOnly";
         // A fully verified native checkpoint also establishes the replayed game state
         // for legacy reports whose derived zero counter was not serialized yet.
         IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardKeywords =
@@ -201,7 +207,8 @@ internal sealed partial class UnattendedTestRunner
                 allowLegacyBattleStart || nativeVerified,
                 legacyCardKeywords,
                 legacyCardCosts,
-                allowLegacyDefaultHandLimit: nativeVerified))
+                allowLegacyDefaultHandLimit: nativeVerified || legacyContinuationDiagnostic,
+                allowLegacyEmptyLoadout: nativeVerified || legacyContinuationDiagnostic))
         {
             _writer.ReplayVerification["continuationVerified"] = true;
             _writer.ReplayVerification["nativeStateVerified"] = nativeVerified;
@@ -211,6 +218,23 @@ internal sealed partial class UnattendedTestRunner
             {
                 _writer.ReplayVerification["legacyDefaultHandLimitVerified"] = true;
             }
+            if (legacyContinuationDiagnostic)
+            {
+                _writer.ReplayVerification["legacyCompatibilityScope"] = "recorded_fields_only";
+                if (!expected.Contains("max_hand_size=", StringComparison.Ordinal))
+                {
+                    _writer.ReplayVerification["legacyDefaultHandLimitVerified"] = false;
+                    _writer.ReplayVerification["legacyHandLimitComparison"] = new JsonObject
+                    {
+                        ["recorded"] = null,
+                        ["actual"] = RitsuLibFramework.GetMaxHandSize(state.Players.Single()),
+                        ["status"] = "not_recorded",
+                    };
+                }
+            }
+            if (expected.Contains(";loadout_summon_powers=empty;", StringComparison.Ordinal)
+                && !actual.Contains("loadout_summon_powers=", StringComparison.Ordinal))
+                _writer.ReplayVerification["legacyEmptyLoadoutMigrated"] = true;
             if (legacyCardCosts != null)
                 _writer.ReplayVerification["legacyCostLayersVerified"] = true;
             if (!nativeVerified && differentEncoding && !string.IsNullOrWhiteSpace(nativePath))
