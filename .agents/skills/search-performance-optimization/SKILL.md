@@ -24,6 +24,7 @@ description: 在战斗语义已证明正确后，审计或修改 CombatSolver �
 - 就绪负缓存实验已因正式对照两对更慢而撤回，生产不含该缓存。它只省去同父状态未变化时的重复选择数组扫描；coordinator派发/接收时失效，不减少父槽轮询或邮箱次数。诊断命中时重扫可验证失效覆盖，不能把数组扫描减少率当作整搜提速。
 - `CombatBeamSolver.Transpositions` 保持原六维支配关系与接纳顺序；单标签内联，多标签才分配List，重新缩为单标签时释放容器。只改变存储形态，不能清空仍有消费者的判重表来追求GC指标。
 - `CombatSearchCoordinator` 组织主搜索与药水反事实。
+- `CombatBeamSolver.EnemyPhaseFrontier` 只冻结实际保留的稳定新敌人阶段边界，`EnemyPhasePrefixRefinement` 请求级最多保留最早两回合的纯值代表；一个既有深化基础分名额可改作普通前缀续搜，全部前缀执行经`FrontierContinuationScheduler`，保留全根成员和原容量。普通长预算Novelty+Beam可分配主Beam20秒及既有能力成员各10秒时间片；FixedBudget、Force及显式实验布局保持原调度。原政策验收必须报告这个内部时间分配，不能把短测试覆盖写成原预算通过。
 
 不要把所有问题重新塞回 `Solve` 或用一个总分同时承担保路与终局政策。
 

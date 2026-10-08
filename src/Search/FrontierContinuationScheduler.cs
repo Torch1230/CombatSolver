@@ -35,6 +35,7 @@ internal enum ContinuationPurpose
     EarlyTurnContinuation,
     PlanCommitment,
     GeneratedPotionChain,
+    EnemyPhasePrefixRefinement,
 }
 
 internal interface IFrontierContinuationSource

@@ -34,6 +34,7 @@
 | 入口 | 所有权 |
 | --- | --- |
 | `CombatSearchCoordinator` 与各分片 | 主 Pass、药水审计、组合成员及后处理编排 |
+| `EnemyPhasePrefixRefinement` / `CombatBeamSolver.EnemyPhaseFrontier` | 成员实际保留的稳定阶段边界冻结为纯值；请求级最多两回合代表，占用既有深化名额续搜 |
 | `SearchRequestPipeline` | 请求级阶段顺序与停止条件 |
 | `SearchPassContext` / `SearchPassResult` | 单轮冻结输入及返回合同 |
 | `SearchBudgetLedger` / `SearchRequestWorkTotals` | 请求时间、额度和唯一工作量累计 |

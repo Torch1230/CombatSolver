@@ -194,7 +194,15 @@ internal sealed partial class UnattendedTestRunner
                     CombatBugReportExporter.CaptureOutcome(combatState), UnattendedTestFiles.JsonOptions);
                 CombatBugReportClassificationSnapshot classification = SolverController.CaptureBugReportClassificationForExport();
                 _writer.ReplayVerification["unexpectedReplans"] = classification.StateMismatchReplans
-                    + classification.DeploymentDriftReplans + classification.ContinuationMissingReplans + classification.PlanExhaustedReplans;
+                    + classification.DeploymentDriftReplans;
+                _writer.ReplayVerification["replanCounts"] = new System.Text.Json.Nodes.JsonObject
+                {
+                    ["stateMismatch"] = classification.StateMismatchReplans,
+                    ["deploymentDrift"] = classification.DeploymentDriftReplans,
+                    ["continuationMissing"] = classification.ContinuationMissingReplans,
+                    ["planExhausted"] = classification.PlanExhaustedReplans,
+                    ["manualDivergence"] = classification.ManualDivergenceReplans,
+                };
                 if (_request.ReplayMode == "DeploySolver")
                     _writer.ReplayVerification["status"] = "deployment_completed";
             }

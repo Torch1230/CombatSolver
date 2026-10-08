@@ -60,7 +60,8 @@ internal static partial class CombatSearchCoordinator
         Func<SolverSearchProfile, bool, PrimarySearchIncumbent?, SolverResult> solveMember,
         Action<SolverResult>? publishBaseline,
         SolverPotionPolicy? memberPotionPolicyOverride,
-        SolverResult? initialPlanIncumbent)
+        SolverResult? initialPlanIncumbent,
+        Func<SolverSearchProfile, bool, SolverSearchProfile>? prepareMemberProfile = null)
     {
         CombatRootSnapshot root = context.Root;
         SearchPolicySnapshot policy = context.Policy;
@@ -117,6 +118,8 @@ internal static partial class CombatSearchCoordinator
                         memberProfile.SoftTimeBudgetMilliseconds),
                 }
                 : memberProfile;
+            effectiveProfile = prepareMemberProfile?.Invoke(effectiveProfile, baselineObserved)
+                ?? effectiveProfile;
             if (memberProfile.AggressivePowerCommitment
                 && policy.MemoryPressureSignal.IsEnabled
                 && !policy.MemoryPressureSignal.CanReachCommit(256L * 1024 * 1024))
