@@ -123,6 +123,7 @@ internal sealed partial class UnattendedTestRunner
         if (MirroredHookListenerFilter.Capture().Filter([noOp]).Count != 0)
             throw new InvalidOperationException("Removing the test patch did not restore root filtering.");
         AssertKeywordModifierNoOpGuard(combat, player);
+        AssertProjectedHookReceiverConstruction(combat, player);
         _completedChecks.Add($"MirroredHookFilter:Methods={checkedMethods}:Models={models.Length}:OrderDuplicatesExternalForkInvalidationPatchRefreshSharedLayoutsSegmentsNoAnchorEffectivePrefixReuse");
     }
 
@@ -164,6 +165,8 @@ internal sealed partial class UnattendedTestRunner
             foreach (RelicModel relic in relics)
                 player.RemoveRelicInternal(relic, silent: true);
             CombatPredictionSimulator simulator = CombatRootSnapshot.Capture(live).ForkSimulator();
+            for (int index = 0; index < 256; index++)
+                simulator.AddToPile(PredictedCard.Create(ModelDb.Card<StrikeIronclad>(), player), PileType.Draw);
             SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
             var source = (ICombatPredictionHookListenerSource)combat;
             List<AbstractModel> expected = source.HookListeners.ToList();
@@ -181,6 +184,7 @@ internal sealed partial class UnattendedTestRunner
             int insertion = nextCreature < 0 ? firstCard : Math.Min(firstCard, nextCreature);
             long wholeBuilds = combat.HookListenerSegmentStatistics.WholeBuilds;
             combat.SetAmount<StrengthPower>(player.Creature, 1);
+            _ = source.MirroredHookListeners;
             expected.Insert(insertion, combat.GetPower<StrengthPower>(player.Creature)!);
             if (!expected.SequenceEqual(source.HookListeners, ReferenceEqualityComparer.Instance)
                 || combat.HookListenerSegmentStatistics.WholeBuilds <= wholeBuilds)

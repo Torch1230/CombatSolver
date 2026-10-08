@@ -21,6 +21,8 @@
 
 `Contracts/Search/UnattendedTestRunner.PotionCostIncumbent.cs` 使用 `POTION-COST-INCUMBENT` / IRONCLAD / NIBBITS_WEAK / 120秒，验证实际完整14/9成本胜利下同回合和更晚回合的等HP保路及原生EndTurn/用药完整状态。`ZeroAllowanceRelicIncumbent.cs` 使用 `ZERO-ALLOWANCE-RELIC-INCUMBENT` / 同角色遭遇及上限，验证真实完整胜利在零战损让步遗物目标下的本地及协调器后续HP界，保留同HP、正额度、成长和追回，原生HP消耗前缀严格差分。
 
+`Contracts/Combat/UnattendedTestRunner.ProjectedHookReceivers.cs` 扩展 `MIRRORED-HOOK-FILTER` / IRONCLAD / FUZZY_WURM_CRAWLER_WEAK / 120秒：同根投影和完整监听路径核对完整状态、指纹、历史、RNG及64回调类，覆盖牌堆/附着/Power变化、16兄弟Fork和getter补丁回退。核对模式返回完整源继续执行原facade审计；合同耗时不用于性能验收。
+
 一次性调查放 .local/tool-tasks/<任务>/，验证时显式接入，结束清理代码、路由、参数、输入和产物。普通构建排除 .local 源码。新增正式文件按上表收纳；根目录只保留本入口。
 
 旧 Soul/Custom/外骨骼虫路径追踪及 ACT3 硬编码路线观察入口已退出当前树，调查代码见 [固定提交](https://github.com/Torch1230/CombatSolver/tree/fe3edd2f7b4f3a92b266e6b13293810d31ce2e1b/src/Testing)。原生已知路线回归、生成上下文合同及其公共快照辅助继续维护。历史质量缺口与失败记录保持原结论，源码精简不代表问题修复。

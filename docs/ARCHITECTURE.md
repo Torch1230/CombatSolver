@@ -79,6 +79,8 @@ Smart 药水梯度在主成员耗尽时间时拥有一个独立成员时间：�
 | `MethodMirrorRegistryDescriptor` | 向 CoverageCatalog 暴露 registry 支持元数据 |
 | `src/Prediction/` | 怪物 AI、隐藏状态、生命周期、死亡/召唤、选择与 subscriber 捕获 |
 
+`SimulatedCombatState` 分别持有完整原生监听序列与镜像专用派生视图。大牌组的镜像构造可沿现有不可变类型位图直接省略没有镜像回调的卡牌、附魔、苦难和球，保留有回调成员的身份、重复和顺序。Power 前缀使用原映射与活动筛选；牌堆先物化，不能改变惰性 Fork 的重映射顺序。主线程根冻结原生字段 getter 版本/补丁资格，不透明成员与未知版本保留完整构造，外部类型保守保留。模型仍归所属分支，不新增跨 Fork 接收者缓存；完整监听消费者不使用投影。验证模式对照完整源，并让各 facade 继续检查被排除成员。实现与证据见[大牌组监听构造](performance/projected-listener-producer-20261008.md)。
+
 每项战斗语义只有一个权威结算实现。可变值由根快照、影子状态、克隆 Model 或 `PredictionStateStore` 持有。一次 Fork 共用 `PredictionForkContext`，引用随同一上下文重映射；COW 取得可写所有者后再写。
 
 Fork 发生在动作、选牌、Power、死亡和出牌事务允许复制的稳定边界。玩家记录的卡牌/药水嵌套效果作用域由引擎持有；选牌检查点保存不可变身份序列，恢复建立分支独占列表。最外层效果结束后再检查手空。稳定根及跨回合状态的该作用域为空，普通 Fork 要求为空。
