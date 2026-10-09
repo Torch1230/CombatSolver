@@ -93,7 +93,10 @@ internal sealed partial class UnattendedTestRunner
             || !ReferenceEquals(parentList, parentSource.MirroredHookListeners)
             || parentStrength.Amount != 2)
             throw new InvalidOperationException("Power restoration or parent isolation changed filtered receivers.");
-        PredictedCard generated = PredictedCard.Create(ModelDb.Card<Reflex>(), player);
+        PredictedCard generated = PredictedCard.Create(
+            ModelDb.Card<MegaCrit.Sts2.Core.Models.Cards.Void>(), player);
+        if (!filter.HasMirroredCallbacks(generated.Preview))
+            throw new InvalidOperationException("Generated listener fixture requires a native callback.");
         child.AddToPile(generated, MegaCrit.Sts2.Core.Entities.Cards.PileType.Hand);
         if (!childSource.MirroredHookListeners.Contains(generated.Preview))
             throw new InvalidOperationException("A generated callback card did not invalidate filtered receivers.");

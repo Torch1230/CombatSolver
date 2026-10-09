@@ -21,6 +21,8 @@ internal sealed class MirroredHookListenerFilter(bool enabled)
         typeof(CardModel).GetProperty(nameof(CardModel.Affliction))!.GetMethod!,
         typeof(CardModel).GetProperty(nameof(CardModel.Enchantment))!.GetMethod!,
         typeof(PredictedCard).GetProperty(nameof(PredictedCard.Preview))!.GetMethod!,
+        typeof(PredictedCard).GetProperty(nameof(PredictedCard.OwnerPile),
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetMethod!,
     ];
     private readonly bool _projectionReadsArePure =
         typeof(CardModel).Module.ModuleVersionId == AuditedCardGetterModule

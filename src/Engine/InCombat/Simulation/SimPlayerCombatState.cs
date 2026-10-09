@@ -114,7 +114,7 @@ internal sealed class SimPlayerCombatState
         return null;
     }
 
-    private SimCardPile GetPileByEnumerationIndex(int index)
+    internal SimCardPile GetPileByEnumerationIndex(int index)
         => index switch
         {
             0 => Hand,

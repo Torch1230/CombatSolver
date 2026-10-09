@@ -58,6 +58,11 @@ internal sealed class CombatRootSnapshot
     public bool CanCertifyRemainingHealing { get; }
     internal bool UsesComponentHealingCertificate { get; }
     internal string? ComponentHealingRejection { get; }
+    // Expanded proof belongs to pruning. Original certificate flags and root
+    // bounds above retain their existing scheduling and audit responsibilities.
+    internal string? PruningComponentHealingRejection { get; }
+    internal bool UsesPruningComponentHealingCertificate => PruningComponentHealingRejection is null;
+    internal int InitialPruningHealingUpperBound { get; }
     public bool UsesKnownNativeHealingPolicy { get; }
     internal GrowthValues InitialGrowthRewards
         => ((SimulatedCombatState)_rootSimulator.State.CombatState).GrowthRewards;
@@ -158,6 +163,14 @@ internal sealed class CombatRootSnapshot
                 ? StrategicHpRecoveryBound.ComponentHealingUpperBound(rootSimulator, playerIdentity, postCombatHeal: 0)
                 : StrategicHpRecoveryBound.RemainingHealingUpperBound(rootSimulator, playerIdentity, postCombatHeal: 0)
             : int.MaxValue;
+        PruningComponentHealingRejection = ComponentHealingRejection is null ? null
+            : StrategicHpRecoveryBound.ComponentHealingRejection(rootSimulator, playerIdentity,
+                useReviewedSources: true);
+        InitialPruningHealingUpperBound = UsesComponentHealingCertificate ? InitialRemainingHealingUpperBound
+            : UsesPruningComponentHealingCertificate
+                ? StrategicHpRecoveryBound.ComponentHealingUpperBound(rootSimulator, playerIdentity,
+                    postCombatHeal: 0, useReviewedSources: true)
+                : int.MaxValue;
         HistoryDependencies = historyDependencies;
         CapturedPowerCount = capturedPowerCount;
         CapturedHookListenerCount = capturedHookListenerCount;

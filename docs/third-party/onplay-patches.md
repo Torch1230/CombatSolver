@@ -23,7 +23,7 @@ AdaptedCardOnPlayMirrors.Register<MyCard>(
 
 ## 根、Fork 与旧路线
 
-`PredictionModHookSubscriberCapture` 拥有根内选择表，`SimulatedCombatState` 的 Fork 只共享根捕获的类型选择、已补丁 OnPlay 方法集合和配置标记。根阶段除了可达牌，还审计已登记但尚未出现的类型：合格的生成牌可直接走登记镜像，不匹配的组合保存拒绝原因，在实际打出时报告。未登记的生成牌首次出现时只解析其静态 OnPlay 方法身份；根冻结的集合不含该方法就走普通镜像，集合包含该方法则明确拒绝。worker 不读取 Harmony 补丁表或调用原生补丁。
+`PredictionModHookSubscriberCapture` 拥有根内选择表，`SimulatedCombatState` 的 Fork 只共享根捕获的类型选择、已补丁 OnPlay 方法集合和配置标记。根阶段同时审计当前/永久牌组、六个角色/无色池经过原生战斗过滤的保守超集，以及固定状态/诅咒来源；Feed、NotYet、Alchemize不在普通随机生成集合中，初始持有仍单独检查。采用路线的live边界重审这些来源，以拒绝根后新增补丁。除此之外，还审计已登记但尚未出现的类型：合格的生成牌可直接走登记镜像，不匹配的组合保存拒绝原因，在实际打出时报告。未登记的生成牌首次出现时只解析其静态 OnPlay 方法身份；根冻结的集合不含该方法就走普通镜像，集合包含该方法则明确拒绝。worker 不读取 Harmony 补丁表或调用原生补丁。
 
 live continuation 在主线程读取当前所有 CardModel.OnPlay 补丁的配置标记，包括登记 schema、目标与预测实现的方法身份。predicted continuation 和状态指纹使用冻结标记。安装、卸载、顺序变化及后来出现的卡牌补丁会改变 live 标记，沿现有 LiveCombatStamp／ContinuationStamp 的结果采用、缓存和部署前核对淘汰旧路线。没有登记时不增加配置字段或全局扫描。
 

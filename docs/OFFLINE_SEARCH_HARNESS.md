@@ -68,7 +68,19 @@ dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHa
 
 ## 批量用法
 
+`OFFLINE_HARNESS_SNAPSHOT_PROBE=worker-families` 观察同一coordinator及其实际创建的并行workers，以状态指纹、动作数和边界统计重复评估输入，输出 `snapshot-worker-families.json`。每组最多保留100,000个纯值输入和17项选定特征，不持有模型／模拟器图；同／跨worker计数相对首次出现的实例，容量旁路后的重复率只作下限。相同输入可有不同历史偏移及累计战损，因此这些计数不能当作共享整份Snapshot或评分的证明。该模式只用于诊断，关闭后再做性能验收；已有15字段版本范围见[原证据](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/upstream-common-cpu-20261006.md)。原 `OFFLINE_HARNESS_SNAPSHOT_PROBE=1` 的逐solver计数保持。
+
+`OFFLINE_HARNESS_SNAPSHOT_PROBE=request-families` 进一步按同一冻结根的对象身份，在整个协调器请求中统计同／跨搜索成员的重复输入，输出 `snapshot-request-families.json`。请求表最多250,000个纯值条目，成员按实际worker拥有者归组，计数相对该输入首次出现的成员；重复百分比不是CPU或整请求提速。保留至多12份一般差异和12份非历史偏移差异，另计全部已观察差异及仅历史差异。输入键不含累计战损，特征显式记录累计战损和实际回复量；不同政策、未覆盖的快照字段及回调副作用仍未构成缓存证明。私有根字段只在启用family诊断时解析，结构不匹配则显式失败，不影响关闭探针的普通请求。实际使用、分支累计战损反例和容量下限见[跨成员证据](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/cross-member-snapshot-opportunity-20261006.md)。
+
+`OFFLINE_HARNESS_SNAPSHOT_PROBE=pile-lookups` 观察生产原生牌堆查询的实际返回值，输出 `native-pile-lookup-opportunities.json`。按类型、helper来源标签及Snapshot包含阶段记录次数，每行保留一个首次路径；标签不是离场证书，次数不是CPU权重。该模式在搜索前用离线原生AddInternal/RemoveInternal构造加入／移除见证并核对完整live续用戳恢复；见证计数单列。弱标签与结果不强留模型图，原查询始终执行。仅用于小预算诊断，性能验收须关闭，来源、边界和结果见[牌堆查询证据](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/native-pile-lookup-opportunities-20261006.md)。
+
 `OFFLINE_HARNESS_EQUIVALENCE_PROBE=1` 可在小预算 `Evaluate` 请求中观察已有转置拒绝、候选分类次数和自然出现的两步反向动作，输出 `equivalence-probe.json`。每个求解器最多保存20,000个分离出的两步索引，不持有节点/模型，也不改变剪枝结果；指纹相同只是研究线索，不是交换性证明。该模式有额外锁和序列化开销，不能用于时间或分配评测。适用范围和复现命令见[准入优化与采样](archive/performance/equivalence-admission-20260929.md)。
+
+`OFFLINE_HARNESS_TRANSITION_PROBE=1` 在现有EquivalenceProbe中独立观察ReplayAction，输出 `action-transition-probe.json`。按精确冻结根、父状态键/动作数/边界、完整序列化PlanAction及round/card capture存在标志索引，真实CreateExpansionWorker归属用于同/跨成员计数。请求表最多250000个纯值/字符串输入，不保留模拟器、Snapshot或Model图；容量旁路后的比例只作下限。比较16项前/后特征、六项路径标签、历史数量及profile；它们不是完整状态、历史前缀、全部政策或隐藏checkpoint的相等证明。默认关闭，关闭时不解析私有字段或安装此入口；开启时ABI不匹配显式失败。用于重复转移研究，不能用于性能验收，命令、实测及下一步证明门槛见[完整动作研究](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/action-transition-opportunity-20261007.md)。
+
+`OFFLINE_HARNESS_TRANSITION_PREFIX_PROBE=1`须同时开启上述TRANSITION_PROBE，额外统计封存历史段身份、有序尾事件身份、尾部延迟配对表身份及pending数。使用已有并行Fork拥有者锁读取，不封存或修改历史；弱身份表不保留对象图，独立250000输入上限后的计数只作下限。不同段布局不归一化，选定特征相同也不是缓存/剪枝证明；具体标签差异随样本输出，原生边界及命令见[历史前缀研究](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/transition-prefix-boundary-research-20261007.md)。
+
+`OFFLINE_HARNESS_TRANSITION_ROUTE_PROBE=1`须同时开启TRANSITION_PROBE，额外按完整有序PlanAction前缀、零动作起点的状态/回合/历史数/准备选择和13项选定政策统计。弱节点身份和纯值前缀树不物化Actions或保留对象图；各表250000上限，截断起点和容量拒绝。父/结果键、历史数、特征和标签仍单独核对，起点/政策/callback/checkpoint未形成缓存证书。命令、原生及失败原型见[相同前缀研究](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/exact-action-prefix-replay-research-20261007.md)。
 
 `tools/search/OfflineSearchHarness/run_plan.py` 吃一份 plan JSON（数组），起 N 个宿主进程并行消费：
 

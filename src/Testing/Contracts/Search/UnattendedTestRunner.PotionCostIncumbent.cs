@@ -154,9 +154,9 @@ internal sealed partial class CombatBeamSolver
         bool zeroCostPruned = zero.ApplyPrimaryIncumbentBound([zeroPartial]).Count == 0;
         var exactFloor = Member(policy with { DisableSharedPrimaryIncumbentsForTesting = true });
         if (!exactFloor.TightenPrimarySearchIncumbentAtTurnLayer([CheapWinner], 0)
-            || exactFloor.ApplyPrimaryIncumbentBound([zeroPartial]).Count != 0
+            || exactFloor.ApplyPrimaryIncumbentBound([zeroPartial]).Count != 1
             || expensive.ApplyPrimaryIncumbentBound([zeroPartial]).Count != 1)
-            throw new InvalidOperationException("Exact layer must charge its remaining mandatory use at the frozen minimum cost, while retaining cheaper-than-witness prefixes.");
+            throw new InvalidOperationException("Unpaid exact-layer prefixes must remain: initial bottle prices do not prove unavoidable future potion cost.");
         if (!sameCostPruned || !missingCostKept || !zeroCostPruned)
             throw new InvalidOperationException($"Potion-cost guard failed: same={sameCostPruned} unknown={missingCostKept} zero={zeroCostPruned}.");
         return new(cheapPartial, ExpensiveWinner.PotionStrategicCost, CheapWinner.PotionStrategicCost,

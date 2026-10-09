@@ -73,6 +73,7 @@ internal sealed partial class SimulatedCombatState
     internal bool RootHasOnlyNonHealingLoadoutSubscribers
         => _modHookSubscribers.HasOnlyNonHealingLoadoutSubscribers;
     internal bool RootHasCertifiedNonHealingSubscribers => _modHookSubscribers.HasCertifiedNonHealingSubscribers;
+    internal string? RootHealingCallbackRejection => _modHookSubscribers.HealingCallbackRejection;
     internal bool IsCertifiedNonHealingSubscriberSource(AbstractModel source)
         => _modHookSubscribers.IsCertifiedNonHealingSubscriberSource(source);
     private readonly IReadOnlyDictionary<Player, int> _rootMaxHandSizes;
@@ -254,6 +255,8 @@ internal sealed partial class SimulatedCombatState
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("Live combat state can only be captured on the main thread.");
+        PredictionRitsuCapabilityAudit.Validate();
+        PredictionRitsuHealingAudit.Validate();
         _runState = inner.RunState;
         _runRngSnapshot = inner.RunState.Rng.ToSerializable();
         _currentActIndex = inner.RunState.CurrentActIndex;
@@ -374,7 +377,8 @@ internal sealed partial class SimulatedCombatState
             ?? throw new InvalidOperationException("Combat prediction requires a concrete RunState.");
         _modHookSubscribers = PredictionModHookSubscriberCapture.Capture(
             concreteRunState,
-            inner);
+            inner,
+            _rootFloatingCards);
         _rootMaxHandSizes = _modHookSubscribers.MaxHandSizes;
         int standardCombatListenerCount =
             liveCombatHookListeners.Length - _modHookSubscribers.CombatSubscribers.Length;
@@ -1685,7 +1689,7 @@ internal sealed partial class SimulatedCombatState
     {
         MirroredHookListenerFilter filter = _modHookSubscribers.MirroredHookFilter;
         if (!CanReuseHookListenerCache || !filter.CanProjectReceivers
-            || _registeredCombatCards is not { Count: >= 256 })
+            || _registeredCombatCards is not { Count: > 0 })
             return null;
 
         // A previously requested complete snapshot already paid the construction cost.
@@ -1705,17 +1709,24 @@ internal sealed partial class SimulatedCombatState
                     suffix.Add(orb);
         }
         for (int playerIndex = 0; playerIndex < players.Count; playerIndex++)
-        foreach (PredictedCard card in predictionState.GetPlayerCombatState(players[playerIndex]).AllCards)
         {
-            CardModel preview = card.Preview;
-            if (preview.HasBeenRemovedFromState)
-                continue;
-            if (filter.HasMirroredCallbacks(preview))
-                suffix.Add(preview);
-            if (preview.Affliction is { } affliction && filter.HasMirroredCallbacks(affliction))
-                suffix.Add(affliction);
-            if (preview.Enchantment is { } enchantment && filter.HasMirroredCallbacks(enchantment))
-                suffix.Add(enchantment);
+            SimPlayerCombatState playerState = predictionState.GetPlayerCombatState(players[playerIndex]);
+            for (int pileIndex = 0; pileIndex < 5; pileIndex++)
+            {
+                // Preserve AllCards' lazy pile order. Unchanged piles can reuse pure
+                // indices; opaque attached state retains the complete card scan.
+                SimCardPile pile = playerState.GetPileByEnumerationIndex(pileIndex);
+                if (pile.TryGetHookCardProjection(filter, out ReadOnlySpan<int> indices))
+                {
+                    foreach (int cardIndex in indices)
+                        Append(pile.Cards[cardIndex]);
+                }
+                else
+                {
+                    foreach (PredictedCard card in pile)
+                        Append(card);
+                }
+            }
         }
         // Match the original producer order: materialise branch card/orb piles before
         // resolving the effective Power prefix. Lazy forks can remap model receivers.
@@ -1732,6 +1743,19 @@ internal sealed partial class SimulatedCombatState
         IReadOnlyList<AbstractModel> listeners = new ConcatenatedListenerView(_activeHookListenerPrefix, suffix);
         return run && _rootRunHookListeners.Length != 0
             ? new ConcatenatedListenerView(_rootRunHookListeners, listeners) : listeners;
+
+        void Append(PredictedCard card)
+        {
+            CardModel preview = card.Preview;
+            if (preview.HasBeenRemovedFromState)
+                return;
+            if (filter.HasMirroredCallbacks(preview))
+                suffix.Add(preview);
+            if (preview.Affliction is { } affliction && filter.HasMirroredCallbacks(affliction))
+                suffix.Add(affliction);
+            if (preview.Enchantment is { } enchantment && filter.HasMirroredCallbacks(enchantment))
+                suffix.Add(enchantment);
+        }
     }
 
     private IReadOnlyList<AbstractModel> GetEffectiveRunHookListeners()

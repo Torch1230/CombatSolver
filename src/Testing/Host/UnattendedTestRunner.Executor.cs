@@ -39,6 +39,12 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId is "ZERO-CREDIT-GROWTH-PROOF" or "ZERO-CREDIT-GROWTH-PROOF-REGEN")
+            {
+                await runner.AssertZeroCreditGrowthProofAsync(combatState, player,
+                    request.ScenarioId.EndsWith("-REGEN", StringComparison.Ordinal));
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "CHECKPOINT-PROFILE-CONTRACT")
             {
                 runner.AssertCheckpointProfileContract(combatState);
@@ -1099,10 +1105,38 @@ internal sealed partial class UnattendedTestRunner
                 return Observation(combatEnded: false);
             }
 
+            if (request.ScenarioId == "NATIVE-HEALING-CAPABILITY-BOUNDARY")
+            {
+                runner.SetStage("native_healing_capability_boundary");
+                await runner.AssertNativeHealingCapabilityBoundaryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "NATIVE-HEALING-CALLBACK-BOUNDARY")
+            {
+                runner.SetStage("native_healing_callback_boundary");
+                await runner.AssertNativeHealingCallbackBoundaryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
             if (request.ScenarioId == "POTION-COST-INCUMBENT")
             {
                 runner.SetStage("potion_cost_incumbent");
                 await runner.AssertPotionCostIncumbentAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "HEALTH-CALLBACK-BOUND")
+            {
+                runner.SetStage("health_callback_bound");
+                await runner.AssertHealthCallbackBoundAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
+            if (request.ScenarioId == "PLAYER-POTION-CALLBACK-BOUND")
+            {
+                runner.SetStage("player_potion_callback_bound");
+                await runner.AssertPlayerPotionCallbackBoundAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
 
