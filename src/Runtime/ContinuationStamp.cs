@@ -67,6 +67,9 @@ internal sealed record ContinuationStamp(string StateText)
 
     public static ContinuationStamp CaptureLive(CombatState state)
     {
+        PredictionRitsuCapabilityAudit.Validate();
+        PredictionRitsuHealingAudit.Validate();
+        PredictionModHookSubscriberCapture.ValidateCardOnPlaySources(state.RunState, state);
         Player player = LocalContext.GetMe(state)
             ?? throw new InvalidOperationException("找不到本地玩家。");
         PlayerCombatState pcs = player.PlayerCombatState

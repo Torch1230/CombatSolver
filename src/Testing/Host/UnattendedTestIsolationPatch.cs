@@ -11,13 +11,17 @@ internal sealed class UnattendedTestIsolationPatch : IPatchMethod
     public static string PatchId => "combat_solver_unattended_test_isolation";
     public static string Description => "无人测试不写入玩家的遭遇与击杀进度";
 
-    public static ModPatchTarget[] GetTargets() =>
+    public static ModPatchTarget[] GetTargets()
+    {
+        UnattendedTestRunner.PrepareNativeHealingCapabilityBoundary();
+        return
     [
         new(
             typeof(SaveManager),
             nameof(SaveManager.UpdateProgressAfterCombatWon),
             [typeof(Player), typeof(CombatRoom)]),
     ];
+    }
 
     [HarmonyPriority(Priority.First)]
     public static bool Prefix()

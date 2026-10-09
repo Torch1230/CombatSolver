@@ -21,10 +21,20 @@ internal sealed partial class CombatPredictionSimulator
     private int _manualChoiceHistoryStart;
     private int _manualChoiceShuffleEvents;
 
+    // Tainted inherits the empty native affliction OnPlay. Its VitalSpark
+    // AfterCardPlayed effect runs in the shared completion tail after resume.
+    // This proof neither admits other attachments nor expands healing coverage.
+    private static readonly Guid TaintedManualContinuationAuditMvid =
+        new("8a76776c-0ce1-4d4f-90bd-8cce653dad8e");
+
     internal static bool SupportsManualCardChoiceContinuation(CardModel card)
         => card.GetType().Assembly == typeof(DaggerThrow).Assembly
             && SupportsManualCardChoiceContinuation(card.Id.Entry)
-            && card.Enchantment is null && card.Affliction is null;
+            && card.Enchantment is null
+            && (card.Affliction is null
+                || card.Affliction.GetType() == typeof(MegaCrit.Sts2.Core.Models.Afflictions.Tainted)
+                    && card.Affliction.GetType().Module.ModuleVersionId
+                        == TaintedManualContinuationAuditMvid);
 
     internal static bool SupportsManualCardChoiceContinuation(string cardId)
         => cardId is

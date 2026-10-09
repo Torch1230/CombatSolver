@@ -60,7 +60,7 @@ internal sealed class SimCreatureState
     {
         var wasTargetKilled = CurrentHp > 0 && amount >= CurrentHp;
         var previousHp = CurrentHp;
-        var damage = (int)Math.Min(amount, 999999999m);
+        var damage = (int)Math.Clamp(amount, 0m, 999999999m);
         CurrentHp = Math.Max(CurrentHp - damage, 0);
 
         return new DamageResult(Creature, props)

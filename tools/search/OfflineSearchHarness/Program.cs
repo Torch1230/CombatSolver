@@ -74,6 +74,7 @@ internal static class Program
             DuplicateChoiceProbe.Install(options.OutputDirectory);
             EquivalenceProbe.Install(options.OutputDirectory);
             SnapshotOpportunityProbe.Install(options.OutputDirectory);
+            ShuffleProjectionOpportunityProbe.Install(options.OutputDirectory);
             if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_PROBE_STATICS") is { Length: > 0 } filter)
                 Step(steps, "P 静态构造探针", () => $"types={GameBootstrap.ProbeStaticConstructors(filter)}");
             GeneratedScenarioSetup? generated = null;

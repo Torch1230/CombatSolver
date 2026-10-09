@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.CardPools;
 using MegaCrit.Sts2.Core.Runs;
 using CombatSolver.Engine.Common;
 using STS2RitsuLib;
@@ -36,7 +37,7 @@ internal sealed class PredictionModHookSubscriberCapture
     // Loadout hooks only configure pre-root state, hand limits or free costs;
     // an empty summon-power configuration cannot add powers later in combat.
     internal bool HasOnlyNonHealingLoadoutSubscribers
-        => RunSubscribers.All(IsNonHealingLoadoutSubscriber)
+        => HealingCallbackRejection is null && RunSubscribers.All(IsNonHealingLoadoutSubscriber)
             && CombatSubscribers.All(IsNonHealingLoadoutSubscriber);
 
     private bool IsNonHealingLoadoutSubscriber(AbstractModel subscriber)
@@ -54,6 +55,7 @@ internal sealed class PredictionModHookSubscriberCapture
 
     private static readonly Guid AuditedLoadoutMvid = new("3f51fce1-7ec3-4116-b440-2c31eb754731");
     internal bool HasCertifiedNonHealingSubscribers { get; }
+    internal string? HealingCallbackRejection { get; private init; }
     internal bool IsCertifiedNonHealingSubscriberSource(AbstractModel source)
         => HasCertifiedNonHealingSubscribers && IsAuditedNonHealingSubscriberType(source.GetType());
     private bool IsAuditedNonHealingSubscriberType(Type type)
@@ -87,7 +89,8 @@ internal sealed class PredictionModHookSubscriberCapture
 
     public static PredictionModHookSubscriberCapture Capture(
         RunState runState,
-        CombatState combat)
+        CombatState combat,
+        IReadOnlySet<CardModel> floatingCards)
     {
         AbstractModel[] runSubscribers = ModHelper.IterateAllRunStateSubscribers(runState).ToArray();
         AbstractModel[] combatSubscribers = ModHelper.IterateAllCombatStateSubscribers(combat).ToArray();
@@ -121,7 +124,11 @@ internal sealed class PredictionModHookSubscriberCapture
             hasBaseLibCardModifiers,
             combatSubscribers.Any(subscriber =>
                 subscriber.GetType().FullName == LoadoutPowerGiverSummonHookTypeName))
-            { AdaptedOnPlay = onPlay };
+            { AdaptedOnPlay = onPlay,
+                HealingCallbackRejection = PredictionPlayerPotionCallbackAudit.Capture(combat.Players)
+                    ?? PredictionHealthCallbackAudit.Capture(combat)
+                    ?? PredictionCardCallbackAudit.Capture(
+                        EnumerateAuditableCards(runState, combat).Concat(floatingCards)) };
     }
 
     public static string? CaptureLiveLoadoutSummonPowerState(CombatState combat)
@@ -211,10 +218,11 @@ internal sealed class PredictionModHookSubscriberCapture
     }
 
     /// <summary>
-    /// Every card type the root can reach without in-combat generation. Generated card types are not knowable at
-    /// capture time, so they stay outside this audit.
+    /// Initial cards plus a conservative native combat-generation superset.
+    /// Unlock/player-count restrictions only narrow the native random pools;
+    /// fixed status/curse sources also require audit independently of that filter.
     /// </summary>
-    private static IEnumerable<CardModel> EnumerateAuditableCards(RunState runState, CombatState combat)
+    private static IEnumerable<CardModel> EnumerateAuditableCards(IRunState runState, CombatState combat)
     {
         foreach (Player player in combat.Players)
         {
@@ -226,7 +234,26 @@ internal sealed class PredictionModHookSubscriberCapture
             foreach (CardModel card in player.Deck.Cards)
                 yield return card;
         }
+        foreach (CardModel card in EnumerateAuditableNativeGenerationCards())
+            yield return card;
     }
+
+    internal static IEnumerable<CardModel> EnumerateAuditableNativeGenerationCards()
+    {
+        CardPoolModel[] pools = [ModelDb.CardPool<IroncladCardPool>(), ModelDb.CardPool<SilentCardPool>(),
+            ModelDb.CardPool<RegentCardPool>(), ModelDb.CardPool<NecrobinderCardPool>(),
+            ModelDb.CardPool<DefectCardPool>(), ModelDb.CardPool<ColorlessCardPool>()];
+        foreach (CardPoolModel pool in pools)
+            foreach (CardModel card in pool.AllCards)
+                if (card.CanBeGeneratedInCombat && card.Rarity != CardRarity.Ancient && card.Rarity != CardRarity.Event)
+                    yield return card;
+        foreach (CardModel card in ModelDb.CardPool<StatusCardPool>().AllCards
+            .Concat(ModelDb.CardPool<CurseCardPool>().AllCards))
+            yield return card;
+    }
+
+    internal static void ValidateCardOnPlaySources(IRunState runState, CombatState combat)
+        => PredictionModPatchAudit.ValidateCardOnPlay(EnumerateAuditableCards(runState, combat));
 
     private static void ValidateSubscriber(
         AbstractModel subscriber,
@@ -253,9 +280,9 @@ internal sealed class PredictionModHookSubscriberCapture
         {
             return;
         }
-        // 只覆写了地图/进幕/事件/休息处/商店这类战斗外 hook 的订阅器不可能改变战斗模拟结果，
-        // 不必把整个 Mod 判为不兼容。任何战斗 hook 覆写（含继承来的）仍走下面的拒绝路径。
-        if (PredictionModHookSubscriberInertness.IsCombatInert(type, out string overriddenHooks))
+        // 类型只覆写窗口外 hook 还不够：默认战斗回调也会分派实例的 ExecutionFinished。
+        // 未知事件受众与战斗 hook 覆写（含继承来的）都继续原有拒绝路径。
+        if (PredictionModHookSubscriberInertness.IsCombatInert(subscriber, out string overriddenHooks))
         {
             Entry.Logger.Info(
                 $"[CombatSolver/Test] MOD_HOOK_SUBSCRIBER_COMBAT_INERT scope={scope} " +

@@ -115,9 +115,9 @@ internal sealed partial class CombatBeamSolver
         StateFingerprint unorderedPileKey = BuildUnorderedPileKey(playerState);
         StateFingerprint cyclePileShapeKey = BuildCyclePileShapeKey(playerState);
         SearchMeasurement projectedShuffleMeasurement = _run.Performance.Begin();
-        // Projected shuffle needs these piles in this exact pre-sort order. The remaining
-        // snapshot metrics are order-independent, so they can reuse the shuffled list instead
-        // of materializing a second deck-sized backing array.
+        // Preserve this pre-sort pile order and the resulting native sort/shuffle order.
+        // Later metrics reuse this list; CaptureEnergyRefundWindow also accumulates floating
+        // point values in this order, so omitting the projection can change its ceiling.
         using SnapshotListBuffer<PredictedCard>.Lease liveCardsLease =
             _run.SnapshotLiveCards.Rent();
         List<PredictedCard> liveCards = liveCardsLease.Items;

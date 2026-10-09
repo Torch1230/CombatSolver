@@ -29,13 +29,46 @@ internal sealed partial class CombatBeamSolver
 
     // Zero HP allowances cannot compensate strictly worse HP. Keep the existing
     // local proof across their masks, while retaining all equal-HP goal routes.
-    private bool CanUseLocalPrimaryHpBound
-        => (!_hasGrowthTargets || _strictHpBoundWithRelicTargets)
-            && root.InitialGrowthRewards.Total == 0
+    // The expanded HP certificate proves recovery only. It does not cap future
+    // growth, or establish dominance over a cheaper potion route. Consume it
+    // conservatively: zero growth credit, strictly worse HP, no cost improvement.
+    // Existing no-growth consumers already have their policy bound. Broader
+    // recovery certification must not replace their equality/turn handling.
+    internal static bool CanUseReviewedGrowthHpProof(CombatRootSnapshot root, SearchPolicySnapshot policy)
+        => root.UsesPruningComponentHealingCertificate && !root.CanCertifyRemainingHealing
+            && (policy.EffectiveHasGrowthTargets || root.InitialGrowthRewards != default);
+
+    private bool UsesExpandedHealingProof => CanUseReviewedGrowthHpProof(root, policy);
+
+    private bool UsesComponentHealingProof
+        => root.UsesComponentHealingCertificate || UsesExpandedHealingProof;
+
+    private bool CanUseExpandedHpDominance
+        => policy.EffectiveGrowthBudgets == default && policy.RelicTargets.Count == 0
             && _theftPolicy != SolverTheftPolicy.PreserveResources;
 
+    private bool CanUseLocalPrimaryHpBound
+        => UsesExpandedHealingProof ? CanUseExpandedHpDominance
+            : (!_hasGrowthTargets || _strictHpBoundWithRelicTargets)
+                && root.InitialGrowthRewards.Total == 0
+                && _theftPolicy != SolverTheftPolicy.PreserveResources;
+
     private bool IsLocalPrimaryHpBucket(PrimaryIncumbentBucket bucket)
-        => ResourceIncumbentPolicy.IsPrimaryHpBucket(bucket, _strictHpBoundWithRelicTargets);
+        => UsesExpandedHealingProof && CanUseExpandedHpDominance ? bucket.RelicMask == 0
+            : ResourceIncumbentPolicy.IsPrimaryHpBucket(bucket, _strictHpBoundWithRelicTargets);
+
+    private bool TryResolvePrimaryWitness(SimulationSnapshot snapshot, int stolen, int potions,
+        out PrimarySearchIncumbent witness, out int rewardCredit)
+    {
+        witness = default;
+        rewardCredit = 0;
+        if (UsesExpandedHealingProof)
+            return CanUseExpandedHpDominance && _primaryIncumbents.TryGetStrictHpWitness(
+                stolen, potions, snapshot.ExplicitPotionStrategicCost, out witness);
+        return ResourceIncumbentPolicy.TryOptimisticBucket(policy, root.ExhaustingGrowthUpperBound,
+                snapshot, stolen, potions, out var bucket, out rewardCredit)
+            && _primaryIncumbents.TryGet(bucket, out witness);
+    }
 
     internal static bool CanUseStrictHpRelicBound(CombatRootSnapshot root, SearchPolicySnapshot policy)
         => CanUseStrictHpRelicBound(root.CanCertifyRemainingHealing || root.UsesKnownNativeHealingPolicy,
@@ -322,15 +355,14 @@ internal sealed partial class CombatBeamSolver
             _strategicBossHpRelief,
             root.HasOnlyPostCombatHealing,
             root.CanCertifyRemainingHealing || root.UsesKnownNativeHealingPolicy
+                || UsesComponentHealingProof
                 ? RemainingHealingPotential : null,
             out certifiedHealingBoundPruned,
-            allowTurnTieBound: !_strictHpBoundWithRelicTargets,
-            pruneEqualHp: policy.RelicTargets.Count == 0,
-            preservePotionCostOpportunities: root.UsesComponentHealingCertificate,
-            requireCertifiedHealingProof: root.UsesComponentHealingCertificate,
-            minimumExplicitPotionUses: root.UsesComponentHealingCertificate && policy.RelicTargets.Count == 0
-                ? _minimumPotionUses : 0,
-            minimumPotionStrategicCost: root.MinimumSearchablePotionStrategicCost ?? 0);
+            allowTurnTieBound: !UsesExpandedHealingProof && !_strictHpBoundWithRelicTargets,
+            pruneEqualHp: !UsesExpandedHealingProof && policy.RelicTargets.Count == 0,
+            preservePotionCostOpportunities: UsesComponentHealingProof,
+            requireCertifiedHealingProof: UsesComponentHealingProof,
+            requireStrictPotionCostDominance: UsesExpandedHealingProof);
         // A node may still move to a higher potion tier. Only use its current
         // tier's witness when explicit use is closed by the member's policy.
         List<SearchNode>? sharedBounded = null;
@@ -347,25 +379,25 @@ internal sealed partial class CombatBeamSolver
             // Certified roots use their strict branch proof. Other roots keep
             // the upstream known-source policy, including its healing headroom.
             bool eligible = !node.IsTerminal && !node.Snapshot.HasRisk && potionTierClosed
-                && PrimaryIncumbentTable.CanShareRoot(root);
-            int remainingHealing = !eligible ? int.MaxValue : root.UsesComponentHealingCertificate
+                && PrimaryIncumbentTable.CanShareRoot(root)
+                && (!UsesExpandedHealingProof || CanUseExpandedHpDominance);
+            int remainingHealing = !eligible ? int.MaxValue : UsesComponentHealingProof
                 ? CertifiedRemainingHealingPotential(node.Snapshot)
                 : Math.Min(RemainingHealingPotential(node.Snapshot), node.Snapshot.FutureHealPotential);
             eligible &= remainingHealing != int.MaxValue;
             int hpLowerBound = eligible ? StrategicHpLowerBound(node.Snapshot, _strategicBossHpRelief,
                 remainingHealing) : 0;
             bool prune = eligible
-                && ResourceIncumbentPolicy.TryOptimisticBucket(policy, root.ExhaustingGrowthUpperBound,
-                    node.Snapshot, lootBucket, uses, out var resourceBucket, out int rewardCredit)
-                && _primaryIncumbents.TryGet(resourceBucket, out var shared)
+                && TryResolvePrimaryWitness(node.Snapshot, lootBucket, uses, out var shared, out int rewardCredit)
+                && (!UsesExpandedHealingProof || CanPruneEqualHpWithPotionCost(node.Snapshot, shared))
                 && ShouldPruneByPrimaryIncumbent(
                     hpLowerBound - rewardCredit,
-                    node.Turn, shared, allowTurnTieBound: !_strictHpBoundWithRelicTargets
+                    node.Turn, shared, allowTurnTieBound: !UsesExpandedHealingProof && !_strictHpBoundWithRelicTargets
                         && CanPruneEqualHpWithPotionCost(node.Snapshot, shared,
-                            root.UsesComponentHealingCertificate),
-                    pruneEqualHp: CanPruneEqualHpWithPotionCost(node.Snapshot, shared,
-                        root.UsesComponentHealingCertificate));
-            if (!prune && eligible && !policy.IgnoreLongTermRewards && policy.RelicTargets.Count == 0
+                            UsesComponentHealingProof),
+                    pruneEqualHp: !UsesExpandedHealingProof && CanPruneEqualHpWithPotionCost(node.Snapshot, shared,
+                        UsesComponentHealingProof));
+            if (!prune && eligible && !UsesExpandedHealingProof && !policy.IgnoreLongTermRewards && policy.RelicTargets.Count == 0
                 && (_hasGrowthTargets || node.Snapshot.GrowthRewards.Total != 0)
                 && node.Snapshot.HasSimulator)
             {
@@ -376,6 +408,8 @@ internal sealed partial class CombatBeamSolver
                     node.Snapshot.GrowthRewards, lootBucket, uses, hpLowerBound,
                     _primaryIncumbents, out _, out _);
             }
+            if (!prune)
+                prune = ShouldPruneByRetainedPrimaryIncumbent(node);
             if (prune)
             {
                 if (sharedBounded == null)
@@ -428,8 +462,7 @@ internal sealed partial class CombatBeamSolver
         bool pruneEqualHp = false,
         bool preservePotionCostOpportunities = true,
         bool requireCertifiedHealingProof = true,
-        int minimumExplicitPotionUses = 0,
-        int minimumPotionStrategicCost = 0)
+        bool requireStrictPotionCostDominance = false)
     {
         pruned = 0;
         certifiedHealingBoundPruned = 0;
@@ -439,22 +472,16 @@ internal sealed partial class CombatBeamSolver
             SearchNode node = retained[index];
             int baselineFutureHealPotential = remainingHealingPotential?.Invoke(node.Snapshot) ?? int.MaxValue;
             // The new equal-HP shortcut cannot tighten a proof with the legacy heuristic.
-            if (requireCertifiedHealingProof && pruneEqualHp && baselineFutureHealPotential == int.MaxValue)
+            if (requireCertifiedHealingProof && baselineFutureHealPotential == int.MaxValue)
             {
                 bounded?.Add(node);
                 continue;
             }
-            int futureHealPotential = requireCertifiedHealingProof && pruneEqualHp ? baselineFutureHealPotential
+            int futureHealPotential = requireCertifiedHealingProof ? baselineFutureHealPotential
                 : Math.Min(baselineFutureHealPotential, node.Snapshot.FutureHealPotential);
-            // Component closure excludes new potion acquisition. A legal exact
-            // layer must still pay for its remaining mandatory explicit uses;
-            // the minimum over all initial slots also includes unavailable or
-            // disabled cheaper slots, so it can only loosen this cost floor.
-            long futurePotionCost = (long)Math.Max(0,
-                minimumExplicitPotionUses - ExplicitPotionUseCount(node)) * minimumPotionStrategicCost;
             bool costClosed = CanPruneEqualHpWithPotionCost(node.Snapshot, incumbent,
-                preservePotionCostOpportunities, futurePotionCost);
-            if (ShouldPruneByPrimaryIncumbent(
+                preservePotionCostOpportunities);
+            if ((!requireStrictPotionCostDominance || costClosed) && ShouldPruneByPrimaryIncumbent(
                     StrategicHpLowerBound(node.Snapshot, bossHpRelief, futureHealPotential),
                     node.Turn,
                     incumbent,
@@ -510,14 +537,15 @@ internal sealed partial class CombatBeamSolver
     {
         if (!snapshot.HasSimulator || snapshot.HasRisk)
             return int.MaxValue;
-        if (root.UsesComponentHealingCertificate)
+        if (UsesComponentHealingProof)
             return StrategicHpRecoveryBound.ComponentHealingUpperBound(
                 (CombatPredictionSimulator)snapshot.Simulator, _player,
                 root.PostCombatRelicHeal.UnconditionalHeal + root.PostCombatRelicHeal.WoundedHeal,
                 includePotionHealing: !_forceAllPotionsDisabled,
                 maximumExplicitPotionUses: _maximumPotionUses,
                 potionStrategy: _potionStrategy,
-                effectivePotionPolicy: _potionPolicy);
+                effectivePotionPolicy: _potionPolicy,
+                useReviewedSources: !root.UsesComponentHealingCertificate);
         int certifiedPotential = root.CanCertifyRemainingHealing
             ? StrategicHpRecoveryBound.RemainingHealingUpperBound(
                 (CombatPredictionSimulator)snapshot.Simulator, _player,
@@ -559,10 +587,9 @@ internal sealed partial class CombatBeamSolver
     // decrease within a branch; a missing witness cost leaves equality open.
     private static bool CanPruneEqualHpWithPotionCost(
         SimulationSnapshot snapshot, PrimarySearchIncumbent incumbent,
-        bool preservePotionCostOpportunities = true,
-        long minimumFuturePotionCost = 0)
+        bool preservePotionCostOpportunities = true)
         => !preservePotionCostOpportunities || incumbent.ExplicitPotionStrategicCost is { } cost
-            && snapshot.ExplicitPotionStrategicCost + minimumFuturePotionCost >= cost;
+            && snapshot.ExplicitPotionStrategicCost >= cost;
 
     internal static bool ShouldPruneByPrimaryIncumbent(
         int strategicHpLowerBound,

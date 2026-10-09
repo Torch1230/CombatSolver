@@ -6,7 +6,7 @@
 
 0.50.0 定稿沿用 PR #207、PR #211 与开局药水准入的既有行为证据，来源和范围见 [历史卷 20](archive/testing/volume-20.md)。
 
-按改动选择最小验证层，方法见 [无人测试](HEADLESS_TESTING.md) 与 [社区验收](community/testing-guide.md)。以下命令提供当前复跑入口，不表示本轮已执行。单人共享损血剪枝的新基线验证见[策略证据](strategy/hp-loss-pruning/README.md#单人共享损血剪枝2026-10-05)。
+按改动选择最小验证层，方法见 [无人测试](HEADLESS_TESTING.md) 与 [社区验收](community/testing-guide.md)。[大牌组监听构造](performance/projected-listener-producer-20261008.md)保留首阶段证据；[结项交接](performance/performance-task-closeout-20261010.md)记录最终7714组合的23张牌原生合同、9次完整状态对账、58项空索引边界、16兄弟及第二代隔离、固定11根质量／峰值回归，以及撤回方向和未完成项。迁入PR的全部C#／项目输入逐字节相同，复用对应成功构建、行为和五文件部署；本次只做文档与迁移检查。以下命令提供当前复跑入口，不表示本轮已执行。单人共享损血剪枝的新基线验证见[策略证据](strategy/hp-loss-pruning/README.md#单人共享损血剪枝2026-10-05)。
 
 历史记录见 [归档索引](archive/testing/README.md)，0.48.1 的验证、失败与未验证项见 [历史卷 12](archive/testing/volume-12.md)。
 

@@ -1478,11 +1478,11 @@ internal static partial class HookMirrors
 
     internal static bool VerifyHookListenerMask => FastLaneVerification.Enabled;
 
-    // Same models in the same order as CombatPredictionState.IterateHookListeners(); the mirrored
-    // list only adds the per-type participation layout that lets a dispatch skip listeners which do
-    // not override the hook. It is cached on the combat state and every other facade already builds
-    // it, so asking for it here costs nothing extra. When the filter is disabled (a mod patched a
-    // base hook) this is the unfiltered list again and every listener is dispatched as before.
+    // Preserve the identity, duplicates and order of every mirrored-hook participant. On audited
+    // large-card roots, the producer omits suffix receivers whose participation mask is empty;
+    // native/field-getter patch guards and opaque membership retain the complete producer. The
+    // verification mode reconciles the projection and keeps the full list for facade no-op checks.
+    // Native listener consumers always keep their complete sequence.
     private static IReadOnlyList<AbstractModel> MirroredCombatHookListeners(CombatPredictionSimulator simulator)
         => simulator.State.CombatState is ICombatPredictionHookListenerSource source
             ? source.MirroredHookListeners

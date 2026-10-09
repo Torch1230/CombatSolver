@@ -59,6 +59,8 @@ internal sealed record ContinuationSearchRequest(
     internal Action<SolverProgress>? ProgressCallbackOverride { get; init; }
     internal PotionFreePolicyBaseline? PotionFreePolicyBaseline { get; init; }
     internal PrimarySearchIncumbent? PrimaryIncumbent { get; init; }
+    // The caller retains this complete victory if the continuation cannot improve it.
+    internal PrimarySearchIncumbent? RetainedPrimaryIncumbent { get; init; }
     internal PlanCommitment? Commitment { get; init; }
     internal int EarlyTurnScoutDepth { get; init; }
     internal Action<int, IReadOnlyList<EarlyTurnFrontierCandidate>>? EarlyTurnScoutObserver { get; init; }
@@ -94,7 +96,8 @@ internal sealed class FrontierContinuationScheduler(SearchPassContext context)
             planCommitment: request.Commitment,
             earlyTurnScoutDepth: request.EarlyTurnScoutDepth,
             earlyTurnScoutObserver: request.EarlyTurnScoutObserver,
-            attributionPurpose: request.Purpose);
+            attributionPurpose: request.Purpose,
+            retainedPrimaryIncumbent: request.RetainedPrimaryIncumbent);
     }
 
     internal SolverResult Dispatch(ContinuationSearchRequest request)
