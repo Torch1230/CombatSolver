@@ -23,4 +23,6 @@
 
 一次性调查放 .local/tool-tasks/<任务>/，验证时显式接入，结束清理代码、路由、参数、输入和产物。普通构建排除 .local 源码。新增正式文件按上表收纳；根目录只保留本入口。
 
+`Contracts/Search/UnattendedTestRunner.NoveltySearch.cs` 的 `GENERATED-NOVELTY-SEARCH` 支持完整请求对照及固定胜路验证：`research-options.json` 选择 `request` 或 `replay`；后者读取 `frozen-plan.json` 并要求零展开、完整终局一致，可配合 `native.flag` 验证原生部署。复跑参数和范围见[首领策略证据](../../docs/strategy/hp-loss-pruning/README.md#原生兑现与独立包复测)。
+
 旧 Soul/Custom/外骨骼虫路径追踪及 ACT3 硬编码路线观察入口已退出当前树，调查代码见 [固定提交](https://github.com/Torch1230/CombatSolver/tree/fe3edd2f7b4f3a92b266e6b13293810d31ce2e1b/src/Testing)。原生已知路线回归、生成上下文合同及其公共快照辅助继续维护。历史质量缺口与失败记录保持原结论，源码精简不代表问题修复。

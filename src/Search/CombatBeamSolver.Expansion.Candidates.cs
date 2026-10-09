@@ -83,6 +83,8 @@ internal sealed partial class CombatBeamSolver
         SearchNode parent,
         List<ActionCandidate> candidates)
     {
+        if (policy.BossTempoSearch != null)
+            return candidates;
         if (_developmentStrategy == null)
             candidates.Sort(static (left, right) =>
             {
@@ -869,15 +871,22 @@ internal sealed partial class CombatBeamSolver
     private bool AtTranspositionEntryLimit()
         => policy.TranspositionEntryLimit > 0
             && _run.Transpositions.Count + _run.ExpandedTranspositions.Count
+                + (_run.BossTempo?.Expanded.Count ?? 0)
                 >= policy.TranspositionEntryLimit;
 
     private void ObserveTranspositionEntries()
         => _run.TranspositionDiagnostics.ObserveEntries(
-            _run.Transpositions.Count + _run.ExpandedTranspositions.Count,
+            _run.Transpositions.Count + _run.ExpandedTranspositions.Count + (_run.BossTempo?.Expanded.Count ?? 0),
             policy.TranspositionEntryLimit, _run.Expanded);
 
     private bool TryAcceptTransposition(SearchNode candidate)
     {
+        if (policy.BossTempoSearch != null)
+        {
+            ObserveSearchPath(candidate, SearchPathObservationStage.AdmissionTransposition,
+                "tempo_deferred_until_discrepancy_assignment");
+            return true;
+        }
         // Scheduling obligations are deliberately bounded elsewhere. A normal route at the
         // same simulator state cannot inherit their exact pattern/envelope history, so it must
         // not erase the probe before the obligation reaches the frontier.
@@ -934,6 +943,8 @@ internal sealed partial class CombatBeamSolver
 
     private bool TryMarkExpandedState(SearchNode node)
     {
+        if (policy.BossTempoSearch != null)
+            return TryMarkTempoExpanded(node);
         if (node.PendingCycleExitObservation != null)
         {
             SearchReplayEvidence.PublishCandidateFailure(policy.Diagnostics, node, "expansion_admission_frontier");

@@ -404,9 +404,13 @@ internal static class ModRuntime
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
             settings, state, includeTurnSetup: false, theftPolicy: SolverController.ResolveTheftPolicy(state));
         policy = policy with { DisableSharedPrimaryIncumbentsForTesting = options.DisableSharedIncumbents,
+            UseBossTempoSearch = options.BossTempo != "off",
+            BossTempoNormalizeHpPricing = options.BossTempo != "legacy-pricing",
+            BossTempoSearch = options.BossTempo == "direct" ? new(2) : null,
             Profile = policy.Profile with
         {
             BaseScoreOnly = options.Ordering == "base",
+            BossTempoHpPricing = options.BossTempo == "direct",
             SecondRankBand = options.Ordering == "band",
             ContextualRanking = options.RankingModelPath == null ? null
                 : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),

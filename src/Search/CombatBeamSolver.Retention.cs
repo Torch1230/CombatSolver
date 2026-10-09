@@ -324,8 +324,8 @@ internal sealed partial class CombatBeamSolver
             root.CanCertifyRemainingHealing || root.UsesKnownNativeHealingPolicy
                 ? RemainingHealingPotential : null,
             out certifiedHealingBoundPruned,
-            allowTurnTieBound: !_strictHpBoundWithRelicTargets,
-            pruneEqualHp: policy.RelicTargets.Count == 0,
+            allowTurnTieBound: policy.BossTempoSearch == null && !_strictHpBoundWithRelicTargets && !policy.PreserveBossTempoHpTies,
+            pruneEqualHp: policy.BossTempoSearch == null && policy.RelicTargets.Count == 0 && !policy.PreserveBossTempoHpTies,
             preservePotionCostOpportunities: root.UsesComponentHealingCertificate,
             requireCertifiedHealingProof: root.UsesComponentHealingCertificate,
             minimumExplicitPotionUses: root.UsesComponentHealingCertificate && policy.RelicTargets.Count == 0
@@ -360,10 +360,10 @@ internal sealed partial class CombatBeamSolver
                 && _primaryIncumbents.TryGet(resourceBucket, out var shared)
                 && ShouldPruneByPrimaryIncumbent(
                     hpLowerBound - rewardCredit,
-                    node.Turn, shared, allowTurnTieBound: !_strictHpBoundWithRelicTargets
+                    node.Turn, shared, allowTurnTieBound: policy.BossTempoSearch == null && !_strictHpBoundWithRelicTargets && !policy.PreserveBossTempoHpTies
                         && CanPruneEqualHpWithPotionCost(node.Snapshot, shared,
                             root.UsesComponentHealingCertificate),
-                    pruneEqualHp: CanPruneEqualHpWithPotionCost(node.Snapshot, shared,
+                    pruneEqualHp: policy.BossTempoSearch == null && !policy.PreserveBossTempoHpTies && CanPruneEqualHpWithPotionCost(node.Snapshot, shared,
                         root.UsesComponentHealingCertificate));
             if (!prune && eligible && !policy.IgnoreLongTermRewards && policy.RelicTargets.Count == 0
                 && (_hasGrowthTargets || node.Snapshot.GrowthRewards.Total != 0)

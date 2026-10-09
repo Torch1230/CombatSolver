@@ -889,25 +889,32 @@ internal sealed partial class CombatBeamSolver
         private static bool UsesPotion(SearchNode node)
             => node.PotionCount > 0;
 
+        internal double IntermediateScore(SearchNode node) => BeamRankScore(node);
+
         private double BeamRankScore(SearchNode node)
         {
             // 基础分成员（见 SolverSearchProfile.BaseScoreOnly）：中途排序只用基础分；未置位时下面逐位不变。
             if (_profile.BaseScoreOnly)
                 return _developmentStrategy?.Rank(node, node.Score) ?? node.Score;
-            int persistentBuffCap = _isActEndingBoss
+            bool bossFeatures = _isActEndingBoss || _profile.BossTempoHpPricing;
+            int persistentBuffCap = bossFeatures
                 ? SolverWeights.PersistentBuffDeltaBeamCap
                 : SolverWeights.StandardPersistentBuffDeltaBeamCap;
-            double persistentBuffValue = _isActEndingBoss
+            double persistentBuffValue = bossFeatures
                 ? SolverWeights.PersistentBuffDeltaBeamValue
                 : SolverWeights.StandardPersistentBuffDeltaBeamValue;
-            bool useLatentSetup = _isActEndingBoss || _initialEnemyCount > 1;
-            int strengthSuppressionHorizon = _isActEndingBoss
+            bool useLatentSetup = bossFeatures || _initialEnemyCount > 1;
+            int strengthSuppressionHorizon = bossFeatures
                 ? SolverWeights.BossEnemyStrengthSuppressionHorizon
                 : SolverWeights.StandardEnemyStrengthSuppressionHorizon;
-            int weakExpectedHpSaved = _isActEndingBoss
+            int weakExpectedHpSaved = bossFeatures
                 ? SolverWeights.BossEnemyWeakExpectedHpSaved
                 : SolverWeights.StandardEnemyWeakExpectedHpSaved;
             double baseScore = node.Score;
+            if (_profile.BossTempoHpPricing && !node.IsTerminal)
+                baseScore = BossTempoSearchOptions.RankBase(baseScore,
+                    node.Snapshot.CumulativePlayerHpLost, node.FutureSoldHp,
+                    node.Snapshot.ProjectedPlayerHp, node.Snapshot.PlayerDead);
             if (_profile.ContinuousThreatRanking && !node.IsTerminal
                 && node.Action is { Kind: PlanActionKind.EndTurn }
                 && !node.Snapshot.PlayerDead && node.Snapshot.ProjectedPlayerHp <= 0
@@ -930,7 +937,7 @@ internal sealed partial class CombatBeamSolver
                     ? Math.Min(SolverWeights.LatentSetupBeamCap, node.Snapshot.LatentSetupValue)
                         * SolverWeights.LatentSetupBeamValue
                     : 0d)
-                + (_isActEndingBoss
+                + (bossFeatures
                     ? node.Snapshot.FutureResourceValue * SolverWeights.FutureResourceBeamValue
                     : 0d)
                 + Math.Min(

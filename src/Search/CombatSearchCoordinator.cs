@@ -171,6 +171,9 @@ internal static partial class CombatSearchCoordinator
                 firstTurnAnchors,
                 RunPostSearch);
             SolverResult selected = result;
+            selected = RunBossTempoSearch(new(root, displayNames, battleDamage,
+                policy, policy.Profile, requestClock, ledger, cancellationToken,
+                enrichedProgressCallback, interaction == null ? null : PublishAdoptableResult), selected);
             if (policy.IncludeTurnSetup)
             {
                 PopulateRequestWorkTotals(selected, requestWorkTotals);
@@ -953,9 +956,9 @@ internal static partial class CombatSearchCoordinator
         {
             return solver.Solve();
         }
-        catch (PotionPolicyUnsatisfiedException)
+        catch (PotionPolicyUnsatisfiedException ex)
         {
-            policy.Diagnostics.Info($"[CombatSolver/Test] {diagnostic} qualified=false");
+            policy.Diagnostics.Info($"[CombatSolver/Test] {diagnostic} qualified=false reason={ex.Message}");
             return null;
         }
     }

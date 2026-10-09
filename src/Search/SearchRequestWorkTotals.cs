@@ -12,6 +12,7 @@ internal enum DirectSearchPurpose
     NoveltyExploration,
     AdaptiveNoveltyRefinement,
     NarrowOpeningIncumbent,
+    BossTempo,
 }
 
 internal readonly record struct SearchRequestWorkSnapshot(

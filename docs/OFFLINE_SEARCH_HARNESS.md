@@ -46,6 +46,7 @@ dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHa
 | `--potion-policy <p>` | 药水政策（默认 `Smart`） |
 | `--search-mode <m>` | `Evaluate`（默认）或 `Coordinator` |
 | `--use-portfolio` | 开宽度组合，只对 `Coordinator` 有效 |
+| `--boss-tempo on\|off\|legacy-pricing\|direct` | 默认 on，Coordinator 首领请求在原搜索后追加配置额度各20%，首回合侦察接固定前缀后续搜索；off 用于同条件对照；legacy-pricing 沿旧HP扣价；direct 仅 Evaluate，偏差额度2，直接验证整场遍历 |
 | `--out/--label/--language/--verbose-game-log/--milestone` | 产物目录、标签、本地化语言码、是否打游戏日志、跑到 M1 还是 M2 |
 | `--measure-phases` | 在运行日志里输出 `SEARCH_PHASE` 逐阶段排他耗时/分配表 |
 | `--early-turn-exploration-depth <0|1|2>` | Coordinator 测量时打开早期回合探索；默认 0，离线选项不改变生产默认值 |
@@ -67,6 +68,8 @@ dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHa
 纯 ETC 外部生命界合同可运行 `dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-early-turn-continuation-bound`，直接调用生产门禁及剪枝谓词，不建游戏状态。当前覆盖 143 条断言。普通 ETC 诊断起始行新增 `incumbent_bound=eligible_strict_hp`，已完成续搜行输出 `incumbent_hp`（`-` 表示旁路）及 `incumbent_pruned`；后者包含原有内部生命界剪枝，不能直接视为外部界的净收益。新版本另输出 `incumbent_certified_healing_bound_pruned`，只归因于根认证治疗上界的边际剪枝；根捕获行记录认证状态、首个拒绝原因和固定战后治疗量。两个计数的口径不同，前者是成员内合计，后者只统计认证上界相对完整缺血余量增加剪掉的候选节点。它不是所有阶段的总剪枝量或节省的节点数。固定根对照及实际适用范围见 [测试矩阵](archive/testing/volume-01.md#早期回合探索的外部生命界2026-10-01)。
 
 ## 批量用法
+
+`--check-boss-tempo` 运行首领配置预算、HP单次计价、活节点致死投影、等损路线及药水桶见证的12项纯合同；原生复跑入口与验证范围见[首领卖血预算](strategy/hp-loss-pruning/README.md#首领卖血预算遍历)。
 
 `OFFLINE_HARNESS_EQUIVALENCE_PROBE=1` 可在小预算 `Evaluate` 请求中观察已有转置拒绝、候选分类次数和自然出现的两步反向动作，输出 `equivalence-probe.json`。每个求解器最多保存20,000个分离出的两步索引，不持有节点/模型，也不改变剪枝结果；指纹相同只是研究线索，不是交换性证明。该模式有额外锁和序列化开销，不能用于时间或分配评测。适用范围和复现命令见[准入优化与采样](archive/performance/equivalence-admission-20260929.md)。
 

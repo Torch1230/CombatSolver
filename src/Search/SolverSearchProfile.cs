@@ -40,6 +40,7 @@ internal sealed record SolverSearchProfile(
     /// 的基础分成员使用，默认 false，此时排序逐位不变。
     /// </summary>
     public bool BaseScoreOnly { get; init; }
+    internal bool BossTempoHpPricing { get; init; }
 
     /// <summary>
     /// 能力偏好完整成员使用更高的承诺席位，但不改变最终评分、状态键或终局比较。
