@@ -131,28 +131,30 @@ internal sealed partial class CombatBeamSolver
         IReadOnlyList<PlanCardChoice> remaining = tail.RootSetup
             ? setupChoices!.Skip(checkpoint.PrefixCount).ToArray() : checkpoint.RemainingChoices(action!);
         int turn = tail.Turn, shuffles = tail.ShufflesCrossed;
-        combat.BeginActionChoices(remaining);
+        TurnStartChoiceCursor cursor = combat.BeginActionChoices(remaining);
         SearchBoundaryReason boundary;
         try
         {
             using var measure = _run.Performance.Measure(SearchMetricPhase.ExecutionChoiceResume);
             boundary = simulator.ResumeExecutionContinuation(plan) ? SearchBoundaryReason.None : SearchBoundaryReason.PendingChoice;
+            if (tail.PlayerStart != null)
+                shuffles = tail.PlayerStart.ShufflesCrossed;
             if (boundary == SearchBoundaryReason.None)
             {
                 using var dispatch = simulator.BeginExecutionDispatch();
                 if (tail.PlayerStart is null && !tail.RootSetup
                     && !CorePowerSupport.ApplyEnemyDeathPowers(simulator, combat, combat.KnownEnemies, tail.Deaths))
                     boundary = SearchBoundaryReason.PendingChoice;
+                if (tail.PlayerStart != null && !tail.RootSetup)
+                    boundary = EndTurnsRequestedAtTurnStart(simulator, combat, boundary, tail.Deaths, ref shuffles,
+                        cursor, action!.TurnStartChoices);
                 if (boundary == SearchBoundaryReason.None && !SettleReplayActionBoundary(simulator, combat))
                     boundary = SearchBoundaryReason.PendingChoice;
             }
         }
         finally { combat.EndActionChoices(); }
         if (tail.PlayerStart != null)
-        {
-            shuffles = tail.PlayerStart.ShufflesCrossed;
             turn = combat.GetPlayerTurnNumber(_player);
-        }
         if (boundary == SearchBoundaryReason.None && tail.PlayerStart is null && !tail.RootSetup)
         {
             if (simulator.ShuffleEventCount != tail.ShuffleEventsBefore) shuffles++;

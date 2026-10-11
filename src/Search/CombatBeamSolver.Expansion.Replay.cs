@@ -973,15 +973,42 @@ internal sealed partial class CombatBeamSolver
     {
         if (!simulator.IsInProgress)
             return SearchBoundaryReason.None;
-        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
         IReadOnlyList<PlanCardChoice>? roundChoicePlans = turnStartChoices?
             .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse)
             .ToArray();
         TurnStartChoiceCursor roundChoices = new(roundChoicePlans);
         simulatedCombat.BeginActionChoices(roundChoices);
-        simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.PlayerTurnEnd);
         try
         {
+            SearchBoundaryReason boundary = AdvanceRoundWithinChoices(simulator, simulatedCombat, roundIndex,
+                processedEnemyDeaths, ref shufflesCrossed, roundChoices, turnStartChoices,
+                turnStartChoices is not { Count: > 0 } ? roundCheckpointCapture : null);
+            return EndTurnsRequestedAtTurnStart(simulator, simulatedCombat, boundary,
+                processedEnemyDeaths, ref shufflesCrossed, roundChoices, turnStartChoices);
+        }
+        finally
+        {
+            simulatedCombat.EndActionChoices();
+        }
+    }
+
+    /// <summary>
+    /// 一整轮：玩家回合结束、怪物回合、下一个玩家回合开始。调用方持有选牌游标。
+    /// </summary>
+    private SearchBoundaryReason AdvanceRoundWithinChoices(
+        CombatPredictionSimulator simulator,
+        SimulatedCombatState simulatedCombat,
+        int roundIndex,
+        ISet<uint> processedEnemyDeaths,
+        ref int shufflesCrossed,
+        TurnStartChoiceCursor roundChoices,
+        IReadOnlyList<PlanCardChoice>? turnStartChoices,
+        RoundReplayCheckpointCapture? roundCheckpointCapture)
+    {
+        if (!simulator.IsInProgress)
+            return SearchBoundaryReason.None;
+        SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
+        simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.PlayerTurnEnd);
         int roundHistoryEntryStart = simulator.History.Entries.Count;
         int etherealExhaustCount = simulatedCombat.CountEtherealCardsInHand(simulator, _player);
         {
@@ -1233,12 +1260,7 @@ internal sealed partial class CombatBeamSolver
 
         return AdvanceRoundPlayerStart(simulator, simulatedCombat, playerState, simulatedPlayer,
             roundIndex, processedEnemyDeaths, ref shufflesCrossed, roundChoices, takingExtraTurn,
-            turnStartChoices is not { Count: > 0 } ? roundCheckpointCapture : null);
-        }
-        finally
-        {
-            simulatedCombat.EndActionChoices();
-        }
+            roundCheckpointCapture);
     }
 
 }

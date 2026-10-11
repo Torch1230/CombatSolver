@@ -22,6 +22,8 @@ internal sealed partial class CombatBeamSolver
     {
         simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.PlayerTurnStart);
         using SearchMeasurementScope _ = _run.Performance.Measure(SearchMetricPhase.RoundPlayerStart);
+        // 原版 StartTurn 进 Start 阶段先清空 PlayersReadyToEndTurn；之后回合开始里的结束回合请求才算数。
+        simulatedCombat.ConsumePlayerTurnEndRequest();
         simulatedCombat.CurrentSide = CombatSide.Player;
         if (!takingExtraTurn)
             simulatedCombat.RoundNumber++;
@@ -343,11 +345,53 @@ internal sealed partial class CombatBeamSolver
                 checkpoint.HandDrawCount.HasValue ? PlayerStartStage.Draw : PlayerStartStage.AfterPlayer,
                 metrics: _run.Performance);
             shufflesCrossed = progress.ShufflesCrossed;
-            return result;
+            return EndTurnsRequestedAtTurnStart(simulator, combat, result, deaths, ref shufflesCrossed, cursor, choices);
         }
         finally
         {
             combat.EndActionChoices();
         }
+    }
+
+    private const int MaxConsecutiveTurnsEndedAtTurnStart = 64;
+
+    /// <summary>
+    /// 回合开始阶段请求了结束回合（混乱、历史课自动打出的牌），刚开始的这一回合直接结束，接着推进下一轮。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 原版 <c>StartTurn</c> 在 Start 阶段先清空 <c>PlayersReadyToEndTurn</c>，再跑发牌和 AutoPrePlay；
+    /// 这之后的 <c>PlayerCmd.EndTurn</c> 照常生效，回合开始一结束整个回合就结束，玩家一张牌都打不了。
+    /// 历史课重放结末、混乱打出虚空形态都是这样。以前三处入口在回合推进之后把这个请求直接丢掉，
+    /// 搜索以为那一回合还能出牌，实机却跳过了，路线每次都对不上。
+    /// </para>
+    /// <para>
+    /// 被跳过的那一回合不留动作，和打出结束回合牌之后的表示一致：下一个动作就属于再下一回合。
+    /// 它的回合结束、怪物回合和下一回合开始的选牌接在调用方的同一个游标后面。
+    /// </para>
+    /// </remarks>
+    private SearchBoundaryReason EndTurnsRequestedAtTurnStart(
+        CombatPredictionSimulator simulator,
+        SimulatedCombatState combat,
+        SearchBoundaryReason boundary,
+        ISet<uint> processedEnemyDeaths,
+        ref int shufflesCrossed,
+        TurnStartChoiceCursor roundChoices,
+        IReadOnlyList<PlanCardChoice>? turnStartChoices)
+    {
+        for (int skipped = 0;
+             boundary == SearchBoundaryReason.None && simulator.IsInProgress && combat.ConsumePlayerTurnEndRequest();
+             skipped++)
+        {
+            if (skipped >= MaxConsecutiveTurnsEndedAtTurnStart)
+            {
+                throw new InvalidOperationException(
+                    $"回合开始连续 {MaxConsecutiveTurnsEndedAtTurnStart} 次请求结束回合，判定为不会终止的跳过循环。");
+            }
+            boundary = AdvanceRoundWithinChoices(simulator, combat,
+                combat.GetPlayerTurnNumber(_player) - _startTurnNumber, processedEnemyDeaths,
+                ref shufflesCrossed, roundChoices, turnStartChoices, roundCheckpointCapture: null);
+        }
+        return boundary;
     }
 }
