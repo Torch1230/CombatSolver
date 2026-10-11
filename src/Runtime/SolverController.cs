@@ -785,6 +785,9 @@ internal static partial class SolverController
         return true;
     }
 
+    private static bool IsLocalPlayerEndingTurn(CombatState state)
+        => LocalContext.GetMe(state) is { } me && CombatManager.Instance.IsPlayerReadyToEndTurn(me);
+
     internal static async Task ResumeAfterTurnSetupAsync(
         NGame host,
         CombatState state,
@@ -801,9 +804,12 @@ internal static partial class SolverController
         {
             token.ThrowIfCancellationRequested();
             long deadline = System.Environment.TickCount64 + 30_000;
+            // 回合开始里打出的牌（混乱打出虚空形态、历史课重放结末）可以直接结束这一回合：PlayerCmd.EndTurn
+            // 禁用玩家操作，回合结束又要等这里所在的 AutoPrePlay 跑完。这时继续等就是互等到超时，直接放手。
             while (CombatManager.Instance.IsInProgress
                    && !CombatManager.Instance.IsOverOrEnding
                    && ReferenceEquals(CombatManager.Instance.DebugOnlyGetState(), state)
+                   && !IsLocalPlayerEndingTurn(state)
                    && (LocalContext.GetMe(state)?.PlayerCombatState?.Phase != PlayerTurnPhase.Play
                        || CombatManager.Instance.PlayerActionsDisabled
                        || _deployment != null))
@@ -819,6 +825,7 @@ internal static partial class SolverController
                 || !CombatManager.Instance.IsInProgress
                 || CombatManager.Instance.IsOverOrEnding
                 || !ReferenceEquals(CombatManager.Instance.DebugOnlyGetState(), state)
+                || IsLocalPlayerEndingTurn(state)
                 || LocalContext.GetMe(state)?.PlayerCombatState is not { Phase: PlayerTurnPhase.Play } playerState
                 || playerState.TurnNumber != turn)
             {
@@ -833,6 +840,7 @@ internal static partial class SolverController
                 || !CombatManager.Instance.IsInProgress
                 || CombatManager.Instance.IsOverOrEnding
                 || !ReferenceEquals(CombatManager.Instance.DebugOnlyGetState(), state)
+                || IsLocalPlayerEndingTurn(state)
                 || LocalContext.GetMe(state)?.PlayerCombatState is not { Phase: PlayerTurnPhase.Play } resumedState
                 || resumedState.TurnNumber != turn)
             {
