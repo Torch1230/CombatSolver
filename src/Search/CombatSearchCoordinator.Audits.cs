@@ -6,6 +6,40 @@ namespace CombatSolver;
 
 internal static partial class CombatSearchCoordinator
 {
+    private static bool CanAuditTurnSetupSmart(SearchPassContext context)
+        => context.Policy.IncludeTurnSetup
+            && context.Policy.PotionPolicy == SolverPotionPolicy.Smart
+            && !context.Policy.PotionStrategy.HasForcedDirectives
+            && context.Root.SearchablePotions.Any(potion => context.Policy.PotionStrategy.AllowsExplicitUse(
+                potion.Slot, potion.PotionId, SolverPotionPolicy.Smart, forceAllDisabled: false));
+
+    private static SolverSearchProfile TurnSetupSmartPrimaryProfile(SearchPassContext context)
+        // Reserve nodes and time for the broader one-potion counterfactual inside
+        // the original request budget.
+        => CanAuditTurnSetupSmart(context)
+            ? context.Profile with
+            {
+                MaxExpandedNodes = Math.Max(1, context.Profile.MaxExpandedNodes / 3),
+                SoftTimeBudgetMilliseconds = Math.Max(1, context.Profile.SoftTimeBudgetMilliseconds / 3),
+            }
+            : context.Profile;
+
+    private static SolverResult RunTurnSetupSmartAudit(SearchPassContext context, SolverResult primary,
+        SmartLayerMemoryForecast memoryForecast)
+    {
+        if (!CanAuditTurnSetupSmart(context) || primary.ResultScope != SolverResultScope.SearchCompletion
+            || primary.ExplicitPotionCount != 0 || HasReachedAcceptableBattleHpLoss(context.Policy, primary))
+            return primary;
+        SearchBudgetWindow remaining = context.Budget.PassWindow(context.Profile, context.Clock);
+        if (!remaining.CanStart(1)) return primary;
+        SolverSearchProfile layerProfile = remaining.Limit(context.Profile,
+            context.Profile.MaxExpandedNodes, context.Profile.SoftTimeBudgetMilliseconds, reserveMilliseconds: 0);
+        context.Policy.Diagnostics.Info($"[CombatSolver/Test] TURN_SETUP_SMART_AUDIT " +
+            $"remaining_nodes={layerProfile.MaxExpandedNodes} remaining_ms={layerProfile.SoftTimeBudgetMilliseconds}");
+        return SearchSmartPotionGradient(context with { Profile = layerProfile, Clock = Stopwatch.StartNew() },
+            context.CancellationToken, primary, memoryForecast, out _, maximumLayers: 1);
+    }
+
     private static SolverResult RunSupplementalAudits(
         SearchPassContext context,
         SolverResult primary,

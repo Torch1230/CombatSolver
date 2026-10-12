@@ -403,9 +403,10 @@ internal static partial class CombatSearchCoordinator
             }
             SolverResult RunPrimary()
                 => policy.UseNoveltyPortfolio
-                    ? RunNoveltyPortfolioPass(passContext with { Policy = passPolicy },
+                    ? RunNoveltyPortfolioPass(passContext with
+                        { Policy = passPolicy, Profile = TurnSetupSmartPrimaryProfile(passContext) },
                         initialPotionPolicyOverride, RunBaseline)
-                    : RunBaseline(passProfile);
+                    : RunBaseline(TurnSetupSmartPrimaryProfile(passContext));
             bool hasForcedBaseline = forcedSmartGradient;
             SolverResult passResult;
             try
@@ -672,7 +673,7 @@ internal static partial class CombatSearchCoordinator
             if (ResolveTakeoverResult(passResult, policy.Interaction) is { } passTakeover)
                 return CapturePassResult(passResult, passTakeover, false);
             if (policy.IncludeTurnSetup)
-                return CapturePassResult(passResult, null, false);
+                return CapturePassResult(RunTurnSetupSmartAudit(passContext, passResult, memoryForecast), null, false);
             SearchPassContext auditContext = passContext;
             // Smart 无强制指令时主路线应无药。插入药由确定性路线引入；开目标变体等预审计
             // continuation 也可能把带插入药的首回合前缀带回主路线。两种情况都先重派生无药

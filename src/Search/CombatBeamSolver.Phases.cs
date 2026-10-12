@@ -323,6 +323,12 @@ internal sealed partial class CombatBeamSolver
         int requiredPotionUses = Math.Max(_minimumPotionUses,
             _potionPolicy == SolverPotionPolicy.RequireAtLeastOne ? 1 : 0);
         int earlyStopPotionUses = policy.MinimumRequiredPotionUses(battleDamage.PotionsUsedSoFar);
+        // An exact Smart layer has already fixed its resource count. A zero-loss
+        // victory can settle that layer; the coordinator still checks its savings
+        // against the potion-free baseline before adopting it.
+        if (_directSearchPurpose == DirectSearchPurpose.SmartPotionGradient
+            && _maximumPotionUses == _minimumPotionUses)
+            earlyStopPotionUses = Math.Max(earlyStopPotionUses, requiredPotionUses);
         bool IsEligibleCompleteVictory(SearchNode node)
             => ExplicitPotionUseCount(node) >= requiredPotionUses
                 && (!_enforcePotionDirectives

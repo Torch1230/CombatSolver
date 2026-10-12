@@ -6,6 +6,7 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertReplayBoundaryContractAsync(Player player)
     {
+        AssertCheckpointPolicyContract();
         using (System.Text.Json.JsonDocument savedStars = System.Text.Json.JsonDocument.Parse("""
             [{"<Cost>k__BackingField":3,"<ClearsWhenTurnEnds>k__BackingField":true,"<ClearsWhenCardIsPlayed>k__BackingField":false},
              {"<Cost>k__BackingField":0,"<ClearsWhenTurnEnds>k__BackingField":false,"<ClearsWhenCardIsPlayed>k__BackingField":true}]

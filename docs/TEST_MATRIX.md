@@ -8,7 +8,7 @@
 
 按改动选择最小验证层，方法见 [无人测试](HEADLESS_TESTING.md) 与 [社区验收](community/testing-guide.md)。以下命令提供当前复跑入口，不表示本轮已执行。单人共享损血剪枝的新基线验证见[策略证据](strategy/hp-loss-pruning/README.md#单人共享损血剪枝2026-10-05)。
 
-历史记录见 [归档索引](archive/testing/README.md)，0.48.1 的验证、失败与未验证项见 [历史卷 12](archive/testing/volume-12.md)。
+历史记录见 [归档索引](archive/testing/README.md)，0.48.1 的验证、失败与未验证项见 [历史卷 12](archive/testing/volume-12.md)。Q003 / PR #206 的 0.49.2 修复、2026-10-11 上游整合、O006 最终构建开战零损单瓶、O007 重建及独立完整回放、O010 48 HP 无药哨兵，以及失败实验和五主题缺口见[当前补全记录](issues/q003-completion-20261004.md)，此前十阶段见[历史记录](issues/q003-checkpoint-policy-20261003.md)；本 PR 先交付已验证修复供正式审查（Refs #183），整批尚未完成，旧构建及中途根不表示当前全批验收。
 
 PR #213 的贡献者分阶段验证见 [Q002 历史入口](issues/q002-route-quality.md#0494-重新验证2026-10-05)。当前 0.50.0 主线整合使用 O003、O004、O005 同根、同政策对照，结果与复跑预算见 [当前验收](issues/q002-route-quality.md#0500-主线整合2026-10-05)。
 

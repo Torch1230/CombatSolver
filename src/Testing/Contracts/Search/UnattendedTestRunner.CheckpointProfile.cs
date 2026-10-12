@@ -92,15 +92,21 @@ internal sealed partial class UnattendedTestRunner
                     || frozen.PredictPotionReward != flags.Reward)
                     throw new InvalidOperationException("Recorded portfolio/reward switches changed during policy capture.");
                 foreach (string key in new[] { "useNoveltyPortfolio", "useBeamWidthPortfolio", "useEarlyTurnExploration", "predictPotionReward" })
-                    recorded.Remove(key);
-                SolverSettingsData legacy = ApplyRecordedCheckpointPolicy(current);
-                if (legacy.UseNoveltyPortfolio != current.UseNoveltyPortfolio
-                    || legacy.UseBeamWidthPortfolio != current.UseBeamWidthPortfolio
-                    || legacy.UseEarlyTurnExploration != current.UseEarlyTurnExploration
-                    || legacy.PredictPotionReward != current.PredictPotionReward)
-                    throw new InvalidOperationException("Unrecorded legacy switches changed their existing fallback.");
+                {
+                    JsonObject incomplete = (JsonObject)recorded.DeepClone();
+                    incomplete.Remove(key);
+                    _checkpointImport = new JsonObject { ["resolvedPolicy"] = incomplete };
+                    try
+                    {
+                        ApplyRecordedCheckpointPolicy(current);
+                        throw new InvalidOperationException($"Missing recorded switch {key} accepted a local default.");
+                    }
+                    catch (InvalidDataException error) when (error.Message == $"missing_policy:{key}")
+                    {
+                    }
+                }
             }
-            _completedChecks.Add("CheckpointPolicy:RecordedTrueAndFalseSwitches:FrozenPolicy:LegacyFallback");
+            _completedChecks.Add("CheckpointPolicy:RecordedTrueAndFalseSwitches:FrozenPolicy:MissingSwitchRequiresOverride");
         }
         finally
         {

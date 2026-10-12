@@ -193,6 +193,32 @@ internal sealed partial class UnattendedTestRunner
                 PotionPolicy = SolverPotionPolicy.RequireAtLeastOne,
                 PotionStrategy = new PotionStrategySnapshot(SolverPotionPolicy.RequireAtLeastOne, []) });
             Check(requiredOne.Snapshot.AllEnemiesDead && requiredOne.PotionCount == 1, "at least one potion preserves spare at zero loss");
+            System.Collections.Concurrent.ConcurrentQueue<string> layerLogs = new();
+            SearchPolicySnapshot exactLayerPolicy = policy with
+            {
+                GrowthOpportunityTargets = GrowthOpportunityTargets.Empty,
+                PotionPolicy = SolverPotionPolicy.Smart,
+                PotionStrategy = new PotionStrategySnapshot(SolverPotionPolicy.Smart, []),
+                Diagnostics = new SearchDiagnosticsSink(layerLogs.Enqueue, _ => { }),
+            };
+            async Task<SolverResult> ExactLayer(SearchPolicySnapshot requested)
+                => await Task.Run(() => new CombatBeamSolver(root, names,
+                    new BattleDamageSnapshot(0, 0, 0, []), requested,
+                    searchProfile: requested.Profile,
+                    potionPolicyOverride: SolverPotionPolicy.RequireAtLeastOne,
+                    minimumPotionUses: 1, maximumPotionUses: 1,
+                    directSearchPurpose: DirectSearchPurpose.SmartPotionGradient).Solve());
+            SolverResult exactLayer = await ExactLayer(exactLayerPolicy);
+            Check(exactLayer.Snapshot.AllEnemiesDead && exactLayer.ProjectedBattleHpLost == 0
+                && exactLayer.ExplicitPotionCount == 1
+                && layerLogs.Any(line => line.Contains("ACCEPTABLE_BATTLE_HP_LOSS_REACHED")),
+                "exact optional Smart layer stops at its own one-potion zero-loss victory");
+            layerLogs.Clear();
+            SolverResult exactLayerContinued = await ExactLayer(exactLayerPolicy with { StopAtAcceptableBattleHpLoss = false });
+            Check(exactLayerContinued.Snapshot.AllEnemiesDead && exactLayerContinued.ExplicitPotionCount == 1
+                && !layerLogs.Any(line => line.Contains("ACCEPTABLE_BATTLE_HP_LOSS_REACHED")),
+                "disabling HP stopping still searches the exact layer without settling its target");
+            _completedChecks.Add("HpTargetStop:ExactSmartLayerOnePotion:DisabledStoppingPreserved");
             var greedyCard = MegaCrit.Sts2.Core.Models.ModelDb.Card<MegaCrit.Sts2.Core.Models.Cards.HandOfGreed>().ToMutable();
             GrowthOpportunityTargets greedTarget = GrowthOpportunityPolicy.CaptureBuiltInForTesting([greedyCard], 3, 0);
             Check(greedTarget.IsBounded && greedTarget.RequiredRewards.HandOfGreed == 3,

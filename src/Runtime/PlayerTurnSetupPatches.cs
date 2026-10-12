@@ -188,6 +188,13 @@ internal static class PlayerTurnSetupCoordinator
     private static ActivePlan? _active;
     private static Task _activeOperation = Task.CompletedTask;
     internal static Action<CancellationToken>? BeforeChoiceSearchForTesting { get; set; }
+    internal static SolverProgress? CaptureDevelopmentMonitorProgress()
+    {
+        ActivePlan? active = Volatile.Read(ref _active);
+        return active == null
+            || (Volatile.Read(ref active.SearchState) != 1 && Volatile.Read(ref active.ManualSearchState) != 1)
+            ? null : Volatile.Read(ref active.Interaction.Progress);
+    }
     internal static string DescribeControlsForTesting()
         => _active is { } active
             ? $"search={active.SearchState}/{active.ManualSearchState} worker={active.SearchCancellation != null} canceled={active.SearchCancellation?.IsCancellationRequested} advanced={active.PlayerAdvancedChoice} driving={active.ReplayDrivingStarted} result={active.Result != null} visible={active.Choices.IsVisibleChoicePending} sequence={active.Choices.FirstVisibleSequence}/{active.Choices.LatestVisibleSequence} phase={active.Player.PlayerCombatState?.Phase} operation={_activeOperation.Status}"

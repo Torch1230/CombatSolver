@@ -48,7 +48,11 @@ Linux：
 
 旧包政策从 settings 和 searchProfiles 恢复。`missingPolicyFields` 列明缺项，搜索/部署需用 `-ReplayPolicyOverridePath <JSON>` / `--policy <JSON>` 明确补齐。当前覆盖字段：`potionPolicy`、`potionDirectives`、`growthBudgets`、`relicStrategyEnabled`、`relicCounterRules`、`brightestFlameMaxHpLossLimit`、`actTransitionBossHpStrategy`、`finalBossHpStrategy`、`acceptableBattleHpLoss`、`stopAtAcceptableBattleHpLoss`、`searchMaxDegreeOfParallelism`、`profile`、`fixedBudget`、`act3BossStrategy`、`useNoveltyPortfolio`、`useBeamWidthPortfolio`、`useEarlyTurnExploration`、`predictPotionReward`。旧政策中的 `shortProfile`、`deepProfile`、`forceShortOnly` 由兼容读取器归一化；不要将它们当作当前覆盖文件字段。覆盖文件保留在结果目录；原值、覆盖值和实际执行值分别记录。
 
-`profile` 按完整不可变记录注入冻结搜索政策，包括排序与组合字段，不仅恢复 Beam、节点和时间。显式无人测试 CLI 的能量权重扰动仍优先于 profile 内的同项设置。profile 由当前请求持有，结束、失败或下一请求前清除；普通游戏政策不受影响。搜索组合、早期探索和药水奖励预测的已记录开关同时恢复，显式 false 不被本机默认值覆盖；未记录这些字段的旧包保留原有本机设置回退，不能据此宣称已补齐缺失政策。覆盖文件可显式补齐或选择诊断政策。检查实验是否生效时读取 `executedPolicy`，不能仅以 `policyOverrides` 中存在参数为依据。
+`profile` 按完整不可变记录注入冻结搜索政策，包括排序与组合字段，不仅恢复 Beam、节点和时间。显式无人测试 CLI 的能量权重扰动仍优先于 profile 内的同项设置。profile 由当前请求持有，结束、失败或下一请求前清除；普通游戏政策不受影响。检查实验是否生效时读取 `executedPolicy`，不能仅以 `policyOverrides` 中存在参数为依据。
+
+报告中的 `predictPotionReward`、`useNoveltyPortfolio`、`useBeamWidthPortfolio`、`useEarlyTurnExploration` 按记录的 true/false 恢复，不能继承本机默认值。旧包没有记录这些开关时，搜索/部署明确报缺失政策，需通过覆盖文件补齐。恢复材料与录制动作仍可单独核验，不把未知政策补成默认值后声称同条件比较。
+
+批量工具只有在搜索预算、药水、成长、遗物、局外收益、可接受战损停止条件和四个搜索开关一致时，才允许生成相对人工路线的收益字段。缺失或 null 的必要字段不能证明一致；明确记录的可空 `brightestFlameMaxHpLossLimit` 可以为 null。两侧政策中的其他已记录字段也必须存在且相等，不能忽略派生搜索上下文或后来新增的字段。内部预设名称不参与比较，以实际数值 profile 为准。
 
 ## 批量与证据
 
