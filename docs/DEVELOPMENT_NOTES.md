@@ -8,6 +8,12 @@
 
 ## 下一版本（开发中）
 
+### 结果诊断的 Windows 进程内存读取
+
+`SolverDiagnostics.DescribeResult` 改为一次捕获进程内存快照。Windows 直接读取当前进程的工作集与私有内存计数，避免 `Process` 内存 getter 填充进程／线程信息；其他平台保留原 getter。原有诊断字段名保持，Windows 原生查询失败时明确写 `unavailable`。改动仅在 Runtime 诊断层，不调整搜索、模拟、预算或 GC 政策。
+
+新增验证复用 `DiagnosticLogTests`，用确定值检查原生布局与字段映射，覆盖无效句柄、失败后恢复、并发调用与可选独立基准，不以顺序内存样本的差值作为通过条件。`OfflineSearchHarness --check-result-diagnostics` 直接调用构建后的生产格式化函数，检查成功数值、失败标记及后续结果／动作日志完整性。原版 0.50.1 的既有可见采样、本轮源码验证及未验证范围分开记录在[诊断性能记录](performance/diagnostic-process-memory.md)。
+
 ### Q015 路线保留（PR #227）
 
 在既有 Beam 名额内，按用药数量保留已降低敌方格挡、仍有合法攻击且敌方剩余生命不超过可执行手牌估值的收尾续路；合法攻击数沿现有手牌遍历冻结。该估值用于保路资格，实际攻击由模拟器结算。Discard／DiscardAndDraw 上下文优先保留预计安全的进攻续路。Control 在原有结束回合探测名额中保留一个可能由延迟伤害获胜的代表，再由实际试算决定。旧敌退出且新敌入场的 AliveEnemyMask 变化进入 RevivalWindow 通道。状态等价、终局政策、预算和战斗语义沿用原实现。

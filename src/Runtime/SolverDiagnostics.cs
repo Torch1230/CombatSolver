@@ -87,9 +87,11 @@ internal static class SolverDiagnostics
     }
 
     public static string DescribeResult(SolverResult result)
+        => DescribeResult(result, ProcessMemoryUsage.CaptureCurrent());
+
+    internal static string DescribeResult(SolverResult result, ProcessMemoryUsage? processMemory)
     {
         GCMemoryInfo gcMemory = GC.GetGCMemoryInfo();
-        using Process process = Process.GetCurrentProcess();
         StringBuilder text = new();
         text.Append(Prefix).Append(" RESULT")
             .Append(" reused=").Append(result.WasReused)
@@ -244,8 +246,8 @@ internal static class SolverDiagnostics
             .Append(" managed_live_bytes=").Append(GC.GetTotalMemory(forceFullCollection: false))
             .Append(" managed_heap_bytes=").Append(gcMemory.HeapSizeBytes)
             .Append(" managed_fragmented_bytes=").Append(gcMemory.FragmentedBytes)
-            .Append(" process_working_set_bytes=").Append(process.WorkingSet64)
-            .Append(" process_private_bytes=").Append(process.PrivateMemorySize64)
+            .Append(" process_working_set_bytes=").Append(processMemory?.WorkingSetBytes.ToString() ?? "unavailable")
+            .Append(" process_private_bytes=").Append(processMemory?.PrivateBytes.ToString() ?? "unavailable")
             .Append(" score=").Append(result.BestNode.Score.ToString("F0"))
             .Append(" final_hp=").Append(result.Snapshot.PlayerHp)
             .Append(" final_block=").Append(result.Snapshot.PlayerBlock)

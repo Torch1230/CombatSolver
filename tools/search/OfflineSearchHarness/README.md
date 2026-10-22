@@ -9,6 +9,9 @@ Godot 绕过表、已知限制、验证证据）见 [`docs/OFFLINE_SEARCH_HARNES
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 dotnet build tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 
+# 直接调用生产结果诊断，检查内存字段成功／失败输出；无需启动游戏或建立战斗
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-result-diagnostics
+
 # 单根
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
     --request <请求.json> --label R1 --out <产物目录> --profile VeryHigh
@@ -33,6 +36,7 @@ python3 tools/search/OfflineSearchHarness/compare_results.py \
 | `OfflineCombat.cs` / `MainLoopContext.cs` | 建战斗、推进到玩家第一回合、消息循环 |
 | `OfflineLocalization.cs` / `MemorySaveStore.cs` | 空表本地化、内存存档层 |
 | `MemorySampler.cs` | 峰值托管堆与工作集采样 |
+| `ResultDiagnosticsChecks.cs` | 生产 `DescribeResult` 的内存字段、不可用标记与日志完整性合同 |
 | `run_plan.py` / `compare_results.py` | 批量运行、逐字段比较 |
 
 `--request` 也接受本仓库的固定装备/初始战斗状态夹具，不再强制 generatedScenarioPath；仍不执行 fixture 的 expected 断言。搜索预算、预设与药水政策以宿主 CLI 为准，例如成长循环须显式传 `--potion-policy RequireAtLeastOne`。恢复快照、追加怪物、自定义规则不支持并明确拒绝；特殊 ScenarioId 的原生合同请使用无人游戏测试。`--stop-at-zero-loss` 启用生产零战损达标停止；`--verify-incremental` 对小根逐步完整回放，不用于性能测量。见[循环对照](../../../docs/archive/performance/loop-optimization-20260921.md)。
