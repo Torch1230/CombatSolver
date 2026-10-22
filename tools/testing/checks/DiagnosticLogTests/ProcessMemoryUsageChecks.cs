@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using CombatSolver;
 
@@ -6,6 +7,7 @@ internal static class ProcessMemoryUsageChecks
 {
     public static void Run(bool measure)
     {
+        CheckWindowsCountersContract();
         ProcessMemoryUsage current = ProcessMemoryUsage.CaptureCurrent()
             ?? throw new InvalidOperationException("Current-process memory counters are unavailable.");
         Check(current.WorkingSetBytes > 0 && current.PrivateBytes >= 0, "Invalid process memory counters.");
@@ -23,14 +25,7 @@ internal static class ProcessMemoryUsageChecks
             Console.WriteLine("PASS native failure, subsequent sample and 128 concurrent current-process samples");
         }
 
-        // Samples are sequential and can change while the process runs. Compare both
-        // meanings independently, allowing bounded JIT/GC/working-set movement.
-        ProcessMemoryUsage reference = CapturePrevious();
-        current = ProcessMemoryUsage.CaptureCurrent()!.Value;
-        const long tolerance = 16 * 1024 * 1024;
-        Check(Math.Abs(current.WorkingSetBytes - reference.WorkingSetBytes) <= tolerance, "Working-set counter differs from the previous API.");
-        Check(Math.Abs(current.PrivateBytes - reference.PrivateBytes) <= tolerance, "Private-byte counter differs from the previous API.");
-        Console.WriteLine("PASS working-set and private-byte counter semantics (16 MiB sequential-sample tolerance)");
+        Console.WriteLine("PASS current-process memory counter smoke check");
 
         if (!measure) return;
         _ = CapturePrevious();
@@ -48,6 +43,40 @@ internal static class ProcessMemoryUsageChecks
             currentMedianMs = Median(currentMs),
             scope = "One memory-counter pair in this check process; not rendered frame time.",
         }, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private static void CheckWindowsCountersContract()
+    {
+        string[] fields =
+        [
+            "Size", "PageFaultCount", "PeakWorkingSetSize", "WorkingSetSize",
+            "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
+            "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage", "PrivateUsage",
+        ];
+        Check(Marshal.SizeOf<ProcessMemoryUsage.ProcessMemoryCountersEx>() == 8 + 9 * IntPtr.Size,
+            "PROCESS_MEMORY_COUNTERS_EX size must match two DWORDs and nine SIZE_Ts.");
+        for (int index = 0; index < fields.Length; index++)
+        {
+            int expectedOffset = index < 2 ? index * 4 : 8 + (index - 2) * IntPtr.Size;
+            Check(Marshal.OffsetOf<ProcessMemoryUsage.ProcessMemoryCountersEx>(fields[index]).ToInt64() == expectedOffset,
+                $"Unexpected native offset for {fields[index]}.");
+        }
+
+        // Distinct values catch swapped fields or accidentally reading PagefileUsage.
+        // The x64 witness also catches narrowing to a 32-bit counter.
+        long workingSet = IntPtr.Size == 8 ? 4_294_967_419L : 1_048_699L;
+        long privateBytes = IntPtr.Size == 8 ? 8_589_935_048L : 2_097_608L;
+        ProcessMemoryUsage.ProcessMemoryCountersEx counters = new()
+        {
+            WorkingSetSize = checked((nuint)workingSet),
+            PrivateUsage = checked((nuint)privateBytes),
+            PeakWorkingSetSize = 101,
+            PagefileUsage = 202,
+            PeakPagefileUsage = 303,
+        };
+        Check(ProcessMemoryUsage.FromWindowsCounters(in counters) == new ProcessMemoryUsage(workingSet, privateBytes),
+            "Working-set/private-byte mapping must preserve the exact native values.");
+        Console.WriteLine($"PASS native layout and exact counter mapping ({IntPtr.Size * 8}-bit)");
     }
 
     private static ProcessMemoryUsage CapturePrevious()

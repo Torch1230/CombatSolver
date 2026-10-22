@@ -18,6 +18,8 @@ internal static class Program
 
     private static int Main(string[] rawArgs)
     {
+        if (rawArgs.Length == 1 && rawArgs[0] == "--check-result-diagnostics")
+            return ResultDiagnosticsChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-primary-incumbents")
             return PrimaryIncumbentChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-early-turn-continuation-bound")

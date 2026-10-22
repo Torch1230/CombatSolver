@@ -87,9 +87,11 @@ internal static class SolverDiagnostics
     }
 
     public static string DescribeResult(SolverResult result)
+        => DescribeResult(result, ProcessMemoryUsage.CaptureCurrent());
+
+    internal static string DescribeResult(SolverResult result, ProcessMemoryUsage? processMemory)
     {
         GCMemoryInfo gcMemory = GC.GetGCMemoryInfo();
-        ProcessMemoryUsage? processMemory = ProcessMemoryUsage.CaptureCurrent();
         StringBuilder text = new();
         text.Append(Prefix).Append(" RESULT")
             .Append(" reused=").Append(result.WasReused)

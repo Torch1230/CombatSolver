@@ -24,15 +24,18 @@ internal readonly record struct ProcessMemoryUsage(
         if (!K32GetProcessMemoryInfo(processHandle, ref counters, size))
             return null;
 
-        return new ProcessMemoryUsage(
+        return FromWindowsCounters(in counters);
+    }
+
+    internal static ProcessMemoryUsage FromWindowsCounters(in ProcessMemoryCountersEx counters)
+        => new(
             checked((long)counters.WorkingSetSize),
             checked((long)counters.PrivateUsage));
-    }
 
     // Windows' Process memory getters populate ProcessInfo, including process/thread
     // enumeration. This API reads only the current process's memory counters instead.
     [StructLayout(LayoutKind.Sequential)]
-    private struct ProcessMemoryCountersEx
+    internal struct ProcessMemoryCountersEx
     {
         public uint Size;
         public uint PageFaultCount;

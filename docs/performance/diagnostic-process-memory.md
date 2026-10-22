@@ -16,9 +16,18 @@ Runtime 新增 `ProcessMemoryUsage`，Windows 通过一次 `K32GetProcessMemoryI
 dotnet run --project tools/testing/checks/DiagnosticLogTests/DiagnosticLogTests.csproj -c Release -- --process-memory-only --process-memory-benchmark
 ```
 
-省略 `--process-memory-benchmark` 只运行合同。Windows x64／.NET 9.0.3 上，工作集与私有内存分别对照旧 API 通过（顺序采样允许 16 MiB 变动）；两种无效句柄返回不可用，失败后新样本正常，128 次并发调用通过。测试不以机器耗时作为正确性阈值。
+省略 `--process-memory-benchmark` 只运行合同。Windows x64／.NET 9.0.3 上，原生结构大小、各字段偏移和精确计数映射通过；工作集与私有内存使用不同且超过 4 GiB 的确定值，其他原生计数使用干扰值，检查错位、误用字段与截断。两种无效句柄返回不可用，失败后新样本正常，128 次并发调用通过。顺序读取的进程内存会随 GC／工作集调整变化，因此删除首轮使用的固定 16 MiB 差值断言；测试不以机器耗时作为正确性阈值。
 
-同一检查进程内，预热后先后各测 8 次：
+生产输出合同复用现有离线宿主，先构建本体，再直接调用构建后的 `SolverDiagnostics.DescribeResult`，无需启动游戏或初始化战斗：
+
+```sh
+dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
+dotnet run --project tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release -- --check-result-diagnostics
+```
+
+成功快照精确输出两个大整数；Windows 无效句柄得到的空快照使两字段输出 `unavailable`，而结果正文、回合摘要与动作尾部保持完整。屏蔽仅随采样变化的进程／GC 内存字段后，成功与失败日志逐字相同；自行采样的正式入口也通过本机读取检查。生产代码仅提取无状态的计数映射与接收快照的内部格式化重载，没有增加全局测试开关或可变查询钩子。
+
+首轮本地准备在同一检查进程内，预热后先后各测 8 次（后续本轮只加强正确性合同，没有重测基准）：
 
 | 查询 | 中位数 | 范围 |
 | --- | --- | --- |

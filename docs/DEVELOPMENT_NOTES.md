@@ -12,7 +12,7 @@
 
 `SolverDiagnostics.DescribeResult` 改为一次捕获进程内存快照。Windows 直接读取当前进程的工作集与私有内存计数，避免 `Process` 内存 getter 填充进程／线程信息；其他平台保留原 getter。原有诊断字段名保持，Windows 原生查询失败时明确写 `unavailable`。改动仅在 Runtime 诊断层，不调整搜索、模拟、预算或 GC 政策。
 
-新增验证复用 `DiagnosticLogTests`，覆盖计数含义、无效句柄、失败后恢复、并发调用与可选独立基准。原版 0.50.1 的既有可见采样、本轮源码验证及未验证范围分开记录在[诊断性能记录](performance/diagnostic-process-memory.md)。
+新增验证复用 `DiagnosticLogTests`，用确定值检查原生布局与字段映射，覆盖无效句柄、失败后恢复、并发调用与可选独立基准，不以顺序内存样本的差值作为通过条件。`OfflineSearchHarness --check-result-diagnostics` 直接调用构建后的生产格式化函数，检查成功数值、失败标记及后续结果／动作日志完整性。原版 0.50.1 的既有可见采样、本轮源码验证及未验证范围分开记录在[诊断性能记录](performance/diagnostic-process-memory.md)。
 
 ### Q015 路线保留（PR #227）
 
