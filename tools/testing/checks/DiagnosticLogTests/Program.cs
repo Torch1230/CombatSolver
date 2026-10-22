@@ -7,8 +7,14 @@ static void Check(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
 }
+if (args.Contains("--process-memory-only"))
+{
+    ProcessMemoryUsageChecks.Run(args.Contains("--process-memory-benchmark"));
+    return;
+}
 CheckManualProjection();
 if (args.Contains("--manual-projection-only")) return;
+ProcessMemoryUsageChecks.Run(measure: false);
 string root = Path.Combine(Path.GetTempPath(), "CombatSolver-journal-tests-" + Guid.NewGuid().ToString("N"));
 using CombatDiagnosticJournal journal = new(root);
 journal.Write("info", "process boot");
