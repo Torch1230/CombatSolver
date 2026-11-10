@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
+using CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnEnd;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks;
 using CombatSolver.Engine.InCombat.Simulation;
 
@@ -21,6 +22,8 @@ internal static partial class EndTurnPowerSupport
         int etherealExhaustCount = 0)
     {
         HashSet<Creature> participantSet = participants.ToHashSet();
+        // 第三方适配层按同一监听器顺序拿到的参与者列表；只在存在已登记类型时才物化。
+        IReadOnlyList<Creature>? participantList = null;
         // EffectivePowers 的数组发布后不会被就地改写（失效只把缓存字段置空），所以先取一次
         // 快照按下标推进即可，与 ToArray 的防御性拷贝看到的元素与顺序完全一致。
         IReadOnlyList<PowerModel> effectivePowers = combat.EffectivePowers();
@@ -32,6 +35,21 @@ internal static partial class EndTurnPowerSupport
 
             Creature owner = power.Owner;
             bool ownerParticipates = participantSet.Contains(owner);
+
+            // 第三方 Power 的常规回合末效果：有登记就按原监听器顺序派发，没有登记维持原行为（无效果），
+            // 因此这一支不会改变已支持内容的结算。
+            if (power.GetType().Assembly != typeof(PowerModel).Assembly
+                && AfterSideTurnEndMirrors.TryInvoke(
+                    simulator,
+                    power,
+                    side,
+                    participantList ??= participants.ToArray()))
+            {
+                if (simulator.HasPendingChoice)
+                    return false;
+                continue;
+            }
+
             switch (power)
             {
                 case TemporaryThornsPower when owner.Side != side:
