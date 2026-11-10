@@ -190,6 +190,12 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 玩家与敌方回合末共用入口，回调自行根据 `Side`、`Participants` 判断是否生效。
 底层沿用 `MethodMirrorRegistry` 和覆盖描述元数据，外部仍需 publicizer。
 
+`AfterSideTurnEndMirrors.Register<TModel>(handler)`／`Register(Type, handler)` 登记**常规**的
+`AbstractModel.AfterSideTurnEnd`，适用于把回合末效果写在这里的第三方 Power（例如「回合结束时对全体敌人
+造成伤害」）。派发仍按原生监听者顺序：常规 pass 在同一循环里逐个询问第三方类型，有登记就执行对应镜像，
+没有登记维持原行为（无效果），因此不会改变已支持内容的结算顺序。`RegisterIgnored(Type)` 供已复核的纯表现
+覆写使用；`AfterSideTurnEndLate` 与常规 pass 是两个不同时点，不能互相替代。
+
 登记必须在首次 `CombatRootSnapshot.Capture` 或本阶段分发之前完成，此后明确拒绝登记。
 这些阶段遇到未登记且非纯表现的重写会记录风险并停止搜索。来源属于已加载第三方
 内容模型时抛出 `IncompatibleGameplayModException`，向玩家说明该 Mod 暂未适配；
@@ -362,7 +368,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 | `NativeModelCloneConcurrency` | 预测克隆只放行已核对原版阶段、原版变量及 BaseLib/Ritsu 稀疏元数据复制补丁组合的普通原版卡牌；附魔/灾厄、第三方模型/变量和未知补丁保留原锁。Power 只放行已物化原版变量、继承默认克隆及 InitInternalData 的原版类型，同时核对基阶段与变量 getter 补丁；自定义初始化保持原锁。每个线程最外层模拟隔离域重新核对，不支持求解中安装补丁；原版 MutableClone 保护不变。没有新增外部注册入口 | 精确框架适配 |
 | `RitsuEmptyCapabilityFastPathPatches` | 模拟隔离域的空 capability 集可直接保留原卡牌标签序列；不枚举/复制标签，不缓存分支值。非空贡献者与精确类型默认来源继续框架入口；晚注册刷新来源代次，已物化的空集合仍按框架语义处理。live 不旁路，无新增登记入口 | 精确框架适配 |
 | `DynamicVarCloneMetadataPatches` | 模拟克隆只优化已核对为空默认值的 BaseLib 提示/升级字段与 Ritsu 提示工厂；非空值照常复制，live 调用保持原框架行为。其他附加字段继续原有克隆逻辑，不属于此优化入口 | 精确框架适配 |
-| `CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects`、`FlushPlayerHandAtTurnEnd`、BeforeHandDraw、AfterSideTurnStart | 常规回合末及这些抽牌/阵营时点仍无通用登记；注能核心的首回合产球由 `TriggerRelicsAfterSideTurnStart` 显式结算，准备选牌根可能早于产球，不能认为所有开局效果已在根内。其闪电伤害加成仍走只读 `ModifyOrbValue`，只读数值支持不代表产球生命周期已适配。BeforeSideTurnStart、AfterPlayerTurnStart（Early/普通/Late）及 AfterSideTurnEndLate 已开放，见 §2.10，不能互相替代 | 部分开放 |
+| `CorePowerSupport.TriggerPlayerRegularSideTurnEndEffects`、`FlushPlayerHandAtTurnEnd`、BeforeHandDraw、AfterSideTurnStart | 常规回合末的 `AbstractModel.AfterSideTurnEnd` 已由 `AfterSideTurnEndMirrors` 开放登记；`FlushPlayerHandAtTurnEnd`、BeforeHandDraw、AfterSideTurnStart 等抽牌/阵营时点仍无通用登记。注能核心的首回合产球由 `TriggerRelicsAfterSideTurnStart` 显式结算，准备选牌根可能早于产球，不能认为所有开局效果已在根内。其闪电伤害加成仍走只读 `ModifyOrbValue`，只读数值支持不代表产球生命周期已适配。BeforeSideTurnStart、AfterPlayerTurnStart（Early/普通/Late）、AfterSideTurnEnd（常规/Late）已开放，见 §2.10，不能互相替代 | 部分开放 |
 | `CombatPredictionSimulator.OnPlayWrapper` | 出牌后补抽没有挂载点 | 待做 |
 | `CardChoiceSupport.RemovalPriority` 的排序口径 | 移除类选择按**单卡**估值排，不看牌库其余部分；弃牌那一侧已经是「源牌堆平均值减本牌估值」的相对口径，消耗与转变没有。表现为求解器不会为了压出无限而主动烧牌。起手牌那一层已由 §2.7 打开，相对口径这一层仍然封闭 | 待做 |
 | `ContinuationStamp.AppendCard` 的 `private=` 段与 `CombatBeamSolver.CaptureCardStateFingerprintForTesting` 的 `switch (preview)` | **卡牌**的隐藏字段按原版类型写死（利爪、基因算法、巨锤、狂暴、镰刀、疯狂科学），第三方卡牌的私有计数进不了指纹。Power 那一侧已有 `PowerHiddenStateMirrors`，见 §2.6 | 待做 |
