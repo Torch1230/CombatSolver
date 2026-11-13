@@ -3,15 +3,15 @@
   "name": "战斗路线求解器",
   "author": "Torch",
   "description": "异步搜索单场战斗路线，支持三态药水策略、路线复用和连续全自动执行。",
-  "version": "0.50.1",
+  "version": "0.51.0",
   "has_pck": false,
   "has_dll": true,
   "affects_gameplay": false,
-  "min_game_version": "0.111.0",
+  "min_game_version": "0.113.0",
   "dependencies": [
     {
       "id": "STS2-RitsuLib",
-      "min_version": "0.6.0"
+      "min_version": "0.6.11"
     }
   ]
 }

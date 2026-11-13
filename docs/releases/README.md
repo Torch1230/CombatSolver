@@ -6,7 +6,7 @@
 
 | 版本系列 | 更新日志 |
 |---|---|
-| 开发中 | [0.113 适配 Part 1](sts2-0.113-part-1-RELEASE_NOTES.md) |
+| 0.51 | [0.51.0 · 0.113 适配 Part 1](0.51.0-RELEASE_NOTES.md) |
 | 0.50 | [0.50.1](0.50.1-RELEASE_NOTES.md) · [0.50.0](0.50.0-RELEASE_NOTES.md) |
 | 0.49 | [0.49.4](0.49.4-RELEASE_NOTES.md) · [0.49.3](0.49.3-RELEASE_NOTES.md) · [0.49.2](0.49.2-RELEASE_NOTES.md) · [0.49.1](0.49.1-RELEASE_NOTES.md) · [0.49.0](0.49.0-RELEASE_NOTES.md) |
 | 0.48 | [0.48.1](0.48.1-RELEASE_NOTES.md) · [0.48.0](0.48.0-RELEASE_NOTES.md) |
