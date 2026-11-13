@@ -7,7 +7,6 @@ namespace CombatSolver;
 
 internal static class EnchantmentStateSupport
 {
-    private static readonly FieldInfo GlamUsedField = RequiredField(typeof(Glam), "_usedThisCombat");
     private static readonly FieldInfo MomentumExtraDamageField = RequiredField(typeof(Momentum), "_extraDamage");
 
     public static void Append(ref StateFingerprintBuilder key, EnchantmentModel? enchantment)
@@ -20,9 +19,6 @@ internal static class EnchantmentStateSupport
         key.Add((int)enchantment.Status);
         switch (enchantment)
         {
-            case Glam glam:
-                key.Add((bool)GlamUsedField.GetValue(glam)!);
-                break;
             case Momentum momentum:
                 key.Add((int)MomentumExtraDamageField.GetValue(momentum)!);
                 break;
@@ -42,9 +38,6 @@ internal static class EnchantmentStateSupport
             .Append(':').Append((int)enchantment.Status);
         switch (enchantment)
         {
-            case Glam glam:
-                text.Append(':').Append((bool)GlamUsedField.GetValue(glam)!);
-                break;
             case Momentum momentum:
                 text.Append(':').Append((int)MomentumExtraDamageField.GetValue(momentum)!);
                 break;

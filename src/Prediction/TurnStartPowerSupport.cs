@@ -354,6 +354,7 @@ internal static partial class TurnStartPowerSupport
                 case EcstasyPower:
                     var sadnessCards = simulator.State.GetPlayerCombatState(player).Hand.Cards
                         .Where(card => card.Preview is Sadness).ToList();
+                    if (sadnessCards.Count == 0) break;
                     foreach (var card in sadnessCards.StableShuffle(simulator.Rng.CombatCardSelection, simulator).Take(power.Amount).ToArray())
                     {
                         CardChoiceSupport.TransformCardToGeneratedReplacement(simulator, card,

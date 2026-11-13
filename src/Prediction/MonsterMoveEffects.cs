@@ -848,7 +848,7 @@ internal static partial class MonsterMoveEffects
                     move.Owner);
                 return true;
             case ("DevotedSculptor", "FORBIDDEN_INCANTATION_MOVE"):
-                combat.Apply<RitualPower>(move.Owner, combat.GetMonsterStaticInt(move.Owner, "_ritualGain"));
+                combat.Apply<RitualPower>(move.Owner, 9);
                 return true;
             case ("Entomancer", "PHEROMONE_SPIT_MOVE"):
                 PersonalHivePower? hive = combat.GetPower<PersonalHivePower>(move.Owner);

@@ -41,7 +41,6 @@ internal static partial class MonsterMoveEffects
             ["Axebot"] = ["BootUpBlock", "BootUpStrGain", "RespawnCount"],
             ["Aeonglass"] = ["EbbBlock", "WitherAmount", "IncreasingIntensityBaseStrength"],
             ["AxeRubyRaider"] = ["SwingBlock"],
-            ["DevotedSculptor"] = ["_ritualGain"],
             ["WaterfallGiant"] = ["PressurizeAmount", "SiphonHeal", "PressureGunIncrease", "SteamBoostAmount"],
         };
 

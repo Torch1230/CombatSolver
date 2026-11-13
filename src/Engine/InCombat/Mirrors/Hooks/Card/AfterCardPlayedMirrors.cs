@@ -395,7 +395,7 @@ internal static class AfterCardPlayedMirrors
         }
 
         var clone = context.Card.CreateClone();
-        clone.MutablePreview.LocalKeywords.Add(CardKeyword.Ethereal);
+        clone.MutablePreview.AddKeyword(CardKeyword.Ethereal);
         context.Simulator.AddGeneratedCardToCombat(
             clone,
             PileType.Hand,
@@ -683,7 +683,7 @@ internal static class AfterCardPlayedMirrors
     {
         if (context.PreviewCard.Owner == power.Owner.Player && context.PreviewCard.Type == CardType.Skill)
         {
-            context.MutablePreviewCard.LocalKeywords.Add(CardKeyword.Sly);
+            context.MutablePreviewCard.AddKeyword(CardKeyword.Sly);
         }
     }
 

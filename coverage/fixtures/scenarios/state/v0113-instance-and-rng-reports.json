@@ -1,0 +1,57 @@
+[
+  {
+    "monsterId": "DevotedSculptor", "moveId": "FORBIDDEN_INCANTATION_MOVE", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "expectedEnemyPowers": { "RITUAL_POWER": 9 }
+  },
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999, "playerEnergyBefore": 99,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "cardsBeforeMove": [{ "cardId": "STRIKE_IRONCLAD", "pile": "Hand", "enchantmentId": "GLAM" }],
+    "cardPlayChecksAfterMove": [{ "cardId": "STRIKE_IRONCLAD", "target": "Enemy" }]
+  },
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999, "playerEnergyBefore": 99,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "relicsBeforeMove": [{ "relicId": "MUSIC_BOX" }],
+    "cardsBeforeMove": [{ "cardId": "STRIKE_IRONCLAD", "pile": "Hand", "upgradeLevels": 1, "enchantmentId": "TEZCATARAS_EMBER" }],
+    "cardPlayChecksAfterMove": [{ "cardId": "STRIKE_IRONCLAD", "target": "Enemy" }, { "cardId": "STRIKE_IRONCLAD", "target": "Enemy" }]
+  },
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999, "playerEnergyBefore": 99,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "relicsBeforeMove": [{ "relicId": "MUSIC_BOX" }],
+    "cardsBeforeMove": [{ "cardId": "FOOLISH_SHOT", "pile": "Hand" }],
+    "cardPlayChecksAfterMove": [{ "cardId": "FOOLISH_SHOT", "target": "Enemy" }],
+    "triggerPlayerTurnEndAfterMove": true,
+    "expectedPlayerPileCards": { "Exhaust:FOOLISH_SHOT": 1 }
+  },
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999, "playerEnergyBefore": 99,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "powerBeforeMove": { "powerId": "MASTER_PLANNER_POWER", "target": "Player", "amount": 1 },
+    "cardsBeforeMove": [{ "cardId": "DEFEND_IRONCLAD", "pile": "Hand" }],
+    "cardPlayChecksAfterMove": [{ "cardId": "DEFEND_IRONCLAD", "target": "None" }]
+  },
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "powerBeforeMove": { "powerId": "ECSTASY_POWER", "target": "Player", "amount": 1 },
+    "cardsBeforeMove": [{ "cardId": "DEFEND_FOOL", "pile": "Draw", "count": 6 }],
+    "triggerPlayerTurnEndAfterMove": true, "triggerPlayerSetupAfterMove": true
+  },
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "powerBeforeMove": { "powerId": "ECSTASY_POWER", "target": "Player", "amount": 1 },
+    "cardsBeforeMove": [{ "cardId": "SADNESS", "pile": "Draw", "count": 2 }, { "cardId": "DEFEND_FOOL", "pile": "Draw", "count": 5 }],
+    "triggerPlayerTurnEndAfterMove": true, "triggerPlayerSetupAfterMove": true,
+    "expectedPlayerPileCards": { "Hand:JOY": 1, "Hand:SADNESS": 1 }
+  },
+  {
+    "monsterId": "Aeonglass", "moveId": "INCREASING_INTENSITY_MOVE", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "cardsBeforeMove": [{ "cardId": "DEFEND_IRONCLAD", "pile": "Hand" }, { "cardId": "STRIKE_IRONCLAD", "pile": "Discard" }, { "cardId": "WITHER", "pile": "Discard" }],
+    "verifyAeonglassPreviewForkIsolation": true
+  }
+]

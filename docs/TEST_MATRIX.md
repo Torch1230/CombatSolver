@@ -1,5 +1,11 @@
 # CombatSolver 测试入口
 
+## 0.113 实例状态与 RNG 问题包
+
+来源为 `godot2026-11-13T14.39.12.log` 与 `combatsolver-reports-20261113-053952.zip` 的八个报告。静态定位包括 Glam 已删除字段、雕刻师常量读取、音乐盒复制牌关键词来源、狂喜空候选随机消耗及沙漏随机插牌。
+
+最小入口：`V0113-INSTANCE-RNG-REPORTS`，角色 FOOL、遭遇 `DEVOTED_SCULPTOR_WEAK`，`MonsterMoveChecksPath=coverage/fixtures/scenarios/state/v0113-instance-and-rng-reports.json`，`StopAfterCombatRootSnapshotAssertion`，120 秒及实例清理。八项依次覆盖雕刻师仪式、Glam 重放状态、附魔复制牌连续打出、复制牌回合末消耗、谋划专家奇巧标记、狂喜空／非空候选和标准沙漏；沿既有差分核对有序牌堆、逐实例状态、Power、历史和完整 RNG。runId `d93fc01c328f4d64b26f7b5b25be033b` Passed，八项原生差分完成，实例已清理。Release 构建零警告／错误。首轮 `8d7d177df0834cd6b80dedcfc0cfe31c` 在预期 Power 的类名／模型 ID 混用处失败，修正夹具为 `RITUAL_POWER` 后通过。原始玩家环境和整包路线未回放。
+
 ## 0.113 Part 2：恐惧与极速
 
 2026-11-13，v0.113.0 public-beta；本批使用独立任务分支，以下仅记录已执行结果。
