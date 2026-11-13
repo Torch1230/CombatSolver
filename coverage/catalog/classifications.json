@@ -6972,10 +6972,10 @@
     "testId": "STANDARD-CHANGED-MONSTERS"
   },
   "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Queen|DREAD_INITIAL_MOVE": {
-    "status": "NotCombatRelevant",
-    "source": "Native Queen.DREAD_INITIAL_MOVE source review",
-    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
-    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+    "status": "SolverCompensation",
+    "source": "src/Prediction/MonsterMoveEffects.cs",
+    "notes": "Dread initial ChainsOfBinding followed by shared Queen debuffs, preserving native command order.",
+    "testId": "DREAD-QUEEN-MOVES"
   },
   "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|CALCULATING_MOVE": {
     "status": "SolverCompensation",
@@ -7014,10 +7014,10 @@
     "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.AeonglassDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
-    "status": "NotCombatRelevant",
-    "source": "Native AeonglassDominionPower.BeforeHandDraw source review",
-    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
-    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+    "status": "EngineExact",
+    "source": "src/Prediction/TurnStartPowerSupport.cs; src/Prediction/EndTurnPowerSupport.cs; src/Engine/InCombat/Mirrors/Hooks",
+    "notes": "Dread domain power lifecycle through next player setup.",
+    "testId": "DREAD-DOMINION-POWERS"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.AmnesiaPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
@@ -7110,10 +7110,10 @@
     "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.ExplosivePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Native ExplosivePower.AfterDeath source review",
-    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
-    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs",
+    "notes": "Native unpowered damage to living player creatures at owner death, with removal-prevention guard.",
+    "testId": "DREAD-EXPLOSIVE-DEATH"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.HiddenRootsPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
     "status": "SolverCompensation",
@@ -7134,22 +7134,22 @@
     "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEndLate(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
-    "status": "NotCombatRelevant",
-    "source": "Native InsatiableDominionPower.AfterSideTurnEndLate source review",
-    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
-    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+    "status": "EngineExact",
+    "source": "src/Prediction/TurnStartPowerSupport.cs; src/Prediction/EndTurnPowerSupport.cs; src/Engine/InCombat/Mirrors/Hooks",
+    "notes": "Dread domain power lifecycle through next player setup.",
+    "testId": "DREAD-DOMINION-POWERS"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
-    "status": "NotCombatRelevant",
-    "source": "Native InsatiableDominionPower.AfterSideTurnStart source review",
-    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
-    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs; src/Prediction/EndTurnPowerSupport.cs; src/Engine/InCombat/Mirrors/Hooks",
+    "notes": "Dread domain power lifecycle through next player setup.",
+    "testId": "DREAD-DOMINION-POWERS"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "NotCombatRelevant",
-    "source": "Native InsatiableDominionPower.AfterApplied source review",
-    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
-    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs; src/Prediction/EndTurnPowerSupport.cs; src/Engine/InCombat/Mirrors/Hooks",
+    "notes": "Dread domain power lifecycle through next player setup.",
+    "testId": "DREAD-DOMINION-POWERS"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.InterceptPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterRemoved(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
     "status": "NotCombatRelevant",
@@ -7164,10 +7164,10 @@
     "testId": "FOOL-HOOK-COMBINATIONS"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.LagavulinMatriarchDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
-    "status": "NotCombatRelevant",
-    "source": "Native LagavulinMatriarchDominionPower.AfterSideTurnEnd source review",
-    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
-    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs; src/Prediction/EndTurnPowerSupport.cs; src/Engine/InCombat/Mirrors/Hooks",
+    "notes": "Dread domain power lifecycle through next player setup.",
+    "testId": "DREAD-DOMINION-POWERS"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.LullabyPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "SolverCompensation",
@@ -7704,10 +7704,10 @@
     "testId": "FOOL-MELODY-EFFECTS"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.YouAreMinePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.113.0 native source: YouAreMinePower",
-    "notes": "Produced by Dread Queen dominion; standard-mode runs do not apply this power.",
-    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+    "status": "EngineExact",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Native player turn 2 debuffs followed by removal.",
+    "testId": "DREAD-QUEEN-LIFECYCLE"
   },
   "Card|MegaCrit.Sts2.Core.Models.Cards.Anguish|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
     "status": "NativeRuntimeState",
@@ -8062,5 +8062,125 @@
     "source": "CombatSolver embedded engine explicit registry",
     "notes": "",
     "testId": "STANDARD-RNG-STREAMS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.AeonglassDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.CeremonialBeastDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.CeremonialBeastDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.InsatiableDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.KaiserCrabDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.KaiserCrabDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.KinDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.KnowledgeDemonDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.KnowledgeDemonDominion|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnStart/BeforeHandDrawMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.LagavulinMatriarchDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.QueenDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.SoulFyshDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.TestSubjectDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.TestSubjectDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.VantomDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.WaterfallGiantDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.WaterfallGiantDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Dominion|MegaCrit.Sts2.Core.Models.Dread.Mocks.MockDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/AfterCreatureAddedMirrors.cs",
+    "notes": "Native ordered domain callback; enemy-entry helper is reached through the shared creature-entry facade.",
+    "testId": "DREAD-DOMINION-HOOKS"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.TestSubject|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors",
+    "notes": "Existing native death and revival evidence, surfaced by correcting the TestSubject scope classifier.",
+    "testId": "TEST-SUBJECT-ORIGINAL-REPORT"
+  },
+  "RunModel|MegaCrit.Sts2.Core.Models.MultiplayerScalingModel|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyBlockMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Block/ModifyBlockMultiplicativeMirrors.cs",
+    "notes": "Existing single-player detached scaling model evidence.",
+    "testId": "BUILTIN-LISTENER-IDENTITY-533"
   }
 }

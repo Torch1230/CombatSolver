@@ -3614,5 +3614,383 @@
     "expected": "Ordered results and complete RNG agree; captured parents remain isolated where the contract forks.",
     "observed": "387e1f7ff6874caeb7edb6e56705b8cc loaded the previous build and demonstrated missing DREAD_INITIAL_MOVE effects. 1bc10bb1222d47ec96ef9b7a6398409c Passed, initial combined debuffs and BURN_BRIGHT_FOR_ME_MOVE, full native state; 28931.7541 ms.",
     "evidence": "coverage/fixtures/monsters/dread-queen.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-AEONGLASS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1/.sh; GameMode Dread; 120 s request; named fixture or contract; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the named boundary.",
+    "observed": "507ed19acbcc4d8b95cf8bf55a50b0df Passed. Native Draw pile insertion of 3 Withers, upgraded existing Wither, complete Shuffle RNG and sibling preview isolation. Failed 1ad65d2bb0fc405796a0afb11d8ef0ab exposed missing random insertion draws.",
+    "evidence": "coverage/fixtures/monsters/dread-aeonglass.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-SOUL-FYSH": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1/.sh; GameMode Dread; 120 s request; named fixture or contract; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the named boundary.",
+    "observed": "e0270a617c7142c3a91d2e3c28a8d5f7 Passed. Native Beckon in Draw, Hand and Discard, complete ordered piles and RNG.",
+    "evidence": "coverage/fixtures/monsters/dread-soul-fysh.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-KNOWLEDGE-CURSE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1/.sh; GameMode Dread; 120 s request; named fixture or contract; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the named boundary.",
+    "observed": "38c25eb4ee324c4eb4c2774046d9e2fb Passed. Three successive native Disintegration choices with 8/9/10 damage, complete state and parent after live advancement.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.ModeRules.cs; docs/TEST_MATRIX.md"
+  },
+  "DREAD-QUEEN-LIFECYCLE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1/.sh; GameMode Dread; 120 s request; named fixture or contract; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the named boundary.",
+    "observed": "f6fd3993d43747edbc42a846620f550b Passed. YouAreMinePower through turn 2 native debuffs and removal.",
+    "evidence": "coverage/fixtures/powers/dread-queen-lifecycle.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-EXPLOSIVE-DEATH": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1/.sh; GameMode Dread; 120 s request; named fixture or contract; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the named boundary.",
+    "observed": "027255c288f64c529653d6cc7f04b1c5 Passed. Card kill with another enemy remaining; complete native post-death state. Prior terminal fixture 514e8e3c36f24dcdb0e4f3d3db8166db compared after native victory history cleanup and failed Y counters; two-enemy fixture keeps the comparison boundary in combat.",
+    "evidence": "coverage/fixtures/powers/dread-explosive-death.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-REINFORCEMENTS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1/.sh; GameMode Dread; 120 s request; named fixture or contract; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the named boundary.",
+    "observed": "86675f349be64513a596704e549c5caf Passed. OVICOPTER_NORMAL with WATERFALL_GIANT_BOSS domain; three ToughEgg additions acquire Explosive before summoner Minion. Native roster, HP, AI, powers and all RNG compared. Earlier f6a7050c966e4c1db9a5121af8ca1ad1 used an absent encounter ID.",
+    "evidence": "coverage/fixtures/monsters/dread-reinforcements.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-MINION-ENTRY": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1/.sh; GameMode Dread; 120 s request; named fixture or contract; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the named boundary.",
+    "observed": "425bb8479a1044d69c16ed9ab49ce5e5 Passed. LIVING_FOG_NORMAL with Waterfall domain; native GasBomb Minion precedes entrance domain filtering. Full roster, HP, AI, powers and RNG compared.",
+    "evidence": "coverage/fixtures/monsters/dread-minion-entry.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-DREAD-INITIAL-CHOICE": {
+    "status": "Passed",
+    "level": "HeadlessNativeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "DREAD-INITIAL-CHOICE; GameMode=Dread; request limit 120s; same-batch process reuse and final cleanup.",
+    "expected": "Native contract checks pass with the selected mode rules.",
+    "observed": "23f9c964d4a14488817ba25087661c9f Passed; InitialSetupWaitsForUserStart:Turn=1:Selected=0:CardsPlayed=0; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; TurnSetupNativeChoiceOrder; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=6;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=6;Block=10/10;Pruned=0;Total=705.3ms/131084224B;Gc=38.9ms/27.4msMax;Frame=0.0msMax/0Over50;CacheHits=0;ChoiceBranches=2;Actions=3;OnlyDeath=False;CombatEndedTurn=6;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; InitialSetupChoices; NativeOutcome:combatEnded=False:turn=1:hp=64:maxHp=80",
+    "evidence": "src/Runtime/PlayerTurnSetupPatches.cs; docs/TEST_MATRIX.md"
+  },
+  "DREAD-DREAD-WATERFALL-PRESSURE": {
+    "status": "Passed",
+    "level": "HeadlessNativeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "DREAD-WATERFALL-PRESSURE; GameMode=Dread; request limit 120s; same-batch process reuse and final cleanup.",
+    "expected": "Native contract checks pass with the selected mode rules.",
+    "observed": "16b588b3a7d64437963b60a6469dda7f Passed; WaterfallGiant:PRESSURE_GUN_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=41:maxHp=80",
+    "evidence": "coverage/fixtures/monsters/dread-waterfall-pressure.json; docs/TEST_MATRIX.md"
+  },
+  "BLITZ-BLITZ-GREMLIN-MERC": {
+    "status": "Passed",
+    "level": "HeadlessNativeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "BLITZ-GREMLIN-MERC; GameMode=Blitz; request limit 120s; same-batch process reuse and final cleanup.",
+    "expected": "Native contract checks pass with the selected mode rules.",
+    "observed": "29cb94499f8f4116824dfc16b219b674 Passed; GremlinMerc:GIMME_MOVE; GremlinMerc:DOUBLE_SMASH_MOVE; GremlinMerc:HEHE_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=71:maxHp=80",
+    "evidence": "coverage/fixtures/monsters/blitz-gremlin-merc.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-COMPONENT-HEALING-BOUND": {
+    "status": "Passed",
+    "level": "HeadlessNativeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "COMPONENT-HEALING-BOUND; GameMode=Dread; request limit 120s; same-batch process reuse and final cleanup.",
+    "expected": "Native contract checks pass with the selected mode rules.",
+    "observed": "5682f66324eb47cf9566a40c0a210666 Passed; ComponentHealing:ZeroRecovery:AllFourPiles:UnknownAttachment:WrongOwner:Fork:ParentLiveRngIsolation; ComponentHealing:ColorlessNativeFilterAndChoice:BottledPotentialNativeShuffleDraw:TwoFullNativeStates:Fork:FrozenParent; ComponentHealing:ActiveRegen:TwoDoses:Stacking:Ban:ZeroCap:SpentCap:BranchPotionHistory:TwoFullNativeStates; ComponentHealing:UnknownInitialExhaustGrowth:PermanentDeckAbsentFromCombat:FrozenRoot; NativeOutcome:combatEnded=False:turn=1:hp=10:maxHp=80",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.ComponentHealing.cs; docs/TEST_MATRIX.md"
+  },
+  "BLITZ-COMPONENT-HEALING-BOUND": {
+    "status": "Passed",
+    "level": "HeadlessNativeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "COMPONENT-HEALING-BOUND; GameMode=Blitz; request limit 120s; same-batch process reuse and final cleanup.",
+    "expected": "Native contract checks pass with the selected mode rules.",
+    "observed": "abb60af868654402a32e199e5798d0b9 Passed; ComponentHealing:ZeroRecovery:AllFourPiles:UnknownAttachment:WrongOwner:Fork:ParentLiveRngIsolation; ComponentHealing:ColorlessNativeFilterAndChoice:BottledPotentialNativeShuffleDraw:TwoFullNativeStates:Fork:FrozenParent; ComponentHealing:ActiveRegen:TwoDoses:Stacking:Ban:ZeroCap:SpentCap:BranchPotionHistory:TwoFullNativeStates; ComponentHealing:UnknownInitialExhaustGrowth:PermanentDeckAbsentFromCombat:FrozenRoot; NativeOutcome:combatEnded=False:turn=1:hp=10:maxHp=80",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.ComponentHealing.cs; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-BLITZ-DEFECT": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-blitz-defect.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "0643a005155c40c793db8396c70b6599 Passed; boundary=None; expanded=105; transitions=283; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=10/10;Pruned=0;Total=637.2ms/48440072B;Gc=26.1ms/26.1msMax;Frame=1009.0msMax/1Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-blitz-defect.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-BLITZ-FOOL": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-blitz-fool.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "ed7f38a792bb44c3b4db3832126e748b Passed; boundary=None; expanded=474; transitions=1654; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=3;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=9/9;Pruned=0;Total=1761.8ms/310231360B;Gc=14.5ms/10.7msMax;Frame=35.1msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=2;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-blitz-fool.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-BLITZ-IRONCLAD": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-blitz-ironclad.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "985df8a7dc914725a0040b8f8ec51f3b Passed; boundary=None; expanded=228; transitions=710; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=15/15;Pruned=0;Total=176.8ms/110010712B;Gc=8.3ms/8.3msMax;Frame=31.5msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-blitz-ironclad.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-BLITZ-NECROBINDER": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-blitz-necrobinder.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "fc017e62c02349088339e985b498b0f0 Passed; boundary=None; expanded=247; transitions=624; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=9/10;Pruned=0;Total=165.1ms/99934552B;Gc=0.0ms/0.0msMax;Frame=30.7msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-blitz-necrobinder.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-BLITZ-REGENT": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-blitz-regent.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "930c9f2f58d94fa789fbd61e6a846162 Passed; boundary=None; expanded=393; transitions=1003; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=6;ProjectedBattleHpLost=6;Block=0/0;Pruned=0;Total=257.5ms/155235256B;Gc=7.9ms/6.2msMax;Frame=30.8msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-blitz-regent.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-BLITZ-SILENT": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-blitz-silent.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "fd9b5341435449329998512855bdca05 Passed; boundary=None; expanded=548; transitions=2092; InitialPolicy:SoldHp=1;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=3;Unmirrored=0;HpLost=1;ProjectedBattleHpLost=4;Block=5/10;Pruned=0;Total=548.2ms/367723832B;Gc=16.5ms/6.3msMax;Frame=30.1msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-blitz-silent.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-DREAD-DEFECT": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-dread-defect.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "fdeadf9ef03c4232a75e21be35160d1f Passed; boundary=None; expanded=169; transitions=382; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=6;ProjectedBattleHpLost=6;Block=0/0;Pruned=0;Total=97.5ms/57819224B;Gc=3.4ms/3.4msMax;Frame=33.0msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=2;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-dread-defect.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-DREAD-FOOL": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-dread-fool.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "f522d943f4c34ec690b810641e17d8e6 Passed; boundary=None; expanded=1325; transitions=4333; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=6;ProjectedBattleHpLost=6;Block=0/0;Pruned=0;Total=1814.0ms/1101430720B;Gc=37.8ms/5.3msMax;Frame=29.9msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-dread-fool.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-DREAD-IRONCLAD": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-dread-ironclad.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "5ae079f4fdb64ffcb2a4c0c236e1ec57 Passed; boundary=None; expanded=299; transitions=819; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=1;ProjectedBattleHpLost=1;Block=5/5;Pruned=0;Total=190.6ms/121819608B;Gc=6.1ms/3.7msMax;Frame=29.1msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=2;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-dread-ironclad.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-DREAD-NECROBINDER": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-dread-necrobinder.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "6cc860c0e4cc4c4eb17313a091a034f6 Passed; boundary=None; expanded=242; transitions=761; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=9/9;Pruned=0;Total=196.0ms/123391472B;Gc=6.7ms/4.6msMax;Frame=29.4msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-dread-necrobinder.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-DREAD-REGENT": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-dread-regent.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "c5d3c5473f454e8b988afd7e00ddf007 Passed; boundary=None; expanded=541; transitions=1378; InitialPolicy:SoldHp=5;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=6;ProjectedBattleHpLost=6;Block=0/5;Pruned=0;Total=343.4ms/224355528B;Gc=11.1ms/4.1msMax;Frame=29.4msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=4;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-dread-regent.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SHORT-DREAD-SILENT": {
+    "status": "Passed",
+    "level": "HeadlessIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "GeneratedScenarioPath=coverage/fixtures/search/modes-dread-silent.json; VerifyIncrementalSearch; 1000ms fixed search budget; 120s request limit; batch cleanup.",
+    "expected": "Legal search result and incremental/full replay equivalence for the native opening.",
+    "observed": "6c18da96ea6047a1a1e74335d4ab4d22 Passed; boundary=None; expanded=766; transitions=3003; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=6;Shuffles=5;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=11;Block=10/10;Pruned=0;Total=930.7ms/638205808B;Gc=22.2ms/4.2msMax;Frame=29.8msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=6;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+    "evidence": "coverage/fixtures/search/modes-dread-silent.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-FULL-DEPLOY": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullDeployment",
+    "gameVersion": "0.113.0",
+    "procedure": "Dread: native Ironclad starter, KnowledgeDemon dominion and initial native choice. Blitz: modes-blitz-fool configuration with Mode=Deploy. Both 1000ms fixed budget, Instant/0s, 120s request limit; export before deployment; batch cleanup.",
+    "expected": "Native victory with zero unexpected replans and cross-turn continuation.",
+    "observed": "2d33cb20fa314a8ead52ead727b5f341 Passed; BugReport:CombatSolver-0.51.0-FUZZY_WURM_CRAWLER_WEAK-61a455debf9a4c5a8f00bef9570e3d58.zip; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; TurnSetupNativeChoiceOrder; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=6;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=6;Block=10/10;Pruned=0;Total=702.4ms/131074376B;Gc=37.8ms/26.6msMax;Frame=0.0msMax/0Over50;CacheHits=0;ChoiceBranches=2;Actions=3;OnlyDeath=False;CombatEndedTurn=6;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; UnexpectedReplans:0; NativeOutcome:combatEnded=True:turn=6:hp=64:maxHp=80",
+    "evidence": "docs/TEST_MATRIX.md; coverage/fixtures/search/modes-blitz-fool.json"
+  },
+  "BLITZ-FULL-DEPLOY": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullDeployment",
+    "gameVersion": "0.113.0",
+    "procedure": "Dread: native Ironclad starter, KnowledgeDemon dominion and initial native choice. Blitz: modes-blitz-fool configuration with Mode=Deploy. Both 1000ms fixed budget, Instant/0s, 120s request limit; export before deployment; batch cleanup.",
+    "expected": "Native victory with zero unexpected replans and cross-turn continuation.",
+    "observed": "8747ce84ce8d4e1b98dad32e54ad81b1 Passed; GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; BugReport:CombatSolver-0.51.0-FUZZY_WURM_CRAWLER_WEAK-4d1993babd184171b6a31298e62c18fd.zip; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; UnexpectedReplans:0; NativeOutcome:combatEnded=True:turn=4:hp=61:maxHp=77",
+    "evidence": "docs/TEST_MATRIX.md; coverage/fixtures/search/modes-blitz-fool.json"
+  },
+  "MODES-RESTORE-DREAD": {
+    "status": "Passed",
+    "level": "HeadlessNativeReplay",
+    "gameVersion": "0.113.0",
+    "procedure": "New Dread report RestoreOnly/start; native save, continuation and ready checkpoint. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "1280e7132ba4455baeabcf938b369936 Passed; CheckpointContinuationMatched; NativeOutcome:combatEnded=False:turn=1:hp=64:maxHp=80; nativeStateVerified=True, continuationVerified=True, readyCheckpointVerified=True",
+    "evidence": "docs/CHECKPOINT_REPLAY.md; docs/TEST_MATRIX.md"
+  },
+  "MODES-RESTORE-BLITZ": {
+    "status": "Passed",
+    "level": "HeadlessNativeReplay",
+    "gameVersion": "0.113.0",
+    "procedure": "New Blitz report RestoreOnly/start; native save, continuation and ready checkpoint. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "1f4358ea699340e8a7694415e7197649 Passed; CheckpointContinuationMatched; NativeOutcome:combatEnded=False:turn=1:hp=61:maxHp=77; nativeStateVerified=True, continuationVerified=True, readyCheckpointVerified=True",
+    "evidence": "docs/CHECKPOINT_REPLAY.md; docs/TEST_MATRIX.md"
+  },
+  "MODES-RESTORE-LEGACY": {
+    "status": "Passed",
+    "level": "HeadlessNativeReplay",
+    "gameVersion": "0.113.0",
+    "procedure": "Synthetic legacy-format Blitz package: remove combatRules metadata and continuation suffix from a new report, preserve native save/events. RestoreOnly/start. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "40b52f8505764b4a93473c319f2d4cf0 Passed; CheckpointContinuationMatched; NativeOutcome:combatEnded=False:turn=1:hp=61:maxHp=77; nativeStateVerified=True, continuationVerified=True, readyCheckpointVerified=True, legacyRunRulesFromSaveVerified=True",
+    "evidence": "docs/CHECKPOINT_REPLAY.md; docs/TEST_MATRIX.md"
+  },
+  "MODES-CACHE-DREAD": {
+    "status": "Passed",
+    "level": "HeadlessRuntimeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "ROUTE-CACHE-RECORD-V0111; Dread/CEREMONIAL_BEAST_BOSS; enemy HP18; fixed1000ms. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "3f96159381f845b3a421e9523ad46008 Passed; SolvedRouteDiskCopyAndIdentity; SolvedRouteSessionResetRestore; SolvedRouteManualRecalculation; NativeOutcome:combatEnded=False:turn=1:hp=64:maxHp=80",
+    "evidence": "src/Testing/Contracts/Runtime/UnattendedTestRunner.SolvedRouteCache.cs; docs/TEST_MATRIX.md"
+  },
+  "MODES-CACHE-BLITZ": {
+    "status": "Passed",
+    "level": "HeadlessRuntimeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "ROUTE-CACHE-RECORD-V0111; Blitz5; enemy HP18; fixed1000ms. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "7a96fb7a94a24eef9638888ed98bfd8d Passed; SolvedRouteDiskCopyAndIdentity; SolvedRouteSessionResetRestore; SolvedRouteManualRecalculation; NativeOutcome:combatEnded=False:turn=1:hp=64:maxHp=80",
+    "evidence": "src/Testing/Contracts/Runtime/UnattendedTestRunner.SolvedRouteCache.cs; docs/TEST_MATRIX.md"
+  },
+  "BLITZ-REWARD-WING-FRESNEL": {
+    "status": "Passed",
+    "level": "HeadlessNativeRewardDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "BLITZ-REWARD-OUTLOOK; Blitz5/act1/TUNNELER_NORMAL; WingCharm then FresnelLens; fill potion belt. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "c1974e9f01ee4383a7b01f5e335ff3f3 Passed; BlitzRewards:act=1:room=Monster:weak=False:8NativeSamples:LiveRngUnchanged:FullBeltReplacementCredit; NativeOutcome:combatEnded=False:turn=1:hp=64:maxHp=80",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.ModeRewards.cs; docs/TEST_MATRIX.md"
+  },
+  "BLITZ-REWARD-GLITTER-WING": {
+    "status": "Passed",
+    "level": "HeadlessNativeRewardDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "BLITZ-REWARD-OUTLOOK; Blitz5/act2/TUNNELER_NORMAL; Glitter then WingCharm; fill potion belt. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "ae749c1d3cc249c995c3c4ef8289da41 Passed; BlitzRewards:act=2:room=Monster:weak=False:8NativeSamples:LiveRngUnchanged:FullBeltReplacementCredit; NativeOutcome:combatEnded=False:turn=1:hp=64:maxHp=80",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.ModeRewards.cs; docs/TEST_MATRIX.md"
+  },
+  "MODES-STANDARD-TURN-CHOICES": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "TURN-EXECUTION-CONTINUATION; SILENT; Standard. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "294d068bdf07477b9af1873b42c5b153 Passed; TurnExecutionContinuation:Before:sources=FOREGONE_CONCLUSION_POWER,TOOLBOX:all-branches:repeated-suspension:state:history:RNG:DOP2:native; TurnExecutionContinuation:BeforeShuffle:sources=STRATAGEM_POWER,FOREGONE_CONCLUSION_POWER,TOOLBOX:all-branches:repeated-suspension:state:history:RNG:DOP2:native; TurnExecutionContinuation:After:sources=ENTROPY_POWER,TOOLS_OF_THE_TRADE_POWER,TYRANNY_POWER,CHOICES_PARADOX,GAMBLING_CHIP,TOASTY_MITTENS:all-branches:repeated-suspension:state:history:RNG:DOP2:native; NativeOutcome:combatEnded=False:turn=1:hp=70:maxHp=70",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.TurnExecutionContinuation.cs; docs/TEST_MATRIX.md"
+  },
+  "MODES-STANDARD-RETURN-TO-HAND": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "Return-to-hand order fixture; Standard. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "6738177e49134aa39b6e6baeeff86d05 Passed; ReturnToHandOrder:PreDrawStartRoot:first_return; ReturnToHandOrder:first_return; ReturnToHandOrder:PreDrawStartRoot:reverse_return; ReturnToHandOrder:reverse_return; ReturnToHandOrder:PreDrawStartRoot:no_repeat_without_play; ReturnToHandOrder:no_repeat_without_play; ReturnToHandOrder:ActualContinuousForkRoot; NativeOutcome:combatEnded=False:turn=4:hp=80:maxHp=80",
+    "evidence": "coverage/fixtures/scenarios/turns/return-to-hand-order-v0111.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-STANDARD-SUMMON": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "SUMMON-DEATH-POWER-ORDER; FABRICATOR_NORMAL; enemy HP1000; Standard. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "19d733c382fe49e3bc3788fde454d6dc Passed; SummonDeathPowerOrderNativeFork; NativeOutcome:combatEnded=False:turn=3:hp=42:maxHp=80",
+    "evidence": "src/Testing/Regressions/Reports/UnattendedTestRunner.LogicBugBatch.cs; docs/TEST_MATRIX.md"
+  },
+  "DREAD-WATERFALL-PRESSURE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "Dread; WATERFALL_GIANT_BOSS native room initialization; dread-waterfall-pressure fixture. 120s request cap; instance cleanup.",
+    "expected": "Named native contract and its state/lifecycle assertions pass.",
+    "observed": "16b588b3a7d64437963b60a6469dda7f Passed; WaterfallGiant:PRESSURE_GUN_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=41:maxHp=80",
+    "evidence": "coverage/fixtures/monsters/dread-waterfall-pressure.json; docs/TEST_MATRIX.md"
+  },
+  "DREAD-MONSTER-PARAMETERS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "GameMode Dread; MonsterMoveChecksPath=coverage/fixtures/monsters/dread-parameters.json; 120s cap; instance cleanup.",
+    "expected": "Twelve named monster move boundaries match native state.",
+    "observed": "7f5d979813bd423bb2bf3d75e1a754ff completed the first 12 move checks (CeremonialBeast through WaterfallGiant STOMP). The request then Failed on a thirteenth PRESSURE_GUN check: artificial WaterfallGiant lacked native room initialization. That check was split into dread-waterfall-pressure and passed in 16b588b3a7d64437963b60a6469dda7f. The retained twelve-check fixture reuses the observed successful boundaries.",
+    "evidence": "coverage/fixtures/monsters/dread-parameters.json; coverage/fixtures/monsters/dread-waterfall-pressure.json; docs/TEST_MATRIX.md"
+  },
+  "MODES-SINGLE-STEP-DREAD": {
+    "status": "Passed",
+    "level": "HeadlessNativeRuntimeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "Dread/CEREMONIAL_BEAST_BOSS; native Ironclad deck; ToastyMittens; SingleStepAfterInitialSearch; ExecuteCurrentTurn takeover at T2; fixed1000ms; Instant/0s; 120s cap; private instance cleanup.",
+    "expected": "Named native interaction and continuation assertions pass.",
+    "observed": "4bc8313a435a4681a41fa38070f6a43f Passed; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; TurnSetupNativeChoiceOrder; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=1;Unmirrored=0;HpLost=1;ProjectedBattleHpLost=1;Block=5/5;Pruned=0;Total=592.8ms/87729288B;Gc=9.2ms/9.2msMax;Frame=0.0msMax/0Over50;CacheHits=0;ChoiceBranches=1459;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; SingleStepBoundary:Turn=2:Surface=Hand:Selected=0:UiTurn=2; SingleStepTakeover:Mode=ExecuteCurrentTurn:Turn=2:DelayMs=47:Reused=true:UnexpectedReplans=0; NativeOutcome:combatEnded=False:turn=2:hp=63:maxHp=80; Launcher subsequently timed out waiting for the process to become reusable after the Passed result. Finally stopped and removed the private instance; gameplay assertions above completed.",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/Host/UnattendedTestRunner.Executor.cs"
+  },
+  "MODES-SINGLE-STEP-BLITZ": {
+    "status": "Passed",
+    "level": "HeadlessNativeRuntimeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "Blitz5; native Ironclad deck; ToastyMittens; SingleStepAfterInitialSearch; FullAuto takeover at T2; fixed1000ms; Instant/0s; 120s cap; private instance cleanup.",
+    "expected": "Named native interaction and continuation assertions pass.",
+    "observed": "1a7bea7d65dd414e9c29f0a68ad43d1d Passed; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; TurnSetupNativeChoiceOrder; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=1;Unmirrored=0;HpLost=1;ProjectedBattleHpLost=1;Block=5/5;Pruned=0;Total=312.2ms/82886576B;Gc=0.0ms/0.0msMax;Frame=0.0msMax/0Over50;CacheHits=0;ChoiceBranches=1460;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; SingleStepBoundary:Turn=2:Surface=Hand:Selected=0:UiTurn=2; SingleStepTakeover:Mode=FullAuto:Turn=2:DelayMs=47:Reused=true:UnexpectedReplans=0; NativeOutcome:combatEnded=False:turn=2:hp=63:maxHp=80",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/Host/UnattendedTestRunner.Executor.cs"
+  },
+  "MODES-STOP-RESUME-DREAD": {
+    "status": "Passed",
+    "level": "HeadlessNativeRuntimeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "TURN-SETUP-UI-STOP-RESUME; Dread/KNOWLEDGE_DEMON_BOSS; native Ironclad opening; fixed1000ms; Instant/0s; 120s cap; private instance cleanup.",
+    "expected": "Named native interaction and continuation assertions pass.",
+    "observed": "d1bba17979674972bb66cdc486f89cf3 Passed; TurnSetupControls:StopInitial:Restart:StopManual:NativeInputAvailable; TurnSetupControls:NativePlayReached:BusyFlagsCleared; NativeOutcome:combatEnded=False:turn=1:hp=64:maxHp=80",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/Host/UnattendedTestRunner.Executor.cs"
+  },
+  "MODES-UI-LOCALIZATION": {
+    "status": "Passed",
+    "level": "HeadlessNativeRuntimeContract",
+    "gameVersion": "0.113.0",
+    "procedure": "UI-LOCALIZATION; PHROG_PARASITE_ELITE; native wriggler slots; eng/zhs/zht; fixed1000ms; Instant/0s; 120s cap; private instance cleanup.",
+    "expected": "Named native interaction and continuation assertions pass.",
+    "observed": "d75cb731c874485c86c0ad3f475c552e Passed; CardLocaleRoundTrip:EnglishSnapshot:ChineseEnglishChinese:Upgrade:Choice:SerializedPlan:LivePill:SubscriptionCleanup:NoReplan; SpawnedEntityIdentity:eng:FourWrigglers:LeftToRight:NativeSlots=True:ForkStable:DeathStable; EntityIdentity:eng:DistinctEnemies=1:PlainAndInkyShiv; StrategyOutcome:eng:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden; ActionAnnotations:eng:CapturedDamageSources:21RelicFormats:NestedChoices:Tooltip; LiveTurnStartChoicePreview:eng:Power:Relic; LoopDisplay:eng:41Actions:2OuterControls:CompactInlineCount:EnclosedPeriod:WideNarrowWide:ReplayCount:KillSuffix:Deployment:Reuse; StrategyPanels:eng:Potion:Growth:Relic:Collapse; UiLocalization:eng:Catalog461:Settings:UploadTransitions:DynamicStatus:FailureInstructions; SpawnedEntityIdentity:zhs:FourWrigglers:LeftToRight:NativeSlots=True:ForkStable:DeathStable; EntityIdentity:zhs:DistinctEnemies=1:PlainAndInkyShiv; StrategyOutcome:zhs:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden; ActionAnnotations:zhs:CapturedDamageSources:21RelicFormats:NestedChoices:Tooltip; LiveTurnStartChoicePreview:zhs/zht:Power:Relic; LoopDisplay:zh:41Actions:2OuterControls:CompactInlineCount:EnclosedPeriod:WideNarrowWide:ReplayCount:KillSuffix:Deployment:Reuse; StrategyPanels:zhs:Potion:Growth:Relic:Collapse; UiLocalization:zhs:Catalog461:Settings:UploadTransitions:DynamicStatus:FailureInstructions; SpawnedEntityIdentity:zht:FourWrigglers:LeftToRight:NativeSlots=True:ForkStable:DeathStable; EntityIdentity:zht:DistinctEnemies=1:PlainAndInkyShiv; StrategyOutcome:zht:AlignedAndUnmet:GrowthCounts:PartialRoute:EmptyHidden; ActionAnnotations:zht:CapturedDamageSources:21RelicFormats:NestedChoices:Tooltip; LiveTurnStartChoicePreview:zhs/zht:Power:Relic; LoopDisplay:zh:41Actions:2OuterControls:CompactInlineCount:EnclosedPeriod:WideNarrowWide:ReplayCount:KillSuffix:Deployment:Reuse; StrategyPanels:zht:Potion:Growth:Relic:Collapse; UiLocalization:zht:Catalog461:Settings:UploadTransitions:DynamicStatus:FailureInstructions; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/Host/UnattendedTestRunner.Executor.cs"
   }
 }

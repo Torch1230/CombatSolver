@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "seed": "MODES113-Dread-defect",
+  "characterId": "DEFECT",
+  "ascension": 10,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "characterCards": {
+    "ids": [
+      "REFRACT",
+      "DUALCAST",
+      "STRIKE_DEFECT",
+      "STRIKE_DEFECT",
+      "DEFEND_DEFECT",
+      "DEFEND_DEFECT",
+      "STRIKE_DEFECT",
+      "STRIKE_DEFECT"
+    ]
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true,
+  "gameMode": "Dread",
+  "dreadBossEncounterId": "CEREMONIAL_BEAST_BOSS"
+}

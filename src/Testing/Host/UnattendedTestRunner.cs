@@ -211,7 +211,9 @@ internal sealed partial class UnattendedTestRunner
             if (_request.ExportBugReportAfterCombat)
             {
                 SetStage("export_bug_report_after_combat");
-                string directory = ProjectSettings.GlobalizePath("user://combat-solver-test-bug-reports");
+                string directory = _request.EvidenceDirectory is { Length: > 0 } evidence
+                    ? Path.Combine(evidence, "bug-reports")
+                    : ProjectSettings.GlobalizePath("user://combat-solver-test-bug-reports");
                 string archivePath = await CombatBugReportExporter.ExportCurrentAsync(directory);
                 using ZipArchive archive = ZipFile.OpenRead(archivePath);
                 AssertBugReportArchive(archive, "recent", _request.ExpectedBugReportControlMode);
@@ -665,7 +667,7 @@ internal sealed partial class UnattendedTestRunner
                     if (traces.Any(trace => trace.Stage == "Selected"))
                         throw new InvalidOperationException("首回合计划展示后、用户启动前，求解器已经替玩家完成选牌。");
                     if (player?.PlayerCombatState?.Phase != PlayerTurnPhase.Start
-                        || NPlayerHand.Instance?.IsInCardSelection != true)
+                        || !NativeChoiceSurface.IsVisible(traces.Last(trace => trace.Stage == "Visible").Surface))
                     {
                         throw new InvalidOperationException("首回合计划展示后没有停在原生选牌页面。");
                     }

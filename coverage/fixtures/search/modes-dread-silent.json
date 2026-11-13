@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "seed": "MODES113-Dread-silent",
+  "characterId": "SILENT",
+  "ascension": 10,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "characterCards": {
+    "ids": [
+      "EXPERTISE",
+      "DAGGER_SPRAY",
+      "STRIKE_SILENT",
+      "STRIKE_SILENT",
+      "DEFEND_SILENT",
+      "DEFEND_SILENT",
+      "STRIKE_SILENT",
+      "STRIKE_SILENT"
+    ]
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true,
+  "gameMode": "Dread",
+  "dreadBossEncounterId": "CEREMONIAL_BEAST_BOSS"
+}

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "combatSolverVersion": "0.50.1",
+  "combatSolverVersion": "0.51.0",
   "gameVersion": "0.113.0",
   "unverifiedCount": 0,
-  "snapshotOnlyWithoutRuntimeEvidenceCount": 24,
-  "staticConfigurationWithoutRuntimeEvidenceCount": 115,
+  "snapshotOnlyWithoutRuntimeEvidenceCount": 26,
+  "staticConfigurationWithoutRuntimeEvidenceCount": 116,
   "entries": [
     {
       "key": "Affliction|MegaCrit.Sts2.Core.Models.Afflictions.Hexed|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardEnteredCombat(MegaCrit.Sts2.Core.Models.CardModel)",
@@ -9461,6 +9461,84 @@
       ]
     },
     {
+      "key": "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.CeremonialBeastDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Dread.Dominions.CeremonialBeastDominion",
+      "hook": "AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "SolverCompensation",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Apply"
+      ]
+    },
+    {
+      "key": "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.KaiserCrabDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Dread.Dominions.KaiserCrabDominion",
+      "hook": "AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "SolverCompensation",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Apply"
+      ]
+    },
+    {
+      "key": "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.SoulFyshDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterPlayersEnteredCombat(System.Collections.Generic.IReadOnlyList\u003CMegaCrit.Sts2.Core.Entities.Players.Player\u003E)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Dread.Dominions.SoulFyshDominion",
+      "hook": "AfterPlayersEnteredCombat(System.Collections.Generic.IReadOnlyList\u003CMegaCrit.Sts2.Core.Entities.Players.Player\u003E)",
+      "phase": "InitialSnapshot",
+      "effectiveStatus": "Exact",
+      "capability": "NativeSnapshot",
+      "requiresRuntimeEvidence": false,
+      "runtimeVerified": false,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddToCombatAndPreview"
+      ]
+    },
+    {
+      "key": "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.TestSubjectDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Dread.Dominions.TestSubjectDominion",
+      "hook": "AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "SolverCompensation",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Apply"
+      ]
+    },
+    {
+      "key": "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.VantomDominion|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Dread.Dominions.VantomDominion",
+      "hook": "AfterCreatureAddedToCombat(MegaCrit.Sts2.Core.Entities.Creatures.Creature)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "EngineMirror",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Apply"
+      ]
+    },
+    {
+      "key": "Dominion|MegaCrit.Sts2.Core.Models.Dread.Dominions.WaterfallGiantDominion|MegaCrit.Sts2.Core.Models.Dread.DominionModel.AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Dread.Dominions.WaterfallGiantDominion",
+      "hook": "AfterEnemiesEnteredCombat(System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "SolverCompensation",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Apply"
+      ]
+    },
+    {
       "key": "Enchantment|MegaCrit.Sts2.Core.Models.Enchantments.Adroit|MegaCrit.Sts2.Core.Models.EnchantmentModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
       "entityType": "MegaCrit.Sts2.Core.Models.Enchantments.Adroit",
       "hook": "OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
@@ -11201,6 +11279,47 @@
       ]
     },
     {
+      "key": "Monster|MegaCrit.Sts2.Core.Models.Monsters.TestSubject|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Monsters.TestSubject",
+      "hook": "AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "EngineMirror",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Models.Monsters.TestSubject.SetColor"
+      ]
+    },
+    {
+      "key": "Monster|MegaCrit.Sts2.Core.Models.Monsters.TestSubject|MegaCrit.Sts2.Core.Models.MonsterModel.GenerateMoveStateMachine()",
+      "entityType": "MegaCrit.Sts2.Core.Models.Monsters.TestSubject",
+      "hook": "GenerateMoveStateMachine()",
+      "phase": "StaticConfiguration",
+      "effectiveStatus": "Exact",
+      "capability": "NativeSnapshot",
+      "requiresRuntimeEvidence": false,
+      "runtimeVerified": false,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddToCombatAndPreview",
+        "call:MegaCrit.Sts2.Core.Commands.CreatureCmd.Heal",
+        "call:MegaCrit.Sts2.Core.Commands.CreatureCmd.SetMaxHp",
+        "call:MegaCrit.Sts2.Core.Commands.CreatureCmd.TriggerAnim",
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Apply",
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Remove",
+        "call:MegaCrit.Sts2.Core.Models.Monsters.TestSubject.Revive",
+        "call:MegaCrit.Sts2.Core.Models.Monsters.TestSubject.SetColor",
+        "call:MegaCrit.Sts2.Core.Models.Monsters.TestSubject.set_DeadState",
+        "call:MegaCrit.Sts2.Core.Models.Monsters.TestSubject.set_ExtraMultiClawCount",
+        "call:MegaCrit.Sts2.Core.Models.Monsters.TestSubject.set_Respawns",
+        "call:MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.MoveState.set_FollowUpState",
+        "call:MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.MoveState.set_MustPerformOnceBeforeTransitioning",
+        "field:MegaCrit.Sts2.Core.Models.Monsters.TestSubject._deadState",
+        "field:MegaCrit.Sts2.Core.Models.Monsters.TestSubject._extraMultiClawCount",
+        "field:MegaCrit.Sts2.Core.Models.Monsters.TestSubject._respawns"
+      ]
+    },
+    {
       "key": "Monster|MegaCrit.Sts2.Core.Models.Monsters.TheAdversaryMkOne|MegaCrit.Sts2.Core.Models.MonsterModel.GenerateMoveStateMachine()",
       "entityType": "MegaCrit.Sts2.Core.Models.Monsters.TheAdversaryMkOne",
       "hook": "GenerateMoveStateMachine()",
@@ -12581,6 +12700,19 @@
       ]
     },
     {
+      "key": "Power|MegaCrit.Sts2.Core.Models.Powers.AeonglassDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.AeonglassDominionPower",
+      "hook": "BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "EngineMirror",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.CardPileCmd.AddGeneratedCardToCombat"
+      ]
+    },
+    {
       "key": "Power|MegaCrit.Sts2.Core.Models.Powers.AfterimagePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
       "entityType": "MegaCrit.Sts2.Core.Models.Powers.AfterimagePower",
       "hook": "AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
@@ -13675,6 +13807,19 @@
       ]
     },
     {
+      "key": "Power|MegaCrit.Sts2.Core.Models.Powers.ExplosivePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.ExplosivePower",
+      "hook": "AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "EngineMirror",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.CreatureCmd.Damage"
+      ]
+    },
+    {
       "key": "Power|MegaCrit.Sts2.Core.Models.Powers.ExtraTurnPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterTakingExtraTurn(MegaCrit.Sts2.Core.Entities.Players.Player)",
       "entityType": "MegaCrit.Sts2.Core.Models.Powers.ExtraTurnPower",
       "hook": "AfterTakingExtraTurn(MegaCrit.Sts2.Core.Entities.Players.Player)",
@@ -14319,6 +14464,45 @@
       ]
     },
     {
+      "key": "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEndLate(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower",
+      "hook": "AfterSideTurnEndLate(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "EngineMirror",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.CreatureCmd.Damage"
+      ]
+    },
+    {
+      "key": "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E,MegaCrit.Sts2.Core.Combat.ICombatState)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower",
+      "hook": "AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E,MegaCrit.Sts2.Core.Combat.ICombatState)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "SolverCompensation",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar.set_BaseValue"
+      ]
+    },
+    {
+      "key": "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower",
+      "hook": "AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "SolverCompensation",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Localization.DynamicVars.DynamicVar.set_BaseValue"
+      ]
+    },
+    {
       "key": "Power|MegaCrit.Sts2.Core.Models.Powers.IntangiblePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
       "entityType": "MegaCrit.Sts2.Core.Models.Powers.IntangiblePower",
       "hook": "AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
@@ -14437,6 +14621,20 @@
       "requiresRuntimeEvidence": true,
       "runtimeVerified": true,
       "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Remove"
+      ]
+    },
+    {
+      "key": "Power|MegaCrit.Sts2.Core.Models.Powers.LagavulinMatriarchDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.LagavulinMatriarchDominionPower",
+      "hook": "AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable\u003CMegaCrit.Sts2.Core.Entities.Creatures.Creature\u003E)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "SolverCompensation",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Apply",
         "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Remove"
       ]
     },
@@ -16795,6 +16993,20 @@
       "runtimeVerified": true,
       "writes": [
         "field:MegaCrit.Sts2.Core.Models.Powers.YahPower\u002BData.triggeredThisTurn"
+      ]
+    },
+    {
+      "key": "Power|MegaCrit.Sts2.Core.Models.Powers.YouAreMinePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.YouAreMinePower",
+      "hook": "AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)",
+      "phase": "FutureLifecycle",
+      "effectiveStatus": "Exact",
+      "capability": "EngineMirror",
+      "requiresRuntimeEvidence": true,
+      "runtimeVerified": true,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Apply",
+        "call:MegaCrit.Sts2.Core.Commands.PowerCmd.Remove"
       ]
     },
     {
@@ -19621,6 +19833,19 @@
         "call:MegaCrit.Sts2.Core.Models.Relics.Wuppy.SummonPet",
         "call:MegaCrit.Sts2.Core.Models.Relics.Wuppy.set_CombatWuppy",
         "field:MegaCrit.Sts2.Core.Models.Relics.Wuppy._combatWuppy"
+      ]
+    },
+    {
+      "key": "RunModel|MegaCrit.Sts2.Core.Models.Dread.DreadRunModel|MegaCrit.Sts2.Core.Models.RunModel.AfterRunLoaded()",
+      "entityType": "MegaCrit.Sts2.Core.Models.Dread.DreadRunModel",
+      "hook": "AfterRunLoaded()",
+      "phase": "InitialSnapshot",
+      "effectiveStatus": "Exact",
+      "capability": "NativeSnapshot",
+      "requiresRuntimeEvidence": false,
+      "runtimeVerified": false,
+      "writes": [
+        "call:MegaCrit.Sts2.Core.Models.Dread.DreadRunModel.ApplyCurrentDominion"
       ]
     }
   ]

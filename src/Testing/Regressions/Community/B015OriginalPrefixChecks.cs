@@ -159,6 +159,7 @@ internal sealed partial class UnattendedTestRunner
             };
         SerializableRun save = JsonSerializer.Deserialize(await File.ReadAllTextAsync(RootPath("runSavePath")),
             JsonSerializationUtility.GetTypeInfo<SerializableRun>())!;
+        _recordedRunSave = save;
         if (save.Players.Count != 1) throw new InvalidDataException("B015 requires a single-player original run.");
         RunState state = RunState.FromSerializable(save);
         await RunManager.Instance.SetUpSavedSingleplayer(state, save);

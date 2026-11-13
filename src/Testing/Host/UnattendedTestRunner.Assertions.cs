@@ -360,7 +360,9 @@ internal sealed partial class UnattendedTestRunner
             if (request.ExportBugReportAfterSetup)
             {
                 runner.SetStage("export_bug_report");
-                string directory = ProjectSettings.GlobalizePath("user://combat-solver-test-bug-reports");
+                string directory = request.EvidenceDirectory is { Length: > 0 } evidence
+                    ? Path.Combine(evidence, "bug-reports")
+                    : ProjectSettings.GlobalizePath("user://combat-solver-test-bug-reports");
                 string archivePath = await CombatBugReportExporter.ExportCurrentAsync(directory);
                 using ZipArchive archive = ZipFile.OpenRead(archivePath);
                 AssertBugReportArchive(archive, "current", request.ExpectedBugReportControlMode);

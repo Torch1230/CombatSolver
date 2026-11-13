@@ -26,6 +26,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private SerializableRun? _recordedRunSave;
     private async Task<ScenarioContext> BuildNativeRecordedScenarioAsync()
     {
         SetStage("native_replay_startup");
@@ -52,6 +53,7 @@ internal sealed partial class UnattendedTestRunner
             await File.ReadAllTextAsync(RootPath("runSavePath")), JsonSerializationUtility.GetTypeInfo<SerializableRun>())!;
         if (save.Players.Count != 1)
             throw new InvalidDataException("native_replay_requires_single_player");
+        _recordedRunSave = save;
         RecordedCombatEvent[] events = File.ReadLines(RootPath("eventsPath"))
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .Select(line => JsonSerializer.Deserialize<RecordedCombatEvent>(line)!).ToArray();
@@ -109,7 +111,7 @@ internal sealed partial class UnattendedTestRunner
                 RestoreReplayInventoryFromPath(player, _request.ReplayStatePath);
                 AssertRecordedContinuation(expectedState, combat, 0, _request.NativeStatePath,
                     _request.ReplayStatePath,
-                    allowLegacyBattleStart: checkpointEventCursor == 0);
+                    allowLegacyBattleStart: checkpointEventCursor == 0, metadata: metadata);
                 openingVerified = true;
                 if (_request.ReplayMode is "SearchOnly" or "DeploySolver")
                 {
@@ -123,7 +125,7 @@ internal sealed partial class UnattendedTestRunner
             if (combatEnd)
             {
                 AssertRecordedContinuation(expectedState, combat, target, _request.NativeStatePath,
-                    _request.ReplayStatePath);
+                    _request.ReplayStatePath, metadata: metadata);
                 endingVerified = true;
                 _writer.ReplayVerification!["recordedOutcome"] = JsonSerializer.SerializeToNode(
                     CombatBugReportExporter.CaptureOutcome(combat) with { CombatEnded = true }, UnattendedTestFiles.JsonOptions);
@@ -142,7 +144,7 @@ internal sealed partial class UnattendedTestRunner
         if (!combatStart && !combatEnd)
             AssertRecordedContinuation(expectedState, combatState, target, _request.NativeStatePath,
                 _request.ReplayStatePath,
-                allowLegacyBattleStart: target == 0 && player.PlayerCombatState?.TurnNumber == 1);
+                allowLegacyBattleStart: target == 0 && player.PlayerCombatState?.TurnNumber == 1, metadata: metadata);
         if (readyCheckpoint != null)
         {
             JsonObject readyMetadata = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(
@@ -150,7 +152,7 @@ internal sealed partial class UnattendedTestRunner
             AssertRecordedContinuation(readyMetadata["exactContinuationState"]!.GetValue<string>(), combatState, target,
                 Path.Combine(_checkpointImportDirectory!, readyCheckpoint["nativeStatePath"]!.GetValue<string>()),
                 Path.Combine(_checkpointImportDirectory!, readyCheckpoint["replayStatePath"]!.GetValue<string>()),
-                allowLegacyBattleStart: target == 0 && player.PlayerCombatState?.TurnNumber == 1);
+                allowLegacyBattleStart: target == 0 && player.PlayerCombatState?.TurnNumber == 1, metadata: readyMetadata);
             _writer.ReplayVerification!["readyCheckpointVerified"] = true;
         }
         if (driver.LegacyCostChoices.Count > 0)
@@ -183,11 +185,31 @@ internal sealed partial class UnattendedTestRunner
 
     private void AssertRecordedContinuation(string expected, CombatState state, long cursor, string? nativePath,
         string? replayStatePath,
-        bool allowLegacyBattleStart = false)
+        bool allowLegacyBattleStart = false, JsonObject? metadata = null)
     {
+        CombatRulesSnapshot rules = CombatRulesSnapshot.Capture(state);
+        if (metadata?["combatRules"] is { } savedRules
+            && savedRules.Deserialize<CombatRulesSnapshot>(UnattendedTestFiles.JsonOptions) != rules)
+            throw new InvalidDataException("native_replay_metadata_combat_rules_mismatch");
+        if (replayStatePath != null)
+        {
+            using JsonDocument replayState = JsonDocument.Parse(File.ReadAllText(replayStatePath));
+            if (replayState.RootElement.TryGetProperty("combatRules", out JsonElement replayRules)
+                && replayRules.Deserialize<CombatRulesSnapshot>(UnattendedTestFiles.JsonOptions) != rules)
+                throw new InvalidDataException("native_replay_snapshot_combat_rules_mismatch");
+        }
         string actual = ContinuationStamp.CaptureLive(state).StateText;
         bool differentEncoding = _writer.ReplayVerification!["modelSerializationComparison"] != null;
         bool nativeVerified = AssertNativeCheckpoint(state, nativePath, differentEncoding);
+        if (_recordedRunSave is { } savedRun) VerifySavedRunRules(savedRun, state);
+        string comparisonActual = actual;
+        if (nativeVerified && _recordedRunSave != null && !expected.Contains(";combat_rules=", StringComparison.Ordinal))
+        {
+            int rulesIndex = actual.LastIndexOf(";combat_rules=", StringComparison.Ordinal);
+            if (rulesIndex < 0) throw new InvalidDataException("native_replay_missing_captured_rules");
+            comparisonActual = actual[..rulesIndex];
+            _writer.ReplayVerification!["legacyRunRulesFromSaveVerified"] = true;
+        }
         // A fully verified native checkpoint also establishes the replayed game state
         // for legacy reports whose derived zero counter was not serialized yet.
         IReadOnlyDictionary<char, IReadOnlyList<string>>? legacyCardKeywords =
@@ -197,7 +219,7 @@ internal sealed partial class UnattendedTestRunner
                 ? LoadLegacyReplayCardCosts(state, replayStatePath) : null;
         if (ReplayContinuationMatches(
                 expected,
-                actual,
+                comparisonActual,
                 allowLegacyBattleStart || nativeVerified,
                 legacyCardKeywords,
                 legacyCardCosts,
@@ -207,7 +229,7 @@ internal sealed partial class UnattendedTestRunner
             _writer.ReplayVerification["nativeStateVerified"] = nativeVerified;
             if (nativeVerified
                 && !expected.Contains("max_hand_size=", StringComparison.Ordinal)
-                && actual.EndsWith(";max_hand_size=10", StringComparison.Ordinal))
+                && comparisonActual.EndsWith(";max_hand_size=10", StringComparison.Ordinal))
             {
                 _writer.ReplayVerification["legacyDefaultHandLimitVerified"] = true;
             }

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "seed": "MODES113-Dread-ironclad",
+  "characterId": "IRONCLAD",
+  "ascension": 10,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "characterCards": {
+    "ids": [
+      "EXPECT_A_FIGHT",
+      "THRASH",
+      "STRIKE_IRONCLAD",
+      "STRIKE_IRONCLAD",
+      "DEFEND_IRONCLAD",
+      "DEFEND_IRONCLAD",
+      "STRIKE_IRONCLAD",
+      "STRIKE_IRONCLAD"
+    ]
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true,
+  "gameMode": "Dread",
+  "dreadBossEncounterId": "CEREMONIAL_BEAST_BOSS"
+}

@@ -597,7 +597,7 @@ function Enter-HeadlessHostLease([hashtable]$Context, [Diagnostics.Process]$Exis
 function Set-HeadlessHostGame([hashtable]$Context, [Diagnostics.Process]$Game) {
     $identity = Get-HeadlessProcessIdentity $Game
     if (-not [string]::Equals($identity.exe, (Join-Path $Context.GameRoot 'SlayTheSpire2.exe'), [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Started headless executable is not the instance's private game."
+        throw "Started headless executable is not the instance's private game. expected=$($Context.GameRoot)\SlayTheSpire2.exe actual=$($identity.exe) pid=$($identity.pid)"
     }
     $hostLock = Open-HeadlessHostLock $Context
     try {

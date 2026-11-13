@@ -937,6 +937,9 @@ static string StateMutationPhase(CoverageEntry entry)
         return "StaticConfiguration";
     if (entry.Hook is "BeforeCombatStart()" or "BeforeCombatStartLate()")
         return "InitialSnapshot";
+    if (entry.Category == "RunModel" && entry.Hook == "AfterRunLoaded()"
+        || entry.Category == "Dominion" && entry.Hook.StartsWith("AfterPlayersEnteredCombat(", StringComparison.Ordinal))
+        return "InitialSnapshot";
     if (entry.Hook == "AfterCloned()" && entry.Category == "Relic")
         return "InitialSnapshot";
     if (entry.EntityName is "ChoicesParadox" or "FestivePopper" or "GamblingChip"
@@ -1411,6 +1414,8 @@ static List<CoverageEntry> DiscoverGameHooks(
         Resolve("MegaCrit.Sts2.Core.Models.EnchantmentModel"),
         Resolve("MegaCrit.Sts2.Core.Models.AfflictionModel"),
         Resolve("MegaCrit.Sts2.Core.Models.MonsterModel"),
+        Resolve("MegaCrit.Sts2.Core.Models.RunModel"),
+        Resolve("MegaCrit.Sts2.Core.Models.Dread.DominionModel"),
     ];
 
     List<CoverageEntry> entries = [];
@@ -1424,12 +1429,17 @@ static List<CoverageEntry> DiscoverGameHooks(
             && card.MultiplayerConstraint == MegaCrit.Sts2.Core.Entities.Cards.CardMultiplayerConstraint.MultiplayerOnly;
         bool deprecatedPlaceholder = type == typeof(DeprecatedCard);
         foreach (MethodInfo method in type.GetMethods(
-                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                     | (category == "Dominion" ? 0 : BindingFlags.DeclaredOnly)))
         {
-            if (!method.IsVirtual || method.IsSpecialName || method.GetBaseDefinition() == method)
+            if (!method.IsVirtual || method.IsSpecialName)
                 continue;
 
             MethodInfo baseMethod = method.GetBaseDefinition();
+            if (baseMethod.DeclaringType == typeof(object))
+                continue;
+            if (baseMethod.Module == method.Module && baseMethod.MetadataToken == method.MetadataToken)
+                continue;
             string signature = Signature(baseMethod);
             string key = $"{category}|{type.FullName}|{baseMethod.DeclaringType?.FullName}.{signature}";
             EngineMirrorAnalysis engineAnalysis = AnalyzeEngine(engine, type, method, baseMethod);
@@ -1485,6 +1495,10 @@ static List<CoverageEntry> DiscoverGameHooks(
 
 static BuiltInClassification? BuiltInStatus(string category, string methodName)
 {
+    if (category == "Dominion" && methodName == "AfterPlayersEnteredCombat")
+        return new(CoverageStatus.NativeRuntimeState, "Dominion BeforeCombatStart applies player entry effects before root capture");
+    if (category is "Dominion" or "RunModel" && methodName is "BeforeCombatStart" or "AfterRunLoaded")
+        return new(CoverageStatus.NativeRuntimeState, "Native run and combat preparation precede the captured root");
     if (category == "Card" && methodName is "OnUpgrade" or "AfterDowngraded")
         return new(CoverageStatus.NativeRuntimeState, "Native CardModel mutable clone state");
     if (category == "Monster" && methodName is "GenerateMoveStateMachine")
@@ -2192,7 +2206,7 @@ static string HookKey(MethodInfo method) =>
 
 static string Category(Type type, IReadOnlyList<Type> bases)
 {
-    string[] names = ["Card", "Power", "Relic", "Potion", "Orb", "Enchantment", "Affliction", "Monster"];
+    string[] names = ["Card", "Power", "Relic", "Potion", "Orb", "Enchantment", "Affliction", "Monster", "RunModel", "Dominion"];
     for (int index = 0; index < bases.Count; index++)
         if (bases[index].IsAssignableFrom(type))
             return names[index];
@@ -2203,7 +2217,7 @@ static string ScopeGuess(Type type, MethodInfo method)
 {
     if (type.Namespace?.Contains(".Mocks", StringComparison.Ordinal) == true
         || type.Name.Contains("Mock", StringComparison.Ordinal)
-        || type.Name.Contains("Test", StringComparison.Ordinal))
+        || type.Namespace?.Contains(".TestSupport", StringComparison.Ordinal) == true)
     {
         return "TestOrMock";
     }

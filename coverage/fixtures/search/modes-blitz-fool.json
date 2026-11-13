@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "seed": "MODES113-Blitz-fool",
+  "characterId": "FOOL",
+  "ascension": 5,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "characterCards": {
+    "ids": [
+      "SHOW_OFF",
+      "FOOLISH_SHOT",
+      "WAH_CHO_KI",
+      "STRIKE_FOOL",
+      "STRIKE_FOOL",
+      "DEFEND_FOOL",
+      "STRIKE_FOOL",
+      "STRIKE_FOOL"
+    ]
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true,
+  "gameMode": "Blitz"
+}
