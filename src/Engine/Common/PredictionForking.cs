@@ -370,6 +370,8 @@ internal interface ICombatPredictionCreatureSemantics
 
 internal interface ICombatPredictionMonsterStateSink
 {
+    int GetMonsterStaticInt(MegaCrit.Sts2.Core.Entities.Creatures.Creature creature, string name);
+
     bool GetMonsterBool(MegaCrit.Sts2.Core.Entities.Creatures.Creature creature, string name);
 
     int GetAeonglassWitherUpgradeCount(MegaCrit.Sts2.Core.Entities.Creatures.Creature creature);

@@ -176,6 +176,9 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 
 ### 2.10 回合阶段效果
 
+怪物受击镜像通过 `ICombatPredictionMonsterStateSink.GetMonsterStaticInt` 读取根冻结的行动参数。
+参数由怪物静态快照捕获，分支与召唤初始化共用同一模式规则；读取未登记字段会明确失败。
+
 `BeforeHandDrawMirrors.Register<TModel>(handler)` 登记抽牌前单项效果，上下文提供 `Player`、
 `Choices` 和分支模拟器。`AfterCreatureAddedMirrors.Register<TModel>(handler)` 登记生物入场效果，
 上下文提供 `Creature`。两个入口均按原生监听顺序派发，在首次根捕获或分发时冻结；

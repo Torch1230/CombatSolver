@@ -279,11 +279,18 @@ internal static class AfterDamageReceivedMirrors
         {
             effects.SetPowerAmount(current, 0);
         }
-        effects.SetPowerAmount(power, 0);
-        string? nextMove = power.Owner.Monster is CeremonialBeast beast
-            ? beast.BeastCryState.StateId
-            : null;
+        string? nextMove = null;
+        if (power.Owner.Monster is CeremonialBeast beast)
+        {
+            if (context.CombatState is not ICombatPredictionMonsterStateSink monsterState)
+                throw new InvalidOperationException("Plow requires frozen monster parameters.");
+            int ritualAmount = monsterState.GetMonsterStaticInt(power.Owner, "RitualAmount");
+            if (ritualAmount > 0)
+                effects.ApplyPower(typeof(RitualPower), power.Owner, ritualAmount, power.Owner);
+            nextMove = beast.BeastCryState.StateId;
+        }
         effects.ForceStunnedMove(power.Owner, nextMove);
+        effects.SetPowerAmount(power, 0);
     }
 
     private static void HandleShriekPower(ShriekPower power, AfterDamageReceivedMirrorContext context)

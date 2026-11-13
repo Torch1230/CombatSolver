@@ -40,8 +40,8 @@ internal sealed partial class UnattendedTestRunner
                 expected.Add((CaptureSimulated(prediction, (SimulatedCombatState)prediction.State.CombatState, player, enemy),
                     SurgicalPowerValues(((SimulatedCombatState)prediction.State.CombatState).EffectivePowers()).ToArray()));
             }
-            // All three entrances represent the same native command. This also detects
-            // a stale skip entry when a new duration Power is blocked before creation.
+            // Explicit duration protection also applies during the player's turn.
+            // Artifact-blocked applications preserve the same state at all entrances.
             var evaluator = new SurgicalEvaluationDriver(captured, display, damage, policy);
             foreach (bool blocked in new[] { false, true })
             {
@@ -54,7 +54,8 @@ internal sealed partial class UnattendedTestRunner
                     if (mode == 2) shadow.ApplyPowerSkippingNextDurationTick(typeof(WeakPower), player.Creature, 1, enemy);
                     return ReleaseSurgicalSnapshot(evaluator.Evaluate(fork)).StateKey;
                 }).ToArray();
-                evidence.Add(new { blocked, equivalentEntrances = variants.Distinct().Count() == 1, keys = variants.Select(key => key.ToString()).ToArray() });
+                evidence.Add(new { blocked, ordinaryEntrancesEquivalent = variants[0] == variants[1],
+                    explicitProtectionDiffers = variants[0] != variants[2], keys = variants.Select(key => key.ToString()).ToArray() });
             }
         }
         for (int index = 0; index < steps.Length; index++)
@@ -63,7 +64,11 @@ internal sealed partial class UnattendedTestRunner
             {
                 case 0: await PowerCmd.Apply<WeakPower>(new BlockingPlayerChoiceContext(), player.Creature, 1, enemy, null); break;
                 case 1: await PowerCmd.Apply<VulnerablePower>(new BlockingPlayerChoiceContext(), player.Creature, 1, enemy, null); break;
-                case 2: await PowerCmd.Apply<FrailPower>(new BlockingPlayerChoiceContext(), player.Creature, 1, enemy, null); break;
+                case 2:
+                    bool hadFrail = player.Creature.HasPower<FrailPower>();
+                    PowerModel? frail = await PowerCmd.Apply<FrailPower>(new BlockingPlayerChoiceContext(), player.Creature, 1, enemy, null);
+                    if (frail != null && !hadFrail) frail.SkipNextDurationTick = true;
+                    break;
                 case 3: await Hook.AfterSideTurnEnd(combat, CombatSide.Enemy, [enemy]); break;
                 case 4:
                     foreach (var power in player.Creature.Powers.ToArray()) await PowerCmd.Remove(power);
@@ -93,7 +98,9 @@ internal sealed partial class UnattendedTestRunner
                     if (mode == 2) shadow.ApplyPowerSkippingNextDurationTick(typeof(WeakPower), player.Creature, 1, enemy);
                     return ReleaseSurgicalSnapshot(evaluator.Evaluate(fork)).StateKey;
                 }).ToArray();
-                if (variants.Distinct().Count() != 1) throw new InvalidOperationException("Equivalent application entrances retained different duration state.");
+                bool explicitProtectionDiffers = !blocked && combat.CurrentSide != CombatSide.Enemy;
+                if (variants[0] != variants[1] || (variants[0] != variants[2]) != explicitProtectionDiffers)
+                    throw new InvalidOperationException("Explicit duration protection or Artifact blocking retained incorrect state.");
             }
             var replay = root.Fork();
             for (int index = 0; index < steps.Length; index++)
@@ -103,7 +110,7 @@ internal sealed partial class UnattendedTestRunner
                     "PowerDurationApplication", "ReplayAfterNative" + index);
             }
         }
-        _completedChecks.Add("PowerDurationApplication:ThreeEntrances:Native16Steps:NewStackExpireReacquire:ArtifactBlockedNoSkip:EquivalentKeys:FullStateAndLifetimeFields:ReplayAfterNative");
+        _completedChecks.Add("PowerDurationApplication:ThreeEntrances:Native16Steps:NewStackExpireReacquire:ExplicitProtection:ArtifactBlockedNoSkip:FullStateAndLifetimeFields:ReplayAfterNative");
         void Apply(SimulatedCombatState shadow, int step)
         {
             switch (step)

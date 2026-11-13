@@ -1,0 +1,25 @@
+[
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "cardsBeforeMove": [{ "cardId": "DOUBT", "pile": "Hand" }, { "cardId": "SHAME", "pile": "Hand" }],
+    "triggerPlayerTurnEndAfterMove": true,
+    "expectedPlayerPowers": { "WEAK_POWER": 1, "FRAIL_POWER": 1 }
+  },
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [{ "powerId": "WEAK_POWER", "target": "Player", "amount": 2 }, { "powerId": "FRAIL_POWER", "target": "Player", "amount": 2 }],
+    "cardsBeforeMove": [{ "cardId": "DOUBT", "pile": "Hand" }, { "cardId": "SHAME", "pile": "Hand" }],
+    "triggerPlayerTurnEndAfterMove": true,
+    "expectedPlayerPowers": { "WEAK_POWER": 3, "FRAIL_POWER": 3 }
+  },
+  {
+    "monsterId": "BigDummy", "moveId": "NOTHING", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [{ "powerId": "ARTIFACT_POWER", "target": "Player", "amount": 2 }],
+    "cardsBeforeMove": [{ "cardId": "DOUBT", "pile": "Hand" }, { "cardId": "SHAME", "pile": "Hand" }],
+    "triggerPlayerTurnEndAfterMove": true,
+    "expectedPlayerPowers": { "WEAK_POWER": 0, "FRAIL_POWER": 0, "ARTIFACT_POWER": 0 }
+  }
+]

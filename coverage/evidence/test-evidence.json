@@ -4001,5 +4001,59 @@
     "expected": "Native and predicted ordered piles, card-instance metadata, powers, history and complete RNG agree at eight effect boundaries.",
     "observed": "d93fc01c328f4d64b26f7b5b25be033b Passed; DevotedSculptor Ritual9, Glam replay status, MusicBox upgraded TezcatarasEmber copy plays and Ethereal exhaustion, MasterPlanner Sly provenance, Ecstasy empty/nonempty candidates, Standard Aeonglass random discard insertion and preview Fork. Initial request 8d7d177df0834cd6b80dedcfc0cfe31c failed an explicit expected-power lookup because the fixture used RitualPower instead of RITUAL_POWER. Original player environments and full recorded routes were not restored.",
     "evidence": "coverage/fixtures/scenarios/state/v0113-instance-and-rng-reports.json; docs/TEST_MATRIX.md"
+  },
+  "LAGAVULIN-DEBUFF-DREAD": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "GameMode Dread; lagavulin-mode-debuff.json; 120s request; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the effect boundary, including duration fields and RNG.",
+    "observed": "b6972d820a7d401b949ba3cb94607fc0 Passed; LagavulinMatriarch:SOUL_SIPHON_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=61:maxHp=77",
+    "evidence": "docs/TEST_MATRIX.md; coverage/fixtures/monsters/lagavulin-mode-debuff.json"
+  },
+  "LAGAVULIN-DEBUFF-STANDARD": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "GameMode Standard; Ascension10; lagavulin-mode-debuff.json; 120s request; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the effect boundary, including duration fields and RNG.",
+    "observed": "3fe347c113564014a6bcc53c4b1843c3 Passed; LagavulinMatriarch:SOUL_SIPHON_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=61:maxHp=77",
+    "evidence": "docs/TEST_MATRIX.md; coverage/fixtures/monsters/lagavulin-mode-debuff.json"
+  },
+  "CURSE-DURATION-PROTECTION": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "curse-duration-protection.json; new, stacked, Artifact-blocked; 120s request; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the effect boundary, including duration fields and RNG.",
+    "observed": "5cebbe7076e54d008cb3e930c9916681 Passed; BigDummy:NOTHING; BigDummy:NOTHING; BigDummy:NOTHING; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77",
+    "evidence": "docs/TEST_MATRIX.md; coverage/fixtures/powers/curse-duration-protection.json"
+  },
+  "POWER-DURATION-APPLICATION-EXPLICIT": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "POWER-DURATION-APPLICATION-NATIVE; explicit duration protection and ordinary applications; 120s request; batch instance cleanup.",
+    "expected": "Full native and predicted state agree at the effect boundary, including duration fields and RNG.",
+    "observed": "5c0ab67fe1234783a47cf1d9558eb8bf Passed; PowerDurationApplication:ThreeEntrances:Native16Steps:NewStackExpireReacquire:ExplicitProtection:ArtifactBlockedNoSkip:FullStateAndLifetimeFields:ReplayAfterNative; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/Contracts/Combat/UnattendedTestRunner.PowerDurationApplication.cs"
+  },
+  "CEREMONIAL-RITUAL-DREAD": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "GameMode dread; IRONCLAD; Ascension10; CEREMONIAL_BEAST_BOSS; MonsterMoveChecksPath=coverage/fixtures/monsters/ceremonial-beast-ritual-transition.json; StopAfterCombatRootSnapshotAssertion; 120s cap; instance cleanup.",
+    "expected": "Native and predicted state agree for Plow removal, Ritual, Strength, stun AI, ordered piles and RNG.",
+    "observed": "5fb1b9dad6e848bcb89faa056256e9d7 Passed; two card hits across threshold and enemy-end Ritual; Inferno player-end threshold hit.",
+    "evidence": "coverage/fixtures/monsters/ceremonial-beast-ritual-transition.json; docs/TEST_MATRIX.md"
+  },
+  "CEREMONIAL-RITUAL-STANDARD": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "GameMode standard; IRONCLAD; Ascension10; CEREMONIAL_BEAST_BOSS; MonsterMoveChecksPath=coverage/fixtures/monsters/ceremonial-beast-ritual-transition.json; StopAfterCombatRootSnapshotAssertion; 120s cap; instance cleanup.",
+    "expected": "Native and predicted state agree for Plow removal, Ritual, Strength, stun AI, ordered piles and RNG.",
+    "observed": "6670b0c777ed4a76aeddbd697a4c243c Passed; two card hits across threshold and enemy-end Ritual; Inferno player-end threshold hit.",
+    "evidence": "coverage/fixtures/monsters/ceremonial-beast-ritual-transition.json; docs/TEST_MATRIX.md"
   }
 }

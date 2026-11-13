@@ -1,0 +1,18 @@
+[
+  {
+    "monsterId": "CeremonialBeast", "moveId": "STAMP_MOVE", "enemyHpBefore": 165,
+    "playerEnergyBefore": 99, "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [{ "powerId": "STRENGTH_POWER", "target": "Enemy", "amount": 5 }],
+    "cardsBeforeMove": [{ "cardId": "STRIKE_IRONCLAD", "pile": "Hand", "count": 2 }],
+    "cardPlayChecksAfterMove": [{ "cardId": "STRIKE_IRONCLAD", "target": "Enemy" }, { "cardId": "STRIKE_IRONCLAD", "target": "Enemy" }],
+    "triggerEnemySideTurnEndAfterMove": true
+  },
+  {
+    "monsterId": "CeremonialBeast", "moveId": "STAMP_MOVE", "enemyHpBefore": 169,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [{ "powerId": "INFERNO_POWER", "target": "Player", "amount": 9 }],
+    "cardsBeforeMove": [{ "cardId": "DEFEND_IRONCLAD", "pile": "Hand" }],
+    "triggerPlayerTurnEndAfterMove": true
+  }
+]

@@ -1,0 +1,7 @@
+[
+  {
+    "monsterId": "LagavulinMatriarch", "moveId": "SOUL_SIPHON_MOVE", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "powersBeforeMove": [{ "powerId": "STRENGTH_POWER", "target": "Player", "amount": 3 }]
+  }
+]

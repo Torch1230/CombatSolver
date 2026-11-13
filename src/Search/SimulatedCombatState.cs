@@ -782,7 +782,13 @@ internal sealed partial class SimulatedCombatState
         bool alreadyPresent = EffectivePowers().Any(power =>
             power.GetType() == powerType && ReferenceEquals(power.Owner, target) && power.Amount > 0);
         ApplyPower(powerType, target, amount, applier);
-        if (!PowerLifecycleSupport.UsesNativeDurationSkip(powerType) && !alreadyPresent && amount > 0)
+        if (alreadyPresent || amount <= 0) return;
+        PowerModel? applied = EffectivePowers().FirstOrDefault(power =>
+            power.GetType() == powerType && ReferenceEquals(power.Owner, target) && power.Amount > 0);
+        if (applied == null) return;
+        if (PowerLifecycleSupport.UsesNativeDurationSkip(powerType))
+            GetMutablePowerInstance(applied).SkipNextDurationTick = true;
+        else
             (_skipNextDurationTick ??= []).Add((target, powerType));
     }
 

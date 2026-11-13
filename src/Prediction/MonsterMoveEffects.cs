@@ -460,8 +460,9 @@ internal static partial class MonsterMoveEffects
                 GainBlock(simulator, move.Owner, combat.GetMonsterStaticInt(move.Owner, "Slash2Block"));
                 return true;
             case ("LagavulinMatriarch", "SOUL_SIPHON_MOVE"):
-                combat.Apply<StrengthPower>(player, -2, move.Owner);
-                combat.Apply<DexterityPower>(player, -2, move.Owner);
+                int siphonAmount = combat.GetMonsterStaticInt(move.Owner, "DebuffAmount");
+                combat.Apply<StrengthPower>(player, siphonAmount, move.Owner);
+                combat.Apply<DexterityPower>(player, siphonAmount, move.Owner);
                 combat.Apply<StrengthPower>(move.Owner, 2, move.Owner);
                 return true;
             case ("LeafSlimeM", "STICKY_SHOT"):
