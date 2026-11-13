@@ -1,0 +1,29 @@
+[
+  {
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "monsterId": "WaterfallGiant",
+    "moveId": "PRESSURIZE_MOVE",
+    "enemyHpBefore": 10,
+    "cardsBeforeMove": [
+      {
+        "cardId": "HOBBLING_SHOT",
+        "pile": "Hand"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "HOBBLING_SHOT",
+        "target": "Enemy",
+        "assertForkableAfterPlay": true
+      }
+    ],
+    "expectedEnemyPowers": {
+      "IMPALED_POWER": 1,
+      "WEAK_POWER": 1,
+      "VULNERABLE_POWER": 1
+    }
+  }
+]

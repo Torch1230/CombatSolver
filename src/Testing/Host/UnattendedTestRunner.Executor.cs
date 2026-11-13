@@ -291,6 +291,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertFoolBranchStateAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "CROSS-CHARACTER-ARROW")
+            {
+                await runner.AssertCrossCharacterArrowAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "SHOW-OFF-GROWTH")
             {
                 await runner.AssertShowOffGrowthAsync(combatState, player);
@@ -648,7 +653,7 @@ internal sealed partial class UnattendedTestRunner
                 await AssertCardChoiceSearchAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
-            if (request.ScenarioId == "CARD-CONTINUATION-CONTRACT")
+            if (request.ScenarioId is "CARD-CONTINUATION-CONTRACT" or "CARD-CONTINUATION-ENCORE")
             {
                 await runner.RunCardContinuationContractAsync(combatState, player);
                 return Observation(combatEnded: false);

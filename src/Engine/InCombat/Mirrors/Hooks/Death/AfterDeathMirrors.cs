@@ -36,6 +36,11 @@ internal static class AfterDeathMirrors
     private static Registry CreateRegistry()
     {
         var registry = new Registry(AfterDeath);
+        registry.Register<SteamEruptionPower>((power, c) =>
+        {
+            if (c.Creature == power.Owner && !c.WasRemovalPrevented)
+                ((SimulatedCombatState)c.CombatState).TryTriggerSteamEruptionDeath(c.Simulator, c.Creature);
+        });
         registry.Register<ShowOffPower>((power, c) =>
         {
             var combat = (SimulatedCombatState)c.CombatState;

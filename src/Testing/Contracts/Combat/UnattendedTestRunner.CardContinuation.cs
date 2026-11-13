@@ -26,6 +26,9 @@ internal sealed partial class UnattendedTestRunner
         foreach (string id in new[] { "WOUND", "DAZED", "STRIKE_SILENT" })
             await InjectCardAsync(live, player, new UnattendedCardInjection { CardId = id, Pile = "Draw" });
         SetEnergy(player, 5);
+        bool encore = _request.ScenarioId == "CARD-CONTINUATION-ENCORE";
+        if (encore)
+            await InjectPowerAsync(live, player, new() { PowerId = "ENCORE_POWER", Target = "Player", Amount = 1 });
         CombatRootSnapshot root = CombatRootSnapshot.Capture(live);
         SolverDisplayNames names = SolverDisplayNames.Capture(live);
         CombatPredictionSimulator parent = root.ForkSimulator();
@@ -141,8 +144,11 @@ internal sealed partial class UnattendedTestRunner
         Equal(liveBefore, ContinuationStamp.CaptureLive(live).StateText, "live isolation");
         _completedChecks.Add("CardContinuationContract:AllOptions:FullStateRngHistory:Identity:SiblingMutation:Revisit:DOP2:Cancel:InvalidChoice");
 
-        VerifyCardContinuationContractBoundaries(parent, player, target, names, Stamp);
-        _completedChecks.Add("CardContinuationContract:PriorHistory:Shuffle:Upgrade:FallbackReplayAttachmentPairSly:OwnedDamage");
+        if (!encore)
+        {
+            VerifyCardContinuationContractBoundaries(parent, player, target, names, Stamp);
+            _completedChecks.Add("CardContinuationContract:PriorHistory:Shuffle:Upgrade:FallbackReplayAttachmentPairSly:OwnedDamage");
+        }
 
         CombatPredictionSimulator expected = Replay([choices[0]]);
         string expectedNative = ContinuationStamp.CapturePredicted(player, expected, root.StartTurnNumber,
@@ -157,6 +163,11 @@ internal sealed partial class UnattendedTestRunner
         await session.AwaitProducerAndCompleteAsync(action.CompletionTask).WaitAsync(deadline.Token);
         Equal(expectedNative, ContinuationStamp.CaptureLive(live).StateText, "native full continuation");
         _completedChecks.Add("CardContinuationContract:NativeDaggerThrow:FullContinuation");
+        if (encore)
+        {
+            _completedChecks.Add("CardContinuationContract:Encore:ActiveCardRemap:NativeCompletion");
+            return;
+        }
         await RunPriorityCardContinuationContractAsync(live, player, "ACROBATICS");
         await RunPriorityCardContinuationContractAsync(live, player, "PREPARED");
 

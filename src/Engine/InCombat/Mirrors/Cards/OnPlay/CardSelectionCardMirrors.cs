@@ -94,7 +94,7 @@ internal static class CardSelectionCardMirrors
 
             if (selectedCard is null)
             {
-                break;
+                continue;
             }
 
             context.Simulator.History.CardsSelected([selectedCard]);

@@ -60,6 +60,8 @@ Power 来源也是语义的一部分：精确镜像可通过 `ICombatPredictionE
 
 CrabRagePower 的同伴死亡结算由 `AfterDeathMirrors` 独占：力量、格挡与移除都发生在死亡 Hook 内，后续多段伤害立即消费新格挡。外层死亡清扫不重复该效果。
 
+SteamEruptionPower 的转阶段也由 `AfterDeathMirrors` 持有。Hook 内恢复生命和行动，Hook 结束后清理该个体的死亡 Power，攻击尾部再插箭或施加减益。扩展死亡后复活效果时应保持这一原生时序。战斗牌堆加入 Shoot 标签卡时，零基础箭槽角色首次获得一个箭槽；已有箭槽沿用分支状态。
+
 ### 1.1 门禁：先让 Mod 进得来
 
 求解器扫描所有 ModHelper 战斗 hook 订阅者。放行条件包括：

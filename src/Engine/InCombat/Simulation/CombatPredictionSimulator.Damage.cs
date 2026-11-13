@@ -440,6 +440,11 @@ internal sealed partial class CombatPredictionSimulator
             if (HasPendingChoice)
                 return false;
 
+            // AfterDeath can revive a retained enemy before the attack's remaining effects.
+            if (creature.Side == CombatSide.Enemy && creatureState.IsAlive
+                && State.CombatState is SimulatedCombatState revivedCombat)
+                revivedCombat.RemovePowersAfterDeath(creature);
+
             var aliveTeammates = State.GetTeammatesOf(creature)
                 .Where(c => State.GetCreature(c).IsAlive)
                 .ToArray();

@@ -59,6 +59,8 @@ internal sealed partial class CombatPredictionHistory
             if (context.TryRemap(source, out DamageResult? found)) return found!;
             var copy = new DamageResult(source.Receiver, source.Props)
             {
+                IntendedHpLoss = source.IntendedHpLoss,
+                OriginalTarget = source.OriginalTarget,
                 BlockedDamage = source.BlockedDamage, UnblockedDamage = source.UnblockedDamage,
                 OverkillDamage = source.OverkillDamage, WasBlockBroken = source.WasBlockBroken,
                 WasFullyBlocked = source.WasFullyBlocked, WasTargetKilled = source.WasTargetKilled,

@@ -1,0 +1,23 @@
+[
+  {
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "monsterId": "Chomper",
+    "moveId": "SCREECH_MOVE",
+    "enemyHpBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "TIMBER",
+        "pile": "Hand"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "TIMBER",
+        "target": "Enemy"
+      }
+    ]
+  }
+]

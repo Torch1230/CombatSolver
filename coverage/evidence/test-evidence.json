@@ -4073,5 +4073,50 @@
     "expected": "Native and predicted state agree for Plow removal, Ritual, Strength, stun AI, ordered piles and RNG.",
     "observed": "6670b0c777ed4a76aeddbd697a4c243c Passed; two card hits across threshold and enemy-end Ritual; Inferno player-end threshold hit.",
     "evidence": "coverage/fixtures/monsters/ceremonial-beast-ritual-transition.json; docs/TEST_MATRIX.md"
+  },
+  "TIMBER-KILL-SPLASH": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId TIMBER-KILL-SPLASH; fixture and character in docs/TEST_MATRIX.md; 120 s cap; instance cleanup.",
+    "expected": "Kill-triggered splash and native full state",
+    "observed": "4b2d2c2e358a4c4696eb046ed0b29ecd Passed; Chomper:SCREECH_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77",
+    "evidence": "coverage/fixtures/cards/timber-kill-splash.json; docs/issues/reports-20261113-logic.md"
+  },
+  "CATASTROPHE-EMPTY-DRAW": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId CATASTROPHE-EMPTY-DRAW; fixture and character in docs/TEST_MATRIX.md; 120 s cap; instance cleanup.",
+    "expected": "Base/upgraded empty-pile RNG and full state",
+    "observed": "0d9cfcb954c04f1da0cd6d34207b1f55 Passed; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77",
+    "evidence": "coverage/fixtures/cards/catastrophe-empty-draw.json; docs/issues/reports-20261113-logic.md"
+  },
+  "WATERFALL-ARROW-TRANSITION": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId WATERFALL-ARROW-TRANSITION; fixture and character in docs/TEST_MATRIX.md; 120 s cap; instance cleanup.",
+    "expected": "Phase transition before impalement and debuffs; full state and Fork",
+    "observed": "23dad02b2bb04e0a925aafedd00cdcd0 Passed; WaterfallGiant:PRESSURIZE_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77",
+    "evidence": "coverage/fixtures/monsters/waterfall-arrow-transition.json; docs/issues/reports-20261113-logic.md"
+  },
+  "CROSS-CHARACTER-ARROW": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId CROSS-CHARACTER-ARROW; fixture and character in docs/TEST_MATRIX.md; 120 s cap; instance cleanup.",
+    "expected": "Single/bulk entry, one slot, parent/sibling isolation and live advancement",
+    "observed": "51a7b646dc1b4f2caf876e5e56a0ff26 Passed; CrossCharacterArrow:FirstShootEntry:SingleSlot:NativeState:Fork:LiveAdvance; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.FoolBranchState.cs; docs/issues/reports-20261113-logic.md"
+  },
+  "CARD-CONTINUATION-ENCORE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId CARD-CONTINUATION-ENCORE; fixture and character in docs/TEST_MATRIX.md; 120 s cap; instance cleanup.",
+    "expected": "Active card remapping, all choices, full state/history/RNG, DOP2 and native completion",
+    "observed": "0209ec0d87654471a4c85dc81faa7433 Passed; CardContinuationContract:AllOptions:FullStateRngHistory:Identity:SiblingMutation:Revisit:DOP2:Cancel:InvalidChoice; CardContinuationContract:NativeDaggerThrow:FullContinuation; CardContinuationContract:Encore:ActiveCardRemap:NativeCompletion; NativeOutcome:combatEnded=False:turn=1:hp=70:maxHp=70",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardContinuation.cs; docs/issues/reports-20261113-logic.md"
   }
 }

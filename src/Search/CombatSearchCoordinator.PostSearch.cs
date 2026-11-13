@@ -48,7 +48,8 @@ internal static partial class CombatSearchCoordinator
                          maximumMilliseconds: 30_000,
                          reserveMilliseconds: 2_000,
                          potionPolicyOverride: SolverPotionPolicy.RequireAtLeastOne,
-                         potionBounds: () => (2, 2)))
+                         potionBounds: () => (2, 2),
+                         optionalPotionDiagnostic: nameof(ContinuationPurpose.EarlyPotionPair)))
             {
                 PlanAction[] prefix = outcome.Request.Prefix;
                 SolverResult pair = outcome.Result;

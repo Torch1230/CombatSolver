@@ -1687,7 +1687,7 @@ while IFS=$'\t' read -r relative_path text; do
     require_fixed "$repository_root/$relative_path" "$text" 'missing card continuation ownership boundary'
 done <<'EOF'
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs	GuardOrdinaryCardContinuationFork();
-src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	context.Register(source.Play, play);
+src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	PrepareExecutionCardPlay(source.Card, source.Play, context);
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	StateStore.SupportsManualCardChoiceContinuation
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	DetachPendingManualCardChoice();
 src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs	source.Choice.Fork(context)

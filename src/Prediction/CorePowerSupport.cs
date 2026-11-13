@@ -619,11 +619,6 @@ internal static class CorePowerSupport
                 processedDeaths.Add(combatId);
                 continue;
             }
-            bool steamEruptionTriggered = combat.TryTriggerSteamEruptionDeath(simulator, enemy);
-            if (simulator.HasPendingChoice)
-                return false;
-            if (steamEruptionTriggered)
-                continue;
             (newlyDead ??= []).Add(enemy);
         }
         if (newlyDead != null)

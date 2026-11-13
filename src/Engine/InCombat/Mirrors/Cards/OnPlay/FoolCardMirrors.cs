@@ -272,10 +272,9 @@ internal static class FoolCardMirrors
                 if (!sim.HasPendingChoice) Apply<VulnerablePower>(card.DynamicVars.Vulnerable.IntValue, true);
                 break;
             case Timber:
-                int attackStart = sim.History.Entries.Count;
-                DamageCmd.Attack(card.DynamicVars.Damage.BaseValue).FromCard(card, c.CardPlay).Targeting(c.Target).Simulate(sim);
-                if (!sim.HasPendingChoice && sim.History.OfType<CombatPredictionCreatureAttackedEntry>()
-                    .Where(entry => entry.Index >= attackStart && ReferenceEquals(entry.Trace?.Source, card)).SelectMany(entry => entry.HitResults)
+                var timberAttack = DamageCmd.Attack(card.DynamicVars.Damage.BaseValue).FromCard(card, c.CardPlay).Targeting(c.Target);
+                timberAttack.Simulate(sim);
+                if (!sim.HasPendingChoice && timberAttack.Results.SelectMany(results => results)
                     .Any(result => result.WasTargetKilled))
                     DamageCmd.Attack(card.DynamicVars["OnKillDamage"].BaseValue).FromCard(card, c.CardPlay)
                         .TargetingAllOpponents(c.CombatState).Simulate(sim);

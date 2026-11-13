@@ -1,0 +1,46 @@
+[
+  {
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 999,
+    "cardsBeforeMove": [
+      {
+        "cardId": "CATASTROPHE",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CATASTROPHE",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 999,
+    "cardsBeforeMove": [
+      {
+        "cardId": "CATASTROPHE",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CATASTROPHE",
+        "target": "None"
+      }
+    ]
+  }
+]

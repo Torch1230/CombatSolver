@@ -46,7 +46,6 @@ internal static partial class PredictionCoverage
             AdaptablePower or CrabRagePower or DampenPower or IllusionPower or InfestedPower
                 or PossessSpeedPower or PossessStrengthPower or RavenousPower or ReattachPower
                 or SurprisePower or SurroundedPower when method == "AfterDeath" => true,
-            SteamEruptionPower when method == "AfterDeath" => true,
             ConstrictPower when method == "AfterDeath" => true,
             HexPower when method == "AfterDeath" => true,
             ShrinkPower when method == "AfterDeath" => true,

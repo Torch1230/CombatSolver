@@ -2138,7 +2138,7 @@ foreach ($relativePath in @(
 # A suspended own-choice frame belongs to its continuation; ordinary Fork remains strict.
 foreach ($rule in @(
     @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs'; Text = 'GuardOrdinaryCardContinuationFork();' },
-    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'context.Register(source.Play, play);' },
+    @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'PrepareExecutionCardPlay(source.Card, source.Play, context);' },
     @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'StateStore.SupportsManualCardChoiceContinuation' },
     @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'DetachPendingManualCardChoice();' },
     @{ RelativePath = 'src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs'; Text = 'source.Choice.Fork(context)' },

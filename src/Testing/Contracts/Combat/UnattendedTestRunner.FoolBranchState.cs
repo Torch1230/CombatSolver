@@ -10,6 +10,41 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertCrossCharacterArrowAsync(CombatState combat, Player player)
+    {
+        await ClearOrderedEffectFixtureAsync(combat, player);
+        if (player.Character.BaseArrowSlotCount != 0 || player.PlayerCombatState!.Arrows.Count != 0)
+            throw new InvalidOperationException("Cross-character fixture requires an empty native arrow inventory.");
+        var enemy = combat.Enemies.Single();
+        var root = CombatRootSnapshot.Capture(combat);
+        var parent = root.ForkSimulator();
+        var child = parent.Fork();
+        var sibling = parent.Fork();
+        var initial = CaptureActual(combat, player, enemy);
+        var cards = await InjectCardAsync(combat, player, new() { CardId = "TRICK_SHOT", Pile = "Draw" });
+        child.AddToPile(new CombatSolver.Engine.Common.PredictedCard(cards.Single()), PileType.Draw);
+        var bulk = parent.Fork();
+        bulk.AddToPile(new[] { new CombatSolver.Engine.Common.PredictedCard(cards.Single()) }, PileType.Draw);
+        AssertSnapshotEqual(CaptureActual(combat, player, enemy),
+            CaptureSimulated(bulk, (SimulatedCombatState)bulk.State.CombatState, player, enemy),
+            _request.ScenarioId, "BulkShootCardArrow");
+        AssertSnapshotEqual(CaptureActual(combat, player, enemy),
+            CaptureSimulated(child, (SimulatedCombatState)child.State.CombatState, player, enemy),
+            _request.ScenarioId, "FirstShootCardArrow");
+        var grandchild = child.Fork();
+        child.AddToPile(child.State.GetPlayerCombatState(player).DrawPile.Cards.Single(), PileType.Hand);
+        await CardPileCmd.Add(cards.Single(), PileType.Hand);
+        if (child.State.GetPlayerCombatState(player).Arrows.Count != 1 || player.PlayerCombatState.Arrows.Count != 1)
+            throw new InvalidOperationException("Moving the shoot card changed the arrow slot count.");
+        if (ReferenceEquals(child.State.GetPlayerCombatState(player).Arrows[0], grandchild.State.GetPlayerCombatState(player).Arrows[0]))
+            throw new InvalidOperationException("Cross-character arrow slot is shared by child branches.");
+        AssertSnapshotEqual(initial, CaptureSimulated(parent, (SimulatedCombatState)parent.State.CombatState, player, enemy),
+            _request.ScenarioId, "ParentAfterLiveAdvance");
+        AssertSnapshotEqual(initial, CaptureSimulated(sibling, (SimulatedCombatState)sibling.State.CombatState, player, enemy),
+            _request.ScenarioId, "SiblingAfterLiveAdvance");
+        _completedChecks.Add("CrossCharacterArrow:FirstShootEntry:SingleSlot:NativeState:Fork:LiveAdvance");
+    }
+
     private async Task AssertFoolBranchStateAsync(CombatState combat, Player player)
     {
         SetStage("fool_branch_setup");

@@ -86,6 +86,8 @@ Smart 药水梯度在主成员耗尽时间时拥有一个独立成员时间：�
 
 每项战斗语义只有一个权威结算实现。可变值由根快照、影子状态、克隆 Model 或 `PredictionStateStore` 持有。一次 Fork 共用 `PredictionForkContext`，引用随同一上下文重映射；COW 取得可写所有者后再写。
 
+`SteamEruptionPower.AfterDeath` 通过死亡 Hook 将洪流巨人切入无限生命阶段；复活个体在 Hook 完成后清理死亡 Power，攻击尾部继续插箭和施加减益。外层死亡清扫消费该阶段的结果。手动选牌续接在复制战斗状态前调用 `PrepareExecutionCardPlay`，使正在执行卡牌、`CardPlay` 与 Power 内引用沿同一个 Fork context 重映射。
+
 `CombatRulesSnapshot` 在根捕获冻结游戏模式、原生进阶集合及领域身份。生成池、变牌、怪物效果、缓存和续用消费同一快照。原生怪物的同步初始化与静态参数采集用 `NativeCombatRulesScope` 暂时提供该根的进阶查询；作用域按线程嵌套恢复，运行时补丁仅在该作用域内返回冻结值。领域和 RunModel 按原生顺序进入克隆监听表，战斗中可变状态沿现有 Power／StateStore 所有权维护。
 
 怪物受击效果通过 `ICombatPredictionMonsterStateSink.GetMonsterStaticInt` 消费同一份静态参数快照；模式相关数值由根捕获和召唤初始化提供，镜像沿既有 Power 施加、眩晕和移除顺序结算。
