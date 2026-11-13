@@ -3533,5 +3533,14 @@
     "expected": "Named full-state native, continuation, branch isolation and deployment assertions pass.",
     "observed": "runId=1a6a90e828bf486680ffa3977fe8e60d; assembly=EBFFF9B3590D98F39F904664FEB4C83B6751C608F8820FC9800EC748A70E8D1F; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; UnexpectedReplans:0; NativeOutcome:combatEnded=True:turn=2:hp=77:maxHp=77; finished=2026-11-13T12:07:39.0385312+08:00; route includes ExplosiveArrows, WhistlingArrows twice around a shot, EpicRetrieval and next-turn continuation; initial launch rejected a source-DLL change while freezing the private snapshot, before game execution.",
     "evidence": "coverage/fixtures/search/beta-standard-fool-hooks.json; docs/TEST_MATRIX.md"
+  },
+  "REQUEST-BUDGET-DISPLAY": {
+    "status": "Passed",
+    "level": "HeadlessRequestBudgetAndUiContract",
+    "gameVersion": "0.113.0",
+    "procedure": "REQUEST-BUDGET-DISPLAY; IRONCLAD; FUZZY_WURM_CRAWLER_WEAK; enemy max/current HP 9999; StopAfterInitialSetupAssertion; Instant; timeout 120 seconds; CleanupInstanceOnExit.",
+    "expected": "Request totals and limit warnings use request accounting in zhs/zht/eng, while selected solver metrics and route identity remain unchanged.",
+    "observed": "runId=6cbf79889552420f80e46e4bf0d4e743; assembly=80BAED7DA43B4E937056729B25A2F9BBED0847EB0BE6E89934051BDE672678E1; checks=RequestBudgetDisplay:Coordinator:MemberLimit:RequestNodeLimit:RequestTimeLimit:Override:TotalNodes:ZhsZhtEng:SelectedRoutePreserved; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T12:28:18.5190124+08:00; baseline: local combat 27980b6de2654ff08dd112b33a157ee1 generation 5 used 10512 total nodes under 500000/300000ms, but displayed selected novelty member 2500/NodeLimit.",
+    "evidence": "src/Testing/Contracts/UI/UnattendedTestRunner.RequestBudgetDisplay.cs; docs/TEST_MATRIX.md"
   }
 }

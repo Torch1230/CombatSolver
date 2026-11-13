@@ -174,6 +174,7 @@ internal static partial class CombatSearchCoordinator
             selected = RunBossTempoSearch(new(root, displayNames, battleDamage,
                 policy, policy.Profile, requestClock, ledger, cancellationToken,
                 enrichedProgressCallback, interaction == null ? null : PublishAdoptableResult), selected);
+            selected.RequestBudget = ledger.Capture(policy.Profile);
             if (policy.IncludeTurnSetup)
             {
                 PopulateRequestWorkTotals(selected, requestWorkTotals);
@@ -204,6 +205,7 @@ internal static partial class CombatSearchCoordinator
                 $"potions={currentCompleteAdoptableResult.ProjectedBattlePotionCount} " +
                 $"projected_battle_hp_lost={currentCompleteAdoptableResult.ProjectedBattleHpLost}");
             PopulateRequestWorkTotals(currentCompleteAdoptableResult, requestWorkTotals);
+            currentCompleteAdoptableResult.RequestBudget = ledger.Capture(policy.Profile);
             currentCompleteAdoptableResult.PortfolioTelemetry = portfolioTelemetry;
             return currentCompleteAdoptableResult;
         }

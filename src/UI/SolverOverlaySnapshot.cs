@@ -300,7 +300,7 @@ internal sealed record SolverOverlaySnapshot(
             turns,
             BuildDetails(result, startTurnNumber, alreadyLost, unmirrored, compensated, unexpectedReplan),
             hasRisk,
-            BuildSearchLimitWarning(result.BoundaryReason))
+            BuildSearchLimitWarning(SearchBoundaryForDisplay(result)))
         {
             PendingTurnSetup = pendingTurnSetup,
             RewardOutcomeText = RewardOutcome(result),
@@ -568,7 +568,7 @@ internal sealed record SolverOverlaySnapshot(
             ? SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]搜索[/color]  战斗状态一致，恢复已记录路线  │  本次 0 节点")
             : result.WasReused
             ? SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]搜索[/color]  跨回合状态一致，复用既有路线  │  本回合 0 节点")
-            : SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]搜索[/color]  {result.ExpandedNodes} 节点  │  置换剪枝 {result.TranspositionBranchesPruned}  │  {result.TotalSearchElapsed.TotalMilliseconds:F0} ms");
+            : SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]搜索[/color]  {result.RequestBudget?.ExpandedNodes ?? (result.TotalExpandedNodes > 0 ? result.TotalExpandedNodes : result.ExpandedNodes)} 节点  │  {result.TotalSearchElapsed.TotalMilliseconds:F0} ms");
         List<string> detailLines =
         [
             searchDetails,
@@ -576,7 +576,7 @@ internal sealed record SolverOverlaySnapshot(
             SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]战损[/color]  本局已发生 {alreadyLost}  │  路线未来卖血 {result.FutureSoldHp}  │  本局累计卖血 {result.SoldHp}"),
             SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]药水[/color]  本局已喝 {result.BattlePotionsUsedSoFar} 瓶  │  路线还要用 {result.PotionCount} 瓶  │  预计省血 {result.PotionHpSaved}/{result.PotionHpRequired} HP  │  门槛淘汰 {result.PotionBranchesRejected}"),
             SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]防守[/color]  本回合最高可起防 {result.MaxBlockByTurn.GetValueOrDefault(displayedTurn)}  │  路线实际起防 {result.ActualBlockByTurn.GetValueOrDefault(displayedTurn)}  │  卖血 {result.SoldHpByTurn.GetValueOrDefault(displayedTurn)}"),
-            SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]边界[/color]  {BoundaryText(result.BoundaryReason)}  │  停止洗牌分支 {result.ShuffleBranchesPruned}  │  不可避免战损 {result.UnavoidableHpLost}"),
+            SolverText.Format($"[color={SolverUiTokens.Palette.TextMutedHex}]边界[/color]  {BoundaryText(SearchBoundaryForDisplay(result))}  │  停止洗牌分支 {result.ShuffleBranchesPruned}  │  不可避免战损 {result.UnavoidableHpLost}"),
         ];
         if (result.TheftPolicy is { } theftPolicy)
         {
@@ -624,6 +624,11 @@ internal sealed record SolverOverlaySnapshot(
         return result.Forecast.IsExactForModeledDamage ? SolverText.Get("高可信度") : SolverText.Get("中等可信度");
     }
 
+    internal static SearchBoundaryReason SearchBoundaryForDisplay(SolverResult result)
+        => result.BoundaryReason is SearchBoundaryReason.None or SearchBoundaryReason.NodeLimit or SearchBoundaryReason.TimeLimit
+            ? result.RequestBudget?.LimitReason ?? result.BoundaryReason
+            : result.BoundaryReason;
+
     internal static string? BuildSearchLimitWarning(SearchBoundaryReason reason) => reason switch
     {
         SearchBoundaryReason.TimeLimit
@@ -644,7 +649,7 @@ internal sealed record SolverOverlaySnapshot(
         SearchBoundaryReason.NodeLimit => SolverText.Get("节点上限"),
         SearchBoundaryReason.TurnLimit => SolverText.Get("回合上限"),
         SearchBoundaryReason.TimeLimit => SolverText.Get("时间预算"),
-        _ => SolverText.Get("战斗结束"),
+        _ => SolverText.Get("搜索完成"),
     };
 
     private static string JoinCoverage(IReadOnlyList<string> entries)

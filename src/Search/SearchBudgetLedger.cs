@@ -2,6 +2,17 @@ using System.Diagnostics;
 
 namespace CombatSolver;
 
+// Request-level reporting. Individual solvers retain their own stop reasons.
+internal sealed record SearchRequestBudgetSnapshot(
+    long ExpandedNodes, long NodeLimit, long ElapsedMilliseconds, long TimeLimitMilliseconds)
+{
+    internal SearchBoundaryReason LimitReason => ExpandedNodes >= NodeLimit
+        ? SearchBoundaryReason.NodeLimit
+        : ElapsedMilliseconds >= TimeLimitMilliseconds
+            ? SearchBoundaryReason.TimeLimit
+            : SearchBoundaryReason.None;
+}
+
 internal readonly record struct SearchBudgetWindow(int RemainingMilliseconds, long RemainingNodes)
 {
     internal bool CanStart(int minimumMilliseconds)
@@ -33,6 +44,10 @@ internal sealed class SearchBudgetLedger
     }
 
     internal SearchRequestWorkTotals WorkTotals { get; } = new();
+
+    internal SearchRequestBudgetSnapshot Capture(SolverSearchProfile profile)
+        => new(WorkTotals.Snapshot().ExpandedNodes, profile.MaxExpandedNodes,
+            _requestClock.ElapsedMilliseconds, _requestLimitMilliseconds);
 
     internal int RemainingRequestMilliseconds
         => _requestLimitMilliseconds - (int)_requestClock.ElapsedMilliseconds;

@@ -1,5 +1,11 @@
 # CombatSolver 测试入口
 
+## 请求预算显示
+
+2026-11-13，`REQUEST-BUDGET-DISPLAY` 在 v0.113.0 通过：真实 coordinator 的节点耗尽报告、2500+8012 节点成员累计、总预算充足时的提示、实际节点／时间上限、时间覆盖参数和 zhs/zht/eng 界面。入选成员原始节点、边界及路线身份保持。该合同验证统计和 UI 投影；可见窗口排版由现有控件渲染。
+
+复跑：`pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId REQUEST-BUDGET-DISPLAY -CharacterId IRONCLAD -InitialEnemyMaxHpsJson '[9999]' -EnemyCurrentHp 9999 -StopAfterInitialSetupAssertion -EnableNoGcRegionForTest 0 -HeadlessFastModeForTest Instant -HeadlessInstance request-budget-display -CleanupInstanceOnExit -TimeoutSeconds 120`。来源与 runId 见 `coverage/evidence/test-evidence.json`。
+
 ## v0.113.0 标准模式适配
 
 2026-11-13，本机 public-beta `0.113.0` / `16ac0fe3`。当前 Release 主项目与 OfflineSearchHarness 构建通过。下表是本轮原生运行证据，完整 runId、程序集 hash 与结果保存在 `coverage/evidence/test-evidence.json`；每次请求上限 120 秒，实例清理结果均由启动器记录。

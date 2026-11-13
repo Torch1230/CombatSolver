@@ -661,6 +661,11 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertUiLocalizationAsync(combatState);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "REQUEST-BUDGET-DISPLAY")
+            {
+                await runner.AssertRequestBudgetDisplayAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "COMBAT-DIAGNOSTIC-LOG")
             {
                 await runner.AssertCombatDiagnosticLogAsync(combatState, player);
