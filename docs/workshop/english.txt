@@ -43,7 +43,7 @@ Combat Solver source: search for Torch1230/CombatSolver on GitHub.
 
 [list]
 [*]Requires RitsuLib 0.6.11 or later.
-[*]Targets single-player Standard mode in Slay the Spire 2 version 0.113.0 Beta.
+[*]Supports single-player Standard, Dread and Blitz modes in Slay the Spire 2 version 0.113.0 Beta.
 [*]Single-player combat only; multiplayer is not supported.
 [*]Background search does not modify the live game's RNG.
 [*]Search is bounded by time, node and memory budgets. The recommended route is the best found within those limits, not a guarantee of a mathematically optimal solution.
