@@ -194,7 +194,7 @@ internal sealed partial class SimulatedCombatState
                             player,
                             relic.DynamicVars.Cards.IntValue,
                             simulator.Rng.CombatCardGeneration,
-                            _cardMultiplayerConstraint)
+                            _cardMultiplayerConstraint, Rules)
                         .ToArray();
                     foreach (PredictedCard option in options)
                         option.MutablePreview.AddKeyword(CardKeyword.Retain);
@@ -299,7 +299,7 @@ internal sealed partial class SimulatedCombatState
                             player,
                             1,
                             simulator.Rng.CombatCardGeneration,
-                            _cardMultiplayerConstraint)
+                            _cardMultiplayerConstraint, Rules)
                         .First();
                     generated.SetToFreeThisTurn();
                     simulator.AddGeneratedCardsToCombat(
@@ -498,7 +498,7 @@ internal sealed partial class SimulatedCombatState
                 relic.Owner,
                 count,
                 simulator.Rng.CombatCardGeneration,
-                _cardMultiplayerConstraint)
+                _cardMultiplayerConstraint, Rules)
             .ToList();
         AddGeneratedRelicCards(simulator, relic, generated, setFreeThisTurn);
     }

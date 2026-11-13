@@ -42,7 +42,8 @@ internal sealed partial class UnattendedTestRunner
                 };
             }
             if (!pools.TryGetRootEligibleCharacterCards(player, pool, constraint, selection, out var eligible)
-                || !eligible.SequenceEqual(OriginalOptions().FilterForCombatAndPlayerCount(constraint),
+                || !eligible.SequenceEqual(OriginalOptions().FilterForCombatAndPlayerCount(constraint)
+                    .Where(card => card.IsAllowedInRun(player.RunState)),
                     ReferenceEqualityComparer.Instance))
                 throw new InvalidOperationException("Turn-start generation pool changed ordered canonical identities.");
             CombatPredictionSimulator child = parent.Fork();
@@ -78,7 +79,7 @@ internal sealed partial class UnattendedTestRunner
             for (int index = 0; index < 3; index++)
             {
                 PredictedCard expected = originalFiltered.GetDistinctForCombat(
-                    player, 1, fallbackBefore.Rng.CombatCardGeneration, constraint).Single();
+                    player, 1, fallbackBefore.Rng.CombatCardGeneration, constraint, state.Rules).Single();
                 PredictedCard actual = fallbackCandidates.GetDistinctForCombat(
                     player, 1, fallbackAfter.Rng.CombatCardGeneration).Single();
                 if (expected.Preview.Id != actual.Preview.Id
@@ -116,12 +117,12 @@ internal sealed partial class UnattendedTestRunner
                     List<PredictedCard> generated = [];
                     if (selection == CharacterCombatGenerationPool.Common)
                         generated = originalOptions.GetDistinctForCombat(
-                            player, count, before.Rng.CombatCardGeneration, constraint).ToList();
+                            player, count, before.Rng.CombatCardGeneration, constraint, state.Rules).ToList();
                     else
                         for (int index = 0; index < count; index++)
                         {
                             PredictedCard? card = originalOptions.GetDistinctForCombat(
-                                player, 1, before.Rng.CombatCardGeneration, constraint).FirstOrDefault();
+                                player, 1, before.Rng.CombatCardGeneration, constraint, state.Rules).FirstOrDefault();
                             if (card != null) generated.Add(card);
                         }
                     if (selection == CharacterCombatGenerationPool.NonBasicAndAncient)

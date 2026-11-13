@@ -1,0 +1,8 @@
+[
+  {
+    "monsterId": "Queen", "moveId": "DREAD_INITIAL_MOVE",
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true,
+    "expectedPlayerPowers": {"CHAINS_OF_BINDING_POWER":3,"FRAIL_POWER":99,"WEAK_POWER":99,"VULNERABLE_POWER":99}
+  },
+  {"monsterId":"Queen","moveId":"BURN_BRIGHT_FOR_ME_MOVE","clearAllPowersBeforeMove":true}
+]

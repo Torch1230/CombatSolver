@@ -48,6 +48,7 @@ internal sealed class SolvedRouteCache(string path)
             state.RunState.CurrentActIndex,
             state.RunState.TotalFloor,
             state.RunState.AscensionLevel,
+            root.Rules,
             Encounter = state.Encounter?.Id.Entry,
             Modifiers = state.Modifiers.Select(modifier => modifier.Id.Entry).ToArray(),
             Native = writer.Buffer.AsSpan(0, writer.BytePosition).ToArray(),

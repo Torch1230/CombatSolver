@@ -1,5 +1,25 @@
 # CombatSolver 测试入口
 
+## 0.113 Part 2：恐惧与极速
+
+2026-11-13，v0.113.0 public-beta；本批使用独立任务分支，以下仅记录已执行结果。
+
+- `MODE-ROOT-BLITZ`：runId `e9244fce25494a85851bbd7f799e75cd`，Blitz 5 根捕获合同 Passed。
+- `MODE-ROOT-DREAD`：runId `c2daf3be2f5e45aaa4025708943a3e84`，Dread／仪式兽领域根捕获合同 Passed。
+- `DREAD-DOMINION-POWERS`：runId `a7279864f95d4f73a1004fd2d7851738`，`coverage/fixtures/powers/dread-dominion-lifecycle.json` 的三个领域 Power、回合结束和下回合准备全状态差分 Passed。
+- `DREAD-DOMINION-HOOKS`：`ece726eaeecb483bb0a5390b1cbfc714` 完成 Aeonglass、CeremonialBeast、Insatiable、KaiserCrab、Kin 后在知识恶魔测试选项不一致处失败；`0dc1c6870c0348cfa018323a561ada41` 完成其余七种领域、知识恶魔两个选择及领域移除。父子／兄弟 Fork、实机推进后的隔离、抽牌前及生物入场 Hook 均使用原生对照。
+- `MODE-RULES-ISOLATION`：`96f6c22a0e3d4560881dff2834808be9` Passed，极速 0–5 级、并发根、嵌套同步作用域及实机规则保持。
+
+- 极速变牌 `2dae09d17e1a4b0bae25915b9b586fbc` Passed，6 张手牌对照原生工厂及完整 RNG。生成缓存 `9f4675209cb940a38f5b331141e41daa`（16 组）和回合生成缓存 `96ab91f1e3334853b674ae35c6af9ea1`（27 组）Passed，含有序候选、分支状态、历史与隔离。
+- 极速奖励：三幕普通房间、弱怪、精英、前幕与终幕首领各 8 个原生奖励样本通过，药水数量／身份一致且预测保持 live RNG。各 runId 见 `coverage/evidence/test-evidence.json` 的 `BLITZ-REWARD-ROOMS`。
+- 女王恐惧开场及强化：`1bc10bb1222d47ec96ef9b7a6398409c` Passed，使用 `coverage/fixtures/monsters/dread-queen.json` 全状态差分。
+
+实际失败：领域合同 `6a5a9e51e1584ede841c79bbf883fe6b` 枚举包含编译器生成类型。变牌旧请求 `63d7d69026ee4f9197243a9bc62c3c04`、`636a3972e33f48deb704c8647645fbfe`、`65a3c516bdb046f1a41b3490c6083cef`、`24d1931169bd401e9e1703ddf10848d0` 超时，已确认 `StopAfterInitialSetupAssertion` 等待初始求解结果；纯合同改用 `StopAfterCombatRootSnapshotAssertion` 后通过。生成缓存 `68836507d3b847dd9e3d83eeca8e76df` 的测试候选缺少模式过滤，修正为原生资格核对后通过。女王首次 `387e1f7ff6874caeb7edb6e56705b8cc` 加载前一构建，证明开场效果缺失。沙漏 `eec634823b034196ab4f59d1a269c1d9` 缺普通牌输入；`1ad65d2bb0fc405796a0afb11d8ef0ab` 发现随机插入少消耗 3 次洗牌 RNG，修复验证进行中。
+
+待验证：六角色集成、奖励遗物组合、增援、缓存恢复及可见 UI。每个已结束实例均由启动器清理。构建、Windows 结构门禁及文档／工具／覆盖目录路径检查已通过；Linux 结构门禁待运行。覆盖工具已识别 RunModel、领域及其实际继承覆写，effective／runtime-evidence 检查通过；状态写入分类和新增怪物证据继续补充。
+
+复跑沿用 `tools/testing/run-unattended-test.ps1/.sh`，模式参数为 `-GameMode`／`--game-mode`，可指定 `-DreadBossEncounterId`／`--dread-boss-encounter-id`；领域子集使用 `-DominionIdsForTest`／`--dominion-ids-for-test`。所有请求带实例清理，单次上限 120 秒；纯 Hook 差分使用上述场景，Power 差分传 `-MonsterMoveChecksPath`。
+
 ## 请求预算显示
 
 0.51.0 定稿的验证结果、复跑入口、失败与未验证项见[历史卷 23](archive/testing/volume-23.md#请求预算显示)。

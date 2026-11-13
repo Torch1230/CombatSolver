@@ -1,4 +1,6 @@
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
@@ -53,19 +55,39 @@ internal static class KnowledgeDemonChoiceSupport
         if (!optionIds.Contains(selectedId, StringComparer.Ordinal))
             throw new InvalidOperationException($"知识恶魔当前不能选择 {selectedId}。");
 
+        ApplyCurse(combat, player, selectedId, (combat.Rules.IsDread ? 8 : 6) + counter);
+
+        combat.AdvanceKnowledgeDemonCurseCounter(source);
+        combat.ClearPendingKnowledgeDemonChoice();
+    }
+
+    internal static void ApplyCurse(SimulatedCombatState combat, Creature player, string selectedId, int disintegrationDamage)
+    {
         if (selectedId == CanonicalModels.Card<Disintegration>().Id.Entry)
-            combat.Apply<DisintegrationPower>(player, 6 + counter, player);
+            combat.Apply<DisintegrationPower>(player, disintegrationDamage, player);
         else if (selectedId == CanonicalModels.Card<MindRot>().Id.Entry)
             combat.Apply<MindRotPower>(player, 1, player);
         else if (selectedId == CanonicalModels.Card<Sloth>().Id.Entry)
             combat.Apply<SlothPower>(player, 3, player);
         else if (selectedId == CanonicalModels.Card<WasteAway>().Id.Entry)
             combat.Apply<WasteAwayPower>(player, 1, player);
+        else if (selectedId == CanonicalModels.Card<Amnesia>().Id.Entry)
+            combat.Apply<AmnesiaPower>(player, 1, player);
         else
             throw new InvalidOperationException($"知识恶魔诅咒 {selectedId} 没有模拟效果。");
 
-        combat.AdvanceKnowledgeDemonCurseCounter(source);
-        combat.ClearPendingKnowledgeDemonChoice();
+    }
+
+    internal static void ResolveDominion(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        Player player, TurnStartChoiceCursor choices, string sourceId)
+    {
+        if (combat.GetPlayerTurnNumber(player) > 1 || !simulator.State.GetCreature(player.Creature).IsAlive) return;
+        PredictedCard[] options = [PredictedCard.Create(CanonicalModels.Card<Sloth>(), player),
+            PredictedCard.Create(CanonicalModels.Card<Amnesia>(), player)];
+        var spec = new CardChoiceSpec(PlanChoiceEffect.ApplyKnowledgeCurse, PileType.None, 1, 1, options, [], ReplacementValue: 0d);
+        TurnStartChoiceSupport.ResolveCapturedChoice(simulator, combat, player, choices,
+            new TurnStartChoiceRequest(sourceId, PlanChoiceEffect.ApplyKnowledgeCurse, PileType.None, 1, spec,
+                Timing: combat.ActiveActionChoiceTiming));
     }
 
     public static IReadOnlyList<PlanCardChoice> BuildChoices(

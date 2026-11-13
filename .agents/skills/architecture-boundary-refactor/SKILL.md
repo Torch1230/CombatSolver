@@ -29,6 +29,8 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 
 ## 2. 当前结构约束
 
+- 三种模式共用模拟、搜索与部署。`CombatRulesSnapshot` 在主线程冻结规则，Fork 共享；RunModel 和领域克隆解除 live 所有权。同步原生怪物初始化通过线程局部 `NativeCombatRulesScope` 读取冻结规则。抽牌前与生物入场由各自 Hook facade 按原监听序列派发，单项效果和选择帧复用既有分支状态。
+
 - 预战 worker 身份由 `Entry.IsPreCombatWorker` 在启动时冻结；Dispatcher 保留完成邮箱和无人协议，仅跳过玩家战斗 UI 监控。API 可用性与启动期 Mod 钉住共用该身份，避免嵌套 worker。
 
 - 遗物策略的可控范围由 RelicCounterCatalog 声明，Runtime 冻结本场目标，Search 只读已有分支计数并输出标量评价；UI 独占输入与游戏名称。不要新建第二套可变战斗计数，也不要在 worker 读取设置或原生显示动画计数。

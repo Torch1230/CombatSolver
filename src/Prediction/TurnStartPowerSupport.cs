@@ -151,6 +151,10 @@ internal static partial class TurnStartPowerSupport
         TurnStartChoiceCursor choices)
         => ContinueBeforeHandDraw(simulator, combat, player, choices, combat.EffectivePowers().ToArray(), 0);
 
+    internal static bool ApplyBeforeHandDrawPower(CombatPredictionSimulator simulator, SimulatedCombatState combat,
+        Player player, TurnStartChoiceCursor choices, PowerModel power)
+        => ContinueBeforeHandDraw(simulator, combat, player, choices, [power], 0);
+
     private static bool ContinueBeforeHandDraw(CombatPredictionSimulator simulator, SimulatedCombatState combat,
         Player player, TurnStartChoiceCursor choices, IReadOnlyList<PowerModel> powers, int nextIndex,
         ForegoneStage stage = ForegoneStage.Start)
@@ -166,6 +170,13 @@ internal static partial class TurnStartPowerSupport
             }
             if (power.Amount <= 0 || !ReferenceEquals(power.Owner.Player, player))
                 continue;
+
+            if (power is AeonglassDominionPower)
+            {
+                simulator.CreateAndAddGeneratedCardsToCombat<Wither>(player, PileType.Draw, 1, null, CardPilePosition.Top);
+                if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return true; }
+                continue;
+            }
 
             if (power is EnnuiPower ennui)
             {
@@ -482,6 +493,9 @@ internal static partial class TurnStartPowerSupport
     {
         foreach (PowerModel power in combat.EffectivePowers().ToArray())
         {
+            if (power is InsatiableDominionPower && side == CombatSide.Player && power.Amount > 0)
+                combat.GetMutablePower<InsatiableDominionPower>(power.Owner)!.DynamicVars.Damage.BaseValue
+                    = 2 + (power.Owner.Player is { } ownerPlayer ? combat.GetPlayerTurnNumber(ownerPlayer) : 0);
             if (power.Amount <= 0 || !participants.Contains(power.Owner)) continue;
             if (power is ArcheryPower) combat.Apply<AimPower>(power.Owner, power.Amount, power.Owner);
             if (power is HiddenRootsPower) combat.Apply<StretchPower>(power.Owner, power.Amount, power.Owner);

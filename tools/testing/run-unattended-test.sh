@@ -83,6 +83,9 @@ add_option preserve-native-combat-state-for-test 0 switch bool
 add_option progress-snapshot-path "" string none
 add_option generated-scenario-path "" string optional_string
 add_option ascension 0 int raw_int
+add_option game-mode Standard string raw_string "Standard|Dread|Blitz"
+add_option dread-boss-encounter-id "" string optional_string
+add_option dominion-ids-for-test "" string csv
 add_option act-index-for-test 0 int raw_int
 add_option mark-encounter-as-second-boss-for-test 0 switch bool
 add_option enemy-current-hp 1 int raw_int
@@ -835,6 +838,7 @@ request="$(jq -cn \
     def blank: test("^\\s*$");
     def convert($value; $kind):
         if $kind == "raw_string" then $value
+        elif $kind == "csv" then ($value | split(",") | map(select(length > 0)))
         elif $kind == "raw_int" then ($value | tonumber)
         elif $kind == "bool" then ($value == "1")
         elif $kind == "optional_string" then

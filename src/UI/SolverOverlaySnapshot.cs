@@ -481,7 +481,7 @@ internal sealed record SolverOverlaySnapshot(
     }
 
     private static IReadOnlyList<string> FormatTurnStartChoices(IEnumerable<PlanCardChoice> choices)
-        => choices.Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse)
+        => choices.Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse || choice.Timing != PlanChoiceTiming.EnemyTurn)
             .Select(FormatTurnStartChoice)
             .ToArray();
 
@@ -511,6 +511,7 @@ internal sealed record SolverOverlaySnapshot(
             "TOASTY_MITTENS" => ModelDb.Relic<ToastyMittens>().Title.GetFormattedText(),
             "CHOICES_PARADOX" => ModelDb.Relic<ChoicesParadox>().Title.GetFormattedText(),
             "TOOLBOX" => ModelDb.Relic<Toolbox>().Title.GetFormattedText(),
+            "KNOWLEDGE_DEMON_DOMINION" => SolverText.Get("知识恶魔领域"),
             "GAMBLING_CHIP" => ModelDb.Relic<GamblingChip>().Title.GetFormattedText(),
             _ => ResolveDynamicChoiceSourceTitle(sourceId),
         };
@@ -545,7 +546,7 @@ internal sealed record SolverOverlaySnapshot(
             PlanChoiceEffect.Exhaust => SolverText.Get("耗尽"),
             PlanChoiceEffect.Transform => SolverText.Get("变换"),
             PlanChoiceEffect.MoveToHand or PlanChoiceEffect.MoveToHandFreeThisTurn => SolverText.Get("选择"),
-            PlanChoiceEffect.GenerateToHand or PlanChoiceEffect.ModDefined => SolverText.Get("选择"),
+            PlanChoiceEffect.GenerateToHand or PlanChoiceEffect.ModDefined or PlanChoiceEffect.ApplyKnowledgeCurse => SolverText.Get("选择"),
             PlanChoiceEffect.Upgrade => SolverText.Get("升级"),
             PlanChoiceEffect.Duplicate => SolverText.Get("复制"),
             _ => choice.Effect.ToString(),

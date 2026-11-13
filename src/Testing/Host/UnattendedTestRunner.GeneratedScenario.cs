@@ -17,9 +17,17 @@ internal sealed partial class UnattendedTestRunner
 
         private IDisposable? BeginGeneratedSetupChoices()
         {
+            if (runner._request.GameMode != GameMode.Standard) return null;
             if (_generatedScenario == null) return null;
             _generatedChoices = new(_generatedScenario.Options.SetupChoices);
             return NativeTestCardSelectors.Push(_generatedChoices, localOnly: true);
+        }
+
+        private IDisposable? BeginModeSetupChoices()
+        {
+            if (runner._request.GameMode == GameMode.Standard) return null;
+            _generatedChoices = new(_generatedScenario?.Options.SetupChoices);
+            return MegaCrit.Sts2.Core.CardSelection.CardSelectorStack.SetTestSelector(_generatedChoices);
         }
 
         private void PrepareGeneratedScenario()

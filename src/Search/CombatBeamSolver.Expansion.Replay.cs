@@ -975,7 +975,7 @@ internal sealed partial class CombatBeamSolver
             return SearchBoundaryReason.None;
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
         IReadOnlyList<PlanCardChoice>? roundChoicePlans = turnStartChoices?
-            .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse)
+            .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse || choice.Timing != PlanChoiceTiming.EnemyTurn)
             .ToArray();
         TurnStartChoiceCursor roundChoices = new(roundChoicePlans);
         simulatedCombat.BeginActionChoices(roundChoices);

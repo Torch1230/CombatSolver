@@ -2882,6 +2882,7 @@ internal sealed partial class UnattendedTestRunner
 
         CardModel[] uncachedEligible = player.GetUnlockedCards(canonicalPool, constraint)
             .FilterForCombatAndPlayerCount(constraint)
+            .Where(card => card.IsAllowedInRun(player.RunState))
             .ToArray();
         if (rootEligible.Count != uncachedEligible.Length
             || rootEligible.Where((card, index) =>
@@ -2924,7 +2925,7 @@ internal sealed partial class UnattendedTestRunner
                     player,
                     count,
                     baselineRng,
-                    constraint)
+                    constraint, ((SimulatedCombatState)simulator.State.CombatState).Rules)
                 .ToArray();
             PredictedCard[] cached = simulator
                 .GetDistinctUnlockedColorlessForCombat(

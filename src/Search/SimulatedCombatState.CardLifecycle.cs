@@ -414,20 +414,15 @@ internal sealed partial class SimulatedCombatState
         TurnStartChoiceCursor choices)
     {
         simulator.State.GetPlayerCombatState(player).Phase = PlayerTurnPhase.Start;
-        // BeforeHandDraw snapshots its listeners from the current ordered combat piles
-        // before invoking powers or relics. The set records eligibility only: its free-slot
-        // history changes on Fork and must never determine the order of moves to Hand.
-        PredictedCard[] returningCards = _returnToHandNextTurn is { Count: > 0 }
-            ? simulator.State.GetPlayerCombatState(player).AllCards
-                .Where(card => _returnToHandNextTurn.Contains(card))
-                .ToArray()
-            : [];
-        if (TurnStartPowerSupport.TriggerBeforeHandDraw(simulator, this, player, choices))
-        {
-            simulator.AppendExecutionContinuation(new BeforeHandDrawFrame(player, returningCards, BeforeHandDrawStage.Relics));
-            return true;
-        }
-        return ContinueBeforeHandDraw(simulator, player, choices, returningCards, BeforeHandDrawStage.Relics);
+        return !CombatSolver.Engine.InCombat.Mirrors.HookMirrors.BeforeHandDraw(simulator, player, choices);
+    }
+
+    internal bool ApplyReturningCardBeforeHandDraw(CombatPredictionSimulator simulator, Player player,
+        TurnStartChoiceCursor choices, CardModel model)
+    {
+        PredictedCard? card = simulator.State.GetPlayerCombatState(player).FindCard(model);
+        return card != null && _returnToHandNextTurn?.Contains(card) == true
+            && ContinueBeforeHandDraw(simulator, player, choices, [card], BeforeHandDrawStage.ReturningCards);
     }
 
     public bool PrepareBeforeHandDraw(CombatPredictionSimulator simulator, Player player)

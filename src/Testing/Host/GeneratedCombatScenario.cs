@@ -12,6 +12,8 @@ using MegaCrit.Sts2.Core.Models.PotionPools;
 using MegaCrit.Sts2.Core.Models.RelicPools;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Helpers;
 
 namespace CombatSolver;
 
@@ -31,6 +33,8 @@ internal sealed record GeneratedCombatScenarioOptions
     public string Seed { get; init; } = "GENERATED-COMBAT-001";
     public string? CharacterId { get; init; }
     public int Ascension { get; init; } = 10;
+    public GameMode GameMode { get; init; } = GameMode.Standard;
+    public string? DreadBossEncounterId { get; init; }
     public int? ActIndex { get; init; }
     public string? EncounterId { get; init; }
     public string EncounterKind { get; init; } = "EliteOrBoss";
@@ -64,7 +68,9 @@ internal static class GeneratedCombatScenario
     {
         if (options.CharacterCards == null || options.ColorlessCards == null || options.Relics == null || options.Potions == null
             || options.SchemaVersion != 1 || string.IsNullOrWhiteSpace(options.Seed)
-            || options.Ascension is < 0 or > 10
+            || options.Ascension < 0 || options.Ascension > (options.GameMode == GameMode.Blitz ? 5 : 10)
+            || options.GameMode is not (GameMode.Standard or GameMode.Dread or GameMode.Blitz)
+            || options.GameMode == GameMode.Dread && options.Ascension != 10
             || options.Mode is not ("Setup" or "Search" or "Deploy")
             || options.EncounterKind is not ("EliteOrBoss" or "Elite" or "Boss" or "Monster")
             || options.PotionSlotCount is < 0 or > 10 || options.PlayerCurrentHp is <= 0)
@@ -90,10 +96,13 @@ internal static class GeneratedCombatScenario
         if (candidates.Length == 0)
             throw new InvalidDataException("指定幕/遭遇类型/遭遇ID没有可用的原版普通战斗遭遇。");
         var selected = candidates[new Generator(options.Seed, "encounter").Next(candidates.Length)];
-        CardModel[] characterCards = Native(character.CardPool.AllCards.Where(IsSingleplayerCard));
-        CardModel[] colorlessCards = Native(ModelDb.CardPool<ColorlessCardPool>().AllCards.Where(IsSingleplayerCard));
+        bool AllowedCard(CardModel card) => IsSingleplayerCard(card) && (options.GameMode != GameMode.Blitz || card.IsAllowedInBlitz);
+        bool AllowedRelic(RelicModel relic) => IsSingleplayerRelic(relic) && (options.GameMode != GameMode.Blitz
+            || !RelicLists.notAllowedInBlitz.Contains(relic.Id));
+        CardModel[] characterCards = Native(character.CardPool.AllCards.Where(AllowedCard));
+        CardModel[] colorlessCards = Native(ModelDb.CardPool<ColorlessCardPool>().AllCards.Where(AllowedCard));
         RelicModel[] relics = Native(character.RelicPool.AllRelics
-            .Concat(ModelDb.RelicPool<SharedRelicPool>().AllRelics).Where(IsSingleplayerRelic));
+            .Concat(ModelDb.RelicPool<SharedRelicPool>().AllRelics).Where(AllowedRelic));
         PotionModel[] potions = Native(character.PotionPool.AllPotions
             .Concat(ModelDb.PotionPool<SharedPotionPool>().AllPotions));
         string[] reservedRelics = options.IncludeStartingRelics
@@ -108,7 +117,7 @@ internal static class GeneratedCombatScenario
                 characterCards.Where(IsRewardCard), options.Seed, "characterCards", distinct: false),
             ColorlessCards = Select(options.ColorlessCards, colorlessCards,
                 colorlessCards.Where(IsRewardCard), options.Seed, "colorlessCards", distinct: false),
-            Relics = Select(options.Relics, Native(ModelDb.AllRelics.Where(IsSingleplayerRelic)),
+            Relics = Select(options.Relics, Native(ModelDb.AllRelics.Where(AllowedRelic)),
                 relics.Where(r => r.Rarity is RelicRarity.Common or RelicRarity.Uncommon or RelicRarity.Rare or RelicRarity.Shop),
                 options.Seed, "relics", distinct: true, reservedRelics),
             Potions = Select(options.Potions, potions, potions, options.Seed, "potions", distinct: false),
@@ -206,6 +215,8 @@ internal static class GeneratedCombatScenario
         Set("encounterId", spec.EncounterId);
         Set("seed", spec.Seed);
         Set("ascension", spec.Ascension);
+        Set("gameMode", spec.GameMode);
+        Set("dreadBossEncounterId", spec.DreadBossEncounterId);
         Set("actIndexForTest", spec.ActIndex);
         Set("targetRoomType", resolved.Encounter.RoomType);
         Set("targetMapPointType", resolved.Encounter.RoomType.ToString());

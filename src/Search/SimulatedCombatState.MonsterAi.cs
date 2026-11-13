@@ -129,6 +129,7 @@ internal sealed partial class SimulatedCombatState
 
     public void RegisterMonsterAi(Creature creature, MoveState current)
     {
+        using NativeCombatRulesScope rules = new(Rules);
         MonsterModel monster = creature.Monster
             ?? throw new InvalidOperationException($"生物 {creature.Name} 不是怪物。");
         MonsterMoveStateMachine machine = monster.MoveStateMachine
@@ -147,6 +148,7 @@ internal sealed partial class SimulatedCombatState
 
     public void RegisterPendingInitialMonsterAi(Creature creature)
     {
+        using NativeCombatRulesScope rules = new(Rules);
         MonsterModel monster = creature.Monster
             ?? throw new InvalidOperationException($"生物 {creature.Name} 不是怪物。");
         MonsterMoveStateMachine machine = monster.MoveStateMachine

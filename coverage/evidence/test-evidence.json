@@ -3542,5 +3542,77 @@
     "expected": "Request totals and limit warnings use request accounting in zhs/zht/eng, while selected solver metrics and route identity remain unchanged.",
     "observed": "runId=6cbf79889552420f80e46e4bf0d4e743; assembly=80BAED7DA43B4E937056729B25A2F9BBED0847EB0BE6E89934051BDE672678E1; checks=RequestBudgetDisplay:Coordinator:MemberLimit:RequestNodeLimit:RequestTimeLimit:Override:TotalNodes:ZhsZhtEng:SelectedRoutePreserved; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T12:28:18.5190124+08:00; baseline: local combat 27980b6de2654ff08dd112b33a157ee1 generation 5 used 10512 total nodes under 500000/300000ms, but displayed selected novelty member 2500/NodeLimit.",
     "evidence": "src/Testing/Contracts/UI/UnattendedTestRunner.RequestBudgetDisplay.cs; docs/TEST_MATRIX.md"
+  },
+  "DREAD-DOMINION-HOOKS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndFork",
+    "gameVersion": "0.113.0",
+    "procedure": "Dread; DREAD-DOMINION-HOOKS; split DominionIdsForTest at KnowledgeDemon; 120 s and instance cleanup.",
+    "expected": "Twelve dominions: native BeforeHandDraw and CreatureAdded callbacks, parent/sibling after live advancement, both knowledge choices, and domain removal.",
+    "observed": "ece726eaeecb483bb0a5390b1cbfc714 passed first five dominions then failed at mismatched test choice; 0dc1c6870c0348cfa018323a561ada41 passed remaining seven and both knowledge choices after test selection alignment. CreatureAdded targets an existing enemy; roster insertion is covered separately.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.ModeRules.cs; docs/TEST_MATRIX.md"
+  },
+  "DREAD-DOMINION-POWERS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "Dread; MonsterMoveChecksPath=coverage/fixtures/powers/dread-dominion-lifecycle.json; 120 s and cleanup.",
+    "expected": "Three domain powers through end turn and next player setup; ordered piles, powers, history and RNG agree.",
+    "observed": "a7279864f95d4f73a1004fd2d7851738 Passed; turn 2, HP 61/80.",
+    "evidence": "coverage/fixtures/powers/dread-dominion-lifecycle.json; docs/TEST_MATRIX.md"
+  },
+  "MODE-RULES-ISOLATION": {
+    "status": "Passed",
+    "level": "HeadlessNativeRulesAndFork",
+    "gameVersion": "0.113.0",
+    "procedure": "MODE-RULES-ISOLATION; Blitz 0 through 5, concurrent scopes and nested scopes.",
+    "expected": "Every ascension bit matches native manager; root scopes isolate native queries and restore live scope.",
+    "observed": "96f6c22a0e3d4560881dff2834808be9 Passed.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.ModeRewards.cs; docs/TEST_MATRIX.md"
+  },
+  "BLITZ-TRANSFORMATION-POOL-CACHE": {
+    "status": "Passed",
+    "level": "HeadlessNativeGenerationAndFork",
+    "gameVersion": "0.113.0",
+    "procedure": "TRANSFORMATION-POOL-CACHE; Blitz 5; StopAfterCombatRootSnapshotAssertion; 120 s and cleanup.",
+    "expected": "Native factory and cached path select identical cards with identical complete RNG, preserving parent/live state.",
+    "observed": "2dae09d17e1a4b0bae25915b9b586fbc Passed, 6 hand-card comparisons; 22614.8376 ms including setup. Earlier 63d7d69026ee4f9197243a9bc62c3c04, 636a3972e33f48deb704c8647645fbfe, 65a3c516bdb046f1a41b3490c6083cef and 24d1931169bd401e9e1703ddf10848d0 timed out while StopAfterInitialSetupAssertion waited for an initial solver result.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.TransformationPoolCache.cs; docs/TEST_MATRIX.md"
+  },
+  "BLITZ-EXTRA-GENERATION-CACHE": {
+    "status": "Passed",
+    "level": "HeadlessGenerationContract",
+    "gameVersion": "0.113.0",
+    "procedure": "EXTRA-GENERATION-CACHE; Blitz 5; StopAfterCombatRootSnapshotAssertion",
+    "expected": "Ordered results and complete RNG agree; captured parents remain isolated where the contract forks.",
+    "observed": "68836507d3b847dd9e3d83eeca8e76df failed because test expected standard-mode colorless candidates. Native IsAllowedInRun added to the independent expectation; 9f4675209cb940a38f5b331141e41daa Passed, 16 comparisons, 22471.7227 ms.",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/Contracts/Combat"
+  },
+  "BLITZ-TURN-START-GENERATION-CACHE": {
+    "status": "Passed",
+    "level": "HeadlessGenerationContract",
+    "gameVersion": "0.113.0",
+    "procedure": "TURN-START-GENERATION-CACHE; Blitz 5; StopAfterCombatRootSnapshotAssertion",
+    "expected": "Ordered results and complete RNG agree; captured parents remain isolated where the contract forks.",
+    "observed": "96ab91f1e3334853b674ae35c6af9ea1 Passed; 27 comparisons including ordered canonical identity, mutable-pool fallback, complete state/RNG/history, parent/live isolation; 22659.1561 ms.",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/Contracts/Combat"
+  },
+  "BLITZ-REWARD-ROOMS": {
+    "status": "Passed",
+    "level": "HeadlessGenerationContract",
+    "gameVersion": "0.113.0",
+    "procedure": "BLITZ-REWARD-OUTLOOK; Blitz 5; native RewardsSet.GenerateWithoutOffering; 8 sequential samples per room, 120 s per request and instance cleanup",
+    "expected": "Ordered results and complete RNG agree; captured parents remain isolated where the contract forks.",
+    "observed": "Passed: bb211a427fad401691bd98c8573e4a97 act0 normal; 99278160f6c843abbd513010dcc3f234 act1 normal; e302dd6319b745aa9ecf642570ecdc61 act2 normal; bbae152ccec942ab97e480c3ff092817 weak; cd3e59da68fd490ab5402cd63190edfd elite; 8cdfd6c4a13a48f7876125301026ddd7 act0 boss; 45c11a4cd8e6409c93ee70a45ddaf5d2 act2 boss. Prediction preserves live RNG; potion presence and identity match native.",
+    "evidence": "docs/TEST_MATRIX.md; src/Testing/Contracts/Combat"
+  },
+  "DREAD-QUEEN-MOVES": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "Dread; QUEEN_BOSS; DreadBossEncounterId=QUEEN_BOSS; coverage/fixtures/monsters/dread-queen.json",
+    "expected": "Ordered results and complete RNG agree; captured parents remain isolated where the contract forks.",
+    "observed": "387e1f7ff6874caeb7edb6e56705b8cc loaded the previous build and demonstrated missing DREAD_INITIAL_MOVE effects. 1bc10bb1222d47ec96ef9b7a6398409c Passed, initial combined debuffs and BURN_BRIGHT_FOR_ME_MOVE, full native state; 28931.7541 ms.",
+    "evidence": "coverage/fixtures/monsters/dread-queen.json; docs/TEST_MATRIX.md"
   }
 }

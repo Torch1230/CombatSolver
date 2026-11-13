@@ -47,10 +47,9 @@ internal static class MonsterSpawnSupport
     {
         combat.AddPredictedMonster(creature);
         ApplyNativeEntrancePowers(combat, creature);
-        if (creature.Side == CombatSide.Enemy && combat.Modifiers.Any(static modifier => modifier is Murderous))
-            combat.Apply<StrengthPower>(creature, 3);
-        ApplyCreatureAddedRelics(simulator, combat, creature);
         combat.PreparePredictedMonster(simulator, creature);
+        CombatSolver.Engine.InCombat.Mirrors.HookMirrors.AfterCreatureAddedToCombat(simulator, creature);
+        if (simulator.HasPendingChoice) return;
         // The summoning move applies Minion after CreatureCmd.Add and its entrance hooks finish.
         if (minion && combat.GetAmount<MinionPower>(creature) <= 0)
             combat.Apply<MinionPower>(creature, 1, source);
@@ -85,26 +84,4 @@ internal static class MonsterSpawnSupport
         }
     }
 
-    private static void ApplyCreatureAddedRelics(
-        CombatPredictionSimulator simulator,
-        SimulatedCombatState combat,
-        Creature creature)
-    {
-        foreach (RelicModel relic in combat.Players
-                     .SelectMany(combat.RelicsOf)
-                     .Where(relic => !relic.IsMelted))
-        {
-            switch (relic)
-            {
-                case PhilosophersStone when creature.Side != relic.Owner.Creature.Side:
-                    combat.Apply<StrengthPower>(creature, relic.DynamicVars["StrengthPower"].IntValue);
-                    break;
-                case FurCoat furCoat when creature.Side == CombatSide.Enemy:
-                    if (combat.CurrentMapCoord is { } currentMapCoord
-                        && furCoat.GetMarkedCoords()?.Contains(currentMapCoord) == true)
-                        simulator.State.GetCreature(creature).CurrentHp = 1;
-                    break;
-            }
-        }
-    }
 }

@@ -51,6 +51,10 @@ param(
     [string]$ProgressSnapshotPath = "",
     [ValidateRange(0, 10)]
     [int]$Ascension = 0,
+    [ValidateSet('Standard', 'Dread', 'Blitz')]
+    [string]$GameMode = 'Standard',
+    [string]$DreadBossEncounterId = '',
+    [string[]]$DominionIdsForTest = @(),
     [int]$ActIndexForTest = 0,
     [switch]$MarkEncounterAsSecondBossForTest,
     [int]$EnemyCurrentHp = 1,
@@ -812,6 +816,9 @@ $request = [ordered]@{
     developmentMonitorStatePath = if ($DevelopmentMonitorStatePath) { [IO.Path]::GetFullPath($DevelopmentMonitorStatePath) } else { $null }
     preserveNativeCombatStateForTest = $PreserveNativeCombatStateForTest.IsPresent
     ascension = $Ascension
+    gameMode = $GameMode
+    dominionIdsForTest = @($DominionIdsForTest)
+    dreadBossEncounterId = $(if ($DreadBossEncounterId) { $DreadBossEncounterId } else { $null })
     actIndexForTest = $ActIndexForTest
     markEncounterAsSecondBossForTest = $MarkEncounterAsSecondBossForTest.IsPresent
     seed = $Seed

@@ -49,7 +49,7 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
 
     public static RootCombatCardGenerationPoolSnapshot Capture(
         IReadOnlyList<Player> players,
-        CardMultiplayerConstraint multiplayerConstraint)
+        CardMultiplayerConstraint multiplayerConstraint, CombatRulesSnapshot rules)
     {
         CardPoolModel colorlessPool = ModelDb.CardPool<ColorlessCardPool>();
         IEnumerable<CardModel> allCards = colorlessPool.AllCards;
@@ -77,10 +77,12 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
                 player,
                 player.GetUnlockedCards(colorlessPool, multiplayerConstraint)
                     .FilterForCombatAndPlayerCount(multiplayerConstraint)
+                    .Where(rules.Allows)
                     .ToArray());
             if (TryCaptureNativeCharacterGenerationPool(
                     player,
                     multiplayerConstraint,
+                    rules,
                     out NativeCharacterGenerationPoolEntry characterAttacks))
             {
                 characterPoolsByPlayer.Add(player, characterAttacks);
@@ -200,6 +202,7 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
     private static bool TryCaptureNativeCharacterGenerationPool(
         Player player,
         CardMultiplayerConstraint multiplayerConstraint,
+        CombatRulesSnapshot rules,
         out NativeCharacterGenerationPoolEntry entry)
     {
         entry = null!;
@@ -217,6 +220,7 @@ internal sealed class RootCombatCardGenerationPoolSnapshot
         CardModel[] eligibleAll = player
             .GetUnlockedCards(cardPool, multiplayerConstraint)
             .FilterForCombatAndPlayerCount(multiplayerConstraint)
+            .Where(rules.Allows)
             .ToArray();
         CardModel[] eligibleCards = eligibleAll
             .Where(static card => card.Type == CardType.Attack)

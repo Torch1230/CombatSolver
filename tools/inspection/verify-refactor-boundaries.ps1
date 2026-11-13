@@ -1502,7 +1502,23 @@ $rootModelBoundaryChecks = @(
     },
     @{
         Path = Join-Path $repositoryRoot "src\Prediction\MonsterSpawnSupport.cs"
-        Text = ".SelectMany(combat.RelicsOf)"
+        Text = "HookMirrors.AfterCreatureAddedToCombat(simulator, creature)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.CardLifecycle.cs"
+        Text = "HookMirrors.BeforeHandDraw(simulator, player, choices)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"
+        Text = "Rules = source.Rules"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Prediction\DominionPredictionSupport.cs"
+        Text = "Run.SetValue(clone, null)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Prediction\NativeCombatRulesScope.cs"
+        Text = "[ThreadStatic] private static CombatRulesSnapshot? _current"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"

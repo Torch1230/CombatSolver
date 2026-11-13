@@ -175,6 +175,10 @@ internal sealed partial class UnattendedTestRunner
                 .ToArray();
 
             runner.SetStage("start_run");
+            if (request.GameMode is not (GameMode.Standard or GameMode.Dread or GameMode.Blitz)
+                || request.GameMode == GameMode.Blitz && request.Ascension is < 0 or > 5)
+                throw new InvalidDataException("Invalid combat test game mode or Blitz ascension.");
+            using IDisposable? modeSetupChoices = BeginModeSetupChoices();
             bool loadedRunSnapshot = !string.IsNullOrWhiteSpace(request.RunSnapshotPath);
             if (request.LoadRunSnapshotDirectly)
             {
@@ -201,9 +205,9 @@ internal sealed partial class UnattendedTestRunner
                 ActModel.GetDefaultList(),
                 modifiers,
                 request.Seed,
-                GameMode.Standard,
+                request.GameMode,
                 isCustomGame: false,
-                request.Ascension);
+                request.GameMode == GameMode.Dread ? 10 : request.Ascension);
             runner.EnsureWithinDeadline();
 
             runner.SetStage("inject_run_relics");
@@ -218,6 +222,14 @@ internal sealed partial class UnattendedTestRunner
             }
             if (request.MarkEncounterAsSecondBossForTest)
                 runState.Act.SetSecondBossEncounter(encounter);
+            if (request.DreadBossEncounterId is { } dreadBossId)
+            {
+                if (runState.GameMode != GameMode.Dread)
+                    throw new InvalidOperationException("DreadBossEncounterId requires Dread mode.");
+                EncounterModel dreadBoss = ResolveUnique(ModelDb.AllEncounters, dreadBossId, "恐惧首领").ToMutable();
+                runState.Act.SetSecondBossEncounter(dreadBoss);
+                runState.RunModels.OfType<MegaCrit.Sts2.Core.Models.Dread.DreadRunModel>().Single().AfterRunLoaded();
+            }
             if (request.LoadRunSnapshotDirectly)
                 ApplyPreCombatInterveningMapPoints(runState, request.PreCombatInterveningMapPoints);
             if (request.TargetActFloor is { } targetActFloor)
@@ -284,7 +296,7 @@ internal sealed partial class UnattendedTestRunner
             else
             {
                 await RunManager.Instance.EnterRoomDebug(
-                    _generatedScenario != null ? request.TargetRoomType : RoomType.Monster,
+                    request.TargetRoomType,
                     _generatedScenario != null ? targetMapPointType : MapPointType.Unassigned,
                     mutableEncounter);
             }

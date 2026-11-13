@@ -76,7 +76,7 @@ internal static class TarotCardMirrors
                 break;
             case TheLovers:
                 var loversCards = combat.OtherCharacterCards(owner).GetForCombat(owner,
-                    sim.GetMaxHandSize(owner) - c.OwnerState.Hand.Cards.Count, c.Rng.CombatCardGeneration, c.CardMultiplayerConstraint).ToArray();
+                    sim.GetMaxHandSize(owner) - c.OwnerState.Hand.Cards.Count, c.Rng.CombatCardGeneration, c.CardMultiplayerConstraint, combat.Rules).ToArray();
                 if (card.IsUpgraded) foreach (var generated in loversCards) generated.Upgrade();
                 sim.AddGeneratedCardsToCombat(loversCards, PileType.Hand, owner);
                 break;

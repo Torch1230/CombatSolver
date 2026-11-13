@@ -21,7 +21,7 @@ internal sealed partial class UnattendedTestRunner
 
         var simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
         var shadow = (SimulatedCombatState)simulator.State.CombatState;
-        shadow.PrepareRelicsBeforeHandDraw(simulator, player, new TurnStartChoiceCursor(null));
+        CombatSolver.Engine.InCombat.Mirrors.HookMirrors.BeforeHandDraw(simulator, player, new TurnStartChoiceCursor(null));
 
         var shadowHand = simulator.State.GetPlayerCombatState(player).Hand.Cards;
         if (shadowHand.Count != 1 || shadowHand[0].Preview.Id.Entry != "LUMINESCE")

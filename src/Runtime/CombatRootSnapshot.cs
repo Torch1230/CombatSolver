@@ -65,6 +65,7 @@ internal sealed class CombatRootSnapshot
     /// <summary>Root card/power/potion healing bound, excluding fixed post-combat healing.</summary>
     public int InitialRemainingHealingUpperBound { get; }
     public CombatHistoryDependencies HistoryDependencies { get; }
+    internal CombatRulesSnapshot Rules => ((SimulatedCombatState)_rootSimulator.State.CombatState).Rules;
     public int CapturedPowerCount { get; }
     public int CapturedHookListenerCount { get; }
     public int CapturedRunModSubscriberCount { get; }
@@ -176,6 +177,8 @@ internal sealed class CombatRootSnapshot
             throw new InvalidOperationException("Combat root snapshot must be captured on the main thread.");
         Engine.InCombat.Mirrors.Hooks.TurnEnd.AfterSideTurnEndLateMirrors.Seal();
         Engine.InCombat.Mirrors.Hooks.TurnStart.BeforeSideTurnStartMirrors.Seal();
+        Engine.InCombat.Mirrors.Hooks.TurnStart.BeforeHandDrawMirrors.Seal();
+        Engine.InCombat.Mirrors.Hooks.AfterCreatureAddedMirrors.Seal();
         Engine.InCombat.Mirrors.Hooks.TurnStart.AfterPlayerTurnStartMirrors.Seal();
         Engine.InCombat.Mirrors.Hooks.TurnEnd.ExtraTurnMirrors.Seal();
         Stopwatch stopwatch = Stopwatch.StartNew();

@@ -111,6 +111,11 @@ internal static class AfterSideTurnEndLateMirrors
                 }
             }
         });
+        registry.Register<InsatiableDominionPower>(static (power, context) =>
+        {
+            if (context.Participants.Contains(power.Owner))
+                context.Simulator.Damage(power.Owner, power.DynamicVars.Damage.BaseValue, ValueProp.Unpowered, null);
+        });
         return registry;
     }
 }

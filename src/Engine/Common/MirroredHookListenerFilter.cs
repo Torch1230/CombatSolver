@@ -86,6 +86,8 @@ internal sealed class MirroredHookListenerFilter(bool enabled)
         [nameof(AbstractModel.ShouldTakeExtraTurnEarly)] = MirroredHookMask.ExtraTurnCallbacks,
         [nameof(AbstractModel.AfterTakingExtraTurn)] = MirroredHookMask.ExtraTurnCallbacks,
         [nameof(AbstractModel.AfterArrowShot)] = MirroredHookMask.AdditionalCallbacks,
+        [nameof(AbstractModel.BeforeHandDraw)] = MirroredHookMask.AdditionalCallbacks,
+        [nameof(AbstractModel.AfterCreatureAddedToCombat)] = MirroredHookMask.AdditionalCallbacks,
         [nameof(AbstractModel.AfterArrowImpaled)] = MirroredHookMask.AdditionalCallbacks,
         [nameof(AbstractModel.AfterArrowDislodged)] = MirroredHookMask.AdditionalCallbacks,
         [nameof(AbstractModel.ModifyPreBlockDamageTarget)] = MirroredHookMask.AdditionalCallbacks,

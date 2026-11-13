@@ -119,7 +119,7 @@ internal sealed partial class UnattendedTestRunner
             Rng afterRng = parent.Rng.CombatCardGeneration.Clone();
             PredictedCard[] before = player.GetUnlockedCharacterCards(constraint)
                 .Where(static card => card.Type == CardType.Attack)
-                .GetDistinctForCombat(player, count, beforeRng, constraint).ToArray();
+                .GetDistinctForCombat(player, count, beforeRng, constraint, ((SimulatedCombatState)parent.State.CombatState).Rules).ToArray();
             PredictedCard[] after = parent.GetDistinctUnlockedCharacterAttacksForCombat(
                 player, count, afterRng, constraint).ToArray();
             if (before.Length != after.Length
@@ -164,7 +164,7 @@ internal sealed partial class UnattendedTestRunner
                 ? () => (attacks
                     ? player.GetUnlockedCharacterCards(constraint).Where(static c => c.Type == CardType.Attack)
                     : player.GetUnlockedColorlessCards(constraint))
-                    .GetDistinctForCombat(player, 1, rng, constraint).ToArray()
+                    .GetDistinctForCombat(player, 1, rng, constraint, ((SimulatedCombatState)parent.State.CombatState).Rules).ToArray()
                 : () => (attacks
                     ? parent.GetDistinctUnlockedCharacterAttacksForCombat(player, 1, rng, constraint)
                     : parent.GetDistinctUnlockedColorlessForCombat(player, 1, rng, constraint)).ToArray();
@@ -190,11 +190,11 @@ internal sealed partial class UnattendedTestRunner
             ? card.Owner.GetUnlockedCharacterCards(context.CardMultiplayerConstraint)
                 .Where(candidate => candidate.Type == CardType.Attack)
                 .GetDistinctForCombat(card.Owner, 1, context.Rng.CombatCardGeneration,
-                    context.CardMultiplayerConstraint)
+                    context.CardMultiplayerConstraint, ((SimulatedCombatState)context.CombatState).Rules)
                 .Select(generatedCard => generatedCard.SetToFreeThisTurn()).ToList()
             : card.Owner.GetUnlockedColorlessCards(context.CardMultiplayerConstraint)
                 .GetDistinctForCombat(card.Owner, card.DynamicVars.Cards.IntValue,
-                    context.Rng.CombatCardGeneration, context.CardMultiplayerConstraint).ToList();
+                    context.Rng.CombatCardGeneration, context.CardMultiplayerConstraint, ((SimulatedCombatState)context.CombatState).Rules).ToList();
         context.Simulator.AddGeneratedCardsToCombat(cards, PileType.Hand, card.Owner);
     }
 }

@@ -199,7 +199,7 @@ internal sealed partial class CombatBeamSolver
                 && action.Turn == parent.Turn
                 && action.TurnStartChoices is { Count: > 0 } choices
                 && choices.All(choice => choice.Timing == PlanChoiceTiming.PlayerTurnStart
-                    && choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse);
+                    && (choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse || choice.Timing != PlanChoiceTiming.EnemyTurn));
 
         public ReplayForkSeed Fork(CombatBeamSolver owner, object gate, CancellationToken cancellationToken)
         {

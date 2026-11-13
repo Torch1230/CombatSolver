@@ -7,4 +7,10 @@ namespace CombatSolver.Engine.InCombat.Mirrors;
 internal readonly struct CardHookReceiver(AbstractModel original, PredictedCard? card)
 {
     public AbstractModel Current => card?.Preview ?? original;
+    internal void PrepareFork(PredictionForkContext context)
+    {
+        if (card != null && !context.TryRemap(card, out PredictedCard? _)) card.Fork(context);
+    }
+    internal CardHookReceiver Fork(PredictionForkContext context)
+        => new(context.RemapOrSelf(original), card == null ? null : context.RequireRemap(card));
 }

@@ -32,7 +32,7 @@ internal static class FoolPotionMirrors
         foreach (CardTag tag in new[] { CardTag.Wah, CardTag.Cho, CardTag.Ki })
         {
             var generated = combat.UnlockedCharacterCards(player).Where(card => card.Tags.Contains(tag))
-                .GetDistinctForCombat(player, 1, c.Rng.CombatCardGeneration, combat.CardMultiplayerConstraint)
+                .GetDistinctForCombat(player, 1, c.Rng.CombatCardGeneration, combat.CardMultiplayerConstraint, combat.Rules)
                 .FirstOrDefault();
             if (generated is null) continue;
             generated.SetToFreeThisTurn();

@@ -287,7 +287,7 @@ internal static class CardGenerationCardMirrors
                 card.Owner,
                 3,
                 context.Rng.CombatCardGeneration,
-                context.CardMultiplayerConstraint)
+                context.CardMultiplayerConstraint, ((SimulatedCombatState)context.CombatState).Rules)
             .UpgradeIf(card.IsUpgraded)
             .ToList();
 

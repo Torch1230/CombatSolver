@@ -1,10 +1,30 @@
 # 回合阶段镜像
 
-当前开放 `AbstractModel.BeforeSideTurnStart`、`AfterPlayerTurnStart`（Early/普通/Late）和 `AfterSideTurnEndLate`。这是效果登记，与
+当前开放 `AbstractModel.BeforeHandDraw`、`AfterCreatureAddedToCombat`、`BeforeSideTurnStart`、`AfterPlayerTurnStart`（Early/普通/Late）和 `AfterSideTurnEndLate`。这是效果登记，与
 [模型状态登记](model-state.md) 分开；不代表其他阶段、ModHelper 订阅者或
 Harmony 补丁已经受支持。外部程序集使用与其他内部镜像相同的 publicizer 接入方式。
 
 ## 签名与登记
+
+### 抽牌前与生物入场
+
+```csharp
+// CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnStart
+BeforeHandDrawMirrors.Register<TModel>(Action<TModel, BeforeHandDrawMirrorContext> handler);
+// CombatSolver.Engine.InCombat.Mirrors.Hooks
+AfterCreatureAddedMirrors.Register<TModel>(Action<TModel, AfterCreatureAddedMirrorContext> handler);
+```
+
+两者使用精确运行时类型、加载期登记及首次根捕获冻结。抽牌前上下文提供 `Player`、
+`Choices`；入场上下文提供 `Creature`，共用模拟器、分支状态、RNG 和历史。
+Power、遗物、Modifier、卡牌及领域沿同一原生监听序列派发。可变效果写入分支状态。
+抽牌前暂停使用既有选择游标；拥有多步效果的处理器须提供完整的效果续执行帧，
+facade 的帧负责随后监听者。所有引用通过同一个 `PredictionForkContext` 重映射。
+
+生物入场发生在加入阵容、原生初始化与行动准备之后，召唤者的后续 Minion 施加之前。
+领域的首次战前效果由原生建局施加并捕获；新增生物由该 Hook 处理。
+
+### 回合末登记
 
 命名空间：`CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnEnd`。
 

@@ -120,6 +120,7 @@ internal sealed record ContinuationStamp(string StateText)
             state.RunState.Rng.Niche.CaptureState());
         AppendRngState(text.Append(";non_combat_generation="), player.PlayerRng.NonCombatGeneration.CaptureState());
         text.Append(";max_hand_size=").Append(RitsuLibFramework.GetMaxHandSize(player));
+        CombatRulesSnapshot.Capture(state).Append(text);
         return new ContinuationStamp(text.ToString());
     }
 
@@ -194,6 +195,7 @@ internal sealed record ContinuationStamp(string StateText)
             simulator.Rng.NicheState);
         AppendRngState(text.Append(";non_combat_generation="), simulator.Rng.NonCombatGenerationState(player));
         text.Append(";max_hand_size=").Append(simulator.GetMaxHandSize(player));
+        combat.Rules.Append(text);
         return new ContinuationStamp(text.ToString());
     }
 

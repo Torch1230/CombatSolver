@@ -102,7 +102,7 @@ internal static class CardGenerationPotionMirrors
         }
         return [.. player.GetUnlockedCharacterCards(multiplayerConstraint)
             .Where(candidate => candidate.Type == type)
-            .GetDistinctForCombat(player, count, rng, multiplayerConstraint)];
+            .GetDistinctForCombat(player, count, rng, multiplayerConstraint, CombatRulesSnapshot.Capture(player.RunState, null))];
     }
 
     private static List<PredictedCard> GenerateColorlessCards(
@@ -116,7 +116,7 @@ internal static class CardGenerationPotionMirrors
             return [.. simulator.GetDistinctUnlockedColorlessForCombat(
                 player, count, rng, multiplayerConstraint)];
         return [.. player.GetUnlockedColorlessCards(multiplayerConstraint)
-            .GetDistinctForCombat(player, count, rng, multiplayerConstraint)];
+            .GetDistinctForCombat(player, count, rng, multiplayerConstraint, CombatRulesSnapshot.Capture(player.RunState, null))];
     }
 
     private static List<PredictedCard> GenerateOrobicAcidCards(
@@ -139,7 +139,7 @@ internal static class CardGenerationPotionMirrors
             }
             cards.AddRange(player.GetUnlockedCharacterCards(multiplayerConstraint)
                 .Where(candidate => candidate.Type == type)
-                .GetDistinctForCombat(player, 1, rng, multiplayerConstraint));
+                .GetDistinctForCombat(player, 1, rng, multiplayerConstraint, CombatRulesSnapshot.Capture(player.RunState, null)));
         }
 
         foreach (var card in cards)

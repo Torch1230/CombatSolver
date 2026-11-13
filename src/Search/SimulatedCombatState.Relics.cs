@@ -31,11 +31,9 @@ internal sealed partial class SimulatedCombatState
 
     private ForkableDictionary<RelicModel, StatefulRelicState>? _statefulRelicStates;
 
-    public bool PrepareRelicsBeforeHandDraw(
-        CombatPredictionSimulator simulator,
-        Player player,
-        TurnStartChoiceCursor choices)
-        => ContinueRelicsBeforeHandDraw(simulator, player, choices, RelicsOf(player).ToArray(), GetPlayerTurnNumber(player), 0);
+    internal bool ApplyRelicBeforeHandDraw(CombatPredictionSimulator simulator, Player player,
+        TurnStartChoiceCursor choices, RelicModel relic)
+        => ContinueRelicsBeforeHandDraw(simulator, player, choices, [relic], GetPlayerTurnNumber(player), 0);
 
     private bool ContinueRelicsBeforeHandDraw(CombatPredictionSimulator simulator, Player player,
         TurnStartChoiceCursor choices, IReadOnlyList<RelicModel> relics, int turn, int nextIndex)
@@ -54,7 +52,7 @@ internal sealed partial class SimulatedCombatState
                 case Ocarina when turn <= 1:
                     simulator.AddGeneratedCardsToCombat(UnlockedCharacterCards(player)
                         .Where(card => card.Tags.Any(tag => tag is CardTag.Wah or CardTag.Cho or CardTag.Ki))
-                        .GetDistinctForCombat(player, 1, simulator.Rng.CombatCardGeneration, CardMultiplayerConstraint)
+                        .GetDistinctForCombat(player, 1, simulator.Rng.CombatCardGeneration, CardMultiplayerConstraint, Rules)
                         .ToArray(), PileType.Hand, player, resultKind: CardGenerationResultKind.Random);
                     break;
                 case Pendulum:
@@ -118,7 +116,7 @@ internal sealed partial class SimulatedCombatState
                             player,
                             relic.DynamicVars.Cards.IntValue,
                             simulator.Rng.CombatCardGeneration,
-                            _cardMultiplayerConstraint)
+                            _cardMultiplayerConstraint, Rules)
                         .ToArray();
                     if (!TurnStartChoiceSupport.ResolveGeneratedToHand(
                             simulator,

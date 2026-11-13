@@ -39,6 +39,7 @@ internal sealed partial class SimulatedCombatState
       ICombatPredictionRootMaterializable, IPredictionForkBoundary
 {
     private readonly IRunState _runState;
+    internal CombatRulesSnapshot Rules { get; }
     private readonly IReadOnlyList<Creature> _playerCreatures;
     private readonly IReadOnlyList<Player> _players;
     private readonly IReadOnlyList<ModifierModel> _modifiers;
@@ -261,6 +262,7 @@ internal sealed partial class SimulatedCombatState
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("Live combat state can only be captured on the main thread.");
         _runState = inner.RunState;
+        Rules = CombatRulesSnapshot.Capture(inner);
         _runRngSnapshot = inner.RunState.Rng.ToSerializable();
         _playerNonCombatRngSnapshots = inner.Players.ToDictionary(player => player,
             player => player.PlayerRng.NonCombatGeneration.CaptureState());
@@ -289,7 +291,7 @@ internal sealed partial class SimulatedCombatState
         _madScienceUpgradeCapacity = MadScienceGrowth.CaptureRemainingCapacity(inner);
         _rootCardGenerationPools = RootCombatCardGenerationPoolSnapshot.Capture(
             _players,
-            _cardMultiplayerConstraint);
+            _cardMultiplayerConstraint, Rules);
         _rootTransformationPools = RootCombatTransformationPoolSnapshot.Capture(
             _players,
             _cardMultiplayerConstraint);
@@ -309,7 +311,9 @@ internal sealed partial class SimulatedCombatState
         for (int index = 0; index < runModels.Length; index++)
         {
             RunModel live = inner.RunModels[index];
-            if (live.GetType() != typeof(MultiplayerScalingModel))
+            if (live is not MultiplayerScalingModel
+                and not MegaCrit.Sts2.Core.Models.Dread.DreadRunModel
+                and not MegaCrit.Sts2.Core.Models.Blitz.BlitzRunModel)
                 throw new NotSupportedException($"Run model {live.GetType().FullName} requires prediction semantics.");
             RunModel detached = PredictionUtils.CloneModelForSimulation(live);
             RunModelRunStateField.SetValue(detached, null);
@@ -318,6 +322,8 @@ internal sealed partial class SimulatedCombatState
             rootModelClones.Add(live, detached);
         }
         _runModels = runModels;
+        if (inner.Dominion is { } dominion)
+            rootModelClones.Add(dominion, DominionPredictionSupport.Capture(dominion));
         ModifierModel[] modifiers = inner.Modifiers
             .Select(PredictionUtils.CloneModelForSimulation)
             .ToArray();
@@ -475,6 +481,7 @@ internal sealed partial class SimulatedCombatState
         ForkableList<Creature> escapedCreatures)
     {
         _runState = source._runState;
+        Rules = source.Rules;
         _runRngSnapshot = source._runRngSnapshot;
         _playerNonCombatRngSnapshots = source._playerNonCombatRngSnapshots;
         _currentActIndex = source._currentActIndex;
@@ -723,6 +730,8 @@ internal sealed partial class SimulatedCombatState
             lullaby._proccdThisTurn = MelodyCount(target.Player!) == 3;
         if (simulated is EncorePower encore && previousAmount <= 0)
             encore.DynamicVars["PlaysRemaining"].BaseValue = encore.Amount;
+        if (simulated is InsatiableDominionPower && previousAmount <= 0)
+            simulated.DynamicVars.Damage.BaseValue = 2 + (target.Player is { } ownerPlayer ? GetPlayerTurnNumber(ownerPlayer) : 0);
         if (simulated is DoomPower && applied > 0 && applier != null)
             (_doomAppliersThisTurn ??= []).Add(applier);
         if (simulated is RitualPower ritual
@@ -2357,6 +2366,10 @@ internal sealed partial class SimulatedCombatState
         ref StateFingerprintBuilder fingerprint,
         CombatPredictionSimulator simulator)
     {
+        fingerprint.Add((int)Rules.GameMode);
+        fingerprint.Add(Rules.AscensionLevel);
+        fingerprint.Add(Rules.Ascensions);
+        fingerprint.Add(Rules.DominionId ?? string.Empty);
         fingerprint.Add("max_hand_sizes");
         // Player order is frozen at capture and shared unchanged by forks.
         for (int index = 0; index < _players.Count; index++)
@@ -2880,6 +2893,7 @@ internal sealed partial class SimulatedCombatState
         CombatSide side,
         string? slot)
     {
+        using NativeCombatRulesScope rules = new(Rules);
         Creature creature = CreateCreature(monster, side, slot);
         if (side == CombatSide.Enemy)
         {
@@ -2904,6 +2918,7 @@ internal sealed partial class SimulatedCombatState
     }
     public void AddPredictedMonster(Creature creature)
     {
+        using NativeCombatRulesScope rules = new(Rules);
         MonsterModel monster = creature.Monster
             ?? throw new InvalidOperationException("Only monsters can be added through the predicted monster path.");
         monster.SetUpForCombat();
@@ -2915,6 +2930,7 @@ internal sealed partial class SimulatedCombatState
         CombatPredictionSimulator simulator,
         Creature creature)
     {
+        using NativeCombatRulesScope rules = new(Rules);
         MonsterModel monster = creature.Monster
             ?? throw new InvalidOperationException("Only monsters can be prepared through the predicted monster path.");
         if (CurrentSide == CombatSide.Player)

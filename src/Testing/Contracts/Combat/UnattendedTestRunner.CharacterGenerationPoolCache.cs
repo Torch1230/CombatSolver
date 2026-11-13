@@ -37,6 +37,7 @@ internal sealed partial class UnattendedTestRunner
         CardModel[] uncachedEligible = player.GetUnlockedCharacterCards(constraint)
             .Where(static card => card.Type == CardType.Attack)
             .FilterForCombatAndPlayerCount(constraint)
+            .Where(card => card.IsAllowedInRun(player.RunState))
             .ToArray();
         if (rootEligible.Count != uncachedEligible.Length
             || rootEligible.Where((card, index) =>
@@ -100,7 +101,7 @@ internal sealed partial class UnattendedTestRunner
             var cachedRng = simulator.Rng.CombatCardGeneration.Clone();
             PredictedCard[] baseline = player.GetUnlockedCharacterCards(constraint)
                 .Where(static card => card.Type == CardType.Attack)
-                .GetForCombat(player, count, baselineRng, constraint)
+                .GetForCombat(player, count, baselineRng, constraint, ((SimulatedCombatState)simulator.State.CombatState).Rules)
                 .ToArray();
             PredictedCard[] cached = simulator
                 .GetUnlockedCharacterAttacksForCombat(

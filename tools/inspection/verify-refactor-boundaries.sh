@@ -1300,7 +1300,11 @@ src/Search/CombatPlan.cs	public CombatTerminalStamp? TerminalStamp { get; } = te
 src/Search/CombatBeamSolver.Terminal.cs	combatEndedTurn = node.Snapshot.CombatEndedTurn;
 src/Search/SimulatedCombatState.cs	.Select(PredictionUtils.CloneModelForSimulation)
 src/Engine/InCombat/Mirrors/Hooks/Card/AfterCardGeneratedForCombatMirrors.cs	GetAeonglassWitherUpgradeCount(monster.Creature)
-src/Prediction/MonsterSpawnSupport.cs	.SelectMany(combat.RelicsOf)
+src/Prediction/MonsterSpawnSupport.cs	HookMirrors.AfterCreatureAddedToCombat(simulator, creature)
+src/Search/SimulatedCombatState.CardLifecycle.cs	HookMirrors.BeforeHandDraw(simulator, player, choices)
+src/Search/SimulatedCombatState.cs	Rules = source.Rules
+src/Prediction/DominionPredictionSupport.cs	Run.SetValue(clone, null)
+src/Prediction/NativeCombatRulesScope.cs	[ThreadStatic] private static CombatRulesSnapshot? _current
 src/Search/SimulatedCombatState.cs	foreach (BadgeModel badge in inner.BadgeModels)
 src/Search/SimulatedCombatState.cs	RunModelRunStateField.SetValue(detached, null)
 src/Search/SimulatedCombatState.cs	RunModelCombatStateField.SetValue(detached, null)

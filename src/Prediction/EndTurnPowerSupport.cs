@@ -46,6 +46,11 @@ internal static partial class EndTurnPowerSupport
                 case AmnesiaPower when side != CombatSide.Enemy:
                     combat.SetPowerAmount(power, 0);
                     break;
+                case LagavulinMatriarchDominionPower when side == CombatSide.Player && ownerParticipates:
+                    combat.Apply<StrengthPower>(owner, -power.Amount);
+                    combat.Apply<DexterityPower>(owner, -power.Amount);
+                    combat.SetPowerAmount(power, 0);
+                    break;
                 case TunePower when side != CombatSide.Enemy && combat.PlayedMelody(owner.Player!, CardTag.Ki):
                     combat.Apply<FreeCardPower>(owner, power.Amount, owner);
                     break;

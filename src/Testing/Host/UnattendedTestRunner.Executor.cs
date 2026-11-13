@@ -256,6 +256,26 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertDupeCloneContractAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "DREAD-DOMINION-HOOKS")
+            {
+                await runner.AssertDominionHooksAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "DREAD-KNOWLEDGE-CURSE")
+            {
+                await runner.AssertDreadKnowledgeCurseAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "BLITZ-REWARD-OUTLOOK")
+            {
+                await runner.AssertBlitzRewardOutlookAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "MODE-RULES-ISOLATION")
+            {
+                await runner.AssertModeRulesIsolationAsync(combatState);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "AIM-ATTACK-RETENTION")
             {
                 await runner.AssertAimRetentionAsync(combatState, player);

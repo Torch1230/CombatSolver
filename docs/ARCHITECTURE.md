@@ -86,6 +86,10 @@ Smart 药水梯度在主成员耗尽时间时拥有一个独立成员时间：�
 
 每项战斗语义只有一个权威结算实现。可变值由根快照、影子状态、克隆 Model 或 `PredictionStateStore` 持有。一次 Fork 共用 `PredictionForkContext`，引用随同一上下文重映射；COW 取得可写所有者后再写。
 
+`CombatRulesSnapshot` 在根捕获冻结游戏模式、原生进阶集合及领域身份。生成池、变牌、怪物效果、缓存和续用消费同一快照。原生怪物的同步初始化与静态参数采集用 `NativeCombatRulesScope` 暂时提供该根的进阶查询；作用域按线程嵌套恢复，运行时补丁仅在该作用域内返回冻结值。领域和 RunModel 按原生顺序进入克隆监听表，战斗中可变状态沿现有 Power／StateStore 所有权维护。
+
+`BeforeHandDrawMirrors` 与 `AfterCreatureAddedMirrors` 分别拥有抽牌前和生物入场的精确类型登记。Hook facade 冻结有序监听者并调用原有单项效果；抽牌前挂起选择通过既有执行帧恢复。知识诅咒的共用效果体由首领与领域分别提供候选、伤害和时机；敌方回合选择与玩家准备选择按 `PlanChoiceTiming` 区分。
+
 Fork 发生在动作、选牌、Power、死亡和出牌事务允许复制的稳定边界。玩家记录的卡牌/药水嵌套效果作用域由引擎持有；选牌检查点保存不可变身份序列，恢复建立分支独占列表。最外层效果结束后再检查手空。稳定根及跨回合状态的该作用域为空，普通 Fork 要求为空。
 
 未知 gameplay subscriber 显式拒绝；已支持来源在主线程捕获，并在分支中消费隔离状态。登记合同与封闭入口见 [第三方适配手册](third-party/README.md)。

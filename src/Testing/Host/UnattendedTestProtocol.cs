@@ -51,6 +51,9 @@ internal sealed class UnattendedTestRequest
     public string? EvidenceDirectory { get; init; }
     public bool PreserveNativeCombatStateForTest { get; init; }
     public int Ascension { get; init; }
+    public MegaCrit.Sts2.Core.Runs.GameMode GameMode { get; init; } = MegaCrit.Sts2.Core.Runs.GameMode.Standard;
+    public string? DreadBossEncounterId { get; init; }
+    public string[] DominionIdsForTest { get; init; } = [];
     public int ActIndexForTest { get; init; }
     public bool MarkEncounterAsSecondBossForTest { get; init; }
     public int EnemyCurrentHp { get; init; } = 1;
