@@ -4,7 +4,7 @@
   "gameCommit": "16ac0fe3",
   "mvid": "ad562b4e-7352-4ca2-ae45-0ff44cd284bc",
   "dllSha256": "a6cc282c52b96ad2e01d5692b1144b33aa8e3ba4e969582f648ecb13b2f751d7",
-  "scope": "singleplayer-standard",
+  "scope": "singleplayer-standard-dread-blitz",
   "method": "Native IL health-entry inventory followed by source review of target ownership, callbacks, generation filters and model additions.",
   "reviewedAdditions": {
     "Cards": [
@@ -266,5 +266,14 @@
     "Generation covers all six character pools and colorless/status/curse pools; unknown cards, attachments, callback sources and mutable pools remain outside the component certificate.",
     "BottledSong, CrystallineEuphoria and PrecisionPotion have no healing effect. EntropicBrew remains outside the zero-recovery potion set."
   ],
-  "runtimeVerification": "COMPONENT-HEALING-BOUND / 8e3ee84b85ed4a37a8b2686accd105f0 Passed; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=ComponentHealing:ZeroRecovery:AllFourPiles:UnknownAttachment:WrongOwner:Fork:ParentLiveRngIsolation; ComponentHealing:ColorlessNativeFilterAndChoice:BottledPotentialNativeShuffleDraw:TwoFullNativeStates:Fork:FrozenParent; ComponentHealing:ActiveRegen:TwoDoses:Stacking:Ban:ZeroCap:SpentCap:BranchPotionHistory:TwoFullNativeStates; ComponentHealing:UnknownInitialExhaustGrowth:PermanentDeckAbsentFromCombat:FrozenRoot; NativeOutcome:combatEnded=False:turn=1:hp=10:maxHp=80; finished=2026-11-13T10:59:54.9674795+08:00"
+  "runtimeVerification": "COMPONENT-HEALING-BOUND / 8e3ee84b85ed4a37a8b2686accd105f0 Passed; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=ComponentHealing:ZeroRecovery:AllFourPiles:UnknownAttachment:WrongOwner:Fork:ParentLiveRngIsolation; ComponentHealing:ColorlessNativeFilterAndChoice:BottledPotentialNativeShuffleDraw:TwoFullNativeStates:Fork:FrozenParent; ComponentHealing:ActiveRegen:TwoDoses:Stacking:Ban:ZeroCap:SpentCap:BranchPotionHistory:TwoFullNativeStates; ComponentHealing:UnknownInitialExhaustGrowth:PermanentDeckAbsentFromCombat:FrozenRoot; NativeOutcome:combatEnded=False:turn=1:hp=10:maxHp=80; finished=2026-11-13T10:59:54.9674795+08:00",
+  "modeReview": {
+    "nativeVersion": "ad562b4e-7352-4ca2-ae45-0ff44cd284bc",
+    "runModels": "DreadRunModel modifies act curses and domain ownership before roots. BlitzRunModel changes out-of-combat rewards. Neither adds a combat player-healing callback.",
+    "dominions": "Twelve domains add enemy Ritual/Strength/Plating/Slippery/Explosive, player debuffs, Wither and Beckon. Knowledge choices create Sloth or Amnesia. Reviewed callbacks contain no HP recovery, max-HP gain or healing-resource grant.",
+    "generation": "Blitz IsAllowedInRun further filters the standard native candidate sequence. A subset preserves the existing non-healing closure; no candidate reorder or extra RNG draw is introduced.",
+    "monsters": "Dread changes enemy HP, damage, repeats, buffs, debuffs and harmful status insertion. Enemy heal/revival targets retain enemy ownership. Death-triggered player recovery continues to use existing relic/source checks.",
+    "certificates": "ComponentModeSources admits only the two audited RunModels and twelve explicit domains under the existing MVID pin. ComponentPower/Card and enemy qualifications still apply independently. The small Assess certificate keeps its existing source set; KnownSources retains its materialized-source policy.",
+    "runtimeEvidence": "DREAD-DOMINION-HOOKS; DREAD-DOMINION-POWERS; BLITZ-TRANSFORMATION-POOL-CACHE; COMPONENT-HEALING-BOUND Dread 5682f66324eb47cf9566a40c0a210666 and Blitz abb60af868654402a32e199e5798d0b9 Passed, full native generation and regen-dose states, Fork and live isolation."
+  }
 }

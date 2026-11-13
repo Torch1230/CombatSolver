@@ -1,9 +1,12 @@
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Extensions;
 using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Characters;
+using MegaCrit.Sts2.Core.Models.Enchantments;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Odds;
 using MegaCrit.Sts2.Core.Random;
@@ -87,6 +90,8 @@ internal readonly record struct PotionRewardOutlook(
             return None;
         bool beltFull = player.PotionSlots.Count > 0 && player.PotionSlots.All(potion => potion != null);
         bool procureBlocked = relics.OfType<Sozu>().Any();
+        if (player.RunState.GameMode == GameMode.Blitz)
+            return CaptureBlitz(player, state, beltFull, procureBlocked);
         bool forced = Hook.ShouldForcePotionReward(player.RunState, player, room);
         float chance = forced ? 1f : DropChanceFor(player.PlayerOdds.PotionReward.CurrentValue, room);
         PotionRewardOutlook odds = new(chance, beltFull, procureBlocked) { Enabled = true };
@@ -111,6 +116,63 @@ internal readonly record struct PotionRewardOutlook(
             ForecastPotionId = potion.Id.Entry,
             ForecastPotionStrategicHpCost = PotionUsePolicy.StrategicHpCost(potion),
         };
+    }
+
+    private static PotionRewardOutlook CaptureBlitz(Player player, CombatState state, bool beltFull, bool procureBlocked)
+    {
+        var run = player.RunState;
+        var encounter = state.Encounter!;
+        RoomType room = encounter.RoomType;
+        if (room == RoomType.Boss && run.CurrentActIndex >= 2)
+            return new(0, beltFull, procureBlocked, PotionRewardForecast.NoRewards, null, 0) { Enabled = true };
+        bool drop = room == RoomType.Boss || room == RoomType.Monster && !encounter.IsWeak;
+        if (!drop)
+            return new(0, beltFull, procureBlocked, PotionRewardForecast.NoDrop, null, 0) { Enabled = true };
+
+        // Blitz populates its three card options before its guaranteed potion. All draws
+        // use this private reward stream; card ownership and reward callbacks stay live-owned.
+        Rng rewards = player.PlayerRng.Rewards.Clone();
+        CardRarity rarity = room == RoomType.Boss ? CardRarity.Rare : CardRarity.Common;
+        CardCreationOptions options = CardCreationOptions.ForNonCombatWithUniformOdds(
+            [player.Character.CardPool], card => card.Rarity == rarity)
+            .WithFlags(CardCreationFlags.NoUpgradeRoll | CardCreationFlags.IsFromCombat | CardCreationFlags.IsCardReward);
+        List<CardModel> selected = [];
+        for (int index = 0; index < 3; index++)
+        {
+            CardCreationOptions modified = Hook.ModifyCardRewardCreationOptions(run, player, options);
+            var candidates = modified.GetPossibleCards(player).Except(selected)
+                .Where(card => card.IsAllowedInRun(run) && card.Rarity is not (CardRarity.Basic or CardRarity.Ancient)).ToArray();
+            selected.Add(rewards.NextItem(candidates) ?? throw new InvalidOperationException("Empty Blitz reward card pool."));
+        }
+        // Native early modifiers only upgrade these Other-source rewards. The late
+        // enchantments affect Wing Charm's candidate set; keep their original hook order.
+        HashSet<CardModel> enchanted = [];
+        foreach (AbstractModel listener in run.IterateHookListeners(null))
+        {
+            if (listener is RelicModel relic && (relic.Owner != player || relic.IsMelted)) continue;
+            switch (listener)
+            {
+                case FresnelLens:
+                    foreach (CardModel card in selected.Where(card => ModelDb.Enchantment<Nimble>().CanEnchant(card))) enchanted.Add(card);
+                    break;
+                case Glitter:
+                case SilkenTress { IsUsed: false }:
+                    enchanted.UnionWith(selected.Where(card => ModelDb.Enchantment<Glam>().CanEnchant(card)));
+                    break;
+                case WingCharm:
+                    CardModel[] candidates = selected.Where(card => !enchanted.Contains(card)
+                        && ModelDb.Enchantment<Swift>().CanEnchant(card)).ToArray();
+                    if (candidates.Length > 0) enchanted.Add(rewards.NextItem(candidates)!);
+                    break;
+                case MegaCrit.Sts2.Core.Models.Blitz.BlitzRunModel when room != RoomType.Boss:
+                    if (run.CurrentActIndex == 1) _ = rewards.NextItem(selected);
+                    else if (run.CurrentActIndex == 2) _ = selected.UnstableShuffle(rewards).Take(2).ToArray();
+                    break;
+            }
+        }
+        PotionModel potion = PotionFactory.CreateRandomPotionOutOfCombat(player, rewards);
+        return new(1, beltFull, procureBlocked, PotionRewardForecast.Drop, potion.Id.Entry,
+            PotionUsePolicy.StrategicHpCost(potion)) { Enabled = true };
     }
 
     /// <summary>

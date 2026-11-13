@@ -1,0 +1,5 @@
+[
+  {"monsterId":"GremlinMerc","moveId":"GIMME_MOVE","playerGoldBefore":100,"clearAllPowersBeforeMove":true},
+  {"monsterId":"GremlinMerc","moveId":"DOUBLE_SMASH_MOVE","playerGoldBefore":100,"clearAllPowersBeforeMove":true},
+  {"monsterId":"GremlinMerc","moveId":"HEHE_MOVE","playerGoldBefore":100,"clearAllPowersBeforeMove":true}
+]

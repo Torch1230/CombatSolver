@@ -12,6 +12,7 @@ using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Potions;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
+using Dominions = MegaCrit.Sts2.Core.Models.Dread.Dominions;
 
 namespace CombatSolver;
 
@@ -20,6 +21,19 @@ internal static partial class StrategicHpRecoveryBound
     // Component certificate pinned to the audited installed native assembly. Every
     // component below has an explicit review; assembly membership is never sufficient.
     private static readonly Guid ComponentAuditMvid = new("ad562b4e-7352-4ca2-ae45-0ff44cd284bc");
+    // Audited in sts2-0.113-healing-audit.json: these sources add enemy attributes,
+    // player debuffs and harmful statuses. Generated sources still pass ComponentPower/Card.
+    private static readonly FrozenSet<Type> ComponentModeSources = new Type[]
+    {
+        typeof(MegaCrit.Sts2.Core.Models.Dread.DreadRunModel),
+        typeof(MegaCrit.Sts2.Core.Models.Blitz.BlitzRunModel),
+        typeof(Dominions.AeonglassDominion), typeof(Dominions.CeremonialBeastDominion),
+        typeof(Dominions.InsatiableDominion), typeof(Dominions.KaiserCrabDominion),
+        typeof(Dominions.KinDominion), typeof(Dominions.KnowledgeDemonDominion),
+        typeof(Dominions.LagavulinMatriarchDominion), typeof(Dominions.QueenDominion),
+        typeof(Dominions.SoulFyshDominion), typeof(Dominions.TestSubjectDominion),
+        typeof(Dominions.VantomDominion), typeof(Dominions.WaterfallGiantDominion),
+    }.ToFrozenSet();
     private static readonly FrozenSet<Type> ComponentInitialCards = new Type[]
     {
         typeof(Aggression), typeof(Hemokinesis), typeof(TearAsunder), typeof(Rupture),
@@ -111,7 +125,8 @@ internal static partial class StrategicHpRecoveryBound
                     || source.GetType() == typeof(global::MegaCrit.Sts2.Core.Models.Enchantments.Instinct)
                     || source.GetType() == typeof(CccComboModel)
                     || source.GetType() == typeof(DebufferModel)
-                    || source.GetType() == typeof(MultiplayerScalingModel),
+                    || source.GetType() == typeof(MultiplayerScalingModel)
+                    || ComponentModeSources.Contains(source.GetType()),
             };
         string? rootSource = combat.FirstRejectedHealingRootSource(RootSource);
         if (rootSource is not null)

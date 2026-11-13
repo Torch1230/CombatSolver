@@ -1,0 +1,9 @@
+[
+  {
+    "monsterId":"FuzzyWurmCrawler", "moveId":"INHALE", "enemyHpBefore":9999,
+    "clearAllPowersBeforeMove":true, "clearAllRelicsBeforeMove":true, "clearPlayerPilesBeforeMove":true,
+    "cardsBeforeMove":[{"cardId":"DEFEND_IRONCLAD","pile":"Draw","count":10}],
+    "powersBeforeMove":[{"powerId":"YOU_ARE_MINE_POWER","target":"Player","amount":1}],
+    "triggerPlayerTurnEndAfterMove":true, "triggerPlayerSetupAfterMove":true
+  }
+]

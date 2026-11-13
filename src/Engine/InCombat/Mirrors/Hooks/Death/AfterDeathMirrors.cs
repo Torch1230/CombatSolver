@@ -71,8 +71,17 @@ internal static class AfterDeathMirrors
         registry.Register<StockPower>(HandleStock);
         registry.Register<CrabRagePower>(HandleCrabRage);
         registry.Register<DampenPower>(HandleDampen);
+        registry.Register<ExplosivePower>(HandleExplosive);
 
         return registry;
+    }
+
+    private static void HandleExplosive(ExplosivePower power, AfterDeathMirrorContext context)
+    {
+        if (context.Creature != power.Owner || context.WasRemovalPrevented) return;
+        Creature[] targets = context.State.PlayerCreatures
+            .Where(creature => context.State.GetCreature(creature).IsAlive).ToArray();
+        context.Simulator.Damage(targets, power.Amount, ValueProp.Unpowered | ValueProp.SkipHurtAnim, null);
     }
 
     private static void HandleDampen(DampenPower power, AfterDeathMirrorContext context)

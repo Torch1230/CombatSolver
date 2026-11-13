@@ -14,6 +14,8 @@ internal sealed partial class UnattendedTestRunner
     {
         if (combat.RunState.GameMode != GameMode.Blitz) throw new InvalidOperationException("Blitz reward contract requires Blitz.");
         var room = (CombatRoom)combat.RunState.CurrentRoom!;
+        while (player.PotionSlots.Any(potion => potion == null))
+            InjectPotionForTest(player, "BLOCK_POTION");
         for (int sample = 0; sample < 8; sample++)
         {
             SetStage("blitz_reward_" + sample);
@@ -28,8 +30,12 @@ internal sealed partial class UnattendedTestRunner
             if (potions.Length > 1 || (forecast.Forecast == PotionRewardForecast.Drop) != (potions.Length == 1)
                 || potions.Length == 1 && forecast.ForecastPotionId != potions[0].Potion!.Id.Entry)
                 throw new InvalidOperationException($"Blitz reward mismatch: forecast={forecast.Forecast}/{forecast.ForecastPotionId}, native={string.Join(',', potions.Select(p => p.Potion!.Id.Entry))}");
+            int expectedCredit = potions.Length == 1 && !forecast.ProcureBlocked
+                ? PotionUsePolicy.StrategicHpCost(potions[0].Potion!) : 0;
+            if (!forecast.BeltFull || forecast.ReplacementHpCredit != expectedCredit)
+                throw new InvalidOperationException($"Blitz full-belt credit mismatch: forecast={forecast.ReplacementHpCredit}, native={expectedCredit}.");
         }
-        _completedChecks.Add($"BlitzRewards:act={combat.RunState.CurrentActIndex}:room={room.RoomType}:weak={room.Encounter.IsWeak}:8NativeSamples:LiveRngUnchanged");
+        _completedChecks.Add($"BlitzRewards:act={combat.RunState.CurrentActIndex}:room={room.RoomType}:weak={room.Encounter.IsWeak}:8NativeSamples:LiveRngUnchanged:FullBeltReplacementCredit");
     }
 
     private async Task AssertModeRulesIsolationAsync(CombatState combat)

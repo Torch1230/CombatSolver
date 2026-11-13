@@ -1,0 +1,7 @@
+[
+  {
+    "monsterId":"SoulFysh", "moveId":"BECKON_MOVE",
+    "clearAllPowersBeforeMove":true, "clearPlayerPilesBeforeMove":true,
+    "expectedPlayerPileCards":{"Draw:BECKON":1,"Hand:BECKON":1,"Discard:BECKON":1}
+  }
+]

@@ -1,0 +1,11 @@
+[
+  {
+    "monsterId": "WaterfallGiant",
+    "moveId": "PRESSURE_GUN_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  }
+]

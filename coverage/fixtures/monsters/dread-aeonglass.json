@@ -1,0 +1,8 @@
+[
+  {
+    "monsterId":"Aeonglass", "moveId":"INCREASING_INTENSITY_MOVE",
+    "clearAllPowersBeforeMove":true, "clearPlayerPilesBeforeMove":true,
+    "cardsBeforeMove":[{"cardId":"DEFEND_IRONCLAD","pile":"Hand"},{"cardId":"WITHER","pile":"Discard"}],
+    "expectedPlayerPileCards":{"Draw:WITHER":3}, "verifyAeonglassPreviewForkIsolation":true
+  }
+]

@@ -29,7 +29,8 @@ internal static partial class MonsterMoveEffects
             ["CeremonialBeast"] = ["PlowStrength", "CrushStrength", "PlowAmount"],
             ["Ovicopter"] = ["NutritionalPasteStrengthAmount"],
             ["SkulkingColony"] = ["InertiaStrengthGain"],
-            ["TheInsatiable"] = ["SalivateStrength"],
+            ["TheInsatiable"] = ["SalivateStrength", "SandpitAmount"],
+            ["Vantom"] = ["PrepareStrength"],
             ["TheObscura"] = ["HardeningStrikeBlock"],
             ["TheForgotten"] = ["DebilitatingSmogDexStealAmount"],
             ["LouseProgenitor"] = ["CurlBlock", "GrowStrength"],
@@ -41,7 +42,7 @@ internal static partial class MonsterMoveEffects
             ["Aeonglass"] = ["EbbBlock", "WitherAmount", "IncreasingIntensityBaseStrength"],
             ["AxeRubyRaider"] = ["SwingBlock"],
             ["DevotedSculptor"] = ["_ritualGain"],
-            ["WaterfallGiant"] = ["PressurizeAmount", "SiphonHeal", "PressureGunIncrease"],
+            ["WaterfallGiant"] = ["PressurizeAmount", "SiphonHeal", "PressureGunIncrease", "SteamBoostAmount"],
         };
 
     internal static IReadOnlyDictionary<string, int> CaptureStaticIntValues(MonsterModel monster)

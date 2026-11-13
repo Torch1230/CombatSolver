@@ -1,0 +1,110 @@
+[
+  {
+    "monsterId": "CeremonialBeast",
+    "moveId": "PLOW_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "CeremonialBeast",
+    "moveId": "CRUSH_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "Crusher",
+    "moveId": "BUG_STING_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "LagavulinMatriarch",
+    "moveId": "SLASH2_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "LagavulinMatriarch",
+    "moveId": "DISEMBOWEL_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "Rocket",
+    "moveId": "ROCKET_CLAW_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "TestSubject",
+    "moveId": "MULTI_CLAW_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "TestSubject",
+    "moveId": "BURNING_GROWL_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "TorchHeadAmalgam",
+    "moveId": "STRONG_TACKLE_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "Vantom",
+    "moveId": "PREPARE_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "TheInsatiable",
+    "moveId": "LIQUIFY_GROUND_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  },
+  {
+    "monsterId": "WaterfallGiant",
+    "moveId": "STOMP_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerBlockBefore": 0,
+    "rollNextMoveAfterActual": true
+  }
+]

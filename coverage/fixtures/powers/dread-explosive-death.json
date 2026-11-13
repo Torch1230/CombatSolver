@@ -1,0 +1,10 @@
+[
+  {
+    "monsterId":"FuzzyWurmCrawler", "moveId":"INHALE", "enemyHpBefore":1,
+    "clearAllPowersBeforeMove":true,"clearAllRelicsBeforeMove":true,"clearPlayerPilesBeforeMove":true,
+    "powersBeforeMove":[{"powerId":"EXPLOSIVE_POWER","target":"Enemy","amount":5}],
+    "cardBeforeMove":{"cardId":"STRIKE_IRONCLAD","pile":"Hand"},
+    "cardPlayChecksAfterMove":[{"cardId":"STRIKE_IRONCLAD","target":"Enemy"}]
+  },
+  {"monsterId":"FuzzyWurmCrawler","monsterOccurrence":1,"moveId":"INHALE"}
+]
