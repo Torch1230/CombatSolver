@@ -310,7 +310,7 @@ internal sealed partial class CombatBeamSolver
         int drawDistance = int.MaxValue;
         for (int index = 0; index < player.DrawPile.Cards.Count; index++)
         {
-            if (CardChoiceSupport.GetSpec(simulator, player.DrawPile.Cards[index])?.Effect
+            if (CardChoiceSupport.GetPotentialEffect(simulator, player.DrawPile.Cards[index])
                 != desiredEffect)
                 continue;
             drawDistance = index;
@@ -438,7 +438,7 @@ internal sealed partial class CombatBeamSolver
         {
             CombatPredictionSimulator simulator = (CombatPredictionSimulator)snapshot.Simulator;
             return simulator.State.GetPlayerCombatState(_player).AllCards.Any(card =>
-                CardChoiceSupport.GetSpec(simulator, card)?.Effect == effect);
+                CardChoiceSupport.GetPotentialEffect(simulator, card) == effect);
         }
         finally
         {
@@ -453,7 +453,7 @@ internal sealed partial class CombatBeamSolver
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         return simulator.State.GetPlayerCombatState(_player).Hand.Cards.Any(card =>
             combat.CanPlayCard(simulator, card)
-            && CardChoiceSupport.GetSpec(simulator, card)?.Effect == effect);
+            && CardChoiceSupport.GetPotentialEffect(simulator, card) == effect);
     }
 
     internal IReadOnlyList<PlanAction> BuildOpeningHandCycleActionsAfterPrefix(

@@ -68,6 +68,8 @@ internal static class SolverUiModelNames
         }
         if (CardTitles.TryGetValue((id, upgrade), out string? title)) return title;
         if (!Cards.TryGetValue(id, out CardModel? canonical)) return original;
+        if (canonical is MegaCrit.Sts2.Core.Models.Cards.DingyDagger)
+            return CardTitles[(id, upgrade)] = DingyDaggerDisplayNames.Capture().Format(upgrade);
         CardModel model = canonical.ToMutable();
         for (int level = 0; level < upgrade; level++)
         {

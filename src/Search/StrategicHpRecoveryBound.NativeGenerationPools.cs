@@ -8,7 +8,8 @@ internal static partial class StrategicHpRecoveryBound
 {
     internal static bool HasCertifiedNativeNonHealingGenerationPool(CardPoolModel pool)
     {
-        if (pool.IsMutable || pool.AllCards is not CardModel[] cards)
+        if (typeof(CardModel).Module.ModuleVersionId != ComponentAuditMvid
+            || pool.IsMutable || pool.AllCards is not CardModel[] cards)
             return false;
         foreach (CardModel card in cards)
         {
@@ -24,6 +25,7 @@ internal static partial class StrategicHpRecoveryBound
         return pool.GetType() == typeof(RegentCardPool) || pool.GetType() == typeof(ColorlessCardPool)
             || pool.GetType() == typeof(IroncladCardPool) || pool.GetType() == typeof(SilentCardPool)
             || pool.GetType() == typeof(NecrobinderCardPool) || pool.GetType() == typeof(DefectCardPool)
+            || pool.GetType() == typeof(FoolCardPool)
             || pool.GetType() == typeof(StatusCardPool) || pool.GetType() == typeof(CurseCardPool);
     }
 

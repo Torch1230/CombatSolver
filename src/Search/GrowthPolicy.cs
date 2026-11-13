@@ -12,7 +12,7 @@ namespace CombatSolver;
 internal enum GrowthSource
 {
     HandOfGreed, TheHunt, Feed, Royalties, Alchemize, GeneticAlgorithm, TheScythe, Goopy, ForbiddenGrimoire,
-    MadScience,
+    MadScience, ShowOff,
 }
 
 internal static class MadScienceGrowth
@@ -43,7 +43,7 @@ internal static class MadScienceGrowth
 /// </summary>
 /// <remarks>
 /// <para>
-/// 原版十个来源是 <see cref="GrowthValues"/> 上的十个 int 字段，走热路径；第三方来源数量不定，
+/// 原版来源使用 <see cref="GrowthValues"/> 上的固定 int 字段，走热路径；第三方来源数量不定，
 /// 只能另开一处。这里用一个「按 id 序数升序、不存 0 值」的数组：为空时是 <c>null</c>，
 /// 于是没有任何 mod 登记时，第三方部分不额外分配或追加非零条目。
 /// </para>
@@ -55,7 +55,7 @@ internal static class MadScienceGrowth
 /// </remarks>
 internal readonly struct GrowthExtras : IEquatable<GrowthExtras>
 {
-    /// <summary>额度上限，与原版十个字段同一口径。</summary>
+    /// <summary>额度上限，与原版成长字段同一口径。</summary>
     private const int MaximumValue = 1000;
 
     private readonly KeyValuePair<string, int>[]? _entries;
@@ -272,7 +272,7 @@ internal readonly struct GrowthExtras : IEquatable<GrowthExtras>
 internal readonly record struct GrowthValues(
     int HandOfGreed = 0, int TheHunt = 0, int Feed = 0, int Royalties = 0,
     int Alchemize = 0, int GeneticAlgorithm = 0, int TheScythe = 0, int Goopy = 0, int ForbiddenGrimoire = 0,
-    int MadScience = 0)
+    int MadScience = 0, int ShowOff = 0)
 {
     private readonly GrowthExtras _extras;
 
@@ -300,7 +300,7 @@ internal readonly record struct GrowthValues(
     public bool IsEnabled => this != default;
     [JsonIgnore]
     public int Total => checked(HandOfGreed + TheHunt + Feed + Royalties + Alchemize + GeneticAlgorithm + TheScythe + Goopy
-        + ForbiddenGrimoire + MadScience + _extras.Total);
+        + ForbiddenGrimoire + MadScience + ShowOff + _extras.Total);
 
     public static bool HasTarget(CardModel card)
         => HasBuiltInTarget(card)
@@ -309,7 +309,7 @@ internal readonly record struct GrowthValues(
     internal static bool HasBuiltInTarget(CardModel card)
         => card is Cards.HandOfGreed or Cards.TheHunt or Cards.Feed or Cards.Royalties or Cards.Alchemize or Cards.ForbiddenGrimoire
             || MadScienceGrowth.IsImprovementCard(card)
-            || card.DeckVersion != null && (card is Cards.GeneticAlgorithm or Cards.TheScythe || card.Enchantment is Enchantments.Goopy)
+            || card.DeckVersion != null && (card is Cards.GeneticAlgorithm or Cards.TheScythe or Cards.ShowOff || card.Enchantment is Enchantments.Goopy)
             ;
     public int Get(GrowthSource source) => source switch
     {
@@ -323,6 +323,7 @@ internal readonly record struct GrowthValues(
         GrowthSource.Goopy => Goopy,
         GrowthSource.ForbiddenGrimoire => ForbiddenGrimoire,
         GrowthSource.MadScience => MadScience,
+        GrowthSource.ShowOff => ShowOff,
         _ => throw new ArgumentOutOfRangeException(nameof(source)),
     };
 
@@ -341,6 +342,7 @@ internal readonly record struct GrowthValues(
         GrowthSource.Goopy => this with { Goopy = value },
         GrowthSource.ForbiddenGrimoire => this with { ForbiddenGrimoire = value },
         GrowthSource.MadScience => this with { MadScience = value },
+        GrowthSource.ShowOff => this with { ShowOff = value },
         _ => throw new ArgumentOutOfRangeException(nameof(source)),
     };
 
@@ -353,7 +355,7 @@ internal readonly record struct GrowthValues(
         + Alchemize * rewards.Alchemize + GeneticAlgorithm * rewards.GeneticAlgorithm
         + TheScythe * rewards.TheScythe + Goopy * rewards.Goopy
         + ForbiddenGrimoire * rewards.ForbiddenGrimoire
-        + MadScience * rewards.MadScience + _extras.Credit(rewards._extras));
+        + MadScience * rewards.MadScience + ShowOff * rewards.ShowOff + _extras.Credit(rewards._extras));
 
     public bool Satisfies(GrowthValues required)
     {
@@ -393,6 +395,7 @@ internal readonly record struct GrowthValues(
         fingerprint.Add(Goopy);
         fingerprint.Add(ForbiddenGrimoire);
         fingerprint.Add(MadScience);
+        fingerprint.Add(ShowOff);
         _extras.AppendFingerprint(ref fingerprint);
     }
 
@@ -402,7 +405,7 @@ internal readonly record struct GrowthValues(
             + $"{nameof(TheHunt)} = {TheHunt}, {nameof(Feed)} = {Feed}, {nameof(Royalties)} = {Royalties}, "
             + $"{nameof(Alchemize)} = {Alchemize}, {nameof(GeneticAlgorithm)} = {GeneticAlgorithm}, "
             + $"{nameof(TheScythe)} = {TheScythe}, {nameof(Goopy)} = {Goopy}, {nameof(ForbiddenGrimoire)} = {ForbiddenGrimoire}, "
-            + $"{nameof(MadScience)} = {MadScience}";
+            + $"{nameof(MadScience)} = {MadScience}, {nameof(ShowOff)} = {ShowOff}";
         return _extras.IsEmpty ? vanilla + " }" : vanilla + $", {nameof(ThirdParty)} = {_extras} }}";
     }
 

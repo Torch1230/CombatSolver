@@ -78,8 +78,15 @@ internal static class GrowthOpportunityPolicy
         string? dynamicRisk = null;
         if (hasAnyTargets)
             HasDynamicCardCountRisk(state, availableCards, out dynamicRisk);
-        return CaptureTargets(availableCards, state.Enemies.Count, dynamicRisk,
+        GrowthOpportunityTargets targets = CaptureTargets(availableCards, state.Enemies.Count, dynamicRisk,
             madScienceUpgradeCapacity);
+        int activeShowOff = state.Players.SelectMany(player => player.Creature.Powers)
+            .OfType<ShowOffPower>().Count(power => power.ShowOffInstance?.DeckVersion != null);
+        return activeShowOff == 0 ? targets : targets with
+        {
+            RequiredRewards = targets.RequiredRewards.With(GrowthSource.ShowOff,
+                checked(targets.RequiredRewards.ShowOff + activeShowOff)),
+        };
     }
 
     private static GrowthOpportunityTargets CaptureTargets(
@@ -208,7 +215,9 @@ internal static class GrowthOpportunityPolicy
             .With(GrowthSource.ForbiddenGrimoire, CountFixedPlays(cards,
                 card => card is ForbiddenGrimoire))
             .With(GrowthSource.MadScience, Math.Min(madScienceUpgradeCapacity,
-                CountFixedPlays(cards, MadScienceGrowth.IsImprovementCard)));
+                CountFixedPlays(cards, MadScienceGrowth.IsImprovementCard)))
+            .With(GrowthSource.ShowOff, CountFixedPlays(cards,
+                card => card is ShowOff && card.DeckVersion != null));
     }
 
     private static int CountFixedPlays(
@@ -262,6 +271,7 @@ internal static class GrowthOpportunityPolicy
             GrowthSource.Goopy => card.DeckVersion != null && card.Enchantment is Goopy,
             GrowthSource.ForbiddenGrimoire => card is ForbiddenGrimoire,
             GrowthSource.MadScience => MadScienceGrowth.IsImprovementCard(card),
+            GrowthSource.ShowOff => card is ShowOff && card.DeckVersion != null,
             _ => throw new ArgumentOutOfRangeException(nameof(source)),
         };
 
@@ -274,7 +284,7 @@ internal static class GrowthOpportunityPolicy
         IReadOnlyList<CardModel> cards,
         out string? reason)
     {
-        if (cards.Any(card => card is Burst or EchoForm or OneTwoPunch or SignalBoost or TagTeam
+        if (cards.Any(card => card is Burst or EchoForm or OneTwoPunch or SignalBoost or TagTeam or KiVerse
                 or Nightmare or DualWield or HeirloomHammer or Juggling or ImitationLearning
                 or HowlFromBeyond))
         {
@@ -284,7 +294,7 @@ internal static class GrowthOpportunityPolicy
         if (state.Players.SelectMany(player => player.Creature.Powers).Any(power => power.Amount > 0m
                 && power is BurstPower or DuplicationPower or EchoFormPower or OneTwoPunchPower
                     or SignalBoostPower or TagTeamPower or JugglingPower or ImitationLearningPower
-                    or NightmarePower))
+                    or NightmarePower or KiVersePower))
         {
             reason = "built_in:active_replay_or_copy_power";
             return true;

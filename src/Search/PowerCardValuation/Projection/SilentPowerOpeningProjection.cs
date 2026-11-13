@@ -268,7 +268,7 @@ internal sealed partial class CombatBeamSolver
         if (remainingTurns <= 1)
             return 0;
         DrawDiscardCardFact[] retainedCards = playerState.Hand.Cards
-            .Where(card => card.Preview.ShouldRetainThisTurn)
+            .Where(card => card.ShouldRetainThisTurn(simulator.State))
             .Select(card => new DrawDiscardCardFact(
                 Math.Max(0, (int)Math.Round(CardChoiceSupport.CardValue(card.Preview))),
                 card.Preview.IsSlyThisTurn

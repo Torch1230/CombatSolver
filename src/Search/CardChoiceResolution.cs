@@ -44,12 +44,32 @@ internal static partial class CardChoiceSupport
         switch (choice.Effect)
         {
             case PlanChoiceEffect.MoveToHand:
+                if (playedCard.Preview is KiChant chant)
+                {
+                    var top = owner.DrawPile.Cards.Take(chant.DynamicVars.Cards.IntValue).ToArray();
+                    simulator.AddToPile(selected, PileType.Hand);
+                    if (!simulator.HasPendingChoice)
+                        simulator.Discard(top.Except(selected).Where(card => card.GetPile(simulator.State) == owner.DrawPile).ToArray());
+                    if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return false; }
+                    break;
+                }
                 simulator.AddToPile(selected, PileType.Hand);
                 break;
             case PlanChoiceEffect.MoveToDrawTop:
                 simulator.AddToPile(selected, PileType.Draw, CardPilePosition.Top);
                 break;
             case PlanChoiceEffect.Discard:
+                if (playedCard.Preview is TheHermit hermit)
+                {
+                    foreach (var card in selected)
+                    {
+                        if (card.Preview.Type == CardType.Curse) simulator.Exhaust(card); else simulator.Discard([card]);
+                        if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return false; }
+                    }
+                    simulator.Draw(hermit.Owner, hermit.DynamicVars.Cards.IntValue);
+                    if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return false; }
+                    break;
+                }
                 simulator.Discard(selected);
                 break;
             case PlanChoiceEffect.Exhaust:
@@ -271,8 +291,8 @@ internal static partial class CardChoiceSupport
             if (simulator.HasPendingChoice)
                 return false;
         }
-        original.MutablePreview.AfterTransformedFrom();
-        replacement.MutablePreview.AfterTransformedTo();
+        original.MutablePreview.AfterThisWasTransformedInto(replacement.MutablePreview);
+        replacement.MutablePreview.AfterThisWasTransformedFrom(original.MutablePreview);
         HookMirrors.AfterCardGeneratedForCombat(
             simulator,
             replacement,

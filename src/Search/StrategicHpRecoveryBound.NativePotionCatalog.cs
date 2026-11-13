@@ -21,6 +21,7 @@ internal static partial class StrategicHpRecoveryBound
         typeof(BlockPotion),
         typeof(BoneBrew),
         typeof(BottledPotential),
+        typeof(BottledSong), typeof(CrystallineEuphoria), typeof(PrecisionPotion),
         typeof(Clarity),
         typeof(ColorlessPotion),
         typeof(CosmicConcoction),

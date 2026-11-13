@@ -69,6 +69,7 @@ internal static partial class StrategicHpRecoveryBound
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<SilentCardPool>())
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<NecrobinderCardPool>())
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<DefectCardPool>())
+            && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<FoolCardPool>())
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<StatusCardPool>())
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<CurseCardPool>())
             && IronDecimillipedeHealingUpperBound(simulator, player, 0) != int.MaxValue;

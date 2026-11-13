@@ -5,7 +5,6 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.CardPools;
 using MegaCrit.Sts2.Core.Models.Badges;
-using MegaCrit.Sts2.Core.Models.Singleton;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Characters;
 using MegaCrit.Sts2.Core.Models.Monsters;
@@ -20,7 +19,7 @@ internal static partial class StrategicHpRecoveryBound
 {
     // Component certificate pinned to the audited installed native assembly. Every
     // component below has an explicit review; assembly membership is never sufficient.
-    private static readonly Guid ComponentAuditMvid = new("8a76776c-0ce1-4d4f-90bd-8cce653dad8e");
+    private static readonly Guid ComponentAuditMvid = new("ad562b4e-7352-4ca2-ae45-0ff44cd284bc");
     private static readonly FrozenSet<Type> ComponentInitialCards = new Type[]
     {
         typeof(Aggression), typeof(Hemokinesis), typeof(TearAsunder), typeof(Rupture),
@@ -31,7 +30,7 @@ internal static partial class StrategicHpRecoveryBound
         // Reuse the successful native eight-card mechanism contract on this DLL.
         typeof(Backstab), typeof(FanOfKnives), typeof(Flechettes), typeof(MasterPlanner),
         typeof(NoxiousFumes), typeof(Prowess), typeof(Reflex), typeof(RollingBoulder),
-    }.ToFrozenSet();
+    }.Concat(Standard113NonHealingCards()).ToFrozenSet();
 
     private static readonly FrozenSet<Type> ComponentEnemies = new Type[]
     {
@@ -50,6 +49,8 @@ internal static partial class StrategicHpRecoveryBound
         typeof(Whetstone), typeof(VeryHotCocoa), typeof(TuningFork), typeof(FestivePopper),
         typeof(StrikeDummy), typeof(FakeHappyFlower), typeof(SneckoSkull),
         typeof(TriBoomerang), typeof(OrnamentalFan), typeof(Permafrost),
+        typeof(SongBow), typeof(Storyteller), typeof(ExerciseMat), typeof(Ocarina),
+        typeof(BizarreLamp), typeof(Fertilizer), typeof(WhittlingKnife), typeof(ConductorsBaton),
     }.ToFrozenSet();
 
     private static bool ComponentInitialCard(CardModel card)
@@ -87,7 +88,8 @@ internal static partial class StrategicHpRecoveryBound
         Type character = player.Character.GetType();
         if (character != typeof(Ironclad) && character != typeof(Silent)
             && character != typeof(Regent) && character != typeof(Necrobinder)
-            && character != typeof(MegaCrit.Sts2.Core.Models.Characters.Defect))
+            && character != typeof(MegaCrit.Sts2.Core.Models.Characters.Defect)
+            && character != typeof(Fool))
             return "character:" + character.Name;
         if (combat.Modifiers.Count != 0 || !combat.RootHasCertifiedNonHealingSubscribers
             || combat.RootHasBaseLibCardModifiers
@@ -120,6 +122,7 @@ internal static partial class StrategicHpRecoveryBound
             || !HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<SilentCardPool>())
             || !HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<NecrobinderCardPool>())
             || !HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<DefectCardPool>())
+            || !HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<FoolCardPool>())
             || !HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<StatusCardPool>())
             || !HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<CurseCardPool>()))
             return "generation-pool";

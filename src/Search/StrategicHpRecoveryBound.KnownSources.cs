@@ -11,7 +11,7 @@ namespace CombatSolver;
 
 internal static partial class StrategicHpRecoveryBound
 {
-    // All five native characters and every native encounter use the policy requested
+    // Native characters and encounters use the policy requested
     // in #135 follow-up: reserve healing from materialized
     // sources. Random potion generation supplies no speculative healing allowance.
     // This is a policy estimate, separate from the closed semantic certificates.
@@ -73,7 +73,10 @@ internal static partial class StrategicHpRecoveryBound
         long regen = combat.EffectivePowers().OfType<RegenPower>()
             .Where(power => ReferenceEquals(power.Owner, player.Creature))
             .Sum(power => (long)Math.Max(0, power.Amount));
-        long directHeal = 0;
+        long directHeal = combat.GetPlayerTurnNumber(player) <= 1
+            ? combat.RelicsOf(player).OfType<BathTowel>().Where(relic => !relic.IsMelted)
+                .Sum(relic => (long)Math.Max(0, relic.DynamicVars.Heal.IntValue))
+            : 0;
         bool canUsePotion = includePotionHealing
             && (maximumExplicitPotionUses is not { } maximum
                 || combat.PotionUses.Count(use => !use.Automatic) < maximum);

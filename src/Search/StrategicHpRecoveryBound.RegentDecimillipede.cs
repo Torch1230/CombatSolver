@@ -44,6 +44,7 @@ internal static partial class StrategicHpRecoveryBound
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<SilentCardPool>())
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<NecrobinderCardPool>())
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<DefectCardPool>())
+            && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<FoolCardPool>())
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<StatusCardPool>())
             && HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<CurseCardPool>())
             // Reject an unknown initial source permanently, even if it can later vanish.

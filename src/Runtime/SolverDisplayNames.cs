@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using CombatSolver.Engine.InCombat.Simulation;
 using Godot;
@@ -18,6 +19,7 @@ internal sealed class SolverDisplayNames
     private static Dictionary<(string Id, int Upgrade), string>? _canonicalCardNames;
 
     private readonly Dictionary<(string Id, int Upgrade), string> _cards;
+    private readonly DingyDaggerDisplayNames _daggerNames;
     private readonly Dictionary<string, string> _potions;
     private readonly Dictionary<string, string> _relics;
     private readonly Dictionary<string, string> _powers;
@@ -32,6 +34,7 @@ internal sealed class SolverDisplayNames
 
     private SolverDisplayNames(
         Dictionary<(string Id, int Upgrade), string> cards,
+        DingyDaggerDisplayNames daggerNames,
         Dictionary<string, string> potions,
         Dictionary<string, string> relics,
         Dictionary<string, string> powers,
@@ -43,6 +46,7 @@ internal sealed class SolverDisplayNames
         bool english)
     {
         _cards = cards;
+        _daggerNames = daggerNames;
         _potions = potions;
         _relics = relics;
         _powers = powers;
@@ -135,16 +139,17 @@ internal sealed class SolverDisplayNames
             orbNames.TryAdd(orb.Id.Entry, title);
             orbNames.TryAdd(orb.GetType().Name, title);
         }
-        return new SolverDisplayNames(cardNames, potionNames, relicNames, powerNames, orbNames, monsterNames, creatureNames,
+        return new SolverDisplayNames(cardNames, DingyDaggerDisplayNames.Capture(), potionNames, relicNames, powerNames, orbNames, monsterNames, creatureNames,
             slotOrder, room != null,
             LocManager.Instance.Language is not ("zhs" or "zht"));
     }
 
     public string Card(CardModel card)
-        => _cards.GetValueOrDefault((card.Id.Entry, card.CurrentUpgradeLevel), card.Id.Entry);
+        => Card(card.Id.Entry, card.CurrentUpgradeLevel);
 
     public string Card(string cardId, int upgradeLevel = 0)
-        => _cards.GetValueOrDefault((cardId, upgradeLevel), cardId);
+        => cardId == "DINGY_DAGGER" ? _daggerNames.Format(upgradeLevel)
+            : _cards.GetValueOrDefault((cardId, upgradeLevel), cardId);
 
     private static Dictionary<(string Id, int Upgrade), string> CanonicalCardNames()
     {
@@ -174,7 +179,7 @@ internal sealed class SolverDisplayNames
             (string Id, int Upgrade) key = (card.Id.Entry, card.CurrentUpgradeLevel);
             if (overwrite || !names.ContainsKey(key))
                 names[key] = card.Title;
-            if (!card.IsUpgradable)
+            if (card is DingyDagger || !card.IsUpgradable)
                 return;
             card.UpgradeInternal();
             card.FinalizeUpgradeInternal();

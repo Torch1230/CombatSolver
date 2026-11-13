@@ -7,7 +7,7 @@ internal static partial class StrategicHpRecoveryBound
     // Audited native generation closure, enabled only by the separately certified
     // Regent or Ironclad Decimillipede root environments. Combat generation excludes Alchemize, Feed, NotYet and the other
     // CanBeGeneratedInCombat=false cards. Entropy can transform a Splash-generated
-    // foreign attack, so the closure includes all five character pools, not just Regent.
+    // foreign attack, so the closure includes all six character pools, not just Regent.
     // Generated Osty healing changes the pet, never player HP. Native callback powers,
     // fixed tokens, all generation-eligible native Status/Curse cards, and the five
     // native orbs are included. Ordinary transforms filter Common/Uncommon/Rare;
@@ -211,7 +211,7 @@ internal static partial class StrategicHpRecoveryBound
         typeof(global::MegaCrit.Sts2.Core.Models.Cards.WellLaidPlans), typeof(global::MegaCrit.Sts2.Core.Models.Cards.Whirlwind), typeof(global::MegaCrit.Sts2.Core.Models.Cards.WhiteNoise),
         typeof(global::MegaCrit.Sts2.Core.Models.Cards.Wisp), typeof(global::MegaCrit.Sts2.Core.Models.Cards.Wound), typeof(global::MegaCrit.Sts2.Core.Models.Cards.WraithForm),
         typeof(global::MegaCrit.Sts2.Core.Models.Cards.WroughtInWar), typeof(global::MegaCrit.Sts2.Core.Models.Cards.Zap),
-    }.ToFrozenSet();
+    }.Concat(Standard113NonHealingCards()).ToFrozenSet();
 
     private static readonly FrozenSet<Type> NativeNonHealingGeneratedPowers = new Type[]
     {
@@ -275,6 +275,6 @@ internal static partial class StrategicHpRecoveryBound
         typeof(global::MegaCrit.Sts2.Core.Models.Powers.ViciousPower), typeof(global::MegaCrit.Sts2.Core.Models.Powers.VigorPower), typeof(global::MegaCrit.Sts2.Core.Models.Powers.VoidFormPower),
         typeof(global::MegaCrit.Sts2.Core.Models.Powers.VulnerablePower), typeof(global::MegaCrit.Sts2.Core.Models.Powers.WeakPower), typeof(global::MegaCrit.Sts2.Core.Models.Powers.WellLaidPlansPower),
         typeof(global::MegaCrit.Sts2.Core.Models.Powers.WraithFormPower),
-    }.ToFrozenSet();
+    }.Concat(Standard113NonHealingPowers()).ToFrozenSet();
 }
 

@@ -112,7 +112,7 @@ internal sealed partial class CombatBeamSolver
         SimPlayerCombatState parentState = parentSimulator.State.GetPlayerCombatState(_player);
         SimPlayerCombatState childState = childSimulator.State.GetPlayerCombatState(_player);
         HashSet<CardModel> previouslyRetained = parentState.Hand.Cards
-            .Where(card => card.Preview.ShouldRetainThisTurn)
+            .Where(card => card.ShouldRetainThisTurn(parentSimulator.State))
             .Select(card => card.Original)
             .ToHashSet();
         RetainedHandCardFact[] baselineRetained = childState.Hand.Cards
@@ -120,7 +120,7 @@ internal sealed partial class CombatBeamSolver
             .Select(card => RetainedFact(childSimulator, childState, card))
             .ToArray();
         RetainedHandCardFact[] poweredRetained = childState.Hand.Cards
-            .Where(card => card.Preview.ShouldRetainThisTurn)
+            .Where(card => card.ShouldRetainThisTurn(childSimulator.State))
             .Select(card => RetainedFact(childSimulator, childState, card))
             .ToArray();
         if (poweredRetained.Length == baselineRetained.Length)

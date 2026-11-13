@@ -1035,7 +1035,7 @@ internal sealed partial class CombatBeamSolver
             }
         }
 
-        bool takingExtraTurn = Engine.InCombat.Mirrors.HookMirrors.ShouldTakeExtraTurn(simulator, simulatedCombat, _player);
+        bool takingExtraTurn = Engine.InCombat.Mirrors.HookMirrors.ShouldTakeExtraTurn(simulator, simulatedCombat, _player, out var extraTurnSource);
         bool hasActiveEmotionChip = simulatedCombat.RelicsOf(_player).Any(relic => relic is MegaCrit.Sts2.Core.Models.Relics.EmotionChip && !relic.IsMelted);
         SimCreatureState simulatedPlayer = simulator.State.GetCreature(_player.Creature);
         if (!takingExtraTurn)
@@ -1227,7 +1227,7 @@ internal sealed partial class CombatBeamSolver
             // just-finished turn becomes Emotion Chip's "previous turn" window.
             if (hasActiveEmotionChip)
                 simulatedCombat.RecordRelicRoundDamage(simulator, _player, roundHistoryEntryStart);
-            if (!Engine.InCombat.Mirrors.HookMirrors.AfterTakingExtraTurn(simulator, simulatedCombat, _player))
+            if (!Engine.InCombat.Mirrors.HookMirrors.AfterTakingExtraTurn(simulator, simulatedCombat, _player, extraTurnSource!))
                 return SearchBoundaryReason.PendingChoice;
         }
 
