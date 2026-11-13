@@ -4,6 +4,8 @@
 
 2026-11-13，`REQUEST-BUDGET-DISPLAY` 在 v0.113.0 通过：真实 coordinator 的节点耗尽报告、2500+8012 节点成员累计、总预算充足时的提示、实际节点／时间上限、时间覆盖参数和 zhs/zht/eng 界面。入选成员原始节点、边界及路线身份保持。该合同验证统计和 UI 投影；可见窗口排版由现有控件渲染。
 
+同日后续单步日志：`9b32cae92bf64cf49f32cd260dfd8e7a` 第 2 回合 exact-state 续用、0 节点仍显示原成员 TimeLimit。续用／缓存恢复的提示修正仅做 Release 编译；本轮实机交互由用户验收，既有合同结果保留其原覆盖范围。
+
 复跑：`pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId REQUEST-BUDGET-DISPLAY -CharacterId IRONCLAD -InitialEnemyMaxHpsJson '[9999]' -EnemyCurrentHp 9999 -StopAfterInitialSetupAssertion -EnableNoGcRegionForTest 0 -HeadlessFastModeForTest Instant -HeadlessInstance request-budget-display -CleanupInstanceOnExit -TimeoutSeconds 120`。来源与 runId 见 `coverage/evidence/test-evidence.json`。
 
 ## v0.113.0 标准模式适配

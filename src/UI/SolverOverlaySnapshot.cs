@@ -625,9 +625,16 @@ internal sealed record SolverOverlaySnapshot(
     }
 
     internal static SearchBoundaryReason SearchBoundaryForDisplay(SolverResult result)
-        => result.BoundaryReason is SearchBoundaryReason.None or SearchBoundaryReason.NodeLimit or SearchBoundaryReason.TimeLimit
-            ? result.RequestBudget?.LimitReason ?? result.BoundaryReason
-            : result.BoundaryReason;
+    {
+        if (result.BoundaryReason is SearchBoundaryReason.None or SearchBoundaryReason.NodeLimit or SearchBoundaryReason.TimeLimit)
+        {
+            // Reuse and cache restoration perform no new search and have no request budget.
+            if (result.WasReused || result.WasRestoredFromCache)
+                return SearchBoundaryReason.None;
+            return result.RequestBudget?.LimitReason ?? result.BoundaryReason;
+        }
+        return result.BoundaryReason;
+    }
 
     internal static string? BuildSearchLimitWarning(SearchBoundaryReason reason) => reason switch
     {
