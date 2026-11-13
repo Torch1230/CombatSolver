@@ -34,6 +34,7 @@ internal static class CombatPredictedCardExtensions
     // Mirrors CardModel.CreateClone, but returns a PredictedCard instead of a CardModel.
     public static PredictedCard CreateClone(this PredictedCard card)
     {
+        card = card.GameplayCloneSource;
         var clonedCard = PredictionUtils.CloneCardStateForSimulation(card.Preview);
         // CloneCardStateForSimulation restores these fields for prediction COW. Gameplay
         // CardModel.CreateClone instead keeps the reset values from CardModel.AfterCloned.
@@ -57,10 +58,9 @@ internal static class CombatPredictedCardExtensions
     /// <summary>Mirrors CardModel.CreateDupe for branch-local autoplay.</summary>
     public static PredictedCard CreateDupeForPlayer(this PredictedCard card, Player player)
     {
-        PredictedCard source = card;
-        if (card.Preview.IsDupe && card.Preview.DupeOf is { } original)
-            source = PredictedCard.FromGenerated(PredictionUtils.CloneCardStateForSimulation(original));
+        PredictedCard source = card.GameplayCloneSource;
         PredictedCard dupe = source.CreateCloneForPlayer(player);
+        dupe.DupeSource = source;
         dupe.MutablePreview.IsDupe = true;
         dupe.MutablePreview.RemoveKeyword(CardKeyword.Exhaust);
         return dupe;
@@ -176,6 +176,9 @@ internal static class CombatPredictedCardExtensions
             Hook.ModifyKeywordsInCombat(state.CombatState, card.Preview, keywords);
         return keywords;
     }
+
+    public static bool ShouldRetainThisTurn(this PredictedCard card, CombatPredictionState state)
+        => card.Preview._hasSingleTurnRetain || card.HasKeyword(state, CardKeyword.Retain);
 
     private static bool HasNoGlobalKeywordModifiers(CombatPredictionState state)
         => state.CombatState is ICombatPredictionHookListenerSource source

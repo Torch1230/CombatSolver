@@ -1,5 +1,6 @@
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Entities.Players;
 using CombatSolver.Engine.Common;
 
 namespace CombatSolver.Engine.InCombat.Simulation;
@@ -32,7 +33,20 @@ internal sealed class CombatPredictionRngSet
             ? _frozen! : new FrozenStream(_mutable.CaptureState()));
 
         public static Stream Capture(Rng rng) => new(new FrozenStream(rng.CaptureState()));
+        public static Stream Capture(PredictionRngState state) => new(new FrozenStream(state));
     }
+
+    private readonly Dictionary<Player, Stream> _nonCombatGeneration;
+
+    public Rng NonCombatGeneration(Player player)
+    {
+        Stream stream = _nonCombatGeneration[player];
+        Rng rng = stream.Mutable;
+        _nonCombatGeneration[player] = stream;
+        return rng;
+    }
+
+    public PredictionRngState NonCombatGenerationState(Player player) => _nonCombatGeneration[player].State;
 
     private Stream _shuffle;
     public Rng Shuffle => _shuffle.Mutable;
@@ -70,8 +84,9 @@ internal sealed class CombatPredictionRngSet
     public Rng Niche => _niche.Mutable;
     public PredictionRngState NicheState => _niche.State;
 
-    private CombatPredictionRngSet(RunRngSet rng)
+    private CombatPredictionRngSet(RunRngSet rng, IReadOnlyDictionary<Player, PredictionRngState> playerRngs)
     {
+        _nonCombatGeneration = playerRngs.ToDictionary(pair => pair.Key, pair => Stream.Capture(pair.Value));
         _shuffle = Stream.Capture(rng.Shuffle);
         _combatCardGeneration = Stream.Capture(rng.CombatCardGeneration);
         _combatPotionGeneration = Stream.Capture(rng.CombatPotionGeneration);
@@ -85,6 +100,7 @@ internal sealed class CombatPredictionRngSet
 
     private CombatPredictionRngSet(CombatPredictionRngSet source)
     {
+        _nonCombatGeneration = source._nonCombatGeneration.ToDictionary(pair => pair.Key, pair => pair.Value.Fork());
         _shuffle = source._shuffle.Fork();
         _combatCardGeneration = source._combatCardGeneration.Fork();
         _combatPotionGeneration = source._combatPotionGeneration.Fork();
@@ -96,7 +112,11 @@ internal sealed class CombatPredictionRngSet
         _niche = source._niche.Fork();
     }
 
-    public static CombatPredictionRngSet From(RunRngSet rng) => new(rng);
+    public static CombatPredictionRngSet From(RunRngSet rng, IReadOnlyDictionary<Player, PredictionRngState> playerRngs)
+        => new(rng, playerRngs);
+
+    public static CombatPredictionRngSet From(RunRngSet rng, IEnumerable<Player> players)
+        => new(rng, players.ToDictionary(player => player, player => player.PlayerRng.NonCombatGeneration.CaptureState()));
 
     internal CombatPredictionRngSet Fork() => new(this);
 }

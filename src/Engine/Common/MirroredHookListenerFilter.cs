@@ -80,9 +80,16 @@ internal sealed class MirroredHookListenerFilter(bool enabled)
         [nameof(AbstractModel.ModifyGoldGained)] = MirroredHookMask.GoldCallbacks,
         [nameof(AbstractModel.AfterModifyingGoldGained)] = MirroredHookMask.GoldCallbacks,
         [nameof(AbstractModel.AfterGoldGained)] = MirroredHookMask.GoldCallbacks,
-        // Both extra-turn callbacks share the last bit; ExtraTurnMirrors still distinguishes the methods.
+        // The final bit groups low-frequency callbacks. Registries distinguish the
+        // exact methods; sharing participation retains each receiver in native order.
         [nameof(AbstractModel.ShouldTakeExtraTurn)] = MirroredHookMask.ExtraTurnCallbacks,
+        [nameof(AbstractModel.ShouldTakeExtraTurnEarly)] = MirroredHookMask.ExtraTurnCallbacks,
         [nameof(AbstractModel.AfterTakingExtraTurn)] = MirroredHookMask.ExtraTurnCallbacks,
+        [nameof(AbstractModel.AfterArrowShot)] = MirroredHookMask.AdditionalCallbacks,
+        [nameof(AbstractModel.AfterArrowImpaled)] = MirroredHookMask.AdditionalCallbacks,
+        [nameof(AbstractModel.AfterArrowDislodged)] = MirroredHookMask.AdditionalCallbacks,
+        [nameof(AbstractModel.ModifyPreBlockDamageTarget)] = MirroredHookMask.AdditionalCallbacks,
+        [nameof(AbstractModel.ModifyDamageMultiplicativeLate)] = MirroredHookMask.AdditionalCallbacks,
         [nameof(AbstractModel.AfterModifyingBlockAmount)] = MirroredHookMask.AfterModifyingBlockAmount,
         [nameof(AbstractModel.AfterModifyingCardPlayCount)] = MirroredHookMask.AfterModifyingCardPlayCount,
         [nameof(AbstractModel.AfterModifyingCardPlayResultLocation)] = MirroredHookMask.AfterModifyingCardPlayResultLocation,
@@ -306,7 +313,8 @@ internal enum MirroredHookMask : ulong
     AfterPlayerTurnStartLate = 1UL << 60,
     ModifyOrbValue = 1UL << 61,
     GoldCallbacks = 1UL << 62,
-    ExtraTurnCallbacks = 1UL << 63,
+    AdditionalCallbacks = 1UL << 63,
+    ExtraTurnCallbacks = AdditionalCallbacks,
     All = ulong.MaxValue,
 }
 

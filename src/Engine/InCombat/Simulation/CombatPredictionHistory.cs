@@ -304,6 +304,9 @@ internal sealed partial class CombatPredictionHistory(PredictionTrace trace, Pla
         });
     }
 
+    public void RecordArrowShot(Player player, int slot)
+        => Record(new CombatPredictionArrowShotEntry { Player = player, Slot = slot });
+
     internal bool HasCardPlayStartedSince(int startIndex, PredictionTraceFrame actionFrame)
     {
         foreach (CombatPredictionHistoryEntry entry in EntriesFrom(startIndex))

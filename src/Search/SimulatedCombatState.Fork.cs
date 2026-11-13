@@ -17,6 +17,7 @@ internal sealed partial class SimulatedCombatState
             _escapedCreatures.Fork())
         {
             _mirroredHookLayout = _mirroredHookLayout,
+            _melodies = _melodies?.ToDictionary(pair => pair.Key, pair => pair.Value.Fork(context)),
             _mirroredRunHookLayout = _mirroredRunHookLayout,
             _drawNextTurn = _drawNextTurn?.Fork(),
             _retiredRootPowerSlots = _retiredRootPowerSlots?.Fork(),
@@ -119,6 +120,17 @@ internal sealed partial class SimulatedCombatState
             fork._nightmareSelections = new(_nightmareSelections.Count, _nightmareSelections.Comparer);
             foreach ((var power, PredictedCard card) in _nightmareSelections)
                 fork._nightmareSelections.Add(context.RemapOrSelf(power), ForkCard(card, context));
+        }
+        if (_showOffSources is not null)
+        {
+            fork._showOffSources = [];
+            foreach (var (power, card) in _showOffSources)
+            {
+                var childPower = context.RequireRemap(power);
+                var childCard = ForkCard(card, context);
+                childPower.ShowOffInstance = (MegaCrit.Sts2.Core.Models.Cards.ShowOff)childCard.MutablePreview;
+                fork._showOffSources.Add(childPower, childCard);
+            }
         }
         fork._returnToHandNextTurn = ForkCardSet(_returnToHandNextTurn, context);
         fork._swordSageReplayBonuses = ForkCardDictionary(_swordSageReplayBonuses, context);
@@ -319,6 +331,23 @@ internal sealed partial class SimulatedCombatState
         fork._applier = source.Applier;
         fork._target = source.Target;
         fork._amount = source.Amount;
+        if (source is MegaCrit.Sts2.Core.Models.Powers.EncorePower encore)
+        {
+            var data = ((MegaCrit.Sts2.Core.Models.Powers.EncorePower)fork).GetInternalData<MegaCrit.Sts2.Core.Models.Powers.EncorePower.Data>();
+            var original = encore.GetInternalData<MegaCrit.Sts2.Core.Models.Powers.EncorePower.Data>();
+            data.numberOfCardsPlayedSinceApplied = original.numberOfCardsPlayedSinceApplied;
+            data.cardsBeingPlayed.AddRange(original.cardsBeingPlayed.Select(context.RequireRemap));
+        }
+        if (source is MegaCrit.Sts2.Core.Models.Powers.YahPower yah)
+            ((MegaCrit.Sts2.Core.Models.Powers.YahPower)fork).GetInternalData<MegaCrit.Sts2.Core.Models.Powers.YahPower.Data>().triggeredThisTurn =
+                yah.GetInternalData<MegaCrit.Sts2.Core.Models.Powers.YahPower.Data>().triggeredThisTurn;
+        if (source is MegaCrit.Sts2.Core.Models.Powers.ImpaledPower impaled)
+        {
+            var copy = (MegaCrit.Sts2.Core.Models.Powers.ImpaledPower)fork;
+            copy.HitCounter = impaled.HitCounter;
+            copy.GetInternalData<MegaCrit.Sts2.Core.Models.Powers.ImpaledPower.Data>().arrowSources =
+                impaled.Arrows.Select(context.RequireRemap).ToList();
+        }
         context.Register(source, fork);
         return fork;
     }

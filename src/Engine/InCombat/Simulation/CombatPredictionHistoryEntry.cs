@@ -85,6 +85,12 @@ internal sealed class CombatPredictionRiskEntry : CombatPredictionHistoryEntry
     public required PredictionRiskReason Reason { get; init; }
 }
 
+internal sealed class CombatPredictionArrowShotEntry : CombatPredictionHistoryEntry
+{
+    public required Player Player { get; init; }
+    public required int Slot { get; init; }
+}
+
 /// <summary>
 /// Mirrors <see cref="CardPlayStartedEntry"/>.
 /// </summary>

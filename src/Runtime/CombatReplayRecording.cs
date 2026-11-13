@@ -91,7 +91,8 @@ internal sealed class CombatReplayRecording : IDisposable
     {
         CombatReplayRecording? recording = _pending;
         if (recording == null || recording._disposed || recording.IncompleteReason != null
-            || !CombatManager.Instance.IsInProgress || CardSelectCmd.Selector != null)
+            || !CombatManager.Instance.IsInProgress
+            || RunManager.Instance.CardSelectorStack.GetSelector(player) != null)
             return;
         if (cards.Count > 256) { recording.MarkIncomplete("choice_candidates_limit"); return; }
         if (recording._choiceContexts.Count >= 256) { recording.MarkIncomplete("pending_choice_context_limit"); return; }

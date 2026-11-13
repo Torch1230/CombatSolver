@@ -111,7 +111,8 @@ internal sealed partial class CombatPredictionSimulator
         Player player,
         int count,
         CardPilePosition position,
-        bool forceExhaust = false)
+        bool forceExhaust = false,
+        bool upgrade = false)
     {
         if (IsOverOrEnding)
         {
@@ -120,7 +121,7 @@ internal sealed partial class CombatPredictionSimulator
 
         using IDisposable? scope = (State.CombatState as ICombatPredictionCardExecutionSink)
             ?.BeginCardExecutionScope();
-        IReadOnlyList<PredictedCard> cards = MoveCardsForAutoPlay(player, count, position);
+        IReadOnlyList<PredictedCard> cards = MoveCardsForAutoPlay(player, count, position, upgrade);
         if (HasPendingChoice)
         {
             AppendExecutionContinuation(new AutoPlayCardsExecutionFrame(cards, forceExhaust, 0));
@@ -133,10 +134,11 @@ internal sealed partial class CombatPredictionSimulator
     internal IReadOnlyList<PredictedCard> MoveCardsForAutoPlay(
         Player player,
         int count,
-        CardPilePosition position)
+        CardPilePosition position,
+        bool upgrade = false)
     {
         var cards = new List<PredictedCard>(count);
-        ContinueMoveCardsForAutoPlay(player, count, position, cards, 0);
+        ContinueMoveCardsForAutoPlay(player, count, position, cards, 0, upgrade);
         return cards;
     }
 

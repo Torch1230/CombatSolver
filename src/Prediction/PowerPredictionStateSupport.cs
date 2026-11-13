@@ -19,6 +19,9 @@ internal static class PowerPredictionStateSupport
     {
         switch (target, source)
         {
+            case (AimPower value, AimPower original):
+                AimPowerMirrors.CaptureRoot(simulator, value, original);
+                break;
             case (DarkEmbracePower value, DarkEmbracePower original):
                 _ = simulator.StateStore.GetReadOnly(value, () => new DarkEmbracePredictionState(original));
                 break;

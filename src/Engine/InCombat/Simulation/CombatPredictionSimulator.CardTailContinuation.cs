@@ -47,6 +47,7 @@ internal sealed partial class CombatPredictionSimulator
         {
             completionHistoryStart = History.Entries.Count;
             History.CardPlayFinished(card, play, card.HasKeyword(State, CardKeyword.Ethereal));
+            ((SimulatedCombatState)State.CombatState).RecordMelodyFinished(play);
             HookMirrors.AfterCardPlayed(this, card, play);
             if (HasPendingChoice) return Suspend(CardPlayTailStage.AfterPlayed);
             stage = CardPlayTailStage.AfterPlayed;
@@ -85,6 +86,15 @@ internal sealed partial class CombatPredictionSimulator
 
     private bool ContinueCardResultExecution(PredictedCard card, Player originalOwner, CardLocation result, CardResultStage stage)
     {
+        if (stage == CardResultStage.Transfer && _transformedCardResults?.Remove(card, out var replacement) == true)
+        {
+            card.MutablePreview.EnergyCost.AfterCardPlayedCleanup();
+            card.MutablePreview._temporaryStarCosts.RemoveAll(cost => cost.ClearsWhenCardIsPlayed);
+            card.MutablePreview.CurrentTarget = null;
+            card.MutablePreview.CurrentPlayIndex = 0;
+            card.InvalidateCaches();
+            card = replacement;
+        }
         var preview = card.MutablePreview;
         if (stage == CardResultStage.Transfer)
         {

@@ -216,6 +216,19 @@ internal sealed class CombatPredictionState
                 _ = GetCreature(osty);
             GetPlayerCombatState(player).MaterializeRoot();
         }
+        var captured = Players.SelectMany(player => GetPlayerCombatState(player).AllCards).ToList();
+        foreach (PredictedCard card in captured.ToArray()) card.CaptureDupeSource(ResolveSource);
+
+        PredictedCard ResolveSource(CardModel model)
+        {
+            PredictedCard? source = captured.FirstOrDefault(card => card.References(model));
+            if (source is not null) return source;
+            source = new PredictedCard(model);
+            source.MaterializePreview();
+            captured.Add(source);
+            source.CaptureDupeSource(ResolveSource);
+            return source;
+        }
     }
 
     private IEnumerable<Creature> ExcludeRemoved(IEnumerable<Creature> creatures)

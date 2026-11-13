@@ -113,6 +113,16 @@ internal sealed partial class CombatPredictionSimulator
                 return false;
             }
             stage = CardExecutionStage.Start;
+            if (card.Preview.TransformIntoAfterPlay is { } replacement)
+            {
+                RejectExecutionContinuation();
+                CardChoiceSupport.TransformCardToGeneratedReplacement(this, card, replacement);
+                if (HasPendingChoice) return false;
+                card.MutablePreview.TransformIntoAfterPlay = null;
+                (_transformedCardResults ??= []).Add(card, State.FindCard(replacement)
+                    ?? throw new InvalidOperationException("Transformed card is missing from its result pile."));
+                return true;
+            }
             activePlay = null;
             continue;
 

@@ -155,7 +155,7 @@ internal static class PredictionUtils
 
     public static bool NeedsEndOfTurnCleanup(CardModel card)
     {
-        if (card.ExhaustOnNextPlay
+        if (card.ExtraReplayThisTurn != 0 || card.ExhaustOnNextPlay
             || GetSingleTurnRetain(card)
             || GetSingleTurnSly(card))
         {

@@ -7,7 +7,7 @@ namespace CombatSolver.Engine.InCombat.Simulation;
 internal sealed partial class CombatPredictionSimulator
 {
     private bool ContinueMoveCardsForAutoPlay(Player player, int count, CardPilePosition position,
-        List<PredictedCard> cards, int nextIndex)
+        List<PredictedCard> cards, int nextIndex, bool upgrade)
     {
         var state = State.GetPlayerCombatState(player);
         for (int index = nextIndex; index < count; index++)
@@ -15,7 +15,7 @@ internal sealed partial class CombatPredictionSimulator
             ShuffleIfNecessary(player);
             if (HasPendingChoice)
             {
-                AppendExecutionContinuation(new MoveAutoPlayExecutionFrame(player, count, position, cards, index));
+                AppendExecutionContinuation(new MoveAutoPlayExecutionFrame(player, count, position, cards, index, upgrade));
                 return false;
             }
             PredictedCard? card = position switch
@@ -26,6 +26,7 @@ internal sealed partial class CombatPredictionSimulator
                 _ => null,
             };
             if (card is null) break;
+            if (upgrade) card.Upgrade();
             cards.Add(card);
             AddToPile(card, state.PlayPile);
             History.AutoPlayFromDrawPile(card);
@@ -49,13 +50,13 @@ internal sealed partial class CombatPredictionSimulator
     }
 
     private sealed record MoveAutoPlayExecutionFrame(Player Player, int Count, CardPilePosition Position,
-        List<PredictedCard> Cards, int NextIndex) : ICombatPredictionExecutionFrame
+        List<PredictedCard> Cards, int NextIndex, bool Upgrade) : ICombatPredictionExecutionFrame
     {
         public void PrepareFork(PredictionForkContext context) => ForkExecutionCardList(Cards, context);
         public ICombatPredictionExecutionFrame Fork(PredictionForkContext context)
             => this with { Cards = context.RequireRemap(Cards) };
         public bool Resume(CombatPredictionSimulator simulator)
-            => simulator.ContinueMoveCardsForAutoPlay(Player, Count, Position, Cards, NextIndex);
+            => simulator.ContinueMoveCardsForAutoPlay(Player, Count, Position, Cards, NextIndex, Upgrade);
     }
 
     private sealed record AutoPlayCardsExecutionFrame(IReadOnlyList<PredictedCard> Cards, bool ForceExhaust, int NextIndex)

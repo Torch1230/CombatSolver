@@ -80,6 +80,8 @@ internal sealed record ContinuationStamp(string StateText)
             pcs.Stars,
             player.Gold);
         AppendOsty(text, player.Osty, player.Osty?.CurrentHp ?? 0, player.Osty?.MaxHp ?? 0);
+        AppendPets(text, state.Allies.Where(creature => creature.PetOwner == player && creature != player.Osty),
+            creature => creature.CurrentHp, creature => creature.MaxHp, creature => creature.Block);
         AppendEnemies(text, state.Enemies,
             enemy => enemy.CurrentHp,
             enemy => enemy.MaxHp,
@@ -102,6 +104,10 @@ internal sealed record ContinuationStamp(string StateText)
         if (PredictionModHookSubscriberCapture.CaptureLiveLoadoutSummonPowerState(state) is { } loadoutSummonState)
             text.Append(";loadout_summon_powers=").Append(loadoutSummonState);
         AppendPowers(text, state.Creatures.SelectMany(creature => creature.Powers));
+        SimulatedCombatState.AppendLiveMelodyState(text, player, state);
+        SimulatedCombatState.AppendLiveShowOffState(text, player);
+        FoolStateSupport.AppendState(text, player, player.PlayerCombatState!.Arrows,
+            state.Creatures.SelectMany(creature => creature.Powers));
         AppendRng(text,
             state.RunState.Rng.Shuffle.CaptureState(),
             state.RunState.Rng.CombatCardGeneration.CaptureState(),
@@ -112,6 +118,7 @@ internal sealed record ContinuationStamp(string StateText)
             state.RunState.Rng.CombatOrbGeneration.CaptureState(),
             state.RunState.Rng.MonsterAi.CaptureState(),
             state.RunState.Rng.Niche.CaptureState());
+        AppendRngState(text.Append(";non_combat_generation="), player.PlayerRng.NonCombatGeneration.CaptureState());
         text.Append(";max_hand_size=").Append(RitsuLibFramework.GetMaxHandSize(player));
         return new ContinuationStamp(text.ToString());
     }
@@ -140,6 +147,10 @@ internal sealed record ContinuationStamp(string StateText)
             combat.GetOsty(player) is { } osty ? simulator.State.GetCreature(osty).CurrentHp : 0,
             combat.GetOstyMaxHp(simulator, player));
         IReadOnlyList<Creature> predictedEnemies = combat.Enemies;
+        AppendPets(text, combat.Allies.Where(creature => creature.PetOwner == player && creature != combat.GetOsty(player)),
+            creature => simulator.State.GetCreature(creature).CurrentHp,
+            creature => simulator.State.GetCreature(creature).MaxHp,
+            creature => simulator.State.GetCreature(creature).Block);
         AppendEnemies(text, predictedEnemies,
             enemy => simulator.State.GetCreature(enemy).CurrentHp,
             enemy => simulator.State.GetCreature(enemy).MaxHp,
@@ -168,6 +179,9 @@ internal sealed record ContinuationStamp(string StateText)
         if (combat.HasInactiveLoadoutSummonPowers)
             text.Append(";loadout_summon_powers=empty");
         AppendPowers(text, combat.EffectivePowers(), simulator);
+        combat.AppendMelodyState(text, player);
+        combat.AppendShowOffState(text, player, simulator);
+        FoolStateSupport.AppendState(text, player, simulator.State.GetPlayerCombatState(player).Arrows, combat.EffectivePowers(), simulator);
         AppendRng(text,
             simulator.Rng.ShuffleState,
             simulator.Rng.CombatCardGenerationState,
@@ -178,6 +192,7 @@ internal sealed record ContinuationStamp(string StateText)
             simulator.Rng.CombatOrbGenerationState,
             simulator.Rng.MonsterAiState,
             simulator.Rng.NicheState);
+        AppendRngState(text.Append(";non_combat_generation="), simulator.Rng.NonCombatGenerationState(player));
         text.Append(";max_hand_size=").Append(simulator.GetMaxHandSize(player));
         return new ContinuationStamp(text.ToString());
     }
@@ -345,22 +360,32 @@ internal sealed record ContinuationStamp(string StateText)
     {
         text.Append(';').Append(marker).Append('=');
         foreach (PredictedCard card in pile.Cards)
-            AppendCard(text, card.Preview, discoverUnregisteredBaseLibModifiers: false);
+            AppendCard(text, card.Preview, discoverUnregisteredBaseLibModifiers: false, card.DupeSource?.Preview);
+    }
+
+    private static void AppendPets(StringBuilder text, IEnumerable<Creature> pets,
+        Func<Creature, int> hp, Func<Creature, int> maxHp, Func<Creature, int> block)
+    {
+        text.Append(";pets=");
+        foreach (Creature pet in pets)
+            text.Append(pet.CombatId).Append(':').Append(pet.Monster!.Id.Entry).Append(':')
+                .Append(hp(pet)).Append('/').Append(maxHp(pet)).Append('/').Append(block(pet)).Append(',');
     }
 
     private static void AppendCard(
         StringBuilder text,
         CardModel card,
-        bool discoverUnregisteredBaseLibModifiers)
+        bool discoverUnregisteredBaseLibModifiers,
+        CardModel? dupeSource = null)
     {
         text.Append(card.Id.Entry).Append('+').Append(card.CurrentUpgradeLevel)
             .Append('/').Append(card.EnergyCost.CostsX).Append(':')
             .Append(card.EnergyCost.GetWithModifiers(CostModifiers.Local))
             .Append('/').Append(card.HasStarCostX).Append(':').Append(card.CurrentStarCost)
-            .Append('/').Append(card.BaseReplayCount)
+            .Append('/').Append(card.BaseReplayCount).Append(':').Append(card.ExtraReplayThisTurn)
             .Append('/').Append(card.ExhaustOnNextPlay)
             .Append('/').Append(card.IsSlyThisTurn)
-            .Append('/').Append(card.ShouldRetainThisTurn)
+            .Append('/').Append(card._hasSingleTurnRetain)
             .Append('/').Append(card.DeckVersion != null)
             .Append('/').Append(card.HasBeenRemovedFromState)
             .Append('/');
@@ -402,6 +427,7 @@ internal sealed record ContinuationStamp(string StateText)
                 break;
         }
         CardCostStateSupport.Append(text, card);
+        CardInstanceStateSupport.Append(text, card, dupeSource);
         text.Append("/keywords=[");
         text.AppendJoin(',', card.GetKeywordsWithSources(KeywordSources.Local).Order());
         text.Append("]/baselib=");

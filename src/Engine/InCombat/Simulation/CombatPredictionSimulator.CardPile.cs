@@ -122,7 +122,7 @@ internal sealed partial class CombatPredictionSimulator
         // implementation's iteration order; card piles do not contain duplicates, so the preview
         // uses the source order directly instead of modeling that implementation detail.
         shuffledCards.AddRange(state.DrawPile.Cards);
-        shuffledCards.StableShuffle(Rng.Shuffle);
+        shuffledCards.StableShuffle(Rng.Shuffle, this);
 
         HookMirrors.ModifyShuffleOrder(this, player, shuffledCards, isInitialShuffle: false);
 
@@ -138,7 +138,7 @@ internal sealed partial class CombatPredictionSimulator
     /// <summary>
     /// Mirrors <see cref="CardPileCmd.ShuffleIfNecessary"/>.
     /// </summary>
-    private void ShuffleIfNecessary(Player player)
+    public void ShuffleIfNecessary(Player player)
     {
         var state = State.GetPlayerCombatState(player);
         if (state.DrawPile.IsEmpty && !state.DiscardPile.IsEmpty)

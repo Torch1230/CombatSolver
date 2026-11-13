@@ -2,6 +2,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Entities.FoolArrows;
 using CombatSolver.Engine.Common;
 
 namespace CombatSolver.Engine.InCombat.Simulation;
@@ -16,6 +17,18 @@ internal sealed class SimPlayerCombatState
     private SimCardPile? _exhaustPile;
     private SimCardPile? _playPile;
     private SimCardPile[]? _allPiles;
+    private List<ArrowSlot>? _arrows;
+    private IReadOnlyDictionary<ArrowSlot, ArrowSlot>? _capturedArrows;
+
+    public IReadOnlyList<ArrowSlot> Arrows => _arrows ?? (IReadOnlyList<ArrowSlot>)Array.Empty<ArrowSlot>();
+    public ArrowSlot CaptureArrowReference(ArrowSlot original) => _capturedArrows![original];
+    public void GainArrowSlot() => (_arrows ??= []).Add(new ArrowSlot(_liveState._player));
+
+    private static ArrowSlot CloneArrow(ArrowSlot source) => new(source.owner)
+    {
+        Status = source.Status,
+        DestroyAfterImpaled = source.DestroyAfterImpaled
+    };
 
     public SimOrbQueue OrbQueue => _orbQueue ??= new SimOrbQueue(_liveState.OrbQueue);
 
@@ -95,6 +108,11 @@ internal sealed class SimPlayerCombatState
         Stars = liveState.Stars;
         Phase = liveState.Phase;
         HooksActive = liveState._player.IsActiveForHooks;
+        if (liveState.Arrows.Count > 0)
+        {
+            _capturedArrows = liveState.Arrows.ToDictionary(arrow => arrow, CloneArrow);
+            _arrows = _capturedArrows.Values.ToList();
+        }
     }
 
     private SimPlayerCombatState(PlayerCombatState liveState, int energy, int stars)
@@ -194,6 +212,16 @@ internal sealed class SimPlayerCombatState
             _playPile = _playPile?.Fork(context)
         };
         context.Register(this, fork);
+        if (_arrows is not null)
+        {
+            fork._arrows = new List<ArrowSlot>(_arrows.Count);
+            foreach (ArrowSlot arrow in _arrows)
+            {
+                ArrowSlot clone = CloneArrow(arrow);
+                context.Register(arrow, clone);
+                fork._arrows.Add(clone);
+            }
+        }
         return fork;
     }
 }
