@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "combatSolverVersion": "0.49.3",
-  "gameVersion": "0.111.0",
+  "combatSolverVersion": "0.50.1",
+  "gameVersion": "0.113.0",
   "unresolvedCount": 0,
   "entries": [
     {
@@ -32,6 +32,14 @@
       "key": "MegaCrit.Sts2.Core.Models.Cards.Catastrophe.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
       "category": "Cards",
       "entityType": "MegaCrit.Sts2.Core.Models.Cards.Catastrophe",
+      "method": "OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
+      "classification": "Supported",
+      "evidence": "Prediction AutoPlay lifecycle with nested-choice resolution"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Cards.ChoChorus.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
+      "category": "Cards",
+      "entityType": "MegaCrit.Sts2.Core.Models.Cards.ChoChorus",
       "method": "OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
       "classification": "Supported",
       "evidence": "Prediction AutoPlay lifecycle with nested-choice resolution"
@@ -85,6 +93,22 @@
       "evidence": "Prediction AutoPlay lifecycle with nested-choice resolution"
     },
     {
+      "key": "MegaCrit.Sts2.Core.Models.Cards.TheDevil.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
+      "category": "Cards",
+      "entityType": "MegaCrit.Sts2.Core.Models.Cards.TheDevil",
+      "method": "OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
+      "classification": "Supported",
+      "evidence": "Prediction AutoPlay lifecycle with nested-choice resolution"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Cards.TheFool.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
+      "category": "Cards",
+      "entityType": "MegaCrit.Sts2.Core.Models.Cards.TheFool",
+      "method": "OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
+      "classification": "Supported",
+      "evidence": "Prediction AutoPlay lifecycle with nested-choice resolution"
+    },
+    {
       "key": "MegaCrit.Sts2.Core.Models.Cards.Uproar.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
       "category": "Cards",
       "entityType": "MegaCrit.Sts2.Core.Models.Cards.Uproar",
@@ -125,10 +149,26 @@
       "evidence": "ImitationLearningPower is produced only by a MultiplayerOnly card"
     },
     {
+      "key": "MegaCrit.Sts2.Core.Models.Powers.LostLutePower.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
+      "category": "Powers",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.LostLutePower",
+      "method": "AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)",
+      "classification": "Supported",
+      "evidence": "Prediction AutoPlay lifecycle with nested-choice resolution"
+    },
+    {
       "key": "MegaCrit.Sts2.Core.Models.Powers.MayhemPower.AfterAutoPrePlayPhaseEntered(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)",
       "category": "Powers",
       "entityType": "MegaCrit.Sts2.Core.Models.Powers.MayhemPower",
       "method": "AfterAutoPrePlayPhaseEntered(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)",
+      "classification": "Supported",
+      "evidence": "Prediction AutoPlay lifecycle with nested-choice resolution"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Powers.SimpletonPower.AfterAutoPostPlayPhaseEntered(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)",
+      "category": "Powers",
+      "entityType": "MegaCrit.Sts2.Core.Models.Powers.SimpletonPower",
+      "method": "AfterAutoPostPlayPhaseEntered(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)",
       "classification": "Supported",
       "evidence": "Prediction AutoPlay lifecycle with nested-choice resolution"
     },

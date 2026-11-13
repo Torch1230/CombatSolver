@@ -1,0 +1,24 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 999,
+    "clearPlayerPilesBeforeMove": true, "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      { "cardId": "QUIVER", "pile": "Hand", "count": 2 },
+      { "cardId": "QUIETUS", "pile": "Hand" },
+      { "cardId": "NOCK", "pile": "Hand", "count": 2 },
+      { "cardId": "BLOSSOM_SHOT", "pile": "Hand" },
+      { "cardId": "DEFEND_FOOL", "pile": "Hand" },
+      { "cardId": "RAIN_SHOT", "pile": "Hand" }
+    ],
+    "cardPlayChecksAfterMove": [
+      { "cardId": "QUIVER", "target": "None" },
+      { "cardId": "QUIVER", "target": "None" },
+      { "cardId": "QUIETUS", "target": "None" },
+      { "cardId": "NOCK", "target": "None" },
+      { "cardId": "BLOSSOM_SHOT", "target": "Enemy" },
+      { "cardId": "DEFEND_FOOL", "target": "None" },
+      { "cardId": "NOCK", "target": "None" },
+      { "cardId": "RAIN_SHOT", "target": "Enemy" }
+    ]
+  }
+]

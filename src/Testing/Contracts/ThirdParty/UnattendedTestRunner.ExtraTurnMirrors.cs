@@ -29,7 +29,7 @@ internal sealed partial class UnattendedTestRunner
             return Task.CompletedTask;
         }
         private static int ReadNative(Player player)
-            => (player.Creature.GetPower<AmbergrisPower>()?.Amount ?? 0)
+            => (player.Creature.GetPower<ExtraTurnPower>()?.Amount ?? 0)
                 + ((bool)AccessTools.Field(typeof(PaelsEye), "_usedThisCombat")
                     .GetValue(player.Relics.OfType<PaelsEye>().Single())! ? 100 : 0);
     }
@@ -61,20 +61,22 @@ internal sealed partial class UnattendedTestRunner
         await InjectRelicAsync(player, new() { RelicId = "PAELS_EYE" });
         PaelsEye relic = player.Relics.OfType<PaelsEye>().Single();
 
+        foreach (bool eyeUsed in new[] { false, true })
         for (int position = 0; position < 3; position++)
         {
             foreach (PowerModel power in player.Creature.Powers.ToArray())
                 await PowerCmd.Remove(power);
-            AccessTools.Field(typeof(PaelsEye), "_usedThisCombat").SetValue(relic, false);
-            await InjectPowerAsync(combat, player, new() { PowerId = "AMBERGRIS_POWER", Target = "Player", Amount = 1 });
+            AccessTools.Field(typeof(PaelsEye), "_usedThisCombat").SetValue(relic, eyeUsed);
+            AccessTools.Field(typeof(PaelsEye), "_wasOwnerPartOfLastPlayerTurn").SetValue(relic, true);
+            await InjectPowerAsync(combat, player, new() { PowerId = "EXTRA_TURN_POWER", Target = "Player", Amount = 1 });
             CombatPredictionSimulator parent = CombatRootSnapshot.Capture(combat).ForkSimulator();
             CombatPredictionSimulator child = parent.Fork();
             var shadow = (SimulatedCombatState)child.State.CombatState;
             var initial = CaptureActual(combat, player, combat.Enemies[0]);
-            var native = new List<AbstractModel> { player.Creature.GetPower<AmbergrisPower>()!, relic };
+            var native = new List<AbstractModel> { player.Creature.GetPower<ExtraTurnPower>()!, relic };
             var predicted = new List<AbstractModel>
             {
-                shadow.GetPower<AmbergrisPower>(player.Creature)!, shadow.RelicsOf(player).OfType<PaelsEye>().Single()
+                shadow.GetPower<ExtraTurnPower>(player.Creature)!, shadow.RelicsOf(player).OfType<PaelsEye>().Single()
             };
             native.Insert(position, reader);
             predicted.Insert(position, reader);
@@ -88,15 +90,19 @@ internal sealed partial class UnattendedTestRunner
             try
             {
                 reader.Observed.Clear();
-                bool predictedTurn = HookMirrors.ShouldTakeExtraTurn(child, shadow, player);
+                bool predictedTurn = HookMirrors.ShouldTakeExtraTurn(child, shadow, player, out var predictedSource);
                 int[] predictedShould = reader.Observed.ToArray();
                 reader.Observed.Clear();
-                bool actualTurn = Hook.ShouldTakeExtraTurn(combat, player);
+                bool actualTurn = Hook.ShouldTakeExtraTurn(combat, player, out var actualSource);
                 if (!actualTurn || predictedTurn != actualTurn || !predictedShould.SequenceEqual(reader.Observed)
-                    || predictedShould.Length != (position == 0 ? 1 : 0))
-                    throw new InvalidOperationException($"Extra-turn qualification order differs at position {position}.");
+                    || predictedShould.Length != (eyeUsed && position == 0 ? 1 : 0)
+                    || actualSource?.GetType() != predictedSource?.GetType()
+                    || actualSource?.GetType() != (eyeUsed ? typeof(ExtraTurnPower) : typeof(PaelsEye)))
+                    throw new InvalidOperationException($"Extra-turn qualification order differs at position {position}, eyeUsed={eyeUsed}: "
+                        + $"actual={actualTurn}/{actualSource?.GetType().Name} [{string.Join(',', reader.Observed)}], "
+                        + $"predicted={predictedTurn}/{predictedSource?.GetType().Name} [{string.Join(',', predictedShould)}].");
                 reader.Observed.Clear();
-                if (!HookMirrors.AfterTakingExtraTurn(child, shadow, player))
+                if (!HookMirrors.AfterTakingExtraTurn(child, shadow, player, predictedSource!))
                     throw new InvalidOperationException("Extra-turn fixture unexpectedly requested a choice.");
                 int[] predictedAfter = reader.Observed.ToArray();
                 var expected = CaptureSimulated(child, shadow, player, combat.Enemies[0]);
@@ -106,10 +112,9 @@ internal sealed partial class UnattendedTestRunner
                     (SimulatedCombatState)parent.State.CombatState, player, combat.Enemies[0]),
                     _request.ScenarioId, "ForkIsolation");
                 reader.Observed.Clear();
-                await Hook.AfterTakingExtraTurn(combat, player);
-                int expectedObservation = position switch { 0 => 1, 1 => 0, _ => 100 };
+                await Hook.AfterTakingExtraTurn(combat, player, actualSource!);
                 if (!predictedAfter.SequenceEqual(reader.Observed)
-                    || !predictedAfter.SequenceEqual([expectedObservation]))
+                    || predictedAfter.Length != 0)
                     throw new InvalidOperationException($"Extra-turn consumption order differs at position {position}: "
                         + $"predicted={string.Join(',', predictedAfter)}, native={string.Join(',', reader.Observed)}.");
                 AssertSnapshotEqual(expected, CaptureActual(combat, player, combat.Enemies[0]),
@@ -129,10 +134,10 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("Late extra-turn registration was accepted.");
         }
         catch (InvalidOperationException error) when (error.Message.Contains("before root capture", StringComparison.Ordinal)) { }
-        _completedChecks.Add("ExtraTurnMirrors:NativeOrder:ThreePositions:ShortCircuit:FullState:Fork:LiveIsolation:Sealed");
+        _completedChecks.Add("ExtraTurnMirrors:NativeOrder:EarlyPriority:EyeUsedAndUnused:ThreePositions:SelectedSource:FullState:Fork:LiveIsolation:Sealed");
 
         static int ReadPredicted(ExtraTurnMirrorContext context)
-            => context.Combat.GetAmount<AmbergrisPower>(context.Player.Creature)
+            => context.Combat.GetAmount<ExtraTurnPower>(context.Player.Creature)
                 + (context.Combat.IsPaelsEyeUnused(context.Combat.RelicsOf(context.Player).OfType<PaelsEye>().Single()) ? 0 : 100);
     }
 }

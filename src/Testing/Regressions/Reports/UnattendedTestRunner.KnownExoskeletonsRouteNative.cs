@@ -101,7 +101,7 @@ internal sealed partial class UnattendedTestRunner
     private async Task<int> RunKnownExoskeletonsRouteNativeAsync(CombatState combat, Player player)
     {
         if (_knownExoskeletonsNativeObservation != null || _mercuryTerminalObservation != null
-            || CardSelectCmd.Selector != null)
+            || NativeTestCardSelectors.Current != null)
             throw new InvalidOperationException("外骨骼虫原版对照不能覆盖现有观察者或选牌器。");
         List<KnownExoskeletonsPrefix> prefixes = [];
         RunKnownExoskeletonsRouteReplay(combat, player, prefixes);
@@ -150,7 +150,7 @@ internal sealed partial class UnattendedTestRunner
                     throw new InvalidOperationException($"外骨骼虫原版第 {index + 1} 步之前不在同一战斗 T{action.Turn} Play。");
                 KnownExoskeletonsNativeSelector selector = new(player, action.GetActionChoicesInExecutionOrder());
                 KnownExoskeletonsActualPrefix actual;
-                using (CardSelectCmd.PushSelector(selector))
+                using (NativeTestCardSelectors.Push(selector))
                 {
                     if (action.Kind == PlanActionKind.PlayCard)
                     {

@@ -1,0 +1,139 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "DINGY_DAGGER",
+        "pile": "Hand",
+        "upgradeLevels": 6
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "DINGY_DAGGER",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "MIGHTY_WEAPON",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "MIGHTY_WEAPON",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "MIGHTY_SHIELD",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "MIGHTY_SHIELD",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "GOD_BYRD",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "GOD_BYRD",
+        "target": "None"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "MY_SHINIES",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "MY_SHINIES",
+        "target": "Enemy"
+      }
+    ]
+  }
+]

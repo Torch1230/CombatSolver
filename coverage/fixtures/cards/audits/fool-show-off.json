@@ -1,0 +1,15 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 15,
+    "clearPlayerPilesBeforeMove": true, "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      { "cardId": "SHOW_OFF", "pile": "Hand", "count": 2 },
+      { "cardId": "FOOLISH_SHOT", "pile": "Hand" }
+    ],
+    "cardPlayChecksAfterMove": [
+      { "cardId": "SHOW_OFF", "target": "None" },
+      { "cardId": "SHOW_OFF", "target": "None" },
+      { "cardId": "FOOLISH_SHOT", "target": "Enemy" }
+    ]
+  }
+]

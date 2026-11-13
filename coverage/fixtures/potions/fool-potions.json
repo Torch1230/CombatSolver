@@ -1,0 +1,5 @@
+[
+  { "potionId": "PRECISION_POTION", "target": "Player", "clearPlayerHandBeforeUse": true },
+  { "potionId": "BOTTLED_SONG", "target": "Player", "clearPlayerHandBeforeUse": true },
+  { "potionId": "CRYSTALLINE_EUPHORIA", "target": "Player", "clearPlayerHandBeforeUse": true }
+]

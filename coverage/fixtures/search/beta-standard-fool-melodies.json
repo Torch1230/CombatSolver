@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "seed": "BETA113-fool-melodies",
+  "characterId": "FOOL",
+  "ascension": 0,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "characterCards": {
+    "ids": [
+      "WAH_CHO_KI",
+      "LOST_LUTE",
+      "CHO_CHORUS",
+      "BOUNCE",
+      "STRIKE_FOOL",
+      "DEFEND_FOOL",
+      "STRIKE_FOOL",
+      "STRIKE_FOOL"
+    ]
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true
+}

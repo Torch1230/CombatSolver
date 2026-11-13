@@ -16,6 +16,33 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private void AssertDingyDaggerNames(CombatState combat)
+    {
+        string language = LocManager.Instance.Language;
+        try
+        {
+            foreach (string locale in new[] { "zhs", "eng" })
+            {
+                LocManager.Instance.SetLanguage(locale);
+                SolverDisplayNames names = SolverDisplayNames.Capture(combat);
+                var dagger = (DingyDagger)ModelDb.Card<DingyDagger>().ToMutable();
+                foreach (int level in new[] { 0, 1, 2, 3, 5, 6, 7, 100000000, 999999999 })
+                {
+                    dagger.CurrentUpgradeLevel = level;
+                    string native = dagger.Title;
+                    if (names.Card(dagger) != native || SolverUiModelNames.Card(dagger.Id.Entry, level, "") != native)
+                        throw new InvalidOperationException($"Dingy Dagger title differs: {locale}/{level}.");
+                }
+                string frozen = names.Card(dagger);
+                LocManager.Instance.SetLanguage(locale == "eng" ? "zhs" : "eng");
+                if (names.Card(dagger) != frozen)
+                    throw new InvalidOperationException("Frozen dagger names read the live language.");
+            }
+        }
+        finally { LocManager.Instance.SetLanguage(language); }
+        _completedChecks.Add("DingyDaggerNames:CanonicalCapture:NativeThresholds:LargeUpgradeLevels:EnglishChinese:FrozenLanguage");
+    }
+
     private async Task AssertLoopDisplayAsync(bool english)
     {
         PlanAction targeted = new(PlanActionKind.PlayCard, 1, CardId: "STRIKE_IRONCLAD",

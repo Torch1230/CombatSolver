@@ -1,0 +1,62 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "playerTurnNumberBefore": 1,
+    "roundNumberBefore": 1,
+    "relicsBeforeMove": [
+      {
+        "relicId": "CONDUCTORS_BATON",
+        "addWithoutObtainedEffects": true
+      },
+      {
+        "relicId": "STORYTELLER",
+        "addWithoutObtainedEffects": true
+      },
+      {
+        "relicId": "OBSIDIAN_VICE",
+        "addWithoutObtainedEffects": true
+      },
+      {
+        "relicId": "MIGHTY_WINGS",
+        "addWithoutObtainedEffects": true
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "WAH_CHO_KI",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "BLUDGEON",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "WAH_CHO_KI",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "BLUDGEON",
+        "target": "Enemy"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  }
+]

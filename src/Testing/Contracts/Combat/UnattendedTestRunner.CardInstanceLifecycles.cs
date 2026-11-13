@@ -143,8 +143,7 @@ internal sealed partial class UnattendedTestRunner
             var glam = ModelDb.Enchantment<MegaCrit.Sts2.Core.Models.Enchantments.Glam>().ToMutable();
             // Match the completed replay enchantment at this draw boundary.
             CombatSolver.Engine.Common.PredictionUtils.EnchantCard(glam, pommel, 1);
-            ((MegaCrit.Sts2.Core.Models.Enchantments.Glam)pommel.Enchantment!)._usedThisCombat = true;
-            pommel.Enchantment._status = MegaCrit.Sts2.Core.Entities.Enchantments.EnchantmentStatus.Disabled;
+            pommel.Enchantment!._status = MegaCrit.Sts2.Core.Entities.Enchantments.EnchantmentStatus.Disabled;
             await InjectCardAsync(combat, player, new() { CardId = "STRIKE_IRONCLAD", Pile = "Discard" });
             int[] hps = [45, 47, 12], maxHps = [52, 50, 48];
             for (int i = 0; i < 3; i++)

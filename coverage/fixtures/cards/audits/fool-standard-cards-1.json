@@ -1,0 +1,688 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "ALL_IS_WELL",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "ALL_IS_WELL",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "ANGUISH",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "ANGUISH",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "ARCHERY",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "ARCHERY",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "ARROW_STAB",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "QUIVER",
+        "pile": "Hand"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "QUIVER",
+        "target": "None"
+      },
+      {
+        "cardId": "ARROW_STAB",
+        "target": "Enemy",
+        "useChoice": true,
+        "choiceCardIds": [
+          "FOOLISH_SHOT"
+        ]
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BLOSSOM_SHOT",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "QUIVER",
+        "pile": "Hand"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "QUIVER",
+        "target": "None"
+      },
+      {
+        "cardId": "BLOSSOM_SHOT",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BLOT_OUT_THE_SKY",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "QUIVER",
+        "pile": "Hand"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "QUIVER",
+        "target": "None"
+      },
+      {
+        "cardId": "BLOT_OUT_THE_SKY",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BOUNCE",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "BOUNCE",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BOW_SMACK",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "BOW_SMACK",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BRACE",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "BRACE",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BRIGHTEN_UP",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "BRIGHTEN_UP",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "CHO_BARBS",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CHO_BARBS",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "CHO_CHORUS",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CHO_CHORUS",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "CHO_FIRM",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CHO_FIRM",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 12,
+    "cardsBeforeMove": [
+      {
+        "cardId": "CHO_KI",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "JOY",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CHO_KI",
+        "target": "None"
+      }
+    ]
+  }
+]

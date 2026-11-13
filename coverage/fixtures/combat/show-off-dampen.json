@@ -1,0 +1,20 @@
+[
+  {
+    "monsterId": "MagiKnight",
+    "moveId": "DAMPEN_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "SHOW_OFF",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      }
+    ],
+    "expectedPlayerCardUpgrades": {
+      "SHOW_OFF": 0
+    }
+  }
+]

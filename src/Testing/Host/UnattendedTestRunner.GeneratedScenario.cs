@@ -19,7 +19,7 @@ internal sealed partial class UnattendedTestRunner
         {
             if (_generatedScenario == null) return null;
             _generatedChoices = new(_generatedScenario.Options.SetupChoices);
-            return CardSelectCmd.PushSelector(_generatedChoices, localOnly: true);
+            return NativeTestCardSelectors.Push(_generatedChoices, localOnly: true);
         }
 
         private void PrepareGeneratedScenario()

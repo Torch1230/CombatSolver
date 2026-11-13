@@ -61,7 +61,7 @@ internal sealed partial class UnattendedTestRunner
     // consumes exactly those semantic tokens and rejects unexpected requests even for no-choice cards.
     private async Task<int> RunKnownCustomRouteNativeAsync(CombatState combat, Player player)
     {
-        if (_mercuryTerminalObservation != null || CardSelectCmd.Selector != null)
+        if (_mercuryTerminalObservation != null || NativeTestCardSelectors.Current != null)
             throw new InvalidOperationException("已知路线原版对照不能覆盖现有终局观察者或选牌器。");
         List<(PlanAction Action, MoveStateSnapshot State)> prefixes = [];
         RunKnownCustomRouteReplay(combat, player, prefixes);
@@ -94,7 +94,7 @@ internal sealed partial class UnattendedTestRunner
                     ? combat.Enemies.Single(candidate => candidate.CombatId == targetId)
                     : null;
                 KnownCustomNativeSelector selector = new(player, action.GetActionChoicesInExecutionOrder());
-                using (CardSelectCmd.PushSelector(selector))
+                using (NativeTestCardSelectors.Push(selector))
                 {
                     if (action.Kind == PlanActionKind.UsePotion)
                     {

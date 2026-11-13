@@ -192,9 +192,9 @@ internal sealed partial class UnattendedTestRunner
         else
         {
             using IDisposable? selector = choice != null
-                ? CardSelectCmd.PushSelector(new PlannedCardSelector(choice))
+                ? NativeTestCardSelectors.Push(new PlannedCardSelector(choice))
                 : check.NestedChoiceCardIds.Length > 0
-                    ? CardSelectCmd.PushSelector(new UnattendedCardSelector(check.NestedChoiceCardIds))
+                    ? NativeTestCardSelectors.Push(new UnattendedCardSelector(check.NestedChoiceCardIds))
                     : null;
             potion.EnqueueManualUse(target);
             await RunManager.Instance.ActionExecutor.FinishedExecutingActions();

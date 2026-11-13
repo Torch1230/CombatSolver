@@ -7,7 +7,7 @@ namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
-    private static string AssertLazyRngFork(RunRngSet live)
+    private static string AssertLazyRngFork(RunRngSet live, MegaCrit.Sts2.Core.Entities.Players.Player player)
     {
         (Func<CombatPredictionRngSet, Rng> Mutable,
             Func<CombatPredictionRngSet, PredictionRngState> Read)[] streams =
@@ -20,9 +20,11 @@ internal sealed partial class UnattendedTestRunner
             (s => s.CombatTargets, s => s.CombatTargetsState),
             (s => s.CombatOrbGeneration, s => s.CombatOrbGenerationState),
             (s => s.MonsterAi, s => s.MonsterAiState),
-            (s => s.Niche, s => s.NicheState)
+            (s => s.Niche, s => s.NicheState),
+            (s => s.NonCombatGeneration(player), s => s.NonCombatGenerationState(player))
         ];
-        CombatPredictionRngSet root = CombatPredictionRngSet.From(live);
+        CombatPredictionRngSet root = CombatPredictionRngSet.From(live, [player]);
+        PredictionRngState livePlayerBefore = player.PlayerRng.NonCombatGeneration.CaptureState();
         PredictionRngState[] initial = streams.Select(s => s.Read(root)).ToArray();
         Rng[] expected = streams.Select(s => new Rng(s.Mutable(root).ToSerializable())).ToArray();
         CombatPredictionRngSet parent = root.Fork();
@@ -79,6 +81,16 @@ internal sealed partial class UnattendedTestRunner
         {
             var mutable = field.FieldType.GetField("_mutable",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (field.GetValue(cold) is System.Collections.IDictionary playerStreams)
+            {
+                foreach (object stream in playerStreams.Values)
+                {
+                    coldStreamCount++;
+                    if (stream.GetType().GetField("_mutable", System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic)!.GetValue(stream) is not null)
+                        throw new InvalidOperationException("Read-only player RNG observation materialized a native stream.");
+                }
+            }
             if (mutable is null)
                 continue;
             coldStreamCount++;
@@ -86,7 +98,7 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Read-only RNG observation materialized a native stream.");
         }
         if (coldStreamCount != streams.Length)
-            throw new InvalidOperationException("Cold RNG contract did not inspect all nine streams.");
+            throw new InvalidOperationException("Cold RNG contract did not inspect every captured stream.");
 
         // A fully materialized parent and a cold sibling both preserve all nine states on Fork.
         CombatPredictionRngSet materializedChild = parent.Fork();
@@ -97,6 +109,8 @@ internal sealed partial class UnattendedTestRunner
                 || stream.Read(untouched) != initial[index])
                 throw new InvalidOperationException("All-stream Fork changed a state or an untouched sibling.");
         }
-        return "LazyRngFork:NineStreams:NativeSequence:RetainedAlias:ParentSiblingGrandchild:ColdReadNoMaterialization";
+        if (player.PlayerRng.NonCombatGeneration.CaptureState() != livePlayerBefore)
+            throw new InvalidOperationException("Prediction advanced the live player generation stream.");
+        return "LazyRngFork:RunAndPlayerStreams:NativeSequence:RetainedAlias:ParentSiblingGrandchild:ColdReadNoMaterialization";
     }
 }

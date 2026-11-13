@@ -111,7 +111,9 @@ CrabRagePower 的同伴死亡结算由 `AfterDeathMirrors` 独占：力量、格
 
 `OpeningActionRegistry` 和 `TargetPlanRegistry` 也只登记求解器内置的开局身份与目标变体，不提供第三方运行时注册；第三方卡牌的实际出牌与选牌语义仍使用下文的镜像登记入口。
 
-### 2.1 统一形状的镜像注册表（46 张）
+### 2.1 统一形状的镜像注册表
+
+v0.113 的死亡 Hook 增加来源卡参数，`AfterDeathMirrorContext.Source` 保存对应预测牌；伤害后期倍率使用实际 `CardPlay`。适配器按当前原生签名登记，并在死亡、嵌套出牌和 Fork 后保留来源身份。回合准备的原版快捷路径和扩展 registry 共用单项结算体。
 
 详细登记、字段和示例见 [third-party-mirrors](mirrors.md)。
 
@@ -199,14 +201,13 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 判据与泛型入口相同；`RegisterIgnored` 用于已复核的纯表现层覆写。
 完整签名、暂停和状态约束见[回合阶段镜像](turn-phase-mirrors.md)。
 
-`ExtraTurnMirrors.RegisterShouldTakeExtraTurn<TModel>(handler)` 与
-`RegisterAfterTakingExtraTurn<TModel>(handler)` 登记 `AbstractModel.ShouldTakeExtraTurn` /
-`AfterTakingExtraTurn`，接收者为 AbstractModel，上下文包含 `Player` 和分支 `Combat`。龙涎香、帕尔之眼与
-第三方来源共用镜像登记表，按原生监听顺序判断，第一个 true 结束判断。后置回调先固定全部监听成员，
-再按原顺序逐项结算；第三方可以读取此前来源已经结算的分支状态。选牌暂停交回既有动作重放。
+`ExtraTurnMirrors.RegisterShouldTakeExtraTurnEarly<TModel>(handler)`、`RegisterShouldTakeExtraTurn<TModel>(handler)` 与
+`RegisterAfterTakingExtraTurn<TModel>(handler)` 分别登记提前判断、普通判断和消费效果，接收者为 AbstractModel，
+上下文包含 `Player` 和分支 `Combat`。先按原生顺序遍历 Early，再遍历普通阶段，首个 true 的来源获得本次资格。
+后置回调直接调用选中的来源。帕尔之眼使用 Early 阶段，`ExtraTurnPower` 使用普通阶段。选牌暂停交回既有动作重放。
 搜索回放与实机回合末风险评估共用同一入口。
 登记时机和冻结门与上面三张表相同；重写了却没登记的第三方类型同样停止搜索，只做表现的重写登记一个
-返回 false / 什么都不做的处理即可。按 `Type` 的重载为 `RegisterShouldTakeExtraTurn(Type, handler)` /
+返回 false / 什么都不做的处理即可。按 `Type` 的重载为 `RegisterShouldTakeExtraTurnEarly(Type, handler)` / `RegisterShouldTakeExtraTurn(Type, handler)` /
 `RegisterAfterTakingExtraTurn(Type, handler)`。
 
 ### 2.11 已适配 OnPlay 补丁组合
@@ -342,6 +343,8 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 
 | 位置 | 症状 | 状态 |
 |---|---|---|
+| `ArrowMirrors` / `ModifyPreBlockDamageTargetMirrors` | v0.113 原版箭 Hook 与格挡前伤害转移采用内部精确登记。箭槽、插箭引用和历史由同一 Fork context 重映射；当前入口按内置模型维护 | 封闭原版登记 |
+| `SimulatedCombatState` 的 `RunModels` 捕获 | 当前标准模式克隆并脱离原生 MultiplayerScalingModel 的 run/combat 引用；新增 RunModel 类型需要单独定义分支语义和所有权 | 封闭原版状态 |
 | `StrategicHpRecoveryBound.CanCertifyRemainingHealingEnvironment` / `RemainingHealingUpperBound` | 只在已审计的原版角色、敌人、卡牌、持续效果、遗物和药水闭包内收紧剩余治疗上界；包括固定Shiv来源、Slither费用随机化及Inky虚弱；敌人集合包含逐项审计的精确SoulNexus，其三个行动与生命周期不授予玩家治疗；另含精确Regent／LouseProgenitor闭包，BurningSticks复制消耗技能的例外仍保守处理。未知来源、附魔／苦难、消耗牌被动与取回来源保守回退无限余量；再生及战后治疗继续计入。第三方语义登记不等于治疗上界证明，没有外部证书注册入口；原战斗模拟支持范围不因此扩大 | 封闭性能证明 |
 | `StrategicHpRecoveryBound.ComponentHealingRejection` / `ComponentHealingUpperBound` | 按审计版本和精确组件表组合严格回复证明，根捕获全部初始牌堆、永久牌组与全局监听来源，分支保留有效再生并检查剩余合法剂量。未知来源、附件、获取链和目标拒绝；未知分支的无限界不再与已知来源估计取最小值。该证书没有第三方注册入口；模拟镜像登记不会自动获得资格。Smart 的精确用药层与开局后续搜索仅在现有成长、遗物、强制用药、资源追回和保命资源门禁通过后消费完整无药胜利基线 | 封闭组件证明 |
 | `CombatSearchCoordinator.CanFinishNativeLouseZeroDamageRoute` / `CombatRootSnapshot.InitialRemainingHealingUpperBound` | 精确原生Regent／Louse闭包的初始治疗上界为零，且无风险满血零损无药完整胜利才停止可选药水后验；固定预算、强制药水、死亡保护、成长／遗物目标与未追回资源阻止退出。未知初始Power／药水／生成牌和剩余再生保守拒绝；没有外部证书登记入口。BurningSticks存在时拒绝消耗BundleOfJoy快捷证书；新增7牌／5Power／3遗物／2药水只在此闭包，其他环境的原表不变 | 封闭性能证明 |
@@ -368,7 +371,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 | `ContinuationStamp.AppendCard` 的 `private=` 段与 `CombatBeamSolver.CaptureCardStateFingerprintForTesting` 的 `switch (preview)` | **卡牌**的隐藏字段按原版类型写死（利爪、基因算法、巨锤、狂暴、镰刀、疯狂科学），第三方卡牌的私有计数进不了指纹。Power 那一侧已有 `PowerHiddenStateMirrors`，见 §2.6 | 待做 |
 | `SimulatedCombatState.AddTurnStartStates` 的 `switch (power)` | 原版 Power 隐藏计数按类型写死。第三方走 §2.6 的登记表进同一份指纹，本行只是记下原版那个 `switch` 本身仍然封闭 | 第三方已有入口 |
 | `RelicPredictionStateSupport` 的原版类型分支 | 内置遗物状态仍按原实现处理；第三方遗物与 Modifier 的独立状态通过 §2.9 登记，不修改原版分支 | 第三方已有入口 |
-| `GrowthSource` 枚举与 `SolverGrowthStrategyPanel.SourceCard` 的 `switch` | 原版十类成长来源按类型写死。第三方走 §2.7 的 `GrowthSourceMirrors` 拿独立额度、侧栏行和指纹，本行只是记下原版那个枚举本身仍然封闭 | 第三方已有入口 |
+| `GrowthSource` 枚举与 `SolverGrowthStrategyPanel.SourceCard` 的 `switch` | 原版十一类成长来源含 ShowOff，按类型维护。第三方走 §2.7 的 `GrowthSourceMirrors` 拿独立额度、侧栏行和指纹 | 第三方已有入口 |
 
 **这些开关新增或改动时，必须在同一个提交里更新这张表和本文档对应章节。** 见
 [AGENTS.md](../../AGENTS.md) 第 9 节。

@@ -39,7 +39,7 @@ internal sealed partial class UnattendedTestRunner
             CombatPredictionSimulator fork = first.Simulator.Fork();
             AssertSnapshotEqual(expected, CaptureSimulated(fork,
                 (SimulatedCombatState)fork.State.CombatState, player, enemy), "TenderNested", "Fork");
-            using (CardSelectCmd.PushSelector(new UnattendedCardSelector(["UNTOUCHABLE"])))
+            using (NativeTestCardSelectors.Push(new UnattendedCardSelector(["UNTOUCHABLE"])))
             {
                 if (!FindActualHandCard(player, cardId, 0).TryManualPlay(null))
                     throw new InvalidOperationException("温柔夹具原生准备未能执行。");

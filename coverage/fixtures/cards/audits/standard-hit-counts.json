@@ -1,0 +1,169 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "playerStarsBefore": 99,
+    "relicsBeforeMove": [
+      {
+        "relicId": "THUMBSCREW"
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "CELESTIAL_MIGHT",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "CONFLAGRATION",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "EXTERMINATE",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "FIGHT_ME",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "GUNK_UP",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "PECK",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "RICOCHET",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SEVEN_STARS",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CELESTIAL_MIGHT",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "CONFLAGRATION",
+        "target": "None"
+      },
+      {
+        "cardId": "EXTERMINATE",
+        "target": "None"
+      },
+      {
+        "cardId": "FIGHT_ME",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "GUNK_UP",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "PECK",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "RICOCHET",
+        "target": "None"
+      },
+      {
+        "cardId": "SEVEN_STARS",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "playerStarsBefore": 99,
+    "relicsBeforeMove": [],
+    "cardsBeforeMove": [
+      {
+        "cardId": "SOVEREIGN_BLADE",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SWORD_BOOMERANG",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "DAGGER_SPRAY",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "TWIN_STRIKE",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "RIP_AND_TEAR",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "ASTRAL_PULSE",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "SPITE",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "SOVEREIGN_BLADE",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "SWORD_BOOMERANG",
+        "target": "None"
+      },
+      {
+        "cardId": "DAGGER_SPRAY",
+        "target": "None"
+      },
+      {
+        "cardId": "TWIN_STRIKE",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "RIP_AND_TEAR",
+        "target": "None"
+      },
+      {
+        "cardId": "ASTRAL_PULSE",
+        "target": "None"
+      },
+      {
+        "cardId": "SPITE",
+        "target": "Enemy"
+      }
+    ]
+  }
+]

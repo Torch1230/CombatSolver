@@ -1,0 +1,34 @@
+[
+  {
+    "monsterId": "Rocket",
+    "moveId": "CALCULATING_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerHpBefore": 77,
+    "playerBlockBefore": 0
+  },
+  {
+    "monsterId": "Rocket",
+    "moveId": "PRECISE_SMASH_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerHpBefore": 77,
+    "playerBlockBefore": 0
+  },
+  {
+    "monsterId": "Rocket",
+    "moveId": "PRECISE_SMASH_MOVE_2",
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerHpBefore": 77,
+    "playerBlockBefore": 0
+  },
+  {
+    "monsterId": "Rocket",
+    "moveId": "ROCKET_CLAW_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerHpBefore": 77,
+    "playerBlockBefore": 0
+  }
+]

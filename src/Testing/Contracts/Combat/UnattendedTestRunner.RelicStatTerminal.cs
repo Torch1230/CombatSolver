@@ -24,7 +24,7 @@ internal sealed partial class UnattendedTestRunner
         if (combat.Players.Count != 1 || combat.Enemies.Count != 1
             || combat.Enemies[0].Monster is not FuzzyWurmCrawler
             || player.PlayerCombatState?.Phase != PlayerTurnPhase.Play
-            || _mercuryTerminalObservation != null || CardSelectCmd.Selector != null)
+            || _mercuryTerminalObservation != null || NativeTestCardSelectors.Current != null)
             throw new InvalidOperationException("遗物属性终局夹具要求独占的单人 Play 毛毛虫根。");
         Creature enemy = combat.Enemies[0];
         foreach (RelicModel relic in player.Relics.ToArray())
@@ -125,7 +125,7 @@ internal sealed partial class UnattendedTestRunner
                 AssertSnapshotEqual(CaptureActual(combat, player, enemy), actualBefore,
                     "RelicStatTerminal", $"live-unchanged:{variant}");
                 KnownSoulNativeSelector selector = new(player, []);
-                using (CardSelectCmd.PushSelector(selector))
+                using (NativeTestCardSelectors.Push(selector))
                 {
                     if (!card.TryManualPlay(enemy))
                         throw new InvalidOperationException("原版拒绝遗物属性夹具的唯一指定攻击。");

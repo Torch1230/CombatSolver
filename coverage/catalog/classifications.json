@@ -155,12 +155,6 @@
     "notes": "TagTeamPower is produced only by the MultiplayerOnly TagTeam card.",
     "testId": "STATIC-POWER-MULTIPLAYER-HOOK-AUDIT-320"
   },
-  "Monster|MegaCrit.Sts2.Core.Models.Monsters.Aeonglass|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 Aeonglass source audit",
-    "notes": "Only updates the queen_progress music parameter.",
-    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
-  },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.Crusher|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCurrentHpChanged(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)": {
     "status": "NotCombatRelevant",
     "source": "Game 0.111.0 Crusher source audit",
@@ -173,22 +167,10 @@
     "notes": "Only plays audio, background death animation, and music parameters.",
     "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
-  "Monster|MegaCrit.Sts2.Core.Models.Monsters.KinPriest|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 KinPriest source audit",
-    "notes": "Only updates music and plays the all-followers-dead dialogue line.",
-    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
-  },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.LagavulinMatriarch|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "NotCombatRelevant",
     "source": "Game 0.111.0 LagavulinMatriarch source audit",
     "notes": "Stops sleeping VFX and controls eye animation; combat wake logic is governed by AsleepPower.",
-    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
-  },
-  "Monster|MegaCrit.Sts2.Core.Models.Monsters.LagavulinMatriarch|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 LagavulinMatriarch source audit",
-    "notes": "Only stops sleeping VFX and changes the eye animation.",
     "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Monster|MegaCrit.Sts2.Core.Models.Monsters.Rocket|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCurrentHpChanged(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)": {
@@ -201,30 +183,6 @@
     "status": "NotCombatRelevant",
     "source": "Game 0.111.0 Rocket source audit",
     "notes": "Only plays audio, background death animation, and music parameters.",
-    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
-  },
-  "Monster|MegaCrit.Sts2.Core.Models.Monsters.SoulFysh|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 SoulFysh source audit",
-    "notes": "Only updates the soulfysh_progress music parameter.",
-    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
-  },
-  "Monster|MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 TheInsatiable source audit",
-    "notes": "Only updates its music track parameter.",
-    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
-  },
-  "Monster|MegaCrit.Sts2.Core.Models.Monsters.Vantom|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 Vantom source audit",
-    "notes": "Only updates the vantom_progress music parameter.",
-    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
-  },
-  "Monster|MegaCrit.Sts2.Core.Models.Monsters.WaterfallGiant|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 WaterfallGiant source audit",
-    "notes": "Only updates music and stops the ambient sound loop.",
     "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
   },
   "Card|MegaCrit.Sts2.Core.Models.Cards.ParticleWall|MegaCrit.Sts2.Core.Models.CardModel.GetResultLocationForCardPlay()": {
@@ -599,12 +557,6 @@
     "notes": "Adds damage to the owner's non-X powered card attacks only when that play spent zero energy.",
     "testId": "MONSTER-MOVES-BATCH-034"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.PhantomBladesPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardEnteredCombat(MegaCrit.Sts2.Core.Models.CardModel)": {
-    "status": "SolverCompensation",
-    "source": "src/Engine/InCombat/Mirrors/Hooks/Card/PhantomBladesPowerMirrors.cs; src/Search/SimulatedCombatState.CardEventHistory.cs",
-    "notes": "Grants Retain at the exact card-entry callback, including clones; later normalization preserves native keyword changes.",
-    "testId": "PHANTOM-RETAIN-LIFECYCLE"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.PhantomBladesPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageAdditive(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
     "status": "SolverCompensation",
     "source": "RandomForeseer 0.13.7 damage fallback + src/Search/SimulatedCombatState.cs",
@@ -635,12 +587,6 @@
     "notes": "Counts positive powered card-block events and excludes the current CardPlay's own events, matching native history eligibility.",
     "testId": "BLOCK-EVENT-HISTORY"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.CoveredPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 Intercept card and CoveredPower source audit",
-    "notes": "Covered is produced only by the MultiplayerOnly Intercept card; its applier-death cleanup cannot occur in supported single-player combat.",
-    "testId": "STATIC-POWER-BATCH-034-MULTIPLAYER"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.CoveredPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "NotCombatRelevant",
     "source": "Game 0.111.0 Intercept card and CoveredPower source audit",
@@ -657,12 +603,6 @@
     "status": "NotCombatRelevant",
     "source": "Game 0.111.0 Intercept card and CoveredPower source audit",
     "notes": "Initializes multiplayer player-name and covering-player state for a power produced only by Intercept.",
-    "testId": "STATIC-POWER-BATCH-034-MULTIPLAYER"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.GuardedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 Tank card and GuardedPower source audit",
-    "notes": "Guarded is produced only by the MultiplayerOnly Tank card; its applier-death cleanup cannot occur in supported single-player combat.",
     "testId": "STATIC-POWER-BATCH-034-MULTIPLAYER"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.GuardedPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
@@ -1437,12 +1377,6 @@
     "status": "SolverCompensation",
     "source": "src/Prediction/IntentForecaster.cs + src/Prediction/MonsterMoveSemantics.cs",
     "notes": "Pure single-hit attack; verified by a production-simulation versus real PerformMove differential.",
-    "testId": "MONSTER-MOVES-BATCH-006"
-  },
-  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.InfestedPrism|RADIATE_MOVE": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/MonsterMoveEffects.cs",
-    "notes": "Generic attack followed by move block read from the live RadiateBlock model property.",
     "testId": "MONSTER-MOVES-BATCH-006"
   },
   "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.InfestedPrism|WHIRLWIND_MOVE": {
@@ -2495,12 +2429,6 @@
     "notes": "Applies 1 Burrowed and gains Block read from the live model; verified by differential.",
     "testId": "MONSTER-MOVES-BATCH-020"
   },
-  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Tunneler|BELOW_MOVE": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/IntentForecaster.cs + src/Prediction/MonsterMoveSemantics.cs",
-    "notes": "Pure single-hit attack; verified after Burrow.",
-    "testId": "MONSTER-MOVES-BATCH-020"
-  },
   "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Tunneler|DIZZY_MOVE": {
     "status": "SolverCompensation",
     "source": "src/Prediction/IntentForecaster.cs + src/Prediction/MonsterMoveSemantics.cs",
@@ -2597,12 +2525,6 @@
     "notes": "Explosion damage followed by forced self-death; verified by visible-game scenario MONSTER-WATERFALL-001 on 2026-08-20.",
     "testId": "MONSTER-WATERFALL-001"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.SteamEruptionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/CorePowerSupport.cs",
-    "notes": "Triggers the infinite-HP preparation phase instead of final death.",
-    "testId": "MONSTER-WATERFALL-001"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.SteamEruptionPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldCreatureBeRemovedFromCombatAfterDeath(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/CorePowerSupport.cs",
@@ -2651,28 +2573,10 @@
     "notes": "Stable single-hit attack followed by 18 Block; verified by visible-game differential.",
     "testId": "MONSTER-MOVES-BATCH-021"
   },
-  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|TARGETING_RETICLE_MOVE": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/IntentForecaster.cs",
-    "notes": "Stable single-hit attack; verified in the native Kaiser Crab encounter.",
-    "testId": "MONSTER-MOVES-BATCH-021"
-  },
-  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|PRECISION_BEAM_MOVE": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/IntentForecaster.cs",
-    "notes": "Stable single-hit attack; verified in the native Kaiser Crab encounter.",
-    "testId": "MONSTER-MOVES-BATCH-021"
-  },
   "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|CHARGE_UP_MOVE": {
     "status": "SolverCompensation",
     "source": "src/Prediction/MonsterMoveEffects.cs",
     "notes": "Applies the live-model ChargeUpStrengthGain value; verified by visible-game differential.",
-    "testId": "MONSTER-MOVES-BATCH-021"
-  },
-  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|LASER_MOVE": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/IntentForecaster.cs",
-    "notes": "Stable single-hit attack and retains accumulated Strength; verified by visible-game differential.",
     "testId": "MONSTER-MOVES-BATCH-021"
   },
   "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|RECHARGE_MOVE": {
@@ -2807,12 +2711,6 @@
     "notes": "Deals the current Constrict amount as unpowered damage when the owning player ends their turn. Verified against the real power callback.",
     "testId": "MONSTER-MOVES-BATCH-027"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.ConstrictPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
-    "notes": "Removes Constrict when its applier actually dies. The power applier and target identities are included in the state fingerprint. Verified against visible-game death removal.",
-    "testId": "MONSTER-MOVES-BATCH-027"
-  },
   "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.SpectralKnight|HEX": {
     "status": "SolverCompensation",
     "source": "src/Prediction/MonsterMoveEffects.cs + src/Search/SimulatedCombatState.cs",
@@ -2837,12 +2735,6 @@
     "notes": "The simulated Hex power remains in the combat hook listener set, so Hexed cards gain Ethereal through the native hook. Verified in card-state snapshots and a full turn-end exhaust differential.",
     "testId": "MONSTER-MOVES-BATCH-028"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.HexPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
-    "notes": "Removes Hex only when its original applier actually dies; a later stacking source does not replace that identity. RF 0.13.7 has no mirror for this hook. Both death branches were verified in the visible game.",
-    "testId": "MONSTER-MOVES-BATCH-028"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.HexPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterRemoved(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.cs",
@@ -2859,12 +2751,6 @@
     "status": "SolverCompensation",
     "source": "src/Prediction/MonsterMoveEffects.cs",
     "notes": "Applies infinite Shrink as amount -1; negative debuffs are still blocked by Artifact. Verified in the visible game.",
-    "testId": "MONSTER-MOVES-BATCH-029"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.ShrinkPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
-    "notes": "Removes Shrink when its original applier dies. Verified against the real death callback.",
     "testId": "MONSTER-MOVES-BATCH-029"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.ShrinkPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
@@ -3153,12 +3039,6 @@
     "status": "SolverCompensation",
     "source": "RandomForeseer 0.13.7 damage fallback + src/Search/SimulatedCombatState.cs",
     "notes": "Doubles powered attacks from the owner's Sovereign Blade cards while Conqueror is active.",
-    "testId": "MONSTER-MOVES-BATCH-031"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.DrawCardsNextTurnPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
-    "status": "SolverCompensation",
-    "source": "src/Search/SimulatedCombatState.cs + src/Search/CombatBeamSolver.cs",
-    "notes": "Removes Draw Cards Next Turn after the extra hand draw is consumed at the owner's side start.",
     "testId": "MONSTER-MOVES-BATCH-031"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.DrawCardsNextTurnPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)": {
@@ -4439,12 +4319,6 @@
     "notes": "Only clears CreatedThroughForge on a clone, a flag consumed solely by the pile-change VFX hook.",
     "testId": "STATIC-CARD-BATCH-043-SCOPE"
   },
-  "Card|MegaCrit.Sts2.Core.Models.Cards.SovereignBlade|MegaCrit.Sts2.Core.Models.CardModel.AfterTransformedFrom()": {
-    "status": "NotCombatRelevant",
-    "source": "Game 0.111.0 SovereignBlade source audit",
-    "notes": "Only removes the Sovereign Blade node after transformation and has no solver-state effect.",
-    "testId": "STATIC-CARD-BATCH-043-SCOPE"
-  },
   "Card|MegaCrit.Sts2.Core.Models.Cards.SpoilsMap|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeCardRemoved(MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "NotCombatRelevant",
     "source": "Game 0.111.0 SpoilsMap source audit",
@@ -5061,7 +4935,7 @@
     "status": "SolverCompensation",
     "source": "src/Prediction/MonsterMoveEffects.cs; src/Search/CombatBeamSolver.cs",
     "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
+    "testId": "STANDARD-RNG-STREAMS"
   },
   "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.ToughEgg|HATCH_MOVE": {
     "status": "SolverCompensation",
@@ -5230,12 +5104,6 @@
     "source": "src/Prediction/EndTurnPowerSupport.Batch048.cs; src/Search/SimulatedCombatState.CardLifecycle.cs",
     "notes": "Resets the branch-local infinite-enemy autoplay counter at the owner's side-turn end; private counter state is compared directly with the native Power.",
     "testId": "SOLVER-COMPENSATION-HOOK-AUDIT-303"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.MagicBombPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/CorePowerSupport.cs",
-    "notes": "Removes Magic Bomb when its applier dies normally and death removal is not prevented.",
-    "testId": "POWER-END-TURN-BATCH-048"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.MagicBombPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
@@ -5439,7 +5307,7 @@
     "status": "SolverCompensation",
     "source": "src/Prediction/TurnStartPowerSupport.cs; src/Search/CombatBeamSolver.cs",
     "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
+    "testId": "STANDARD-RNG-STREAMS"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.HibernatePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
     "status": "SolverCompensation",
@@ -5531,12 +5399,6 @@
     "notes": "Runs the same temporary counter suppression before a Void Form application; the forced-turn transition immediately resets it at the next owner turn.",
     "testId": "SOLVER-COMPENSATION-HOOK-AUDIT-303"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.AdaptablePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.AdaptablePower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldAllowHitting(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
@@ -5561,18 +5423,6 @@
     "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
     "testId": "NO-NATIVE-RESCAN-244"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.CrabRagePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "EngineExact",
-    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs",
-    "notes": "Companion death grants Strength and Block immediately before the next hit and removes the exact Crab Rage instance.",
-    "testId": "CRAB-RAGE-DEATH-TIMING"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.DampenPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "EngineExact",
-    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs",
-    "notes": "Caster death restores card upgrades during AfterDeath, before the killing card continues its own growth effects.",
-    "testId": "DAMPEN-DEATH-GROWTH"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.DampenPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.Dampen.cs; src/Prediction/MonsterMoveEffects.cs",
@@ -5584,12 +5434,6 @@
     "source": "src/Search/SimulatedCombatState.Dampen.cs; src/Prediction/DeathPowerSupport.cs",
     "notes": "Restores branch card upgrade levels after the final Dampen caster leaves combat.",
     "testId": "CARD-DOWNGRADE-STATE-AUDIT-382"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.IllusionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.IllusionPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldAllowHitting(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
     "status": "SolverCompensation",
@@ -5614,12 +5458,6 @@
     "source": "Game 0.111.0 IllusionPower; src/Prediction/DeathPowerSupport.cs",
     "notes": "Native illusion hosts apply Minion before search begins; the solver reads that resolved power set and stops at their later death.",
     "testId": "POWER-DEATH-BATCH-050"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.InfestedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.InfestedPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldStopCombatFromEnding()": {
     "status": "SolverCompensation",
@@ -5651,39 +5489,15 @@
     "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
     "testId": "NO-NATIVE-RESCAN-244"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.PossessSpeedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.PossessSpeedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPowerAmountChanged(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.PowerModel,System.Decimal,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/DeathPowerSupport.cs; src/Prediction/MonsterMoveEffects.cs",
     "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
     "testId": "NO-NATIVE-RESCAN-244"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.PossessStrengthPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.PossessStrengthPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPowerAmountChanged(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.PowerModel,System.Decimal,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/DeathPowerSupport.cs; src/Prediction/MonsterMoveEffects.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.RavenousPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/SimulatedCombatState.MonsterAi.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "同阵营同伴死亡时，幸存持有者获得等量力量，并立即以带被替换行动后继的 STUNNED 替换当前意图；每只怪物在实际行动前重新读取当前意图。",
-    "testId": "RAVENOUS-IMMEDIATE-STUN-505"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.ReattachPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
     "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
     "testId": "NO-NATIVE-RESCAN-244"
   },
@@ -5717,19 +5531,7 @@
     "notes": "After native turn-start block clearing, gains unpowered Block equal to Amount and removes the power.",
     "testId": "POWER-DEATH-BATCH-050"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.StockPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "EngineExact",
-    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs; src/Search/SimulatedCombatState.DeathLifecycle.cs",
-    "notes": "AfterDeath 在旧个体移出阵容前生成替补，生命判重包含旧个体最大生命，Niche 完整状态与原生一致。",
-    "testId": "STOCK-REPORT-RESPAWN-HP"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.StockPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldStopCombatFromEnding()": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.SurprisePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
     "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
@@ -5741,29 +5543,11 @@
     "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
     "testId": "NO-NATIVE-RESCAN-244"
   },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.SurroundedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
-    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
-    "testId": "NO-NATIVE-RESCAN-244"
-  },
   "Power|MegaCrit.Sts2.Core.Models.Powers.ToricToughnessPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterBlockCleared(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
     "status": "SolverCompensation",
     "source": "src/Prediction/CorePowerSupport.cs",
     "notes": "After block clearing, gains the instance's canonical Block dynamic value and decrements that exact instance by one turn.",
     "testId": "POWER-DEATH-BATCH-050"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.AmbergrisPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterTakingExtraTurn(MegaCrit.Sts2.Core.Entities.Players.Player)": {
-    "status": "EngineExact",
-    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/ExtraTurnMirrors.cs",
-    "notes": "原版与第三方来源按原生监听顺序派发；判断短路、后置回调、完整状态和 Fork 隔离由原生差分验证。",
-    "testId": "EXTRA-TURN-MIRROR-ORDER"
-  },
-  "Power|MegaCrit.Sts2.Core.Models.Powers.AmbergrisPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldTakeExtraTurn(MegaCrit.Sts2.Core.Entities.Players.Player)": {
-    "status": "EngineExact",
-    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/ExtraTurnMirrors.cs",
-    "notes": "原版与第三方来源按原生监听顺序派发；判断短路、后置回调、完整状态和 Fork 隔离由原生差分验证。",
-    "testId": "EXTRA-TURN-MIRROR-ORDER"
   },
   "Power|MegaCrit.Sts2.Core.Models.Powers.AsleepPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
     "status": "EngineExact",
@@ -6284,8 +6068,8 @@
   "Relic|MegaCrit.Sts2.Core.Models.Relics.InfusedCore|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.RelicTurnStart.cs",
-    "notes": "Channels three Lightning orbs for the participating owner on the first turn, including roots captured before Toolbox setup choices. Later predicted turns do not repeat the trigger. Offline hook diagnostics cover empty queues and fork isolation; native initial-setup acceptance remains unverified.",
-    "testId": "INFUSED-CORE-INITIAL-SETUP-20260927"
+    "notes": "Channels three Lightning orbs on the participating owner first turn. Native first/second-turn full-state, orb capacity and Fork isolation verified on game 0.113.0.",
+    "testId": "INFUSED-CORE-PREPARATION"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.InfusedCore|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyOrbValue(MegaCrit.Sts2.Core.Models.OrbModel,System.Decimal)": {
     "status": "EngineInferred",
@@ -6303,12 +6087,6 @@
     "status": "EngineInferred",
     "source": "RandomForeseer 0.13.8 native damage fallback; src/Prediction/PredictionCoverage.cs",
     "notes": "Adds nine only to powered attacks from the owner's enchanted cards.",
-    "testId": "RELIC-HOOKS-BATCH-054"
-  },
-  "Relic|MegaCrit.Sts2.Core.Models.Relics.RingingTriangle|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldFlush(MegaCrit.Sts2.Core.Entities.Players.Player)": {
-    "status": "SolverCompensation",
-    "source": "src/Prediction/PersistentRelicSupport.cs; src/Prediction/CorePowerSupport.cs",
-    "notes": "Uses the simulated turn number: retain the full hand only on turn one, then restore normal flushing.",
     "testId": "RELIC-HOOKS-BATCH-054"
   },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.RunicPyramid|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldFlush(MegaCrit.Sts2.Core.Entities.Players.Player)": {
@@ -6857,12 +6635,6 @@
     "notes": "原版与第三方来源按原生监听顺序派发；判断短路、后置回调、完整状态和 Fork 隔离由原生差分验证。",
     "testId": "EXTRA-TURN-MIRROR-ORDER"
   },
-  "Relic|MegaCrit.Sts2.Core.Models.Relics.PaelsEye|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldTakeExtraTurn(MegaCrit.Sts2.Core.Entities.Players.Player)": {
-    "status": "EngineExact",
-    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/ExtraTurnMirrors.cs",
-    "notes": "原版与第三方来源按原生监听顺序派发；判断短路、后置回调、完整状态和 Fork 隔离由原生差分验证。",
-    "testId": "EXTRA-TURN-MIRROR-ORDER"
-  },
   "Relic|MegaCrit.Sts2.Core.Models.Relics.ParryingShield|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
     "status": "SolverCompensation",
     "source": "src/Search/SimulatedCombatState.ReactiveRelics.cs",
@@ -6994,5 +6766,1301 @@
     "source": "src/Search/SimulatedCombatState.PowerRelics.cs; src/Search/SimulatedCombatState.Relics.cs",
     "notes": "Doubles every Debuff from the triggering card once, skips an internally applied Power from an already doubled temporary Power, then fingerprints the once-per-combat consumed state.",
     "testId": "RELIC-POWER-BATCH-058"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.Aeonglass|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Aeonglass source audit",
+    "notes": "Only updates the queen_progress music parameter.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.KinPriest|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 KinPriest source audit",
+    "notes": "Only updates music and plays the all-followers-dead dialogue line.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.LagavulinMatriarch|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 LagavulinMatriarch source audit",
+    "notes": "Only stops sleeping VFX and changes the eye animation.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.SoulFysh|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 SoulFysh source audit",
+    "notes": "Only updates the soulfysh_progress music parameter.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.TheInsatiable|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 TheInsatiable source audit",
+    "notes": "Only updates its music track parameter.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.Vantom|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Vantom source audit",
+    "notes": "Only updates the vantom_progress music parameter.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.WaterfallGiant|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 WaterfallGiant source audit",
+    "notes": "Only updates music and stops the ambient sound loop.",
+    "testId": "STATIC-MONSTER-PRESENTATION-HOOK-AUDIT-319"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AdaptablePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
+    "testId": "NO-NATIVE-RESCAN-244"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ExtraTurnPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterTakingExtraTurn(MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/ExtraTurnMirrors.cs",
+    "notes": "原版与第三方来源按原生监听顺序派发；判断短路、后置回调、完整状态和 Fork 隔离由原生差分验证。",
+    "testId": "EXTRA-TURN-MIRROR-ORDER"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ExtraTurnPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldTakeExtraTurn(MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/ExtraTurnMirrors.cs",
+    "notes": "原版与第三方来源按原生监听顺序派发；判断短路、后置回调、完整状态和 Fork 隔离由原生差分验证。",
+    "testId": "EXTRA-TURN-MIRROR-ORDER"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ConstrictPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
+    "notes": "Removes Constrict when its applier actually dies. The power applier and target identities are included in the state fingerprint. Verified against visible-game death removal.",
+    "testId": "MONSTER-MOVES-BATCH-027"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.CoveredPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Intercept card and CoveredPower source audit",
+    "notes": "Covered is produced only by the MultiplayerOnly Intercept card; its applier-death cleanup cannot occur in supported single-player combat.",
+    "testId": "STATIC-POWER-BATCH-034-MULTIPLAYER"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.CrabRagePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs",
+    "notes": "Companion death grants Strength and Block immediately before the next hit and removes the exact Crab Rage instance.",
+    "testId": "CRAB-RAGE-DEATH-TIMING"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.DampenPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs",
+    "notes": "Caster death restores card upgrades during AfterDeath, before the killing card continues its own growth effects.",
+    "testId": "DAMPEN-DEATH-GROWTH"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.GuardedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.111.0 Tank card and GuardedPower source audit",
+    "notes": "Guarded is produced only by the MultiplayerOnly Tank card; its applier-death cleanup cannot occur in supported single-player combat.",
+    "testId": "STATIC-POWER-BATCH-034-MULTIPLAYER"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.HexPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
+    "notes": "Removes Hex only when its original applier actually dies; a later stacking source does not replace that identity. RF 0.13.7 has no mirror for this hook. Both death branches were verified in the visible game.",
+    "testId": "MONSTER-MOVES-BATCH-028"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.IllusionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
+    "testId": "NO-NATIVE-RESCAN-244"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.InfestedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
+    "testId": "NO-NATIVE-RESCAN-244"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.MagicBombPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/CorePowerSupport.cs",
+    "notes": "Removes Magic Bomb when its applier dies normally and death removal is not prevented.",
+    "testId": "POWER-END-TURN-BATCH-048"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.PossessSpeedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
+    "testId": "NO-NATIVE-RESCAN-244"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.PossessStrengthPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
+    "testId": "NO-NATIVE-RESCAN-244"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.RavenousPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/SimulatedCombatState.MonsterAi.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "同阵营同伴死亡时，幸存持有者获得等量力量，并立即以带被替换行动后继的 STUNNED 替换当前意图；每只怪物在实际行动前重新读取当前意图。",
+    "testId": "RAVENOUS-IMMEDIATE-STUN-505"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ReattachPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
+    "testId": "NO-NATIVE-RESCAN-244"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ShrinkPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/CorePowerSupport.cs + src/Search/SimulatedCombatState.cs",
+    "notes": "Removes Shrink when its original applier dies. Verified against the real death callback.",
+    "testId": "MONSTER-MOVES-BATCH-029"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.SteamEruptionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/CorePowerSupport.cs",
+    "notes": "Triggers the infinite-HP preparation phase instead of final death.",
+    "testId": "MONSTER-WATERFALL-001"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.StockPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Death/AfterDeathMirrors.cs; src/Search/SimulatedCombatState.DeathLifecycle.cs",
+    "notes": "AfterDeath 在旧个体移出阵容前生成替补，生命判重包含旧个体最大生命，Niche 完整状态与原生一致。",
+    "testId": "STOCK-REPORT-RESPAWN-HP"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.SurprisePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
+    "testId": "NO-NATIVE-RESCAN-244"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.SurroundedPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/DeathPowerSupport.cs; src/Search/CombatBeamSolver.cs",
+    "notes": "该行为现由分支内状态完整结算，不再触发原生重扫；精确语义与跨回合一致性见关联测试证据。",
+    "testId": "NO-NATIVE-RESCAN-244"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.PaelsEye|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldTakeExtraTurnEarly(MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/TurnEnd/ExtraTurnMirrors.cs",
+    "notes": "原版与第三方来源按原生监听顺序派发；判断短路、后置回调、完整状态和 Fork 隔离由原生差分验证。",
+    "testId": "EXTRA-TURN-MIRROR-ORDER"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Bounce|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.CardLifecycle.cs",
+    "notes": "Return the same finished card identity on the next player turn.",
+    "testId": "FOOL-TURN-LIFECYCLE"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.SovereignBlade|MegaCrit.Sts2.Core.Models.CardModel.AfterThisWasTransformedIntoInternal(MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "NotCombatRelevant",
+    "source": "Native SovereignBlade.AfterThisWasTransformedIntoInternal source review",
+    "notes": "AfterThisWasTransformedIntoInternal removes the visual blade node.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.SpoilsMap|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardChangedPiles(MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.PileType,MegaCrit.Sts2.Core.Models.AbstractModel)": {
+    "status": "NotCombatRelevant",
+    "source": "Native SpoilsMap.AfterCardChangedPiles source review",
+    "notes": "Entering the permanent deck registers a treasure map quest; outside combat pile settlement.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.ByrdineMonster|NOTHING_MOVE": {
+    "status": "NotCombatRelevant",
+    "source": "Native ByrdineMonster.NOTHING_MOVE source review",
+    "notes": "Player-side pet NOTHING_MOVE returns Task.CompletedTask; pet resources remain captured.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.InfestedPrism|JAB_MOVE_2": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/IntentForecaster.cs",
+    "notes": "Native attack intent projects damage; branch move graph preserves revised move IDs and transitions.",
+    "testId": "STANDARD-CHANGED-MONSTERS"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Queen|DREAD_INITIAL_MOVE": {
+    "status": "NotCombatRelevant",
+    "source": "Native Queen.DREAD_INITIAL_MOVE source review",
+    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|CALCULATING_MOVE": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/IntentForecaster.cs",
+    "notes": "Native attack intent projects damage; branch move graph preserves revised move IDs and transitions.",
+    "testId": "ROCKET-ATTACKS"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|PRECISE_SMASH_MOVE": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/IntentForecaster.cs",
+    "notes": "Native attack intent projects damage; branch move graph preserves revised move IDs and transitions.",
+    "testId": "ROCKET-ATTACKS"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|PRECISE_SMASH_MOVE_2": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/IntentForecaster.cs",
+    "notes": "Native attack intent projects damage; branch move graph preserves revised move IDs and transitions.",
+    "testId": "ROCKET-ATTACKS"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Rocket|ROCKET_CLAW_MOVE": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/IntentForecaster.cs",
+    "notes": "Native attack intent projects damage; branch move graph preserves revised move IDs and transitions.",
+    "testId": "ROCKET-ATTACKS"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Tunneler|FROM_BELOW_MOVE": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/IntentForecaster.cs",
+    "notes": "Native attack intent projects damage; branch move graph preserves revised move IDs and transitions.",
+    "testId": "STANDARD-CHANGED-MONSTERS"
+  },
+  "MonsterMove|MegaCrit.Sts2.Core.Models.Monsters.Wuppy|NOTHING_MOVE": {
+    "status": "NotCombatRelevant",
+    "source": "Native Wuppy.NOTHING_MOVE source review",
+    "notes": "Player-side pet NOTHING_MOVE returns Task.CompletedTask; pet resources remain captured.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AeonglassDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "NotCombatRelevant",
+    "source": "Native AeonglassDominionPower.BeforeHandDraw source review",
+    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AmnesiaPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Draw modifier and cleanup are implemented; current native KnowledgeDemon offers MindRot, Sloth and WasteAway.",
+    "testId": "STANDARD-SOURCE-LIFECYCLES"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AmnesiaPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Draw modifier and cleanup are implemented; current native KnowledgeDemon offers MindRot, Sloth and WasteAway.",
+    "testId": "STANDARD-SOURCE-LIFECYCLES"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ArcheryPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Owner-side start applies Aim or Stretch; consecutive preparation and branch isolation verified.",
+    "testId": "FOOL-TURN-LIFECYCLE"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.CompostPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Native CompostPower.AfterDeath source review",
+    "notes": "Produced by MultiplayerOnly Compost, Ensemble, Intercept or Tank; excluded from single-player standard card selection.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ConductorsBatonPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Consume the temporary damage reduction at the next owner side start.",
+    "testId": "BETA-RELIC-LIFECYCLE"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.CoveredPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterRemoved(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "NotCombatRelevant",
+    "source": "Native CoveredPower.AfterRemoved source review",
+    "notes": "Produced by MultiplayerOnly Compost, Ensemble, Intercept or Tank; excluded from single-player standard card selection.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.DislikeYouPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyDamageMirrors.cs",
+    "notes": "Native multiplier reads cloned amount, stable owner identity and passed arrow flags. DislikeYou side-end removal is handled by EndTurnPowerSupport.",
+    "testId": "FOOL-ARROW-MULTIPLIERS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.DislikeYouPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "SolverCompensation",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyDamageMirrors.cs",
+    "notes": "Native multiplier reads cloned amount, stable owner identity and passed arrow flags. DislikeYou side-end removal is handled by EndTurnPowerSupport.",
+    "testId": "FOOL-ARROW-MULTIPLIERS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.DrawCardsNextTurnPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingHandDraw()": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/PersistentPowerSupport.cs",
+    "notes": "Consume delayed draw once after AmountOnTurnStart qualification.",
+    "testId": "FOOL-RESOURCE-BOUNDARIES"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EncorePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.cs",
+    "notes": "Initialize branch-owned remaining-play or melody-proc state; side-end/reset ownership lives in Prediction support.",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EncorePower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.cs",
+    "notes": "Initialize branch-owned remaining-play or melody-proc state; side-end/reset ownership lives in Prediction support.",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EnnuiPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Before-hand generation, draw modifiers and upgrade counters use branch state and native RNG.",
+    "testId": "FOOL-PERSISTENT-POWERS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EnnuiPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Before-hand generation, draw modifiers and upgrade counters use branch state and native RNG.",
+    "testId": "FOOL-PERSISTENT-POWERS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EnsemblePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "NotCombatRelevant",
+    "source": "Native EnsemblePower.AfterCardPlayed source review",
+    "notes": "Produced by MultiplayerOnly Compost, Ensemble, Intercept or Tank; excluded from single-player standard card selection.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EnsemblePower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyEnergyCostInCombatLate(MegaCrit.Sts2.Core.Models.CardModel,System.Decimal,System.Decimal&)": {
+    "status": "NotCombatRelevant",
+    "source": "Native EnsemblePower.TryModifyEnergyCostInCombatLate source review",
+    "notes": "Produced by MultiplayerOnly Compost, Ensemble, Intercept or Tank; excluded from single-player standard card selection.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ExplosivePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "NotCombatRelevant",
+    "source": "Native ExplosivePower.AfterDeath source review",
+    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.HiddenRootsPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Owner-side start applies Aim or Stretch; consecutive preparation and branch isolation verified.",
+    "testId": "FOOL-TURN-LIFECYCLE"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.HoningPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "SolverCompensation",
+    "source": "src/Engine/InCombat/Mirrors/Hooks/Damage/ModifyDamageMirrors.cs",
+    "notes": "Native multiplier reads cloned amount, stable owner identity and passed arrow flags. DislikeYou side-end removal is handled by EndTurnPowerSupport.",
+    "testId": "FOOL-ARROW-MULTIPLIERS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ImpaledPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "NotCombatRelevant",
+    "source": "Native ImpaledPower.AfterApplied source review",
+    "notes": "Formats the applier player name for display; arrow references and hit counts are captured separately.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEndLate(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "NotCombatRelevant",
+    "source": "Native InsatiableDominionPower.AfterSideTurnEndLate source review",
+    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "NotCombatRelevant",
+    "source": "Native InsatiableDominionPower.AfterSideTurnStart source review",
+    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.InsatiableDominionPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "NotCombatRelevant",
+    "source": "Native InsatiableDominionPower.AfterApplied source review",
+    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.InterceptPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterRemoved(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "NotCombatRelevant",
+    "source": "Native InterceptPower.AfterRemoved source review",
+    "notes": "Produced by MultiplayerOnly Compost, Ensemble, Intercept or Tank; excluded from single-player standard card selection.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.KiVersePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/EndTurnPowerSupport.cs",
+    "notes": "Retire the temporary power at owner side end.",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.LagavulinMatriarchDominionPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "NotCombatRelevant",
+    "source": "Native LagavulinMatriarchDominionPower.AfterSideTurnEnd source review",
+    "notes": "Dread dominion or Dread-only initial move; standard-mode roots do not enter this producer.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.LullabyPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterApplied(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.cs",
+    "notes": "Initialize branch-owned remaining-play or melody-proc state; side-end/reset ownership lives in Prediction support.",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.MythicFormPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/TurnStartPowerSupport.cs",
+    "notes": "Before-hand generation, draw modifiers and upgrade counters use branch state and native RNG.",
+    "testId": "FOOL-PERSISTENT-POWERS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.PaleBlueDotPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "NotCombatRelevant",
+    "source": "Native PaleBlueDotPower.AfterSideTurnStart source review",
+    "notes": "Only invokes display notification; gameplay activation resets at side end.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.PhantomBladesPower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyKeywordsInCombat(MegaCrit.Sts2.Core.Models.CardModel,System.Collections.Generic.ISet<MegaCrit.Sts2.Core.Entities.Cards.CardKeyword>)": {
+    "status": "SolverCompensation",
+    "source": "src/Engine/InCombat/Simulation/CombatPredictedCardExtensions.cs",
+    "notes": "Native keyword hook reads cloned power ownership and returns dynamic Retain.",
+    "testId": "PHANTOM-RETAIN-LIFECYCLE"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.PhantomBladesPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterRemoved(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "NotCombatRelevant",
+    "source": "Native PhantomBladesPower.AfterRemoved source review",
+    "notes": "Only notifies Shiv card displays after dynamic keyword changes.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.QuietusPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/EndTurnPowerSupport.cs",
+    "notes": "Retire the temporary power at owner side end.",
+    "testId": "FOOL-TURN-CLEANUP"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ShowOffPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/EndTurnPowerSupport.cs",
+    "notes": "Retire the temporary power at owner side end.",
+    "testId": "FOOL-TURN-CLEANUP"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.TankPower|MegaCrit.Sts2.Core.Models.PowerModel.AfterRemoved(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "NotCombatRelevant",
+    "source": "Native TankPower.AfterRemoved source review",
+    "notes": "Produced by MultiplayerOnly Compost, Ensemble, Intercept or Tank; excluded from single-player standard card selection.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.TunePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "SolverCompensation",
+    "source": "src/Prediction/EndTurnPowerSupport.cs",
+    "notes": "Played Ki grants FreeCard at side end.",
+    "testId": "FOOL-PERSISTENT-POWERS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.WuppysLoyaltyPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldAllowHitting(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.cs",
+    "notes": "Branch HP controls hittability; pet and power are retained after death.",
+    "testId": "WUPPY-DAMAGE-ROUTING"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.WuppysLoyaltyPower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldCreatureBeRemovedFromCombatAfterDeath(MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.cs",
+    "notes": "Branch HP controls hittability; pet and power are retained after death.",
+    "testId": "WUPPY-DAMAGE-ROUTING"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.WuppysLoyaltyPower|MegaCrit.Sts2.Core.Models.PowerModel.ShouldPowerBeRemovedAfterOwnerDeath()": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.cs",
+    "notes": "Branch HP controls hittability; pet and power are retained after death.",
+    "testId": "WUPPY-DAMAGE-ROUTING"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.BizarreLamp|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.Relics.cs",
+    "notes": "First-turn generation preserves native candidate order and RNG.",
+    "testId": "BETA-RELIC-PREPARATION"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.ExerciseMat|MegaCrit.Sts2.Core.Models.AbstractModel.AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.RelicTurnStart.cs",
+    "notes": "First-turn Stretch; second preparation checks expiry.",
+    "testId": "BETA-RELIC-PREPARATION"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.LastingCandy|MegaCrit.Sts2.Core.Models.RelicModel.IsAllowedInternal(MegaCrit.Sts2.Core.Runs.IRunState)": {
+    "status": "NotCombatRelevant",
+    "source": "Native LastingCandy.IsAllowedInternal source review",
+    "notes": "Relic reward eligibility runs outside the combat search; held relic state is captured at the root.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.MassiveScroll|MegaCrit.Sts2.Core.Models.RelicModel.IsAllowedInternal(MegaCrit.Sts2.Core.Runs.IRunState)": {
+    "status": "NotCombatRelevant",
+    "source": "Native MassiveScroll.IsAllowedInternal source review",
+    "notes": "Relic reward eligibility runs outside the combat search; held relic state is captured at the root.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.Ocarina|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "SolverCompensation",
+    "source": "src/Search/SimulatedCombatState.Relics.cs",
+    "notes": "First-turn generation preserves native candidate order and RNG.",
+    "testId": "BETA-RELIC-PREPARATION"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.PotionBelt|MegaCrit.Sts2.Core.Models.RelicModel.IsAllowedInternal(MegaCrit.Sts2.Core.Runs.IRunState)": {
+    "status": "NotCombatRelevant",
+    "source": "Native PotionBelt.IsAllowedInternal source review",
+    "notes": "Relic reward eligibility runs outside the combat search; held relic state is captured at the root.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.SilverCrucible|MegaCrit.Sts2.Core.Models.RelicModel.IsAllowedInternal(MegaCrit.Sts2.Core.Runs.IRunState)": {
+    "status": "NotCombatRelevant",
+    "source": "Native SilverCrucible.IsAllowedInternal source review",
+    "notes": "Relic reward eligibility runs outside the combat search; held relic state is captured at the root.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.WingedBoots|MegaCrit.Sts2.Core.Models.RelicModel.IsAllowedInternal(MegaCrit.Sts2.Core.Runs.IRunState)": {
+    "status": "NotCombatRelevant",
+    "source": "Native WingedBoots.IsAllowedInternal source review",
+    "notes": "Relic reward eligibility runs outside the combat search; held relic state is captured at the root.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.DingyDagger|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "Engine strict method recipe covers the complete override.",
+    "testId": "STANDARD-NEW-TOKENS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.EpicRetrieval|MegaCrit.Sts2.Core.Models.AbstractModel.AfterArrowDislodged(MegaCrit.Sts2.Core.Models.Powers.ImpaledPower,MegaCrit.Sts2.Core.Entities.FoolArrows.ArrowSlot,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.GodByrd|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-NEW-TOKENS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Joy|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.MightyShield|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-NEW-TOKENS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.MightyWeapon|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-NEW-TOKENS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.WhistlingArrows|MegaCrit.Sts2.Core.Models.AbstractModel.AfterArrowShot(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.Entities.FoolArrows.ArrowSlot,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Enchantment|MegaCrit.Sts2.Core.Models.Enchantments.Sown|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-SOURCE-LIFECYCLES"
+  },
+  "Enchantment|MegaCrit.Sts2.Core.Models.Enchantments.Swift|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-SOURCE-LIFECYCLES"
+  },
+  "Potion|MegaCrit.Sts2.Core.Models.Potions.BottledSong|MegaCrit.Sts2.Core.Models.PotionModel.OnUse(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-POTIONS"
+  },
+  "Potion|MegaCrit.Sts2.Core.Models.Potions.CrystallineEuphoria|MegaCrit.Sts2.Core.Models.PotionModel.OnUse(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-POTIONS"
+  },
+  "Potion|MegaCrit.Sts2.Core.Models.Potions.PrecisionPotion|MegaCrit.Sts2.Core.Models.PotionModel.OnUse(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-POTIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AimPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterAttack(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Commands.Builders.AttackCommand)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "AIM-ATTACK-RETENTION"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AimPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeAttack(MegaCrit.Sts2.Core.Commands.Builders.AttackCommand)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "AIM-ATTACK-RETENTION"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AimPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageAdditive(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "AIM-ATTACK-RETENTION"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AllIsWellPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardGeneratedForCombat(MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.AmnesiaPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-SOURCE-LIFECYCLES"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ConductorsBatonPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BETA-RELIC-LIFECYCLE"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EcstasyPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EncorePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EncorePower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeCardPlayed(MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.EncorePower|MegaCrit.Sts2.Core.Models.AbstractModel.ShouldPlay(MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.AutoPlayType)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ExplosiveArrowsPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterArrowImpaled(MegaCrit.Sts2.Core.Models.Powers.ImpaledPower,MegaCrit.Sts2.Core.Entities.FoolArrows.ArrowSlot,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.FreeCardPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeCardPlayed(MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.FreeCardPower|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyEnergyCostInCombatLate(MegaCrit.Sts2.Core.Models.CardModel,System.Decimal,System.Decimal&)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.GodByrdPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-NEW-TOKENS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.JugglingPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.KiVersePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterModifyingCardPlayCount(MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.KiVersePower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyCardPlayCount(MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Int32)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.LostLutePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.LullabyPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.LullabyPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeSideTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.MotifPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.SerratedArrowsPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.SimpletonPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterAutoPostPlayPhaseEntered(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.SongPathPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ViolentChordPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.WuppysLoyaltyPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyPreBlockDamageTarget(MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "WUPPY-DAMAGE-ROUTING"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.YahPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterArrowDislodged(MegaCrit.Sts2.Core.Models.Powers.ImpaledPower,MegaCrit.Sts2.Core.Entities.FoolArrows.ArrowSlot,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.YahPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeSideTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.BathTowel|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPlayerTurnStartLate(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BATH-TOWEL-HEALING"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.ConductorsBaton|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BETA-RELIC-LIFECYCLE"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.ConductorsBaton|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeSideTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BETA-RELIC-LIFECYCLE"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.Fertilizer|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardGeneratedForCombat(MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BETA-RELIC-PREPARATION"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.MightyWings|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageGiven(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BETA-RELIC-LIFECYCLE"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.ObsidianVice|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BETA-RELIC-LIFECYCLE"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.Storyteller|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeSideTurnEnd(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IEnumerable<MegaCrit.Sts2.Core.Entities.Creatures.Creature>)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BETA-RELIC-LIFECYCLE"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.Thumbscrew|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyAttackHitCount(MegaCrit.Sts2.Core.Commands.Builders.AttackCommand,System.Int32)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-HIT-COUNTS"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.Twine|MegaCrit.Sts2.Core.Models.AbstractModel.AfterArrowDislodged(MegaCrit.Sts2.Core.Models.Powers.ImpaledPower,MegaCrit.Sts2.Core.Entities.FoolArrows.ArrowSlot,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-HOOK-COMBINATIONS"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.WhittlingKnife|MegaCrit.Sts2.Core.Models.AbstractModel.AfterShuffle(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "BETA-RELIC-PREPARATION"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.Wuppy|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCurrentHpChanged(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "WUPPY-DAMAGE-ROUTING"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ChoLimbs|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyEnergyCostInCombat(MegaCrit.Sts2.Core.Models.CardModel,System.Decimal,System.Decimal&)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-MELODY-EFFECTS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ChoLimbs|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-MELODY-EFFECTS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.MourningBlow|MegaCrit.Sts2.Core.Models.CardModel.GetResultLocationForCardPlay()": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-4"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.MourningBlow|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-4"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.TrickShot|MegaCrit.Sts2.Core.Models.CardModel.GetResultLocationForCardPlay()": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-5"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.TrickShot|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-5"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.CoveringFirePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterArrowShot(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.Entities.FoolArrows.ArrowSlot,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.113.0 native source: CoveringFirePower",
+    "notes": "Produced only by MultiplayerOnly CoveringFire; its arrow callback grants block to other player teammates.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ImpaledPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDamageReceived(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Entities.Creatures.DamageResult,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-BRANCH-STATE"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.QuietusPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterArrowShot(MegaCrit.Sts2.Core.Entities.Players.Player,MegaCrit.Sts2.Core.Entities.FoolArrows.ArrowSlot,MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Models.CardModel)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-ARROW-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.QuietusPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterAttack(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Commands.Builders.AttackCommand)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-ARROW-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.QuietusPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeAttack(MegaCrit.Sts2.Core.Commands.Builders.AttackCommand)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-ARROW-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.QuietusPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-ARROW-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.QuietusPower|MegaCrit.Sts2.Core.Models.PowerModel.InitInternalData()": {
+    "status": "NativeRuntimeState",
+    "source": "Captured in live Power state before solver snapshot",
+    "notes": "",
+    "testId": "FOOL-ARROW-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ShowOffPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-SHOW-OFF"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.StretchPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-MELODY-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.StretchPower|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeCardPlayed(MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-MELODY-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.StretchPower|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyBlockAdditive(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-MELODY-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.StretchPower|MegaCrit.Sts2.Core.Models.PowerModel.InitInternalData()": {
+    "status": "NativeRuntimeState",
+    "source": "Captured in live Power state before solver snapshot",
+    "notes": "",
+    "testId": "FOOL-MELODY-EFFECTS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.YouAreMinePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "NotCombatRelevant",
+    "source": "Game 0.113.0 native source: YouAreMinePower",
+    "notes": "Produced by Dread Queen dominion; standard-mode runs do not apply this power.",
+    "testId": "STATIC-STANDARD-113-HOOK-REVIEW"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Anguish|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-1"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ArrowStab|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-1"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.BlotOutTheSky|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-1"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.BowSmack|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-1"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.BrightenUp|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-1"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ChoChorus|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-1"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ChoKi|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-1"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ChoReady|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-2"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.DeepStretch|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-2"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.DislikeYou|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-2"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Ecstasy|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-2"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Ennui|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-2"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ExplosiveArrows|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-2"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Growth|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-2"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.HeavyShot|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-3"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.HobblingShot|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-3"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Jest|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-3"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.KiHop|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-3"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.KiVerse|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-3"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.LockedIn|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-3"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.LostLute|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-3"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.MelodicShot|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-4"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Nail|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-4"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.PunchOfJoy|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-4"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Quietus|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-4"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.RainShot|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-4"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Recall|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-4"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.RhythmStrike|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-5"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ShowOff|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "SHOW-OFF-DAMPEN"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.SkyShot|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-5"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.SorrowfulStrike|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-5"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.StrikeFool|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-5"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Uproot|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-6"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Vitriol|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-6"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.WahCho|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-6"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.WahHammer|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-RESOURCE-BOUNDARIES"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.WahSymphony|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-6"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.WahTouch|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-6"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Wrest|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-CONTENT-AUDIT-6"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Coda|MegaCrit.Sts2.Core.Models.AbstractModel.TryModifyEnergyCostInCombat(MegaCrit.Sts2.Core.Models.CardModel,System.Decimal,System.Decimal&)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-RESOURCE-BOUNDARIES"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Coda|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-RESOURCE-BOUNDARIES"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Honing|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-UPGRADED-CARDS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Lullaby|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-UPGRADED-CARDS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Motif|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-UPGRADED-CARDS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.ShowOff|MegaCrit.Sts2.Core.Models.CardModel.AfterDowngraded()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "SHOW-OFF-DAMPEN"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Simpleton|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-UPGRADED-CARDS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Tune|MegaCrit.Sts2.Core.Models.CardModel.OnUpgrade()": {
+    "status": "NativeRuntimeState",
+    "source": "Native CardModel mutable clone state",
+    "notes": "",
+    "testId": "FOOL-UPGRADED-CARDS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.WahHammer|MegaCrit.Sts2.Core.Models.AbstractModel.ModifyDamageMultiplicative(MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Decimal,MegaCrit.Sts2.Core.ValueProps.ValueProp,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-RESOURCE-BOUNDARIES"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.Byrdpip|MegaCrit.Sts2.Core.Models.MonsterModel.GenerateMoveStateMachine()": {
+    "status": "NativeRuntimeState",
+    "source": "Live MonsterModel move state machine",
+    "notes": "",
+    "testId": "FOOL-RESOURCE-BOUNDARIES"
+  },
+  "Monster|MegaCrit.Sts2.Core.Models.Monsters.Rocket|MegaCrit.Sts2.Core.Models.MonsterModel.GenerateMoveStateMachine()": {
+    "status": "NativeRuntimeState",
+    "source": "Live MonsterModel move state machine",
+    "notes": "",
+    "testId": "ROCKET-ATTACKS"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.ImpaledPower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-ARROW-DEATH"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.Byrdpip|MegaCrit.Sts2.Core.Models.AbstractModel.AfterCardPlayed(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "FOOL-RESOURCE-BOUNDARIES"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.Byrdpip|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeCombatStart()": {
+    "status": "NativeRuntimeState",
+    "source": "Captured in live relic state before solver snapshot",
+    "notes": "",
+    "testId": "FOOL-RESOURCE-BOUNDARIES"
+  },
+  "Relic|MegaCrit.Sts2.Core.Models.Relics.TormentousCollar|MegaCrit.Sts2.Core.Models.AbstractModel.BeforeSideTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList<MegaCrit.Sts2.Core.Entities.Creatures.Creature>,MegaCrit.Sts2.Core.Combat.ICombatState)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "TORMENTOUS-COLLAR-PREPARATION"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.BeatDown|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-RNG-STREAMS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Catastrophe|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-RNG-STREAMS"
+  },
+  "Card|MegaCrit.Sts2.Core.Models.Cards.Uproar|MegaCrit.Sts2.Core.Models.CardModel.OnPlay(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Cards.CardPlay)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-RNG-STREAMS"
+  },
+  "Potion|MegaCrit.Sts2.Core.Models.Potions.EntropicBrew|MegaCrit.Sts2.Core.Models.PotionModel.OnUse(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "ENTROPIC-GENERATION"
+  },
+  "Power|MegaCrit.Sts2.Core.Models.Powers.StampedePower|MegaCrit.Sts2.Core.Models.AbstractModel.AfterAutoPostPlayPhaseEntered(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)": {
+    "status": "EngineExact",
+    "source": "CombatSolver embedded engine explicit registry",
+    "notes": "",
+    "testId": "STANDARD-RNG-STREAMS"
   }
 }

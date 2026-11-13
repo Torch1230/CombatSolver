@@ -1,0 +1,254 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BEAT_DOWN",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "WAH_HAMMER",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard"
+      },
+      {
+        "cardId": "DAZED",
+        "pile": "Discard"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "BEAT_DOWN",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "UPROAR",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "WAH_HAMMER",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "DAZED",
+        "pile": "Draw"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "UPROAR",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "CATASTROPHE",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "WAH_HAMMER",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw"
+      },
+      {
+        "cardId": "DAZED",
+        "pile": "Draw"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CATASTROPHE",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "CATASTROPHE",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DAZED",
+        "pile": "Draw",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "CATASTROPHE",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "WAH_HAMMER",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand"
+      }
+    ],
+    "powersBeforeMove": [
+      {
+        "powerId": "STAMPEDE_POWER",
+        "target": "Player",
+        "amount": 2
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 4
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw"
+      }
+    ],
+    "powersBeforeMove": [
+      {
+        "powerId": "ENTROPY_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "triggerPlayerSetupAfterMove": true,
+    "playerSetupChoiceCardIds": [
+      "STRIKE_FOOL"
+    ]
+  },
+  {
+    "monsterId": "ThievingHopper",
+    "moveId": "THIEVERY_MOVE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BYRDONIS_EGG",
+        "pile": "Draw",
+        "treatAsDeckCard": true
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "treatAsDeckCard": true
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Discard",
+        "upgradeLevels": 1,
+        "treatAsDeckCard": true
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "treatAsDeckCard": true
+      }
+    ],
+    "playerHpBefore": 77
+  }
+]

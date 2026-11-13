@@ -1,0 +1,100 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "playerHpBefore": 77,
+    "powersBeforeMove": [
+      {
+        "powerId": "BUFFER_POWER",
+        "target": "Player",
+        "amount": 2
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "BRIGHTEST_FLAME",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 4
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "BRIGHTEST_FLAME",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Hand",
+        "enchantmentId": "SWIFT",
+        "enchantmentAmount": 1
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "enchantmentId": "SOWN",
+        "enchantmentAmount": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 4
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "STRIKE_FOOL",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "powersBeforeMove": [
+      {
+        "powerId": "AMNESIA_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "triggerPlayerSetupAfterMove": true,
+    "expectedPlayerEnergy": 2,
+    "expectedPlayerHandCount": 3
+  }
+]

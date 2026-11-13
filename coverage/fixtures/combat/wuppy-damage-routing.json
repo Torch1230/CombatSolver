@@ -1,0 +1,17 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "ACID_GOOP",
+    "clearAllRelicsBeforeMove": true, "clearAllPowersBeforeMove": true,
+    "playerBlockBefore": 20,
+    "relicsBeforeMove": [{ "relicId": "WUPPY" }]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "ACID_GOOP",
+    "playerBlockBefore": 20,
+    "powersBeforeMove": [{ "powerId": "STRENGTH_POWER", "target": "Enemy", "amount": 60 }]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "ACID_GOOP",
+    "playerBlockBefore": 200
+  }
+]

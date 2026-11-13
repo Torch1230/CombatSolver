@@ -1,0 +1,908 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_FOOL",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_FOOL",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_HIGH_PRIESTESS",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_HIGH_PRIESTESS",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_EMPEROR",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_EMPEROR",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_EMPRESS",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_EMPRESS",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_HANGED_MAN",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_HANGED_MAN",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_HIEROPHANT",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_HIEROPHANT",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_CHARIOT",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_CHARIOT",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "JUSTICE",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "JUSTICE",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_MAGICIAN",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_MAGICIAN",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_MOON",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_MOON",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_TOWER",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_TOWER",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "STRENGTH",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "STRENGTH",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "DEATH",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "DEATH",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "TEMPERANCE",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "TEMPERANCE",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_DEVIL",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_DEVIL",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_HERMIT",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_HERMIT",
+        "target": "None",
+        "useChoice": true,
+        "choiceCardIds": [
+          "REGRET"
+        ]
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_LOVERS",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_LOVERS",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_STAR",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_STAR",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_SUN",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_SUN",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "THE_WORLD",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "THE_WORLD",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "WHEEL_OF_FORTUNE",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "WHEEL_OF_FORTUNE",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 15,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "JUDGEMENT",
+        "pile": "Hand",
+        "upgradeLevels": 0
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "REGRET",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 5
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Discard",
+        "count": 3
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "JUDGEMENT",
+        "target": "Enemy"
+      }
+    ]
+  }
+]

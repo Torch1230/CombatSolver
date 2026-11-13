@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "combatSolverVersion": "0.49.3",
-  "gameVersion": "0.111.0",
+  "combatSolverVersion": "0.50.1",
+  "gameVersion": "0.113.0",
   "unresolvedCount": 0,
   "entries": [
     {
@@ -285,10 +285,10 @@
       "evidence": "MonsterSpawnSupport, DeathPowerSupport, Osty lifecycle, escape semantics, or initial snapshot"
     },
     {
-      "key": "MegaCrit.Sts2.Core.Models.Powers.InfestedPower.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)",
+      "key": "MegaCrit.Sts2.Core.Models.Powers.InfestedPower.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
       "category": "Powers",
       "entityType": "MegaCrit.Sts2.Core.Models.Powers.InfestedPower",
-      "method": "AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)",
+      "method": "AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
       "classification": "Supported",
       "evidence": "MonsterSpawnSupport, DeathPowerSupport, Osty lifecycle, escape semantics, or initial snapshot"
     },
@@ -301,10 +301,10 @@
       "evidence": "MonsterSpawnSupport, DeathPowerSupport, Osty lifecycle, escape semantics, or initial snapshot"
     },
     {
-      "key": "MegaCrit.Sts2.Core.Models.Powers.StockPower.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)",
+      "key": "MegaCrit.Sts2.Core.Models.Powers.StockPower.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
       "category": "Powers",
       "entityType": "MegaCrit.Sts2.Core.Models.Powers.StockPower",
-      "method": "AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)",
+      "method": "AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
       "classification": "Supported",
       "evidence": "MonsterSpawnSupport, DeathPowerSupport, Osty lifecycle, escape semantics, or initial snapshot"
     },
@@ -317,10 +317,10 @@
       "evidence": "MonsterSpawnSupport, DeathPowerSupport, Osty lifecycle, escape semantics, or initial snapshot"
     },
     {
-      "key": "MegaCrit.Sts2.Core.Models.Powers.SurprisePower.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)",
+      "key": "MegaCrit.Sts2.Core.Models.Powers.SurprisePower.AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
       "category": "Powers",
       "entityType": "MegaCrit.Sts2.Core.Models.Powers.SurprisePower",
-      "method": "AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,System.Boolean,System.Single)",
+      "method": "AfterDeath(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Creatures.Creature,MegaCrit.Sts2.Core.Models.CardModel,System.Boolean,System.Single)",
       "classification": "Supported",
       "evidence": "MonsterSpawnSupport, DeathPowerSupport, Osty lifecycle, escape semantics, or initial snapshot"
     },
@@ -347,6 +347,30 @@
       "method": "SummonPet()",
       "classification": "Supported",
       "evidence": "MonsterSpawnSupport, DeathPowerSupport, Osty lifecycle, escape semantics, or initial snapshot"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Byrdine.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Byrdine",
+      "method": "AfterObtained()",
+      "classification": "InitialSnapshot",
+      "evidence": "Pet acquisition and BeforeCombatStart resolve before the search root; CombatRootSnapshot captures pet state and Wuppy damage routing uses branch state."
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Byrdine.BeforeCombatStart()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Byrdine",
+      "method": "BeforeCombatStart()",
+      "classification": "InitialSnapshot",
+      "evidence": "Pet acquisition and BeforeCombatStart resolve before the search root; CombatRootSnapshot captures pet state and Wuppy damage routing uses branch state."
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Byrdine.SummonPet()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Byrdine",
+      "method": "SummonPet()",
+      "classification": "InitialSnapshot",
+      "evidence": "Pet acquisition and BeforeCombatStart resolve before the search root; CombatRootSnapshot captures pet state and Wuppy damage routing uses branch state."
     },
     {
       "key": "MegaCrit.Sts2.Core.Models.Relics.Byrdpip.AfterObtained()",
@@ -411,6 +435,30 @@
       "method": "BeforeCombatStart()",
       "classification": "Supported",
       "evidence": "MonsterSpawnSupport, DeathPowerSupport, Osty lifecycle, escape semantics, or initial snapshot"
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Wuppy.AfterObtained()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Wuppy",
+      "method": "AfterObtained()",
+      "classification": "InitialSnapshot",
+      "evidence": "Pet acquisition and BeforeCombatStart resolve before the search root; CombatRootSnapshot captures pet state and Wuppy damage routing uses branch state."
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Wuppy.BeforeCombatStart()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Wuppy",
+      "method": "BeforeCombatStart()",
+      "classification": "InitialSnapshot",
+      "evidence": "Pet acquisition and BeforeCombatStart resolve before the search root; CombatRootSnapshot captures pet state and Wuppy damage routing uses branch state."
+    },
+    {
+      "key": "MegaCrit.Sts2.Core.Models.Relics.Wuppy.SummonPet()",
+      "category": "Relics",
+      "entityType": "MegaCrit.Sts2.Core.Models.Relics.Wuppy",
+      "method": "SummonPet()",
+      "classification": "InitialSnapshot",
+      "evidence": "Pet acquisition and BeforeCombatStart resolve before the search root; CombatRootSnapshot captures pet state and Wuppy damage routing uses branch state."
     }
   ]
 }

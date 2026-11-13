@@ -265,7 +265,7 @@ internal sealed partial class UnattendedTestRunner
             _player = player;
             _allowLegacyCosts = allowLegacyCosts;
             CombatReplayRecording.TestObserver = Observe;
-            _selector = CardSelectCmd.PushSelector(this, localOnly: true);
+            _selector = NativeTestCardSelectors.Push(this, localOnly: true);
             _executor = RunManager.Instance.ActionExecutor;
             _executor.AfterActionExecuted += ObserveCompletedAction;
         }

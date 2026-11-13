@@ -73,7 +73,7 @@ CombatSolver 是《杀戮尖塔 2》的单人战斗路线求解器 Mod，使用 
 - 怪物下一行动、状态机日志、私有 AI 和行动静态参数；
 - 遗物、药水槽、球和内部触发计数；
 - 召唤、死亡、复活、逃跑后的阵容；
-- 九条战斗 RNG 的状态与计数。
+- 九条战斗 RNG，以及战斗可达的玩家 NonCombatGeneration 流的完整状态与计数。
 
 新增分支状态时必须明确：
 
@@ -218,7 +218,7 @@ Windows `.ps1` 与 Linux `.sh` 都是受维护的平台原生入口：PowerShell
 - 问题包通过 `CheckpointArchivePath` 或 `run-checkpoint-batch` 导入，`ReplayMode=RestoreOnly` 默认只验证检查点；`Preflight` 只验证材料，不能视作恢复成功。新包从原生战前存档和事件恢复，完整 ContinuationStamp 与 native-state 分别对账；旧包支持开战前注入及检查点恢复，缺失历史与政策明确报告。批量工具口径与限制见 `docs/CHECKPOINT_REPLAY.md`。
 - Overlay 的人工布局、字体、拖动和真实动画需要可见游戏验证；headless 只证明结构化状态与部署事件。
 - No-GC 和卡顿受完整 Mod 栈及渲染分配影响；headless 数据不能替代可见 Steam 性能口径。
-- `.local/decompiled/sts2-v0.111.0/` 是当前游戏版本的只读原版源码参考。只有调查原版语义时定向读取，游戏版本变化后重新建立对应版本目录；不要在普通仓库扫描中载入它。
+- `.local/decompiled/sts2-v0.113.0/` 是当前游戏版本的只读原版源码参考。只有调查原版语义时定向读取，游戏版本变化后重新建立对应版本目录；不要在普通仓库扫描中载入它。
 
 ## 11. 完成汇报
 

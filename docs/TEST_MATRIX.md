@@ -1,5 +1,48 @@
 # CombatSolver 测试入口
 
+## v0.113.0 标准模式适配
+
+2026-11-13，本机 public-beta `0.113.0` / `16ac0fe3`。当前 Release 主项目与 OfflineSearchHarness 构建通过。下表是本轮原生运行证据，完整 runId、程序集 hash 与结果保存在 `coverage/evidence/test-evidence.json`；每次请求上限 120 秒，实例清理结果均由启动器记录。
+
+| 场景 | 机制与输入 | 结果 |
+| --- | --- | --- |
+| LAZY-RNG-FORK | 九条战斗流和玩家 NonCombatGeneration，根捕获与多代隔离 | Passed |
+| STANDARD-REWORKED-CARDS | `coverage/fixtures/cards/audits/standard-reworked-cards.json` | Passed |
+| STANDARD-HIT-COUNTS | `coverage/fixtures/cards/audits/standard-hit-counts.json`，15 张旧牌与 Thumbscrew | Passed |
+| EXTRA-TURN-MIRROR-ORDER | 帕尔之眼已用／未用 × 三种监听位置，消费来源、Fork 与 live | Passed |
+| FOOL-ARROW-LIFECYCLE | `coverage/fixtures/cards/audits/fool-arrow-lifecycle.json` | Passed |
+| FOOL-ARROW-EFFECTS | `coverage/fixtures/cards/audits/fool-arrow-effects.json`，双敌、绽放射击、散雨射击、寂灭 | Passed |
+| FOOL-MELODY-EFFECTS | `coverage/fixtures/cards/audits/fool-melody-effects.json` | Passed |
+| FOOL-CHOICE-EFFECTS | `coverage/fixtures/cards/audits/fool-choice-effects.json`，Recall 与叽 唱诵 | Passed |
+| FOOL-POTIONS | `coverage/fixtures/potions/fool-potions.json`，瓶装歌曲、幸福结晶、精密药水 | Passed |
+| FOOL-SHOW-OFF | `coverage/fixtures/cards/audits/fool-show-off.json`，炫技多实例击杀成长 | Passed |
+| WUPPY-DAMAGE-ROUTING | `coverage/fixtures/combat/wuppy-damage-routing.json`，存活、溢出击杀、后续攻击 | Passed |
+| DUPE-CLONE-CONTRACT | 离牌堆原牌捕获、live 推进、父子／兄弟引用及状态键 | Passed |
+| AIM-ATTACK-RETENTION | 攻击中叠层、保留出手身份、根与 Fork | Passed |
+| NATIVE-CARD-ORDERING | 费用、重放、动态变量排序，完整 RNG，live 推进和兄弟隔离 | Passed |
+
+复跑夹具使用 `-MonsterMoveChecksPath <上述路径> -StopAfterInitialSetupAssertion`，愚者场景增加 `-CharacterId FOOL`；双敌箭术和炫技增加 `-AdditionalMonsterId TUNNELER`，两敌最大／当前生命同时设为 999。命中次数夹具单敌最大／当前生命为 9999。药水使用 `-PotionChecksPath`。每次加 `-HeadlessInstance <独立名称> -CleanupInstanceOnExit -TimeoutSeconds 120`；启动前构建当前 DLL。
+
+逐卡审计覆盖 84 张单人愚者卡；六张 MultiplayerOnly 卡保留原生范围说明。84 张逐卡出牌差分全部通过。失败基线：啾 尖刺缺内部 ThornsPower，补齐 TemporaryThornsPower 的施加和对方回合末回收后，四张尾段通过。旧 CARD-CLONE-IDENTITY-CONTRACT 的错位调查断言在当前建局失败，新增 DUPE-CLONE-CONTRACT 独立验证新版复制语义。两个并发请求在宿主准入队列达到超时，已清理实例，随后顺序补跑。
+
+愚者分支合同及连续两次玩家回合结束／准备通过，覆盖箭身份、插箭引用、旋律清理、live 推进及父子／兄弟隔离；完整行动队列跨回合测试曾达 120 秒，最小生命周期合同在 35 秒内通过。炫技永久成长、Power 来源重映射、成长额度持久化及侧栏入口通过。调音／倦怠／神话形态组合的下一回合全状态差分通过。
+
+六角色固定 1500 ms 短搜及严格增量核对通过，输入位于 `coverage/fixtures/search/beta-standard-*.json`：铁甲战士 0 损/T3、静默猎手 2 损/T5、储君 5 损/T4、亡灵契约师 0 损/T4、故障机器人 0 损/T3；愚者箭术 4 损/T2、旋律 4 损/T3、混合 0 损/T3。铁甲战士及愚者三组 Instant/0 秒原生完整部署通过，均为零计划外重算。部署产生的新版箭术 T2、混合 T3 问题包以 RestoreOnly 恢复通过，原生状态与 continuation 均核对一致。各运行的源码 hash 和 runId 分别登记；可见 Steam UI 尚未验证。
+
+组件回复闭包按原生 MVID `ad562b4e-7352-4ca2-ae45-0ff44cd284bc` 更新，原生审计见 `coverage/evidence/sts2-0.113-healing-audit.json`；`COMPONENT-HEALING-BOUND` 的生成过滤、洗牌、回复剂量及未知来源门禁合同通过。离线铁甲战士小根 Low/500 节点/1500 ms/DOP1 哨兵在修复前后均展开 291 节点、899 转移、0 战损、相同评分，wall 约 0.74→0.68 秒；该数字覆盖此固定小根。
+
+六行 `FOOL-HOOK-COMBINATIONS` 全状态差分通过，输入为 `coverage/fixtures/cards/audits/fool-hook-combinations.json`，覆盖双敌射箭／插箭／拔箭联动、六种旋律能力、Encore/FreeCard、Simpleton 自动牌、Joy 转换、Juggling 复制及回合准备。失败基线发现 WhistlingArrows 缺监听参与位、Yah/Lullaby 缺纯原版快捷路径复位；最终运行 `67fdcd50ee6b4b5890142c6492f701e6` 通过并清理实例。
+
+独立合同另覆盖：`CHOICE-SHAPE-INSPECTION` 出牌前选择类型查询及 RNG、`DINGY-DAGGER-NAMES` 中英名称阈值和高升级等级、`PHANTOM-RETAIN-LIFECYCLE` 动态保留、`INFUSED-CORE-PREPARATION` 首次充能与第二回合、`STANDARD-NEW-TOKENS` 新生成牌、`STANDARD-SOURCE-LIFECYCLES` 附魔与失忆、`FOOL-ARROW-MULTIPLIERS` 箭倍率、`FOOL-TURN-CLEANUP` 回合清理、`STANDARD-CHANGED-MONSTERS` 感染棱柱／地道虫／气态炸弹。塔罗 22 张的普通和升级版本分批全部通过；命运之轮弃抽数量失败及修复保存在结构化证据中。
+
+`FOOL-RESOURCE-BOUNDARIES` 四行分别核对 Coda 费用、插箭倍率、延迟抽牌、Byrdpip 计数和箭击杀回收，最大／当前生命均设 `[9999,9999]`；前三行与最后死亡行分批通过。`FOOL-UPGRADED-CARDS` 补齐五张升级牌，`SHOW-OFF-DAMPEN` 验证升级牌降级，`TORMENTOUS-COLLAR-PREPARATION` 在 `BYGONE_EFFIGY_ELITE` 核对首回合两层虚弱和次回合失效，`ROCKET-ATTACKS` 在 `KAISER_CRAB_BOSS` 核对四种攻击。独立夹具均以完整原生／预测状态比较；初始化参数错误、首回合夹具的回合回退及普通遭遇设置失败均记录在证据中。
+
+`STANDARD-RNG-STREAMS` 的七行差分通过：BeatDown、Uproar、Catastrophe 普通／全不可打候选、Stampede 回合末自动牌、Entropy 抽牌后转换、ThievingHopper 排除任务牌的永久牌组偷窃。`ENTROPIC-GENERATION` 连续两次混沌药水验证空槽填充、满栏替换后的单槽填充以及玩家 NonCombatGeneration 完整状态。启动器的药水／怪物输入是分别运行的请求；Entropy 的 120 秒超时基线来自测试选择器作用域，修正后全组通过。
+
+最终 `BETA-DEPLOY-FOOL-HOOKS` 以固定 1500 ms、严格增量核对、Instant/0 秒部署通过，原生 T2、77/77 HP、零计划外重算。路线实际使用 ExplosiveArrows、射箭前后两次 WhistlingArrows、EpicRetrieval 和下一回合续用；输入为 `coverage/fixtures/search/beta-standard-fool-hooks.json`。最终 `FOOL-TURN-LIFECYCLE` 在父子／兄弟分支中加入 Yah/Lullaby 标记，原生连续两回合推进至 T3 通过。首次部署启动在快照冻结期间检测到 DLL 变化并拒绝，重新使用稳定构建后通过。
+
+CoverageCatalog 的 3386 条目录全量门禁通过：待分析、待实现、活动精确 Hook 运行证据缺口、必需状态写入证据缺口和分支读取风险均为 0。24 条仅根快照写入、115 条静态行动图构建单列；旧证据保留来源版本。本版运行、静态审查与历史记录的口径分别保存在源码差异索引和结构化证据中。PowerShell/Bash 结构门禁及文档、工具、覆盖目录检查通过；本机执行平台为 Windows，Linux 游戏运行和可见 Steam UI 尚未执行。
+
 2026-10-07 PR #227–#230 的本机 `SMART-POTION-AUDIT-BUDGET`、旧报告、GC 合同，以及 O068 和固定哨兵整场部署通过。O056 最终与当前主线同为 62 战损，历史界 42 未达成；组件证明合同被 native-version 门禁拒绝。最小复跑入口、同根对照、失败及未验证范围见[整合验证](archive/testing/pr-integration-20261007.md)。
 
 贡献者 2026-10-06 的 Linux [计划续搜完整胜利证明](performance/plan-witness-propagation-20261006.md)：原生计划循环与最终 GC 合同 Passed；政策门禁、16 Fork、DOP1/16 实际成员派发与一次压缩完整回收通过，实例清理。11 根 44 次纯交错质量及峰值通过；2 次完整诊断、9 次根审计单列。未做全29根、上传包或可见性能，历史战损差异保留。
@@ -84,67 +127,7 @@ pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId EFFECT-S
 
 ## 0.48.0 硬错误机制合同
 
-这些场景各自停止在共享首因或必要跨回合边界。完整runId、失败基线和未验证项见[历史卷13](archive/testing/volume-13.md)，逐包分类见[问题记录](issues/0.48.0-hardbugs-20261003.md)。
-
-```powershell
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId NATIVE-CHOOSE-OPEN-GATE -CharacterId SILENT -EncounterId CHOMPERS_NORMAL -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId CALCULATED-GAMBLE-ORDERED-DISCARD -CharacterId SILENT -EncounterId CHOMPERS_NORMAL -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId FROZEN-LIGHTNING-CHANNELS -CharacterId DEFECT -EncounterId MECHA_KNIGHT_ELITE -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId REPORT-ROUND-IMBALANCED -CharacterId NECROBINDER -EncounterId BOWLBUGS_NORMAL -InitialPlayerHp 200 -InitialPlayerMaxHp 200 -ClearPlayerHand -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId SECOND-WIND-REPORT-ROOT -CharacterId IRONCLAD -EncounterId DECIMILLIPEDE_ELITE -InitialRoundNumber 3 -InitialPlayerTurnNumber 3 -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId GROUP-DEBUFF-REACTIVE-DRAW -CharacterId NECROBINDER -EncounterId CHOMPERS_NORMAL -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId CONSTRUCT-REAPER-ARTIFACT -CharacterId NECROBINDER -EncounterId CONSTRUCT_MENAGERIE_NORMAL -InitialRoundNumber 3 -InitialPlayerTurnNumber 3 -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId FIXED-PREFIX-POTION-POLICY -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId FIXED-PREFIX-TURN-OUTCOMES -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId MIRRORED-HOOK-FILTER -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId FROZEN-ROOT-LISTENERS -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId CALCULATED-HISTORY-FREEZE -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId VOID-FORM-TURN-CHOICES -CharacterId REGENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId FLATTEN-MUSIC-BOX-ENTRY -CharacterId NECROBINDER -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId SEEKER-ORDERED-OPTIONS -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId RITUAL-TEMPORARY-STRENGTH -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId NOXIOUS-RAMPART-ORDER -CharacterId IRONCLAD -EncounterId TURRET_OPERATOR_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId EVIL-EYE-EXHAUST-HISTORY -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId BLOCK-SPEC-CARD-PLAY-IDENTITY -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId ROUTE-ADOPTION-LIFETIME -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId PAELS-LEGION-FINISHED-REFERENCE -CharacterId SILENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId END-TURN-RISK-LOSS-ACCOUNTING -CharacterId DEFECT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId MAKE-IT-SO-FULL-HAND -CharacterId REGENT -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId CARD-COST-IDENTITY-CONTRACT -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId DAMPEN-REACTIVE-ROCKET-PUNCH -CharacterId DEFECT -EncounterId KNIGHTS_ELITE -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId DAMPEN-REACTIVE-MELANCHOLY -CharacterId NECROBINDER -EncounterId KNIGHTS_ELITE -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId RADIANT-PEARL-ENTRY -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -EnemyCurrentHp 1000 -TimeoutSeconds 120 -CleanupInstanceOnExit
-```
-
-```bash
-./tools/testing/run-unattended-test.sh --scenario-id NATIVE-CHOOSE-OPEN-GATE --character-id SILENT --encounter-id CHOMPERS_NORMAL --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id CALCULATED-GAMBLE-ORDERED-DISCARD --character-id SILENT --encounter-id CHOMPERS_NORMAL --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id FROZEN-LIGHTNING-CHANNELS --character-id DEFECT --encounter-id MECHA_KNIGHT_ELITE --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id REPORT-ROUND-IMBALANCED --character-id NECROBINDER --encounter-id BOWLBUGS_NORMAL --initial-player-hp 200 --initial-player-max-hp 200 --clear-player-hand --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id SECOND-WIND-REPORT-ROOT --character-id IRONCLAD --encounter-id DECIMILLIPEDE_ELITE --initial-round-number 3 --initial-player-turn-number 3 --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id GROUP-DEBUFF-REACTIVE-DRAW --character-id NECROBINDER --encounter-id CHOMPERS_NORMAL --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id CONSTRUCT-REAPER-ARTIFACT --character-id NECROBINDER --encounter-id CONSTRUCT_MENAGERIE_NORMAL --initial-round-number 3 --initial-player-turn-number 3 --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id FIXED-PREFIX-POTION-POLICY --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id FIXED-PREFIX-TURN-OUTCOMES --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id MIRRORED-HOOK-FILTER --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id FROZEN-ROOT-LISTENERS --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id CALCULATED-HISTORY-FREEZE --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id VOID-FORM-TURN-CHOICES --character-id REGENT --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id FLATTEN-MUSIC-BOX-ENTRY --character-id NECROBINDER --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id SEEKER-ORDERED-OPTIONS --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id RITUAL-TEMPORARY-STRENGTH --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id NOXIOUS-RAMPART-ORDER --character-id IRONCLAD --encounter-id TURRET_OPERATOR_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id EVIL-EYE-EXHAUST-HISTORY --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id BLOCK-SPEC-CARD-PLAY-IDENTITY --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id ROUTE-ADOPTION-LIFETIME --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id PAELS-LEGION-FINISHED-REFERENCE --character-id SILENT --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id END-TURN-RISK-LOSS-ACCOUNTING --character-id DEFECT --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id MAKE-IT-SO-FULL-HAND --character-id REGENT --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id CARD-COST-IDENTITY-CONTRACT --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id DAMPEN-REACTIVE-ROCKET-PUNCH --character-id DEFECT --encounter-id KNIGHTS_ELITE --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id DAMPEN-REACTIVE-MELANCHOLY --character-id NECROBINDER --encounter-id KNIGHTS_ELITE --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-./tools/testing/run-unattended-test.sh --scenario-id RADIANT-PEARL-ENTRY --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 1000 --timeout-seconds 120 --cleanup-instance-on-exit
-```
+历史结果和复跑命令见[历史卷 22](archive/testing/volume-22.md)。
 
 ## 社区批次 B013 回归夹具（2026-10-03，Refs #172）
 

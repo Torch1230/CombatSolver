@@ -1,0 +1,26 @@
+[
+  {
+    "monsterId": "InfestedPrism",
+    "moveId": "JAB_MOVE_2",
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerHpBefore": 77,
+    "playerBlockBefore": 0
+  },
+  {
+    "monsterId": "Tunneler",
+    "moveId": "FROM_BELOW_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerHpBefore": 77,
+    "playerBlockBefore": 0
+  },
+  {
+    "monsterId": "GasBomb",
+    "moveId": "EXPLODE_MOVE",
+    "clearAllPowersBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerHpBefore": 77,
+    "playerBlockBefore": 0
+  }
+]

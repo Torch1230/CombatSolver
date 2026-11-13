@@ -128,7 +128,8 @@ internal sealed partial class UnattendedTestRunner
                 combatState.RunState.Rng.CombatTargets.ToSerializable().counter,
                 combatState.RunState.Rng.CombatOrbGeneration.ToSerializable().counter,
                 combatState.RunState.Rng.MonsterAi.ToSerializable().counter,
-                combatState.RunState.Rng.Niche.ToSerializable().counter),
+                combatState.RunState.Rng.Niche.ToSerializable().counter,
+                player.PlayerRng.NonCombatGeneration.ToSerializable().counter),
             exactContinuationState);
     }
 
@@ -209,7 +210,8 @@ internal sealed partial class UnattendedTestRunner
                 simulator.Rng.CombatTargets.ToSerializable().counter,
                 simulator.Rng.CombatOrbGeneration.ToSerializable().counter,
                 simulator.Rng.MonsterAi.ToSerializable().counter,
-                simulator.Rng.Niche.ToSerializable().counter),
+                simulator.Rng.Niche.ToSerializable().counter,
+                simulator.Rng.NonCombatGenerationState(player).Counter),
             exactContinuationState);
     }
 
@@ -407,7 +409,7 @@ internal sealed partial class UnattendedTestRunner
                     $"R{entry.Card.BaseReplayCount}:" +
                     $"X{entry.Card.ExhaustOnNextPlay}:" +
                     $"S{entry.Card.IsSlyThisTurn}:" +
-                    $"T{entry.Card.ShouldRetainThisTurn}:" +
+                    $"T{entry.Card._hasSingleTurnRetain}:" +
                     $"D{entry.Card.DeckVersion != null}:" +
                     $"M{entry.Card.HasBeenRemovedFromState}",
                 StringComparer.Ordinal)
@@ -735,7 +737,8 @@ internal sealed partial class UnattendedTestRunner
         int targets,
         int orbs,
         int monsterAi,
-        int niche)
+        int niche,
+        int nonCombatGeneration)
         => new(StringComparer.Ordinal)
         {
             ["Shuffle"] = shuffle,
@@ -747,6 +750,7 @@ internal sealed partial class UnattendedTestRunner
             ["CombatOrbGeneration"] = orbs,
             ["MonsterAi"] = monsterAi,
             ["Niche"] = niche,
+            ["NonCombatGeneration"] = nonCombatGeneration,
         };
 
     private void AssertSnapshotEqual(

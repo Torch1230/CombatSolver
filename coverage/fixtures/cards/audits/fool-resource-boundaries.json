@@ -1,0 +1,163 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "WAH_CHO_KI",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "CODA",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "WAH_HAMMER",
+        "pile": "Hand",
+        "count": 1
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "WAH_CHO_KI",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "CODA",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "WAH_HAMMER",
+        "target": "Enemy"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 8
+      }
+    ],
+    "cardPlayChecksAfterMove": [],
+    "powersBeforeMove": [
+      {
+        "powerId": "DRAW_CARDS_NEXT_TURN_POWER",
+        "target": "Player",
+        "amount": 2
+      }
+    ],
+    "triggerPlayerSetupAfterMove": true,
+    "expectedPlayerHandCount": 7,
+    "expectedAbsentPlayerPowers": [
+      "DRAW_CARDS_NEXT_TURN_POWER"
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "BYRD_SWOOP",
+        "pile": "Hand",
+        "count": 7
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "BYRD_SWOOP",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "BYRD_SWOOP",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "BYRD_SWOOP",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "BYRD_SWOOP",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "BYRD_SWOOP",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "BYRD_SWOOP",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "BYRD_SWOOP",
+        "target": "Enemy"
+      }
+    ],
+    "relicsBeforeMove": [
+      {
+        "relicId": "BYRDPIP",
+        "addWithoutObtainedEffects": false
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 18,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "WAH_HAMMER",
+        "pile": "Hand",
+        "count": 1
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "FOOLISH_SHOT",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "WAH_HAMMER",
+        "target": "Enemy"
+      }
+    ]
+  }
+]

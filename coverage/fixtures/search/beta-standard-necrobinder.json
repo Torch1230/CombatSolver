@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "seed": "BETA113-necrobinder",
+  "characterId": "NECROBINDER",
+  "ascension": 0,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "characterCards": {
+    "ids": [
+      "MELANCHOLY",
+      "BONE_SHARDS",
+      "STRIKE_NECROBINDER",
+      "STRIKE_NECROBINDER",
+      "DEFEND_NECROBINDER",
+      "DEFEND_NECROBINDER",
+      "STRIKE_NECROBINDER",
+      "STRIKE_NECROBINDER"
+    ]
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true
+}

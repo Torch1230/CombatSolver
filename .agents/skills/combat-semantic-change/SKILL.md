@@ -68,7 +68,7 @@ CombatRootSnapshot.Capture（主线程根）
 
 `AfterSideTurnEndLate` 的扩展使用 `AfterSideTurnEndLateMirrors.Register<TModel>`，在根捕获前完成登记；玩家和敌方共用 Hook facade，DisintegrationPower 不得恢复到独立晚期补偿。新增其他阶段时逐一核对原版顺序、选择暂停和状态所有权，不能把晚期入口当作所有回合事件的通用回调。
 
-额外回合的 `ShouldTakeExtraTurn` / `AfterTakingExtraTurn` 由 `ExtraTurnMirrors` 登记原版及第三方单项效果。判断按原生顺序短路，后置回调先固定成员再依次结算；选择暂停沿原动作重放。状态读写使用分支 Power 和遗物记录；原生顺序、完整状态和 Fork 隔离用 `EXTRA-TURN-MIRROR-ORDER` 验证。
+额外回合的 `ShouldTakeExtraTurnEarly` / `ShouldTakeExtraTurn` / `AfterTakingExtraTurn` 由 `ExtraTurnMirrors` 登记原版及第三方单项效果。先遍历 Early，再遍历普通判断，首个命中来源获得资格，后置仅消费该来源；选择暂停沿原动作重放。状态读写使用分支 Power 和遗物记录；原生顺序、完整状态和 Fork 隔离用 `EXTRA-TURN-MIRROR-ORDER` 验证。
 
 ## 3. 状态所有权清单
 
@@ -152,3 +152,5 @@ writeLive 和 writePredicted，复用 store 的 Fork context。状态描述按�
 - 金币 Modify/AfterModify 使用带 combat child 的跑局监听表，AfterGoldGained 使用 null-child 跑局序列。只在主线程冻结根成员，资源与 HP 消费分支状态；未知 override 不能依 manifest 的 Ignored 分类放行。最大生命增加后只回复实际封顶差值，并经过通用 Heal 的 HP 回调；原生严格差分覆盖小数、金币修正顺序、owner、熔化、封顶和成长/长期资源记录。
 
 - Hook 参与位图的金币方法族共用一位时，只允许保守保留更多监听成员；精确 dispatch 仍按方法查表。不得用超过 ulong 位宽的移位产生别名，也不得借共用位跳过有回调的成员。
+
+- 箭、额外回合与新伤害回调共用 `AdditionalCallbacks` 参与位，精确派发分别由所属 registry 持有。新增 Hook 同步参与元数据；回合准备的纯原版快捷路径与扩展路径共用单项结算体，最小合同通过正式 Hook facade 验证。

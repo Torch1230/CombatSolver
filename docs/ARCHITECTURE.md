@@ -92,7 +92,17 @@ Fork 发生在动作、选牌、Power、死亡和出牌事务允许复制的稳�
 
 回合末自动出牌先于 BeforeSideTurnEndEarly，PAELS_EYE 的手牌消耗由该 Hook 镜像拥有；额外回合资格在阶段结算后判断。部署会话区分动作、玩家结束／敌方阶段与下一玩家回合；最后一个结束阶段选择确认前解除旧会话归属。UI 的步骤和完成回调核对所属回合及当前路线快照。
 
-额外回合的判断与后置效果由 `ExtraTurnMirrors` 登记原版和第三方单项语义，`HookMirrors` 按原生监听顺序派发。后置回调使用固定成员快照，选牌暂停沿动作重放恢复；分支 Power 与帕尔之眼使用状态继续由 `SimulatedCombatState` 持有。
+额外回合的提前判断、普通判断与后置效果由 `ExtraTurnMirrors` 登记。`HookMirrors` 先遍历 Early，再遍历普通阶段；首个命中来源持有本次资格，后置仅调用该来源。选牌暂停沿动作重放恢复；分支 Power 与帕尔之眼使用状态由 `SimulatedCombatState` 持有。
+
+`RunModels` 在主线程根捕获时克隆，按原生顺序进入监听前缀，Fork 保持分支所有权。九条战斗 RNG 与每名玩家的 `NonCombatGeneration` 共用完整状态快照及惰性物化合同。`CombatCardOrdering` 按新版原生顺序比较逐实例状态，费用经分支 Hook 解析；模拟洗牌和搜索投影共用此入口。
+
+箭槽由 `SimPlayerCombatState` 持有；`ImpaledPower` 的有序箭引用经同一个 Fork context 重映射。`CombatPredictionSimulator.Arrows` 负责射击、插入、拔出和销毁，`ArrowMirrors` 派发原生箭 Hook。旋律 Started／Finished 计数和首次 CardPlay 身份由 `SimulatedCombatState.Melodies` 持有。`AimPowerMirrors` 保存攻击后仍有效的来源身份；`SimulatedCombatState.ShowOff` 保存成长 Power 对卡实例的引用。玩法 Dupe 持有分支原牌，包含离开牌堆的来源；Clone 与 Fork 分别保留原生玩法语义和分支隔离。
+
+`CardChoiceSupport.GetPotentialEffect` 提供开局选择类型；候选在实际出牌时构建并消费历史与 RNG。动态保留由 `CombatPredictedCardExtensions.ShouldRetainThisTurn` 合并分支关键词与逐实例单回合标记；指纹保存后者及已存在的关键词／Power 状态。回合准备的原版快捷路径与扩展 registry 共用 `TurnStartPowerSupport.ApplyBeforeSideTurnStartPower`，包含 Yah/Lullaby 复位；测试使用相同 Hook facade。
+
+监听参与位的 `AdditionalCallbacks` 汇集箭、额外回合及新伤害回调，按类型保守保留成员；各方法仍由精确 registry 或原有推断入口执行。`SolverDisplayNames` 和 UI 共用 `DingyDaggerDisplayNames` 的原生名称段，根冻结本地化规则后按实际等级格式化。
+
+伤害命令先修正伤害并触发伤害前 Hook，再经过 `ModifyPreBlockDamageTargetMirrors`、格挡及奥斯提转移。战宠生命、最大生命、格挡和关联遗物计数进入状态键与续用；战宠死亡后是否保留阵容由分支死亡语义判断。
 
 金币命令由 `GoldGainSupport` 串联标准镜像：修改使用跑局前缀和战斗监听表，获得后的回调使用原生 null-child 跑局作用域。`SimulatedCombatState.GoldHooks` 在主线程冻结活动成员与已克隆全局来源，Fork 只读共享；遗物、药水、金币和 HP 仍从所属分支读取。未知金币 override 显式拒绝。监听参与位图为三个金币方法共用一位，只形成保守成员超集，精确方法仍由 registry 区分；不溢出或复用其他 Hook 位。`CombatPredictionSimulator.GainMaxHp` 单独实现实际封顶增量与后续 Heal，Feed、FruitJuice 和 DragonFruit 共用这一权威入口。
 

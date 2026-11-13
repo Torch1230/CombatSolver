@@ -1,0 +1,28 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearPlayerPilesBeforeMove": true, "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      { "cardId": "EXPECT_A_FIGHT", "pile": "Hand" },
+      { "cardId": "STRIKE_IRONCLAD", "pile": "Hand" },
+      { "cardId": "MEMENTO_MORI", "pile": "Hand" },
+      { "cardId": "EXPERTISE", "pile": "Hand" },
+      { "cardId": "DEFEND_IRONCLAD", "pile": "Draw", "count": 3 }
+    ],
+    "cardPlayChecksAfterMove": [
+      { "cardId": "EXPECT_A_FIGHT", "target": "None" },
+      { "cardId": "STRIKE_IRONCLAD", "target": "Enemy" },
+      { "cardId": "MEMENTO_MORI", "target": "None" },
+      { "cardId": "EXPERTISE", "target": "None" }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearPlayerPilesBeforeMove": true, "playerEnergyBefore": 20,
+    "cardsBeforeMove": [{ "cardId": "FORGOTTEN_RITUAL", "pile": "Hand", "count": 2 }],
+    "cardPlayChecksAfterMove": [
+      { "cardId": "FORGOTTEN_RITUAL", "target": "None" },
+      { "cardId": "FORGOTTEN_RITUAL", "target": "None" }
+    ]
+  }
+]

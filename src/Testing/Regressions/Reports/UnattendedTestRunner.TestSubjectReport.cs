@@ -43,7 +43,7 @@ internal sealed partial class UnattendedTestRunner
         try
         {
             var expected = CaptureSimulated(predicted.Simulator, (SimulatedCombatState)predicted.Simulator.State.CombatState, player, enemy);
-            using var selector = CardSelectCmd.PushSelector(new UnattendedCardSelector(["ASCENDERS_BANE"]));
+            using var selector = NativeTestCardSelectors.Push(new UnattendedCardSelector(["ASCENDERS_BANE"]));
             int actionIndex = 0;
             foreach (var action in actions)
             {

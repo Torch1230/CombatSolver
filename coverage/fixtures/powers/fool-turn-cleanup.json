@@ -1,0 +1,56 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "powersBeforeMove": [
+      {
+        "powerId": "KI_VERSE_POWER",
+        "target": "Player",
+        "amount": 2
+      },
+      {
+        "powerId": "QUIETUS_POWER",
+        "target": "Player",
+        "amount": 2
+      },
+      {
+        "powerId": "ENCORE_POWER",
+        "target": "Player",
+        "amount": 2
+      },
+      {
+        "powerId": "SHOW_OFF_POWER",
+        "target": "Player",
+        "amount": 2
+      },
+      {
+        "powerId": "DISLIKE_YOU_POWER",
+        "target": "Enemy",
+        "amount": 20
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true,
+    "expectedAbsentPlayerPowers": [
+      "KI_VERSE_POWER",
+      "QUIETUS_POWER",
+      "ENCORE_POWER",
+      "SHOW_OFF_POWER"
+    ],
+    "expectedAbsentEnemyPowers": [
+      "DISLIKE_YOU_POWER"
+    ]
+  }
+]

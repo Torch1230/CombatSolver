@@ -23,6 +23,8 @@ internal sealed partial class UnattendedTestRunner
         var root = CombatRootSnapshot.Capture(combat);
         var simulator = root.ForkSimulator();
         var shadow = (SimulatedCombatState)simulator.State.CombatState;
+        if (!simulator.State.GetPlayerCombatState(player).Hand.Cards.Single().ShouldRetainThisTurn(simulator.State))
+            throw new InvalidOperationException("Phantom Blades was absent from the branch keyword query.");
         var enemy = combat.Enemies.Single();
         shadow.ApplyDampen(simulator, player.Creature, enemy);
         var dampen = await PowerCmd.Apply<DampenPower>(choice, player.Creature, 1, enemy, null)
@@ -44,10 +46,16 @@ internal sealed partial class UnattendedTestRunner
             _request.ScenarioId, "CloneEntersCombat");
         shadow.SetAmount<PhantomBladesPower>(player.Creature, 0);
         await PowerCmd.Remove(player.Creature.GetPower<PhantomBladesPower>()!);
+        AssertSnapshotEqual(CaptureSimulated(simulator, shadow, player, enemy), CaptureActual(combat, player, enemy),
+            _request.ScenarioId, "RemovalClearsDynamicRetain");
+        if (original.Keywords.Contains(CardKeyword.Retain))
+            throw new InvalidOperationException("Removed Phantom Blades left a local Retain keyword.");
+        if (simulator.State.GetPlayerCombatState(player).Hand.Cards.Any(card => card.ShouldRetainThisTurn(simulator.State)))
+            throw new InvalidOperationException("Removed Phantom Blades remained in the branch keyword query.");
         shadow.Apply<PhantomBladesPower>(player.Creature, 12, player.Creature);
         await PowerCmd.Apply<PhantomBladesPower>(choice, player.Creature, 12, player.Creature, null);
         AssertSnapshotEqual(CaptureSimulated(simulator, shadow, player, enemy), CaptureActual(combat, player, enemy),
             _request.ScenarioId, "NewApplicationGrantsRetainAgain");
-        _completedChecks.Add("PhantomBlades:NativeDowngrade:Stacking:CloneEntry:Reapplication:CompleteStateAndRng");
+        _completedChecks.Add("PhantomBlades:NativeDowngrade:Stacking:CloneEntry:Removal:Reapplication:CompleteStateAndRng");
     }
 }

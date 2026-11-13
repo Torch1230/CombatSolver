@@ -41,10 +41,11 @@
   },
   "EXTRA-TURN-MIRROR-ORDER": {
     "status": "Passed",
-    "level": "HeadlessNativeFullStateDifferentialAndFork",
-    "procedure": "EXTRA-TURN-MIRROR-ORDER，合成第三方监听者置于龙涎香之前、龙涎香与帕尔之眼之间、两者之后，原生 Hook 与正式镜像逐项对账。",
-    "expected": "判断短路顺序、后置读取状态、完整战斗状态一致；父 Fork 与 live 保持原值，根捕获后登记被拒绝。",
-    "observed": "36f686e1cf2b442e836d1ab4e5bdda2d Passed，23.655秒；三个位置的后置观察值依次为1、0、100，原生与模拟一致。失败基线22436356在第一个位置为原生1层、模拟0层。实例已删除。",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId EXTRA-TURN-MIRROR-ORDER; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "bfb265c7b9464ebda356da8e05ef1942 Passed; assembly=B074CFC94999B0E9C7D9AA6A9F842B948E149532BA6836B91FBE7E0EEA8080D3; checks=ExtraTurnMirrors:NativeOrder:EarlyPriority:EyeUsedAndUnused:ThreePositions:SelectedSource:FullState:Fork:LiveIsolation:Sealed; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T10:45:41.6120454+08:00",
     "evidence": "src/Testing/Contracts/ThirdParty/UnattendedTestRunner.ExtraTurnMirrors.cs; docs/TEST_MATRIX.md"
   },
   "NINJA-SCROLL-ENTRY": {
@@ -362,11 +363,12 @@
   },
   "PHANTOM-RETAIN-LIFECYCLE": {
     "status": "Passed",
-    "level": "HeadlessStrictNativePowerAndCardLifecycleDifferential",
-    "procedure": "幻影之刃作用于升级小刀，再抑制降级、叠加能力、克隆入场及移除后重新施加，比较完整状态/RNG。",
-    "expected": "保留只在首次施加和入场时赋予，降级的关键词重置保持原版结果。",
-    "observed": "失败91737ac0e4bf4c1a81284168d0d44be7；153756412f0640438927d4cf37b70fb5 Passed。",
-    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.PhantomRetain.cs; docs/TEST_MATRIX.md; 2026-09-13"
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId PHANTOM-RETAIN-LIFECYCLE; input=src/Testing/Contracts/Combat/UnattendedTestRunner.PhantomRetain.cs; character=CHARACTER.SILENT; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=e883ce24240f45dabc14df024e20696b; assembly=58E0324313C9CF40BBBE5FF58ABD2311D1A7CE938348870A1FE37A58D5553E66; checks=PhantomBlades:NativeDowngrade:Stacking:CloneEntry:Removal:Reapplication:CompleteStateAndRng; NativeOutcome:combatEnded=False:turn=1:hp=70:maxHp=70; finished=2026-11-13T11:23:54.0866725+08:00; baseline 39747a255f264ab7b72d99ef1be7b4c8 failed root retain equality; branch keyword contribution and raw instance retain flag are now represented separately.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.PhantomRetain.cs; docs/TEST_MATRIX.md"
   },
   "ATTACK-START-HISTORY": {
     "status": "Passed",
@@ -2973,5 +2975,563 @@
     "expected": "实际无药胜利21战损，单层Smart审计给出0战损/1药；只执行一个成员；其他用药及回合准备政策保持，live与根隔离。",
     "observed": "2026-10-07 b6331d73efae4f4f8ead3eca0fd34061 Passed；枚举与命名空间编译错误、首轮建局失败及最终范围见整合验证。",
     "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.SmartPotionAuditBudget.cs; docs/archive/testing/pr-integration-20261007.md; docs/TEST_MATRIX.md"
+  },
+  "LAZY-RNG-FORK": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndFork",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId LAZY-RNG-FORK; Full RNG state, root freeze and fork isolation; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: 93a4259e598044f088d0085ac03c84f2 Passed; assembly=E72D5C2A9AE174418505B22BBC7AC4A744F723E298E4DFB19856A0FE23CA2221; checks=LazyRngFork:RunAndPlayerStreams:NativeSequence:RetainedAlias:ParentSiblingGrandchild:ColdReadNoMaterialization; CombatRootSnapshot; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T08:22:02.7341718+08:00.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.LazyRngFork.cs; docs/TEST_MATRIX.md"
+  },
+  "STANDARD-REWORKED-CARDS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId STANDARD-REWORKED-CARDS; Reworked cards; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: 60234e9b32204810bf76ac3878db9d9c Passed; assembly=EE69AE217DC8AC62CAB5147FDFD06DEDB69477361BE23446D011F9623397C2D3; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T08:54:15.4883163+08:00.",
+    "evidence": "coverage/fixtures/cards/audits/standard-reworked-cards.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-ARROW-LIFECYCLE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-ARROW-LIFECYCLE; Ordered arrow lifecycle; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: 5206ec1cd13b448b9b8f68dcf79afa53 Passed; assembly=EE69AE217DC8AC62CAB5147FDFD06DEDB69477361BE23446D011F9623397C2D3; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T08:53:08.5811482+08:00.",
+    "evidence": "coverage/fixtures/cards/audits/fool-arrow-lifecycle.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-MELODY-EFFECTS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-MELODY-EFFECTS; Melody and block effects; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: b1b86eb5cf1541bdb710b86fef3f4400 Passed; assembly=D1002B3D83E6B1985A66A9BE745D2CEB67052032AD1BD2342F64FF06C6A0676B; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T09:08:49.6128371+08:00.",
+    "evidence": "coverage/fixtures/cards/audits/fool-melody-effects.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-ARROW-EFFECTS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-ARROW-EFFECTS; Two-enemy arrow damage and destruction; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: f0802fea47cf4fb19aa42f3af5a324b7 Passed; assembly=E53F3BB2D7051DE2904A537E001A6C41D43DBA92D34383FAA6CC13B2C9EF5DA8; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T09:30:46.4054352+08:00.",
+    "evidence": "coverage/fixtures/cards/audits/fool-arrow-effects.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-POTIONS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-POTIONS; Three Fool potions; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: 4755f1c59398492993f362d418d70a6a Passed; assembly=E53F3BB2D7051DE2904A537E001A6C41D43DBA92D34383FAA6CC13B2C9EF5DA8; checks=Potion:PRECISION_POTION; Potion:BOTTLED_SONG; Potion:CRYSTALLINE_EUPHORIA; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T09:29:35.1212137+08:00.",
+    "evidence": "coverage/fixtures/potions/fool-potions.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-CHOICE-EFFECTS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-CHOICE-EFFECTS; Recall and Ki Chant selection; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: f82f78f31b6d4cce976b608629bc4382 Passed; assembly=5E9D71D87E012ECCC27BEB73B2FE3AE8298ECFBF6F493A79007FF2FFBBDE01F5; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T09:39:58.6265404+08:00.",
+    "evidence": "coverage/fixtures/cards/audits/fool-choice-effects.json; docs/TEST_MATRIX.md"
+  },
+  "DUPE-CLONE-CONTRACT": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferentialAndFork",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId DUPE-CLONE-CONTRACT; Dupe source capture and fork; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: a21e87be53494bc29730a681cbc20c20 Passed; assembly=5E9D71D87E012ECCC27BEB73B2FE3AE8298ECFBF6F493A79007FF2FFBBDE01F5; checks=DupeClone:Native:OffPileRoot:LiveAdvance:ForkRemap:ParentIsolation:StateKeys; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T09:40:48.1595451+08:00.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.DupeClone.cs; docs/TEST_MATRIX.md"
+  },
+  "FOOL-SHOW-OFF": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-SHOW-OFF; Instanced Show Off growth; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: 555ecb2182c34ec3baba78325c4cd217 Passed; assembly=F62CD405401BBC5F80CC587ACDD18C85D5538C617E21D7881812967B5ED01A32; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T09:44:46.0854668+08:00.",
+    "evidence": "coverage/fixtures/cards/audits/fool-show-off.json; docs/TEST_MATRIX.md"
+  },
+  "WUPPY-DAMAGE-ROUTING": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId WUPPY-DAMAGE-ROUTING; Pre-block pet damage and death; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: d6fe6ab21a1d472993a6cc97654aa811 Passed; assembly=EF8215BEA9C605897917E2AB0405001866D4026C54A2B6FF1B526E458A137C8D; checks=FuzzyWurmCrawler:ACID_GOOP; FuzzyWurmCrawler:ACID_GOOP; FuzzyWurmCrawler:ACID_GOOP; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T09:49:46.7665042+08:00.",
+    "evidence": "coverage/fixtures/combat/wuppy-damage-routing.json; docs/TEST_MATRIX.md"
+  },
+  "AIM-ATTACK-RETENTION": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId AIM-ATTACK-RETENTION; Retained attack source and nested Aim gain; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: d80f7253bcad4aabaff60219ebee80fd Passed; assembly=E6657F83495C0DF80C9CC862A239EF87DF6F1AA8D80E2F14A6A6BDDB6AC6520D; checks=AimRetention:Native:NestedGain:SourceIdentity:Root:Fork:LiveAdvance; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T09:53:19.2828406+08:00.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.AimRetention.cs; docs/TEST_MATRIX.md"
+  },
+  "STANDARD-HIT-COUNTS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId STANDARD-HIT-COUNTS; Native HitCount migration; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: f63c4a55764d4e33bb0ec72dd0544a8f Passed; assembly=A4C9C6BAC5BB825B5DB51C27C3CE3FC913F7810604D65DE1DB86BE7053AFA442; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T09:57:03.7255698+08:00.",
+    "evidence": "coverage/fixtures/cards/audits/standard-hit-counts.json; docs/TEST_MATRIX.md"
+  },
+  "NATIVE-CARD-ORDERING": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId NATIVE-CARD-ORDERING; Native instance ordering and full RNG state; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "Native and predicted ordered piles, per-instance state, powers, history, RNG and continuation agree for the fixture boundary.",
+    "observed": "v0.113.0 / 16ac0fe3: d643c31389f240929516009171bccc58 Passed; assembly=DF036D15EE78F7F602EE5D92493EAC240034A149DD236644C0D85DB2DF1396A2; checks=CardOrdering:Native:CostReplayDynamicValues:FullRng:LiveAdvance:ParentSiblingForks; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T10:06:59.3093613+08:00.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.CardOrdering.cs; docs/TEST_MATRIX.md"
+  },
+  "FOOL-CONTENT-AUDIT-1": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL / FuzzyWurmCrawler; MonsterMoveChecksPath=coverage/fixtures/cards/audits/fool-standard-cards-1.json; 9999 max/current enemy HP; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "All 14 isolated OnPlay cases match native ordered piles, instance state, powers, history, RNG and continuation. This fixture covers the stated setup; lifecycle and interaction contracts are recorded separately.",
+    "observed": "e0b5b4c393e24f67936b3d5742672251 Failed; assembly=3A0AC81987C7CF50F01FC1EFC163265AA87AE0795A0E2F42F3FFAB15DC65548F; completed=10; finished=2026-11-13T10:03:55.6528536+08:00\n543fd8f6a74d403389abd35bb3c0acf9 Passed; assembly=4ABF703FAFD0F31B500CD3CEBF392BC86176CAF852C71B60E6A83E71CA3DACFF; completed=4; finished=2026-11-13T10:10:04.5817616+08:00\nInitial prefix covered 10 cards; ChoBarbs failed because internal Thorns was absent. TemporaryThorns application and opposing-side cleanup were implemented; the remaining four-card suffix passed.",
+    "evidence": "coverage/fixtures/cards/audits/fool-standard-cards-1.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-CONTENT-AUDIT-2": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL / FuzzyWurmCrawler; MonsterMoveChecksPath=coverage/fixtures/cards/audits/fool-standard-cards-2.json; 9999 max/current enemy HP; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "All 14 isolated OnPlay cases match native ordered piles, instance state, powers, history, RNG and continuation. This fixture covers the stated setup; lifecycle and interaction contracts are recorded separately.",
+    "observed": "891e0b7a38b1498fa5e6f1dbe3323ac2 Passed; assembly=DF036D15EE78F7F602EE5D92493EAC240034A149DD236644C0D85DB2DF1396A2; completed=14; finished=2026-11-13T10:06:07.9928943+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-standard-cards-2.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-CONTENT-AUDIT-3": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL / FuzzyWurmCrawler; MonsterMoveChecksPath=coverage/fixtures/cards/audits/fool-standard-cards-3.json; 9999 max/current enemy HP; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "All 14 isolated OnPlay cases match native ordered piles, instance state, powers, history, RNG and continuation. This fixture covers the stated setup; lifecycle and interaction contracts are recorded separately.",
+    "observed": "35e9d38bdafb4284b6ab5ab8e9a2181d Passed; assembly=4ABF703FAFD0F31B500CD3CEBF392BC86176CAF852C71B60E6A83E71CA3DACFF; completed=14; finished=2026-11-13T10:09:01.4624155+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-standard-cards-3.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-CONTENT-AUDIT-4": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL / FuzzyWurmCrawler; MonsterMoveChecksPath=coverage/fixtures/cards/audits/fool-standard-cards-4.json; 9999 max/current enemy HP; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "All 14 isolated OnPlay cases match native ordered piles, instance state, powers, history, RNG and continuation. This fixture covers the stated setup; lifecycle and interaction contracts are recorded separately.",
+    "observed": "5ff1899a54524f79abef826b5108bc15 Passed; assembly=F7699FCB574878AE705EFE629DFF6EB933AC344E7344783E03DA0EE7720BBB3B; completed=14; finished=2026-11-13T10:16:09.0943942+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-standard-cards-4.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-CONTENT-AUDIT-5": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL / FuzzyWurmCrawler; MonsterMoveChecksPath=coverage/fixtures/cards/audits/fool-standard-cards-5.json; 9999 max/current enemy HP; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "All 14 isolated OnPlay cases match native ordered piles, instance state, powers, history, RNG and continuation. This fixture covers the stated setup; lifecycle and interaction contracts are recorded separately.",
+    "observed": "70173258fb1745f8ac9961a91f40c6d9 Passed; assembly=666DAD6EDF27A8D96AFCE925BDE27EC8D1BF753A061F3345562F8EB2323FC42F; completed=14; finished=2026-11-13T10:11:58.1010279+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-standard-cards-5.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-CONTENT-AUDIT-6": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL / FuzzyWurmCrawler; MonsterMoveChecksPath=coverage/fixtures/cards/audits/fool-standard-cards-6.json; 9999 max/current enemy HP; timeout 120 s; CleanupInstanceOnExit.",
+    "expected": "All 14 isolated OnPlay cases match native ordered piles, instance state, powers, history, RNG and continuation. This fixture covers the stated setup; lifecycle and interaction contracts are recorded separately.",
+    "observed": "fae1670c3f064963a06f55480382c2bd Passed; assembly=666DAD6EDF27A8D96AFCE925BDE27EC8D1BF753A061F3345562F8EB2323FC42F; completed=14; finished=2026-11-13T10:13:36.6188251+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-standard-cards-6.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-BRANCH-STATE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-BRANCH-STATE; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "3e22aa421b1f4c0b8871048dbcbb1575 Passed; assembly=E8AB055345F111DFCA0F180717160ECA4E889FD5C60CC9ECD41C6CFDD3363CD4; checks=FoolBranchState:ArrowIdentity:ImpaledReferences:LiveAdvance:ParentSibling:MultiTag:Retrieval:FullContinuation; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T10:22:42.8261358+08:00",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.FoolBranchState.cs; docs/TEST_MATRIX.md"
+  },
+  "FOOL-TURN-LIFECYCLE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-TURN-LIFECYCLE; input=src/Testing/Contracts/Combat/UnattendedTestRunner.FoolBranchState.cs; CharacterId FOOL; Instant; 120 s request limit; CleanupInstanceOnExit. StopAfterInitialSetupAssertion.",
+    "expected": "Named full-state native, continuation, branch isolation and deployment assertions pass.",
+    "observed": "runId=11fc323021d94a2480cf9835bc836f9d; assembly=EBFFF9B3590D98F39F904664FEB4C83B6751C608F8820FC9800EC748A70E8D1F; checks=FoolBranchState:ArrowIdentity:ImpaledReferences:LiveAdvance:ParentSibling:MultiTag:Retrieval:YahLullabyFlags:FullContinuation; FoolBranchState:ArrowIdentity:ImpaledReferences:LiveAdvance:ParentSibling:MultiTag:Retrieval:TwoTurns:FullContinuation; NativeOutcome:combatEnded=False:turn=3:hp=77:maxHp=77; finished=2026-11-13T12:08:35.8546306+08:00; previous passing evidence: f51c312653e24156b34cc97c1ce91a5f Passed; assembly=68C35B07D78EB63641ACF075B2D2FBE21BD7B091612CB533DBB8727AFECCA6DF; checks=FoolBranchState:ArrowIdentity:ImpaledReferences:LiveAdvance:ParentSibling:MultiTag:Retrieval:FullContinuation; FoolBranchState:ArrowIdentity:ImpaledReferences:LiveAdvance:ParentSibling:MultiTag:Retrieval:TwoTurns:FullContinuation; NativeOutcome:combatEnded=False:turn=3:hp=77:maxHp=77; finished=2026-11-13T10:31:35.3377044+08:00",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.FoolBranchState.cs; docs/TEST_MATRIX.md"
+  },
+  "SHOW-OFF-GROWTH": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId SHOW-OFF-GROWTH; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "6b9a155a74ce46eeb8d91897a46178d3 Passed; assembly=D5399DBC5AECEA7369AD42C388CE3925C6678368273B3597F2C54DB3E493F2A8; checks=ShowOffGrowth:PermanentSources:PowerReferenceFork:LiveAdvance:Budgets:ActiveTargets:UI:NativeReplay; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T10:33:36.5851275+08:00",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.ShowOffGrowth.cs; docs/TEST_MATRIX.md"
+  },
+  "FOOL-PERSISTENT-POWERS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-PERSISTENT-POWERS; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "1698a44f5f574a6ea8088ab4974a23f5 Passed; assembly=D5399DBC5AECEA7369AD42C388CE3925C6678368273B3597F2C54DB3E493F2A8; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=2:hp=77:maxHp=77; finished=2026-11-13T10:35:10.3880374+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-persistent-powers.json; docs/TEST_MATRIX.md"
+  },
+  "BATH-TOWEL-HEALING": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BATH-TOWEL-HEALING; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "1f8db5b60f6d480f817c9c6b9fcb4cef Passed; assembly=EE0DC490A74463797801167B10B59068BBB903A4583098C014A81E106D827DF2; checks=BathTowelHealing:FirstTurnAllowance:NativeHeal:ForkLiveIsolation:LaterTurnExpiry; NativeOutcome:combatEnded=False:turn=1:hp=38:maxHp=77; finished=2026-11-13T10:42:02.5304718+08:00",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.RelicMaxHpHealing.cs; docs/TEST_MATRIX.md"
+  },
+  "BETA-RELIC-PREPARATION": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-RELIC-PREPARATION; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "771cf87f6c7547199f10c223a73db4fd Passed; assembly=B074CFC94999B0E9C7D9AA6A9F842B948E149532BA6836B91FBE7E0EEA8080D3; checks=BetaRelicPreparation:FirstAndSecondTurn:Generation:Shuffle:Aim:Stretch:Healing:Fork:FullRng; NativeOutcome:combatEnded=False:turn=2:hp=38:maxHp=77; finished=2026-11-13T10:45:54.7822106+08:00",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.RelicMaxHpHealing.cs; docs/TEST_MATRIX.md"
+  },
+  "BETA-RELIC-LIFECYCLE": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-RELIC-LIFECYCLE; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "0d87118dbace419dbe53f43d2e96d026 Passed; assembly=B074CFC94999B0E9C7D9AA6A9F842B948E149532BA6836B91FBE7E0EEA8080D3; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=2:hp=77:maxHp=77; finished=2026-11-13T10:46:12.2871273+08:00",
+    "evidence": "coverage/fixtures/combat/beta-relic-lifecycle.json; docs/TEST_MATRIX.md"
+  },
+  "DINGY-DAGGER-NAMES": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId DINGY-DAGGER-NAMES; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "4bf59c06d69f4a54ba738df6eda383b0 Passed; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=DingyDaggerNames:CanonicalCapture:NativeThresholds:LargeUpgradeLevels:EnglishChinese:FrozenLanguage; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T10:59:39.6564471+08:00",
+    "evidence": "src/Testing/Contracts/UI/UnattendedTestRunner.UiLocalization.cs; docs/TEST_MATRIX.md"
+  },
+  "COMPONENT-HEALING-BOUND": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId COMPONENT-HEALING-BOUND; character and setup from the named contract/fixture; 120 s request limit; batch instance cleanup.",
+    "expected": "Native and simulated state agree at the contract boundaries; completedChecks names the independently asserted ownership, policy or UI conditions.",
+    "observed": "8e3ee84b85ed4a37a8b2686accd105f0 Passed; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=ComponentHealing:ZeroRecovery:AllFourPiles:UnknownAttachment:WrongOwner:Fork:ParentLiveRngIsolation; ComponentHealing:ColorlessNativeFilterAndChoice:BottledPotentialNativeShuffleDraw:TwoFullNativeStates:Fork:FrozenParent; ComponentHealing:ActiveRegen:TwoDoses:Stacking:Ban:ZeroCap:SpentCap:BranchPotionHistory:TwoFullNativeStates; ComponentHealing:UnknownInitialExhaustGrowth:PermanentDeckAbsentFromCombat:FrozenRoot; NativeOutcome:combatEnded=False:turn=1:hp=10:maxHp=80; finished=2026-11-13T10:59:54.9674795+08:00",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.ComponentHealing.cs; docs/TEST_MATRIX.md"
+  },
+  "TAROT-CARDS-0": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL, two enemies with 9999 HP; MonsterMoveChecksPath=coverage/fixtures/cards/audits/tarot-cards-0.json; StopAfterInitialSetupAssertion; timeout 120 s; instance cleanup.",
+    "expected": "All 22 tarot cards at the stated upgrade level agree with native piles, instance state, powers, RNG and continuation.",
+    "observed": "56dba27802184273a8399e902155e8fd Failed; assembly=D5399DBC5AECEA7369AD42C388CE3925C6678368273B3597F2C54DB3E493F2A8; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; finished=2026-11-13T10:37:09.1661924+08:00\n3e9946486e8040fd9b0b975f1320f219 Passed; assembly=EE0DC490A74463797801167B10B59068BBB903A4583098C014A81E106D827DF2; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T10:41:35.2979872+08:00\nFirst 20 cases passed before WheelOfFortune drew the discarded count in addition to its fixed draw. The DiscardAndDraw correction passed the final two cases (WheelOfFortune and Judgement).",
+    "evidence": "coverage/fixtures/cards/audits/tarot-cards-0.json; docs/TEST_MATRIX.md"
+  },
+  "TAROT-CARDS-1": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL, two enemies with 9999 HP; MonsterMoveChecksPath=coverage/fixtures/cards/audits/tarot-cards-1.json; StopAfterInitialSetupAssertion; timeout 120 s; instance cleanup.",
+    "expected": "All 22 tarot cards at the stated upgrade level agree with native piles, instance state, powers, RNG and continuation.",
+    "observed": "0e64f25163fd4b9c8121f30491988afd Failed; assembly=D5399DBC5AECEA7369AD42C388CE3925C6678368273B3597F2C54DB3E493F2A8; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; finished=2026-11-13T10:39:10.4246593+08:00\n64d01cb6af63443487ce305fb97ef8bf Passed; assembly=EE0DC490A74463797801167B10B59068BBB903A4583098C014A81E106D827DF2; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T10:41:52.605994+08:00\nFirst 20 cases passed before WheelOfFortune drew the discarded count in addition to its fixed draw. The DiscardAndDraw correction passed the final two cases (WheelOfFortune and Judgement).",
+    "evidence": "coverage/fixtures/cards/audits/tarot-cards-1.json; docs/TEST_MATRIX.md"
+  },
+  "STATIC-STANDARD-113-HOOK-REVIEW": {
+    "status": "StaticPassed",
+    "level": "NativeSourceAndDispatchReview",
+    "gameVersion": "0.113.0",
+    "procedure": "Compare native hooks, branch dispatch and standard-mode model producers.",
+    "expected": "Name implementation and applicability for each reviewed hook.",
+    "observed": "Source review only. Entries linked to this record retain static verification; native boundary contracts are recorded independently.",
+    "evidence": "coverage/evidence/sts2-0.113-source-diff.json; docs/TEST_MATRIX.md"
+  },
+  "CHOICE-SHAPE-INSPECTION": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId CHOICE-SHAPE-INSPECTION; input=src/Testing/Contracts/Search/UnattendedTestRunner.ChoiceShape.cs; character=CHARACTER.FOOL; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=30533c31764f4cee80c3a725ab793a77; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=ChoiceShape:RecallBeforePlay:SeekerRngUnchanged:OpeningDiscovery:FullState:LiveIsolation; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T11:09:20.0922027+08:00",
+    "evidence": "src/Testing/Contracts/Search/UnattendedTestRunner.ChoiceShape.cs; docs/TEST_MATRIX.md"
+  },
+  "STANDARD-NEW-TOKENS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId STANDARD-NEW-TOKENS; input=coverage/fixtures/cards/audits/standard-new-tokens.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=b80d4e1115ed4a0dbb3953c15b33b91a; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=2:hp=77:maxHp=77; finished=2026-11-13T11:09:44.1200929+08:00",
+    "evidence": "coverage/fixtures/cards/audits/standard-new-tokens.json; docs/TEST_MATRIX.md"
+  },
+  "STANDARD-SOURCE-LIFECYCLES": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId STANDARD-SOURCE-LIFECYCLES; input=coverage/fixtures/cards/audits/standard-source-lifecycles.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=bfe619f3662b4f8985abbed62e6b04af; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=2:hp=75:maxHp=75; finished=2026-11-13T11:09:49.3247373+08:00",
+    "evidence": "coverage/fixtures/cards/audits/standard-source-lifecycles.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-ARROW-MULTIPLIERS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-ARROW-MULTIPLIERS; input=coverage/fixtures/cards/audits/fool-arrow-multipliers.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=2cc0a4176f9c4264b5dc5e3467e75af4; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=2:hp=77:maxHp=77; finished=2026-11-13T11:13:01.7255365+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-arrow-multipliers.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-TURN-CLEANUP": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-TURN-CLEANUP; input=coverage/fixtures/powers/fool-turn-cleanup.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=ffb08050d6a04d6ab1229382509d2d2b; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=2:hp=77:maxHp=77; finished=2026-11-13T11:13:08.4814255+08:00",
+    "evidence": "coverage/fixtures/powers/fool-turn-cleanup.json; docs/TEST_MATRIX.md"
+  },
+  "STANDARD-CHANGED-MONSTERS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId STANDARD-CHANGED-MONSTERS; input=coverage/fixtures/combat/standard-changed-monsters.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=3de8fb7f855c40c7a782f28afd39d968; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=InfestedPrism:JAB_MOVE_2; Tunneler:FROM_BELOW_MOVE; GasBomb:EXPLODE_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=69:maxHp=77; finished=2026-11-13T11:13:15.2253233+08:00",
+    "evidence": "coverage/fixtures/combat/standard-changed-monsters.json; docs/TEST_MATRIX.md"
+  },
+  "INFUSED-CORE-PREPARATION": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId INFUSED-CORE-PREPARATION; input=src/Testing/Contracts/Combat/UnattendedTestRunner.RelicMaxHpHealing.cs; character=CHARACTER.DEFECT; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=ec54471bf6154bd7ab9a72da22b367e8; assembly=D9D51361C40DFEF5A3CEB19173D603079BBB3AF36A6928DA20E499E59805F284; checks=InfusedCorePreparation:FirstTurnChannels:SecondTurnExpiry:NativeFullState:ParentFork:FullRng; NativeOutcome:combatEnded=False:turn=2:hp=30:maxHp=75; finished=2026-11-13T11:26:58.4972758+08:00; fixture baseline f933419f6f264a599ae641740ec48f55 reset orb capacity while clearing queue; final fixture preserves native capacity.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.RelicMaxHpHealing.cs; docs/TEST_MATRIX.md"
+  },
+  "FOOL-HOOK-COMBINATIONS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-HOOK-COMBINATIONS; input=coverage/fixtures/cards/audits/fool-hook-combinations.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=67fdcd50ee6b4b5890142c6492f701e6; assembly=DF20AB2A38525D2AD39D63F718E7E750F7AC10CEB33797167CFF734A98A14EBD; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=7:hp=77:maxHp=77; finished=2026-11-13T11:39:05.6902797+08:00; failure baselines cb68b3aaf64441e899b14d9a41f457b8 (WhistlingArrows listener omitted), 3e9d46dfb59d4433b3cc8fd9f15267fe and 94b4349013874515b3613e04e00f9ea8 (Yah reset omitted by vanilla fast path). Final six rows pass after shared reset implementation and callback participation registration.",
+    "evidence": "coverage/fixtures/cards/audits/fool-hook-combinations.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-SEARCH-IRONCLAD": {
+    "status": "Passed",
+    "level": "IncrementalSearchDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-SEARCH-IRONCLAD; input=coverage/fixtures/search/beta-standard-ironclad.json; character=CHARACTER.IRONCLAD; 120 s request limit; instance cleanup. Generated config; fixed 1500 ms; VerifyIncrementalSearch.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=242dd13674564410a25300aeb93d1e81; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=5/15;Pruned=0;Total=833.9ms/107443680B;Gc=3.6ms/3.6msMax;Frame=93.8msMax/1Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; NativeOutcome:combatEnded=False:turn=1:hp=80:maxHp=80; finished=2026-11-13T11:00:05.7701214+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-ironclad.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-SEARCH-SILENT": {
+    "status": "Passed",
+    "level": "IncrementalSearchDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-SEARCH-SILENT; input=coverage/fixtures/search/beta-standard-silent.json; character=CHARACTER.SILENT; 120 s request limit; instance cleanup. Generated config; fixed 1500 ms; VerifyIncrementalSearch.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=ab034474596a43eda054d2fbdd158e2e; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=5;Shuffles=4;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=2;Block=5/5;Pruned=0;Total=1287.3ms/402169440B;Gc=13.4ms/4.0msMax;Frame=29.2msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=5;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; NativeOutcome:combatEnded=False:turn=1:hp=70:maxHp=70; finished=2026-11-13T11:00:17.170322+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-silent.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-SEARCH-REGENT": {
+    "status": "Passed",
+    "level": "IncrementalSearchDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-SEARCH-REGENT; input=coverage/fixtures/search/beta-standard-regent.json; character=CHARACTER.REGENT; 120 s request limit; instance cleanup. Generated config; fixed 1500 ms; VerifyIncrementalSearch.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=8fcfdbc3b5814beebc40baf36f30541e; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; InitialPolicy:SoldHp=4;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=3;Unmirrored=0;HpLost=4;ProjectedBattleHpLost=5;Block=0/5;Pruned=0;Total=4800.7ms/1217445672B;Gc=50.7ms/9.5msMax;Frame=227.7msMax/1Over50;CacheHits=0;ChoiceBranches=0;Actions=2;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; NativeOutcome:combatEnded=False:turn=1:hp=75:maxHp=75; finished=2026-11-13T11:04:22.8854981+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-regent.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-SEARCH-NECROBINDER": {
+    "status": "Passed",
+    "level": "IncrementalSearchDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-SEARCH-NECROBINDER; input=coverage/fixtures/search/beta-standard-necrobinder.json; character=CHARACTER.NECROBINDER; 120 s request limit; instance cleanup. Generated config; fixed 1500 ms; VerifyIncrementalSearch.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=cebc43086f704f1c9e16f47a169d6058; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=4;Shuffles=3;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=9/9;Pruned=0;Total=176.8ms/117236264B;Gc=3.7ms/3.7msMax;Frame=17.9msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=4;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; NativeOutcome:combatEnded=False:turn=1:hp=66:maxHp=66; finished=2026-11-13T11:04:30.0185434+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-necrobinder.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-SEARCH-DEFECT": {
+    "status": "Passed",
+    "level": "IncrementalSearchDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-SEARCH-DEFECT; input=coverage/fixtures/search/beta-standard-defect.json; character=CHARACTER.DEFECT; 120 s request limit; instance cleanup. Generated config; fixed 1500 ms; VerifyIncrementalSearch.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=0b39a6d77ef34aad88e3b405a0c718a7; assembly=443B83DBDA0A68A9C1D84CFB80DEF184ECBDA48F4BB08A8C744B01CB8C362084; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=5/5;Pruned=0;Total=67.0ms/41094472B;Gc=0.0ms/0.0msMax;Frame=17.8msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; NativeOutcome:combatEnded=False:turn=1:hp=75:maxHp=75; finished=2026-11-13T11:04:35.252561+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-defect.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-SEARCH-FOOL-ARROWS": {
+    "status": "Passed",
+    "level": "IncrementalSearchDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-SEARCH-FOOL-ARROWS; input=coverage/fixtures/search/beta-standard-fool-arrows.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup. Generated config; fixed 1500 ms; VerifyIncrementalSearch.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=841b7af3cff941e496774e41f40ade9b; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=2;Shuffles=1;Unmirrored=0;HpLost=4;ProjectedBattleHpLost=4;Block=0/0;Pruned=0;Total=1000.2ms/121237736B;Gc=7.3ms/7.3msMax;Frame=74.6msMax/2Over50;CacheHits=0;ChoiceBranches=57;Actions=4;OnlyDeath=False;CombatEndedTurn=2;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T11:09:26.7336021+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-fool-arrows.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-SEARCH-FOOL-MELODIES": {
+    "status": "Passed",
+    "level": "IncrementalSearchDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-SEARCH-FOOL-MELODIES; input=coverage/fixtures/search/beta-standard-fool-melodies.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup. Generated config; fixed 1500 ms; VerifyIncrementalSearch.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=24be422b3479402d870008332799adda; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=4;Unmirrored=0;HpLost=4;ProjectedBattleHpLost=4;Block=0/0;Pruned=0;Total=1125.6ms/178053336B;Gc=6.2ms/6.2msMax;Frame=17.8msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=1;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T11:09:33.1095764+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-fool-melodies.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-SEARCH-FOOL-MIXED": {
+    "status": "Passed",
+    "level": "IncrementalSearchDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-SEARCH-FOOL-MIXED; input=coverage/fixtures/search/beta-standard-fool-mixed.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup. Generated config; fixed 1500 ms; VerifyIncrementalSearch.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=b36df77a7fd04964bf36d85411314740; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive; PotionOutcomeNamesAndRewardGate; InitialWorldlineSummary; InitialPolicy:SoldHp=0;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=3;Shuffles=2;Unmirrored=0;HpLost=0;ProjectedBattleHpLost=0;Block=9/9;Pruned=0;Total=229.3ms/126896496B;Gc=5.3ms/5.3msMax;Frame=17.5msMax/0Over50;CacheHits=0;ChoiceBranches=0;Actions=3;OnlyDeath=False;CombatEndedTurn=3;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T11:09:38.5858838+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-fool-mixed.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-DEPLOY-IRONCLAD": {
+    "status": "Passed",
+    "level": "NativeDeployment",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-DEPLOY-IRONCLAD; input=coverage/fixtures/search/beta-standard-ironclad.json; character=CHARACTER.IRONCLAD; 120 s request limit; instance cleanup. Generated config mode=Deploy; Instant / 0 seconds; ExpectedUnexpectedReplans=0.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=6b976154fbe340b19c199d8719409be9; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; UnexpectedReplans:0; NativeOutcome:combatEnded=True:turn=3:hp=80:maxHp=80; BugReportAfterCombat:CombatSolver-0.50.1-FUZZY_WURM_CRAWLER_WEAK-29dcb2d88372440daa016048d23cbfbb.zip; finished=2026-11-13T11:12:30.7234421+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-ironclad.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-DEPLOY-FOOL-ARROWS": {
+    "status": "Passed",
+    "level": "NativeDeployment",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-DEPLOY-FOOL-ARROWS; input=coverage/fixtures/search/beta-standard-fool-arrows.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup. Generated config mode=Deploy; Instant / 0 seconds; ExpectedUnexpectedReplans=0.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=61cd7d8c29084deeb31f8de9f451831b; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; UnexpectedReplans:0; NativeOutcome:combatEnded=True:turn=2:hp=73:maxHp=77; BugReportAfterCombat:CombatSolver-0.50.1-FUZZY_WURM_CRAWLER_WEAK-aace9a94e17642f9b7d5f3c4dd6008ab.zip; finished=2026-11-13T11:12:37.0128034+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-fool-arrows.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-DEPLOY-FOOL-MELODIES": {
+    "status": "Passed",
+    "level": "NativeDeployment",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-DEPLOY-FOOL-MELODIES; input=coverage/fixtures/search/beta-standard-fool-melodies.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup. Generated config mode=Deploy; Instant / 0 seconds; ExpectedUnexpectedReplans=0.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=91f3cdeafeaf44a4a2f00ff3fef2525f; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; UnexpectedReplans:0; NativeOutcome:combatEnded=True:turn=3:hp=73:maxHp=77; BugReportAfterCombat:CombatSolver-0.50.1-FUZZY_WURM_CRAWLER_WEAK-2eb8aa3c403746198d8a0f96af93bdb3.zip; finished=2026-11-13T11:12:47.0477272+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-fool-melodies.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-DEPLOY-FOOL-MIXED": {
+    "status": "Passed",
+    "level": "NativeDeployment",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-DEPLOY-FOOL-MIXED; input=coverage/fixtures/search/beta-standard-fool-mixed.json; character=CHARACTER.FOOL; 120 s request limit; instance cleanup. Generated config mode=Deploy; Instant / 0 seconds; ExpectedUnexpectedReplans=0.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=9cf26848e4b442979ae08ec194e8992c; assembly=1E015445AA79F4F2230FBEC36EB33F734655A569FA88A322D878F25970844697; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; UnexpectedReplans:0; NativeOutcome:combatEnded=True:turn=3:hp=77:maxHp=77; BugReportAfterCombat:CombatSolver-0.50.1-FUZZY_WURM_CRAWLER_WEAK-4a9c73fde4704157b6e249b7b13c622e.zip; finished=2026-11-13T11:12:54.636762+08:00",
+    "evidence": "coverage/fixtures/search/beta-standard-fool-mixed.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-CHECKPOINT-ARROW": {
+    "status": "Passed",
+    "level": "NativeCheckpointRestoration",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-CHECKPOINT-ARROW; input=src/Testing/Replay/UnattendedTestRunner.NativeReplay.cs; character=CHARACTER.FOOL; 120 s request limit; instance cleanup. ReplayMode=RestoreOnly; new 0.113 deployment bundle.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=b074809e7df244b98132ff5d3e529039; assembly=D9D51361C40DFEF5A3CEB19173D603079BBB3AF36A6928DA20E499E59805F284; checks=CheckpointContinuationMatched; NativeOutcome:combatEnded=False:turn=2:hp=73:maxHp=77; finished=2026-11-13T11:27:03.1380398+08:00; replay={\"status\":\"restored\",\"restorationVerified\":true,\"continuationVerified\":true,\"nativeStateVerified\":true,\"replayedEvents\":6,\"gameModuleComparison\":{\"expected\":\"ad562b4e-7352-4ca2-ae45-0ff44cd284bc\",\"actual\":\"ad562b4e-7352-4ca2-ae45-0ff44cd284bc\",\"matches\":true}}",
+    "evidence": "src/Testing/Replay/UnattendedTestRunner.NativeReplay.cs; docs/TEST_MATRIX.md"
+  },
+  "BETA-CHECKPOINT-MIXED": {
+    "status": "Passed",
+    "level": "NativeCheckpointRestoration",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-CHECKPOINT-MIXED; input=src/Testing/Replay/UnattendedTestRunner.NativeReplay.cs; character=CHARACTER.FOOL; 120 s request limit; instance cleanup. ReplayMode=RestoreOnly; new 0.113 deployment bundle.",
+    "expected": "The named contract assertions and full-state comparisons pass.",
+    "observed": "runId=22a573e7445c438fb5045979abd1637c; assembly=D9D51361C40DFEF5A3CEB19173D603079BBB3AF36A6928DA20E499E59805F284; checks=CheckpointContinuationMatched; NativeOutcome:combatEnded=False:turn=3:hp=77:maxHp=77; finished=2026-11-13T11:27:07.2286319+08:00; replay={\"status\":\"restored\",\"restorationVerified\":true,\"continuationVerified\":true,\"nativeStateVerified\":true,\"replayedEvents\":10,\"gameModuleComparison\":{\"expected\":\"ad562b4e-7352-4ca2-ae45-0ff44cd284bc\",\"actual\":\"ad562b4e-7352-4ca2-ae45-0ff44cd284bc\",\"matches\":true}}",
+    "evidence": "src/Testing/Replay/UnattendedTestRunner.NativeReplay.cs; docs/TEST_MATRIX.md"
+  },
+  "FOOL-ARROW-DEATH": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-ARROW-DEATH; character=FOOL; encounter=ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK; input=coverage/fixtures/cards/audits/fool-resource-boundaries.json; StopAfterInitialSetupAssertion; Instant; 120 s; instance cleanup. Execute the final row with two enemies, max/current HP [9999,9999]; row sets target HP to 18 before shooting.",
+    "expected": "Complete native and simulated state, ordered cards, powers, AI and RNG agree at each contract boundary.",
+    "observed": "runId=0a62e74bff7142a9ae9051e1fcd9c091; assembly=207FD8978E61DC50D93EE9D3D2A3CD0BA2D2E77E56B3DEF66E6726F59AE481FE; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T11:49:17.3600868+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-resource-boundaries.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-UPGRADED-CARDS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId FOOL-UPGRADED-CARDS; character=FOOL; encounter=ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK; input=coverage/fixtures/cards/audits/fool-upgraded-cards.json; StopAfterInitialSetupAssertion; Instant; 120 s; instance cleanup.",
+    "expected": "Complete native and simulated state, ordered cards, powers, AI and RNG agree at each contract boundary.",
+    "observed": "runId=11b29408634b4b729c5543d5baa371e4; assembly=207FD8978E61DC50D93EE9D3D2A3CD0BA2D2E77E56B3DEF66E6726F59AE481FE; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T11:51:15.2985238+08:00",
+    "evidence": "coverage/fixtures/cards/audits/fool-upgraded-cards.json; docs/TEST_MATRIX.md"
+  },
+  "SHOW-OFF-DAMPEN": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId SHOW-OFF-DAMPEN; character=FOOL; encounter=ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK; input=coverage/fixtures/combat/show-off-dampen.json; StopAfterInitialSetupAssertion; Instant; 120 s; instance cleanup.",
+    "expected": "Complete native and simulated state, ordered cards, powers, AI and RNG agree at each contract boundary.",
+    "observed": "runId=b73994ba157f4d38b925bacf68bef2ac; assembly=207FD8978E61DC50D93EE9D3D2A3CD0BA2D2E77E56B3DEF66E6726F59AE481FE; checks=MagiKnight:DAMPEN_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T11:53:08.7936913+08:00",
+    "evidence": "coverage/fixtures/combat/show-off-dampen.json; docs/TEST_MATRIX.md"
+  },
+  "TORMENTOUS-COLLAR-PREPARATION": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId TORMENTOUS-COLLAR-PREPARATION; character=FOOL; encounter=ENCOUNTER.BYGONE_EFFIGY_ELITE; input=src/Testing/Contracts/Combat/UnattendedTestRunner.RelicMaxHpHealing.cs; StopAfterInitialSetupAssertion; Instant; 120 s; instance cleanup.",
+    "expected": "Complete native and simulated state, ordered cards, powers, AI and RNG agree at each contract boundary.",
+    "observed": "runId=de8f18e82a0e4424afb63d26fdcff4f2; assembly=207FD8978E61DC50D93EE9D3D2A3CD0BA2D2E77E56B3DEF66E6726F59AE481FE; checks=RelicPreparation:TORMENTOUS_COLLAR:FirstAndSecondTurn:NativeFullState:ParentFork:FullRng; NativeOutcome:combatEnded=False:turn=2:hp=30:maxHp=77; finished=2026-11-13T11:55:30.6249707+08:00; original FuzzyWurmCrawler fixture used a normal encounter despite the room-selection option; BYGONE_EFFIGY_ELITE supplies the native elite room and passes the explicit two-Weak assertion.",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.RelicMaxHpHealing.cs; docs/TEST_MATRIX.md"
+  },
+  "ROCKET-ATTACKS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId ROCKET-ATTACKS; character=FOOL; encounter=ENCOUNTER.KAISER_CRAB_BOSS; input=coverage/fixtures/combat/rocket-attacks.json; StopAfterInitialSetupAssertion; Instant; 120 s; instance cleanup.",
+    "expected": "Complete native and simulated state, ordered cards, powers, AI and RNG agree at each contract boundary.",
+    "observed": "runId=da83b2ef74be4f2783dde87acc0f169a; assembly=207FD8978E61DC50D93EE9D3D2A3CD0BA2D2E77E56B3DEF66E6726F59AE481FE; checks=Rocket:CALCULATING_MOVE; Rocket:PRECISE_SMASH_MOVE; Rocket:PRECISE_SMASH_MOVE_2; Rocket:ROCKET_CLAW_MOVE; NativeOutcome:combatEnded=False:turn=1:hp=46:maxHp=77; finished=2026-11-13T11:56:29.7518419+08:00",
+    "evidence": "coverage/fixtures/combat/rocket-attacks.json; docs/TEST_MATRIX.md"
+  },
+  "FOOL-RESOURCE-BOUNDARIES": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL, FuzzyWurmCrawler plus Tunneler, max/current HP [9999,9999]; MonsterMoveChecksPath=coverage/fixtures/cards/audits/fool-resource-boundaries.json; StopAfterInitialSetupAssertion; Instant; 120 s; instance cleanup. Final arrow-death row ran separately.",
+    "expected": "Melody cost reduction, impaled arrow damage multiplier, next-turn draw, Byrdpip counter saturation and arrow death retrieval match native state.",
+    "observed": "runId=9da1fbfb1c474d13bc95af42397a48ea; assembly=DF20AB2A38525D2AD39D63F718E7E750F7AC10CEB33797167CFF734A98A14EBD; first three rows Passed before the independent collar row rejected turn rewind. Final death row Passed in runId=0a62e74bff7142a9ae9051e1fcd9c091; assembly=207FD8978E61DC50D93EE9D3D2A3CD0BA2D2E77E56B3DEF66E6726F59AE481FE; checks=FuzzyWurmCrawler:INHALE; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T11:49:17.3600868+08:00; initial fixture 2ecd2243d19c4c579f6efe1c74c1ea05 only set current HP and reached the native maximum-HP cap; final fixture also sets maximum HP. Collar now has its own first-turn contract.",
+    "evidence": "coverage/fixtures/cards/audits/fool-resource-boundaries.json; docs/TEST_MATRIX.md"
+  },
+  "STANDARD-RNG-STREAMS": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId STANDARD-RNG-STREAMS -CharacterId FOOL; input=coverage/fixtures/cards/audits/standard-rng-streams.json; StopAfterInitialSetupAssertion; Instant; 120 s request limit; CleanupInstanceOnExit. RNG fixture maximum/current HP [9999,9999]; potion fixture [9999].",
+    "expected": "Ordered piles, instance state, powers, AI and all combat/player generation RNG states match native outcomes.",
+    "observed": "runId=aa38d124635845cab7fa3cdf3c4eb244; assembly=6FB8641E96E7E392E1558B7F330564F352223466AA803EA26636DC8666053DD9; checks=FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; FuzzyWurmCrawler:INHALE; ThievingHopper:THIEVERY_MOVE; NativeOutcome:combatEnded=False:turn=2:hp=60:maxHp=77; finished=2026-11-13T12:04:57.2404906+08:00; timeout baseline 8ad358237ec34aac9ecb704e8966b227 waited at Entropy native after-draw selection; extending the test selector lifetime through AfterPlayerTurnStart resolved it within the 120 s request budget. Initial combined potion/monster request selected the potion path and failed roster-length setup before combat assertions.",
+    "evidence": "coverage/fixtures/cards/audits/standard-rng-streams.json; docs/TEST_MATRIX.md"
+  },
+  "ENTROPIC-GENERATION": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId ENTROPIC-GENERATION -CharacterId FOOL; input=coverage/fixtures/potions/entropic-generation.json; StopAfterInitialSetupAssertion; Instant; 120 s request limit; CleanupInstanceOnExit. RNG fixture maximum/current HP [9999,9999]; potion fixture [9999].",
+    "expected": "Ordered piles, instance state, powers, AI and all combat/player generation RNG states match native outcomes.",
+    "observed": "runId=905236bde2f54757bcb10a95e2c59f5d; assembly=6FB8641E96E7E392E1558B7F330564F352223466AA803EA26636DC8666053DD9; checks=Potion:ENTROPIC_BREW; Potion:ENTROPIC_BREW; NativeOutcome:combatEnded=False:turn=1:hp=77:maxHp=77; finished=2026-11-13T12:05:51.6989031+08:00",
+    "evidence": "coverage/fixtures/potions/entropic-generation.json; docs/TEST_MATRIX.md"
+  },
+  "BETA-DEPLOY-FOOL-HOOKS": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeploymentAndIncrementalSearch",
+    "gameVersion": "0.113.0",
+    "procedure": "run-unattended-test.ps1 -ScenarioId BETA-DEPLOY-FOOL-HOOKS; input=coverage/fixtures/search/beta-standard-fool-hooks.json; CharacterId FOOL; Instant; 120 s request limit; CleanupInstanceOnExit. GeneratedScenarioPath; fixed 1500 ms; VerifyIncrementalSearch; DeploymentInterActionDelaySecondsForTest=0; ExpectedUnexpectedReplansAtMost=0.",
+    "expected": "Named full-state native, continuation, branch isolation and deployment assertions pass.",
+    "observed": "runId=1a6a90e828bf486680ffa3977fe8e60d; assembly=EBFFF9B3590D98F39F904664FEB4C83B6751C608F8820FC9800EC748A70E8D1F; checks=GeneratedScenario:Resolved:NativePools:IndependentGeneratorRng; GeneratedScenario:LoadoutCounts:Ascension:SingleBane:PotionOrder; GeneratedScenario:NativeOpeningCaptured; PerformancePreset:Medium:120000ms:Beam=60:Nodes=120000:Branches=32:NoGC=False/16000000000; UnexpectedReplans:0; NativeOutcome:combatEnded=True:turn=2:hp=77:maxHp=77; finished=2026-11-13T12:07:39.0385312+08:00; route includes ExplosiveArrows, WhistlingArrows twice around a shot, EpicRetrieval and next-turn continuation; initial launch rejected a source-DLL change while freezing the private snapshot, before game execution.",
+    "evidence": "coverage/fixtures/search/beta-standard-fool-hooks.json; docs/TEST_MATRIX.md"
   }
 }

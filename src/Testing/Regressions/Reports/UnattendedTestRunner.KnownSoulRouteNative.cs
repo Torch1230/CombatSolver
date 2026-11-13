@@ -73,7 +73,7 @@ internal sealed partial class UnattendedTestRunner
     // installed through each real turn transition so unexpected setup choices fail explicitly.
     private async Task<int> RunKnownSoulRouteNativeAsync(CombatState combat, Player player)
     {
-        if (_mercuryTerminalObservation != null || CardSelectCmd.Selector != null)
+        if (_mercuryTerminalObservation != null || NativeTestCardSelectors.Current != null)
             throw new InvalidOperationException("Soul 原版对照不能覆盖现有观察者或选牌器。");
         List<KnownRoutePrefix> prefixes = [];
         RunKnownSoulRouteReplay(combat, player, prefixes);
@@ -105,7 +105,7 @@ internal sealed partial class UnattendedTestRunner
                     || pcs.TurnNumber != action.Turn)
                     throw new InvalidOperationException($"Soul 原版第 {index + 1} 步之前不在 T{action.Turn} Play。");
                 KnownSoulNativeSelector selector = new(player, action.GetActionChoicesInExecutionOrder());
-                using (CardSelectCmd.PushSelector(selector))
+                using (NativeTestCardSelectors.Push(selector))
                 {
                     if (action.Kind == PlanActionKind.PlayCard)
                     {

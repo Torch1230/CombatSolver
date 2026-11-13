@@ -1,0 +1,31 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 999,
+    "clearPlayerPilesBeforeMove": true, "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      { "cardId": "MOTIF", "pile": "Hand" },
+      { "cardId": "SONG_PATH", "pile": "Hand" },
+      { "cardId": "VIOLENT_CHORD", "pile": "Hand" },
+      { "cardId": "DEEP_STRETCH", "pile": "Hand" },
+      { "cardId": "SORROWFUL_STRIKE", "pile": "Hand" },
+      { "cardId": "CHO_READY", "pile": "Hand" },
+      { "cardId": "KI_WHIP", "pile": "Hand" },
+      { "cardId": "HARMONIC_SHIELD", "pile": "Hand" },
+      { "cardId": "CHO_LIMBS", "pile": "Hand" },
+      { "cardId": "WAH_BLAST", "pile": "Hand" },
+      { "cardId": "DEFEND_FOOL", "pile": "Draw", "count": 5 }
+    ],
+    "cardPlayChecksAfterMove": [
+      { "cardId": "MOTIF", "target": "None" },
+      { "cardId": "SONG_PATH", "target": "None" },
+      { "cardId": "VIOLENT_CHORD", "target": "None" },
+      { "cardId": "DEEP_STRETCH", "target": "None" },
+      { "cardId": "SORROWFUL_STRIKE", "target": "Enemy" },
+      { "cardId": "CHO_READY", "target": "None" },
+      { "cardId": "KI_WHIP", "target": "Enemy" },
+      { "cardId": "HARMONIC_SHIELD", "target": "None" },
+      { "cardId": "CHO_LIMBS", "target": "None" },
+      { "cardId": "WAH_BLAST", "target": "None" }
+    ]
+  }
+]

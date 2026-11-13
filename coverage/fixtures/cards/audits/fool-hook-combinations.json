@@ -1,0 +1,336 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "powersBeforeMove": [
+      {
+        "powerId": "EXPLOSIVE_ARROWS_POWER",
+        "target": "Player",
+        "amount": 2
+      },
+      {
+        "powerId": "SERRATED_ARROWS_POWER",
+        "target": "Player",
+        "amount": 20
+      },
+      {
+        "powerId": "YAH_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "relicsBeforeMove": [
+      {
+        "relicId": "TWINE"
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "EPIC_RETRIEVAL",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "WHISTLING_ARROWS",
+        "pile": "Discard",
+        "count": 1
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "FOOLISH_SHOT",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "EPIC_RETRIEVAL",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "WHISTLING_ARROWS",
+        "target": "None"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "powersBeforeMove": [
+      {
+        "powerId": "LULLABY_POWER",
+        "target": "Player",
+        "amount": 3
+      },
+      {
+        "powerId": "LOST_LUTE_POWER",
+        "target": "Player",
+        "amount": 1
+      },
+      {
+        "powerId": "MOTIF_POWER",
+        "target": "Player",
+        "amount": 1
+      },
+      {
+        "powerId": "SONG_PATH_POWER",
+        "target": "Player",
+        "amount": 1
+      },
+      {
+        "powerId": "VIOLENT_CHORD_POWER",
+        "target": "Player",
+        "amount": 2
+      },
+      {
+        "powerId": "KI_VERSE_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "WAH_CHO_KI",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Draw",
+        "count": 3
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "WAH_CHO_KI",
+        "target": "Enemy"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "powersBeforeMove": [
+      {
+        "powerId": "ENCORE_POWER",
+        "target": "Player",
+        "amount": 3
+      },
+      {
+        "powerId": "FREE_CARD_POWER",
+        "target": "Player",
+        "amount": 1
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Hand",
+        "count": 2
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "STRIKE_FOOL",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "target": "Enemy"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "powersBeforeMove": [
+      {
+        "powerId": "SIMPLETON_POWER",
+        "target": "Player",
+        "amount": 3
+      }
+    ],
+    "cardsBeforeMove": [
+      {
+        "cardId": "RECALL",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "ALL_IS_WELL",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "ENNUI",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "ECSTASY",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "SADNESS",
+        "pile": "Draw",
+        "count": 2
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "ALL_IS_WELL",
+        "target": "None"
+      },
+      {
+        "cardId": "ENNUI",
+        "target": "None"
+      },
+      {
+        "cardId": "ECSTASY",
+        "target": "None"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true,
+    "cardPlayChecksAfterPlayerSetup": [
+      {
+        "cardId": "JOY",
+        "target": "None"
+      }
+    ]
+  },
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      {
+        "cardId": "JUGGLING",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Hand",
+        "count": 1
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 5
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "JUGGLING",
+        "target": "None"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "target": "Enemy"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 999,
+    "clearPlayerPilesBeforeMove": true, "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      { "cardId": "FOOLISH_SHOT", "pile": "Hand" },
+      { "cardId": "RECALL", "pile": "Hand" },
+      { "cardId": "KI_CHANT", "pile": "Hand" },
+      { "cardId": "DEFEND_FOOL", "pile": "Draw" },
+      { "cardId": "STRIKE_FOOL", "pile": "Discard", "count": 3 }
+    ],
+    "cardPlayChecksAfterMove": [
+      { "cardId": "FOOLISH_SHOT", "target": "Enemy" },
+      { "cardId": "RECALL", "target": "Enemy", "useChoice": true, "choiceCardIds": ["FOOLISH_SHOT"] },
+      { "cardId": "KI_CHANT", "target": "None", "useChoice": true, "choiceCardIds": ["FOOLISH_SHOT"] }
+    ]
+  }
+]

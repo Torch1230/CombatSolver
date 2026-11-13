@@ -125,7 +125,8 @@ internal sealed partial class UnattendedTestRunner
         CombatPredictionSimulator simulator,
         SimulatedCombatState combat,
         Player player,
-        IReadOnlyList<string> choiceCardIds)
+        IReadOnlyList<string> choiceCardIds,
+        bool advanceTurn = true)
     {
         TurnStartChoiceCursor choices = choiceCardIds.Count == 0
             ? new TurnStartChoiceCursor(null)
@@ -139,20 +140,11 @@ internal sealed partial class UnattendedTestRunner
                 };
             });
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(player);
-        combat.AdvancePlayerTurn(player);
+        if (advanceTurn) combat.AdvancePlayerTurn(player);
         combat.BeginSideTurn(player.Creature);
         combat.SnapshotPowerAmountsAtTurnStart([player.Creature]);
-        if (!TurnStartRelicSupport.TriggerBeforeSideTurnStart(
-                simulator,
-                combat,
-                [player.Creature]))
-        {
-            throw new InvalidOperationException("模拟玩家回合准备在回合开始遗物阶段遇到动态选择。");
-        }
-        if (TurnStartPowerSupport.TriggerBeforeSideTurnStart(
-                simulator,
-                combat,
-                [player.Creature]))
+        if (!CombatSolver.Engine.InCombat.Mirrors.HookMirrors.BeforeSideTurnStart(
+                simulator, CombatSide.Player, [player.Creature]))
         {
             throw new InvalidOperationException("模拟玩家回合准备遇到动态回合开始结算。");
         }
@@ -228,13 +220,17 @@ internal sealed partial class UnattendedTestRunner
     private static async Task TriggerActualPlayerSetupAsync(
         CombatState combatState,
         Player player,
-        IReadOnlyList<string> choiceCardIds)
+        IReadOnlyList<string> choiceCardIds,
+        bool advanceTurn = true)
     {
         PlayerCombatState state = player.PlayerCombatState
             ?? throw new InvalidOperationException("玩家没有 PlayerCombatState。");
         combatState.CurrentSide = CombatSide.Player;
-        combatState.RoundNumber++;
-        state.IncrementTurnNumber();
+        if (advanceTurn)
+        {
+            combatState.RoundNumber++;
+            state.IncrementTurnNumber();
+        }
         player.Creature.BeforeTurnStart(CombatSide.Player);
         await Hook.BeforeSideTurnStart(combatState, CombatSide.Player, [player.Creature]);
         if (player.Creature.Block > 0)
@@ -254,12 +250,10 @@ internal sealed partial class UnattendedTestRunner
         bool sideTurnStartTriggeredEarly = choiceCardIds.Count > 0;
         if (sideTurnStartTriggeredEarly)
             await Hook.AfterSideTurnStart(combatState, CombatSide.Player, [player.Creature]);
-        using (choiceCardIds.Count == 0
-                   ? null
-                   : CardSelectCmd.PushSelector(new UnattendedCardSelector(choiceCardIds)))
-        {
-            await Hook.BeforeHandDraw(combatState, player, choiceContext);
-        }
+        using IDisposable? selector = choiceCardIds.Count == 0
+            ? null
+            : NativeTestCardSelectors.Push(new UnattendedCardSelector(choiceCardIds));
+        await Hook.BeforeHandDraw(combatState, player, choiceContext);
         decimal drawCount = Hook.ModifyHandDraw(
             combatState,
             player,

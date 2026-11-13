@@ -4,11 +4,77 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Relics;
+using CombatSolver.Engine.InCombat.Simulation;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
 namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+    private async Task AssertBetaRelicPreparationAsync(CombatState live, Player player, params string[] relicIds)
+    {
+        await ClearOrderedEffectFixtureAsync(live, player);
+        bool infusedCore = relicIds.Contains("INFUSED_CORE");
+        if (infusedCore)
+        {
+            var queue = player.PlayerCombatState!.OrbQueue;
+            int capacity = queue.Capacity;
+            queue.Clear();
+            queue.AddCapacity(capacity);
+        }
+        foreach (string id in relicIds)
+            await InjectRelicAsync(player, new() { RelicId = id, AddWithoutObtainedEffects = true });
+        await CreatureCmd.SetCurrentHp(player.Creature, 30);
+        await InjectCardAsync(live, player, new() { CardId = "STRIKE_FOOL", Pile = "Discard", Count = 5 });
+        var parent = CombatRootSnapshot.Capture(live).ForkSimulator();
+        var child = parent.Fork();
+        var shadow = (SimulatedCombatState)child.State.CombatState;
+        var initial = CaptureActual(live, player, live.Enemies[0]);
+        TriggerSimulatedPlayerSetup(child, shadow, player, [], advanceTurn: false);
+        await TriggerActualPlayerSetupAsync(live, player, [], advanceTurn: false);
+        AssertSnapshotEqual(CaptureSimulated(child, shadow, player, live.Enemies[0]),
+            CaptureActual(live, player, live.Enemies[0]), _request.ScenarioId, "FirstPreparation");
+        if (relicIds.Contains("TORMENTOUS_COLLAR")
+            && live.Enemies.Any(enemy => enemy.GetPowerAmount<MegaCrit.Sts2.Core.Models.Powers.WeakPower>() != 2))
+            throw new InvalidOperationException("Elite first-turn collar must apply two Weak to each enemy.");
+        AssertSnapshotEqual(initial, CaptureSimulated(parent, (SimulatedCombatState)parent.State.CombatState,
+            player, live.Enemies[0]), _request.ScenarioId, "PreparationParentIsolation");
+        _ = child.Fork();
+        TriggerSimulatedPlayerSetup(child, shadow, player, []);
+        await TriggerActualPlayerSetupAsync(live, player, []);
+        AssertSnapshotEqual(CaptureSimulated(child, shadow, player, live.Enemies[0]),
+            CaptureActual(live, player, live.Enemies[0]), _request.ScenarioId, "SecondPreparation");
+        if (infusedCore && player.PlayerCombatState!.OrbQueue.Orbs.Count != 3)
+            throw new InvalidOperationException("Infused Core did not retain exactly three orbs after the second preparation.");
+        _completedChecks.Add("RelicPreparation:" + string.Join(',', relicIds)
+            + ":FirstAndSecondTurn:NativeFullState:ParentFork:FullRng");
+    }
+
+    private async Task AssertBathTowelHealingAsync(CombatState live, Player player)
+    {
+        await ClearOrderedEffectFixtureAsync(live, player);
+        foreach (var potion in player.PotionSlots.ToArray()) potion?.Discard();
+        await InjectRelicAsync(player, new() { RelicId = "BATH_TOWEL" });
+        await CreatureCmd.SetCurrentHp(player.Creature, 30);
+        var relic = player.Relics.OfType<BathTowel>().Single();
+        var parent = CombatRootSnapshot.Capture(live).ForkSimulator();
+        var child = parent.Fork();
+        var shadow = (SimulatedCombatState)child.State.CombatState;
+        var initial = CaptureActual(live, player, live.Enemies[0]);
+        if (StrategicHpRecoveryBound.KnownNativeHealingPotential(parent, player, 0) != 8)
+            throw new InvalidOperationException("First-turn Bath Towel healing was omitted from the allowance.");
+        shadow.ApplyRelicAfterPlayerTurnStart(child, player, new TurnStartChoiceCursor(null), relic);
+        await relic.AfterPlayerTurnStartLate(new BlockingPlayerChoiceContext(), player);
+        AssertSnapshotEqual(CaptureSimulated(child, shadow, player, live.Enemies[0]),
+            CaptureActual(live, player, live.Enemies[0]), _request.ScenarioId, "BathTowelNativeHeal");
+        AssertSnapshotEqual(initial, CaptureSimulated(parent, (SimulatedCombatState)parent.State.CombatState,
+            player, live.Enemies[0]), _request.ScenarioId, "BathTowelParentIsolation");
+        shadow.AdvancePlayerTurn(player);
+        if (StrategicHpRecoveryBound.KnownNativeHealingPotential(child, player, 0) != 0)
+            throw new InvalidOperationException("Bath Towel healing remained available after the first turn.");
+        _completedChecks.Add("BathTowelHealing:FirstTurnAllowance:NativeHeal:ForkLiveIsolation:LaterTurnExpiry");
+    }
+
     private async Task AssertRelicMaxHpHealingBoundsAsync(CombatState live, Player player)
     {
         foreach (var power in player.Creature.Powers.ToArray()) await PowerCmd.Remove(power);

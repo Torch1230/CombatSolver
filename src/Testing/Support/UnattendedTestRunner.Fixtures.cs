@@ -212,6 +212,7 @@ internal sealed partial class UnattendedTestRunner
                 "rewards" => PlayerRngType.Rewards,
                 "shops" => PlayerRngType.Shops,
                 "transformations" => PlayerRngType.Transformations,
+                "nonCombatGeneration" or "non_combat_generation" => PlayerRngType.NonCombatGeneration,
                 _ => throw new InvalidOperationException($"跑局快照包含未知玩家 RNG {property.Name}。"),
             };
             JsonElement value = property.Value;

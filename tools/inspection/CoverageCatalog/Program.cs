@@ -197,7 +197,7 @@ string[] nonPassingTestIds = classifications.Values
 CoverageCatalog catalog = new(
     SchemaVersion: 3,
     CombatSolverVersion: combatSolverVersion,
-    GameVersion: "0.111.0",
+    GameVersion: ReadGameVersion(),
     SimulationEngine: "embedded",
     Entries: entries);
 
@@ -205,7 +205,7 @@ File.WriteAllText(catalogPath, JsonSerializer.Serialize(catalog, JsonOptions()),
 SearchBoundaryCatalog boundaries = new(
     SchemaVersion: 1,
     CombatSolverVersion: combatSolverVersion,
-    GameVersion: "0.111.0",
+    GameVersion: ReadGameVersion(),
     NativeAutoRescan: entries
         .Where(entry => entry.EffectiveStatus == EffectiveSupportStatus.NativeAutoRescan)
         .Select(entry => new SearchBoundaryEntry(
@@ -236,13 +236,13 @@ CoverageEntry[] activeWithoutRuntimeEvidence = entries.Where(entry =>
 RuntimeEvidenceGapCatalog runtimeGaps = new(
     SchemaVersion: 1,
     CombatSolverVersion: combatSolverVersion,
-    GameVersion: "0.111.0",
+    GameVersion: ReadGameVersion(),
     Entries: activeWithoutRuntimeEvidence.Select(ToRuntimeEvidenceGap).ToArray());
 File.WriteAllText(runtimeGapPath, JsonSerializer.Serialize(runtimeGaps, JsonOptions()), new UTF8Encoding(false));
 BranchStateReadRiskCatalog branchStateReadRiskCatalog = new(
     SchemaVersion: 1,
     CombatSolverVersion: combatSolverVersion,
-    GameVersion: "0.111.0",
+    GameVersion: ReadGameVersion(),
     Entries: branchStateReadRisks);
 File.WriteAllText(
     branchStateReadRiskPath,
@@ -526,6 +526,16 @@ if ((verifyRosterSources || verify) && rosterSources.UnresolvedCount > 0)
     return 12;
 }
 
+static string ReadGameVersion()
+{
+    using JsonDocument release = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release_info.json")));
+    string commit = release.RootElement.GetProperty("commit").GetString()!;
+    string assemblyVersion = typeof(AbstractModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+    if (!assemblyVersion.Contains("+" + commit, StringComparison.Ordinal))
+        throw new InvalidOperationException("Game release metadata and the loaded assembly have different commits.");
+    return release.RootElement.GetProperty("version").GetString()!.TrimStart('v');
+}
+
 static RosterSourceCatalog AuditRosterSources(string combatSolverVersion)
 {
     HashSet<string> supported =
@@ -576,6 +586,11 @@ static RosterSourceCatalog AuditRosterSources(string combatSolverVersion)
                 classification = "Multiplayer";
                 evidence = "LegionOfBone is MultiplayerOnly";
             }
+            else if (type.Name is "Byrdine" or "Wuppy")
+            {
+                classification = "InitialSnapshot";
+                evidence = "Pet acquisition and BeforeCombatStart resolve before the search root; CombatRootSnapshot captures pet state and Wuppy damage routing uses branch state.";
+            }
             else if (supported.Contains(type.Name))
             {
                 classification = "Supported";
@@ -599,7 +614,7 @@ static RosterSourceCatalog AuditRosterSources(string combatSolverVersion)
     return new RosterSourceCatalog(
         1,
         combatSolverVersion,
-        "0.111.0",
+        ReadGameVersion(),
         entries.Count(entry => entry.Classification == "Unresolved"),
         entries);
 }
@@ -623,6 +638,7 @@ static AutoPlaySourceCatalog AuditAutoPlaySources(string combatSolverVersion)
         "BeatDown", "Bombardment", "Cascade", "Catastrophe", "DecisionsDecisions", "Eidolon", "Havoc",
         "HowlFromBeyond", "IAmInvincible", "KnifeTrap", "Uproar", "Imbued", "DistilledChaos",
         "HellraiserPower", "MayhemPower", "StampedePower", "HistoryCourse", "WhisperingEarring",
+        "ChoChorus", "TheDevil", "TheFool", "LostLutePower", "SimpletonPower",
     ];
     Assembly game = typeof(AbstractModel).Assembly;
     List<AutoPlaySourceEntry> entries = [];
@@ -691,7 +707,7 @@ static AutoPlaySourceCatalog AuditAutoPlaySources(string combatSolverVersion)
     return new AutoPlaySourceCatalog(
         1,
         combatSolverVersion,
-        "0.111.0",
+        ReadGameVersion(),
         entries.Count(entry => entry.Classification == "Unresolved"),
         entries);
 }
@@ -706,7 +722,7 @@ static CombatChoiceSourceCatalog AuditCombatChoiceSources(string combatSolverVer
         "HiddenDaggers", "Hologram", "NeowsFury", "Nightmare", "PhotonCut", "Prepared", "Purity",
         "Quasar", "Scavenge", "SculptingStrike", "Seance", "SecretTechnique", "SecretWeapon",
         "SeekerStrike", "Snap", "Splash", "Survivor", "ThinkingAhead", "Transfigure", "TrueGrit",
-        "Wish",
+        "Wish", "ArrowStab", "KiChant", "LockedIn", "Recall", "TheHermit",
     ];
     HashSet<string> supportedPotions =
     [
@@ -825,7 +841,7 @@ static CombatChoiceSourceCatalog AuditCombatChoiceSources(string combatSolverVer
     return new CombatChoiceSourceCatalog(
         2,
         combatSolverVersion,
-        "0.111.0",
+        ReadGameVersion(),
         entries.Count(entry => entry.Classification == "Unresolved"),
         entries);
 }
@@ -885,7 +901,7 @@ static StateMutationCatalog AuditStateMutations(
     return new StateMutationCatalog(
         SchemaVersion: 1,
         CombatSolverVersion: combatSolverVersion,
-        GameVersion: "0.111.0",
+        GameVersion: ReadGameVersion(),
         UnverifiedCount: mutations.Count(entry => entry.RequiresRuntimeEvidence && !entry.RuntimeVerified),
         SnapshotOnlyWithoutRuntimeEvidenceCount: mutations.Count(entry =>
             entry.Phase == "InitialSnapshot" && !entry.RuntimeVerified),
@@ -1106,7 +1122,7 @@ static StateFieldCatalog AuditStateFields(string combatSolverVersion)
     return new StateFieldCatalog(
         SchemaVersion: 1,
         CombatSolverVersion: combatSolverVersion,
-        GameVersion: "0.111.0",
+        GameVersion: ReadGameVersion(),
         UnclassifiedCount: fields.Count(field => field.Role == "Unclassified"),
         Entries: fields);
 }

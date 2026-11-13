@@ -2692,8 +2692,9 @@ internal sealed partial class UnattendedTestRunner
         var optimizedRng = simulator.Rng.Shuffle.Clone();
         int sourceCounter = simulator.Rng.Shuffle.Counter();
 
-        baseline.StableShuffle(baselineRng);
-        CombatBeamSolver.StableShuffleProjection(optimized, optimizedRng);
+        baseline.Sort((left, right) => left.Preview.CompareTo(right.Preview));
+        baseline.UnstableShuffle(baselineRng);
+        CombatBeamSolver.StableShuffleProjection(optimized, optimizedRng, simulator);
         if (!baseline.SequenceEqual(optimized)
             || baselineRng.Counter() != optimizedRng.Counter()
             || simulator.Rng.Shuffle.Counter() != sourceCounter)

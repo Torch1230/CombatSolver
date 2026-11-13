@@ -235,7 +235,7 @@ internal sealed partial class UnattendedTestRunner
             {
                 runner.SetStage("lazy_rng_fork");
                 string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertLazyRngFork(scenario.CombatState.RunState.Rng));
+                runner._completedChecks.Add(AssertLazyRngFork(scenario.CombatState.RunState.Rng, scenario.Player));
                 if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
                     throw new InvalidOperationException("RNG Fork contract changed live combat.");
             }

@@ -4,7 +4,6 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
-using MegaCrit.Sts2.Core.Models.Singleton;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Rooms;
@@ -175,11 +174,13 @@ internal sealed partial class UnattendedTestRunner
                 if (predictedBadge is null || ReferenceEquals(liveBadge, predictedBadge))
                     throw new InvalidOperationException($"Badge listener {liveBadge.Id.Entry} 没有以根克隆进入预测。");
             }
-            if (combat.MultiplayerScalingModel is { } liveMultiplayerScaling
-                && (ReferenceEquals(liveMultiplayerScaling, predictedCombat.MultiplayerScalingModel)
-                    || !predictedCombat.RootMultiplayerScalingIsDetached))
+            if (combat.RunModels.Count != predictedCombat.RunModels.Count
+                || combat.RunModels.Where((model, index) =>
+                    ReferenceEquals(model, predictedCombat.RunModels[index])
+                    || model.GetType() != predictedCombat.RunModels[index].GetType()).Any()
+                || !predictedCombat.RootRunModelsAreDetached)
             {
-                throw new InvalidOperationException("多人缩放 listener 仍持有实机 RunState 或 CombatState。");
+                throw new InvalidOperationException("RunModel 根快照的类型、顺序或所有权发生偏差。");
             }
             if (predictedCombat.Modifiers.Count != combat.Modifiers.Count)
                 throw new InvalidOperationException("根快照没有保留自定义规则清单。");

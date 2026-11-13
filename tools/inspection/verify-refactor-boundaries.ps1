@@ -871,7 +871,7 @@ foreach ($check in @(
     @{ RelativePath = "src/Search/CombatBeamSolver.ParallelExpansion.cs"; Text = "new(_run.ExpansionBatchPool)" },
     @{ RelativePath = "src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs"; Text = "private sealed class FrozenStream(PredictionRngState state)" },
     @{ RelativePath = "src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs"; Text = "new FrozenStream(_mutable.CaptureState())" },
-    @{ RelativePath = "src/Testing/Host/UnattendedTestRunner.Assertions.cs"; Text = "AssertLazyRngFork(scenario.CombatState.RunState.Rng)" },
+    @{ RelativePath = "src/Testing/Host/UnattendedTestRunner.Assertions.cs"; Text = "AssertLazyRngFork(scenario.CombatState.RunState.Rng, scenario.Player)" },
     @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.ShuffleState);" },
     @{ RelativePath = "src/Runtime/ContinuationStamp.cs"; Text = "simulator.Rng.ShuffleState" },
     @{ RelativePath = "src/Search/CombatBeamSolver.StateEvaluation.cs"; Text = "AppendRngState(ref key, simulator.Rng.CombatCardGenerationState);" },
@@ -1510,7 +1510,11 @@ $rootModelBoundaryChecks = @(
     },
     @{
         Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"
-        Text = "MultiplayerScalingRunStateField.SetValue(detachedMultiplayerScaling, null)"
+        Text = "RunModelRunStateField.SetValue(detached, null)"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Search\SimulatedCombatState.cs"
+        Text = "RunModelCombatStateField.SetValue(detached, null)"
     },
     @{
         Path = Join-Path $repositoryRoot "src\Engine\InCombat\Mirrors\Hooks\Block\ModifyBlockMultiplicativeMirrors.cs"
@@ -2235,7 +2239,7 @@ if ($dynamicVarDirectAccess) {
 }
 
 $extraTurnRegistry = [IO.File]::ReadAllText((Join-Path $repositoryRoot 'src/Engine/InCombat/Mirrors/Hooks/TurnEnd/ExtraTurnMirrors.cs'))
-foreach ($registration in @('ShouldRegistry.Register<AmbergrisPower>', 'ShouldRegistry.Register<PaelsEye>', 'AfterRegistry.Register<AmbergrisPower>', 'AfterRegistry.Register<PaelsEye>')) {
+foreach ($registration in @('ShouldRegistry.Register<ExtraTurnPower>', 'EarlyRegistry.Register<PaelsEye>', 'AfterRegistry.Register<ExtraTurnPower>', 'AfterRegistry.Register<PaelsEye>')) {
     if (-not $extraTurnRegistry.Contains($registration)) {
         $violations.Add("Extra-turn native effects must use the shared registry: $registration")
     }

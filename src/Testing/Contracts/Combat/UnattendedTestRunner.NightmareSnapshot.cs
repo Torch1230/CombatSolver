@@ -82,7 +82,7 @@ internal sealed partial class UnattendedTestRunner
             var expected = CaptureSimulated(next.Simulator, shadow, player, enemy);
             var fork = next.Simulator.Fork();
             AssertSnapshotEqual(expected, CaptureSimulated(fork, (SimulatedCombatState)fork.State.CombatState, player, enemy), "Nightmare", "Fork");
-            using (CardSelectCmd.PushSelector(new UnattendedCardSelector(["PINPOINT"])))
+            using (NativeTestCardSelectors.Push(new UnattendedCardSelector(["PINPOINT"])))
             {
                 if (!FindActualHandCard(player, "NIGHTMARE", 0).TryManualPlay(null))
                     throw new InvalidOperationException("Native Nightmare failed.");

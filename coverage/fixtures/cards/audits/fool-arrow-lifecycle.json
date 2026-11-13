@@ -1,0 +1,21 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 999,
+    "clearPlayerPilesBeforeMove": true, "playerEnergyBefore": 99,
+    "cardsBeforeMove": [
+      { "cardId": "FOOLISH_SHOT", "pile": "Hand", "count": 2 },
+      { "cardId": "STRIKE_FOOL", "pile": "Hand", "count": 3 },
+      { "cardId": "QUIVER", "pile": "Hand" },
+      { "cardId": "RAPID_SHOT", "pile": "Hand" }
+    ],
+    "cardPlayChecksAfterMove": [
+      { "cardId": "FOOLISH_SHOT", "target": "Enemy" },
+      { "cardId": "STRIKE_FOOL", "target": "Enemy" },
+      { "cardId": "STRIKE_FOOL", "target": "Enemy" },
+      { "cardId": "STRIKE_FOOL", "target": "Enemy" },
+      { "cardId": "FOOLISH_SHOT", "target": "Enemy" },
+      { "cardId": "QUIVER", "target": "None" },
+      { "cardId": "RAPID_SHOT", "target": "Enemy" }
+    ]
+  }
+]

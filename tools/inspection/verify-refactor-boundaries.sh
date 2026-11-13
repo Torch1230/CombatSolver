@@ -860,7 +860,7 @@ src/Search/CombatBeamSolver.ParallelExpansion.cs	new(_run.ExpansionBatchPool)
 src/Search/CombatBeamSolver.Phases.cs	SearchWaveMemoryPolicy.ParentWaveCapacity(
 src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs	private sealed class FrozenStream(PredictionRngState state)
 src/Engine/InCombat/Simulation/CombatPredictionRngSet.cs	new FrozenStream(_mutable.CaptureState())
-src/Testing/Host/UnattendedTestRunner.Assertions.cs	AssertLazyRngFork(scenario.CombatState.RunState.Rng)
+src/Testing/Host/UnattendedTestRunner.Assertions.cs	AssertLazyRngFork(scenario.CombatState.RunState.Rng, scenario.Player)
 src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.ShuffleState);
 src/Runtime/ContinuationStamp.cs	simulator.Rng.ShuffleState
 src/Search/CombatBeamSolver.StateEvaluation.cs	AppendRngState(ref key, simulator.Rng.CombatCardGenerationState);
@@ -1302,7 +1302,8 @@ src/Search/SimulatedCombatState.cs	.Select(PredictionUtils.CloneModelForSimulati
 src/Engine/InCombat/Mirrors/Hooks/Card/AfterCardGeneratedForCombatMirrors.cs	GetAeonglassWitherUpgradeCount(monster.Creature)
 src/Prediction/MonsterSpawnSupport.cs	.SelectMany(combat.RelicsOf)
 src/Search/SimulatedCombatState.cs	foreach (BadgeModel badge in inner.BadgeModels)
-src/Search/SimulatedCombatState.cs	MultiplayerScalingRunStateField.SetValue(detachedMultiplayerScaling, null)
+src/Search/SimulatedCombatState.cs	RunModelRunStateField.SetValue(detached, null)
+src/Search/SimulatedCombatState.cs	RunModelCombatStateField.SetValue(detached, null)
 src/Engine/InCombat/Mirrors/Hooks/Block/ModifyBlockMultiplicativeMirrors.cs	registry.Register<MultiplayerScalingModel>(HandleMultiplayerScaling)
 src/Prediction/PredictionModHookSubscriberCapture.cs	ModHelper.IterateAllRunStateSubscribers(runState)
 src/Engine/Common/PredictionUtils.cs	PredictionModModelSupport.CloneCardAttachedModels(source, clone)
@@ -1757,7 +1758,7 @@ for member in 'private sealed record KnownRoutePrefix(' 'private static MoveStat
 done
 
 extra_turn_registry="$repository_root/src/Engine/InCombat/Mirrors/Hooks/TurnEnd/ExtraTurnMirrors.cs"
-for registration in 'ShouldRegistry.Register<AmbergrisPower>' 'ShouldRegistry.Register<PaelsEye>' 'AfterRegistry.Register<AmbergrisPower>' 'AfterRegistry.Register<PaelsEye>'; do
+for registration in 'ShouldRegistry.Register<ExtraTurnPower>' 'EarlyRegistry.Register<PaelsEye>' 'AfterRegistry.Register<ExtraTurnPower>' 'AfterRegistry.Register<PaelsEye>'; do
     require_fixed "$extra_turn_registry" "$registration" 'extra-turn native effects must use the shared registry'
 done
 for legacy in 'ShouldTakeExtraPlayerTurn(' 'ConsumeExtraTurnSources('; do

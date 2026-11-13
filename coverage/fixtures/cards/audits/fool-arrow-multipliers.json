@@ -1,0 +1,49 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "HONING",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "DISLIKE_YOU",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "pile": "Hand"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "pile": "Hand"
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "HONING",
+        "target": "None"
+      },
+      {
+        "cardId": "DISLIKE_YOU",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "FOOLISH_SHOT",
+        "target": "Enemy"
+      },
+      {
+        "cardId": "STRIKE_FOOL",
+        "target": "Enemy"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  }
+]

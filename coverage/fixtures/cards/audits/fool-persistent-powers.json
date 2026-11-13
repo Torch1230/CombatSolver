@@ -1,0 +1,58 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler",
+    "moveId": "INHALE",
+    "enemyHpBefore": 9999,
+    "clearAllPowersBeforeMove": true,
+    "clearAllRelicsBeforeMove": true,
+    "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 20,
+    "cardsBeforeMove": [
+      {
+        "cardId": "TUNE",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "ENNUI",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "MYTHIC_FORM",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "WAH_CHO_KI",
+        "pile": "Hand",
+        "upgradeLevels": 1
+      },
+      {
+        "cardId": "DEFEND_FOOL",
+        "pile": "Draw",
+        "count": 10
+      }
+    ],
+    "cardPlayChecksAfterMove": [
+      {
+        "cardId": "TUNE",
+        "target": "None"
+      },
+      {
+        "cardId": "ENNUI",
+        "target": "None"
+      },
+      {
+        "cardId": "MYTHIC_FORM",
+        "target": "None"
+      },
+      {
+        "cardId": "WAH_CHO_KI",
+        "target": "Enemy"
+      }
+    ],
+    "triggerPlayerTurnEndAfterMove": true,
+    "triggerPlayerSetupAfterMove": true
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "seed": "BETA113-regent",
+  "characterId": "REGENT",
+  "ascension": 0,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "characterCards": {
+    "ids": [
+      "ASTRAL_PULSE",
+      "SWORD_SAGE",
+      "STRIKE_REGENT",
+      "STRIKE_REGENT",
+      "DEFEND_REGENT",
+      "DEFEND_REGENT",
+      "STRIKE_REGENT",
+      "STRIKE_REGENT"
+    ]
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true
+}

@@ -1,27 +1,27 @@
 # CombatSolver 战斗钩子覆盖目录
 
-生成来源：CombatSolver `0.49.3`，游戏 `0.111.0`，模拟核心 `embedded`。本文件由 `tools/inspection/CoverageCatalog` 生成，不手工编辑。
+生成来源：CombatSolver `0.50.1`，游戏 `0.113.0`，模拟核心 `embedded`。本文件由 `tools/inspection/CoverageCatalog` 生成，不手工编辑。
 
 ## 汇总
 
 | 分类 | 条目 | 未分析 | 待实现 | 引擎精确 | 引擎推断 | 引擎不支持 |
 |---|---:|---:|---:|---:|---:|---:|
 | Affliction | 3 | 0 | 0 | 0 | 0 | 1 |
-| Card | 1186 | 0 | 0 | 219 | 152 | 226 |
-| Enchantment | 42 | 0 | 0 | 11 | 0 | 0 |
-| MonsterMove | 339 | 0 | 0 | 0 | 0 | 0 |
-| Monster | 352 | 0 | 0 | 15 | 0 | 0 |
+| Card | 1431 | 0 | 0 | 338 | 153 | 232 |
+| Enchantment | 44 | 0 | 0 | 13 | 0 | 0 |
+| MonsterMove | 343 | 0 | 0 | 0 | 0 | 0 |
+| Monster | 356 | 0 | 0 | 15 | 0 | 0 |
 | Orb | 18 | 0 | 0 | 14 | 0 | 3 |
-| Potion | 67 | 0 | 0 | 17 | 0 | 50 |
-| Power | 520 | 0 | 0 | 191 | 0 | 60 |
-| Relic | 508 | 0 | 0 | 123 | 0 | 9 |
+| Potion | 70 | 0 | 0 | 20 | 0 | 50 |
+| Power | 602 | 0 | 0 | 231 | 0 | 69 |
+| Relic | 519 | 0 | 0 | 136 | 0 | 9 |
 
 ## 有效支持状态
 
 | 状态 | Hook 数 | 实机/运行时证据 | 静态证据 | 无独立证据 |
 |---|---:|---:|---:|---:|
-| Exact | 2305 | 1713 | 1 | 591 |
-| OutOfScope | 730 | 13 | 121 | 596 |
+| Exact | 2627 | 1969 | 1 | 657 |
+| OutOfScope | 759 | 13 | 147 | 599 |
 
 ## 主动效果运行证据
 
@@ -33,18 +33,18 @@
 | 分类 | 主动 Exact | 有运行证据 | 尚无运行证据 |
 |---|---:|---:|---:|
 | Affliction | 1 | 1 | 0 |
-| Card | 560 | 560 | 0 |
-| Enchantment | 13 | 13 | 0 |
-| MonsterMove | 334 | 334 | 0 |
+| Card | 681 | 681 | 0 |
+| Enchantment | 15 | 15 | 0 |
+| MonsterMove | 335 | 335 | 0 |
 | Monster | 2 | 2 | 0 |
 | Orb | 15 | 15 | 0 |
-| Potion | 66 | 66 | 0 |
-| Power | 370 | 370 | 0 |
-| Relic | 198 | 197 | 1 |
+| Potion | 69 | 69 | 0 |
+| Power | 429 | 429 | 0 |
+| Relic | 213 | 213 | 0 |
 
 ## 分支内计算变量
 
-- 含 CalculatedVar 的卡牌：43
+- 含 CalculatedVar 的卡牌：52
 - 缺少分支内公式：0
 
 ## 持久遗物预测状态
@@ -57,10 +57,10 @@
 
 ## 明确排除范围
 
-- Combat：412 Hook
+- Combat：422 Hook
 - DeprecatedPlaceholder：1 Hook
-- MultiplayerOnly：77 Hook
-- OutOfCombat：166 Hook
+- MultiplayerOnly：89 Hook
+- OutOfCombat：173 Hook
 - TestOrMock：74 Hook
 
 ## 待有效适配

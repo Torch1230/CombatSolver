@@ -75,7 +75,6 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("无人测试要求从无进行中跑局的独立游戏进程启动。");
 
             PrepareGeneratedScenario();
-            using IDisposable? generatedChoices = BeginGeneratedSetupChoices();
             request = runner._request;
             CharacterModel character = ResolveUnique(ModelDb.AllCharacters, request.CharacterId, "角色");
             // AllEncounters is a curated pool and omits some event encounters.
@@ -197,18 +196,20 @@ internal sealed partial class UnattendedTestRunner
             }
             else
                 await runner._host.StartNewSingleplayerRun(
-                character,
+                Player.CreateForNewRun(character, MegaCrit.Sts2.Core.Unlocks.UnlockState.all, 1UL),
                 shouldSave: false,
                 ActModel.GetDefaultList(),
                 modifiers,
                 request.Seed,
                 GameMode.Standard,
+                isCustomGame: false,
                 request.Ascension);
             runner.EnsureWithinDeadline();
 
             runner.SetStage("inject_run_relics");
             RunState runState = RunManager.Instance.DebugOnlyGetState()
                 ?? throw new InvalidOperationException("创建跑局后找不到 RunState。");
+            using IDisposable? generatedChoices = BeginGeneratedSetupChoices();
             if (!loadedRunSnapshot && request.ActIndexForTest != 0)
             {
                 if ((uint)request.ActIndexForTest >= (uint)runState.Acts.Count)

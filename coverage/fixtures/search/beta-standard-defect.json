@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "seed": "BETA113-defect",
+  "characterId": "DEFECT",
+  "ascension": 0,
+  "actIndex": 0,
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "includeStartingDeck": false,
+  "includeStartingRelics": true,
+  "includeAscendersBane": false,
+  "characterCards": {
+    "ids": [
+      "REFRACT",
+      "DUALCAST",
+      "STRIKE_DEFECT",
+      "STRIKE_DEFECT",
+      "DEFEND_DEFECT",
+      "DEFEND_DEFECT",
+      "STRIKE_DEFECT",
+      "STRIKE_DEFECT"
+    ]
+  },
+  "colorlessCards": {
+    "count": 0
+  },
+  "relics": {
+    "count": 0
+  },
+  "potions": {
+    "count": 0
+  },
+  "mode": "Search",
+  "fixedSearchBudget": true
+}
