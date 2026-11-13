@@ -18,6 +18,8 @@
 
 ### v0.113.0 标准模式适配
 
+本批玩家日志为 [0.113 适配 Part 1](releases/sts2-0.113-part-1-RELEASE_NOTES.md)。Part 2 计划适配恐惧和极速模式。
+
 目标原版为 public-beta `0.113.0`（`16ac0fe3`）。RitsuLib 引用使用对应兼容目标。RunModels、死亡来源参数、CardSelectorStack 和原生出牌完成等待已迁移；额外回合先判断 Early，再消费选中的来源。
 
 分支 RNG 增加玩家 NonCombatGeneration，根捕获、完整状态、Fork、续用和存档解析共用同一份状态。新版卡牌排序比较附魔、灾厄、实际费用、重放及动态数值；费用从分支 Hook 解析。旧牌命中次数迁移到 HitCount，通用攻击和手写镜像同步消费原生变量。
