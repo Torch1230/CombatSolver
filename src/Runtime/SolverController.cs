@@ -2935,6 +2935,7 @@ internal static partial class SolverController
                 long actionStartedAt = measureDeploymentTiming
                     ? Stopwatch.GetTimestamp()
                     : 0;
+                GameAction queuedAction;
                 Task actionCompletion;
                 if (action.Kind == PlanActionKind.UsePotion)
                 {
@@ -2967,7 +2968,7 @@ internal static partial class SolverController
                             deployWhenReady: !_combat.FullAutoEnabled);
                         return;
                     }
-                    GameAction queuedAction = await EnqueueAndCaptureActionAsync(
+                    queuedAction = await EnqueueAndCaptureActionAsync(
                         candidate => candidate is UsePotionAction usePotion
                             && ReferenceEquals(usePotion.Player, player)
                             && usePotion.PotionIndex == (uint)action.PotionSlot,
@@ -3002,7 +3003,7 @@ internal static partial class SolverController
                             deployWhenReady: !_combat.FullAutoEnabled);
                         return;
                     }
-                    GameAction queuedAction = await EnqueueAndCaptureActionAsync(
+                    queuedAction = await EnqueueAndCaptureActionAsync(
                         candidate => candidate is PlayCardAction playCard
                             && ReferenceEquals(playCard.NetCombatCard.ToCardModelOrNull(), card),
                         () =>
@@ -3019,6 +3020,12 @@ internal static partial class SolverController
                 try
                 {
                     await AwaitDeploymentActionChoicesAsync(choiceSession, actionCompletion, phaseChoices.Length, token);
+                    // Native CompletionTask also completes successfully when ExecuteAction faults.
+                    if (queuedAction.Exception is { } actionFailure)
+                        throw new InvalidOperationException(
+                            $"Native deployment action failed: turn={turn} action_index={actionIndex} " +
+                            $"action={action.CardId ?? action.PotionId} target={action.TargetCombatId}.",
+                            actionFailure);
                     RunStatistics.Activity(state, execution: true, auto: _combat.FullAutoEnabled);
                 }
                 catch (NativeChoicePlanMismatchException)
@@ -3224,6 +3231,10 @@ internal static partial class SolverController
         catch (Exception ex)
         {
             _combat.UploadPolicy.Observe(state);
+            _combat.ContinuationSource = null;
+            _combat.FullAutoEnabled = false;
+            _combat.AutomaticSearchPaused = true;
+            _combat.AutomaticSearchPausedTurn = turn;
             _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.DeploymentFailure, ex);
             SolverOverlay.Show(host, FormatDeploymentFailure(ex));
             Entry.Logger.Error($"[CombatSolver/Test] DEPLOY_FAILURE turn={turn} exception={ex}");

@@ -1,0 +1,12 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 999,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 99,
+    "relicsBeforeMove": [{ "relicId": "UNSETTLING_LAMP" }],
+    "cardsBeforeMove": [{ "cardId": "HOBBLING_SHOT", "pile": "Hand", "upgradeLevels": 1 }],
+    "cardPlayChecksAfterMove": [{ "cardId": "HOBBLING_SHOT", "target": "Enemy" }],
+    "triggerEnemySideTurnEndAfterMove": true,
+    "expectedEnemyPowers": { "WEAK_POWER": 3, "VULNERABLE_POWER": 3 }
+  }
+]

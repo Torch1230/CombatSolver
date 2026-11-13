@@ -55,6 +55,9 @@ internal sealed partial class SimulatedCombatState
     {
         if (!ReferenceEquals(CurrentPowerCardSource, card))
             throw new InvalidOperationException($"结束了未开始的卡牌 Power 结算：{card?.Id.Entry}。");
+        _powerCardSources!.RemoveAt(_powerCardSources.Count - 1);
+        if (_powerCardSources.Any(source => ReferenceEquals(source, card)))
+            return;
         if (_unsettlingLampTriggeringCards != null)
         {
             UnsettlingLamp[] completedLamps = _unsettlingLampTriggeringCards
@@ -68,7 +71,6 @@ internal sealed partial class SimulatedCombatState
                 _unsettlingLampInternalPowerTypes?.Remove(lamp);
             }
         }
-        _powerCardSources!.RemoveAt(_powerCardSources.Count - 1);
     }
 
     public void ApplyPowerFromSource(Type powerType, Creature target, int amount, Creature? applier, CardModel? cardSource)

@@ -1,4 +1,22 @@
 {
+  "LAMP-HOBBLING-SHOT": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL，FUZZY_WURM_CRAWLER_WEAK，lamp-hobbling-shot.json，StopAfterCombatRootSnapshotAssertion；120秒上限，批次实例清理。",
+    "expected": "升级HOBBLING_SHOT的虚弱和易伤均被油灯翻倍，敌方回合末Weak3/Vulnerable3，完整状态一致。",
+    "observed": "f5f4fc2679534eb7803d7b24857a8616 Passed。报告1a585d8b的易伤预测1/原生3为定位证据；修改前夹具未运行。相邻间接减益合同60b34bb7f25e4aaca673f201d63ca724 Passed。",
+    "evidence": "coverage/fixtures/relics/lamp-hobbling-shot.json; docs/TEST_MATRIX.md"
+  },
+  "MOON-NORMALITY-SHIV": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL，FUZZY_WURM_CRAWLER_WEAK，moon-normality-shiv.json，StopAfterCombatRootSnapshotAssertion；120秒上限，批次实例清理。",
+    "expected": "THE_MOON+、凡庸、飞刀与VITRIOL+组合逐牌完整状态一致，飞刀完成伤害及消耗。",
+    "observed": "e878d8dc31904844a00f2f605075821c Passed；原报告f2d069a5的飞刀原生中断未复现，具体异常仍待定位；部署故障检测未做原生故障注入。",
+    "evidence": "coverage/fixtures/cards/moon-normality-shiv.json; docs/TEST_MATRIX.md"
+  },
   "DAMAGING-CONTINUATION-Q015-O070": {
     "status": "Passed",
     "level": "HeadlessNativeDeploymentAndSearchQuality",

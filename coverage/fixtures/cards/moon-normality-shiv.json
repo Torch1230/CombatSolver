@@ -1,0 +1,11 @@
+[
+  {
+    "monsterId": "FuzzyWurmCrawler", "moveId": "INHALE", "enemyHpBefore": 100,
+    "clearAllPowersBeforeMove": true, "clearAllRelicsBeforeMove": true, "clearPlayerPilesBeforeMove": true,
+    "playerEnergyBefore": 3,
+    "powersBeforeMove": [{ "powerId": "VULNERABLE_POWER", "target": "Enemy", "amount": 1 }],
+    "cardsBeforeMove": [{ "cardId": "THE_MOON", "pile": "Hand", "upgradeLevels": 1 }, { "cardId": "NORMALITY", "pile": "Hand" }, { "cardId": "VITRIOL", "pile": "Hand", "upgradeLevels": 1 }],
+    "cardPlayChecksAfterMove": [{ "cardId": "THE_MOON", "target": "None" }, { "cardId": "SHIV", "target": "Enemy" }, { "cardId": "VITRIOL", "target": "Enemy" }],
+    "expectedPlayerPileCards": { "Exhaust:THE_MOON": 1, "Exhaust:SHIV": 1, "Hand:SHIV": 7 }
+  }
+]
