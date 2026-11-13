@@ -29,15 +29,8 @@ internal static class PersistentRelicSupport
 
     public static bool ShouldFlush(SimulatedCombatState combat, Player player)
     {
-        int simulatedTurn = combat.GetPlayerTurnNumber(player);
         foreach (AbstractModel listener in combat.IterateHookListeners())
         {
-            if (listener is RingingTriangle triangle && ReferenceEquals(triangle.Owner, player))
-            {
-                if (simulatedTurn <= 1)
-                    return false;
-                continue;
-            }
             if (!listener.ShouldFlush(player))
                 return false;
         }

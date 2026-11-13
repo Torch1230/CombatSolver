@@ -12,11 +12,29 @@ namespace CombatSolver.Engine.InCombat.Mirrors.Cards.OnPlay;
 
 internal static class BespokeCardMirrors
 {
-    public static void AstralPulseOnPlay(AstralPulse _, CardOnPlayMirrorContext context)
-        => context.AttackAllOpponents(hitCount: 2);
+    public static void ExpectAFightOnPlay(ExpectAFight card, CardOnPlayMirrorContext context)
+    {
+        context.GainBlock(card.Owner.Creature);
+        if (context.Simulator.HasPendingChoice)
+            return;
+        foreach (PredictedCard attack in context.OwnerState.Hand.Cards.ToArray())
+            if (attack.Preview.Type == CardType.Attack && !attack.Preview.EnergyCost.CostsX)
+                attack.MutablePreview.EnergyCost.AddUntilPlayed(-card.DynamicVars.Energy.IntValue);
+    }
 
-    public static void DaggerSprayOnPlay(DaggerSpray _, CardOnPlayMirrorContext context)
-        => context.AttackAllOpponents(hitCount: 2);
+    public static void MementoMoriOnPlay(MementoMori card, CardOnPlayMirrorContext context)
+    {
+        Creature? target = context.State.HittableEnemies.MinBy(enemy => context.State.GetCreature(enemy).CurrentHp);
+        if (target is not null)
+            DamageCmd.Attack(card.DynamicVars.Damage.IntValue).FromCard(card, context.CardPlay)
+                .Targeting(target).Simulate(context.Simulator);
+    }
+
+    public static void AstralPulseOnPlay(AstralPulse card, CardOnPlayMirrorContext context)
+        => context.AttackAllOpponents(hitCount: card.DynamicVars.HitCount.IntValue);
+
+    public static void DaggerSprayOnPlay(DaggerSpray card, CardOnPlayMirrorContext context)
+        => context.AttackAllOpponents(hitCount: card.DynamicVars.HitCount.IntValue);
 
     public static void MiseryOnPlay(Misery _, CardOnPlayMirrorContext context)
     {
@@ -80,8 +98,8 @@ internal static class BespokeCardMirrors
             context.AttackAllOpponents();
     }
 
-    public static void TwinStrikeOnPlay(TwinStrike _, CardOnPlayMirrorContext context)
-        => context.AttackSingle(hitCount: 2);
+    public static void TwinStrikeOnPlay(TwinStrike card, CardOnPlayMirrorContext context)
+        => context.AttackSingle(hitCount: card.DynamicVars.HitCount.IntValue);
 
     public static void HeavenlyDrillOnPlay(HeavenlyDrill card, CardOnPlayMirrorContext context)
     {
@@ -109,7 +127,7 @@ internal static class BespokeCardMirrors
 
     public static void DismantleOnPlay(Dismantle card, CardOnPlayMirrorContext context)
     {
-        int hitCount = GetPowerAmount<VulnerablePower>(context, context.Target) > 0 ? 2 : 1;
+        int hitCount = GetPowerAmount<VulnerablePower>(context, context.Target) > 0 ? card.DynamicVars.HitCount.IntValue : 1;
         DamageCmd.Attack(card.DynamicVars.Damage.BaseValue)
             .WithHitCount(hitCount)
             .FromCard(card, context.CardPlay)
@@ -145,7 +163,7 @@ internal static class BespokeCardMirrors
     public static void MaulOnPlay(Maul card, CardOnPlayMirrorContext context)
     {
         DamageCmd.Attack(card.DynamicVars.Damage.BaseValue)
-            .WithHitCount(2)
+            .WithHitCount(card.DynamicVars.HitCount.IntValue)
             .FromCard(card, context.CardPlay)
             .Targeting(context.Target)
             .Simulate(context.Simulator);
@@ -169,12 +187,7 @@ internal static class BespokeCardMirrors
         int hitCount = 1;
         if (combat.HasLostHpThisTurn(card.Owner.Creature))
         {
-            // Spite's RepeatVar is canonical (2, plus one per upgrade). A few live cards can
-            // carry a stale DynamicVarSet after an in-run card-state rewrite; recover this
-            // card-specific canonical value instead of failing the whole search.
-            hitCount = card.DynamicVars.TryGetValue("Repeat", out DynamicVar? repeat)
-                ? repeat.IntValue
-                : 2 + card.CurrentUpgradeLevel;
+            hitCount = card.DynamicVars.HitCount.IntValue;
         }
         DamageCmd.Attack(card.DynamicVars.Damage.BaseValue)
             .WithHitCount(hitCount)
@@ -243,7 +256,7 @@ internal static class BespokeCardMirrors
     {
         bool allEnemies = GetPowerAmount<SeekingEdgePower>(context, card.Owner.Creature) > 0;
         var attack = DamageCmd.Attack(card.DynamicVars.Damage.BaseValue)
-            .WithHitCount(card.DynamicVars.Repeat.IntValue)
+            .WithHitCount(card.DynamicVars.HitCount.IntValue)
             .FromCard(card, context.CardPlay);
         if (allEnemies)
             attack.TargetingAllOpponents(context.CombatState);

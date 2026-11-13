@@ -24,6 +24,8 @@ internal static class BeforeAttackMirrors
     private static Registry CreateRegistry()
     {
         var registry = new Registry(BeforeAttack);
+        registry.Register<AimPower>(AimPowerMirrors.BeforeAttack);
+        registry.Register<QuietusPower>(QuietusPowerMirrors.BeforeAttack);
 
         registry.Register<GigantificationPower>(GigantificationPowerMirrors.BeforeAttack);
         registry.RegisterIgnored<HellraiserPower>();

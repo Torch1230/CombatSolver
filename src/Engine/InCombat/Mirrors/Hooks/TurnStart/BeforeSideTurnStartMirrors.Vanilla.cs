@@ -10,6 +10,8 @@ internal static partial class BeforeSideTurnStartMirrors
     private static partial void RegisterVanilla(MethodMirrorRegistry<AbstractModel, BeforeSideTurnStartMirrorContext> registry)
     {
         registry.Register<BeatingRemnant>(ApplyRelic);
+        registry.Register<ConductorsBaton>(ApplyRelic);
+        registry.Register<TormentousCollar>(ApplyRelic);
         registry.Register<BrilliantScarf>(ApplyRelic);
         registry.Register<DemonTongue>(ApplyRelic);
         registry.Register<Kunai>(ApplyRelic);
@@ -25,6 +27,8 @@ internal static partial class BeforeSideTurnStartMirrors
         registry.Register<MiniRegent>(ApplyRelic);
         registry.Register<RedMask>(ApplyRelic);
         registry.Register<PlatingPower>(ApplyPower);
+        registry.Register<YahPower>(ApplyPower);
+        registry.Register<LullabyPower>(ApplyPower);
         registry.Register<AggressionPower>(ApplyPower);
         registry.Register<HardenedShellPower>(ApplyPower);
         registry.Register<SlothPower>(ApplyPower);

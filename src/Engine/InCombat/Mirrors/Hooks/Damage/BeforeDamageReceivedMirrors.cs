@@ -46,7 +46,7 @@ internal static class BeforeDamageReceivedMirrors
     {
         if (context.Target == power.Owner &&
             context.Dealer != null &&
-            (context.Props.IsPoweredAttack() || context.Source?.Original is Omnislice))
+            context.Props.IsPoweredAttack())
         {
             using (context.Simulator.PushDamageSource(
                 CombatDamageSource.For(CombatDamageSourceKind.Thorns, nameof(ThornsPower))))

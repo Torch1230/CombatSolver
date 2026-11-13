@@ -41,6 +41,19 @@ internal static class CardResultLocationMirrors
         var registry = new Registry(GetResultLocationForCardPlay);
 
         registry.Register<ParticleWall>(HandleParticleWall);
+        registry.Register<MourningBlow>((_, context) =>
+        {
+            var result = context.BaseResult;
+            if (result.pileType == PileType.Discard) result.pileType = PileType.Hand;
+            return result;
+        });
+        registry.Register<TrickShot>((card, context) =>
+        {
+            var result = context.BaseResult;
+            if (result.pileType == PileType.Discard && context.Simulator.AvailableArrows(card.Owner) > 0)
+                result.pileType = PileType.Hand;
+            return result;
+        });
         registry.Register<ShiningStrike>(HandleShiningStrike);
         registry.Register<TheBall>(HandleTheBall);
 

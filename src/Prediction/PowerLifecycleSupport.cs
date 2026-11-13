@@ -16,7 +16,7 @@ namespace CombatSolver;
 internal static class PowerLifecycleSupport
 {
     public static int SemanticallyRelevantAmountOnTurnStart(PowerModel power)
-        => power is DrawCardsNextTurnPower or SummonNextTurnPower or HelloWorldPower
+        => power is DrawCardsNextTurnPower or SummonNextTurnPower or HelloWorldPower or GodByrdPower
             ? power.AmountOnTurnStart
             : 0;
 

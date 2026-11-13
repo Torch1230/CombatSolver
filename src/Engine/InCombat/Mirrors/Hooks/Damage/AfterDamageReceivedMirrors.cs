@@ -57,6 +57,16 @@ internal static class AfterDamageReceivedMirrors
     private static Registry CreateRegistry()
     {
         var registry = new Registry(AfterDamageReceived);
+        registry.Register<ImpaledPower>((power, context) =>
+        {
+            if (context.Target != power.Owner || context.Dealer != power.Applier || !context.Props.IsPoweredAttack()) return;
+            power.HitCounter--;
+            if (power.HitCounter > 0) return;
+            power.HitCounter = 3;
+            context.Simulator.DislodgeArrow(power, context.Source);
+            if (!context.Simulator.HasPendingChoice)
+                context.Simulator.RemoveEmptyImpaled(power);
+        });
 
         registry.Register<AsleepPower>(HandleAsleepPower);
         registry.Register<BeatingRemnant>(HandleBeatingRemnant);

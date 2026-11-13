@@ -40,7 +40,7 @@ internal static class CardSelectionCardMirrors
                 predictedCard.Preview.Type == CardType.Attack &&
                 !predictedCard.HasKeyword(context.State, CardKeyword.Unplayable))
             .ToList()
-            .StableShuffle(context.Rng.Shuffle)
+            .StableShuffle(context.Rng.CombatCardSelection, context.Simulator)
             .Take(card.DynamicVars.Cards.IntValue)
             .ToList();
         if (selectedCards.Count == 0)
@@ -82,13 +82,13 @@ internal static class CardSelectionCardMirrors
                 .Where(predictedCard =>
                     !predictedCard.HasKeyword(context.State, CardKeyword.Unplayable))
                 .ToList();
-            CombatBeamSolver.StableShuffleProjection(eligibleCards, context.Rng.Shuffle);
+            eligibleCards.StableShuffle(context.Rng.CombatCardSelection, context.Simulator);
             var selectedCard = eligibleCards.FirstOrDefault();
 
             if (selectedCard is null)
             {
                 List<PredictedCard> fallbackCards = drawPileCards.ToList();
-                CombatBeamSolver.StableShuffleProjection(fallbackCards, context.Rng.Shuffle);
+                fallbackCards.StableShuffle(context.Rng.CombatCardSelection, context.Simulator);
                 selectedCard = fallbackCards.FirstOrDefault();
             }
 
@@ -179,7 +179,7 @@ internal static class CardSelectionCardMirrors
 
     public static void ThrashOnPlay(Thrash card, CardOnPlayMirrorContext context)
     {
-        context.AttackSingle(hitCount: 2);
+        context.AttackSingle(hitCount: card.DynamicVars.HitCount.IntValue);
         if (context.Simulator.HasPendingChoice)
             return;
 
@@ -252,7 +252,7 @@ internal static class CardSelectionCardMirrors
 
     public static void UproarOnPlay(Uproar card, CardOnPlayMirrorContext context)
     {
-        context.AttackSingle(hitCount: 2);
+        context.AttackSingle(hitCount: card.DynamicVars.HitCount.IntValue);
         if (context.Simulator.HasPendingChoice)
             return;
 
@@ -263,11 +263,11 @@ internal static class CardSelectionCardMirrors
         var selectedCard = attackCards
             .Where(predictedCard => !predictedCard.HasKeyword(context.State, CardKeyword.Unplayable))
             .ToList()
-            .StableShuffle(context.Rng.Shuffle)
+            .StableShuffle(context.Rng.CombatCardSelection, context.Simulator)
             .FirstOrDefault();
 
         selectedCard ??= attackCards
-            .StableShuffle(context.Rng.Shuffle)
+            .StableShuffle(context.Rng.CombatCardSelection, context.Simulator)
             .FirstOrDefault();
 
         if (selectedCard is null)

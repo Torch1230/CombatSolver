@@ -56,6 +56,9 @@ internal static class PotionOnUseMirrors
     private static Registry CreateRegistry()
     {
         var registry = new Registry(OnUse);
+        registry.Register<BottledSong>(FoolPotionMirrors.BottledSong);
+        registry.Register<CrystallineEuphoria>(FoolPotionMirrors.CrystallineEuphoria);
+        registry.Register<PrecisionPotion>(FoolPotionMirrors.Precision);
 
         registry.Register<AttackPotion>(CardGenerationPotionMirrors.OnUse);
         registry.Register<SkillPotion>(CardGenerationPotionMirrors.OnUse);

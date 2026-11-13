@@ -34,6 +34,8 @@ internal static class PersistentPowerSupport
             player,
             baseDraw + combat.ConsumeDrawNextTurn(player) + drawNotYetSnapshotted);
         combat.CompleteRelicHandDraw(player);
+        if (delayedDraw is { Amount: > 0 })
+            combat.SetPowerAmount(delayedDraw, 0);
         return result;
     }
 

@@ -13,11 +13,16 @@ internal static partial class AfterPlayerTurnStartMirrors
         if (hook == nameof(AbstractModel.AfterPlayerTurnStartLate))
         {
             registry.Register<BloodVial>(ApplyRelic);
+            registry.Register<BathTowel>(ApplyRelic);
             registry.Register<FakeBloodVial>(ApplyRelic);
         }
         else if (hook == nameof(AbstractModel.AfterPlayerTurnStart))
         {
             registry.Register<EntropyPower>(ApplyPower);
+            registry.Register<EcstasyPower>(ApplyPower);
+            registry.Register<AmnesiaPower>(ApplyPower);
+            registry.Register<GodByrdPower>(ApplyPower);
+            registry.Register<YouAreMinePower>(ApplyPower);
             registry.Register<CrimsonMantlePower>(ApplyPower);
             registry.Register<HibernatePower>(ApplyPower);
             registry.Register<InfernoPower>(ApplyPower);

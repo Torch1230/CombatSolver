@@ -290,10 +290,11 @@ internal static partial class CardOnPlaySupport
             IReadOnlyList<DamageResult> copiedResults = simulator.Damage(
                 otherTargets,
                 first.TotalDamage + first.OverkillDamage,
-                ValueProp.Unpowered | ValueProp.Move,
+                ValueProp.Move,
                 card.Owner.Creature,
                 playedCard,
-                cardPlay);
+                cardPlay,
+                MegaCrit.Sts2.Core.Hooks.ModifyDamageHookType.Cap);
             if (simulator.HasPendingChoice)
                 return;
             simulator.AddAttackContextHit(attackContext, copiedResults);

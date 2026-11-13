@@ -110,7 +110,11 @@ internal static partial class CardOnPlaySupport
                 combat.Apply<FeralPower>(owner, card.DynamicVars["FeralPower"].IntValue, owner);
                 combat.InitializeFeralAfterApplied(simulator, owner);
                 break;
-            case ForgottenRitual or Fuel or Luminesce:
+            case ForgottenRitual:
+                if (combat.WasCardExhaustedThisTurn(owner))
+                    simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
+                break;
+            case Fuel or Luminesce:
                 simulator.GainEnergy(card.Owner, card.DynamicVars.Energy.IntValue);
                 break;
             case Haze:

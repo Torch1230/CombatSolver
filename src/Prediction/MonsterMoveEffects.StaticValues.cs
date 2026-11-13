@@ -11,7 +11,7 @@ internal static partial class MonsterMoveEffects
             ["ToughEgg"] = ["HatchlingMinHp", "HatchlingMaxHp"],
             ["TestSubject"] = ["BurningGrowlBurnCount", "BurningGrowlStrengthGain"],
             ["BowlbugEgg"] = ["ProtectBlock"],
-            ["InfestedPrism"] = ["RadiateBlock", "PulsateBlock", "VitalSparkAmount"],
+            ["InfestedPrism"] = ["VitalSparkAmount"],
             ["KinFollower"] = ["DanceStrength"],
             ["KinPriest"] = ["RitualStrength"],
             ["KnowledgeDemon"] = ["PonderStrength"],

@@ -15,6 +15,7 @@ using CombatSolver.Engine.Common.Mirrors;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Card;
 using CombatSolver.Engine.InCombat.Simulation;
+using MegaCrit.Sts2.Core.Extensions;
 
 namespace CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnEnd;
 
@@ -79,6 +80,19 @@ internal static class BeforeSideTurnEndMirrors
     private static Registry CreateRegistry()
     {
         var registry = new Registry(BeforeSideTurnEnd);
+        registry.Register<Storyteller>((relic, c) =>
+        {
+            if (c.Participants.Contains(relic.Owner.Creature))
+                ((SimulatedCombatState)c.CombatState).ApplyPowerFromSource(typeof(AimPower), relic.Owner.Creature,
+                    relic.DynamicVars["EndOfTurnAim"].IntValue, relic.Owner.Creature, null);
+        });
+        registry.Register<ObsidianVice>((relic, c) =>
+        {
+            if (!c.Participants.Contains(relic.Owner.Creature)) return;
+            int count = c.State.GetPlayerCombatState(relic.Owner).Hand.Cards.Count;
+            if (count > 0 && c.Rng.CombatTargets.NextItem(c.CombatState.HittableEnemies) is { } target)
+                c.Simulator.Damage(target, relic.DynamicVars.Damage.BaseValue * count, ValueProp.Unpowered, relic.Owner.Creature);
+        });
 
         registry.Register<Orichalcum>(OrichalcumMirrors.BeforeSideTurnEnd);
         registry.Register<FakeOrichalcum>(OrichalcumMirrors.BeforeSideTurnEnd);

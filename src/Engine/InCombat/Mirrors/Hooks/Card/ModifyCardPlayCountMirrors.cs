@@ -51,6 +51,7 @@ internal static class ModifyCardPlayCountMirrors
         registry.Register<DuplicationPower>(HandleConsumablePower);
         registry.Register<EchoFormPower>(HandleEchoFormPower);
         registry.Register<OneTwoPunchPower>(HandleConsumablePower);
+        registry.Register<KiVersePower>(HandleConsumablePower);
         registry.Register<SignalBoostPower>(HandleConsumablePower);
         registry.Register<TagTeamPower>(HandleConsumablePower);
 
@@ -67,6 +68,7 @@ internal static class ModifyCardPlayCountMirrors
         registry.Register<DuplicationPower>(HandleDecrementPower);
         registry.RegisterIgnored<EchoFormPower>();
         registry.Register<OneTwoPunchPower>(HandleDecrementPower);
+        registry.Register<KiVersePower>(HandleDecrementPower);
         registry.Register<SignalBoostPower>(HandleDecrementPower);
         registry.Register<TagTeamPower>(HandleConsumePower);
 

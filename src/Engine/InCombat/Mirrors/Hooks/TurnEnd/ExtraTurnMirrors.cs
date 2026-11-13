@@ -12,11 +12,11 @@ using ShouldRegistry = MethodMirrorRegistry<AbstractModel, ExtraTurnMirrorContex
 using AfterRegistry = MethodMirrorRegistry<AbstractModel, ExtraTurnMirrorContext>;
 
 /// <summary>
-/// 额外回合的第三方来源：对应 <c>Hook.ShouldTakeExtraTurn</c> 与 <c>Hook.AfterTakingExtraTurn</c>。
+/// 额外回合来源：提前资格、普通资格及选定来源的回合后置结算。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 龙涎香、帕尔之眼及第三方来源共用两张登记表，由 Hook facade 按原生监听顺序派发。
+/// ExtraTurnPower、帕尔之眼及第三方来源共用三张登记表，由 Hook facade 按原生阶段和监听顺序派发。
 /// </para>
 /// <para>
 /// 额外回合会改变「接下来还能做什么」，只记风险不够，所以和回合阶段那几张表同一口径：重写了却
@@ -36,21 +36,23 @@ internal static class ExtraTurnMirrors
         [typeof(Player)]);
 
     private static readonly ShouldRegistry ShouldRegistry = new(ShouldTakeExtraTurnMethod);
+    private static readonly ShouldRegistry EarlyRegistry = new(MirrorMethodSpec.Hook(
+        nameof(AbstractModel.ShouldTakeExtraTurnEarly), [typeof(Player)]));
     private static readonly AfterRegistry AfterRegistry = new(AfterTakingExtraTurnMethod);
     private static readonly object RegistrationLock = new();
     private static bool _sealed;
 
     static ExtraTurnMirrors()
     {
-        ShouldRegistry.Register<AmbergrisPower>(static (power, context) =>
+        ShouldRegistry.Register<ExtraTurnPower>(static (power, context) =>
             ReferenceEquals(power.Owner.Player, context.Player)
-            && context.Combat.GetAmount<AmbergrisPower>(power.Owner) > 0);
-        ShouldRegistry.Register<PaelsEye>(static (relic, context) =>
+            && context.Combat.GetAmount<ExtraTurnPower>(power.Owner) > 0);
+        EarlyRegistry.Register<PaelsEye>(static (relic, context) =>
             ReferenceEquals(relic.Owner, context.Player) && context.Combat.ShouldTriggerPaelsEye(relic));
-        AfterRegistry.Register<AmbergrisPower>(static (power, context) =>
+        AfterRegistry.Register<ExtraTurnPower>(static (power, context) =>
         {
             if (ReferenceEquals(power.Owner.Player, context.Player))
-                context.Combat.SetPowerAmount(power, context.Combat.GetAmount<AmbergrisPower>(power.Owner) - 1);
+                context.Combat.SetPowerAmount(power, context.Combat.GetAmount<ExtraTurnPower>(power.Owner) - 1);
         });
         AfterRegistry.Register<PaelsEye>(static (relic, context) =>
         {
@@ -108,6 +110,28 @@ internal static class ExtraTurnMirrors
         if (result.Kind == MirrorDispatchKind.Unsupported)
             throw Unsupported(ShouldRegistry.DescribeMirrorSupport().BaseMethod.Name, listener);
         return result.Value;
+    }
+
+    internal static bool ShouldTakeExtraTurnEarly(AbstractModel listener, ExtraTurnMirrorContext context)
+    {
+        MirrorDispatchResult<bool> result = EarlyRegistry.Invoke(listener, context, false);
+        if (result.Kind == MirrorDispatchKind.Unsupported)
+            throw Unsupported(nameof(AbstractModel.ShouldTakeExtraTurnEarly), listener);
+        return result.Value;
+    }
+
+    public static void RegisterShouldTakeExtraTurnEarly<TModel>(Func<TModel, ExtraTurnMirrorContext, bool> handler)
+        where TModel : AbstractModel
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        RegisterGuarded(typeof(TModel), () => EarlyRegistry.Register(handler));
+    }
+
+    public static void RegisterShouldTakeExtraTurnEarly(Type modelType, Func<AbstractModel, ExtraTurnMirrorContext, bool> handler)
+    {
+        ArgumentNullException.ThrowIfNull(modelType);
+        ArgumentNullException.ThrowIfNull(handler);
+        RegisterGuarded(modelType, () => ThirdPartyMirrorRegistration.RegisterResult(EarlyRegistry, modelType, handler));
     }
 
     /// <summary>结算当前监听者的额外回合后置效果。</summary>

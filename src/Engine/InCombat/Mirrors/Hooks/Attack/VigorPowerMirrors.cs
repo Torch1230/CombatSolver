@@ -9,7 +9,7 @@ namespace CombatSolver.Engine.InCombat.Mirrors.Hooks.Attack;
 
 internal static class VigorPowerMirrors
 {
-    public static void BeforeAttack(VigorPower power, BeforeAttackMirrorContext context)
+    public static void BeforeAttack(PowerModel power, BeforeAttackMirrorContext context)
     {
         if (power.Amount > 0 && ShouldTrigger(power, context.Command))
         {
@@ -22,11 +22,11 @@ internal static class VigorPowerMirrors
         }
     }
 
-    public static void AfterAttack(VigorPower power, AfterAttackMirrorContext context)
+    public static void AfterAttack(PowerModel power, AfterAttackMirrorContext context)
         => CompleteOrAbort(power, context, completed: true);
 
     public static void CompleteOrAbort(
-        VigorPower power,
+        PowerModel power,
         AfterAttackMirrorContext context,
         bool completed)
     {
@@ -44,7 +44,7 @@ internal static class VigorPowerMirrors
         }
     }
 
-    public static decimal ModifyDamageAdditive(VigorPower power, ModifyDamageMirrorContext context)
+    public static decimal ModifyDamageAdditive(PowerModel power, ModifyDamageMirrorContext context)
     {
         if (power.Amount <= 0 || context.Dealer != power.Owner || !context.Props.IsPoweredAttack())
         {
@@ -67,12 +67,12 @@ internal static class VigorPowerMirrors
         return power.Amount;
     }
 
-    private static State GetState(VigorPower power, CombatMirrorContext context)
+    private static State GetState(PowerModel power, CombatMirrorContext context)
     {
         return context.StateStore.Get<State>(power);
     }
 
-    private static bool ShouldTrigger(VigorPower power, AttackCommand command)
+    private static bool ShouldTrigger(PowerModel power, AttackCommand command)
     {
         return command.Attacker == power.Owner &&
             command.DamageProps.IsPoweredAttack() &&

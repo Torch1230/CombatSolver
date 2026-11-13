@@ -16,6 +16,7 @@ internal static class SemanticStateFieldPolicy
     private static readonly HashSet<(Type ModelType, string FieldName)> PresentationOnlyFields =
     [
         (typeof(KnockdownPower), "Applier"),
+        (typeof(ImpaledPower), "Applier"),
         (typeof(GuardedPower), "Applier"),
         (typeof(InterceptPower), "Covering"),
         (typeof(VitalSparkPower), "AfflictionTitle"),

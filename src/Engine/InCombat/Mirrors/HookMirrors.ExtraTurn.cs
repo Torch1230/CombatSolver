@@ -13,44 +13,46 @@ internal static partial class HookMirrors
     /// </summary>
     public static bool ShouldTakeExtraTurn(
         CombatPredictionSimulator simulator, SimulatedCombatState combat, Player player)
+        => ShouldTakeExtraTurn(simulator, combat, player, out _);
+
+    public static bool ShouldTakeExtraTurn(
+        CombatPredictionSimulator simulator, SimulatedCombatState combat, Player player,
+        out AbstractModel? source)
     {
         ExtraTurnMirrors.Seal();
-        ExtraTurnMirrorContext? context = null;
+        var context = new ExtraTurnMirrorContext { Simulator = simulator, Player = player };
         foreach (AbstractModel listener in IterateCombatHookListeners(simulator, MirroredHookMask.ExtraTurnCallbacks))
         {
-            context ??= new ExtraTurnMirrorContext { Simulator = simulator, Player = player };
-            if (ExtraTurnMirrors.ShouldTakeExtraTurn(listener, context))
+            if (ExtraTurnMirrors.ShouldTakeExtraTurnEarly(listener, context))
+            {
+                source = listener;
                 return true;
+            }
         }
+        foreach (AbstractModel listener in IterateCombatHookListeners(simulator, MirroredHookMask.ExtraTurnCallbacks))
+        {
+            if (ExtraTurnMirrors.ShouldTakeExtraTurn(listener, context))
+            {
+                source = listener;
+                return true;
+            }
+        }
+        source = null;
         return false;
     }
 
     /// <summary>
-    /// 在固定监听快照上按原生顺序结算每个来源，选择暂停由动作重放恢复。
+    /// 结算被选中的额外回合来源，选择暂停由动作重放恢复。
     /// </summary>
     public static bool AfterTakingExtraTurn(
-        CombatPredictionSimulator simulator, SimulatedCombatState combat, Player player)
+        CombatPredictionSimulator simulator, SimulatedCombatState combat, Player player, AbstractModel source)
     {
         ExtraTurnMirrors.Seal();
         if (simulator.HasPendingChoice)
             return false;
-        List<CardHookReceiver>? receivers = null;
-        foreach (AbstractModel listener in IterateCombatHookListeners(simulator, MirroredHookMask.ExtraTurnCallbacks))
-        {
-            PredictedCard? card = listener is CardModel model
-                ? simulator.State.GetPlayerCombatState(model.Owner).FindCard(model) : null;
-            (receivers ??= []).Add(new CardHookReceiver(listener, card));
-        }
-        if (receivers is null)
-            return true;
-
         var context = new ExtraTurnMirrorContext { Simulator = simulator, Player = player };
-        foreach (CardHookReceiver receiver in receivers)
-        {
-            ExtraTurnMirrors.AfterTakingExtraTurn(receiver.Current, context);
-            if (simulator.HasPendingChoice)
-                return false;
-        }
-        return true;
+        PredictedCard? card = source is CardModel model ? simulator.State.FindCard(model) : null;
+        ExtraTurnMirrors.AfterTakingExtraTurn(card?.Preview ?? source, context);
+        return !simulator.HasPendingChoice;
     }
 }

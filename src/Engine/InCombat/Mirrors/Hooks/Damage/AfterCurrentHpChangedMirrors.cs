@@ -27,6 +27,11 @@ internal static class AfterCurrentHpChangedMirrors
     private static Registry CreateRegistry()
     {
         var registry = new Registry(AfterCurrentHpChanged);
+        registry.Register<MegaCrit.Sts2.Core.Models.Relics.Wuppy>((relic, c) =>
+        {
+            if (c.Creature == relic.CombatWuppy)
+                ((SimulatedCombatState)c.CombatState).SetWuppyHp(relic, c.State.GetCreature(c.Creature).CurrentHp);
+        });
 
         registry.RegisterIgnored<Crusher>();
         registry.RegisterIgnored<Rocket>();

@@ -27,6 +27,9 @@ internal sealed partial class SimulatedCombatState
     internal int GetCardsGeneratedBeforePrediction(Player player)
         => _rootHistory.CardsGenerated.Count(entry => entry.Creator == player);
 
+    internal int GetSadnessGeneratedBeforePrediction(Player player)
+        => _rootHistory.CardsGenerated.Count(entry => entry.Creator == player && entry.Card is MegaCrit.Sts2.Core.Models.Cards.Sadness);
+
     internal int GetLightningChannelsBeforePrediction(Player player)
         => _rootHistory.OrbsChanneled.Count(entry => entry.Actor.Player == player && entry.Orb is LightningOrb);
 
@@ -157,8 +160,6 @@ internal sealed partial class SimulatedCombatState
     public void AfterCardEnteredCombat(CombatPredictionSimulator simulator, PredictedCard card)
     {
         RegisterGeneratedCombatCard(card);
-        foreach (PhantomBladesPower power in EffectivePowers().OfType<PhantomBladesPower>())
-            CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.PhantomBladesPowerMirrors.AfterCardEnteredCombat(power, card);
         foreach (var relic in RelicsOf(card.Preview.Owner).OfType<MegaCrit.Sts2.Core.Models.Relics.GhostSeed>())
             if (!relic.IsMelted)
                 CombatSolver.Engine.InCombat.Mirrors.Hooks.Card.GhostSeedMirrors.AfterCardEnteredCombat(relic, card);

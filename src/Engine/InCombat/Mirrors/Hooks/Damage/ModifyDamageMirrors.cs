@@ -3,6 +3,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
@@ -81,6 +82,7 @@ internal static class ModifyDamageMirrors
     private static Registry CreateAdditiveRegistry()
     {
         var registry = new Registry(ModifyDamageAdditive);
+        registry.Register<AimPower>(AimPowerMirrors.ModifyDamageAdditive);
 
         registry.Register<PhantomBladesPower>(HandlePhantomBladesPower);
         registry.Register<VigorPower>(VigorPowerMirrors.ModifyDamageAdditive);
@@ -91,6 +93,19 @@ internal static class ModifyDamageMirrors
     private static Registry CreateMultiplicativeRegistry()
     {
         var registry = new Registry(ModifyDamageMultiplicative);
+        registry.Register<QuietusPower>(QuietusPowerMirrors.ModifyDamageMultiplicative);
+        registry.Register<ConductorsBatonPower>((power, c) => c.Target == power.Owner && c.Props.IsPoweredAttack()
+            ? power.DynamicVars["DamageDecrease"].BaseValue : 1m);
+        registry.Register<WahHammer>((card, c) => c.CardSource?.References(card) == true && c.Target is not null
+            && ((SimulatedCombatState)c.CombatState).EffectivePowers().OfType<ImpaledPower>()
+                .Any(power => power.Amount > 0 && power.Owner == c.Target) ? 2m : 1m);
+        registry.Register<SerratedArrowsPower>((power, c) =>
+        {
+            if (!c.Props.IsPoweredAttack() || c.Dealer != power.Owner && c.Dealer?.PetOwner != power.Owner.Player
+                || c.Target is null) return 1m;
+            return ((SimulatedCombatState)c.CombatState).EffectivePowers().OfType<ImpaledPower>()
+                .Any(impaled => impaled.Owner == c.Target && impaled.Amount > 0) ? 1m + power.Amount / 100m : 1m;
+        });
 
         registry.Register<FlutterPower>(HandleFlutterPower);
         registry.Register<GigantificationPower>(GigantificationPowerMirrors.ModifyDamageMultiplicative);
@@ -122,8 +137,7 @@ internal static class ModifyDamageMirrors
         if (!context.Props.IsPoweredAttack()
             || context.CardSource is null
             || !context.CardSource.Preview.Tags.Contains(CardTag.Shiv)
-            || context.Dealer != power.Owner
-            || context.CardPlay?.PlayIndex > 0)
+            || context.Dealer != power.Owner)
         {
             return 0;
         }
@@ -158,7 +172,7 @@ internal static class ModifyDamageMirrors
         bool inPlay = context.CardSource.GetPile(context.State)?.Type == PileType.Play;
         if (inPlay && context.CardSource.Preview.CurrentPlayIndex > 0)
             return 1;
-        return Combat(context).GetAttackPlayStartsThisTurn(power.Owner) <= (inPlay ? 1 : 0)
+        return Combat(context).GetAttackPlayStartsThisTurn(power.Owner) <= (inPlay && context.CardPlay is not null ? 1 : 0)
             ? 1 + (decimal)power.Amount / 100m
             : 1;
     }

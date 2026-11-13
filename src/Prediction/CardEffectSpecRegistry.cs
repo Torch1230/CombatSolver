@@ -221,10 +221,10 @@ internal static class CardEffectSpecRegistry
                 if (ownerState.CurrentHp > newMaxHp)
                 {
                     simulator.Damage(
-                        card.Owner.Creature,
+                        [card.Owner.Creature],
                         ownerState.CurrentHp - newMaxHp,
                         ValueProp.Unblockable | ValueProp.Unpowered | ValueProp.Move,
-                        null);
+                        null, playedCard, cardPlay);
                     if (simulator.HasPendingChoice)
                         return true;
                 }

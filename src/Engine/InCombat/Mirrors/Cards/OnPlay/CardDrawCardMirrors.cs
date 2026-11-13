@@ -93,13 +93,10 @@ internal static class CardDrawCardMirrors
 
     public static void ExpertiseOnPlay(Expertise card, CardOnPlayMirrorContext context)
     {
-        var drawnCards = context.Simulator.Draw(card.Owner, card.DynamicVars.Cards.IntValue);
+        context.Simulator.Draw(card.Owner, card.DynamicVars.Cards.IntValue);
         if (context.Simulator.HasPendingChoice)
             return;
-        foreach (var drawnCard in drawnCards)
-        {
-            drawnCard.MutablePreview.GiveSingleTurnRetain();
-        }
+        ((SimulatedCombatState)context.CombatState).Apply<RetainHandPower>(card.Owner.Creature, 1, card.Owner.Creature);
     }
 
     public static void FetchOnPlay(Fetch card, CardOnPlayMirrorContext context)

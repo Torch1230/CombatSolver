@@ -31,6 +31,17 @@ internal static class AfterCardGeneratedForCombatMirrors
     private static Registry CreateRegistry()
     {
         var registry = new Registry(AfterCardGeneratedForCombat);
+        registry.Register<Fertilizer>((relic, c) =>
+        {
+            if (c.Creator == relic.Owner && c.PreviewCard is Sadness)
+                ((SimulatedCombatState)c.CombatState).ApplyPowerFromSource(typeof(StrengthPower), relic.Owner.Creature,
+                    relic.DynamicVars.Strength.IntValue, relic.Owner.Creature, null);
+        });
+        registry.Register<AllIsWellPower>((power, c) =>
+        {
+            if (c.Creator?.Creature == power.Owner && c.PreviewCard is Sadness)
+                c.Simulator.GainBlock(power.Owner, power.Amount, ValueProp.Unpowered);
+        });
 
         registry.Register<Aeonglass>(HandleAeonglass);
         registry.Register<ArsenalPower>(HandleArsenalPower);

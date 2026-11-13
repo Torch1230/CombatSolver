@@ -186,7 +186,7 @@ internal static class IntentForecaster
             ("GlobeHead", "THUNDER_STRIKE" or "SHOCKING_SLAP" or "GALVANIC_BURST") or
             ("HauntedShip", "SWIPE_MOVE" or "STOMP_MOVE") or
             ("HunterKiller", "BITE_MOVE" or "PUNCTURE_MOVE") or
-            ("InfestedPrism", "JAB_MOVE" or "RADIATE_MOVE" or "WHIRLWIND_MOVE" or "PULSATE_MOVE") or
+            ("InfestedPrism", "JAB_MOVE" or "JAB_MOVE_2" or "WHIRLWIND_MOVE" or "PULSATE_MOVE") or
             ("Inklet", "JAB_MOVE" or "WHIRLWIND_MOVE" or "PIERCING_GAZE_MOVE") or
             ("KinFollower", "QUICK_SLASH_MOVE" or "BOOMERANG_MOVE") or
             ("KinPriest", "ORB_OF_FRAILTY_MOVE" or "ORB_OF_WEAKNESS_MOVE" or "BEAM_MOVE") or
@@ -239,11 +239,11 @@ internal static class IntentForecaster
             ("OwlMagistrate", "MAGISTRATE_SCRUTINY" or "PECK_ASSAULT" or "VERDICT") or
             ("Queen", "OFF_WITH_YOUR_HEAD_MOVE" or "EXECUTION_MOVE") or
             ("LouseProgenitor", "WEB_CANNON_MOVE" or "POUNCE_MOVE") or
-            ("Tunneler", "BITE_MOVE" or "BELOW_MOVE") or
+            ("Tunneler", "BITE_MOVE" or "FROM_BELOW_MOVE") or
             ("CubexConstruct", "REPEATER_BLAST_MOVE" or "REPEATER_BLAST_MOVE_2" or "EXPEL_MOVE") or
             ("SlumberingBeetle", "ROLL_OUT_MOVE") or
             ("Crusher", "THRASH_MOVE" or "ENLARGING_STRIKE_MOVE" or "BUG_STING_MOVE" or "GUARDED_STRIKE_MOVE") or
-            ("Rocket", "TARGETING_RETICLE_MOVE" or "PRECISION_BEAM_MOVE" or "LASER_MOVE") or
+            ("Rocket", "CALCULATING_MOVE" or "PRECISE_SMASH_MOVE" or "PRECISE_SMASH_MOVE_2" or "ROCKET_CLAW_MOVE") or
             ("TrackerRubyRaider", "HOUNDS_MOVE") or
             ("SoulFysh", "DE_GAS_MOVE" or "GAZE_MOVE" or "SCREAM_MOVE") or
             ("BowlbugRock", "HEADBUTT_MOVE") or

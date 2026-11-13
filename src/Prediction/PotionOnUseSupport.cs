@@ -102,7 +102,7 @@ internal static class PotionOnUseSupport
                     playerTarget,
                     simulator.State.GetCreature(playerTarget).MaxHp
                         * value.DynamicVars["HealPercent"].BaseValue / 100m);
-                combat.Apply<AmbergrisPower>(playerTarget, 1, owner);
+                combat.Apply<ExtraTurnPower>(playerTarget, 1, owner);
                 break;
             case Ashwater or DropletOfPrecognition or GamblersBrew or LiquidMemories or TouchOfInsanity:
                 break;
@@ -154,7 +154,7 @@ internal static class PotionOnUseSupport
                 {
                     PotionModel generated = PotionFactory.CreateRandomPotionOutOfCombat(
                         recipient,
-                        simulator.Rng.CombatPotionGeneration);
+                        simulator.Rng.NonCombatGeneration(recipient));
                     if (!combat.TryProcurePotion(recipient, generated, freeFromEntropic: true))
                         break;
                 }

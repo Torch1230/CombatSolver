@@ -685,7 +685,7 @@ internal static class CorePowerSupport
         {
             foreach (PredictedCard card in playerState.Hand)
             {
-                if (!card.Preview.ShouldRetainThisTurn)
+                if (!card.ShouldRetainThisTurn(simulator.State))
                     (toFlush ??= []).Add(card);
             }
         }

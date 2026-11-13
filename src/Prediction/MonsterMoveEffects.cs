@@ -37,7 +37,6 @@ internal static partial class MonsterMoveEffects
             ("HauntedShip", "HAUNT_MOVE") or
             ("HunterKiller", "TENDERIZING_GOOP_MOVE") or
             ("Guardbot", "GUARD_MOVE") or
-            ("InfestedPrism", "RADIATE_MOVE") or
             ("InfestedPrism", "PULSATE_MOVE") or
             ("KinFollower", "POWER_DANCE_MOVE") or
             ("KinPriest", "ORB_OF_FRAILTY_MOVE") or
@@ -193,7 +192,7 @@ internal static partial class MonsterMoveEffects
         SimPlayerCombatState state = simulator.State.GetPlayerCombatState(targetPlayer);
         List<PredictedCard> cards = state.DrawPile.Cards
             .Concat(state.DiscardPile.Cards)
-            .Where(card => card.Preview.DeckVersion != null)
+            .Where(card => card.Preview.DeckVersion != null && card.Preview.Rarity != CardRarity.Quest)
             .ToList();
         if (cards.Count == 0)
             return;
@@ -217,7 +216,7 @@ internal static partial class MonsterMoveEffects
             break;
         }
 
-        PredictedCard stolen = simulator.Rng.CombatCardGeneration.NextItem(candidates)
+        PredictedCard stolen = simulator.Rng.CombatCardSelection.NextItem(candidates)
             ?? throw new InvalidOperationException("飞贼的偷牌候选非空但没有选中牌。");
         simulator.RemoveFromCombat(stolen);
         combat.RecordStolenCard(simulator);
@@ -389,6 +388,7 @@ internal static partial class MonsterMoveEffects
                 Debuff<FrailPower>(combat, player, 2, move.Owner);
                 return true;
             case ("GasBomb", "EXPLODE_MOVE"):
+                if (simulator.State.GetCreature(move.Owner).IsDead) return true;
                 using (simulator.PushDamageSource(
                     CombatDamageSource.For(CombatDamageSourceKind.MonsterMove, move.Owner.Monster?.Id.Entry)))
                 {
@@ -424,11 +424,8 @@ internal static partial class MonsterMoveEffects
                         simulator.GainBlock(enemy, 15, ValueProp.Unpowered);
                 }
                 return true;
-            case ("InfestedPrism", "RADIATE_MOVE"):
-                GainBlock(simulator, move.Owner, combat.GetMonsterStaticInt(move.Owner, "RadiateBlock"));
-                return true;
             case ("InfestedPrism", "PULSATE_MOVE"):
-                GainBlock(simulator, move.Owner, combat.GetMonsterStaticInt(move.Owner, "PulsateBlock"));
+                Debuff<VulnerablePower>(combat, player, 1, move.Owner);
                 combat.Apply<VitalSparkPower>(
                     move.Owner,
                     combat.GetMonsterStaticInt(move.Owner, "VitalSparkAmount"),
@@ -555,6 +552,7 @@ internal static partial class MonsterMoveEffects
                     move.Owner);
                 return true;
             case ("CeremonialBeast", "PLOW_MOVE"):
+                if (combat.GetAmount<PlowPower>(move.Owner) <= 0) return true;
                 combat.Apply<StrengthPower>(
                     move.Owner,
                     combat.GetMonsterStaticInt(move.Owner, "PlowStrength"),

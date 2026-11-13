@@ -14,7 +14,7 @@ internal static class EntropicBrewMirrors
         int potionSlotCount = context.CombatState is ICombatPredictionPlayerLimits limits
             ? limits.GetPotionSlotCount(target)
             : throw new InvalidOperationException("Entropic Brew prediction requires captured player limits.");
-        var potions = Generate(target, potionSlotCount, context.Rng.CombatPotionGeneration);
+        var potions = Generate(target, potionSlotCount, context.Rng.NonCombatGeneration(target));
 
         foreach (var generatedPotion in potions)
         {
@@ -26,7 +26,7 @@ internal static class EntropicBrewMirrors
     /// <summary>Generates potion reward models without advancing real RNG or mutating potion slots.</summary>
     /// <param name="target">The player whose potion pool and belt capacity apply.</param>
     /// <param name="potionSlotCount">The potion-belt capacity captured at the prediction root.</param>
-    /// <param name="rng">A prediction-owned clone of the target run's combat-potion-generation RNG.</param>
+    /// <param name="rng">The target player's branch-owned non-combat-generation RNG.</param>
     public static IReadOnlyList<PotionModel> Generate(Player target, int potionSlotCount, Rng rng)
     {
         // The player may discard existing potions before drinking Entropic Brew, so preserve the existing

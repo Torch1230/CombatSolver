@@ -1,5 +1,6 @@
 using MegaCrit.Sts2.Core.Commands.Builders;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Relics;
 using CombatSolver.Engine.Common.Mirrors;
 
 namespace CombatSolver.Engine.InCombat.Mirrors.Hooks.Attack;
@@ -14,6 +15,9 @@ internal static class ModifyAttackHitCountMirrors
         [typeof(AttackCommand), typeof(int)]);
 
     private static readonly Registry Registry = new(ModifyAttackHitCount);
+
+    static ModifyAttackHitCountMirrors()
+        => Registry.Register<Thumbscrew>((relic, c) => relic.ModifyAttackHitCount(c.Command, c.HitCount));
 
     public static int Invoke(AbstractModel listener, ModifyAttackHitCountMirrorContext context)
     {

@@ -29,6 +29,12 @@ internal static class AfterShuffleMirrors
     private static Registry CreateRegistry()
     {
         var registry = new Registry(AfterShuffle);
+        registry.Register<WhittlingKnife>((relic, c) =>
+        {
+            if (relic.Owner == c.Player)
+                ((SimulatedCombatState)c.CombatState).ApplyPowerFromSource(typeof(AimPower), relic.Owner.Creature,
+                    relic.DynamicVars["AimPower"].IntValue, relic.Owner.Creature, null);
+        });
 
         registry.Register<BiiigHug>(HandleBiiigHug);
         registry.Register<StratagemPower>(HandleStratagemPower);

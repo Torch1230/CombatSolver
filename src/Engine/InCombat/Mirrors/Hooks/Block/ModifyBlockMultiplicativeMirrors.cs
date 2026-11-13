@@ -4,7 +4,6 @@ using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
-using MegaCrit.Sts2.Core.Models.Singleton;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
@@ -108,7 +107,8 @@ internal static class ModifyBlockMultiplicativeMirrors
         var state = context.StateStore.Get(relic, () => new PaelsLegionPredictionState(relic));
         return context.Props.IsCardOrMonsterMove() &&
             context.CardSource?.Preview.Owner == relic.Owner &&
-            state.Cooldown <= 0
+            state.Cooldown <= 0 && !state.HasCompletedAffectedCardPlay &&
+            (state.AffectedCardPlay is null || ReferenceEquals(state.AffectedCardPlay, context.CardPlay))
                 ? 2
                 : 1;
     }

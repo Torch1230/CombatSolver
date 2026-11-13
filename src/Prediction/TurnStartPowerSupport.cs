@@ -117,6 +117,12 @@ internal static partial class TurnStartPowerSupport
         }
         switch (power)
         {
+            case YahPower yah when participants.Contains(yah.Owner):
+                yah.GetInternalData<YahPower.Data>().triggeredThisTurn = false;
+                break;
+            case LullabyPower lullaby when participants.Contains(lullaby.Owner):
+                lullaby._proccdThisTurn = false;
+                break;
             case HardenedShellPower shell:
                 simulator.StateStore
                     .Get(shell, static model => new HardenedShellPredictionState(model))
@@ -160,6 +166,26 @@ internal static partial class TurnStartPowerSupport
             }
             if (power.Amount <= 0 || !ReferenceEquals(power.Owner.Player, player))
                 continue;
+
+            if (power is EnnuiPower ennui)
+            {
+                simulator.CreateAndAddGeneratedCardsToCombat<Sadness>(player, PileType.Hand, ennui.DynamicVars.Cards.IntValue, player);
+                if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return true; }
+                continue;
+            }
+            if (power is MythicFormPower mythic)
+            {
+                for (int index = 0; index < mythic.Amount; index++)
+                {
+                    CardModel? selected = simulator.Rng.CombatCardSelection.NextItem(combat.TarotPool);
+                    if (selected is null) continue;
+                    PredictedCard tarot = PredictedCard.Create(selected, player);
+                    if (index < mythic.DynamicVars["Upgraded"].IntValue) tarot.Upgrade();
+                    simulator.AddGeneratedCardToCombat(tarot, PileType.Hand, player);
+                    if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return true; }
+                }
+                continue;
+            }
 
             if (power is NightmarePower or InfiniteBladesPower or SentryModePower)
             {
@@ -314,6 +340,30 @@ internal static partial class TurnStartPowerSupport
                         return true;
                     }
                     break;
+                case EcstasyPower:
+                    var sadnessCards = simulator.State.GetPlayerCombatState(player).Hand.Cards
+                        .Where(card => card.Preview is Sadness).ToList();
+                    foreach (var card in sadnessCards.StableShuffle(simulator.Rng.CombatCardSelection, simulator).Take(power.Amount).ToArray())
+                    {
+                        CardChoiceSupport.TransformCardToGeneratedReplacement(simulator, card,
+                            PredictionUtils.CreateCard(ModelDb.Card<Joy>(), player));
+                        if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return true; }
+                    }
+                    break;
+                case AmnesiaPower:
+                    simulator.State.GetPlayerCombatState(player).LoseEnergy(1);
+                    break;
+                case GodByrdPower when power.AmountOnTurnStart != 0:
+                    simulator.Damage(simulator.State.HittableEnemies.ToArray(), power.Amount, ValueProp.Unpowered, owner);
+                    if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return true; }
+                    combat.SetPowerAmount(power, 0);
+                    break;
+                case YouAreMinePower when combat.GetPlayerTurnNumber(player) >= 2:
+                    combat.Apply<WeakPower>(owner, power.Amount, null);
+                    combat.Apply<VulnerablePower>(owner, power.Amount, null);
+                    combat.Apply<FrailPower>(owner, power.Amount, null);
+                    combat.SetPowerAmount(power, 0);
+                    break;
                 case CrimsonMantlePower mantle:
                     int selfDamage = mantle.DynamicVars["SelfDamage"].IntValue;
                     if (selfDamage > 0)
@@ -430,9 +480,14 @@ internal static partial class TurnStartPowerSupport
         CombatSide side,
         IReadOnlyList<Creature> participants)
     {
-        foreach (CountdownPower countdown in combat.EffectivePowers().OfType<CountdownPower>().ToArray())
+        foreach (PowerModel power in combat.EffectivePowers().ToArray())
         {
-            if (countdown.Amount <= 0 || !participants.Contains(countdown.Owner))
+            if (power.Amount <= 0 || !participants.Contains(power.Owner)) continue;
+            if (power is ArcheryPower) combat.Apply<AimPower>(power.Owner, power.Amount, power.Owner);
+            if (power is HiddenRootsPower) combat.Apply<StretchPower>(power.Owner, power.Amount, power.Owner);
+            if (power is ConductorsBatonPower) combat.SetPowerAmount(power, 0);
+            if (simulator.HasPendingChoice) return false;
+            if (power is not CountdownPower countdown)
                 continue;
             List<Creature> candidates = combat.GetOpponentsOf(countdown.Owner)
                 .Where(simulator.State.IsHittable)

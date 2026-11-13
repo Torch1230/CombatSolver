@@ -50,9 +50,15 @@ internal static partial class HookMirrors
             block = MultiplyBlockWithinSettlement(block, enchantment.EnchantBlockMultiplicative(block), ref blockOverflowed);
         }
 
+        var context = new ModifyBlockMultiplicativeMirrorContext
+        {
+            Simulator = simulator, Target = target, Amount = block,
+            Props = props, CardSource = cardSource, CardPlay = cardPlay
+        };
         foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.ModifyBlockAdditive))
         {
-            var additive = listener.ModifyBlockAdditive(target, block, props, cardModel, cardPlay);
+            context.Amount = block;
+            var additive = ModifyBlockAdditiveMirrors.Invoke(listener, context);
             block += additive;
             if (additive != 0)
             {
@@ -67,16 +73,6 @@ internal static partial class HookMirrors
                 }
             }
         }
-
-        var context = new ModifyBlockMultiplicativeMirrorContext
-        {
-            Simulator = simulator,
-            Target = target,
-            Amount = block,
-            Props = props,
-            CardSource = cardSource,
-            CardPlay = cardPlay
-        };
 
         foreach (var listener in IterateCombatHookListeners(simulator, MirroredHookMask.ModifyBlockMultiplicative))
         {
@@ -778,13 +774,16 @@ internal static partial class HookMirrors
         decimal damage,
         ValueProp props,
         PredictedCard? cardSource,
-        CardPlay? cardPlay)
+        CardPlay? cardPlay,
+        ModifyDamageHookType modifyDamageHookType = ModifyDamageHookType.All)
     {
         var cardModel = cardSource?.Preview;
         if (cardModel?.Enchantment is { } enchantment)
         {
-            damage += enchantment.EnchantDamageAdditive(damage, props);
-            damage *= enchantment.EnchantDamageMultiplicative(damage, props);
+            if (modifyDamageHookType.HasFlag(ModifyDamageHookType.Additive))
+                damage += enchantment.EnchantDamageAdditive(damage, props);
+            if (modifyDamageHookType.HasFlag(ModifyDamageHookType.Multiplicative))
+                damage *= enchantment.EnchantDamageMultiplicative(damage, props);
         }
 
         var context = new ModifyDamageMirrorContext
@@ -797,6 +796,7 @@ internal static partial class HookMirrors
             CardSource = cardSource,
             CardPlay = cardPlay
         };
+        if (modifyDamageHookType.HasFlag(ModifyDamageHookType.Additive))
         foreach (var listener in IterateRunHookListeners(simulator, MirroredHookMask.ModifyDamageAdditive))
         {
             context.Amount = damage;
@@ -811,6 +811,7 @@ internal static partial class HookMirrors
             }
         }
 
+        if (modifyDamageHookType.HasFlag(ModifyDamageHookType.Multiplicative))
         foreach (var listener in IterateRunHookListeners(simulator, MirroredHookMask.ModifyDamageMultiplicative))
         {
             context.Amount = damage;
@@ -829,7 +830,12 @@ internal static partial class HookMirrors
             }
         }
 
+        if (modifyDamageHookType.HasFlag(ModifyDamageHookType.Multiplicative))
+            foreach (var listener in IterateRunHookListeners(simulator))
+                damage *= listener.ModifyDamageMultiplicativeLate(target, damage, props, dealer, cardModel, cardPlay);
+
         var cap = decimal.MaxValue;
+        if (modifyDamageHookType.HasFlag(ModifyDamageHookType.Cap))
         foreach (var listener in IterateRunHookListeners(simulator, MirroredHookMask.ModifyDamageCap))
         {
             cap = Math.Min(cap, listener.ModifyDamageCap(target, props, dealer, cardModel, cardPlay));
@@ -1201,13 +1207,15 @@ internal static partial class HookMirrors
     public static void AfterDeath(
         CombatPredictionSimulator simulator,
         Creature creature,
-        bool wasRemovalPrevented)
+        bool wasRemovalPrevented,
+        PredictedCard? source = null)
     {
         var context = new AfterDeathMirrorContext
         {
             Simulator = simulator,
             Creature = creature,
-            WasRemovalPrevented = wasRemovalPrevented
+            WasRemovalPrevented = wasRemovalPrevented,
+            Source = source
         };
 
         foreach (var listener in IterateRunHookListeners(simulator, MirroredHookMask.AfterDeath))

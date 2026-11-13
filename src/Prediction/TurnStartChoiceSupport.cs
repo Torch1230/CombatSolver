@@ -346,7 +346,7 @@ internal static partial class TurnStartChoiceSupport
                 foreach (PredictedCard card in selected)
                 {
                     CardModel replacement = simulator.CreateRandomCardForTransform(
-                        card.Preview, isInCombat: true, simulator.Rng.CombatCardSelection);
+                        card.Preview, isInCombat: true, simulator.Rng.CombatCardGeneration);
                     CardChoiceSupport.TransformCardToGeneratedReplacement(simulator, card, replacement);
                     if (combat.HasPendingChoice)
                     {

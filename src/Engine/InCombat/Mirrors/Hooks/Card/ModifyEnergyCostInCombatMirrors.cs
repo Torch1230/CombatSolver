@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Relics;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
@@ -23,6 +24,18 @@ internal static class ModifyEnergyCostInCombatMirrors
 
     private static readonly Registry Registry = new(ModifyEnergyCostInCombat);
     private static readonly Registry LateRegistry = CreateLateRegistry();
+
+    static ModifyEnergyCostInCombatMirrors()
+    {
+        Registry.Register<Coda>((card, c) => c.Card.References(card)
+            ? Math.Max(0, c.Cost - 2 * ((SimulatedCombatState)c.CombatState).MelodyCount(card.Owner)) : c.Cost);
+        Registry.Register<ChoLimbs>((card, c) =>
+        {
+            var combat = (SimulatedCombatState)c.CombatState;
+            return c.Card.References(card) && (combat.PlayedMelody(card.Owner, CardTag.Wah) || combat.PlayedMelody(card.Owner, CardTag.Ki))
+                ? Math.Max(0, c.Cost - 2) : c.Cost;
+        });
+    }
 
     public static decimal Invoke(AbstractModel listener, ModifyEnergyCostInCombatMirrorContext context)
     {
@@ -51,6 +64,8 @@ internal static class ModifyEnergyCostInCombatMirrors
         var registry = new Registry(ModifyEnergyCostInCombatLate);
 
         registry.Register<FreeAttackPower>(HandleFreeAttackPower);
+        registry.Register<FreeCardPower>((power, c) => c.Card.Preview.Owner.Creature == power.Owner
+            && IsInPlayablePile(c) && c.StateStore.GetPowerAmount(power).IsActive ? 0 : c.Cost);
         registry.Register<FreePowerPower>(HandleFreePowerPower);
         registry.Register<FreeSkillPower>(HandleFreeSkillPower);
         registry.Register<VeilpiercerPower>(HandleVeilpiercerPower);

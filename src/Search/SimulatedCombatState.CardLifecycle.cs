@@ -64,6 +64,7 @@ internal sealed partial class SimulatedCombatState
     {
         PredictedCard snapshot = selected.CreateClone();
         snapshot.ClearAffliction();
+        snapshot.MutablePreview.EndOfTurnCleanup();
         (_nightmareSelections ??= [])[power] = snapshot;
     }
 
@@ -160,7 +161,7 @@ internal sealed partial class SimulatedCombatState
     }
 
     private static bool ReturnsToHandAfterPlaying(CardModel card)
-        => card is Bolas or ThrummingHatchet;
+        => card is Bolas or ThrummingHatchet or Bounce;
 
     private void CaptureReturningCardEligibility(CombatPredictionSimulator simulator)
     {
@@ -202,6 +203,7 @@ internal sealed partial class SimulatedCombatState
 
     void ICombatPredictionCardExecutionSink.RecordCardPlayStarted(PredictedCard card, CardPlay cardPlay)
     {
+        RecordMelodyStarted(cardPlay);
         Creature owner = card.Preview.Owner.Creature;
         (_cardPlayStartsThisTurn ??= [])[owner] = GetCardPlayStartsThisTurn(owner) + 1;
         if (card.Preview.Type == CardType.Attack)

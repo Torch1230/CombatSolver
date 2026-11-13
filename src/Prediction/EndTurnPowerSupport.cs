@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Orbs;
@@ -33,6 +34,21 @@ internal static partial class EndTurnPowerSupport
             bool ownerParticipates = participantSet.Contains(owner);
             switch (power)
             {
+                case TemporaryThornsPower when owner.Side != side:
+                    combat.RetireTemporaryStat(power);
+                    break;
+                case KiVersePower or QuietusPower or EncorePower or ShowOffPower when ownerParticipates:
+                    combat.SetPowerAmount(power, 0);
+                    break;
+                case DislikeYouPower when side == CombatSide.Player:
+                    combat.SetPowerAmount(power, 0);
+                    break;
+                case AmnesiaPower when side != CombatSide.Enemy:
+                    combat.SetPowerAmount(power, 0);
+                    break;
+                case TunePower when side != CombatSide.Enemy && combat.PlayedMelody(owner.Player!, CardTag.Ki):
+                    combat.Apply<FreeCardPower>(owner, power.Amount, owner);
+                    break;
                 // 原版按监听器顺序分发 AfterSideTurnEnd，临时属性回收排在该能力自己的位置：
                 // TemporaryFocusPower 的回收可能晚于同侧其它 Power（例如 ConsumingShadowPower 的末球激发）。
                 case TemporaryFocusPower temporaryFocus when ownerParticipates:
