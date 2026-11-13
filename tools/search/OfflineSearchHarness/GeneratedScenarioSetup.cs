@@ -81,7 +81,7 @@ internal sealed class GeneratedScenarioSetup
     public async Task<IDisposable?> EnterCombatRoomAsync()
     {
         UnattendedTestRequest request = Request;
-        IDisposable? choiceScope = Session.BeginSetupChoices();
+        IDisposable? choiceScope = null;
         try
         {
             CharacterModel character = ResolveUnique(ModelDb.AllCharacters, request.CharacterId, "角色");
@@ -98,9 +98,11 @@ internal sealed class GeneratedScenarioSetup
                 ActModel.GetDefaultList().Select(act => act.ToMutable()).ToList(),
                 [],
                 GameMode.Standard,
+                false,
                 request.Ascension,
                 request.Seed);
             RunManager.Instance.SetUpNewSingleplayer(runState, shouldSave: false);
+            choiceScope = Session.BeginSetupChoices();
             await RunManager.Instance.FinalizeStartingRelics();
             RunManager.Instance.Launch();
             await RunManager.Instance.EnterAct(0, doTransition: false);

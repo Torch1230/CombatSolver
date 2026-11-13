@@ -138,7 +138,7 @@ internal static class NativeChoiceRuntime
         string sourceId = "")
     {
         CombatReplayRecording.ObserveChoiceCandidates(surface, player, options, minSelect, maxSelect, sourceId);
-        if (CardSelectCmd.Selector != null || Sessions.Count == 0)
+        if (MegaCrit.Sts2.Core.Runs.RunManager.Instance.CardSelectorStack.GetSelector(player) != null || Sessions.Count == 0)
             return null;
         NativeChoiceSession session = Sessions[^1];
         if (!ReferenceEquals(session.Player, player)

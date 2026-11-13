@@ -483,10 +483,14 @@ else
     combat_solver_manifest="$repo_root/CombatSolver.json"
 fi
 ritsu_workshop_root="$(realpath -m -- "${option_value[ritsu-workshop-root]}")"
-ritsu_legacy_dll="$ritsu_workshop_root/lib/0.111.0/STS2-RitsuLib.dll"
+game_version=''
+if ((option_value[stop-instance] == 0 && option_value[reuse-only] == 0)); then
+    game_version="$(jq -er '.version | sub("^v"; "") | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' "$source_game_root/release_info.json")" || runtime_error 'invalid game release version'
+fi
+ritsu_legacy_dll="$ritsu_workshop_root/lib/$game_version/STS2-RitsuLib.dll"
 ritsu_bundle_dll="$ritsu_workshop_root/STS2-RitsuLib.dll"
 ritsu_bundle_index="$ritsu_workshop_root/ritsulib-variants.manifest"
-ritsu_bundle_runtime="$ritsu_workshop_root/compat/0.111.0/STS2-RitsuLib.Runtime.dll"
+ritsu_bundle_runtime="$ritsu_workshop_root/compat/$game_version/STS2-RitsuLib.Runtime.dll"
 ritsu_bundle_shared="$ritsu_workshop_root/shared/STS2-RitsuLib.Shared.dll"
 ritsu_manifest_source="$ritsu_workshop_root/mod_manifest.json"
 if [[ -f $ritsu_bundle_dll && -f $ritsu_bundle_index && -f $ritsu_bundle_runtime && -f $ritsu_bundle_shared ]]; then

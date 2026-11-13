@@ -40,6 +40,7 @@ internal static class OfflineCombat
             ModelDb.ActsByIndex is { } ? ActModel.GetDefaultList().Select(act => act.ToMutable()).ToList() : [],
             [],
             GameMode.Standard,
+            false,
             scenario.Ascension,
             scenario.Seed);
 

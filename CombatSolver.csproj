@@ -33,8 +33,8 @@
     <Sts2DataDir Condition="'$(Sts2DataDir)' == '' and '$(OS)' == 'Windows_NT'">$(Sts2Dir)/data_sts2_windows_x86_64</Sts2DataDir>
     <Sts2DataDir Condition="'$(Sts2DataDir)' == ''">$(Sts2Dir)/data_sts2_linuxbsd_x86_64</Sts2DataDir>
     <RitsuWorkshopRoot Condition="'$(RitsuWorkshopRoot)' == ''">$(SteamRoot)/steamapps/workshop/content/2868840/3747602295</RitsuWorkshopRoot>
-    <RitsuLibDir Condition="'$(RitsuLibDir)' == ''">$(SteamRoot)/steamapps/workshop/content/2868840/3747602295/lib/0.111.0</RitsuLibDir>
-    <RitsuLibReferenceTarget Condition="'$(RitsuLibReferenceTarget)' == ''">0.111.0</RitsuLibReferenceTarget>
+    <RitsuLibDir Condition="'$(RitsuLibDir)' == ''">$(SteamRoot)/steamapps/workshop/content/2868840/3747602295/compat/0.113.0</RitsuLibDir>
+    <RitsuLibReferenceTarget Condition="'$(RitsuLibReferenceTarget)' == ''">0.113.0</RitsuLibReferenceTarget>
     <RitsuLibReferencesProps>$(RitsuWorkshopRoot)/RitsuLib.References.props</RitsuLibReferencesProps>
     <ModOutputDir>$(Sts2Dir)/mods/CombatSolver</ModOutputDir>
     <CopyModOnBuild Condition="'$(CopyModOnBuild)' == ''">true</CopyModOnBuild>

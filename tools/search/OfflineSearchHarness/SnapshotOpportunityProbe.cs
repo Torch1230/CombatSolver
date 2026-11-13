@@ -3,6 +3,7 @@ using System.Text.Json;
 using CombatSolver;
 using HarmonyLib;
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Extensions;
 using MegaCrit.Sts2.Core.Models.Cards;
@@ -70,25 +71,27 @@ internal static class SnapshotOpportunityProbe
         var simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
         var first = PredictedCard.Create(CanonicalModels.Card<StrikeIronclad>(), player);
         var second = PredictedCard.Create(CanonicalModels.Card<StrikeIronclad>(), player);
-        // Same native sorting identity, different persistent combat state.
+        // Native v0.113 orders same-name cards by their persistent replay count.
         first.MutablePreview.BaseReplayCount = 1;
         second.MutablePreview.BaseReplayCount = 2;
         List<PredictedCard> forward = [first, second];
         List<PredictedCard> reversed = [second, first];
         var rng = simulator.Rng.ShuffleState;
-        forward.StableShuffle(rng.ToRng());
-        reversed.StableShuffle(rng.ToRng());
+        forward.StableShuffle(rng.ToRng(), simulator);
+        reversed.StableShuffle(rng.ToRng(), simulator);
         string[] a = forward.Select(CardChoiceSupport.ChoiceCardKey).ToArray();
         string[] b = reversed.Select(CardChoiceSupport.ChoiceCardKey).ToArray();
         bool sameMultiset = a.Order(StringComparer.Ordinal).SequenceEqual(b.Order(StringComparer.Ordinal));
         bool sameSequence = a.SequenceEqual(b);
-        if (first.CompareTo(second) != 0 || !sameMultiset || sameSequence)
-            throw new InvalidOperationException("Expected equal-sort-key shuffle counterexample was not reproduced.");
+        int nativeCompare = first.Preview.CompareTo(second.Preview);
+        if (nativeCompare >= 0 || CombatCardOrdering.Compare(simulator, first, second) != nativeCompare
+            || !sameMultiset || !sameSequence)
+            throw new InvalidOperationException("Replay-count sorting differs from the native shuffle order.");
         if (liveBefore != ContinuationStamp.CaptureLive(combat).StateText)
             throw new InvalidOperationException("Shuffle witness changed the live root.");
         File.WriteAllText(Path.Combine(output, "shuffle-order-witness.json"), JsonSerializer.Serialize(new
         {
-            nativeCompare = first.CompareTo(second), sameMultiset, sameSequence,
+            nativeCompare, sameMultiset, sameSequence,
             forward = a, reversed = b, rng.Counter, liveUnchanged = true,
         }, new JsonSerializerOptions { WriteIndented = true }));
     }
