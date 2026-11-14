@@ -31,5 +31,6 @@ internal sealed record BossTempoSearchTelemetry(
 
 internal sealed record BossTempoIterationTelemetry(string Stop, int Discrepancies, int Deferred, int PeakPending);
 
-internal sealed record BossTempoPrefix(PlanAction[] Actions, StateFingerprint State,
+// State=null 表示非观测合成前缀（如主搜轨迹注入），不参与去重键。
+internal sealed record BossTempoPrefix(PlanAction[] Actions, StateFingerprint? State,
     int EliminatedEnemies, int PotionCount, double Rank);

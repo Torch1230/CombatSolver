@@ -958,9 +958,9 @@ internal static partial class CombatSearchCoordinator
         {
             return solver.Solve();
         }
-        catch (PotionPolicyUnsatisfiedException)
+        catch (PotionPolicyUnsatisfiedException ex)
         {
-            policy.Diagnostics.Info($"[CombatSolver/Test] {diagnostic} qualified=false");
+            policy.Diagnostics.Info($"[CombatSolver/Test] {diagnostic} qualified=false reason={ex.Message}");
             return null;
         }
     }
