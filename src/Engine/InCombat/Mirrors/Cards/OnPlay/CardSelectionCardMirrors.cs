@@ -58,7 +58,7 @@ internal static class CardSelectionCardMirrors
             }
 
             Creature? target = null;
-            if (selectedCard.Preview.TargetType == TargetType.AnyEnemy)
+            if (context.Simulator.GetTargetType(selectedCard) == TargetType.AnyEnemy)
             {
                 // BeatDown.OnPlay resolves this target before CardCmd.AutoPlay checks whether the
                 // selected card can play, so preserve that CombatTargets RNG consumption order.

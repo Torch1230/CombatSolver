@@ -785,7 +785,24 @@ internal static partial class SolverController
         return true;
     }
 
-    internal static async Task ResumeAfterTurnSetupAsync(
+    internal static void ResumeAfterTurnSetup(
+        NGame host,
+        CombatState state,
+        int lifecycleGeneration,
+        int turn,
+        bool deployWhenReady = false,
+        bool waitForDeploymentDelay = false)
+    {
+        // The native auto-pre-play phase must return before its caller unpauses
+        // actions and the preceding deployment can release its session.
+        Task resume = StartCombatDeferredOperation(token => ResumeAfterTurnSetupAsync(
+            host, state, lifecycleGeneration, turn, deployWhenReady, waitForDeploymentDelay, token));
+        if (UnattendedAsyncActivityTracker.IsRequestActive)
+            resume = UnattendedAsyncActivityTracker.Track(resume);
+        TaskHelper.RunSafely(resume);
+    }
+
+    private static async Task ResumeAfterTurnSetupAsync(
         NGame host,
         CombatState state,
         int lifecycleGeneration,
@@ -852,6 +869,15 @@ internal static partial class SolverController
             }
             searchRequested = true;
             RequestSearch(host, state, resumedReason, deployWhenReady);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            RecordTurnSetupFailure(state, lifecycleGeneration, ex);
+            throw;
         }
         finally
         {

@@ -212,10 +212,6 @@ internal static class PersistentPowerSupport
             }
         }
 
-        int prepTime = combat.GetAmount<PrepTimePower>(owner);
-        if (prepTime > 0)
-            combat.Apply<VigorPower>(owner, prepTime, owner);
-
         int reflect = combat.GetAmount<ReflectPower>(owner);
         if (reflect > 0)
             combat.SetAmount<ReflectPower>(owner, reflect - 1);

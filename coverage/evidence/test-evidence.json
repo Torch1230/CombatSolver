@@ -1,4 +1,40 @@
 {
+  "TURN-POWER-ORDERING": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "FOOL / NIBBITS_WEAK，EnemyCurrentHp=200，120秒上限。",
+    "expected": "准备时间与潜伏根系两种次序、狂喜批量变牌、再生先于灾厄均与原生完整状态及RNG一致。",
+    "observed": "69137d6f4f1f457190fd70aa97f46b24 Passed，31.07秒。原包作为定位基线，未恢复完整玩家环境。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.TurnPowerOrdering.cs; docs/TEST_MATRIX.md; docs/issues/reports-20261114-logic.md"
+  },
+  "DOOM-RETAINED-BLOCK": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "NECROBINDER / DECIMILLIPEDE_ELITE，EnemyCurrentHp=100，显式施加覆甲与灾厄，120秒上限。",
+    "expected": "灾厄死亡留场体保留Early覆甲格挡，全敌完整状态及AI一致。",
+    "observed": "3dab74c121ba4e2fb825025d03b755a6 Passed，23.51秒。两次夹具失败及修正记录在问题文档。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.TurnPowerOrdering.cs; docs/TEST_MATRIX.md; docs/issues/reports-20261114-logic.md"
+  },
+  "BEAT-DOWN-DYNAMIC-TARGET": {
+    "status": "Passed",
+    "level": "HeadlessNativeFullStateDifferential",
+    "gameVersion": "0.113.0",
+    "procedure": "REGENT / NIBBITS_WEAK，EnemyCurrentHp=200，SEEKING_EDGE_POWER与弃牌堆SOVEREIGN_BLADE，120秒上限。",
+    "expected": "狠揍自动群攻多敌完整状态、RNG和面向与原生一致。",
+    "observed": "d6cf2a6b8dae48a6a6f32d703138c864 Passed，8.16秒。",
+    "evidence": "src/Testing/Contracts/Combat/UnattendedTestRunner.TurnPowerOrdering.cs; docs/TEST_MATRIX.md"
+  },
+  "TURN-SETUP-UI-PEEK": {
+    "status": "Passed",
+    "level": "HeadlessNativeDeployment",
+    "gameVersion": "0.113.0",
+    "procedure": "SILENT / GREMLIN_MERC_NORMAL / TOASTY_MITTENS，短搜1500ms，120秒上限。",
+    "expected": "停止及重算后在窥视模式接管选择，原生进入Play，忙碌状态清除。",
+    "observed": "4878c27d572f492e9012d8c2d1e2615b Passed，9.60秒。原报告未记录窥视标志，具体原包首因仍待反馈。",
+    "evidence": "src/Testing/Contracts/Runtime/UnattendedTestRunner.TurnSetupControls.cs; docs/TEST_MATRIX.md; docs/issues/reports-20261114-logic.md"
+  },
   "LAMP-HOBBLING-SHOT": {
     "status": "Passed",
     "level": "HeadlessNativeFullStateDifferential",

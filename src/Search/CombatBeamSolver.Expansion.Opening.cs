@@ -144,7 +144,10 @@ internal sealed partial class CombatBeamSolver
     internal IReadOnlyList<PlanAction> BuildPowerActionsAfterPrefix(
         IReadOnlyList<PlanAction> prefix, bool includeWhiteNoise = false)
     {
-        SimulationSnapshot prefixSnapshot = Replay(prefix);
+        SearchNode? seed = TryCreateOpeningFollowUpSeed(prefix, SearchRouteTraits.None);
+        if (seed == null)
+            return [];
+        SimulationSnapshot prefixSnapshot = seed.Snapshot;
         try
         {
             // A prefix may stop at a choice or another replay boundary. Only

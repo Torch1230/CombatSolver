@@ -105,6 +105,8 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("Completed choice search retained takeover state or input blocker.");
             if (_request.ScenarioId.EndsWith("-PARTIAL", StringComparison.Ordinal))
                 await PlayerTurnSetupCoordinator.InteractWithPendingChoiceForTesting(_host, confirm: false);
+            if (_request.ScenarioId.EndsWith("-PEEK", StringComparison.Ordinal))
+                MegaCrit.Sts2.Core.Nodes.Combat.NPlayerHand.Instance!.PeekButton.SetPeeking(true);
             if (!PlayerTurnSetupCoordinator.TryContinuePlannedChoice(_host, state, deployAfterSetup: false))
                 throw new InvalidOperationException("Refreshed native choice could not be driven.");
             _turnSetupControlStage = 5;
@@ -127,6 +129,12 @@ internal sealed partial class UnattendedTestRunner
                 _completedChecks.Add("TurnSetupControls:StopThenImmediateFullAuto:QueuedAcrossCancellation:NativeChoiceDriven");
             }
             _completedChecks.Add("TurnSetupControls:NativePlayReached:BusyFlagsCleared");
+            if (_request.ScenarioId.EndsWith("-PEEK", StringComparison.Ordinal))
+            {
+                if (MegaCrit.Sts2.Core.Nodes.Combat.NPlayerHand.Instance!.PeekButton.IsPeeking)
+                    throw new InvalidOperationException("Planned hand selection retained the peek input gate.");
+                _completedChecks.Add("TurnSetupControls:PeekBeforeTakeover:NativeHandSelectionAccepted");
+            }
             return true;
         }
         if (_turnSetupControlStage == 6 && System.Environment.TickCount64 - _manualChoiceCompletedAt > 8000)

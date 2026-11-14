@@ -355,12 +355,10 @@ internal static partial class TurnStartPowerSupport
                     var sadnessCards = simulator.State.GetPlayerCombatState(player).Hand.Cards
                         .Where(card => card.Preview is Sadness).ToList();
                     if (sadnessCards.Count == 0) break;
-                    foreach (var card in sadnessCards.StableShuffle(simulator.Rng.CombatCardSelection, simulator).Take(power.Amount).ToArray())
-                    {
-                        CardChoiceSupport.TransformCardToGeneratedReplacement(simulator, card,
-                            PredictionUtils.CreateCard(ModelDb.Card<Joy>(), player));
-                        if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return true; }
-                    }
+                    CardChoiceSupport.TransformCardBatch(simulator,
+                        sadnessCards.StableShuffle(simulator.Rng.CombatCardSelection, simulator).Take(power.Amount),
+                        ModelDb.Card<Joy>(), upgradeReplacement: false);
+                    if (simulator.HasPendingChoice) { simulator.RejectExecutionContinuation(); return true; }
                     break;
                 case AmnesiaPower:
                     simulator.State.GetPlayerCombatState(player).LoseEnergy(1);
@@ -500,6 +498,7 @@ internal static partial class TurnStartPowerSupport
             if (power.Amount <= 0 || !participants.Contains(power.Owner)) continue;
             if (power is ArcheryPower) combat.Apply<AimPower>(power.Owner, power.Amount, power.Owner);
             if (power is HiddenRootsPower) combat.Apply<StretchPower>(power.Owner, power.Amount, power.Owner);
+            if (power is PrepTimePower) combat.Apply<VigorPower>(power.Owner, power.Amount, power.Owner);
             if (power is ConductorsBatonPower) combat.SetPowerAmount(power, 0);
             if (simulator.HasPendingChoice) return false;
             if (power is not CountdownPower countdown)

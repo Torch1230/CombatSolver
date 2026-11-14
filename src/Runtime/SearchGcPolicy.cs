@@ -1960,10 +1960,9 @@ internal static partial class SearchGcPolicy
 
     private static BackgroundGen2Completion CollectGeneration2Portable(bool compactSmallObjectHeap = false)
     {
-        WeakReference completionSentinel = CreateBackgroundCollectionSentinel();
+        // The blocking collection itself is the completion barrier on runtimes without
+        // detailed GC indices. Conservative stack scanning can retain a weak target.
         CollectGeneration2(blocking: true, compacting: compactSmallObjectHeap);
-        if (completionSentinel.IsAlive)
-            throw new InvalidOperationException("阻塞完整回收后完成哨兵仍然存活。");
         return new BackgroundGen2Completion(
             "full_blocking_portable", GC.CollectionCount(GC.MaxGeneration), Requests: 1);
     }

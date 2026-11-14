@@ -2388,6 +2388,8 @@ internal static class SolverOverlay
         };
 
         _systemMemoryReleaseButton = SolverUiTokens.CreateButton(SolverText.Get("强制释放内存"), SolverButtonStyle.Secondary);
+        _systemMemoryReleaseButton.Visible = OperatingSystem.IsWindows();
+        _systemMemoryReleaseButton.Disabled = !OperatingSystem.IsWindows();
         _systemMemoryReleaseButton.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         _systemMemoryReleaseButton.TooltipText = SolverText.Get("等待搜索退出并回收求解器内存后，请求 Windows 管理员权限，")
             + SolverText.Get("清空系统工作集与待机列表。其他程序之后重新载入页面时可能短暂卡顿。");

@@ -973,6 +973,26 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertRitualTemporaryStrengthOrderAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "TURN-POWER-ORDERING")
+            {
+                await runner.AssertTurnPowerOrderingAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "BEAT-DOWN-DYNAMIC-TARGET")
+            {
+                await runner.AssertBeatDownDynamicTargetAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "TERMINAL-POWER-PREFIX")
+            {
+                await runner.AssertTerminalPowerPrefixAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "DOOM-RETAINED-BLOCK")
+            {
+                await runner.AssertDoomRetainedBlockAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "NOXIOUS-RAMPART-ORDER")
             {
                 await runner.AssertNoxiousRampartOrderAsync(combatState, player);
