@@ -1,0 +1,293 @@
+{
+  "date": "2026-11-15",
+  "baseCommit": "3677d4cac2407e332f1419741878e635c1ce2ee3",
+  "mode": "Evaluate",
+  "profile": "Low",
+  "nodes": 128,
+  "dop": 1,
+  "budgetMs": 10000,
+  "potionPolicy": "Disabled",
+  "enableNoGcRegion": false,
+  "samplingOrder": [
+    "A1",
+    "C1",
+    "C2",
+    "A2"
+  ],
+  "cases": {
+    "target": {
+      "A1": {
+        "status": "Passed",
+        "metrics": {
+          "totalExpanded": 39,
+          "totalTransitions": 110,
+          "totalChoiceBranches": 0,
+          "elapsedMilliseconds": 909.8107,
+          "totalElapsedMilliseconds": 940.1759,
+          "workerAllocatedBytes": 5453696,
+          "projectedBattleHpLost": 4,
+          "potionCount": 0,
+          "combatEndedTurn": 2,
+          "finalHp": 46,
+          "finalEnemyHp": 0
+        },
+        "sameRoot": true,
+        "samePolicy": true,
+        "sameRoute": true,
+        "sameContinuations": true,
+        "sameQualityAndSnapshot": true,
+        "samePruneCounters": true,
+        "timeBoundaryObserved": false
+      },
+      "C1": {
+        "status": "Passed",
+        "metrics": {
+          "totalExpanded": 45,
+          "totalTransitions": 128,
+          "totalChoiceBranches": 0,
+          "elapsedMilliseconds": 917.235,
+          "totalElapsedMilliseconds": 947.1498,
+          "workerAllocatedBytes": 5925512,
+          "projectedBattleHpLost": 4,
+          "potionCount": 0,
+          "combatEndedTurn": 2,
+          "finalHp": 46,
+          "finalEnemyHp": 0
+        },
+        "sameRoot": true,
+        "samePolicy": true,
+        "sameRoute": true,
+        "sameContinuations": true,
+        "sameQualityAndSnapshot": true,
+        "samePruneCounters": false,
+        "timeBoundaryObserved": false
+      },
+      "C2": {
+        "status": "Passed",
+        "metrics": {
+          "totalExpanded": 45,
+          "totalTransitions": 128,
+          "totalChoiceBranches": 0,
+          "elapsedMilliseconds": 780.0036,
+          "totalElapsedMilliseconds": 806.2301,
+          "workerAllocatedBytes": 5908224,
+          "projectedBattleHpLost": 4,
+          "potionCount": 0,
+          "combatEndedTurn": 2,
+          "finalHp": 46,
+          "finalEnemyHp": 0
+        },
+        "sameRoot": true,
+        "samePolicy": true,
+        "sameRoute": true,
+        "sameContinuations": true,
+        "sameQualityAndSnapshot": true,
+        "samePruneCounters": false,
+        "timeBoundaryObserved": false
+      },
+      "A2": {
+        "status": "Passed",
+        "metrics": {
+          "totalExpanded": 39,
+          "totalTransitions": 110,
+          "totalChoiceBranches": 0,
+          "elapsedMilliseconds": 965.5634,
+          "totalElapsedMilliseconds": 1005.2695,
+          "workerAllocatedBytes": 5453672,
+          "projectedBattleHpLost": 4,
+          "potionCount": 0,
+          "combatEndedTurn": 2,
+          "finalHp": 46,
+          "finalEnemyHp": 0
+        },
+        "sameRoot": true,
+        "samePolicy": true,
+        "sameRoute": true,
+        "sameContinuations": true,
+        "sameQualityAndSnapshot": true,
+        "samePruneCounters": true,
+        "timeBoundaryObserved": false
+      }
+    },
+    "sentinel": {
+      "A1": {
+        "status": "Passed",
+        "metrics": {
+          "totalExpanded": 9,
+          "totalTransitions": 21,
+          "totalChoiceBranches": 0,
+          "elapsedMilliseconds": 1019.2045,
+          "totalElapsedMilliseconds": 1048.4689,
+          "workerAllocatedBytes": 3179712,
+          "projectedBattleHpLost": 6,
+          "potionCount": 0,
+          "combatEndedTurn": 1,
+          "finalHp": 51,
+          "finalEnemyHp": 0
+        },
+        "sameRoot": true,
+        "samePolicy": true,
+        "sameRoute": true,
+        "sameContinuations": true,
+        "sameQualityAndSnapshot": true,
+        "samePruneCounters": true,
+        "timeBoundaryObserved": false
+      },
+      "C1": {
+        "status": "Passed",
+        "metrics": {
+          "totalExpanded": 9,
+          "totalTransitions": 21,
+          "totalChoiceBranches": 0,
+          "elapsedMilliseconds": 956.038,
+          "totalElapsedMilliseconds": 985.4975,
+          "workerAllocatedBytes": 3177912,
+          "projectedBattleHpLost": 6,
+          "potionCount": 0,
+          "combatEndedTurn": 1,
+          "finalHp": 51,
+          "finalEnemyHp": 0
+        },
+        "sameRoot": true,
+        "samePolicy": true,
+        "sameRoute": true,
+        "sameContinuations": true,
+        "sameQualityAndSnapshot": true,
+        "samePruneCounters": true,
+        "timeBoundaryObserved": false
+      },
+      "C2": {
+        "status": "Passed",
+        "metrics": {
+          "totalExpanded": 9,
+          "totalTransitions": 21,
+          "totalChoiceBranches": 0,
+          "elapsedMilliseconds": 951.7812,
+          "totalElapsedMilliseconds": 984.3576,
+          "workerAllocatedBytes": 3177272,
+          "projectedBattleHpLost": 6,
+          "potionCount": 0,
+          "combatEndedTurn": 1,
+          "finalHp": 51,
+          "finalEnemyHp": 0
+        },
+        "sameRoot": true,
+        "samePolicy": true,
+        "sameRoute": true,
+        "sameContinuations": true,
+        "sameQualityAndSnapshot": true,
+        "samePruneCounters": true,
+        "timeBoundaryObserved": false
+      },
+      "A2": {
+        "status": "Passed",
+        "metrics": {
+          "totalExpanded": 9,
+          "totalTransitions": 21,
+          "totalChoiceBranches": 0,
+          "elapsedMilliseconds": 1045.4341,
+          "totalElapsedMilliseconds": 1083.2786,
+          "workerAllocatedBytes": 3179072,
+          "projectedBattleHpLost": 6,
+          "potionCount": 0,
+          "combatEndedTurn": 1,
+          "finalHp": 51,
+          "finalEnemyHp": 0
+        },
+        "sameRoot": true,
+        "samePolicy": true,
+        "sameRoute": true,
+        "sameContinuations": true,
+        "sameQualityAndSnapshot": true,
+        "samePruneCounters": true,
+        "timeBoundaryObserved": false
+      }
+    }
+  },
+  "native": {
+    "first": {
+      "beforeRunId": "90ebabf371b94d3ea9e8f1134a97e5b3",
+      "beforeStatus": "Failed",
+      "beforeError": "System.InvalidOperationException: Ordered-hand branch was pruned: Strike occurrences [0], expected [0,1].",
+      "afterRunId": "0c965c4a1aeb46b3a4cdb9fe4458e98f",
+      "afterStatus": "Passed",
+      "afterElapsedMilliseconds": 27654.9696,
+      "sameRoot": true,
+      "sameFirstContinuation": true,
+      "sameSecondContinuation": true,
+      "beforeOccurrences": [
+        0
+      ],
+      "afterOccurrences": [
+        0,
+        1
+      ],
+      "firstExhaust": [
+        "DEFEND_IRONCLAD"
+      ],
+      "secondExhaust": [
+        "STRIKE_IRONCLAD"
+      ]
+    },
+    "second": {
+      "beforeRunId": "ec8b467ae50b4f869abb3d58ff7c52b2",
+      "beforeStatus": "Failed",
+      "beforeError": "System.InvalidOperationException: Ordered-hand branch was pruned: Strike occurrences [0], expected [0,1].",
+      "afterRunId": "7c93bea0b8d2402b927dee2b3a02a2f3",
+      "afterStatus": "Passed",
+      "afterElapsedMilliseconds": 27706.5695,
+      "sameRoot": true,
+      "sameFirstContinuation": true,
+      "sameSecondContinuation": true,
+      "beforeOccurrences": [
+        0
+      ],
+      "afterOccurrences": [
+        0,
+        1
+      ],
+      "firstExhaust": [
+        "DEFEND_IRONCLAD"
+      ],
+      "secondExhaust": [
+        "STRIKE_IRONCLAD"
+      ]
+    }
+  },
+  "nativeDeployment": {
+    "target": {
+      "runId": "3e6a8c9c0e7547edb98d554861578761",
+      "status": "Passed",
+      "elapsedMilliseconds": 28197.1047,
+      "verifyIncrementalSearchRequested": true,
+      "deploymentFastMode": "Instant",
+      "deploymentDelaySeconds": 0,
+      "checks": [
+        "PerformancePreset:Custom:60000ms:Beam=45:Nodes=128:Branches=24:NoGC=False/16000000000",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=4;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=2;Shuffles=1;Unmirrored=0;HpLost=4;ProjectedBattleHpLost=4;Block=0/7;Pruned=0;Total=1088.8ms/18875832B;Gc=0.0ms/0.0msMax;Frame=1166.3msMax/2Over50;CacheHits=0;ChoiceBranches=0;Actions=2;OnlyDeath=False;CombatEndedTurn=2;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+        "UnexpectedReplans:0",
+        "NativeOutcome:combatEnded=True:turn=2:hp=50:maxHp=50"
+      ]
+    },
+    "sentinel": {
+      "runId": "6417f805b5904f84b65fa8591aca3d7f",
+      "status": "Passed",
+      "elapsedMilliseconds": 27323.1345,
+      "verifyIncrementalSearchRequested": true,
+      "deploymentFastMode": "Instant",
+      "deploymentDelaySeconds": 0,
+      "checks": [
+        "PerformancePreset:Custom:60000ms:Beam=45:Nodes=128:Branches=24:NoGC=False/16000000000",
+        "NoGcConfigurationApplied:Configured=False/16000000000:Established=0:Actual=False/0:ExpectedFallback=False:AllowedFallback=False:Latency=Interactive",
+        "PotionOutcomeNamesAndRewardGate",
+        "InitialWorldlineSummary",
+        "InitialPolicy:SoldHp=2;Potion=0,Saved=0/0,Rejected=0;Theft=-,Outstanding=0;Turns=1;Shuffles=3;Unmirrored=0;HpLost=6;ProjectedBattleHpLost=6;Block=0/0;Pruned=0;Total=1091.9ms/5714072B;Gc=0.0ms/0.0msMax;Frame=1250.0msMax/1Over50;CacheHits=0;ChoiceBranches=0;Actions=6;OnlyDeath=False;CombatEndedTurn=1;DeathTurn=-;ActEndingBoss=False;BossHpRelief=None",
+        "UnexpectedReplans:0",
+        "NativeOutcome:combatEnded=True:turn=1:hp=57:maxHp=57"
+      ]
+    }
+  }
+}

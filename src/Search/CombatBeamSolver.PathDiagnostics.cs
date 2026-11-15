@@ -42,6 +42,28 @@ internal sealed partial class CombatBeamSolver
     internal ContinuationStamp CaptureDiagnosticContinuation(SimulationSnapshot snapshot)
         => ContinuationStamp.CapturePredicted(_player, snapshot.Simulator, snapshot.Turn, _forecast, _startTurnNumber);
 
+    internal IReadOnlyList<PlanAction> EnumerateRootCardActionsForTesting()
+    {
+        SearchNode seed = CreateOpeningSearchSeed(Replay([]));
+        try
+        {
+            return EnumeratePlannedCardActions(new ExpansionPlan(seed, CardNameFirst: false))
+                .Select(prepared => prepared.Action).ToArray();
+        }
+        finally { seed.Snapshot.ReleaseSimulator(); }
+    }
+
+    internal bool RootHasAlternativePlayableCardForTesting(int handIndex)
+    {
+        SimulationSnapshot snapshot = Replay([]);
+        try
+        {
+            var simulator = snapshot.Simulator;
+            return HasAlternativePlayableCard(simulator, simulator.State.GetPlayerCombatState(_player).Hand.Cards[handIndex]);
+        }
+        finally { snapshot.ReleaseSimulator(); }
+    }
+
     internal IReadOnlyList<string> DescribeOpeningActionEffectsForTesting()
     {
         SimulationSnapshot snapshot = Replay([]);

@@ -286,6 +286,12 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertNativeCardOrderingAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId is "ORDERED-HAND-DUPLICATES-FIRST" or "ORDERED-HAND-DUPLICATES-SECOND")
+            {
+                await runner.AssertOrderedHandDuplicatesAsync(combatState, player,
+                    request.ScenarioId == "ORDERED-HAND-DUPLICATES-SECOND");
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId is "FOOL-BRANCH-STATE" or "FOOL-TURN-LIFECYCLE")
             {
                 await runner.AssertFoolBranchStateAsync(combatState, player);

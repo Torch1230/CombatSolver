@@ -1,5 +1,16 @@
 # CombatSolver 测试入口
 
+## 重复卡牌与有序手牌
+
+`ORDERED-HAND-DUPLICATES-FIRST` / `ORDERED-HAND-DUPLICATES-SECOND` 分别执行两处相同打击，再执行未升级坚毅。合同核对完整状态、随机流、续用、父分支及 Fork 隔离，并检查普通枚举、开局能力牌和循环替代动作。
+
+```text
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId ORDERED-HAND-DUPLICATES-FIRST -EnemyCurrentHp 100 -TimeoutSeconds 120 -CleanupInstanceOnExit
+./tools/testing/run-unattended-test.sh --scenario-id ORDERED-HAND-DUPLICATES-FIRST --enemy-current-hp 100 --timeout-seconds 120 --cleanup-instance-on-exit
+```
+
+将 ScenarioId 改为 `ORDERED-HAND-DUPLICATES-SECOND` 可执行后一张打击。失败基线、固定搜索对照和未验证项见[重复卡牌记录](issues/ordered-hand-duplicates.md)。
+
 ## 0.51.5 结算顺序与运行时交接
 
 定向原生差分、第二回合续用、便携 GC 合同及未验证项见[历史卷 28](archive/testing/volume-28.md#0515-结算顺序与运行时交接)。

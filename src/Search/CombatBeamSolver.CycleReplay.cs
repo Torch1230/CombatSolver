@@ -63,18 +63,7 @@ internal sealed partial class CombatBeamSolver
                     break;
                 // Never jump over a genuine card/target decision. Equivalent duplicates use
                 // the ordinary expansion identity; EndTurn remains in the normal frontier.
-                StateFingerprint playableKey = BuildPlayableCardKey(card);
-                bool alternative = false;
-                foreach (PredictedCard other in hand)
-                {
-                    if (!ReferenceEquals(other, card) && combat.CanPlayCard(simulator, other)
-                        && BuildPlayableCardKey(other) != playableKey)
-                    {
-                        alternative = true;
-                        break;
-                    }
-                }
-                if (alternative) break;
+                if (HasAlternativePlayableCard(simulator, card)) break;
                 int targets = 0;
                 bool matchesTarget = false;
                 foreach (var target in TargetsFor(card, simulator))

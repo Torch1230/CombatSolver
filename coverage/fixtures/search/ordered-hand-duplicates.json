@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "ORDERED-HAND-DUPLICATE-SEARCH",
+  "description": "Separated equal Strikes leave different ordered hand residues for unupgraded True Grit. Fixed input for before/after search comparison; native semantic contracts use ORDERED-HAND-DUPLICATES-FIRST and SECOND.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "ORDEREDHANDDUPLICATES",
+  "enemyCurrentHp": 20,
+  "initialPlayerHp": 50,
+  "initialPlayerMaxHp": 50,
+  "initialPlayerEnergy": 2,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Hand", "treatAsDeckCard": true },
+    { "cardId": "DEFEND_IRONCLAD", "pile": "Hand", "treatAsDeckCard": true },
+    { "cardId": "STRIKE_IRONCLAD", "pile": "Hand", "treatAsDeckCard": true },
+    { "cardId": "TRUE_GRIT", "pile": "Hand", "treatAsDeckCard": true }
+  ],
+  "timeoutSeconds": 120,
+  "stopAfterInitialSolverResultAssertion": true
+}
