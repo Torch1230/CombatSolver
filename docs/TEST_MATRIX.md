@@ -1,5 +1,37 @@
 # CombatSolver 测试入口
 
+## 地精佣兵的基础金币奖励（#239）
+
+`GREMLIN-ESCAPE-GOLD` 构造未偷钱、胖地精 18 HP、3 张打击与 3 点能量的同根场景。关闭组合搜索与药水，固定 256 节点 / 1500 ms。先跑“放走”哨兵，再跑“保牌/保钱”，导出完整根戳、动作、战损、用药和工作量。
+
+2026-11-15，游戏 0.113.1 / RitsuLib 0.6.13 / Windows：
+
+| 政策 | 修改前 | 修改后 | 展开 / 转移 | 搜索耗时 |
+| --- | --- | --- | --- | --- |
+| 放走哨兵 | EndTurn，0 战损、0 药水 | 同前 | 1 / 2 → 1 / 2 | 594.11 → 493.15 ms |
+| 保牌/保钱 | EndTurn，损失基础奖励 | 3 张攻击牌击杀，0 战损、0 药水 | 1 / 2 → 3 / 6 | 3.52 → 95.86 ms |
+
+两次运行的完整根戳和预算一致。目标修复增加 2 个展开节点与 4 次转移；哨兵动作、质量与工作量保持。耗时各取 1 次，包含不同预热状态，不据此宣称整搜提速。
+
+原生游戏实际完成 3 次攻击；前 2 次动作的完整续用状态与预测一致，末击确认胖地精死亡、基础金币比例为 1。中英文及繁中回退的奖励损失提示合同通过。
+
+| 原生合同 | runId | 结果 / 总耗时 |
+| --- | --- | --- |
+| 击杀路线与政策哨兵 | `3471e67c95744662ba6d8e491b591325` | Passed / 25.64 秒 |
+| 无偷钱逃跑，金币比例 0.5 | `23ebc34b8e274f098795b3cd5b713b66` | Passed / 23.00 秒 |
+| 已偷钱逃跑，金币比例 0 | `a73833b8d6c64c3d85f5e1e0ae276b33` | Passed / 24.99 秒 |
+| 既有盗窃政策与早停 | `bd527e08ccc243cf9a3165af9c3ec894` | Passed / 26.96 秒 |
+
+两种逃跑合同均完成原生完整续用、状态键和父分支/Fork 隔离对账。所有隔离实例均已清理。
+
+```powershell
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GREMLIN-ESCAPE-GOLD -EncounterId GREMLIN_MERC_NORMAL -EvidenceDirectory .local/gremlin-gold/search -TimeoutSeconds 120 -CleanupInstanceOnExit
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GREMLIN-ESCAPE-GOLD-STATE -EncounterId GREMLIN_MERC_NORMAL -TimeoutSeconds 120 -CleanupInstanceOnExit
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GREMLIN-ESCAPE-GOLD-STOLEN -EncounterId GREMLIN_MERC_NORMAL -TimeoutSeconds 120 -CleanupInstanceOnExit
+```
+
+路径可通过 `Sts2GameRoot` 和 `RitsuWorkshopRoot` 覆盖。本机验证使用 PR #247 的启动器。原始 0.111.0 玩家包仅通过材料预检查，未完成原包恢复、搜索或部署；该记录不替代原包回放。
+
 ## 0.51.5 结算顺序与运行时交接
 
 定向原生差分、第二回合续用、便携 GC 合同及未验证项见[历史卷 28](archive/testing/volume-28.md#0515-结算顺序与运行时交接)。

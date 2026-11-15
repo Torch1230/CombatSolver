@@ -20,11 +20,11 @@ internal static class ResourceIncumbentPolicy
 
     internal static PrimaryIncumbentBucket CompletedBucket(SimulationSnapshot snapshot, int potions)
         => new(snapshot.OutstandingStolenResource, potions, snapshot.GrowthRewards,
-            snapshot.RelicCounters.SatisfiedMask);
+            snapshot.RelicCounters.SatisfiedMask, snapshot.ForfeitsEncounterGold);
 
     internal static PrimaryIncumbentBucket CompletedBucket(SolverSnapshot snapshot, int potions)
         => new(snapshot.OutstandingStolenResource, potions, snapshot.GrowthRewards,
-            snapshot.RelicCounters.SatisfiedMask);
+            snapshot.RelicCounters.SatisfiedMask, snapshot.ForfeitsEncounterGold);
 
     // A frozen opportunity target is not by itself a proof of a global reward cap.
     // Certify a small closed loadout: no generation, exhaust recovery, live
@@ -94,7 +94,7 @@ internal static class ResourceIncumbentPolicy
     // Missing witnesses and excessively large domains always preserve the node.
     internal static bool PruneGrowthTargets(SearchPolicySnapshot policy, GrowthValues? upperBound,
         GrowthValues realized, int stolen, int potions, int physicalHpLowerBound,
-        PrimaryIncumbentTable table, out int examined, out int excluded)
+        PrimaryIncumbentTable table, out int examined, out int excluded, bool forfeitsGold = false)
     {
         examined = excluded = 0;
         if (policy.IgnoreLongTermRewards || policy.RelicTargets.Count != 0
@@ -119,7 +119,7 @@ internal static class ResourceIncumbentPolicy
             if (index == Sources.Length)
             {
                 visited++;
-                if (table.TryGet(new(stolen, potions, target), out var witness)
+                if (table.TryGet(new(stolen, potions, target, ForfeitsEncounterGold: forfeitsGold), out var witness)
                     && physicalHpLowerBound - policy.EffectiveGrowthBudgets.Credit(target)
                         >= witness.StrategicHpDeficit)
                     bounded++;
@@ -140,11 +140,11 @@ internal static class ResourceIncumbentPolicy
         SimulationSnapshot snapshot, int stolen, int potions,
         out PrimaryIncumbentBucket bucket, out int rewardCredit)
         => TryOptimisticBucket(policy, growthUpper, snapshot.GrowthRewards, stolen, potions,
-            out bucket, out rewardCredit);
+            out bucket, out rewardCredit, snapshot.ForfeitsEncounterGold);
 
     internal static bool TryOptimisticBucket(SearchPolicySnapshot policy, GrowthValues? growthUpper,
         GrowthValues realized, int stolen, int potions,
-        out PrimaryIncumbentBucket bucket, out int rewardCredit)
+        out PrimaryIncumbentBucket bucket, out int rewardCredit, bool forfeitsGold = false)
     {
         bucket = default;
         rewardCredit = 0;
@@ -165,7 +165,7 @@ internal static class ResourceIncumbentPolicy
                 rewardCredit = checked(rewardCredit + target.HpAllowance);
         }
         rewardCredit = checked(rewardCredit + policy.EffectiveGrowthBudgets.Credit(optimistic));
-        bucket = new(stolen, potions, optimistic, relicMask);
+        bucket = new(stolen, potions, optimistic, relicMask, forfeitsGold);
         return true;
     }
 }

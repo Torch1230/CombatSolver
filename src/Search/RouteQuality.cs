@@ -17,6 +17,7 @@ internal readonly record struct RouteQuality(
     SolverTheftPolicy? TheftPolicy)
 {
     public long RetentionHealthRisk { get; init; }
+    public bool ForfeitsEncounterGold { get; init; }
 
     public static RouteQuality ForRetention(long healthRisk, int potionStrategicCost)
         => new() { RetentionHealthRisk = healthRisk, PotionStrategicCost = potionStrategicCost };
@@ -36,7 +37,10 @@ internal readonly record struct RouteQuality(
             result.ProjectedBattlePotionCount,
             result.EnemyHp,
             result.Score,
-            result.TheftPolicy);
+            result.TheftPolicy)
+        {
+            ForfeitsEncounterGold = result.ForfeitsEncounterGold,
+        };
 
     public static RouteQuality Primary(
         bool won,

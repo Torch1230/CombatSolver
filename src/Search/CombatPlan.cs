@@ -1315,6 +1315,7 @@ internal sealed class SimulationSnapshot(
     public int LiveDeckClutter { get; } = liveDeckClutter;
     public int LiveDeckSize { get; } = liveDeckSize;
     public int OutstandingStolenResource { get; } = outstandingStolenResource;
+    public bool ForfeitsEncounterGold { get; init; }
     public int? UnrecoveredGold { get; init; }
     public int? UnrecoveredCards { get; init; }
     public int OffensiveProgressValue { get; } = offensiveProgressValue;
@@ -1397,6 +1398,7 @@ internal sealed record SolverSnapshot(
     public int? UnrecoveredGold { get; init; }
     public int? UnrecoveredCards { get; init; }
     public RelicCounterEvaluation RelicCounters { get; init; }
+    public bool ForfeitsEncounterGold { get; init; }
     public int StrategyGoalHpCredit => GrowthHpCredit + RelicCounters.HpCredit;
     public int StrategicHpCredit => StrategyGoalHpCredit + RelicCounters.HealingHpCredit;
     public int StrategyGoalCount => GrowthRewards.Total + RelicCounters.SatisfiedPriority;
@@ -1594,6 +1596,7 @@ internal sealed class SolverResult
     public required int PotionBranchesRejected { get; init; }
     public required SolverTheftPolicy? TheftPolicy { get; init; }
     public required int OutstandingStolenResource { get; init; }
+    public bool ForfeitsEncounterGold => Snapshot.ForfeitsEncounterGold;
     public required IReadOnlyDictionary<int, int> SoldHpByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> HpLostByTurn { get; init; }
     public required IReadOnlyDictionary<int, int> HpRecoveredByTurn { get; init; }

@@ -121,6 +121,8 @@ internal sealed record ContinuationStamp(string StateText)
         AppendRngState(text.Append(";non_combat_generation="), player.PlayerRng.NonCombatGeneration.CaptureState());
         text.Append(";max_hand_size=").Append(RitsuLibFramework.GetMaxHandSize(player));
         CombatRulesSnapshot.Capture(state).Append(text);
+        if (TheftEncounterStrategy.ForfeitsEncounterGold(state))
+            text.Append(";encounter_gold_forfeited=1");
         return new ContinuationStamp(text.ToString());
     }
 
@@ -196,6 +198,8 @@ internal sealed record ContinuationStamp(string StateText)
         AppendRngState(text.Append(";non_combat_generation="), simulator.Rng.NonCombatGenerationState(player));
         text.Append(";max_hand_size=").Append(simulator.GetMaxHandSize(player));
         combat.Rules.Append(text);
+        if (TheftEncounterStrategy.ForfeitsEncounterGold(combat))
+            text.Append(";encounter_gold_forfeited=1");
         return new ContinuationStamp(text.ToString());
     }
 

@@ -67,6 +67,7 @@
   "求解器：开": "Solver: On",
   "求解器：关": "Solver: Off",
   "预计未追回：{0} 张牌 / {1} 金币": "Unrecovered: {0} cards / {1} gold",
+  "预计战后金币奖励减少": "Reduced post-combat gold reward",
   "达到战损目标后停止搜索": "Stop when HP loss target is met",
   "默认开启。完整胜利达到战损阈值且没有多用药水时停止；0 表示零损。成长收益尚未满足时继续搜索，击杀成长牌兑现收益后可停止。下次搜索生效。": "Enabled by default. Stop at a complete victory within the HP loss threshold and with no extra potions; 0 means no HP loss. Continue for unmet growth rewards; fulfilled fatal-card rewards can allow stopping. Applies to the next search.",
   "默认 0，即零损。启用上方开关后，找到预计整场扣血不超过此值的完整胜利路线就停止搜索；仅保存成长额度而本场没有对应卡牌时仍可早停。": "Default: 0 (no HP loss). With the switch above enabled, stop at a complete winning route whose total combat HP loss is within this limit. Saved growth allowances do not prevent early stopping when the relevant cards are absent.",

@@ -242,6 +242,7 @@ internal sealed partial class CombatBeamSolver
             {
                 GrowthHpCredit = node.Snapshot.StrategyGoalHpCredit,
                 TheftPolicy = _theftPolicy,
+                ForfeitsEncounterGold = node.Snapshot.ForfeitsEncounterGold,
                 GrowthRewardCount = node.Snapshot.StrategyGoalCount,
                 Survives = !node.Snapshot.PlayerDead && node.Snapshot.ProjectedPlayerHp > 0,
                 DeathSaveUseCount = node.Snapshot.ProjectedDeathSaveUseCount,
@@ -340,7 +341,8 @@ internal sealed partial class CombatBeamSolver
         bool MeetsHpTarget(SearchNode node)
             => policy.GrowthTargetSatisfied(node.Snapshot.GrowthRewards)
                 && policy.RelicTargetsSatisfied(node.Snapshot.RelicCounters)
-                && TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, node.Snapshot.OutstandingStolenResource)
+                && TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, node.Snapshot.OutstandingStolenResource,
+                    node.Snapshot.ForfeitsEncounterGold)
                 && IsEligibleCompleteVictory(node)
                 && node.Snapshot.ProjectedDeathSaveUseCount == 0
                 && ExplicitPotionUseCount(node) <= earlyStopPotionUses
@@ -667,6 +669,7 @@ internal sealed partial class CombatBeamSolver
                 RelicCounters = finalSnapshot.RelicCounters,
                 GrowthRewards = finalSnapshot.GrowthRewards,
                 UnrecoveredGold = finalSnapshot.UnrecoveredGold,
+                ForfeitsEncounterGold = finalSnapshot.ForfeitsEncounterGold,
                 UnrecoveredCards = finalSnapshot.UnrecoveredCards,
             };
             ValidateOrderedMutationAdmissionLedger(_run);

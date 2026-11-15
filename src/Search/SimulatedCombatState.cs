@@ -2468,6 +2468,8 @@ internal sealed partial class SimulatedCombatState
         AppendAutoPlayFingerprint(ref fingerprint);
         fingerprint.Add('T');
         fingerprint.Add(OutstandingStolenResource(simulator));
+        if (TheftEncounterStrategy.ForfeitsEncounterGold(this))
+            fingerprint.Add("encounter_gold_forfeited");
     }
 
     private static StateFingerprint GetPowerFingerprint(PowerModel power, CombatPredictionSimulator simulator)

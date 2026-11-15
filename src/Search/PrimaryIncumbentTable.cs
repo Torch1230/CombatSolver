@@ -1,7 +1,8 @@
 namespace CombatSolver;
 
 internal readonly record struct PrimaryIncumbentBucket(
-    int Stolen, int Potions, GrowthValues Growth = default, ulong RelicMask = 0);
+    int Stolen, int Potions, GrowthValues Growth = default, ulong RelicMask = 0,
+    bool ForfeitsEncounterGold = false);
 
 /// <summary>Witnessed victories shared only by searches with the same frozen root and policy.</summary>
 internal sealed class PrimaryIncumbentTable

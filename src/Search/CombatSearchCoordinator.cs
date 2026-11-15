@@ -452,7 +452,7 @@ internal static partial class CombatSearchCoordinator
                 && passResult.ExplicitPotionCount == 0
                 && passResult.ProjectedBattleHpLost is > 0 and <= SolverWeights.PotionMinimumHpSaved
                 && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy,
-                    passResult.OutstandingStolenResource))
+                    passResult.OutstandingStolenResource, passResult.ForfeitsEncounterGold))
             {
                 passResult = RunTurnBoundaryRescue(passContext, passResult, firstTurnAnchors);
             }
@@ -747,7 +747,8 @@ internal static partial class CombatSearchCoordinator
             && !policy.PotionStrategy.HasForcedDirectives
             && !result.Snapshot.HasRisk
             && result.Snapshot.ProjectedDeathSaveUseCount == 0
-            && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource)
+            && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource,
+                result.ForfeitsEncounterGold)
             && IsProvenZeroDamageRoute(root, policy, result);
 
     private static bool IsProvenZeroDamageRoute(
@@ -783,6 +784,7 @@ internal static partial class CombatSearchCoordinator
         {
             GrowthHpCredit = result.Snapshot.StrategyGoalHpCredit,
             TheftPolicy = policy.TheftPolicy,
+            ForfeitsEncounterGold = result.ForfeitsEncounterGold,
             GrowthRewardCount = result.Snapshot.StrategyGoalCount,
             Survives = !result.Snapshot.PlayerDead && result.Snapshot.ProjectedPlayerHp > 0,
             DeathSaveUseCount = result.Snapshot.ProjectedDeathSaveUseCount,
@@ -845,7 +847,8 @@ internal static partial class CombatSearchCoordinator
             return deathSaveComparison;
         int recovery = TheftEncounterStrategy.CompareRecovery(policy.TheftPolicy,
             candidateWon, candidate.OutstandingStolenResource,
-            currentWon, current.OutstandingStolenResource);
+            currentWon, current.OutstandingStolenResource,
+            candidate.ForfeitsEncounterGold, current.ForfeitsEncounterGold);
         if (recovery != 0)
             return recovery;
         return RouteQualityPolicy.Compare(
@@ -870,7 +873,8 @@ internal static partial class CombatSearchCoordinator
         SolverResult result)
         => policy.GrowthTargetSatisfied(result.Snapshot.GrowthRewards)
             && policy.RelicTargetsSatisfied(result.Snapshot.RelicCounters)
-            && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource)
+            && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource,
+                result.ForfeitsEncounterGold)
             && result.Snapshot.ProjectedDeathSaveUseCount == 0
             && result.PotionCount == policy.MinimumRequiredPotionUses(result.BattlePotionsUsedSoFar)
             && policy.PotionStrategy.EvaluateForcedUses(result.BestNode.Actions, renewablePotionShapedRock: false).AllForcedUsesSatisfied
@@ -903,7 +907,8 @@ internal static partial class CombatSearchCoordinator
         => !policy.EffectiveHasGrowthTargets
             && policy.RelicTargets.Count == 0
             && result.Snapshot.ProjectedDeathSaveUseCount == 0
-            && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource)
+            && TheftEncounterStrategy.RecoverySatisfied(policy.TheftPolicy, result.OutstandingStolenResource,
+                result.ForfeitsEncounterGold)
             && HasReachedProvablePrimaryQualityLowerBound(
             IsCompleteVictory(result),
             StrategicHpDeficit(root, policy, result),

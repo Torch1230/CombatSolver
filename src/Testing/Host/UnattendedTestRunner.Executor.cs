@@ -560,6 +560,11 @@ internal sealed partial class UnattendedTestRunner
                 await AssertTheftRecoveryPolicyAsync(combatState);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId is "GREMLIN-ESCAPE-GOLD" or "GREMLIN-ESCAPE-GOLD-STATE" or "GREMLIN-ESCAPE-GOLD-STOLEN")
+            {
+                await runner.AssertGremlinEscapeGoldAsync(combatState, player);
+                return Observation(combatEnded: request.ScenarioId == "GREMLIN-ESCAPE-GOLD");
+            }
             if (request.ScenarioId is "SEARCH-HP-TARGET-STOP" or "NOVELTY-HP-TARGET-STOP")
             {
                 await runner.AssertHpTargetStopAsync(combatState, player,
