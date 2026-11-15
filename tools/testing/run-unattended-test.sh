@@ -493,7 +493,12 @@ fi
 ritsu_legacy_dll="$ritsu_workshop_root/lib/$game_version/STS2-RitsuLib.dll"
 ritsu_bundle_dll="$ritsu_workshop_root/STS2-RitsuLib.dll"
 ritsu_bundle_index="$ritsu_workshop_root/ritsulib-variants.manifest"
-ritsu_bundle_runtime="$ritsu_workshop_root/compat/$game_version/STS2-RitsuLib.Runtime.dll"
+ritsu_compatibility_target="$game_version"
+if ((option_value[stop-instance] == 0 && option_value[reuse-only] == 0)) && [[ -f "$ritsu_bundle_index" ]]; then
+    ritsu_compatibility_target="$(headless_ritsu_compatibility_target "$ritsu_bundle_index" "$game_version")" \
+        || runtime_error 'RitsuLib compatibility target selection failed'
+fi
+ritsu_bundle_runtime="$ritsu_workshop_root/compat/$ritsu_compatibility_target/STS2-RitsuLib.Runtime.dll"
 ritsu_bundle_shared="$ritsu_workshop_root/shared/STS2-RitsuLib.Shared.dll"
 ritsu_manifest_source="$ritsu_workshop_root/mod_manifest.json"
 if [[ -f $ritsu_bundle_dll && -f $ritsu_bundle_index && -f $ritsu_bundle_runtime && -f $ritsu_bundle_shared ]]; then

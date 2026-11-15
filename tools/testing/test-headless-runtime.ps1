@@ -1,7 +1,7 @@
 #requires -Version 7.4
 # No game is launched. Host capacity and the game-name census are controlled
 # fixtures; launcher identity validation still uses the real pwsh process.
-param([switch]$ProfileOnly)
+param([switch]$ProfileOnly, [switch]$RitsuOnly)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'headless-runtime.ps1')
 
@@ -27,6 +27,36 @@ function Assert-AdmissionRejected([hashtable]$Context) {
     } finally { Exit-HeadlessHostLease $Context }
     Assert-HostFixture $rejected 'expected bounded admission timeout'
     Assert-HostFixture (-not (Test-Path -LiteralPath $Context.LeasePath)) 'failed request left a queued lease'
+}
+
+if ($RitsuOnly) {
+    $fixture = Join-Path ([IO.Path]::GetTempPath()) ('combatsolver-ritsu-test-' + [Guid]::NewGuid().ToString('N') + '.json')
+    @{ schema = 2; variants = @('0.9.0', '0.107.1', '0.113.0', '0.111.0', '0.10.0') |
+        ForEach-Object { @{ compatTarget = $_ } } } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $fixture
+    foreach ($case in @(
+        @('0.113.0', '0.113.0'), @('0.113.1', '0.113.0'), @('0.114.0', '0.113.0'),
+        @('0.111.9', '0.111.0'), @('0.10.1', '0.10.0')
+    )) {
+        Assert-HostFixture ((Get-HeadlessRitsuCompatibilityTarget $fixture $case[0]) -eq $case[1]) "wrong compatibility target for $($case[0])"
+    }
+    $rejected = $false
+    try { Get-HeadlessRitsuCompatibilityTarget $fixture '0.8.0' | Out-Null } catch {
+        if ($_.Exception.Message -notlike 'This RitsuLib bundle does not support*') { throw }
+        $rejected = $true
+    }
+    Assert-HostFixture $rejected 'future-only variants accepted'
+    foreach ($targets in @(@('0.113.0', '0.113.0'), @('0.113.00'))) {
+        @{ schema = 2; variants = @($targets | ForEach-Object { @{ compatTarget = $_ } }) } |
+            ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $fixture
+        $rejected = $false
+        try { Get-HeadlessRitsuCompatibilityTarget $fixture '0.113.1' | Out-Null } catch {
+            if ($_.Exception.Message -notlike 'Invalid or duplicate*') { throw }
+            $rejected = $true
+        }
+        Assert-HostFixture $rejected 'malformed or duplicate variant accepted'
+    }
+    Write-Output 'HEADLESS_RITSU_SELFTEST_PASS exact/patch/latest/numeric/future/duplicate/invalid'
+    return
 }
 
 if ($ProfileOnly) {
