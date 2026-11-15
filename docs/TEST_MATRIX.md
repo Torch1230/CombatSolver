@@ -6,6 +6,16 @@
 
 2026-11-15，游戏 0.113.1 / RitsuLib 0.6.13 / Windows：
 
+启动器沿用本机 Mod 栈，另含：
+
+- DamageMeter 1.14.7。
+- ModConfig 0.2.3。
+- RemoveMultiplayerPlayerLimit 0.0.5。
+- Rewind 0.26.19。
+- RouteSuggest 1.9.0。
+
+以下场景使用原生卡牌和怪物。尚未在仅安装 CombatSolver 与 RitsuLib 的环境验证。
+
 | 政策 | 修改前 | 修改后 | 展开 / 转移 | 搜索耗时 |
 | --- | --- | --- | --- | --- |
 | 放走哨兵 | EndTurn，0 战损、0 药水 | 同前 | 1 / 2 → 1 / 2 | 594.11 → 493.15 ms |
