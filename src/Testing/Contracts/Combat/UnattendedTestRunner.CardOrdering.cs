@@ -1,6 +1,7 @@
 using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.Engine.Common;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
 
@@ -10,14 +11,21 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertNativeCardOrderingAsync(CombatState combat, Player player)
     {
+        foreach (string id in new[] { "ABUNDANCE", "DEFEND_IRONCLAD", "FINESSE", "OFFERING" })
+            await AssertNativeCardOrderingCaseAsync(combat, player, id);
+    }
+
+    private async Task AssertNativeCardOrderingCaseAsync(CombatState combat, Player player, string cardId)
+    {
         await ClearOrderedEffectFixtureAsync(combat, player);
-        await InjectCardAsync(combat, player, new() { CardId = "DEFEND_IRONCLAD", Pile = "Hand", Count = 8 });
+        await InjectCardAsync(combat, player, new() { CardId = cardId, Pile = "Hand", Count = 8 });
         var cards = player.PlayerCombatState!.Hand.Cards.ToArray();
         for (int i = 0; i < cards.Length; i++)
         {
             cards[i].EnergyCost.SetThisCombat(3 - i % 3);
             cards[i].BaseReplayCount = i % 2;
-            cards[i].DynamicVars.Block.BaseValue += i % 4;
+            foreach (var variable in cards[i].DynamicVars)
+                variable.Value.BaseValue += i % 4;
         }
         var parent = CombatRootSnapshot.Capture(combat).ForkSimulator();
         var child = parent.Fork();
@@ -41,6 +49,21 @@ internal sealed partial class UnattendedTestRunner
         modified.MutablePreview.EnergyCost.SetThisCombat(0);
         if (original.Preview.EnergyCost.GetWithModifiers(MegaCrit.Sts2.Core.Entities.Cards.CostModifiers.Local) != 3)
             throw new InvalidOperationException("Card sorting fixture mutated its parent card.");
-        _completedChecks.Add("CardOrdering:Native:CostReplayDynamicValues:FullRng:LiveAdvance:ParentSiblingForks");
+        var modifiedCards = child.State.GetPlayerCombatState(player).Hand.Cards.ToArray();
+        foreach (var variable in modified.MutablePreview.DynamicVars)
+            variable.Value.BaseValue += 5;
+        foreach (var power in player.Creature.Powers.ToArray()) await PowerCmd.Remove(power);
+        var repeatedActual = modifiedCards.ToList();
+        repeatedActual.Add(modifiedCards[0]);
+        var expectedWithDuplicate = modifiedCards.Select(card => card.Preview).ToList();
+        expectedWithDuplicate.Add(modifiedCards[0].Preview);
+        var duplicateExpectedRng = child.Rng.Shuffle.Clone();
+        expectedWithDuplicate.StableShuffle(duplicateExpectedRng);
+        repeatedActual.StableShuffle(child.Rng.Shuffle, child);
+        if (!repeatedActual.Select((card, index) => ReferenceEquals(card.Preview, expectedWithDuplicate[index])).All(equal => equal)
+            || child.Rng.ShuffleState != duplicateExpectedRng.CaptureState()
+            || parent.Rng.ShuffleState != rngBefore)
+            throw new InvalidOperationException("A later shuffle reused stale values or changed duplicate identity/RNG.");
+        _completedChecks.Add($"CardOrdering:{cardId}:vars={cards[0].DynamicVars.Count}:Native:CostReplayDynamicValues:FullRng:LiveAdvance:ParentSiblingForks:RepeatedSort:DuplicateReference");
     }
 }

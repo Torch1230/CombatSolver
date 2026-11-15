@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "ABUNDANCE-EIGHT-REPRESENTATIVE",
+  "description": "Constructed 42-card generation workload for issue #241; not a replay of the original report.",
+  "characterId": "IRONCLAD",
+  "encounterId": "AEONGLASS_BOSS",
+  "actIndexForTest": 2,
+  "seed": "ISSUE241-EIGHT-ABUNDANCE-20261115",
+  "enemyCurrentHp": 80,
+  "initialPlayerHp": 80,
+  "initialPlayerMaxHp": 80,
+  "initialPlayerEnergy": 8,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "ABUNDANCE", "pile": "Hand", "count": 8, "treatAsDeckCard": true },
+    { "cardId": "FLASH_OF_STEEL", "pile": "Hand", "count": 2, "treatAsDeckCard": true },
+    { "cardId": "DISCOVERY", "pile": "Draw", "count": 8, "treatAsDeckCard": true },
+    { "cardId": "BUNDLE_OF_JOY", "pile": "Draw", "count": 8, "treatAsDeckCard": true },
+    { "cardId": "FINESSE", "pile": "Draw", "count": 8, "treatAsDeckCard": true },
+    { "cardId": "FLASH_OF_STEEL", "pile": "Draw", "count": 8, "treatAsDeckCard": true }
+  ],
+  "enableNoGcRegionForTest": false,
+  "timeoutSeconds": 120
+}
