@@ -2412,7 +2412,6 @@ internal static partial class SolverController
             search.DeployWhenReady,
             _combat.ReviewedWorldlinesTotal,
             preview);
-        SolverOverlay.RefreshControls();
     }
 
     public static void ObserveMainThreadFrameGap(TimeSpan gap)

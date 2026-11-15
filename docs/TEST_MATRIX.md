@@ -2,13 +2,23 @@
 
 ## 响应式布局调度（#223）
 
-`UI-PRIORITY-FEEDBACK` 增加原生布局调度合同：合并 1000 次请求，使用真实 `Control.Resized` 信号在布局期间再请求，断言下一次帧驱动保留请求、稳定尺寸后停止布局。命令如下，路径可通过脚本参数覆盖：
+`UI-PRIORITY-FEEDBACK` 合同合并 1000 次布局请求。真实 `Control.Resized` 信号在布局期间再次请求，合同断言下一次帧驱动保留请求。尺寸稳定后停止布局。命令如下，路径可通过脚本参数覆盖：
 
 ```powershell
 pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId UI-PRIORITY-FEEDBACK -TimeoutSeconds 120 -CleanupInstanceOnExit
 ```
 
 2026-11-15，游戏 0.113.1 / RitsuLib 0.6.13：该合同 Passed，25.46 秒，runId `beb81314b2d944b2a2d11934498bbb49`，隔离实例已清理。本次使用 PR #247 的启动器，解决游戏补丁版本与 API 目录不同导致的预检查拒绝。
+
+同一场景增加全自动按钮样式合同。明暗主题分别覆盖开、关、开 3 次状态；每次刷新 100 次，断言全部 5 个样式资源身份保持，背景色符合当前状态。状态切换与主题重建必须替换样式资源。
+
+- 修改前：原生请求 `fe9cec58059b44bda653266fb99d9241` 在稳定刷新断言失败，报 `Unchanged full-auto controls rebuilt their button styles`。隔离实例已清理。
+- 修改后：Windows 可见 Steam 请求 `601cd4bfd2b3422a92c9fcd04e39aced` Passed，38.49 秒，含建局。布局调度、样式复用和既有 UI 合同均通过。
+- 可见环境：游戏 0.113.1、RitsuLib 0.6.13、D3D12 / Forward+、RTX 5080 Laptop GPU，启用本机 20 个 Mod。
+- 可见入口：使用 PR #254 的启动器，传入完整 `UI-PRIORITY-FEEDBACK` 请求、120 秒超时和证据目录。原生失败基线使用 PR #247 的启动器，内存预约 3072 MiB。
+- 前置失败：首次原生命令未覆盖本机游戏目录，未启动游戏；默认 4096 MiB 预约随后因空闲内存不足而排队超时。两者均不算行为验证。
+
+原生与可见请求的启动环境不同，耗时不作性能对照。此合同没有搜索质量、FPS 或稳定帧时间结论。
 
 该合同不证明原存档的 D3D12 等待、驱动故障或跨帧尺寸振荡已消失。
 
