@@ -6,6 +6,33 @@
 
 2026-11-15，PowerShell 与 Windows Git Bash 均通过 8 项定向检查。原生启动器已在游戏 0.113.1 / RitsuLib 0.6.13 环境完成 `UI-PRIORITY-FEEDBACK`，结果 Passed，25.46 秒，隔离实例已清理。Linux 系统上的完整启动未验证。
 
+## 预战 worker 空闲取消源
+
+`PreCombatRequestChecks` 直接编译 API、contracts 与 `PreCombatForecastWorker.Idle.cs`。
+游戏状态、进程和会话数据使用替身；计时、取消、释放及等待屏障使用生产代码。
+
+2026-11-15，Windows / .NET SDK 9.0.321：
+修改前，并发用例确认 `Cancel` 执行中取消源已被释放。
+修改后，18 项检查全部通过。
+
+新增 7 项覆盖：
+
+- 当前计时器到期只停止所属会话。
+- 取消计时器后保留可复用会话。
+- 取消正在等待请求屏障的计时器。
+- 旧任务清理保留替代计时器与会话。
+- 取消执行中，后台清理不释放取消者持有的源。
+- 任务启动前取消并释放后，仍可使用提前捕获的 token。
+- 无限空闲期限取消旧计时器。
+
+```sh
+dotnet run --project tools/testing/checks/PreCombatRequestChecks/PreCombatRequestChecks.csproj -c Release
+```
+
+主工程 Release 构建通过，0 个警告、0 个错误。
+本轮未启动真实预测子进程，也未验证 Linux 运行。
+本结果不用于归因 #212 的原始崩溃。
+
 ## 0.51.5 结算顺序与运行时交接
 
 定向原生差分、第二回合续用、便携 GC 合同及未验证项见[历史卷 28](archive/testing/volume-28.md#0515-结算顺序与运行时交接)。

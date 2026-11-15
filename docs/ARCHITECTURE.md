@@ -22,6 +22,8 @@
 | `SearchMemoryPressureSignal.cs` | 注入 Search 的分配边界与回收续搜信号 |
 | `NativeChoiceRuntime.cs` | 原生选牌观察与逐实例计划匹配 |
 | `PlayerTurnSetupPatches.cs` | 原生回合准备、选择和部署交接 |
+| `src/Api/PreCombatForecastWorker.cs` | 预战独立子进程会话、请求和停止 |
+| `src/Api/PreCombatForecastWorker.Idle.cs` | 空闲计时器发布、取消和取消源释放 |
 
 政策由主线程从设置冻结到 `SearchPolicySnapshot`。后台通过请求参数、诊断 sink 与压力信号消费外部能力；算法不读取设置单例或操作 GC。Power 显示变量在主线程根捕获时物化；worker 只消费已物化值。克隆并发边界由 `BaseLibCloneConcurrencyPatch` 与原生克隆隔离规则维护。
 
@@ -30,6 +32,11 @@
 `SearchGcRuntimeInfo` 在 Runtime 一次探测按类型查询 GC 信息的能力。具备完整信息时保留后台回收与完成索引核对；检查点重建 NoGC 时直接请求一次压缩完整回收，确认新的压缩完成信息及释放的弱哨兵后才重建。Mono 等缺少详细信息的运行库以阻塞完整回收调用返回作为完成屏障；保守栈扫描可能保留弱引用目标，其存活状态独立于回收完成。暂停观测通过压力信号传递为可空值，Search 消费实际观测并保留其他工作量；检查点及回收日志明确标记不可用的暂停统计。
 
 回合准备的原生自动出牌阶段完成选择后，续用交给 `StartCombatDeferredOperation` 管理。原生阶段先返回，随后原版解除行动暂停、上一部署释放会话，延迟操作再启动续用或重算。战斗重置取消并排空延迟操作，无人测试跟踪其异常与完成；准备阶段自身只等待所属原生任务。
+
+预战空闲计时器以字段交换转移取消源所有权。
+取消者取走当前源后负责取消和释放；后台只释放仍由自己持有的当前源。
+token 在发布取消源前捕获，后台不再访问可能已释放的源的 `Token` 属性。
+旧计时器完成时不能清除替代计时器或停止新会话。
 
 ## 3. Search
 
