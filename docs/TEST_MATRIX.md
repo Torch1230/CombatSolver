@@ -6,7 +6,9 @@
 
 修复前，卡牌 hook 和回合阶段检查缺少 Fork 合同，无法编译；诊断日志检查仍假定只有 1 条进程事件。回合阶段替身还缺少当前 Power 和未支持异常边界。修复后断言 4 条生命周期事件及冻结前缀，保留战斗日志隔离和过载检查。
 
-2026-11-15，Windows / .NET SDK 9.0.321：全组执行通过 24 项；补齐最后一个回合阶段合同后，定向复跑通过 30 条断言。合计 25 个项目通过，卡牌 hook 检查含 78 条断言。Linux 工作流尚未在远端执行，游戏内战斗未复测。
+2026-11-15，本机 Windows / .NET SDK 9.0.321：全组执行通过 24 项；补齐最后一个回合阶段合同后，定向复跑通过 30 条断言。卡牌 hook 检查含 78 条断言。
+
+同日，GitHub Actions 的 Windows 与 Ubuntu 均完整执行 25 个项目，各为 `total=25 passed=25 failed=0`。运行记录见 [Independent checks](https://github.com/EEEEEEEEdison/CombatSolver/actions/runs/43688960839)，行为源码为 `6d29975c`。游戏内战斗未复测。
 
 `.github/workflows/independent-checks.yml` 在两个平台执行这些检查。独立替身只验证链接的生产边界，不代替游戏内语义、可见 UI 或战斗路线验收。
 
