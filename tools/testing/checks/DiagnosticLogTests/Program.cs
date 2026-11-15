@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using CombatSolver;
 using CombatSolver.Replay;
 
@@ -28,7 +29,16 @@ Check(firstText.Contains("before upload") && !firstText.Contains("after upload")
 Check(second.History.Length == 1 && second.History[0].Errors == 1 && second.History[0].LastError == "after upload", "previous fight summary missing");
 string secondText = Encoding.UTF8.GetString(second.Events.JsonLines);
 Check(secondText.Contains("second battle") && !secondText.Contains("before upload") && !secondText.Contains("old callback"), "combat isolation failed");
-Check(second.Events.Error == null && second.Process.EventCount == 1, "journal write failed");
+Check(second.Events.Error == null && first.Process.Error == null && second.Process.Error == null, "journal write failed");
+string[] ProcessMessages(CombatLogArchive archive) => Encoding.UTF8.GetString(archive.Process.JsonLines)
+    .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+    .Select(line => JsonSerializer.Deserialize<CombatLogEntry>(line)!.Message).ToArray();
+string[] firstProcess = ["process boot", "COMBAT_LOG_BEGIN id=first encounter=遭遇一"];
+Check(ProcessMessages(first).SequenceEqual(firstProcess)
+    && first.Process.EventCount == firstProcess.Length, "process upload prefix was not frozen");
+string[] secondProcess = [.. firstProcess, "COMBAT_LOG_END reason=victory", "COMBAT_LOG_BEGIN id=second encounter=遭遇二"];
+Check(ProcessMessages(second).SequenceEqual(secondProcess)
+    && second.Process.EventCount == secondProcess.Length, "process lifecycle or combat isolation failed");
 Console.WriteLine("PASS frozen upload, historical summary, worker ownership and process isolation");
 
 journal.BeginCombat("third", "new run", "other-seed");

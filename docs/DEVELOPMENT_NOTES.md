@@ -20,4 +20,5 @@
 
 ## 下一版本（开发中）
 
-当前没有待记录的行为改动。
+- 恢复 `CardHookReceiverChecks` 与 `TurnPhaseMirrorChecks` 的 Fork 接口替身。诊断日志检查改为断言进程生命周期事件的内容、顺序和冻结前缀。
+- 新增跨平台独立检查入口和 Windows/Linux CI，覆盖 25 个无需游戏安装的 .NET 检查。范围与证据见[测试入口](TEST_MATRIX.md#独立检查与-ci)。

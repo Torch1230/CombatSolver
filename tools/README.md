@@ -20,6 +20,7 @@
 
 ```powershell
 pwsh -NoProfile -File tools/build/build-local-stack.ps1 -Configuration Release
+python -B tools/testing/run-independent-checks.py
 python tools/inspection/verify-tools.py
 python tools/inspection/verify-tools.py --build
 python tools/inspection/verify-documentation.py
@@ -30,6 +31,8 @@ pwsh -NoProfile -File tools/replay/run-checkpoint-batch.ps1 -InputPath <问题�
 ```
 
 Linux 的 `.sh` 是原生入口；无人测试必须带 `--cleanup-instance-on-exit`。测试、回放和性能方法由 [无人测试](../docs/HEADLESS_TESTING.md)、[检查点回放](../docs/CHECKPOINT_REPLAY.md)、[离线宿主](../docs/OFFLINE_SEARCH_HARNESS.md) 和 [性能指南](../docs/performance/README.md) 维护。
+
+`run-independent-checks.py` 在 Windows 和 Linux 使用同一入口。依赖 Python 3 和 .NET 9 SDK，执行脚本内明确列出的 25 个独立检查，无需游戏或 RitsuLib。可在命令后追加检查名，例如 `CardHookReceiverChecks DiagnosticLogTests`。每项打印结果，任一失败时返回非零退出码。GitHub Actions 在两个平台执行全组检查。该入口不包含依赖游戏的项目、Python 专项检查或原生战斗验收。
 
 ## 构建与产物
 

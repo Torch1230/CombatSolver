@@ -77,7 +77,7 @@ AfterSideTurnEndLateMirrors.RegisterIgnored(typeof(IgnoredLateRelic));
 var descriptor = ((IMethodMirrorRegistryDescriptorProvider)typeof(AfterSideTurnEndLateMirrors)
     .GetField("Registry", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!).DescribeMirrorSupport();
 Check(descriptor.BaseMethod.Name == nameof(AbstractModel.AfterSideTurnEndLate), "Wrong method metadata.");
-Check(descriptor.Registrations.Count == 6 && descriptor.Registrations.Count(r => r.Kind == MethodMirrorRegistrationKind.Handled) == 5,
+Check(descriptor.Registrations.Count == 7 && descriptor.Registrations.Count(r => r.Kind == MethodMirrorRegistrationKind.Handled) == 6,
     "Coverage descriptor lost a handler.");
 
 CombatPredictionSimulator simulator = new() { Listeners = [new TestRelic("first"), new TestModifier(), new TestRelic("last")] };
@@ -127,6 +127,12 @@ Check(Run(simulator, CombatSide.Enemy, owner) && simulator.DamageCalls == 2 && s
     "Enemy phase did not consume current branch amount.");
 owner.IsAlive = false;
 Check(Run(simulator, CombatSide.Enemy, owner) && simulator.DamageCalls == 2, "Dead owner damaged.");
+InsatiableDominionPower dominion = new() { Owner = other };
+dominion.DynamicVars.Damage.BaseValue = 6;
+simulator = new() { Listeners = [dominion] };
+Check(Run(simulator, CombatSide.Player, owner) && simulator.DamageCalls == 0, "Dominion damaged a nonparticipant.");
+Check(Run(simulator, CombatSide.Player, other) && simulator.DamageCalls == 1 && simulator.DamageTotal == 6,
+    "Dominion did not dispatch its current branch damage.");
 Console.WriteLine($"TURN_PHASE_MIRRORS_OK checks={checks}");
 
 class TestRelic(string label = "base", Action<AfterSideTurnEndLateMirrorContext>? callback = null) : RelicModel
