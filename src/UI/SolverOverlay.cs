@@ -115,7 +115,7 @@ internal static class SolverOverlay
     private static bool _detailsVisible;
     private static bool _dragging;
     private static bool _resizing;
-    private static bool _layoutQueued;
+    private static bool _responsiveLayoutDirty;
     private static SolverButtonStyle? _renderedExecuteButtonStyle;
     private static SolverButtonStyle? _renderedAdoptRouteButtonStyle;
     private static SolverTheftPolicy? _renderedTheftPolicy;
@@ -146,7 +146,6 @@ internal static class SolverOverlay
     private static bool _lastDeploymentEndedTurn;
     private static bool _waitingForNextTurnPlan;
     private static bool _themeRefreshQueued;
-    private static int _remainingLayoutPasses;
     private static long _lastResizeLayoutAt;
     private static BossHpRelief _activeBossHpRelief;
     private static Vector2 _dragOffset;
@@ -1672,8 +1671,7 @@ internal static class SolverOverlay
         _bottomResizeHandle = null;
         _cornerResizeHandle = null;
         _resizing = false;
-        _layoutQueued = false;
-        _remainingLayoutPasses = 0;
+        _responsiveLayoutDirty = false;
         _renderedExecuteButtonStyle = null;
         _renderedAdoptRouteButtonStyle = null;
         _renderedTheftPolicy = null;
@@ -2870,23 +2868,17 @@ internal static class SolverOverlay
 
     private static void QueueResponsiveLayout()
     {
-        _remainingLayoutPasses = 2;
-        if (_layoutQueued)
-            return;
-        _layoutQueued = true;
-        Callable.From(ApplyResponsiveLayoutDeferred).CallDeferred();
+        _responsiveLayoutDirty = true;
     }
 
-    private static void ApplyResponsiveLayoutDeferred()
+    internal static void ApplyQueuedResponsiveLayout()
     {
-        ApplyResponsiveLayout();
-        if (--_remainingLayoutPasses > 0 && _panel != null && GodotObject.IsInstanceValid(_panel))
-        {
-            Callable.From(ApplyResponsiveLayoutDeferred).CallDeferred();
+        if (!_responsiveLayoutDirty)
             return;
-        }
-        _layoutQueued = false;
-        _remainingLayoutPasses = 0;
+        // Minimum-size signals raised by this pass belong to the next frame.
+        // Deferred self-scheduling can keep replenishing a single idle flush.
+        _responsiveLayoutDirty = false;
+        ApplyResponsiveLayout();
     }
 
     private static void SetCollapsed(bool collapsed)
@@ -3474,6 +3466,7 @@ internal static class SolverOverlay
         {
             SolverSettings.ApplyForTesting(original with { AutomaticCalculationEnabled = false });
             ShowManualCalculationReady(host, false);
+            AssertResponsiveLayoutSchedulingForTesting();
             _actionBar!.AssertLayoutForTesting();
             RefreshControls();
             if (_solverEnabledButton!.GetParent().Name != "Header"
@@ -3521,6 +3514,51 @@ internal static class SolverOverlay
             SolverSettings.Update(original);
             SolverController.SetSolverDisabled(original.SolverDisabled, persist: false);
             SetCollapsed(wasCollapsed);
+        }
+    }
+
+    private static void AssertResponsiveLayoutSchedulingForTesting()
+    {
+        PanelContainer panel = _panel!;
+        Vector2? originalSize = _customPanelSize;
+        bool originalCollapsed = _collapsed;
+        int resizeSignals = 0;
+        void RequestAgain()
+        {
+            resizeSignals++;
+            for (int i = 0; i < 1000; i++)
+                QueueResponsiveLayout();
+        }
+        try
+        {
+            SetCollapsed(false);
+            ApplyResponsiveLayout();
+            // Moving one bound must emit a real Control.Resized during the next pass.
+            // Its synchronous requests must survive for the following frame.
+            _customPanelSize = panel.Size;
+            panel.OffsetRight += 20;
+            panel.Resized += RequestAgain;
+            for (int i = 0; i < 1000; i++)
+                QueueResponsiveLayout();
+            SolverOverlayMotionDriver driver = _layer!.GetNode<SolverOverlayMotionDriver>("CombatSolverOverlayMotion");
+            driver._Process(0);
+            if (resizeSignals == 0 || !_responsiveLayoutDirty)
+                throw new InvalidOperationException("A layout pass lost reentrant minimum-size requests.");
+            int firstSignals = resizeSignals;
+            driver._Process(0);
+            if (_responsiveLayoutDirty || resizeSignals != firstSignals)
+                throw new InvalidOperationException("Stable bounds kept scheduling responsive layout.");
+            driver._Process(0);
+            if (_responsiveLayoutDirty || resizeSignals != firstSignals)
+                throw new InvalidOperationException("An idle frame repeated responsive layout.");
+            Entry.Logger.Info($"[CombatSolver/Test] UI_RESPONSIVE_LAYOUT coalesced_requests=1000 reentrant_signals={resizeSignals} stable=true");
+        }
+        finally
+        {
+            panel.Resized -= RequestAgain;
+            _customPanelSize = originalSize;
+            SetCollapsed(originalCollapsed);
+            QueueResponsiveLayout();
         }
     }
 

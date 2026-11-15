@@ -1,5 +1,17 @@
 # CombatSolver 测试入口
 
+## 响应式布局调度（#223）
+
+`UI-PRIORITY-FEEDBACK` 增加原生布局调度合同：合并 1000 次请求，使用真实 `Control.Resized` 信号在布局期间再请求，断言下一次帧驱动保留请求、稳定尺寸后停止布局。命令如下，路径可通过脚本参数覆盖：
+
+```powershell
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId UI-PRIORITY-FEEDBACK -TimeoutSeconds 120 -CleanupInstanceOnExit
+```
+
+2026-11-15，游戏 0.113.1 / RitsuLib 0.6.13：该合同 Passed，25.46 秒，runId `beb81314b2d944b2a2d11934498bbb49`，隔离实例已清理。本次使用 PR #247 的启动器，解决游戏补丁版本与 API 目录不同导致的预检查拒绝。
+
+该合同不证明原存档的 D3D12 等待、驱动故障或跨帧尺寸振荡已消失。
+
 ## 0.51.5 结算顺序与运行时交接
 
 定向原生差分、第二回合续用、便携 GC 合同及未验证项见[历史卷 28](archive/testing/volume-28.md#0515-结算顺序与运行时交接)。
