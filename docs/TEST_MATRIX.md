@@ -34,13 +34,14 @@
 
 两种逃跑合同均完成原生完整续用、状态键和父分支/Fork 隔离对账。所有隔离实例均已清理。
 
-```powershell
+```text
 pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GREMLIN-ESCAPE-GOLD -EncounterId GREMLIN_MERC_NORMAL -EvidenceDirectory .local/gremlin-gold/search -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GREMLIN-ESCAPE-GOLD-STATE -EncounterId GREMLIN_MERC_NORMAL -TimeoutSeconds 120 -CleanupInstanceOnExit
-pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GREMLIN-ESCAPE-GOLD-STOLEN -EncounterId GREMLIN_MERC_NORMAL -TimeoutSeconds 120 -CleanupInstanceOnExit
+./tools/testing/run-unattended-test.sh --scenario-id GREMLIN-ESCAPE-GOLD --encounter-id GREMLIN_MERC_NORMAL --evidence-directory .local/gremlin-gold/search --timeout-seconds 120 --cleanup-instance-on-exit
 ```
 
-路径可通过 `Sts2GameRoot` 和 `RitsuWorkshopRoot` 覆盖。本机验证使用 PR #247 的启动器。原始 0.111.0 玩家包仅通过材料预检查，未完成原包恢复、搜索或部署；该记录不替代原包回放。
+场景 ID 可替换为 `GREMLIN-ESCAPE-GOLD-STATE` 或 `GREMLIN-ESCAPE-GOLD-STOLEN`，分别复跑两种逃跑差分。路径可通过 `Sts2GameRoot` 和 `RitsuWorkshopRoot` 覆盖。本机验证使用 PR #247 的启动器。原始 0.111.0 玩家包仅通过材料预检查，未完成原包恢复、搜索或部署；该记录不替代原包回放。
+
+2026-11-17，评审修正后的原生请求 `ab220ac856a142aba2795db5d343656d` Passed，28.13 秒。与原 PR 最终样本的完整根、政策预算、动作、战损及用药一致。放走仍展开 1 / 转移 2，保钱仍展开 3 / 转移 6。两次中间原生续用及击杀后完整奖励通过，实例已删除。单次搜索耗时分别为 565.23 / 115.44 ms，旧样本为 493.15 / 95.86 ms；未据此通过稳定耗时门禁。更大场景及保序突变键的独立负对照尚未验证。
 
 ## 0.51.5 结算顺序与运行时交接
 

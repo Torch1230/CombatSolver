@@ -16,7 +16,7 @@ internal static class TheftEncounterStrategy
 {
     public static int CompareRecovery(SolverTheftPolicy? policy,
         bool candidateWon, int candidateOutstanding, bool currentWon, int currentOutstanding,
-        bool candidateForfeitsGold = false, bool currentForfeitsGold = false)
+        bool candidateForfeitsGold, bool currentForfeitsGold)
     {
         int victory = currentWon.CompareTo(candidateWon);
         return victory != 0 ? victory : policy == SolverTheftPolicy.PreserveResources
@@ -30,7 +30,7 @@ internal static class TheftEncounterStrategy
         return stolen != 0 ? stolen : candidateForfeitsGold.CompareTo(currentForfeitsGold);
     }
 
-    public static bool RecoverySatisfied(SolverTheftPolicy? policy, int outstanding, bool forfeitsGold = false)
+    public static bool RecoverySatisfied(SolverTheftPolicy? policy, int outstanding, bool forfeitsGold)
         => policy != SolverTheftPolicy.PreserveResources || outstanding == 0 && !forfeitsGold;
 
     // GremlinMercNormal pays only half (or none) of the base gold when FatGremlin

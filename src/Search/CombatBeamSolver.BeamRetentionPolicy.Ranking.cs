@@ -81,13 +81,11 @@ internal sealed partial class CombatBeamSolver
             if (comparison != 0)
                 return comparison;
 
-            int leftOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
-                ? leftSnapshot.OutstandingStolenResource
+            comparison = _theftPolicy == SolverTheftPolicy.PreserveResources
+                ? TheftEncounterStrategy.CompareOutstanding(
+                    leftSnapshot.OutstandingStolenResource, leftSnapshot.ForfeitsEncounterGold,
+                    rightSnapshot.OutstandingStolenResource, rightSnapshot.ForfeitsEncounterGold)
                 : 0;
-            int rightOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
-                ? rightSnapshot.OutstandingStolenResource
-                : 0;
-            comparison = leftOutstanding.CompareTo(rightOutstanding);
             if (comparison != 0)
                 return comparison;
             comparison = HealthResourceCost(leftSnapshot).CompareTo(HealthResourceCost(rightSnapshot));

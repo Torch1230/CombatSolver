@@ -94,7 +94,7 @@ internal static class ResourceIncumbentPolicy
     // Missing witnesses and excessively large domains always preserve the node.
     internal static bool PruneGrowthTargets(SearchPolicySnapshot policy, GrowthValues? upperBound,
         GrowthValues realized, int stolen, int potions, int physicalHpLowerBound,
-        PrimaryIncumbentTable table, out int examined, out int excluded, bool forfeitsGold = false)
+        PrimaryIncumbentTable table, out int examined, out int excluded, bool forfeitsGold)
     {
         examined = excluded = 0;
         if (policy.IgnoreLongTermRewards || policy.RelicTargets.Count != 0
@@ -144,7 +144,7 @@ internal static class ResourceIncumbentPolicy
 
     internal static bool TryOptimisticBucket(SearchPolicySnapshot policy, GrowthValues? growthUpper,
         GrowthValues realized, int stolen, int potions,
-        out PrimaryIncumbentBucket bucket, out int rewardCredit, bool forfeitsGold = false)
+        out PrimaryIncumbentBucket bucket, out int rewardCredit, bool forfeitsGold)
     {
         bucket = default;
         rewardCredit = 0;

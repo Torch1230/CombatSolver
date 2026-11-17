@@ -642,8 +642,8 @@ internal sealed partial class CombatBeamSolver
             int potionCount,
             int outstandingStolenResource,
             int potionFreeOutstandingResource,
-            bool forfeitsGold = false,
-            bool potionFreeForfeitsGold = false)
+            bool forfeitsGold,
+            bool potionFreeForfeitsGold)
             => theftPolicy == SolverTheftPolicy.PreserveResources
                 && potionCount > 0
                 && TheftEncounterStrategy.CompareOutstanding(outstandingStolenResource, forfeitsGold,

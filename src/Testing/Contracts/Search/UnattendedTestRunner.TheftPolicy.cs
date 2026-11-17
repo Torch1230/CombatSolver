@@ -206,8 +206,8 @@ internal sealed partial class UnattendedTestRunner
             || CombatSearchCoordinator.IsBetterPotionPolicyResult(SolverTheftPolicy.LetEscape, recovered, escape)
             || SolverInterimResultOrdering.IsBetter(recovered with { TheftPolicy = SolverTheftPolicy.LetEscape },
                 escape with { TheftPolicy = SolverTheftPolicy.LetEscape })
-            || TheftEncounterStrategy.RecoverySatisfied(SolverTheftPolicy.PreserveResources, 20)
-            || !TheftEncounterStrategy.RecoverySatisfied(SolverTheftPolicy.LetEscape, 20)
+            || TheftEncounterStrategy.RecoverySatisfied(SolverTheftPolicy.PreserveResources, 20, false)
+            || !TheftEncounterStrategy.RecoverySatisfied(SolverTheftPolicy.LetEscape, 20, false)
             || SolverInterimResultOrdering.IsBetter(recovered with { Won = false }, escape))
             throw new InvalidOperationException("Theft policy mixed recovery, HP, potion, early-stop or victory priorities.");
 

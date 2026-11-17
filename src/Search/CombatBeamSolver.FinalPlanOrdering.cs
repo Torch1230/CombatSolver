@@ -385,7 +385,12 @@ internal sealed partial class CombatBeamSolver
             leftWon ? leftSnapshot.CombatEndedTurn : null,
             leftSnapshot.StrategyGoalHpCredit,
             leftSnapshot.StrategyGoalCount,
-            leftSnapshot.ProjectedDeathSaveUseCount);
+            leftSnapshot.ProjectedDeathSaveUseCount) with
+        {
+            TheftPolicy = theftPolicy,
+            OutstandingStolenResource = leftSnapshot.OutstandingStolenResource,
+            ForfeitsEncounterGold = leftSnapshot.ForfeitsEncounterGold,
+        };
         RouteQuality rightQuality = RouteQuality.Primary(rightWon,
             ActEndingBossPolicy.StrategicHpDeficit(
                 rightSnapshot.CumulativePlayerHpLost,
@@ -397,14 +402,20 @@ internal sealed partial class CombatBeamSolver
             rightWon ? rightSnapshot.CombatEndedTurn : null,
             rightSnapshot.StrategyGoalHpCredit,
             rightSnapshot.StrategyGoalCount,
-            rightSnapshot.ProjectedDeathSaveUseCount);
+            rightSnapshot.ProjectedDeathSaveUseCount) with
+        {
+            TheftPolicy = theftPolicy,
+            OutstandingStolenResource = rightSnapshot.OutstandingStolenResource,
+            ForfeitsEncounterGold = rightSnapshot.ForfeitsEncounterGold,
+        };
         comparison = RouteQualityPolicy.Compare(leftQuality, rightQuality, RouteQualityProjection.Primary);
         if (comparison != 0)
             return comparison;
         if (theftPolicy == SolverTheftPolicy.PreserveResources)
         {
-            comparison = leftSnapshot.OutstandingStolenResource.CompareTo(
-                rightSnapshot.OutstandingStolenResource);
+            comparison = TheftEncounterStrategy.CompareOutstanding(
+                leftSnapshot.OutstandingStolenResource, leftSnapshot.ForfeitsEncounterGold,
+                rightSnapshot.OutstandingStolenResource, rightSnapshot.ForfeitsEncounterGold);
             if (comparison != 0)
                 return comparison;
         }

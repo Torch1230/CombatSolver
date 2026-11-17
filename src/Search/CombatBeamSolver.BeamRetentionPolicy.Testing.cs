@@ -1107,17 +1107,23 @@ internal sealed partial class CombatBeamSolver
                 SolverTheftPolicy.PreserveResources,
                 potionCount: 1,
                 outstandingStolenResource: 2,
-                potionFreeOutstandingResource: 3)
+                potionFreeOutstandingResource: 3,
+                forfeitsGold: false,
+                potionFreeForfeitsGold: false)
             || BeamRetentionPolicy.FinalPolicyTheftEscapeEligible(
                 SolverTheftPolicy.PreserveResources,
                 potionCount: 1,
                 outstandingStolenResource: 3,
-                potionFreeOutstandingResource: 3)
+                potionFreeOutstandingResource: 3,
+                forfeitsGold: false,
+                potionFreeForfeitsGold: false)
             || BeamRetentionPolicy.FinalPolicyTheftEscapeEligible(
                 theftPolicy: null,
                 potionCount: 1,
                 outstandingStolenResource: 2,
-                potionFreeOutstandingResource: 3))
+                potionFreeOutstandingResource: 3,
+                forfeitsGold: false,
+                potionFreeForfeitsGold: false))
         {
             throw new InvalidOperationException(
                 "最终策略资格的 Ambergris 或偷窃分组不符合终局政策。 ");
