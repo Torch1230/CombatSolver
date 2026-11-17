@@ -69,7 +69,10 @@ SteamEruptionPower 的转阶段也由 `AfterDeathMirrors` 持有。Hook 内恢�
 1. 清单 `affects_gameplay: false`；
 2. `PredictionModHookSubscriberInertness.IsCombatInert` 判定为战斗惰性——只重写了战斗外的
    hook，或者只重写了战斗开始 / 战斗结束 hook（前者的效果已经落在被捕获的根状态里，后者在
-   胜负判定之后才分发，求解器搜到战斗结束就停）；
+   胜负判定之后才分发，求解器搜到战斗结束就停）。这条类型推断的实例准入还要求
+   `AbstractModel.ExecutionFinished` 没有监听器；原生调用方在默认回调完成后也会触发该事件。
+   主线程捕获时逐实例核对，不缓存监听器是否为空，不能用派生同名字段替代原生事件。
+   这一准入不等于回复来源或未来状态等价性证书；
 3. 在 `PredictionModHookSubscriberCapture.KnownPreRootSubscriberTypeNames` 白名单里。
 4. Loadout 的 `PowerGiverSummonHook`：主线程检查实际加载的公开计数快照接口及怪物能力配置，把空配置写入续用状态戳。版本号变化不会阻止搜索；接口变化或配置非空时明确失败。这不放行 Loadout 的其他战斗效果。
 5. BaseLib `CardModifier`：侧表状态随预测卡牌独立复制并重绑 Owner，Hook 仍由对应镜像处理。修饰器的战斗监听成员与原生 BaseLib 一致，按玩家五种战斗牌堆枚举；生成牌完成战斗域登记后，在入堆时参与监听，离开所有牌堆后退出监听。复跑使用 `-VerifyBaseLibCardModifierBoundary`，合同直接对照原生生成牌及各牌堆的生命周期。
@@ -346,6 +349,16 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 
 ## 6. 已知的封闭开关
 
+当前回复组件表和 Ritsu 治疗门禁尚未覆盖 `Creature.CurrentHpChanged`、`MaxHpChanged` 以及它们转发的 `CombatStateTracker.CombatStateChanged` 全部受众。[直接/延迟原生反例](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/finite-health-capacity-proof-20261008.md)以及[实际 Ritsu 详情回调](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/health-event-source-admission-20261008.md)均复现 0 回复界后额外回复 2 点；后者未改变外层监听名单。只识别外层方法、空页面表或空治疗注册表不足以闭合证明，实际子控件回调、卡值重算、界面信号以及下层补丁需要独立核对。[卡值重算子证明](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/card-value-notification-proof-20261008.md)仅覆盖五个原生牌堆与三种已审计空附魔的直接调用，不能补足其余通知或未来来源。
+
+[用药回复回调证明](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/pruning-callback-proof-research-20261008.md)新增 `Player.UsedPotionRemoved` 的根资格检查：未知监听器可以通过原生动作直接重设 HP，不能继续使用 0 回复界。仅接纳审计 MVID 下精确原版界面方法和目标，核对指定同步依赖、原生单人服务以及相关事件；未知直接/悬停回调、同步测试委托或指定方法补丁使现有回复消费者退回无限上界。只冻结拒绝原因，不执行或适配扩展；其他生命、UI 信号、子控件、后续注册以及完整未来闭包仍然需要独立证明。
+
+[生命通知剪枝门槛](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/health-callback-pruning-guard-20261008.md)补充稳定根拒绝：玩家、敌人和已存在奥斯蒂的当前/最大生命事件、精确 Tracker 转发（也检查牌堆/历史/能量的独立可达通知）以及实际 Ritsu 浏览器详情回调，未知绑定或指定入口补丁使统一回复消费者退回无限界。根和 Fork 仅保存不可变拒绝原因，不执行回调，也不扩展未知语义的模拟支持。已观察原版/Ritsu 外层绑定保留此前准入；这个保护不是完整调用图证明，后续注册、其他 UI 回调/信号以及未来来源仍然需要闭合。
+
+[卡牌通知回复门槛](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/card-notification-and-recovery-roi-20261009.md)复现原生通知直接重设玩家 HP 的 2 点反例。稳定根检查 8 个无参 CardModel 事件以及暂时离堆的所属实例，未知绑定或所检查方法补丁退回无限回复界；仅保留当前 Tracker 与原版手牌闪光/Ritsu 刷新的精确绑定，转发由现有生命通知门槛检查。它不执行未知回调，不认证附着变化、ExecutionFinished、其他 UI 信号或未来注册。
+
+模型镜像登记、原版类型身份和非 gameplay 清单不能补足证明。下表的组件资格仅表示已检查的来源表通过，不能解释为全部生命事件、界面回调或扩展链安全。
+
 组合达标早停额外读取冻结的 `CombatRootSnapshot.HasVisibleHealingSource`：牌、玩家 Power 和可搜索药水的 `Heal` / `HealPercent` / `RegenPower` 变量，以及已有 `RegenPower`，会保守保留追加搜索；已选路线实际回血也保留追加搜索。变量在主线程完成物化后读取，治疗随从同样可能触发保守回退。这不是完整治疗来源登记或可达收益上界；没有这些元数据的自定义治疗、后续生成的治疗来源，仍可能因玩家战损目标已经达标而少做追加审计。关闭战损达标早停可保留原追加搜索；不改变模拟执行和既有第三方适配合同。
 
 下面这些位置目前是按原版类型写死的开关，第三方登记不进去。要用只能 Harmony 打补丁，或者等
@@ -353,6 +366,11 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 
 | 位置 | 症状 | 状态 |
 |---|---|---|
+| `PredictionCardCallbackAudit.Capture` | 稳定根检查 8 个无参卡牌通知、永久牌组/生成超集和暂时离堆的根所属实例；未知绑定、版本/布局或指定 Tracker 方法补丁使回复消费者退回无限界，Fork 仅共享原因。精确 Tracker 准入复用生命转发门槛，不能解释为其他 UI/未来回调安全 | 封闭拒绝门槛，无外部放行入口 |
+| `PredictionHealthCallbackAudit.Capture` | 稳定根检查生命事件、实际 Tracker 受众和 Ritsu 详情刷新，未知绑定/所检查补丁退回无限回复界；只共享原因，不持有 live 对象。保留原外层准入不是完整回复证书，未来注册和其他信号仍然未证明 | 封闭拒绝门槛，无外部放行入口 |
+| `PredictionPlayerPotionCallbackAudit.Capture` | 用药完成以及指定悬停同步来源在稳定根检查，未知受众、版本/布局、测试委托或依赖补丁拒绝回复剪枝；原版精确回调按已审计身份接纳，Fork 只共享不可变原因。不是所有生命/UI 事件认证，未知语义不自动获得模拟支持 | 封闭回复证明准入，无外部放行入口 |
+| `PredictionRitsuCapabilityAudit.Validate` | 原版模型类型不替代附着行为审计；未审计 Ritsu 版本只撤销有限回复证书，当前/未来规范宿主能力、未知保存条目以及默认构造注入在根/live 拒绝，空宿主/仅注册工厂保留 | 无外部认证入口；精确 Runtime/Shared 契约，仅缓存元数据，不执行未知工厂；其他回调仍然需要独立审计 |
+| `PredictionRitsuHealingAudit.Validate` | 未审计 Ritsu 版本只撤销有限回复证书；原生 Heal 入口只接受已核对的空补丁、精确 Ritsu 治疗前缀或已安装无全局监听器的 Ritsu 运行库，进程级治疗监听器不属于 ModHelper 列表并且未被镜像，非空时根捕获和 live 采用边界明确拒绝。仅缓存元数据，不执行监听器；其他回调仍然需要独立审计 | 封闭语义边界 |
 | `ArrowMirrors` / `ModifyPreBlockDamageTargetMirrors` | v0.113 原版箭 Hook 与格挡前伤害转移采用内部精确登记。箭槽、插箭引用和历史由同一 Fork context 重映射；当前入口按内置模型维护 | 封闭原版登记 |
 | `SimulatedCombatState` 的 `RunModels` 与领域捕获 | 克隆 MultiplayerScalingModel、DreadRunModel、BlitzRunModel 和十二种原版领域，解除 run/combat 引用；第三方类型需提供分支语义和所有权合同 | 封闭原版状态 |
 | `StrategicHpRecoveryBound.CanCertifyRemainingHealingEnvironment` / `RemainingHealingUpperBound` | 只在已审计的原版角色、敌人、卡牌、持续效果、遗物和药水闭包内收紧剩余治疗上界；包括固定Shiv来源、Slither费用随机化及Inky虚弱；敌人集合包含逐项审计的精确SoulNexus，其三个行动与生命周期不授予玩家治疗；另含精确Regent／LouseProgenitor闭包，BurningSticks复制消耗技能的例外仍保守处理。未知来源、附魔／苦难、消耗牌被动与取回来源保守回退无限余量；再生及战后治疗继续计入。第三方语义登记不等于治疗上界证明，没有外部证书注册入口；原战斗模拟支持范围不因此扩大 | 封闭性能证明 |

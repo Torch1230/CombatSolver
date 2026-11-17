@@ -19,6 +19,7 @@ internal static partial class StrategicHpRecoveryBound
     {
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
         return combat.Players.Count == 1 && IsNative(player.Character)
+            && combat.RootHealingCallbackRejection is null
             && combat.Modifiers.Count == 0 && combat.RootHasOnlyNonHealingLoadoutSubscribers
             && !combat.RootHasBaseLibCardModifiers && combat.AdaptedOnPlay is null
             && combat.KnownEnemies.All(enemy => enemy.Monster is { } monster && IsNative(monster))

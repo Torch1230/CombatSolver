@@ -1104,6 +1104,30 @@ internal sealed partial class UnattendedTestRunner
                 await runner.AssertFixedPrefixPotionPolicyAsync(combatState, player);
                 return Observation(combatEnded: false);
             }
+            if (request.ScenarioId == "NATIVE-HEALING-CAPABILITY-BOUNDARY")
+            {
+                runner.SetStage("native_healing_capability_boundary");
+                await runner.AssertNativeHealingCapabilityBoundaryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "NATIVE-HEALING-CALLBACK-BOUNDARY")
+            {
+                runner.SetStage("native_healing_callback_boundary");
+                await runner.AssertNativeHealingCallbackBoundaryAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "HEALTH-CALLBACK-BOUND")
+            {
+                runner.SetStage("health_callback_bound");
+                await runner.AssertHealthCallbackBoundAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+            if (request.ScenarioId == "PLAYER-POTION-CALLBACK-BOUND")
+            {
+                runner.SetStage("player_potion_callback_bound");
+                await runner.AssertPlayerPotionCallbackBoundAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId.StartsWith("REPORT-CARDS-", StringComparison.Ordinal))
             {
                 await runner.AssertReportCardSequenceAsync(combatState, player);

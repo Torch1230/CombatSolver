@@ -78,8 +78,8 @@ internal static class PredictionModPatchAudit
     /// Throws when any card reachable from the captured root has a third-party patch on its mirrored OnPlay.
     /// </summary>
     /// <remarks>
-    /// This is a best-effort boundary: card types that only appear later through in-combat generation are not
-    /// visible at capture time and are not audited here.
+    /// The root caller includes initial cards and the audited native generation
+    /// superset. This does not certify arbitrary extension generation rules.
     /// </remarks>
     public static void ValidateCardOnPlay(IEnumerable<CardModel> cards)
         => CaptureCardOnPlay(cards);

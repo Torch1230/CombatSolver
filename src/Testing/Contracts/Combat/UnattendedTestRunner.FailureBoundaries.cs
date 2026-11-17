@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -195,6 +196,13 @@ internal sealed partial class UnattendedTestRunner
         public override bool ShouldReceiveCombatHooks => true;
     }
 
+    private sealed class HiddenCompletionFieldSubscriber : AbstractModel
+    {
+        // 必须读取 AbstractModel 的真实事件字段，不能被同名派生字段误导。
+        public new Action<AbstractModel>? ExecutionFinished = null;
+        public override bool ShouldReceiveCombatHooks => false;
+    }
+
     private abstract class AbstractSubscriber : AbstractModel
     {
         public override bool ShouldReceiveCombatHooks => false;
@@ -221,6 +229,35 @@ internal sealed partial class UnattendedTestRunner
         PredictionModHookSubscriberInertness.IsCombatInert(typeof(MapOnlyOverCombatBaseSubscriber), out hooks);
         if (hooks != "AfterCardPlayed,AfterMapGenerated")
             throw new InvalidOperationException($"继承的覆写没有被收集：{hooks}");
+
+        AssertInertInstanceAudience(typeof(NoOverrideSubscriber));
+        AssertInertInstanceAudience(typeof(MapOnlySubscriber));
+        AssertInertInstanceAudience(typeof(CombatStartOnlySubscriber));
+        AssertInertInstanceAudience(typeof(HiddenCompletionFieldSubscriber));
+    }
+
+    private static void AssertInertInstanceAudience(Type type)
+    {
+        // 这些实例只用于读取事件字段；不调用 ModelDb 构造链或挂载真实战斗。
+        AbstractModel subscriber = (AbstractModel)RuntimeHelpers.GetUninitializedObject(type);
+        if (!PredictionModHookSubscriberInertness.IsCombatInert(subscriber, out _))
+            throw new InvalidOperationException($"空完成事件受众的订阅器被拒绝：{type.Name}。");
+        int calls = 0;
+        void Completed(AbstractModel _) => calls++;
+        subscriber.ExecutionFinished += Completed;
+        try
+        {
+            if (!PredictionModHookSubscriberInertness.IsCombatInert(type, out _)
+                || PredictionModHookSubscriberInertness.IsCombatInert(subscriber, out _)
+                || calls != 0)
+                throw new InvalidOperationException($"完成事件受众没有被只读实例门禁拒绝：{type.Name}。");
+        }
+        finally
+        {
+            subscriber.ExecutionFinished -= Completed;
+        }
+        if (!PredictionModHookSubscriberInertness.IsCombatInert(subscriber, out _) || calls != 0)
+            throw new InvalidOperationException($"事件移除后未重新核对实例：{type.Name}。");
     }
 
     private static void AssertInert(Type type, bool expected, string message)

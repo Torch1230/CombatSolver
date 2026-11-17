@@ -20,4 +20,5 @@
 
 ## 下一版本（开发中）
 
+- `SimCreatureState.LoseHp` 将负伤害截断为零，惰性订阅器实例准入额外检查 `AbstractModel.ExecutionFinished`，同时新增 `Player.UsedPotionRemoved`、生命/界面事件、8 项 `CardModel` 通知、`RitsuLib` 治疗监听器以及模型能力宿主的根捕获审计；未审计 `STS2`/`RitsuLib` MVID 只撤销有限回复剪枝证书，不阻断游戏流程，而 `OnPlay` 根审计纳入 `FoolCardPool` 原生战斗生成超集。`tools/testing/run-unattended-test.sh` 将 `source "$script_dir/headless-runtime.sh"` 前移到 `headless_ritsu_compatibility_target` 调用之前。
 - 无头启动器按 RitsuLib manifest 选择不高于游戏版本的最新兼容目标，修复 0.113.1 游戏配合 0.113.0 API 包时被路径检查拒绝的问题。Windows/Linux 同步维护，依赖模块仍由原加载器验证。

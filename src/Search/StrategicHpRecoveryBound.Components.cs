@@ -21,6 +21,10 @@ internal static partial class StrategicHpRecoveryBound
     // Component certificate pinned to the audited installed native assembly. Every
     // component below has an explicit review; assembly membership is never sufficient.
     private static readonly Guid ComponentAuditMvid = new("ad562b4e-7352-4ca2-ae45-0ff44cd284bc");
+    private static readonly Guid ComponentAuditHotfixMvid = new("101ed96a-a88b-482f-9ea5-9b8f1ad4f4fe");
+
+    internal static bool IsAuditedComponentNativeMvid(Guid mvid)
+        => mvid == ComponentAuditMvid || mvid == ComponentAuditHotfixMvid;
     // Audited in sts2-0.113-healing-audit.json: these sources add enemy attributes,
     // player debuffs and harmful statuses. Generated sources still pass ComponentPower/Card.
     private static readonly FrozenSet<Type> ComponentModeSources = new Type[]
@@ -95,7 +99,10 @@ internal static partial class StrategicHpRecoveryBound
         CombatPredictionSimulator simulator, Player player)
     {
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
-        if (typeof(CardModel).Module.ModuleVersionId != ComponentAuditMvid)
+        if (combat.RootHealingCallbackRejection is { } callbackRejection)
+            return callbackRejection;
+        if (typeof(CardModel).Module.ModuleVersionId != ComponentAuditMvid
+            && typeof(CardModel).Module.ModuleVersionId != ComponentAuditHotfixMvid)
             return "native-version";
         if (combat.Players.Count != 1)
             return "player-count";
@@ -154,6 +161,8 @@ internal static partial class StrategicHpRecoveryBound
         if (simulator.HasPendingChoice)
             return int.MaxValue;
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
+        if (combat.RootHealingCallbackRejection is not null)
+            return int.MaxValue;
         var state = simulator.State.GetPlayerCombatState(player);
         if (combat.KnownEnemies.Count == 0
             || combat.KnownEnemies.Any(enemy => enemy.Monster is null

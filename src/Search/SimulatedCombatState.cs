@@ -80,6 +80,7 @@ internal sealed partial class SimulatedCombatState
     internal bool RootHasOnlyNonHealingLoadoutSubscribers
         => _modHookSubscribers.HasOnlyNonHealingLoadoutSubscribers;
     internal bool RootHasCertifiedNonHealingSubscribers => _modHookSubscribers.HasCertifiedNonHealingSubscribers;
+    internal string? RootHealingCallbackRejection => _modHookSubscribers.HealingCallbackRejection;
     internal bool IsCertifiedNonHealingSubscriberSource(AbstractModel source)
         => _modHookSubscribers.IsCertifiedNonHealingSubscriberSource(source);
     private readonly IReadOnlyDictionary<Player, int> _rootMaxHandSizes;
@@ -261,6 +262,8 @@ internal sealed partial class SimulatedCombatState
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("Live combat state can only be captured on the main thread.");
+        PredictionRitsuCapabilityAudit.Validate();
+        PredictionRitsuHealingAudit.Validate();
         _runState = inner.RunState;
         Rules = CombatRulesSnapshot.Capture(inner);
         _runRngSnapshot = inner.RunState.Rng.ToSerializable();
@@ -400,7 +403,8 @@ internal sealed partial class SimulatedCombatState
             ?? throw new InvalidOperationException("Combat prediction requires a concrete RunState.");
         _modHookSubscribers = PredictionModHookSubscriberCapture.Capture(
             concreteRunState,
-            inner);
+            inner,
+            _rootFloatingCards);
         _rootMaxHandSizes = _modHookSubscribers.MaxHandSizes;
         int standardCombatListenerCount =
             liveCombatHookListeners.Length - _modHookSubscribers.CombatSubscribers.Length;
