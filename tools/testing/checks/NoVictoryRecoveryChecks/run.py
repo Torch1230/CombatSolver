@@ -16,7 +16,7 @@ def method(path, declaration):
         end += 1
     return text[start:end]
 source = root / 'src/Search/CombatSearchCoordinator.FailureRecovery.cs'
-methods = [method(source, '    internal static SolverResult EscalateSearchWhenNoVictory('),
+methods = [method(source, '    internal static SearchPassResult EscalateSearchWhenNoVictory('),
            method(source, '    internal static SolverSearchProfile? BuildNoVictoryEscalationProfile(')]
 weights = (root / 'src/Search/SolverWeights.cs').read_text(encoding='utf-8')
 constants = [re.search(r'    public const int '+name+r' = [^;]+;', weights)[0] for name in
