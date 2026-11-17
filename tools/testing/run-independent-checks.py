@@ -33,12 +33,45 @@ CHECKS = (
     "TranspositionFrontierChecks",
     "TurnPhaseMirrorChecks",
 )
+EXCLUDED = {
+    "AdaptedOnPlayChecks": "Requires the supported game's Harmony assembly.",
+    "PerformanceRecordingTests": "Requires an output directory or an existing EventPipe trace and a mode.",
+    "PowerAmountComparisonChecks": "Requires game, Godot, Harmony and RitsuLib assemblies.",
+}
+
+
+def validate_catalog(checks_root):
+    discovered = set()
+    for project in checks_root.glob("*/*.csproj"):
+        name = project.parent.name
+        if project.name != name + ".csproj":
+            raise ValueError(f"Unexpected check project layout: {project.relative_to(checks_root)}")
+        discovered.add(name)
+    registered = set(CHECKS) | set(EXCLUDED)
+    unclassified = discovered - registered
+    missing = registered - discovered
+    if unclassified or missing:
+        raise ValueError(
+            "Check catalog differs from checks/*/*.csproj: "
+            f"unclassified={sorted(unclassified)}, missing={sorted(missing)}. "
+            "Add each project to CHECKS or EXCLUDED with a reason."
+        )
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checks", nargs="*", help="Check names to run; defaults to the maintained suite.")
+    parser.add_argument("--check-catalog", action="store_true", help="Validate project registration without running .NET.")
     args = parser.parse_args()
+    try:
+        validate_catalog(ROOT / "tools/testing/checks")
+    except ValueError as error:
+        parser.error(str(error))
+    if args.check_catalog:
+        for name, reason in sorted(EXCLUDED.items()):
+            print(f"EXCLUDED {name}: {reason}")
+        print(f"CHECK_CATALOG registered={len(CHECKS)} excluded={len(EXCLUDED)}")
+        return False
     unknown = set(args.checks) - set(CHECKS)
     if unknown:
         parser.error("Unknown checks: " + ", ".join(sorted(unknown)))
