@@ -4,9 +4,9 @@ Combat Solver 是一个面向《杀戮尖塔 2》单人模式的战斗路线求�
 
 玩家可以只查看建议，也可以让求解器执行当前回合，或连续接管整场战斗。搜索不会修改游戏 RNG，也不会在后台操作真实战斗状态。
 
-**参与开发：** [社区任务入口](https://github.com/Torch1230/CombatSolver/issues/171)按每批五个主题发布故障修复与路线优化任务，每主题一至两个 0.47.x 代表包。[贡献指南](CONTRIBUTING.md)说明整批认领与 PR 流程，[夹具与脚手架指南](docs/community/testing-guide.md)说明差分、包回放与策略实验入口。
+**参与开发：** [社区任务入口](https://github.com/Torch1230/CombatSolver/issues/171)按每批 5 个主题发布故障修复与路线优化任务。每主题 1 至 2 个代表包，版本见各批次说明。[贡献指南](CONTRIBUTING.md)说明整批认领与 PR 流程。[夹具与脚手架指南](docs/community/testing-guide.md)说明差分、包回放与策略实验入口。
 
-当前已发布版本为 **0.48.0**：包含社区修复、复杂战斗优化和原版回血剪枝。详见 [更新日志](docs/releases/0.48.0-RELEASE_NOTES.md)。
+最新客户端与安装包见 [GitHub Release](https://github.com/Torch1230/CombatSolver/releases/latest)，各版本变更见[更新日志目录](docs/releases/README.md)。
 
 **English UI:** Set the game language to English and restart the game. CombatSolver provides a recommended route; use **Play turn** for one turn or **Auto: On** for continuous play. Configure potions, growth and search budgets in the overlay. **Settings > Reports > Upload report** submits a bug report. Logs, raw errors and some detailed diagnostics retain their original text. Single-player only.
 
@@ -78,9 +78,11 @@ if (PreCombatForecastApi.IsAvailable)
 
 运行要求：
 
-- 《杀戮尖塔 2》`0.111.0`
-- [RitsuLib](https://steamcommunity.com/sharedfiles/filedetails/?id=3747602295) `0.6.0` 或更高版本
+- 《杀戮尖塔 2》最低 `0.113.0`
+- [RitsuLib](https://steamcommunity.com/sharedfiles/filedetails/?id=3747602295) 最低 `0.6.11`
 - 单人战斗模式
+
+最低版本以 [CombatSolver.json](CombatSolver.json) 的声明为准。
 
 推荐通过 Steam 创意工坊订阅。使用 GitHub Release 手动安装时，在游戏目录的 `mods/CombatSolver` 下放置以下文件：
 
@@ -139,7 +141,7 @@ THIRD_PARTY_NOTICES.md
 
 Combat Solver 使用受时间、节点和内存预算约束的 Beam Search。它展示的是当前预算内找到的最佳路线，不承诺数学意义上的全局最优解。路线视野没有固定回合数或洗牌次数上限，但循环检测、状态合并和预算终止仍会限制实际搜索范围。
 
-当前目标是覆盖 `0.111.0` 的单人战斗内容。运行时遇到尚未支持的新版本或第三方战斗语义时，求解器会明确停止在不支持边界，不会把未完成模拟误报为胜利。多人模式、局外流程和第三方 Mod 的自定义战斗效果不在通用兼容范围内。
+游戏与依赖版本要求见[安装与兼容性](#安装与兼容性)。运行时遇到尚未支持的新版本或第三方战斗语义时，求解器会明确停止在不支持边界。求解器不会把未完成模拟误报为胜利。多人模式、局外流程和第三方 Mod 的自定义战斗效果不在通用兼容范围内。
 
 详细覆盖情况见 [战斗 Hook 覆盖报告](docs/COMBAT_HOOK_COVERAGE.md) 与 [适配验证记录](docs/ADAPTATION_VERIFICATION.md)。
 

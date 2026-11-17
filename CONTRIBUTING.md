@@ -25,7 +25,9 @@
 
 ## 环境与构建
 
-需要 .NET 9 SDK、正版游戏及对应版本 RitsuLib。当前主线支持游戏 0.111.0、RitsuLib 0.6.0 起。Windows 命令需要 PowerShell 7.4 起；Linux 使用 Bash 入口。分类工具另需 Python 3。
+开发需要 .NET 9 SDK、正版游戏和 RitsuLib。游戏与 RitsuLib 的最低版本见[安装与兼容性](README.md#安装与兼容性)，声明值见 [CombatSolver.json](CombatSolver.json)。
+
+Windows 命令需要 PowerShell 7.4 或更高版本。Linux 使用 Bash 入口。分类工具另需 Python 3。
 
 ```sh
 git clone https://github.com/Torch1230/CombatSolver.git
