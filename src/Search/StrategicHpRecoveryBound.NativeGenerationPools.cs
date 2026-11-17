@@ -8,7 +8,7 @@ internal static partial class StrategicHpRecoveryBound
 {
     internal static bool HasCertifiedNativeNonHealingGenerationPool(CardPoolModel pool)
     {
-        if (typeof(CardModel).Module.ModuleVersionId != ComponentAuditMvid
+        if (!IsAuditedComponentNativeMvid(typeof(CardModel).Module.ModuleVersionId)
             || pool.IsMutable || pool.AllCards is not CardModel[] cards)
             return false;
         foreach (CardModel card in cards)

@@ -1,8 +1,11 @@
 {
   "schemaVersion": 1,
   "gameVersion": "0.113.0",
+  "hotfixVersion": "0.113.1",
   "gameCommit": "16ac0fe3",
+  "hotfixCommit": "d09d48e5",
   "mvid": "ad562b4e-7352-4ca2-ae45-0ff44cd284bc",
+  "hotfixMvid": "101ed96a-a88b-482f-9ea5-9b8f1ad4f4fe",
   "dllSha256": "a6cc282c52b96ad2e01d5692b1144b33aa8e3ba4e969582f648ecb13b2f751d7",
   "scope": "singleplayer-standard-dread-blitz",
   "method": "Native IL health-entry inventory followed by source review of target ownership, callbacks, generation filters and model additions.",

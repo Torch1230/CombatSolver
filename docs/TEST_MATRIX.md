@@ -154,6 +154,16 @@ L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描�
 范围：本轮没有重跑作者长预算全根性能筛查，没有验证低内存玩家宿主、原生整场部署或可见Steam性能；原作者失败与未验证项保留在所属报告。
 
 
+## 完整胜利严格战损见证与已付药水成本下界（2026-11-17）
+
+- 离线宿主单元合同（STS2 `0.113.1` / `RitsuLib 0.6.14`）：`--check-primary-incumbents` `20` 项、`--check-boss-tempo` `12` 项、`--check-early-turn-continuation-bound` `143` 项均 Passed。
+- 原生无头合同（120 秒上限、退出清理隔离实例）：
+  - `POTION-COST-INCUMBENT`（`IRONCLAD` / `NIBBITS_WEAK`，覆盖未付精确层保留以及 `BossTempo` 等 HP／晚回合保留）：`runId` `58e020a137c44e579b82260cd111633d` Passed（`26.71 s`）。
+  - `ZERO-CREDIT-GROWTH-PROOF`（`NECROBINDER` / `FUZZY_WURM_CRAWLER_WEAK`）：`runId` `4d01960c36004369bd7f9e57451e85d0` Passed（`26.45 s`）。
+  - `ZERO-CREDIT-GROWTH-PROOF-REGEN`（`NECROBINDER` / `NIBBITS_WEAK`，`Regen=3` 上界 `6`）：`runId` `367d96f439d049b3a7b276759a11ef69` Passed（`26.75 s`；前次使用 `FUZZY_WURM_CRAWLER_WEAK` 因先手蓄力后继展开超过 `500` 节点未完成而失败）。
+  - `COMPONENT-HEALING-BOUND`（`IRONCLAD` / `FUZZY_WURM_CRAWLER_WEAK`）：`runId` `7904304d5ceb42659a429fc9864ab9a6` Passed（`27.39 s`）。
+- 离线搜索宿主成对 `A1/C1/C2/A2` 哨兵（`Coordinator` / `--use-portfolio` / `High` / `nodes=5000` / `DOP=1`，基线 `main` `78e4545e` 对照当前 PR）：`shared-growth-incumbent-reuse.json` 两侧均为 `63` 展开、`149` 转移、`projectedBattleHpLost=0`、`score=10002274994`（`wallSeconds` 基线 `0.8880/0.9425 s`、候选 `0.8927/0.8993 s`）；`smart-audit-potion-baseline.json` 两侧均为 `19` 展开、`36` 转移、`projectedBattleHpLost=0`、`score=10000899996`（`wallSeconds` 基线 `0.8514/0.8540 s`、候选 `0.9324/0.9187 s`）。本次未重测整场可见 Steam 会话以及原版 4 根问题包全量基准。
+
 ## 性能研究分支
 
 既有组件、药水、魂枢及未达标原型的合同与历史结果见[历史卷18](archive/testing/volume-18.md)。PR #207最新上游整合、逐次ABBA、23根品质回归及NoGC波动/超时限制见[当前验收](performance/pr207-upstream-0494-integration-20261005.md)。

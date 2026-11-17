@@ -7,7 +7,8 @@ internal readonly record struct PrimaryIncumbentBucket(
 internal sealed class PrimaryIncumbentTable
 {
     internal static bool CanShareRoot(CombatRootSnapshot root)
-        => root.CanCertifyRemainingHealing || root.UsesKnownNativeHealingPolicy;
+        => root.CanCertifyRemainingHealing || root.UsesKnownNativeHealingPolicy
+            || root.UsesPruningComponentHealingCertificate;
 
     private readonly Dictionary<PrimaryIncumbentBucket, PrimarySearchIncumbent> _bounds = [];
     internal SolverResult? PotionFreeWitness { get; set; }
@@ -19,6 +20,31 @@ internal sealed class PrimaryIncumbentTable
     {
         lock (_bounds)
             return _bounds.TryGetValue(bucket, out incumbent);
+    }
+
+    // The caller proves zero growth credit and no relic/theft objective. Rewards
+    // can still break HP ties, so this witness is consumed only for strictly worse
+    // HP. Paid potion cost cannot improve on the selected complete route either.
+    internal bool TryGetStrictHpWitness(int stolen, int potions, int paidPotionCost,
+        out PrimarySearchIncumbent incumbent)
+    {
+        incumbent = default;
+        bool found = false;
+        lock (_bounds)
+        {
+            foreach (var entry in _bounds)
+            {
+                if (entry.Key.Stolen != stolen || entry.Key.Potions != potions || entry.Key.RelicMask != 0
+                    || entry.Value.ExplicitPotionStrategicCost is not { } cost || cost > paidPotionCost)
+                    continue;
+                if (!found || entry.Value.StrategicHpDeficit < incumbent.StrategicHpDeficit)
+                {
+                    incumbent = entry.Value;
+                    found = true;
+                }
+            }
+        }
+        return found;
     }
 
     internal bool Tighten(int stolen, int potions, PrimarySearchIncumbent candidate)

@@ -21,6 +21,10 @@ internal static partial class StrategicHpRecoveryBound
     // Component certificate pinned to the audited installed native assembly. Every
     // component below has an explicit review; assembly membership is never sufficient.
     private static readonly Guid ComponentAuditMvid = new("ad562b4e-7352-4ca2-ae45-0ff44cd284bc");
+    private static readonly Guid ComponentAuditHotfixMvid = new("101ed96a-a88b-482f-9ea5-9b8f1ad4f4fe");
+
+    internal static bool IsAuditedComponentNativeMvid(Guid mvid)
+        => mvid == ComponentAuditMvid || mvid == ComponentAuditHotfixMvid;
     // Audited in sts2-0.113-healing-audit.json: these sources add enemy attributes,
     // player debuffs and harmful statuses. Generated sources still pass ComponentPower/Card.
     private static readonly FrozenSet<Type> ComponentModeSources = new Type[]
@@ -67,24 +71,73 @@ internal static partial class StrategicHpRecoveryBound
         typeof(BizarreLamp), typeof(Fertilizer), typeof(WhittlingKnife), typeof(ConductorsBaton),
     }.ToFrozenSet();
 
-    private static bool ComponentInitialCard(CardModel card)
-        => (ComponentInitialCards.Contains(card.GetType())
-                || IronDecimillipedeSafeCards.Contains(card.GetType())
-                || RemainingSafeCards.Contains(card.GetType()))
-            && HasCertifiedRemainingAttachments(card) && !GrowthValues.HasTarget(card);
+    // Reuse the pinned initial-source / native lifecycle proofs. These sources
+    // expand only pruning proof consumption. The original schedule flags remain frozen separately.
+    private static readonly FrozenSet<Type> ReviewedComponentCards = new Type[]
+    {
+        typeof(Alignment), typeof(Arsenal), typeof(Bodyguard), typeof(Bombardment),
+        typeof(BoostAway), typeof(BulkUp), typeof(BundleOfJoy), typeof(Calamity),
+        typeof(Claw), typeof(CollisionCourse), typeof(Comet), typeof(Compact),
+        typeof(CrescentSpear), typeof(Darkness), typeof(DefendDefect), typeof(DefendNecrobinder),
+        typeof(Defy), typeof(Delay), typeof(DevourLife), typeof(Dirge),
+        typeof(DrainPower), typeof(Dredge), typeof(Dualcast), typeof(Entropy),
+        typeof(FranticEscape), typeof(Furnace), typeof(GammaBlast), typeof(GatherLight),
+        typeof(Glimmer), typeof(GuidingStar), typeof(HandOfGreed), typeof(LunarBlast),
+        typeof(Modded), typeof(NecroMastery), typeof(NegativePulse), typeof(NoEscape),
+        typeof(Null), typeof(Orbit), typeof(Overclock), typeof(Pagestorm),
+        typeof(Parse), typeof(PrepTime), typeof(Putrefy), typeof(Quasar),
+        typeof(RefineBlade), typeof(Refract), typeof(Scrape), typeof(SecretWeapon),
+        typeof(SeekingEdge), typeof(Severance), typeof(SharedFate), typeof(SicEm),
+        typeof(SoulStorm), typeof(SpiritOfAsh), typeof(Squeeze), typeof(StrikeDefect),
+        typeof(StrikeNecrobinder), typeof(TheHunt), typeof(Transfigure), typeof(Unleash),
+        typeof(Veilpiercer), typeof(Voltaic), typeof(WroughtInWar), typeof(Zap),
+    }.ToFrozenSet();
 
-    private static bool ComponentRemainingCard(CardModel card)
+    private static readonly FrozenSet<Type> ReviewedComponentRelics = new Type[]
+    {
+        typeof(BoundPhylactery), typeof(BowlerHat), typeof(Bread), typeof(BurningSticks),
+        typeof(CaptainsWheel), typeof(CrackedCore), typeof(GnarledHammer), typeof(HornCleat),
+        typeof(Kusarigama), typeof(LetterOpener), typeof(MembershipCard), typeof(MercuryHourglass),
+        typeof(RainbowRing), typeof(SparklingRouge), typeof(VexingPuzzlebox), typeof(WhiteStar),
+    }.ToFrozenSet();
+
+    private static bool ComponentEnemy(Type type, bool useReviewedSources)
+        => ComponentEnemies.Contains(type) || useReviewedSources && type == typeof(TheInsatiable);
+
+    private static bool ComponentRelic(Type type, bool useReviewedSources)
+        => ComponentRelics.Contains(type) || useReviewedSources && ReviewedComponentRelics.Contains(type);
+
+    private static bool ComponentAttachment(AbstractModel source, bool useReviewedSources)
+        => source.GetType() == typeof(global::MegaCrit.Sts2.Core.Models.Enchantments.Instinct)
+            || useReviewedSources && (source.GetType() == typeof(global::MegaCrit.Sts2.Core.Models.Enchantments.Slither)
+                || source.GetType() == typeof(global::MegaCrit.Sts2.Core.Models.Enchantments.Inky)
+                || source.GetType() == typeof(global::MegaCrit.Sts2.Core.Models.Afflictions.Tainted));
+
+    private static bool ComponentInitialCard(CardModel card, bool useReviewedSources = false)
         => (ComponentInitialCards.Contains(card.GetType())
                 || IronDecimillipedeSafeCards.Contains(card.GetType())
                 || RemainingSafeCards.Contains(card.GetType())
-                || NativeNonHealingGeneratedCards.Contains(card.GetType()))
-            && HasCertifiedRemainingAttachments(card) && !GrowthValues.HasTarget(card);
+                || useReviewedSources && ReviewedComponentCards.Contains(card.GetType()))
+            && HasCertifiedRemainingAttachments(card) && (!GrowthValues.HasTarget(card)
+                || useReviewedSources && card.GetType() is var growthType
+                    && (growthType == typeof(HandOfGreed) || growthType == typeof(TheHunt)));
+
+    private static bool ComponentRemainingCard(CardModel card, bool useReviewedSources = false)
+        => (ComponentInitialCards.Contains(card.GetType())
+                || IronDecimillipedeSafeCards.Contains(card.GetType())
+                || RemainingSafeCards.Contains(card.GetType())
+                || NativeNonHealingGeneratedCards.Contains(card.GetType())
+                || useReviewedSources && ReviewedComponentCards.Contains(card.GetType()))
+            && HasCertifiedRemainingAttachments(card) && (!GrowthValues.HasTarget(card)
+                || useReviewedSources && card.GetType() is var growthType
+                    && (growthType == typeof(HandOfGreed) || growthType == typeof(TheHunt)));
 
     private static bool ComponentPotion(Type type)
         => type == typeof(RegenPotion) || NativeZeroRecoveryPotions.Contains(type);
 
-    private static bool ComponentPower(Type type)
+    private static bool ComponentPower(Type type, bool useReviewedSources = false)
         => type == typeof(RegenPower) || type == typeof(ReattachPower)
+            || useReviewedSources && (type == typeof(SandpitPower) || type == typeof(TheHuntPower))
             || RemainingSafePowers.Contains(type) || NativeNonHealingGeneratedPowers.Contains(type)
             || NativeLouseClosure.Powers.Contains(type) || NativePotionZeroRecoveryPowers.Contains(type);
 
@@ -92,10 +145,23 @@ internal static partial class StrategicHpRecoveryBound
     // checked independently: an unknown source cannot disappear into Exhaust and
     // thereby turn an uncertified root into a certified one.
     internal static string? ComponentHealingRejection(
-        CombatPredictionSimulator simulator, Player player)
+        CombatPredictionSimulator simulator, Player player, bool useReviewedSources = false)
+    {
+        string? rejected = ComponentRootSourceRejection(simulator, player, useReviewedSources);
+        if (rejected is not null)
+            return rejected;
+        return ComponentHealingUpperBound(simulator, player, 0, useReviewedSources: useReviewedSources) == int.MaxValue
+            ? "branch-component" : null;
+    }
+
+    // This source review certifies recovery only; it is not a proof that native
+    // inventory events or UI completion callbacks cannot replenish potion slots.
+    internal static string? ComponentRootSourceRejection(
+        CombatPredictionSimulator simulator, Player player, bool useReviewedSources = false)
     {
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
-        if (typeof(CardModel).Module.ModuleVersionId != ComponentAuditMvid)
+        if (typeof(CardModel).Module.ModuleVersionId != ComponentAuditMvid
+            && typeof(CardModel).Module.ModuleVersionId != ComponentAuditHotfixMvid)
             return "native-version";
         if (combat.Players.Count != 1)
             return "player-count";
@@ -111,18 +177,21 @@ internal static partial class StrategicHpRecoveryBound
             return "extension";
         var state = simulator.State.GetPlayerCombatState(player);
         foreach (PredictedCard card in state.AllCards.Concat(combat.PendingReturningCards))
-            if (!ComponentInitialCard(card.Preview))
+            if (!ComponentInitialCard(card.Preview, useReviewedSources))
                 return "initial-card:" + card.Preview.GetType().Name;
         bool RootSource(AbstractModel source)
             => source switch
             {
-                CardModel card => ComponentInitialCard(card),
-                RelicModel relic => ComponentRelics.Contains(relic.GetType()),
-                PowerModel power => ComponentPower(power.GetType()),
-                MonsterModel monster => ComponentEnemies.Contains(monster.GetType()),
+                CardModel card => ComponentInitialCard(card, useReviewedSources),
+                RelicModel relic => ComponentRelic(relic.GetType(), useReviewedSources),
+                PowerModel power => ComponentPower(power.GetType(), useReviewedSources),
+                MonsterModel monster => ComponentEnemy(monster.GetType(), useReviewedSources)
+                    || useReviewedSources && monster.GetType() == typeof(Osty)
+                        && combat.Allies.Any(ally => ReferenceEquals(ally, monster.Creature)
+                            && ReferenceEquals(ally.PetOwner, player)),
                 PotionModel potion => ComponentPotion(potion.GetType()),
                 _ => combat.IsCertifiedNonHealingSubscriberSource(source)
-                    || source.GetType() == typeof(global::MegaCrit.Sts2.Core.Models.Enchantments.Instinct)
+                    || ComponentAttachment(source, useReviewedSources)
                     || source.GetType() == typeof(CccComboModel)
                     || source.GetType() == typeof(DebufferModel)
                     || source.GetType() == typeof(MultiplayerScalingModel)
@@ -141,15 +210,15 @@ internal static partial class StrategicHpRecoveryBound
             || !HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<StatusCardPool>())
             || !HasCertifiedNativeNonHealingGenerationPool(ModelDb.CardPool<CurseCardPool>()))
             return "generation-pool";
-        return ComponentHealingUpperBound(simulator, player, 0) == int.MaxValue
-            ? "branch-component" : null;
+        return null;
     }
 
     internal static int ComponentHealingUpperBound(
         CombatPredictionSimulator simulator, Player player, int postCombatHeal,
         bool includePotionHealing = true, int? maximumExplicitPotionUses = null,
         PotionStrategySnapshot? potionStrategy = null,
-        SolverPotionPolicy effectivePotionPolicy = SolverPotionPolicy.Smart)
+        SolverPotionPolicy effectivePotionPolicy = SolverPotionPolicy.Smart,
+        bool useReviewedSources = false)
     {
         if (simulator.HasPendingChoice)
             return int.MaxValue;
@@ -157,11 +226,12 @@ internal static partial class StrategicHpRecoveryBound
         var state = simulator.State.GetPlayerCombatState(player);
         if (combat.KnownEnemies.Count == 0
             || combat.KnownEnemies.Any(enemy => enemy.Monster is null
-                || !ComponentEnemies.Contains(enemy.Monster.GetType()))
-            || combat.RelicsOf(player).Any(relic => !ComponentRelics.Contains(relic.GetType()))
-            || state.AllCards.Any(card => !ComponentRemainingCard(card.Preview))
-            || combat.PendingReturningCards.Any(card => !ComponentRemainingCard(card.Preview))
-            || combat.Allies.Any(ally => ally.Player is null && ally.Monster?.GetType() != typeof(Osty))
+                || !ComponentEnemy(enemy.Monster.GetType(), useReviewedSources))
+            || combat.RelicsOf(player).Any(relic => !ComponentRelic(relic.GetType(), useReviewedSources))
+            || state.AllCards.Any(card => !ComponentRemainingCard(card.Preview, useReviewedSources))
+            || combat.PendingReturningCards.Any(card => !ComponentRemainingCard(card.Preview, useReviewedSources))
+            || combat.Allies.Any(ally => ally.Player is null && (ally.Monster?.GetType() != typeof(Osty)
+                || useReviewedSources && !ReferenceEquals(ally.PetOwner, player)))
             || state.OrbQueue.Orbs.Any(orb => orb.GetType() != typeof(LightningOrb)
                 && orb.GetType() != typeof(FrostOrb) && orb.GetType() != typeof(DarkOrb)
                 && orb.GetType() != typeof(PlasmaOrb) && orb.GetType() != typeof(GlassOrb)))
@@ -170,7 +240,14 @@ internal static partial class StrategicHpRecoveryBound
         foreach (PowerModel power in combat.EffectivePowers())
         {
             Type type = power.GetType();
-            if (!ComponentPower(type))
+            if (!ComponentPower(type, useReviewedSources))
+                return int.MaxValue;
+            if (useReviewedSources && (type == typeof(SpeedPotionPower)
+                    && !ReferenceEquals(power.Owner, player.Creature)
+                || type == typeof(ShacklingPotionPower) && !combat.KnownEnemies.Contains(power.Owner)
+                || type == typeof(SandpitPower) && (!combat.KnownEnemies.Contains(power.Owner)
+                    || power.Owner.Monster?.GetType() != typeof(TheInsatiable)
+                    || !ReferenceEquals(power.Target, player.Creature))))
                 return int.MaxValue;
             if (type == typeof(RegenPower) && ReferenceEquals(power.Owner, player.Creature))
                 regen += Math.Max(0, power.Amount);

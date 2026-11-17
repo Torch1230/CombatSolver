@@ -154,9 +154,31 @@ internal sealed partial class CombatBeamSolver
         bool zeroCostPruned = zero.ApplyPrimaryIncumbentBound([zeroPartial]).Count == 0;
         var exactFloor = Member(policy with { DisableSharedPrimaryIncumbentsForTesting = true });
         if (!exactFloor.TightenPrimarySearchIncumbentAtTurnLayer([CheapWinner], 0)
-            || exactFloor.ApplyPrimaryIncumbentBound([zeroPartial]).Count != 0
+            || exactFloor.ApplyPrimaryIncumbentBound([zeroPartial]).Count != 1
             || expensive.ApplyPrimaryIncumbentBound([zeroPartial]).Count != 1)
-            throw new InvalidOperationException("Exact layer must charge its remaining mandatory use at the frozen minimum cost, while retaining cheaper-than-witness prefixes.");
+            throw new InvalidOperationException("Unpaid exact-layer prefixes must remain: initial bottle prices do not prove unavoidable future potion cost.");
+        SearchNode lateExpensive = late.CostRouteForTesting(0, out SearchNode lateExpensivePartial, laterTurn: true);
+        if (!lateExpensive.IsTerminal || lateExpensive.PotionStrategicCost != ExpensiveWinner.PotionStrategicCost)
+            throw new InvalidOperationException("Late equal-cost fixture did not complete.");
+        if (expensive.ApplyPrimaryIncumbentBound([lateExpensivePartial]).Count != 0
+            || cheap.ApplyPrimaryIncumbentBound([lateExpensivePartial]).Count != 0)
+            throw new InvalidOperationException("Non-BossTempo search unexpectedly kept equal-HP equal-cost later turn.");
+        var bossPreserve = Member(policy with { PreserveBossTempoHpTies = true });
+        var bossSearch = Member(policy with { BossTempoSearch = new(3) });
+        var bossLocalPreserve = Member(policy with { PrimaryIncumbents = new(), PreserveBossTempoHpTies = true });
+        var bossLocalSearch = Member(policy with { PrimaryIncumbents = new(), BossTempoSearch = new(3) });
+        if (!bossLocalPreserve.TightenPrimarySearchIncumbentAtTurnLayer([ExpensiveWinner], 0)
+            || !bossLocalSearch.TightenPrimarySearchIncumbentAtTurnLayer([ExpensiveWinner], 0)
+            || bossPreserve.ApplyPrimaryIncumbentBound([expensivePartial]).Count != 1
+            || bossPreserve.ApplyPrimaryIncumbentBound([lateExpensivePartial]).Count != 1
+            || bossLocalPreserve.ApplyPrimaryIncumbentBound([expensivePartial]).Count != 1
+            || bossLocalPreserve.ApplyPrimaryIncumbentBound([lateExpensivePartial]).Count != 1
+            || bossSearch.ApplyPrimaryIncumbentBound([expensivePartial]).Count != 1
+            || bossSearch.ApplyPrimaryIncumbentBound([lateExpensivePartial]).Count != 1
+            || bossLocalSearch.ApplyPrimaryIncumbentBound([expensivePartial]).Count != 1
+            || bossLocalSearch.ApplyPrimaryIncumbentBound([lateExpensivePartial]).Count != 1
+            || !ShouldPruneByPrimaryIncumbent(1, 1, new(0, 1), allowTurnTieBound: false, pruneEqualHp: false))
+            throw new InvalidOperationException("BossTempo equal-HP / turn-tie preservation regressed.");
         if (!sameCostPruned || !missingCostKept || !zeroCostPruned)
             throw new InvalidOperationException($"Potion-cost guard failed: same={sameCostPruned} unknown={missingCostKept} zero={zeroCostPruned}.");
         return new(cheapPartial, ExpensiveWinner.PotionStrategicCost, CheapWinner.PotionStrategicCost,
