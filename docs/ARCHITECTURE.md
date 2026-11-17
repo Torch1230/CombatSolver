@@ -86,6 +86,10 @@ Smart 药水梯度在主成员耗尽时间时拥有一个独立成员时间：�
 | `MethodMirrorRegistryDescriptor` | 向 CoverageCatalog 暴露 registry 支持元数据 |
 | `src/Prediction/` | 怪物 AI、隐藏状态、生命周期、死亡/召唤、选择与 subscriber 捕获 |
 
+`SimulatedCombatState` 分别持有完整原生监听序列与镜像专用派生视图。已登记卡牌非空时，镜像构造可沿现有不可变类型位图直接省略参与位图为零的卡牌、附魔、苦难与球，保留参与者身份、重复与顺序；完整列表容量预扫描仍限于至少 `256` 张。主线程根检查 `0.113.0` / `0.113.1` 原生模块身份以及相关 getter 无 Harmony 补丁，并通过 `LiveCombatStamp` / `ContinuationStamp` 使根后安装的 getter 或基 Hook 补丁立即淘汰旧路线；不透明成员、缺少 Power 插入锚点或校验模式保留完整构造。
+
+`SimCardPile` 在上述路径缓存单份有序的潜在接收者索引，Fork 共享不可变索引并通过当前分支包裹与预览解析模型；非空索引在成员增删、可写预览、结构完成通知或所属变更时失效，空索引在分支内最多追踪两张待复验卡（Fork 经同一上下文 `RequireRemap`），第三张变化或存在不透明/别名包裹时回退完整扫描。该索引属于可丢弃派生数据，不进入战斗指纹或续用文本。
+
 每项战斗语义只有一个权威结算实现。可变值由根快照、影子状态、克隆 Model 或 `PredictionStateStore` 持有。一次 Fork 共用 `PredictionForkContext`，引用随同一上下文重映射；COW 取得可写所有者后再写。
 
 `SteamEruptionPower.AfterDeath` 通过死亡 Hook 将洪流巨人切入无限生命阶段；复活个体在 Hook 完成后清理死亡 Power，攻击尾部继续插箭和施加减益。外层死亡清扫消费该阶段的结果。手动选牌续接在复制战斗状态前调用 `PrepareExecutionCardPlay`，使正在执行卡牌、`CardPlay` 与 Power 内引用沿同一个 Fork context 重映射。

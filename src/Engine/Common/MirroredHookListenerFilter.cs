@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models;
@@ -11,6 +13,32 @@ namespace CombatSolver.Engine.Common;
 // always retain the original dispatch path.
 internal sealed class MirroredHookListenerFilter(bool enabled)
 {
+    // The projection removes the complete-list capacity pass and repeated getter reads.
+    // These exact native getters are field reads in the audited game DLLs. Unknown game
+    // bodies or getter patches may observe those reads, so retain the complete producer.
+    private static readonly Guid AuditedCardGetterMvid = new("ad562b4e-7352-4ca2-ae45-0ff44cd284bc");
+    private static readonly Guid AuditedCardGetterHotfixMvid = new("101ed96a-a88b-482f-9ea5-9b8f1ad4f4fe");
+
+    internal static bool IsAuditedCardGetterModule(Guid mvid)
+        => mvid == AuditedCardGetterMvid || mvid == AuditedCardGetterHotfixMvid;
+
+    private static readonly MethodInfo[] ProjectionReadMethods =
+    [
+        typeof(CardModel).GetProperty(nameof(CardModel.HasBeenRemovedFromState))!.GetMethod!,
+        typeof(CardModel).GetProperty(nameof(CardModel.Affliction))!.GetMethod!,
+        typeof(CardModel).GetProperty(nameof(CardModel.Enchantment))!.GetMethod!,
+        typeof(PredictedCard).GetProperty(nameof(PredictedCard.Preview))!.GetMethod!,
+        typeof(PredictedCard).GetProperty(nameof(PredictedCard.OwnerPile),
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetMethod!,
+    ];
+
+    private readonly bool _projectionReadsArePure =
+        IsAuditedCardGetterModule(typeof(CardModel).Module.ModuleVersionId)
+        && !ProjectionReadMethods.Any(method =>
+            Harmony.GetPatchInfo(method) is { } patches && patches.Owners.Count != 0);
+
+    internal string? CapturedPatchStamp { get; } = CaptureLivePatchStamp();
+
     // This filter belongs to one captured root. Only immutable runtime-type layouts
     // cross branches; receiver models remain exclusively in each returned snapshot.
     // A direct-mapped table has bounded retention and needs no worker-side lock.
@@ -151,6 +179,64 @@ internal sealed class MirroredHookListenerFilter(bool enabled)
     internal static MirroredHookListenerFilter Capture()
         => new(!BaseHooks.Append(NativeKeywordHook).Any(method =>
             Harmony.GetPatchInfo(method) is { } patches && patches.Owners.Count != 0));
+
+    internal static string? CaptureLivePatchStamp()
+    {
+        StringBuilder? text = null;
+        foreach (MethodInfo method in BaseHooks.Append(NativeKeywordHook).Concat(ProjectionReadMethods))
+        {
+            if (Harmony.GetPatchInfo(method) is not { } patches || patches.Owners.Count == 0)
+                continue;
+            text ??= new StringBuilder();
+            text.Append(method.DeclaringType?.FullName).Append('.').Append(method.Name).Append('=');
+            AppendPatchGroup(text, 'P', patches.Prefixes);
+            AppendPatchGroup(text, 'X', patches.Postfixes);
+            AppendPatchGroup(text, 'T', patches.Transpilers);
+            AppendPatchGroup(text, 'F', patches.Finalizers);
+            text.Append(';');
+        }
+        return text is null
+            ? null
+            : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
+    }
+
+    private static void AppendPatchGroup(StringBuilder text, char kind, IEnumerable<Patch> group)
+    {
+        foreach (Patch patch in group
+                     .OrderBy(static patch => patch.priority)
+                     .ThenBy(static patch => patch.owner, StringComparer.Ordinal))
+        {
+            text.Append(kind).Append(':').Append(patch.owner).Append(':')
+                .Append(patch.PatchMethod.DeclaringType?.FullName).Append('.')
+                .Append(patch.PatchMethod.Name).Append(',');
+        }
+    }
+
+    internal bool CanProjectReceivers => enabled && _projectionReadsArePure;
+
+    internal bool HasMirroredCallbacks(AbstractModel receiver)
+        => !enabled || MaskFor(receiver.GetType()) != 0;
+
+    internal void VerifyProjectedReceivers(
+        IReadOnlyList<AbstractModel> complete,
+        IReadOnlyList<AbstractModel> projected)
+    {
+        int next = 0;
+        for (int index = 0; index < complete.Count; index++)
+        {
+            AbstractModel receiver = complete[index];
+            if (!HasMirroredCallbacks(receiver))
+                continue;
+            while (next < projected.Count && !HasMirroredCallbacks(projected[next]))
+                next++;
+            if (next == projected.Count || !ReferenceEquals(receiver, projected[next++]))
+                throw new InvalidOperationException("Projected hook receivers changed identity or order.");
+        }
+        while (next < projected.Count && !HasMirroredCallbacks(projected[next]))
+            next++;
+        if (next != projected.Count)
+            throw new InvalidOperationException("Projected hook receivers added an unexpected listener.");
+    }
 
     internal IReadOnlyList<AbstractModel> Filter(
         IReadOnlyList<AbstractModel> source,

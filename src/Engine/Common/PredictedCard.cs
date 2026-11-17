@@ -118,7 +118,7 @@ internal sealed class PredictedCard
     {
         get
         {
-            _ownerPile?.InvalidateFingerprint();
+            _ownerPile?.InvalidateCardFingerprint(this);
             if (_observeEveryPreviewMutation)
                 NotifyHookListenerStructureChanged();
             CardModel? preview = _previewStorage.Preview;
@@ -251,16 +251,26 @@ internal sealed class PredictedCard
 
     internal void InvalidateCaches()
     {
-        _ownerPile?.InvalidateFingerprint();
+        _ownerPile?.InvalidateCardFingerprint(this);
         _previewStorage.InvalidateCaches();
     }
 
-    internal void SetOwnerPile(SimCardPile? pile)
+    internal void SetOwnerPile(SimCardPile? pile, SimCardPile? membershipChangedPile = null)
     {
+        if (!ReferenceEquals(_ownerPile, pile))
+        {
+            if (_ownerPile is not null && ReferenceEquals(_ownerPile, membershipChangedPile))
+                _ownerPile.InvalidateMembershipStateFingerprints();
+            else
+                _ownerPile?.InvalidateFingerprint();
+        }
         _ownerPile = pile;
         if (_isolateAttachedModelsOnFork || DupeSource is not null)
             pile?.DisableFingerprintCache();
-        NotifyHookListenerStructureChanged();
+        if (ReferenceEquals(pile, membershipChangedPile))
+            _mutationObserver?.Invoke();
+        else
+            NotifyHookListenerStructureChanged();
     }
 
     internal void SetMutationObserver(Action? observer, bool observeEveryPreviewMutation = false)
@@ -284,6 +294,9 @@ internal sealed class PredictedCard
     // conservative per-access invalidation policy while such modifiers are present.
     internal void NotifyHookListenerStructureChanged()
     {
+        // A nested query can refill an empty projection before attachment writes
+        // finish. Mark this card again so the completed structure is rechecked.
+        _ownerPile?.InvalidateHookCardProjection(this);
         _mutationObserver?.Invoke();
     }
 

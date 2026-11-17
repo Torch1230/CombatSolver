@@ -20,4 +20,5 @@
 
 ## 下一版本（开发中）
 
+- `MirroredHookListenerFilter` 支持直接构造镜像监听后缀并通过 `SimCardPile` 维护潜在接收者索引，同时保留基类/getter 补丁以及多牌堆回退门控。
 - 无头启动器按 RitsuLib manifest 选择不高于游戏版本的最新兼容目标，修复 0.113.1 游戏配合 0.113.0 API 包时被路径检查拒绝的问题。Windows/Linux 同步维护，依赖模块仍由原加载器验证。

@@ -154,6 +154,13 @@ L0：原生回复审计工具迁入tools/inspection后构建和真实DLL扫描�
 范围：本轮没有重跑作者长预算全根性能筛查，没有验证低内存玩家宿主、原生整场部署或可见Steam性能；原作者失败与未验证项保留在所属报告。
 
 
+## 镜像监听后缀投影与牌堆接收者索引（2026-11-17）
+
+- 原生合同 `MIRRORED-HOOK-FILTER`（STS2 `0.113.1` / `IRONCLAD` / `FUZZY_WURM_CRAWLER_WEAK`，同步补齐 `MirroredHookMask.AdditionalCallbacks` / `ShouldTakeExtraTurnEarly` 等位 `1UL << 63` 合同方法名列表后运行，120 秒上限、退出清理隔离实例）：
+  - 常规模式：`runId` `fb38742ce33f46db9e434707da1b3057` Passed（`30.60 s`，`ProjectedBuilds=7`、`Comparisons=9`、`PileCacheChecks=22`、`EmptyRecheckChecks=58`、`GetterPatchFallbackAndLiveStampInvalidation`）。
+  - 双轨验证模式（`COMBATSOLVER_VERIFY_FAST_LANES=1`）：`runId` `aeea9c5e409b43308423453c1af396b7` Passed（`29.96 s`，`ProjectedBuilds=0`、`Comparisons=9`）。
+- 离线搜索宿主成对 `A1/C1/C2/A2` 哨兵（`High` 宽度组合 5000 节点 `beta-standard-fool-hooks.json` 与 `VeryHigh` Beam 54 / 1500 节点 396 牌大牌组）：`compare_results.py` 在 `A1 vs C1` 与 `A2 vs C2` 共 `175` 项根戳记、工作量以及选中路线字段上逐字段一致（`mismatched_roots=0`；`fool-hooks` 均值为 `247` 展开、`882` 转移、`projectedBattleHpLost=0`、`wallSeconds` 基线 `0.9759/0.9597 s` 对比候选 `0.9712/0.9661 s`，峰值托管堆由 `26.85/27.05 MB` 降至 `25.31/25.03 MB`）。可见 Steam 帧时间未在本轮重测。
+
 ## 性能研究分支
 
 既有组件、药水、魂枢及未达标原型的合同与历史结果见[历史卷18](archive/testing/volume-18.md)。PR #207最新上游整合、逐次ABBA、23根品质回归及NoGC波动/超时限制见[当前验收](performance/pr207-upstream-0494-integration-20261005.md)。

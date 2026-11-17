@@ -353,6 +353,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 
 | 位置 | 症状 | 状态 |
 |---|---|---|
+| `MirroredHookListenerFilter.CanProjectReceivers` / `SimulatedCombatState.TryBuildProjectedHookListeners` | 镜像专用监听表省略既有参与位图为零的后缀成员，完整原生表保持。准入核对已审计游戏 `0.113.0` / `0.113.1` MVID 以及字段/Preview getter 的无补丁状态；基 Hook、原生关键字 Hook 或相关 getter 安装 Harmony 补丁时通过 `LiveCombatStamp` 失效旧路线并回退完整构造，不透明 `CardModifier` 与外部/动态类型保守保留 | 封闭性能特化 |
 | `ArrowMirrors` / `ModifyPreBlockDamageTargetMirrors` | v0.113 原版箭 Hook 与格挡前伤害转移采用内部精确登记。箭槽、插箭引用和历史由同一 Fork context 重映射；当前入口按内置模型维护 | 封闭原版登记 |
 | `SimulatedCombatState` 的 `RunModels` 与领域捕获 | 克隆 MultiplayerScalingModel、DreadRunModel、BlitzRunModel 和十二种原版领域，解除 run/combat 引用；第三方类型需提供分支语义和所有权合同 | 封闭原版状态 |
 | `StrategicHpRecoveryBound.CanCertifyRemainingHealingEnvironment` / `RemainingHealingUpperBound` | 只在已审计的原版角色、敌人、卡牌、持续效果、遗物和药水闭包内收紧剩余治疗上界；包括固定Shiv来源、Slither费用随机化及Inky虚弱；敌人集合包含逐项审计的精确SoulNexus，其三个行动与生命周期不授予玩家治疗；另含精确Regent／LouseProgenitor闭包，BurningSticks复制消耗技能的例外仍保守处理。未知来源、附魔／苦难、消耗牌被动与取回来源保守回退无限余量；再生及战后治疗继续计入。第三方语义登记不等于治疗上界证明，没有外部证书注册入口；原战斗模拟支持范围不因此扩大 | 封闭性能证明 |
