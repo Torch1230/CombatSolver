@@ -38,6 +38,8 @@ Coding agent 运行无头游戏测试时必须加 `-CleanupInstanceOnExit`，Bas
 
 默认 DLL 来自本 worktree 的 Release 产物、manifest 来自仓库根；`--combat-solver-build-dir` / `-CombatSolverBuildDir` 可以指定包含 DLL 和 manifest 的冻结构建目录（Windows 还需要该构建的 MemoryCleaner）。其他游戏文件和 Mod 从指定源游戏复制，RitsuLib 从指定依赖路径复制；完整内容身份参与复用判断。构建、依赖或源游戏变化时，只停本实例精确认领的旧游戏，再发布新快照。Linux 优先 reflink；旧游戏快照移动到实例内 retired 目录，保留可回收证据，不自动删除用户目录。
 
+RitsuLib 多版本包的预检查与依赖加载器一致：从 manifest 选择不高于游戏版本的最新 API 目标。因此游戏 0.113.1 可以选择包内的 0.113.0 目标。没有可用目标或选中模块缺失时仍拒绝启动；实际程序集由 RitsuLib 加载器验证。
+
 ## 排队、复用与资源
 
 - 默认 `exclusive`：等待其他已登记实例退出；`parallel` 显式启用，当前最多同时两个游戏。队列超时默认 120 秒，与实际场景的超时分开。

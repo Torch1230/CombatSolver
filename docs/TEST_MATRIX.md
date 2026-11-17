@@ -1,5 +1,11 @@
 # CombatSolver 测试入口
 
+## RitsuLib 无头兼容目标
+
+`pwsh -NoProfile -File tools/testing/test-headless-runtime.ps1 -RitsuOnly` 和 `bash tools/testing/test-headless-runtime.sh --ritsu-only` 覆盖精确版本、补丁升级、最新目标、数字版本排序、全为未来目标、重复及非法目标。
+
+2026-11-15，PowerShell 与 Windows Git Bash 均通过 8 项定向检查。原生启动器已在游戏 0.113.1 / RitsuLib 0.6.13 环境完成 `UI-PRIORITY-FEEDBACK`，结果 Passed，25.46 秒，隔离实例已清理。Linux 系统上的完整启动未验证。
+
 ## 0.51.5 结算顺序与运行时交接
 
 定向原生差分、第二回合续用、便携 GC 合同及未验证项见[历史卷 28](archive/testing/volume-28.md#0515-结算顺序与运行时交接)。

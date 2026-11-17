@@ -403,7 +403,11 @@ if (-not $StopInstance -and -not $ReuseOnly) {
 $ritsuLegacyDll = Join-Path $resolvedRitsuWorkshopRoot "lib\$gameVersion\STS2-RitsuLib.dll"
 $ritsuBundleDll = Join-Path $resolvedRitsuWorkshopRoot "STS2-RitsuLib.dll"
 $ritsuBundleIndex = Join-Path $resolvedRitsuWorkshopRoot "ritsulib-variants.manifest"
-$ritsuBundleRuntime = Join-Path $resolvedRitsuWorkshopRoot "compat\$gameVersion\STS2-RitsuLib.Runtime.dll"
+$ritsuCompatibilityTarget = $gameVersion
+if (-not $StopInstance -and -not $ReuseOnly -and (Test-Path -LiteralPath $ritsuBundleIndex -PathType Leaf)) {
+    $ritsuCompatibilityTarget = Get-HeadlessRitsuCompatibilityTarget $ritsuBundleIndex $gameVersion
+}
+$ritsuBundleRuntime = Join-Path $resolvedRitsuWorkshopRoot "compat\$ritsuCompatibilityTarget\STS2-RitsuLib.Runtime.dll"
 $ritsuBundleShared = Join-Path $resolvedRitsuWorkshopRoot "shared\STS2-RitsuLib.Shared.dll"
 $ritsuManifestSource = Join-Path $resolvedRitsuWorkshopRoot "mod_manifest.json"
 $headlessDependencyDir = Join-Path $gameModsRoot ".combatsolver-headless-ritsulib"

@@ -159,6 +159,27 @@ function Initialize-HeadlessRuntimeOwner([hashtable]$Context) {
     }
 }
 
+function Get-HeadlessRitsuCompatibilityTarget([string]$ManifestPath, [string]$GameVersion) {
+    # Match RitsuLib's loader: newest declared API target no newer than the host.
+    $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    $variants = @($manifest.variants)
+    if ($manifest.schema -ne 2 -or $variants.Count -lt 1 -or $variants.Count -gt 64) {
+        throw 'Invalid RitsuLib compatibility manifest.'
+    }
+    $targets = [Collections.Generic.HashSet[version]]::new()
+    foreach ($variant in $variants) {
+        $target = [string]$variant.compatTarget
+        $parsed = $null
+        if (-not [version]::TryParse($target, [ref]$parsed) -or $parsed.Build -lt 0 -or
+            $parsed.Revision -ge 0 -or $parsed.ToString() -cne $target -or -not $targets.Add($parsed)) {
+            throw "Invalid or duplicate RitsuLib compatibility target: $target"
+        }
+    }
+    $selected = $targets | Where-Object { $_ -le [version]$GameVersion } | Sort-Object -Descending | Select-Object -First 1
+    if ($null -eq $selected) { throw "This RitsuLib bundle does not support game version $GameVersion." }
+    return $selected.ToString()
+}
+
 function Get-HeadlessSnapshotPlan(
     [hashtable]$Context,
     [string]$CombatSolverDll,

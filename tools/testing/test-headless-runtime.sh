@@ -52,6 +52,29 @@ fail() {
     exit 1
 }
 
+if [[ "${1:-}" == --ritsu-only ]]; then
+    source "$runtime_helper"
+    ritsu_fixture="$(mktemp)"
+    trap 'rm -f -- "$ritsu_fixture"' EXIT
+    printf '%s\n' '{"schema":2,"variants":[{"compatTarget":"0.9.0"},{"compatTarget":"0.107.1"},{"compatTarget":"0.113.0"},{"compatTarget":"0.111.0"},{"compatTarget":"0.10.0"}]}' >"$ritsu_fixture"
+    for pair in 0.113.0:0.113.0 0.113.1:0.113.0 0.114.0:0.113.0 0.111.9:0.111.0 0.10.1:0.10.0; do
+        IFS=: read -r host expected <<<"$pair"
+        [[ "$(headless_ritsu_compatibility_target "$ritsu_fixture" "$host")" == "$expected" ]] \
+            || fail "wrong compatibility target for $host"
+    done
+    if headless_ritsu_compatibility_target "$ritsu_fixture" 0.8.0 >/dev/null 2>&1; then
+        fail 'future-only variants accepted'
+    fi
+    for targets in '"0.113.0","0.113.0"' '"0.113.00"'; do
+        printf '[%s]' "$targets" | jq '{schema:2,variants:map({compatTarget:.})}' >"$ritsu_fixture"
+        if headless_ritsu_compatibility_target "$ritsu_fixture" 0.113.1 >/dev/null 2>&1; then
+            fail 'malformed or duplicate variant accepted'
+        fi
+    done
+    echo 'HEADLESS_RITSU_SELFTEST_PASS exact/patch/latest/numeric/future/duplicate/invalid'
+    exit 0
+fi
+
 process_live() {
     local pid=$1 stat_line
     [[ -r "/proc/$pid/stat" ]] || return 1

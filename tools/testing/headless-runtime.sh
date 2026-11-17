@@ -1,4 +1,23 @@
 #!/usr/bin/env bash
+
+headless_ritsu_compatibility_target() {
+    # RitsuLib selects the newest declared API target <= the host release.
+    jq -er --arg host "$2" '
+      def version_parts: split(".") | map(tonumber);
+      if .schema != 2 or (.variants | length) < 1 or (.variants | length) > 64 then
+        error("Invalid RitsuLib compatibility manifest")
+      else .variants | map(.compatTarget) end
+      | if all(.[]; test("^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$")
+          and all(version_parts[]; . <= 2147483647)) and (unique | length) == length then .
+        else error("Invalid or duplicate RitsuLib compatibility target") end
+      | map({target: ., parts: version_parts})
+      | map(select(.parts <= ($host | version_parts)))
+      | sort_by(.parts) | last
+      | if . == null then error("This RitsuLib bundle does not support game version " + $host)
+        else .target end
+    ' "$1"
+}
+
 # Source-only Linux headless ownership/snapshot/admission boundary. No game rules.
 hr_error() { echo "headless-runtime: $*" >&2; return 1; }
 hr_start_time() {
