@@ -43,6 +43,7 @@ internal sealed class UnattendedTestRequest
     public string ReplayMode { get; init; } = "RestoreOnly";
     public string? ReplayPolicyOverridePath { get; init; }
     public int? RecordedPlanRetentionStepForTest { get; init; }
+    public string? RecordedPlanOverridePathForTest { get; init; }
     public string? DevelopmentStrategyAssemblyPath { get; init; }
     public string? DevelopmentStrategyParametersPath { get; init; }
     public string? DevelopmentStrategyScriptHash { get; init; }
