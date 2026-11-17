@@ -47,11 +47,10 @@ internal static class FoolPowerRoutePolicy
             "ECSTASY" => new(
                 PowerRoutePriority.Normal,
                 RequirePositiveProjection: true),
-            // 短线战斗优先开；长线由投影上限收敛。
+            // 悲伤保留占手牌，长线会把手牌塞死：只在短线且多抽净收益为正时保护，不给触发保底。
             "ENNUI" => new(
-                PowerRoutePriority.Strong,
-                AllowTriggerBackedProjectionFloor: true,
-                PreferDedicatedSearch: true),
+                PowerRoutePriority.Normal,
+                RequirePositiveProjection: true),
             // 多敌人时优先开。
             "EXPLOSIVE_ARROWS" => new(
                 PowerRoutePriority.Strong,

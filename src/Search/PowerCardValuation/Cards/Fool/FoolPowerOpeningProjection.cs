@@ -40,9 +40,7 @@ internal sealed partial class CombatBeamSolver
             "ECSTASY" => PowerPerTurnResourcePotential(
                 PowerAmountGain<EcstasyPower>(parent, child) * energyUnit,
                 Math.Min(turns, FoolCountSadness(child, handOnly: false) + ennuiTurns)),
-            "ENNUI" => PowerPerTurnResourcePotential(
-                PowerAmountGain<EnnuiPower>(parent, child) * energyUnit,
-                Math.Min(turns, FoolMaximumShortFightTurns)),
+            "ENNUI" => FoolEnnuiNetDrawPotential(parent, child, turns, energyUnit),
             "EXPLOSIVE_ARROWS" => PowerPerTriggerDamagePotential(
                 child,
                 SaturatingProduct(PowerAmountGain<ExplosiveArrowsPower>(parent, child), enemies),
@@ -98,6 +96,40 @@ internal sealed partial class CombatBeamSolver
                 Math.Min(turns, shoots)),
             _ => 0,
         };
+    }
+
+    /// <summary>
+    /// 倦怠：每回合多抽牌，但同时塞入不能打出且保留的悲伤，悲伤在手里逐回合累积并占用手牌上限。
+    /// 逐个后续回合比较“有倦怠”和“没有倦怠”时实际能抽到的牌数，累计多抽减去被挤掉的正常抽牌；
+    /// 长线战斗累计为负时投影为 0，不给保留席位。狂喜每回合把悲伤转为喜悦，按其数量抵消累积。
+    /// </summary>
+    private int FoolEnnuiNetDrawPotential(
+        SearchNode parent,
+        SearchNode child,
+        int futureTurns,
+        int energyUnit)
+    {
+        int bonusDraw = PowerAmountGain<EnnuiPower>(parent, child);
+        if (bonusDraw == 0)
+            return 0;
+        SimulatedCombatState combat =
+            (SimulatedCombatState)child.Snapshot.Simulator.State.CombatState;
+        int sadnessPerTurn = combat.GetPower<EnnuiPower>(_player.Creature)?.DynamicVars.Cards.IntValue ?? 0;
+        int sadnessGrowth = Math.Max(0, sadnessPerTurn - PowerPlayerPowerAmount<EcstasyPower>(child));
+        int maxHand = child.Snapshot.Simulator.GetMaxHandSize(_player);
+        int baseDraw = PowerDrawPerTurn(parent);
+        int existingSadness = FoolCountSadness(child, handOnly: true);
+        long net = 0;
+        for (int turn = 1; turn <= futureTurns; turn++)
+        {
+            int withoutEnnui = Math.Min(baseDraw, Math.Max(0, maxHand - existingSadness));
+            int clogged = existingSadness + sadnessGrowth * turn;
+            int withEnnui = Math.Min(baseDraw + bonusDraw, Math.Max(0, maxHand - clogged));
+            net += withEnnui - withoutEnnui;
+        }
+        return net <= 0
+            ? 0
+            : PowerPerTriggerResourcePotential(energyUnit, (int)Math.Min(int.MaxValue, net));
     }
 
     /// <summary>百分比增伤（磨砺、锯齿箭刃）：牌区内对应攻击的总伤害乘以增幅，上限为敌方剩余生命。</summary>

@@ -24,7 +24,10 @@ internal sealed partial class CombatBeamSolver
             "ALL_IS_WELL" => FoolCountSadness(child, handOnly: false) > 0 || ennuiActive,
             "ARCHERY" => shoots > 0 && remainingTurns > 2,
             "ECSTASY" => FoolCountSadness(child, handOnly: true) > 0 || ennuiActive,
-            "ENNUI" => remainingTurns > 1,
+            // 只在预计五回合内结束的短线战斗保护；狂喜已生效时悲伤会被持续转化，不受此限。
+            "ENNUI" => remainingTurns > 1
+                && (remainingTurns <= FoolMaximumShortFightTurns
+                    || PowerPlayerPowerAmount<EcstasyPower>(child) > 0),
             "EXPLOSIVE_ARROWS" => shoots > 0 && enemies >= 2,
             "HIDDEN_ROOTS" => remainingTurns > 1,
             "HONING" => shoots > 0,
@@ -47,7 +50,6 @@ internal sealed partial class CombatBeamSolver
     private int FoolPowerTriggerProjectionFloor(string cardId, SearchNode child)
         => cardId switch
         {
-            "ENNUI" => 1,
             "LULLABY" => Math.Max(1, PowerPlayerPowerAmount<LullabyPower>(child)),
             _ => 0,
         };
