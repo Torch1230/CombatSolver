@@ -26,4 +26,6 @@
 
 ## 下一版本（开发中）
 
-当前没有待记录的行为改动。
+- 愚者 18 张单人能力牌接入能力牌路线保护（[#257](https://github.com/Torch1230/CombatSolver/issues/257)，父议题 #255）。新增 `PowerCardPool.Fool` 与 `src/Search/PowerCardValuation/Cards/Fool/`，逐卡机制族、优先级、触发证据与开局投影按玩家逐卡说明登记，见[愚者卡池](strategy/power-card-valuation/fool.md)。射箭牌按 `CardTag.Shoot`、旋律牌按哇/啾/叽标签、悲伤按卡牌类型识别，均读取分支牌区。估值只影响中途保路与开局能力专搜，不改终局排序；MultiplayerOnly 的 `COMPOST`、`COVERING_FIRE` 不登记。结构门禁的 Search 卡牌 ID 字面量上限随新卡池登记由 645 调为 711。
+- 尚未覆盖“复制药水 → 能力牌”开局前缀：`0e6b13b6` 人工 7 + 1 依赖该路线，当前仍为 26 + 0。
+- 检查点路径追踪新增测试专用参数 `RecordedPlanOverridePathForTest`（Linux：`--recorded-plan-override-path-for-test`），可传入拼接后的目标路线替代索引中的录制预测。

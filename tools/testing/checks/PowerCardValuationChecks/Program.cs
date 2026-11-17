@@ -70,13 +70,14 @@ Require(PowerCardValuationRegistry.CardIdFor(typeof(BiasedCognition)) == "BIASED
 
 // 4. 全池登记数量与唯一性。
 PowerCardValuationRegistry all = PowerCardValuationModels.Registry;
-Require(all.Count == 104, $"单人能力牌登记总数不正确：{all.Count}。");
+Require(all.Count == 122, $"单人能力牌登记总数不正确：{all.Count}。");
 Require(all.RegisteredCardTypes(PowerCardPool.Silent).Count == 17, "静默猎手登记数量不正确。");
 Require(all.RegisteredCardTypes(PowerCardPool.Ironclad).Count == 19, "铁甲战士登记数量不正确。");
 Require(all.RegisteredCardTypes(PowerCardPool.Defect).Count == 20, "故障机器人登记数量不正确。");
 Require(all.RegisteredCardTypes(PowerCardPool.Regent).Count == 18, "储君登记数量不正确。");
 Require(all.RegisteredCardTypes(PowerCardPool.Necrobinder).Count == 18, "亡灵契约师登记数量不正确。");
 Require(all.RegisteredCardTypes(PowerCardPool.Colorless).Count == 12, "无色登记数量不正确。");
+Require(all.RegisteredCardTypes(PowerCardPool.Fool).Count == 18, "愚者登记数量不正确。");
 
 HashSet<string> seenIds = new(StringComparer.Ordinal);
 HashSet<Type> seenTypes = [];
@@ -97,6 +98,7 @@ foreach (PowerCardPool pool in Enum.GetValues<PowerCardPool>())
 string[] multiplayerOnlyIds =
 [
     "TANK", "SNEAKY", "ONE_FOR_ALL", "HAMMER_TIME", "CACOPHONY", "SOULBOUND", "BEACON_OF_HOPE",
+    "COMPOST", "COVERING_FIRE",
 ];
 foreach (string cardId in multiplayerOnlyIds)
     Require(!all.ContainsCardId(cardId), $"MultiplayerOnly 卡牌 {cardId} 不应登记。");
@@ -534,7 +536,7 @@ Require(Enum.GetValues<PowerCardPool>().All(pool =>
     "存在已登记但不被识别的卡牌 ID。");
 
 Console.WriteLine(
-    "POWER_CARD_VALUATION_CHECKS_OK total=104 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12");
+    "POWER_CARD_VALUATION_CHECKS_OK total=122 silent=17 ironclad=19 defect=20 regent=18 necrobinder=18 colorless=12 fool=18");
 
 PowerCardValuationResult Evaluate(CardModel card, PowerCardValuationContext evaluationContext)
 {

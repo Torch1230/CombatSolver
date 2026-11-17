@@ -31,8 +31,9 @@ strategy_id_literal_count=$(rg -o --no-filename '"[A-Z][A-Z0-9_]{4,}"' "$reposit
     --glob '!PotionValuationRegistry.cs' \
     --glob '!OpeningActionRegistry.cs' \
     --glob '!TargetPlanRegistry.cs' | wc -l)
-if (( strategy_id_literal_count > 645 )); then
-    violations+=("Search strategy ID literals increased: $strategy_id_literal_count > 645")
+# 711 = 645 + 66：愚者能力牌卡池登记（Cards/Fool）的逐卡 ID 分派。
+if (( strategy_id_literal_count > 711 )); then
+    violations+=("Search strategy ID literals increased: $strategy_id_literal_count > 711")
 fi
 [[ -f "$repository_root/src/Search/CombatBeamSolver.ExpansionPlan.cs" ]] || violations+=("Shared expansion plan missing")
 if ! rg -Fq 'cardJobs.PrepareSerialCards(this,' "$repository_root/src/Search/CombatBeamSolver.Expansion.cs" ||
@@ -1164,6 +1165,11 @@ Cards/Colorless/ColorlessPowerRoutePolicy.cs	internal static class ColorlessPowe
 Cards/Colorless/ColorlessPowerTriggerEvidence.cs	private bool ColorlessPowerHasTriggerEvidence
 Cards/Colorless/ColorlessPowerOpeningProjection.cs	private int ColorlessPowerOpeningProjectionPotential
 Cards/Colorless/ColorlessGrowthPowerCardValuationModels.cs	internal static class ColorlessGrowthPowerCardValuationModels
+Cards/Fool/FoolPowerCardValuationModels.cs	internal static class FoolPowerCardValuationModels
+Cards/Fool/FoolPowerRoutePolicy.cs	internal static class FoolPowerRoutePolicy
+Cards/Fool/FoolPowerTriggerEvidence.cs	private bool FoolPowerHasTriggerEvidence
+Cards/Fool/FoolPowerOpeningProjection.cs	private int FoolPowerOpeningProjectionPotential
+Cards/Fool/FoolMelodyPowerCardValuationModels.cs	internal static class FoolMelodyPowerCardValuationModels
 EOF
 
 require_fixed "$search_root/PowerCommitmentPortfolioGate.cs" \

@@ -8,6 +8,7 @@ internal enum PowerCardPool
     Regent,
     Necrobinder,
     Colorless,
+    Fool,
 }
 
 /// <summary>

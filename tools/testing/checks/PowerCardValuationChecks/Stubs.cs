@@ -147,4 +147,24 @@ namespace MegaCrit.Sts2.Core.Models.Cards
     public sealed class Panache : CardModel;
     public sealed class RollingBoulder : CardModel;
     public sealed class Stratagem : CardModel;
+
+    // Fool
+    public sealed class AllIsWell : CardModel;
+    public sealed class Archery : CardModel;
+    public sealed class Ecstasy : CardModel;
+    public sealed class Ennui : CardModel;
+    public sealed class ExplosiveArrows : CardModel;
+    public sealed class HiddenRoots : CardModel;
+    public sealed class Honing : CardModel;
+    public sealed class LostLute : CardModel;
+    public sealed class Lullaby : CardModel;
+    public sealed class Motif : CardModel;
+    public sealed class MythicForm : CardModel;
+    public sealed class Quiver : CardModel;
+    public sealed class SerratedArrows : CardModel;
+    public sealed class Simpleton : CardModel;
+    public sealed class SongPath : CardModel;
+    public sealed class Tune : CardModel;
+    public sealed class ViolentChord : CardModel;
+    public sealed class Yah : CardModel;
 }

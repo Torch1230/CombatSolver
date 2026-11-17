@@ -32,7 +32,8 @@
 | 储君 | 18 | 18 | HAMMER_TIME | `QuantifiedDraft` |
 | 亡灵契约师 | 18 | 18 | CACOPHONY、SOULBOUND | `QuantifiedDraft` |
 | 无色 | 12 | 12 | BEACON_OF_HOPE | `QuantifiedDraft` |
-| 合计 | **104** | **104** | **7** | |
+| 愚者（0.113.1，2026-11-17 补入） | 18 | 18 | COMPOST、COVERING_FIRE | `Specified`（玩家逐卡说明） |
+| 合计 | **122** | **122** | **9** | |
 
 - 公共承诺结构已重构为卡池无关的 `PowerCommitmentDescriptor`；公共搜索层不依赖静默猎手枚举。
 - 无已登记能力牌的根走请求级快速旁路，跳过子节点承诺检查、Beam 能力席位扫描、泛能力组合成员与开局能力前缀构造和试放。
@@ -49,6 +50,7 @@
 - [储君](regent.md)
 - [亡灵契约师](necrobinder.md)
 - [无色](colorless.md)
+- [愚者](fool.md)
 - [待玩家复核表（2026-09-17）](player-review-20260917.md)
 - [全卡池实施记录](../../archive/strategy/power-card-valuation/all-pools-implementation-20260917.md)
 

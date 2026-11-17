@@ -67,8 +67,9 @@ foreach ($sourceFile in Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 's
     $strategyIdLiteralCount += [regex]::Matches(
         [System.IO.File]::ReadAllText($sourceFile.FullName), '"[A-Z][A-Z0-9_]{4,}"').Count
 }
-if ($strategyIdLiteralCount -gt 645) {
-    $violations.Add("Search strategy ID literals increased: $strategyIdLiteralCount > 645")
+# 711 = 645 + 66：愚者能力牌卡池登记（Cards/Fool）的逐卡 ID 分派。
+if ($strategyIdLiteralCount -gt 711) {
+    $violations.Add("Search strategy ID literals increased: $strategyIdLiteralCount > 711")
 }
 if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot 'src/Search/CombatBeamSolver.ExpansionPlan.cs') -PathType Leaf)) {
     $violations.Add('Shared expansion plan missing')
@@ -1312,7 +1313,12 @@ foreach ($check in @(
     @{ Path = 'Cards\Colorless\ColorlessPowerRoutePolicy.cs'; Text = 'internal static class ColorlessPowerRoutePolicy' },
     @{ Path = 'Cards\Colorless\ColorlessPowerTriggerEvidence.cs'; Text = 'private bool ColorlessPowerHasTriggerEvidence' },
     @{ Path = 'Cards\Colorless\ColorlessPowerOpeningProjection.cs'; Text = 'private int ColorlessPowerOpeningProjectionPotential' },
-    @{ Path = 'Cards\Colorless\ColorlessGrowthPowerCardValuationModels.cs'; Text = 'internal static class ColorlessGrowthPowerCardValuationModels' }
+    @{ Path = 'Cards\Colorless\ColorlessGrowthPowerCardValuationModels.cs'; Text = 'internal static class ColorlessGrowthPowerCardValuationModels' },
+    @{ Path = 'Cards\Fool\FoolPowerCardValuationModels.cs'; Text = 'internal static class FoolPowerCardValuationModels' },
+    @{ Path = 'Cards\Fool\FoolPowerRoutePolicy.cs'; Text = 'internal static class FoolPowerRoutePolicy' },
+    @{ Path = 'Cards\Fool\FoolPowerTriggerEvidence.cs'; Text = 'private bool FoolPowerHasTriggerEvidence' },
+    @{ Path = 'Cards\Fool\FoolPowerOpeningProjection.cs'; Text = 'private int FoolPowerOpeningProjectionPotential' },
+    @{ Path = 'Cards\Fool\FoolMelodyPowerCardValuationModels.cs'; Text = 'internal static class FoolMelodyPowerCardValuationModels' }
 )) {
     $path = Join-Path $powerValuationRoot $check.Path
     if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or

@@ -15,7 +15,8 @@ internal sealed partial class CombatBeamSolver
             DefectPowerProgressEvidence(commitment, parent, child),
             RegentPowerProgressEvidence(commitment, parent, child),
             NecrobinderPowerProgressEvidence(commitment, parent, child),
-            ColorlessPowerProgressEvidence(commitment, parent, child));
+            ColorlessPowerProgressEvidence(commitment, parent, child),
+            FoolPowerProgressEvidence(commitment, parent, child));
 
     /// <summary>
     /// 路线进展／解除保护信号，不是“收益由该能力造成”的因果归因。固定前缀专搜已负责把能力路线
@@ -35,6 +36,7 @@ internal sealed partial class CombatBeamSolver
         AddEvidence(RegentPowerRealizedEvidence(commitment, parent, child));
         AddEvidence(NecrobinderPowerRealizedEvidence(commitment, parent, child));
         AddEvidence(ColorlessPowerRealizedEvidence(commitment, parent, child));
+        AddEvidence(FoolPowerRealizedEvidence(commitment, parent, child));
         if (!hasSpecializedEvidence)
             gain += GenericPowerCommitmentEvidence(parent.Snapshot, child.Snapshot);
         return (int)Math.Min(int.MaxValue, gain);
