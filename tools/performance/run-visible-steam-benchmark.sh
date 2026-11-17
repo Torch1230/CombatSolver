@@ -194,7 +194,10 @@ fi
 mkdir -p -- "$data_dir"
 data_dir="$(realpath -e -- "$data_dir")"
 
-run_snapshot_path="$(realpath -e -- "$repository_root/coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json")"
+run_snapshot_path=""
+if [[ "$logging_fixture" == false && -z "$request_fixture_path" && -z "$checkpoint_archive" ]]; then
+    run_snapshot_path="$(realpath -e -- "$repository_root/coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json")"
+fi
 request_path="$data_dir/combat_solver_test_request.json"
 result_path="$data_dir/combat_solver_test_result.json"
 
@@ -322,7 +325,7 @@ jq -n \
         scenarioId: "MECHA-NO-RESCAN-247",
         characterId: "SILENT",
         encounterId: "MECHA_KNIGHT_ELITE",
-        runSnapshotPath: $run_snapshot_path,
+        runSnapshotPath: (if $run_snapshot_path == "" then null else $run_snapshot_path end),
         seed: "BJCZX3J13PZJ",
         ascension: 0,
         enemyCurrentHp: 300,

@@ -6,6 +6,31 @@
 
 2026-11-15，PowerShell 与 Windows Git Bash 均通过 8 项定向检查。原生启动器已在游戏 0.113.1 / RitsuLib 0.6.13 环境完成 `UI-PRIORITY-FEEDBACK`，结果 Passed，25.46 秒，隔离实例已清理。Linux 系统上的完整启动未验证。
 
+## 可见测试输入选择
+
+`run-visible-steam-benchmark.ps1` 的默认快照路径已迁移到 `coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json`。两端仅在默认模式检查并解析该路径。
+
+- 修改前：完整 UI 请求在启动游戏前报 `Mecha Knight benchmark snapshot not found`。
+- 修改后：Windows 可见 `UI-PRIORITY-FEEDBACK` 请求 Passed。runId 为 `43088d4fc27f41a5869bb72f3a9421a2`，耗时 39.11 秒，含建局。
+- 请求准备：PowerShell、Git Bash 各 4 项通过。缺少默认快照时，完整请求、日志夹具和检查点模式通过；默认模式仍明确失败。检查执行生产脚本的准备段，不启动游戏。
+- 环境：游戏 0.113.1、RitsuLib 0.6.13、D3D12 / Forward+、RTX 5080 Laptop GPU，启用本机 20 个 Mod。
+- 未验证：Linux 原生可见启动、历史机甲骑士快照整场，以及 #223 原报告的存档与卡死。
+
+复跑时将以下 JSON 保存为 `.local/ui-visible-request.json`，通过 `-RequestFixturePath` 或 `--request-fixture-path` 传入。两端均设置 120 秒超时，并使用 `-EvidenceDirectory` 或 `--evidence-directory` 保存结果。
+
+```json
+{
+  "schemaVersion": 1,
+  "scenarioId": "UI-PRIORITY-FEEDBACK",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "VISIBLEUI223",
+  "enemyCurrentHp": 100,
+  "timeoutSeconds": 120,
+  "exitOnComplete": true
+}
+```
+
 ## 0.51.5 结算顺序与运行时交接
 
 定向原生差分、第二回合续用、便携 GC 合同及未验证项见[历史卷 28](archive/testing/volume-28.md#0515-结算顺序与运行时交接)。

@@ -30,13 +30,19 @@ $gameProcessName = "SlayTheSpire2"
 $dataDir = Join-Path ([Environment]::GetFolderPath("ApplicationData")) "SlayTheSpire2"
 $requestPath = Join-Path $dataDir "combat_solver_test_request.json"
 $resultPath = Join-Path $dataDir "combat_solver_test_result.json"
-$runSnapshotPath = Join-Path $repositoryRoot "coverage\unattended\mecha-knight-memory-run-snapshot.json"
+$runSnapshotPath = Join-Path $repositoryRoot "coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json"
+$usesRunSnapshot = -not ($LoggingFixture -or $RequestFixturePath -or $CheckpointArchivePath)
 
 if (-not (Test-Path -LiteralPath $steamExe -PathType Leaf)) {
     throw "Steam executable not found: $steamExe"
 }
-if (-not (Test-Path -LiteralPath $runSnapshotPath -PathType Leaf)) {
-    throw "Mecha Knight benchmark snapshot not found: $runSnapshotPath"
+$resolvedRunSnapshotPath = if ($usesRunSnapshot) {
+    if (-not (Test-Path -LiteralPath $runSnapshotPath -PathType Leaf)) {
+        throw "Mecha Knight benchmark snapshot not found: $runSnapshotPath"
+    }
+    (Resolve-Path -LiteralPath $runSnapshotPath).Path
+} else {
+    $null
 }
 if (Get-Process -Name $gameProcessName -ErrorAction SilentlyContinue) {
     throw "Refusing to start the benchmark while Slay the Spire 2 is already running."
@@ -44,7 +50,7 @@ if (Get-Process -Name $gameProcessName -ErrorAction SilentlyContinue) {
 
 $steam = Get-Process -Name "steam" -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($null -eq $steam) {
-    Start-Process -FilePath $steamExe | Out-Null
+    Start-Process -FilePath $steamExe -WindowStyle Hidden | Out-Null
     $steamDeadline = (Get-Date).AddSeconds(30)
     do {
         Start-Sleep -Milliseconds 250
@@ -75,7 +81,7 @@ $request = [ordered]@{
     scenarioId = "MECHA-NO-RESCAN-247"
     characterId = "SILENT"
     encounterId = "MECHA_KNIGHT_ELITE"
-    runSnapshotPath = (Resolve-Path -LiteralPath $runSnapshotPath).Path
+    runSnapshotPath = $resolvedRunSnapshotPath
     seed = "BJCZX3J13PZJ"
     ascension = 0
     enemyCurrentHp = 300
@@ -176,7 +182,7 @@ try {
     $request | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $requestTempPath -Encoding UTF8
     Move-Item -LiteralPath $requestTempPath -Destination $requestPath -Force
 
-    Start-Process -FilePath $steamExe -ArgumentList @("-applaunch", "2868840") | Out-Null
+    Start-Process -FilePath $steamExe -ArgumentList @("-applaunch", "2868840") -WindowStyle Hidden | Out-Null
     $launchDeadline = (Get-Date).AddSeconds(60)
     do {
         Start-Sleep -Milliseconds 250
