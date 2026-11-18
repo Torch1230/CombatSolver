@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-15",
+  "baselineCommit": "3677d4cac2407e332f1419741878e635c1ce2ee3",
+  "gameVersion": "0.113.1",
+  "ritsuVersion": "0.6.13",
+  "sdkVersion": "9.0.321",
+  "platform": "Windows",
+  "searchMode": "Evaluate",
+  "settings": {
+    "beam": 12,
+    "dop": 1,
+    "budgetMilliseconds": 10000,
+    "potionPolicy": "Disabled",
+    "noGc": false,
+    "portfolio": false
+  },
+  "target": {
+    "allEquivalent": true,
+    "checks": {
+      "A1": {
+        "root": true,
+        "liveRoot": true,
+        "policy": true,
+        "actions": true,
+        "continuations": true,
+        "cachedContinuations": true,
+        "qualityAndSnapshot": true,
+        "pruneCounters": true,
+        "noTimeBoundary": true,
+        "phaseMeasurementDisabled": true
+      },
+      "C1": {
+        "root": true,
+        "liveRoot": true,
+        "policy": true,
+        "actions": true,
+        "continuations": true,
+        "cachedContinuations": true,
+        "qualityAndSnapshot": true,
+        "pruneCounters": true,
+        "noTimeBoundary": true,
+        "phaseMeasurementDisabled": true
+      },
+      "C2": {
+        "root": true,
+        "liveRoot": true,
+        "policy": true,
+        "actions": true,
+        "continuations": true,
+        "cachedContinuations": true,
+        "qualityAndSnapshot": true,
+        "pruneCounters": true,
+        "noTimeBoundary": true,
+        "phaseMeasurementDisabled": true
+      },
+      "A2": {
+        "root": true,
+        "liveRoot": true,
+        "policy": true,
+        "actions": true,
+        "continuations": true,
+        "cachedContinuations": true,
+        "qualityAndSnapshot": true,
+        "pruneCounters": true,
+        "noTimeBoundary": true,
+        "phaseMeasurementDisabled": true
+      }
+    },
+    "runs": [
+      {
+        "label": "A1",
+        "wallSeconds": 3.7195253,
+        "searchMilliseconds": 2520.5668,
+        "workerAllocatedBytes": 201628048,
+        "totalAllocatedBytes": 763461840,
+        "peakManagedHeapBytes": 40234712,
+        "peakWorkingSetBytes": 204877824,
+        "expanded": 391,
+        "transitions": 3610,
+        "choiceBranches": 1549,
+        "hpLost": 1,
+        "potions": 0,
+        "combatEndedTurn": 2
+      },
+      {
+        "label": "C1",
+        "wallSeconds": 3.5862236,
+        "searchMilliseconds": 2399.6695,
+        "workerAllocatedBytes": 185250688,
+        "totalAllocatedBytes": 747191480,
+        "peakManagedHeapBytes": 36480664,
+        "peakWorkingSetBytes": 197611520,
+        "expanded": 391,
+        "transitions": 3610,
+        "choiceBranches": 1549,
+        "hpLost": 1,
+        "potions": 0,
+        "combatEndedTurn": 2
+      },
+      {
+        "label": "C2",
+        "wallSeconds": 3.4820996,
+        "searchMilliseconds": 2339.037,
+        "workerAllocatedBytes": 185271264,
+        "totalAllocatedBytes": 747263872,
+        "peakManagedHeapBytes": 36439376,
+        "peakWorkingSetBytes": 197152768,
+        "expanded": 391,
+        "transitions": 3610,
+        "choiceBranches": 1549,
+        "hpLost": 1,
+        "potions": 0,
+        "combatEndedTurn": 2
+      },
+      {
+        "label": "A2",
+        "wallSeconds": 3.5885265,
+        "searchMilliseconds": 2411.6778,
+        "workerAllocatedBytes": 201622880,
+        "totalAllocatedBytes": 763593192,
+        "peakManagedHeapBytes": 40131080,
+        "peakWorkingSetBytes": 205492224,
+        "expanded": 391,
+        "transitions": 3610,
+        "choiceBranches": 1549,
+        "hpLost": 1,
+        "potions": 0,
+        "combatEndedTurn": 2
+      }
+    ]
+  },
+  "sentinel": {
+    "allEquivalent": true,
+    "checks": {
+      "A1": {
+        "root": true,
+        "liveRoot": true,
+        "policy": true,
+        "actions": true,
+        "continuations": true,
+        "cachedContinuations": true,
+        "qualityAndSnapshot": true,
+        "pruneCounters": true,
+        "noTimeBoundary": true,
+        "phaseMeasurementDisabled": true
+      },
+      "C1": {
+        "root": true,
+        "liveRoot": true,
+        "policy": true,
+        "actions": true,
+        "continuations": true,
+        "cachedContinuations": true,
+        "qualityAndSnapshot": true,
+        "pruneCounters": true,
+        "noTimeBoundary": true,
+        "phaseMeasurementDisabled": true
+      },
+      "C2": {
+        "root": true,
+        "liveRoot": true,
+        "policy": true,
+        "actions": true,
+        "continuations": true,
+        "cachedContinuations": true,
+        "qualityAndSnapshot": true,
+        "pruneCounters": true,
+        "noTimeBoundary": true,
+        "phaseMeasurementDisabled": true
+      },
+      "A2": {
+        "root": true,
+        "liveRoot": true,
+        "policy": true,
+        "actions": true,
+        "continuations": true,
+        "cachedContinuations": true,
+        "qualityAndSnapshot": true,
+        "pruneCounters": true,
+        "noTimeBoundary": true,
+        "phaseMeasurementDisabled": true
+      }
+    },
+    "runs": [
+      {
+        "label": "A1",
+        "wallSeconds": 2.3130381,
+        "searchMilliseconds": 1060.5113,
+        "workerAllocatedBytes": 3300800,
+        "totalAllocatedBytes": 388681256,
+        "peakManagedHeapBytes": 17995968,
+        "peakWorkingSetBytes": 179249152,
+        "expanded": 9,
+        "transitions": 21,
+        "choiceBranches": 0,
+        "hpLost": 6,
+        "potions": 0,
+        "combatEndedTurn": 1
+      },
+      {
+        "label": "C1",
+        "wallSeconds": 2.2667114,
+        "searchMilliseconds": 1093.6268,
+        "workerAllocatedBytes": 3306456,
+        "totalAllocatedBytes": 388768352,
+        "peakManagedHeapBytes": 17994504,
+        "peakWorkingSetBytes": 179847168,
+        "expanded": 9,
+        "transitions": 21,
+        "choiceBranches": 0,
+        "hpLost": 6,
+        "potions": 0,
+        "combatEndedTurn": 1
+      },
+      {
+        "label": "C2",
+        "wallSeconds": 2.189873,
+        "searchMilliseconds": 1054.3225,
+        "workerAllocatedBytes": 3307096,
+        "totalAllocatedBytes": 388697056,
+        "peakManagedHeapBytes": 17945192,
+        "peakWorkingSetBytes": 180113408,
+        "expanded": 9,
+        "transitions": 21,
+        "choiceBranches": 0,
+        "hpLost": 6,
+        "potions": 0,
+        "combatEndedTurn": 1
+      },
+      {
+        "label": "A2",
+        "wallSeconds": 2.2251149,
+        "searchMilliseconds": 1092.8792,
+        "workerAllocatedBytes": 3300800,
+        "totalAllocatedBytes": 388675104,
+        "peakManagedHeapBytes": 17995816,
+        "peakWorkingSetBytes": 179466240,
+        "expanded": 9,
+        "transitions": 21,
+        "choiceBranches": 0,
+        "hpLost": 6,
+        "potions": 0,
+        "combatEndedTurn": 1
+      }
+    ]
+  },
+  "allocationSampling": {
+    "control": {
+      "traceEventsLost": 0,
+      "confirmedSearch": {
+        "sampleCount": 1889,
+        "estimatedBytes": 201585864,
+        "samplesWithoutStack": 0,
+        "samplesWithUnresolvedOnlyStack": 0,
+        "samplesWithSomeUnresolvedFrames": 16,
+        "firstSampleMs": 4130.182,
+        "lastSampleMs": 6347.291
+      },
+      "types": [
+        {
+          "key": "OrderedIterator`2[System.String,System.String]",
+          "totals": {
+            "sampleCount": 152,
+            "estimatedBytes": 16194520,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 4834.4462,
+            "lastSampleMs": 6176.1321
+          }
+        },
+        {
+          "key": "EnumerableSorter`2[System.String,System.String]",
+          "totals": {
+            "sampleCount": 67,
+            "estimatedBytes": 7141056,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 4905.4721,
+            "lastSampleMs": 6165.1929
+          }
+        },
+        {
+          "key": "System.Comparison`1[System.Int32]",
+          "totals": {
+            "sampleCount": 66,
+            "estimatedBytes": 7032208,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 4905.8362,
+            "lastSampleMs": 6175.1585
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "traceEventsLost": 0,
+      "confirmedSearch": {
+        "sampleCount": 1737,
+        "estimatedBytes": 185352016,
+        "samplesWithoutStack": 0,
+        "samplesWithUnresolvedOnlyStack": 0,
+        "samplesWithSomeUnresolvedFrames": 17,
+        "firstSampleMs": 4544.2981,
+        "lastSampleMs": 7009.1719
+      },
+      "types": [
+        {
+          "key": "OrderedIterator`2[System.String,System.String]",
+          "totals": {
+            "sampleCount": 42,
+            "estimatedBytes": 4473080,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 5505.31,
+            "lastSampleMs": 6801.0322
+          }
+        },
+        {
+          "key": "System.Comparison`1[System.Int32]",
+          "totals": {
+            "sampleCount": 40,
+            "estimatedBytes": 4261168,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 5417.0443,
+            "lastSampleMs": 6779.7805
+          }
+        },
+        {
+          "key": "EnumerableSorter`2[System.String,System.String]",
+          "totals": {
+            "sampleCount": 32,
+            "estimatedBytes": 3413648,
+            "samplesWithoutStack": 0,
+            "samplesWithUnresolvedOnlyStack": 0,
+            "samplesWithSomeUnresolvedFrames": 0,
+            "firstSampleMs": 5503.0152,
+            "lastSampleMs": 6768.5751
+          }
+        }
+      ]
+    }
+  },
+  "nativeOrdering": {
+    "status": "Passed",
+    "runId": "f72bd5fd308d48c9a3c2d7e502673365",
+    "elapsedMilliseconds": 26346.6727,
+    "dynamicVariableCounts": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "instanceRemoved": true
+  },
+  "limitations": [
+    "Constructed report #241 representative, original report not reproduced",
+    "Offline harness does not execute fixture expected assertions",
+    "Sentinel Low configuration produces 6 HP loss / turn 1, not legacy expected 3 HP / turn 2",
+    "No visible Steam frame or default high-budget/NoGC claim"
+  ]
+}

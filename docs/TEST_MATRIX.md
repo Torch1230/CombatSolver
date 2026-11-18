@@ -28,6 +28,26 @@
 
 2026-11-15，PowerShell 与 Windows Git Bash 均通过 8 项定向检查。原生启动器已在游戏 0.113.1 / RitsuLib 0.6.13 环境完成 `UI-PRIORITY-FEEDBACK`，结果 Passed，25.46 秒，隔离实例已清理。Linux 系统上的完整启动未验证。
 
+## 同名牌的洗牌排序分配（#241）
+
+`NATIVE-CARD-ORDERING` 覆盖 ABUNDANCE、DEFEND_IRONCLAD、FINESSE、OFFERING 的 0/1/2/3 个动态变量。
+原生牌序、完整 RNG、费用、重放、变量值、实机推进及父子分支隔离均通过。
+后续排序重新读取变量值，重复引用保留原身份。
+
+2026-11-15，Windows / 游戏 0.113.1 / RitsuLib 0.6.13：
+runId `f72bd5fd308d48c9a3c2d7e502673365`，Passed，26.35 秒，隔离实例已清理。
+启动器使用 PR #247 的兼容性修改。
+本机另加载 DamageMeter、ModConfig、RemoveMultiplayerPlayerLimit、Rewind、RouteSuggest。
+
+```powershell
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId NATIVE-CARD-ORDERING -EncounterId FUZZY_WURM_CRAWLER_WEAK -TimeoutSeconds 120 -CleanupInstanceOnExit
+```
+
+8 张富足、42 张牌的固定根及循环路线哨兵均完成 A1/C1/C2/A2 独立进程对照。
+完整根、政策、动作、续用、质量和剪枝计数一致，无时间截断。
+目标搜索分配约减少 8.1%，尚未证明稳定提速或原报告崩溃已修复。
+命令、逐次数字及原生与离线验证的范围见[记录](performance/shuffle-variable-names-20261115.md)。
+
 ## 预战 worker 空闲取消源
 
 `PreCombatRequestChecks` 直接编译 API、contracts 与 `PreCombatForecastWorker.Idle.cs`。
