@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using CombatSolver.Engine.Common;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
@@ -1370,9 +1371,17 @@ internal static class CombatBugReportExporter
         string diagnostic = SolverDiagnostics.DescribeStart(
             state,
             profiles.Profile);
-        string exactState = player?.PlayerCombatState == null
-            ? string.Empty
-            : ContinuationStamp.CaptureLive(state).StateText;
+        string? exactState = null;
+        string? exactStateRejection = null;
+        if (player?.PlayerCombatState != null)
+        {
+            try { exactState = ContinuationStamp.CaptureLive(state).StateText; }
+            catch (NotSupportedException ex) when (ex is PredictionUnsupportedException or IncompatibleGameplayModException)
+            {
+                exactStateRejection = ex.Message;
+                Entry.Logger.Warn($"[CombatSolver/Test] BUG_REPORT_EXACT_STATE_REJECTED exception={ex}");
+            }
+        }
         return JsonSerializer.Serialize(new
         {
             schemaVersion = 2,
@@ -1391,6 +1400,7 @@ internal static class CombatBugReportExporter
             actFloor = state.RunState.ActFloor,
             totalFloor = state.RunState.TotalFloor,
             exactContinuationState = exactState,
+            exactContinuationStateRejection = exactStateRejection,
             readableDiagnostic = diagnostic,
             runRng = state.RunState.Rng.ToSerializable(),
             playerRng = player?.PlayerRng.ToSerializable(),

@@ -1,8 +1,13 @@
 using System.IO.Compression;
+using System.Net;
+using System.Reflection;
 using System.Text.Json;
+using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -56,7 +61,11 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException("未捕获首个 5 HP 分叉点及完整回放状态。");
             mismatch.Publish(policy.Diagnostics, "fixture_injected_hp_difference", recorder);
             bool failed = false;
-            try { InvokeForcedTerminalMethod(driver, "ReplayAction", [parent, action with { CardId = "MISSING_DIAGNOSTIC_FIXTURE_CARD" }, null]); }
+            try
+            {
+                InvokeForcedTerminalMethod(driver, "ReplayAction",
+                    [parent, action with { CardId = "MISSING_DIAGNOSTIC_FIXTURE_CARD" }, null, null, null]);
+            }
             catch (SearchTransitionException) { failed = true; }
             if (!failed) throw new InvalidOperationException("失败分支取证吞掉了搜索异常。");
         }
@@ -100,5 +109,54 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidDataException("提交包缺少已冻结的首个差异证据。");
         _completedChecks.Add("DiagnosticLog:SelectedReplayEquivalence+FirstHpDifference+DamageHealNative+IndependentArchive");
         _completedChecks.Add("DiagnosticLogArchive:" + path);
+        await AssertRejectedPredictionReportAsync(combat);
+    }
+
+    private static void UnreviewedHealPostfix() { }
+
+    private async Task AssertRejectedPredictionReportAsync(CombatState combat)
+    {
+        const string rejection = "Unreviewed native Heal patch combination.";
+        const string description = "诊断包兼容性合同";
+        string reportId = Guid.NewGuid().ToString("N");
+        MethodInfo heal = AccessTools.Method(typeof(CreatureCmd), nameof(CreatureCmd.Heal),
+            [typeof(Creature), typeof(decimal), typeof(bool)])!;
+        var harmony = new Harmony("combatsolver.testing.diagnostic-log-rejected-prediction");
+        harmony.Patch(heal, postfix: new HarmonyMethod(
+            AccessTools.Method(typeof(UnattendedTestRunner), nameof(UnreviewedHealPostfix))));
+        try
+        {
+            try
+            {
+                ContinuationStamp.CaptureLive(combat);
+                throw new InvalidOperationException("Unknown Heal postfix passed the live search boundary.");
+            }
+            catch (PredictionUnsupportedException error) when (error.Message == rejection) { }
+
+            string path = await CombatBugReportExporter.ExportCurrentAsync(
+                playerDescription: description, submissionId: reportId);
+            using (ZipArchive archive = ZipFile.OpenRead(path))
+            using (Stream stream = archive.GetEntry("diagnostics/combat-state.json")!.Open())
+            using (JsonDocument state = JsonDocument.Parse(stream))
+            {
+                JsonElement root = state.RootElement;
+                if (!root.GetProperty("combatActive").GetBoolean()
+                    || root.GetProperty("exactContinuationState").ValueKind != JsonValueKind.Null
+                    || root.GetProperty("exactContinuationStateRejection").GetString() != rejection
+                    || archive.GetEntry("diagnostics/logs/index.json") == null)
+                    throw new InvalidDataException("Rejected prediction report lost its diagnostics or claimed an exact snapshot.");
+            }
+            long bytes = new FileInfo(path).Length;
+            using var handler = new FakeUploadHandler(HttpStatusCode.Created,
+                $"{{\"id\":\"{reportId}\",\"sizeBytes\":{bytes}}}");
+            using var client = new System.Net.Http.HttpClient(handler);
+            var receipt = await CombatBugReportUploader.UploadForTestingAsync(
+                client, path, description, string.Empty, reportId);
+            if (receipt.ReportId != reportId || receipt.SizeBytes != bytes
+                || !handler.SawMultipartReport || !handler.SawMetadata || !handler.SawSubmissionId)
+                throw new InvalidOperationException("The uploader did not send the rejected-prediction diagnostic archive.");
+        }
+        finally { harmony.Unpatch(heal, HarmonyPatchType.All, harmony.Id); }
+        _completedChecks.Add("DiagnosticLog:UnknownHealPostfixRejected+ArchiveDiagnostics+MultipartReceipt");
     }
 }

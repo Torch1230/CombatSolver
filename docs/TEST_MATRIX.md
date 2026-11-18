@@ -1,5 +1,9 @@
 # CombatSolver 测试入口
 
+## 0.51.7 薄荷尖塔兼容与诊断取证
+
+真实薄荷尖塔与 BaseLib 的原生差分、诊断 ZIP 和上传回执合同见[历史卷 30](archive/testing/volume-30.md)。
+
 ## 0.51.6 社区 PR 与工具整合
 
 原生差分、离线合同、独立检查和测试工具的复跑入口见[历史卷 29](archive/testing/volume-29.md)。

@@ -370,7 +370,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 | `PredictionHealthCallbackAudit.Capture` | 稳定根检查生命事件、实际 Tracker 受众和 Ritsu 详情刷新，未知绑定/所检查补丁退回无限回复界；只共享原因，不持有 live 对象。保留原外层准入不是完整回复证书，未来注册和其他信号仍然未证明 | 封闭拒绝门槛，无外部放行入口 |
 | `PredictionPlayerPotionCallbackAudit.Capture` | 用药完成以及指定悬停同步来源在稳定根检查，未知受众、版本/布局、测试委托或依赖补丁拒绝回复剪枝；原版精确回调按已审计身份接纳，Fork 只共享不可变原因。不是所有生命/UI 事件认证，未知语义不自动获得模拟支持 | 封闭回复证明准入，无外部放行入口 |
 | `PredictionRitsuCapabilityAudit.Validate` | 原版模型类型不替代附着行为审计；未审计 Ritsu 版本只撤销有限回复证书，当前/未来规范宿主能力、未知保存条目以及默认构造注入在根/live 拒绝，空宿主/仅注册工厂保留 | 无外部认证入口；精确 Runtime/Shared 契约，仅缓存元数据，不执行未知工厂；其他回调仍然需要独立审计 |
-| `PredictionRitsuHealingAudit.Validate` | 未审计 Ritsu 版本只撤销有限回复证书；原生 Heal 入口只接受已核对的空补丁、精确 Ritsu 治疗前缀或已安装无全局监听器的 Ritsu 运行库，进程级治疗监听器不属于 ModHelper 列表并且未被镜像，非空时根捕获和 live 采用边界明确拒绝。仅缓存元数据，不执行监听器；其他回调仍然需要独立审计 | 封闭语义边界 |
+| `PredictionRitsuHealingAudit.Validate` | 原生 Heal 入口核对 Ritsu 治疗前缀、进程级治疗监听器和薄荷尖塔的休息点回血预览 postfix。薄荷尖塔按补丁身份、签名和战斗内实际控制流识别，本地玩家与其他目标在战斗中都须直接返回，版本和 MVID 无关。未知补丁组合或已知未镜像的全局监听器触发根捕获及 live 采用边界拒绝。Ritsu 运行库版本另参与有限回复证书判定 | 封闭语义边界 |
 
 | `MirroredHookListenerFilter.CanProjectReceivers` / `SimulatedCombatState.TryBuildProjectedHookListeners` | 镜像专用监听表省略既有参与位图为零的后缀成员，完整原生表保持。准入核对已审计游戏 `0.113.0` / `0.113.1` MVID 以及字段/Preview getter 的无补丁状态；基 Hook、原生关键字 Hook 或相关 getter 安装 Harmony 补丁时通过 `LiveCombatStamp` 失效旧路线并回退完整构造，不透明 `CardModifier` 与外部/动态类型保守保留 | 封闭性能特化 |
 | `ArrowMirrors` / `ModifyPreBlockDamageTargetMirrors` | v0.113 原版箭 Hook 与格挡前伤害转移采用内部精确登记。箭槽、插箭引用和历史由同一 Fork context 重映射；当前入口按内置模型维护 | 封闭原版登记 |

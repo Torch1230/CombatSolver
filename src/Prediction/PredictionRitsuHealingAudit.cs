@@ -29,16 +29,17 @@ internal static class PredictionRitsuHealingAudit
         if (heal is null)
             return "ritsu-heal-layout";
         Patches? patches = Harmony.GetPatchInfo(heal);
-        if (patches is null || patches.Prefixes.Count + patches.Postfixes.Count
-            + patches.Transpilers.Count + patches.Finalizers.Count == 0)
+        if (patches is null)
+            return null;
+        if (HasUnreviewedPatches(patches))
+            return "ritsu-heal-patch";
+        if (patches.Prefixes.Count == 0)
             return null;
         if (!IsAuditedRuntimeMvid(runtimeMvidOverrideForTest ?? typeof(HealHook).Module.ModuleVersionId))
             return "ritsu-heal-version";
         if (Metadata.Value is not { } metadata)
             return "ritsu-heal-layout";
-        if (patches.Prefixes.Count != 1
-            || patches.Prefixes[0].PatchMethod != metadata.Prefix
-            || patches.Postfixes.Count != 0 || patches.Transpilers.Count != 0 || patches.Finalizers.Count != 0)
+        if (patches.Prefixes.Count != 1 || patches.Prefixes[0].PatchMethod != metadata.Prefix)
             return "ritsu-heal-patch";
         if (metadata.Registry.GetValue(null) is not { } registry
             || metadata.Snapshot.Invoke(registry, null) is not Array snapshot)
@@ -53,17 +54,17 @@ internal static class PredictionRitsuHealingAudit
         if (heal is null)
             return;
         Patches? patches = Harmony.GetPatchInfo(heal);
-        // An unpatched native command does not dispatch the Ritsu listener stream.
-        if (patches is null || patches.Prefixes.Count + patches.Postfixes.Count
-            + patches.Transpilers.Count + patches.Finalizers.Count == 0)
+        if (patches is null)
+            return;
+        if (HasUnreviewedPatches(patches))
+            throw new PredictionUnsupportedException("Unreviewed native Heal patch combination.");
+        if (patches.Prefixes.Count == 0)
             return;
         var metadata = Metadata.Value;
         Assembly ritsuAssembly = typeof(HealHook).Assembly;
         if (metadata is { } audited)
         {
-            if (patches.Prefixes.Count != 1
-                || patches.Prefixes[0].PatchMethod != audited.Prefix
-                || patches.Postfixes.Count != 0 || patches.Transpilers.Count != 0 || patches.Finalizers.Count != 0)
+            if (patches.Prefixes.Count != 1 || patches.Prefixes[0].PatchMethod != audited.Prefix)
                 throw new PredictionUnsupportedException("Unreviewed native Heal patch combination.");
             if (audited.Registry.GetValue(null) is { } registry
                 && audited.Snapshot.Invoke(registry, null) is Array snapshot
@@ -72,12 +73,15 @@ internal static class PredictionRitsuHealingAudit
                     "Unsupported RitsuLib global healing listener; its healing effects are not mirrored.");
         }
         else if (patches.Prefixes.Count != 1
-            || patches.Prefixes[0].PatchMethod.DeclaringType?.Assembly != ritsuAssembly
-            || patches.Postfixes.Count != 0 || patches.Transpilers.Count != 0 || patches.Finalizers.Count != 0)
+            || patches.Prefixes[0].PatchMethod.DeclaringType?.Assembly != ritsuAssembly)
         {
             throw new PredictionUnsupportedException("Unreviewed native Heal patch combination.");
         }
     }
+
+    private static bool HasUnreviewedPatches(Patches patches)
+        => patches.Transpilers.Count != 0 || patches.Finalizers.Count != 0
+            || patches.Postfixes.Any(static patch => !PredictionMintySpireHealingAudit.IsRestSitePreviewPostfix(patch));
 
     private static (FieldInfo, MethodInfo, MethodInfo)? TryCaptureMetadata()
     {
