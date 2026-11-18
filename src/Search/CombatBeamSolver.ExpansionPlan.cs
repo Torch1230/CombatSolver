@@ -50,8 +50,8 @@ internal sealed partial class CombatBeamSolver
 
         SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
         IReadOnlyList<PredictedCard> hand = playerState.Hand.Cards;
-        HandFingerprintBuffer seenCards = default;
-        int seenCardCount = 0;
+        int previousPlayableIndex = -1;
+        StateFingerprint previousPlayableKey = default;
         for (int handIndex = 0; handIndex < hand.Count; handIndex++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -66,21 +66,16 @@ internal sealed partial class CombatBeamSolver
             if (!simulatedCombat.CanPlayCard(simulator, card))
                 continue;
             StateFingerprint playableKey = BuildPlayableCardKey(card);
-            bool duplicate = false;
-            for (int seenIndex = 0; seenIndex < seenCardCount; seenIndex++)
-            {
-                if (seenCards[seenIndex] == playableKey)
-                {
-                    duplicate = true;
-                    break;
-                }
-            }
+            bool duplicate = previousPlayableIndex >= 0
+                && previousPlayableKey == playableKey
+                && HaveEquivalentHandRemovalOrder(hand, previousPlayableIndex, handIndex, playableKey);
+            previousPlayableIndex = handIndex;
+            previousPlayableKey = playableKey;
             if (duplicate)
             {
                 _run.DuplicateCardBranchesPruned++;
                 continue;
             }
-            seenCards[seenCardCount++] = playableKey;
             string cardStateKey = CardChoiceSupport.ChoiceCardKey(card);
             bool requiresUnsupportedExistingChoice =
                 CardChoiceSupport.RequiresUnsupportedExistingChoice(card.Preview);
@@ -135,6 +130,38 @@ internal sealed partial class CombatBeamSolver
                     requiredEmptyChoice);
             }
         }
+    }
+
+    // The endpoints already have the same card-state key. Removing either endpoint
+    // preserves the ordered residue only when every intervening card has that key too.
+    private bool HaveEquivalentHandRemovalOrder(
+        IReadOnlyList<PredictedCard> hand, int firstIndex, int secondIndex, StateFingerprint key)
+    {
+        for (int index = Math.Min(firstIndex, secondIndex) + 1; index < Math.Max(firstIndex, secondIndex); index++)
+        {
+            if (BuildPlayableCardKey(hand[index]) != key)
+                return false;
+        }
+        return true;
+    }
+
+    private bool HasAlternativePlayableCard(CombatPredictionSimulator simulator, PredictedCard card)
+    {
+        var combat = (SimulatedCombatState)simulator.State.CombatState;
+        var hand = simulator.State.GetPlayerCombatState(_player).Hand.Cards;
+        int cardIndex = 0;
+        while (cardIndex < hand.Count && !ReferenceEquals(hand[cardIndex], card)) cardIndex++;
+        if (cardIndex == hand.Count)
+            throw new InvalidOperationException("The cycle replay card is not in the current hand.");
+        StateFingerprint key = BuildPlayableCardKey(card);
+        for (int index = 0; index < hand.Count; index++)
+        {
+            if (index != cardIndex && combat.CanPlayCard(simulator, hand[index])
+                && (BuildPlayableCardKey(hand[index]) != key
+                    || !HaveEquivalentHandRemovalOrder(hand, cardIndex, index, key)))
+                return true;
+        }
+        return false;
     }
 
     private IEnumerable<PreparedPotionAction> EnumeratePlannedPotionActions(ExpansionPlan plan)

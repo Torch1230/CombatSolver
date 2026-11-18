@@ -160,7 +160,9 @@ internal sealed partial class CombatBeamSolver
             SimPlayerCombatState playerState = simulator.State.GetPlayerCombatState(_player);
             IReadOnlyList<PredictedCard> hand = playerState.Hand.Cards;
             List<PlanAction> actions = [];
-            HashSet<string> seenCardStates = [];
+            int previousEligibleIndex = -1;
+            string? previousCardStateKey = null;
+            StateFingerprint previousPlayableKey = default;
 
             for (int handIndex = 0; handIndex < hand.Count; handIndex++)
             {
@@ -172,7 +174,15 @@ internal sealed partial class CombatBeamSolver
                     continue;
 
                 string cardStateKey = CardChoiceSupport.ChoiceCardKey(card);
-                if (!seenCardStates.Add(cardStateKey))
+                StateFingerprint playableKey = BuildPlayableCardKey(card);
+                bool duplicate = previousEligibleIndex >= 0
+                    && previousCardStateKey == cardStateKey
+                    && previousPlayableKey == playableKey
+                    && HaveEquivalentHandRemovalOrder(hand, previousEligibleIndex, handIndex, playableKey);
+                previousEligibleIndex = handIndex;
+                previousCardStateKey = cardStateKey;
+                previousPlayableKey = playableKey;
+                if (duplicate)
                     continue;
                 int occurrence = hand.Take(handIndex).Count(candidate =>
                     string.Equals(candidate.Preview.Id.Entry, card.Preview.Id.Entry, StringComparison.Ordinal));

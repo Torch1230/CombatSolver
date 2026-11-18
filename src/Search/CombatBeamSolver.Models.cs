@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
@@ -320,12 +319,6 @@ internal sealed partial class CombatBeamSolver
         ActionOptionFamily OptionFamilies,
         bool IsPure,
         double NormalizedValue);
-
-    [InlineArray(10)]
-    private struct HandFingerprintBuffer
-    {
-        private StateFingerprint _element0;
-    }
 
     private sealed record RouteAnnotations(
         IReadOnlyDictionary<int, int> HpLostByTurn,

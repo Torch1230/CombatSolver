@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "ORDERED-HAND-ADJACENT-LOOP",
+  "description": "Adjacent upgraded Pommel Strikes with Bloodletting form the unaffected repeated-draw sentinel. Uses the native current-version opening move, without the historical INHALE override.",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "LOOPBLOODPOMMELQUALITY0111",
+  "enemyCurrentHp": 40,
+  "initialPlayerHp": 57,
+  "initialPlayerMaxHp": 57,
+  "initialPlayerEnergy": 0,
+  "clearRunDeck": true,
+  "clearPlayerPiles": true,
+  "clearAllPowers": true,
+  "cards": [
+    { "cardId": "BLOODLETTING", "pile": "Hand", "treatAsDeckCard": true },
+    {
+      "cardId": "POMMEL_STRIKE",
+      "pile": "Hand",
+      "count": 2,
+      "upgradeLevels": 1,
+      "treatAsDeckCard": true
+    }
+  ],
+  "timeoutSeconds": 120,
+  "stopAfterInitialSolverResultAssertion": true
+}

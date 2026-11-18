@@ -1,5 +1,16 @@
 # CombatSolver 测试入口
 
+## 重复卡牌与有序手牌
+
+`ORDERED-HAND-DUPLICATES-FIRST` / `ORDERED-HAND-DUPLICATES-SECOND` 分别执行两处相同打击，再执行未升级坚毅。合同核对完整状态、随机流、续用、父分支及 Fork 隔离，并检查普通枚举、开局能力牌和循环替代动作。
+
+```text
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId ORDERED-HAND-DUPLICATES-FIRST -EnemyCurrentHp 100 -TimeoutSeconds 120 -CleanupInstanceOnExit
+./tools/testing/run-unattended-test.sh --scenario-id ORDERED-HAND-DUPLICATES-FIRST --enemy-current-hp 100 --timeout-seconds 120 --cleanup-instance-on-exit
+```
+
+将 ScenarioId 改为 `ORDERED-HAND-DUPLICATES-SECOND` 可执行后一张打击。失败基线、固定搜索对照和未验证项见[重复卡牌记录](issues/ordered-hand-duplicates.md)。
+
 ## 地精佣兵的基础金币奖励（#239）
 
 `GREMLIN-ESCAPE-GOLD` 构造未偷钱、胖地精 18 HP、3 张打击与 3 点能量的同根场景。关闭组合搜索与药水，固定 256 节点 / 1500 ms。先跑“放走”哨兵，再跑“保牌/保钱”，导出完整根戳、动作、战损、用药和工作量。
