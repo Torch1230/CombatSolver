@@ -1,4 +1,6 @@
-# 2026-11-18 PR 合并验收
+# 测试记录 · 卷 29
+
+## 0.51.6 社区 PR 与工具整合
 
 ## 重复卡牌与有序手牌
 
@@ -9,7 +11,7 @@ pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId ORDERED-
 ./tools/testing/run-unattended-test.sh --scenario-id ORDERED-HAND-DUPLICATES-FIRST --enemy-current-hp 100 --timeout-seconds 120 --cleanup-instance-on-exit
 ```
 
-将 ScenarioId 改为 `ORDERED-HAND-DUPLICATES-SECOND` 可执行后一张打击。失败基线、固定搜索对照和未验证项见[重复卡牌记录](../issues/ordered-hand-duplicates.md)。
+将 ScenarioId 改为 `ORDERED-HAND-DUPLICATES-SECOND` 可执行后一张打击。失败基线、固定搜索对照和未验证项见[重复卡牌记录](../../issues/ordered-hand-duplicates.md)。
 
 ## 地精佣兵的基础金币奖励（#239）
 
@@ -56,7 +58,7 @@ pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GREMLIN-
 
 ## 结果诊断的 Windows 进程内存读取
 
-2026-10-22 [结果诊断内存读取](../performance/diagnostic-process-memory.md)的确定性原生布局／映射、失败恢复、并发及生产日志成功／失败合同通过，独立查询基准与既有实机证据分开记录。
+2026-10-22 [结果诊断内存读取](../../performance/diagnostic-process-memory.md)的确定性原生布局／映射、失败恢复、并发及生产日志成功／失败合同通过，独立查询基准与既有实机证据分开记录。
 
 ## 独立检查与 CI
 
@@ -94,7 +96,7 @@ pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId NATIVE-C
 8 张富足、42 张牌的固定根及循环路线哨兵均完成 A1/C1/C2/A2 独立进程对照。
 完整根、政策、动作、续用、质量和剪枝计数一致，无时间截断。
 目标搜索分配约减少 8.1%，尚未证明稳定提速或原报告崩溃已修复。
-命令、逐次数字及原生与离线验证的范围见[记录](../performance/shuffle-variable-names-20261115.md)。
+命令、逐次数字及原生与离线验证的范围见[记录](../../performance/shuffle-variable-names-20261115.md)。
 
 ## 预战 worker 空闲取消源
 
@@ -158,3 +160,34 @@ dotnet run --project tools/testing/checks/PreCombatRequestChecks/PreCombatReques
 - `MIRRORED-HOOK-FILTER` 核对 Windows Steam 0.113.1 构建 `d09d48e5`。7 次镜像后缀构造、9 次监听表对账与 getter 补丁回退均通过。
 - `HP-LOSS-CLAMP`、`GREMLIN-ESCAPE-GOLD` 与 `ORDERED-HAND-DUPLICATES-FIRST` 均通过。范围包括 168 组扣血原生差分、胖地精完整金币奖励与逐步续用，以及手牌顺序、RNG 和 Fork。
 - 离线宿主的共享战损见证、BossTempo、续搜上界及诊断日志检查通过。当前 Windows 构建的有限回复证书保留版本门禁，原生证书正例见各 PR 的来源记录。
+
+## RitsuLib 无头兼容目标
+
+`pwsh -NoProfile -File tools/testing/test-headless-runtime.ps1 -RitsuOnly` 和 `bash tools/testing/test-headless-runtime.sh --ritsu-only` 覆盖精确版本、补丁升级、最新目标、数字版本排序、全为未来目标、重复及非法目标。
+
+2026-11-15，PowerShell 与 Windows Git Bash 均通过 8 项定向检查。原生启动器已在游戏 0.113.1 / RitsuLib 0.6.13 环境完成 `UI-PRIORITY-FEEDBACK`，结果 Passed，25.46 秒，隔离实例已清理。Linux 系统上的完整启动未验证。
+
+## 可见测试输入选择
+
+`run-visible-steam-benchmark.ps1` 的默认快照路径已迁移到 `coverage/fixtures/regressions/snapshots/mecha-knight-memory-run-snapshot.json`。两端仅在默认模式检查并解析该路径。
+
+- 修改前：完整 UI 请求在启动游戏前报 `Mecha Knight benchmark snapshot not found`。
+- 修改后：Windows 可见 `UI-PRIORITY-FEEDBACK` 请求 Passed。runId 为 `43088d4fc27f41a5869bb72f3a9421a2`，耗时 39.11 秒，含建局。
+- 请求准备：PowerShell、Git Bash 各 4 项通过。缺少默认快照时，完整请求、日志夹具和检查点模式通过；默认模式仍明确失败。检查执行生产脚本的准备段，不启动游戏。
+- 环境：游戏 0.113.1、RitsuLib 0.6.13、D3D12 / Forward+、RTX 5080 Laptop GPU，启用本机 20 个 Mod。
+- 未验证：Linux 原生可见启动、历史机甲骑士快照整场，以及 #223 原报告的存档与卡死。
+
+复跑时将以下 JSON 保存为 `.local/ui-visible-request.json`，通过 `-RequestFixturePath` 或 `--request-fixture-path` 传入。两端均设置 120 秒超时，并使用 `-EvidenceDirectory` 或 `--evidence-directory` 保存结果。
+
+```json
+{
+  "schemaVersion": 1,
+  "scenarioId": "UI-PRIORITY-FEEDBACK",
+  "characterId": "IRONCLAD",
+  "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+  "seed": "VISIBLEUI223",
+  "enemyCurrentHp": 100,
+  "timeoutSeconds": 120,
+  "exitOnComplete": true
+}
+```
