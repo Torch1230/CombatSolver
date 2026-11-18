@@ -20,6 +20,8 @@
 
 ## 下一版本（开发中）
 
+- `MirroredHookListenerFilter` 支持直接构造镜像监听后缀并通过 `SimCardPile` 维护潜在接收者索引，同时保留基类/getter 补丁以及多牌堆回退门控。
+
 ### 重复卡牌与有序手牌
 
 普通候选、开局能力牌及循环重放改用移除后的手牌顺序判断重复。相同状态牌之间夹有其他状态牌时，保留两个出牌位置；连续同状态牌继续去重。
@@ -43,7 +45,6 @@
 `SolverDiagnostics.DescribeResult` 改为一次捕获进程内存快照。Windows 直接读取当前进程的工作集与私有内存计数，避免 `Process` 内存 getter 填充进程／线程信息；其他平台保留原 getter。原有诊断字段名保持，Windows 原生查询失败时明确写 `unavailable`。改动仅在 Runtime 诊断层，不调整搜索、模拟、预算或 GC 政策。
 
 新增验证复用 `DiagnosticLogTests`，用确定值检查原生布局与字段映射，覆盖无效句柄、失败后恢复、并发调用与可选独立基准，不以顺序内存样本的差值作为通过条件。`OfflineSearchHarness --check-result-diagnostics` 直接调用构建后的生产格式化函数，检查成功数值、失败标记及后续结果／动作日志完整性。原版 0.50.1 的既有可见采样、本轮源码验证及未验证范围分开记录在[诊断性能记录](performance/diagnostic-process-memory.md)。
-
 - 无头启动器按 RitsuLib manifest 选择不高于游戏版本的最新兼容目标，修复 0.113.1 游戏配合 0.113.0 API 包时被路径检查拒绝的问题。Windows/Linux 同步维护，依赖模块仍由原加载器验证。
 - 预测洗牌在单次排序内复用动态变量名的有序数组。0 个变量直接返回，1 个变量直接比较；费用和变量值仍逐次读取分支状态。
 - 扩展 `NATIVE-CARD-ORDERING`，覆盖 0/1/2/3 个变量、后续排序、重复引用及父子分支隔离。

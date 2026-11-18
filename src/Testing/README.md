@@ -17,8 +17,9 @@
 
 测试选择与平台命令见 [无人测试](../../docs/HEADLESS_TESTING.md)，当前最小哨兵见 [测试矩阵](../../docs/TEST_MATRIX.md)。长期测试有明确断言、最小入口或 fixture；同一机制优先扩展已有合同。
 
-`Contracts/Combat/UnattendedTestRunner.OrderedHandDuplicates.cs` 使用 `ORDERED-HAND-DUPLICATES-FIRST` / `SECOND`，核对两处相同打击留下的有序手牌、坚毅随机消耗及完整原生状态。相邻重复与不可打出的间隔牌同时覆盖普通候选、开局能力牌及循环替代动作，复跑命令见测试矩阵。
+`Contracts/Combat/UnattendedTestRunner.MirroredHookFilter.cs` 与 `Contracts/Combat/UnattendedTestRunner.ProjectedHookReceivers.cs` 共用 `MIRRORED-HOOK-FILTER`（IRONCLAD / FUZZY_WURM_CRAWLER_WEAK / `--verify-combat-root-snapshot --stop-after-combat-root-snapshot-assertion`）：覆盖小牌组镜像投影与完整监听表对账、64 位参与位图、`SimCardPile` 非空索引与空索引双卡复验、`RequireRemap` 16 兄弟及第二代 Fork、不透明/别名包裹回退，以及相关 getter 补丁回退与 `LiveCombatStamp` 失效断言。
 
+`Contracts/Combat/UnattendedTestRunner.OrderedHandDuplicates.cs` 使用 `ORDERED-HAND-DUPLICATES-FIRST` / `SECOND`，核对两处相同打击留下的有序手牌、坚毅随机消耗及完整原生状态。相邻重复与不可打出的间隔牌同时覆盖普通候选、开局能力牌及循环替代动作，复跑命令见测试矩阵。
 `Contracts/Combat/UnattendedTestRunner.HandDrawRelicQuery.cs` 通过检查点 `RestoreOnly` 与场景名 `HAND-DRAW-RELICS-PROBE` 复用原生回放建局，逐一核对8种抽牌遗物在回合1～4及已有计数下的原生命令、冻结查询、Fork/RNG/父分支和live隔离；它只验证查询，完整生命周期沿用对应遗物合同。
 
 `Contracts/Search/UnattendedTestRunner.PotionCostIncumbent.cs` 使用 `POTION-COST-INCUMBENT` / IRONCLAD / NIBBITS_WEAK / 120秒，验证实际完整14/9成本胜利下同回合和更晚回合的等HP保路及原生EndTurn/用药完整状态。`ZeroAllowanceRelicIncumbent.cs` 使用 `ZERO-ALLOWANCE-RELIC-INCUMBENT` / 同角色遭遇及上限，验证真实完整胜利在零战损让步遗物目标下的本地及协调器后续HP界，保留同HP、正额度、成长和追回，原生HP消耗前缀严格差分。
