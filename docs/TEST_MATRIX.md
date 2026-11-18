@@ -1,5 +1,9 @@
 # CombatSolver 测试入口
 
+## 结果诊断的 Windows 进程内存读取
+
+2026-10-22 [结果诊断内存读取](performance/diagnostic-process-memory.md)的确定性原生布局／映射、失败恢复、并发及生产日志成功／失败合同通过，独立查询基准与既有实机证据分开记录。
+
 ## 独立检查与 CI
 
 `python -B tools/testing/run-independent-checks.py` 执行 25 个独立 .NET 检查，依赖 Python 3 和 .NET 9 SDK。Windows/Linux 使用同一入口。单项复跑可追加检查名。

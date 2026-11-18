@@ -20,9 +20,17 @@
 
 ## 下一版本（开发中）
 
+### 独立检查与 CI
+
 - 恢复 `CardHookReceiverChecks` 与 `TurnPhaseMirrorChecks` 的 Fork 接口替身。诊断日志检查改为断言进程生命周期事件的内容、顺序和冻结前缀。
 - 新增跨平台独立检查入口和 Windows/Linux CI，覆盖 25 个无需游戏安装的 .NET 检查。范围与证据见[测试入口](TEST_MATRIX.md#独立检查与-ci)。
 - 独立检查入口先扫描项目目录，拒绝未分类项目、缺失登记和异常项目布局；3 个排除项分别注明依赖。CI 对同一 PR 只保留最新运行。
+
+### 结果诊断的 Windows 进程内存读取
+
+`SolverDiagnostics.DescribeResult` 改为一次捕获进程内存快照。Windows 直接读取当前进程的工作集与私有内存计数，避免 `Process` 内存 getter 填充进程／线程信息；其他平台保留原 getter。原有诊断字段名保持，Windows 原生查询失败时明确写 `unavailable`。改动仅在 Runtime 诊断层，不调整搜索、模拟、预算或 GC 政策。
+
+新增验证复用 `DiagnosticLogTests`，用确定值检查原生布局与字段映射，覆盖无效句柄、失败后恢复、并发调用与可选独立基准，不以顺序内存样本的差值作为通过条件。`OfflineSearchHarness --check-result-diagnostics` 直接调用构建后的生产格式化函数，检查成功数值、失败标记及后续结果／动作日志完整性。原版 0.50.1 的既有可见采样、本轮源码验证及未验证范围分开记录在[诊断性能记录](performance/diagnostic-process-memory.md)。
 
 - 无头启动器按 RitsuLib manifest 选择不高于游戏版本的最新兼容目标，修复 0.113.1 游戏配合 0.113.0 API 包时被路径检查拒绝的问题。Windows/Linux 同步维护，依赖模块仍由原加载器验证。
 

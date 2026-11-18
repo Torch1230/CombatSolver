@@ -7,5 +7,6 @@
     <Compile Include="$(CombatSolverRepositoryRoot)src/Replay/AppendOnlyEventLog.cs" Link="AppendOnlyEventLog.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Runtime/CombatDiagnosticJournal.cs" Link="CombatDiagnosticJournal.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Runtime/ManualProjectionComparison.cs" Link="ManualProjectionComparison.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Runtime/ProcessMemoryUsage.cs" Link="ProcessMemoryUsage.cs" />
   </ItemGroup>
 </Project>
