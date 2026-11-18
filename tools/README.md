@@ -34,7 +34,7 @@ Linux 的 `.sh` 是原生入口；无人测试必须带 `--cleanup-instance-on-e
 
 `run-independent-checks.py` 在 Windows 和 Linux 使用同一入口。依赖 Python 3 和 .NET 9 SDK，执行 25 个独立检查，无需游戏或 RitsuLib。入口扫描 `checks/*/*.csproj`，要求项目进入执行清单或注明原因的排除清单。`--check-catalog` 只验证登记。新增项目未分类时，CI 先报错。
 
-可在命令后追加检查名，例如 `CardHookReceiverChecks DiagnosticLogTests`。每项打印结果，任一失败时返回非零退出码。GitHub Actions 在两个平台执行全组检查。排除的 3 个项目及原因见[测试入口](../docs/TEST_MATRIX.md#独立检查与-ci)。Python 专项检查和原生战斗验收使用各自入口。
+可在命令后追加检查名，例如 `CardHookReceiverChecks DiagnosticLogTests`。每项打印结果，任一失败时返回非零退出码。GitHub Actions 在两个平台执行全组检查。排除的 3 个项目及原因见[测试入口](../docs/testing/pr-integration-20261118.md#独立检查与-ci)。Python 专项检查和原生战斗验收使用各自入口。
 
 ## 构建与产物
 

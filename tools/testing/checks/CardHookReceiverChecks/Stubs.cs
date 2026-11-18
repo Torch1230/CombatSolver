@@ -17,6 +17,8 @@ namespace MegaCrit.Sts2.Core.Models
         public int CardsInHand;
         public bool IsDupe { get; init; }
         public CardModel? DupeOf { get; init; }
+        public AbstractModel? Affliction { get; init; }
+        public AbstractModel? Enchantment { get; init; }
         public int CompareTo(CardModel? other) => 0;
         public CardModel Copy() => (CardModel)MemberwiseClone();
     }
@@ -25,6 +27,15 @@ namespace CombatSolver.Engine.Common
 {
     using MegaCrit.Sts2.Core.Models;
     using MegaCrit.Sts2.Core.Entities.Players;
+    internal sealed class MirroredHookListenerFilter
+    {
+        // The independent receiver check uses the complete pile path.
+        public bool CanProjectReceivers => false;
+
+        public bool HasMirroredCallbacks(AbstractModel receiver)
+            => throw new NotSupportedException("Receiver projection requires native hook metadata.");
+    }
+
     internal sealed class PredictionForkContext
     {
         // Identity mapping only; native graph capture is outside this check's scope.

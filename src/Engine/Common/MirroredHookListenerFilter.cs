@@ -19,8 +19,11 @@ internal sealed class MirroredHookListenerFilter(bool enabled)
     private static readonly Guid AuditedCardGetterMvid = new("ad562b4e-7352-4ca2-ae45-0ff44cd284bc");
     private static readonly Guid AuditedCardGetterHotfixMvid = new("101ed96a-a88b-482f-9ea5-9b8f1ad4f4fe");
 
+    private static readonly Guid AuditedWindowsCardGetterHotfixMvid = new("9d417b39-1d40-4fc7-b993-28acdc29e151");
+
     internal static bool IsAuditedCardGetterModule(Guid mvid)
-        => mvid == AuditedCardGetterMvid || mvid == AuditedCardGetterHotfixMvid;
+        => mvid == AuditedCardGetterMvid || mvid == AuditedCardGetterHotfixMvid
+            || mvid == AuditedWindowsCardGetterHotfixMvid;
 
     private static readonly MethodInfo[] ProjectionReadMethods =
     [

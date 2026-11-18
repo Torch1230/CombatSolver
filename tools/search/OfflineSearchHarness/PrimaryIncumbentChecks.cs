@@ -65,26 +65,26 @@ internal static class PrimaryIncumbentChecks
             RelicTargets = [new(RelicCounterId.HappyFlower, 2, 2, 3, 3)],
         };
         Check(ResourceIncumbentPolicy.TryOptimisticBucket(goals, new(Royalties: 1), default(GrowthValues),
-            0, 0, out var optimistic, out int credit) && optimistic.Growth.Royalties == 1
+            0, 0, out var optimistic, out int credit, forfeitsGold: false) && optimistic.Growth.Royalties == 1
             && optimistic.RelicMask == flower && credit == 8,
             "unfinished route reserves every future growth and relic reward");
         Check(!table.TryGet(optimistic, out _), "partial witnesses cannot bound the optimistic goal bucket");
         table.Tighten(optimistic, new(-8, 5));
         Check(table.TryGet(optimistic, out _), "matching full-goal witness supplies its bound");
         Check(!ResourceIncumbentPolicy.TryOptimisticBucket(goals, null, default(GrowthValues),
-            0, 0, out _, out _), "unknown growth cap never means zero future reward");
+            0, 0, out _, out _, forfeitsGold: false), "unknown growth cap never means zero future reward");
         Check(!ResourceIncumbentPolicy.TryOptimisticBucket(goals, new(Royalties: 1), new GrowthValues(Royalties: 2),
-            0, 0, out _, out _), "observed reward beyond cap refuses pruning");
+            0, 0, out _, out _, forfeitsGold: false), "observed reward beyond cap refuses pruning");
         Check(!ResourceIncumbentPolicy.TryOptimisticBucket(goals with
             { GrowthOpportunityTargets = GrowthOpportunityTargets.UnboundedForTesting("repeatable") },
-            new(Royalties: 1), default(GrowthValues), 0, 0, out _, out _),
+            new(Royalties: 1), default(GrowthValues), 0, 0, out _, out _, forfeitsGold: false),
             "unbounded goals refuse pruning even with a nominal cap");
         Check(!ResourceIncumbentPolicy.TryOptimisticBucket(goals with
             { GrowthOpportunityTargets = new(new GrowthValues { ThirdParty = new() { ["external"] = 1 } }, []) },
-            new(Royalties: 1), default(GrowthValues), 0, 0, out _, out _),
+            new(Royalties: 1), default(GrowthValues), 0, 0, out _, out _, forfeitsGold: false),
             "native cap cannot certify a third-party growth target");
         Check(ResourceIncumbentPolicy.TryOptimisticBucket(goals with { IgnoreLongTermRewards = true },
-            null, default(GrowthValues), 0, 0, out var ignored, out int ignoredCredit)
+            null, default(GrowthValues), 0, 0, out var ignored, out int ignoredCredit, forfeitsGold: false)
             && ignored.Growth == default && ignoredCredit == 3, "ignore growth retains relic policy");
         var spentFeed = root.ForkSimulator();
         spentFeed.AddToCombat<Feed>(root.PlayerIdentity.Creature, PileType.Exhaust, 1, creator: null);
@@ -99,28 +99,28 @@ internal static class PrimaryIncumbentChecks
         targets.Tighten(new(0, 0, new(Royalties: 1)), new(10, 3)); // 15 HP - 5 credit
         targets.Tighten(new(0, 0, new(Royalties: 2)), new(10, 3)); // 20 HP - 10 credit
         Check(ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, new(Royalties: 2),
-            new(Royalties: 1), 0, 0, 30, targets, out int examined, out int excluded)
+            new(Royalties: 1), 0, 0, 30, targets, out int examined, out int excluded, forfeitsGold: false)
             && examined == 2 && excluded == 2, "each final target consumes its own positive HP bound");
         Check(!ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, new(Royalties: 2),
-            new(Royalties: 1), 0, 0, 18, targets, out examined, out excluded)
+            new(Royalties: 1), 0, 0, 18, targets, out examined, out excluded, forfeitsGold: false)
             && examined == 2 && excluded == 1, "one excluded target leaves the other target searchable");
         Check(ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, new(Royalties: 1),
-            new(Royalties: 1), 0, 0, 18, targets, out examined, out excluded)
+            new(Royalties: 1), 0, 0, 18, targets, out examined, out excluded, forfeitsGold: false)
             && examined == 1 && excluded == 1, "spent opportunities close the lower-growth bucket");
         Check(!ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, new(Royalties: 3),
-            new(Royalties: 1), 0, 0, 40, targets, out examined, out excluded)
+            new(Royalties: 1), 0, 0, 40, targets, out examined, out excluded, forfeitsGold: false)
             && examined == 3 && excluded == 2, "an unseen higher target preserves shared expansion");
         Check(!ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, null,
-            new(Royalties: 1), 0, 0, 40, targets, out _, out _), "unknown opportunity range never closes targets");
+            new(Royalties: 1), 0, 0, 40, targets, out _, out _, forfeitsGold: false), "unknown opportunity range never closes targets");
         Check(!ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, new(Royalties: 2),
-            new(Royalties: 1), 0, 1, 40, targets, out _, out _), "target bounds do not cross potion tiers");
+            new(Royalties: 1), 0, 1, 40, targets, out _, out _, forfeitsGold: false), "target bounds do not cross potion tiers");
         Check(!ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, new(Royalties: 2),
-            new(Royalties: 1), 1, 0, 40, targets, out _, out _), "target bounds do not cross theft buckets");
+            new(Royalties: 1), 1, 0, 40, targets, out _, out _, forfeitsGold: false), "target bounds do not cross theft buckets");
         Check(!ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, new(Royalties: 300),
-            default, 0, 0, 40, targets, out examined, out excluded) && examined == 0,
+            default, 0, 0, 40, targets, out examined, out excluded, forfeitsGold: false) && examined == 0,
             "large target domains fall back without truncating reachable targets");
         Check(!ResourceIncumbentPolicy.PruneGrowthTargets(growthOnly, new(Royalties: 2),
-            new(Royalties: 1), 0, 0, 14, targets, out examined, out excluded) && excluded == 0,
+            new(Royalties: 1), 0, 0, 14, targets, out examined, out excluded, forfeitsGold: false) && excluded == 0,
             "future healing reducing the physical lower bound keeps improving routes");
         Console.WriteLine($"RESOURCE_BUCKET_CHECKS status=Passed assertions={assertions}");
     }
