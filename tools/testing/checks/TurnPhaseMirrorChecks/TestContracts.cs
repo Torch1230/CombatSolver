@@ -36,6 +36,16 @@ namespace MegaCrit.Sts2.Core.Models
 }
 namespace MegaCrit.Sts2.Core.Models.Powers
 {
+    sealed class InsatiableDominionPower : AbstractModel
+    {
+        public required Creature Owner;
+        public DamageVariables DynamicVars = new();
+        public override Task AfterSideTurnEndLate(
+            GameActions.Multiplayer.PlayerChoiceContext choice, CombatSide side, IEnumerable<Creature> participants)
+            => throw new Exception("Native hook must never run in prediction.");
+    }
+    sealed class DamageVariables { public DamageVariable Damage = new(); }
+    sealed class DamageVariable { public int BaseValue; }
     sealed class DisintegrationPower : AbstractModel
     {
         public required Creature Owner;
@@ -61,9 +71,44 @@ namespace CombatSolver
 }
 namespace CombatSolver.Engine.Common
 {
+    sealed class PredictionUnsupportedException(string message) : NotSupportedException(message)
+    {
+        public static NotSupportedException ForContent(string message, params Type[] sources) => new PredictionUnsupportedException(message);
+    }
     [Flags] enum MirroredHookMask { AfterSideTurnEndLate=1, BeforeSideTurnStart=2,
         AfterPlayerTurnStartEarly=4, AfterPlayerTurnStart=8, AfterPlayerTurnStartLate=16 }
-    sealed class PredictedCard { public required CardModel Preview; }
+    // Only the receiver's remapping boundary is modeled here, not native card COW.
+    sealed class PredictionForkContext
+    {
+        private readonly Dictionary<object, object> _forks = new(ReferenceEqualityComparer.Instance);
+        public void Register<T>(T source, T target) where T : class
+        {
+            if (ReferenceEquals(source, target)) return;
+            if (_forks.TryGetValue(source, out object? existing) && !ReferenceEquals(existing, target))
+                throw new InvalidOperationException("Object forked twice.");
+            _forks[source] = target;
+        }
+        public bool TryRemap<T>(T source, out T? target) where T : class
+        {
+            target = _forks.TryGetValue(source, out object? value) ? (T)value : null;
+            return target is not null;
+        }
+        public T RemapOrSelf<T>(T source) where T : class
+            => TryRemap(source, out T? target) ? target! : source;
+        public T RequireRemap<T>(T source) where T : class
+            => TryRemap(source, out T? target) ? target! : throw new InvalidOperationException("Missing fork mapping.");
+    }
+    sealed class PredictedCard
+    {
+        public required CardModel Preview;
+        public PredictedCard Fork(PredictionForkContext context)
+        {
+            if (context.TryRemap(this, out PredictedCard? existing)) return existing!;
+            PredictedCard fork = new() { Preview = context.RemapOrSelf(Preview) };
+            context.Register(this, fork);
+            return fork;
+        }
+    }
     sealed class PredictionTrace
     {
         public struct TraceScope : IDisposable { public void Dispose() { } }
@@ -89,7 +134,7 @@ namespace CombatSolver.Engine.InCombat.Simulation
         public bool ContinuationRejected;
         public void RejectExecutionContinuation() => ContinuationRejected = true;
         public IDisposable PushDamageSource(CombatDamageSource source) => new PredictionTrace.TraceScope();
-        public void Damage(Creature owner, int amount, MegaCrit.Sts2.Core.ValueProps.ValueProp props, Creature source)
+        public void Damage(Creature owner, int amount, MegaCrit.Sts2.Core.ValueProps.ValueProp props, Creature? source)
         { DamageCalls++; DamageTotal += amount; }
     }
     sealed class FakeState

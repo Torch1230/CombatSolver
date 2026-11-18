@@ -1,5 +1,23 @@
 # CombatSolver 测试入口
 
+## 独立检查与 CI
+
+`python -B tools/testing/run-independent-checks.py` 执行 25 个独立 .NET 检查，依赖 Python 3 和 .NET 9 SDK。Windows/Linux 使用同一入口。单项复跑可追加检查名。
+
+入口先扫描 `checks/*/*.csproj`，检查每个项目是否登记。新增项目未登记、已登记项目被删除或项目布局改变时，先报错，不启动 .NET。`--check-catalog` 可单独执行这项检查。
+
+排除项有 3 个：`AdaptedOnPlayChecks` 依赖游戏的 Harmony；`PowerAmountComparisonChecks` 依赖游戏、Godot、Harmony 和 RitsuLib；`PerformanceRecordingTests` 需要输出目录或 trace、运行模式，不能无参数执行。
+
+修复前，卡牌 hook 和回合阶段检查缺少 Fork 合同，无法编译；诊断日志检查仍假定只有 1 条进程事件。回合阶段替身还缺少当前 Power 和未支持异常边界。修复后断言 4 条生命周期事件及冻结前缀，保留战斗日志隔离和过载检查。
+
+2026-11-15，本机 Windows / .NET SDK 9.0.321：全组执行通过 24 项；补齐最后一个回合阶段合同后，定向复跑通过 30 条断言。卡牌 hook 检查含 78 条断言。
+
+同日，GitHub Actions 的 Windows 与 Ubuntu 均完整执行 25 个项目，各为 `total=25 passed=25 failed=0`。运行记录见 [Independent checks](https://github.com/EEEEEEEEdison/CombatSolver/actions/runs/43688960839)，行为源码为 `6d29975c`。游戏内战斗未复测。
+
+`.github/workflows/independent-checks.yml` 在两个平台执行这些检查。独立替身只验证链接的生产边界，不代替游戏内语义、可见 UI 或战斗路线验收。
+
+2026-11-17，登记扫描识别 25 个执行项和 3 个排除项。临时目录合同覆盖完整登记、未分类项目、缺失项目及异常布局，4 项通过。新入口定向执行 `CardHookReceiverChecks`、`DiagnosticLogTests`，2 项通过；本轮未在本机重跑其余 23 项。
+
 ## RitsuLib 无头兼容目标
 
 `pwsh -NoProfile -File tools/testing/test-headless-runtime.ps1 -RitsuOnly` 和 `bash tools/testing/test-headless-runtime.sh --ritsu-only` 覆盖精确版本、补丁升级、最新目标、数字版本排序、全为未来目标、重复及非法目标。
@@ -30,7 +48,6 @@
   "exitOnComplete": true
 }
 ```
-
 ## 0.51.5 结算顺序与运行时交接
 
 定向原生差分、第二回合续用、便携 GC 合同及未验证项见[历史卷 28](archive/testing/volume-28.md#0515-结算顺序与运行时交接)。
