@@ -11,7 +11,8 @@ internal static partial class CombatSearchCoordinator
         bool AggressivePowerCommitment,
         SolverPotionPolicy? PotionPolicyOverride,
         int? MaximumPotionUses,
-        bool AllowUnsatisfiedPotion);
+        bool AllowUnsatisfiedPotion,
+        PrimarySearchIncumbent? RetainedPrimaryIncumbent = null);
 
     private static SolverResult RunPlanSearchPass(SearchPassContext context, SolverResult baseline)
     {
@@ -59,10 +60,13 @@ internal static partial class CombatSearchCoordinator
     {
         // Broad known-source eligibility permits pruning after a victory is found;
         // it does not establish that a speculative plan search is cheap enough to
-        // run before the primary member. Keep the existing certified-root schedule.
+        // run before the primary member. A normal phase after novelty exploration
+        // may reuse the certified-root pilot; active novelty and fixed schedules keep
+        // their ordering. The pilot must still produce a complete qualified victory.
         if (!root.CanCertifyRemainingHealing
             || !policy.UseBeamWidthPortfolio
-            || policy.UseNoveltyPortfolio || policy.IncludeTurnSetup
+            || policy.UseNoveltyPortfolio && (policy.FixedBudget || policy.NoveltySearch != null)
+            || policy.IncludeTurnSetup
             || policy.PortfolioExperiment != null || policy.DevelopmentStrategy != null
             || policy.DisableRefinementIncumbentForTesting || policy.DisableOpeningPlanIncumbentForTesting
             || policy.EffectiveHasGrowthTargets
@@ -255,7 +259,9 @@ internal static partial class CombatSearchCoordinator
                     AggressivePowerCommitment: true,
                     PotionPolicyOverride: null,
                     MaximumPotionUses: null,
-                    AllowUnsatisfiedPotion: false),
+                    AllowUnsatisfiedPotion: false,
+                    RetainedPrimaryIncumbent: BuildRetainedPrimarySearchIncumbent(
+                        context.Root, context.Policy, baseline)),
                 out SolverResult? memberResult, baseline))
             return baseline;
         SolverResult candidate = memberResult!;
@@ -298,6 +304,7 @@ internal static partial class CombatSearchCoordinator
             execution.PotionPolicyOverride, execution.MaximumPotionUses, null)
         {
             Commitment = plan,
+            RetainedPrimaryIncumbent = execution.RetainedPrimaryIncumbent,
             PrimaryIncumbent = incumbent is null ? null : BuildPlanMemberPrimaryIncumbent(
                 context.Root, context.Policy, execution.PotionPolicyOverride, incumbent),
         };
@@ -310,9 +317,24 @@ internal static partial class CombatSearchCoordinator
     internal static PrimarySearchIncumbent? BuildPlanMemberPrimaryIncumbent(
         CombatRootSnapshot root, SearchPolicySnapshot policy,
         SolverPotionPolicy? potionPolicyOverride, SolverResult incumbent)
-        => root.UsesComponentHealingCertificate
+        => (root.UsesComponentHealingCertificate || CombatBeamSolver.CanUseReviewedGrowthHpProof(root, policy))
             && policy.TheftPolicy != SolverTheftPolicy.PreserveResources
                 ? BuildRefinementPrimarySearchIncumbent(root, policy, potionPolicyOverride, incumbent)
+                : null;
+
+    internal static PrimarySearchIncumbent? BuildRetainedPrimarySearchIncumbent(
+        CombatRootSnapshot root, SearchPolicySnapshot policy, SolverResult retained)
+        => !policy.DisableRefinementIncumbentForTesting
+            && !policy.DisableSharedPrimaryIncumbentsForTesting
+            && CombatBeamSolver.CanUseRetainedPrimaryHpBound(root, policy)
+            && retained.ResultScope == SolverResultScope.SearchCompletion
+            && retained.BoundaryReason == SearchBoundaryReason.None
+            && !retained.Snapshot.HasRisk
+            && retained.Snapshot.ProjectedDeathSaveUseCount == 0
+            && retained.CombatEndedTurn.HasValue
+            && IsCompleteVictory(retained)
+                ? new(StrategicHpDeficit(root, policy, retained), retained.CombatEndedTurn.Value,
+                    retained.PotionStrategicCostByTurn.Values.Sum())
                 : null;
 
     private static IReadOnlyList<PlanCommitment> DiscoverOpeningPlanCommitments(

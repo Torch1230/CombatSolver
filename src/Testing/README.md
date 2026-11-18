@@ -36,7 +36,7 @@
 `Contracts/Combat/UnattendedTestRunner.OrderedHandDuplicates.cs` 使用 `ORDERED-HAND-DUPLICATES-FIRST` / `SECOND`，核对两处相同打击留下的有序手牌、坚毅随机消耗及完整原生状态。相邻重复与不可打出的间隔牌同时覆盖普通候选、开局能力牌及循环替代动作，复跑命令见测试矩阵。
 `Contracts/Combat/UnattendedTestRunner.HandDrawRelicQuery.cs` 通过检查点 `RestoreOnly` 与场景名 `HAND-DRAW-RELICS-PROBE` 复用原生回放建局，逐一核对8种抽牌遗物在回合1～4及已有计数下的原生命令、冻结查询、Fork/RNG/父分支和live隔离；它只验证查询，完整生命周期沿用对应遗物合同。
 
-`Contracts/Search/UnattendedTestRunner.PotionCostIncumbent.cs` 使用 `POTION-COST-INCUMBENT` / IRONCLAD / NIBBITS_WEAK / 120秒，验证实际完整14/9成本胜利下同回合和更晚回合的等HP保路及原生EndTurn/用药完整状态。`ZeroAllowanceRelicIncumbent.cs` 使用 `ZERO-ALLOWANCE-RELIC-INCUMBENT` / 同角色遭遇及上限，验证真实完整胜利在零战损让步遗物目标下的本地及协调器后续HP界，保留同HP、正额度、成长和追回，原生HP消耗前缀严格差分。
+`Contracts/Search/UnattendedTestRunner.PotionCostIncumbent.cs` 使用 `POTION-COST-INCUMBENT` / IRONCLAD / NIBBITS_WEAK / 120秒，验证实际完整14/9成本胜利下仅按分支已付成本剪枝（未付层成本下界保持为 `0`）、`BossTempo` 等 HP 与晚回合保留、以及原生 EndTurn／用药完整状态。`UnattendedTestRunner.ZeroCreditGrowthDominance.cs` 与 `UnattendedTestRunner.RetainedPrimaryDominance.cs` 共用 `ZERO-CREDIT-GROWTH-PROOF`（以及 `-REGEN` 变体，NECROBINDER / NIBBITS_WEAK / 120秒），验证扩展初始来源证明下跨成长桶严格战损否证、已保留完整胜利在追加计划中的严格支配消费、相等战损保留、已付成本下界、以及完整增量与 live 隔离。`ZeroAllowanceRelicIncumbent.cs` 使用 `ZERO-ALLOWANCE-RELIC-INCUMBENT` / 同角色遭遇及上限，验证真实完整胜利在零战损让步遗物目标下的本地及协调器后续HP界，保留同HP、正额度、成长和追回，原生HP消耗前缀严格差分。
 
 一次性调查放 .local/tool-tasks/<任务>/，验证时显式接入，结束清理代码、路由、参数、输入和产物。普通构建排除 .local 源码。新增正式文件按上表收纳；根目录只保留本入口。
 

@@ -1,4 +1,4 @@
-#requires -Version 7.0
+﻿#requires -Version 7.0
 
 $ErrorActionPreference = "Stop"
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -1103,6 +1103,7 @@ $expectedBeamFiles = @(
     "CombatBeamSolver.PrimaryChoiceReplay.cs",
     "CombatBeamSolver.Retention.cs",
     "CombatBeamSolver.RetentionJobs.cs",
+    "CombatBeamSolver.RetainedPrimaryBound.cs",
     "CombatBeamSolver.SmartPotionBound.cs",
     "CombatBeamSolver.StateEvaluation.cs",
     "CombatBeamSolver.StandPatJobs.cs",
@@ -1354,7 +1355,12 @@ foreach ($componentBoundary in @(
     @('src/Search/StrategicHpRecoveryBound.Components.cs', 'state.AllCards.Concat(combat.PendingReturningCards)'),
     @('src/Search/StrategicHpRecoveryBound.Components.cs', '!use.Automatic'),
     @('src/Search/SimulatedCombatState.cs', 'FirstRejectedHealingRootSource('),
-    @('src/Search/CombatBeamSolver.Retention.cs', 'if (root.UsesComponentHealingCertificate)'),
+    @('src/Search/CombatBeamSolver.Retention.cs', 'if (UsesComponentHealingProof)'),
+    @('src/Runtime/CombatRootSnapshot.cs', 'UsesPruningComponentHealingCertificate'),
+    @('src/Search/CombatBeamSolver.Retention.cs', 'CanUseReviewedGrowthHpProof(root, policy)'),
+    @('src/Search/CombatBeamSolver.Retention.cs', 'policy.EffectiveHasGrowthTargets || root.InitialGrowthRewards != default'),
+    @('src/Search/CombatBeamSolver.Retention.cs', 'policy.EffectiveGrowthBudgets == default'),
+    @('src/Search/PrimaryIncumbentTable.cs', 'entry.Value.ExplicitPotionStrategicCost is not { } cost'),
     @('src/Search/CombatBeamSolver.SmartPotionBound.cs', 'healing == int.MaxValue'),
     @('src/Search/CombatSearchCoordinator.Audits.cs', 'PotionFreePolicyBaseline = CombatBeamSolver.CanUseComponentSmartPotionEligibility(root, policy)')
 )) {
@@ -1398,7 +1404,7 @@ $beamPhasesPath = Join-Path $searchRoot "CombatBeamSolver.Phases.cs"
 foreach ($healingBoundary in @(
     @('src/Search/CombatBeamSolver.Retention.cs', '_strictHpBoundWithRelicTargets = CanUseStrictHpRelicBound(root, policy)'),
     @('src/Search/CombatBeamSolver.Retention.cs', 'targets.All(target => target.HpAllowance == 0)'),
-    @('src/Search/CombatBeamSolver.Retention.cs', 'allowTurnTieBound: policy.BossTempoSearch == null && !_strictHpBoundWithRelicTargets'),
+    @('src/Search/CombatBeamSolver.Retention.cs', 'allowTurnTieBound: !UsesExpandedHealingProof && policy.BossTempoSearch == null && !_strictHpBoundWithRelicTargets'),
     @('src/Search/CombatSearchCoordinator.cs', '!CombatBeamSolver.CanUseStrictHpRelicBound(root, policy)'),
     @('src/Search/CombatSearchCoordinator.PlanSearch.cs', 'if (!root.CanCertifyRemainingHealing')
 )) {

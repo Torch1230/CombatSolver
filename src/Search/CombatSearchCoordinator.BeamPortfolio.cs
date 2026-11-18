@@ -15,7 +15,8 @@ internal static partial class CombatSearchCoordinator
         CombatRootSnapshot root, SearchPolicySnapshot policy,
         SolverPotionPolicy? memberPotionPolicyOverride, SolverResult incumbent)
         => !policy.DisableRefinementIncumbentForTesting
-            && (root.CanCertifyRemainingHealing || root.UsesKnownNativeHealingPolicy)
+            && (root.CanCertifyRemainingHealing || root.UsesKnownNativeHealingPolicy
+                || root.UsesPruningComponentHealingCertificate)
             && IsReusablePotionFreeVictory(policy, memberPotionPolicyOverride, incumbent)
                 ? BuildPrimarySearchIncumbent(root, policy, incumbent)
                 : null;

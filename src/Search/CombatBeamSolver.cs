@@ -44,7 +44,8 @@ internal sealed partial class CombatBeamSolver(
     Action<int, IReadOnlyList<EarlyTurnFrontierCandidate>>? earlyTurnScoutObserver = null,
     PlanCommitment? planCommitment = null,
     ContinuationPurpose? attributionPurpose = null,
-    DirectSearchPurpose? directSearchPurpose = null)
+    DirectSearchPurpose? directSearchPurpose = null,
+    PrimarySearchIncumbent? retainedPrimaryIncumbent = null)
 {
     private CancellationToken? _routeMaterializationCancellationToken;
     private CancellationToken ReplayCancellationToken => _routeMaterializationCancellationToken ?? cancellationToken;

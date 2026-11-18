@@ -39,6 +39,12 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.ScenarioId is "ZERO-CREDIT-GROWTH-PROOF" or "ZERO-CREDIT-GROWTH-PROOF-REGEN")
+            {
+                await runner.AssertZeroCreditGrowthProofAsync(combatState, player,
+                    request.ScenarioId.EndsWith("-REGEN", StringComparison.Ordinal));
+                return Observation(combatEnded: false);
+            }
             if (request.ScenarioId == "CHECKPOINT-PROFILE-CONTRACT")
             {
                 runner.AssertCheckpointProfileContract(combatState);
