@@ -15,7 +15,7 @@
 | Regressions/Community/ | 社区问题的独立机制回归 |
 | Regressions/Reports/ | 已固定报告的机制检查与保留的原生已知路线回归 |
 
-`Contracts/Runtime/UnattendedTestRunner.NativeHealingCallbackBoundary.cs` 使用 `NATIVE-HEALING-CALLBACK-BOUNDARY` / REGENT / FUZZY_WURM_CRAWLER_WEAK / 120 秒：原生再生界 15、合法生成过滤、未审计 Ritsu 版本仅撤销有限回复证书、未知 OnPlay/Heal 补丁、全局治疗监听器以及晚注册 live 拒绝；16 并行 Fork 检查完整状态/历史/RNG、父/live 隔离、未知回调不执行和新根恢复。
+`Contracts/Runtime/UnattendedTestRunner.NativeHealingCallbackBoundary.cs` 使用 `NATIVE-HEALING-CALLBACK-BOUNDARY` / REGENT / FUZZY_WURM_CRAWLER_WEAK / 120 秒：原生再生界 15、合法生成过滤、Heal 补丁与未审计 Ritsu 版本仅撤销有限回复证书、未知 OnPlay 补丁与晚注册的全局治疗监听器触发拒绝；16 并行 Fork 检查完整状态/历史/RNG、父/live 隔离和新根恢复。
 
 `NATIVE-HEALING-CAPABILITY-BOUNDARY` 在测试宿主初始化阶段为该明确请求注册原生持久化槽，验证空宿主正例、未审计 Ritsu 版本仅撤销有限回复证书、当前/未来能力与默认注入以及未知保存来源拒绝、不执行未知回调，以及清理后 16 Fork 完整状态/历史/RNG。普通请求不激活该夹具；命令与实际范围见[模型能力报告](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/model-capability-recovery-proof-20261007.md)。
 

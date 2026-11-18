@@ -60,7 +60,7 @@ internal sealed partial class UnattendedTestRunner
         {
             if (PredictionRitsuHealingAudit.CaptureHealingRejection(Guid.NewGuid()) != "ritsu-heal-version")
                 throw new InvalidOperationException("Unaudited Ritsu heal MVID did not revoke finite healing certificate.");
-            PredictionRitsuHealingAudit.Validate();
+            PredictionRitsuHealingAudit.ValidateGlobalListeners();
         }
         var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("NativeHealingBoundaryUnknownPatch"), AssemblyBuilderAccess.Run);
         var builder = assembly.DefineDynamicModule("probe").DefineType("NativeHealingBoundaryUnknownPatch.Source", TypeAttributes.Public);
@@ -81,16 +81,13 @@ internal sealed partial class UnattendedTestRunner
         try
         {
             harmony.Patch(heal, prefix: new HarmonyMethod(prefix));
-            MustReject(() => CombatRootSnapshot.Capture(live), "Unreviewed native Heal patch combination");
-            MustReject(() => ContinuationStamp.CaptureLive(live), "Unreviewed native Heal patch combination");
+            var patchedRoot = CombatRootSnapshot.Capture(live);
+            if (patchedRoot.UsesComponentHealingCertificate || ContinuationStamp.CaptureLive(live).StateText != liveBefore)
+                throw new InvalidOperationException("Heal patch should revoke the healing certificate without blocking capture.");
         }
         finally { harmony.Unpatch(heal, HarmonyPatchType.All, harmony.Id); }
-        object registry = typeof(HealHook).GetField("GlobalListeners", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
-        FieldInfo values = registry.GetType().GetField("_snapshot", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        Array original = (Array)values.GetValue(registry)!;
-        if (original.Length != 0) throw new InvalidOperationException("Global listener fixture is not empty.");
         var listener = new NativeHealingBoundaryListener();
-        HealHook.RegisterGlobalListener(listener);
+        Action unregister = RegisterNativeHealingBoundaryListener(listener);
         try
         {
             MustReject(() => CombatRootSnapshot.Capture(live), "Unsupported RitsuLib global healing listener");
@@ -105,15 +102,25 @@ internal sealed partial class UnattendedTestRunner
             })));
             if (listener.Calls != 0) throw new InvalidOperationException("Callback inspection executed an unknown listener.");
         }
-        finally
-        {
-            ((IList)registry.GetType().GetField("_listeners", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(registry)!).Remove(listener);
-            values.SetValue(registry, original);
-        }
+        finally { unregister(); }
         if (Stamp(parent) != parentBefore || ContinuationStamp.CaptureLive(live).StateText != liveBefore)
             throw new InvalidOperationException("Native callback guard changed parent/live state or RNG.");
         if (!CombatRootSnapshot.Capture(live).UsesComponentHealingCertificate)
             throw new InvalidOperationException("Unpatch/unregister did not restore fresh-root qualification.");
-        _completedChecks.Add("NativeHealingCallbackBoundary:CleanBound15:GeneratedSecretWeaponAndFoolishShot:FeedNotYetAlchemizeExcluded:RitsuVersionRevokesCertificateOnly:UnknownOnPlayAndHealPatchRejected:GlobalHealRejected:LateLiveBoundaryRejected:16ParallelForks:FullStateHistoryRngParentLiveIsolation:ListenerNotInvoked:FreshRootRecovers");
+        _completedChecks.Add("NativeHealingCallbackBoundary:CleanBound15:GeneratedSecretWeaponAndFoolishShot:FeedNotYetAlchemizeExcluded:RitsuVersionRevokesCertificateOnly:UnknownOnPlayRejected:HealPatchRevokesCertificateOnly:GlobalHealRejected:LateLiveBoundaryRejected:16ParallelForks:FullStateHistoryRngParentLiveIsolation:ListenerNotInvoked:FreshRootRecovers");
+    }
+
+    private static Action RegisterNativeHealingBoundaryListener(NativeHealingBoundaryListener listener)
+    {
+        object registry = typeof(HealHook).GetField("GlobalListeners", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+        FieldInfo values = registry.GetType().GetField("_snapshot", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Array original = (Array)values.GetValue(registry)!;
+        var listeners = (IList)registry.GetType().GetField("_listeners", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(registry)!;
+        HealHook.RegisterGlobalListener(listener);
+        return () =>
+        {
+            listeners.Remove(listener);
+            values.SetValue(registry, original);
+        };
     }
 }

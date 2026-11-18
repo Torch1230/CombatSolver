@@ -1,5 +1,9 @@
 # CombatSolver 测试入口
 
+## 0.51.8 治疗补丁启动修复
+
+治疗后置补丁加载时的求解、治疗原生差分和日志包回执合同见[历史卷 31](archive/testing/volume-31.md)。
+
 ## 0.51.7 薄荷尖塔兼容与诊断取证
 
 真实薄荷尖塔与 BaseLib 的原生差分、诊断 ZIP 和上传回执合同见[历史卷 30](archive/testing/volume-30.md)。

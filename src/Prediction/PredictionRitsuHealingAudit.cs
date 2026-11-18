@@ -10,8 +10,7 @@ namespace CombatSolver;
 // The pinned native Heal prefix adds a listener stream outside ModHelper's
 // subscriber lists. Its contents are not mirrored, so an empty subscriber list
 // alone cannot certify native healing. Version mismatches revoke finite healing
-// certificates instead of blocking runs; only concrete unmirrored patches or
-// active global listeners throw PredictionUnsupportedException.
+// certificates. Active global listeners require their own combat semantics.
 internal static class PredictionRitsuHealingAudit
 {
     private static readonly Guid AuditedRuntimeMvid0614 = new("387ddce6-a82c-4ac1-9665-bc4799859e10");
@@ -31,7 +30,8 @@ internal static class PredictionRitsuHealingAudit
         Patches? patches = Harmony.GetPatchInfo(heal);
         if (patches is null)
             return null;
-        if (HasUnreviewedPatches(patches))
+        if (patches.Postfixes.Count != 0 || patches.Transpilers.Count != 0 || patches.Finalizers.Count != 0
+            || patches.InnerPrefixes.Count != 0 || patches.InnerPostfixes.Count != 0)
             return "ritsu-heal-patch";
         if (patches.Prefixes.Count == 0)
             return null;
@@ -47,41 +47,20 @@ internal static class PredictionRitsuHealingAudit
         return snapshot.Length == 0 ? null : "ritsu-heal-listener";
     }
 
-    internal static void Validate()
+    internal static void ValidateGlobalListeners()
     {
         MethodInfo? heal = AccessTools.Method(typeof(CreatureCmd), nameof(CreatureCmd.Heal),
             [typeof(Creature), typeof(decimal), typeof(bool)]);
         if (heal is null)
             return;
-        Patches? patches = Harmony.GetPatchInfo(heal);
-        if (patches is null)
-            return;
-        if (HasUnreviewedPatches(patches))
-            throw new PredictionUnsupportedException("Unreviewed native Heal patch combination.");
-        if (patches.Prefixes.Count == 0)
-            return;
-        var metadata = Metadata.Value;
-        Assembly ritsuAssembly = typeof(HealHook).Assembly;
-        if (metadata is { } audited)
-        {
-            if (patches.Prefixes.Count != 1 || patches.Prefixes[0].PatchMethod != audited.Prefix)
-                throw new PredictionUnsupportedException("Unreviewed native Heal patch combination.");
-            if (audited.Registry.GetValue(null) is { } registry
-                && audited.Snapshot.Invoke(registry, null) is Array snapshot
-                && snapshot.Length != 0)
-                throw new PredictionUnsupportedException(
-                    "Unsupported RitsuLib global healing listener; its healing effects are not mirrored.");
-        }
-        else if (patches.Prefixes.Count != 1
-            || patches.Prefixes[0].PatchMethod.DeclaringType?.Assembly != ritsuAssembly)
-        {
-            throw new PredictionUnsupportedException("Unreviewed native Heal patch combination.");
-        }
+        if (Metadata.Value is { } audited
+            && Harmony.GetPatchInfo(heal) is { } patches
+            && patches.Prefixes.Any(patch => patch.PatchMethod == audited.Prefix)
+            && audited.Registry.GetValue(null) is { } registry
+            && audited.Snapshot.Invoke(registry, null) is Array { Length: > 0 })
+            throw new PredictionUnsupportedException(
+                "Unsupported RitsuLib global healing listener; its healing effects are not mirrored.");
     }
-
-    private static bool HasUnreviewedPatches(Patches patches)
-        => patches.Transpilers.Count != 0 || patches.Finalizers.Count != 0
-            || patches.Postfixes.Any(static patch => !PredictionMintySpireHealingAudit.IsRestSitePreviewPostfix(patch));
 
     private static (FieldInfo, MethodInfo, MethodInfo)? TryCaptureMetadata()
     {

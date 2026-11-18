@@ -85,15 +85,24 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("治疗数值未被记录。");
 
         await CreatureCmd.SetCurrentHp(enemy, 1);
-        CombatRootSnapshot shortRoot = CombatRootSnapshot.Capture(combat);
-        SolverDisplayNames names = SolverDisplayNames.Capture(combat);
-        BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
-        SolverResult shortResult = await Task.Run(() => new CombatBeamSolver(shortRoot, names, damage, policy,
-            searchProfile: SolverSearchProfile.Default with { BeamWidth = 4, MaxExpandedNodes = 100, SoftTimeBudgetMilliseconds = 1000 },
-            potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
-        if (shortResult.CombatEndedTurn == null)
-            throw new InvalidOperationException("正式搜索未完成单步终局物化。");
-        _completedChecks.Add("DiagnosticLog:ProductionFinalMaterialization");
+        MethodInfo heal = AccessTools.Method(typeof(CreatureCmd), nameof(CreatureCmd.Heal),
+            [typeof(Creature), typeof(decimal), typeof(bool)])!;
+        var harmony = new Harmony("combatsolver.testing.diagnostic-log-heal-postfix");
+        harmony.Patch(heal, postfix: new HarmonyMethod(
+            AccessTools.Method(typeof(UnattendedTestRunner), nameof(UnreviewedHealPostfix))));
+        try
+        {
+            CombatRootSnapshot shortRoot = CombatRootSnapshot.Capture(combat);
+            SolverDisplayNames names = SolverDisplayNames.Capture(combat);
+            BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
+            SolverResult shortResult = await Task.Run(() => new CombatBeamSolver(shortRoot, names, damage, policy,
+                searchProfile: SolverSearchProfile.Default with { BeamWidth = 4, MaxExpandedNodes = 100, SoftTimeBudgetMilliseconds = 1000 },
+                potionPolicyOverride: SolverPotionPolicy.Disabled).Solve());
+            if (shortResult.CombatEndedTurn == null)
+                throw new InvalidOperationException("正式搜索未完成单步终局物化。");
+        }
+        finally { harmony.Unpatch(heal, HarmonyPatchType.All, harmony.Id); }
+        _completedChecks.Add("DiagnosticLog:ProductionFinalMaterializationWithHealPostfix");
 
         string path = await CombatBugReportExporter.ExportCurrentAsync(playerDescription: "日志合同验证，不上传");
         using ZipArchive archive = ZipFile.OpenRead(path);
@@ -116,20 +125,16 @@ internal sealed partial class UnattendedTestRunner
 
     private async Task AssertRejectedPredictionReportAsync(CombatState combat)
     {
-        const string rejection = "Unreviewed native Heal patch combination.";
+        const string rejection = "Unsupported RitsuLib global healing listener; its healing effects are not mirrored.";
         const string description = "诊断包兼容性合同";
         string reportId = Guid.NewGuid().ToString("N");
-        MethodInfo heal = AccessTools.Method(typeof(CreatureCmd), nameof(CreatureCmd.Heal),
-            [typeof(Creature), typeof(decimal), typeof(bool)])!;
-        var harmony = new Harmony("combatsolver.testing.diagnostic-log-rejected-prediction");
-        harmony.Patch(heal, postfix: new HarmonyMethod(
-            AccessTools.Method(typeof(UnattendedTestRunner), nameof(UnreviewedHealPostfix))));
+        Action unregister = RegisterNativeHealingBoundaryListener(new NativeHealingBoundaryListener());
         try
         {
             try
             {
                 ContinuationStamp.CaptureLive(combat);
-                throw new InvalidOperationException("Unknown Heal postfix passed the live search boundary.");
+                throw new InvalidOperationException("Unmirrored healing listener passed the live search boundary.");
             }
             catch (PredictionUnsupportedException error) when (error.Message == rejection) { }
 
@@ -156,7 +161,7 @@ internal sealed partial class UnattendedTestRunner
                 || !handler.SawMultipartReport || !handler.SawMetadata || !handler.SawSubmissionId)
                 throw new InvalidOperationException("The uploader did not send the rejected-prediction diagnostic archive.");
         }
-        finally { harmony.Unpatch(heal, HarmonyPatchType.All, harmony.Id); }
-        _completedChecks.Add("DiagnosticLog:UnknownHealPostfixRejected+ArchiveDiagnostics+MultipartReceipt");
+        finally { unregister(); }
+        _completedChecks.Add("DiagnosticLog:GlobalHealListenerRejected+ArchiveDiagnostics+MultipartReceipt");
     }
 }
