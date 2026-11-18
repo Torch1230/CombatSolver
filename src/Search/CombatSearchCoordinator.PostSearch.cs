@@ -88,6 +88,8 @@ internal static partial class CombatSearchCoordinator
                 selected.Snapshot.PlayerHp, selected.CombatEndedTurn)
             {
                 DeathSaveUseCount = selected.Snapshot.ProjectedDeathSaveUseCount,
+                OutstandingStolenResource = selected.OutstandingStolenResource,
+                ForfeitsEncounterGold = selected.ForfeitsEncounterGold,
             };
             HashSet<string> attemptedOpenings = [];
             FrontierContinuationScheduler scheduler = new(context);

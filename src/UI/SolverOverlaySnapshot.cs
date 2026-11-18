@@ -308,11 +308,22 @@ internal sealed record SolverOverlaySnapshot(
             PlannedPotionOutcomeText = PlannedPotionOutcome(result),
             StrategyOutcomes = SolverStrategyOutcomeText.Capture(result.Snapshot.RelicCounters,
                 result.Snapshot.GrowthRewards, result.Snapshot.AllEnemiesDead),
-            UnrecoveredLootText = result.OutstandingStolenResource <= 0 ? null
-                : result.Snapshot.UnrecoveredGold is { } gold && result.Snapshot.UnrecoveredCards is { } cards
-                    ? SolverText.Format($"预计未追回：{cards} 张牌 / {gold} 金币")
-                    : SolverText.Format($"路线结束时未追回 {result.OutstandingStolenResource}"),
+            UnrecoveredLootText = DescribeUnrecoveredLoot(result.OutstandingStolenResource,
+                result.Snapshot.UnrecoveredGold, result.Snapshot.UnrecoveredCards,
+                result.ForfeitsEncounterGold),
         };
+    }
+
+    internal static string? DescribeUnrecoveredLoot(int outstanding, int? gold, int? cards, bool forfeitsGold)
+    {
+        string? stolen = outstanding <= 0 ? null
+            : gold is { } g && cards is { } c
+                ? SolverText.Format($"预计未追回：{c} 张牌 / {g} 金币")
+                : SolverText.Format($"路线结束时未追回 {outstanding}");
+        if (!forfeitsGold)
+            return stolen;
+        string reward = SolverText.Get("预计战后金币奖励减少");
+        return stolen == null ? reward : stolen + "\n" + reward;
     }
 
     private static string? RewardOutcome(SolverResult result)

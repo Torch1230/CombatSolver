@@ -454,6 +454,7 @@ internal sealed partial class CombatBeamSolver
         key.Add(snapshot.SandpitRemaining);
         key.Add(snapshot.LiveDeckClutter);
         key.Add(snapshot.OutstandingStolenResource);
+        key.Add(snapshot.ForfeitsEncounterGold);
         key.Add(snapshot.Energy);
         key.Add(snapshot.Stars);
         key.Add(snapshot.HandCount);

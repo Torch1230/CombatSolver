@@ -1,5 +1,48 @@
 # CombatSolver 测试入口
 
+## 地精佣兵的基础金币奖励（#239）
+
+`GREMLIN-ESCAPE-GOLD` 构造未偷钱、胖地精 18 HP、3 张打击与 3 点能量的同根场景。关闭组合搜索与药水，固定 256 节点 / 1500 ms。先跑“放走”哨兵，再跑“保牌/保钱”，导出完整根戳、动作、战损、用药和工作量。
+
+2026-11-15，游戏 0.113.1 / RitsuLib 0.6.13 / Windows：
+
+启动器沿用本机 Mod 栈，另含：
+
+- DamageMeter 1.14.7。
+- ModConfig 0.2.3。
+- RemoveMultiplayerPlayerLimit 0.0.5。
+- Rewind 0.26.19。
+- RouteSuggest 1.9.0。
+
+以下场景使用原生卡牌和怪物。尚未在仅安装 CombatSolver 与 RitsuLib 的环境验证。
+
+| 政策 | 修改前 | 修改后 | 展开 / 转移 | 搜索耗时 |
+| --- | --- | --- | --- | --- |
+| 放走哨兵 | EndTurn，0 战损、0 药水 | 同前 | 1 / 2 → 1 / 2 | 594.11 → 493.15 ms |
+| 保牌/保钱 | EndTurn，损失基础奖励 | 3 张攻击牌击杀，0 战损、0 药水 | 1 / 2 → 3 / 6 | 3.52 → 95.86 ms |
+
+两次运行的完整根戳和预算一致。目标修复增加 2 个展开节点与 4 次转移；哨兵动作、质量与工作量保持。耗时各取 1 次，包含不同预热状态，不据此宣称整搜提速。
+
+原生游戏实际完成 3 次攻击；前 2 次动作的完整续用状态与预测一致，末击确认胖地精死亡、基础金币比例为 1。中英文及繁中回退的奖励损失提示合同通过。
+
+| 原生合同 | runId | 结果 / 总耗时 |
+| --- | --- | --- |
+| 击杀路线与政策哨兵 | `3471e67c95744662ba6d8e491b591325` | Passed / 25.64 秒 |
+| 无偷钱逃跑，金币比例 0.5 | `23ebc34b8e274f098795b3cd5b713b66` | Passed / 23.00 秒 |
+| 已偷钱逃跑，金币比例 0 | `a73833b8d6c64c3d85f5e1e0ae276b33` | Passed / 24.99 秒 |
+| 既有盗窃政策与早停 | `bd527e08ccc243cf9a3165af9c3ec894` | Passed / 26.96 秒 |
+
+两种逃跑合同均完成原生完整续用、状态键和父分支/Fork 隔离对账。所有隔离实例均已清理。
+
+```text
+pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId GREMLIN-ESCAPE-GOLD -EncounterId GREMLIN_MERC_NORMAL -EvidenceDirectory .local/gremlin-gold/search -TimeoutSeconds 120 -CleanupInstanceOnExit
+./tools/testing/run-unattended-test.sh --scenario-id GREMLIN-ESCAPE-GOLD --encounter-id GREMLIN_MERC_NORMAL --evidence-directory .local/gremlin-gold/search --timeout-seconds 120 --cleanup-instance-on-exit
+```
+
+场景 ID 可替换为 `GREMLIN-ESCAPE-GOLD-STATE` 或 `GREMLIN-ESCAPE-GOLD-STOLEN`，分别复跑两种逃跑差分。路径可通过 `Sts2GameRoot` 和 `RitsuWorkshopRoot` 覆盖。本机验证使用 PR #247 的启动器。原始 0.111.0 玩家包仅通过材料预检查，未完成原包恢复、搜索或部署；该记录不替代原包回放。
+
+2026-11-17，评审修正后的原生请求 `ab220ac856a142aba2795db5d343656d` Passed，28.13 秒。与原 PR 最终样本的完整根、政策预算、动作、战损及用药一致。放走仍展开 1 / 转移 2，保钱仍展开 3 / 转移 6。两次中间原生续用及击杀后完整奖励通过，实例已删除。单次搜索耗时分别为 565.23 / 115.44 ms，旧样本为 493.15 / 95.86 ms；未据此通过稳定耗时门禁。更大场景及保序突变键的独立负对照尚未验证。
+
 ## 结果诊断的 Windows 进程内存读取
 
 2026-10-22 [结果诊断内存读取](performance/diagnostic-process-memory.md)的确定性原生布局／映射、失败恢复、并发及生产日志成功／失败合同通过，独立查询基准与既有实机证据分开记录。

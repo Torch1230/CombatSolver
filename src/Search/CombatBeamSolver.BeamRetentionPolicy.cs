@@ -521,7 +521,8 @@ internal sealed partial class CombatBeamSolver
                 FinalPolicyQualificationSignature signature = BuildFinalPolicyQualificationSignature(
                     facts[index],
                     candidate,
-                    potionFreeOutstandingResource);
+                    potionFreeOutstandingResource,
+                    potionFreeBaseline?.Snapshot.ForfeitsEncounterGold ?? false);
                 signatures.Add(candidate, signature);
                 if (!qualificationLeaders.TryGetValue(signature, out SearchNode? current)
                     || CompareFinalCandidates(candidate, current) < 0)
@@ -594,7 +595,8 @@ internal sealed partial class CombatBeamSolver
         private FinalPolicyQualificationSignature BuildFinalPolicyQualificationSignature(
             FinalPolicyQualificationFacts facts,
             SearchNode candidate,
-            int potionFreeOutstandingResource)
+            int potionFreeOutstandingResource,
+            bool potionFreeForfeitsGold)
         {
             if (!facts.ForcedUsesSatisfied)
             {
@@ -614,7 +616,9 @@ internal sealed partial class CombatBeamSolver
                 _theftPolicy,
                 candidate.PotionCount,
                 candidate.Snapshot.OutstandingStolenResource,
-                potionFreeOutstandingResource);
+                potionFreeOutstandingResource,
+                candidate.Snapshot.ForfeitsEncounterGold,
+                potionFreeForfeitsGold);
             return new FinalPolicyQualificationSignature(
                 true,
                 facts.ExplicitPotionUseCount,
@@ -637,10 +641,13 @@ internal sealed partial class CombatBeamSolver
             SolverTheftPolicy? theftPolicy,
             int potionCount,
             int outstandingStolenResource,
-            int potionFreeOutstandingResource)
+            int potionFreeOutstandingResource,
+            bool forfeitsGold,
+            bool potionFreeForfeitsGold)
             => theftPolicy == SolverTheftPolicy.PreserveResources
                 && potionCount > 0
-                && outstandingStolenResource < potionFreeOutstandingResource;
+                && TheftEncounterStrategy.CompareOutstanding(outstandingStolenResource, forfeitsGold,
+                    potionFreeOutstandingResource, potionFreeForfeitsGold) < 0;
 
         private static int CompareFinalPolicyQualificationSignatures(
             FinalPolicyQualificationSignature left,

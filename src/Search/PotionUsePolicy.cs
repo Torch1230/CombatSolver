@@ -123,6 +123,8 @@ internal readonly record struct PotionFreePolicyBaseline(
     int? CombatEndedTurn)
 {
     public int DeathSaveUseCount { get; init; }
+    public int OutstandingStolenResource { get; init; }
+    public bool ForfeitsEncounterGold { get; init; }
 }
 
 internal sealed class PotionPolicyUnsatisfiedException(string message) : InvalidOperationException(message);

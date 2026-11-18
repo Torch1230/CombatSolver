@@ -374,7 +374,7 @@ internal sealed partial class CombatBeamSolver
                     simulator, root.PlayerIdentity);
                 prune = ResourceIncumbentPolicy.PruneGrowthTargets(policy, remainingUpper,
                     node.Snapshot.GrowthRewards, lootBucket, uses, hpLowerBound,
-                    _primaryIncumbents, out _, out _);
+                    _primaryIncumbents, out _, out _, node.Snapshot.ForfeitsEncounterGold);
             }
             if (prune)
             {

@@ -64,7 +64,8 @@ internal sealed partial class CombatBeamSolver
                 return comparison;
 
             int recoveryComparison = TheftEncounterStrategy.CompareRecovery(_theftPolicy,
-                leftWon, leftSnapshot.OutstandingStolenResource, rightWon, rightSnapshot.OutstandingStolenResource);
+                leftWon, leftSnapshot.OutstandingStolenResource, rightWon, rightSnapshot.OutstandingStolenResource,
+                leftSnapshot.ForfeitsEncounterGold, rightSnapshot.ForfeitsEncounterGold);
             if (recoveryComparison != 0)
                 return recoveryComparison;
             comparison = RouteQualityPolicy.Compare(
@@ -80,13 +81,11 @@ internal sealed partial class CombatBeamSolver
             if (comparison != 0)
                 return comparison;
 
-            int leftOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
-                ? leftSnapshot.OutstandingStolenResource
+            comparison = _theftPolicy == SolverTheftPolicy.PreserveResources
+                ? TheftEncounterStrategy.CompareOutstanding(
+                    leftSnapshot.OutstandingStolenResource, leftSnapshot.ForfeitsEncounterGold,
+                    rightSnapshot.OutstandingStolenResource, rightSnapshot.ForfeitsEncounterGold)
                 : 0;
-            int rightOutstanding = _theftPolicy == SolverTheftPolicy.PreserveResources
-                ? rightSnapshot.OutstandingStolenResource
-                : 0;
-            comparison = leftOutstanding.CompareTo(rightOutstanding);
             if (comparison != 0)
                 return comparison;
             comparison = HealthResourceCost(leftSnapshot).CompareTo(HealthResourceCost(rightSnapshot));
@@ -174,8 +173,11 @@ internal sealed partial class CombatBeamSolver
 
         private static bool IsBetterResourcePreserving(SearchNode candidate, SearchNode? current)
             => current == null
-                || candidate.Snapshot.OutstandingStolenResource < current.Snapshot.OutstandingStolenResource
+                || TheftEncounterStrategy.CompareOutstanding(candidate.Snapshot.OutstandingStolenResource,
+                    candidate.Snapshot.ForfeitsEncounterGold, current.Snapshot.OutstandingStolenResource,
+                    current.Snapshot.ForfeitsEncounterGold) < 0
                 || candidate.Snapshot.OutstandingStolenResource == current.Snapshot.OutstandingStolenResource
+                    && candidate.Snapshot.ForfeitsEncounterGold == current.Snapshot.ForfeitsEncounterGold
                     && (candidate.Snapshot.ProjectedPlayerHp > current.Snapshot.ProjectedPlayerHp
                         || candidate.Snapshot.ProjectedPlayerHp == current.Snapshot.ProjectedPlayerHp
                             && candidate.Score > current.Score);
@@ -817,7 +819,9 @@ internal sealed partial class CombatBeamSolver
                 && left.Snapshot.StrategyGoalCount >= right.Snapshot.StrategyGoalCount
                 && left.Snapshot.AngerCopiesGenerated <= right.Snapshot.AngerCopiesGenerated
                 && (_theftPolicy != SolverTheftPolicy.PreserveResources
-                    || left.Snapshot.OutstandingStolenResource <= right.Snapshot.OutstandingStolenResource)
+                    || TheftEncounterStrategy.CompareOutstanding(left.Snapshot.OutstandingStolenResource,
+                        left.Snapshot.ForfeitsEncounterGold, right.Snapshot.OutstandingStolenResource,
+                        right.Snapshot.ForfeitsEncounterGold) <= 0)
                 && left.Snapshot.AliveEnemyCount <= right.Snapshot.AliveEnemyCount
                 && left.Snapshot.EnemyHp <= right.Snapshot.EnemyHp
                 && left.Snapshot.RawEnemyHp <= right.Snapshot.RawEnemyHp
@@ -851,7 +855,9 @@ internal sealed partial class CombatBeamSolver
                 || left.Snapshot.LongTermResourceValue > right.Snapshot.LongTermResourceValue
                 || left.Snapshot.AngerCopiesGenerated < right.Snapshot.AngerCopiesGenerated
                 || _theftPolicy == SolverTheftPolicy.PreserveResources
-                    && left.Snapshot.OutstandingStolenResource < right.Snapshot.OutstandingStolenResource
+                    && TheftEncounterStrategy.CompareOutstanding(left.Snapshot.OutstandingStolenResource,
+                        left.Snapshot.ForfeitsEncounterGold, right.Snapshot.OutstandingStolenResource,
+                        right.Snapshot.ForfeitsEncounterGold) < 0
                 || left.Snapshot.AliveEnemyCount < right.Snapshot.AliveEnemyCount
                 || left.Snapshot.EnemyHp < right.Snapshot.EnemyHp
                 || left.Snapshot.RawEnemyHp < right.Snapshot.RawEnemyHp

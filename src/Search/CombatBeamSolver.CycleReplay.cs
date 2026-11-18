@@ -15,7 +15,8 @@ internal sealed partial class CombatBeamSolver
             || cycle.PriorCycleEndpoint is not { } prior
             || !policy.GrowthTargetSatisfied(seed.Snapshot.GrowthRewards)
             || !policy.RelicTargetsSatisfied(seed.Snapshot.RelicCounters)
-            || !TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, seed.Snapshot.OutstandingStolenResource)
+            || !TheftEncounterStrategy.RecoverySatisfied(_theftPolicy, seed.Snapshot.OutstandingStolenResource,
+                seed.Snapshot.ForfeitsEncounterGold)
             || battleDamage.HpLostSoFar + seed.Snapshot.CumulativePlayerHpLost > _acceptableBattleHpLoss
             || seed.Snapshot.CumulativePlayerHpLost != 0
             || seed.FutureSoldHp != 0

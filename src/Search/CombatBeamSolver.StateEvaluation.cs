@@ -615,6 +615,7 @@ internal sealed partial class CombatBeamSolver
                 : int.MaxValue,
             BrightestFlameMaxHpSpent = combat.BrightestFlameMaxHpSpent,
             UnrecoveredGold = combat.UnrecoveredLoot(simulator).Gold,
+            ForfeitsEncounterGold = TheftEncounterStrategy.ForfeitsEncounterGold(combat),
             UnrecoveredCards = combat.UnrecoveredLoot(simulator).Cards,
             DeathSavePotionHpRestored = deathSavePotionHpRestored,
             DeathSaveUseCount = combat.DeathSaveUseCount,

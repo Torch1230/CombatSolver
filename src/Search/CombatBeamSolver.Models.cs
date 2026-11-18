@@ -379,6 +379,8 @@ internal sealed partial class CombatBeamSolver
         SearchRouteTraits Traits,
         SearchBoundaryReason BoundaryReason)
     {
+        public bool ForfeitsEncounterGold { get; init; }
+
         public static SearchFeatures Capture(SearchNode node)
         {
             SimulationSnapshot snapshot = node.Snapshot;
@@ -418,7 +420,10 @@ internal sealed partial class CombatBeamSolver
                 node.ActionCount,
                 node.Score,
                 node.Traits,
-                snapshot.BoundaryReason);
+                snapshot.BoundaryReason)
+            {
+                ForfeitsEncounterGold = snapshot.ForfeitsEncounterGold,
+            };
         }
     }
 

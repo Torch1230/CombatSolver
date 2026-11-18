@@ -119,7 +119,10 @@ internal sealed partial class CombatBeamSolver
                             potionCount,
                             features.EnemyHp,
                             features.Score,
-                            theftPolicy));
+                            theftPolicy)
+                        {
+                            ForfeitsEncounterGold = candidate.Snapshot.ForfeitsEncounterGold,
+                        });
                 })
                 .ToList();
             if (emitDiagnostics && detailedDiagnostics)
@@ -172,6 +175,8 @@ internal sealed partial class CombatBeamSolver
             int potionFreeOutstandingResource = hasPotionFreeBaseline
                 ? policyCandidates[potionFreeBaselineIndex].Features.OutstandingStolenResource
                 : int.MaxValue;
+            bool potionFreeForfeitsGold = hasPotionFreeBaseline
+                && policyCandidates[potionFreeBaselineIndex].Features.ForfeitsEncounterGold;
             int potionFreeDeathSaveUseCount = hasPotionFreeBaseline
                 ? policyCandidates[potionFreeBaselineIndex].Snapshot.ProjectedDeathSaveUseCount
                 : int.MaxValue;
@@ -182,6 +187,8 @@ internal sealed partial class CombatBeamSolver
                 potionFreeStrategicHpDeficit = auditedBaseline.HpDeficit;
                 potionFreePlayerHp = auditedBaseline.PlayerHp;
                 potionFreeDeathSaveUseCount = auditedBaseline.DeathSaveUseCount;
+                potionFreeOutstandingResource = auditedBaseline.OutstandingStolenResource;
+                potionFreeForfeitsGold = auditedBaseline.ForfeitsEncounterGold;
             }
             bool anyRouteWon = potionFreeWon
                 || policyCandidates.Any(candidate => candidate.CompleteVictory);
@@ -231,11 +238,14 @@ internal sealed partial class CombatBeamSolver
                         || protectsDeathSave
                         || theftPolicy == SolverTheftPolicy.PreserveResources
                             && candidate.PotionCount > 0
-                            && candidate.Features.OutstandingStolenResource
-                                < potionFreeOutstandingResource;
+                            && TheftEncounterStrategy.CompareOutstanding(candidate.Features.OutstandingStolenResource,
+                                candidate.Features.ForfeitsEncounterGold, potionFreeOutstandingResource,
+                                potionFreeForfeitsGold) < 0;
                     bool passesAmbergrisPolicy = protectsDeathSave
                         || theftPolicy == SolverTheftPolicy.PreserveResources
-                            && candidate.Features.OutstandingStolenResource < potionFreeOutstandingResource
+                            && TheftEncounterStrategy.CompareOutstanding(candidate.Features.OutstandingStolenResource,
+                                candidate.Features.ForfeitsEncounterGold, potionFreeOutstandingResource,
+                                potionFreeForfeitsGold) < 0
                         || PotionUsePolicy.MeetsAmbergrisRestriction(
                             hasPotionFreeBaseline,
                             candidate.OptionalAmbergrisCount,
@@ -255,6 +265,8 @@ internal sealed partial class CombatBeamSolver
                 .ThenBy(candidate => candidate.Quality.DeathSaveUseCount)
                 .ThenBy(candidate => theftPolicy == SolverTheftPolicy.PreserveResources
                     ? candidate.Quality.OutstandingStolenResource : 0)
+                .ThenBy(candidate => theftPolicy == SolverTheftPolicy.PreserveResources
+                    && candidate.Quality.ForfeitsEncounterGold)
                 .ThenBy(candidate => candidate.Quality.StrategicHpDeficit)
                 .ThenByDescending(candidate => candidate.Quality.GrowthHpCredit)
                 .ThenByDescending(candidate => candidate.Quality.GrowthRewardCount)
@@ -358,7 +370,8 @@ internal sealed partial class CombatBeamSolver
         if (comparison != 0)
             return comparison;
         comparison = TheftEncounterStrategy.CompareRecovery(theftPolicy,
-            leftWon, leftSnapshot.OutstandingStolenResource, rightWon, rightSnapshot.OutstandingStolenResource);
+            leftWon, leftSnapshot.OutstandingStolenResource, rightWon, rightSnapshot.OutstandingStolenResource,
+            leftSnapshot.ForfeitsEncounterGold, rightSnapshot.ForfeitsEncounterGold);
         if (comparison != 0)
             return comparison;
         RouteQuality leftQuality = RouteQuality.Primary(leftWon,
@@ -372,7 +385,12 @@ internal sealed partial class CombatBeamSolver
             leftWon ? leftSnapshot.CombatEndedTurn : null,
             leftSnapshot.StrategyGoalHpCredit,
             leftSnapshot.StrategyGoalCount,
-            leftSnapshot.ProjectedDeathSaveUseCount);
+            leftSnapshot.ProjectedDeathSaveUseCount) with
+        {
+            TheftPolicy = theftPolicy,
+            OutstandingStolenResource = leftSnapshot.OutstandingStolenResource,
+            ForfeitsEncounterGold = leftSnapshot.ForfeitsEncounterGold,
+        };
         RouteQuality rightQuality = RouteQuality.Primary(rightWon,
             ActEndingBossPolicy.StrategicHpDeficit(
                 rightSnapshot.CumulativePlayerHpLost,
@@ -384,14 +402,20 @@ internal sealed partial class CombatBeamSolver
             rightWon ? rightSnapshot.CombatEndedTurn : null,
             rightSnapshot.StrategyGoalHpCredit,
             rightSnapshot.StrategyGoalCount,
-            rightSnapshot.ProjectedDeathSaveUseCount);
+            rightSnapshot.ProjectedDeathSaveUseCount) with
+        {
+            TheftPolicy = theftPolicy,
+            OutstandingStolenResource = rightSnapshot.OutstandingStolenResource,
+            ForfeitsEncounterGold = rightSnapshot.ForfeitsEncounterGold,
+        };
         comparison = RouteQualityPolicy.Compare(leftQuality, rightQuality, RouteQualityProjection.Primary);
         if (comparison != 0)
             return comparison;
         if (theftPolicy == SolverTheftPolicy.PreserveResources)
         {
-            comparison = leftSnapshot.OutstandingStolenResource.CompareTo(
-                rightSnapshot.OutstandingStolenResource);
+            comparison = TheftEncounterStrategy.CompareOutstanding(
+                leftSnapshot.OutstandingStolenResource, leftSnapshot.ForfeitsEncounterGold,
+                rightSnapshot.OutstandingStolenResource, rightSnapshot.ForfeitsEncounterGold);
             if (comparison != 0)
                 return comparison;
         }

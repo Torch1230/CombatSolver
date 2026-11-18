@@ -583,6 +583,8 @@ internal static partial class CombatSearchCoordinator
             CombatEndedTurn: potionFree.CombatEndedTurn)
         {
             DeathSaveUseCount = potionFree.Snapshot.ProjectedDeathSaveUseCount,
+            OutstandingStolenResource = potionFree.OutstandingStolenResource,
+            ForfeitsEncounterGold = potionFree.ForfeitsEncounterGold,
         };
         SolverResult audited = new CombatBeamSolver(
             root,
@@ -925,7 +927,9 @@ internal static partial class CombatSearchCoordinator
                 bool acceptable = IsSmartPotionGradientCandidateAcceptable(
                     IsCompleteVictory(primary), won, saved, required,
                     policy.TheftPolicy == SolverTheftPolicy.PreserveResources
-                        && candidate.OutstandingStolenResource < primary.OutstandingStolenResource);
+                        && TheftEncounterStrategy.CompareOutstanding(candidate.OutstandingStolenResource,
+                            candidate.ForfeitsEncounterGold, primary.OutstandingStolenResource,
+                            primary.ForfeitsEncounterGold) < 0);
                 bool improved = acceptable && IsBetterSmartPotionAuditResult(
                     root, policy, candidate, selected);
                 if (improved)
@@ -1031,6 +1035,8 @@ internal static partial class CombatSearchCoordinator
             potionFree.CombatEndedTurn)
         {
             DeathSaveUseCount = potionFree.Snapshot.ProjectedDeathSaveUseCount,
+            OutstandingStolenResource = potionFree.OutstandingStolenResource,
+            ForfeitsEncounterGold = potionFree.ForfeitsEncounterGold,
         };
         List<SolverResult> searches = [potionFree];
         SolverResult selected = potionFree;
@@ -1127,7 +1133,9 @@ internal static partial class CombatSearchCoordinator
                     : 0;
             int hpRequired = SmartPotionHpRequired(root, policy, candidate);
             bool protectsLoot = policy.TheftPolicy == SolverTheftPolicy.PreserveResources
-                && candidate.OutstandingStolenResource < potionFree.OutstandingStolenResource;
+                && TheftEncounterStrategy.CompareOutstanding(candidate.OutstandingStolenResource,
+                    candidate.ForfeitsEncounterGold, potionFree.OutstandingStolenResource,
+                    potionFree.ForfeitsEncounterGold) < 0;
             bool protectsDeathSave = candidate.Snapshot.ProjectedDeathSaveUseCount
                 < potionFree.Snapshot.ProjectedDeathSaveUseCount;
             bool acceptable = IsSmartPotionGradientCandidateAcceptable(
@@ -1162,7 +1170,7 @@ internal static partial class CombatSearchCoordinator
                 $"incumbent_updates={candidate.PrimaryIncumbentUpdates}");
             if (HasReachedAcceptableBattleHpLoss(policy, selected)
                 && TheftEncounterStrategy.RecoverySatisfied(
-                    policy.TheftPolicy, selected.OutstandingStolenResource))
+                    policy.TheftPolicy, selected.OutstandingStolenResource, selected.ForfeitsEncounterGold))
                 break;
         }
 

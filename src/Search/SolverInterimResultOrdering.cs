@@ -52,7 +52,9 @@ internal static class SolverInterimResultOrdering
                 || candidate.Survives && !current.Survives
                 || candidate.DeathSaveUseCount < current.DeathSaveUseCount
                 || candidate.TheftPolicy == SolverTheftPolicy.PreserveResources
-                    && candidate.OutstandingStolenResource < current.OutstandingStolenResource
+                    && TheftEncounterStrategy.CompareOutstanding(candidate.OutstandingStolenResource,
+                        candidate.ForfeitsEncounterGold, current.OutstandingStolenResource,
+                        current.ForfeitsEncounterGold) < 0
                 || !current.Won
                 || candidate.ProjectedBattleHpLost - candidate.GrowthHpCredit
                     <= current.ProjectedBattleHpLost - current.GrowthHpCredit)

@@ -36,9 +36,12 @@ internal static class RouteQualityPolicy
 
         if (projection == RouteQualityProjection.Interim)
         {
-            if (candidate.TheftPolicy == SolverTheftPolicy.PreserveResources
-                && candidate.OutstandingStolenResource != current.OutstandingStolenResource)
-                return candidate.OutstandingStolenResource.CompareTo(current.OutstandingStolenResource);
+            if (candidate.TheftPolicy == SolverTheftPolicy.PreserveResources)
+            {
+                int recovery = TheftEncounterStrategy.CompareOutstanding(candidate.OutstandingStolenResource,
+                    candidate.ForfeitsEncounterGold, current.OutstandingStolenResource, current.ForfeitsEncounterGold);
+                if (recovery != 0) return recovery;
+            }
             if (SolverInterimResultOrdering.IsResourceTradeImprovement(
                     candidate.StrategicHpDeficit, candidate.PotionStrategicCost,
                     current.StrategicHpDeficit, current.PotionStrategicCost))
@@ -71,7 +74,8 @@ internal static class RouteQualityPolicy
 
         comparison = TheftEncounterStrategy.CompareRecovery(theftPolicy,
             candidate.Won, candidate.OutstandingStolenResource,
-            current.Won, current.OutstandingStolenResource);
+            current.Won, current.OutstandingStolenResource,
+            candidate.ForfeitsEncounterGold, current.ForfeitsEncounterGold);
         if (comparison != 0)
             return comparison;
 
