@@ -86,6 +86,12 @@ Smart 药水梯度在主成员耗尽时间时拥有一个独立成员时间：�
 
 ## 4. 模拟与 Prediction
 
+`PredictionPlayerPotionCallbackAudit` 仅在根捕获检查公开用药完成事件以及已声明的原生悬停同步依赖，把拒绝原因冻结进已有 subscriber 捕获；Fork 只读共享字符串，后台不读 Player 委托、界面对象或同步注册表。未知来源使原整体、组件、剩余回复和已知来源策略失去剪枝资格；它不实现未知回调，也不认证其余生命或界面事件。
+
+`PredictionCardCallbackAudit` 在同一根阶段检查 8 个无参卡牌通知以及已经冻结的暂时离堆所属卡，沿用 subscriber 捕获中的不可变拒绝原因。精确 Tracker 绑定依赖先执行的生命转发门槛；未知来源只撤销回复剪枝，不获得模拟支持。后台和 Fork 不读取委托；此门槛不认证其他卡牌事件、界面信号以及未来注册。
+
+`PredictionRitsuHealingAudit` 在主线程根捕获与 live 采用边界核对原生 Heal 补丁和进程级治疗监听器；未知回调显式拒绝，Fork 不读取运行时注册表。OnPlay 来源审计另外纳入原生战斗生成超集和固定状态/诅咒来源，初始/永久牌组仍然单独覆盖；仅模型身份元数据共享，不扩大任意扩展的语义支持。`PredictionRitsuCapabilityAudit` 同样仅在根/live 读取已存在能力宿主、未识别保存条目与默认注入注册表；不调用工厂，不把可变资格带入后台或 Fork。
+
 | 位置 | 职责 |
 | --- | --- |
 | `src/Engine/InCombat/Simulation/` | 通用命令时序、历史、RNG、牌堆、伤害和 Fork |

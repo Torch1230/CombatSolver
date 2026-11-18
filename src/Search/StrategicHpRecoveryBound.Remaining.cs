@@ -90,6 +90,8 @@ internal static partial class StrategicHpRecoveryBound
     internal static bool CanCertifyRemainingHealingEnvironment(
         CombatPredictionSimulator simulator, Player player)
     {
+        if (((SimulatedCombatState)simulator.State.CombatState).RootHealingCallbackRejection is not null)
+            return false;
         if (player.Character.GetType() == typeof(MegaCrit.Sts2.Core.Models.Characters.Defect))
             return CanCertifyDefectPrismHealingEnvironment(simulator, player);
         SimulatedCombatState combat = (SimulatedCombatState)simulator.State.CombatState;
@@ -138,6 +140,8 @@ internal static partial class StrategicHpRecoveryBound
         CombatPredictionSimulator simulator, Player player, int postCombatHeal,
         bool includePotionHealing = true, int? maximumExplicitPotionUses = null)
     {
+        if (((SimulatedCombatState)simulator.State.CombatState).RootHealingCallbackRejection is not null)
+            return int.MaxValue;
         if (player.Character.GetType() == typeof(MegaCrit.Sts2.Core.Models.Characters.Defect))
             return DefectPrismHealingUpperBound(simulator, player, postCombatHeal);
         if (simulator.HasPendingChoice)

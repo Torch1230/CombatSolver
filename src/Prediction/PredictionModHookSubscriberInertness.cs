@@ -7,9 +7,10 @@ namespace CombatSolver;
 /// <summary>
 /// 判断一个 ModHelper 订阅器是否与战斗预测无关：它在 <see cref="AbstractModel"/> 上覆写的所有
 /// hook 要么只在战斗之外分发（地图生成、进幕、事件抽取、休息处、商店），要么只在战斗开始时分发一次、
-/// 早于求解器在回合开始捕获预测根，且求解器从不镜像它们。这样的订阅器不可能改变模拟结果，
-/// 不必把整个 Mod 判为不兼容。判定沿继承链向上收集全部覆写（含中间基类与泛型基类），
-/// 任何一个落在清单之外的 hook 都视为参与战斗。
+/// 早于求解器在回合开始捕获预测根，且求解器从不镜像它们。类型判定沿继承链向上收集全部覆写
+/// （含中间基类与泛型基类），任何一个落在清单之外的 hook 都视为参与战斗。
+/// 实例准入还要求没有 ExecutionFinished 受众：原生调用方在默认回调完成后也会分派该事件。
+/// 这项准入检查不是回复上界或完整未来状态等价性的认证。
 /// </summary>
 internal static class PredictionModHookSubscriberInertness
 {
@@ -50,9 +51,9 @@ internal static class PredictionModHookSubscriberInertness
     };
 
     /// <summary>
-    /// <see cref="AbstractModel"/> 上不是 hook 的虚成员。覆写它们不会让订阅器收到任何战斗事件：
-    /// <c>ShouldReceiveCombatHooks</c> 只决定战斗 hook 是否投递，投递到一个没有覆写任何战斗 hook 的
-    /// 模型上仍是空操作；其余是比较与展示用途。
+    /// <see cref="AbstractModel"/> 上不是 hook 的虚成员。当前原生 ModHelper 订阅器枚举不调用
+    /// <c>ShouldReceiveCombatHooks</c>；不能由此推断 getter 无副作用或默认回调没有完成通知。
+    /// 其余是比较与展示用途。
     /// </summary>
     private static readonly HashSet<string> NonHookMemberNames = new(StringComparer.Ordinal)
     {
@@ -64,8 +65,25 @@ internal static class PredictionModHookSubscriberInertness
 
     private static readonly ConcurrentDictionary<Type, (bool Inert, string Overrides)> Cache = new();
 
+    private static readonly FieldInfo? ExecutionFinishedField = typeof(AbstractModel).GetField(
+        nameof(AbstractModel.ExecutionFinished), BindingFlags.Instance | BindingFlags.NonPublic
+        | BindingFlags.DeclaredOnly);
+
     /// <summary>
-    /// 订阅器类型是否与战斗无关。<paramref name="overriddenHooks"/> 返回沿继承链收集到的全部
+    /// 在主线程捕获根时核对当前实例。只缓存类型元数据，不缓存可变化的事件受众；
+    /// 无法读取原生事件字段或存在受众时，继续原有未适配订阅器拒绝路径。
+    /// </summary>
+    public static bool IsCombatInert(AbstractModel subscriber, out string overriddenHooks)
+    {
+        if (!IsCombatInert(subscriber.GetType(), out overriddenHooks))
+            return false;
+        return ExecutionFinishedField?.FieldType == typeof(Action<AbstractModel>)
+            && ExecutionFinishedField.GetValue(subscriber) is null;
+    }
+
+    /// <summary>
+    /// 订阅器类型的 hook 覆写是否满足准入前提；实际准入必须调用实例重载。
+    /// <paramref name="overriddenHooks"/> 返回沿继承链收集到的全部
     /// <see cref="AbstractModel"/> hook 覆写名（逗号分隔，用于日志）。
     /// 反射失败、类型不是 <see cref="AbstractModel"/>、或任一覆写不在清单内，都返回 false。
     /// </summary>

@@ -20,6 +20,8 @@
 
 ## 下一版本（开发中）
 
+- `SimCreatureState.LoseHp` 将负伤害截断为零，惰性订阅器实例准入额外检查 `AbstractModel.ExecutionFinished`，同时新增 `Player.UsedPotionRemoved`、生命/界面事件、8 项 `CardModel` 通知、`RitsuLib` 治疗监听器以及模型能力宿主的根捕获审计；未审计 `STS2`/`RitsuLib` MVID 只撤销有限回复剪枝证书，不阻断游戏流程，而 `OnPlay` 根审计纳入 `FoolCardPool` 原生战斗生成超集。`tools/testing/run-unattended-test.sh` 将 `source "$script_dir/headless-runtime.sh"` 前移到 `headless_ritsu_compatibility_target` 调用之前。
+
 - `MirroredHookListenerFilter` 支持直接构造镜像监听后缀并通过 `SimCardPile` 维护潜在接收者索引，同时保留基类/getter 补丁以及多牌堆回退门控。
 
 ### 重复卡牌与有序手牌

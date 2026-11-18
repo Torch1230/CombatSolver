@@ -101,6 +101,6 @@ internal static partial class StrategicHpRecoveryBound
         typeof(WeakPower),
     }.ToFrozenSet();
     internal static bool HasNativeZeroRecoveryPotionCertificate(Type type)
-        => typeof(PotionModel).Module.ModuleVersionId == ComponentAuditMvid
+        => IsAuditedComponentNativeMvid(typeof(PotionModel).Module.ModuleVersionId)
             && NativeZeroRecoveryPotions.Contains(type);
 }

@@ -15,6 +15,20 @@
 | Regressions/Community/ | 社区问题的独立机制回归 |
 | Regressions/Reports/ | 已固定报告的机制检查与保留的原生已知路线回归 |
 
+`Contracts/Runtime/UnattendedTestRunner.NativeHealingCallbackBoundary.cs` 使用 `NATIVE-HEALING-CALLBACK-BOUNDARY` / REGENT / FUZZY_WURM_CRAWLER_WEAK / 120 秒：原生再生界 15、合法生成过滤、未审计 Ritsu 版本仅撤销有限回复证书、未知 OnPlay/Heal 补丁、全局治疗监听器以及晚注册 live 拒绝；16 并行 Fork 检查完整状态/历史/RNG、父/live 隔离、未知回调不执行和新根恢复。
+
+`NATIVE-HEALING-CAPABILITY-BOUNDARY` 在测试宿主初始化阶段为该明确请求注册原生持久化槽，验证空宿主正例、未审计 Ritsu 版本仅撤销有限回复证书、当前/未来能力与默认注入以及未知保存来源拒绝、不执行未知回调，以及清理后 16 Fork 完整状态/历史/RNG。普通请求不激活该夹具；命令与实际范围见[模型能力报告](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/model-capability-recovery-proof-20261007.md)。
+
+`Contracts/Combat/UnattendedTestRunner.FailureBoundaries.cs` 的 `VerifyPredictionFailureBoundaries` 继续覆盖订阅器的十种类型形状，并且增加四种实例的完成事件添加/移除、只读检查和派生同名字段拒绝。沿用 `--verify-prediction-failure-boundaries`（PowerShell：`-VerifyPredictionFailureBoundaries`）入口，不注册测试模型到真实战斗。原生默认回调和根准入的最小证据见[实例通知边界](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/inert-subscriber-call-boundary-20261008.md)。
+
+`Contracts/Search/UnattendedTestRunner.PlayerPotionCallbackBound.cs` 使用 `PLAYER-POTION-CALLBACK-BOUND` / IRONCLAD / FUZZY_WURM_CRAWLER_WEAK / HP 40、MaxHP 80 / 120 秒：通过原生 `UsePotionAction` 执行公开移除事件的直接生命重设，验证未知来源退回无限界、正常原版界面回调可认证、16 个所属 Fork 完整状态/历史/RNG 和父/live 隔离；未知悬停事件、同步测试委托以及 Harmony 修改拒绝，不调用未知来源，清理后新根恢复。它不适配未知回调语义，也不证明所有界面通知闭包。
+
+`Contracts/Search/UnattendedTestRunner.HealthCallbackBound.cs` 使用 `HEALTH-CALLBACK-BOUND` / FOOL / FUZZY_WURM_CRAWLER_WEAK / HP 40、MaxHP 80 / 120 秒：首先核对未改动活体 Fool 界面订阅放行，再验证正常受伤完整续用状态/RNG 严格对账；未知玩家/敌人的当前和最大生命事件、独立于生命连接的 Tracker 通知、Ritsu 详情刷新以及指定补丁均撤销有限回复资格，每组 16 所属 Fork 保留无限界、完整状态/历史/RNG 以及父隔离。原生受伤事件和移除生命连接后的能量通知各额外回复 2 点，均被拒绝认证，移除后新根恢复。它只补齐已确认来源缺口，不认证完整 UI 或未来注册闭包。
+
+`Contracts/Search/UnattendedTestRunner.CardNotificationBound.cs` 使用 `CARD-NOTIFICATION-BOUND` / IRONCLAD / FUZZY_WURM_CRAWLER_WEAK / 120 秒以及根快照停止参数：首先核对未改动活体 Ironclad 界面订阅放行，随后验证原生 `BULLET_TIME` 触发 `StarCostChanged` 直接回复 2 点时撤销有限回复资格，8 事件乘以五牌堆/floating/永久牌组共 56 项拒绝、晚绑定/移除、新旧根隔离以及 16 Fork 完整状态/历史/RNG；不认证其余 UI 与未来来源。已撤回的生成闭包/查询惰性合同仅在[研究证据](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/card-notification-and-recovery-roi-20261009.md)归档。
+
+`Contracts/Combat/UnattendedTestRunner.HpLossClamping.cs` 使用 `HP-LOSS-CLAMP` / IRONCLAD / FUZZY_WURM_CRAWLER_WEAK / 120 秒以及 `--verify-combat-root-snapshot --stop-after-combat-root-snapshot-assertion`，直接比较原生扣血的 168 组负数、小数、零、致死、封顶以及 decimal 极值和全部伤害字段/生命通知。16 孩子串行 Fork 后并行修改，检查完整状态、历史、九 RNG 与父/live 隔离；不执行完整伤害 Hook 管线。失败基线与最终证据见[回复闭包盘点](https://github.com/ltlly/CombatSolver/blob/1018fd7020aaaff1b2d24e9950f4b37446eea441/docs/performance/pruning-source-closure-and-hp-clamp-20261009.md)。
+
 测试选择与平台命令见 [无人测试](../../docs/HEADLESS_TESTING.md)，当前最小哨兵见 [测试矩阵](../../docs/TEST_MATRIX.md)。长期测试有明确断言、最小入口或 fixture；同一机制优先扩展已有合同。
 
 `Contracts/Combat/UnattendedTestRunner.MirroredHookFilter.cs` 与 `Contracts/Combat/UnattendedTestRunner.ProjectedHookReceivers.cs` 共用 `MIRRORED-HOOK-FILTER`（IRONCLAD / FUZZY_WURM_CRAWLER_WEAK / `--verify-combat-root-snapshot --stop-after-combat-root-snapshot-assertion`）：覆盖小牌组镜像投影与完整监听表对账、64 位参与位图、`SimCardPile` 非空索引与空索引双卡复验、`RequireRemap` 16 兄弟及第二代 Fork、不透明/别名包裹回退，以及相关 getter 补丁回退与 `LiveCombatStamp` 失效断言。
