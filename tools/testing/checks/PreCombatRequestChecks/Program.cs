@@ -124,7 +124,14 @@ await Check("cancelled cache hits do not change worker lifetime", async () =>
     Equal(PreCombatForecastStatus.Cancelled, result.Status);
     Equal(applied, PreCombatForecastWorker.AppliedLifetimes.Count);
 });
-Console.WriteLine($"Passed {passed} pre-combat request checks.");
+await Check("idle expiry stops only its session", PreCombatForecastWorker.CheckIdleExpiryAsync);
+await Check("idle cancellation keeps the session reusable", PreCombatForecastWorker.CheckIdleCancellationAsync);
+await Check("idle cancellation releases a queued gate waiter", PreCombatForecastWorker.CheckIdleGateCancellationAsync);
+await Check("idle stale cleanup preserves replacement ownership", PreCombatForecastWorker.CheckStaleIdleCompletionAsync);
+await Check("idle cleanup preserves an in-flight cancellation source", PreCombatForecastWorker.CheckIdleCancelDisposeOverlapAsync);
+await Check("idle cancellation before timer startup uses the captured token", PreCombatForecastWorker.CheckIdleCancellationBeforeStartAsync);
+await Check("idle indefinite lifetime cancels the old timer", PreCombatForecastWorker.CheckIndefiniteIdleLifetimeAsync);
+Console.WriteLine($"Passed {passed} pre-combat request and idle checks.");
 
 async Task Check(string name, Func<Task> body)
 {

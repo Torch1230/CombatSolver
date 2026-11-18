@@ -95,7 +95,11 @@ namespace CombatSolver
         public static bool IsPreCombatWorker { get; set; }
         public static TestLogger Logger = new();
     }
-    public sealed class TestLogger { public void Error(string message) => throw new Exception(message); }
+    public sealed class TestLogger
+    {
+        public void Info(string message) { }
+        public void Error(string message) => throw new Exception(message);
+    }
     public static class SolverDispatcher { public static void Post(Action action) => action(); }
 }
 namespace CombatSolver.Api
@@ -107,7 +111,7 @@ namespace CombatSolver.Api
         public static string CaptureToken(RunState run) => run.Token;
         public PreCombatLiveStateSnapshot WithPlanningRun(SerializableRun _) => this;
     }
-    internal static class PreCombatForecastWorker
+    internal static partial class PreCombatForecastWorker
     {
         internal sealed record Work(PreCombatForecastOptions Options, CancellationToken Cancellation)
         {

@@ -9,12 +9,11 @@ using MegaCrit.Sts2.Core.Rooms;
 
 namespace CombatSolver.Api;
 
-internal static class PreCombatForecastWorker
+internal static partial class PreCombatForecastWorker
 {
     private const string RuntimeDirectoryName = ".combatsolver-precombat";
     private const string RuntimeMarkerName = ".combatsolver-precombat-owner";
     private const string RuntimeMarkerContents = "CombatSolver PreCombat API v1";
-    private const int KeepAliveIndefinitely = -1;
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly object RequestCancellationSync = new();
     private static CancellationTokenSource? _activeRequestCancellation;
@@ -26,8 +25,6 @@ internal static class PreCombatForecastWorker
         new(StringComparer.Ordinal);
     private static WorkerSession? _session;
     private static string? _ownedRuntimeRoot;
-    private static CancellationTokenSource? _idleShutdown;
-    private static int _idleWorkerLifetimeMilliseconds = PreCombatForecastApi.DefaultWorkerIdleTimeoutMilliseconds;
     private static int _workerStartCount;
     private static int _workerReuseCount;
     private static int _workerBusy;
@@ -539,70 +536,6 @@ internal static class PreCombatForecastWorker
         AudioMuted = false,
         IdleTimeoutMilliseconds = GetIdleTimeoutMilliseconds(),
     };
-
-    private static void ScheduleIdleShutdown(WorkerSession session)
-    {
-        CancelIdleShutdown();
-        int idleTimeoutMilliseconds = Volatile.Read(ref _idleWorkerLifetimeMilliseconds);
-        if (idleTimeoutMilliseconds == KeepAliveIndefinitely)
-            return;
-        CancellationTokenSource cancellation = new();
-        _idleShutdown = cancellation;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await Task.Delay(idleTimeoutMilliseconds, cancellation.Token).ConfigureAwait(false);
-                await Gate.WaitAsync(cancellation.Token).ConfigureAwait(false);
-                try
-                {
-                    if (ReferenceEquals(_session, session))
-                    {
-                        Entry.Logger.Info(
-                            $"[CombatSolver/PreCombatApi] WORKER_IDLE_STOP pid={session.Process.Id} " +
-                            $"idle_ms={idleTimeoutMilliseconds}");
-                        StopCurrentSession();
-                    }
-                }
-                finally
-                {
-                    Gate.Release();
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // A new request or explicit panel close owns the next session transition.
-            }
-            catch (Exception ex)
-            {
-                Entry.Logger.Error($"[CombatSolver/PreCombatApi] WORKER_IDLE_STOP_FAILED exception={ex}");
-            }
-            finally
-            {
-                Interlocked.CompareExchange(ref _idleShutdown, null, cancellation);
-                cancellation.Dispose();
-            }
-        });
-    }
-
-    private static int? GetIdleTimeoutMilliseconds()
-    {
-        int value = Volatile.Read(ref _idleWorkerLifetimeMilliseconds);
-        return value == KeepAliveIndefinitely ? null : value;
-    }
-
-    private static void SetIdleWorkerLifetime(int? idleTimeoutMilliseconds) =>
-        Interlocked.Exchange(
-            ref _idleWorkerLifetimeMilliseconds,
-            idleTimeoutMilliseconds ?? KeepAliveIndefinitely);
-
-    private static void CancelIdleShutdown()
-    {
-        CancellationTokenSource? cancellation = Interlocked.Exchange(ref _idleShutdown, null);
-        if (cancellation is null)
-            return;
-        cancellation.Cancel();
-    }
 
     private static void InvalidateSession(WorkerSession session)
     {

@@ -9,5 +9,6 @@
   <ItemGroup>
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastApi.cs" Link="Production/PreCombatForecastApi.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastContracts.cs" Link="Production/PreCombatForecastContracts.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastWorker.Idle.cs" Link="Production/PreCombatForecastWorker.Idle.cs" />
   </ItemGroup>
 </Project>
