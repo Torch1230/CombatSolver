@@ -41,6 +41,7 @@ param(
     [string]$ReplayMode = "RestoreOnly",
     [string]$ReplayPolicyOverridePath = "",
     [int]$RecordedPlanRetentionStepForTest = -1,
+    [string]$RecordedPlanOverridePathForTest = "",
     [string]$DevelopmentStrategyAssemblyPath = "",
     [string]$DevelopmentStrategyParametersPath = "",
     [string]$DevelopmentStrategyScriptHash = "",
@@ -811,6 +812,7 @@ $request = [ordered]@{
     evidenceDirectory = if ($EvidenceDirectory) { $EvidenceDirectory } else { $null }
     checkpointSelector = $CheckpointSelector
     recordedPlanRetentionStepForTest = if ($RecordedPlanRetentionStepForTest -ge 0) { $RecordedPlanRetentionStepForTest } else { $null }
+    recordedPlanOverridePathForTest = if ($RecordedPlanOverridePathForTest) { (Resolve-Path -LiteralPath $RecordedPlanOverridePathForTest).Path } else { $null }
     replayMode = $ReplayMode
     replayPolicyOverridePath = if ($ReplayPolicyOverridePath) { (Resolve-Path -LiteralPath $ReplayPolicyOverridePath).Path } else { $null }
     developmentStrategyAssemblyPath = if ($DevelopmentStrategyAssemblyPath) { (Resolve-Path -LiteralPath $DevelopmentStrategyAssemblyPath).Path } else { $null }

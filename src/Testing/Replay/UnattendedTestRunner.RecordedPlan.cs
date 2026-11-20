@@ -19,12 +19,14 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidDataException("Recorded plan deployment requires a native checkpoint in DeploySolver mode.");
         int cursor = _checkpointImport["checkpoint"]!["eventCursor"]!.GetValue<int>();
         int turn = CombatRootSnapshot.Capture(combat).StartTurnNumber;
-        JsonObject recorded = _checkpointImport["index"]!["searchResults"]!.AsArray()
-            .OfType<JsonObject>().LastOrDefault(item =>
-                item["eventCursor"]?.GetValue<int>() == cursor
-                && item["startTurnNumber"]?.GetValue<int>() == turn
-                && item["combatEndedTurn"] != null && item["deathTurn"] == null)
-            ?? throw new InvalidDataException("No complete winning prediction at the selected native event cursor.");
+        JsonObject recorded = _request.RecordedPlanOverridePathForTest is { } overridePath
+            ? LoadRecordedPlanOverride(overridePath, cursor, turn)
+            : _checkpointImport["index"]!["searchResults"]!.AsArray()
+                .OfType<JsonObject>().LastOrDefault(item =>
+                    item["eventCursor"]?.GetValue<int>() == cursor
+                    && item["startTurnNumber"]?.GetValue<int>() == turn
+                    && item["combatEndedTurn"] != null && item["deathTurn"] == null)
+                ?? throw new InvalidDataException("No complete winning prediction at the selected native event cursor.");
         PlanAction[] actions = recorded["plannedActions"]!.Deserialize<PlanAction[]>(UnattendedTestFiles.JsonOptions)
             ?? throw new InvalidDataException("Missing recorded actions.");
         if (actions.Length == 0)
@@ -104,6 +106,23 @@ internal sealed partial class UnattendedTestRunner
         _recordedPlanExpectedResult = result;
         _recordedPlanSearchesBeforeDeployment = SolverController.SearchGenerationForTesting;
         SolverController.AcceptShowcaseRoute(_host, combat, result);
+    }
+
+    // Diagnostic-only route target, e.g. a recorded player prefix joined to a later saved prediction.
+    // It must carry the same winning shape as an index entry and be anchored to the selected root.
+    private static JsonObject LoadRecordedPlanOverride(string path, int cursor, int turn)
+    {
+        JsonObject recorded = JsonNode.Parse(File.ReadAllText(path)) as JsonObject
+            ?? throw new InvalidDataException($"Recorded plan override is not a JSON object: {path}");
+        if (recorded["eventCursor"]?.GetValue<int>() != cursor
+            || recorded["startTurnNumber"]?.GetValue<int>() != turn)
+            throw new InvalidDataException(
+                $"Recorded plan override is anchored to cursor {recorded["eventCursor"]} turn {recorded["startTurnNumber"]}, "
+                + $"but the selected root is cursor {cursor} turn {turn}.");
+        if (recorded["combatEndedTurn"] == null || recorded["deathTurn"] != null
+            || recorded["projectedBattleHpLost"] == null || recorded["plannedActions"] is not JsonArray)
+            throw new InvalidDataException("Recorded plan override must be a complete winning prediction with plannedActions.");
+        return recorded;
     }
 
     private void AssertRecordedPlanDeployment(CombatState combat)

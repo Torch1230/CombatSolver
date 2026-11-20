@@ -12,5 +12,6 @@ internal static class PowerCardValuationModels
             .Concat(DefectPowerCardValuationModels.All)
             .Concat(RegentPowerCardValuationModels.All)
             .Concat(NecrobinderPowerCardValuationModels.All)
-            .Concat(ColorlessPowerCardValuationModels.All));
+            .Concat(ColorlessPowerCardValuationModels.All)
+            .Concat(FoolPowerCardValuationModels.All));
 }

@@ -18,6 +18,7 @@ internal sealed partial class CombatBeamSolver
             PowerCardPool.Regent => RegentPowerHasTriggerEvidence(descriptor.CardId, parent, child),
             PowerCardPool.Necrobinder => NecrobinderPowerHasTriggerEvidence(descriptor.CardId, parent, child),
             PowerCardPool.Colorless => ColorlessPowerHasTriggerEvidence(descriptor.CardId, parent, child),
+            PowerCardPool.Fool => FoolPowerHasTriggerEvidence(descriptor.CardId, parent, child),
             _ => false,
         };
 
@@ -32,6 +33,7 @@ internal sealed partial class CombatBeamSolver
             PowerCardPool.Regent => RegentPowerTriggerProjectionFloor(descriptor.CardId, child),
             PowerCardPool.Necrobinder => NecrobinderPowerTriggerProjectionFloor(descriptor.CardId, child),
             PowerCardPool.Colorless => ColorlessPowerTriggerProjectionFloor(descriptor.CardId, child),
+            PowerCardPool.Fool => FoolPowerTriggerProjectionFloor(descriptor.CardId, child),
             _ => 0,
         };
 
@@ -50,6 +52,7 @@ internal sealed partial class CombatBeamSolver
             PowerCardPool.Regent => RegentPowerOpeningProjectionPotential(cardId, parent, child),
             PowerCardPool.Necrobinder => NecrobinderPowerOpeningProjectionPotential(cardId, parent, child),
             PowerCardPool.Colorless => ColorlessPowerOpeningProjectionPotential(cardId, parent, child),
+            PowerCardPool.Fool => FoolPowerOpeningProjectionPotential(cardId, parent, child),
             _ => 0,
         };
     }
