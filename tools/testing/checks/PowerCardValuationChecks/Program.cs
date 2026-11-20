@@ -79,6 +79,19 @@ Require(all.RegisteredCardTypes(PowerCardPool.Necrobinder).Count == 18, "亡灵�
 Require(all.RegisteredCardTypes(PowerCardPool.Colorless).Count == 12, "无色登记数量不正确。");
 Require(all.RegisteredCardTypes(PowerCardPool.Fool).Count == 18, "愚者登记数量不正确。");
 
+CardModel[] sadnessSources =
+[
+    new SorrowfulStrike { DynamicVars = { ["Cards"] = new(2) } },
+    new Jest { DynamicVars = { ["Cards"] = new(1) } },
+    new BrightenUp { DynamicVars = { ["Sadness"] = new(3) } },
+    new Rummage(),
+    new Vitriol(),
+    new Sadness(),
+];
+Require(sadnessSources.Select(FoolFlowPowerCardValuationModels.SadnessGeneratedByPlay)
+        .SequenceEqual([2, 1, 3, 1, 1, 0]),
+    "万事无忧应按每张牌新生成的悲伤数量估算格挡。");
+
 HashSet<string> seenIds = new(StringComparer.Ordinal);
 HashSet<Type> seenTypes = [];
 foreach (PowerCardPool pool in Enum.GetValues<PowerCardPool>())

@@ -30,7 +30,7 @@ internal sealed partial class CombatBeamSolver
         {
             "ALL_IS_WELL" => PowerPerTriggerBlockPotential(
                 PowerAmountGain<AllIsWellPower>(parent, child),
-                FoolCountSadness(child, handOnly: false) + ennuiTurns,
+                FoolProjectedSadnessGeneration(child, turns),
                 incoming),
             "ARCHERY" => PowerPerTurnDamagePotential(
                 child,
@@ -162,6 +162,16 @@ internal sealed partial class CombatBeamSolver
     private int FoolCountSadness(SearchNode node, bool handOnly)
         => (handOnly ? PowerHandCards(node) : PowerLiveCards(node))
             .Count(card => card.Preview is Sadness);
+
+    private int FoolProjectedSadnessGeneration(SearchNode node, int futureTurns)
+    {
+        var combat = (SimulatedCombatState)node.Snapshot.Simulator.State.CombatState;
+        int perTurn = combat.GetPower<EnnuiPower>(_player.Creature)?.DynamicVars.Cards.IntValue ?? 0;
+        long count = (long)futureTurns * perTurn;
+        foreach (PredictedCard card in PowerLiveCards(node))
+            count += FoolFlowPowerCardValuationModels.SadnessGeneratedByPlay(card.Preview);
+        return (int)Math.Min(int.MaxValue, count);
+    }
 
     /// <summary>射箭牌单次打出的总伤害（伤害 × 重复），按牌区内全部仍可打出的射箭牌合计。</summary>
     private int FoolShootDamage(SearchNode node, bool shoot)

@@ -25,6 +25,13 @@ namespace MegaCrit.Sts2.Core.Models
     public abstract class CardModel
     {
         public bool IsUpgraded { get; init; }
+        public TestDynamicVars DynamicVars { get; } = new();
+    }
+
+    public sealed record TestDynamicVar(int IntValue);
+    public sealed class TestDynamicVars : Dictionary<string, TestDynamicVar>
+    {
+        public TestDynamicVar Cards => this["Cards"];
     }
 }
 
@@ -149,6 +156,12 @@ namespace MegaCrit.Sts2.Core.Models.Cards
     public sealed class Stratagem : CardModel;
 
     // Fool
+    public sealed class SorrowfulStrike : CardModel;
+    public sealed class Jest : CardModel;
+    public sealed class BrightenUp : CardModel;
+    public sealed class Rummage : CardModel;
+    public sealed class Vitriol : CardModel;
+    public sealed class Sadness : CardModel;
     public sealed class AllIsWell : CardModel;
     public sealed class Archery : CardModel;
     public sealed class Ecstasy : CardModel;

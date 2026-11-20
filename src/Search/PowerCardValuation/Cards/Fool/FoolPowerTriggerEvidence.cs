@@ -21,7 +21,7 @@ internal sealed partial class CombatBeamSolver
         bool ennuiActive = PowerPlayerPowerAmount<EnnuiPower>(child) > 0;
         return cardId switch
         {
-            "ALL_IS_WELL" => FoolCountSadness(child, handOnly: false) > 0 || ennuiActive,
+            "ALL_IS_WELL" => FoolProjectedSadnessGeneration(child, remainingTurns - 1) > 0,
             "ARCHERY" => shoots > 0 && remainingTurns > 2,
             "ECSTASY" => FoolCountSadness(child, handOnly: true) > 0 || ennuiActive,
             // 只在预计五回合内结束的短线战斗保护；狂喜已生效时悲伤会被持续转化，不受此限。

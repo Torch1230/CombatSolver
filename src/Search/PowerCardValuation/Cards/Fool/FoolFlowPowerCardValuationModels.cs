@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using Req = CombatSolver.PowerCardValuationRequirements;
 
@@ -6,6 +7,15 @@ namespace CombatSolver;
 /// <summary>愚者牌流、防御与生成族（Specified）。</summary>
 internal static class FoolFlowPowerCardValuationModels
 {
+    internal static int SadnessGeneratedByPlay(CardModel card)
+        => card switch
+        {
+            SorrowfulStrike or Jest => card.DynamicVars.Cards.IntValue,
+            BrightenUp => card.DynamicVars["Sadness"].IntValue,
+            Rummage or Vitriol => 1,
+            _ => 0,
+        };
+
     internal static IReadOnlyList<IPowerCardValuationModel> All { get; } =
     [
         PowerCardModelRegistration.Register<HiddenRoots>(
