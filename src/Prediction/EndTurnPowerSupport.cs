@@ -36,10 +36,10 @@ internal static partial class EndTurnPowerSupport
             Creature owner = power.Owner;
             bool ownerParticipates = participantSet.Contains(owner);
 
-            // 第三方 Power 的常规回合末效果：有登记就按原监听器顺序派发，没有登记维持原行为（无效果），
-            // 因此这一支不会改变已支持内容的结算。
-            if (power.GetType().Assembly != typeof(PowerModel).Assembly
-                && AfterSideTurnEndMirrors.TryInvoke(
+            // 第三方 Power 的常规回合末效果：有登记就按原监听器顺序派发；重写了该阶段却没登记也没声明忽略的
+            // 第三方类型沿用 Late 阶段的显式失败，不再静默无效果。
+            if (AfterSideTurnEndMirrors.IsThirdParty(power)
+                && AfterSideTurnEndMirrors.TryDispatch(
                     simulator,
                     power,
                     side,

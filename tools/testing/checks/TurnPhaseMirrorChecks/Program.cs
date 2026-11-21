@@ -13,6 +13,7 @@ using MegaCrit.Sts2.Core.Models.Powers;
 if (args.Length == 2 && args[0] == "--mask") { HookMaskChecks.Run(args[1]); return; }
 if (args.Contains("--start")) { BeforeTurnStartChecks.Run(args); return; }
 if (args.Contains("--after-player-start")) { AfterPlayerStartChecks.Run(args); return; }
+if (args.Contains("--side-turn-end")) { SideTurnEndChecks.Run(args); return; }
 
 int checks = 0;
 void Check(bool condition, string message)

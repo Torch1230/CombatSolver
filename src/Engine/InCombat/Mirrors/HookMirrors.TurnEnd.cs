@@ -13,9 +13,6 @@ internal static partial class HookMirrors
     public static bool AfterSideTurnEndLate(
         CombatPredictionSimulator simulator, CombatSide side, IReadOnlyList<Creature> participants)
     {
-        // The regular pass has already dispatched by the time this runs, so a registration arriving now is
-        // too late to ever be consulted: freeze both turn-end registries at the same phase boundary.
-        AfterSideTurnEndMirrors.Seal();
         AfterSideTurnEndLateMirrors.Seal();
         if (simulator.HasPendingChoice)
             return false;

@@ -1,6 +1,6 @@
 # 回合阶段镜像
 
-当前开放 `AbstractModel.BeforeHandDraw`、`AfterCreatureAddedToCombat`、`BeforeSideTurnStart`、`AfterPlayerTurnStart`（Early/普通/Late）和 `AfterSideTurnEndLate`。这是效果登记，与
+当前开放 `AbstractModel.BeforeHandDraw`、`AfterCreatureAddedToCombat`、`BeforeSideTurnStart`、`AfterPlayerTurnStart`（Early/普通/Late）、`AfterSideTurnEnd`（常规）和 `AfterSideTurnEndLate`。这是效果登记，与
 [模型状态登记](model-state.md) 分开；不代表其他阶段、ModHelper 订阅者或
 Harmony 补丁已经受支持。外部程序集使用与其他内部镜像相同的 publicizer 接入方式。
 
@@ -57,6 +57,33 @@ AfterSideTurnEndLateMirrors.Register<MyRelic>(static (relic, context) =>
 writePredicted 与正确 Fork。实际效果用模拟器命令实现，不能调用原生异步 Hook 或真实动作队列。
 接收者仅用于稳定身份、元数据和分支映射；不要在遗物／Modifier 实例上写隐藏状态，
 也不要从 `Owner` 的 live 战斗字段、静态集合或闭包读取可变值。
+
+#### 常规回合末（`AfterSideTurnEnd`）
+
+```csharp
+AfterSideTurnEndMirrors.Register<TModel>(Action<TModel, AfterSideTurnEndMirrorContext> handler);
+AfterSideTurnEndMirrors.Register(Type modelType, Action<AbstractModel, AfterSideTurnEndMirrorContext> handler);
+AfterSideTurnEndMirrors.RegisterIgnored(Type modelType);
+// where TModel : AbstractModel
+```
+
+参数校验与冻结规则和晚期入口逐字相同：具体类型、必须真的重写该阶段、重复登记与空委托拒绝；
+首次根捕获（`CombatRootSnapshot.Capture`）或本阶段首次派发（`EndTurnPowerSupport.TriggerRegular`）冻结，
+冻结后再登记抛 `InvalidOperationException`。
+
+派发点在 `EndTurnPowerSupport.TriggerRegular` 的监听器循环里、原版类型 switch 之前，因此
+有登记的类型按原生监听顺序执行镜像，`RegisterIgnored` 的类型跳过，两者都不再进入 switch；
+循环不会因为这一支重新排序。
+
+未登记也没有声明忽略的第三方重写沿用晚期入口的显式失败规则：
+`Registry.Invoke` 解析出 `MirrorDispatchKind.Unsupported` 时抛
+`PredictionUnsupportedException.ForContent`，搜索以「计算失败」结束并指名类型，不再静默当作无效果。
+判定依据是该方法**声明**在哪个类型上（`AssemblyInfo.ModForType`）：由原版 Power 继承下来的覆写仍走
+审计过的 switch，所以「第三方子类继承原版回合末行为」的结算与今天一致；只有 Mod 自己写的覆写要求登记。
+`affectsGameplay: false` 的模型由 registry 自动归为 `Ignored`，无需逐个声明。
+
+这张表由 Power 遍历派发，当前只对 Power 生效；卡牌和遗物在常规回合末的重写仍走各自已有的路径。
+上下文提供 `Side`、`Participants`，以及继承的 `Simulator`、`State`、`StateStore`、`Rng`、`History`、`CombatState`。
 
 ### 按运行时类型登记（外部适配 Mod）
 
@@ -176,6 +203,7 @@ dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorC
 dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --start --seal
 dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --after-player-start
 dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --after-player-start --seal
+dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --side-turn-end
 dotnet run --project tools/testing/checks/TurnPhaseMirrorChecks/TurnPhaseMirrorChecks.csproj -c Release -- --mask .godot/mono/temp/bin/Release/CombatSolver.dll
 ```
 

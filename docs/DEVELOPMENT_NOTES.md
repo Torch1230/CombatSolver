@@ -25,3 +25,12 @@
 0.51.8 的治疗补丁启动修复见[历史卷 31](archive/development/volume-31.md)，玩家说明见[0.51.8 更新日志](releases/0.51.8-RELEASE_NOTES.md)。
 
 0.51.9 的愚者能力牌路线优化见[历史卷 32](archive/development/volume-32.md)，玩家说明见[0.51.9 更新日志](releases/0.51.9-RELEASE_NOTES.md)。
+
+## 未发布
+
+常规 `AbstractModel.AfterSideTurnEnd` 新增第三方登记入口 `AfterSideTurnEndMirrors`
+（`Register<TModel>`／`Register(Type, …)`／`RegisterIgnored`），冻结点与晚期入口一致
+（首次根捕获或本阶段首次派发）。已经重写该阶段却既没登记也没声明忽略的第三方 Power
+不再静默无效果，改为与晚期入口相同的 `PredictionUnsupportedException` 显式失败；
+由原版 Power 继承下来的覆写仍走审计 switch。派发位于 `EndTurnPowerSupport.TriggerRegular`
+的监听器循环内，卡牌与遗物的同名阶段不在本次范围。

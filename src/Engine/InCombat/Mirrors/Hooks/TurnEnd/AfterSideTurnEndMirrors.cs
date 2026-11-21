@@ -1,3 +1,4 @@
+using System.Reflection;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.Common.Mirrors;
 using CombatSolver.Engine.InCombat.Simulation;
@@ -5,6 +6,7 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Modding;
 
 namespace CombatSolver.Engine.InCombat.Mirrors.Hooks.TurnEnd;
 
@@ -104,26 +106,77 @@ internal static class AfterSideTurnEndMirrors
     }
 
     /// <summary>
-    /// Runs the registered handler for <paramref name="power" />, if any.
+    /// Dispatches one third-party listener on the regular pass, with the same explicit-failure rule as the late pass.
     /// </summary>
     /// <returns>
-    /// <see langword="true" /> when this type has a registration (or an ignored declaration), so the caller knows the
-    /// listener was accounted for; <see langword="false" /> when it has none and the caller should keep its previous
-    /// behaviour.
+    /// <see langword="true" /> when this listener was accounted for here (a registered handler ran, or an ignored
+    /// declaration matched), so the caller must not run the vanilla type switch for it. <see langword="false" /> when the
+    /// type neither registered nor declares a third-party override of this phase: the caller keeps its previous
+    /// behaviour, which is what lets a third-party subclass of an audited vanilla power still reach the switch.
     /// </returns>
-    internal static bool TryInvoke(
+    /// <exception cref="PredictionUnsupportedException">
+    /// The type overrides this phase from a third-party assembly but has neither a registration nor an ignored
+    /// declaration — the same outcome the late pass produces, so an unmodelled end-of-turn effect is never silent.
+    /// </exception>
+    internal static bool TryDispatch(
         CombatPredictionSimulator simulator,
-        AbstractModel power,
+        AbstractModel listener,
         CombatSide side,
         IReadOnlyList<Creature> participants)
     {
+        Seal();
+        Type type = listener.GetType();
+        // Nothing to dispatch and no third-party override: keep the caller's original path. This gate is also what
+        // keeps the hot listener loop allocation-free for content that does not touch this phase.
+        if (!Registry.HasRegisteredHandler(listener) && !OverridesFromThirdParty(type))
+            return false;
+
         var context = new AfterSideTurnEndMirrorContext
         {
             Simulator = simulator,
             Side = side,
             Participants = participants
         };
-        return Registry.TryInvokeRegistered(power, context, out _);
+        if (Registry.Invoke(listener, context).Kind == MirrorDispatchKind.Unsupported)
+            throw PredictionUnsupportedException.ForContent(
+                $"No AfterSideTurnEnd mirror is registered for {type.FullName}.", type);
+        return true;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type" /> overrides the regular pass with a method declared outside the game assembly.
+    /// </summary>
+    /// <remarks>
+    /// The distinction matters at the call site: an override inherited from an audited vanilla power keeps the
+    /// audited switch behaviour, while an override the mod wrote itself gets the explicit-failure rule. Deciding it
+    /// from the declaring type rather than from the concrete type is what keeps third-party subclasses of vanilla
+    /// powers predicting exactly as they do today.
+    /// </remarks>
+    private static bool OverridesFromThirdParty(Type type)
+    {
+        MethodInfo? method = type.GetMethod(
+            nameof(AbstractModel.AfterSideTurnEnd),
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            [typeof(PlayerChoiceContext), typeof(CombatSide), typeof(IEnumerable<Creature>)],
+            modifiers: null);
+        Type? declaring = method?.DeclaringType;
+        return declaring is not null && !IsBaseGameType(declaring);
+    }
+
+    /// <summary>
+    /// Whether one listener belongs to a loaded mod rather than the base game, using the engine's own lookup.
+    /// </summary>
+    /// <remarks>
+    /// The caller filters on this before touching the registry so base-game powers (the large majority of listeners in
+    /// a normal fight) never pay a lookup here.
+    /// </remarks>
+    internal static bool IsThirdParty(AbstractModel listener) => !IsBaseGameType(listener.GetType());
+
+    private static bool IsBaseGameType(Type type)
+    {
+        AssemblyInfo.ModForType(type, out bool isBaseGame);
+        return isBaseGame;
     }
 }
 
