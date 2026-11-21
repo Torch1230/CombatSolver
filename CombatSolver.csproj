@@ -87,10 +87,11 @@
     <MSBuild Projects="$(MemoryCleanerProject)" Targets="Clean" Properties="Configuration=$(Configuration)" />
   </Target>
 
-  <Target Name="CopyMod" AfterTargets="Build" Condition="'$(CopyModOnBuild)' == 'true'">
+  <Target Name="CopyMod" AfterTargets="Build" DependsOnTargets="StageSts2SimBridge" Condition="'$(CopyModOnBuild)' == 'true'">
     <MakeDir Directories="$(ModOutputDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModOutputDir)" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)/CombatSolver.json" DestinationFolder="$(ModOutputDir)" />
     <Copy SourceFiles="$(MemoryCleanerOutput)" DestinationFolder="$(ModOutputDir)" Condition="'$(OS)' == 'Windows_NT'" />
   </Target>
+  <Import Project="./tools/build/Sts2SimBridge.targets" />
 </Project>

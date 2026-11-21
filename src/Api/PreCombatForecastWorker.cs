@@ -34,10 +34,6 @@ internal static partial class PreCombatForecastWorker
         AppDomain.CurrentDomain.ProcessExit += static (_, _) => StopSessionAtProcessExit();
     }
 
-    internal static int WorkerStartCountForTesting => Volatile.Read(ref _workerStartCount);
-
-    internal static int WorkerReuseCountForTesting => Volatile.Read(ref _workerReuseCount);
-
     internal static void PinMainProcessModSources()
     {
         if (!OperatingSystem.IsWindows() || Entry.IsPreCombatWorker)
@@ -116,43 +112,6 @@ internal static partial class PreCombatForecastWorker
     internal static void MirrorDirectoryForTesting(string sourceRoot, string targetRoot) =>
         CopyDirectory(sourceRoot, targetRoot);
 
-    internal static PreCombatWorkerStatus GetStatus()
-    {
-        bool busy = Volatile.Read(ref _workerBusy) != 0;
-        WorkerSession? session = Volatile.Read(ref _session);
-        if (session is null)
-            return StoppedStatus(busy);
-        try
-        {
-            if (session.Process.HasExited)
-                return StoppedStatus(busy);
-            session.Process.Refresh();
-            return new PreCombatWorkerStatus
-            {
-                IsRunning = true,
-                IsBusy = busy,
-                ProcessId = session.Process.Id,
-                WorkingSetBytes = session.Process.WorkingSet64,
-                PrivateMemoryBytes = session.Process.PrivateMemorySize64,
-                PeakWorkingSetBytes = session.Process.PeakWorkingSet64,
-                AudioMuted = session.AudioMuted,
-                IdleTimeoutMilliseconds = GetIdleTimeoutMilliseconds(),
-            };
-        }
-        catch (InvalidOperationException)
-        {
-            return StoppedStatus(busy);
-        }
-        catch (Win32Exception)
-        {
-            return StoppedStatus(busy);
-        }
-        catch (NotSupportedException)
-        {
-            return StoppedStatus(busy);
-        }
-    }
-
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CreateHardLinkW(
@@ -160,7 +119,8 @@ internal static partial class PreCombatForecastWorker
         string existingFileName,
         nint securityAttributes);
 
-    public static async Task<PreCombatForecastResult> RunAsync(
+    private static async Task<PreCombatForecastResult> RunLegacyLockedAsync(
+        string requestId,
         PreCombatLiveStateSnapshot snapshot,
         string encounterId,
         int targetActFloor,
@@ -169,26 +129,13 @@ internal static partial class PreCombatForecastWorker
         PreCombatMapPointKind mapPointKind,
         bool isSecondBoss,
         PreCombatForecastOptions options,
+        CancellationTokenSource requestCancellation,
+        CancellationToken timeoutToken,
         CancellationToken cancellationToken)
     {
-        string requestId = Guid.NewGuid().ToString("N");
         string? diagnosticLogPath = null;
-        bool gateEntered = false;
-        CancellationToken callerToken = cancellationToken;
-        using CancellationTokenSource requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(callerToken);
-        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(requestCancellation.Token);
-        deadline.CancelAfter(options.OverallTimeoutMilliseconds);
-        cancellationToken = deadline.Token;
         try
         {
-            await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            gateEntered = true;
-            lock (RequestCancellationSync)
-                _activeRequestCancellation = requestCancellation;
-            Interlocked.Exchange(ref _workerBusy, 1);
-            CancelIdleShutdown();
-            SetIdleWorkerLifetime(options.WorkerIdleTimeoutMilliseconds);
-
             string runtimeRoot = RuntimeRoot(snapshot.GameRoot);
             string requestRoot = Path.Combine(runtimeRoot, "requests", requestId);
             string snapshotPath = Path.Combine(requestRoot, "run.save.json");
@@ -233,6 +180,7 @@ internal static partial class PreCombatForecastWorker
                 ActIndexForTest = snapshot.ActIndex,
                 MarkEncounterAsSecondBossForTest = isSecondBoss,
                 LoadRunSnapshotDirectly = true,
+                PreserveNativeCombatStateForTest = true,
                 TargetActFloor = targetActFloor,
                 TargetMapColumn = targetMapColumn,
                 TargetRoomType = ToRoomType(roomKind),
@@ -272,7 +220,7 @@ internal static partial class PreCombatForecastWorker
                     session.Process,
                     session.ResultPath,
                     requestId,
-                    deadline.Token).ConfigureAwait(false);
+                    cancellationToken).ConfigureAwait(false);
                 if (!workerResult.Status.Equals("Passed", StringComparison.OrdinalIgnoreCase)
                     || workerResult.SolverMetrics == null)
                 {
@@ -299,9 +247,18 @@ internal static partial class PreCombatForecastWorker
                     session.Process,
                     session.ReadyPath,
                     requestId,
-                    deadline.Token).ConfigureAwait(false);
+                    cancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (!requestCancellation.IsCancellationRequested)
+            catch (OperationCanceledException) when (requestCancellation.IsCancellationRequested)
+            {
+                InvalidateSession(session);
+                return PreCombatForecastApi.Failure(
+                    PreCombatForecastStatus.Cancelled,
+                    requestId,
+                    "The isolated pre-combat request was cancelled.",
+                    session.LogPath);
+            }
+            catch (OperationCanceledException) when (timeoutToken.IsCancellationRequested)
             {
                 InvalidateSession(session);
                 return PreCombatForecastApi.Failure(
@@ -310,13 +267,15 @@ internal static partial class PreCombatForecastWorker
                     $"The isolated worker exceeded {options.OverallTimeoutMilliseconds} ms.",
                     session.LogPath);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
                 InvalidateSession(session);
+                Entry.Logger.Error(
+                    $"[CombatSolver/PreCombatApi] LEGACY_UNEXPECTED_CANCELLATION request_id={requestId} exception={ex}");
                 return PreCombatForecastApi.Failure(
-                    PreCombatForecastStatus.Cancelled,
+                    PreCombatForecastStatus.Failed,
                     requestId,
-                    "The isolated pre-combat request was cancelled.",
+                    ex.GetBaseException().Message,
                     session.LogPath);
             }
             catch
@@ -349,6 +308,7 @@ internal static partial class PreCombatForecastWorker
                 CombatEndedTurn = metrics.CombatEndedTurn,
                 SearchElapsedMilliseconds = metrics.TotalElapsedMilliseconds,
                 TotalElapsedMilliseconds = workerResult.ElapsedMilliseconds,
+                ProducingBackend = PreCombatBackendKind.LegacyProcess,
             };
             TryDeleteOwnedRequestDirectory(runtimeRoot, requestRoot);
             if (options.CloseWorkerAfterRequest)
@@ -357,19 +317,36 @@ internal static partial class PreCombatForecastWorker
                 ScheduleIdleShutdown(session);
             return result;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            if (gateEntered)
-                StopCurrentSession();
+            StopCurrentSession();
+            if (requestCancellation.IsCancellationRequested)
+            {
+                return PreCombatForecastApi.Failure(
+                    PreCombatForecastStatus.Cancelled,
+                    requestId,
+                    "The isolated pre-combat request was cancelled.",
+                    diagnosticLogPath);
+            }
+            if (timeoutToken.IsCancellationRequested)
+            {
+                return PreCombatForecastApi.Failure(
+                    PreCombatForecastStatus.TimedOut,
+                    requestId,
+                    $"The isolated worker exceeded {options.OverallTimeoutMilliseconds} ms.",
+                    diagnosticLogPath);
+            }
+            Entry.Logger.Error(
+                $"[CombatSolver/PreCombatApi] LEGACY_WORKER_UNEXPECTED_CANCELLATION request_id={requestId} exception={ex}");
             return PreCombatForecastApi.Failure(
-                requestCancellation.IsCancellationRequested ? PreCombatForecastStatus.Cancelled : PreCombatForecastStatus.TimedOut,
+                PreCombatForecastStatus.Failed,
                 requestId,
-                "The isolated pre-combat request was cancelled.");
+                ex.GetBaseException().Message,
+                diagnosticLogPath);
         }
         catch (Exception ex)
         {
-            if (gateEntered)
-                StopCurrentSession();
+            StopCurrentSession();
             Entry.Logger.Error(
                 $"[CombatSolver/PreCombatApi] WORKER_FAILED request_id={requestId} exception={ex}");
             return PreCombatForecastApi.Failure(
@@ -377,91 +354,6 @@ internal static partial class PreCombatForecastWorker
                 requestId,
                 ex.GetBaseException().Message,
                 diagnosticLogPath);
-        }
-        finally
-        {
-            if (gateEntered)
-            {
-                lock (RequestCancellationSync)
-                    _activeRequestCancellation = null;
-                Interlocked.Exchange(ref _workerBusy, 0);
-                Gate.Release();
-            }
-        }
-    }
-
-    public static async Task<PreCombatWorkerStatus> RestartSessionAsync(
-        PreCombatLiveStateSnapshot snapshot,
-        int? idleTimeoutMilliseconds,
-        CancellationToken cancellationToken)
-    {
-        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            Interlocked.Exchange(ref _workerBusy, 1);
-            CancelIdleShutdown();
-            SetIdleWorkerLifetime(idleTimeoutMilliseconds);
-            StopCurrentSession();
-            string runtimeRoot = RuntimeRoot(snapshot.GameRoot);
-            EnsureRuntimeRoot(runtimeRoot, snapshot.GameRoot);
-            WorkerSession session = CreateSession(
-                snapshot,
-                runtimeRoot,
-                BuildSessionSignature(snapshot),
-                cancellationToken);
-            ScheduleIdleShutdown(session);
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _workerBusy, 0);
-            Gate.Release();
-        }
-        return GetStatus();
-    }
-
-    public static Task ConfigureIdleTimeoutAsync(int? idleTimeoutMilliseconds) =>
-        ApplyCachedRequestLifetimeAsync(false, idleTimeoutMilliseconds, CancellationToken.None);
-
-    // A cache hit owns no running request: wait for the reusable barrier rather than
-    // using StopSessionAsync, which would cancel another caller's active search.
-    internal static async Task ApplyCachedRequestLifetimeAsync(
-        bool closeWorker, int? idleTimeoutMilliseconds, CancellationToken cancellationToken)
-    {
-        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            SetIdleWorkerLifetime(idleTimeoutMilliseconds);
-            if (closeWorker)
-            {
-                CancelIdleShutdown();
-                StopCurrentSession();
-                return;
-            }
-            WorkerSession? session = Volatile.Read(ref _session);
-            if (session is not null && !session.Process.HasExited)
-                ScheduleIdleShutdown(session);
-            else
-                CancelIdleShutdown();
-        }
-        finally
-        {
-            Gate.Release();
-        }
-    }
-
-    public static async Task StopSessionAsync()
-    {
-        lock (RequestCancellationSync)
-            _activeRequestCancellation?.Cancel();
-        await Gate.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            CancelIdleShutdown();
-            StopCurrentSession();
-        }
-        finally
-        {
-            Gate.Release();
         }
     }
 
@@ -527,12 +419,13 @@ internal static partial class PreCombatForecastWorker
         Path.GetFullPath(snapshot.AccountDataRoot),
         Convert.ToHexString(SHA256.HashData(snapshot.SolverSettings)),
         string.Join(';', snapshot.Mods.Select(static mod =>
-            $"{mod.Id}@{mod.Version}@{Path.GetFullPath(mod.SourcePath)}")));
+            $"{mod.Id}@{mod.Version}@{Path.GetFullPath(ResolvePinnedModSource(mod.Id, mod.Version, mod.SourcePath))}")));
 
     private static PreCombatWorkerStatus StoppedStatus(bool busy) => new()
     {
         IsRunning = false,
         IsBusy = busy,
+        Backend = PreCombatBackendKind.None,
         AudioMuted = false,
         IdleTimeoutMilliseconds = GetIdleTimeoutMilliseconds(),
     };
@@ -557,9 +450,11 @@ internal static partial class PreCombatForecastWorker
             lock (RequestCancellationSync)
             {
                 _shuttingDown = true;
+                Interlocked.Increment(ref _stopEpoch);
                 _activeRequestCancellation?.Cancel();
             }
             CancelIdleShutdown();
+            StopCurrentInProcessSession();
             WorkerSession? session = Interlocked.Exchange(ref _session, null);
             if (session is not null && !session.Process.HasExited)
             {
@@ -651,7 +546,7 @@ internal static partial class PreCombatForecastWorker
         ResetOwnedDirectory(runtimeRoot, modsRoot);
         int index = 0;
         foreach (IGrouping<string, PreCombatModSnapshot> sourceGroup in mods.GroupBy(
-                     static mod => mod.SourcePath,
+                     static mod => ResolvePinnedModSource(mod.Id, mod.Version, mod.SourcePath),
                      StringComparer.OrdinalIgnoreCase))
         {
             string label = string.Join("_", sourceGroup.Select(static mod => Sanitize(mod.Id)));

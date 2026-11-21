@@ -22,8 +22,13 @@
 | `SearchMemoryPressureSignal.cs` | 注入 Search 的分配边界与回收续搜信号 |
 | `NativeChoiceRuntime.cs` | 原生选牌观察与逐实例计划匹配 |
 | `PlayerTurnSetupPatches.cs` | 原生回合准备、选择和部署交接 |
-| `src/Api/PreCombatForecastWorker.cs` | 预战独立子进程会话、请求和停止 |
+| `src/Api/PreCombatForecastApi.cs` | 预战公开 API、请求票据与 epoch 准入栅栏、单次缓存发布和实时状态复核 |
+| `src/Api/PreCombatForecastWorker.Routing.cs` | 预战双后端（进程内 Sts2Sim 桥接 / 遗留隔离进程）单锁调度与停止栅栏 |
+| `src/Api/PreCombatForecastWorker.cs` | 预战独立子进程会话、请求和停止（恐惧模式及不支持场景回落） |
 | `src/Api/PreCombatForecastWorker.Idle.cs` | 空闲计时器发布、取消和取消源释放 |
+| `src/Api/PreCombatSts2SimBridge.cs` | 隔离 `AssemblyLoadContext`、清单 SHA-256 / 运行时 MVID 校验与 UTF-8 JSON ABI 委托 |
+| `src/Api/PreCombatSts2SimEligibility.cs` | 主线程主机/Mod/构建/有效存档资格判定与恐惧模式直连回落 |
+| `src/Api/PreCombatSts2SimPolicyMapper.cs` | 设置政策映射、未适配功能门禁与主线程药水标题本地化 |
 
 政策由主线程从设置冻结到 `SearchPolicySnapshot`。后台通过请求参数、诊断 sink 与压力信号消费外部能力；算法不读取设置单例或操作 GC。Power 显示变量在主线程根捕获时物化；worker 只消费已物化值。克隆并发边界由 `BaseLibCloneConcurrencyPatch` 与原生克隆隔离规则维护。
 
@@ -37,6 +42,8 @@
 取消者取走当前源后负责取消和释放；后台只释放仍由自己持有的当前源。
 token 在发布取消源前捕获，后台不再访问可能已释放的源的 `Token` 属性。
 旧计时器完成时不能清除替代计时器或停止新会话。
+
+预战计算与 `sts2-ai` 通过零编译耦合的私有 `AssemblyLoadContext`（`sts2sim/` 子目录 + `sts2sim-bundle.manifest.json` 完整性与 MVID 校验）和版本化 UTF-8 JSON ABI 通信，在 `Entry.IsPreCombatWorker` 为 false 时按先主机后有效存档顺序判定资格：`GameMode.Dread`（恐惧模式）及非标准模式、自定义/每日/Modifier 局、玩法 Mod/Harmony 补丁、非支持构建、部分解锁和未适配能力或政策回落至遗留独立子进程（非 Windows 平台返回 `Unsupported`）；合法但未命中的能力缺失在同一个 `Gate` 租约内回落一次，内部故障与取消保持 fail-closed。
 
 ## 3. Search
 

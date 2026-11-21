@@ -997,6 +997,38 @@ $preCombatApiChecks = @(
         Text = "PreCombatInterveningMapPoints = options.InterveningMapPoints"
     },
     @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.cs"
+        Text = "PreserveNativeCombatStateForTest = true"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.Routing.cs"
+        Text = "CaptureAdmissionEpoch"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatForecastWorker.Routing.cs"
+        Text = "STS2SIM_FALLBACK"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatSts2SimContracts.cs"
+        Text = "PreCombatSts2SimAbi"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatSts2SimBridge.cs"
+        Text = "IsolatedBridgeLoadContext"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatSts2SimBridge.cs"
+        Text = "sts2sim-bundle.manifest.json"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatSts2SimEligibility.cs"
+        Text = "dread_mode"
+    },
+    @{
+        Path = Join-Path $repositoryRoot "src\Api\PreCombatSts2SimEligibility.cs"
+        Text = "game_build_unsupported"
+    },
+    @{
         Path = Join-Path $repositoryRoot "src\Testing\Host\UnattendedTestRunner.ScenarioBuilder.cs"
         Text = "EnterMapCoordDebug"
     },
@@ -1013,6 +1045,9 @@ foreach ($check in $preCombatApiChecks) {
     if (-not (Select-String -LiteralPath $check.Path -SimpleMatch $check.Text -Quiet)) {
         $violations.Add("$($check.Path): missing pre-combat isolation boundary '$($check.Text)'")
     }
+}
+if (Select-String -LiteralPath (Join-Path $repositoryRoot 'CombatSolver.csproj') -SimpleMatch 'Sts2Sim.PreCombatBridge.csproj' -Quiet) {
+    $violations.Add("CombatSolver.csproj: must keep zero compile-time references to Sts2Sim")
 }
 foreach ($apiFile in Get-ChildItem (Join-Path $repositoryRoot "src\Api") -Filter "*.cs" -File) {
     foreach ($forbiddenCall in @(

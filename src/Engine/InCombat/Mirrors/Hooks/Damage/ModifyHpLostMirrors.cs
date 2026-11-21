@@ -172,9 +172,11 @@ internal static class ModifyHpLostMirrors
             return context.Amount;
         }
 
-        var state = context.StateStore.Get(relic, () => new BeatingRemnantPredictionState(relic));
+        decimal damageReceived = context.BeatingRemnantDamageReceivedOverride is { } getDamageReceived
+            ? getDamageReceived(relic)
+            : context.StateStore.Get(relic, () => new BeatingRemnantPredictionState(relic)).DamageReceivedThisTurn;
         var damageCap = relic.DynamicVars[BeatingRemnant._maxHpLossKey].BaseValue;
-        return Math.Min(context.Amount, damageCap - state.DamageReceivedThisTurn);
+        return Math.Min(context.Amount, damageCap - damageReceived);
     }
 
     private static decimal HandleSlipperyPower(
@@ -207,4 +209,6 @@ internal sealed class ModifyHpLostMirrorContext : CombatMirrorContext
     public required Creature? Dealer { get; init; }
 
     public required PredictedCard? CardSource { get; init; }
+
+    public Func<BeatingRemnant, decimal>? BeatingRemnantDamageReceivedOverride { get; init; }
 }

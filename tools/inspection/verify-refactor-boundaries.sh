@@ -818,10 +818,19 @@ src/Api/PreCombatForecastWorker.cs	COMBATSOLVER_PRECOMBAT_WORKER
 src/Api/PreCombatForecastWorker.cs	ExpectedLoadedMods = expectedMods
 src/Api/PreCombatForecastWorker.cs	EnableNoGcRegionForTest = false
 src/Api/PreCombatForecastWorker.cs	PreCombatInterveningMapPoints = options.InterveningMapPoints
+src/Api/PreCombatForecastWorker.cs	PreserveNativeCombatStateForTest = true
+src/Api/PreCombatForecastWorker.Routing.cs	CaptureAdmissionEpoch
+src/Api/PreCombatForecastWorker.Routing.cs	STS2SIM_FALLBACK
+src/Api/PreCombatSts2SimContracts.cs	PreCombatSts2SimAbi
+src/Api/PreCombatSts2SimBridge.cs	IsolatedBridgeLoadContext
+src/Api/PreCombatSts2SimBridge.cs	sts2sim-bundle.manifest.json
+src/Api/PreCombatSts2SimEligibility.cs	dread_mode
+src/Api/PreCombatSts2SimEligibility.cs	game_build_unsupported
 src/Testing/Host/UnattendedTestRunner.ScenarioBuilder.cs	EnterMapCoordDebug
 src/Testing/Host/UnattendedTestRunner.ScenarioBuilder.cs	PreCombatPlayerHp:
 src/Testing/Host/UnattendedTestRunner.ScenarioBuilder.cs	DirectRunSnapshot:ExactStateRestored
 EOF
+forbid_fixed "$repository_root/CombatSolver.csproj" 'Sts2Sim.PreCombatBridge.csproj' 'CombatSolver must keep zero compile-time references to Sts2Sim:'
 
 while IFS= read -r -d '' api_file; do
     for forbidden_call in \

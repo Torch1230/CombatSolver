@@ -46,6 +46,7 @@ namespace MegaCrit.Sts2.Core.Runs
     public sealed class RunState
     {
         public string Token = Guid.NewGuid().ToString();
+        public string? DirectIneligibility;
         public int CurrentActIndex;
         public int ActFloor = 1;
         public MapCoord? CurrentMapCoord = new(0, 0);
@@ -72,7 +73,11 @@ namespace MegaCrit.Sts2.Core.Runs
 }
 namespace MegaCrit.Sts2.Core.Saves
 {
-    public sealed class SerializableRun { public SerializableRng SerializableRng = new(); }
+    public sealed class SerializableRun
+    {
+        public SerializableRng SerializableRng = new();
+        public object? PreFinishedRoom;
+    }
     public sealed class SerializableRng { public string Seed = "seed"; }
 }
 namespace MegaCrit.Sts2.Core.Combat
@@ -91,57 +96,144 @@ namespace CombatSolver
 {
     public static class Entry
     {
-        public static bool Enabled = true;
+        public static bool Enabled { get; set; } = true;
         public static bool IsPreCombatWorker { get; set; }
         public static TestLogger Logger = new();
     }
     public sealed class TestLogger
     {
+        public bool ThrowOnError { get; set; } = true;
+        public List<string> Errors { get; } = [];
         public void Info(string message) { }
-        public void Error(string message) => throw new Exception(message);
+        public void Error(string message)
+        {
+            Errors.Add(message);
+            if (ThrowOnError)
+                throw new Exception(message);
+        }
     }
     public static class SolverDispatcher { public static void Post(Action action) => action(); }
 }
 namespace CombatSolver.Api
 {
-    internal static class OperatingSystem { public static bool IsWindows() => true; }
+    internal static class OperatingSystem
+    {
+        public static bool WindowsOverride { get; set; } = true;
+        public static bool IsWindows() => WindowsOverride;
+    }
+    internal readonly record struct PreCombatEligibilityResult(
+        bool IsEligible,
+        string? FailureCode,
+        string? Detail,
+        string Fingerprint);
+    internal static class PreCombatSts2SimEligibility
+    {
+        public static PreCombatEligibilityResult AssessMandatoryLiveHost(RunState run) =>
+            run.DirectIneligibility is { Length: > 0 } code
+                ? new PreCombatEligibilityResult(false, code, $"Direct ineligibility: {code}.", code)
+                : new PreCombatEligibilityResult(true, null, null, "stub");
+    }
     internal sealed record PreCombatLiveStateSnapshot(RunState LiveRun, string StateToken)
     {
         public static PreCombatLiveStateSnapshot Capture(RunState run) => new(run, run.Token);
         public static string CaptureToken(RunState run) => run.Token;
-        public PreCombatLiveStateSnapshot WithPlanningRun(SerializableRun _) => this;
+        public static string? TryDescribeDirectIneligibility(RunState run) => run.DirectIneligibility;
+        public PreCombatLiveStateSnapshot WithPlanningRun(
+            SerializableRun _, RunState __, int _targetActFloor, int _targetMapColumn, bool _isSecondBoss) => this;
     }
     internal static partial class PreCombatForecastWorker
     {
-        internal sealed record Work(PreCombatForecastOptions Options, CancellationToken Cancellation)
+        internal sealed record Work(
+            PreCombatForecastOptions Options,
+            long AdmissionEpoch,
+            CancellationToken Cancellation)
         {
-            public TaskCompletionSource<PreCombatForecastResult> Completion = new();
-            public void Succeed(string id) => Completion.SetResult(new()
+            public TaskCompletionSource<PreCombatForecastResult> Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public void Succeed(string id, params PreCombatPotionUse[] potions) =>
+                SucceedWithBackend(id, PreCombatBackendKind.LegacyProcess, potions);
+            public void SucceedWithBackend(string id, PreCombatBackendKind backend, params PreCombatPotionUse[] potions) =>
+                Completion.TrySetResult(new()
+                {
+                    Status = PreCombatForecastStatus.Succeeded,
+                    RequestId = id,
+                    PotionUses = potions,
+                    ProducingBackend = backend,
+                });
+            public void Cancel() => Completion.TrySetResult(new()
             {
-                Status = PreCombatForecastStatus.Succeeded, RequestId = id,
+                Status = PreCombatForecastStatus.Cancelled,
+                RequestId = idOrEmpty(),
+                Error = "Cancelled",
             });
+            private static string idOrEmpty() => "cancelled";
         }
+
+        public static bool InstalledInProcessBackend { get; set; }
+        public static bool HasInstalledInProcessBackend => InstalledInProcessBackend;
+        public static string LocalePrefix { get; set; } = "EN";
         public static Channel<Work> Started = Channel.CreateUnbounded<Work>();
-        public static List<(bool Close, int? Idle)> AppliedLifetimes = [];
+        public static Channel<long> RestartEpochs = Channel.CreateUnbounded<long>();
+        public static List<(PreCombatBackendKind Backend, bool Close, int? Idle)> AppliedLifetimes = [];
+        public static long StopEpochValue;
+        public static TaskCompletionSource<bool>? DelayStopAfterEpochBump { get; set; }
+
+        public static long CaptureAdmissionEpoch() => Volatile.Read(ref StopEpochValue);
+
         public static Task<PreCombatForecastResult> RunAsync(
             PreCombatLiveStateSnapshot snapshot, string encounterId, int floor, int column,
             PreCombatRoomKind room, PreCombatMapPointKind point, bool isSecondBoss,
-            PreCombatForecastOptions options, CancellationToken cancellationToken)
+            PreCombatForecastOptions options, long admissionEpoch, CancellationToken cancellationToken)
         {
-            var work = new Work(options, cancellationToken);
+            if (Volatile.Read(ref StopEpochValue) != admissionEpoch)
+            {
+                return Task.FromResult(new PreCombatForecastResult
+                {
+                    Status = PreCombatForecastStatus.Cancelled,
+                    RequestId = "stopped-before-start",
+                    Error = "Stopped before starting.",
+                });
+            }
+            var work = new Work(options, admissionEpoch, cancellationToken);
             Started.Writer.TryWrite(work);
             return work.Completion.Task;
         }
-        public static Task ApplyCachedRequestLifetimeAsync(bool close, int? idle, CancellationToken token)
+
+        public static Task ApplyCachedRequestLifetimeAsync(
+            PreCombatBackendKind backend,
+            bool close,
+            int? idle,
+            CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
-            AppliedLifetimes.Add((close, idle));
+            AppliedLifetimes.Add((backend, close, idle));
             return Task.CompletedTask;
         }
         public static Task ConfigureIdleTimeoutAsync(int? idle) => Task.CompletedTask;
-        public static Task StopSessionAsync() => Task.CompletedTask;
+        public static async Task StopSessionAsync()
+        {
+            Interlocked.Increment(ref StopEpochValue);
+            if (DelayStopAfterEpochBump is { } gate)
+                await gate.Task;
+        }
         public static PreCombatWorkerStatus GetStatus() => new() { IsRunning = false, IsBusy = false };
         public static Task<PreCombatWorkerStatus> RestartSessionAsync(
-            PreCombatLiveStateSnapshot snapshot, int? idle, CancellationToken token) => Task.FromResult(GetStatus());
+            PreCombatLiveStateSnapshot snapshot, int? idle, long admissionEpoch, CancellationToken token)
+        {
+            RestartEpochs.Writer.TryWrite(admissionEpoch);
+            if (Volatile.Read(ref StopEpochValue) != admissionEpoch)
+                throw new OperationCanceledException("Restart stopped before starting.");
+            return Task.FromResult(GetStatus());
+        }
+        public static PreCombatForecastResult LocalizeResultForDelivery(PreCombatForecastResult result)
+        {
+            if (result.Status != PreCombatForecastStatus.Succeeded || result.PotionUses.Count == 0)
+                return result;
+            return result with
+            {
+                PotionUses = result.PotionUses
+                    .Select(use => use with { Title = $"{LocalePrefix}:{use.Id}" })
+                    .ToArray(),
+            };
+        }
     }
 }

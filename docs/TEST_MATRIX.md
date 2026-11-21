@@ -1,5 +1,11 @@
 # CombatSolver 测试入口
 
+## 未发布：战前 Sts2Sim 桥接入口
+
+- 独立检查：`dotnet run --project tools/testing/checks/PreCombatRequestChecks/PreCombatRequestChecks.csproj -c Release` 通过 29 项（含共享 `abi-v1-fixtures.json` 有效/负向响应与存档载荷校验，及隔离加载器错误拒绝与真实包预热）；`dotnet run --project tools/testing/checks/PreCombatRoutingChecks/PreCombatRoutingChecks.csproj -c Release` 通过 7 项（在生产路由器上验证 Windows 能力缺失交接与连续忙碌租约、跨字段 ABI 失败阻断与零缓存污染、混合池强制药水选死路合法放行与零回退、取消/超时/无关取消区分、缓存后端溯源隔离、`dread_mode` 零激活直退及重启取消）；`bash tools/testing/test-headless-runtime.sh --snapshots` 通过 5 项（含 `sts2sim/` 依赖移除、有到无与无到空目录转换）；`Sts2SimBridgeStager` CLI 直接符号链接与祖先别名拒绝、目标符号链接拒绝、失败保留原目录与原子替换自检通过；`verify-refactor-boundaries.sh` 与 `.ps1` 通过（`search_files=266`）；`verify-tools.py`、`verify-documentation.py`、`verify-coverage.py` 与 `run-independent-checks.py --check-catalog`（`registered=26 excluded=3`）通过。
+- Linux 真机无头验证（`v0.113.1@d09d48e5`，实例均已清理）：最新复测通过全功能桥接与边界合同 `PRECOMBAT-STS2SIM-BRIDGE-CONTRACT`（`2494adf8895748968e7533c44c2feff9`）与同源默认 `UseBeamWidthPortfolio=true` 哨兵对拍 `PRECOMBAT-STS2SIM-PARITY-CONTRACT`（铁甲战士无能力 55HP `adb2177339554a9e9f2455ced8a30639`：`BridgeLoss=15=NativeLoss`，955.1ms / 1228.8ms；含 `INFLAME` 55HP `d8e1fa5ec9574836b2c0387d1dd8ba63`：`BridgeLoss=10 < NativeLoss=15`，959.4ms / 2868.0ms；含 `INFLAME` 80HP `55912b807cd049e98952de6c791191c7`：`BridgeLoss=10=NativeLoss`，904.0ms / 3308.3ms）；此前基线完成验证的无 `sts2sim/` 缺席场景（标准 `e3c37e5305164946a7486fa0e7f73417`、恐惧 `4e2253107e214691a03e37270ba38b6b`）、多段 `SlipperyPower` / `BeatingRemnant` 威胁扣减 `HP-MODIFIER-COLLECTIONS`（`180041d4b27a499e87283b1a906b4e69`，见 Issue `#267`）、恐惧直退及恐惧宿主配标准规划存档与损坏包零激活检查 `PRECOMBAT-DREAD-ROUTING`（`3a6c846f2bd445c994c1afc16e68db5f`）、标准 API 生命周期 `PRECOMBAT-STANDARD-API`（`06ec0c1451c0477d8042c23f114cefe4`，`WorkerStarts=0`），以及静默猎手 `1478df23d793477cb23ef9d0acc26954` 与故障机器人 `13d6e2f5de5649a4a38374dd40de6c3f`（均为 `0=0`）。
+- 范围：Windows 端真实加载器与遗留独立子进程回退端到端测试在本 Linux 宿主上尚未执行。
+
 ## 0.51.9 愚者能力牌路线优化
 
 能力牌登记、万事无忧的触发合同及愚者整场对照见[历史卷 32](archive/testing/volume-32.md)。

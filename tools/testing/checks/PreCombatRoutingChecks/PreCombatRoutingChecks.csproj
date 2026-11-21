@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastApi.cs" Link="Production/PreCombatForecastApi.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastContracts.cs" Link="Production/PreCombatForecastContracts.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastWorker.Idle.cs" Link="Production/PreCombatForecastWorker.Idle.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastWorker.Routing.cs" Link="Production/PreCombatForecastWorker.Routing.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatSts2SimBridge.cs" Link="Production/PreCombatSts2SimBridge.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatSts2SimContracts.cs" Link="Production/PreCombatSts2SimContracts.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(CombatSolverRepositoryRoot)tools/testing/checks/PreCombatRequestChecks/abi-v1-fixtures.json" Link="abi-v1-fixtures.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

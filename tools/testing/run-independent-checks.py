@@ -22,6 +22,7 @@ CHECKS = (
     "PortfolioSelectorChecks",
     "PowerCardValuationChecks",
     "PreCombatRequestChecks",
+    "PreCombatRoutingChecks",
     "PredictionStateStoreChecks",
     "ReachableHandPotentialChecks",
     "ReachableHandValueChecks",

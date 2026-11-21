@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
@@ -11,31 +10,40 @@ namespace CombatSolver.Api;
 
 /// <summary>
 /// Public, side-effect-checked entry point for forecasting a known encounter before entering combat.
-/// The combat is initialized and solved in a separately owned headless game process.
+/// Eligible Standard single-player forecasts run in-process via the Sts2Sim bridge; Dread mode and
+/// other unsupported configurations route to the legacy isolated headless game process.
 /// </summary>
 public static class PreCombatForecastApi
 {
-    public const int ApiVersion = 6;
+    public const int ApiVersion = 7;
     public const int DefaultWorkerIdleTimeoutMilliseconds = 120_000;
     public const int MinimumWorkerIdleTimeoutMilliseconds = 1_000;
     public const int MaximumWorkerIdleTimeoutMilliseconds = 86_400_000;
 
-    private static readonly ConcurrentDictionary<string, Task<PreCombatForecastResult>> Active = new();
-    private static readonly ConcurrentDictionary<string, PreCombatForecastResult> Completed = new();
+    private static readonly object CacheSync = new();
+    private static readonly Dictionary<string, ActiveProducer> Active = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, CachedForecastEntry> Completed = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, long> LatestCompletedTicket = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, int> ActiveProducerCount = new(StringComparer.Ordinal);
+    private static long _nextCompletionTicket;
 
-    public static bool IsAvailable => OperatingSystem.IsWindows()
-                                      && Entry.Enabled
-                                      && !Entry.IsPreCombatWorker;
+    private sealed record ActiveProducer(long Ticket, Task<PreCombatForecastResult> Work);
+    private sealed record CachedForecastEntry(PreCombatForecastResult Result, PreCombatBackendKind Backend);
+
+    public static bool IsAvailable => Entry.Enabled
+                                      && !Entry.IsPreCombatWorker
+                                      && (OperatingSystem.IsWindows()
+                                          || PreCombatForecastWorker.HasInstalledInProcessBackend);
 
     /// <summary>Returns an opaque token suitable for caller-side caching while the run remains unchanged.</summary>
     public static string CaptureLiveStateToken(RunState run) => PreCombatLiveStateSnapshot.CaptureToken(run);
 
     /// <summary>
-    /// Stops the reusable isolated worker, if one is active. Callers may use this when their forecast UI closes.
+    /// Stops the reusable pre-combat session, if one is active. Callers may use this when their forecast UI closes.
     /// </summary>
     public static Task StopWorkerAsync() => PreCombatForecastWorker.StopSessionAsync();
 
-    /// <summary>Returns the current isolated worker process and memory state without starting it.</summary>
+    /// <summary>Returns the current pre-combat worker session and memory state without starting it.</summary>
     public static PreCombatWorkerStatus GetWorkerStatus() => PreCombatForecastWorker.GetStatus();
 
     /// <summary>
@@ -49,8 +57,7 @@ public static class PreCombatForecastApi
     }
 
     /// <summary>
-    /// Stops any existing isolated worker and starts a fresh compatible process so its game startup can overlap with
-    /// the player's UI choices. The supplied run is captured only to establish the isolated runtime and Mod set.
+    /// Stops any existing pre-combat session and prewarms the appropriate backend for the supplied run.
     /// </summary>
     public static Task<PreCombatWorkerStatus> RestartWorkerAsync(
         RunState run,
@@ -58,22 +65,34 @@ public static class PreCombatForecastApi
         RestartWorkerAsync(run, DefaultWorkerIdleTimeoutMilliseconds, cancellationToken);
 
     /// <summary>
-    /// Stops any existing worker and prewarms a fresh process with the requested idle lifetime. Null keeps it alive
-    /// until explicitly stopped.
+    /// Stops any existing session and prewarms the appropriate backend with the requested idle lifetime. Null keeps
+    /// readiness until explicitly stopped.
     /// </summary>
     public static Task<PreCombatWorkerStatus> RestartWorkerAsync(
         RunState run,
         int? idleTimeoutMilliseconds,
         CancellationToken cancellationToken = default)
     {
-        if (!IsAvailable)
-            throw new PlatformNotSupportedException("The isolated pre-combat worker is currently available on Windows only.");
+        if (!Entry.Enabled || Entry.IsPreCombatWorker)
+            throw new PlatformNotSupportedException("Pre-combat forecasting is disabled or running inside an isolated worker.");
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("RestartWorkerAsync must be called on the game main thread.");
+        if (!IsAvailable)
+        {
+            string? reason = PreCombatLiveStateSnapshot.TryDescribeDirectIneligibility(run);
+            throw new PlatformNotSupportedException(reason is null
+                ? "The pre-combat simulator backend is unavailable on this platform."
+                : $"The isolated pre-combat worker is required on this platform ({reason}).");
+        }
         ValidateWorkerIdleTimeoutOrThrow(idleTimeoutMilliseconds);
+        long admissionEpoch = PreCombatForecastWorker.CaptureAdmissionEpoch();
         PreCombatLiveStateSnapshot snapshot = PreCombatLiveStateSnapshot.Capture(run);
         return Task.Run(
-            () => PreCombatForecastWorker.RestartSessionAsync(snapshot, idleTimeoutMilliseconds, cancellationToken),
+            () => PreCombatForecastWorker.RestartSessionAsync(
+                snapshot,
+                idleTimeoutMilliseconds,
+                admissionEpoch,
+                cancellationToken),
             CancellationToken.None);
     }
 
@@ -90,12 +109,12 @@ public static class PreCombatForecastApi
         CancellationToken cancellationToken = default)
     {
         string requestId = Guid.NewGuid().ToString("N");
-        if (!IsAvailable)
+        if (!Entry.Enabled || Entry.IsPreCombatWorker)
         {
             return Task.FromResult(Failure(
                 PreCombatForecastStatus.Unsupported,
                 requestId,
-                "The isolated pre-combat worker is currently available on Windows only."));
+                "Pre-combat forecasting is disabled or running inside an isolated worker."));
         }
         if (!NGame.IsMainThread())
         {
@@ -103,6 +122,16 @@ public static class PreCombatForecastApi
                 PreCombatForecastStatus.Unsupported,
                 requestId,
                 "SimulateAsync must be called on the game main thread."));
+        }
+        if (!IsAvailable)
+        {
+            string? reason = PreCombatLiveStateSnapshot.TryDescribeDirectIneligibility(run);
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                reason is null
+                    ? "The pre-combat simulator backend is unavailable on this platform."
+                    : $"The isolated pre-combat worker is required on this platform ({reason})."));
         }
         if (ModelDb.GetByIdOrNull<EncounterModel>(encounter.Id) is null)
         {
@@ -177,6 +206,7 @@ public static class PreCombatForecastApi
             return Task.FromResult(Failure(PreCombatForecastStatus.Failed, requestId, ex.Message));
         }
 
+        long admissionEpoch = PreCombatForecastWorker.CaptureAdmissionEpoch();
         Task<PreCombatForecastResult> worker = Task.Run(
             () => PreCombatForecastWorker.RunAsync(
                 snapshot,
@@ -187,6 +217,7 @@ public static class PreCombatForecastApi
                 simulatedMapPointKind,
                 isSecondBoss: false,
                 workerOptions,
+                admissionEpoch,
                 cancellationToken),
             CancellationToken.None);
         return CompleteAfterLiveValidation(
@@ -198,9 +229,8 @@ public static class PreCombatForecastApi
 
     /// <summary>
     /// Runs one hypothetical combat from a caller-owned planning snapshot.
-    /// The active run is captured only for the game/mod environment and is
-    /// revalidated after the worker returns; the worker loads <paramref name="plannedRun" />
-    /// as its actual run state.
+    /// The active run is captured only for the host environment and is revalidated after the solver returns;
+    /// the solver evaluates <paramref name="plannedRun" /> independently as its effective run state.
     /// </summary>
     public static Task<PreCombatForecastResult> SimulatePlanningAsync(
         RunState liveRun,
@@ -214,12 +244,12 @@ public static class PreCombatForecastApi
         CancellationToken cancellationToken = default)
     {
         string requestId = Guid.NewGuid().ToString("N");
-        if (!IsAvailable)
+        if (!Entry.Enabled || Entry.IsPreCombatWorker)
         {
             return Task.FromResult(Failure(
                 PreCombatForecastStatus.Unsupported,
                 requestId,
-                "The isolated pre-combat worker is currently available on Windows only."));
+                "Pre-combat forecasting is disabled or running inside an isolated worker."));
         }
         if (!NGame.IsMainThread())
         {
@@ -227,6 +257,16 @@ public static class PreCombatForecastApi
                 PreCombatForecastStatus.Unsupported,
                 requestId,
                 "SimulatePlanningAsync must be called on the game main thread."));
+        }
+        if (!IsAvailable)
+        {
+            string? reason = PreCombatLiveStateSnapshot.TryDescribeDirectIneligibility(liveRun);
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                reason is null
+                    ? "The pre-combat simulator backend is unavailable on this platform."
+                    : $"The isolated pre-combat worker is required on this platform ({reason})."));
         }
         if (ModelDb.GetByIdOrNull<EncounterModel>(encounter.Id) is null)
         {
@@ -252,6 +292,15 @@ public static class PreCombatForecastApi
         if (optionError is not null)
             return Task.FromResult(Failure(PreCombatForecastStatus.Unsupported, requestId, optionError));
 
+        PreCombatEligibilityResult mandatoryHost = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(liveRun);
+        if (!mandatoryHost.IsEligible && !OperatingSystem.IsWindows())
+        {
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                $"{mandatoryHost.Detail} ({mandatoryHost.FailureCode})"));
+        }
+
         RunState plannedState;
         try
         {
@@ -259,14 +308,19 @@ public static class PreCombatForecastApi
         }
         catch (Exception exception)
         {
+            if (!mandatoryHost.IsEligible)
+            {
+                return Task.FromResult(Failure(
+                    PreCombatForecastStatus.Unsupported,
+                    requestId,
+                    $"{mandatoryHost.Detail} ({mandatoryHost.FailureCode})"));
+            }
             return Task.FromResult(Failure(
                 PreCombatForecastStatus.Unsupported,
                 requestId,
                 $"The planning run snapshot could not be restored: {exception.GetBaseException().Message}"));
         }
         MapCoord target = new(targetMapColumn, targetActFloor - 1);
-        // FromSerializable intentionally leaves Map unset; the worker builds
-        // it during restoration. Planning stays within the active act.
         if (plannedState.CurrentActIndex != liveRun.CurrentActIndex
             || plannedRun.SerializableRng.Seed != liveRun.Rng.StringSeed
             || liveRun.Players.Count != 1
@@ -295,10 +349,12 @@ public static class PreCombatForecastApi
                 $"Encounter room kind {encounterRoomKind} does not match requested kind {roomKind}."));
         }
 
+        bool isSecondBoss = liveRun.Map.SecondBossMapPoint?.coord == target;
         PreCombatLiveStateSnapshot snapshot;
         try
         {
-            snapshot = PreCombatLiveStateSnapshot.Capture(liveRun).WithPlanningRun(plannedRun);
+            snapshot = PreCombatLiveStateSnapshot.Capture(liveRun)
+                .WithPlanningRun(plannedRun, plannedState, targetActFloor, targetMapColumn, isSecondBoss);
         }
         catch (NotSupportedException exception)
         {
@@ -320,8 +376,8 @@ public static class PreCombatForecastApi
             WorkerIdleTimeoutMilliseconds = simulationOptions.WorkerIdleTimeoutMilliseconds,
             SimulationSeed = simulationOptions.SampleSeed,
         };
-        bool isSecondBoss = liveRun.Map.SecondBossMapPoint?.coord == target;
         string encounterId = encounter.Id.Entry;
+        long admissionEpoch = PreCombatForecastWorker.CaptureAdmissionEpoch();
         Task<PreCombatForecastResult> worker = Task.Run(
             () => PreCombatForecastWorker.RunAsync(
                 snapshot,
@@ -332,6 +388,7 @@ public static class PreCombatForecastApi
                 mapPointKind,
                 isSecondBoss,
                 workerOptions,
+                admissionEpoch,
                 cancellationToken),
             CancellationToken.None);
         return CompleteAfterLiveValidation(
@@ -353,20 +410,29 @@ public static class PreCombatForecastApi
         CancellationToken cancellationToken = default)
     {
         string requestId = Guid.NewGuid().ToString("N");
-        if (!IsAvailable)
+        if (!Entry.Enabled || Entry.IsPreCombatWorker)
         {
             return Task.FromResult(Failure(
                 PreCombatForecastStatus.Unsupported,
                 requestId,
-                "The isolated pre-combat worker is currently available on Windows only."));
+                "Pre-combat forecasting is disabled or running inside an isolated worker."));
         }
-
         if (!NGame.IsMainThread())
         {
             return Task.FromResult(Failure(
                 PreCombatForecastStatus.Unsupported,
                 requestId,
                 "ForecastAsync must be called on the game main thread."));
+        }
+        if (!IsAvailable)
+        {
+            string? reason = PreCombatLiveStateSnapshot.TryDescribeDirectIneligibility(run);
+            return Task.FromResult(Failure(
+                PreCombatForecastStatus.Unsupported,
+                requestId,
+                reason is null
+                    ? "The pre-combat simulator backend is unavailable on this platform."
+                    : $"The isolated pre-combat worker is required on this platform ({reason})."));
         }
 
         PreCombatForecastOptions effectiveOptions = options ?? PreCombatForecastOptions.Default;
@@ -439,39 +505,43 @@ public static class PreCombatForecastApi
             effectiveOptions.PlayerCurrentHpOverride?.ToString() ?? "live-hp",
             routeKey);
 
-        if (!effectiveOptions.ForceRefresh
-            && Completed.TryGetValue(key, out PreCombatForecastResult? completed))
-            return CompleteAfterLiveValidation(
-                snapshot,
-                ApplyCachedRequestLifetimeAsync(completed, effectiveOptions, cancellationToken),
-                cancellationToken);
-
-        // Running requests can only share a worker when their lifetime requirements agree.
-        // Completed results remain keyed solely by forecast inputs.
-        string activeKey = string.Join('|', key, effectiveOptions.CloseWorkerAfterRequest,
+        long admissionEpoch = PreCombatForecastWorker.CaptureAdmissionEpoch();
+        string activeKey = string.Join(
+            '|',
+            key,
+            admissionEpoch,
+            effectiveOptions.CloseWorkerAfterRequest,
             effectiveOptions.WorkerIdleTimeoutMilliseconds?.ToString() ?? "keep-alive");
 
         Task<PreCombatForecastResult> worker;
-        if (effectiveOptions.ForceRefresh || effectiveOptions.CancelWorkerWhenCallerCancels)
+        bool shouldObserveCompletion = false;
+        long producerTicket = 0;
+
+        lock (CacheSync)
         {
-            worker = Task.Run(
-                () => PreCombatForecastWorker.RunAsync(
+            if (!effectiveOptions.ForceRefresh
+                && Completed.TryGetValue(key, out CachedForecastEntry? completed))
+            {
+                return CompleteAfterLiveValidation(
                     snapshot,
-                    encounter.Id.Entry,
-                    targetActFloor,
-                    targetMapColumn,
-                    roomKind,
-                    mapPointKind,
-                    isSecondBoss,
-                    effectiveOptions,
-                    effectiveOptions.CancelWorkerWhenCallerCancels ? cancellationToken : CancellationToken.None),
-                CancellationToken.None);
-        }
-        else
-        {
-            worker = Active.GetOrAdd(
-                activeKey,
-                _ => Task.Run(
+                    ApplyCachedRequestLifetimeAsync(completed, effectiveOptions, cancellationToken),
+                    cancellationToken);
+            }
+
+            if (!effectiveOptions.ForceRefresh
+                && !effectiveOptions.CancelWorkerWhenCallerCancels
+                && Active.TryGetValue(activeKey, out ActiveProducer? existing))
+            {
+                worker = existing.Work;
+            }
+            else
+            {
+                producerTicket = ++_nextCompletionTicket;
+                ActiveProducerCount[key] = ActiveProducerCount.GetValueOrDefault(key) + 1;
+                CancellationToken workerToken = effectiveOptions.CancelWorkerWhenCallerCancels
+                    ? cancellationToken
+                    : CancellationToken.None;
+                worker = Task.Run(
                     () => PreCombatForecastWorker.RunAsync(
                         snapshot,
                         encounter.Id.Entry,
@@ -481,10 +551,18 @@ public static class PreCombatForecastApi
                         mapPointKind,
                         isSecondBoss,
                         effectiveOptions,
-                        CancellationToken.None),
-                    CancellationToken.None));
+                        admissionEpoch,
+                        workerToken),
+                    CancellationToken.None);
+                shouldObserveCompletion = true;
+                if (!effectiveOptions.ForceRefresh && !effectiveOptions.CancelWorkerWhenCallerCancels)
+                    Active[activeKey] = new ActiveProducer(producerTicket, worker);
+            }
         }
-        _ = CacheCompletionAsync(key, activeKey, worker);
+
+        if (shouldObserveCompletion)
+            _ = CacheCompletionAsync(key, activeKey, producerTicket, worker);
+
         return CompleteAfterLiveValidation(
             snapshot,
             worker,
@@ -493,28 +571,49 @@ public static class PreCombatForecastApi
     }
 
     private static async Task<PreCombatForecastResult> ApplyCachedRequestLifetimeAsync(
-        PreCombatForecastResult result,
+        CachedForecastEntry cachedEntry,
         PreCombatForecastOptions options,
         CancellationToken cancellationToken)
     {
         await PreCombatForecastWorker.ApplyCachedRequestLifetimeAsync(
+            cachedEntry.Backend,
             options.CloseWorkerAfterRequest,
             options.WorkerIdleTimeoutMilliseconds,
             cancellationToken).ConfigureAwait(false);
-        return result;
+        return cachedEntry.Result;
     }
 
     private static async Task CacheCompletionAsync(
-        string key, string activeKey, Task<PreCombatForecastResult> worker)
+        string key,
+        string activeKey,
+        long producerTicket,
+        Task<PreCombatForecastResult> worker)
     {
         try
         {
             PreCombatForecastResult result = await worker.ConfigureAwait(false);
-            if (result.Status == PreCombatForecastStatus.Succeeded)
+            lock (CacheSync)
             {
-                if (Completed.Count >= 32)
-                    Completed.Clear();
-                Completed[key] = result;
+                if (result.Status == PreCombatForecastStatus.Succeeded)
+                {
+                    long latestTicket = LatestCompletedTicket.GetValueOrDefault(key);
+                    if (producerTicket >= latestTicket)
+                    {
+                        if (Completed.Count >= 32 && !Completed.ContainsKey(key))
+                        {
+                            Completed.Clear();
+                            // Keep LatestCompletedTicket entries for any keys still with active producers
+                            // so a stale pre-eviction producer cannot overwrite a refresh.
+                            foreach (string trackedKey in LatestCompletedTicket.Keys.ToArray())
+                            {
+                                if (ActiveProducerCount.GetValueOrDefault(trackedKey) <= 0)
+                                    LatestCompletedTicket.Remove(trackedKey);
+                            }
+                        }
+                        Completed[key] = new CachedForecastEntry(result, result.ProducingBackend);
+                        LatestCompletedTicket[key] = producerTicket;
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -523,7 +622,27 @@ public static class PreCombatForecastApi
         }
         finally
         {
-            Active.TryRemove(new KeyValuePair<string, Task<PreCombatForecastResult>>(activeKey, worker));
+            lock (CacheSync)
+            {
+                if (Active.TryGetValue(activeKey, out ActiveProducer? active)
+                    && ReferenceEquals(active.Work, worker))
+                {
+                    Active.Remove(activeKey);
+                }
+                if (ActiveProducerCount.TryGetValue(key, out int count))
+                {
+                    if (count <= 1)
+                    {
+                        ActiveProducerCount.Remove(key);
+                        if (!Completed.ContainsKey(key))
+                            LatestCompletedTicket.Remove(key);
+                    }
+                    else
+                    {
+                        ActiveProducerCount[key] = count - 1;
+                    }
+                }
+            }
         }
     }
 
@@ -608,7 +727,7 @@ public static class PreCombatForecastApi
                     return;
                 }
 
-                completion.TrySetResult(result);
+                completion.TrySetResult(PreCombatForecastWorker.LocalizeResultForDelivery(result));
             });
         }
     }

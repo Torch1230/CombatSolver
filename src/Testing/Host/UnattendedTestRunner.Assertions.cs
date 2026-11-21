@@ -74,6 +74,7 @@ internal sealed partial class UnattendedTestRunner
                 string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
                 runner._completedChecks.Add(AssertHpModifierCollections(scenario.CombatState, scenario.Player));
                 runner._completedChecks.Add(AssertProjectedTailLookup(scenario.CombatState, scenario.Player));
+                runner._completedChecks.Add(AssertProjectedMultiHitModifiers(scenario.CombatState, scenario.Player));
                 runner._completedChecks.Add(AssertProjectedSandpitBoundary(scenario.CombatState, scenario.Player));
                 if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
                     throw new InvalidOperationException("HP modifier contract changed live combat.");

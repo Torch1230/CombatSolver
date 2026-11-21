@@ -261,6 +261,16 @@ internal sealed partial class UnattendedTestRunner
             CaptureGeneratedLoadout(runState, runPlayer);
             if (request.VerifyPreCombatForecastApi)
                 await VerifyPreCombatForecastApiAsync(runState, encounter);
+            if (request.ScenarioId is "PRECOMBAT-STS2SIM-ABSENT-CONTRACT"
+                or "PRECOMBAT-STS2SIM-BRIDGE-CONTRACT"
+                or "PRECOMBAT-STS2SIM-PARITY-CONTRACT")
+            {
+                ScenarioContext contractContext = await runner.RunPreCombatSts2SimBridgeContractAsync(
+                    runState, encounter, character);
+                CombatState = contractContext.CombatState;
+                StartedTurn = contractContext.StartedTurn;
+                return contractContext;
+            }
 
             using UnattendedCombatStartReplay? combatStartReplay =
                 await PrepareCombatStartReplayAsync(runState, runPlayer, request);
@@ -576,23 +586,135 @@ internal sealed partial class UnattendedTestRunner
             await PreCombatForecastApi.SetWorkerIdleTimeoutAsync(null);
             if (PreCombatForecastApi.GetWorkerStatus().IdleTimeoutMilliseconds is not null)
                 throw new InvalidOperationException("战前 worker 未接受一直维持设置。");
+            if (runState.GameMode == GameMode.Dread)
+            {
+                PreCombatEligibilityResult dreadEligibility = PreCombatSts2SimEligibility.AssessLiveHostAndRun(runState);
+                if (dreadEligibility.IsEligible || dreadEligibility.FailureCode != "dread_mode")
+                {
+                    throw new InvalidOperationException(
+                        $"恐惧模式战前资格判定错误：eligible={dreadEligibility.IsEligible}, code={dreadEligibility.FailureCode}。");
+                }
+                MapPoint dreadTarget = runState.Map.GetPointsInRow(1).OrderBy(static p => p.coord.col).FirstOrDefault()
+                    ?? new MapPoint(ResolveNextMapColumn(runState), Math.Max(0, runState.ActFloor));
+                int dreadTargetFloor = dreadTarget.coord.row + 1;
+                int dreadTargetCol = dreadTarget.coord.col;
+                SerializableRun standardPlan = JsonSerializer.Deserialize<SerializableRun>(
+                    JsonSerializer.Serialize(RunManager.Instance.ToSave(null), JsonSerializationUtility.GetTypeInfo<SerializableRun>()),
+                    JsonSerializationUtility.GetTypeInfo<SerializableRun>())!;
+                standardPlan.GameMode = GameMode.Standard;
+
+                string corruptScratch = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    ".local",
+                    "tool-tasks",
+                    "sts2sim-bridge",
+                    "dread-corrupt-" + Guid.NewGuid().ToString("N"));
+                string? prevOverride = PreCombatSts2SimBridge.ModDirectoryOverrideForTesting;
+                try
+                {
+                    Directory.CreateDirectory(Path.Combine(corruptScratch, "sts2sim"));
+                    File.WriteAllText(Path.Combine(corruptScratch, "sts2sim", "Sts2Sim.PreCombatBridge.dll"), "corrupt-bytes");
+                    PreCombatSts2SimBridge.ResetForTesting();
+                    PreCombatSts2SimBridge.ModDirectoryOverrideForTesting = corruptScratch;
+                    int activationsBefore = PreCombatSts2SimBridge.ActivationAttemptCountForTesting;
+
+                    PreCombatForecastResult dreadPlanResult = await PreCombatForecastApi.SimulatePlanningAsync(
+                        runState,
+                        standardPlan,
+                        encounter,
+                        dreadTargetFloor,
+                        dreadTargetCol,
+                        PreCombatRoomKind.Normal,
+                        PreCombatMapPointKind.Normal);
+                    if (PreCombatSts2SimBridge.ActivationAttemptCountForTesting != activationsBefore)
+                    {
+                        throw new InvalidOperationException(
+                            "恐惧模式宿主 + 标准规划存档触发了 sts2sim 可选包激活。");
+                    }
+
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        if (dreadPlanResult.Status != PreCombatForecastStatus.Unsupported
+                            || dreadPlanResult.Error?.Contains("dread_mode", StringComparison.Ordinal) != true)
+                        {
+                            throw new InvalidOperationException(
+                                $"Linux 恐惧模式宿主 + 标准规划存档未保留 dread_mode：{dreadPlanResult.Status} {dreadPlanResult.Error}");
+                        }
+
+                        PreCombatForecastResult dreadResult = await PreCombatForecastApi.ForecastAsync(
+                            runState,
+                            encounter,
+                            dreadTargetFloor,
+                            dreadTargetCol,
+                            PreCombatRoomKind.Normal,
+                            PreCombatMapPointKind.Normal);
+                        if (PreCombatSts2SimBridge.ActivationAttemptCountForTesting != activationsBefore)
+                        {
+                            throw new InvalidOperationException(
+                                "Linux 恐惧模式直接预检触发了 sts2sim 可选包激活。");
+                        }
+                        if (dreadResult.Status != PreCombatForecastStatus.Unsupported
+                            || dreadResult.Error?.Contains("dread_mode", StringComparison.Ordinal) != true)
+                        {
+                            throw new InvalidOperationException(
+                                $"Linux 恐惧模式未返回带 dread_mode 原因的 Unsupported：{dreadResult.Status} {dreadResult.Error}");
+                        }
+                        runner._completedChecks.Add("PreCombatDreadDirectFallbackRejectedOnLinux:dread_mode:StandardPlanZeroActivations");
+                        return;
+                    }
+
+                    if (!dreadPlanResult.IsSuccess)
+                    {
+                        throw new InvalidOperationException(
+                            $"Windows 恐惧模式宿主 + 标准规划存档直接回退传统子进程失败：{dreadPlanResult.Status} {dreadPlanResult.Error}");
+                    }
+                    runner._completedChecks.Add("PreCombatDreadHostStandardPlanDirectLegacy:ZeroBridgeActivations");
+                }
+                finally
+                {
+                    PreCombatSts2SimBridge.ResetForTesting();
+                    PreCombatSts2SimBridge.ModDirectoryOverrideForTesting = prevOverride;
+                    if (Directory.Exists(corruptScratch))
+                        Directory.Delete(corruptScratch, recursive: true);
+                }
+            }
+
             int startsBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
             int reusesBefore = PreCombatForecastWorker.WorkerReuseCountForTesting;
+            int inProcessStartsBefore = PreCombatForecastWorker.InProcessStartCountForTesting;
+            int inProcessReusesBefore = PreCombatForecastWorker.InProcessReuseCountForTesting;
             PreCombatForecastResult result;
             try
             {
                 PreCombatWorkerStatus prewarmed = await PreCombatForecastApi.RestartWorkerAsync(
                     runState,
                     idleTimeoutMilliseconds: null);
+                bool usedInProcess = prewarmed.Backend == PreCombatBackendKind.InProcess;
                 if (!prewarmed.IsRunning
-                    || prewarmed.ProcessId is null
-                    || prewarmed.WorkingSetBytes is null
-                    || prewarmed.PrivateMemoryBytes is null
+                    || prewarmed.Backend == PreCombatBackendKind.None
                     || !prewarmed.AudioMuted
                     || prewarmed.IdleTimeoutMilliseconds is not null)
                 {
                     throw new InvalidOperationException(
                         $"战前 worker 预热状态不完整：{prewarmed}。");
+                }
+                if (usedInProcess)
+                {
+                    if (prewarmed.ProcessId is not null
+                        || prewarmed.WorkingSetBytes is not null
+                        || prewarmed.PrivateMemoryBytes is not null
+                        || prewarmed.PeakWorkingSetBytes is not null)
+                    {
+                        throw new InvalidOperationException(
+                            $"进程内预热状态不应暴露宿主进程 PID/内存：{prewarmed}。");
+                    }
+                }
+                else if (prewarmed.ProcessId is null
+                         || prewarmed.WorkingSetBytes is null
+                         || prewarmed.PrivateMemoryBytes is null)
+                {
+                    throw new InvalidOperationException(
+                        $"隔离进程预热状态不完整：{prewarmed}。");
                 }
                 await PreCombatForecastApi.SetWorkerIdleTimeoutAsync(1_800_000);
                 if (PreCombatForecastApi.GetWorkerStatus().IdleTimeoutMilliseconds != 1_800_000)
@@ -646,22 +768,32 @@ internal sealed partial class UnattendedTestRunner
                 }
 
                 const ulong simulationSeed = 0x5EED_2026_0904UL;
-                Task<PreCombatForecastResult> interrupted = PreCombatForecastApi.ForecastAsync(
-                    runState, encounter, targetActFloor, targetMapColumn,
-                    PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: options);
-                while (!PreCombatForecastApi.GetWorkerStatus().IsBusy && !interrupted.IsCompleted)
+                if (!usedInProcess)
                 {
-                    runner.EnsureWithinDeadline();
-                    await runner.NextFrameAsync();
+                    Task<PreCombatForecastResult> interrupted = PreCombatForecastApi.ForecastAsync(
+                        runState, encounter, targetActFloor, targetMapColumn,
+                        PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: options);
+                    while (!PreCombatForecastApi.GetWorkerStatus().IsBusy && !interrupted.IsCompleted)
+                    {
+                        runner.EnsureWithinDeadline();
+                        await runner.NextFrameAsync();
+                    }
+                    var stopWatch = System.Diagnostics.Stopwatch.StartNew();
+                    await PreCombatForecastApi.StopWorkerAsync();
+                    PreCombatForecastResult interruptedResult = await interrupted;
+                    if (interruptedResult.Status != PreCombatForecastStatus.Cancelled
+                        || PreCombatForecastApi.GetWorkerStatus().IsRunning
+                        || stopWatch.ElapsedMilliseconds > 5_000)
+                        throw new InvalidOperationException("显式停止没有及时取消当前 worker 请求。");
+                    runner._completedChecks.Add("PreCombatStopActiveRequest");
                 }
-                var stopWatch = System.Diagnostics.Stopwatch.StartNew();
-                await PreCombatForecastApi.StopWorkerAsync();
-                PreCombatForecastResult interruptedResult = await interrupted;
-                if (interruptedResult.Status != PreCombatForecastStatus.Cancelled
-                    || PreCombatForecastApi.GetWorkerStatus().IsRunning
-                    || stopWatch.ElapsedMilliseconds > 5_000)
-                    throw new InvalidOperationException("显式停止没有及时取消当前 worker 请求。");
-                runner._completedChecks.Add("PreCombatStopActiveRequest");
+                else
+                {
+                    await PreCombatForecastApi.StopWorkerAsync();
+                    if (PreCombatForecastApi.GetWorkerStatus().IsRunning)
+                        throw new InvalidOperationException("显式停止没有清除进程内预热状态。");
+                    runner._completedChecks.Add("PreCombatStopInProcessSession");
+                }
                 PreCombatForecastResult simulated = await PreCombatForecastApi.SimulateAsync(
                     runState,
                     encounter,
@@ -685,7 +817,17 @@ internal sealed partial class UnattendedTestRunner
 
                 int workerStarts = PreCombatForecastWorker.WorkerStartCountForTesting - startsBefore;
                 int workerReuses = PreCombatForecastWorker.WorkerReuseCountForTesting - reusesBefore;
-                if (workerStarts != 2 || workerReuses != 3)
+                int inProcessStarts = PreCombatForecastWorker.InProcessStartCountForTesting - inProcessStartsBefore;
+                int inProcessReuses = PreCombatForecastWorker.InProcessReuseCountForTesting - inProcessReusesBefore;
+                if (usedInProcess)
+                {
+                    if (workerStarts != 0 || inProcessStarts != 2 || inProcessReuses != 2)
+                    {
+                        throw new InvalidOperationException(
+                            $"进程内战前桥接生命周期不符合预期：workerStarts={workerStarts}, inProcessStarts={inProcessStarts}, inProcessReuses={inProcessReuses}。");
+                    }
+                }
+                else if (workerStarts != 2 || workerReuses != 3)
                 {
                     throw new InvalidOperationException(
                         $"战前 worker 生命周期不符合预期：starts={workerStarts}, reuses={workerReuses}。");
@@ -700,9 +842,10 @@ internal sealed partial class UnattendedTestRunner
                         $"战前 HP 覆盖没有反映在结果中：entry={forecastEntryHp} loss={hpLoss} final={result.FinalHp}。");
                 }
                 runner._completedChecks.Add(
-                    $"PreCombatForecastApi:EntryHp={forecastEntryHp}:HpLoss={result.ProjectedHpLoss}:Potions={result.PotionUses.Count}:" +
+                    $"PreCombatForecastApi:Backend={prewarmed.Backend}:EntryHp={forecastEntryHp}:HpLoss={result.ProjectedHpLoss}:Potions={result.PotionUses.Count}:" +
                     $"Boundary={result.SearchBoundary}:LiveStateUnchanged=1:WorkerStarts={workerStarts}:" +
-                    $"WorkerReuses={workerReuses}:PrewarmMemoryVisible=1:AudioMuted=1:" +
+                    $"WorkerReuses={workerReuses}:InProcessStarts={inProcessStarts}:InProcessReuses={inProcessReuses}:" +
+                    $"PrewarmMemoryVisible={(usedInProcess ? 0 : 1)}:AudioMuted=1:" +
                     $"KeepAliveModes=2m,10m,30m,Indefinite:SimulationSeed={simulationSeed}:AutoClose=1");
             }
             finally
