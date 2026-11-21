@@ -25,6 +25,9 @@ namespace MegaCrit.Sts2.Core.Models
         public virtual Task BeforeSideTurnStart(
             GameActions.Multiplayer.PlayerChoiceContext choice, CombatSide side,
             IReadOnlyList<Creature> participants, ICombatState combatState) => Task.CompletedTask;
+        public virtual Task AfterSideTurnEnd(
+            GameActions.Multiplayer.PlayerChoiceContext choice, CombatSide side, IEnumerable<Creature> participants)
+            => Task.CompletedTask;
         public virtual Task AfterSideTurnEndLate(
             GameActions.Multiplayer.PlayerChoiceContext choice, CombatSide side, IEnumerable<Creature> participants)
             => Task.CompletedTask;
@@ -46,6 +49,12 @@ namespace MegaCrit.Sts2.Core.Models.Powers
     }
     sealed class DamageVariables { public DamageVariable Damage = new(); }
     sealed class DamageVariable { public int BaseValue; }
+    sealed class VanillaEndTurnPower : AbstractModel
+    {
+        public override Task AfterSideTurnEnd(
+            GameActions.Multiplayer.PlayerChoiceContext choice, CombatSide side, IEnumerable<Creature> participants)
+            => throw new Exception("Native hook must never run in prediction.");
+    }
     sealed class DisintegrationPower : AbstractModel
     {
         public required Creature Owner;
@@ -61,7 +70,13 @@ namespace MegaCrit.Sts2.Core.Modding
     sealed class Mod { public Manifest? manifest = new(); }
     static class AssemblyInfo
     {
-        public static Mod? ModForType(Type type, out bool isBaseGame) { isBaseGame = false; return new(); }
+        // Base game types are the ones the game assembly declares; the harness keeps its stubs under MegaCrit.*
+        // and its third-party types elsewhere, so the same rule as the real lookup is testable.
+        public static Mod? ModForType(Type type, out bool isBaseGame)
+        {
+            isBaseGame = type.Namespace?.StartsWith("MegaCrit.", StringComparison.Ordinal) == true;
+            return isBaseGame ? null : new();
+        }
     }
 }
 namespace CombatSolver

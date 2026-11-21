@@ -68,7 +68,7 @@ CombatRootSnapshot.Capture（主线程根）
 
 新增或修改 mirror 注册时，由 `MethodMirrorRegistryDescriptor` 自动向 CoverageCatalog 描述支持状态；不要在工具侧复制 registry 私有布局或另建平行登记。
 
-`AfterSideTurnEndLate` 的扩展使用 `AfterSideTurnEndLateMirrors.Register<TModel>`，在根捕获前完成登记；玩家和敌方共用 Hook facade，DisintegrationPower 不得恢复到独立晚期补偿。新增其他阶段时逐一核对原版顺序、选择暂停和状态所有权，不能把晚期入口当作所有回合事件的通用回调。
+`AfterSideTurnEndLate` 的扩展使用 `AfterSideTurnEndLateMirrors.Register<TModel>`，常规回合末使用 `AfterSideTurnEndMirrors.Register<TModel>`（未登记也未忽略的第三方重写会显式失败），两者都在根捕获前完成登记；玩家和敌方共用 Hook facade，DisintegrationPower 不得恢复到独立晚期补偿。新增其他阶段时逐一核对原版顺序、选择暂停和状态所有权，不能把晚期入口当作所有回合事件的通用回调。
 
 额外回合的 `ShouldTakeExtraTurnEarly` / `ShouldTakeExtraTurn` / `AfterTakingExtraTurn` 由 `ExtraTurnMirrors` 登记原版及第三方单项效果。先遍历 Early，再遍历普通判断，首个命中来源获得资格，后置仅消费该来源；选择暂停沿原动作重放。状态读写使用分支 Power 和遗物记录；原生顺序、完整状态和 Fork 隔离用 `EXTRA-TURN-MIRROR-ORDER` 验证。
 
