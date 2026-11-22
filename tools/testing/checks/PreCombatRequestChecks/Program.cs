@@ -588,6 +588,126 @@ await Check("critical Harmony patch audit catches combat command and hook patche
     Equal(string.Empty, allowedReason);
     return Task.CompletedTask;
 });
+await Check("concrete card gameplay hook overrides classify as CombatGameplay while metadata getters stay None", () =>
+{
+    static PreCombatHarmonyPatchDescriptor CardPatch(
+        string cardName,
+        string methodName,
+        bool? affectsGameplay = true,
+        bool hasKnownModId = true,
+        bool isConcreteCardGameplayOverride = false,
+        string? targetDisplayName = null) => new(
+            DeclaringNamespace: "MegaCrit.Sts2.Core.Models.Cards",
+            RootDeclaringTypeName: cardName,
+            MethodName: methodName,
+            IsMonsterModel: false,
+            IsBaseGamePatch: false,
+            IsTrustedOwner: false,
+            AffectsGameplay: affectsGameplay,
+            HasKnownModId: hasKnownModId,
+            PatchDisplayName: "ProbeMod.CardPatch.Prefix",
+            TargetDisplayName: targetDisplayName ?? $"MegaCrit.Sts2.Core.Models.Cards.{cardName}.{methodName}",
+            Owner: "probe_mod",
+            IsConcreteCardGameplayOverride: isConcreteCardGameplayOverride);
+
+    PreCombatHarmonyPatchDescriptor[] rejectedCardOverrides =
+    [
+        CardPatch("Normality", "ShouldPlay"),
+        CardPatch("Normality", "ShouldPlay", affectsGameplay: null, hasKnownModId: false),
+        CardPatch("Normality", "MoveNext", isConcreteCardGameplayOverride: true, targetDisplayName: "MegaCrit.Sts2.Core.Models.Cards.Normality+<ShouldPlay>d__3.MoveNext"),
+        CardPatch("Normality", "<ShouldPlay>d__3.MoveNext"),
+        CardPatch("Normality", "<OnPlay>d__12.MoveNext"),
+        CardPatch("Normality", "<ShouldPlay>g__Check|0_0"),
+        CardPatch("Normality", "MoveNext", targetDisplayName: "MegaCrit.Sts2.Core.Models.Cards.Normality+<ShouldPlay>d__3.MoveNext"),
+        CardPatch("StrikeIronclad", "OnPlay"),
+        CardPatch("StrikeIronclad", "CanPlay"),
+        CardPatch("Regret", "OnTurnEndInHand"),
+        CardPatch("StrikeIronclad", "BeforeCardPlayed"),
+        CardPatch("StrikeIronclad", "AfterCardDrawn"),
+        CardPatch("StrikeIronclad", "ModifyDamageAdditive"),
+        CardPatch("StrikeIronclad", "TryModifyEnergyCostInCombat"),
+        CardPatch("StrikeIronclad", "OnUpgrade"),
+        CardPatch("StrikeIronclad", "OnExhaust"),
+        CardPatch("StrikeIronclad", "OnDiscard"),
+        CardPatch("StrikeIronclad", "OnDrawn"),
+    ];
+
+    foreach (PreCombatHarmonyPatchDescriptor descriptor in rejectedCardOverrides)
+        Equal(true, PreCombatSts2SimEligibility.TryFindCriticalHarmonyPatchViolation([descriptor], out _));
+
+    PreCombatHarmonyPatchDescriptor[] allowedCardPatches =
+    [
+        CardPatch("Normality", "ShouldPlay", affectsGameplay: false),
+        CardPatch("Normality", "MoveNext", affectsGameplay: false, isConcreteCardGameplayOverride: true, targetDisplayName: "MegaCrit.Sts2.Core.Models.Cards.Normality+<ShouldPlay>d__3.MoveNext"),
+        CardPatch("StrikeIronclad", "get_PortraitPath", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "get_BetaPortraitPath", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "get_OverlayPath", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "get_AllPortraitPaths", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "get_Title", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "get_Description", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "GetDescription", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "ToString", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "Equals", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "GetHashCode", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "get_ExtraHoverTips", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "get_ShouldGlowGoldInternal", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "<LoadPortrait>d__1.MoveNext", affectsGameplay: true),
+    ];
+
+    Equal(false, PreCombatSts2SimEligibility.TryFindCriticalHarmonyPatchViolation(allowedCardPatches, out string allowedCardReason));
+    Equal(string.Empty, allowedCardReason);
+    return Task.CompletedTask;
+});
+await Check("bridge IsCorrupt reads immutable snapshot without blocking during activation lock", async () =>
+{
+    string repoRoot = FindRepoRoot();
+    string scratchRoot = Path.Combine(repoRoot, ".local", "tool-tasks", "sts2sim-bridge", "lockfree-check-" + Guid.NewGuid().ToString("N"));
+    using var enteredLock = new ManualResetEventSlim(false);
+    using var releaseLock = new ManualResetEventSlim(false);
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(scratchRoot, "sts2sim"));
+        PreCombatSts2SimBridge.ResetForTesting();
+        PreCombatSts2SimBridge.ModDirectoryOverrideForTesting = scratchRoot;
+        CombatSolver.Entry.Logger.ThrowOnError = false;
+        CombatSolver.Entry.Logger.Errors.Clear();
+        PreCombatSts2SimBridge.ActivationHookForTesting = () =>
+        {
+            enteredLock.Set();
+            Equal(true, releaseLock.Wait(TimeSpan.FromSeconds(5)));
+        };
+
+        Task<PreCombatBridgeAvailability> activationTask = Task.Run(() => PreCombatSts2SimBridge.EnsureActivated(out _));
+        Equal(true, enteredLock.Wait(TimeSpan.FromSeconds(2)));
+
+        Equal(false, PreCombatSts2SimBridge.IsCorrupt);
+        PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.CorruptOrIncompatible;
+        Equal(true, PreCombatSts2SimBridge.IsCorrupt);
+        PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;
+        Equal(false, PreCombatSts2SimBridge.IsCorrupt);
+        PreCombatSts2SimBridge.AvailabilityOverrideForTesting = null;
+        Equal(false, PreCombatSts2SimBridge.IsCorrupt);
+
+        releaseLock.Set();
+        Equal(PreCombatBridgeAvailability.CorruptOrIncompatible, await activationTask);
+        Equal(true, PreCombatSts2SimBridge.IsCorrupt);
+        int attemptsAfterFailure = PreCombatSts2SimBridge.ActivationAttemptCountForTesting;
+        Equal(PreCombatBridgeAvailability.CorruptOrIncompatible, PreCombatSts2SimBridge.EnsureActivated(out _));
+        Equal(attemptsAfterFailure, PreCombatSts2SimBridge.ActivationAttemptCountForTesting);
+
+        PreCombatSts2SimBridge.ResetForTesting();
+        Equal(false, PreCombatSts2SimBridge.IsCorrupt);
+    }
+    finally
+    {
+        releaseLock.Set();
+        PreCombatSts2SimBridge.ResetForTesting();
+        PreCombatSts2SimBridge.ModDirectoryOverrideForTesting = null;
+        CombatSolver.Entry.Logger.ThrowOnError = true;
+        if (Directory.Exists(scratchRoot))
+            Directory.Delete(scratchRoot, recursive: true);
+    }
+});
 Console.WriteLine($"Passed {passed} pre-combat request, ABI, and idle checks.");
 
 async Task Check(string name, Func<Task> body)

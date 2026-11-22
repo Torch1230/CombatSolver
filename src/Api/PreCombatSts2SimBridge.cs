@@ -31,13 +31,22 @@ internal static class PreCombatSts2SimBridge
         "Sts2Sim.PreCombatBridge.deps.json",
     ];
 
+    private sealed record BridgeAvailabilitySnapshot(
+        ActivatedBridge? Activated,
+        bool IsCorrupt,
+        string? CorruptReason)
+    {
+        public static readonly BridgeAvailabilitySnapshot Initial = new(null, false, null);
+    }
+
     private static readonly object Sync = new();
-    private static ActivatedBridge? _activated;
-    private static bool _corruptCached;
-    private static string? _corruptReason;
+    private static volatile BridgeAvailabilitySnapshot _snapshot = BridgeAvailabilitySnapshot.Initial;
+    private static int _availabilityOverrideForTesting = -1;
     private static int _activationAttemptCount;
 
     internal static string? ModDirectoryOverrideForTesting { get; set; }
+
+    internal static Action? ActivationHookForTesting { get; set; }
 
     internal static Action? PrewarmHookForTesting { get; set; }
 
@@ -45,7 +54,15 @@ internal static class PreCombatSts2SimBridge
 
     internal static Func<Sts2SimBridgeRequestDto, CancellationToken, Task<byte[]>>? RunRawJsonHookForTesting { get; set; }
 
-    internal static PreCombatBridgeAvailability? AvailabilityOverrideForTesting { get; set; }
+    internal static PreCombatBridgeAvailability? AvailabilityOverrideForTesting
+    {
+        get
+        {
+            int raw = Volatile.Read(ref _availabilityOverrideForTesting);
+            return raw >= 0 ? (PreCombatBridgeAvailability)raw : null;
+        }
+        set => Volatile.Write(ref _availabilityOverrideForTesting, value is { } forced ? (int)forced : -1);
+    }
 
     internal static int ActivationAttemptCountForTesting => Volatile.Read(ref _activationAttemptCount);
 
@@ -53,12 +70,9 @@ internal static class PreCombatSts2SimBridge
     {
         get
         {
-            lock (Sync)
-            {
-                if (AvailabilityOverrideForTesting is { } forced)
-                    return forced == PreCombatBridgeAvailability.CorruptOrIncompatible;
-                return _corruptCached;
-            }
+            if (AvailabilityOverrideForTesting is { } forced)
+                return forced == PreCombatBridgeAvailability.CorruptOrIncompatible;
+            return _snapshot.IsCorrupt;
         }
     }
 
@@ -66,11 +80,10 @@ internal static class PreCombatSts2SimBridge
     {
         lock (Sync)
         {
-            _activated = null;
-            _corruptCached = false;
-            _corruptReason = null;
+            _snapshot = BridgeAvailabilitySnapshot.Initial;
         }
         Interlocked.Exchange(ref _activationAttemptCount, 0);
+        ActivationHookForTesting = null;
         PrewarmHookForTesting = null;
         RunHookForTesting = null;
         RunRawJsonHookForTesting = null;
@@ -89,28 +102,13 @@ internal static class PreCombatSts2SimBridge
 
     public static PreCombatBridgeAvailability EnsureActivated(out string? error)
     {
+        if (TryGetFastAvailability(out PreCombatBridgeAvailability fastState, out error))
+            return fastState;
+
         lock (Sync)
         {
-            if (AvailabilityOverrideForTesting is { } forced)
-            {
-                error = forced switch
-                {
-                    PreCombatBridgeAvailability.Absent => "The optional sts2sim backend directory is not installed.",
-                    PreCombatBridgeAvailability.CorruptOrIncompatible => "The installed sts2sim backend is corrupt or incompatible.",
-                    _ => null,
-                };
-                return forced;
-            }
-            if (_activated is not null)
-            {
-                error = null;
-                return PreCombatBridgeAvailability.Ready;
-            }
-            if (_corruptCached)
-            {
-                error = _corruptReason;
-                return PreCombatBridgeAvailability.CorruptOrIncompatible;
-            }
+            if (TryGetFastAvailability(out PreCombatBridgeAvailability lockedState, out error))
+                return lockedState;
 
             string? bridgeDir = ResolveBridgeDirectory();
             if (bridgeDir is null || !Directory.Exists(bridgeDir))
@@ -122,19 +120,56 @@ internal static class PreCombatSts2SimBridge
             Interlocked.Increment(ref _activationAttemptCount);
             try
             {
-                _activated = LoadAndVerifyLocked(bridgeDir);
+                ActivationHookForTesting?.Invoke();
+                ActivatedBridge activated = LoadAndVerifyLocked(bridgeDir);
+                _snapshot = new BridgeAvailabilitySnapshot(activated, false, null);
                 error = null;
                 return PreCombatBridgeAvailability.Ready;
             }
             catch (Exception ex)
             {
-                _corruptCached = true;
-                _corruptReason = $"The installed sts2sim backend could not be activated: {ex.GetBaseException().Message}";
-                error = _corruptReason;
+                string reason = $"The installed sts2sim backend could not be activated: {ex.GetBaseException().Message}";
+                _snapshot = new BridgeAvailabilitySnapshot(null, true, reason);
+                error = reason;
                 Entry.Logger.Error($"[CombatSolver/PreCombatApi] STS2SIM_BRIDGE_ACTIVATION_FAILED error={ex}");
                 return PreCombatBridgeAvailability.CorruptOrIncompatible;
             }
         }
+    }
+
+    private static bool TryGetFastAvailability(
+        out PreCombatBridgeAvailability availability,
+        out string? error)
+    {
+        if (AvailabilityOverrideForTesting is { } forced)
+        {
+            error = forced switch
+            {
+                PreCombatBridgeAvailability.Absent => "The optional sts2sim backend directory is not installed.",
+                PreCombatBridgeAvailability.CorruptOrIncompatible => "The installed sts2sim backend is corrupt or incompatible.",
+                _ => null,
+            };
+            availability = forced;
+            return true;
+        }
+
+        BridgeAvailabilitySnapshot snapshot = _snapshot;
+        if (snapshot.Activated is not null)
+        {
+            error = null;
+            availability = PreCombatBridgeAvailability.Ready;
+            return true;
+        }
+        if (snapshot.IsCorrupt)
+        {
+            error = snapshot.CorruptReason;
+            availability = PreCombatBridgeAvailability.CorruptOrIncompatible;
+            return true;
+        }
+
+        error = null;
+        availability = default;
+        return false;
     }
 
     public static void Prewarm()
@@ -145,8 +180,8 @@ internal static class PreCombatSts2SimBridge
             throw new InvalidOperationException(error ?? "Sts2Sim backend is absent.");
         if (state == PreCombatBridgeAvailability.CorruptOrIncompatible)
             throw new InvalidOperationException(error ?? "Sts2Sim backend is corrupt or incompatible.");
-        if (_activated is not null)
-            _activated.Prewarm();
+        if (_snapshot.Activated is { } activated)
+            activated.Prewarm();
         else if (AvailabilityOverrideForTesting != PreCombatBridgeAvailability.Ready)
             throw new InvalidOperationException(error ?? "Sts2Sim backend is corrupt or incompatible.");
     }
@@ -168,12 +203,12 @@ internal static class PreCombatSts2SimBridge
             return hooked;
         }
         PreCombatBridgeAvailability state = EnsureActivated(out string? error);
-        if (state != PreCombatBridgeAvailability.Ready || _activated is null)
+        if (state != PreCombatBridgeAvailability.Ready || _snapshot.Activated is not { } activated)
             throw new InvalidOperationException(error ?? $"Sts2Sim backend is not ready ({state}).");
 
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(request, PreCombatSts2SimAbi.JsonOptions);
         cancellationToken.ThrowIfCancellationRequested();
-        byte[] responseBytes = await _activated.RunJsonAsync(payload, cancellationToken).ConfigureAwait(false);
+        byte[] responseBytes = await activated.RunJsonAsync(payload, cancellationToken).ConfigureAwait(false);
         return PreCombatSts2SimWireValidator.DeserializeAndValidateResponse(responseBytes);
     }
 
