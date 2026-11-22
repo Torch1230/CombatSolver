@@ -1,5 +1,6 @@
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Mirrors;
+using CombatSolver.Engine.InCombat.Mirrors.Hooks;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Damage;
 using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Combat;
@@ -164,12 +165,21 @@ internal sealed partial class UnattendedTestRunner
             creature.SetMaxHp(25);
             creature.CurrentHp = 5;
             state.SetAmount<SlipperyPower>(player.Creature, 1);
+            SlipperyPower slippery = state.GetPower<SlipperyPower>(player.Creature)!;
+            if (simulator.StateStore.TryGetReadOnly<PowerAmountPredictionState>(slippery, out _)
+                || simulator.StateStore.HasEntries<PowerAmountPredictionState>())
+            {
+                throw new InvalidOperationException("Slippery 预测基线不应预先插入 PowerAmountPredictionState。");
+            }
             string before = driver.CaptureDiagnosticContinuation(slipperySingle).StateText;
             var result = driver.ProjectDiagnosticThreat(slipperySingle, enemy, 8, 8);
-            if (result.Hp != -4 || driver.CaptureDiagnosticContinuation(slipperySingle).StateText != before)
+            if (result.Hp != -4
+                || driver.CaptureDiagnosticContinuation(slipperySingle).StateText != before
+                || simulator.StateStore.TryGetReadOnly<PowerAmountPredictionState>(slippery, out _)
+                || simulator.StateStore.HasEntries<PowerAmountPredictionState>())
             {
                 throw new InvalidOperationException(
-                    $"Slippery 1层面对[8,8]应受9点伤害(剩余-4)且不改状态，实际 Hp={result.Hp}。");
+                    $"Slippery 1层面对[8,8]应受9点伤害(剩余-4)且不改状态与状态库，实际 Hp={result.Hp}。");
             }
         }
         finally { slipperySingle.ReleaseSimulator(); }
@@ -185,12 +195,16 @@ internal sealed partial class UnattendedTestRunner
             creature.SetMaxHp(25);
             creature.CurrentHp = 5;
             state.SetAmount<SlipperyPower>(player.Creature, 2);
+            SlipperyPower slippery = state.GetPower<SlipperyPower>(player.Creature)!;
             string before = driver.CaptureDiagnosticContinuation(slipperyOneDamage).StateText;
             var result = driver.ProjectDiagnosticThreat(slipperyOneDamage, enemy, 1, 8, 8);
-            if (result.Hp != -5 || driver.CaptureDiagnosticContinuation(slipperyOneDamage).StateText != before)
+            if (result.Hp != -5
+                || driver.CaptureDiagnosticContinuation(slipperyOneDamage).StateText != before
+                || simulator.StateStore.TryGetReadOnly<PowerAmountPredictionState>(slippery, out _)
+                || simulator.StateStore.HasEntries<PowerAmountPredictionState>())
             {
                 throw new InvalidOperationException(
-                    $"Slippery 2层面对[1,8,8]应在第1段1伤也消耗层数(剩余-5)，实际 Hp={result.Hp}。");
+                    $"Slippery 2层面对[1,8,8]应在第1段1伤也消耗层数(剩余-5)且不写入状态库，实际 Hp={result.Hp}。");
             }
         }
         finally { slipperyOneDamage.ReleaseSimulator(); }
@@ -207,12 +221,16 @@ internal sealed partial class UnattendedTestRunner
             creature.CurrentHp = 5;
             state.SetAmount<BufferPower>(player.Creature, 1);
             state.SetAmount<SlipperyPower>(player.Creature, 1);
+            SlipperyPower slippery = state.GetPower<SlipperyPower>(player.Creature)!;
             string before = driver.CaptureDiagnosticContinuation(bufferThenSlippery).StateText;
             var result = driver.ProjectDiagnosticThreat(bufferThenSlippery, enemy, 8, 8);
-            if (result.Hp != 4 || driver.CaptureDiagnosticContinuation(bufferThenSlippery).StateText != before)
+            if (result.Hp != 4
+                || driver.CaptureDiagnosticContinuation(bufferThenSlippery).StateText != before
+                || simulator.StateStore.TryGetReadOnly<PowerAmountPredictionState>(slippery, out _)
+                || simulator.StateStore.HasEntries<PowerAmountPredictionState>())
             {
                 throw new InvalidOperationException(
-                    $"Buffer+Slippery 面对[8,8]首段应仅耗Buffer、次段耗Slippery留4HP，实际 Hp={result.Hp}。");
+                    $"Buffer+Slippery 面对[8,8]首段应仅耗Buffer、次段耗Slippery留4HP且不写入状态库，实际 Hp={result.Hp}。");
             }
         }
         finally { bufferThenSlippery.ReleaseSimulator(); }
@@ -231,15 +249,50 @@ internal sealed partial class UnattendedTestRunner
             creature.CurrentHp = 25;
             string before = driver.CaptureDiagnosticContinuation(remnantCap).StateText;
             var result = driver.ProjectDiagnosticThreat(remnantCap, enemy, 15, 15);
-            if (result.Hp != 5 || driver.CaptureDiagnosticContinuation(remnantCap).StateText != before)
+            if (result.Hp != 5
+                || driver.CaptureDiagnosticContinuation(remnantCap).StateText != before
+                || simulator.StateStore.TryGetReadOnly<BeatingRemnantPredictionState>(remnant, out _)
+                || simulator.StateStore.HasEntries<BeatingRemnantPredictionState>())
             {
                 throw new InvalidOperationException(
-                    $"BeatingRemnant 20伤上限面对[15,15]应总损20剩5HP，实际 Hp={result.Hp}。");
+                    $"BeatingRemnant 20伤上限面对[15,15]应总损20剩5HP且不写入状态库，实际 Hp={result.Hp}。");
             }
         }
         finally { remnantCap.ReleaseSimulator(); }
 
-        return "ProjectedMultiHitModifiers:SlipperyTwoHits:SlipperyOneDamageHit:BufferBeforeSlippery:BeatingRemnantCap:CompleteStateUnchanged";
+        SimulationSnapshot remnantRevive = driver.ReplayDiagnosticPrefix([]);
+        try
+        {
+            var simulator = (CombatPredictionSimulator)remnantRevive.Simulator;
+            var state = (SimulatedCombatState)simulator.State.CombatState;
+            LizardTail tail = state.RelicsOf(player).OfType<LizardTail>().Single();
+            BeatingRemnant remnant = (BeatingRemnant)PredictionUtils.CreateRelic(
+                CanonicalModels.Relic<BeatingRemnant>(),
+                player);
+            ReplaceRootRelicsForTurnBoundaryTest(state, player, tail, remnant);
+            SimCreatureState creature = simulator.State.GetCreature(player.Creature);
+            creature.SetMaxHp(40);
+            creature.CurrentHp = 10;
+            int expectedRevive = (int)LizardTailMirrors.HealAmount(tail, creature.MaxHp);
+            int expectedCap = remnant.DynamicVars[BeatingRemnant._maxHpLossKey].IntValue;
+            int expectedSecondHit = Math.Min(15, expectedCap - creature.CurrentHp);
+            string before = driver.CaptureDiagnosticContinuation(remnantRevive).StateText;
+            var result = driver.ProjectDiagnosticThreat(remnantRevive, enemy, 18, 15);
+            if (result.Hp != expectedRevive - expectedSecondHit
+                || result.DeathSaveUseCount != 1
+                || result.DeathSaveHpRestored != expectedRevive
+                || driver.CaptureDiagnosticContinuation(remnantRevive).StateText != before
+                || simulator.StateStore.TryGetReadOnly<BeatingRemnantPredictionState>(remnant, out _)
+                || simulator.StateStore.HasEntries<BeatingRemnantPredictionState>()
+                || simulator.StateStore.TryGetReadOnly<LizardTailPredictionState>(tail, out _))
+            {
+                throw new InvalidOperationException(
+                    $"BeatingRemnant 复活溢出面对[18,15]应保留10点剩余上限留{expectedRevive - expectedSecondHit}HP且不写入状态库，实际 Hp={result.Hp} saves={result.DeathSaveUseCount} restored={result.DeathSaveHpRestored}。");
+            }
+        }
+        finally { remnantRevive.ReleaseSimulator(); }
+
+        return "ProjectedMultiHitModifiers:SlipperyTwoHits:SlipperyOneDamageHit:BufferBeforeSlippery:BeatingRemnantCap:BeatingRemnantReviveOverkillCap:StoreUnmodified:CompleteStateUnchanged";
     }
 
     private static string AssertProjectedSandpitBoundary(CombatState combat, Player player)

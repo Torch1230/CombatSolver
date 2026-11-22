@@ -174,7 +174,7 @@ internal static class ModifyHpLostMirrors
 
         decimal damageReceived = context.BeatingRemnantDamageReceivedOverride is { } getDamageReceived
             ? getDamageReceived(relic)
-            : context.StateStore.Get(relic, () => new BeatingRemnantPredictionState(relic)).DamageReceivedThisTurn;
+            : context.StateStore.Peek(relic, static value => new BeatingRemnantPredictionState(value)).DamageReceivedThisTurn;
         var damageCap = relic.DynamicVars[BeatingRemnant._maxHpLossKey].BaseValue;
         return Math.Min(context.Amount, damageCap - damageReceived);
     }
@@ -183,7 +183,7 @@ internal static class ModifyHpLostMirrors
         SlipperyPower power,
         ModifyHpLostMirrorContext context)
     {
-        return context.StateStore.GetPowerAmount(power).IsActive
+        return context.StateStore.PeekPowerAmount(power).IsActive
             ? InvokeOriginalAfterOsty(power, context)
             : context.Amount;
     }

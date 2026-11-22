@@ -1538,7 +1538,8 @@ internal sealed partial class CombatBeamSolver
                 projectedModifiers?.BeatingRemnantDamageReceivedLookup);
             projectedModifiers?.Consume(overflowModifiers);
             int playerLoss = Math.Max(0, (int)Math.Floor(overflow));
-            projectedModifiers?.RecordDamageReceived(_player.Creature, playerLoss);
+            int playerUnblockedDamage = Math.Min(playerLoss, Math.Max(0, playerHp));
+            projectedModifiers?.RecordDamageReceived(_player.Creature, playerUnblockedDamage);
             playerHp -= playerLoss;
             if (playerLoss > 0 && gambitActive)
             {
@@ -1548,7 +1549,8 @@ internal sealed partial class CombatBeamSolver
             deathPrevention.TryRevive(ref playerHp);
             return;
         }
-        projectedModifiers?.RecordDamageReceived(target, loss);
+        int unblockedDamage = Math.Min(loss, Math.Max(0, playerHp));
+        projectedModifiers?.RecordDamageReceived(target, unblockedDamage);
         playerHp -= loss;
         if (loss > 0 && gambitActive)
         {
@@ -1620,8 +1622,7 @@ internal sealed partial class CombatBeamSolver
         {
             if (_remainingSlippery.TryGetValue(slippery, out int count))
                 return count;
-            return _simulator.StateStore.Peek((AbstractModel)slippery,
-                static value => new PowerAmountPredictionState(((SlipperyPower)value).Amount)).Amount;
+            return _simulator.StateStore.PeekPowerAmount(slippery).Amount;
         }
 
         private decimal GetBeatingRemnantDamageReceived(BeatingRemnant relic)
