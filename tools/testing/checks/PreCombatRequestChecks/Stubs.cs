@@ -216,18 +216,23 @@ namespace CombatSolver.Api
                 await gate.Task;
         }
         public static PreCombatWorkerStatus GetStatus() => new() { IsRunning = false, IsBusy = false };
-        public static PreCombatBackendDisplaySnapshot CaptureBackendDisplaySnapshot(RunState? liveRun) => new(
-            PreCombatBackendKind.None,
-            IsActiveRunning: false,
-            IsBusy: false,
-            PreCombatBackendKind.None,
-            LastEffectiveParallelism: null,
-            LastFallbackCode: null,
-            HasInstalledInProcessBackend: HasInstalledInProcessBackend,
-            IsBridgeCorrupt: PreCombatSts2SimBridge.IsCorrupt,
-            HostEligibleForInProcess: liveRun is not null && PreCombatSts2SimEligibility.AssessMandatoryLiveHost(liveRun).IsEligible,
-            HostExclusionCode: liveRun is null ? null : PreCombatSts2SimEligibility.AssessMandatoryLiveHost(liveRun).FailureCode,
-            IsWindowsHost: OperatingSystem.IsWindows());
+        public static PreCombatBackendDisplaySnapshot CaptureBackendDisplaySnapshot(RunState? liveRun)
+        {
+            PreCombatEligibilityResult? eligibility = liveRun is null ? null : PreCombatSts2SimEligibility.AssessMandatoryLiveHost(liveRun);
+            return new PreCombatBackendDisplaySnapshot(
+                PreCombatBackendKind.None,
+                IsActiveRunning: false,
+                IsBusy: false,
+                PreCombatBackendKind.None,
+                LastEffectiveParallelism: null,
+                LastFallbackCode: null,
+                HasInstalledInProcessBackend: HasInstalledInProcessBackend,
+                IsBridgeCorrupt: PreCombatSts2SimBridge.IsCorrupt,
+                HostEligibleForInProcess: eligibility is { IsEligible: true },
+                HostExclusionCode: eligibility?.FailureCode,
+                IsWindowsHost: OperatingSystem.IsWindows(),
+                HostExclusionDetail: eligibility?.Detail);
+        }
         public static Task<PreCombatWorkerStatus> RestartSessionAsync(
             PreCombatLiveStateSnapshot snapshot, int? idle, long admissionEpoch, CancellationToken token)
         {

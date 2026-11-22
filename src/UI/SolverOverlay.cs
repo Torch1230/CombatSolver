@@ -83,6 +83,8 @@ internal static class SolverOverlay
     private static PanelContainer? _preCombatBackendBadge;
     private static Label? _preCombatBackendLabel;
     private static string? _renderedPreCombatBadgeKey;
+    private static PreCombatBackendDisplaySnapshot? _cachedPreCombatBadgeSnapshot;
+    private static long _lastPreCombatBadgeProbeAtMs;
     private static Label? _stolenResourceOutcomeLabel;
     private static HFlowContainer? _strategyOutcomeRow;
     private static CheckButton? _autoEnableFullAutoSwitch;
@@ -1480,7 +1482,7 @@ internal static class SolverOverlay
 
         RefreshFeedbackBanner();
         RefreshGuidanceHints();
-        RefreshPreCombatBackendBadge();
+        RefreshPreCombatBackendBadge(force: false);
 
         bool solverDisabled = SolverController.SolverDisabled;
         if (_solverEnabledButton != null)
@@ -1687,6 +1689,8 @@ internal static class SolverOverlay
         _preCombatBackendBadge = null;
         _preCombatBackendLabel = null;
         _renderedPreCombatBadgeKey = null;
+        _cachedPreCombatBadgeSnapshot = null;
+        _lastPreCombatBadgeProbeAtMs = 0L;
 
         if (_lastSnapshot is { } snapshot)
         {
@@ -1754,7 +1758,7 @@ internal static class SolverOverlay
     {
         if (_layer != null && GodotObject.IsInstanceValid(_layer))
         {
-            RefreshPreCombatBackendBadge();
+            RefreshPreCombatBackendBadge(force: true);
             return;
         }
         Create(host);
@@ -2051,7 +2055,7 @@ internal static class SolverOverlay
             FontType.Bold);
         _preCombatBackendBadge.AddChild(_preCombatBackendLabel);
         header.AddChild(_preCombatBackendBadge);
-        RefreshPreCombatBackendBadge();
+        RefreshPreCombatBackendBadge(force: true);
 
         Control spacer = new()
         {
@@ -2082,7 +2086,7 @@ internal static class SolverOverlay
         return header;
     }
 
-    private static void RefreshPreCombatBackendBadge()
+    private static void RefreshPreCombatBackendBadge(bool force = false)
     {
         if (_preCombatBackendBadge == null || _preCombatBackendLabel == null
             || !GodotObject.IsInstanceValid(_preCombatBackendBadge)
@@ -2091,7 +2095,24 @@ internal static class SolverOverlay
             return;
         }
 
-        PreCombatBackendDisplaySnapshot snapshot = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+        PreCombatWorkerStatus workerStatus = PreCombatForecastApi.GetWorkerStatus();
+        long nowMs = System.Environment.TickCount64;
+        PreCombatBackendDisplaySnapshot snapshot;
+        if (force
+            || _cachedPreCombatBadgeSnapshot is not { } cached
+            || cached.ActiveBackend != workerStatus.Backend
+            || cached.IsActiveRunning != workerStatus.IsRunning
+            || cached.IsBusy != workerStatus.IsBusy
+            || unchecked(nowMs - _lastPreCombatBadgeProbeAtMs) >= 1000L)
+        {
+            snapshot = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+            _cachedPreCombatBadgeSnapshot = snapshot;
+            _lastPreCombatBadgeProbeAtMs = nowMs;
+        }
+        else
+        {
+            snapshot = cached;
+        }
         string text;
         string summaryTooltip;
         Color tone;
@@ -2166,9 +2187,17 @@ internal static class SolverOverlay
         string? reasonCode = string.IsNullOrEmpty(snapshot.HostExclusionCode)
             ? snapshot.LastFallbackCode
             : snapshot.HostExclusionCode;
+        string? rawDetail = string.IsNullOrEmpty(snapshot.HostExclusionCode)
+            ? snapshot.LastFallbackDetail
+            : snapshot.HostExclusionDetail;
+        string? reasonDetail = string.IsNullOrWhiteSpace(rawDetail)
+            ? null
+            : rawDetail.Length <= 160 ? rawDetail : rawDetail[..157] + "...";
         string tooltip = string.IsNullOrEmpty(reasonCode)
             ? $"{summaryTooltip}\n{installStatus}"
-            : $"{summaryTooltip}\n{installStatus}\n{SolverText.Format($"分流/回退原因：{reasonCode}")}";
+            : string.IsNullOrEmpty(reasonDetail)
+                ? $"{summaryTooltip}\n{installStatus}\n{SolverText.Format($"分流/回退原因：{reasonCode}")}"
+                : $"{summaryTooltip}\n{installStatus}\n{SolverText.Format($"分流/回退原因：{reasonCode}")}\n{SolverText.Format($"详情：{reasonDetail}")}";
 
         string cacheKey = $"{SolverUiTokens.IsLightTheme}|{SolverText.IsEnglish}|{text}|{tooltip}|{tone}";
         if (string.Equals(_renderedPreCombatBadgeKey, cacheKey, StringComparison.Ordinal))

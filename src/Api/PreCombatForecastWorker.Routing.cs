@@ -14,6 +14,7 @@ internal static partial class PreCombatForecastWorker
     private static int _lastUsedBackend;
     private static int _lastEffectiveParallelism;
     private static string? _lastFallbackCode;
+    private static string? _lastFallbackDetail;
 
     internal static int WorkerStartCountForTesting => Volatile.Read(ref _workerStartCount);
 
@@ -39,6 +40,8 @@ internal static partial class PreCombatForecastWorker
 
     internal static string? LastFallbackCodeForTesting => Volatile.Read(ref _lastFallbackCode);
 
+    internal static string? LastFallbackDetailForTesting => Volatile.Read(ref _lastFallbackDetail);
+
     internal static bool HasInstalledInProcessBackend => PreCombatSts2SimBridge.HasInstalledBackendArtifact();
 
     internal static void ResetBackendDisplayState()
@@ -46,6 +49,7 @@ internal static partial class PreCombatForecastWorker
         Volatile.Write(ref _lastUsedBackend, (int)PreCombatBackendKind.None);
         Volatile.Write(ref _lastEffectiveParallelism, 0);
         Volatile.Write(ref _lastFallbackCode, null);
+        Volatile.Write(ref _lastFallbackDetail, null);
     }
 
     internal static PreCombatBackendDisplaySnapshot CaptureBackendDisplaySnapshot(RunState? liveRun)
@@ -55,11 +59,13 @@ internal static partial class PreCombatForecastWorker
         bool isCorrupt = PreCombatSts2SimBridge.IsCorrupt;
         bool hostEligible = false;
         string? hostExclusionCode = null;
+        string? hostExclusionDetail = null;
         if (liveRun is not null)
         {
             PreCombatEligibilityResult eligibility = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(liveRun);
             hostEligible = eligibility.IsEligible;
             hostExclusionCode = eligibility.FailureCode;
+            hostExclusionDetail = eligibility.Detail;
         }
 
         return new PreCombatBackendDisplaySnapshot(
@@ -73,7 +79,9 @@ internal static partial class PreCombatForecastWorker
             IsBridgeCorrupt: isCorrupt,
             HostEligibleForInProcess: hostEligible,
             HostExclusionCode: hostExclusionCode,
-            IsWindowsHost: OperatingSystem.IsWindows());
+            IsWindowsHost: OperatingSystem.IsWindows(),
+            HostExclusionDetail: hostExclusionDetail,
+            LastFallbackDetail: Volatile.Read(ref _lastFallbackDetail));
     }
 
     internal static PreCombatForecastResult LocalizeResultForDelivery(PreCombatForecastResult result) =>
@@ -196,6 +204,7 @@ internal static partial class PreCombatForecastWorker
                     fallbackCode = "policy_unsupported";
                     fallbackDetail = policyReason;
                     Volatile.Write(ref _lastFallbackCode, fallbackCode);
+                    Volatile.Write(ref _lastFallbackDetail, fallbackDetail);
                     Entry.Logger.Info(
                         $"[CombatSolver/PreCombatApi] STS2SIM_FALLBACK request_id={requestId} " +
                         $"code={fallbackCode} detail={fallbackDetail}");
@@ -235,6 +244,7 @@ internal static partial class PreCombatForecastWorker
                         fallbackCode = "bridge_absent";
                         fallbackDetail = bridgeError ?? "The optional sts2sim backend is not installed.";
                         Volatile.Write(ref _lastFallbackCode, fallbackCode);
+                        Volatile.Write(ref _lastFallbackDetail, fallbackDetail);
                         Entry.Logger.Info(
                             $"[CombatSolver/PreCombatApi] STS2SIM_FALLBACK request_id={requestId} code=bridge_absent field=sts2sim");
                     }
@@ -255,6 +265,7 @@ internal static partial class PreCombatForecastWorker
                 string reason = fallbackDetail
                     ?? $"Pre-combat forecast requires legacy Windows worker ({code}).";
                 Volatile.Write(ref _lastFallbackCode, code);
+                Volatile.Write(ref _lastFallbackDetail, reason);
                 return PreCombatForecastApi.Failure(
                     PreCombatForecastStatus.Unsupported,
                     requestId,
@@ -281,7 +292,10 @@ internal static partial class PreCombatForecastWorker
                 Volatile.Write(ref _lastUsedBackend, (int)PreCombatBackendKind.LegacyProcess);
                 Volatile.Write(ref _lastEffectiveParallelism, 0);
                 if (fallbackCode is not null)
+                {
                     Volatile.Write(ref _lastFallbackCode, fallbackCode);
+                    Volatile.Write(ref _lastFallbackDetail, fallbackDetail);
+                }
             }
             return legacyResult;
         }
@@ -458,6 +472,7 @@ internal static partial class PreCombatForecastWorker
                 Volatile.Write(ref _lastUsedBackend, (int)PreCombatBackendKind.InProcess);
                 Volatile.Write(ref _lastEffectiveParallelism, effectiveDop);
                 Volatile.Write(ref _lastFallbackCode, null);
+                Volatile.Write(ref _lastFallbackDetail, null);
                 return new PreCombatForecastResult
                 {
                     Status = PreCombatForecastStatus.Succeeded,
@@ -476,6 +491,7 @@ internal static partial class PreCombatForecastWorker
 
             case "CapabilityMiss":
                 Volatile.Write(ref _lastFallbackCode, response.FailureCode);
+                Volatile.Write(ref _lastFallbackDetail, response.Error);
                 Entry.Logger.Info(
                     $"[CombatSolver/PreCombatApi] STS2SIM_FALLBACK request_id={requestId} " +
                     $"code={response.FailureCode} field={response.FieldPath ?? "-"} error={response.Error}");

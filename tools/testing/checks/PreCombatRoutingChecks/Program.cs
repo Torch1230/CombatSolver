@@ -81,6 +81,10 @@ await Check("Windows CapabilityMiss hands off to legacy under continuous busy le
     Equal(false, PreCombatForecastApi.GetWorkerStatus().IsBusy);
     Equal(1, PreCombatForecastWorker.FallbackCountForTesting);
     Equal(1, PreCombatForecastWorker.LegacyCalls.Count);
+    PreCombatBackendDisplaySnapshot missSnapshot = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+    Equal(PreCombatBackendKind.LegacyProcess, missSnapshot.LastUsedBackend);
+    Equal("encounter_unmapped", missSnapshot.LastFallbackCode);
+    Equal("Missing encounter.", missSnapshot.LastFallbackDetail);
 });
 
 await Check("Malformed negative ABI fixtures fail closed without fallback or cache publication", async () =>
@@ -296,6 +300,10 @@ await Check("Dread exclusion with corrupt bundle never activates bridge on Windo
         RunState dreadRun = NewRun();
         dreadRun.MandatoryExclusionCode = "dread_mode";
         dreadRun.DirectIneligibility = "dread_mode";
+        RunManager.Instance.Run = dreadRun;
+        PreCombatBackendDisplaySnapshot dreadDisplay = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+        Equal("dread_mode", dreadDisplay.HostExclusionCode);
+        Equal(true, !string.IsNullOrEmpty(dreadDisplay.HostExclusionDetail));
 
         PreCombatForecastResult winResult = await PreCombatForecastApi.ForecastAsync(
             dreadRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
