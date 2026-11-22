@@ -106,30 +106,57 @@ internal static partial class InCombatLiveStateCapturer
         CardPlayStartedEntry[] startedEntries = allHistory.OfType<CardPlayStartedEntry>().ToArray();
         CardPlayFinishedEntry[] finishedEntries = allHistory.OfType<CardPlayFinishedEntry>().ToArray();
 
-        foreach (DamageReceivedEntry dmg in damageEntries)
+        foreach (CombatHistoryEntry entry in allHistory)
         {
-            if (dmg.Receiver is not null) RegisterCreature(dmg.Receiver);
-            if (dmg.Dealer is not null) RegisterCreature(dmg.Dealer);
-            if (dmg.Result.OriginalTarget is not null) RegisterCreature(dmg.Result.OriginalTarget);
-            if (dmg.CardSource is not null) RegisterCard(dmg.CardSource);
-        }
-
-        foreach (CardPlayFinishedEntry finished in finishedEntries)
-        {
-            if (finished.CardPlay.Card is { } playedCard)
-                RegisterCard(playedCard);
+            if (entry.Actor is not null)
+                RegisterCreature(entry.Actor);
+            switch (entry)
+            {
+                case DamageReceivedEntry dmg:
+                    if (dmg.Dealer is not null) RegisterCreature(dmg.Dealer);
+                    if (dmg.Result.OriginalTarget is not null) RegisterCreature(dmg.Result.OriginalTarget);
+                    if (dmg.CardSource is not null) RegisterCard(dmg.CardSource);
+                    break;
+                case CreatureAttackedEntry attacked:
+                    foreach (DamageResult dr in attacked.DamageResults)
+                    {
+                        if (dr.Receiver is not null) RegisterCreature(dr.Receiver);
+                        if (dr.OriginalTarget is not null) RegisterCreature(dr.OriginalTarget);
+                    }
+                    break;
+                case CardPlayStartedEntry started:
+                    if (started.CardPlay.Target is not null) RegisterCreature(started.CardPlay.Target);
+                    if (started.CardPlay.Card is { } startedCard) RegisterCard(startedCard);
+                    break;
+                case CardPlayFinishedEntry finished:
+                    if (finished.CardPlay.Target is not null) RegisterCreature(finished.CardPlay.Target);
+                    if (finished.CardPlay.Card is { } playedCard) RegisterCard(playedCard);
+                    break;
+                case PowerReceivedEntry powerReceived:
+                    if (powerReceived.Applier is not null) RegisterCreature(powerReceived.Applier);
+                    break;
+                case PotionUsedEntry potionUsed:
+                    if (potionUsed.Target is not null) RegisterCreature(potionUsed.Target);
+                    break;
+                case MonsterPerformedMoveEntry moveEntry when moveEntry.Targets is not null:
+                    foreach (Creature target in moveEntry.Targets)
+                        RegisterCreature(target);
+                    break;
+            }
         }
 
         // 提前遍历场上 Creature/Power/Relic 所引用的生物和卡牌句柄，确保外键句柄闭合。
-        RegisterPrivateReferenceTargets(player, creatureHandles, RegisterCreature, RegisterCard);
+        RegisterPrivateReferenceTargets(state, player, creatureHandles, finishedEntries, RegisterCreature, RegisterCard);
+
+        IReadOnlyDictionary<CardModel, int> theHuntPendingRewards = ComputeTheHuntPendingRewards(player, allHistory);
 
         var cardsDto = cardHandles
             .OrderBy(static kv => kv.Value)
-            .Select(kv => CaptureCard(kv.Key, kv.Value, state, cardHandles, finishedEntries))
+            .Select(kv => CaptureCard(kv.Key, kv.Value, state, cardHandles, finishedEntries, theHuntPendingRewards))
             .ToArray();
 
         var relicsDto = player.Relics
-            .Select(relic => CaptureRelic(relic, state, player, cardHandles, startedEntries, finishedEntries))
+            .Select(relic => CaptureRelic(relic, state, player, cardHandles, startedEntries, finishedEntries, allHistory))
             .ToArray();
 
         var creaturesDto = creatureHandles
@@ -302,14 +329,53 @@ internal static partial class InCombatLiveStateCapturer
         CombatState state,
         IReadOnlyDictionary<Creature, int> creatureHandles)
     {
-        var handles = new List<int>(state.Enemies.Count + state.EscapedCreatures.Count);
-        var seen = new HashSet<int>();
-        foreach (Creature enemy in state.Enemies.Concat(state.EscapedCreatures))
+        var observedCombatIds = new HashSet<uint>();
+        var spawnedEnemies = new List<Creature>();
+        foreach (Creature creature in creatureHandles.Keys)
         {
-            if (creatureHandles.TryGetValue(enemy, out int h) && seen.Add(h))
-                handles.Add(h);
+            if (creature.CombatId is not uint combatId)
+            {
+                throw new InCombatLiveCaptureUnsupportedException(
+                    "live_private_state_unmapped",
+                    "spawnedEnemyHandles",
+                    $"Creature '{creature.ModelId.Entry}' is missing CombatId during live capture.");
+            }
+            observedCombatIds.Add(combatId);
+            if (creature.Side == CombatSide.Enemy)
+                spawnedEnemies.Add(creature);
         }
-        return handles.ToArray();
+
+        for (uint expectedId = 0; expectedId < state._nextCreatureId; expectedId++)
+        {
+            if (!observedCombatIds.Contains(expectedId))
+            {
+                throw new InCombatLiveCaptureUnsupportedException(
+                    "live_private_state_unmapped",
+                    "spawnedEnemyHandles",
+                    $"Spawned creature combatId={expectedId} (< nextCreatureId={state._nextCreatureId}) " +
+                    "was removed without surviving references.");
+            }
+        }
+
+        spawnedEnemies.Sort(static (a, b) => a.CombatId!.Value.CompareTo(b.CombatId!.Value));
+
+        if (state.Encounter is { } encounter)
+        {
+            foreach (MonsterModel expectedMonster in encounter.SpawnedEnemies)
+            {
+                bool matched = spawnedEnemies.Any(e => e.Monster is { } m
+                    && (ReferenceEquals(m.CanonicalInstance, expectedMonster) || m.Id == expectedMonster.Id));
+                if (!matched)
+                {
+                    throw new InCombatLiveCaptureUnsupportedException(
+                        "live_private_state_unmapped",
+                        "spawnedEnemyHandles",
+                        $"Encounter.SpawnedEnemies monster '{expectedMonster.Id.Entry}' has no surviving creature handle.");
+                }
+            }
+        }
+
+        return spawnedEnemies.Select(c => creatureHandles[c]).ToArray();
     }
 
     private static InCombatCardDto CaptureCard(
@@ -317,7 +383,8 @@ internal static partial class InCombatLiveStateCapturer
         int handle,
         CombatState state,
         IReadOnlyDictionary<CardModel, int> cardHandles,
-        CardPlayFinishedEntry[] finishedEntries)
+        CardPlayFinishedEntry[] finishedEntries,
+        IReadOnlyDictionary<CardModel, int> theHuntPendingRewards)
     {
         CardEnergyCost energyCost = c.EnergyCost;
         var localModifiers = new List<InCombatLocalEnergyModifierDto>(energyCost._localModifiers.Count);
@@ -377,7 +444,7 @@ internal static partial class InCombatLiveStateCapturer
                 c.Affliction.Amount);
 
         IReadOnlyDictionary<string, InCombatFieldValueDto> priv = CaptureCardPrivateFields(
-            c, state, cardHandles, finishedEntries);
+            c, state, cardHandles, finishedEntries, theHuntPendingRewards);
 
         CardModel? cloneOrigin = c._cloneOf ?? c.DupeOf;
         return new InCombatCardDto(

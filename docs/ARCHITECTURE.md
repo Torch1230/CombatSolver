@@ -36,7 +36,7 @@
 | `src/Runtime/InCombatSts2SimResultMaterializer.cs` | `Sts2Sim` 战斗内路线与流式进度物化为只读 `SolverResult` / `SolverProgress` |
 | `src/Runtime/InCombatSolverBackendState.cs` | 战斗内当前及最近求解引擎、有效并行度与回退原因状态 |
 
-`SolverController` 在启用且满足战斗内 `Sts2Sim` 准入时，先在主线程冻结根并采集实机战斗状态，随后在后台 **不进入 `NoGcRegion`** 的情况下调用 `Sts2Sim.PreCombatBridge`（多核并行、流式汇报进度、支持停搜/应用本回合/采用当前路线接管取消）；遇到 `CapabilityMiss`、异常或用户禁用／不兼容条件时记录回退状态并无缝落回 `SearchGcPolicy.EnterSearchScope` + `CombatSearchCoordinator.Solve` 内置模拟引擎。`CombatBeamSolver.ExternalRouteAnnotation` 在 Search 内复用单路线 `Replay` 与 `ContinuationCapture` 标注跨回合续用戳，不引入上游策略或设置引用。
+`SolverController` 在启用且满足战斗内 `Sts2Sim` 准入时，先在主线程冻结根并采集实机战斗状态，随后在后台 **不进入 `NoGcRegion`** 的情况下调用 `Sts2Sim.PreCombatBridge`（多核并行、流式汇报进度、在 `SearchInteractionState` 交互锁内原子封存与提取接管请求并在锁外完成物化，支持停搜/应用本回合/采用当前路线接管取消）；遇到 `CapabilityMiss`、异常、主机回放判定非法或用户禁用／不兼容条件时记录回退状态并自动回退至 `SearchGcPolicy.EnterSearchScope` + `CombatSearchCoordinator.Solve` 内置模拟引擎。`CombatBeamSolver.ExternalRouteAnnotation` 在 Search 内逐动作回放验证合法性、回合与终局状态一致性和跨回合续用戳，通过结构化结果区分完整标注（`Annotated`）、仅后续回合不可预测的前缀截断（`UnsupportedFutureContinuation`）以及拒绝放行的非法路线（`IllegalRoute`），不引入上游策略或设置引用。
 
 政策由主线程从设置冻结到 `SearchPolicySnapshot`。后台通过请求参数、诊断 sink 与压力信号消费外部能力；算法不读取设置单例或操作 GC。Power 显示变量在主线程根捕获时物化；worker 只消费已物化值。克隆并发边界由 `BaseLibCloneConcurrencyPatch` 与原生克隆隔离规则维护。
 

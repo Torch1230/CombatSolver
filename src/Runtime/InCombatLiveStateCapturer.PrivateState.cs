@@ -1,10 +1,12 @@
 using CombatSolver.Api;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Combat.History;
 using MegaCrit.Sts2.Core.Combat.History.Entries;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.CardPools;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
 using MegaCrit.Sts2.Core.Models.Events;
@@ -28,21 +30,21 @@ internal static partial class InCombatLiveStateCapturer
     private static InCombatFieldValueDto CreatureHandleArrayVal(IReadOnlyList<int> items) => new("CreatureHandleArray", IntArrayValue: items);
 
     private static void RegisterPrivateReferenceTargets(
+        CombatState combatState,
         Player player,
         Dictionary<Creature, int> creatureHandles,
+        CardPlayFinishedEntry[] finishedEntries,
         Func<Creature, int> registerCreature,
         Func<CardModel, int> registerCard)
     {
         foreach (RelicModel relic in player.Relics)
         {
-            if (relic is HistoryCourse hc)
+            if (relic is HistoryCourse)
             {
-                if (hc.Owner?.Creature.CombatState is CombatState combatState)
-                {
-                    (CardModel? lastAttack, _, CardModel? prevAttack, _) = FindHistoryCourseAttacks(combatState, player);
-                    if (lastAttack is not null) registerCard(lastAttack);
-                    if (prevAttack is not null) registerCard(prevAttack);
-                }
+                (CardModel? lastAttack, _, CardModel? prevAttack, _) = FindHistoryCourseAttacks(
+                    combatState, player, finishedEntries);
+                if (lastAttack is not null) registerCard(lastAttack);
+                if (prevAttack is not null) registerCard(prevAttack);
             }
             else if (relic is MusicBox mb && mb._cardBeingPlayed is { } mbCard)
             {
@@ -155,11 +157,94 @@ internal static partial class InCombatLiveStateCapturer
         return fields;
     }
 
+    private static IReadOnlyDictionary<CardModel, int> ComputeTheHuntPendingRewards(
+        Player player,
+        CombatHistoryEntry[] allHistory)
+    {
+        var rewardsByCard = new Dictionary<CardModel, int>(ReferenceEqualityComparer.Instance);
+        var activePlays = new List<CardPlay>();
+        foreach (CombatHistoryEntry entry in allHistory)
+        {
+            switch (entry)
+            {
+                case CardPlayStartedEntry started:
+                    activePlays.Add(started.CardPlay);
+                    break;
+
+                case CardPlayFinishedEntry finished:
+                {
+                    int removeIdx = -1;
+                    for (int i = activePlays.Count - 1; i >= 0; i--)
+                    {
+                        if (ReferenceEquals(activePlays[i], finished.CardPlay))
+                        {
+                            removeIdx = i;
+                            break;
+                        }
+                    }
+                    if (removeIdx < 0)
+                    {
+                        throw new InCombatLiveCaptureUnsupportedException(
+                            "live_private_state_unmapped",
+                            "cards.TheHunt._pendingCardRewards",
+                            "Mismatched CardPlayFinishedEntry while attributing TheHuntPower.");
+                    }
+                    activePlays.RemoveAt(removeIdx);
+                    break;
+                }
+
+                case PowerReceivedEntry received when received.Power is TheHuntPower
+                    && ReferenceEquals(received.Actor, player.Creature):
+                {
+                    if (received.Amount <= 0m || received.Amount != decimal.Truncate(received.Amount))
+                    {
+                        throw new InCombatLiveCaptureUnsupportedException(
+                            "live_private_state_unmapped",
+                            "cards.TheHunt._pendingCardRewards",
+                            $"Non-integral TheHuntPower delta {received.Amount}.");
+                    }
+                    var distinctHunts = new List<CardModel>(1);
+                    foreach (CardPlay play in activePlays)
+                    {
+                        if (ReferenceEquals(play.Player, player)
+                            && play.Card is TheHunt huntCard
+                            && !distinctHunts.Any(existing => ReferenceEquals(existing, huntCard)))
+                        {
+                            distinctHunts.Add(huntCard);
+                        }
+                    }
+                    if (distinctHunts.Count != 1)
+                    {
+                        throw new InCombatLiveCaptureUnsupportedException(
+                            "live_private_state_unmapped",
+                            "cards.TheHunt._pendingCardRewards",
+                            $"Ambiguous active TheHunt card attribution count ({distinctHunts.Count}).");
+                    }
+                    CardModel sourceHunt = distinctHunts[0];
+                    rewardsByCard[sourceHunt] = rewardsByCard.GetValueOrDefault(sourceHunt) + (int)received.Amount;
+                    break;
+                }
+            }
+        }
+
+        int totalTheHuntPower = player.Creature.GetPower<TheHuntPower>()?.Amount ?? 0;
+        int attributedSum = rewardsByCard.Values.Sum();
+        if (attributedSum != totalTheHuntPower)
+        {
+            throw new InCombatLiveCaptureUnsupportedException(
+                "live_private_state_unmapped",
+                "cards.TheHunt._pendingCardRewards",
+                $"Attributed TheHunt rewards ({attributedSum}) disagree with live TheHuntPower ({totalTheHuntPower}).");
+        }
+        return rewardsByCard;
+    }
+
     private static IReadOnlyDictionary<string, InCombatFieldValueDto> CaptureCardPrivateFields(
         CardModel card,
         CombatState state,
         IReadOnlyDictionary<CardModel, int> cardHandles,
-        CardPlayFinishedEntry[] finishedEntries)
+        CardPlayFinishedEntry[] finishedEntries,
+        IReadOnlyDictionary<CardModel, int> theHuntPendingRewards)
     {
         var fields = new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal);
         switch (card)
@@ -256,8 +341,7 @@ internal static partial class InCombatLiveStateCapturer
                 fields["TheBall._damage"] = DecimalVal(ball.DynamicVars.Damage.BaseValue);
                 break;
             case TheHunt hunt:
-                fields["TheHunt._pendingCardRewards"] = IntVal(
-                    hunt.Pile?.Type == PileType.Exhaust ? (hunt.Owner?.Creature.GetPower<TheHuntPower>()?.Amount ?? 0) : 0);
+                fields["TheHunt._pendingCardRewards"] = IntVal(theHuntPendingRewards.GetValueOrDefault(hunt, 0));
                 break;
             case TheScythe scythe:
                 fields["TheScythe._increasedDamage"] = IntVal(scythe.IncreasedDamage);
@@ -290,36 +374,70 @@ internal static partial class InCombatLiveStateCapturer
     }
 
     private static (CardModel? LastAttack, int LastTurn, CardModel? PreviousAttack, int PrevTurn)
-        FindHistoryCourseAttacks(CombatState state, Player player)
+        FindHistoryCourseAttacks(
+            CombatState state,
+            Player player,
+            CardPlayFinishedEntry[] finishedEntries)
     {
         int currentTurn = player.PlayerCombatState?.TurnNumber ?? 1;
-        CardModel? lastThisTurn = null;
-        CardModel? lastPreviousTurn = null;
-        foreach (CardPlayFinishedEntry e in CombatManager.Instance.History.CardPlaysFinished)
+        CardModel? lastAttack = null;
+        int lastAttackTurn = 0;
+        CardModel? previousAttack = null;
+        int previousAttackTurn = 0;
+        foreach (CardPlayFinishedEntry e in finishedEntries)
         {
             if (!ReferenceEquals(e.CardPlay.Player, player) || e.CardPlay.Card.IsDupe || e.CardPlay.Card.Type != CardType.Attack)
                 continue;
-            if (!e._playerTurnNumbers.TryGetValue(player.NetId, out int playTurn))
-                continue;
-            if (playTurn == currentTurn)
-                lastThisTurn = e.CardPlay.Card;
-            else if (playTurn < currentTurn)
-                lastPreviousTurn = e.CardPlay.Card;
+            if (!e._playerTurnNumbers.TryGetValue(player.NetId, out int playTurn) || playTurn <= 0 || playTurn > currentTurn)
+            {
+                throw new InCombatLiveCaptureUnsupportedException(
+                    "live_private_state_unmapped",
+                    "relics.HistoryCourse",
+                    $"HistoryCourse attack entry '{e.CardPlay.Card.Id.Entry}' is missing a valid player turn number.");
+            }
+            if (playTurn < lastAttackTurn)
+            {
+                throw new InCombatLiveCaptureUnsupportedException(
+                    "live_private_state_unmapped",
+                    "relics.HistoryCourse",
+                    $"HistoryCourse observed non-monotonic attack turn {playTurn} after {lastAttackTurn}.");
+            }
+            if (lastAttackTurn != playTurn)
+            {
+                previousAttack = lastAttack;
+                previousAttackTurn = lastAttackTurn;
+            }
+            lastAttack = e.CardPlay.Card;
+            lastAttackTurn = playTurn;
         }
+        return (lastAttack, lastAttackTurn, previousAttack, previousAttackTurn);
+    }
 
-        if (lastThisTurn is not null)
+    private static bool ProveToolboxUsedThisCombat(
+        Player player,
+        CombatHistoryEntry[] allHistory)
+    {
+        if (player.PlayerCombatState is not { Phase: PlayerTurnPhase.Play })
+            return false;
+
+        foreach (CombatHistoryEntry entry in allHistory)
         {
-            return (
-                lastThisTurn,
-                currentTurn,
-                lastPreviousTurn,
-                lastPreviousTurn is not null ? currentTurn - 1 : 0);
+            if (!entry._playerTurnNumbers.TryGetValue(player.NetId, out int entryTurn) || entryTurn != 1)
+                continue;
+            if (entry is CardDrawnEntry drawn
+                && drawn.FromHandDraw
+                && ReferenceEquals(drawn.Actor, player.Creature))
+            {
+                return true;
+            }
+            if (entry is CardGeneratedEntry generated
+                && ReferenceEquals(generated.Creator, player)
+                && generated.Card.Pool is ColorlessCardPool)
+            {
+                return true;
+            }
         }
-
-        if (lastPreviousTurn is not null)
-            return (lastPreviousTurn, currentTurn - 1, null, 0);
-
-        return (null, 0, null, 0);
+        return false;
     }
 
     private static InCombatRelicDto CaptureRelic(
@@ -328,7 +446,8 @@ internal static partial class InCombatLiveStateCapturer
         Player player,
         IReadOnlyDictionary<CardModel, int> cardHandles,
         CardPlayStartedEntry[] startedEntries,
-        CardPlayFinishedEntry[] finishedEntries)
+        CardPlayFinishedEntry[] finishedEntries,
+        CombatHistoryEntry[] allHistory)
     {
         var fields = new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal);
         switch (relic)
@@ -383,7 +502,8 @@ internal static partial class InCombatLiveStateCapturer
                 fields["HappyFlower._turnCounter"] = IntVal(hf.TurnsSeen);
                 break;
             case HistoryCourse:
-                (CardModel? lastAtk, int lastTurn, CardModel? prevAtk, int prevTurn) = FindHistoryCourseAttacks(state, player);
+                (CardModel? lastAtk, int lastTurn, CardModel? prevAtk, int prevTurn) = FindHistoryCourseAttacks(
+                    state, player, finishedEntries);
                 fields["HistoryCourse._lastAttack"] = CardHandleVal(lastAtk is not null ? cardHandles[lastAtk] : null);
                 fields["HistoryCourse._lastAttackTurn"] = IntVal(lastTurn);
                 fields["HistoryCourse._previousAttack"] = CardHandleVal(prevAtk is not null ? cardHandles[prevAtk] : null);
@@ -518,7 +638,13 @@ internal static partial class InCombatLiveStateCapturer
                 fields["ThrowingAxe._used"] = BoolVal(ta._usedThisCombat);
                 break;
             case Toolbox:
-                bool tbUsed = (player.PlayerCombatState?.TurnNumber ?? 1) >= 1 && CombatManager.Instance.History.Entries.Any();
+                if (!ProveToolboxUsedThisCombat(player, allHistory))
+                {
+                    throw new InCombatLiveCaptureUnsupportedException(
+                        "live_private_state_unmapped",
+                        "relics.Toolbox._wasUsedThisCombat",
+                        "Cannot prove whether Toolbox.BeforeHandDraw already triggered on turn 1.");
+                }
                 fields["Toolbox._wasUsedThisCombat"] = BoolVal(true);
                 break;
             case TuningFork tf:

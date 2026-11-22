@@ -2586,7 +2586,8 @@ internal static partial class SolverController
             $"max_gap_ms={search.MaxFrameGapMilliseconds:F1} over_33ms={search.FramesOver33Milliseconds} " +
             $"over_50ms={search.FramesOver50Milliseconds} over_100ms={search.FramesOver100Milliseconds}");
 
-        if (task.IsCanceled)
+        if (task.IsCanceled
+            || (task.IsFaulted && search.Interaction.StopRequested && task.Exception?.GetBaseException() is OperationCanceledException))
         {
             _combat.PendingCompleteProjectionBaseline = null;
             _combat.PendingManualProjectionBaseline = null;
@@ -2714,10 +2715,27 @@ internal static partial class SolverController
                 $"actions={result.BestNode.Actions.Count} continuations={result.Continuations.Count}");
         }
         Entry.Logger.Info(SolverDiagnostics.DescribeResult(result));
-        if (currentTurnAdopted || search.DeployWhenReady)
-            StartDeployment(host, searchedState, result);
-        else if (_combat.FullAutoEnabled)
-            StartFullAutoDeployment(host, searchedState, result);
+        if (currentTurnAdopted || search.DeployWhenReady || _combat.FullAutoEnabled)
+        {
+            CombatState? deployState = CombatManager.Instance.DebugOnlyGetState();
+            if (!ReferenceEquals(deployState, searchedState)
+                || !CanSolve(searchedState, out _)
+                || LiveCombatStamp.Capture(searchedState) != searchedStamp)
+            {
+                RecordSearchResultStale(search);
+                _combat.LatestResult = null;
+                _combat.LatestStamp = null;
+                _combat.ContinuationSource = null;
+                SolverOverlay.Show(host, FormatSearchResultStale(search.PlayerInputObserved));
+                Entry.Logger.Info(
+                    $"[CombatSolver/Test] DEPLOY_SKIPPED_STALE generation={generation} scope={result.ResultScope}");
+                return;
+            }
+            if (currentTurnAdopted || search.DeployWhenReady)
+                StartDeployment(host, searchedState, result);
+            else
+                StartFullAutoDeployment(host, searchedState, result);
+        }
         // 录像打包放在路线显示和自动执行启动之后，打包慢或失败都不耽误路线。
         if (!currentTurnAdopted && !routeAdopted)
             CombatShowcaseCollector.TryQueueCompletedRoute(searchedState, result);
@@ -3902,6 +3920,7 @@ internal static partial class SolverController
             }
         };
         search.Interaction.SetTakeoverCallback(takeoverCallback);
+        SealedSearchTakeover? sealedTakeover = null;
         try
         {
             if (CombatSolver.Api.PreCombatSts2SimBridge.RunInCombatHookForTesting is null)
@@ -3935,22 +3954,39 @@ internal static partial class SolverController
             {
                 case "Succeeded":
                 {
-                    SolverResultScope targetScope = search.Interaction.IsApplyingCurrentTurn
-                        ? SolverResultScope.CurrentTurnAdoption
-                        : SolverResultScope.SearchCompletion;
-                    SolverResult materialized = InCombatSts2SimResultMaterializer.MaterializeResult(
-                        response.Result!,
-                        rootSnapshot,
-                        displayNames,
-                        battleDamage,
-                        searchPolicy,
-                        bridgeWatch.Elapsed,
-                        response.EffectiveDegreeOfParallelism,
-                        targetScope,
-                        token);
-                    SolverResult resolved = search.Interaction.FinalizeWorkerResult(materialized);
                     token.ThrowIfCancellationRequested();
-                    if (!search.Interaction.StopRequested && resolved.ResultScope == SolverResultScope.SearchCompletion)
+                    SealedSearchTakeover sealedState = search.Interaction.SealTakeover();
+                    sealedTakeover = sealedState;
+                    if (sealedState.Generation != generation)
+                        throw new OperationCanceledException(token);
+
+                    SolverResult resolved;
+                    if (sealedState.Kind == SearchTakeoverKind.AdoptRoute
+                        && sealedState.RouteAdoptionSeed is { } adoptedSeed)
+                    {
+                        resolved = adoptedSeed.Materialize();
+                    }
+                    else
+                    {
+                        resolved = InCombatSts2SimResultMaterializer.MaterializeResult(
+                            response.Result!,
+                            rootSnapshot,
+                            displayNames,
+                            battleDamage,
+                            searchPolicy,
+                            bridgeWatch.Elapsed,
+                            response.EffectiveDegreeOfParallelism,
+                            sealedState.TargetScope,
+                            token);
+                    }
+                    if (sealedState.Kind == SearchTakeoverKind.ApplyCurrentTurn
+                        && (resolved.ResultScope != SolverResultScope.CurrentTurnAdoption
+                            || resolved.Continuations.Count != 0))
+                    {
+                        resolved = resolved.WithCurrentTurnAdoptionScope();
+                    }
+                    token.ThrowIfCancellationRequested();
+                    if (!sealedState.StopAfterResult && resolved.ResultScope == SolverResultScope.SearchCompletion)
                         routeCache.StoreFirst(resolved);
                     InCombatSolverBackendState.RecordSts2SimSuccess(response.EffectiveDegreeOfParallelism);
                     SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
@@ -3968,10 +4004,17 @@ internal static partial class SolverController
                     if (token.IsCancellationRequested)
                         throw new OperationCanceledException(token);
 
-                    SearchTakeoverRequest? takeover = search.Interaction.CurrentTakeoverRequest;
-                    if (takeover is { Kind: SearchTakeoverKind.AdoptRoute, RouteAdoptionSeed: { } seed })
+                    SealedSearchTakeover sealedState = search.Interaction.SealTakeover();
+                    sealedTakeover = sealedState;
+                    if (sealedState.Generation != generation)
+                        throw new OperationCanceledException(token);
+
+                    if (sealedState.Kind == SearchTakeoverKind.AdoptRoute
+                        && sealedState.RouteAdoptionSeed is { } seed)
                     {
-                        SolverResult adopted = search.Interaction.FinalizeWorkerResult(seed.Materialize());
+                        SolverResult adopted = seed.Materialize();
+                        if (adopted.ResultScope != SolverResultScope.RouteAdoption)
+                            throw new InvalidOperationException("Adopted route seed did not produce RouteAdoption scope.");
                         token.ThrowIfCancellationRequested();
                         InCombatSolverBackendState.RecordSts2SimSuccess(response.EffectiveDegreeOfParallelism);
                         SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
@@ -3981,10 +4024,7 @@ internal static partial class SolverController
 
                     if (response.BestSoFar is { } bestSoFar)
                     {
-                        SolverResultScope targetScope = takeover?.Kind == SearchTakeoverKind.ApplyCurrentTurn
-                            ? SolverResultScope.CurrentTurnAdoption
-                            : SolverResultScope.SearchCompletion;
-                        SolverResult materialized = InCombatSts2SimResultMaterializer.MaterializeResult(
+                        SolverResult resolved = InCombatSts2SimResultMaterializer.MaterializeResult(
                             bestSoFar,
                             rootSnapshot,
                             displayNames,
@@ -3992,9 +4032,14 @@ internal static partial class SolverController
                             searchPolicy,
                             bridgeWatch.Elapsed,
                             response.EffectiveDegreeOfParallelism,
-                            targetScope,
+                            sealedState.TargetScope,
                             token);
-                        SolverResult resolved = search.Interaction.FinalizeWorkerResult(materialized);
+                        if (sealedState.Kind == SearchTakeoverKind.ApplyCurrentTurn
+                            && (resolved.ResultScope != SolverResultScope.CurrentTurnAdoption
+                                || resolved.Continuations.Count != 0))
+                        {
+                            resolved = resolved.WithCurrentTurnAdoptionScope();
+                        }
                         token.ThrowIfCancellationRequested();
                         InCombatSolverBackendState.RecordSts2SimSuccess(response.EffectiveDegreeOfParallelism);
                         SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
@@ -4002,6 +4047,10 @@ internal static partial class SolverController
                         return true;
                     }
 
+                    if (sealedState.StopAfterResult)
+                        throw new OperationCanceledException("Search stopped before Sts2Sim fallback.");
+
+                    search.Interaction.ReopenTakeoverAfterFallback(generation, clearAdoptRouteSeed: true);
                     string emptyCode = response.Outcome == "TimedOut" ? "sts2sim_timed_out_empty" : "sts2sim_cancelled_empty";
                     InCombatSolverBackendState.RecordFallback(emptyCode, response.Error);
                     Entry.Logger.Info(
@@ -4013,6 +4062,7 @@ internal static partial class SolverController
 
                 default:
                 {
+                    search.Interaction.ReopenTakeoverAfterFallback(generation, clearAdoptRouteSeed: true);
                     string fallbackCode = response.FailureCode ?? "sts2sim_failed";
                     InCombatSolverBackendState.RecordFallback(fallbackCode, response.Error);
                     Entry.Logger.Info(
@@ -4029,6 +4079,9 @@ internal static partial class SolverController
         }
         catch (InvalidDataException ex)
         {
+            if (sealedTakeover is { StopAfterResult: true } || search.Interaction.StopRequested)
+                throw new OperationCanceledException("Search stopped after invalid Sts2Sim payload.", ex);
+            search.Interaction.ReopenTakeoverAfterFallback(generation, clearAdoptRouteSeed: true);
             InCombatSolverBackendState.RecordFallback("bridge_invalid_data", ex.GetBaseException().Message);
             Entry.Logger.Warn(
                 $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
@@ -4038,6 +4091,9 @@ internal static partial class SolverController
         }
         catch (InvalidOperationException ex)
         {
+            if (sealedTakeover is { StopAfterResult: true } || search.Interaction.StopRequested)
+                throw new OperationCanceledException("Search stopped after invalid Sts2Sim operation.", ex);
+            search.Interaction.ReopenTakeoverAfterFallback(generation, clearAdoptRouteSeed: true);
             InCombatSolverBackendState.RecordFallback("bridge_invalid_operation", ex.GetBaseException().Message);
             Entry.Logger.Warn(
                 $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
@@ -4047,6 +4103,9 @@ internal static partial class SolverController
         }
         catch (NotSupportedException ex)
         {
+            if (sealedTakeover is { StopAfterResult: true } || search.Interaction.StopRequested)
+                throw new OperationCanceledException("Search stopped after unsupported Sts2Sim operation.", ex);
+            search.Interaction.ReopenTakeoverAfterFallback(generation, clearAdoptRouteSeed: true);
             InCombatSolverBackendState.RecordFallback("bridge_not_supported", ex.GetBaseException().Message);
             Entry.Logger.Warn(
                 $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +

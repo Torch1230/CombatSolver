@@ -1622,7 +1622,14 @@ internal sealed class SolverResult
     public required bool IsActEndingBoss { get; init; }
     public required BossHpRelief BossHpRelief { get; init; }
     public required TimeSpan Elapsed { get; init; }
-    public required IReadOnlyList<CachedContinuation> Continuations { get; init; }
+    public required IReadOnlyList<CachedContinuation> Continuations { get; internal set; }
+
+    internal SolverResult WithCurrentTurnAdoptionScope()
+    {
+        ResultScope = SolverResultScope.CurrentTurnAdoption;
+        Continuations = [];
+        return this;
+    }
     public int TranspositionCount { get; init; }
     public int ExpandedTranspositionCount { get; init; }
     public int TranspositionLimitBypasses { get; init; }

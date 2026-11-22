@@ -11,6 +11,21 @@ internal sealed record SearchTakeoverRequest(
     SolverRouteAdoptionSeed? RouteAdoptionSeed = null,
     bool StopAfterResult = false);
 
+internal readonly record struct SealedSearchTakeover(
+    int Generation,
+    SearchTakeoverKind? Kind,
+    SolverRouteAdoptionSeed? RouteAdoptionSeed,
+    int? CandidateVersion,
+    bool StopAfterResult)
+{
+    public SolverResultScope TargetScope => Kind switch
+    {
+        SearchTakeoverKind.ApplyCurrentTurn => SolverResultScope.CurrentTurnAdoption,
+        SearchTakeoverKind.AdoptRoute => SolverResultScope.RouteAdoption,
+        _ => SolverResultScope.SearchCompletion,
+    };
+}
+
 internal sealed class SolverRouteAdoptionSeed(
     int candidateVersion,
     IReadOnlyList<PlanAction> actions,
@@ -27,9 +42,10 @@ internal sealed class SolverRouteAdoptionSeed(
         => _materialized.Value;
 }
 
-internal sealed class SearchInteractionState
+internal sealed class SearchInteractionState(int generation = 0)
 {
     private readonly object _gate = new();
+    private int _generation = generation;
     private int _acceptingTakeover = 1;
     private SearchTakeoverRequest? _takeoverRequest;
     private Action? _onTakeoverRequested;
@@ -68,10 +84,11 @@ internal sealed class SearchInteractionState
         return true;
     }
 
-    public void ResetForSearch()
+    public void ResetForSearch(int? generation = null)
     {
         lock (_gate)
         {
+            _generation = generation ?? (_generation + 1);
             Volatile.Write(ref _takeoverRequest, null);
             Volatile.Write(ref _acceptingTakeover, 1);
             _onTakeoverRequested = null;
@@ -119,20 +136,53 @@ internal sealed class SearchInteractionState
         return true;
     }
 
-    public SolverResult FinalizeWorkerResult(SolverResult result)
+    public SealedSearchTakeover SealTakeover()
     {
         lock (_gate)
         {
             Volatile.Write(ref _acceptingTakeover, 0);
-            SearchTakeoverRequest? request = CurrentTakeoverRequest;
-            if (request?.Kind == SearchTakeoverKind.AdoptRoute
-                && request.RouteAdoptionSeed != null
-                && result.ResultScope != SolverResultScope.RouteAdoption)
-            {
-                return request.RouteAdoptionSeed.Materialize();
-            }
-            return result;
+            SearchTakeoverRequest? request = _takeoverRequest;
+            return new SealedSearchTakeover(
+                _generation,
+                request?.Kind,
+                request?.RouteAdoptionSeed,
+                request?.RouteAdoptionSeed?.CandidateVersion,
+                request?.StopAfterResult == true);
         }
+    }
+
+    public void ReopenTakeoverAfterFallback(int generation, bool clearAdoptRouteSeed = false)
+    {
+        lock (_gate)
+        {
+            if (_generation != generation)
+                return;
+            if (clearAdoptRouteSeed && _takeoverRequest?.Kind == SearchTakeoverKind.AdoptRoute)
+            {
+                Volatile.Write(ref _takeoverRequest, null);
+                RenderedRouteAdoptionSeed = null;
+            }
+            if (_takeoverRequest == null)
+                Volatile.Write(ref _acceptingTakeover, 1);
+        }
+    }
+
+    public SolverResult FinalizeWorkerResult(SolverResult result)
+    {
+        SealedSearchTakeover sealedTakeover = SealTakeover();
+        if (sealedTakeover.Kind == SearchTakeoverKind.AdoptRoute
+            && sealedTakeover.RouteAdoptionSeed != null
+            && result.ResultScope != SolverResultScope.RouteAdoption)
+        {
+            return sealedTakeover.RouteAdoptionSeed.Materialize();
+        }
+        if (sealedTakeover.Kind == SearchTakeoverKind.ApplyCurrentTurn
+            && (result.ResultScope != SolverResultScope.CurrentTurnAdoption
+                || result.Continuations.Count != 0))
+        {
+            return result.WithCurrentTurnAdoptionScope();
+        }
+        return result;
     }
 
     public void PreserveStoppedResult(SolverResult result, LiveCombatStamp stamp)

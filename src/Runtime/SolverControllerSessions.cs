@@ -199,7 +199,7 @@ internal sealed class SolverSearchSession(
     }
     public int MaxDegreeOfParallelism { get; set; } = 1;
     public SearchMemoryPressureSignal? MemoryPressureSignal { get; set; }
-    public SearchInteractionState Interaction { get; } = new();
+    public SearchInteractionState Interaction { get; } = new(generation);
     public int FrameCount { get; private set; }
     public int FramesOver33Milliseconds { get; private set; }
     public int FramesOver50Milliseconds { get; private set; }

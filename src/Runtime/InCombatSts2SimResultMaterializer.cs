@@ -23,18 +23,6 @@ internal static class InCombatSts2SimResultMaterializer
             dto.Actions, root, displayNames);
 
         bool renewableRock = root.HasRenewablePotionShapedRock;
-        PredictedPotionUse[] potionUses = dto.PotionUses
-            .Select(use =>
-            {
-                int slot = use.Slot ?? -1;
-                int strategicCost = PotionUsePolicy.StrategicHpCost(use.Id, renewableRock);
-                return new PredictedPotionUse(slot, use.Id, strategicCost, Automatic: false);
-            })
-            .ToArray();
-        string[] plannedPotionIds = dto.PotionUses.Select(static use => use.Id).ToArray();
-        int potionHpRequired = potionUses.Sum(static use => use.StrategicHpCost);
-        int explicitPotionCount = actions.Count(static a => a.Kind == PlanActionKind.UsePotion);
-
         Dictionary<int, int> hpLostByTurn = [];
         Dictionary<int, int> hpRecoveredByTurn = [];
         Dictionary<int, int> enemyHpLostByTurn = [];
@@ -44,6 +32,7 @@ internal static class InCombatSts2SimResultMaterializer
         Dictionary<int, int> energyLeftByTurn = [];
         Dictionary<int, int> potionCountByTurn = [];
         Dictionary<int, int> potionStrategicCostByTurn = [];
+        Dictionary<int, ExternalRouteTurnExpectation> turnExpectations = [];
 
         foreach (InCombatTurnOutcomeDto turnOutcome in dto.TurnOutcomes)
         {
@@ -58,11 +47,15 @@ internal static class InCombatSts2SimResultMaterializer
                 potionCountByTurn[turnOutcome.Turn] = turnOutcome.PotionCount;
             if (turnOutcome.PotionStrategicCost > 0)
                 potionStrategicCostByTurn[turnOutcome.Turn] = turnOutcome.PotionStrategicCost;
+            turnExpectations[turnOutcome.Turn] = new ExternalRouteTurnExpectation(
+                turnOutcome.Turn,
+                turnOutcome.HpLost,
+                turnOutcome.HpRecovered,
+                turnOutcome.EnemyHpLost,
+                turnOutcome.EnergyLeft,
+                turnOutcome.CombatEnded);
         }
 
-        int maxActionTurn = actions.Length > 0
-            ? actions.Max(static a => a.Turn)
-            : root.StartTurnNumber;
         foreach (PlanAction action in actions)
         {
             hpLostByTurn.TryAdd(action.Turn, 0);
@@ -75,49 +68,176 @@ internal static class InCombatSts2SimResultMaterializer
         }
 
         InCombatTerminalSnapshotDto terminal = dto.Terminal;
-        SearchBoundaryReason terminalBoundary = ParseSearchBoundary(terminal.SearchBoundary);
-        SearchBoundaryReason resultBoundary = resultScope == SolverResultScope.RouteAdoption
-            ? SearchBoundaryReason.None
-            : terminalBoundary;
-
-        int searchedTurns = Math.Max(1, maxActionTurn - root.StartTurnNumber + 1);
-        IReadOnlyList<CachedContinuation> continuations = [];
-        if (resultScope != SolverResultScope.CurrentTurnAdoption
-            && !CombatBeamSolver.TryReplaySingleRouteForContinuation(
-                root,
-                displayNames,
-                battleDamage,
-                searchPolicy,
-                actions,
-                continuationCancellation,
-                out continuations,
-                out string? continuationFailure))
-        {
-            Entry.Logger.Info(
-                $"[CombatSolver/InCombatSts2Sim] STS2SIM_CONTINUATION_ANNOTATION_SKIPPED reason={continuationFailure}");
-        }
-
-        SolverSnapshot snapshot = new(
-            HasRisk: terminal.HasRisk,
+        ExternalRouteTerminalExpectation terminalExpectation = new(
+            Turn: terminal.Turn,
             PlayerDead: terminal.PlayerDead,
             AllEnemiesDead: terminal.AllEnemiesDead,
             PlayerHp: terminal.PlayerHp,
             PlayerMaxHp: terminal.PlayerMaxHp,
-            CumulativePlayerHpLost: terminal.CumulativePlayerHpLost,
-            RecoveredPlayerHp: terminal.RecoveredPlayerHp,
-            DeathSaveRelicHpRestored: 0,
-            LongTermResourceValue: 0,
-            AngerCopiesGenerated: 0,
-            ProjectedPlayerHp: terminal.ProjectedPlayerHp,
             PlayerBlock: terminal.PlayerBlock,
             EnemyHp: terminal.EnemyHp,
             AliveEnemyCount: terminal.AliveEnemyCount,
             Energy: terminal.Energy,
             Stars: terminal.Stars,
             HandCount: terminal.HandCount,
-            OutstandingStolenResource: terminal.OutstandingStolenResource,
-            Turn: terminal.Turn,
-            ShufflesCrossed: terminal.ShufflesCrossed,
+            CombatEndedTurn: terminal.CombatEndedTurn,
+            DeathTurn: terminal.DeathTurn);
+
+        ExternalRouteVerificationResult verification = CombatBeamSolver.VerifyAndAnnotateExternalRoute(
+            root,
+            displayNames,
+            battleDamage,
+            searchPolicy,
+            actions,
+            turnExpectations,
+            terminalExpectation,
+            verifyCurrentTurnOnly: resultScope == SolverResultScope.CurrentTurnAdoption,
+            continuationCancellation);
+
+        SearchBoundaryReason terminalBoundary = ParseSearchBoundary(terminal.SearchBoundary);
+        SearchBoundaryReason resultBoundary = resultScope == SolverResultScope.RouteAdoption
+            ? SearchBoundaryReason.None
+            : terminalBoundary;
+
+        IReadOnlyList<Sts2SimPotionUseDto> admittedPotionDtos = dto.PotionUses;
+        int? combatEndedTurn = terminal.CombatEndedTurn;
+        int? deathTurn = terminal.DeathTurn;
+        int postCombatRelicHeal = terminal.PostCombatRelicHeal;
+        bool onlyDeathRoutes = terminal.OnlyDeathRoutes;
+        int projectedBattleHpLost = terminal.ProjectedBattleHpLost;
+        int outstandingStolenResource = terminal.OutstandingStolenResource;
+        int snapshotTurn = terminal.Turn;
+        bool snapshotPlayerDead = terminal.PlayerDead;
+        bool snapshotAllEnemiesDead = terminal.AllEnemiesDead;
+        int snapshotPlayerHp = terminal.PlayerHp;
+        int snapshotPlayerMaxHp = terminal.PlayerMaxHp;
+        int snapshotCumulativeHpLost = terminal.CumulativePlayerHpLost;
+        int snapshotRecoveredHp = terminal.RecoveredPlayerHp;
+        int snapshotProjectedHp = terminal.ProjectedPlayerHp;
+        int snapshotPlayerBlock = terminal.PlayerBlock;
+        int snapshotEnemyHp = terminal.EnemyHp;
+        int snapshotAliveEnemies = terminal.AliveEnemyCount;
+        int snapshotEnergy = terminal.Energy;
+        int snapshotStars = terminal.Stars;
+        int snapshotHandCount = terminal.HandCount;
+        int snapshotShuffles = terminal.ShufflesCrossed;
+        bool snapshotHasRisk = terminal.HasRisk;
+        IReadOnlyList<CachedContinuation> continuations;
+
+        switch (verification.Status)
+        {
+            case ExternalRouteVerificationStatus.Annotated:
+                continuations = resultScope == SolverResultScope.CurrentTurnAdoption
+                    ? []
+                    : verification.Continuations;
+                break;
+
+            case ExternalRouteVerificationStatus.UnsupportedFutureContinuation:
+                if (verification.VerifiedPrefixActionCount <= 0
+                    || verification.VerifiedLastTurn < root.StartTurnNumber
+                    || verification.VerifiedPrefixSummary is not { } prefixSummary)
+                {
+                    throw new InvalidOperationException(
+                        $"Sts2Sim route unsupported before completing turn {root.StartTurnNumber}: {verification.FailureReason}");
+                }
+
+                int verifiedTurn = verification.VerifiedLastTurn;
+                actions = actions[..verification.VerifiedPrefixActionCount];
+                killsAfterAction = killsAfterAction
+                    .Where(kv => kv.Key < actions.Length)
+                    .ToDictionary(static kv => kv.Key, static kv => kv.Value);
+                admittedPotionDtos = dto.PotionUses
+                    .Where(use => use.Turn <= verifiedTurn)
+                    .ToArray();
+                TrimTurnDictionary(hpLostByTurn, verifiedTurn);
+                TrimTurnDictionary(hpRecoveredByTurn, verifiedTurn);
+                TrimTurnDictionary(enemyHpLostByTurn, verifiedTurn);
+                TrimTurnDictionary(soldHpByTurn, verifiedTurn);
+                TrimTurnDictionary(maxBlockByTurn, verifiedTurn);
+                TrimTurnDictionary(actualBlockByTurn, verifiedTurn);
+                TrimTurnDictionary(energyLeftByTurn, verifiedTurn);
+                TrimTurnDictionary(potionCountByTurn, verifiedTurn);
+                TrimTurnDictionary(potionStrategicCostByTurn, verifiedTurn);
+
+                terminalBoundary = SearchBoundaryReason.UnsupportedEffect;
+                resultBoundary = SearchBoundaryReason.UnsupportedEffect;
+                combatEndedTurn = null;
+                deathTurn = null;
+                postCombatRelicHeal = 0;
+                onlyDeathRoutes = false;
+                projectedBattleHpLost = battleDamage.HpLostSoFar
+                    + hpLostByTurn.Where(kv => kv.Key >= root.StartTurnNumber).Sum(static kv => kv.Value);
+                outstandingStolenResource = prefixSummary.OutstandingStolenResource;
+                snapshotTurn = prefixSummary.Turn;
+                snapshotPlayerDead = prefixSummary.PlayerDead;
+                snapshotAllEnemiesDead = prefixSummary.AllEnemiesDead;
+                snapshotPlayerHp = prefixSummary.PlayerHp;
+                snapshotPlayerMaxHp = prefixSummary.PlayerMaxHp;
+                snapshotCumulativeHpLost = prefixSummary.CumulativePlayerHpLost;
+                snapshotRecoveredHp = prefixSummary.RecoveredPlayerHp;
+                snapshotProjectedHp = prefixSummary.ProjectedPlayerHp;
+                snapshotPlayerBlock = prefixSummary.PlayerBlock;
+                snapshotEnemyHp = prefixSummary.EnemyHp;
+                snapshotAliveEnemies = prefixSummary.AliveEnemyCount;
+                snapshotEnergy = prefixSummary.Energy;
+                snapshotStars = prefixSummary.Stars;
+                snapshotHandCount = prefixSummary.HandCount;
+                snapshotShuffles = prefixSummary.ShufflesCrossed;
+                snapshotHasRisk = true;
+                continuations = resultScope == SolverResultScope.CurrentTurnAdoption
+                    ? []
+                    : verification.Continuations
+                        .Where(c => c.StartTurnNumber <= verifiedTurn)
+                        .ToArray();
+
+                Entry.Logger.Info(
+                    $"[CombatSolver/InCombatSts2Sim] STS2SIM_FUTURE_CONTINUATION_TRUNCATED " +
+                    $"verified_turn={verifiedTurn} verified_actions={actions.Length} reason={verification.FailureReason}");
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Sts2Sim route rejected by host replay verification: {verification.FailureReason}");
+        }
+
+        PredictedPotionUse[] potionUses = admittedPotionDtos
+            .Select(use =>
+            {
+                int slot = use.Slot ?? -1;
+                int strategicCost = PotionUsePolicy.StrategicHpCost(use.Id, renewableRock);
+                return new PredictedPotionUse(slot, use.Id, strategicCost, Automatic: false);
+            })
+            .ToArray();
+        string[] plannedPotionIds = admittedPotionDtos.Select(static use => use.Id).ToArray();
+        int potionHpRequired = potionUses.Sum(static use => use.StrategicHpCost);
+        int explicitPotionCount = actions.Count(static a => a.Kind == PlanActionKind.UsePotion);
+
+        int maxActionTurn = actions.Length > 0
+            ? actions.Max(static a => a.Turn)
+            : root.StartTurnNumber;
+        int searchedTurns = Math.Max(1, maxActionTurn - root.StartTurnNumber + 1);
+
+        SolverSnapshot snapshot = new(
+            HasRisk: snapshotHasRisk,
+            PlayerDead: snapshotPlayerDead,
+            AllEnemiesDead: snapshotAllEnemiesDead,
+            PlayerHp: snapshotPlayerHp,
+            PlayerMaxHp: snapshotPlayerMaxHp,
+            CumulativePlayerHpLost: snapshotCumulativeHpLost,
+            RecoveredPlayerHp: snapshotRecoveredHp,
+            DeathSaveRelicHpRestored: 0,
+            LongTermResourceValue: 0,
+            AngerCopiesGenerated: 0,
+            ProjectedPlayerHp: snapshotProjectedHp,
+            PlayerBlock: snapshotPlayerBlock,
+            EnemyHp: snapshotEnemyHp,
+            AliveEnemyCount: snapshotAliveEnemies,
+            Energy: snapshotEnergy,
+            Stars: snapshotStars,
+            HandCount: snapshotHandCount,
+            OutstandingStolenResource: outstandingStolenResource,
+            Turn: snapshotTurn,
+            ShufflesCrossed: snapshotShuffles,
             BoundaryReason: terminalBoundary,
             PredictionGaps: []);
 
@@ -172,12 +292,12 @@ internal static class InCombatSts2SimResultMaterializer
             WorkerYieldCount = 0,
             SearchedTurns = searchedTurns,
             BoundaryReason = resultBoundary,
-            UnavoidableHpLost = terminal.ProjectedBattleHpLost,
+            UnavoidableHpLost = projectedBattleHpLost,
             SoldHp = 0,
             FutureSoldHp = 0,
             BattleHpLostSoFar = battleDamage.HpLostSoFar,
             BattleHpRecoveredOrGainedSoFar = battleDamage.HpRecoveredOrGainedSoFar,
-            ProjectedBattleHpLost = terminal.ProjectedBattleHpLost,
+            ProjectedBattleHpLost = projectedBattleHpLost,
             BattlePotionsUsedSoFar = battleDamage.PotionsUsedSoFar,
             BattlePotionIdsUsedSoFar = battleDamage.PotionIdsUsedSoFar,
             PlannedPotionIds = plannedPotionIds,
@@ -188,11 +308,11 @@ internal static class InCombatSts2SimResultMaterializer
             PotionHpRequired = potionHpRequired,
             PotionBranchesRejected = 0,
             TheftPolicy = searchPolicy.TheftPolicy,
-            OutstandingStolenResource = terminal.OutstandingStolenResource,
+            OutstandingStolenResource = outstandingStolenResource,
             SoldHpByTurn = soldHpByTurn,
             HpLostByTurn = hpLostByTurn,
             HpRecoveredByTurn = hpRecoveredByTurn,
-            PostCombatRelicHeal = terminal.PostCombatRelicHeal,
+            PostCombatRelicHeal = postCombatRelicHeal,
             EnemyHpLostByTurn = enemyHpLostByTurn,
             MaxBlockByTurn = maxBlockByTurn,
             ActualBlockByTurn = actualBlockByTurn,
@@ -200,16 +320,22 @@ internal static class InCombatSts2SimResultMaterializer
             PotionCountByTurn = potionCountByTurn,
             PotionStrategicCostByTurn = potionStrategicCostByTurn,
             KillsAfterAction = killsAfterAction,
-            CombatEndedTurn = terminal.CombatEndedTurn,
-            DeathTurn = terminal.DeathTurn,
-            OnlyDeathRoutesFound = terminal.OnlyDeathRoutes,
+            CombatEndedTurn = combatEndedTurn,
+            DeathTurn = deathTurn,
+            OnlyDeathRoutesFound = onlyDeathRoutes,
             IsActEndingBoss = root.IsActEndingBoss,
             BossHpRelief = root.BossHpRelief,
             Elapsed = totalElapsed,
-            Continuations = resultScope == SolverResultScope.CurrentTurnAdoption ? [] : continuations,
+            Continuations = continuations,
         };
         result.AssertCompleteTurnOutcomes();
         return result;
+
+        static void TrimTurnDictionary(Dictionary<int, int> table, int maxTurn)
+        {
+            foreach (int turn in table.Keys.Where(t => t > maxTurn).ToArray())
+                table.Remove(turn);
+        }
     }
 
     public static SolverProgress MaterializeProgress(
@@ -240,24 +366,25 @@ internal static class InCombatSts2SimResultMaterializer
                 elapsed,
                 effectiveDegreeOfParallelism,
                 SolverResultScope.CurrentTurnAdoption,
-                CancellationToken.None);
+                routeAdoptionCancellation);
 
-            InCombatTerminalSnapshotDto terminal = bestDto.Terminal;
-            bool won = !terminal.PlayerDead && terminal.AllEnemiesDead && terminal.CombatEndedTurn.HasValue;
+            bool won = !previewResult.Snapshot.PlayerDead
+                && previewResult.Snapshot.AllEnemiesDead
+                && previewResult.CombatEndedTurn.HasValue;
             interimResult = new SolverInterimResult(
                 Won: won,
-                OutstandingStolenResource: terminal.OutstandingStolenResource,
-                ProjectedBattleHpLost: terminal.ProjectedBattleHpLost,
-                StrategicHpDeficit: terminal.ProjectedBattleHpLost,
+                OutstandingStolenResource: previewResult.Snapshot.OutstandingStolenResource,
+                ProjectedBattleHpLost: previewResult.ProjectedBattleHpLost,
+                StrategicHpDeficit: previewResult.ProjectedBattleHpLost,
                 PotionStrategicCost: previewResult.PotionHpRequired,
                 ProjectedBattlePotionCount: previewResult.ProjectedBattlePotionCount,
-                EnemyHp: terminal.EnemyHp,
+                EnemyHp: previewResult.Snapshot.EnemyHp,
                 Score: 0d,
-                CombatEndedTurn: terminal.CombatEndedTurn)
+                CombatEndedTurn: previewResult.CombatEndedTurn)
             {
                 TheftPolicy = searchPolicy.TheftPolicy,
                 ForfeitsEncounterGold = false,
-                Survives = !terminal.PlayerDead && terminal.ProjectedPlayerHp > 0,
+                Survives = !previewResult.Snapshot.PlayerDead && previewResult.Snapshot.ProjectedPlayerHp > 0,
             };
 
             turnPreview = SolverCurrentTurnPreview.FromResult(previewResult, candidateVersion);
