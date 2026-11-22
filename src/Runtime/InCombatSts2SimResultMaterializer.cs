@@ -246,7 +246,9 @@ internal static class InCombatSts2SimResultMaterializer
             actions.Length,
             0d);
 
-        int clampedExpanded = (int)Math.Clamp(dto.ExpandedNodes, 0L, int.MaxValue);
+        Sts2SimMaterializedResultMetrics metrics = Sts2SimPortfolioPolicyBridge.ResolveResultMetrics(
+            dto,
+            effectiveDegreeOfParallelism);
         SolverResult result = new()
         {
             ResultScope = resultScope,
@@ -263,26 +265,27 @@ internal static class InCombatSts2SimResultMaterializer
             PotionUses = potionUses,
             Snapshot = snapshot,
             Forecast = root.Forecast,
-            ExpandedNodes = clampedExpanded,
-            TotalExpandedNodes = dto.ExpandedNodes,
+            ExpandedNodes = metrics.ExpandedNodes,
+            TotalExpandedNodes = metrics.TotalExpandedNodes,
             DominatedActionsPruned = 0,
             TopQueueActionsDropped = 0,
             ActionAdmissionRepresentativesProtected = 0,
             DuplicateCardBranchesPruned = 0,
-            ChoiceBranchesEvaluated = 0,
-            TotalChoiceBranchesEvaluated = 0,
+            ChoiceBranchesEvaluated = metrics.ChoiceBranchesEvaluated,
+            TotalChoiceBranchesEvaluated = metrics.TotalChoiceBranchesEvaluated,
+            ChoiceReplayAttempts = metrics.ChoiceBranchesEvaluated,
             ShuffleBranchesPruned = 0,
             SoldHpBranchesPruned = 0,
             HpInvestmentBranchesProtected = 0,
             ReplayCount = 0,
             ForkCount = 0,
-            TransitionCount = 0,
-            TotalTransitionCount = 0,
+            TransitionCount = metrics.TransitionCount,
+            TotalTransitionCount = metrics.TotalTransitionCount,
             ReusedNodeSnapshots = 0,
             TranspositionBranchesPruned = 0,
             RepeatableNoProgressBranchesPruned = 0,
             StandPatProbes = 0,
-            MaxParallelExpansionConcurrency = effectiveDegreeOfParallelism,
+            MaxParallelExpansionConcurrency = metrics.MaxParallelExpansionConcurrency,
             TransitionCacheHits = 0,
             WorkerAllocatedBytes = 0L,
             Gen0Collections = 0,
@@ -354,6 +357,9 @@ internal static class InCombatSts2SimResultMaterializer
         SolverSpeculativeRoutePreview? speculativePreview = null;
         SolverRouteAdoptionSeed? adoptionSeed = null;
 
+        int previewParallelism = progressDto.ObservedPeakParallelism is >= 1
+            ? progressDto.ObservedPeakParallelism.Value
+            : effectiveDegreeOfParallelism;
         if (progressDto.CurrentBest is { Actions.Count: > 0 } bestDto)
         {
             TimeSpan elapsed = TimeSpan.FromMilliseconds(Math.Max(0d, progressDto.ElapsedMilliseconds));
@@ -364,7 +370,7 @@ internal static class InCombatSts2SimResultMaterializer
                 battleDamage,
                 searchPolicy,
                 elapsed,
-                effectiveDegreeOfParallelism,
+                previewParallelism,
                 SolverResultScope.CurrentTurnAdoption,
                 routeAdoptionCancellation);
 
@@ -399,12 +405,12 @@ internal static class InCombatSts2SimResultMaterializer
                     battleDamage,
                     searchPolicy,
                     elapsed,
-                    effectiveDegreeOfParallelism,
+                    previewParallelism,
                     SolverResultScope.RouteAdoption,
                     routeAdoptionCancellation));
         }
 
-        int clampedExpanded = (int)Math.Clamp(progressDto.ExpandedNodes, 0L, int.MaxValue);
+        Sts2SimMaterializedProgressMetrics metrics = Sts2SimPortfolioPolicyBridge.ResolveProgressMetrics(progressDto);
         int currentTurn = Math.Max(root.StartTurnNumber, progressDto.MaxTurnReached);
         int completedTurns = Math.Max(0, currentTurn - root.StartTurnNumber);
 
@@ -413,13 +419,13 @@ internal static class InCombatSts2SimResultMaterializer
             CurrentTurnNumber: currentTurn,
             CompletedTurnLayers: completedTurns,
             PlayDepth: 0,
-            ExpandedNodes: clampedExpanded,
-            ReviewedWorldlines: progressDto.ExpandedNodes,
+            ExpandedNodes: metrics.ExpandedNodes,
+            ReviewedWorldlines: metrics.ReviewedWorldlines,
             MaxNodes: searchPolicy.Profile.MaxExpandedNodes,
             FrontierNodes: 0,
             EndedNodes: 0,
             ElapsedMilliseconds: (long)Math.Max(0d, progressDto.ElapsedMilliseconds),
-            Phase: "正在搜索·Sts2Sim",
+            Phase: metrics.Phase,
             CurrentBestResult: interimResult,
             CurrentTurnPreview: turnPreview,
             SpeculativeRoutePreview: speculativePreview,

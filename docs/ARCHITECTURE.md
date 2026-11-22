@@ -26,17 +26,18 @@
 | `src/Api/PreCombatForecastWorker.Routing.cs` | 预战双后端（进程内 Sts2Sim 桥接 / 遗留隔离进程）单锁调度与停止栅栏 |
 | `src/Api/PreCombatForecastWorker.cs` | 预战独立子进程会话、请求和停止（恐惧模式及不支持场景回落） |
 | `src/Api/PreCombatForecastWorker.Idle.cs` | 空闲计时器发布、取消和取消源释放 |
-| `src/Api/PreCombatSts2SimBridge.cs` | 隔离 `AssemblyLoadContext`、清单 SHA-256 / 运行时 MVID 校验与 UTF-8 JSON ABI 委托（含战前与战斗内入口） |
-| `src/Api/InCombatSts2SimContracts.cs` | 战斗内 `Sts2Sim` ABI v1 DTO 与响应线格式校验 |
+| `src/Api/PreCombatSts2SimBridge.cs` | 隔离 `AssemblyLoadContext`、清单 SHA-256 / 运行时 MVID 校验、可选 `GetCapabilitiesJson` 能力协商与 UTF-8 JSON ABI 委托（含战前与战斗内入口） |
+| `src/Api/Sts2SimPortfolioPolicyBridge.cs` | ABI v1/v2 组合策略能力门禁与解析、早期回合总超时计算及战斗内扩展指标物化辅助 |
+| `src/Api/InCombatSts2SimContracts.cs` | 战斗内 `Sts2Sim` ABI v1/v2 DTO（含组合策略扩展与扩展计数器）及响应/进度线格式校验 |
 | `src/Api/PreCombatSts2SimEligibility.cs` | 主线程主机/Mod/构建/有效存档资格判定与恐惧模式直连回落 |
-| `src/Api/PreCombatSts2SimPolicyMapper.cs` | 设置政策映射、未适配功能门禁与主线程药水标题本地化 |
-| `src/Runtime/InCombatSts2SimEligibility.cs` | 战斗内 `Sts2Sim` 准入（用户开关、标准单人、纯原版模型与政策消融门槛） |
-| `src/Runtime/InCombatSts2SimPolicyMapper.cs` | 战斗内政策与最高 600 秒软预算映射 |
+| `src/Api/PreCombatSts2SimPolicyMapper.cs` | 按协商能力映射战前设置政策、未适配功能门禁与主线程药水标题本地化 |
+| `src/Runtime/InCombatSts2SimEligibility.cs` | 战斗内 `Sts2Sim` 宿主/战斗准入（`AssessHostAndCombat`）与按协商能力校验搜索/消融门槛（`AssessSearchPolicy`） |
+| `src/Runtime/InCombatSts2SimPolicyMapper.cs` | 从有效 `SearchPolicySnapshot` 与 `SolverSearchProfile` 映射战斗内 ABI v1/v2 组合策略、新颖性与早期回合参数 |
 | `src/Runtime/InCombatLiveStateCapturer*.cs` | 主线程实机战斗根状态、`NormalizedSaveJson` 与私域计数采集 |
-| `src/Runtime/InCombatSts2SimResultMaterializer.cs` | `Sts2Sim` 战斗内路线与流式进度物化为只读 `SolverResult` / `SolverProgress` |
+| `src/Runtime/InCombatSts2SimResultMaterializer.cs` | `Sts2Sim` 战斗内路线、流式进度与扩展计数器（`ExpandedParents` / `TransitionCount` / `ChoiceReplayAttempts` / `ObservedPeakParallelism` / `ActivePhaseLabel`）物化为只读 `SolverResult` / `SolverProgress` |
 | `src/Runtime/InCombatSolverBackendState.cs` | 战斗内当前及最近求解引擎、有效并行度与回退原因状态 |
 
-`SolverController` 在启用且满足战斗内 `Sts2Sim` 准入时，先在主线程冻结根并采集实机战斗状态，随后在后台 **不进入 `NoGcRegion`** 的情况下调用 `Sts2Sim.PreCombatBridge`（多核并行、流式汇报进度、在 `SearchInteractionState` 交互锁内原子封存与提取接管请求并在锁外完成物化，支持停搜/应用本回合/采用当前路线接管取消）；遇到 `CapabilityMiss`、异常、主机回放判定非法或用户禁用／不兼容条件时记录回退状态并自动回退至 `SearchGcPolicy.EnterSearchScope` + `CombatSearchCoordinator.Solve` 内置模拟引擎。`CombatBeamSolver.ExternalRouteAnnotation` 在 Search 内逐动作回放验证合法性、回合与终局状态一致性和跨回合续用戳，通过结构化结果区分完整标注（`Annotated`）、仅后续回合不可预测的前缀截断（`UnsupportedFutureContinuation`）以及拒绝放行的非法路线（`IllegalRoute`），不引入上游策略或设置引用。
+`SolverController` 在启用且满足战斗内 `Sts2Sim` 宿主准入后激活桥接并读取协商能力（`GetCapabilitiesJson`，旧版插件默认回退 ABI v1）；随后校验有效搜索政策、冻结根并采集实机战斗状态，计算包含早期回合探索窗口的 `overallTimeoutMs`，并将调用线程优先级临时切至 `ThreadPriority.Normal`（`finally` 中恢复），在后台 **不进入 `NoGcRegion`** 的情况下调用 `Sts2Sim.PreCombatBridge`（多核并行、流式汇报进度、在 `SearchInteractionState` 交互锁内原子封存与提取接管请求并在锁外完成物化，支持停搜/应用本回合/采用当前路线接管取消）；遇到 `CapabilityMiss`、异常、主机回放判定非法或用户禁用／不兼容条件时记录回退状态并自动回退至 `SearchGcPolicy.EnterSearchScope` + `CombatSearchCoordinator.Solve` 内置模拟引擎。`CombatBeamSolver.ExternalRouteAnnotation` 在 Search 内逐动作回放验证合法性、回合与终局状态一致性和跨回合续用戳，通过结构化结果区分完整标注（`Annotated`）、仅后续回合不可预测的前缀截断（`UnsupportedFutureContinuation`）以及拒绝放行的非法路线（`IllegalRoute`），不引入上游策略或设置引用。
 
 政策由主线程从设置冻结到 `SearchPolicySnapshot`。后台通过请求参数、诊断 sink 与压力信号消费外部能力；算法不读取设置单例或操作 GC。Power 显示变量在主线程根捕获时物化；worker 只消费已物化值。克隆并发边界由 `BaseLibCloneConcurrencyPatch` 与原生克隆隔离规则维护。
 

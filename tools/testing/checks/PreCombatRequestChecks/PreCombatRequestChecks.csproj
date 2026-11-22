@@ -14,6 +14,7 @@
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatSts2SimContracts.cs" Link="Production/PreCombatSts2SimContracts.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/InCombatSts2SimContracts.cs" Link="Production/InCombatSts2SimContracts.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatSts2SimEligibility.ExtraFields.cs" Link="Production/PreCombatSts2SimEligibility.ExtraFields.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/Sts2SimPortfolioPolicyBridge.cs" Link="Production/Sts2SimPortfolioPolicyBridge.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="abi-v1-fixtures.json" CopyToOutputDirectory="PreserveNewest" />

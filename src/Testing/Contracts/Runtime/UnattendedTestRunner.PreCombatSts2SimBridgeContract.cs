@@ -170,14 +170,37 @@ internal sealed partial class UnattendedTestRunner
                 SearchBudgetMilliseconds = 3_000, OverallTimeoutMilliseconds = 90_000,
                 MaxDegreeOfParallelism = 1, ForceRefresh = true,
             };
+            PreCombatSts2SimBridge.EnsureActivated(out _);
+            bool v2NoveltySupported = PreCombatSts2SimBridge.GetActiveCapabilities().SupportsNoveltyPortfolio;
+            if (v2NoveltySupported)
+            {
+                SolverSettings.ApplyForTesting(
+                    BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16) with { UseNoveltyPortfolio = true });
+                PreCombatForecastResult v2NoveltyAccepted = await PreCombatForecastApi.ForecastAsync(
+                    runState, encounter, targetFloor, targetCol,
+                    PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: contractOpts);
+                AssertBridgeSucceeded(v2NoveltyAccepted, "V2NoveltyPortfolioAccepted");
+            }
+
             int policyFallbacksBefore = PreCombatForecastWorker.FallbackCountForTesting;
             int policyWorkersBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
             int policyInProcessBefore = PreCombatForecastWorker.InProcessStartCountForTesting;
-            SolverSettings.ApplyForTesting(
-                BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16) with { UseNoveltyPortfolio = true });
-            PreCombatForecastResult policyRejected = await PreCombatForecastApi.ForecastAsync(
-                runState, encounter, targetFloor, targetCol,
-                PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: contractOpts);
+            PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = v2NoveltySupported
+                ? Sts2SimBridgeCapabilitiesDto.DefaultV1
+                : null;
+            PreCombatForecastResult policyRejected;
+            try
+            {
+                SolverSettings.ApplyForTesting(
+                    BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16) with { UseNoveltyPortfolio = true });
+                policyRejected = await PreCombatForecastApi.ForecastAsync(
+                    runState, encounter, targetFloor, targetCol,
+                    PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: contractOpts);
+            }
+            finally
+            {
+                PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = null;
+            }
             if (OperatingSystem.IsWindows())
             {
                 if (!policyRejected.IsSuccess || policyRejected.ProducingBackend != PreCombatBackendKind.LegacyProcess
@@ -186,7 +209,7 @@ internal sealed partial class UnattendedTestRunner
                     || PreCombatForecastWorker.InProcessStartCountForTesting != policyInProcessBefore)
                 {
                     throw new InvalidOperationException(
-                        $"Windows 下 UseNoveltyPortfolio=true 未正确回退传统子进程：status={policyRejected.Status} backend={policyRejected.ProducingBackend} " +
+                        $"Windows 下 v1 能力 UseNoveltyPortfolio=true 未正确回退传统子进程：status={policyRejected.Status} backend={policyRejected.ProducingBackend} " +
                         $"fallbacks={PreCombatForecastWorker.FallbackCountForTesting - policyFallbacksBefore} " +
                         $"workerStarts={PreCombatForecastWorker.WorkerStartCountForTesting - policyWorkersBefore} " +
                         $"inProcessStarts={PreCombatForecastWorker.InProcessStartCountForTesting - policyInProcessBefore} error={policyRejected.Error}");

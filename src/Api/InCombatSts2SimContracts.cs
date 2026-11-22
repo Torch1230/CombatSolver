@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace CombatSolver.Api;
 
@@ -349,7 +350,20 @@ internal sealed record InCombatSts2SimPolicyDto(
     int MaxPileChoiceBranchesPerAction,
     int MaxHandChoiceBranchesPerAction,
     int SoftTimeBudgetMilliseconds,
-    string? TheftPolicy);
+    string? TheftPolicy,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? PortfolioOptionsVersion = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<int>? BeamWidthPortfolioWidths = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? BeamWidthPortfolioPlainBaselineMember = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? ReallocatedRefinementPortfolio = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? OffensiveRefinementPortfolio = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? BoundedOffensiveRefinementPortfolio = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? StopPortfolioAtHpTarget = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? AdaptiveNoveltyRefinement = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Sts2SimNoveltySearchOptionsDto? NoveltySearch = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Sts2SimNoveltyPortfolioBudgetDto? NoveltyBudget = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? EarlyTurnExplorationDepth = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? EarlyTurnExplorationBudgetMilliseconds = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? PortfolioSchedulingMode = null);
 
 internal sealed record InCombatSts2SimRequestDto(
     int AbiVersion,
@@ -434,7 +448,12 @@ internal sealed record InCombatSts2SimResultDto(
     InCombatTerminalSnapshotDto Terminal,
     IReadOnlyList<Sts2SimPotionUseDto> PotionUses,
     long ExpandedNodes,
-    double SearchElapsedMilliseconds);
+    double SearchElapsedMilliseconds,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? ExpandedParents = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? TransitionCount = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? ChoiceReplayAttempts = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? ObservedPeakParallelism = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ActivePhaseLabel = null);
 
 internal sealed record InCombatSts2SimProgressDto(
     long ExpandedNodes,
@@ -444,7 +463,12 @@ internal sealed record InCombatSts2SimProgressDto(
     bool CurrentBestWon,
     int? CurrentBestCombatEndedTurn,
     int CurrentBestPotionCount,
-    InCombatSts2SimResultDto? CurrentBest);
+    InCombatSts2SimResultDto? CurrentBest,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? ExpandedParents = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? TransitionCount = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? ChoiceReplayAttempts = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? ObservedPeakParallelism = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ActivePhaseLabel = null);
 
 internal sealed record InCombatSts2SimResponseDto(
     int AbiVersion,
@@ -459,6 +483,28 @@ internal sealed record InCombatSts2SimResponseDto(
 
 internal static class InCombatSts2SimWireValidator
 {
+    public static void ValidatePolicy(
+        InCombatSts2SimPolicyDto policy,
+        Sts2SimBridgeCapabilitiesDto? capabilities = null)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        PreCombatSts2SimWireValidator.ValidatePortfolioPolicyOptions(
+            policy.UseNoveltyPortfolio,
+            policy.UseEarlyTurnExploration,
+            policy.PortfolioOptionsVersion,
+            policy.BeamWidthPortfolioWidths,
+            policy.BeamWidthPortfolioPlainBaselineMember,
+            policy.OffensiveRefinementPortfolio,
+            policy.BoundedOffensiveRefinementPortfolio,
+            policy.AdaptiveNoveltyRefinement,
+            policy.NoveltySearch,
+            policy.NoveltyBudget,
+            policy.EarlyTurnExplorationDepth,
+            policy.EarlyTurnExplorationBudgetMilliseconds,
+            policy.PortfolioSchedulingMode,
+            capabilities);
+    }
+
     public static InCombatSts2SimResponseDto DeserializeAndValidateResponse(byte[] utf8Json)
     {
         if (utf8Json is null || utf8Json.Length == 0)
@@ -485,11 +531,23 @@ internal static class InCombatSts2SimWireValidator
         if (progress is null)
             throw new InvalidDataException("Sts2Sim in-combat progress deserialized to null.");
 
+        ValidateProgress(progress);
+        return progress;
+    }
+
+    public static void ValidateProgress(InCombatSts2SimProgressDto progress)
+    {
+        ArgumentNullException.ThrowIfNull(progress);
         if (progress.ExpandedNodes < 0 || !double.IsFinite(progress.ElapsedMilliseconds) || progress.ElapsedMilliseconds < 0d)
             throw new InvalidDataException("Sts2Sim in-combat progress reported invalid counters.");
+        ValidateExtendedMetrics(
+            progress.ExpandedParents,
+            progress.TransitionCount,
+            progress.ChoiceReplayAttempts,
+            progress.ObservedPeakParallelism,
+            "progress");
         if (progress.CurrentBest is not null)
             ValidateResult(progress.CurrentBest, "progress.currentBest");
-        return progress;
     }
 
     public static void ValidateResponse(InCombatSts2SimResponseDto response)
@@ -569,6 +627,12 @@ internal static class InCombatSts2SimWireValidator
             throw new InvalidDataException($"{path}.potionUses cannot be null.");
         if (result.ExpandedNodes < 0 || !double.IsFinite(result.SearchElapsedMilliseconds) || result.SearchElapsedMilliseconds < 0d)
             throw new InvalidDataException($"{path} has invalid search telemetry.");
+        ValidateExtendedMetrics(
+            result.ExpandedParents,
+            result.TransitionCount,
+            result.ChoiceReplayAttempts,
+            result.ObservedPeakParallelism,
+            path);
 
         for (int i = 0; i < result.Actions.Count; i++)
         {
@@ -594,6 +658,26 @@ internal static class InCombatSts2SimWireValidator
                     CultureInfo.InvariantCulture,
                     $"{path}.potionUses[{i}] is malformed."));
             }
+        }
+    }
+
+    private static void ValidateExtendedMetrics(
+        long? expandedParents,
+        long? transitionCount,
+        long? choiceReplayAttempts,
+        int? observedPeakParallelism,
+        string path)
+    {
+        if (expandedParents is < 0)
+            throw new InvalidDataException($"{path}.expandedParents cannot be negative ({expandedParents}).");
+        if (transitionCount is < 0)
+            throw new InvalidDataException($"{path}.transitionCount cannot be negative ({transitionCount}).");
+        if (choiceReplayAttempts is < 0)
+            throw new InvalidDataException($"{path}.choiceReplayAttempts cannot be negative ({choiceReplayAttempts}).");
+        if (observedPeakParallelism is not (null or (>= 1 and <= 64)))
+        {
+            throw new InvalidDataException(
+                $"{path}.observedPeakParallelism must be between 1 and 64 ({observedPeakParallelism}).");
         }
     }
 }

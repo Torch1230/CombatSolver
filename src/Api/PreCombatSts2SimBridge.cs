@@ -12,6 +12,43 @@ internal enum PreCombatBridgeAvailability
     CorruptOrIncompatible,
 }
 
+internal sealed record Sts2SimBridgeCapabilitiesDto(
+    int PortfolioOptionsVersion,
+    bool SupportsBeamWidthPortfolioFull,
+    bool SupportsNoveltyPortfolio,
+    bool SupportsAdaptiveNoveltyRefinement,
+    bool SupportsEarlyTurnExploration,
+    int MaxEarlyTurnExplorationDepth,
+    int MaxEarlyTurnExplorationBudgetMilliseconds,
+    bool SupportsParallelPortfolioScheduling,
+    bool SupportsExtendedMetrics,
+    bool SupportsCosmeticTestSubjectKills)
+{
+    public static Sts2SimBridgeCapabilitiesDto DefaultV1 { get; } = new(
+        PortfolioOptionsVersion: 1,
+        SupportsBeamWidthPortfolioFull: false,
+        SupportsNoveltyPortfolio: false,
+        SupportsAdaptiveNoveltyRefinement: false,
+        SupportsEarlyTurnExploration: false,
+        MaxEarlyTurnExplorationDepth: 0,
+        MaxEarlyTurnExplorationBudgetMilliseconds: 0,
+        SupportsParallelPortfolioScheduling: false,
+        SupportsExtendedMetrics: false,
+        SupportsCosmeticTestSubjectKills: false);
+
+    public static Sts2SimBridgeCapabilitiesDto V2Default { get; } = new(
+        PortfolioOptionsVersion: 2,
+        SupportsBeamWidthPortfolioFull: true,
+        SupportsNoveltyPortfolio: true,
+        SupportsAdaptiveNoveltyRefinement: true,
+        SupportsEarlyTurnExploration: true,
+        MaxEarlyTurnExplorationDepth: 2,
+        MaxEarlyTurnExplorationBudgetMilliseconds: 2_400_000,
+        SupportsParallelPortfolioScheduling: true,
+        SupportsExtendedMetrics: true,
+        SupportsCosmeticTestSubjectKills: true);
+}
+
 internal static class PreCombatSts2SimBridge
 {
     private const string BridgeFolderName = "sts2sim";
@@ -49,6 +86,8 @@ internal static class PreCombatSts2SimBridge
 
     internal static PreCombatBridgeAvailability? AvailabilityOverrideForTesting { get; set; }
 
+    internal static Sts2SimBridgeCapabilitiesDto? CapabilitiesOverrideForTesting { get; set; }
+
     internal static int ActivationAttemptCountForTesting => Volatile.Read(ref _activationAttemptCount);
 
     internal static bool IsCorrupt
@@ -78,6 +117,56 @@ internal static class PreCombatSts2SimBridge
         RunRawJsonHookForTesting = null;
         RunInCombatHookForTesting = null;
         AvailabilityOverrideForTesting = null;
+        CapabilitiesOverrideForTesting = null;
+    }
+
+    public static Sts2SimBridgeCapabilitiesDto GetActiveCapabilities()
+    {
+        lock (Sync)
+        {
+            if (CapabilitiesOverrideForTesting is { } forced)
+                return forced;
+            return _activated?.Capabilities ?? Sts2SimBridgeCapabilitiesDto.DefaultV1;
+        }
+    }
+
+    internal static Sts2SimBridgeCapabilitiesDto DeserializeAndValidateCapabilities(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            throw new InvalidDataException("Bridge GetCapabilitiesJson returned empty JSON.");
+        Sts2SimBridgeCapabilitiesDto capabilities = JsonSerializer.Deserialize<Sts2SimBridgeCapabilitiesDto>(
+            json,
+            PreCombatSts2SimAbi.JsonOptions)
+            ?? throw new InvalidDataException("Bridge GetCapabilitiesJson deserialized to null.");
+        ValidateCapabilities(capabilities);
+        return capabilities;
+    }
+
+    internal static void ValidateCapabilities(Sts2SimBridgeCapabilitiesDto capabilities)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        if (capabilities.PortfolioOptionsVersion < 1)
+        {
+            throw new InvalidDataException(
+                $"Bridge capabilities reported invalid PortfolioOptionsVersion={capabilities.PortfolioOptionsVersion}.");
+        }
+        if (capabilities.MaxEarlyTurnExplorationDepth is < 0 or > 8)
+        {
+            throw new InvalidDataException(
+                $"Bridge capabilities reported out-of-range MaxEarlyTurnExplorationDepth={capabilities.MaxEarlyTurnExplorationDepth}.");
+        }
+        if (capabilities.MaxEarlyTurnExplorationBudgetMilliseconds < 0)
+        {
+            throw new InvalidDataException(
+                $"Bridge capabilities reported negative MaxEarlyTurnExplorationBudgetMilliseconds={capabilities.MaxEarlyTurnExplorationBudgetMilliseconds}.");
+        }
+        if (capabilities.SupportsEarlyTurnExploration
+            && (capabilities.MaxEarlyTurnExplorationDepth < 1
+                || capabilities.MaxEarlyTurnExplorationBudgetMilliseconds < 1))
+        {
+            throw new InvalidDataException(
+                "Bridge capabilities advertised SupportsEarlyTurnExploration=true with non-positive depth or budget limit.");
+        }
     }
 
     public static bool HasInstalledBackendArtifact()
@@ -158,14 +247,17 @@ internal static class PreCombatSts2SimBridge
         Sts2SimBridgeRequestDto request,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         if (RunRawJsonHookForTesting is { } rawHook)
         {
+            PreCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting);
             byte[] rawBytes = await rawHook(request, cancellationToken).ConfigureAwait(false);
             return PreCombatSts2SimWireValidator.DeserializeAndValidateResponse(rawBytes);
         }
         if (RunHookForTesting is { } runHook)
         {
+            PreCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting);
             Sts2SimBridgeResponseDto hooked = await runHook(request, cancellationToken).ConfigureAwait(false);
             PreCombatSts2SimWireValidator.ValidateResponse(hooked);
             return hooked;
@@ -174,6 +266,7 @@ internal static class PreCombatSts2SimBridge
         if (state != PreCombatBridgeAvailability.Ready || _activated is null)
             throw new InvalidOperationException(error ?? $"Sts2Sim backend is not ready ({state}).");
 
+        PreCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting ?? _activated.Capabilities);
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(request, PreCombatSts2SimAbi.JsonOptions);
         cancellationToken.ThrowIfCancellationRequested();
         byte[] responseBytes = await _activated.RunJsonAsync(payload, cancellationToken).ConfigureAwait(false);
@@ -189,6 +282,7 @@ internal static class PreCombatSts2SimBridge
         cancellationToken.ThrowIfCancellationRequested();
         if (RunInCombatHookForTesting is { } hook)
         {
+            InCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting);
             InCombatSts2SimResponseDto hooked = await hook(request, onProgress, cancellationToken).ConfigureAwait(false);
             InCombatSts2SimWireValidator.ValidateResponse(hooked);
             return hooked;
@@ -198,6 +292,7 @@ internal static class PreCombatSts2SimBridge
         if (state != PreCombatBridgeAvailability.Ready || _activated is null)
             throw new InvalidOperationException(error ?? $"Sts2Sim backend is not ready ({state}).");
 
+        InCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting ?? _activated.Capabilities);
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(request, PreCombatSts2SimAbi.JsonOptions);
         cancellationToken.ThrowIfCancellationRequested();
         Action<byte[]>? wireProgress = onProgress is null
@@ -325,7 +420,18 @@ internal static class PreCombatSts2SimBridge
         VerifyComponentMvid(manifestEntries, $"{SolverAssemblySimpleName}.dll", identity.SolverMvid);
         VerifyComponentMvid(manifestEntries, $"{CoreAssemblySimpleName}.dll", identity.CoreMvid);
 
-        return new ActivatedBridge(loadContext, prewarm, runJsonAsync, runInCombatJsonAsync);
+        MethodInfo? getCapabilitiesMethod = entryType.GetMethod(
+            "GetCapabilitiesJson",
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+        Sts2SimBridgeCapabilitiesDto capabilities = getCapabilitiesMethod is null
+            ? Sts2SimBridgeCapabilitiesDto.DefaultV1
+            : DeserializeAndValidateCapabilities(
+                ((Func<string>)Delegate.CreateDelegate(typeof(Func<string>), getCapabilitiesMethod))());
+
+        return new ActivatedBridge(loadContext, prewarm, runJsonAsync, runInCombatJsonAsync, capabilities);
     }
 
     private static void VerifyComponentMvid(
@@ -362,12 +468,14 @@ internal static class PreCombatSts2SimBridge
         IsolatedBridgeLoadContext loadContext,
         Action prewarm,
         Func<byte[], CancellationToken, Task<byte[]>> runJsonAsync,
-        Func<byte[], Action<byte[]>?, CancellationToken, Task<byte[]>> runInCombatJsonAsync)
+        Func<byte[], Action<byte[]>?, CancellationToken, Task<byte[]>> runInCombatJsonAsync,
+        Sts2SimBridgeCapabilitiesDto capabilities)
     {
         public IsolatedBridgeLoadContext LoadContext { get; } = loadContext;
         public Action Prewarm { get; } = prewarm;
         public Func<byte[], CancellationToken, Task<byte[]>> RunJsonAsync { get; } = runJsonAsync;
         public Func<byte[], Action<byte[]>?, CancellationToken, Task<byte[]>> RunInCombatJsonAsync { get; } = runInCombatJsonAsync;
+        public Sts2SimBridgeCapabilitiesDto Capabilities { get; } = capabilities;
     }
 
     private sealed class IsolatedBridgeLoadContext(

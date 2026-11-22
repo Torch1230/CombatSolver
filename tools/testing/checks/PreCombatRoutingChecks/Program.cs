@@ -432,6 +432,91 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
     }
 });
 
+await Check("ABI v1 vs v2 portfolio policy routing forwards v2 options and falls back cleanly on unsupported/conflict", async () =>
+{
+    PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;
+
+    var noveltySettings = new CombatSolver.SolverSettingsSnapshot(
+        SearchMaxDegreeOfParallelism: 4,
+        UseBeamWidthPortfolio: true,
+        UseNoveltyPortfolio: true,
+        UseEarlyTurnExploration: true);
+    var v1NoveltyRun = new RunState { SettingsOverride = noveltySettings };
+    RunManager.Instance.Run = v1NoveltyRun;
+
+    int hookCalls = 0;
+    Sts2SimBridgeRequestDto? capturedParallelRequest = null;
+    PreCombatSts2SimBridge.RunHookForTesting = (req, _) =>
+    {
+        Interlocked.Increment(ref hookCalls);
+        capturedParallelRequest = req;
+        return Task.FromResult(new Sts2SimBridgeResponseDto(
+            1, "Succeeded", null, null, null,
+            3, 77, 2, false, "Complete", "None",
+            [], 80, req.MaxDegreeOfParallelism, 5.0, 6.0));
+    };
+
+    PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = Sts2SimBridgeCapabilitiesDto.DefaultV1;
+    CombatSolver.Api.OperatingSystem.WindowsOverride = true;
+    PreCombatForecastResult v1WinFallback = await PreCombatForecastApi.ForecastAsync(
+        v1NoveltyRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 2_000, OverallTimeoutMilliseconds = 15_000, MaxDegreeOfParallelism = 4 });
+    Equal(PreCombatForecastStatus.Succeeded, v1WinFallback.Status);
+    Equal(PreCombatBackendKind.LegacyProcess, v1WinFallback.ProducingBackend);
+    Equal("policy_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
+    Equal(0, hookCalls);
+
+    await PreCombatForecastApi.StopWorkerAsync();
+    CombatSolver.Api.OperatingSystem.WindowsOverride = false;
+    PreCombatForecastResult v1LinuxFallback = await PreCombatForecastApi.ForecastAsync(
+        v1NoveltyRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 2_000, OverallTimeoutMilliseconds = 15_000, MaxDegreeOfParallelism = 4 });
+    Equal(PreCombatForecastStatus.Unsupported, v1LinuxFallback.Status);
+    Equal(true, v1LinuxFallback.Error?.Contains("policy_unsupported", StringComparison.Ordinal) == true);
+    Equal(0, hookCalls);
+
+    CombatSolver.Api.OperatingSystem.WindowsOverride = true;
+    PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = Sts2SimBridgeCapabilitiesDto.V2Default;
+    var v2Run = new RunState { SettingsOverride = noveltySettings };
+    RunManager.Instance.Run = v2Run;
+    PreCombatForecastResult v2ParallelResult = await PreCombatForecastApi.ForecastAsync(
+        v2Run, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 2_000, OverallTimeoutMilliseconds = 15_000, MaxDegreeOfParallelism = 4 });
+    Equal(PreCombatForecastStatus.Succeeded, v2ParallelResult.Status);
+    Equal(PreCombatBackendKind.InProcess, v2ParallelResult.ProducingBackend);
+    Equal(4, v2ParallelResult.EffectiveDegreeOfParallelism);
+    Equal(1, hookCalls);
+    Equal(2, capturedParallelRequest!.Policy.PortfolioOptionsVersion);
+    Equal(true, capturedParallelRequest.Policy.UseNoveltyPortfolio);
+    Equal(true, capturedParallelRequest.Policy.UseEarlyTurnExploration);
+    Equal(2, capturedParallelRequest.Policy.EarlyTurnExplorationDepth);
+    Equal(2_000, capturedParallelRequest.Policy.EarlyTurnExplorationBudgetMilliseconds);
+    Equal(true, capturedParallelRequest.Policy.NoveltyBudget is not null);
+    Equal("Parallel", capturedParallelRequest.Policy.PortfolioSchedulingMode);
+
+    PreCombatForecastResult v2SeqResult = await PreCombatForecastApi.ForecastAsync(
+        v2Run, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 2_000, OverallTimeoutMilliseconds = 15_000, MaxDegreeOfParallelism = 1 });
+    Equal(PreCombatForecastStatus.Succeeded, v2SeqResult.Status);
+    Equal("Sequential", capturedParallelRequest!.Policy.PortfolioSchedulingMode);
+
+    var conflictRun = new RunState
+    {
+        SettingsOverride = noveltySettings with
+        {
+            OffensiveRefinementPortfolio = true,
+            BoundedOffensiveRefinementPortfolio = true,
+        },
+    };
+    RunManager.Instance.Run = conflictRun;
+    PreCombatForecastResult conflictFallback = await PreCombatForecastApi.ForecastAsync(
+        conflictRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 2_000, OverallTimeoutMilliseconds = 15_000, MaxDegreeOfParallelism = 4 });
+    Equal(PreCombatBackendKind.LegacyProcess, conflictFallback.ProducingBackend);
+    Equal("policy_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
+    Equal(2, hookCalls);
+});
+
 Console.WriteLine($"Passed {passed} portable production routing checks.");
 
 static string FindRepoRoot()

@@ -134,23 +134,48 @@ internal sealed partial class UnattendedTestRunner
             }
 
             SetStage("verify_in_combat_policy_fallback");
-            SolverSettings.ApplyForTesting(contractSettings with
+            PreCombatSts2SimBridge.EnsureActivated(out _);
+            bool v2NoveltySupported = PreCombatSts2SimBridge.GetActiveCapabilities().SupportsNoveltyPortfolio;
+            if (v2NoveltySupported)
             {
-                UseSts2SimInCombat = true,
-                UseNoveltyPortfolio = true,
-            });
-            SolverController.RequestSearch(host, combatState, SearchReason.Manual);
-            SolverResult policyFallbackResult = await WaitForManualSearchResultAsync(host, TimeSpan.FromSeconds(25));
-            policyFallbackResult.AssertCompleteTurnOutcomes();
-            if (InCombatSolverBackendState.LastUsedBackendForTesting != InCombatBackendKind.BuiltIn)
+                SolverSettings.ApplyForTesting(contractSettings with
+                {
+                    UseSts2SimInCombat = true,
+                    UseNoveltyPortfolio = true,
+                });
+                SolverController.RequestSearch(host, combatState, SearchReason.Manual);
+                SolverResult v2NoveltyResult = await WaitForManualSearchResultAsync(host, TimeSpan.FromSeconds(25));
+                v2NoveltyResult.AssertCompleteTurnOutcomes();
+                if (InCombatSolverBackendState.LastUsedBackendForTesting != InCombatBackendKind.Sts2Sim)
+                {
+                    throw new InvalidOperationException(
+                        $"v2 后端支持 UseNoveltyPortfolio 但未在 Sts2Sim 上运行：last={InCombatSolverBackendState.LastUsedBackendForTesting}。");
+                }
+            }
+
+            PreCombatSts2SimBridgeCapabilitiesOverrideGuard capabilitiesGuard = v2NoveltySupported
+                ? new PreCombatSts2SimBridgeCapabilitiesOverrideGuard(Sts2SimBridgeCapabilitiesDto.DefaultV1)
+                : default;
+            using (capabilitiesGuard)
             {
-                throw new InvalidOperationException(
-                    $"开启 UseNoveltyPortfolio 时未回退内置模拟器：last={InCombatSolverBackendState.LastUsedBackendForTesting}。");
+                SolverSettings.ApplyForTesting(contractSettings with
+                {
+                    UseSts2SimInCombat = true,
+                    UseNoveltyPortfolio = true,
+                });
+                SolverController.RequestSearch(host, combatState, SearchReason.Manual);
+                SolverResult policyFallbackResult = await WaitForManualSearchResultAsync(host, TimeSpan.FromSeconds(25));
+                policyFallbackResult.AssertCompleteTurnOutcomes();
+                if (InCombatSolverBackendState.LastUsedBackendForTesting != InCombatBackendKind.BuiltIn)
+                {
+                    throw new InvalidOperationException(
+                        $"开启 UseNoveltyPortfolio 且能力为 v1 时未回退内置模拟器：last={InCombatSolverBackendState.LastUsedBackendForTesting}。");
+                }
             }
 
             _completedChecks.Add(string.Create(
                 CultureInfo.InvariantCulture,
-                $"InCombatSts2SimContract:Turn1Dop={actualDop}:Turn1Continuations={cachedContinuationCount}:Turn2Transplant=Sts2Sim:DisabledFallback=BuiltIn:PolicyFallback=BuiltIn"));
+                $"InCombatSts2SimContract:Turn1Dop={actualDop}:Turn1Continuations={cachedContinuationCount}:Turn2Transplant=Sts2Sim:DisabledFallback=BuiltIn:PolicyFallback=BuiltIn:V2Novelty={v2NoveltySupported}"));
         }
         finally
         {
@@ -209,5 +234,22 @@ internal sealed partial class UnattendedTestRunner
             await host.ToSignal(host.GetTree(), Godot.SceneTree.SignalName.ProcessFrame);
         }
         throw new TimeoutException($"等待进入第 {expectedTurn} 回合超时（{timeout.TotalSeconds:0.#} 秒）。");
+    }
+
+    private readonly struct PreCombatSts2SimBridgeCapabilitiesOverrideGuard : IDisposable
+    {
+        private readonly bool _active;
+
+        public PreCombatSts2SimBridgeCapabilitiesOverrideGuard(Sts2SimBridgeCapabilitiesDto capabilities)
+        {
+            PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = capabilities;
+            _active = true;
+        }
+
+        public void Dispose()
+        {
+            if (_active)
+                PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = null;
+        }
     }
 }

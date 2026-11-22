@@ -26,46 +26,81 @@ internal static class PreCombatSts2SimPolicyMapper
         int searchBudgetMilliseconds,
         IReadOnlyList<(int Slot, string PotionId)> effectivePotions,
         out Sts2SimPolicyDto? policy,
+        out string? unsupportedReason) =>
+        TryBuildPolicy(
+            settingsData,
+            settingsSnapshot,
+            searchBudgetMilliseconds,
+            settingsSnapshot.SearchMaxDegreeOfParallelism,
+            effectivePotions,
+            PreCombatSts2SimBridge.GetActiveCapabilities(),
+            out policy,
+            out unsupportedReason);
+
+    public static bool TryBuildPolicy(
+        SolverSettingsData settingsData,
+        SolverSettingsSnapshot settingsSnapshot,
+        int searchBudgetMilliseconds,
+        int maxDegreeOfParallelism,
+        IReadOnlyList<(int Slot, string PotionId)> effectivePotions,
+        Sts2SimBridgeCapabilitiesDto capabilities,
+        out Sts2SimPolicyDto? policy,
         out string? unsupportedReason)
     {
-        if (settingsSnapshot.UseNoveltyPortfolio)
+        ArgumentNullException.ThrowIfNull(settingsData);
+        ArgumentNullException.ThrowIfNull(settingsSnapshot);
+        ArgumentNullException.ThrowIfNull(effectivePotions);
+        ArgumentNullException.ThrowIfNull(capabilities);
+
+        int effectiveSoftTimeMs = Math.Clamp(searchBudgetMilliseconds, 1_000, 30_000);
+        SolverSearchProfile profile = settingsSnapshot.Profile;
+        var portfolioInput = new Sts2SimPortfolioPolicyInput(
+            UseBeamWidthPortfolio: settingsSnapshot.UseBeamWidthPortfolio,
+            UseNoveltyPortfolio: settingsSnapshot.UseNoveltyPortfolio,
+            EarlyTurnExplorationDepth: settingsSnapshot.UseEarlyTurnExploration ? 2 : 0,
+            EarlyTurnExplorationBudgetMilliseconds: settingsSnapshot.UseEarlyTurnExploration ? effectiveSoftTimeMs : 0,
+            BeamWidthPortfolioWidths: null,
+            BeamWidthPortfolioPlainBaselineMember: true,
+            ReallocatedRefinementPortfolio: profile.ReallocatedRefinementPortfolio,
+            OffensiveRefinementPortfolio: profile.OffensiveRefinementPortfolio,
+            BoundedOffensiveRefinementPortfolio: profile.BoundedOffensiveRefinementPortfolio,
+            StopPortfolioAtHpTarget: profile.StopPortfolioAtHpTarget,
+            AdaptiveNoveltyRefinement: profile.AdaptiveNoveltyRefinement,
+            NoveltySearch: null,
+            NoveltyBudget: settingsSnapshot.UseNoveltyPortfolio || profile.AdaptiveNoveltyRefinement
+                ? new Sts2SimNoveltyPortfolioBudgetDto(
+                    NoveltyPortfolioBudget.Default.TimeDivisor,
+                    NoveltyPortfolioBudget.Default.MaximumMilliseconds,
+                    NoveltyPortfolioBudget.Default.MaximumExpandedNodes)
+                : null,
+            MaxDegreeOfParallelism: Math.Max(1, maxDegreeOfParallelism),
+            HasContextualRanking: profile.ContextualRanking is not null,
+            ContinuousThreatRanking: profile.ContinuousThreatRanking,
+            BaseScoreTacticalTies: profile.BaseScoreTacticalTies,
+            HasBeamWeightPerturbation: profile.BeamWeightPerturbation is not null);
+
+        if (!Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(
+                in portfolioInput,
+                capabilities,
+                out Sts2SimPortfolioPolicyFields resolved,
+                out unsupportedReason))
         {
             policy = null;
-            unsupportedReason = "UseNoveltyPortfolio is active and not mapped to Sts2Sim bridge.";
-            return false;
-        }
-        if (settingsSnapshot.UseEarlyTurnExploration)
-        {
-            policy = null;
-            unsupportedReason = "UseEarlyTurnExploration is active and not mapped to Sts2Sim bridge.";
             return false;
         }
 
-        GrowthValues growth = settingsSnapshot.GrowthBudgets;
-        Dictionary<string, int>? thirdPartyGrowth = growth.Extras.ToDictionary();
-        if (growth.ShowOff != 0 || (thirdPartyGrowth is not null && thirdPartyGrowth.Values.Any(static value => value != 0)))
+        if (!TryMapGrowthBudgets(settingsSnapshot.GrowthBudgets, out Sts2SimGrowthBudgetsDto? growthDto, out unsupportedReason)
+            || growthDto is null)
         {
             policy = null;
-            unsupportedReason = "ShowOff or third-party GrowthBudgets are nonzero and not mapped to Sts2Sim bridge.";
             return false;
         }
 
-        var counterRules = new List<Sts2SimRelicCounterRuleDto>(settingsSnapshot.RelicCounterRules.Length);
-        foreach (RelicCounterRule rule in settingsSnapshot.RelicCounterRules)
+        if (!TryMapRelicCounterRules(settingsSnapshot.RelicCounterRules, out IReadOnlyList<Sts2SimRelicCounterRuleDto>? counterRules, out unsupportedReason)
+            || counterRules is null)
         {
-            if (!BridgeRelicCounterNames.TryGetValue(rule.Id, out string? name))
-            {
-                policy = null;
-                unsupportedReason = $"Relic counter rule '{rule.Id}' is not supported by Sts2Sim bridge.";
-                return false;
-            }
-            counterRules.Add(new Sts2SimRelicCounterRuleDto(
-                name,
-                rule.Enabled,
-                rule.Minimum,
-                rule.Maximum,
-                rule.HpAllowance,
-                rule.Priority));
+            policy = null;
+            return false;
         }
 
         var directives = new List<Sts2SimPotionDirectiveDto>();
@@ -82,27 +117,13 @@ internal static class PreCombatSts2SimPolicyMapper
             }
         }
 
-        SolverSearchProfile profile = settingsSnapshot.Profile;
-        int effectiveSoftTimeMs = Math.Clamp(searchBudgetMilliseconds, 1_000, 30_000);
         policy = new Sts2SimPolicyDto(
             settingsSnapshot.PotionPolicy.ToString(),
             directives,
             settingsSnapshot.PredictPotionReward,
             settingsSnapshot.RelicStrategyEnabled,
             counterRules,
-            new Sts2SimGrowthBudgetsDto(
-                growth.HandOfGreed,
-                growth.TheHunt,
-                growth.Feed,
-                growth.Royalties,
-                growth.Alchemize,
-                growth.GeneticAlgorithm,
-                growth.TheScythe,
-                growth.Goopy,
-                growth.ForbiddenGrimoire,
-                growth.MadScience,
-                growth.ShowOff,
-                thirdPartyGrowth),
+            growthDto,
             settingsSnapshot.BrightestFlameMaxHpLossLimit,
             settingsSnapshot.IgnoreLongTermRewards,
             settingsSnapshot.ActTransitionBossHpStrategy.ToString(),
@@ -117,7 +138,79 @@ internal static class PreCombatSts2SimPolicyMapper
             profile.MaxCardBranchesPerNode,
             profile.MaxPileChoiceBranchesPerAction,
             profile.MaxHandChoiceBranchesPerAction,
-            effectiveSoftTimeMs);
+            effectiveSoftTimeMs,
+            resolved.PortfolioOptionsVersion,
+            resolved.BeamWidthPortfolioWidths,
+            resolved.BeamWidthPortfolioPlainBaselineMember,
+            resolved.ReallocatedRefinementPortfolio,
+            resolved.OffensiveRefinementPortfolio,
+            resolved.BoundedOffensiveRefinementPortfolio,
+            resolved.StopPortfolioAtHpTarget,
+            resolved.AdaptiveNoveltyRefinement,
+            resolved.NoveltySearch,
+            resolved.NoveltyBudget,
+            resolved.EarlyTurnExplorationDepth,
+            resolved.EarlyTurnExplorationBudgetMilliseconds,
+            resolved.PortfolioSchedulingMode);
+        PreCombatSts2SimWireValidator.ValidatePolicy(policy, capabilities);
+        unsupportedReason = null;
+        return true;
+    }
+
+    internal static bool TryMapGrowthBudgets(
+        GrowthValues growth,
+        out Sts2SimGrowthBudgetsDto? mapped,
+        out string? unsupportedReason)
+    {
+        Dictionary<string, int>? thirdPartyGrowth = growth.Extras.ToDictionary();
+        if (growth.ShowOff != 0 || (thirdPartyGrowth is not null && thirdPartyGrowth.Values.Any(static value => value != 0)))
+        {
+            mapped = null;
+            unsupportedReason = "ShowOff or third-party GrowthBudgets are nonzero and not mapped to Sts2Sim bridge.";
+            return false;
+        }
+
+        mapped = new Sts2SimGrowthBudgetsDto(
+            growth.HandOfGreed,
+            growth.TheHunt,
+            growth.Feed,
+            growth.Royalties,
+            growth.Alchemize,
+            growth.GeneticAlgorithm,
+            growth.TheScythe,
+            growth.Goopy,
+            growth.ForbiddenGrimoire,
+            growth.MadScience,
+            growth.ShowOff,
+            thirdPartyGrowth);
+        unsupportedReason = null;
+        return true;
+    }
+
+    internal static bool TryMapRelicCounterRules(
+        IReadOnlyList<RelicCounterRule> rules,
+        out IReadOnlyList<Sts2SimRelicCounterRuleDto>? mapped,
+        out string? unsupportedReason)
+    {
+        var counterRules = new List<Sts2SimRelicCounterRuleDto>(rules.Count);
+        foreach (RelicCounterRule rule in rules)
+        {
+            if (!BridgeRelicCounterNames.TryGetValue(rule.Id, out string? name))
+            {
+                mapped = null;
+                unsupportedReason = $"Relic counter rule '{rule.Id}' is not supported by Sts2Sim bridge.";
+                return false;
+            }
+            counterRules.Add(new Sts2SimRelicCounterRuleDto(
+                name,
+                rule.Enabled,
+                rule.Minimum,
+                rule.Maximum,
+                rule.HpAllowance,
+                rule.Priority));
+        }
+
+        mapped = counterRules;
         unsupportedReason = null;
         return true;
     }

@@ -103,6 +103,19 @@ internal sealed record Sts2SimGrowthBudgetsDto(
     int ShowOff,
     IReadOnlyDictionary<string, int>? ThirdParty);
 
+internal sealed record Sts2SimNoveltySearchOptionsDto(
+    int Width,
+    int FamiliarAllowance,
+    int MaxOpen,
+    int MaxNoveltyEntries,
+    int MaxActions,
+    int MaxTurns);
+
+internal sealed record Sts2SimNoveltyPortfolioBudgetDto(
+    int TimeDivisor,
+    int MaximumMilliseconds,
+    int MaximumExpandedNodes);
+
 internal sealed record Sts2SimPolicyDto(
     string PotionPolicy,
     IReadOnlyList<Sts2SimPotionDirectiveDto> PotionDirectives,
@@ -124,7 +137,20 @@ internal sealed record Sts2SimPolicyDto(
     int MaxCardBranchesPerNode,
     int MaxPileChoiceBranchesPerAction,
     int MaxHandChoiceBranchesPerAction,
-    int SoftTimeBudgetMilliseconds);
+    int SoftTimeBudgetMilliseconds,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? PortfolioOptionsVersion = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<int>? BeamWidthPortfolioWidths = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? BeamWidthPortfolioPlainBaselineMember = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? ReallocatedRefinementPortfolio = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? OffensiveRefinementPortfolio = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? BoundedOffensiveRefinementPortfolio = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? StopPortfolioAtHpTarget = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? AdaptiveNoveltyRefinement = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Sts2SimNoveltySearchOptionsDto? NoveltySearch = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Sts2SimNoveltyPortfolioBudgetDto? NoveltyBudget = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? EarlyTurnExplorationDepth = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? EarlyTurnExplorationBudgetMilliseconds = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? PortfolioSchedulingMode = null);
 
 internal sealed record Sts2SimBridgeRequestDto(
     int AbiVersion,
@@ -192,6 +218,169 @@ internal sealed record Sts2SimBundleIdentityDto(
 
 internal static class PreCombatSts2SimWireValidator
 {
+    public static void ValidatePolicy(
+        Sts2SimPolicyDto policy,
+        Sts2SimBridgeCapabilitiesDto? capabilities = null)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        ValidatePortfolioPolicyOptions(
+            policy.UseNoveltyPortfolio,
+            policy.UseEarlyTurnExploration,
+            policy.PortfolioOptionsVersion,
+            policy.BeamWidthPortfolioWidths,
+            policy.BeamWidthPortfolioPlainBaselineMember,
+            policy.OffensiveRefinementPortfolio,
+            policy.BoundedOffensiveRefinementPortfolio,
+            policy.AdaptiveNoveltyRefinement,
+            policy.NoveltySearch,
+            policy.NoveltyBudget,
+            policy.EarlyTurnExplorationDepth,
+            policy.EarlyTurnExplorationBudgetMilliseconds,
+            policy.PortfolioSchedulingMode,
+            capabilities);
+    }
+
+    internal static void ValidatePortfolioPolicyOptions(
+        bool useNoveltyPortfolio,
+        bool useEarlyTurnExploration,
+        int? portfolioOptionsVersion,
+        IReadOnlyList<int>? beamWidthPortfolioWidths,
+        bool? beamWidthPortfolioPlainBaselineMember,
+        bool? offensiveRefinementPortfolio,
+        bool? boundedOffensiveRefinementPortfolio,
+        bool? adaptiveNoveltyRefinement,
+        Sts2SimNoveltySearchOptionsDto? noveltySearch,
+        Sts2SimNoveltyPortfolioBudgetDto? noveltyBudget,
+        int? earlyTurnExplorationDepth,
+        int? earlyTurnExplorationBudgetMilliseconds,
+        string? portfolioSchedulingMode,
+        Sts2SimBridgeCapabilitiesDto? capabilities)
+    {
+        if (portfolioOptionsVersion is not null && portfolioOptionsVersion is not (1 or 2))
+        {
+            throw new InvalidDataException(
+                $"Sts2Sim policy reported unsupported PortfolioOptionsVersion={portfolioOptionsVersion}.");
+        }
+        if (beamWidthPortfolioWidths is not null)
+        {
+            if (beamWidthPortfolioWidths.Count > 16)
+            {
+                throw new InvalidDataException(
+                    $"Sts2Sim policy BeamWidthPortfolioWidths count {beamWidthPortfolioWidths.Count} exceeds maximum 16.");
+            }
+            for (int i = 0; i < beamWidthPortfolioWidths.Count; i++)
+            {
+                if (beamWidthPortfolioWidths[i] < 1)
+                {
+                    throw new InvalidDataException(
+                        $"Sts2Sim policy BeamWidthPortfolioWidths[{i}] must be >= 1, got {beamWidthPortfolioWidths[i]}.");
+                }
+            }
+        }
+        if (offensiveRefinementPortfolio == true && boundedOffensiveRefinementPortfolio == true)
+        {
+            throw new InvalidDataException(
+                "Sts2Sim policy cannot enable both OffensiveRefinementPortfolio and BoundedOffensiveRefinementPortfolio.");
+        }
+        if (noveltySearch is not null)
+        {
+            if (noveltySearch.Width is not (1 or 2)
+                || noveltySearch.FamiliarAllowance < 0
+                || noveltySearch.MaxOpen < 1
+                || noveltySearch.MaxNoveltyEntries < 1
+                || noveltySearch.MaxActions < 1
+                || noveltySearch.MaxTurns < 1)
+            {
+                throw new InvalidDataException("Sts2Sim policy NoveltySearch contains invalid bounds.");
+            }
+        }
+        if (noveltyBudget is not null)
+        {
+            if (noveltyBudget.TimeDivisor < 2
+                || noveltyBudget.MaximumMilliseconds < 1
+                || noveltyBudget.MaximumExpandedNodes < 1)
+            {
+                throw new InvalidDataException("Sts2Sim policy NoveltyBudget contains invalid bounds.");
+            }
+        }
+        if (earlyTurnExplorationDepth is < 0 or > 8)
+        {
+            throw new InvalidDataException(
+                $"Sts2Sim policy EarlyTurnExplorationDepth must be between 0 and 8, got {earlyTurnExplorationDepth}.");
+        }
+        if (earlyTurnExplorationBudgetMilliseconds is < 0)
+        {
+            throw new InvalidDataException(
+                $"Sts2Sim policy EarlyTurnExplorationBudgetMilliseconds cannot be negative ({earlyTurnExplorationBudgetMilliseconds}).");
+        }
+        if (earlyTurnExplorationDepth is > 0)
+        {
+            if (earlyTurnExplorationBudgetMilliseconds is null or < 1)
+            {
+                throw new InvalidDataException(
+                    "Sts2Sim policy requires positive EarlyTurnExplorationBudgetMilliseconds when EarlyTurnExplorationDepth > 0.");
+            }
+            if (capabilities is not null)
+            {
+                if (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsEarlyTurnExploration)
+                {
+                    throw new InvalidDataException(
+                        "Sts2Sim policy requested EarlyTurnExploration without negotiated support.");
+                }
+                if (earlyTurnExplorationDepth.Value > capabilities.MaxEarlyTurnExplorationDepth)
+                {
+                    throw new InvalidDataException(
+                        $"Sts2Sim policy EarlyTurnExplorationDepth {earlyTurnExplorationDepth.Value} exceeds capability limit {capabilities.MaxEarlyTurnExplorationDepth}.");
+                }
+                if (earlyTurnExplorationBudgetMilliseconds.Value > capabilities.MaxEarlyTurnExplorationBudgetMilliseconds)
+                {
+                    throw new InvalidDataException(
+                        $"Sts2Sim policy EarlyTurnExplorationBudgetMilliseconds {earlyTurnExplorationBudgetMilliseconds.Value} exceeds capability limit {capabilities.MaxEarlyTurnExplorationBudgetMilliseconds}.");
+                }
+            }
+        }
+        if (portfolioSchedulingMode is not null
+            && !string.Equals(portfolioSchedulingMode, "Parallel", StringComparison.Ordinal)
+            && !string.Equals(portfolioSchedulingMode, "Sequential", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                $"Sts2Sim policy reported invalid PortfolioSchedulingMode '{portfolioSchedulingMode}'.");
+        }
+        if (capabilities is not null)
+        {
+            if (portfolioOptionsVersion is > 1 && capabilities.PortfolioOptionsVersion < 2)
+            {
+                throw new InvalidDataException(
+                    $"Sts2Sim policy requested PortfolioOptionsVersion={portfolioOptionsVersion} against v{capabilities.PortfolioOptionsVersion} bridge.");
+            }
+            if (useNoveltyPortfolio && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsNoveltyPortfolio))
+            {
+                throw new InvalidDataException("Sts2Sim policy requested UseNoveltyPortfolio without negotiated support.");
+            }
+            if (adaptiveNoveltyRefinement == true && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsAdaptiveNoveltyRefinement))
+            {
+                throw new InvalidDataException("Sts2Sim policy requested AdaptiveNoveltyRefinement without negotiated support.");
+            }
+            if (useEarlyTurnExploration && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsEarlyTurnExploration))
+            {
+                throw new InvalidDataException("Sts2Sim policy requested UseEarlyTurnExploration without negotiated support.");
+            }
+            if ((beamWidthPortfolioWidths is not null
+                    || beamWidthPortfolioPlainBaselineMember == false
+                    || offensiveRefinementPortfolio == true
+                    || boundedOffensiveRefinementPortfolio == true)
+                && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsBeamWidthPortfolioFull))
+            {
+                throw new InvalidDataException("Sts2Sim policy requested v2 BeamWidthPortfolio options without negotiated support.");
+            }
+            if (string.Equals(portfolioSchedulingMode, "Parallel", StringComparison.Ordinal)
+                && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsParallelPortfolioScheduling))
+            {
+                throw new InvalidDataException("Sts2Sim policy requested Parallel scheduling without negotiated support.");
+            }
+        }
+    }
+
     public static Sts2SimBridgeResponseDto DeserializeAndValidateResponse(byte[] utf8Json)
     {
         if (utf8Json is null || utf8Json.Length == 0)

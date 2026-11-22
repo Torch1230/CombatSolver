@@ -193,34 +193,39 @@ internal static partial class PreCombatForecastWorker
             string? fallbackDetail = snapshot.Eligibility.IsEligible ? null : snapshot.Eligibility.Detail;
             if (snapshot.Eligibility.IsEligible)
             {
-                if (!PreCombatSts2SimPolicyMapper.TryBuildPolicy(
-                        snapshot.SolverSettingsData,
-                        snapshot.SolverSettingsSnapshot,
-                        options.SearchBudgetMilliseconds,
-                        snapshot.EffectivePotions,
-                        out Sts2SimPolicyDto? bridgePolicy,
-                        out string? policyReason))
+                PreCombatBridgeAvailability bridgeState = PreCombatSts2SimBridge.EnsureActivated(out string? bridgeError);
+                if (bridgeState == PreCombatBridgeAvailability.CorruptOrIncompatible)
                 {
-                    fallbackCode = "policy_unsupported";
-                    fallbackDetail = policyReason;
-                    Volatile.Write(ref _lastFallbackCode, fallbackCode);
-                    Volatile.Write(ref _lastFallbackDetail, fallbackDetail);
-                    Entry.Logger.Info(
-                        $"[CombatSolver/PreCombatApi] STS2SIM_FALLBACK request_id={requestId} " +
-                        $"code={fallbackCode} detail={fallbackDetail}");
+                    return PreCombatForecastApi.Failure(
+                        PreCombatForecastStatus.Failed,
+                        requestId,
+                        bridgeError ?? "The installed sts2sim backend is corrupt or incompatible.");
                 }
-                else
-                {
-                    PreCombatBridgeAvailability bridgeState = PreCombatSts2SimBridge.EnsureActivated(out string? bridgeError);
-                    if (bridgeState == PreCombatBridgeAvailability.CorruptOrIncompatible)
-                    {
-                        return PreCombatForecastApi.Failure(
-                            PreCombatForecastStatus.Failed,
-                            requestId,
-                            bridgeError ?? "The installed sts2sim backend is corrupt or incompatible.");
-                    }
 
-                    if (bridgeState == PreCombatBridgeAvailability.Ready)
+                if (bridgeState == PreCombatBridgeAvailability.Ready)
+                {
+                    Sts2SimBridgeCapabilitiesDto capabilities = PreCombatSts2SimBridge.GetActiveCapabilities();
+                    int effectiveDop = options.MaxDegreeOfParallelism
+                        ?? snapshot.SolverSettingsSnapshot.SearchMaxDegreeOfParallelism;
+                    if (!PreCombatSts2SimPolicyMapper.TryBuildPolicy(
+                            snapshot.SolverSettingsData,
+                            snapshot.SolverSettingsSnapshot,
+                            options.SearchBudgetMilliseconds,
+                            effectiveDop,
+                            snapshot.EffectivePotions,
+                            capabilities,
+                            out Sts2SimPolicyDto? bridgePolicy,
+                            out string? policyReason))
+                    {
+                        fallbackCode = "policy_unsupported";
+                        fallbackDetail = policyReason;
+                        Volatile.Write(ref _lastFallbackCode, fallbackCode);
+                        Volatile.Write(ref _lastFallbackDetail, fallbackDetail);
+                        Entry.Logger.Info(
+                            $"[CombatSolver/PreCombatApi] STS2SIM_FALLBACK request_id={requestId} " +
+                            $"code={fallbackCode} detail={fallbackDetail}");
+                    }
+                    else
                     {
                         PreCombatForecastResult? bridgeResult = await TryRunInProcessLockedAsync(
                             requestId,
@@ -239,15 +244,15 @@ internal static partial class PreCombatForecastWorker
                         if (bridgeResult is not null)
                             return bridgeResult;
                     }
-                    else
-                    {
-                        fallbackCode = "bridge_absent";
-                        fallbackDetail = bridgeError ?? "The optional sts2sim backend is not installed.";
-                        Volatile.Write(ref _lastFallbackCode, fallbackCode);
-                        Volatile.Write(ref _lastFallbackDetail, fallbackDetail);
-                        Entry.Logger.Info(
-                            $"[CombatSolver/PreCombatApi] STS2SIM_FALLBACK request_id={requestId} code=bridge_absent field=sts2sim");
-                    }
+                }
+                else
+                {
+                    fallbackCode = "bridge_absent";
+                    fallbackDetail = bridgeError ?? "The optional sts2sim backend is not installed.";
+                    Volatile.Write(ref _lastFallbackCode, fallbackCode);
+                    Volatile.Write(ref _lastFallbackDetail, fallbackDetail);
+                    Entry.Logger.Info(
+                        $"[CombatSolver/PreCombatApi] STS2SIM_FALLBACK request_id={requestId} code=bridge_absent field=sts2sim");
                 }
             }
             else
@@ -558,23 +563,26 @@ internal static partial class PreCombatForecastWorker
             bool activatedInProcess = false;
             if (snapshot.Eligibility.IsEligible)
             {
-                if (!PreCombatSts2SimPolicyMapper.TryBuildPolicy(
-                        snapshot.SolverSettingsData,
-                        snapshot.SolverSettingsSnapshot,
-                        1_000,
-                        snapshot.EffectivePotions,
-                        out _,
-                        out string? policyReason))
+                PreCombatBridgeAvailability bridgeState = PreCombatSts2SimBridge.EnsureActivated(out string? bridgeError);
+                if (bridgeState == PreCombatBridgeAvailability.CorruptOrIncompatible)
+                    throw new InvalidOperationException(bridgeError ?? "The installed sts2sim backend is corrupt or incompatible.");
+                if (bridgeState == PreCombatBridgeAvailability.Ready)
                 {
-                    fallbackCode = "policy_unsupported";
-                    fallbackDetail = policyReason;
-                }
-                else
-                {
-                    PreCombatBridgeAvailability bridgeState = PreCombatSts2SimBridge.EnsureActivated(out string? bridgeError);
-                    if (bridgeState == PreCombatBridgeAvailability.CorruptOrIncompatible)
-                        throw new InvalidOperationException(bridgeError ?? "The installed sts2sim backend is corrupt or incompatible.");
-                    if (bridgeState == PreCombatBridgeAvailability.Ready)
+                    Sts2SimBridgeCapabilitiesDto capabilities = PreCombatSts2SimBridge.GetActiveCapabilities();
+                    if (!PreCombatSts2SimPolicyMapper.TryBuildPolicy(
+                            snapshot.SolverSettingsData,
+                            snapshot.SolverSettingsSnapshot,
+                            1_000,
+                            snapshot.SolverSettingsSnapshot.SearchMaxDegreeOfParallelism,
+                            snapshot.EffectivePotions,
+                            capabilities,
+                            out _,
+                            out string? policyReason))
+                    {
+                        fallbackCode = "policy_unsupported";
+                        fallbackDetail = policyReason;
+                    }
+                    else
                     {
                         requestCancellation.Token.ThrowIfCancellationRequested();
                         PreCombatSts2SimBridge.Prewarm();
@@ -585,11 +593,11 @@ internal static partial class PreCombatForecastWorker
                         ScheduleInProcessIdleShutdown(inProcessSession);
                         activatedInProcess = true;
                     }
-                    else
-                    {
-                        fallbackCode = "bridge_absent";
-                        fallbackDetail = bridgeError;
-                    }
+                }
+                else
+                {
+                    fallbackCode = "bridge_absent";
+                    fallbackDetail = bridgeError;
                 }
             }
 

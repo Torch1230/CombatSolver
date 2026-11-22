@@ -500,6 +500,468 @@ await Check("extra fields eligibility allows cosmetic TestSubjectKills and rejec
     Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 2, StartedWithNeow = false }));
     return Task.CompletedTask;
 });
+await Check("ABI v2 capabilities discovery, defaults, override, and validation", () =>
+{
+    PreCombatSts2SimBridge.ResetForTesting();
+    Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, PreCombatSts2SimBridge.GetActiveCapabilities());
+    Equal(1, Sts2SimBridgeCapabilitiesDto.DefaultV1.PortfolioOptionsVersion);
+    Equal(false, Sts2SimBridgeCapabilitiesDto.DefaultV1.SupportsNoveltyPortfolio);
+    Equal(false, Sts2SimBridgeCapabilitiesDto.DefaultV1.SupportsEarlyTurnExploration);
+
+    Sts2SimBridgeCapabilitiesDto v2 = Sts2SimBridgeCapabilitiesDto.V2Default;
+    string v2Json = JsonSerializer.Serialize(v2, PreCombatSts2SimAbi.JsonOptions);
+    using (JsonDocument doc = JsonDocument.Parse(v2Json))
+    {
+        JsonElement root = doc.RootElement;
+        Equal(2, root.GetProperty("portfolioOptionsVersion").GetInt32());
+        Equal(true, root.GetProperty("supportsBeamWidthPortfolioFull").GetBoolean());
+        Equal(true, root.GetProperty("supportsNoveltyPortfolio").GetBoolean());
+        Equal(true, root.GetProperty("supportsAdaptiveNoveltyRefinement").GetBoolean());
+        Equal(true, root.GetProperty("supportsEarlyTurnExploration").GetBoolean());
+        Equal(2, root.GetProperty("maxEarlyTurnExplorationDepth").GetInt32());
+        Equal(2_400_000, root.GetProperty("maxEarlyTurnExplorationBudgetMilliseconds").GetInt32());
+        Equal(true, root.GetProperty("supportsParallelPortfolioScheduling").GetBoolean());
+        Equal(true, root.GetProperty("supportsExtendedMetrics").GetBoolean());
+        Equal(true, root.GetProperty("supportsCosmeticTestSubjectKills").GetBoolean());
+    }
+    Equal(v2, PreCombatSts2SimBridge.DeserializeAndValidateCapabilities(v2Json));
+
+    PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = v2;
+    Equal(v2, PreCombatSts2SimBridge.GetActiveCapabilities());
+    PreCombatSts2SimBridge.ResetForTesting();
+    Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, PreCombatSts2SimBridge.GetActiveCapabilities());
+
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimBridge.DeserializeAndValidateCapabilities(""));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimBridge.ValidateCapabilities(v2 with { PortfolioOptionsVersion = 0 }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimBridge.ValidateCapabilities(v2 with { MaxEarlyTurnExplorationDepth = -1 }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimBridge.ValidateCapabilities(v2 with { MaxEarlyTurnExplorationDepth = 9 }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimBridge.ValidateCapabilities(v2 with { MaxEarlyTurnExplorationBudgetMilliseconds = -1 }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimBridge.ValidateCapabilities(v2 with { MaxEarlyTurnExplorationDepth = 0 }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimBridge.ValidateCapabilities(v2 with { MaxEarlyTurnExplorationBudgetMilliseconds = 0 }));
+    return Task.CompletedTask;
+});
+await Check("ABI v1 vs v2 portfolio policy negotiation, conflicts, and BuiltIn-only gates", () =>
+{
+    var baselineInput = new Sts2SimPortfolioPolicyInput(
+        UseBeamWidthPortfolio: true,
+        UseNoveltyPortfolio: false,
+        EarlyTurnExplorationDepth: 0,
+        EarlyTurnExplorationBudgetMilliseconds: 0,
+        BeamWidthPortfolioWidths: null,
+        BeamWidthPortfolioPlainBaselineMember: true,
+        ReallocatedRefinementPortfolio: true,
+        OffensiveRefinementPortfolio: false,
+        BoundedOffensiveRefinementPortfolio: false,
+        StopPortfolioAtHpTarget: true,
+        AdaptiveNoveltyRefinement: false,
+        NoveltySearch: null,
+        NoveltyBudget: null,
+        MaxDegreeOfParallelism: 4);
+
+    Sts2SimBridgeCapabilitiesDto v1 = Sts2SimBridgeCapabilitiesDto.DefaultV1;
+    Equal(true, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in baselineInput, v1, out var v1Resolved, out string? v1Err));
+    Equal<string?>(null, v1Err);
+    Equal(Sts2SimPortfolioPolicyFields.V1Empty, v1Resolved);
+
+    Sts2SimPortfolioPolicyInput[] v1Rejected =
+    [
+        baselineInput with { UseNoveltyPortfolio = true },
+        baselineInput with { EarlyTurnExplorationDepth = 1, EarlyTurnExplorationBudgetMilliseconds = 10_000 },
+        baselineInput with { EarlyTurnExplorationDepth = 2, EarlyTurnExplorationBudgetMilliseconds = 60_000 },
+        baselineInput with { BeamWidthPortfolioWidths = [24, 48] },
+        baselineInput with { BeamWidthPortfolioWidths = [] },
+        baselineInput with { BeamWidthPortfolioPlainBaselineMember = false },
+        baselineInput with { AdaptiveNoveltyRefinement = true },
+        baselineInput with { OffensiveRefinementPortfolio = true },
+        baselineInput with { BoundedOffensiveRefinementPortfolio = true },
+    ];
+    foreach (Sts2SimPortfolioPolicyInput rejected in v1Rejected)
+    {
+        Equal(false, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in rejected, v1, out _, out string? reason));
+        Equal(true, !string.IsNullOrWhiteSpace(reason));
+    }
+
+    Sts2SimBridgeCapabilitiesDto v2 = Sts2SimBridgeCapabilitiesDto.V2Default;
+    var noveltySearch = new Sts2SimNoveltySearchOptionsDto(2, 1, 2048, 500_000, 128, 32);
+    var noveltyBudget = new Sts2SimNoveltyPortfolioBudgetDto(2, 5_000, 2_500);
+    Sts2SimPortfolioPolicyInput fullV2 = baselineInput with
+    {
+        UseNoveltyPortfolio = true,
+        EarlyTurnExplorationDepth = 2,
+        EarlyTurnExplorationBudgetMilliseconds = 2_400_000,
+        BeamWidthPortfolioWidths = [24, 60, 90],
+        BeamWidthPortfolioPlainBaselineMember = false,
+        ReallocatedRefinementPortfolio = false,
+        BoundedOffensiveRefinementPortfolio = true,
+        StopPortfolioAtHpTarget = false,
+        AdaptiveNoveltyRefinement = true,
+        NoveltySearch = noveltySearch,
+        NoveltyBudget = noveltyBudget,
+        MaxDegreeOfParallelism = 4,
+    };
+    Equal(true, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in fullV2, v2, out var resolvedParallel, out string? parallelErr));
+    Equal<string?>(null, parallelErr);
+    Equal(2, resolvedParallel.PortfolioOptionsVersion);
+    Equal("Parallel", resolvedParallel.PortfolioSchedulingMode);
+    Equal(2, resolvedParallel.EarlyTurnExplorationDepth);
+    Equal(2_400_000, resolvedParallel.EarlyTurnExplorationBudgetMilliseconds);
+    Equal(3, resolvedParallel.BeamWidthPortfolioWidths!.Count);
+    Equal(false, resolvedParallel.BeamWidthPortfolioPlainBaselineMember);
+    Equal(noveltySearch, resolvedParallel.NoveltySearch);
+    Equal(noveltyBudget, resolvedParallel.NoveltyBudget);
+
+    Sts2SimPortfolioPolicyInput dop1 = fullV2 with { MaxDegreeOfParallelism = 1 };
+    Equal(true, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in dop1, v2, out var resolvedSeq, out _));
+    Equal("Sequential", resolvedSeq.PortfolioSchedulingMode);
+
+    Sts2SimPortfolioPolicyInput capBounded = fullV2 with { EarlyTurnExplorationBudgetMilliseconds = 3_000_000 };
+    Equal(true, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in capBounded, v2, out var resolvedCap, out _));
+    Equal(2_400_000, resolvedCap.EarlyTurnExplorationBudgetMilliseconds);
+
+    Sts2SimPortfolioPolicyInput conflict = fullV2 with
+    {
+        OffensiveRefinementPortfolio = true,
+        BoundedOffensiveRefinementPortfolio = true,
+    };
+    Equal(false, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in conflict, v2, out _, out string? conflictReason));
+    Equal(true, !string.IsNullOrWhiteSpace(conflictReason));
+
+    Sts2SimPortfolioPolicyInput overDepth = fullV2 with { EarlyTurnExplorationDepth = 3 };
+    Equal(false, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in overDepth, v2, out _, out _));
+
+    Sts2SimPortfolioPolicyInput[] builtInOnly =
+    [
+        baselineInput with { VerifyIncrementalSearch = true },
+        baselineInput with { MeasurePhasePerformance = true },
+        baselineInput with { IncludeTurnSetup = true },
+        baselineInput with { HasBossTempoSearch = true },
+        baselineInput with { HasContextualRanking = true },
+        baselineInput with { ContinuousThreatRanking = true },
+        baselineInput with { BaseScoreTacticalTies = true },
+        baselineInput with { HasBeamWeightPerturbation = true },
+        baselineInput with { HasDevelopmentStrategy = true },
+        baselineInput with { HasPortfolioExperiment = true },
+        baselineInput with { PileOrderInvariantMask = 1 },
+        baselineInput with { TranspositionPruningDisabledMask = 1 },
+        baselineInput with { StateKeySalt = 7 },
+        baselineInput with { MemoryNoProgressRecoveryLimit = 3 },
+    ];
+    foreach (Sts2SimPortfolioPolicyInput unsupported in builtInOnly)
+    {
+        Equal(false, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in unsupported, v2, out _, out string? reason));
+        Equal(true, !string.IsNullOrWhiteSpace(reason));
+    }
+    return Task.CompletedTask;
+});
+await Check("ABI v2 policy wire serialization, null omission, and validator bounds", () =>
+{
+    var v1Policy = new Sts2SimPolicyDto(
+        "Smart",
+        [],
+        true,
+        true,
+        [],
+        new Sts2SimGrowthBudgetsDto(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null),
+        null,
+        false,
+        "ProgressionFirst",
+        "ProgressionFirst",
+        0,
+        true,
+        true,
+        false,
+        false,
+        60,
+        120_000,
+        32,
+        18,
+        24,
+        10_000);
+    PreCombatSts2SimWireValidator.ValidatePolicy(v1Policy, Sts2SimBridgeCapabilitiesDto.DefaultV1);
+    string v1Json = JsonSerializer.Serialize(v1Policy, PreCombatSts2SimAbi.JsonOptions);
+    using (JsonDocument doc = JsonDocument.Parse(v1Json))
+    {
+        Equal(false, doc.RootElement.TryGetProperty("portfolioOptionsVersion", out _));
+        Equal(false, doc.RootElement.TryGetProperty("beamWidthPortfolioWidths", out _));
+        Equal(false, doc.RootElement.TryGetProperty("noveltySearch", out _));
+        Equal(false, doc.RootElement.TryGetProperty("earlyTurnExplorationDepth", out _));
+        Equal(false, doc.RootElement.TryGetProperty("portfolioSchedulingMode", out _));
+    }
+
+    var noveltySearch = new Sts2SimNoveltySearchOptionsDto(2, 0, 2048, 1_000_000, 128, 32);
+    var noveltyBudget = new Sts2SimNoveltyPortfolioBudgetDto(2, 5_000, 2_500);
+    var v2Policy = v1Policy with
+    {
+        UseNoveltyPortfolio = true,
+        UseEarlyTurnExploration = true,
+        PortfolioOptionsVersion = 2,
+        BeamWidthPortfolioWidths = [24, 60],
+        BeamWidthPortfolioPlainBaselineMember = false,
+        ReallocatedRefinementPortfolio = true,
+        OffensiveRefinementPortfolio = false,
+        BoundedOffensiveRefinementPortfolio = true,
+        StopPortfolioAtHpTarget = false,
+        AdaptiveNoveltyRefinement = true,
+        NoveltySearch = noveltySearch,
+        NoveltyBudget = noveltyBudget,
+        EarlyTurnExplorationDepth = 2,
+        EarlyTurnExplorationBudgetMilliseconds = 1_200_000,
+        PortfolioSchedulingMode = "Parallel",
+    };
+    PreCombatSts2SimWireValidator.ValidatePolicy(v2Policy, Sts2SimBridgeCapabilitiesDto.V2Default);
+    string v2Json = JsonSerializer.Serialize(v2Policy, PreCombatSts2SimAbi.JsonOptions);
+    Sts2SimPolicyDto roundTripped = JsonSerializer.Deserialize<Sts2SimPolicyDto>(v2Json, PreCombatSts2SimAbi.JsonOptions)!;
+    Equal(2, roundTripped.PortfolioOptionsVersion);
+    Equal(false, roundTripped.BeamWidthPortfolioPlainBaselineMember);
+    Equal(true, roundTripped.BoundedOffensiveRefinementPortfolio);
+    Equal(false, roundTripped.StopPortfolioAtHpTarget);
+    Equal(noveltySearch, roundTripped.NoveltySearch);
+    Equal(noveltyBudget, roundTripped.NoveltyBudget);
+    Equal(2, roundTripped.EarlyTurnExplorationDepth);
+    Equal(1_200_000, roundTripped.EarlyTurnExplorationBudgetMilliseconds);
+    Equal("Parallel", roundTripped.PortfolioSchedulingMode);
+
+    var inCombatV2Policy = new InCombatSts2SimPolicyDto(
+        "Smart",
+        [],
+        true,
+        true,
+        [],
+        v1Policy.GrowthBudgets,
+        null,
+        false,
+        "ProgressionFirst",
+        "ProgressionFirst",
+        0,
+        true,
+        true,
+        true,
+        true,
+        60,
+        22,
+        7,
+        120_000,
+        32,
+        18,
+        24,
+        120_000,
+        null,
+        2,
+        [24, 60],
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        noveltySearch,
+        noveltyBudget,
+        2,
+        2_400_000,
+        "Parallel");
+    InCombatSts2SimWireValidator.ValidatePolicy(inCombatV2Policy, Sts2SimBridgeCapabilitiesDto.V2Default);
+    string inCombatJson = JsonSerializer.Serialize(inCombatV2Policy, PreCombatSts2SimAbi.JsonOptions);
+    InCombatSts2SimPolicyDto inCombatRoundTripped =
+        JsonSerializer.Deserialize<InCombatSts2SimPolicyDto>(inCombatJson, PreCombatSts2SimAbi.JsonOptions)!;
+    Equal(22, inCombatRoundTripped.PotionFreeBeamWidth);
+    Equal(7, inCombatRoundTripped.PotionBeamWidth);
+    Equal(2_400_000, inCombatRoundTripped.EarlyTurnExplorationBudgetMilliseconds);
+
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { PortfolioOptionsVersion = 3 }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { BeamWidthPortfolioWidths = Enumerable.Repeat(10, 17).ToArray() }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { BeamWidthPortfolioWidths = [0] }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { OffensiveRefinementPortfolio = true, BoundedOffensiveRefinementPortfolio = true }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { NoveltySearch = noveltySearch with { Width = 3 } }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { NoveltyBudget = noveltyBudget with { TimeDivisor = 1 } }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { EarlyTurnExplorationDepth = 9 }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { EarlyTurnExplorationDepth = 1, EarlyTurnExplorationBudgetMilliseconds = null }));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { EarlyTurnExplorationBudgetMilliseconds = 2_400_001 }, Sts2SimBridgeCapabilitiesDto.V2Default));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v2Policy with { PortfolioSchedulingMode = "Concurrent" }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatV2Policy with { OffensiveRefinementPortfolio = true, BoundedOffensiveRefinementPortfolio = true },
+        Sts2SimBridgeCapabilitiesDto.V2Default));
+    return Task.CompletedTask;
+});
+await Check("in-combat v1 compatibility, extended metrics validation, and early-turn timeout wiring", () =>
+{
+    string v1ResultJson = """
+        {
+          "abiVersion": 1,
+          "outcome": "Succeeded",
+          "failureCode": null,
+          "fieldPath": null,
+          "error": null,
+          "result": {
+            "actions": [],
+            "turnOutcomes": [],
+            "terminal": {
+              "playerDead": false,
+              "allEnemiesDead": true,
+              "playerHp": 75,
+              "playerMaxHp": 80,
+              "cumulativePlayerHpLost": 5,
+              "recoveredPlayerHp": 0,
+              "projectedPlayerHp": 75,
+              "playerBlock": 0,
+              "enemyHp": 0,
+              "aliveEnemyCount": 0,
+              "energy": 1,
+              "stars": 0,
+              "handCount": 2,
+              "outstandingStolenResource": 0,
+              "turn": 2,
+              "shufflesCrossed": 0,
+              "postCombatRelicHeal": 0,
+              "projectedBattleHpLost": 5,
+              "combatEndedTurn": 2,
+              "deathTurn": null,
+              "onlyDeathRoutes": false,
+              "confidence": "Complete",
+              "searchBoundary": "None",
+              "hasRisk": false
+            },
+            "potionUses": [],
+            "expandedNodes": 345,
+            "searchElapsedMilliseconds": 42.5
+          },
+          "bestSoFar": null,
+          "effectiveDegreeOfParallelism": 4,
+          "totalElapsedMilliseconds": 48.0
+        }
+        """;
+    InCombatSts2SimResponseDto v1Resp =
+        InCombatSts2SimWireValidator.DeserializeAndValidateResponse(System.Text.Encoding.UTF8.GetBytes(v1ResultJson));
+    Sts2SimMaterializedResultMetrics v1Metrics =
+        Sts2SimPortfolioPolicyBridge.ResolveResultMetrics(v1Resp.Result!, v1Resp.EffectiveDegreeOfParallelism);
+    Equal(345, v1Metrics.ExpandedNodes);
+    Equal(345L, v1Metrics.TotalExpandedNodes);
+    Equal(0, v1Metrics.TransitionCount);
+    Equal(0, v1Metrics.ChoiceBranchesEvaluated);
+    Equal(4, v1Metrics.MaxParallelExpansionConcurrency);
+
+    string v2ResultJson = """
+        {
+          "abiVersion": 1,
+          "outcome": "Succeeded",
+          "failureCode": null,
+          "fieldPath": null,
+          "error": null,
+          "result": {
+            "actions": [],
+            "turnOutcomes": [],
+            "terminal": {
+              "playerDead": false,
+              "allEnemiesDead": true,
+              "playerHp": 78,
+              "playerMaxHp": 80,
+              "cumulativePlayerHpLost": 2,
+              "recoveredPlayerHp": 0,
+              "projectedPlayerHp": 78,
+              "playerBlock": 0,
+              "enemyHp": 0,
+              "aliveEnemyCount": 0,
+              "energy": 2,
+              "stars": 0,
+              "handCount": 1,
+              "outstandingStolenResource": 0,
+              "turn": 2,
+              "shufflesCrossed": 0,
+              "postCombatRelicHeal": 0,
+              "projectedBattleHpLost": 2,
+              "combatEndedTurn": 2,
+              "deathTurn": null,
+              "onlyDeathRoutes": false,
+              "confidence": "Complete",
+              "searchBoundary": "None",
+              "hasRisk": false
+            },
+            "potionUses": [],
+            "expandedNodes": 999,
+            "searchElapsedMilliseconds": 42.5,
+            "expandedParents": 120,
+            "transitionCount": 860,
+            "choiceReplayAttempts": 44,
+            "observedPeakParallelism": 6,
+            "activePhaseLabel": "EarlyTurn"
+          },
+          "bestSoFar": null,
+          "effectiveDegreeOfParallelism": 8,
+          "totalElapsedMilliseconds": 48.0
+        }
+        """;
+    InCombatSts2SimResponseDto v2Resp =
+        InCombatSts2SimWireValidator.DeserializeAndValidateResponse(System.Text.Encoding.UTF8.GetBytes(v2ResultJson));
+    Sts2SimMaterializedResultMetrics v2Metrics =
+        Sts2SimPortfolioPolicyBridge.ResolveResultMetrics(v2Resp.Result!, v2Resp.EffectiveDegreeOfParallelism);
+    Equal(120, v2Metrics.ExpandedNodes);
+    Equal(120L, v2Metrics.TotalExpandedNodes);
+    Equal(860, v2Metrics.TransitionCount);
+    Equal(860L, v2Metrics.TotalTransitionCount);
+    Equal(44, v2Metrics.ChoiceBranchesEvaluated);
+    Equal(44L, v2Metrics.TotalChoiceBranchesEvaluated);
+    Equal(6, v2Metrics.MaxParallelExpansionConcurrency);
+
+    string v1ProgressJson = """
+        {
+          "expandedNodes": 210,
+          "maxTurnReached": 2,
+          "elapsedMilliseconds": 150.0,
+          "currentBestProjectedHpLoss": 8,
+          "currentBestWon": true,
+          "currentBestCombatEndedTurn": 2,
+          "currentBestPotionCount": 0,
+          "currentBest": null
+        }
+        """;
+    InCombatSts2SimProgressDto v1Prog =
+        InCombatSts2SimWireValidator.DeserializeAndValidateProgress(System.Text.Encoding.UTF8.GetBytes(v1ProgressJson));
+    Sts2SimMaterializedProgressMetrics v1ProgMetrics = Sts2SimPortfolioPolicyBridge.ResolveProgressMetrics(v1Prog);
+    Equal(210, v1ProgMetrics.ExpandedNodes);
+    Equal(210L, v1ProgMetrics.ReviewedWorldlines);
+    Equal("正在搜索·Sts2Sim", v1ProgMetrics.Phase);
+
+    var v2Prog = v1Prog with { ExpandedParents = 95L, ObservedPeakParallelism = 5, ActivePhaseLabel = "Novelty" };
+    InCombatSts2SimWireValidator.ValidateProgress(v2Prog);
+    Sts2SimMaterializedProgressMetrics v2ProgMetrics = Sts2SimPortfolioPolicyBridge.ResolveProgressMetrics(v2Prog);
+    Equal(95, v2ProgMetrics.ExpandedNodes);
+    Equal(95L, v2ProgMetrics.ReviewedWorldlines);
+    Equal("正在搜索·Sts2Sim·Novelty", v2ProgMetrics.Phase);
+
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        v2Resp with { Result = v2Resp.Result! with { ExpandedParents = -1 } }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        v2Resp with { Result = v2Resp.Result! with { TransitionCount = -1 } }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        v2Resp with { Result = v2Resp.Result! with { ChoiceReplayAttempts = -1 } }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        v2Resp with { Result = v2Resp.Result! with { ObservedPeakParallelism = 0 } }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        v2Resp with { Result = v2Resp.Result! with { ObservedPeakParallelism = 65 } }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateProgress(
+        v2Prog with { ObservedPeakParallelism = 0 }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateProgress(
+        v2Prog with { ExpandedParents = -1 }));
+
+    Equal(150_000, Sts2SimPortfolioPolicyBridge.ComputeInCombatOverallTimeoutMilliseconds(
+        120_000, 0, 0, Sts2SimBridgeCapabilitiesDto.DefaultV1));
+    Equal(630_000, Sts2SimPortfolioPolicyBridge.ComputeInCombatOverallTimeoutMilliseconds(
+        600_000, 2, 2_400_000, Sts2SimBridgeCapabilitiesDto.DefaultV1));
+    Equal(2_430_000, Sts2SimPortfolioPolicyBridge.ComputeInCombatOverallTimeoutMilliseconds(
+        120_000, 2, 2_400_000, Sts2SimBridgeCapabilitiesDto.V2Default));
+    Equal(330_000, Sts2SimPortfolioPolicyBridge.ComputeInCombatOverallTimeoutMilliseconds(
+        120_000, 2, 2_400_000, Sts2SimBridgeCapabilitiesDto.V2Default with { MaxEarlyTurnExplorationBudgetMilliseconds = 300_000 }));
+    return Task.CompletedTask;
+});
 Console.WriteLine($"Passed {passed} pre-combat request, ABI, and idle checks.");
 
 async Task Check(string name, Func<Task> body)

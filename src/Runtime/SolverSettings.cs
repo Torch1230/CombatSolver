@@ -166,6 +166,8 @@ internal sealed record SolverSettingsSnapshot(
     public bool UseEarlyTurnExploration { get; init; }
     public bool PredictPotionReward { get; init; }
     public bool UseSts2SimInCombat { get; init; } = true;
+    public int? PotionFreeBeamWidth { get; init; }
+    public int? PotionBeamWidth { get; init; }
 }
 
 internal static class SolverSettings
@@ -334,6 +336,8 @@ internal static class SolverSettings
             UseEarlyTurnExploration = data.UseEarlyTurnExploration,
             PredictPotionReward = data.PredictPotionReward,
             UseSts2SimInCombat = data.UseSts2SimInCombat,
+            PotionFreeBeamWidth = data.SearchPotionFreeBeamWidth,
+            PotionBeamWidth = data.SearchPotionBeamWidth,
         };
     }
 

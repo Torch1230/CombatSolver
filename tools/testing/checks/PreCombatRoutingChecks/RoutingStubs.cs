@@ -58,6 +58,7 @@ namespace MegaCrit.Sts2.Core.Runs
             IsPlayingRotatingCharacter: false);
         public int CurrentActIndex;
         public int ActFloor = 1;
+        public CombatSolver.SolverSettingsSnapshot? SettingsOverride;
         public MapCoord? CurrentMapCoord = new(0, 0);
         public MapPoint? CurrentMapPoint = new();
         public TestMap Map = new();
@@ -104,7 +105,16 @@ namespace MegaCrit.Sts2.Core.Nodes
 namespace CombatSolver
 {
     public sealed record SolverSettingsData;
-    public sealed record SolverSettingsSnapshot(int SearchMaxDegreeOfParallelism = 1);
+    public sealed record SolverSettingsSnapshot(
+        int SearchMaxDegreeOfParallelism = 1,
+        bool UseBeamWidthPortfolio = true,
+        bool UseNoveltyPortfolio = false,
+        bool UseEarlyTurnExploration = false,
+        bool ReallocatedRefinementPortfolio = true,
+        bool OffensiveRefinementPortfolio = false,
+        bool BoundedOffensiveRefinementPortfolio = false,
+        bool StopPortfolioAtHpTarget = true,
+        bool AdaptiveNoveltyRefinement = false);
 
     public static class Entry
     {
@@ -177,7 +187,7 @@ namespace CombatSolver.Api
                 Encoding.UTF8.GetBytes("{\"schema_version\":21,\"game_mode\":\"standard\"}"),
                 run.Token,
                 new SolverSettingsData(),
-                new SolverSettingsSnapshot(),
+                run.SettingsOverride ?? new SolverSettingsSnapshot(),
                 eligibility,
                 HasLiveSidecar: true,
                 LiveActFloor: run.ActFloor,
@@ -201,7 +211,9 @@ namespace CombatSolver.Api
             SolverSettingsData settingsData,
             SolverSettingsSnapshot settingsSnapshot,
             int searchBudgetMilliseconds,
+            int maxDegreeOfParallelism,
             IReadOnlyList<(int Slot, string PotionId)> effectivePotions,
+            Sts2SimBridgeCapabilitiesDto capabilities,
             out Sts2SimPolicyDto? policy,
             out string? unsupportedReason)
         {
@@ -209,6 +221,33 @@ namespace CombatSolver.Api
             {
                 policy = null;
                 unsupportedReason = reason;
+                return false;
+            }
+            int effectiveSoftTimeMs = Math.Clamp(searchBudgetMilliseconds, 1_000, 30_000);
+            var input = new Sts2SimPortfolioPolicyInput(
+                UseBeamWidthPortfolio: settingsSnapshot.UseBeamWidthPortfolio,
+                UseNoveltyPortfolio: settingsSnapshot.UseNoveltyPortfolio,
+                EarlyTurnExplorationDepth: settingsSnapshot.UseEarlyTurnExploration ? 2 : 0,
+                EarlyTurnExplorationBudgetMilliseconds: settingsSnapshot.UseEarlyTurnExploration ? effectiveSoftTimeMs : 0,
+                BeamWidthPortfolioWidths: null,
+                BeamWidthPortfolioPlainBaselineMember: true,
+                ReallocatedRefinementPortfolio: settingsSnapshot.ReallocatedRefinementPortfolio,
+                OffensiveRefinementPortfolio: settingsSnapshot.OffensiveRefinementPortfolio,
+                BoundedOffensiveRefinementPortfolio: settingsSnapshot.BoundedOffensiveRefinementPortfolio,
+                StopPortfolioAtHpTarget: settingsSnapshot.StopPortfolioAtHpTarget,
+                AdaptiveNoveltyRefinement: settingsSnapshot.AdaptiveNoveltyRefinement,
+                NoveltySearch: null,
+                NoveltyBudget: settingsSnapshot.UseNoveltyPortfolio || settingsSnapshot.AdaptiveNoveltyRefinement
+                    ? new Sts2SimNoveltyPortfolioBudgetDto(2, 5_000, 2_500)
+                    : null,
+                MaxDegreeOfParallelism: Math.Max(1, maxDegreeOfParallelism));
+            if (!Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(
+                    in input,
+                    capabilities,
+                    out Sts2SimPortfolioPolicyFields resolved,
+                    out unsupportedReason))
+            {
+                policy = null;
                 return false;
             }
             policy = new Sts2SimPolicyDto(
@@ -224,15 +263,29 @@ namespace CombatSolver.Api
                 "MaximizeWinRate",
                 0,
                 false,
-                true,
-                false,
-                false,
+                settingsSnapshot.UseBeamWidthPortfolio,
+                settingsSnapshot.UseNoveltyPortfolio,
+                settingsSnapshot.UseEarlyTurnExploration,
                 16,
                 1200,
                 8,
                 6,
                 6,
-                searchBudgetMilliseconds);
+                effectiveSoftTimeMs,
+                resolved.PortfolioOptionsVersion,
+                resolved.BeamWidthPortfolioWidths,
+                resolved.BeamWidthPortfolioPlainBaselineMember,
+                resolved.ReallocatedRefinementPortfolio,
+                resolved.OffensiveRefinementPortfolio,
+                resolved.BoundedOffensiveRefinementPortfolio,
+                resolved.StopPortfolioAtHpTarget,
+                resolved.AdaptiveNoveltyRefinement,
+                resolved.NoveltySearch,
+                resolved.NoveltyBudget,
+                resolved.EarlyTurnExplorationDepth,
+                resolved.EarlyTurnExplorationBudgetMilliseconds,
+                resolved.PortfolioSchedulingMode);
+            PreCombatSts2SimWireValidator.ValidatePolicy(policy, capabilities);
             unsupportedReason = null;
             return true;
         }

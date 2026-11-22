@@ -31,7 +31,25 @@ internal static class InCombatSts2SimEligibility
     public static InCombatEligibilityResult Assess(
         CombatState state,
         SolverSettingsSnapshot settings,
-        SearchPolicySnapshot searchPolicy)
+        SearchPolicySnapshot searchPolicy) =>
+        Assess(state, settings, searchPolicy, PreCombatSts2SimBridge.GetActiveCapabilities());
+
+    public static InCombatEligibilityResult Assess(
+        CombatState state,
+        SolverSettingsSnapshot settings,
+        SearchPolicySnapshot searchPolicy,
+        Sts2SimBridgeCapabilitiesDto capabilities)
+    {
+        InCombatEligibilityResult hostResult = AssessHostAndCombat(state, settings);
+        if (!hostResult.IsEligible)
+            return hostResult;
+
+        return AssessSearchPolicy(searchPolicy, capabilities);
+    }
+
+    public static InCombatEligibilityResult AssessHostAndCombat(
+        CombatState state,
+        SolverSettingsSnapshot settings)
     {
         if (!settings.UseSts2SimInCombat)
         {
@@ -132,11 +150,6 @@ internal static class InCombatSts2SimEligibility
                 $"Non-vanilla max hand size {maxHandSize} (expected {CardPile.MaxCardsInHand}).");
         }
 
-        if (TryFindUnsupportedSearchPolicy(searchPolicy, out string policyReason))
-        {
-            return InCombatEligibilityResult.Ineligible("policy_unsupported", policyReason);
-        }
-
         if (TryFindNonVanillaCombatModels(state, player, pcs, out string modelReason))
         {
             return InCombatEligibilityResult.Ineligible("model_unmapped", modelReason);
@@ -166,49 +179,83 @@ internal static class InCombatSts2SimEligibility
         return InCombatEligibilityResult.Eligible();
     }
 
-    private static bool TryFindUnsupportedSearchPolicy(SearchPolicySnapshot policy, out string reason)
+    public static InCombatEligibilityResult AssessSearchPolicy(
+        SearchPolicySnapshot searchPolicy,
+        Sts2SimBridgeCapabilitiesDto capabilities)
     {
-        if (policy.VerifyIncrementalSearch)
+        ArgumentNullException.ThrowIfNull(searchPolicy);
+        ArgumentNullException.ThrowIfNull(capabilities);
+
+        if (TryFindUnsupportedSearchPolicy(searchPolicy, capabilities, out string policyReason))
+            return InCombatEligibilityResult.Ineligible("policy_unsupported", policyReason);
+
+        return InCombatEligibilityResult.Eligible();
+    }
+
+    internal static Sts2SimPortfolioPolicyInput BuildPortfolioPolicyInput(SearchPolicySnapshot policy)
+    {
+        SolverSearchProfile profile = policy.Profile;
+        Sts2SimNoveltySearchOptionsDto? noveltySearch = policy.NoveltySearch is { } ns
+            ? new Sts2SimNoveltySearchOptionsDto(
+                ns.Width,
+                ns.FamiliarAllowance,
+                ns.MaxOpen,
+                ns.MaxNoveltyEntries,
+                ns.MaxActions,
+                ns.MaxTurns)
+            : null;
+        Sts2SimNoveltyPortfolioBudgetDto? noveltyBudget =
+            policy.UseNoveltyPortfolio || profile.AdaptiveNoveltyRefinement
+                ? new Sts2SimNoveltyPortfolioBudgetDto(
+                    policy.NoveltyBudget.TimeDivisor,
+                    policy.NoveltyBudget.MaximumMilliseconds,
+                    policy.NoveltyBudget.MaximumExpandedNodes)
+                : null;
+
+        return new Sts2SimPortfolioPolicyInput(
+            UseBeamWidthPortfolio: policy.UseBeamWidthPortfolio,
+            UseNoveltyPortfolio: policy.UseNoveltyPortfolio,
+            EarlyTurnExplorationDepth: policy.EarlyTurnExplorationDepth,
+            EarlyTurnExplorationBudgetMilliseconds: policy.EarlyTurnExplorationBudgetMilliseconds,
+            BeamWidthPortfolioWidths: policy.BeamWidthPortfolioWidths,
+            BeamWidthPortfolioPlainBaselineMember: policy.BeamWidthPortfolioPlainBaselineMember,
+            ReallocatedRefinementPortfolio: profile.ReallocatedRefinementPortfolio,
+            OffensiveRefinementPortfolio: profile.OffensiveRefinementPortfolio,
+            BoundedOffensiveRefinementPortfolio: profile.BoundedOffensiveRefinementPortfolio,
+            StopPortfolioAtHpTarget: profile.StopPortfolioAtHpTarget,
+            AdaptiveNoveltyRefinement: profile.AdaptiveNoveltyRefinement,
+            NoveltySearch: noveltySearch,
+            NoveltyBudget: noveltyBudget,
+            MaxDegreeOfParallelism: Math.Max(1, policy.MaxDegreeOfParallelism),
+            VerifyIncrementalSearch: policy.VerifyIncrementalSearch,
+            MeasurePhasePerformance: policy.MeasurePhasePerformance,
+            IncludeTurnSetup: policy.IncludeTurnSetup,
+            HasBossTempoSearch: policy.BossTempoSearch is not null,
+            HasContextualRanking: profile.ContextualRanking is not null,
+            ContinuousThreatRanking: profile.ContinuousThreatRanking,
+            BaseScoreTacticalTies: profile.BaseScoreTacticalTies,
+            HasBeamWeightPerturbation: profile.BeamWeightPerturbation is not null,
+            HasDevelopmentStrategy: policy.DevelopmentStrategy is not null,
+            HasPortfolioExperiment: policy.PortfolioExperiment is not null,
+            PileOrderInvariantMask: policy.PileOrderInvariantMask,
+            TranspositionPruningDisabledMask: policy.TranspositionPruningDisabledMask,
+            StateKeySalt: policy.StateKeySalt,
+            MemoryNoProgressRecoveryLimit: policy.MemoryNoProgressRecoveryLimit);
+    }
+
+    private static bool TryFindUnsupportedSearchPolicy(
+        SearchPolicySnapshot policy,
+        Sts2SimBridgeCapabilitiesDto capabilities,
+        out string reason)
+    {
+        Sts2SimPortfolioPolicyInput input = BuildPortfolioPolicyInput(policy);
+        if (!Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(
+                in input,
+                capabilities,
+                out _,
+                out string? portfolioReason))
         {
-            reason = "VerifyIncrementalSearch requires the built-in incremental search verifier.";
-            return true;
-        }
-        if (policy.MeasurePhasePerformance)
-        {
-            reason = "MeasurePhasePerformance targets built-in solver metrics.";
-            return true;
-        }
-        if (policy.IncludeTurnSetup)
-        {
-            reason = "Turn-setup root exploration uses the built-in solver.";
-            return true;
-        }
-        if (policy.UseNoveltyPortfolio)
-        {
-            reason = "UseNoveltyPortfolio is active and not mapped to Sts2Sim bridge.";
-            return true;
-        }
-        if (policy.EarlyTurnExplorationDepth > 0)
-        {
-            reason = "EarlyTurnExploration is active and not mapped to Sts2Sim bridge.";
-            return true;
-        }
-        if (policy.BossTempoSearch is not null)
-        {
-            reason = "BossTempoSearch experiment flags are not mapped to Sts2Sim bridge.";
-            return true;
-        }
-        if (policy.PileOrderInvariantMask != 0
-            || policy.TranspositionPruningDisabledMask != 0
-            || policy.StateKeySalt != 0
-            || policy.MemoryNoProgressRecoveryLimit != 0
-            || policy.BeamWidthPortfolioWidths != null
-            || !policy.BeamWidthPortfolioPlainBaselineMember
-            || policy.Profile.BeamWeightPerturbation != null
-            || policy.DevelopmentStrategy != null
-            || policy.PortfolioExperiment != null)
-        {
-            reason = "Built-in solver ablation options are active.";
+            reason = portfolioReason!;
             return true;
         }
         GrowthValues growth = policy.GrowthBudgets;

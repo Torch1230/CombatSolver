@@ -3807,17 +3807,16 @@ internal static partial class SolverController
         SearchPolicySnapshot searchPolicy,
         BattleDamageSnapshot battleDamage)
     {
-        InCombatEligibilityResult eligibility = InCombatSts2SimEligibility.Assess(state, settings, searchPolicy);
-        if (!eligibility.IsEligible)
+        InCombatEligibilityResult hostEligibility = InCombatSts2SimEligibility.AssessHostAndCombat(state, settings);
+        if (!hostEligibility.IsEligible)
         {
-            string exclusionCode = eligibility.FailureCode ?? "ineligible";
-            InCombatSolverBackendState.RecordExclusion(exclusionCode, eligibility.Detail);
+            string exclusionCode = hostEligibility.FailureCode ?? "ineligible";
+            InCombatSolverBackendState.RecordExclusion(exclusionCode, hostEligibility.Detail);
             Entry.Logger.Info(
                 $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_EXCLUDED generation={generation} " +
-                $"code={exclusionCode} detail={eligibility.Detail}");
+                $"code={exclusionCode} detail={hostEligibility.Detail}");
             return null;
         }
-        InCombatSolverBackendState.ClearExclusion();
 
         if (!CombatSolver.Api.PreCombatSts2SimBridge.HasInstalledBackendArtifact())
         {
@@ -3831,11 +3830,43 @@ internal static partial class SolverController
             return null;
         }
 
+        CombatSolver.Api.PreCombatBridgeAvailability availability =
+            CombatSolver.Api.PreCombatSts2SimBridge.EnsureActivated(out string? activationError);
+        if (availability == CombatSolver.Api.PreCombatBridgeAvailability.CorruptOrIncompatible)
+        {
+            InCombatSolverBackendState.RecordFallback("bridge_corrupt", activationError);
+            Entry.Logger.Warn(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                $"code=bridge_corrupt detail={activationError}");
+            return null;
+        }
+        if (availability != CombatSolver.Api.PreCombatBridgeAvailability.Ready)
+        {
+            InCombatSolverBackendState.RecordExclusion("sts2sim_absent", activationError ?? "Installed sts2sim module was not found.");
+            return null;
+        }
+
+        CombatSolver.Api.Sts2SimBridgeCapabilitiesDto capabilities =
+            CombatSolver.Api.PreCombatSts2SimBridge.GetActiveCapabilities();
+        InCombatEligibilityResult policyEligibility =
+            InCombatSts2SimEligibility.AssessSearchPolicy(searchPolicy, capabilities);
+        if (!policyEligibility.IsEligible)
+        {
+            string exclusionCode = policyEligibility.FailureCode ?? "policy_unsupported";
+            InCombatSolverBackendState.RecordExclusion(exclusionCode, policyEligibility.Detail);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_EXCLUDED generation={generation} " +
+                $"code={exclusionCode} detail={policyEligibility.Detail}");
+            return null;
+        }
+        InCombatSolverBackendState.ClearExclusion();
+
         if (!InCombatSts2SimPolicyMapper.TryBuildPolicy(
                 SolverSettings.Current,
                 settings,
                 searchPolicy,
                 player,
+                capabilities,
                 out CombatSolver.Api.InCombatSts2SimPolicyDto? policyDto,
                 out int searchBudgetMs,
                 out string? policyReason)
@@ -3852,9 +3883,11 @@ internal static partial class SolverController
         {
             (string normalizedSaveJson, CombatSolver.Api.InCombatLiveStateDto liveState, int priorBattleHpLost) =
                 InCombatLiveStateCapturer.Capture(state, battleDamage);
-            int overallTimeoutMs = Math.Min(
-                CombatSolver.Api.InCombatSts2SimAbi.MaxSoftTimeBudgetMilliseconds + 30_000,
-                searchBudgetMs + 30_000);
+            int overallTimeoutMs = CombatSolver.Api.Sts2SimPortfolioPolicyBridge.ComputeInCombatOverallTimeoutMilliseconds(
+                searchBudgetMs,
+                searchPolicy.EarlyTurnExplorationDepth,
+                searchPolicy.EarlyTurnExplorationBudgetMilliseconds,
+                capabilities);
             return new CombatSolver.Api.InCombatSts2SimRequestDto(
                 AbiVersion: CombatSolver.Api.InCombatSts2SimAbi.Version,
                 RequestId: $"incombat-{generation}-{Guid.NewGuid():N}",
@@ -3903,6 +3936,10 @@ internal static partial class SolverController
             }
             return false;
         }
+
+        Thread workerThread = Thread.CurrentThread;
+        ThreadPriority previousPriority = workerThread.Priority;
+        workerThread.Priority = ThreadPriority.Normal;
 
         InCombatSolverBackendState.BeginActiveSts2Sim(request.MaxDegreeOfParallelism);
         SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
@@ -3993,7 +4030,7 @@ internal static partial class SolverController
                     Entry.Logger.Info(
                         $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_SUCCEEDED generation={generation} " +
                         $"turn={rootSnapshot.StartTurnNumber} dop={response.EffectiveDegreeOfParallelism} " +
-                        $"nodes={response.Result!.ExpandedNodes} elapsed_ms={response.TotalElapsedMilliseconds:F1}");
+                        $"nodes={resolved.TotalExpandedNodes} elapsed_ms={response.TotalElapsedMilliseconds:F1}");
                     finalizedResult = resolved;
                     return true;
                 }
@@ -4115,6 +4152,7 @@ internal static partial class SolverController
         }
         finally
         {
+            workerThread.Priority = previousPriority;
             search.Interaction.SetTakeoverCallback(null);
             InCombatSolverBackendState.ClearActive();
         }
