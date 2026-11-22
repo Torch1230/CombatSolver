@@ -48,14 +48,47 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("Linux 下缺少 sts2sim/ 时 PreCombatForecastApi.IsAvailable 必须为 false。");
 
         int workerStartsBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
+        int inProcessStartsBefore = PreCombatForecastWorker.InProcessStartCountForTesting;
+        int activationsBefore = PreCombatSts2SimBridge.ActivationAttemptCountForTesting;
         MapPoint row0Target = FindRow0Target(runState);
+        PreCombatForecastOptions options = new()
+        {
+            SearchBudgetMilliseconds = 3_000, OverallTimeoutMilliseconds = 90_000,
+            MaxDegreeOfParallelism = 1, ForceRefresh = true,
+        };
+
+        if (OperatingSystem.IsWindows())
+        {
+            if (!PreCombatForecastApi.IsAvailable)
+                throw new InvalidOperationException("Windows 下缺少 sts2sim/ 时 PreCombatForecastApi.IsAvailable 必须为 true（应可回退传统子进程）。");
+
+            try
+            {
+                PreCombatForecastResult winResult = await PreCombatForecastApi.ForecastAsync(
+                    runState, encounter, row0Target.coord.row + 1, row0Target.coord.col,
+                    PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: options);
+                if (!winResult.IsSuccess || winResult.ProducingBackend != PreCombatBackendKind.LegacyProcess
+                    || PreCombatForecastWorker.WorkerStartCountForTesting != workerStartsBefore + 1
+                    || PreCombatForecastWorker.InProcessStartCountForTesting != inProcessStartsBefore
+                    || PreCombatSts2SimBridge.ActivationAttemptCountForTesting != activationsBefore)
+                {
+                    throw new InvalidOperationException(
+                        $"Windows 缺少 sts2sim/ 回退传统子进程失败：status={winResult.Status} backend={winResult.ProducingBackend} " +
+                        $"workerStarts={PreCombatForecastWorker.WorkerStartCountForTesting - workerStartsBefore} " +
+                        $"inProcessStarts={PreCombatForecastWorker.InProcessStartCountForTesting - inProcessStartsBefore} " +
+                        $"activations={PreCombatSts2SimBridge.ActivationAttemptCountForTesting - activationsBefore} error={winResult.Error}");
+                }
+                _completedChecks.Add(
+                    $"PreCombatSts2SimAbsent:Mode={runState.GameMode}:LoadedCleanly:WindowsLegacySucceeded:WorkerStarts=1:Backend={winResult.ProducingBackend}");
+            }
+            finally { await PreCombatForecastApi.StopWorkerAsync(); }
+
+            return await EnterContractCombatAsync(runState, row0Target, encounter, character);
+        }
+
         PreCombatForecastResult result = await PreCombatForecastApi.ForecastAsync(
-            runState,
-            encounter,
-            row0Target.coord.row + 1,
-            row0Target.coord.col,
-            PreCombatRoomKind.Normal,
-            PreCombatMapPointKind.Normal);
+            runState, encounter, row0Target.coord.row + 1, row0Target.coord.col,
+            PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: options);
         if (result.Status != PreCombatForecastStatus.Unsupported)
         {
             throw new InvalidOperationException(
@@ -131,27 +164,39 @@ internal sealed partial class UnattendedTestRunner
             await AssertPlanningUnsupportedAsync(
                 runState, revisitedSave, encounter, targetFloor, targetCol, "planning_revisited_coord", simOptions);
 
+            PreCombatForecastOptions contractOpts = new()
+            {
+                SearchBudgetMilliseconds = 3_000, OverallTimeoutMilliseconds = 90_000,
+                MaxDegreeOfParallelism = 1, ForceRefresh = true,
+            };
+            int policyFallbacksBefore = PreCombatForecastWorker.FallbackCountForTesting;
+            int policyWorkersBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
+            int policyInProcessBefore = PreCombatForecastWorker.InProcessStartCountForTesting;
             SolverSettings.ApplyForTesting(
-                BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16) with
-                {
-                    UseNoveltyPortfolio = true,
-                });
+                BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16) with { UseNoveltyPortfolio = true });
             PreCombatForecastResult policyRejected = await PreCombatForecastApi.ForecastAsync(
-                runState,
-                encounter,
-                targetFloor,
-                targetCol,
-                PreCombatRoomKind.Normal,
-                PreCombatMapPointKind.Normal,
-                options: new()
+                runState, encounter, targetFloor, targetCol,
+                PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: contractOpts);
+            if (OperatingSystem.IsWindows())
+            {
+                if (!policyRejected.IsSuccess || policyRejected.ProducingBackend != PreCombatBackendKind.LegacyProcess
+                    || PreCombatForecastWorker.FallbackCountForTesting != policyFallbacksBefore + 1
+                    || PreCombatForecastWorker.WorkerStartCountForTesting != policyWorkersBefore + 1
+                    || PreCombatForecastWorker.InProcessStartCountForTesting != policyInProcessBefore)
                 {
-                    SearchBudgetMilliseconds = 3_000,
-                    OverallTimeoutMilliseconds = 30_000,
-                    MaxDegreeOfParallelism = 1,
-                    ForceRefresh = true,
-                });
-            if (policyRejected.Status != PreCombatForecastStatus.Unsupported
-                || policyRejected.Error?.Contains("policy_unsupported", StringComparison.Ordinal) != true)
+                    throw new InvalidOperationException(
+                        $"Windows 下 UseNoveltyPortfolio=true 未正确回退传统子进程：status={policyRejected.Status} backend={policyRejected.ProducingBackend} " +
+                        $"fallbacks={PreCombatForecastWorker.FallbackCountForTesting - policyFallbacksBefore} " +
+                        $"workerStarts={PreCombatForecastWorker.WorkerStartCountForTesting - policyWorkersBefore} " +
+                        $"inProcessStarts={PreCombatForecastWorker.InProcessStartCountForTesting - policyInProcessBefore} error={policyRejected.Error}");
+                }
+                await PreCombatForecastApi.StopWorkerAsync();
+                if (PreCombatForecastApi.GetWorkerStatus().IsRunning)
+                    throw new InvalidOperationException("Windows 策略回退测试后 StopWorkerAsync 未停止遗留子进程。");
+                workerStartsBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
+            }
+            else if (policyRejected.Status != PreCombatForecastStatus.Unsupported
+                     || policyRejected.Error?.Contains("policy_unsupported", StringComparison.Ordinal) != true)
             {
                 throw new InvalidOperationException(
                     $"UseNoveltyPortfolio=true 未保留 policy_unsupported：{policyRejected.Status} {policyRejected.Error}");
@@ -160,82 +205,37 @@ internal sealed partial class UnattendedTestRunner
             SolverSettings.ApplyForTesting(BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16));
 
             SerializableRun modifiedSave = CloneSave(baseSave);
-            Player runPlayer = LocalContext.GetMe(runState)
-                ?? throw new InvalidOperationException("找不到本地玩家。");
+            Player runPlayer = LocalContext.GetMe(runState) ?? throw new InvalidOperationException("找不到本地玩家。");
             int modifiedHp = Math.Max(1, runPlayer.Creature.MaxHp - 15);
             modifiedSave.Players[0].CurrentHp = modifiedHp;
             modifiedSave.Players[0].ExtraFields.CardShopRemovalsUsed = 2;
             PreCombatForecastResult modifiedPlanResult = await PreCombatForecastApi.SimulatePlanningAsync(
-                runState,
-                modifiedSave,
-                encounter,
-                targetFloor,
-                targetCol,
-                PreCombatRoomKind.Normal,
-                PreCombatMapPointKind.Normal,
-                simOptions);
+                runState, modifiedSave, encounter, targetFloor, targetCol,
+                PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, simOptions);
             AssertBridgeSucceeded(modifiedPlanResult, "ModifiedPlanningZeroSeed", modifiedHp);
 
             PreCombatForecastResult highBitSeedResult = await PreCombatForecastApi.SimulatePlanningAsync(
-                runState,
-                modifiedSave,
-                encounter,
-                targetFloor,
-                targetCol,
-                PreCombatRoomKind.Normal,
-                PreCombatMapPointKind.Normal,
-                simOptions with { SampleSeed = 0xF00D_CAFE_1234_5678UL });
+                runState, modifiedSave, encounter, targetFloor, targetCol,
+                PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, simOptions with { SampleSeed = 0xF00D_CAFE_1234_5678UL });
             AssertBridgeSucceeded(highBitSeedResult, "ModifiedPlanningHighBitSeed", modifiedHp);
 
             PreCombatForecastResult unknownResult = await PreCombatForecastApi.ForecastAsync(
-                runState,
-                encounter,
-                targetFloor,
-                targetCol,
-                PreCombatRoomKind.Normal,
-                PreCombatMapPointKind.Unknown,
-                options: new()
-                {
-                    SearchBudgetMilliseconds = 3_000,
-                    OverallTimeoutMilliseconds = 30_000,
-                    MaxDegreeOfParallelism = 1,
-                    ForceRefresh = true,
-                });
+                runState, encounter, targetFloor, targetCol,
+                PreCombatRoomKind.Normal, PreCombatMapPointKind.Unknown, options: contractOpts);
             AssertBridgeSucceeded(unknownResult, "UnknownMapPointExplicitEncounter");
 
-            await VerifyHostAndRoutingEdgeContractsAsync(
-                runState,
-                baseSave,
-                encounter,
-                targetFloor,
-                targetCol,
-                savedSettings);
+            await VerifyHostAndRoutingEdgeContractsAsync(runState, baseSave, encounter, targetFloor, targetCol, savedSettings);
             SolverSettings.ApplyForTesting(BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16));
 
             await InjectRelicAsync(runPlayer, new UnattendedRelicInjection { RelicId = "MERCURY_HOURGLASS" });
             await InjectRelicAsync(runPlayer, new UnattendedRelicInjection { RelicId = "TOOLBOX" });
             InjectPotionForTest(runPlayer, "FIRE_POTION");
-            SolverSettings.ApplyForTesting(
-                SolverSettings.ApplyPotionDirective(
-                    BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16),
-                    0,
-                    "FIRE_POTION",
-                    SolverPotionDirective.Force));
+            SolverSettings.ApplyForTesting(SolverSettings.ApplyPotionDirective(
+                BuildDeterministicBridgeSettings(savedSettings, maxNodes: 1_200, beamWidth: 16), 0, "FIRE_POTION", SolverPotionDirective.Force));
             EncounterModel mawler = ModelDb.GetById<EncounterModel>(new ModelId("ENCOUNTER", "MAWLER_NORMAL"));
             PreCombatForecastResult richOpenerResult = await PreCombatForecastApi.ForecastAsync(
-                runState,
-                mawler,
-                targetFloor,
-                targetCol,
-                PreCombatRoomKind.Normal,
-                PreCombatMapPointKind.Normal,
-                options: new()
-                {
-                    SearchBudgetMilliseconds = 4_000,
-                    OverallTimeoutMilliseconds = 30_000,
-                    MaxDegreeOfParallelism = 1,
-                    ForceRefresh = true,
-                });
+                runState, mawler, targetFloor, targetCol, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+                options: contractOpts with { SearchBudgetMilliseconds = 4_000 });
             AssertBridgeSucceeded(richOpenerResult, "ToolboxMercuryFirePotion");
             string expectedFireTitle = ModelDb.GetById<PotionModel>(new ModelId("POTION", "FIRE_POTION"))
                 .Title.GetFormattedText();
@@ -354,37 +354,106 @@ internal sealed partial class UnattendedTestRunner
 
         try
         {
+            await PreCombatForecastApi.StopWorkerAsync();
+            bool hasInProcessBackend = PreCombatForecastWorker.HasInstalledInProcessBackend;
+            int activationsBefore = PreCombatSts2SimBridge.ActivationAttemptCountForTesting;
+            workerStartsBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
+
             SolverSettingsData settings = BuildDeterministicBridgeSettings(
                 savedSettings,
                 maxNodes: 5_000,
                 beamWidth: 16);
             SolverSettings.ApplyForTesting(settings);
 
+            PreCombatForecastOptions parityOptions = new()
+            {
+                SearchBudgetMilliseconds = 10_000,
+                OverallTimeoutMilliseconds = 90_000,
+                MaxDegreeOfParallelism = 1,
+                ForceRefresh = true,
+            };
+            PreCombatRoomKind parityRoomKind = encounter.RoomType == RoomType.Elite
+                ? PreCombatRoomKind.Elite
+                : PreCombatRoomKind.Normal;
+
             string tokenBefore = PreCombatForecastApi.CaptureLiveStateToken(runState);
-            long allocBefore = GC.GetTotalAllocatedBytes(precise: true);
+            long coldAllocBefore = GC.GetTotalAllocatedBytes(precise: true);
+            Stopwatch coldWatch = Stopwatch.StartNew();
             PreCombatForecastResult bridgeResult = await PreCombatForecastApi.ForecastAsync(
                 runState,
                 encounter,
                 targetFloor,
                 targetCol,
-                encounter.RoomType == RoomType.Elite ? PreCombatRoomKind.Elite : PreCombatRoomKind.Normal,
+                parityRoomKind,
                 PreCombatMapPointKind.Normal,
-                options: new()
-                {
-                    SearchBudgetMilliseconds = 10_000,
-                    OverallTimeoutMilliseconds = 30_000,
-                    MaxDegreeOfParallelism = 1,
-                    ForceRefresh = true,
-                });
-            long bridgeAllocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - allocBefore;
+                options: parityOptions);
+            coldWatch.Stop();
+            long coldAllocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - coldAllocBefore;
 
             if (bridgeResult.Status != PreCombatForecastStatus.Succeeded)
             {
                 throw new InvalidOperationException(
                     $"战前桥接同根对比失败：{bridgeResult.Status} {bridgeResult.Error}");
             }
-            if (PreCombatForecastWorker.WorkerStartCountForTesting != workerStartsBefore)
+
+            PreCombatWorkerStatus afterColdStatus = PreCombatForecastApi.GetWorkerStatus();
+
+            long warmAllocBefore = GC.GetTotalAllocatedBytes(precise: true);
+            Stopwatch warmWatch = Stopwatch.StartNew();
+            PreCombatForecastResult warmResult = await PreCombatForecastApi.ForecastAsync(
+                runState,
+                encounter,
+                targetFloor,
+                targetCol,
+                parityRoomKind,
+                PreCombatMapPointKind.Normal,
+                options: parityOptions);
+            warmWatch.Stop();
+            long warmAllocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - warmAllocBefore;
+
+            if (warmResult.Status != PreCombatForecastStatus.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"战前预热复测失败：{warmResult.Status} {warmResult.Error}");
+            }
+            if (bridgeResult.ProjectedHpLoss != warmResult.ProjectedHpLoss
+                || bridgeResult.FinalHp != warmResult.FinalHp
+                || bridgeResult.CombatEndedTurn != warmResult.CombatEndedTurn
+                || !string.Equals(bridgeResult.SearchBoundary, warmResult.SearchBoundary, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"冷启动与预热复用预测结果不一致：cold=({bridgeResult.ProjectedHpLoss},{bridgeResult.FinalHp},{bridgeResult.CombatEndedTurn},{bridgeResult.SearchBoundary}) " +
+                    $"warm=({warmResult.ProjectedHpLoss},{warmResult.FinalHp},{warmResult.CombatEndedTurn},{warmResult.SearchBoundary})。");
+            }
+
+            int workerStartsDelta = PreCombatForecastWorker.WorkerStartCountForTesting - workerStartsBefore;
+            if (hasInProcessBackend)
+            {
+                if (bridgeResult.ProducingBackend != PreCombatBackendKind.InProcess
+                    || warmResult.ProducingBackend != PreCombatBackendKind.InProcess
+                    || workerStartsDelta != 0)
+                {
+                    throw new InvalidOperationException(
+                        $"同进程后端同根对账异常：coldBackend={bridgeResult.ProducingBackend} warmBackend={warmResult.ProducingBackend} workerStarts={workerStartsDelta}。");
+                }
+            }
+            else if (OperatingSystem.IsWindows())
+            {
+                if (bridgeResult.ProducingBackend != PreCombatBackendKind.LegacyProcess
+                    || warmResult.ProducingBackend != PreCombatBackendKind.LegacyProcess
+                    || workerStartsDelta != 1
+                    || PreCombatSts2SimBridge.ActivationAttemptCountForTesting != activationsBefore)
+                {
+                    throw new InvalidOperationException(
+                        $"Windows 遗留子进程同根对账异常：coldBackend={bridgeResult.ProducingBackend} warmBackend={warmResult.ProducingBackend} " +
+                        $"workerStarts={workerStartsDelta} activations={PreCombatSts2SimBridge.ActivationAttemptCountForTesting - activationsBefore}。");
+                }
+            }
+            else if (workerStartsDelta != 0)
+            {
                 throw new InvalidOperationException("同根对账期间意外拉起了独立子进程。");
+            }
+
             if (!string.Equals(tokenBefore, PreCombatForecastApi.CaptureLiveStateToken(runState), StringComparison.Ordinal))
                 throw new InvalidOperationException("战前桥接预测改变了主进程跑局状态或 RNG。");
 
@@ -427,12 +496,18 @@ internal sealed partial class UnattendedTestRunner
 
             _completedChecks.Add(string.Create(
                 CultureInfo.InvariantCulture,
-                $"PreCombatSts2SimParity:Encounter={encounterEntry}:HasPower={hasPowerInDeck}:" +
+                $"PreCombatSts2SimParity:Encounter={encounterEntry}:HasPower={hasPowerInDeck}:Backend={bridgeResult.ProducingBackend}:" +
+                $"ColdWallMs={coldWatch.Elapsed.TotalMilliseconds:F1}:WarmWallMs={warmWatch.Elapsed.TotalMilliseconds:F1}:" +
+                $"ColdSearchMs={bridgeResult.SearchElapsedMilliseconds ?? -1:F1}:WarmSearchMs={warmResult.SearchElapsedMilliseconds ?? -1:F1}:" +
+                $"ColdTotalMs={bridgeResult.TotalElapsedMilliseconds ?? -1:F1}:WarmTotalMs={warmResult.TotalElapsedMilliseconds ?? -1:F1}:" +
                 $"BridgeLoss={bridgeLoss}:BridgeFinalHp={bridgeResult.FinalHp}:BridgeTurn={bridgeResult.CombatEndedTurn?.ToString(CultureInfo.InvariantCulture) ?? "null"}:" +
-                $"BridgeBoundary={bridgeResult.SearchBoundary}:BridgeSearchMs={bridgeResult.SearchElapsedMilliseconds ?? -1:F1}:BridgeAlloc={bridgeAllocatedBytes}:" +
+                $"BridgeBoundary={bridgeResult.SearchBoundary}:ColdAlloc={coldAllocatedBytes}:WarmAlloc={warmAllocatedBytes}:" +
+                $"ChildWorkingSetBytes={afterColdStatus.WorkingSetBytes?.ToString(CultureInfo.InvariantCulture) ?? "null"}:" +
+                $"ChildPrivateMemoryBytes={afterColdStatus.PrivateMemoryBytes?.ToString(CultureInfo.InvariantCulture) ?? "null"}:" +
+                $"ChildPeakWorkingSetBytes={afterColdStatus.PeakWorkingSetBytes?.ToString(CultureInfo.InvariantCulture) ?? "null"}:" +
                 $"NativeLoss={nativeLoss}:NativeTurn={nativeResult.CombatEndedTurn?.ToString(CultureInfo.InvariantCulture) ?? "null"}:" +
                 $"NativeBoundary={nativeResult.BoundaryReason}:NativeNodes={nativeResult.TotalExpandedNodes}:NativeMs={nativeResult.TotalSearchElapsed.TotalMilliseconds:F1}:" +
-                $"NativeAlloc={nativeAllocatedBytes}:WorkerStarts=0"));
+                $"NativeAlloc={nativeAllocatedBytes}:WorkerStarts={workerStartsDelta}"));
 
             return context;
         }
@@ -571,6 +646,25 @@ internal sealed partial class UnattendedTestRunner
         string expectedReasonFragment,
         PreCombatSimulationOptions options)
     {
+        PreCombatEligibilityResult eligibility = PreCombatLiveStateSnapshot
+            .Capture(liveRun)
+            .WithPlanningRun(
+                plannedSave,
+                RunState.FromSerializable(plannedSave),
+                targetFloor,
+                targetCol,
+                isSecondBoss: false)
+            .Eligibility;
+        if (eligibility.IsEligible
+            || !string.Equals(eligibility.FailureCode, expectedReasonFragment, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"WithPlanningRun 预期返回 '{expectedReasonFragment}'，" +
+                $"实际为 eligible={eligibility.IsEligible} code={eligibility.FailureCode} ({eligibility.Detail})。");
+        }
+        if (OperatingSystem.IsWindows())
+            return;
+
         PreCombatForecastResult result = await PreCombatForecastApi.SimulatePlanningAsync(
             liveRun,
             plannedSave,
@@ -732,22 +826,15 @@ internal sealed partial class UnattendedTestRunner
 
             int fallbacksBefore = PreCombatForecastWorker.FallbackCountForTesting;
             int workersBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
+            PreCombatForecastOptions edgeOptions = new()
+            {
+                SearchBudgetMilliseconds = 2_000, OverallTimeoutMilliseconds = 30_000,
+                MaxDegreeOfParallelism = 1, ForceRefresh = true,
+            };
             PreCombatSts2SimBridge.RunHookForTesting = static (_, _) =>
                 Task.FromException<Sts2SimBridgeResponseDto>(new OperationCanceledException("unrelated-internal-cancel"));
             PreCombatForecastResult unexpectedOce = await PreCombatForecastApi.ForecastAsync(
-                runState,
-                encounter,
-                targetFloor,
-                targetCol,
-                PreCombatRoomKind.Normal,
-                PreCombatMapPointKind.Normal,
-                options: new()
-                {
-                    SearchBudgetMilliseconds = 2_000,
-                    OverallTimeoutMilliseconds = 30_000,
-                    MaxDegreeOfParallelism = 1,
-                    ForceRefresh = true,
-                });
+                runState, encounter, targetFloor, targetCol, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: edgeOptions);
             if (unexpectedOce.Status != PreCombatForecastStatus.Failed
                 || PreCombatForecastWorker.FallbackCountForTesting != fallbacksBefore
                 || PreCombatForecastWorker.WorkerStartCountForTesting != workersBefore)
@@ -765,19 +852,7 @@ internal sealed partial class UnattendedTestRunner
                 return Task.FromResult(PreCombatSts2SimWireValidator.DeserializeAndValidateResponse(badMissJson));
             };
             PreCombatForecastResult metricMissResult = await PreCombatForecastApi.ForecastAsync(
-                runState,
-                encounter,
-                targetFloor,
-                targetCol,
-                PreCombatRoomKind.Normal,
-                PreCombatMapPointKind.Normal,
-                options: new()
-                {
-                    SearchBudgetMilliseconds = 2_000,
-                    OverallTimeoutMilliseconds = 30_000,
-                    MaxDegreeOfParallelism = 1,
-                    ForceRefresh = true,
-                });
+                runState, encounter, targetFloor, targetCol, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal, options: edgeOptions);
             if (metricMissResult.Status != PreCombatForecastStatus.Failed
                 || PreCombatForecastWorker.FallbackCountForTesting != fallbacksBefore
                 || PreCombatForecastWorker.WorkerStartCountForTesting != workersBefore)
