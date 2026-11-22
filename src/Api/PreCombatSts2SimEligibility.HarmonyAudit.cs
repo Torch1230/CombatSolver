@@ -43,6 +43,10 @@ internal static partial class PreCombatSts2SimEligibility
         "OverlayPath",
         "AllPortraitPaths",
         "ExtraRunAssetPaths",
+        "GetPortraitFilename",
+        "GetPortraitPath",
+        "GetPortraitPngPath",
+        "LoadPortrait",
         "Portrait",
         "BetaPortrait",
         "Overlay",
@@ -61,45 +65,12 @@ internal static partial class PreCombatSts2SimEligibility
         "HasBakedPortrait",
         "AddExtraArgsToDescription",
         "OnEnqueuePlayVfx",
+        "GetVfxNode",
         "CreateHoverTip",
         "ToString",
         "Equals",
         "GetHashCode",
         "CompareTo",
-    };
-
-    private static readonly HashSet<string> ConcreteCardGameplayExactNames = new(StringComparer.Ordinal)
-    {
-        "OnPlay",
-        "CanPlay",
-        "ShouldPlay",
-        "IsPlayable",
-        "OnTurnEndInHand",
-        "OnUpgrade",
-        "OnDowngrade",
-        "AfterDowngraded",
-        "OnExhaust",
-        "OnDiscard",
-        "OnDrawn",
-        "OnRetain",
-        "OnShuffle",
-        "OnAddedToDeck",
-        "OnRemovedFromDeck",
-        "OnCreatedInCombat",
-        "OnEnterCombat",
-        "GetResultLocationForCardPlay",
-        "CalculateVars",
-        "GetDamage",
-        "GetBlock",
-        "GetHits",
-        "BuffFromPlay",
-        "BuffFromClawPlay",
-        "BuffFromFlorescence",
-        "AddDamage",
-        "SetRepeats",
-        "CreatedThroughForge",
-        "FakeUpgrade",
-        "IncreaseAim",
     };
 
     private static bool NamespaceEqualsOrStartsWith(string? ns, string prefix) =>
@@ -169,26 +140,8 @@ internal static partial class PreCombatSts2SimEligibility
         return methodName;
     }
 
-    internal static bool IsConcreteCardGameplayMethodName(string methodName, string? targetDisplayName = null)
-    {
-        string effectiveName = ResolveEffectiveMemberName(methodName, targetDisplayName);
-
-        if (IsPureCardDisplayOrMetadataMember(effectiveName))
-            return false;
-
-        string normalizedName = effectiveName.StartsWith("get_", StringComparison.Ordinal)
-            || effectiveName.StartsWith("set_", StringComparison.Ordinal)
-            ? effectiveName[4..]
-            : effectiveName;
-
-        return ConcreteCardGameplayExactNames.Contains(normalizedName)
-            || normalizedName.StartsWith("BuffFrom", StringComparison.Ordinal)
-            || normalizedName.StartsWith("Before", StringComparison.Ordinal)
-            || normalizedName.StartsWith("After", StringComparison.Ordinal)
-            || normalizedName.StartsWith("Modify", StringComparison.Ordinal)
-            || normalizedName.StartsWith("TryModify", StringComparison.Ordinal)
-            || normalizedName.StartsWith("Should", StringComparison.Ordinal);
-    }
+    internal static bool IsConcreteCardGameplayMethodName(string methodName, string? targetDisplayName = null) =>
+        !IsPureCardDisplayOrMetadataMember(ResolveEffectiveMemberName(methodName, targetDisplayName));
 
     internal static PreCombatHarmonyTargetKind ClassifyCriticalHarmonyTarget(
         string? declaringNamespace,
