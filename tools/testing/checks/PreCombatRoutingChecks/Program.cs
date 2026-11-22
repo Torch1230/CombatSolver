@@ -432,6 +432,7 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
     }
 });
 
+<<<<<<< HEAD
 await Check("ABI v1 vs v2 portfolio policy routing forwards v2 options and falls back cleanly on unsupported/conflict", async () =>
 {
     PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;
@@ -515,6 +516,113 @@ await Check("ABI v1 vs v2 portfolio policy routing forwards v2 options and falls
     Equal(PreCombatBackendKind.LegacyProcess, conflictFallback.ProducingBackend);
     Equal("policy_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
     Equal(2, hookCalls);
+});
+
+await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to Legacy/Unsupported without bridge activation", async () =>
+{
+    int bridgeInvocations = 0;
+    PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;
+    PreCombatSts2SimBridge.RunRawJsonHookForTesting = (_, _) =>
+    {
+        Interlocked.Increment(ref bridgeInvocations);
+        return Task.FromResult(JsonBytes(SucceededWireJson()));
+    };
+
+    var adaptedOnPlayRun = new RunState
+    {
+        ReachableCardOnPlayAudits =
+        [
+            new PreCombatCardOnPlayAuditOutcome(
+                HasForeignPatch: true,
+                HasBuiltInAdaptation: true,
+                ForeignDescription: "AdaptedMod (adapted_mod): Harmony patch on DefendIronclad.OnPlay"),
+        ],
+    };
+
+    PreCombatHarmonyPatchDescriptor[] foreignCombatPatchCases =
+    [
+        new("MegaCrit.Sts2.Core.Commands", "CombatCmd", "EndTurn", false, false, false, true, true, "Mod.Patch", "CombatCmd.EndTurn", "mod"),
+        new("MegaCrit.Sts2.Core.Commands", "DamageCmd", "Attack", false, false, false, true, true, "Mod.Patch", "DamageCmd.Attack", "mod"),
+        new("MegaCrit.Sts2.Core.Commands", "CardCmd", "Discard", false, false, false, true, true, "Mod.Patch", "CardCmd.Discard", "mod"),
+        new("MegaCrit.Sts2.Core.Commands", "PowerCmd", "Apply", false, false, false, true, true, "Mod.Patch", "PowerCmd.Apply", "mod"),
+        new("MegaCrit.Sts2.Core.Commands", "RelicCmd", "Obtain", false, false, false, true, true, "Mod.Patch", "RelicCmd.Obtain", "mod"),
+        new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", false, false, false, true, true, "Mod.Patch", "CreatureCmd.Heal", "mod"),
+        new("MegaCrit.Sts2.Core.Hooks", "Hook", "ModifyDamage", false, false, false, true, true, "Mod.Patch", "Hook.ModifyDamage", "mod"),
+    ];
+
+    List<RunState> rejectedRuns = [adaptedOnPlayRun];
+    foreach (PreCombatHarmonyPatchDescriptor patch in foreignCombatPatchCases)
+        rejectedRuns.Add(new RunState { CriticalPatches = [patch] });
+
+    int expectedFallbacks = 0;
+    int expectedLegacyCalls = 0;
+    foreach (RunState rejectedRun in rejectedRuns)
+    {
+        RunManager.Instance.Run = rejectedRun;
+        PreCombatBackendDisplaySnapshot displaySnapshot = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+        Equal("gameplay_patch", displaySnapshot.HostExclusionCode);
+
+        CombatSolver.Api.OperatingSystem.WindowsOverride = true;
+        PreCombatForecastResult winResult = await PreCombatForecastApi.ForecastAsync(
+            rejectedRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+            options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
+        expectedFallbacks++;
+        expectedLegacyCalls++;
+        Equal(PreCombatForecastStatus.Succeeded, winResult.Status);
+        Equal(PreCombatBackendKind.LegacyProcess, winResult.ProducingBackend);
+        Equal("gameplay_patch", PreCombatForecastWorker.LastFallbackCodeForTesting);
+        Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
+        Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
+        Equal(0, bridgeInvocations);
+
+        await PreCombatForecastApi.StopWorkerAsync();
+
+        CombatSolver.Api.OperatingSystem.WindowsOverride = false;
+        PreCombatForecastResult linuxResult = await PreCombatForecastApi.ForecastAsync(
+            rejectedRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+            options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
+        Equal(PreCombatForecastStatus.Unsupported, linuxResult.Status);
+        Equal(true, linuxResult.Error?.Contains("gameplay_patch", StringComparison.Ordinal) == true);
+        Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
+        Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
+        Equal(0, bridgeInvocations);
+    }
+
+    RunState[] allowedRuns =
+    [
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", false, false, false, false, true, "VisualMod.Patch", "CreatureCmd.Heal", "visual_mod"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Runs", "RunManager", "EnterRoomInternal", false, false, false, true, true, "RoomMod.Patch", "RunManager.EnterRoomInternal", "room_mod"),
+            ],
+        },
+    ];
+    CombatSolver.Api.OperatingSystem.WindowsOverride = true;
+    int expectedBridgeCalls = 0;
+    foreach (RunState allowedRun in allowedRuns)
+    {
+        RunManager.Instance.Run = allowedRun;
+        PreCombatBackendDisplaySnapshot allowedDisplay = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+        Equal<string?>(null, allowedDisplay.HostExclusionCode);
+        PreCombatForecastResult allowedResult = await PreCombatForecastApi.ForecastAsync(
+            allowedRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+            options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
+        expectedBridgeCalls++;
+        Equal(PreCombatForecastStatus.Succeeded, allowedResult.Status);
+        Equal(PreCombatBackendKind.InProcess, allowedResult.ProducingBackend);
+        Equal(expectedBridgeCalls, bridgeInvocations);
+        Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
+        Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
+        await PreCombatForecastApi.StopWorkerAsync();
+    }
 });
 
 Console.WriteLine($"Passed {passed} portable production routing checks.");
