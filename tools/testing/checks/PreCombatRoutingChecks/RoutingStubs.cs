@@ -56,6 +56,8 @@ namespace MegaCrit.Sts2.Core.Runs
             UsedDebugCommand: false,
             WongoPoints: 0,
             IsPlayingRotatingCharacter: false);
+        internal PreCombatHarmonyPatchDescriptor[] CriticalPatches = [];
+        internal PreCombatCardOnPlayAuditOutcome[] ReachableCardOnPlayAudits = [];
         public int CurrentActIndex;
         public int ActFloor = 1;
         public MapCoord? CurrentMapCoord = new(0, 0);
@@ -141,10 +143,22 @@ namespace CombatSolver.Api
 
     internal static partial class PreCombatSts2SimEligibility
     {
-        public static PreCombatEligibilityResult AssessMandatoryLiveHost(RunState run) =>
-            run.MandatoryExclusionCode is { Length: > 0 } code
-                ? PreCombatEligibilityResult.Ineligible(code, $"Mandatory host exclusion: {code}.", code)
-                : PreCombatEligibilityResult.Eligible("eligible");
+        public static PreCombatEligibilityResult AssessMandatoryLiveHost(RunState run)
+        {
+            if (run.MandatoryExclusionCode is { Length: > 0 } code)
+                return PreCombatEligibilityResult.Ineligible(code, $"Mandatory host exclusion: {code}.", code);
+
+            if (TryFindCriticalHarmonyPatchViolation(run.CriticalPatches, out string patchReason))
+                return PreCombatEligibilityResult.Ineligible("gameplay_patch", patchReason, "gameplay_patch");
+
+            foreach (PreCombatCardOnPlayAuditOutcome cardAudit in run.ReachableCardOnPlayAudits)
+            {
+                if (ShouldRejectCardOnPlayForSts2Sim(cardAudit, out string cardReason))
+                    return PreCombatEligibilityResult.Ineligible("gameplay_patch", cardReason, "gameplay_patch");
+            }
+
+            return PreCombatEligibilityResult.Eligible("eligible");
+        }
     }
 
     internal sealed record PreCombatLiveStateSnapshot(
@@ -164,8 +178,9 @@ namespace CombatSolver.Api
     {
         public static PreCombatLiveStateSnapshot Capture(RunState run)
         {
-            PreCombatEligibilityResult eligibility = run.MandatoryExclusionCode is { Length: > 0 } code
-                ? PreCombatEligibilityResult.Ineligible(code, $"Excluded by {code}.", code)
+            PreCombatEligibilityResult mandatoryHost = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(run);
+            PreCombatEligibilityResult eligibility = !mandatoryHost.IsEligible
+                ? mandatoryHost
                 : PreCombatSts2SimEligibility.HasUnsupportedExtraFields(run.ExtraFields)
                     ? PreCombatEligibilityResult.Ineligible(
                         "extra_field_unsupported",

@@ -500,6 +500,94 @@ await Check("extra fields eligibility allows cosmetic TestSubjectKills and rejec
     Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 2, StartedWithNeow = false }));
     return Task.CompletedTask;
 });
+await Check("card OnPlay audit rejects foreign patches for Sts2Sim even when BuiltIn adapted", () =>
+{
+    Equal(false, PreCombatSts2SimEligibility.ShouldRejectCardOnPlayForSts2Sim(
+        new PreCombatCardOnPlayAuditOutcome(HasForeignPatch: false, HasBuiltInAdaptation: false, ForeignDescription: null),
+        out string cleanReason));
+    Equal(string.Empty, cleanReason);
+
+    Equal(true, PreCombatSts2SimEligibility.ShouldRejectCardOnPlayForSts2Sim(
+        new PreCombatCardOnPlayAuditOutcome(
+            HasForeignPatch: true,
+            HasBuiltInAdaptation: false,
+            ForeignDescription: "Unadapted foreign OnPlay patch"),
+        out string unadaptedReason));
+    Equal("Unadapted foreign OnPlay patch", unadaptedReason);
+
+    Equal(true, PreCombatSts2SimEligibility.ShouldRejectCardOnPlayForSts2Sim(
+        new PreCombatCardOnPlayAuditOutcome(
+            HasForeignPatch: true,
+            HasBuiltInAdaptation: true,
+            ForeignDescription: "AdaptedMod (adapted_mod): Harmony patch on DefendIronclad.OnPlay"),
+        out string adaptedReason));
+    Equal("AdaptedMod (adapted_mod): Harmony patch on DefendIronclad.OnPlay", adaptedReason);
+    return Task.CompletedTask;
+});
+await Check("critical Harmony patch audit catches combat command and hook patches while allowing neutral or room utility patches", () =>
+{
+    static PreCombatHarmonyPatchDescriptor Patch(
+        string ns,
+        string rootType,
+        string method,
+        bool? affectsGameplay = true,
+        bool isMonsterModel = false,
+        bool isTrustedOwner = false,
+        bool hasKnownModId = true) => new(
+            DeclaringNamespace: ns,
+            RootDeclaringTypeName: rootType,
+            MethodName: method,
+            IsMonsterModel: isMonsterModel,
+            IsBaseGamePatch: false,
+            IsTrustedOwner: isTrustedOwner,
+            AffectsGameplay: affectsGameplay,
+            HasKnownModId: hasKnownModId,
+            PatchDisplayName: "ProbeMod.Patch.Prefix",
+            TargetDisplayName: $"{ns}.{rootType}.{method}",
+            Owner: "probe_mod");
+
+    PreCombatHarmonyPatchDescriptor[] rejectedCombatPatches =
+    [
+        Patch("MegaCrit.Sts2.Core.Commands", "CombatCmd", "EndTurn"),
+        Patch("MegaCrit.Sts2.Core.Commands", "DamageCmd", "MoveNext"),
+        Patch("MegaCrit.Sts2.Core.Commands.Builders", "AttackCommand", "Execute"),
+        Patch("MegaCrit.Sts2.Core.Commands", "CardCmd", "Discard"),
+        Patch("MegaCrit.Sts2.Core.Commands", "PowerCmd", "Apply"),
+        Patch("MegaCrit.Sts2.Core.Commands", "RelicCmd", "Obtain"),
+        Patch("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal"),
+        Patch("MegaCrit.Sts2.Core.Hooks", "Hook", "ModifyDamage"),
+        Patch("MegaCrit.Sts2.Core.Combat", "CombatManager", "SetUpCombat"),
+        Patch("MegaCrit.Sts2.Core.GameActions", "PlayCardAction", "ExecuteAction"),
+        Patch("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", "GetSingleDamage"),
+        Patch("MegaCrit.Sts2.Core.Models", "CardModel", "SpendResources"),
+        Patch("MegaCrit.Sts2.Core.Models.Powers", "StrengthPower", "ModifyDamageAdditive"),
+        Patch("MegaCrit.Sts2.Core.Models.Monsters", "Mawler", "GenerateMoveStateMachine", isMonsterModel: true),
+        Patch("MegaCrit.Sts2.Core.Commands", "DamageCmd", "Attack", affectsGameplay: null, hasKnownModId: false),
+        Patch("MegaCrit.Sts2.Core.Random", "Rng", "NextInt", affectsGameplay: false),
+    ];
+
+    foreach (PreCombatHarmonyPatchDescriptor descriptor in rejectedCombatPatches)
+    {
+        Equal(true, PreCombatSts2SimEligibility.TryFindCriticalHarmonyPatchViolation([descriptor], out string reason));
+        Equal(true, reason.Contains(descriptor.MethodName, StringComparison.Ordinal));
+    }
+
+    PreCombatHarmonyPatchDescriptor[] allowedPatches =
+    [
+        Patch("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", affectsGameplay: false),
+        Patch("MegaCrit.Sts2.Core.Commands", "DamageCmd", "Attack", affectsGameplay: false),
+        Patch("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", affectsGameplay: true, isTrustedOwner: true),
+        Patch("MegaCrit.Sts2.Core.Combat", "CombatManager", "SetUpCombat", affectsGameplay: true, isTrustedOwner: true),
+        Patch("MegaCrit.Sts2.Core.Runs", "RunManager", "EnterRoomInternal", affectsGameplay: true),
+        Patch("MegaCrit.Sts2.Core.Commands", "VfxCmd", "Play", affectsGameplay: true),
+        Patch("MegaCrit.Sts2.Core.Commands", "SfxCmd", "Play", affectsGameplay: true),
+        Patch("MegaCrit.Sts2.Core.Nodes.Combat", "NCombatUi", "Update", affectsGameplay: true),
+    ];
+
+    Equal(false, PreCombatSts2SimEligibility.TryFindCriticalHarmonyPatchViolation(allowedPatches, out string allowedReason));
+    Equal(string.Empty, allowedReason);
+    return Task.CompletedTask;
+});
 Console.WriteLine($"Passed {passed} pre-combat request, ABI, and idle checks.");
 
 async Task Check(string name, Func<Task> body)

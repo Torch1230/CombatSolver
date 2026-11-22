@@ -4,8 +4,10 @@ using CombatSolver.Api;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Monsters;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
@@ -35,6 +37,13 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException("IsPreCombatInert 实例级判定未能正确区分解锁前与战斗前订阅器。");
         }
+
+        FieldInfo sealedField = typeof(AdaptedCardOnPlayMirrors).GetField(
+                "_sealed",
+                BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new MissingFieldException(typeof(AdaptedCardOnPlayMirrors).FullName, "_sealed");
+        bool wasSealedBefore = (bool)(sealedField.GetValue(null)
+            ?? throw new InvalidOperationException("AdaptedCardOnPlayMirrors._sealed 为空。"));
 
         var previousMocks = AssemblyInfo.MockTypes;
         AssemblyInfo.MockTypes = previousMocks == null ? [] : new(previousMocks);
@@ -100,6 +109,61 @@ internal sealed partial class UnattendedTestRunner
             }
             harmony.UnpatchAll(harmony.Id);
             AssemblyInfo.MockTypes.Remove(typeof(ForeignCardPatch));
+
+            var gameplayCommandMod = new Mod
+            {
+                path = "test-gameplay-command-probe",
+                manifest = new ModManifest
+                {
+                    id = "GameplayCommandProbe",
+                    name = "Gameplay Command Probe",
+                    affectsGameplay = true,
+                },
+            };
+            AssemblyInfo.MockTypes[typeof(ForeignCardPatch)] = (gameplayCommandMod, false);
+            MethodInfo modifyDamageMethod = typeof(Hook)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .First(static m => string.Equals(m.Name, nameof(Hook.ModifyDamage), StringComparison.Ordinal)
+                    && !m.ContainsGenericParameters);
+            MethodInfo damageAttackMethod = typeof(DamageCmd)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .First(static m => string.Equals(m.Name, nameof(DamageCmd.Attack), StringComparison.Ordinal)
+                    && !m.ContainsGenericParameters);
+            MethodInfo defendOnPlayMethod = AdaptedCardOnPlayMirrors.ResolveOnPlay(typeof(DefendIronclad))
+                ?? throw new MissingMethodException(typeof(DefendIronclad).FullName, "OnPlay");
+            foreach ((string label, MethodInfo targetMethod) in new (string, MethodInfo)[]
+                     {
+                         ("CreatureCmd.Heal", healMethod),
+                         ("Hook.ModifyDamage", modifyDamageMethod),
+                         ("DamageCmd.Attack", damageAttackMethod),
+                         ("DefendIronclad.OnPlay", defendOnPlayMethod),
+                     })
+            {
+                harmony.Patch(
+                    targetMethod,
+                    prefix: new HarmonyMethod(typeof(ForeignCardPatch), nameof(ForeignCardPatch.Prefix)));
+                PreCombatEligibilityResult rejectedHost = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(runState);
+                PreCombatEligibilityResult rejectedLive = PreCombatSts2SimEligibility.AssessLiveHostAndRun(runState);
+                PreCombatBackendDisplaySnapshot badgeSnapshot = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+                if (rejectedHost.IsEligible
+                    || rejectedHost.FailureCode != "gameplay_patch"
+                    || rejectedLive.IsEligible
+                    || rejectedLive.FailureCode != "gameplay_patch"
+                    || badgeSnapshot.HostExclusionCode != "gameplay_patch")
+                {
+                    throw new InvalidOperationException(
+                        $"gameplay=true 补丁 {label} 未被战前审计拒绝：host={rejectedHost.FailureCode}, " +
+                        $"live={rejectedLive.FailureCode}, badge={badgeSnapshot.HostExclusionCode}。");
+                }
+                harmony.UnpatchAll(harmony.Id);
+            }
+            AssemblyInfo.MockTypes.Remove(typeof(ForeignCardPatch));
+
+            if (!wasSealedBefore && (bool)(sealedField.GetValue(null) ?? false))
+            {
+                throw new InvalidOperationException(
+                    "战前资格审计或徽章快照提前封印了宿主 AdaptedCardOnPlayMirrors。");
+            }
 
             var monsterAiMod = new Mod
             {
