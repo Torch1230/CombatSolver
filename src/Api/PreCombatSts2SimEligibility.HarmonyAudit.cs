@@ -42,6 +42,7 @@ internal static partial class PreCombatSts2SimEligibility
         "BetaPortraitPath",
         "OverlayPath",
         "AllPortraitPaths",
+        "ExtraRunAssetPaths",
         "Portrait",
         "BetaPortrait",
         "Overlay",
@@ -50,6 +51,7 @@ internal static partial class PreCombatSts2SimEligibility
         "FramePath",
         "BannerMaterial",
         "VisualCardPool",
+        "HasBuiltInOverlay",
         "ExtraHoverTips",
         "HoverTips",
         "ShouldGlowGold",
@@ -57,6 +59,8 @@ internal static partial class PreCombatSts2SimEligibility
         "ShouldGlowRed",
         "ShouldGlowRedInternal",
         "HasBakedPortrait",
+        "AddExtraArgsToDescription",
+        "OnEnqueuePlayVfx",
         "CreateHoverTip",
         "ToString",
         "Equals",
@@ -69,9 +73,11 @@ internal static partial class PreCombatSts2SimEligibility
         "OnPlay",
         "CanPlay",
         "ShouldPlay",
+        "IsPlayable",
         "OnTurnEndInHand",
         "OnUpgrade",
         "OnDowngrade",
+        "AfterDowngraded",
         "OnExhaust",
         "OnDiscard",
         "OnDrawn",
@@ -81,10 +87,19 @@ internal static partial class PreCombatSts2SimEligibility
         "OnRemovedFromDeck",
         "OnCreatedInCombat",
         "OnEnterCombat",
+        "GetResultLocationForCardPlay",
         "CalculateVars",
         "GetDamage",
         "GetBlock",
         "GetHits",
+        "BuffFromPlay",
+        "BuffFromClawPlay",
+        "BuffFromFlorescence",
+        "AddDamage",
+        "SetRepeats",
+        "CreatedThroughForge",
+        "FakeUpgrade",
+        "IncreaseAim",
     };
 
     private static bool NamespaceEqualsOrStartsWith(string? ns, string prefix) =>
@@ -161,12 +176,18 @@ internal static partial class PreCombatSts2SimEligibility
         if (IsPureCardDisplayOrMetadataMember(effectiveName))
             return false;
 
-        return ConcreteCardGameplayExactNames.Contains(effectiveName)
-            || effectiveName.StartsWith("Before", StringComparison.Ordinal)
-            || effectiveName.StartsWith("After", StringComparison.Ordinal)
-            || effectiveName.StartsWith("Modify", StringComparison.Ordinal)
-            || effectiveName.StartsWith("TryModify", StringComparison.Ordinal)
-            || effectiveName.StartsWith("Should", StringComparison.Ordinal);
+        string normalizedName = effectiveName.StartsWith("get_", StringComparison.Ordinal)
+            || effectiveName.StartsWith("set_", StringComparison.Ordinal)
+            ? effectiveName[4..]
+            : effectiveName;
+
+        return ConcreteCardGameplayExactNames.Contains(normalizedName)
+            || normalizedName.StartsWith("BuffFrom", StringComparison.Ordinal)
+            || normalizedName.StartsWith("Before", StringComparison.Ordinal)
+            || normalizedName.StartsWith("After", StringComparison.Ordinal)
+            || normalizedName.StartsWith("Modify", StringComparison.Ordinal)
+            || normalizedName.StartsWith("TryModify", StringComparison.Ordinal)
+            || normalizedName.StartsWith("Should", StringComparison.Ordinal);
     }
 
     internal static PreCombatHarmonyTargetKind ClassifyCriticalHarmonyTarget(
@@ -210,7 +231,9 @@ internal static partial class PreCombatSts2SimEligibility
         in PreCombatHarmonyPatchDescriptor patch,
         bool trustGameplayNeutral)
     {
-        if (patch.IsBaseGamePatch || patch.IsTrustedOwner)
+        if (patch.IsBaseGamePatch)
+            return false;
+        if (trustGameplayNeutral && patch.IsTrustedOwner)
             return false;
         if (patch.HasKnownModId)
             return !(trustGameplayNeutral && patch.AffectsGameplay is false);
