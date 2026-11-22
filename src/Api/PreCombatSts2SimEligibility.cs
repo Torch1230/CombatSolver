@@ -714,9 +714,13 @@ internal static partial class PreCombatSts2SimEligibility
                 isTrustedOwner = TrustedPatchOwnerIds.Contains(modId);
                 affectsGameplay = mod.manifest.affectsGameplay;
             }
-            else if (patchType.Assembly == typeof(Entry).Assembly || patchType.Assembly == VanillaGameAssembly)
+            else if (patchType.Assembly == VanillaGameAssembly)
             {
                 isBaseGamePatch = true;
+            }
+            else if (patchType.Assembly == typeof(Entry).Assembly)
+            {
+                isTrustedOwner = true;
             }
         }
 
