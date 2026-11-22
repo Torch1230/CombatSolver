@@ -474,7 +474,7 @@ await Check("idle stale cleanup preserves replacement ownership", PreCombatForec
 await Check("idle cleanup preserves an in-flight cancellation source", PreCombatForecastWorker.CheckIdleCancelDisposeOverlapAsync);
 await Check("idle cancellation before timer startup uses the captured token", PreCombatForecastWorker.CheckIdleCancellationBeforeStartAsync);
 await Check("idle indefinite lifetime cancels the old timer", PreCombatForecastWorker.CheckIndefiniteIdleLifetimeAsync);
-await Check("extra fields eligibility allows cosmetic TestSubjectKills and rejects unsupported fields", () =>
+await Check("extra fields eligibility allows vanilla cosmetic/progress fields and rejects negative counters", () =>
 {
     var baseline = new PreCombatExtraFieldsState(
         StartedWithNeow: true,
@@ -485,19 +485,25 @@ await Check("extra fields eligibility allows cosmetic TestSubjectKills and rejec
         IsPlayingRotatingCharacter: false);
     Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline));
     Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 1 }));
-    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 3 }));
     Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 12 }));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { StartedWithNeow = false }));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { FreedRepy = true }));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { UsedDebugCommand = true }));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { WongoPoints = 1 }));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { IsPlayingRotatingCharacter = true }));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(
+        new PreCombatExtraFieldsState(
+            StartedWithNeow: false,
+            FreedRepy: true,
+            TestSubjectKills: 4,
+            UsedDebugCommand: true,
+            WongoPoints: 250,
+            IsPlayingRotatingCharacter: true)));
 
-    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { StartedWithNeow = false }));
-    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { FreedRepy = true }));
-    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { UsedDebugCommand = true }));
-    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { WongoPoints = 1 }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = -1 }));
     Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { WongoPoints = -1 }));
-    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { IsPlayingRotatingCharacter = true }));
-
-    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 2, FreedRepy = true }));
-    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 2, WongoPoints = 1 }));
-    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 2, StartedWithNeow = false }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = -1, FreedRepy = true }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { WongoPoints = -1, StartedWithNeow = false }));
     return Task.CompletedTask;
 });
 await Check("card OnPlay audit rejects foreign patches for Sts2Sim even when BuiltIn adapted", () =>
@@ -551,6 +557,8 @@ await Check("critical Harmony patch audit enforces BuiltIn parity for RNG, monst
         Patch("MegaCrit.Sts2.Core.Random", "Rng", "NextInt", affectsGameplay: false),
         Patch("MegaCrit.Sts2.Core.Models.Monsters", "Mawler", "GenerateMoveStateMachine", isMonsterModel: true),
         Patch("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", ".ctor"),
+        Patch("MegaCrit.Sts2.Core.MonsterMoves.Intents", "SingleAttackIntent", ".ctor"),
+        Patch("MegaCrit.Sts2.Core.MonsterMoves.Intents", "MultiAttackIntent", ".ctor"),
         Patch("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", "GetSingleDamage"),
         Patch("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", "GetSingleDamage", affectsGameplay: null, hasKnownModId: false),
         Patch("MegaCrit.Sts2.Core.Models.Monsters", "Mawler", "GenerateMoveStateMachine", affectsGameplay: null, isMonsterModel: true, hasKnownModId: false),

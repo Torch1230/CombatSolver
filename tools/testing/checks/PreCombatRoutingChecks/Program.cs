@@ -358,7 +358,7 @@ await Check("RestartWorkerAsync releases busy lease before status and cancels cl
     Equal(PreCombatBackendKind.None, PreCombatForecastApi.GetWorkerStatus().Backend);
 });
 
-await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported extra fields fall back cleanly", async () =>
+await Check("Vanilla cosmetic and progress extra fields route to InProcess while negative counters fall back cleanly", async () =>
 {
     var baselineExtraFields = new PreCombatExtraFieldsState(
         StartedWithNeow: true,
@@ -375,29 +375,33 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
         return Task.FromResult(JsonBytes(SucceededWireJson()));
     };
 
-    var cosmeticRun = new RunState
+    PreCombatExtraFieldsState[] allowedCases =
+    [
+        baselineExtraFields with { TestSubjectKills = 3 },
+        baselineExtraFields with { WongoPoints = 250, IsPlayingRotatingCharacter = true, FreedRepy = true, UsedDebugCommand = true, StartedWithNeow = false },
+    ];
+    int expectedBridgeCalls = 0;
+    foreach (PreCombatExtraFieldsState allowedFields in allowedCases)
     {
-        ExtraFields = baselineExtraFields with { TestSubjectKills = 3 },
-    };
-    RunManager.Instance.Run = cosmeticRun;
-    PreCombatForecastResult cosmeticResult = await PreCombatForecastApi.ForecastAsync(
-        cosmeticRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
-        options: new() { SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
-    Equal(PreCombatForecastStatus.Succeeded, cosmeticResult.Status);
-    Equal(PreCombatBackendKind.InProcess, cosmeticResult.ProducingBackend);
-    Equal(1, bridgeInvocations);
-    Equal(0, PreCombatForecastWorker.FallbackCountForTesting);
-    Equal(0, PreCombatForecastWorker.LegacyCalls.Count);
+        var cosmeticRun = new RunState { ExtraFields = allowedFields };
+        RunManager.Instance.Run = cosmeticRun;
+        PreCombatForecastResult cosmeticResult = await PreCombatForecastApi.ForecastAsync(
+            cosmeticRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+            options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
+        expectedBridgeCalls++;
+        Equal(PreCombatForecastStatus.Succeeded, cosmeticResult.Status);
+        Equal(PreCombatBackendKind.InProcess, cosmeticResult.ProducingBackend);
+        Equal(expectedBridgeCalls, bridgeInvocations);
+        Equal(0, PreCombatForecastWorker.FallbackCountForTesting);
+        Equal(0, PreCombatForecastWorker.LegacyCalls.Count);
 
-    await PreCombatForecastApi.StopWorkerAsync();
+        await PreCombatForecastApi.StopWorkerAsync();
+    }
 
     PreCombatExtraFieldsState[] excludedCases =
     [
-        baselineExtraFields with { TestSubjectKills = 2, WongoPoints = 1 },
-        baselineExtraFields with { TestSubjectKills = 2, IsPlayingRotatingCharacter = true },
-        baselineExtraFields with { TestSubjectKills = 2, FreedRepy = true },
-        baselineExtraFields with { TestSubjectKills = 2, UsedDebugCommand = true },
-        baselineExtraFields with { TestSubjectKills = 2, StartedWithNeow = false },
+        baselineExtraFields with { TestSubjectKills = -1 },
+        baselineExtraFields with { WongoPoints = -1 },
     ];
     int expectedFallbacks = 0;
     int expectedLegacyCalls = 0;
@@ -416,7 +420,7 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
         Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
         Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
         Equal("extra_field_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
-        Equal(1, bridgeInvocations);
+        Equal(expectedBridgeCalls, bridgeInvocations);
 
         await PreCombatForecastApi.StopWorkerAsync();
 
@@ -428,7 +432,7 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
         Equal(true, linuxResult.Error?.Contains("extra_field_unsupported", StringComparison.Ordinal) == true);
         Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
         Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
-        Equal(1, bridgeInvocations);
+        Equal(expectedBridgeCalls, bridgeInvocations);
     }
 });
 
