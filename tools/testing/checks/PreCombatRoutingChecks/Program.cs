@@ -432,7 +432,7 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
     }
 });
 
-await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to Legacy/Unsupported without bridge activation", async () =>
+await Check("Foreign BuiltIn-adapted OnPlay and audited critical patches route to Legacy/Unsupported without bridge activation", async () =>
 {
     int bridgeInvocations = 0;
     PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;
@@ -455,13 +455,10 @@ await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to 
 
     PreCombatHarmonyPatchDescriptor[] foreignCombatPatchCases =
     [
-        new("MegaCrit.Sts2.Core.Commands", "CombatCmd", "EndTurn", false, false, false, true, true, "Mod.Patch", "CombatCmd.EndTurn", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "DamageCmd", "Attack", false, false, false, true, true, "Mod.Patch", "DamageCmd.Attack", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "CardCmd", "Discard", false, false, false, true, true, "Mod.Patch", "CardCmd.Discard", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "PowerCmd", "Apply", false, false, false, true, true, "Mod.Patch", "PowerCmd.Apply", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "RelicCmd", "Obtain", false, false, false, true, true, "Mod.Patch", "RelicCmd.Obtain", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", false, false, false, true, true, "Mod.Patch", "CreatureCmd.Heal", "mod"),
-        new("MegaCrit.Sts2.Core.Hooks", "Hook", "ModifyDamage", false, false, false, true, true, "Mod.Patch", "Hook.ModifyDamage", "mod"),
+        new("MegaCrit.Sts2.Core.Random", "Rng", "NextInt", false, false, false, false, true, "Mod.Patch", "Rng.NextInt", "mod"),
+        new("MegaCrit.Sts2.Core.Models.Monsters", "Mawler", "GenerateMoveStateMachine", true, false, false, true, true, "Mod.Patch", "Mawler.GenerateMoveStateMachine", "mod"),
+        new("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", ".ctor", false, false, false, true, true, "Mod.Patch", "AttackIntent..ctor", "mod"),
+        new("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", "GetSingleDamage", false, false, false, true, true, "Mod.Patch", "AttackIntent.GetSingleDamage", "mod"),
         new("MegaCrit.Sts2.Core.Models.Cards", "Normality", "ShouldPlay", false, false, false, true, true, "Mod.Patch", "Normality.ShouldPlay", "mod"),
     ];
 
@@ -510,6 +507,48 @@ await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to 
             CriticalPatches =
             [
                 new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", false, false, false, false, true, "VisualMod.Patch", "CreatureCmd.Heal", "visual_mod"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Damage", false, false, false, true, true, "MinionLib.Patch", "CreatureCmd.Damage", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "GainBlock", false, false, false, true, true, "MinionLib.Patch", "CreatureCmd.GainBlock", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Entities.Creatures", "Creature", "LoseHpInternal", false, false, false, true, true, "MinionLib.Patch", "Creature.LoseHpInternal", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Models", "CardModel", "FromSerializable", false, false, false, true, true, "MinionLib.Patch", "CardModel.FromSerializable", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Models.Powers", "PersonalHivePower", "AfterDamageReceived", false, false, false, true, true, "MinionLib.Patch", "PersonalHivePower.AfterDamageReceived", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Combat", "CombatManager", "AfterCombatRoomLoaded", false, false, false, true, true, "QuickLink.Patch", "CombatManager.AfterCombatRoomLoaded", "QuickLink"),
             ],
         },
         new RunState

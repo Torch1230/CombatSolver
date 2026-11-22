@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -57,12 +58,17 @@ internal static class InCombatSts2SimEligibility
                 "In-combat Sts2Sim requires a concrete single-player RunState.");
         }
 
-        PreCombatEligibilityResult hostResult = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(run);
+        PreCombatEligibilityResult hostResult = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(run, forInCombat: true);
         if (!hostResult.IsEligible)
         {
             return InCombatEligibilityResult.Ineligible(
                 hostResult.FailureCode ?? "gameplay_mod",
                 hostResult.Detail ?? "Mandatory live host check excluded Sts2Sim.");
+        }
+
+        if (TryFindActiveCombatModViolation(state, out string combatModReason))
+        {
+            return InCombatEligibilityResult.Ineligible("gameplay_mod", combatModReason);
         }
 
         if (state.Encounter is null
@@ -299,6 +305,31 @@ internal static class InCombatSts2SimEligibility
                     return true;
                 }
             }
+        }
+
+        reason = string.Empty;
+        return false;
+    }
+
+    internal static bool TryFindActiveCombatModViolation(CombatState state, out string reason)
+    {
+        foreach (AbstractModel subscriber in ModHelper.IterateAllCombatStateSubscribers(state))
+        {
+            Type type = subscriber.GetType();
+            Mod? mod = AssemblyInfo.ModForType(type, out bool isBaseGame);
+            if (isBaseGame)
+                continue;
+            if (mod?.manifest?.affectsGameplay is false)
+                continue;
+            if (PredictionModHookSubscriberInertness.IsCombatInert(subscriber, out _))
+                continue;
+
+            string modId = mod?.manifest?.id ?? type.Assembly.GetName().Name ?? "unknown";
+            if (string.Equals(modId, Entry.ModId, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            reason = $"Active combat subscriber {type.FullName} (mod={modId}).";
+            return true;
         }
 
         reason = string.Empty;

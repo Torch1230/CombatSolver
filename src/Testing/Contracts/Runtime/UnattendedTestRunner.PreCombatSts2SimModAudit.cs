@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using CombatSolver.Api;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Hooks;
@@ -9,6 +10,8 @@ using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Monsters;
+using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
 
@@ -95,48 +98,83 @@ internal sealed partial class UnattendedTestRunner
             MethodInfo enterRoomMethod = typeof(RunManager)
                 .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .First(static m => string.Equals(m.Name, "EnterRoomInternal", StringComparison.Ordinal));
-            harmony.Patch(
-                enterRoomMethod,
-                prefix: new HarmonyMethod(typeof(ForeignCardPatch), nameof(ForeignCardPatch.Prefix)));
-
-            PreCombatEligibilityResult utilityHost = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(runState);
-            PreCombatEligibilityResult utilityLive = PreCombatSts2SimEligibility.AssessLiveHostAndRun(runState);
-            if (!utilityHost.IsEligible || !utilityLive.IsEligible)
-            {
-                throw new InvalidOperationException(
-                    $"仅修改房间入口且无战斗订阅/AI/RNG/出牌补丁的 affects_gameplay=true 工具 Mod 被错误拒绝：" +
-                    $"host={utilityHost.FailureCode}:{utilityHost.Detail}, live={utilityLive.FailureCode}:{utilityLive.Detail}。");
-            }
-            harmony.UnpatchAll(harmony.Id);
-            AssemblyInfo.MockTypes.Remove(typeof(ForeignCardPatch));
-
-            var gameplayCommandMod = new Mod
-            {
-                path = "test-gameplay-command-probe",
-                manifest = new ModManifest
-                {
-                    id = "GameplayCommandProbe",
-                    name = "Gameplay Command Probe",
-                    affectsGameplay = true,
-                },
-            };
-            AssemblyInfo.MockTypes[typeof(ForeignCardPatch)] = (gameplayCommandMod, false);
-            MethodInfo modifyDamageMethod = typeof(Hook)
+            MethodInfo creatureDamageMethod = typeof(CreatureCmd)
                 .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .First(static m => string.Equals(m.Name, nameof(Hook.ModifyDamage), StringComparison.Ordinal)
+                .First(static m => string.Equals(m.Name, nameof(CreatureCmd.Damage), StringComparison.Ordinal)
                     && !m.ContainsGenericParameters);
             MethodInfo damageAttackMethod = typeof(DamageCmd)
                 .GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .First(static m => string.Equals(m.Name, nameof(DamageCmd.Attack), StringComparison.Ordinal)
                     && !m.ContainsGenericParameters);
+            MethodInfo modifyDamageMethod = typeof(Hook)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .First(static m => string.Equals(m.Name, nameof(Hook.ModifyDamage), StringComparison.Ordinal)
+                    && !m.ContainsGenericParameters);
+            MethodInfo afterCombatRoomLoadedMethod = AccessTools.DeclaredMethod(
+                    typeof(CombatManager),
+                    nameof(CombatManager.AfterCombatRoomLoaded))
+                ?? throw new MissingMethodException(typeof(CombatManager).FullName, nameof(CombatManager.AfterCombatRoomLoaded));
+            MethodInfo cardFromSerializableMethod = AccessTools.DeclaredMethod(
+                    typeof(CardModel),
+                    nameof(CardModel.FromSerializable))
+                ?? throw new MissingMethodException(typeof(CardModel).FullName, nameof(CardModel.FromSerializable));
+            MethodInfo personalHiveAfterDamageMethod = AccessTools.DeclaredMethod(
+                    typeof(PersonalHivePower),
+                    nameof(PersonalHivePower.AfterDamageReceived))
+                ?? throw new MissingMethodException(typeof(PersonalHivePower).FullName, nameof(PersonalHivePower.AfterDamageReceived));
+            foreach ((string label, MethodInfo targetMethod) in new (string, MethodInfo)[]
+                     {
+                         ("RunManager.EnterRoomInternal", enterRoomMethod),
+                         ("CreatureCmd.Heal", healMethod),
+                         ("CreatureCmd.Damage", creatureDamageMethod),
+                         ("DamageCmd.Attack", damageAttackMethod),
+                         ("Hook.ModifyDamage", modifyDamageMethod),
+                         ("CombatManager.AfterCombatRoomLoaded", afterCombatRoomLoadedMethod),
+                         ("CardModel.FromSerializable", cardFromSerializableMethod),
+                         ("PersonalHivePower.AfterDamageReceived", personalHiveAfterDamageMethod),
+                     })
+            {
+                harmony.Patch(
+                    targetMethod,
+                    prefix: new HarmonyMethod(typeof(ForeignCardPatch), nameof(ForeignCardPatch.Prefix)));
+                PreCombatEligibilityResult utilityHost = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(runState);
+                PreCombatEligibilityResult utilityLive = PreCombatSts2SimEligibility.AssessLiveHostAndRun(runState);
+                PreCombatBackendDisplaySnapshot utilityBadge = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+                if (!utilityHost.IsEligible
+                    || !utilityLive.IsEligible
+                    || !utilityBadge.HostEligibleForInProcess
+                    || utilityBadge.HostExclusionCode is not null)
+                {
+                    throw new InvalidOperationException(
+                        $"按 BuiltIn 同口径应放行的 affects_gameplay=true 库/工具补丁 {label} 被错误拒绝：" +
+                        $"host={utilityHost.FailureCode}:{utilityHost.Detail}, live={utilityLive.FailureCode}:{utilityLive.Detail}, " +
+                        $"badge={utilityBadge.HostExclusionCode}:{utilityBadge.HostExclusionDetail}。");
+                }
+                harmony.UnpatchAll(harmony.Id);
+            }
+            AssemblyInfo.MockTypes.Remove(typeof(ForeignCardPatch));
+
+            var gameplayAuditMod = new Mod
+            {
+                path = "test-gameplay-audit-probe",
+                manifest = new ModManifest
+                {
+                    id = "GameplayAuditProbe",
+                    name = "Gameplay Audit Probe",
+                    affectsGameplay = true,
+                },
+            };
+            AssemblyInfo.MockTypes[typeof(ForeignCardPatch)] = (gameplayAuditMod, false);
+            MethodInfo attackIntentGetSingleDamageMethod = AccessTools.DeclaredMethod(
+                    typeof(AttackIntent),
+                    nameof(AttackIntent.GetSingleDamage))
+                ?? throw new MissingMethodException(typeof(AttackIntent).FullName, nameof(AttackIntent.GetSingleDamage));
             MethodInfo defendOnPlayMethod = AdaptedCardOnPlayMirrors.ResolveOnPlay(typeof(DefendIronclad))
                 ?? throw new MissingMethodException(typeof(DefendIronclad).FullName, "OnPlay");
             foreach ((string label, MethodInfo targetMethod) in new (string, MethodInfo)[]
                      {
-                         ("CreatureCmd.Heal", healMethod),
-                         ("Hook.ModifyDamage", modifyDamageMethod),
-                         ("DamageCmd.Attack", damageAttackMethod),
                          ("DefendIronclad.OnPlay", defendOnPlayMethod),
+                         ("AttackIntent.GetSingleDamage", attackIntentGetSingleDamageMethod),
                      })
             {
                 harmony.Patch(
