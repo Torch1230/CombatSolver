@@ -640,6 +640,7 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
         CardPatch("Normality", "ShouldPlay", affectsGameplay: false),
         CardPatch("Normality", "MoveNext", affectsGameplay: false, isConcreteCardGameplayOverride: true, targetDisplayName: "MegaCrit.Sts2.Core.Models.Cards.Normality+<ShouldPlay>d__3.MoveNext"),
         CardPatch("StrikeIronclad", "get_PortraitPath", affectsGameplay: true),
+        CardPatch("DingyDagger", "get_PortraitPngPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_BetaPortraitPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_OverlayPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_AllPortraitPaths", affectsGameplay: true),
@@ -656,6 +657,15 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
 
     Equal(false, PreCombatSts2SimEligibility.TryFindCriticalHarmonyPatchViolation(allowedCardPatches, out string allowedCardReason));
     Equal(string.Empty, allowedCardReason);
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("get_PortraitPngPath"));
+    Equal(
+        PreCombatHarmonyTargetKind.None,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Cards",
+            "DingyDagger",
+            "get_PortraitPngPath",
+            isMonsterModel: false,
+            isConcreteCardGameplayOverride: false));
     return Task.CompletedTask;
 });
 await Check("bridge IsCorrupt reads immutable snapshot without blocking during activation lock", async () =>
