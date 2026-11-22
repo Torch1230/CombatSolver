@@ -10,5 +10,10 @@
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastApi.cs" Link="Production/PreCombatForecastApi.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastContracts.cs" Link="Production/PreCombatForecastContracts.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatForecastWorker.Idle.cs" Link="Production/PreCombatForecastWorker.Idle.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatSts2SimBridge.cs" Link="Production/PreCombatSts2SimBridge.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatSts2SimContracts.cs" Link="Production/PreCombatSts2SimContracts.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="abi-v1-fixtures.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

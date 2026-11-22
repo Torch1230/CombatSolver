@@ -186,7 +186,8 @@ function Get-HeadlessSnapshotPlan(
     [string]$CombatSolverManifest,
     [string]$MemoryCleaner,
     [string]$RitsuRoot,
-    [string]$RitsuManifest
+    [string]$RitsuManifest,
+    [string]$Sts2SimDir = ''
 ) {
     # Every payload is bound, including other mods and non-DLL mod assets. No
     # hardlinks/junctions: a build in another worktree must not mutate this image.
@@ -211,14 +212,33 @@ function Get-HeadlessSnapshotPlan(
         if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
             throw "Cannot freeze a game tree containing a reparse point: $($item.FullName)"
         }
+        $relative = [IO.Path]::GetRelativePath($Context.SourceGameRoot, $item.FullName)
+        if ($relative -eq 'mods\CombatSolver\sts2sim' -or
+            $relative.StartsWith('mods\CombatSolver\sts2sim\', [StringComparison]::OrdinalIgnoreCase)) {
+            continue
+        }
         if (-not $item.PSIsContainer) {
-            $sources[[IO.Path]::GetRelativePath($Context.SourceGameRoot, $item.FullName)] = $item.FullName
+            $sources[$relative] = $item.FullName
             [void]$enumeratedSources.Add($item.FullName)
         }
     }
     $sources['mods\CombatSolver\CombatSolver.dll'] = $CombatSolverDll
     $sources['mods\CombatSolver\CombatSolver.json'] = $CombatSolverManifest
     $sources['mods\CombatSolver\CombatSolver.MemoryCleaner.exe'] = $MemoryCleaner
+    $sts2SimDirPresent = -not [string]::IsNullOrWhiteSpace($Sts2SimDir) -and (Test-Path -LiteralPath $Sts2SimDir -PathType Container)
+    if ($sts2SimDirPresent) {
+        Assert-HeadlessNoReparsePoint $Sts2SimDir
+        foreach ($item in Get-ChildItem -LiteralPath $Sts2SimDir -Recurse -Force) {
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Cannot freeze an sts2sim payload containing a reparse point: $($item.FullName)"
+            }
+            if (-not $item.PSIsContainer) {
+                $relative = [IO.Path]::GetRelativePath($Sts2SimDir, $item.FullName)
+                $sources[(Join-Path 'mods\CombatSolver\sts2sim' $relative)] = $item.FullName
+                [void]$enumeratedSources.Add($item.FullName)
+            }
+        }
+    }
     $sources['mods\.combatsolver-headless-ritsulib\STS2-RitsuLib.json'] = $RitsuManifest
     $variantManifest = Join-Path $RitsuRoot 'ritsulib-variants.manifest'
     if (Test-Path -LiteralPath $variantManifest -PathType Leaf) {
@@ -274,11 +294,13 @@ function Get-HeadlessSnapshotPlan(
         })
         [void]$identity.Append($relative).Append([char]0).Append($fileHash).Append([char]0)
     }
+    [void]$identity.Append('sts2sim_dir_present=').Append($(if ($sts2SimDirPresent) { '1' } else { '0' })).Append([char]0)
     $bytes = [Text.Encoding]::UTF8.GetBytes($identity.ToString())
     $planWatch.Stop()
     return @{
         id = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))
         files = $files; cacheHits = $cacheHits; hashedFiles = $hashedFiles
+        sts2SimDirPresent = $sts2SimDirPresent
         elapsedMilliseconds = $planWatch.ElapsedMilliseconds
     }
 }
@@ -408,6 +430,13 @@ function Set-HeadlessGameSnapshot([hashtable]$Context, [hashtable]$Plan) {
                     Remove-Item -LiteralPath $destination -Force
                 }
             }
+            $bridgeDir = Get-HeadlessCanonicalPath (Join-Path $Context.GameRoot 'mods\CombatSolver\sts2sim')
+            Assert-HeadlessNoReparsePoint $bridgeDir
+            if ($Plan.sts2SimDirPresent) {
+                New-Item -ItemType Directory -Path $bridgeDir -Force | Out-Null
+            } elseif (Test-Path -LiteralPath $bridgeDir -PathType Container) {
+                Remove-Item -LiteralPath $bridgeDir -Recurse -Force
+            }
             Write-HeadlessJson $manifest @{
                 schemaVersion = 1; artifactId = $Plan.id; runtimeRoot = $Context.Root; files = $Plan.files
             }
@@ -434,6 +463,9 @@ function Set-HeadlessGameSnapshot([hashtable]$Context, [hashtable]$Plan) {
             if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne $file.sha256) {
                 throw "A source payload changed while the private game was being frozen: $($file.source)"
             }
+        }
+        if ($Plan.sts2SimDirPresent) {
+            New-Item -ItemType Directory -Path (Join-Path $staging 'mods\CombatSolver\sts2sim') -Force | Out-Null
         }
         $dependency = Join-Path $staging 'mods\.combatsolver-headless-ritsulib'
         Set-Content -LiteralPath (Join-Path $dependency '.combatsolver-headless-only') -Value 'CombatSolver private frozen dependency' -Encoding UTF8

@@ -156,10 +156,24 @@ internal static partial class PreCombatForecastWorker
         return Task.CompletedTask;
     }
 
+    internal static async Task CheckInProcessIdleExpiryAsync()
+    {
+        ResetIdleChecks();
+        using CancellationTokenSource source = new();
+        _idleShutdown = source;
+        object session = new();
+        _inProcessSession = session;
+        await RunInProcessIdleShutdownAsync(session, source, 0, source.Token);
+        Require(_inProcessSession is null, "In-process idle expiry did not clear readiness.");
+        Require(_idleShutdown is null, "A completed in-process timer retained its source.");
+        RequireDisposed(source);
+    }
+
     private static void ResetIdleChecks()
     {
         Require(_idleShutdown is null && Gate.CurrentCount == 1, "A prior idle check leaked an owner or gate.");
         _session = null;
+        _inProcessSession = null;
         StoppedSessions.Clear();
     }
 

@@ -4,7 +4,7 @@
 
 | 目录 | 用途与入口 |
 | --- | --- |
-| [build](build/) | `build-local-stack.ps1` / `.sh`：构建本地依赖与 Mod |
+| [build](build/) | `build-local-stack.ps1` / `.sh`：构建本地依赖与 Mod；`Sts2SimBridge.targets` 与 `Sts2SimBridgeStager`：校验并暂存可选 `sts2sim/` 桥接包 |
 | [release](release/) | `publish-release.ps1`：渠道发布；[WorkshopMetadata](release/WorkshopMetadata/README.md)：工坊标题与介绍成对维护；连接元数据与夸克包检查 |
 | [testing](testing/) | 无人启动、实例所有权、矩阵及 `checks/` 中的生产回归检查 |
 | [replay](replay/) | 检查点批量恢复、CheckpointTool、常驻会话及开发监控 |
@@ -32,7 +32,7 @@ pwsh -NoProfile -File tools/replay/run-checkpoint-batch.ps1 -InputPath <问题�
 
 Linux 的 `.sh` 是原生入口；无人测试必须带 `--cleanup-instance-on-exit`。测试、回放和性能方法由 [无人测试](../docs/HEADLESS_TESTING.md)、[检查点回放](../docs/CHECKPOINT_REPLAY.md)、[离线宿主](../docs/OFFLINE_SEARCH_HARNESS.md) 和 [性能指南](../docs/performance/README.md) 维护。
 
-`run-independent-checks.py` 在 Windows 和 Linux 使用同一入口。依赖 Python 3 和 .NET 9 SDK，执行 25 个独立检查，无需游戏或 RitsuLib。入口扫描 `checks/*/*.csproj`，要求项目进入执行清单或注明原因的排除清单。`--check-catalog` 只验证登记。新增项目未分类时，CI 先报错。
+`run-independent-checks.py` 在 Windows 和 Linux 使用同一入口。依赖 Python 3 和 .NET 9 SDK，执行 26 个独立检查，无需游戏或 RitsuLib。入口扫描 `checks/*/*.csproj`，要求项目进入执行清单或注明原因的排除清单。`--check-catalog` 只验证登记。新增项目未分类时，CI 先报错。
 
 可在命令后追加检查名，例如 `CardHookReceiverChecks DiagnosticLogTests`。每项打印结果，任一失败时返回非零退出码。GitHub Actions 在两个平台执行全组检查。排除的 3 个项目及原因见[测试入口](../docs/archive/testing/volume-29.md#独立检查与-ci)。Python 专项检查和原生战斗验收使用各自入口。
 

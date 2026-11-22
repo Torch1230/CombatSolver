@@ -1,0 +1,55 @@
+<Project>
+  <PropertyGroup>
+    <StageSts2SimBridgeEnabled Condition="'$(StageSts2SimBridgeEnabled)' == ''">true</StageSts2SimBridgeEnabled>
+    <Sts2SimRoot Condition="'$(Sts2SimRoot)' == ''">$(MSBuildProjectDirectory)/../sts2-ai</Sts2SimRoot>
+    <Sts2SimBridgeProject>$(Sts2SimRoot)/src/Sts2Sim.PreCombatBridge/Sts2Sim.PreCombatBridge.csproj</Sts2SimBridgeProject>
+    <Sts2SimBridgeOutputDir>$(Sts2SimRoot)/src/Sts2Sim.PreCombatBridge/bin/$(Configuration)/net9.0</Sts2SimBridgeOutputDir>
+    <Sts2SimBridgeStagerProject>$(MSBuildProjectDirectory)/tools/build/Sts2SimBridgeStager/Sts2SimBridgeStager.csproj</Sts2SimBridgeStagerProject>
+    <Sts2SimBridgeStagerAssembly>$(MSBuildProjectDirectory)/.local/tool-build/Sts2SimBridgeStager/bin/Release/net9.0/Sts2SimBridgeStager.dll</Sts2SimBridgeStagerAssembly>
+  </PropertyGroup>
+
+  <Target Name="ValidateExplicitSts2SimBridgeDir"
+          BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' != ''">
+    <Error Condition="!Exists('$(Sts2SimBridgeDir)/Sts2Sim.PreCombatBridge.dll') or !Exists('$(Sts2SimBridgeDir)/Sts2Sim.Solver.dll') or !Exists('$(Sts2SimBridgeDir)/Sts2Sim.Core.dll') or !Exists('$(Sts2SimBridgeDir)/Sts2Sim.PreCombatBridge.deps.json')"
+           Text="Explicit Sts2SimBridgeDir '$(Sts2SimBridgeDir)' is missing required Sts2Sim bridge artifacts." />
+  </Target>
+
+  <Target Name="BuildSts2SimBridge"
+          AfterTargets="Build"
+          Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' == '' and Exists('$(Sts2SimBridgeProject)')">
+    <Exec Command="dotnet build &quot;$(Sts2SimBridgeProject)&quot; -c $(Configuration) --nologo" />
+  </Target>
+
+  <Target Name="StageSts2SimBridge"
+          AfterTargets="BuildSts2SimBridge;Build"
+          DependsOnTargets="BuildSts2SimBridge">
+    <PropertyGroup>
+      <_Sts2SimStageTargetDir>$(TargetDir)sts2sim</_Sts2SimStageTargetDir>
+      <_ResolvedSts2SimSource Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' != ''">$(Sts2SimBridgeDir)</_ResolvedSts2SimSource>
+      <_ResolvedSts2SimSource Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' == '' and Exists('$(Sts2SimBridgeProject)')">$(Sts2SimBridgeOutputDir)</_ResolvedSts2SimSource>
+    </PropertyGroup>
+    <RemoveDir Directories="$(_Sts2SimStageTargetDir)"
+               Condition="'$(_ResolvedSts2SimSource)' == '' and Exists('$(_Sts2SimStageTargetDir)')" />
+    <Exec Command="dotnet build &quot;$(Sts2SimBridgeStagerProject)&quot; -c Release --nologo -v:q"
+          Condition="'$(_ResolvedSts2SimSource)' != ''" />
+    <Exec Command="dotnet &quot;$(Sts2SimBridgeStagerAssembly)&quot; --stage &quot;$(_ResolvedSts2SimSource)&quot; &quot;$(_Sts2SimStageTargetDir)&quot; 1 v0.113.1 d09d48e5"
+          Condition="'$(_ResolvedSts2SimSource)' != ''" />
+  </Target>
+
+  <Target Name="CopyModSts2Sim"
+          AfterTargets="CopyMod"
+          Condition="'$(CopyModOnBuild)' == 'true'">
+    <PropertyGroup>
+      <_Sts2SimStageTargetDir>$(TargetDir)sts2sim</_Sts2SimStageTargetDir>
+    </PropertyGroup>
+    <RemoveDir Directories="$(ModOutputDir)/sts2sim" Condition="Exists('$(ModOutputDir)/sts2sim')" />
+    <ItemGroup Condition="Exists('$(_Sts2SimStageTargetDir)')">
+      <_Sts2SimFiles Include="$(_Sts2SimStageTargetDir)/**/*" />
+    </ItemGroup>
+    <MakeDir Directories="$(ModOutputDir)/sts2sim" Condition="Exists('$(_Sts2SimStageTargetDir)')" />
+    <Copy SourceFiles="@(_Sts2SimFiles)"
+          DestinationFiles="@(_Sts2SimFiles->'$(ModOutputDir)/sts2sim/%(RecursiveDir)%(Filename)%(Extension)')"
+          Condition="Exists('$(_Sts2SimStageTargetDir)')" />
+  </Target>
+</Project>

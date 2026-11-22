@@ -5,6 +5,7 @@ internal static partial class PreCombatForecastWorker
     private const int KeepAliveIndefinitely = -1;
     private static CancellationTokenSource? _idleShutdown;
     private static int _idleWorkerLifetimeMilliseconds = PreCombatForecastApi.DefaultWorkerIdleTimeoutMilliseconds;
+    private static object? _inProcessSession;
 
     private static void ScheduleIdleShutdown(WorkerSession session)
     {
@@ -17,6 +18,18 @@ internal static partial class PreCombatForecastWorker
         CancellationToken token = cancellation.Token;
         _idleShutdown = cancellation;
         _ = Task.Run(() => RunIdleShutdownAsync(session, cancellation, idleTimeoutMilliseconds, token));
+    }
+
+    private static void ScheduleInProcessIdleShutdown(object inProcessSession)
+    {
+        CancelIdleShutdown();
+        int idleTimeoutMilliseconds = Volatile.Read(ref _idleWorkerLifetimeMilliseconds);
+        if (idleTimeoutMilliseconds == KeepAliveIndefinitely)
+            return;
+        CancellationTokenSource cancellation = new();
+        CancellationToken token = cancellation.Token;
+        _idleShutdown = cancellation;
+        _ = Task.Run(() => RunInProcessIdleShutdownAsync(inProcessSession, cancellation, idleTimeoutMilliseconds, token));
     }
 
     private static async Task RunIdleShutdownAsync(
@@ -55,6 +68,45 @@ internal static partial class PreCombatForecastWorker
             CompleteIdleShutdown(cancellation);
         }
     }
+
+    private static async Task RunInProcessIdleShutdownAsync(
+        object inProcessSession, CancellationTokenSource cancellation, int idleTimeoutMilliseconds,
+        CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(idleTimeoutMilliseconds, token).ConfigureAwait(false);
+            await Gate.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                if (ReferenceEquals(_inProcessSession, inProcessSession))
+                {
+                    Entry.Logger.Info(
+                        $"[CombatSolver/PreCombatApi] INPROCESS_IDLE_STOP idle_ms={idleTimeoutMilliseconds}");
+                    StopCurrentInProcessSession();
+                }
+            }
+            finally
+            {
+                Gate.Release();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // A new request or explicit panel close owns the next session transition.
+        }
+        catch (Exception ex)
+        {
+            Entry.Logger.Error($"[CombatSolver/PreCombatApi] INPROCESS_IDLE_STOP_FAILED exception={ex}");
+        }
+        finally
+        {
+            CompleteIdleShutdown(cancellation);
+        }
+    }
+
+    private static void StopCurrentInProcessSession() =>
+        Interlocked.Exchange(ref _inProcessSession, null);
 
     private static int? GetIdleTimeoutMilliseconds()
     {

@@ -141,11 +141,20 @@ public sealed record PreCombatSimulationOptions
         PreCombatForecastApi.DefaultWorkerIdleTimeoutMilliseconds;
 }
 
-/// <summary>Read-only process and memory information for the reusable isolated worker.</summary>
+/// <summary>Execution engine backing the pre-combat forecast session.</summary>
+public enum PreCombatBackendKind
+{
+    None,
+    InProcess,
+    LegacyProcess,
+}
+
+/// <summary>Read-only session and memory information for the reusable pre-combat worker.</summary>
 public sealed record PreCombatWorkerStatus
 {
     public required bool IsRunning { get; init; }
     public required bool IsBusy { get; init; }
+    public PreCombatBackendKind Backend { get; init; } = PreCombatBackendKind.None;
     public int? ProcessId { get; init; }
     public long? WorkingSetBytes { get; init; }
     public long? PrivateMemoryBytes { get; init; }
@@ -177,6 +186,7 @@ public sealed record PreCombatForecastResult
     public double? TotalElapsedMilliseconds { get; init; }
     public string? Error { get; init; }
     public string? DiagnosticLogPath { get; init; }
+    internal PreCombatBackendKind ProducingBackend { get; init; } = PreCombatBackendKind.None;
 
     public bool IsSuccess => Status == PreCombatForecastStatus.Succeeded;
 }

@@ -498,6 +498,83 @@ run_snapshot_tests() {
     diff -r -- "$case_root/b-before" "$b_root/game" >"$case_root/b.diff" || fail 'A update changed B private files'
     [[ "$(<"$b_root/snapshot-id")" == "$b_id" ]] || fail 'A update changed B provenance'
     pass 'source tree and B remain unchanged across A update and rejected live publication'
+
+    local bridge_src="$case_root/sts2sim-src"
+    local c_root="$case_root/instances/snapshot-bridge"
+    mkdir -p -- "$bridge_src"
+    printf '%s\n' 'bridge-core' >"$bridge_src/Sts2Sim.Core.dll"
+    printf '%s\n' 'hashing-opt' >"$bridge_src/System.IO.Hashing.dll"
+    local c_with_dep c_without_dep c_absent c_empty
+    c_with_dep="$(
+        source "$runtime_helper"
+        hr_snapshot_id "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$bridge_src"
+    )"
+    (
+        export COMBATSOLVER_HEADLESS_HOST_ROOT="$case_root/host"
+        export HR_WORKTREE="$case_root/worktree-bridge"
+        mkdir -p -- "$HR_WORKTREE"
+        source "$runtime_helper"
+        hr_init "$c_root" snapshot-bridge "$c_root/game/SlayTheSpire2" "$c_root/data" parallel 1 1 10
+        hr_prepare_snapshot "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$c_with_dep" "$bridge_src"
+    )
+    [[ -f "$c_root/game/mods/CombatSolver/sts2sim/System.IO.Hashing.dll" ]] || fail 'private bridge dependency was not staged'
+
+    rm -f -- "$bridge_src/System.IO.Hashing.dll"
+    c_without_dep="$(
+        source "$runtime_helper"
+        hr_snapshot_id "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$bridge_src"
+    )"
+    [[ "$c_without_dep" != "$c_with_dep" ]] || fail 'removing private dependency did not change snapshot ID'
+    (
+        export COMBATSOLVER_HEADLESS_HOST_ROOT="$case_root/host"
+        export HR_WORKTREE="$case_root/worktree-bridge"
+        source "$runtime_helper"
+        hr_init "$c_root" snapshot-bridge "$c_root/game/SlayTheSpire2" "$c_root/data" parallel 1 1 10
+        hr_prepare_snapshot "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$c_without_dep" "$bridge_src"
+    )
+    [[ ! -e "$c_root/game/mods/CombatSolver/sts2sim/System.IO.Hashing.dll" ]] || fail 'removed private dependency remained in reused snapshot'
+    [[ -f "$c_root/game/mods/CombatSolver/sts2sim/Sts2Sim.Core.dll" ]] || fail 'core bridge payload vanished after dependency removal'
+
+    c_absent="$(snapshot_id a)"
+    [[ "$c_absent" != "$c_without_dep" ]] || fail 'absent bridge matched present bridge snapshot ID'
+    prepare_snapshot a "$c_absent" >"$case_root/prepare-absent.log" 2>&1
+    rm -rf -- "$bridge_src"/*
+    c_empty="$(
+        source "$runtime_helper"
+        hr_snapshot_id "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$bridge_src"
+    )"
+    [[ "$c_empty" != "$c_absent" ]] || fail 'empty bridge directory produced same snapshot ID as absent directory'
+    (
+        export COMBATSOLVER_HEADLESS_HOST_ROOT="$case_root/host"
+        export HR_WORKTREE="$case_root/worktree-bridge"
+        source "$runtime_helper"
+        hr_init "$c_root" snapshot-bridge "$c_root/game/SlayTheSpire2" "$c_root/data" parallel 1 1 10
+        hr_prepare_snapshot "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$c_absent"
+    )
+    [[ ! -e "$c_root/game/mods/CombatSolver/sts2sim" ]] || fail 'present-to-absent transition left sts2sim directory behind'
+    (
+        export COMBATSOLVER_HEADLESS_HOST_ROOT="$case_root/host"
+        export HR_WORKTREE="$case_root/worktree-bridge"
+        source "$runtime_helper"
+        hr_init "$c_root" snapshot-bridge "$c_root/game/SlayTheSpire2" "$c_root/data" parallel 1 1 10
+        hr_prepare_snapshot "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$c_empty" "$bridge_src"
+    )
+    [[ -d "$c_root/game/mods/CombatSolver/sts2sim" ]] || fail 'absent-to-empty transition did not materialize empty sts2sim directory'
+    pass 'bridge snapshot handles dependency removal, present-to-absent, and absent-to-empty transitions'
 }
 
 run_snapshot_failure_tests() {

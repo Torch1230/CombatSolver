@@ -9,7 +9,7 @@
 | Replay/ | 检查点导入、原生事件回放、录制状态与回放断言 |
 | Contracts/Combat/ | 卡牌、Power、遗物、RNG、生命周期、Fork 与执行续接机制 |
 | Contracts/Search/ | 政策、预算、保路、质量和搜索并发合同 |
-| Contracts/Runtime/ | 根捕获、会话、部署所有权、内存与进程边界 |
+| Contracts/Runtime/ | 根捕获、会话、部署所有权、内存与进程边界（含 `PreCombatSts2SimBridgeContract`） |
 | Contracts/UI/ | 本地化、路线行与显示身份合同 |
 | Contracts/ThirdParty/ | 登记接口及第三方调用边界合同 |
 | Regressions/Community/ | 社区问题的独立机制回归 |

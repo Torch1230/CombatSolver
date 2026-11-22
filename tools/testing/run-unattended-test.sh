@@ -482,9 +482,11 @@ if [[ -n ${option_value[combat-solver-build-dir]} ]]; then
     build_dir="$(realpath -m -- "${option_value[combat-solver-build-dir]}")"
     combat_solver_dll="$build_dir/CombatSolver.dll"
     combat_solver_manifest="$build_dir/CombatSolver.json"
+    combat_solver_sts2sim_dir="$build_dir/sts2sim"
 else
     combat_solver_dll="$repo_root/.godot/mono/temp/bin/Release/CombatSolver.dll"
     combat_solver_manifest="$repo_root/CombatSolver.json"
+    combat_solver_sts2sim_dir="$repo_root/.godot/mono/temp/bin/Release/sts2sim"
 fi
 ritsu_workshop_root="$(realpath -m -- "${option_value[ritsu-workshop-root]}")"
 # shellcheck source=headless-runtime.sh
@@ -1137,7 +1139,11 @@ else
     combat_solver_dll_sha256="${combat_solver_dll_sha256%% *}"
     combat_solver_manifest_sha256="$(sha256sum -- "$combat_solver_manifest")"
     combat_solver_manifest_sha256="${combat_solver_manifest_sha256%% *}"
-    artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source")"
+    if [[ -d "$combat_solver_sts2sim_dir" ]]; then
+        artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$combat_solver_sts2sim_dir")"
+    else
+        artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source")"
+    fi
 fi
 
 runtime_profile="${option_value[runtime-profile]}"
@@ -1222,7 +1228,11 @@ if ((option_value[reuse-only] == 1)) && [[ -z "$process_pid" ]]; then
 fi
 hr_acquire "$process_pid" "$process_identity_start_time" || runtime_error 'headless host admission failed'
 if [[ -z $process_pid ]]; then
-    hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$artifact_id" || runtime_error 'could not prepare frozen game snapshot'
+    if [[ -d "$combat_solver_sts2sim_dir" ]]; then
+        hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$artifact_id" "$combat_solver_sts2sim_dir" || runtime_error 'could not prepare frozen game snapshot'
+    else
+        hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$artifact_id" || runtime_error 'could not prepare frozen game snapshot'
+    fi
 fi
 
 # Publish only after every process-safety check. An already-running protocol

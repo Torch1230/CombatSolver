@@ -314,15 +314,17 @@ hr_snapshot_id() {
         shift
         for file in "$@"; do
             if [[ -d $file ]]; then
+                printf 'DIR_PRESENT\n'
                 (cd -- "$file" && find -L . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum --) || return 1
             else
+                printf 'FILE\n'
                 sha256sum -- "$file" || return 1
             fi
         done
     } | sha256sum | cut -d ' ' -f 1
 }
 hr_prepare_snapshot() {
-    local source="$1" dll="$2" manifest="$3" ritsu="$4" ritsu_manifest="$5" expected="$6" staging old directory actual id_temp
+    local source="$1" dll="$2" manifest="$3" ritsu="$4" ritsu_manifest="$5" expected="$6" sts2sim="${7:-}" staging old directory actual id_temp
     [[ $HR_ROOT != "$source" && $HR_ROOT != "$source/"* && $source != "$HR_ROOT/"* ]] || { hr_error 'source and runtime must be disjoint'; return 1; }
     local candidate
     for candidate in /proc/[0-9]*/exe; do
@@ -337,6 +339,10 @@ hr_prepare_snapshot() {
     done
     cp -- "$dll" "$staging/mods/CombatSolver/CombatSolver.dll" || return 1
     cp -- "$manifest" "$staging/mods/CombatSolver/CombatSolver.json" || return 1
+    if [[ -n $sts2sim && -d $sts2sim ]]; then
+        mkdir -p -- "$staging/mods/CombatSolver/sts2sim" || return 1
+        cp -a -- "$sts2sim/." "$staging/mods/CombatSolver/sts2sim/" || return 1
+    fi
     if [[ -d $ritsu ]]; then
         cp -a -- "$ritsu/." "$staging/mods/CombatSolverHeadlessRitsuLib/" || return 1
         rm -f -- "$staging/mods/CombatSolverHeadlessRitsuLib/mod_manifest.json" \
@@ -346,7 +352,11 @@ hr_prepare_snapshot() {
     fi
     cp -- "$ritsu_manifest" "$staging/mods/CombatSolverHeadlessRitsuLib/STS2-RitsuLib.json" || return 1
     printf '%s\n' 'CombatSolver isolated headless dependency' >"$staging/mods/CombatSolverHeadlessRitsuLib/.combatsolver-headless-only" || return 1
-    actual="$(hr_snapshot_id "$source" "$dll" "$manifest" "$ritsu" "$ritsu_manifest")" || return 1
+    if [[ -n $sts2sim && -d $sts2sim ]]; then
+        actual="$(hr_snapshot_id "$source" "$dll" "$manifest" "$ritsu" "$ritsu_manifest" "$sts2sim")" || return 1
+    else
+        actual="$(hr_snapshot_id "$source" "$dll" "$manifest" "$ritsu" "$ritsu_manifest")" || return 1
+    fi
     [[ $actual == "$expected" ]] || {
         hr_error "snapshot source changed while copying; unpublished snapshot retained at $staging"; return 1;
     }
