@@ -1878,10 +1878,28 @@ await Check("critical Harmony patch audit catches combat command and hook patche
         Patch("MegaCrit.Sts2.Core.Commands", "VfxCmd", "Play", affectsGameplay: true),
         Patch("MegaCrit.Sts2.Core.Commands", "SfxCmd", "Play", affectsGameplay: true),
         Patch("MegaCrit.Sts2.Core.Nodes.Combat", "NCombatUi", "Update", affectsGameplay: true),
+        Patch("MegaCrit.Sts2.Core.Models", "CardModel", "GetDescriptionForPile", affectsGameplay: true),
+        Patch("MegaCrit.Sts2.Core.Models", "CardModel", "GetDescriptionForUpgradePreview", affectsGameplay: true),
+        Patch("MegaCrit.Sts2.Core.Models", "RelicModel", "GetDescriptionOrFallback", affectsGameplay: true),
+        Patch("MegaCrit.Sts2.Core.Models.Powers", "StrengthPower", "get_Description", affectsGameplay: true),
     ];
 
     Equal(false, PreCombatSts2SimEligibility.TryFindCriticalHarmonyPatchViolation(allowedPatches, out string allowedReason));
     Equal(string.Empty, allowedReason);
+    Equal(
+        PreCombatHarmonyTargetKind.CombatGameplay,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models",
+            "CardModel",
+            "FromSerializable",
+            isMonsterModel: false));
+    Equal(
+        PreCombatHarmonyTargetKind.CombatGameplay,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Powers",
+            "PersonalHivePower",
+            "AfterDamageReceived",
+            isMonsterModel: false));
     return Task.CompletedTask;
 });
 await Check("ABI v2 symmetric effective envelope version check rejects v2 options under v1 envelopes", () =>
