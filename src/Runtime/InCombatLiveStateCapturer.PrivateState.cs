@@ -414,10 +414,11 @@ internal static partial class InCombatLiveStateCapturer
     }
 
     private static bool ProveToolboxUsedThisCombat(
+        Toolbox toolbox,
         Player player,
         CombatHistoryEntry[] allHistory)
     {
-        if (player.PlayerCombatState is not { Phase: PlayerTurnPhase.Play })
+        if (toolbox.IsMelted || player.PlayerCombatState is not { Phase: PlayerTurnPhase.Play })
             return false;
 
         foreach (CombatHistoryEntry entry in allHistory)
@@ -427,12 +428,6 @@ internal static partial class InCombatLiveStateCapturer
             if (entry is CardDrawnEntry drawn
                 && drawn.FromHandDraw
                 && ReferenceEquals(drawn.Actor, player.Creature))
-            {
-                return true;
-            }
-            if (entry is CardGeneratedEntry generated
-                && ReferenceEquals(generated.Creator, player)
-                && generated.Card.Pool is ColorlessCardPool)
             {
                 return true;
             }
@@ -637,8 +632,15 @@ internal static partial class InCombatLiveStateCapturer
             case ThrowingAxe ta:
                 fields["ThrowingAxe._used"] = BoolVal(ta._usedThisCombat);
                 break;
-            case Toolbox:
-                if (!ProveToolboxUsedThisCombat(player, allHistory))
+            case Toolbox toolbox:
+                if (toolbox.IsMelted)
+                {
+                    throw new InCombatLiveCaptureUnsupportedException(
+                        "live_private_state_unmapped",
+                        "relics.Toolbox._wasUsedThisCombat",
+                        "Melted Toolbox cannot prove live trigger state.");
+                }
+                if (!ProveToolboxUsedThisCombat(toolbox, player, allHistory))
                 {
                     throw new InCombatLiveCaptureUnsupportedException(
                         "live_private_state_unmapped",

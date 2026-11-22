@@ -455,7 +455,8 @@ internal sealed partial class CombatBeamSolver
                 int potionShuffleEvents = potionChoiceFrame?.ShuffleEventsBefore ?? simulator.ShuffleEventCount;
                 int potionHistoryEntryStart = potionChoiceFrame?.HistoryStart ?? simulator.History.Entries.Count;
                 SearchMeasurement potionMeasurement = _run.Performance.Begin();
-                simulatedCombat.BeginActionChoices(action.NestedChoices);
+                simulatedCombat.BeginActionChoices(
+                    new TurnStartChoiceCursor(action.NestedChoices, _validateExternalChoicesAgainstSpec));
                 try
                 {
                     if (potionChoiceFrame == null && !PotionExecutionSupport.Prepare(
@@ -525,7 +526,8 @@ internal sealed partial class CombatBeamSolver
             int shuffleEvents = cardChoiceFrame?.ShuffleEventsBefore ?? simulator.ShuffleEventCount;
             bool capturingChoice = cardChoiceCapture != null && simulator.BeginManualCardChoiceCapture(card);
             SearchMeasurement cardExecutionMeasurement = _run.Performance.Begin();
-            simulatedCombat.BeginActionChoices(ActionChoicesForReplay(action));
+            simulatedCombat.BeginActionChoices(
+                new TurnStartChoiceCursor(ActionChoicesForReplay(action), _validateExternalChoicesAgainstSpec));
             using IDisposable cardExecutionScope =
                 simulatedCombat.BeginCardExecutionScope(processedEnemyDeaths);
             bool cardPlayCompleted;
@@ -977,7 +979,7 @@ internal sealed partial class CombatBeamSolver
         IReadOnlyList<PlanCardChoice>? roundChoicePlans = turnStartChoices?
             .Where(choice => choice.Effect != PlanChoiceEffect.ApplyKnowledgeCurse || choice.Timing != PlanChoiceTiming.EnemyTurn)
             .ToArray();
-        TurnStartChoiceCursor roundChoices = new(roundChoicePlans);
+        TurnStartChoiceCursor roundChoices = new(roundChoicePlans, _validateExternalChoicesAgainstSpec);
         simulatedCombat.BeginActionChoices(roundChoices);
         simulatedCombat.SetActionChoiceTiming(PlanChoiceTiming.PlayerTurnEnd);
         try

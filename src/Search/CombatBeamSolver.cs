@@ -48,6 +48,7 @@ internal sealed partial class CombatBeamSolver(
     PrimarySearchIncumbent? retainedPrimaryIncumbent = null)
 {
     private CancellationToken? _routeMaterializationCancellationToken;
+    private bool _validateExternalChoicesAgainstSpec;
     private CancellationToken ReplayCancellationToken => _routeMaterializationCancellationToken ?? cancellationToken;
 
     private SolverResult MaterializeAdoptableRoute(Func<SolverResult> materialize)

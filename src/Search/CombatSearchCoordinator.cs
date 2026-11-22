@@ -79,7 +79,8 @@ internal static partial class CombatSearchCoordinator
             SolverRouteAdoptionSeed seed = new(
                 speculativeRoutePreview.CandidateVersion,
                 result.BestNode.Actions,
-                () => result);
+                () => result,
+                backendAttempt: interaction?.CurrentBackendAttempt ?? 0);
             currentRouteAdoptionSeed = seed;
             policy.Diagnostics.Info(
                 $"[CombatSolver/Test] SEARCH_INTERIM_RESULT potions={result.ProjectedBattlePotionCount} " +

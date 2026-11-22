@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Text;
 using System.Text.Json;
 using CombatSolver.Api;
 using MegaCrit.Sts2.Core.Runs;
@@ -358,6 +361,425 @@ await Check("shared abi-v1-fixtures.json schema and samples match contract", () 
         ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.DeserializeAndValidateResponse(raw));
     }
     return Task.CompletedTask;
+});
+await Check("in-combat ABI v1 wire validator rejects malformed nested traces and missing/duplicate turn outcomes", () =>
+{
+    var validChoiceHand = new InCombatChoiceTraceDto(
+        "Action", "SURVIVOR", "Hand",
+        [new InCombatChoiceCardTokenDto("DEFEND_IRONCLAD", 0, 0, 1)]);
+    var validChoiceGenerated = new InCombatChoiceTraceDto(
+        "Action", "DISCOVERY", "None",
+        [new InCombatChoiceCardTokenDto("BASH", 0, 0, -1)]);
+    var validResult = new InCombatSts2SimResultDto(
+        Actions:
+        [
+            new InCombatActionTraceDto(
+                Turn: 1,
+                Kind: "PlayCard",
+                CardId: "SURVIVOR",
+                CardOccurrence: 0,
+                CardUpgradeLevel: 0,
+                CardEnchantmentId: string.Empty,
+                TargetIndex: -1,
+                TargetCombatId: null,
+                PotionId: string.Empty,
+                PotionSlot: -1,
+                Choices: [validChoiceHand, validChoiceGenerated],
+                FlashedRelicIds: ["PEN_NIB"],
+                KilledEnemyCombatIds: []),
+            new InCombatActionTraceDto(
+                Turn: 1,
+                Kind: "EndTurn",
+                CardId: string.Empty,
+                CardOccurrence: 0,
+                CardUpgradeLevel: -1,
+                CardEnchantmentId: string.Empty,
+                TargetIndex: -1,
+                TargetCombatId: null,
+                PotionId: string.Empty,
+                PotionSlot: -1,
+                Choices: [],
+                FlashedRelicIds: [],
+                KilledEnemyCombatIds: []),
+        ],
+        TurnOutcomes:
+        [
+            new InCombatTurnOutcomeDto(1, 0, 0, 6, 0, 8, 8, 1, 0, 0, true),
+        ],
+        Terminal: new InCombatTerminalSnapshotDto(
+            false, true, 75, 80, 5, 0, 75, 8, 0, 0, 1, 0, 3, 0, 1, 0, 0, 5, 1, null, false, "Complete", "None", false),
+        PotionUses: [],
+        ExpandedNodes: 12,
+        SearchElapsedMilliseconds: 3.5);
+    var validResponse = new InCombatSts2SimResponseDto(
+        InCombatSts2SimAbi.Version, "Succeeded", null, null, null, validResult, null, 1, 4.0);
+    InCombatSts2SimWireValidator.ValidateResponse(validResponse);
+
+    // One-action damaging turn with empty TurnOutcomes list must fail.
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions = [validResult.Actions[0]],
+                TurnOutcomes = [],
+            },
+        }));
+
+    // Missing TurnOutcome for turn 2 action and duplicate TurnOutcome for turn 1 must fail.
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions =
+                [
+                    validResult.Actions[0],
+                    validResult.Actions[1] with { Turn = 2 },
+                ],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                TurnOutcomes =
+                [
+                    new InCombatTurnOutcomeDto(1, 0, 0, 6, 0, 8, 8, 1, 0, 0, false),
+                    new InCombatTurnOutcomeDto(1, 0, 0, 6, 0, 8, 8, 1, 0, 0, true),
+                ],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                TurnOutcomes = [new InCombatTurnOutcomeDto(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false)],
+            },
+        }));
+
+    // Unknown action kind and malformed nested collections must fail.
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions = [validResult.Actions[0] with { Kind = "BogusAction" }],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions = [validResult.Actions[0] with { FlashedRelicIds = null! }],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions = [validResult.Actions[0] with { FlashedRelicIds = [" "] }],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions = [validResult.Actions[0] with { KilledEnemyCombatIds = null! }],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions = [validResult.Actions[0] with { Choices = [validChoiceHand with { Timing = "MidCombat" }] }],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions = [validResult.Actions[0] with { Choices = [validChoiceHand with { SourcePile = "Nowhere" }] }],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions = [validResult.Actions[0] with { Choices = [validChoiceHand with { Cards = null! }] }],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions =
+                [
+                    validResult.Actions[0] with
+                    {
+                        Choices =
+                        [
+                            validChoiceHand with
+                            {
+                                Cards = [new InCombatChoiceCardTokenDto("STRIKE_IRONCLAD", 0, 0, -1)],
+                            },
+                        ],
+                    },
+                ],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with
+            {
+                Actions =
+                [
+                    validResult.Actions[0] with
+                    {
+                        Choices =
+                        [
+                            validChoiceGenerated with
+                            {
+                                Cards = [new InCombatChoiceCardTokenDto("BASH", 0, 0, -2)],
+                            },
+                        ],
+                    },
+                ],
+            },
+        }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
+        validResponse with
+        {
+            Result = validResult with { PotionUses = [null!] },
+        }));
+
+    byte[] malformedProgressBytes = JsonSerializer.SerializeToUtf8Bytes(
+        new InCombatSts2SimProgressDto(
+            10, 1, 2.0, 0, true, 1, 0,
+            validResult with { Actions = [validResult.Actions[0]], TurnOutcomes = [] }),
+        PreCombatSts2SimAbi.JsonOptions);
+    ExpectThrows<InvalidDataException>(() =>
+        InCombatSts2SimWireValidator.DeserializeAndValidateProgress(malformedProgressBytes));
+    return Task.CompletedTask;
+});
+await Check("isolated bridge loader activates C2-only pre-combat bundle without breaking pre-combat", async () =>
+{
+    string repoRoot = FindRepoRoot();
+    string scratchRoot = Path.Combine(repoRoot, ".local", "tool-tasks", "sts2sim-bridge", "c2-only-check-" + Guid.NewGuid().ToString("N"));
+    string sts2simDir = Path.Combine(scratchRoot, "sts2sim");
+    Directory.CreateDirectory(sts2simDir);
+    try
+    {
+        string bridgeMvid = Guid.NewGuid().ToString("D");
+        string solverMvid = Guid.NewGuid().ToString("D");
+        string coreMvid = Guid.NewGuid().ToString("D");
+        string identityJson = JsonSerializer.Serialize(
+            new Sts2SimBundleIdentityDto(
+                PreCombatSts2SimAbi.Version,
+                PreCombatSts2SimAbi.SupportedGameVersion,
+                PreCombatSts2SimAbi.SupportedGameCommit,
+                bridgeMvid,
+                solverMvid,
+                coreMvid),
+            PreCombatSts2SimAbi.JsonOptions);
+        string preCombatResponseJson = JsonSerializer.Serialize(
+            new Sts2SimBridgeResponseDto(
+                PreCombatSts2SimAbi.Version,
+                "Succeeded",
+                null,
+                null,
+                null,
+                3,
+                77,
+                2,
+                false,
+                "Complete",
+                "None",
+                [],
+                25,
+                1,
+                4.0,
+                5.0),
+            PreCombatSts2SimAbi.JsonOptions);
+
+        string bridgeDllPath = Path.Combine(sts2simDir, "Sts2Sim.PreCombatBridge.dll");
+        var asmBuilder = new PersistedAssemblyBuilder(
+            new AssemblyName("Sts2Sim.PreCombatBridge"),
+            typeof(object).Assembly);
+        ModuleBuilder modBuilder = asmBuilder.DefineDynamicModule("Sts2Sim.PreCombatBridge.dll");
+        TypeBuilder typeBuilder = modBuilder.DefineType(
+            "Sts2Sim.PreCombatBridge.BridgeEntry",
+            TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed);
+
+        ILGenerator getAbiIl = typeBuilder.DefineMethod(
+                "GetAbiVersion",
+                MethodAttributes.Public | MethodAttributes.Static,
+                typeof(int),
+                Type.EmptyTypes)
+            .GetILGenerator();
+        getAbiIl.Emit(OpCodes.Ldc_I4, PreCombatSts2SimAbi.Version);
+        getAbiIl.Emit(OpCodes.Ret);
+
+        ILGenerator getIdIl = typeBuilder.DefineMethod(
+                "GetBundleIdentityJson",
+                MethodAttributes.Public | MethodAttributes.Static,
+                typeof(string),
+                Type.EmptyTypes)
+            .GetILGenerator();
+        getIdIl.Emit(OpCodes.Ldstr, identityJson);
+        getIdIl.Emit(OpCodes.Ret);
+
+        ILGenerator prewarmIl = typeBuilder.DefineMethod(
+                "Prewarm",
+                MethodAttributes.Public | MethodAttributes.Static,
+                typeof(void),
+                Type.EmptyTypes)
+            .GetILGenerator();
+        prewarmIl.Emit(OpCodes.Ret);
+
+        MethodInfo utf8Getter = typeof(Encoding).GetProperty(nameof(Encoding.UTF8))!.GetMethod!;
+        MethodInfo getBytesMethod = typeof(Encoding).GetMethod(nameof(Encoding.GetBytes), [typeof(string)])!;
+        MethodInfo taskFromResultMethod = typeof(Task)
+            .GetMethod(nameof(Task.FromResult), BindingFlags.Public | BindingFlags.Static)!
+            .MakeGenericMethod(typeof(byte[]));
+        ILGenerator runIl = typeBuilder.DefineMethod(
+                "RunJsonAsync",
+                MethodAttributes.Public | MethodAttributes.Static,
+                typeof(Task<byte[]>),
+                [typeof(byte[]), typeof(CancellationToken)])
+            .GetILGenerator();
+        runIl.Emit(OpCodes.Call, utf8Getter);
+        runIl.Emit(OpCodes.Ldstr, preCombatResponseJson);
+        runIl.Emit(OpCodes.Callvirt, getBytesMethod);
+        runIl.Emit(OpCodes.Call, taskFromResultMethod);
+        runIl.Emit(OpCodes.Ret);
+
+        typeBuilder.CreateType();
+        asmBuilder.Save(bridgeDllPath);
+
+        File.WriteAllText(Path.Combine(sts2simDir, "Sts2Sim.Solver.dll"), "placeholder-solver");
+        File.WriteAllText(Path.Combine(sts2simDir, "Sts2Sim.Core.dll"), "placeholder-core");
+        File.WriteAllText(
+            Path.Combine(sts2simDir, "Sts2Sim.PreCombatBridge.deps.json"),
+            "{\"runtimeTarget\":{\"name\":\".NETCoreApp,Version=v9.0\"},\"targets\":{\".NETCoreApp,Version=v9.0\":{}}}");
+
+        var manifestEntries = new List<Sts2SimBundleFileManifestEntry>
+        {
+            new(
+                "Sts2Sim.PreCombatBridge.dll",
+                Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(bridgeDllPath))),
+                bridgeMvid),
+            new(
+                "Sts2Sim.Solver.dll",
+                Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Combine(sts2simDir, "Sts2Sim.Solver.dll")))),
+                solverMvid),
+            new(
+                "Sts2Sim.Core.dll",
+                Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Combine(sts2simDir, "Sts2Sim.Core.dll")))),
+                coreMvid),
+            new(
+                "Sts2Sim.PreCombatBridge.deps.json",
+                Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Combine(sts2simDir, "Sts2Sim.PreCombatBridge.deps.json")))),
+                null),
+        };
+        File.WriteAllText(
+            Path.Combine(sts2simDir, "sts2sim-bundle.manifest.json"),
+            JsonSerializer.Serialize(
+                new Sts2SimBundleManifest(
+                    PreCombatSts2SimAbi.Version,
+                    PreCombatSts2SimAbi.SupportedGameVersion,
+                    PreCombatSts2SimAbi.SupportedGameCommit,
+                    manifestEntries),
+                PreCombatSts2SimAbi.JsonOptions));
+
+        PreCombatSts2SimBridge.ResetForTesting();
+        PreCombatSts2SimBridge.ModDirectoryOverrideForTesting = scratchRoot;
+        CombatSolver.Entry.Logger.ThrowOnError = false;
+        CombatSolver.Entry.Logger.Errors.Clear();
+
+        Equal(PreCombatBridgeAvailability.Ready, PreCombatSts2SimBridge.EnsureActivated(out string? err));
+        Equal<string?>(null, err);
+        Equal(false, PreCombatSts2SimBridge.IsCorrupt);
+        Equal(true, PreCombatSts2SimBridge.IsInCombatUnavailable);
+        Equal(InCombatBridgeAvailability.InCombatUnsupported, PreCombatSts2SimBridge.EnsureInCombatActivated(out string? inCombatErr));
+        Equal(true, !string.IsNullOrWhiteSpace(inCombatErr));
+        Equal(false, PreCombatSts2SimBridge.IsCorrupt);
+
+        PreCombatSts2SimBridge.Prewarm();
+        string fixturePath = Path.Combine(AppContext.BaseDirectory, "abi-v1-fixtures.json");
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllBytes(fixturePath));
+        Sts2SimBridgeRequestDto sampleRequest = JsonSerializer.Deserialize<Sts2SimBridgeRequestDto>(
+            doc.RootElement.GetProperty("sampleRequest").GetRawText(),
+            PreCombatSts2SimAbi.JsonOptions)!;
+        Sts2SimBridgeResponseDto response = await PreCombatSts2SimBridge.RunAsync(sampleRequest, CancellationToken.None);
+        Equal("Succeeded", response.Outcome);
+        Equal(3, response.ProjectedHpLoss);
+        Equal(false, PreCombatSts2SimBridge.IsCorrupt);
+
+        var inCombatPolicy = new InCombatSts2SimPolicyDto(
+            "Auto", [], false, false, [],
+            new Sts2SimGrowthBudgetsDto(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null),
+            null, false, "KeepHigh", "KeepHigh", 0, false,
+            false, false, false, 8, null, null, 100, 16, 8, 8, 1000, null);
+        var playerCounters = new InCombatPlayerCountersDto(
+            0m, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        var playerDto = new InCombatPlayerDto(
+            80, 80, 0, 0, 99, 3, 0, true, true, 3, 0, "Play", 1, playerCounters,
+            [], [], [], [], [], [], [], 0, [], []);
+        var emptySemanticHistory = new InCombatSemanticHistoryDto([], [], [], [], [], []);
+        var emptyVerification = new InCombatVerificationDto(
+            80, 80, 0, 3, 0, 99, 0, [], [], [], [], [], [], [], [], []);
+        var inCombatReq = new InCombatSts2SimRequestDto(
+            InCombatSts2SimAbi.Version,
+            "c2-only-req",
+            "{}",
+            new InCombatLiveStateDto(
+                "TEST",
+                "Monster",
+                [],
+                "Player",
+                1,
+                false,
+                false,
+                1u,
+                "seed",
+                new Dictionary<string, InCombatRngStreamDto>(),
+                0UL,
+                new Dictionary<string, InCombatRngStreamDto>(),
+                playerDto,
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                emptySemanticHistory,
+                emptyVerification),
+            0, 1000, 15000, 1, inCombatPolicy);
+        await ExpectThrowsAsync<NotSupportedException>(() => PreCombatSts2SimBridge.RunInCombatAsync(inCombatReq, null, CancellationToken.None));
+    }
+    finally
+    {
+        PreCombatSts2SimBridge.ResetForTesting();
+        PreCombatSts2SimBridge.ModDirectoryOverrideForTesting = null;
+        CombatSolver.Entry.Logger.ThrowOnError = true;
+        if (Directory.Exists(scratchRoot))
+            Directory.Delete(scratchRoot, recursive: true);
+    }
 });
 await Check("isolated bridge loader rejects missing, tampered, and unmanifested bundles", () =>
 {

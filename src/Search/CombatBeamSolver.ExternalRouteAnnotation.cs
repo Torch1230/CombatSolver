@@ -1,7 +1,9 @@
 using System.Globalization;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Simulation;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Models;
 
 namespace CombatSolver;
 
@@ -82,7 +84,9 @@ internal sealed partial class CombatBeamSolver
         if (countFailure is not null)
             return Illegal(countFailure);
 
+        using IDisposable notificationIsolation = SimulationNotificationIsolation.Enter();
         CombatBeamSolver solver = new(root, displayNames, battleDamage, policy, cancellationToken);
+        solver._validateExternalChoicesAgainstSpec = true;
         SimulationSnapshot? currentSnapshot = null;
         try
         {
@@ -117,6 +121,7 @@ internal sealed partial class CombatBeamSolver
             int turnHpLost = 0;
             int turnHpRecovered = 0;
             int turnEnemyHpLost = 0;
+            int explicitPotionUses = 0;
 
             for (int index = 0; index < actionsToReplayCount; index++)
             {
@@ -132,11 +137,17 @@ internal sealed partial class CombatBeamSolver
 
                 CombatPredictionSimulator preSim = (CombatPredictionSimulator)currentSnapshot.Simulator;
                 SimulatedCombatState preCombat = (SimulatedCombatState)preSim.State.CombatState;
-                if (action.TargetCombatId is uint targetCombatId)
+                if (!ValidateExternalActionLegality(
+                        solver,
+                        root,
+                        preSim,
+                        preCombat,
+                        action,
+                        explicitPotionUses,
+                        index,
+                        out string? legalityFailure))
                 {
-                    Creature? target = preCombat.GetCreature(targetCombatId);
-                    if (target is null || !preCombat.ContainsCreature(target) || preSim.State.GetCreature(target).IsDead)
-                        return Illegal($"Action[{index}] targets missing or dead creature combatId={targetCombatId}.");
+                    return Illegal(legalityFailure!);
                 }
 
                 int turnBeforeAction = currentSnapshot.Turn;
@@ -196,6 +207,9 @@ internal sealed partial class CombatBeamSolver
                 currentSnapshot.ReleaseSimulator();
                 currentSnapshot = nextSnapshot;
 
+                if (action.Kind == PlanActionKind.UsePotion)
+                    explicitPotionUses++;
+
                 CombatPredictionSimulator postSim = (CombatPredictionSimulator)currentSnapshot.Simulator;
                 SimulatedCombatState postCombat = (SimulatedCombatState)postSim.State.CombatState;
 
@@ -209,6 +223,13 @@ internal sealed partial class CombatBeamSolver
 
                 bool combatEnded = currentSnapshot.PlayerDead || currentSnapshot.AllEnemiesDead || currentSnapshot.TerminalStamp != null;
                 bool endsTurn = action.Kind == PlanActionKind.EndTurn || action.EndsPlayerTurn || currentSnapshot.Turn > turnBeforeAction;
+                if (action.Kind != PlanActionKind.EndTurn
+                    && action.TurnStartChoices is { Count: > 0 }
+                    && !combatEnded
+                    && currentSnapshot.Turn == turnBeforeAction)
+                {
+                    return Illegal($"Action[{index}] carried unconsumed TurnStartChoices without ending turn {turnBeforeAction}.");
+                }
                 bool isLastReplayed = index == actionsToReplayCount - 1;
                 bool hasNextAction = index + 1 < actions.Count;
 
@@ -451,6 +472,233 @@ internal sealed partial class CombatBeamSolver
         return count;
     }
 
+    private static bool ValidateExternalActionLegality(
+        CombatBeamSolver solver,
+        CombatRootSnapshot root,
+        CombatPredictionSimulator preSim,
+        SimulatedCombatState preCombat,
+        PlanAction action,
+        int explicitPotionUses,
+        int index,
+        out string? failureReason)
+    {
+        if (action.TargetCombatId is uint targetCombatId)
+        {
+            Creature? target = preCombat.GetCreature(targetCombatId);
+            if (target is null || !preCombat.ContainsCreature(target) || preSim.State.GetCreature(target).IsDead)
+            {
+                failureReason = $"Action[{index}] targets missing or dead creature combatId={targetCombatId}.";
+                return false;
+            }
+        }
+
+        switch (action.Kind)
+        {
+            case PlanActionKind.EndTurn:
+                if (action.TargetCombatId is not null
+                    || action.TargetIndex != -1
+                    || !string.IsNullOrEmpty(action.CardId)
+                    || action.CardOccurrence != 0
+                    || !string.IsNullOrEmpty(action.PotionId)
+                    || action.PotionSlot != -1
+                    || action.Choice is not null
+                    || action.NestedChoices is { Count: > 0 })
+                {
+                    failureReason = $"Action[{index}] EndTurn carries unexpected card, potion, target, or choice fields.";
+                    return false;
+                }
+                failureReason = null;
+                return true;
+
+            case PlanActionKind.PlayCard:
+            {
+                if (!string.IsNullOrEmpty(action.PotionId)
+                    || action.PotionSlot != -1
+                    || string.IsNullOrEmpty(action.CardId)
+                    || action.CardOccurrence < 0)
+                {
+                    failureReason = $"Action[{index}] PlayCard has invalid card/potion metadata.";
+                    return false;
+                }
+
+                SimPlayerCombatState playerState = preSim.State.GetPlayerCombatState(solver._player);
+                PredictedCard? card = FindCardForReplay(playerState.Hand.Cards, action);
+                if (card is null)
+                {
+                    failureReason = $"Action[{index}] PlayCard could not locate hand card '{action.CardId}'#{action.CardOccurrence}.";
+                    return false;
+                }
+                if (!string.Equals(card.Preview.Id.Entry, action.CardId, StringComparison.Ordinal)
+                    || card.Preview.CurrentUpgradeLevel != action.CardUpgradeLevel
+                    || !string.Equals(card.Preview.Enchantment?.Id.Entry ?? string.Empty, action.CardEnchantmentId, StringComparison.Ordinal))
+                {
+                    failureReason = $"Action[{index}] PlayCard card identity mismatch for '{action.CardId}'.";
+                    return false;
+                }
+                if (!preCombat.CanPlayCard(preSim, card))
+                {
+                    failureReason = $"Action[{index}] PlayCard '{action.CardId}' is not currently playable.";
+                    return false;
+                }
+                if (!MatchesAllowedTarget(solver.TargetsFor(card, preSim), action.TargetIndex, action.TargetCombatId))
+                {
+                    failureReason =
+                        $"Action[{index}] PlayCard '{action.CardId}' target index={action.TargetIndex} " +
+                        $"combatId={action.TargetCombatId?.ToString(CultureInfo.InvariantCulture) ?? "-"} is not legal.";
+                    return false;
+                }
+                failureReason = null;
+                return true;
+            }
+
+            case PlanActionKind.UsePotion:
+            {
+                if (!string.IsNullOrEmpty(action.CardId) || string.IsNullOrEmpty(action.PotionId))
+                {
+                    failureReason = $"Action[{index}] UsePotion has invalid potion/card metadata.";
+                    return false;
+                }
+                if (solver._earliestPotionTurn is { } earliestTurn && action.Turn < earliestTurn)
+                {
+                    failureReason = $"Action[{index}] UsePotion '{action.PotionId}' disallowed before turn {earliestTurn}.";
+                    return false;
+                }
+                if (solver._maximumPotionUses is { } maxPotions && explicitPotionUses >= maxPotions)
+                {
+                    failureReason = $"Action[{index}] UsePotion '{action.PotionId}' exceeds maximum potion budget {maxPotions}.";
+                    return false;
+                }
+                if (action.PotionSlot < 0 || action.PotionSlot >= root.PotionSlotCount)
+                {
+                    failureReason = $"Action[{index}] UsePotion slot={action.PotionSlot} is out of range.";
+                    return false;
+                }
+                PotionModel? potion = preCombat.GetPotionAtSlot(solver._player, action.PotionSlot);
+                if (potion is null
+                    || !string.Equals(potion.Id.Entry, action.PotionId, StringComparison.Ordinal)
+                    || !preCombat.IsPotionAvailable(solver._player, action.PotionSlot))
+                {
+                    failureReason = $"Action[{index}] UsePotion '{action.PotionId}' at slot={action.PotionSlot} is unavailable.";
+                    return false;
+                }
+                if (!PotionOnUseSupport.CanSearch(potion) || !solver.AllowsPotionUse(action.PotionSlot, potion.Id.Entry))
+                {
+                    failureReason = $"Action[{index}] UsePotion '{action.PotionId}' is forbidden by search potion policy.";
+                    return false;
+                }
+                if (!MatchesAllowedTarget(solver.TargetsForPotion(potion, preSim), action.TargetIndex, action.TargetCombatId))
+                {
+                    failureReason =
+                        $"Action[{index}] UsePotion '{action.PotionId}' target index={action.TargetIndex} " +
+                        $"combatId={action.TargetCombatId?.ToString(CultureInfo.InvariantCulture) ?? "-"} is not legal.";
+                    return false;
+                }
+                if (!ValidateExternalPotionChoice(preSim, potion, action.Choice, index, out failureReason))
+                    return false;
+                failureReason = null;
+                return true;
+            }
+
+            default:
+                failureReason = $"Action[{index}] has unsupported kind {action.Kind}.";
+                return false;
+        }
+    }
+
+    private static bool MatchesAllowedTarget(
+        IEnumerable<(int Index, Creature? Target)> allowedTargets,
+        int actionTargetIndex,
+        uint? actionTargetCombatId)
+    {
+        foreach ((int allowedIndex, Creature? allowedTarget) in allowedTargets)
+        {
+            if (allowedTarget is null)
+            {
+                if (actionTargetCombatId is null && actionTargetIndex == -1)
+                    return true;
+                continue;
+            }
+            if (allowedTarget.CombatId is uint combatId)
+            {
+                if (actionTargetCombatId == combatId && actionTargetIndex == allowedIndex)
+                    return true;
+            }
+            else if (actionTargetCombatId is null && actionTargetIndex == allowedIndex)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool ValidateExternalPotionChoice(
+        CombatPredictionSimulator preSim,
+        PotionModel potion,
+        PlanCardChoice? choice,
+        int index,
+        out string? failureReason)
+    {
+        bool requiresChoice = PotionChoiceSupport.RequiresChoice(potion);
+        if (!requiresChoice)
+        {
+            if (choice is not null)
+            {
+                failureReason = $"Action[{index}] UsePotion '{potion.Id.Entry}' does not take a primary choice.";
+                return false;
+            }
+            failureReason = null;
+            return true;
+        }
+
+        if (PotionChoiceSupport.GeneratesCardChoice(potion))
+        {
+            if (choice is not null
+                && (choice.Effect != PlanChoiceEffect.GenerateToHand
+                    || choice.SourcePile != PileType.None
+                    || choice.Cards.Count > 1))
+            {
+                failureReason = $"Action[{index}] UsePotion '{potion.Id.Entry}' carries malformed generated choice.";
+                return false;
+            }
+            failureReason = null;
+            return true;
+        }
+
+        CardChoiceSpec spec;
+        try
+        {
+            spec = PotionChoiceSupport.GetSpec(preSim, potion);
+        }
+        catch (InvalidOperationException ex)
+        {
+            failureReason = $"Action[{index}] UsePotion '{potion.Id.Entry}' choice spec unavailable: {ex.Message}";
+            return false;
+        }
+
+        if (choice is null)
+        {
+            if (spec.MinCount > 0 && spec.Options.Count > 0)
+            {
+                failureReason = $"Action[{index}] UsePotion '{potion.Id.Entry}' requires a mandatory card choice.";
+                return false;
+            }
+            failureReason = null;
+            return true;
+        }
+
+        try
+        {
+            TurnStartChoiceCursor.ValidateChoiceMatchesSpec(choice, spec);
+        }
+        catch (InvalidPlannedChoiceBranchException ex)
+        {
+            failureReason = $"Action[{index}] UsePotion '{potion.Id.Entry}' invalid choice: {ex.Message}";
+            return false;
+        }
+        failureReason = null;
+        return true;
+    }
+
     private static bool CheckTurnExpectation(
         IReadOnlyDictionary<int, ExternalRouteTurnExpectation> expectations,
         int turn,
@@ -463,8 +711,8 @@ internal sealed partial class CombatBeamSolver
     {
         if (!expectations.TryGetValue(turn, out ExternalRouteTurnExpectation expected))
         {
-            failureReason = null;
-            return true;
+            failureReason = $"Missing TurnOutcome expectation for replayed turn {turn}.";
+            return false;
         }
         if (actualHpLost != expected.HpLost
             || actualHpRecovered != expected.HpRecovered

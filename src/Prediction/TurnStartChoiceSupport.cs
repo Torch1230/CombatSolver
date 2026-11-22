@@ -20,9 +20,12 @@ internal sealed record TurnStartChoiceRequest(
 internal sealed class InvalidPlannedChoiceBranchException(string message)
     : InvalidOperationException(message);
 
-internal sealed class TurnStartChoiceCursor(IReadOnlyList<PlanCardChoice>? choices)
+internal sealed class TurnStartChoiceCursor(
+    IReadOnlyList<PlanCardChoice>? choices,
+    bool validateSelectionAgainstSpec = false)
 {
     private readonly IReadOnlyList<PlanCardChoice> _choices = choices ?? [];
+    private readonly bool _validateSelectionAgainstSpec = validateSelectionAgainstSpec;
     private readonly Func<TurnStartChoiceRequest, PlanCardChoice?>? _automaticPolicy;
     private int _index;
     internal int ConsumedExplicitChoiceCount => _index;
@@ -64,6 +67,8 @@ internal sealed class TurnStartChoiceCursor(IReadOnlyList<PlanCardChoice>? choic
                 $"当前需要 {request.SourceId}/{request.Effect}/{request.SourcePile}；" +
                 $"计划上下文={choice.ContextId}，当前上下文={request.ContextId}。");
         }
+        if (_validateSelectionAgainstSpec && request.Spec is { } spec)
+            ValidateChoiceMatchesSpec(choice, spec);
         _index++;
         return true;
     }
@@ -110,6 +115,56 @@ internal sealed class TurnStartChoiceCursor(IReadOnlyList<PlanCardChoice>? choic
             && choice.SourcePile == request.SourcePile
             && string.Equals(choice.ContextId, request.ContextId, StringComparison.Ordinal)
             && choice.Timing == request.Timing;
+
+    internal static void ValidateChoiceMatchesSpec(PlanCardChoice choice, CardChoiceSpec spec)
+    {
+        if (choice.Effect != spec.Effect || choice.SourcePile != spec.SourcePile)
+        {
+            throw new InvalidPlannedChoiceBranchException(
+                $"选牌规格不匹配：计划 {choice.Effect}/{choice.SourcePile}，期望 {spec.Effect}/{spec.SourcePile}。");
+        }
+        if (choice.Effect == PlanChoiceEffect.ModDefined)
+            return;
+
+        int minCount = Math.Min(spec.MinCount, spec.Options.Count);
+        int maxCount = Math.Min(spec.MaxCount, spec.Options.Count);
+        if (choice.Cards.Count < minCount || choice.Cards.Count > maxCount)
+        {
+            throw new InvalidPlannedChoiceBranchException(
+                $"选牌数量超出合法范围：选择了 {choice.Cards.Count} 张，允许 {minCount}..{maxCount} 张。");
+        }
+
+        HashSet<PredictedCard> selected = new(ReferenceEqualityComparer.Instance);
+        foreach (PlanCardToken token in choice.Cards)
+        {
+            PredictedCard? optionCard = spec.Options
+                .Where(candidate => CardChoiceSupport.MatchesToken(candidate, token))
+                .Skip(token.OptionOccurrence)
+                .FirstOrDefault();
+            if (optionCard is null)
+            {
+                throw new InvalidPlannedChoiceBranchException(
+                    $"选牌候选中找不到合法目标 {token.CardId}+{token.UpgradeLevel}#{token.OptionOccurrence}。");
+            }
+            if (!selected.Add(optionCard))
+            {
+                throw new InvalidPlannedChoiceBranchException(
+                    $"选牌计划重复选择了 {token.CardId}+{token.UpgradeLevel}。");
+            }
+            if (spec.SourceCards.Count > 0)
+            {
+                PredictedCard? sourceCard = spec.SourceCards
+                    .Where(candidate => CardChoiceSupport.MatchesToken(candidate, token))
+                    .Skip(token.SourceOccurrence)
+                    .FirstOrDefault();
+                if (!ReferenceEquals(optionCard, sourceCard))
+                {
+                    throw new InvalidPlannedChoiceBranchException(
+                        $"选牌来源位置不匹配：{token.CardId}+{token.UpgradeLevel} opt={token.OptionOccurrence} src={token.SourceOccurrence}。");
+                }
+            }
+        }
+    }
 
     private bool InvokeBeforeNextTake()
     {
