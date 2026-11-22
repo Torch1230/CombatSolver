@@ -536,8 +536,6 @@ public static class PreCombatForecastApi
             effectiveOptions.WorkerIdleTimeoutMilliseconds?.ToString() ?? "keep-alive");
 
         Task<PreCombatForecastResult> worker;
-        bool shouldObserveCompletion = false;
-        long producerTicket = 0;
 
         lock (CacheSync)
         {
@@ -552,21 +550,26 @@ public static class PreCombatForecastApi
 
             if (!effectiveOptions.ForceRefresh
                 && !effectiveOptions.CancelWorkerWhenCallerCancels
-                && Active.TryGetValue(activeKey, out ActiveProducer? existing))
+                && Active.TryGetValue(activeKey, out ActiveProducer? existing)
+                && !existing.Work.IsCompleted)
             {
                 worker = existing.Work;
             }
             else
             {
-                producerTicket = ++_nextCompletionTicket;
+                long producerTicket = ++_nextCompletionTicket;
                 ActiveProducerCount[key] = ActiveProducerCount.GetValueOrDefault(key) + 1;
                 CancellationToken workerToken = effectiveOptions.CancelWorkerWhenCallerCancels
                     ? cancellationToken
                     : CancellationToken.None;
+                string encounterId = encounter.Id.Entry;
                 worker = Task.Run(
-                    () => PreCombatForecastWorker.RunAsync(
+                    () => RunAndCacheProducerAsync(
+                        key,
+                        activeKey,
+                        producerTicket,
                         snapshot,
-                        encounter.Id.Entry,
+                        encounterId,
                         targetActFloor,
                         targetMapColumn,
                         roomKind,
@@ -576,14 +579,10 @@ public static class PreCombatForecastApi
                         admissionEpoch,
                         workerToken),
                     CancellationToken.None);
-                shouldObserveCompletion = true;
                 if (!effectiveOptions.ForceRefresh && !effectiveOptions.CancelWorkerWhenCallerCancels)
                     Active[activeKey] = new ActiveProducer(producerTicket, worker);
             }
         }
-
-        if (shouldObserveCompletion)
-            _ = CacheCompletionAsync(key, activeKey, producerTicket, worker);
 
         return CompleteAfterLiveValidation(
             snapshot,
@@ -605,18 +604,37 @@ public static class PreCombatForecastApi
         return cachedEntry.Result;
     }
 
-    private static async Task CacheCompletionAsync(
+    private static async Task<PreCombatForecastResult> RunAndCacheProducerAsync(
         string key,
         string activeKey,
         long producerTicket,
-        Task<PreCombatForecastResult> worker)
+        PreCombatLiveStateSnapshot snapshot,
+        string encounterId,
+        int targetActFloor,
+        int targetMapColumn,
+        PreCombatRoomKind roomKind,
+        PreCombatMapPointKind mapPointKind,
+        bool isSecondBoss,
+        PreCombatForecastOptions options,
+        long admissionEpoch,
+        CancellationToken cancellationToken)
     {
         try
         {
-            PreCombatForecastResult result = await worker.ConfigureAwait(false);
-            lock (CacheSync)
+            PreCombatForecastResult result = await PreCombatForecastWorker.RunAsync(
+                snapshot,
+                encounterId,
+                targetActFloor,
+                targetMapColumn,
+                roomKind,
+                mapPointKind,
+                isSecondBoss,
+                options,
+                admissionEpoch,
+                cancellationToken).ConfigureAwait(false);
+            if (result.Status == PreCombatForecastStatus.Succeeded)
             {
-                if (result.Status == PreCombatForecastStatus.Succeeded)
+                lock (CacheSync)
                 {
                     long latestTicket = LatestCompletedTicket.GetValueOrDefault(key);
                     if (producerTicket >= latestTicket)
@@ -637,17 +655,19 @@ public static class PreCombatForecastApi
                     }
                 }
             }
+            return result;
         }
         catch (Exception ex)
         {
             Entry.Logger.Error($"[CombatSolver/PreCombatApi] CACHE_COMPLETION_FAILED exception={ex}");
+            throw;
         }
         finally
         {
             lock (CacheSync)
             {
                 if (Active.TryGetValue(activeKey, out ActiveProducer? active)
-                    && ReferenceEquals(active.Work, worker))
+                    && active.Ticket == producerTicket)
                 {
                     Active.Remove(activeKey);
                 }
