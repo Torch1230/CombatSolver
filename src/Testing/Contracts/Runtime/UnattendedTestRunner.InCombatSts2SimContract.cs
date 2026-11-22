@@ -257,9 +257,10 @@ internal sealed partial class UnattendedTestRunner
 
     private static void VerifyInCombatP2Contracts(SolverResult turn1Result)
     {
-        // ApplyCurrentTurn validates both non-null preview and current BackendAttempt atomically.
+        // ApplyCurrentTurn derives expected attempt strictly from RenderedProgress and rejects unpublished attempts.
         SearchInteractionState interaction = new(generation: 1);
         SolverCurrentTurnPreview preview0 = SolverCurrentTurnPreview.FromResult(turn1Result, candidateVersion: 1);
+        long renderTick = Environment.TickCount64 + 10_000;
         interaction.PublishProgress(new SolverProgress(
             StartTurnNumber: turn1Result.StartTurnNumber,
             CurrentTurnNumber: turn1Result.StartTurnNumber,
@@ -274,8 +275,17 @@ internal sealed partial class UnattendedTestRunner
             Phase: "Sts2Sim",
             CurrentTurnPreview: preview0,
             BackendAttempt: 0));
-        if (interaction.CurrentAttemptTurnPreviewBackendAttempt != 0)
-            throw new InvalidOperationException("Expected attempt-0 turn preview before fallback.");
+        if (interaction.CurrentAttemptTurnPreviewBackendAttempt is not null
+            || interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 0)
+            || interaction.RequestApplyCurrentTurn())
+        {
+            throw new InvalidOperationException("Unpublished-to-UI attempt-0 preview allowed ApplyCurrentTurn before TryCreateDisplayProgress.");
+        }
+        if (!interaction.TryCreateDisplayProgress(renderTick, out _)
+            || interaction.CurrentAttemptTurnPreviewBackendAttempt != 0)
+        {
+            throw new InvalidOperationException("Expected attempt-0 rendered turn preview before fallback.");
+        }
         if (!interaction.PrepareFallbackToBuiltIn(generation: 1, failedBackendAttempt: 0))
             throw new InvalidOperationException("Fallback transition to attempt 1 unexpectedly failed.");
         if (interaction.CurrentAttemptTurnPreviewBackendAttempt is not null
@@ -298,10 +308,20 @@ internal sealed partial class UnattendedTestRunner
             Phase: "BuiltIn",
             CurrentTurnPreview: preview0,
             BackendAttempt: 1));
-        if (interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 0))
-            throw new InvalidOperationException("Stale expectedBackendAttempt=0 succeeded after attempt-1 preview published.");
-        if (!interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 1))
-            throw new InvalidOperationException("Current expectedBackendAttempt=1 failed despite valid preview.");
+        if (interaction.CurrentAttemptTurnPreviewBackendAttempt is not null
+            || interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 1)
+            || interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 0)
+            || interaction.RequestApplyCurrentTurn())
+        {
+            throw new InvalidOperationException("Unrendered attempt-1 Progress allowed ApplyCurrentTurn before TryCreateDisplayProgress.");
+        }
+        if (!interaction.TryCreateDisplayProgress(renderTick + 10_000, out _)
+            || interaction.CurrentAttemptTurnPreviewBackendAttempt != 1
+            || interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 0)
+            || !interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 1))
+        {
+            throw new InvalidOperationException("Rendered attempt-1 ApplyCurrentTurn validation failed.");
+        }
 
         // ExternalChoiceBinding binds empty ContextId and repeated manual card SourceId at replay time.
         var seekerToken = new PlanCardToken("STRIKE_IRONCLAD", 0, string.Empty, 0, 0, string.Empty);
@@ -381,6 +401,8 @@ internal sealed partial class UnattendedTestRunner
         if (turn1Result.PotionCount != turn1Result.PotionUses.Count
             || turn1Result.PlannedPotionIds.Length != turn1Result.PotionUses.Count
             || turn1Result.ExplicitPotionCount != explicitPotions
+            || turn1Result.PotionCountByTurn.Values.Sum() != turn1Result.PotionUses.Count
+            || turn1Result.PotionStrategicCostByTurn.Values.Sum() != turn1Result.PotionHpRequired
             || turn1Result.ProjectedBattleHpLost < turn1Result.BattleHpLostSoFar + turn1Result.Snapshot.CumulativePlayerHpLost)
         {
             throw new InvalidOperationException("Materialized SolverResult potion or battle-loss summary is inconsistent with verified replay.");
