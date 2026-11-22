@@ -34,6 +34,9 @@ internal static partial class PreCombatSts2SimEligibility
         "TitleLocString",
         "Description",
         "GetDescription",
+        "GetDescriptionForPile",
+        "GetDescriptionForUpgradePreview",
+        "GetDescriptionOrFallback",
         "PortraitPath",
         "PortraitPngPath",
         "BetaPortraitPath",
@@ -49,7 +52,9 @@ internal static partial class PreCombatSts2SimEligibility
         "VisualCardPool",
         "ExtraHoverTips",
         "HoverTips",
+        "ShouldGlowGold",
         "ShouldGlowGoldInternal",
+        "ShouldGlowRed",
         "ShouldGlowRedInternal",
         "HasBakedPortrait",
         "CreateHoverTip",
@@ -136,23 +141,25 @@ internal static partial class PreCombatSts2SimEligibility
         return false;
     }
 
+    internal static string ResolveEffectiveMemberName(string methodName, string? targetDisplayName = null)
+    {
+        if (TryExtractCompilerGeneratedEnclosingMethod(methodName, out string fromMethod))
+            return fromMethod;
+        if (string.Equals(methodName, "MoveNext", StringComparison.Ordinal)
+            && targetDisplayName is not null
+            && TryExtractCompilerGeneratedEnclosingMethod(targetDisplayName, out string fromTarget))
+        {
+            return fromTarget;
+        }
+        return methodName;
+    }
+
+    internal static bool IsPureModelDisplayOrMetadataMember(string methodName, string? targetDisplayName = null) =>
+        IsPureCardDisplayOrMetadataMember(ResolveEffectiveMemberName(methodName, targetDisplayName));
+
     internal static bool IsConcreteCardGameplayMethodName(string methodName, string? targetDisplayName = null)
     {
-        string effectiveName;
-        if (TryExtractCompilerGeneratedEnclosingMethod(methodName, out string fromMethod))
-        {
-            effectiveName = fromMethod;
-        }
-        else if (string.Equals(methodName, "MoveNext", StringComparison.Ordinal)
-                 && targetDisplayName is not null
-                 && TryExtractCompilerGeneratedEnclosingMethod(targetDisplayName, out string fromTarget))
-        {
-            effectiveName = fromTarget;
-        }
-        else
-        {
-            effectiveName = methodName;
-        }
+        string effectiveName = ResolveEffectiveMemberName(methodName, targetDisplayName);
 
         if (IsPureCardDisplayOrMetadataMember(effectiveName))
             return false;
@@ -192,15 +199,21 @@ internal static partial class PreCombatSts2SimEligibility
         if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Hooks")
             || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Combat")
             || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.GameActions")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.MonsterMoves")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Powers")
+            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.MonsterMoves"))
+        {
+            return PreCombatHarmonyTargetKind.CombatGameplay;
+        }
+
+        if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Powers")
             || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Relics")
             || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Potions")
             || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Orbs")
             || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Enchantments")
             || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Monsters"))
         {
-            return PreCombatHarmonyTargetKind.CombatGameplay;
+            return IsPureModelDisplayOrMetadataMember(methodName, targetDisplayName)
+                ? PreCombatHarmonyTargetKind.None
+                : PreCombatHarmonyTargetKind.CombatGameplay;
         }
 
         if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Cards"))
@@ -215,11 +228,17 @@ internal static partial class PreCombatSts2SimEligibility
             || (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Entities.Players", StringComparison.Ordinal)
                 && string.Equals(rootDeclaringTypeName, "PlayerCombatState", StringComparison.Ordinal))
             || (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Entities.Cards", StringComparison.Ordinal)
-                && rootDeclaringTypeName is "CardPile" or "CardEnergyCost" or "CardPlay")
-            || (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Models", StringComparison.Ordinal)
-                && rootDeclaringTypeName is "CardModel" or "PowerModel" or "RelicModel" or "PotionModel" or "OrbModel" or "EnchantmentModel" or "MonsterModel"))
+                && rootDeclaringTypeName is "CardPile" or "CardEnergyCost" or "CardPlay"))
         {
             return PreCombatHarmonyTargetKind.CombatGameplay;
+        }
+
+        if (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Models", StringComparison.Ordinal)
+            && rootDeclaringTypeName is "CardModel" or "PowerModel" or "RelicModel" or "PotionModel" or "OrbModel" or "EnchantmentModel" or "MonsterModel")
+        {
+            return IsPureModelDisplayOrMetadataMember(methodName, targetDisplayName)
+                ? PreCombatHarmonyTargetKind.None
+                : PreCombatHarmonyTargetKind.CombatGameplay;
         }
 
         return PreCombatHarmonyTargetKind.None;
