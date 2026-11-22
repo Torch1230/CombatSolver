@@ -295,6 +295,7 @@ namespace CombatSolver.Api
             Interlocked.Exchange(ref _workerStartCount, 0);
             Interlocked.Exchange(ref _workerReuseCount, 0);
             Interlocked.Exchange(ref _workerBusy, 0);
+            ResetBackendDisplayState();
         }
 
         private static void StopCurrentSession()

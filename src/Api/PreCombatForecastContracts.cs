@@ -171,6 +171,20 @@ public sealed record PreCombatPotionUse(
     int Turn,
     int Slot);
 
+/// <summary>Snapshot of the active, recent, and eligible pre-combat forecast backend for UI display.</summary>
+internal sealed record PreCombatBackendDisplaySnapshot(
+    PreCombatBackendKind ActiveBackend,
+    bool IsActiveRunning,
+    bool IsBusy,
+    PreCombatBackendKind LastUsedBackend,
+    int? LastEffectiveParallelism,
+    string? LastFallbackCode,
+    bool HasInstalledInProcessBackend,
+    bool IsBridgeCorrupt,
+    bool HostEligibleForInProcess,
+    string? HostExclusionCode,
+    bool IsWindowsHost);
+
 /// <summary>Immutable response from an isolated pre-combat search.</summary>
 public sealed record PreCombatForecastResult
 {
@@ -187,6 +201,7 @@ public sealed record PreCombatForecastResult
     public string? Error { get; init; }
     public string? DiagnosticLogPath { get; init; }
     internal PreCombatBackendKind ProducingBackend { get; init; } = PreCombatBackendKind.None;
+    internal int? EffectiveDegreeOfParallelism { get; init; }
 
     public bool IsSuccess => Status == PreCombatForecastStatus.Succeeded;
 }

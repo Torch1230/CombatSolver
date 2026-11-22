@@ -46,6 +46,28 @@ public static class PreCombatForecastApi
     /// <summary>Returns the current pre-combat worker session and memory state without starting it.</summary>
     public static PreCombatWorkerStatus GetWorkerStatus() => PreCombatForecastWorker.GetStatus();
 
+    /// <summary>Returns an immutable snapshot of active, recent, and eligible pre-combat forecast backends for UI display.</summary>
+    internal static PreCombatBackendDisplaySnapshot CaptureBackendDisplaySnapshot()
+    {
+        if (!Entry.Enabled || Entry.IsPreCombatWorker)
+        {
+            return new PreCombatBackendDisplaySnapshot(
+                PreCombatBackendKind.None,
+                IsActiveRunning: false,
+                IsBusy: false,
+                PreCombatBackendKind.None,
+                LastEffectiveParallelism: null,
+                LastFallbackCode: null,
+                HasInstalledInProcessBackend: false,
+                IsBridgeCorrupt: false,
+                HostEligibleForInProcess: false,
+                HostExclusionCode: null,
+                IsWindowsHost: OperatingSystem.IsWindows());
+        }
+        RunState? liveRun = NGame.IsMainThread() ? RunManager.Instance?.DebugOnlyGetState() : null;
+        return PreCombatForecastWorker.CaptureBackendDisplaySnapshot(liveRun);
+    }
+
     /// <summary>
     /// Changes the idle lifetime for the current and future retained worker. Null disables automatic idle shutdown.
     /// If a worker is already idle, its countdown is restarted with the new value.

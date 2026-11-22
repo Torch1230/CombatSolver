@@ -1,3 +1,4 @@
+using CombatSolver.Api;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Localization.Fonts;
@@ -79,6 +80,9 @@ internal static class SolverOverlay
     private static Button? _fullAutoButton;
     private static SolverActionBar? _actionBar;
     private static Button? _solverEnabledButton;
+    private static PanelContainer? _preCombatBackendBadge;
+    private static Label? _preCombatBackendLabel;
+    private static string? _renderedPreCombatBadgeKey;
     private static Label? _stolenResourceOutcomeLabel;
     private static HFlowContainer? _strategyOutcomeRow;
     private static CheckButton? _autoEnableFullAutoSwitch;
@@ -202,6 +206,8 @@ internal static class SolverOverlay
     internal static bool AdoptRouteButtonDisabledForTesting => _adoptRouteButton?.Disabled ?? true;
     internal static SolverOverlayPresentation PresentationForTesting => _presentation;
     internal static string? RouteHeadingForTesting => _routeHeadingLabel?.Text;
+    internal static string PreCombatBackendBadgeTextForTesting => _preCombatBackendLabel?.Text ?? string.Empty;
+    internal static string PreCombatBackendBadgeTooltipForTesting => _preCombatBackendBadge?.TooltipText ?? string.Empty;
     internal static string? RewardOutcomeTextForTesting => _rewardOutcomeLabel?.Visible == true
         ? _rewardOutcomeLabel.Text : null;
     internal static string? HpOutcomeTextForTesting => _hpOutcomeLabel?.Text;
@@ -1474,6 +1480,7 @@ internal static class SolverOverlay
 
         RefreshFeedbackBanner();
         RefreshGuidanceHints();
+        RefreshPreCombatBackendBadge();
 
         bool solverDisabled = SolverController.SolverDisabled;
         if (_solverEnabledButton != null)
@@ -1677,6 +1684,9 @@ internal static class SolverOverlay
         _renderedExecuteButtonStyle = null;
         _renderedAdoptRouteButtonStyle = null;
         _renderedTheftPolicy = null;
+        _preCombatBackendBadge = null;
+        _preCombatBackendLabel = null;
+        _renderedPreCombatBadgeKey = null;
 
         if (_lastSnapshot is { } snapshot)
         {
@@ -1743,7 +1753,10 @@ internal static class SolverOverlay
     private static void EnsureCreated(Node host)
     {
         if (_layer != null && GodotObject.IsInstanceValid(_layer))
+        {
+            RefreshPreCombatBackendBadge();
             return;
+        }
         Create(host);
     }
 
@@ -2023,6 +2036,23 @@ internal static class SolverOverlay
         _solverEnabledButton.Pressed += () => SolverController.SetSolverDisabled(!SolverController.SolverDisabled);
         header.AddChild(_solverEnabledButton);
 
+        _preCombatBackendBadge = new PanelContainer
+        {
+            Name = "PreCombatBackendBadge",
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            CustomMinimumSize = new Vector2(0, 24),
+        };
+        _preCombatBackendLabel = CreateTextLabel(
+            string.Empty,
+            SolverUiTokens.Type.Caption,
+            TextMuted,
+            FontType.Bold);
+        _preCombatBackendBadge.AddChild(_preCombatBackendLabel);
+        header.AddChild(_preCombatBackendBadge);
+        RefreshPreCombatBackendBadge();
+
         Control spacer = new()
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
@@ -2050,6 +2080,109 @@ internal static class SolverOverlay
         header.AddChild(_collapseButton);
 
         return header;
+    }
+
+    private static void RefreshPreCombatBackendBadge()
+    {
+        if (_preCombatBackendBadge == null || _preCombatBackendLabel == null
+            || !GodotObject.IsInstanceValid(_preCombatBackendBadge)
+            || !GodotObject.IsInstanceValid(_preCombatBackendLabel))
+        {
+            return;
+        }
+
+        PreCombatBackendDisplaySnapshot snapshot = PreCombatForecastApi.CaptureBackendDisplaySnapshot();
+        string text;
+        string summaryTooltip;
+        Color tone;
+        if (snapshot.IsBridgeCorrupt)
+        {
+            text = SolverText.Get("战前：Sts2Sim 异常");
+            summaryTooltip = SolverText.Get("同进程 Sts2Sim 战前模拟组件加载或校验失败，无法用于战前预测。");
+            tone = Danger;
+        }
+        else if (snapshot.ActiveBackend == PreCombatBackendKind.InProcess
+                 || (snapshot.LastUsedBackend == PreCombatBackendKind.InProcess
+                     && string.IsNullOrEmpty(snapshot.HostExclusionCode)))
+        {
+            int? dop = snapshot.LastEffectiveParallelism;
+            text = dop is > 0
+                ? SolverText.Format($"战前：Sts2Sim（{dop.Value} 线程）")
+                : SolverText.Get("战前：Sts2Sim");
+            summaryTooltip = dop is > 0
+                ? SolverText.Format($"当前使用同进程 Sts2Sim 模拟器执行战前预测（有效并行：{dop.Value} 线程）。")
+                : SolverText.Get("同进程 Sts2Sim 战前模拟会话已激活并就绪。");
+            tone = Success;
+        }
+        else if (snapshot.ActiveBackend == PreCombatBackendKind.LegacyProcess
+                 || snapshot.LastUsedBackend == PreCombatBackendKind.LegacyProcess)
+        {
+            text = SolverText.Get("战前：旧版子进程");
+            summaryTooltip = SolverText.Get("当前使用旧版独立游戏子进程执行战前预测。");
+            tone = Warning;
+        }
+        else if (!string.IsNullOrEmpty(snapshot.HostExclusionCode))
+        {
+            if (snapshot.IsWindowsHost)
+            {
+                text = SolverText.Get("战前：旧版子进程");
+                summaryTooltip = SolverText.Get("当前跑局条件不支持同进程桥接，战前预测将使用旧版独立游戏子进程。");
+                tone = Warning;
+            }
+            else
+            {
+                text = SolverText.Get("战前：不可用");
+                summaryTooltip = SolverText.Get("当前平台不支持旧版独立子进程，且同进程 Sts2Sim 战前模拟当前不可用。");
+                tone = TextMuted;
+            }
+        }
+        else if (!snapshot.HasInstalledInProcessBackend)
+        {
+            if (snapshot.IsWindowsHost)
+            {
+                text = SolverText.Get("战前：旧版子进程");
+                summaryTooltip = SolverText.Get("未安装 sts2sim 组件，战前预测将使用旧版独立游戏子进程。");
+                tone = Warning;
+            }
+            else
+            {
+                text = SolverText.Get("战前：不可用");
+                summaryTooltip = SolverText.Get("当前平台不支持旧版独立子进程，且同进程 Sts2Sim 战前模拟当前不可用。");
+                tone = TextMuted;
+            }
+        }
+        else
+        {
+            text = SolverText.Get("战前：Sts2Sim（就绪）");
+            summaryTooltip = SolverText.Get("同进程 Sts2Sim 战前模拟器已就绪，将在战前预览时启用。");
+            tone = Accent;
+        }
+
+        string installStatus = snapshot.IsBridgeCorrupt
+            ? SolverText.Get("组件状态：sts2sim 校验异常")
+            : SolverText.Get(snapshot.HasInstalledInProcessBackend
+                ? "组件状态：sts2sim 已安装"
+                : "组件状态：sts2sim 未安装");
+        string? reasonCode = string.IsNullOrEmpty(snapshot.HostExclusionCode)
+            ? snapshot.LastFallbackCode
+            : snapshot.HostExclusionCode;
+        string tooltip = string.IsNullOrEmpty(reasonCode)
+            ? $"{summaryTooltip}\n{installStatus}"
+            : $"{summaryTooltip}\n{installStatus}\n{SolverText.Format($"分流/回退原因：{reasonCode}")}";
+
+        string cacheKey = $"{SolverUiTokens.IsLightTheme}|{SolverText.IsEnglish}|{text}|{tooltip}|{tone}";
+        if (string.Equals(_renderedPreCombatBadgeKey, cacheKey, StringComparison.Ordinal))
+            return;
+        _renderedPreCombatBadgeKey = cacheKey;
+        _preCombatBackendLabel.Text = text;
+        _preCombatBackendLabel.AddThemeColorOverride("font_color", tone);
+        _preCombatBackendBadge.TooltipText = tooltip;
+        _preCombatBackendBadge.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Small,
+            horizontalPadding: SolverUiTokens.Spacing.Sm,
+            verticalPadding: 2));
     }
 
     private static Control CreateResizeHandle(string name, ResizeEdge edge)

@@ -165,6 +165,24 @@
       "searchElapsedMilliseconds": 12.5,
       "totalElapsedMilliseconds": 16.25
     },
+    "succeededParallelVictory": {
+      "abiVersion": 1,
+      "outcome": "Succeeded",
+      "failureCode": null,
+      "fieldPath": null,
+      "error": null,
+      "projectedHpLoss": 2,
+      "finalHp": 68,
+      "combatEndedTurn": 2,
+      "onlyDeathRoutes": false,
+      "confidence": "Complete",
+      "searchBoundary": "None",
+      "potionUses": [],
+      "expandedNodes": 180,
+      "effectiveDegreeOfParallelism": 4,
+      "searchElapsedMilliseconds": 6.5,
+      "totalElapsedMilliseconds": 9.25
+    },
     "succeededDeathOnly": {
       "abiVersion": 1,
       "outcome": "Succeeded",
@@ -450,6 +468,24 @@
       ],
       "expandedNodes": 95,
       "effectiveDegreeOfParallelism": 1,
+      "searchElapsedMilliseconds": 12.5,
+      "totalElapsedMilliseconds": 16.25
+    },
+    "zeroParallelism": {
+      "abiVersion": 1,
+      "outcome": "Succeeded",
+      "failureCode": null,
+      "fieldPath": null,
+      "error": null,
+      "projectedHpLoss": 4,
+      "finalHp": 66,
+      "combatEndedTurn": 2,
+      "onlyDeathRoutes": false,
+      "confidence": "Complete",
+      "searchBoundary": "None",
+      "potionUses": [],
+      "expandedNodes": 95,
+      "effectiveDegreeOfParallelism": 0,
       "searchElapsedMilliseconds": 12.5,
       "totalElapsedMilliseconds": 16.25
     }
