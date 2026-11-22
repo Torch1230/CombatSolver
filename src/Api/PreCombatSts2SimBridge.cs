@@ -49,6 +49,19 @@ internal static class PreCombatSts2SimBridge
 
     internal static int ActivationAttemptCountForTesting => Volatile.Read(ref _activationAttemptCount);
 
+    internal static bool IsCorrupt
+    {
+        get
+        {
+            lock (Sync)
+            {
+                if (AvailabilityOverrideForTesting is { } forced)
+                    return forced == PreCombatBridgeAvailability.CorruptOrIncompatible;
+                return _corruptCached;
+            }
+        }
+    }
+
     internal static void ResetForTesting()
     {
         lock (Sync)

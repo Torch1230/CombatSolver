@@ -266,8 +266,13 @@ internal sealed partial class UnattendedTestRunner
 
                 SolverOverlay.ShowSearching(_host, 3, false, 0);
                 if (SolverOverlay.RouteHeadingForTesting != (english ? "Current candidate (unverified)" : "求解器当前考虑（尚未验证）")
-                    || SolverOverlay.AdoptRouteButtonTextForTesting != (english ? "Use candidate" : "采用当前路线"))
+                    || SolverOverlay.AdoptRouteButtonTextForTesting != (english ? "Use candidate" : "采用当前路线")
+                    || string.IsNullOrWhiteSpace(SolverOverlay.PreCombatBackendBadgeTextForTesting)
+                    || string.IsNullOrWhiteSpace(SolverOverlay.PreCombatBackendBadgeTooltipForTesting))
                     throw new InvalidOperationException($"Dynamic overlay localization failed: {target}");
+                if (english && (SolverOverlay.PreCombatBackendBadgeTextForTesting.Any(static ch => ch is >= '\u4e00' and <= '\u9fff')
+                    || SolverOverlay.PreCombatBackendBadgeTooltipForTesting.Any(static ch => ch is >= '\u4e00' and <= '\u9fff')))
+                    throw new InvalidOperationException($"Untranslated pre-combat badge in English: {SolverOverlay.PreCombatBackendBadgeTextForTesting}");
                 SolverOverlay.ShowSearching(_host, 3, false, 0,
                     new PotionRewardOutlook(0.4f, true, false)
                     {

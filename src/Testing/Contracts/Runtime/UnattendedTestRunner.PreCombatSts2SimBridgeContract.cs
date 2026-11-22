@@ -12,6 +12,7 @@ using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -317,6 +318,12 @@ internal sealed partial class UnattendedTestRunner
                 });
             AssertBridgeSucceeded(secondBossResult, "Act1IsSecondBoss");
 
+            SolverOverlay.Show(NGame.Instance!, "PreCombatBridgeCheck");
+            if (!SolverOverlay.PreCombatBackendBadgeTextForTesting.Contains("Sts2Sim", StringComparison.Ordinal)
+                || !SolverOverlay.PreCombatBackendBadgeTooltipForTesting.Contains("Sts2Sim", StringComparison.Ordinal))
+                throw new InvalidOperationException($"战前桥接 UI 标识未显示 Sts2Sim：{SolverOverlay.PreCombatBackendBadgeTextForTesting}");
+            SolverOverlay.Hide();
+
             int workerStarts = PreCombatForecastWorker.WorkerStartCountForTesting - workerStartsBefore;
             int inProcessStarts = PreCombatForecastWorker.InProcessStartCountForTesting - inProcessStartsBefore;
             if (workerStarts != 0 || inProcessStarts < 1)
@@ -359,17 +366,19 @@ internal sealed partial class UnattendedTestRunner
             int activationsBefore = PreCombatSts2SimBridge.ActivationAttemptCountForTesting;
             workerStartsBefore = PreCombatForecastWorker.WorkerStartCountForTesting;
 
+            int requestedDop = _request.SearchMaxDegreeOfParallelismForTest is { } dop and > 0 ? dop : 1;
             SolverSettingsData settings = BuildDeterministicBridgeSettings(
                 savedSettings,
                 maxNodes: 5_000,
-                beamWidth: 16);
+                beamWidth: 16,
+                maxDegreeOfParallelism: requestedDop);
             SolverSettings.ApplyForTesting(settings);
 
             PreCombatForecastOptions parityOptions = new()
             {
                 SearchBudgetMilliseconds = 10_000,
                 OverallTimeoutMilliseconds = 90_000,
-                MaxDegreeOfParallelism = 1,
+                MaxDegreeOfParallelism = requestedDop,
                 ForceRefresh = true,
             };
             PreCombatRoomKind parityRoomKind = encounter.RoomType == RoomType.Elite
@@ -507,7 +516,8 @@ internal sealed partial class UnattendedTestRunner
                 $"ChildPeakWorkingSetBytes={afterColdStatus.PeakWorkingSetBytes?.ToString(CultureInfo.InvariantCulture) ?? "null"}:" +
                 $"NativeLoss={nativeLoss}:NativeTurn={nativeResult.CombatEndedTurn?.ToString(CultureInfo.InvariantCulture) ?? "null"}:" +
                 $"NativeBoundary={nativeResult.BoundaryReason}:NativeNodes={nativeResult.TotalExpandedNodes}:NativeMs={nativeResult.TotalSearchElapsed.TotalMilliseconds:F1}:" +
-                $"NativeAlloc={nativeAllocatedBytes}:WorkerStarts={workerStartsDelta}"));
+                $"NativeAlloc={nativeAllocatedBytes}:WorkerStarts={workerStartsDelta}:" +
+                $"RequestedDop={requestedDop}:EffectiveDop={bridgeResult.EffectiveDegreeOfParallelism ?? -1}"));
 
             return context;
         }
@@ -542,7 +552,8 @@ internal sealed partial class UnattendedTestRunner
     private static SolverSettingsData BuildDeterministicBridgeSettings(
         SolverSettingsData baseline,
         int maxNodes,
-        int beamWidth) =>
+        int beamWidth,
+        int maxDegreeOfParallelism = 1) =>
         baseline with
         {
             PerformancePreset = SolverPerformancePreset.Custom,
@@ -555,7 +566,7 @@ internal sealed partial class UnattendedTestRunner
             UseBeamWidthPortfolio = true,
             UseNoveltyPortfolio = false,
             UseEarlyTurnExploration = false,
-            SearchMaxDegreeOfParallelism = 1,
+            SearchMaxDegreeOfParallelism = maxDegreeOfParallelism,
             EnableNoGcRegion = false,
         };
 

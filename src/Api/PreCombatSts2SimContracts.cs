@@ -214,7 +214,7 @@ internal static class PreCombatSts2SimWireValidator
             throw new InvalidDataException(
                 $"Sts2Sim bridge ABI mismatch: expected {PreCombatSts2SimAbi.Version}, got {response.AbiVersion}.");
         }
-        if (response.EffectiveDegreeOfParallelism != 1)
+        if (response.EffectiveDegreeOfParallelism is not (>= 1 and <= 64))
         {
             throw new InvalidDataException(
                 $"Sts2Sim bridge reported unexpected EffectiveDegreeOfParallelism={response.EffectiveDegreeOfParallelism}.");

@@ -112,6 +112,48 @@ await Check("Malformed negative ABI fixtures fail closed without fallback or cac
     Equal(0, PreCombatForecastWorker.FallbackCountForTesting);
 });
 
+await Check("Parallel EffectiveDegreeOfParallelism=4 succeeds within requested cap and rejects overshoot", async () =>
+{
+    string fixturePath = Path.Combine(AppContext.BaseDirectory, "abi-v1-fixtures.json");
+    using JsonDocument doc = JsonDocument.Parse(File.ReadAllBytes(fixturePath));
+    string parallelJson = doc.RootElement.GetProperty("responses")
+        .GetProperty("succeededParallelVictory")
+        .GetRawText();
+
+    PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;
+    PreCombatSts2SimBridge.RunRawJsonHookForTesting = (_, _) => Task.FromResult(JsonBytes(parallelJson));
+
+    PreCombatForecastResult ok = await PreCombatForecastApi.ForecastAsync(
+        NewRun(), new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new()
+        {
+            ForceRefresh = true,
+            SearchBudgetMilliseconds = 2_000,
+            OverallTimeoutMilliseconds = 15_000,
+            MaxDegreeOfParallelism = 4,
+        });
+    Equal(PreCombatForecastStatus.Succeeded, ok.Status);
+    Equal(PreCombatBackendKind.InProcess, ok.ProducingBackend);
+    Equal(4, ok.EffectiveDegreeOfParallelism);
+    Equal(PreCombatBackendKind.InProcess, PreCombatForecastWorker.LastUsedBackendForTesting);
+    Equal(4, PreCombatForecastWorker.LastEffectiveParallelismForTesting);
+    Equal<string?>(null, PreCombatForecastWorker.LastFallbackCodeForTesting);
+    Equal(0, PreCombatForecastWorker.FallbackCountForTesting);
+
+    PreCombatForecastResult overshoot = await PreCombatForecastApi.ForecastAsync(
+        NewRun(), new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new()
+        {
+            ForceRefresh = true,
+            SearchBudgetMilliseconds = 2_000,
+            OverallTimeoutMilliseconds = 15_000,
+            MaxDegreeOfParallelism = 2,
+        });
+    Equal(PreCombatForecastStatus.Failed, overshoot.Status);
+    Equal(0, PreCombatForecastWorker.FallbackCountForTesting);
+    Equal(0, PreCombatForecastWorker.LegacyCalls.Count);
+});
+
 await Check("Exhaustive mixed-pool selected defeat under forced Foul Potion succeeds without fallback", async () =>
 {
     string fixturePath = Path.Combine(AppContext.BaseDirectory, "abi-v1-fixtures.json");

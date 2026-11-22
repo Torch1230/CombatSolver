@@ -455,6 +455,7 @@ internal static partial class PreCombatForecastWorker
             }
             CancelIdleShutdown();
             StopCurrentInProcessSession();
+            ResetBackendDisplayState();
             WorkerSession? session = Interlocked.Exchange(ref _session, null);
             if (session is not null && !session.Process.HasExited)
             {
