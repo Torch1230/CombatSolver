@@ -774,6 +774,8 @@ internal sealed partial class UnattendedTestRunner
             AssemblyInfo.MockTypes = previousMocks;
         }
 
+        await VerifyPreCombatModEligibilityAuditAsync(runState, baseSave, encounter, targetFloor, targetCol);
+
         await PreCombatForecastApi.StopWorkerAsync();
         PreCombatWorkerStatus restartedStatus = await PreCombatForecastApi.RestartWorkerAsync(
             runState,

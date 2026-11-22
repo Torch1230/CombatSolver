@@ -183,7 +183,9 @@ internal sealed record PreCombatBackendDisplaySnapshot(
     bool IsBridgeCorrupt,
     bool HostEligibleForInProcess,
     string? HostExclusionCode,
-    bool IsWindowsHost);
+    bool IsWindowsHost,
+    string? HostExclusionDetail = null,
+    string? LastFallbackDetail = null);
 
 /// <summary>Immutable response from an isolated pre-combat search.</summary>
 public sealed record PreCombatForecastResult

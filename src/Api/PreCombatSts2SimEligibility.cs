@@ -6,13 +6,17 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Debug;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.CardPools;
+using MegaCrit.Sts2.Core.Models.PotionPools;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Timeline;
 using MegaCrit.Sts2.Core.Unlocks;
+using STS2RitsuLib;
 
 namespace CombatSolver.Api;
 
@@ -37,23 +41,6 @@ internal static class PreCombatSts2SimEligibility
         Entry.ModId,
         "STS2-RitsuLib",
     };
-
-    private static readonly string[] PresentationOnlyNamespacePrefixes =
-    [
-        "MegaCrit.Sts2.Core.Achievements",
-        "MegaCrit.Sts2.Core.Animation",
-        "MegaCrit.Sts2.Core.Assets",
-        "MegaCrit.Sts2.Core.Audio",
-        "MegaCrit.Sts2.Core.ControllerInput",
-        "MegaCrit.Sts2.Core.HoverTips",
-        "MegaCrit.Sts2.Core.Leaderboard",
-        "MegaCrit.Sts2.Core.Localization",
-        "MegaCrit.Sts2.Core.Logging",
-        "MegaCrit.Sts2.Core.Nodes",
-        "MegaCrit.Sts2.Core.Platform",
-        "MegaCrit.Sts2.Core.RichTextTags",
-        "MegaCrit.Sts2.Core.TextEffects",
-    ];
 
     public static PreCombatEligibilityResult AssessMandatoryLiveHost(RunState run)
     {
@@ -119,14 +106,20 @@ internal static class PreCombatSts2SimEligibility
                 null);
         }
 
-        if (TryFindIneligibleMod(out string modReason))
+        if (TryFindActiveRunModViolation(run, out string modReason))
         {
             return Ineligible("gameplay_mod", modReason, run, null);
         }
 
-        if (TryFindForeignVanillaHarmonyPatch(out string patchReason))
+        if (TryFindCriticalHarmonyPatch(out string patchReason))
         {
             return Ineligible("gameplay_patch", patchReason, run, null);
+        }
+
+        Player? livePlayer = LocalContext.GetMe(run) ?? (run.Players.Count > 0 ? run.Players[0] : null);
+        if (livePlayer is not null && TryFindForeignCardOnPlayPatch(livePlayer.Deck.Cards, out string deckCardPatchReason))
+        {
+            return Ineligible("gameplay_patch", deckCardPatchReason, run, null);
         }
 
         string fingerprint = BuildLiveFingerprint(
@@ -201,7 +194,33 @@ internal static class PreCombatSts2SimEligibility
             return Ineligible("model_unmapped", modelReason, run, player);
         }
 
-        if (TryFindForeignCardOnPlayPatch(player.Deck.Cards, out string patchReason))
+        if (TryFindNonVanillaReachablePools(player, out string poolReason))
+        {
+            return Ineligible("model_unmapped", poolReason, run, player);
+        }
+
+        int maxHandSize = RitsuLibFramework.GetMaxHandSize(player);
+        if (maxHandSize != CardPile.MaxCardsInHand)
+        {
+            return Ineligible(
+                "gameplay_mod",
+                $"Non-vanilla max hand size {maxHandSize} (expected {CardPile.MaxCardsInHand}).",
+                run,
+                player);
+        }
+
+        if (player.Deck.Cards.Any(PredictionModModelSupport.HasBaseLibCardModifiers))
+        {
+            return Ineligible(
+                "gameplay_mod",
+                "Deck contains BaseLib CardModifier attachments not modeled by Sts2Sim.",
+                run,
+                player);
+        }
+
+        if (TryFindForeignCardOnPlayPatch(
+                player.Deck.Cards.Concat(EnumerateReachableNativeCards(player)),
+                out string patchReason))
         {
             return Ineligible("gameplay_patch", patchReason, run, player);
         }
@@ -321,57 +340,141 @@ internal static class PreCombatSts2SimEligibility
                     : modelReason);
         }
 
-        if (TryFindForeignCardOnPlayPatch(restoredPlannedPlayer.Deck.Cards, out string cardPatchReason))
+        if (TryFindNonVanillaReachablePools(restoredPlannedPlayer, out string poolReason))
+            return IneligiblePlanning("model_unmapped", poolReason);
+
+        if (restoredPlannedPlayer.Deck.Cards.Any(PredictionModModelSupport.HasBaseLibCardModifiers))
+        {
+            return IneligiblePlanning(
+                "gameplay_mod",
+                "Planning deck contains BaseLib CardModifier attachments not modeled by Sts2Sim.");
+        }
+
+        if (TryFindForeignCardOnPlayPatch(
+                restoredPlannedPlayer.Deck.Cards.Concat(EnumerateReachableNativeCards(restoredPlannedPlayer)),
+                out string cardPatchReason))
+        {
             return IneligiblePlanning("gameplay_patch", cardPatchReason);
+        }
 
         return PreCombatEligibilityResult.Eligible(liveFingerprint);
     }
 
     public static string? TryDescribeDirectIneligibility(RunState run)
     {
-        if (run.GameMode == GameMode.Dread)
-            return "dread_mode";
-        if (run.GameMode != GameMode.Standard)
-            return $"non_standard_mode:{run.GameMode}";
-        if (run.IsCustomGame)
-            return "custom_game";
-        if (RunManager.Instance.DailyTime is not null)
-            return "daily_run";
-        if (run.Modifiers.Count > 0)
-            return "modifiers_present";
-        if (TryFindIneligibleMod(out string modReason))
-            return $"gameplay_mod:{modReason}";
-        return null;
+        PreCombatEligibilityResult eligibility = AssessMandatoryLiveHost(run);
+        if (eligibility.IsEligible)
+            return null;
+        return string.IsNullOrEmpty(eligibility.Detail)
+            ? eligibility.FailureCode
+            : $"{eligibility.FailureCode}:{eligibility.Detail}";
     }
 
-    private static bool TryFindIneligibleMod(out string reason)
+    private static bool TryFindActiveRunModViolation(RunState run, out string reason)
     {
-        foreach (Mod mod in ModManager.GetLoadedMods())
+        foreach (AbstractModel subscriber in ModHelper.IterateAllRunStateSubscribers(run))
         {
-            if (mod.manifest is null)
-            {
-                reason = $"Loaded mod at '{mod.path}' has no manifest.";
-                return true;
-            }
-            string? id = mod.manifest.id;
-            if (string.IsNullOrWhiteSpace(id))
-            {
-                reason = $"Loaded mod at '{mod.path}' has an empty manifest id.";
-                return true;
-            }
-            if (mod.manifest.affectsGameplay)
-            {
-                reason = $"Loaded mod '{id}' declares affects_gameplay=true.";
-                return true;
-            }
-            if (string.Equals(id, Entry.ModId, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(id, "STS2-RitsuLib", StringComparison.OrdinalIgnoreCase))
-            {
+            Type type = subscriber.GetType();
+            Mod? mod = AssemblyInfo.ModForType(type, out bool isBaseGame);
+            if (isBaseGame)
                 continue;
-            }
+            if (mod?.manifest?.affectsGameplay is false)
+                continue;
+            if (PredictionModHookSubscriberInertness.IsPreCombatInert(subscriber, out _))
+                continue;
+
+            string modId = mod?.manifest?.id ?? type.Assembly.GetName().Name ?? "unknown";
+            reason = $"Active combat run subscriber {type.FullName} (mod={modId}).";
+            return true;
         }
+
+        try
+        {
+            PredictionRitsuCapabilityAudit.Validate();
+            PredictionRitsuHealingAudit.ValidateGlobalListeners();
+        }
+        catch (PredictionUnsupportedException ex)
+        {
+            reason = ex.Message;
+            return true;
+        }
+
         reason = string.Empty;
         return false;
+    }
+
+    private static bool TryFindNonVanillaReachablePools(Player player, out string reason)
+    {
+        CardPoolModel[] cardPools =
+        [
+            player.Character.CardPool,
+            ModelDb.CardPool<ColorlessCardPool>(),
+            ModelDb.CardPool<StatusCardPool>(),
+            ModelDb.CardPool<CurseCardPool>(),
+        ];
+        foreach (CardPoolModel pool in cardPools)
+        {
+            if (pool.GetType().Assembly != VanillaGameAssembly)
+            {
+                reason = $"Non-vanilla card pool {pool.GetType().FullName}.";
+                return true;
+            }
+            foreach (CardModel card in pool.AllCards)
+            {
+                if (card.GetType().Assembly != VanillaGameAssembly)
+                {
+                    reason = $"Non-vanilla reachable pool card {card.GetType().FullName}.";
+                    return true;
+                }
+            }
+        }
+
+        PotionPoolModel[] potionPools =
+        [
+            player.Character.PotionPool,
+            ModelDb.PotionPool<SharedPotionPool>(),
+        ];
+        foreach (PotionPoolModel pool in potionPools)
+        {
+            if (pool.GetType().Assembly != VanillaGameAssembly)
+            {
+                reason = $"Non-vanilla potion pool {pool.GetType().FullName}.";
+                return true;
+            }
+            foreach (PotionModel potion in pool.AllPotions)
+            {
+                if (potion.GetType().Assembly != VanillaGameAssembly)
+                {
+                    reason = $"Non-vanilla reachable pool potion {potion.GetType().FullName}.";
+                    return true;
+                }
+            }
+        }
+
+        reason = string.Empty;
+        return false;
+    }
+
+    private static IEnumerable<CardModel> EnumerateReachableNativeCards(Player player)
+    {
+        CardPoolModel[] mainPools =
+        [
+            player.Character.CardPool,
+            ModelDb.CardPool<ColorlessCardPool>(),
+        ];
+        foreach (CardPoolModel pool in mainPools)
+        {
+            foreach (CardModel card in pool.AllCards)
+            {
+                if (card.CanBeGeneratedInCombat && card.Rarity is not (CardRarity.Ancient or CardRarity.Event))
+                    yield return card;
+            }
+        }
+
+        foreach (CardModel card in ModelDb.CardPool<StatusCardPool>().AllCards)
+            yield return card;
+        foreach (CardModel card in ModelDb.CardPool<CurseCardPool>().AllCards)
+            yield return card;
     }
 
     private static bool TryFindNonVanillaModel(RunState run, Player player, out string reason)
@@ -422,22 +525,29 @@ internal static class PreCombatSts2SimEligibility
         return false;
     }
 
-    private static bool TryFindForeignVanillaHarmonyPatch(out string reason)
+    private static bool TryFindCriticalHarmonyPatch(out string reason)
     {
         foreach (MethodBase method in Harmony.GetAllPatchedMethods())
         {
             Type? declaring = method.DeclaringType;
             if (declaring is null || declaring.Assembly != VanillaGameAssembly)
                 continue;
-            if (IsPresentationOnlyNamespace(declaring.Namespace))
+
+            string? ns = declaring.Namespace;
+            bool isRngMethod = string.Equals(ns, "MegaCrit.Sts2.Core.Random", StringComparison.Ordinal)
+                || (ns is not null && ns.StartsWith("MegaCrit.Sts2.Core.Random.", StringComparison.Ordinal));
+            bool isMonsterAi = typeof(MonsterModel).IsAssignableFrom(declaring)
+                && string.Equals(method.Name, "GenerateMoveStateMachine", StringComparison.Ordinal);
+            if (!isRngMethod && !isMonsterAi)
                 continue;
 
             Patches? info = Harmony.GetPatchInfo(method);
             if (info is null)
                 continue;
+            bool trustGameplayNeutral = !isRngMethod;
             foreach (Patch patch in info.Prefixes.Concat(info.Postfixes).Concat(info.Transpilers).Concat(info.Finalizers))
             {
-                if (IsForeignPatch(patch))
+                if (IsForeignPatch(patch, trustGameplayNeutral))
                 {
                     reason = $"Foreign Harmony patch {patch.PatchMethod.DeclaringType?.FullName}.{patch.PatchMethod.Name} " +
                              $"(owner={patch.owner}) on {declaring.FullName}.{method.Name}.";
@@ -466,24 +576,7 @@ internal static class PreCombatSts2SimEligibility
         return false;
     }
 
-    private static bool IsPresentationOnlyNamespace(string? ns)
-    {
-        if (string.IsNullOrWhiteSpace(ns))
-            return false;
-        foreach (string prefix in PresentationOnlyNamespacePrefixes)
-        {
-            if (string.Equals(ns, prefix, StringComparison.Ordinal)
-                || (ns.StartsWith(prefix, StringComparison.Ordinal)
-                    && ns.Length > prefix.Length
-                    && ns[prefix.Length] == '.'))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static bool IsForeignPatch(Patch patch)
+    private static bool IsForeignPatch(Patch patch, bool trustGameplayNeutral)
     {
         Type? patchType = patch.PatchMethod.DeclaringType;
         if (patchType is null)
@@ -493,7 +586,13 @@ internal static class PreCombatSts2SimEligibility
         if (isBaseGame)
             return false;
         if (mod?.manifest?.id is { } modId)
-            return !TrustedPatchOwnerIds.Contains(modId);
+        {
+            if (TrustedPatchOwnerIds.Contains(modId))
+                return false;
+            if (trustGameplayNeutral && mod.manifest.affectsGameplay is false)
+                return false;
+            return true;
+        }
         if (patchType.Assembly == typeof(Entry).Assembly || patchType.Assembly == VanillaGameAssembly)
             return false;
         return true;

@@ -33,7 +33,7 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 
 - 预战 worker 身份由 `Entry.IsPreCombatWorker` 在启动时冻结；Dispatcher 保留完成邮箱和无人协议，仅跳过玩家战斗 UI 监控。API 可用性与启动期 Mod 钉住共用该身份，避免嵌套 worker。
 - 预战空闲计时器由 `PreCombatForecastWorker.Idle.cs` 持有。取走当前取消源的一方负责释放；后台完成仅在仍持有当前源时释放。token 必须在发布源前捕获，旧任务不得清除替代源或停止新会话。
-- 预战 `sts2-ai` 桥接保持零编译依赖，经私有 `AssemblyLoadContext` 与版本化 UTF-8 JSON ABI 运行；恐惧模式、`affects_gameplay` Mod、非支持构建及能力缺失显式分流或单租约回落遗留进程，失败与取消严格 fail-closed。
+- 预战 `sts2-ai` 桥接保持零编译依赖，经私有 `AssemblyLoadContext` 与版本化 UTF-8 JSON ABI 运行；恐惧模式、玩法 Mod/Harmony 补丁、非支持构建及能力缺失显式分流或单租约回落遗留进程，失败与取消严格 fail-closed。
 
 - 遗物策略的可控范围由 RelicCounterCatalog 声明，Runtime 冻结本场目标，Search 只读已有分支计数并输出标量评价；UI 独占输入与游戏名称。不要新建第二套可变战斗计数，也不要在 worker 读取设置或原生显示动画计数。
 

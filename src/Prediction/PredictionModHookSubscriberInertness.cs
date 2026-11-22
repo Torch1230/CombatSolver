@@ -23,7 +23,7 @@ internal static class PredictionModHookSubscriberInertness
     /// 之后才由 CombatRoom 分发，搜索到战斗结束就停止。求解器的镜像从不触发这两组中的任何一个。
     /// 战斗期间也会触发的 hook（例如 AfterRoomEntered、金币、药水、奖励选项、加牌入牌组）刻意不在其中。
     /// </summary>
-    private static readonly HashSet<string> PredictionInertHookNames = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> PreCombatInertHookNames = new(StringComparer.Ordinal)
     {
         nameof(AbstractModel.ModifyGeneratedMap),
         nameof(AbstractModel.ModifyGeneratedMapLate),
@@ -42,13 +42,21 @@ internal static class PredictionModHookSubscriberInertness
         nameof(AbstractModel.ModifyMerchantCardRarity),
         nameof(AbstractModel.ModifyMerchantCardCreationResults),
         nameof(AbstractModel.ModifyMerchantPrice),
-        nameof(AbstractModel.BeforeCombatStart),
-        nameof(AbstractModel.BeforeCombatStartLate),
         nameof(AbstractModel.AfterCombatVictoryEarly),
         nameof(AbstractModel.AfterCombatVictory),
         nameof(AbstractModel.AfterCombatEnd),
         nameof(AbstractModel.BeforeCombatRewardOffered),
     };
+
+    private static readonly HashSet<string> InCombatOnlyInertHookNames = new(StringComparer.Ordinal)
+    {
+        nameof(AbstractModel.BeforeCombatStart),
+        nameof(AbstractModel.BeforeCombatStartLate),
+    };
+
+    private static readonly HashSet<string> PredictionInertHookNames = new(
+        PreCombatInertHookNames.Concat(InCombatOnlyInertHookNames),
+        StringComparer.Ordinal);
 
     /// <summary>
     /// <see cref="AbstractModel"/> 上不是 hook 的虚成员。当前原生 ModHelper 订阅器枚举不调用
@@ -64,6 +72,7 @@ internal static class PredictionModHookSubscriberInertness
     };
 
     private static readonly ConcurrentDictionary<Type, (bool Inert, string Overrides)> Cache = new();
+    private static readonly ConcurrentDictionary<Type, (bool Inert, string Overrides)> PreCombatCache = new();
 
     private static readonly FieldInfo? ExecutionFinishedField = typeof(AbstractModel).GetField(
         nameof(AbstractModel.ExecutionFinished), BindingFlags.Instance | BindingFlags.NonPublic
@@ -81,6 +90,14 @@ internal static class PredictionModHookSubscriberInertness
             && ExecutionFinishedField.GetValue(subscriber) is null;
     }
 
+    public static bool IsPreCombatInert(AbstractModel subscriber, out string overriddenHooks)
+    {
+        if (!IsPreCombatInert(subscriber.GetType(), out overriddenHooks))
+            return false;
+        return ExecutionFinishedField?.FieldType == typeof(Action<AbstractModel>)
+            && ExecutionFinishedField.GetValue(subscriber) is null;
+    }
+
     /// <summary>
     /// 订阅器类型的 hook 覆写是否满足准入前提；实际准入必须调用实例重载。
     /// <paramref name="overriddenHooks"/> 返回沿继承链收集到的全部
@@ -89,12 +106,23 @@ internal static class PredictionModHookSubscriberInertness
     /// </summary>
     public static bool IsCombatInert(Type subscriberType, out string overriddenHooks)
     {
-        (bool inert, string overrides) = Cache.GetOrAdd(subscriberType, Classify);
+        (bool inert, string overrides) = Cache.GetOrAdd(
+            subscriberType,
+            static type => Classify(type, PredictionInertHookNames));
         overriddenHooks = overrides;
         return inert;
     }
 
-    private static (bool Inert, string Overrides) Classify(Type subscriberType)
+    public static bool IsPreCombatInert(Type subscriberType, out string overriddenHooks)
+    {
+        (bool inert, string overrides) = PreCombatCache.GetOrAdd(
+            subscriberType,
+            static type => Classify(type, PreCombatInertHookNames));
+        overriddenHooks = overrides;
+        return inert;
+    }
+
+    private static (bool Inert, string Overrides) Classify(Type subscriberType, IReadOnlySet<string> allowedHooks)
     {
         if (!typeof(AbstractModel).IsAssignableFrom(subscriberType) || subscriberType.IsAbstract)
             return (false, string.Empty);
@@ -131,7 +159,7 @@ internal static class PredictionModHookSubscriberInertness
         string overrides = string.Join(",", hooks);
         foreach (string hook in hooks)
         {
-            if (!PredictionInertHookNames.Contains(hook))
+            if (!allowedHooks.Contains(hook))
                 return (false, overrides);
         }
         return (true, overrides);

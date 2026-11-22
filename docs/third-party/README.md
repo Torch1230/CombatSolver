@@ -79,6 +79,8 @@ SteamEruptionPower 的转阶段也由 `AfterDeathMirrors` 持有。Hook 内恢�
 
 条件都不满足就抛 `IncompatibleGameplayModException`，整个求解器停摆。
 
+战前 `Sts2Sim` 同进程桥接沿同一语义原则单独执行前置审计（`PreCombatSts2SimEligibility`）：只修改界面、房间入口或严格战前惰性 hook（`PredictionModHookSubscriberInertness.IsPreCombatInert`，排除开战前 hook）的辅助功能 Mod 可继续使用战前桥接；带有战斗订阅器、`BeforeCombatStart` 订阅器、`RNG` 补丁、原版怪物 `GenerateMoveStateMachine` 补丁、可达牌组/原版生成池 `OnPlay` 补丁、自定义最大手牌、BaseLib 卡牌修饰器、Ritsu 运行时附加治疗/能力监听器，或实际出场第三方角色/卡牌/遗物/药水/卡池/药水池时，战前桥接显式分流至旧版独立子进程并保留详细原因。
+
 > **当前限制。** 第 3 条那份白名单是私有静态集合，没有公开登记入口。目前只能靠 publicizer
 > 写进去。这是明确要补的扩展点之一，见第 6 节。
 
@@ -371,6 +373,7 @@ StrategicEffectMirrors.Register<TYourPower>(requirements, evaluate, host);
 | `PredictionPlayerPotionCallbackAudit.Capture` | 用药完成以及指定悬停同步来源在稳定根检查，未知受众、版本/布局、测试委托或依赖补丁拒绝回复剪枝；原版精确回调按已审计身份接纳，Fork 只共享不可变原因。不是所有生命/UI 事件认证，未知语义不自动获得模拟支持 | 封闭回复证明准入，无外部放行入口 |
 | `PredictionRitsuCapabilityAudit.Validate` | 原版模型类型不替代附着行为审计；未审计 Ritsu 版本只撤销有限回复证书，当前/未来规范宿主能力、未知保存条目以及默认构造注入在根/live 拒绝，空宿主/仅注册工厂保留 | 无外部认证入口；精确 Runtime/Shared 契约，仅缓存元数据，不执行未知工厂；其他回调仍然需要独立审计 |
 | `PredictionRitsuHealingAudit.ValidateGlobalListeners` / `CaptureHealingRejection` | 已启用的 Ritsu 进程级治疗监听器在根捕获及 live 采用边界检查。Heal 补丁组合与 Ritsu 运行库版本用于判定有限回复上界资格，未认证时采用一般搜索策略 | 封闭语义边界与搜索证明 |
+| `PreCombatSts2SimEligibility` | 标准单人战前同进程桥接按实际运行语义检查活跃 `RunState` 战斗订阅器（`IsPreCombatInert`）、Ritsu 能力与治疗监听器、RNG/怪物 AI/出牌补丁、可达原版卡池与药水池及最大手牌/BaseLib 修饰器；未触发上述条件的辅助工具与未出场第三方内容不阻断标准局桥接 | 封闭战前语义门禁 |
 
 | `MirroredHookListenerFilter.CanProjectReceivers` / `SimulatedCombatState.TryBuildProjectedHookListeners` | 镜像专用监听表省略既有参与位图为零的后缀成员，完整原生表保持。准入核对已审计游戏 `0.113.0` / `0.113.1` MVID 以及字段/Preview getter 的无补丁状态；基 Hook、原生关键字 Hook 或相关 getter 安装 Harmony 补丁时通过 `LiveCombatStamp` 失效旧路线并回退完整构造，不透明 `CardModifier` 与外部/动态类型保守保留 | 封闭性能特化 |
 | `ArrowMirrors` / `ModifyPreBlockDamageTargetMirrors` | v0.113 原版箭 Hook 与格挡前伤害转移采用内部精确登记。箭槽、插箭引用和历史由同一 Fork context 重映射；当前入口按内置模型维护 | 封闭原版登记 |

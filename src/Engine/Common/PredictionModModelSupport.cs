@@ -63,6 +63,9 @@ internal static class PredictionModModelSupport
     public static bool IsBaseLibCardModifier(AbstractModel model)
         => BaseLibCardModifiers.Value?.ModifierType.IsInstanceOfType(model) == true;
 
+    public static bool HasBaseLibCardModifiers(CardModel card)
+        => BaseLibCardModifiers.Value is { } adapter && adapter.DirectModifiers(card).Count > 0;
+
     public static void RegisterBaseLibCardModifierSources(IEnumerable<AbstractModel> subscribers)
     {
         BaseLibCardModifierAdapter? adapter = BaseLibCardModifiers.Value;

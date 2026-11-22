@@ -484,5 +484,6 @@
   "组件状态：sts2sim 校验异常": "Module status: sts2sim verification error",
   "组件状态：sts2sim 已安装": "Module status: sts2sim installed",
   "组件状态：sts2sim 未安装": "Module status: sts2sim not installed",
-  "分流/回退原因：{0}": "Routing/fallback code: {0}"
+  "分流/回退原因：{0}": "Routing/fallback code: {0}",
+  "详情：{0}": "Detail: {0}"
 }
