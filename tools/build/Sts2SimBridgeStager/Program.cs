@@ -246,15 +246,24 @@ internal static class Program
             current = parent;
         }
 
-        FileSystemInfo info = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
-        FileSystemInfo? resolved = info.ResolveLinkTarget(returnFinalTarget: true);
-        string physical = Path.TrimEndingDirectorySeparator(resolved?.FullName ?? info.FullName);
-
-        // Iteratively resolve in case parent directories of the link target also contain symlinks.
-        string? resolvedParent = Path.GetDirectoryName(physical);
-        if (!string.IsNullOrEmpty(resolvedParent) && !string.Equals(resolvedParent, physical, StringComparison.Ordinal))
+        string physical;
+        string? currentParent = Path.GetDirectoryName(current);
+        if (string.IsNullOrEmpty(currentParent) || string.Equals(currentParent, current, StringComparison.Ordinal))
         {
-            physical = Path.Combine(ResolvePhysicalPath(resolvedParent), Path.GetFileName(physical));
+            physical = current;
+        }
+        else
+        {
+            FileSystemInfo info = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
+            FileSystemInfo? resolved = info.ResolveLinkTarget(returnFinalTarget: true);
+            physical = Path.TrimEndingDirectorySeparator(resolved?.FullName ?? info.FullName);
+
+            // Iteratively resolve in case parent directories of the link target also contain symlinks.
+            string? resolvedParent = Path.GetDirectoryName(physical);
+            if (!string.IsNullOrEmpty(resolvedParent) && !string.Equals(resolvedParent, physical, StringComparison.Ordinal))
+            {
+                physical = Path.Combine(ResolvePhysicalPath(resolvedParent), Path.GetFileName(physical));
+            }
         }
 
         while (trailingSegments.Count > 0)
