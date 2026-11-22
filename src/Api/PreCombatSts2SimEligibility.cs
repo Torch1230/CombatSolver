@@ -33,7 +33,7 @@ internal readonly record struct PreCombatEligibilityResult(
         new(false, failureCode, detail, fingerprint);
 }
 
-internal static class PreCombatSts2SimEligibility
+internal static partial class PreCombatSts2SimEligibility
 {
     private static readonly Assembly VanillaGameAssembly = typeof(RunState).Assembly;
     private static readonly HashSet<string> TrustedPatchOwnerIds = new(StringComparer.OrdinalIgnoreCase)
@@ -166,12 +166,13 @@ internal static class PreCombatSts2SimEligibility
                 player);
         }
 
-        if (player.ExtraFields.WongoPoints != 0
-            || player.ExtraFields.IsPlayingRotatingCharacter
-            || run.ExtraFields.FreedRepy
-            || run.ExtraFields.TestSubjectKills != 0
-            || run.ExtraFields.UsedDebugCommand
-            || !run.ExtraFields.StartedWithNeow)
+        if (HasUnsupportedExtraFields(new PreCombatExtraFieldsState(
+                StartedWithNeow: run.ExtraFields.StartedWithNeow,
+                FreedRepy: run.ExtraFields.FreedRepy,
+                TestSubjectKills: run.ExtraFields.TestSubjectKills,
+                UsedDebugCommand: run.ExtraFields.UsedDebugCommand,
+                WongoPoints: player.ExtraFields.WongoPoints,
+                IsPlayingRotatingCharacter: player.ExtraFields.IsPlayingRotatingCharacter)))
         {
             return Ineligible(
                 "extra_field_unsupported",
@@ -277,12 +278,13 @@ internal static class PreCombatSts2SimEligibility
 
         var extras = plannedRun.ExtraFields;
         var playerExtras = plannedPlayer.ExtraFields;
-        if (!extras.StartedWithNeow
-            || extras.FreedRepy
-            || extras.TestSubjectKills != 0
-            || extras.UsedDebugCommand
-            || playerExtras.WongoPoints != 0
-            || playerExtras.IsPlayingRotatingCharacter)
+        if (HasUnsupportedExtraFields(new PreCombatExtraFieldsState(
+                StartedWithNeow: extras.StartedWithNeow,
+                FreedRepy: extras.FreedRepy,
+                TestSubjectKills: extras.TestSubjectKills,
+                UsedDebugCommand: extras.UsedDebugCommand,
+                WongoPoints: playerExtras.WongoPoints,
+                IsPlayingRotatingCharacter: playerExtras.IsPlayingRotatingCharacter)))
         {
             return IneligiblePlanning("extra_field_unsupported", "Planning run contains unsupported extra fields.");
         }
@@ -660,7 +662,6 @@ internal static class PreCombatSts2SimEligibility
             $"release={release?.Version ?? "null"}@{release?.Commit ?? "null"}",
             $"neow={run.ExtraFields.StartedWithNeow}",
             $"repy={run.ExtraFields.FreedRepy}",
-            $"ts_kills={run.ExtraFields.TestSubjectKills}",
             $"debug={run.ExtraFields.UsedDebugCommand}",
             precondition,
             mods);
