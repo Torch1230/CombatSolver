@@ -33,7 +33,7 @@ internal readonly record struct PreCombatEligibilityResult(
         new(false, failureCode, detail, fingerprint);
 }
 
-internal static class PreCombatSts2SimEligibility
+internal static partial class PreCombatSts2SimEligibility
 {
     private static readonly Assembly VanillaGameAssembly = typeof(RunState).Assembly;
     private static readonly HashSet<string> TrustedPatchOwnerIds = new(StringComparer.OrdinalIgnoreCase)
@@ -166,12 +166,13 @@ internal static class PreCombatSts2SimEligibility
                 player);
         }
 
-        if (player.ExtraFields.WongoPoints != 0
-            || player.ExtraFields.IsPlayingRotatingCharacter
-            || run.ExtraFields.FreedRepy
-            || run.ExtraFields.TestSubjectKills != 0
-            || run.ExtraFields.UsedDebugCommand
-            || !run.ExtraFields.StartedWithNeow)
+        if (HasUnsupportedExtraFields(new PreCombatExtraFieldsState(
+                StartedWithNeow: run.ExtraFields.StartedWithNeow,
+                FreedRepy: run.ExtraFields.FreedRepy,
+                TestSubjectKills: run.ExtraFields.TestSubjectKills,
+                UsedDebugCommand: run.ExtraFields.UsedDebugCommand,
+                WongoPoints: player.ExtraFields.WongoPoints,
+                IsPlayingRotatingCharacter: player.ExtraFields.IsPlayingRotatingCharacter)))
         {
             return Ineligible(
                 "extra_field_unsupported",
@@ -277,12 +278,13 @@ internal static class PreCombatSts2SimEligibility
 
         var extras = plannedRun.ExtraFields;
         var playerExtras = plannedPlayer.ExtraFields;
-        if (!extras.StartedWithNeow
-            || extras.FreedRepy
-            || extras.TestSubjectKills != 0
-            || extras.UsedDebugCommand
-            || playerExtras.WongoPoints != 0
-            || playerExtras.IsPlayingRotatingCharacter)
+        if (HasUnsupportedExtraFields(new PreCombatExtraFieldsState(
+                StartedWithNeow: extras.StartedWithNeow,
+                FreedRepy: extras.FreedRepy,
+                TestSubjectKills: extras.TestSubjectKills,
+                UsedDebugCommand: extras.UsedDebugCommand,
+                WongoPoints: playerExtras.WongoPoints,
+                IsPlayingRotatingCharacter: playerExtras.IsPlayingRotatingCharacter)))
         {
             return IneligiblePlanning("extra_field_unsupported", "Planning run contains unsupported extra fields.");
         }
@@ -533,24 +535,40 @@ internal static class PreCombatSts2SimEligibility
             if (declaring is null || declaring.Assembly != VanillaGameAssembly)
                 continue;
 
-            string? ns = declaring.Namespace;
-            bool isRngMethod = string.Equals(ns, "MegaCrit.Sts2.Core.Random", StringComparison.Ordinal)
-                || (ns is not null && ns.StartsWith("MegaCrit.Sts2.Core.Random.", StringComparison.Ordinal));
-            bool isMonsterAi = typeof(MonsterModel).IsAssignableFrom(declaring)
-                && string.Equals(method.Name, "GenerateMoveStateMachine", StringComparison.Ordinal);
-            if (!isRngMethod && !isMonsterAi)
+            Type rootDeclaring = declaring;
+            while (rootDeclaring.DeclaringType is not null)
+                rootDeclaring = rootDeclaring.DeclaringType;
+
+            PreCombatHarmonyTargetKind targetKind = ClassifyCriticalHarmonyTarget(
+                rootDeclaring.Namespace,
+                rootDeclaring.Name,
+                method.Name,
+                typeof(MonsterModel).IsAssignableFrom(rootDeclaring));
+            if (targetKind == PreCombatHarmonyTargetKind.None)
                 continue;
 
             Patches? info = Harmony.GetPatchInfo(method);
             if (info is null)
                 continue;
-            bool trustGameplayNeutral = !isRngMethod;
-            foreach (Patch patch in info.Prefixes.Concat(info.Postfixes).Concat(info.Transpilers).Concat(info.Finalizers))
+
+            bool trustGameplayNeutral = targetKind != PreCombatHarmonyTargetKind.Rng;
+            string targetDisplayName = $"{declaring.FullName}.{method.Name}";
+            foreach (Patch patch in info.Prefixes
+                         .Concat(info.Postfixes)
+                         .Concat(info.Transpilers)
+                         .Concat(info.Finalizers)
+                         .Concat(info.InnerPrefixes)
+                         .Concat(info.InnerPostfixes))
             {
-                if (IsForeignPatch(patch, trustGameplayNeutral))
+                PreCombatHarmonyPatchDescriptor descriptor = DescribeHarmonyPatch(
+                    patch,
+                    rootDeclaring,
+                    method.Name,
+                    targetDisplayName);
+                if (IsForeignPatchDescriptor(descriptor, trustGameplayNeutral))
                 {
-                    reason = $"Foreign Harmony patch {patch.PatchMethod.DeclaringType?.FullName}.{patch.PatchMethod.Name} " +
-                             $"(owner={patch.owner}) on {declaring.FullName}.{method.Name}.";
+                    reason = $"Foreign Harmony patch {descriptor.PatchDisplayName} " +
+                             $"(owner={descriptor.Owner}) on {descriptor.TargetDisplayName}.";
                     return true;
                 }
             }
@@ -562,9 +580,28 @@ internal static class PreCombatSts2SimEligibility
 
     internal static bool TryFindForeignCardOnPlayPatch(IEnumerable<CardModel> deckCards, out string reason)
     {
+        HashSet<Type> checkedTypes = [];
         try
         {
-            _ = PredictionModPatchAudit.CaptureCardOnPlay(deckCards);
+            foreach (CardModel card in deckCards)
+            {
+                Type cardType = card.GetType();
+                if (!checkedTypes.Add(cardType))
+                    continue;
+
+                _ = PredictionModPatchAudit.AuditCardOnPlay(
+                    cardType,
+                    adapted: false,
+                    out PredictionModPatchAudit.ForeignPatch? firstForeign);
+                var outcome = new PreCombatCardOnPlayAuditOutcome(
+                    HasForeignPatch: firstForeign is not null,
+                    HasBuiltInAdaptation: false,
+                    ForeignDescription: firstForeign is { } foreign
+                        ? $"{foreign.ModName} ({foreign.ModId}): {foreign.Description}"
+                        : null);
+                if (ShouldRejectCardOnPlayForSts2Sim(outcome, out reason))
+                    return true;
+            }
         }
         catch (Exception ex) when (ex is IncompatibleGameplayModException or PredictionUnsupportedException)
         {
@@ -576,26 +613,54 @@ internal static class PreCombatSts2SimEligibility
         return false;
     }
 
-    private static bool IsForeignPatch(Patch patch, bool trustGameplayNeutral)
+    private static PreCombatHarmonyPatchDescriptor DescribeHarmonyPatch(
+        Patch patch,
+        Type rootDeclaring,
+        string methodName,
+        string targetDisplayName)
     {
         Type? patchType = patch.PatchMethod.DeclaringType;
+        bool isBaseGamePatch = false;
+        bool isTrustedOwner = false;
+        bool? affectsGameplay = null;
+        bool hasKnownModId = false;
+        string patchDisplayName;
         if (patchType is null)
-            return true;
-
-        Mod? mod = AssemblyInfo.ModForType(patchType, out bool isBaseGame);
-        if (isBaseGame)
-            return false;
-        if (mod?.manifest?.id is { } modId)
         {
-            if (TrustedPatchOwnerIds.Contains(modId))
-                return false;
-            if (trustGameplayNeutral && mod.manifest.affectsGameplay is false)
-                return false;
-            return true;
+            patchDisplayName = patch.PatchMethod.ToString() ?? "<null>";
         }
-        if (patchType.Assembly == typeof(Entry).Assembly || patchType.Assembly == VanillaGameAssembly)
-            return false;
-        return true;
+        else
+        {
+            patchDisplayName = $"{patchType.FullName}.{patch.PatchMethod.Name}";
+            Mod? mod = AssemblyInfo.ModForType(patchType, out bool isBaseGame);
+            if (isBaseGame)
+            {
+                isBaseGamePatch = true;
+            }
+            else if (mod?.manifest?.id is { } modId)
+            {
+                hasKnownModId = true;
+                isTrustedOwner = TrustedPatchOwnerIds.Contains(modId);
+                affectsGameplay = mod.manifest.affectsGameplay;
+            }
+            else if (patchType.Assembly == typeof(Entry).Assembly || patchType.Assembly == VanillaGameAssembly)
+            {
+                isBaseGamePatch = true;
+            }
+        }
+
+        return new PreCombatHarmonyPatchDescriptor(
+            DeclaringNamespace: rootDeclaring.Namespace,
+            RootDeclaringTypeName: rootDeclaring.Name,
+            MethodName: methodName,
+            IsMonsterModel: typeof(MonsterModel).IsAssignableFrom(rootDeclaring),
+            IsBaseGamePatch: isBaseGamePatch,
+            IsTrustedOwner: isTrustedOwner,
+            AffectsGameplay: affectsGameplay,
+            HasKnownModId: hasKnownModId,
+            PatchDisplayName: patchDisplayName,
+            TargetDisplayName: targetDisplayName,
+            Owner: patch.owner ?? string.Empty);
     }
 
     internal static bool HasFullEpochUnlocks(IEnumerable<string>? unlockedEpochs)
@@ -660,7 +725,6 @@ internal static class PreCombatSts2SimEligibility
             $"release={release?.Version ?? "null"}@{release?.Commit ?? "null"}",
             $"neow={run.ExtraFields.StartedWithNeow}",
             $"repy={run.ExtraFields.FreedRepy}",
-            $"ts_kills={run.ExtraFields.TestSubjectKills}",
             $"debug={run.ExtraFields.UsedDebugCommand}",
             precondition,
             mods);

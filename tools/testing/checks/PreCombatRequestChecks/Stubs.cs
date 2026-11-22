@@ -126,7 +126,7 @@ namespace CombatSolver.Api
         string? FailureCode,
         string? Detail,
         string Fingerprint);
-    internal static class PreCombatSts2SimEligibility
+    internal static partial class PreCombatSts2SimEligibility
     {
         public static PreCombatEligibilityResult AssessMandatoryLiveHost(RunState run) =>
             run.DirectIneligibility is { Length: > 0 } code
