@@ -82,16 +82,19 @@ internal static class InCombatSts2SimResultMaterializer
 
         int searchedTurns = Math.Max(1, maxActionTurn - root.StartTurnNumber + 1);
         IReadOnlyList<CachedContinuation> continuations = [];
-        if (resultScope != SolverResultScope.CurrentTurnAdoption)
-        {
-            _ = CombatBeamSolver.TryReplaySingleRouteForContinuation(
+        if (resultScope != SolverResultScope.CurrentTurnAdoption
+            && !CombatBeamSolver.TryReplaySingleRouteForContinuation(
                 root,
                 displayNames,
                 battleDamage,
                 searchPolicy,
                 actions,
                 continuationCancellation,
-                out continuations);
+                out continuations,
+                out string? continuationFailure))
+        {
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_CONTINUATION_ANNOTATION_SKIPPED reason={continuationFailure}");
         }
 
         SolverSnapshot snapshot = new(
@@ -315,7 +318,13 @@ internal static class InCombatSts2SimResultMaterializer
             List<PlanCardChoice> turnStartChoices = [];
             foreach (InCombatChoiceTraceDto choiceDto in src.Choices)
             {
-                PlanCardChoice mapped = MapChoice(choiceDto, displayNames);
+                bool isPrimaryActionChoice = string.Equals(choiceDto.Timing, "Action", StringComparison.Ordinal)
+                    && actionChoices.Count == 0
+                    && ((kind == PlanActionKind.PlayCard
+                            && string.Equals(choiceDto.SourceId, src.CardId, StringComparison.Ordinal))
+                        || (kind == PlanActionKind.UsePotion
+                            && string.Equals(choiceDto.SourceId, src.PotionId, StringComparison.Ordinal)));
+                PlanCardChoice mapped = MapChoice(choiceDto, displayNames, isPrimaryActionChoice);
                 if (mapped.Timing == PlanChoiceTiming.Action)
                     actionChoices.Add(mapped);
                 else
@@ -398,7 +407,8 @@ internal static class InCombatSts2SimResultMaterializer
 
     private static PlanCardChoice MapChoice(
         InCombatChoiceTraceDto src,
-        SolverDisplayNames displayNames)
+        SolverDisplayNames displayNames,
+        bool isPrimaryActionChoice)
     {
         PlanChoiceTiming timing = src.Timing switch
         {
@@ -416,7 +426,10 @@ internal static class InCombatSts2SimResultMaterializer
             "Exhaust" => PileType.Exhaust,
             _ => PileType.None,
         };
-        PlanChoiceEffect effect = InferChoiceEffect(src.SourceId, sourcePile);
+        string rawSourceId = src.SourceId ?? string.Empty;
+        PlanChoiceEffect effect = InferChoiceEffect(rawSourceId, sourcePile);
+        string contextId = InferChoiceContextId(rawSourceId, timing);
+        string mappedSourceId = isPrimaryActionChoice ? string.Empty : rawSourceId;
         PlanCardToken[] tokens = src.Cards
             .Select(card => new PlanCardToken(
                 card.CardId,
@@ -431,22 +444,58 @@ internal static class InCombatSts2SimResultMaterializer
             effect,
             sourcePile,
             tokens,
-            src.SourceId ?? string.Empty,
-            string.Empty,
+            mappedSourceId,
+            contextId,
             timing);
     }
 
-    private static PlanChoiceEffect InferChoiceEffect(string sourceId, PileType sourcePile)
+    private static string InferChoiceContextId(string sourceId, PlanChoiceTiming timing)
     {
-        if (string.Equals(sourceId, "KNOWLEDGE_DEMON", StringComparison.Ordinal))
-            return PlanChoiceEffect.ApplyKnowledgeCurse;
-        return sourcePile switch
+        if (timing != PlanChoiceTiming.PlayerTurnStart)
+            return string.Empty;
+        return sourceId switch
         {
-            PileType.Hand => PlanChoiceEffect.Modify,
-            PileType.None => PlanChoiceEffect.GenerateToHand,
-            _ => PlanChoiceEffect.MoveToHand,
+            "GAMBLING_CHIP" => "AFTER_PLAYER_TURN_START",
+            "TOOLBOX" => "BEFORE_HAND_DRAW",
+            _ => string.Empty,
         };
     }
+
+    private static PlanChoiceEffect InferChoiceEffect(string sourceId, PileType sourcePile) => sourceId switch
+    {
+        "KNOWLEDGE_DEMON" => PlanChoiceEffect.ApplyKnowledgeCurse,
+        "ABUNDANCE" or "DISCOVERY" or "QUASAR" or "SPLASH"
+            or "ATTACK_POTION" or "SKILL_POTION" or "POWER_POTION" or "COLORLESS_POTION"
+            or "TOOLBOX" => PlanChoiceEffect.GenerateToHand,
+        "SEEKER_STRIKE" or "KI_CHANT" or "LOCKED_IN" or "ARROW_STAB" or "HOLOGRAM" or "GRAVEBLAST"
+            or "SECRET_WEAPON" or "SECRET_TECHNIQUE" or "WISH" or "DREDGE" or "NEOWS_FURY"
+            or "DROPLET_OF_PRECOGNITION" or "FOREGONE_CONCLUSION_POWER" or "STRATAGEM_POWER"
+            => PlanChoiceEffect.MoveToHand,
+        "RECALL" or "HEADBUTT" or "COSMIC_INDIFFERENCE" or "THINKING_AHEAD" or "GLIMMER" or "PHOTON_CUT"
+            => PlanChoiceEffect.MoveToDrawTop,
+        "THE_HERMIT" or "SURVIVOR" or "ACROBATICS" or "DAGGER_THROW" or "PREPARED" or "HIDDEN_DAGGERS"
+            or "TOOLS_OF_THE_TRADE_POWER" => PlanChoiceEffect.Discard,
+        "GAMBLERS_BREW" or "GAMBLING_CHIP" => PlanChoiceEffect.DiscardAndDraw,
+        "TRUE_GRIT" or "BURNING_PACT" or "SCAVENGE" or "PURITY" or "BRAND" or "CLEANSE"
+            or "ASHWATER" or "TYRANNY_POWER" or "TOASTY_MITTENS" => PlanChoiceEffect.Exhaust,
+        "ARMAMENTS" => PlanChoiceEffect.Upgrade,
+        "BEGONE" or "CHARGE" or "GUARDS" or "SEANCE" or "ENTROPY_POWER" => PlanChoiceEffect.Transform,
+        "DUAL_WIELD" or "HEIRLOOM_HAMMER" => PlanChoiceEffect.Duplicate,
+        "TRANSFIGURE" => PlanChoiceEffect.Modify,
+        "NIGHTMARE" => PlanChoiceEffect.Nightmare,
+        "HAND_TRICK" => PlanChoiceEffect.ApplySly,
+        "SCULPTING_STRIKE" => PlanChoiceEffect.ApplyEthereal,
+        "SNAP" or "WELL_LAID_PLANS_POWER" => PlanChoiceEffect.ApplyRetain,
+        "DECISIONS_DECISIONS" => PlanChoiceEffect.AutoPlayRepeated,
+        "LIQUID_MEMORIES" => PlanChoiceEffect.MoveToHandFreeThisTurn,
+        "TOUCH_OF_INSANITY" => PlanChoiceEffect.SetFreeThisCombat,
+        _ => sourcePile switch
+        {
+            PileType.None => PlanChoiceEffect.GenerateToHand,
+            PileType.Hand => PlanChoiceEffect.Modify,
+            _ => PlanChoiceEffect.MoveToHand,
+        },
+    };
 
     private static PlanActionKind ParseActionKind(string kind)
         => kind switch

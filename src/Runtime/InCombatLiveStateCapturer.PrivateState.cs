@@ -28,18 +28,21 @@ internal static partial class InCombatLiveStateCapturer
     private static InCombatFieldValueDto CreatureHandleArrayVal(IReadOnlyList<int> items) => new("CreatureHandleArray", IntArrayValue: items);
 
     private static void RegisterPrivateReferenceTargets(
-        CombatState state,
         Player player,
+        Dictionary<Creature, int> creatureHandles,
         Func<Creature, int> registerCreature,
         Func<CardModel, int> registerCard)
     {
         foreach (RelicModel relic in player.Relics)
         {
-            if (relic is HistoryCourse)
+            if (relic is HistoryCourse hc)
             {
-                (CardModel? lastAttack, _, CardModel? prevAttack, _) = FindHistoryCourseAttacks(state, player);
-                if (lastAttack is not null) registerCard(lastAttack);
-                if (prevAttack is not null) registerCard(prevAttack);
+                if (hc.Owner?.Creature.CombatState is CombatState combatState)
+                {
+                    (CardModel? lastAttack, _, CardModel? prevAttack, _) = FindHistoryCourseAttacks(combatState, player);
+                    if (lastAttack is not null) registerCard(lastAttack);
+                    if (prevAttack is not null) registerCard(prevAttack);
+                }
             }
             else if (relic is MusicBox mb && mb._cardBeingPlayed is { } mbCard)
             {
@@ -51,75 +54,85 @@ internal static partial class InCombatLiveStateCapturer
             }
         }
 
-        foreach (Creature creature in state.Allies.Concat(state.Enemies).Concat(state.EscapedCreatures))
+        var scanned = new HashSet<Creature>(ReferenceEqualityComparer.Instance);
+        while (true)
         {
-            if (creature.Monster is Queen queen && queen._amalgam is { } amalgam)
-                registerCreature(amalgam);
+            Creature[] pending = creatureHandles.Keys
+                .Where(c => scanned.Add(c))
+                .ToArray();
+            if (pending.Length == 0)
+                break;
 
-            foreach (PowerModel power in creature.Powers)
+            foreach (Creature creature in pending)
             {
-                if (power.Applier is not null)
-                    registerCreature(power.Applier);
-                switch (power)
+                if (creature.Monster is Queen queen && queen._amalgam is { } amalgam)
+                    registerCreature(amalgam);
+
+                foreach (PowerModel power in creature.Powers)
                 {
-                    case CurlUpPower curl when curl.GetInternalData<CurlUpPower.Data>().playedCard is { } curlCard:
-                        registerCard(curlCard);
-                        break;
-                    case DampenPower dampen:
-                        foreach (Creature caster in dampen.GetInternalData<DampenPower.Data>().casters)
-                            registerCreature(caster);
-                        foreach (CardModel c in dampen.GetInternalData<DampenPower.Data>().downgradedCardsToOldUpgradeLevels.Keys)
-                            registerCard(c);
-                        break;
-                    case HeistPower heist when heist.Target is { } hTarget:
-                        registerCreature(hTarget);
-                        break;
-                    case ImitationLearningPower:
-                        break;
-                    case JugglingPower jugg when jugg.GetInternalData<JugglingPower.Data>().cardToClone is { } jCard:
-                        registerCard(jCard);
-                        break;
-                    case NightmarePower nm when nm.GetInternalData<NightmarePower.Data>().selectedCard is { } nmCard:
-                        registerCard(nmCard);
-                        break;
-                    case OblivionPower ob:
-                        foreach (CardModel c in ob.GetInternalData<OblivionPower.Data>().amountsForPlayedCards.Keys)
-                            registerCard(c);
-                        break;
-                    case PossessSpeedPower ps:
-                        foreach (Creature target in ps.GetInternalData<PossessSpeedPower.Data>().stolenDexterity.Keys)
-                            registerCreature(target);
-                        break;
-                    case PossessStrengthPower pstr:
-                        foreach (Creature target in pstr.GetInternalData<PossessStrengthPower.Data>().stolenStrength.Keys)
-                            registerCreature(target);
-                        break;
-                    case RupturePower rup:
-                        foreach (CardModel c in rup.GetInternalData<RupturePower.Data>().playedCards.Keys)
-                            registerCard(c);
-                        break;
-                    case SandpitPower sp when sp.Target is { } sTarget:
-                        registerCreature(sTarget);
-                        break;
-                    case ShowOffPower so when so.ShowOffInstance is { } soCard:
-                        registerCard(soCard);
-                        break;
-                    case SwipePower sw when sw.StolenCard is { } swCard:
-                        registerCard(swCard);
-                        break;
-                    case SwordSagePower:
-                        foreach (CardModel card in player.PlayerCombatState?.AllCards ?? [])
-                        {
-                            if (card is SovereignBlade)
-                                registerCard(card);
-                        }
-                        break;
-                    case ThieveryPower th when th.Target is { } thTarget:
-                        registerCreature(thTarget);
-                        break;
-                    case WitheringPresencePower wp when wp.Target is { } wpTarget:
-                        registerCreature(wpTarget);
-                        break;
+                    if (power.Applier is not null)
+                        registerCreature(power.Applier);
+                    switch (power)
+                    {
+                        case CurlUpPower curl when curl.GetInternalData<CurlUpPower.Data>().playedCard is { } curlCard:
+                            registerCard(curlCard);
+                            break;
+                        case DampenPower dampen:
+                            foreach (Creature caster in dampen.GetInternalData<DampenPower.Data>().casters)
+                                registerCreature(caster);
+                            foreach (CardModel c in dampen.GetInternalData<DampenPower.Data>().downgradedCardsToOldUpgradeLevels.Keys)
+                                registerCard(c);
+                            break;
+                        case HeistPower heist when heist.Target is { } hTarget:
+                            registerCreature(hTarget);
+                            break;
+                        case ImitationLearningPower:
+                            break;
+                        case JugglingPower jugg when jugg.GetInternalData<JugglingPower.Data>().cardToClone is { } jCard:
+                            registerCard(jCard);
+                            break;
+                        case NightmarePower nm when nm.GetInternalData<NightmarePower.Data>().selectedCard is { } nmCard:
+                            registerCard(nmCard);
+                            break;
+                        case OblivionPower ob:
+                            foreach (CardModel c in ob.GetInternalData<OblivionPower.Data>().amountsForPlayedCards.Keys)
+                                registerCard(c);
+                            break;
+                        case PossessSpeedPower ps:
+                            foreach (Creature target in ps.GetInternalData<PossessSpeedPower.Data>().stolenDexterity.Keys)
+                                registerCreature(target);
+                            break;
+                        case PossessStrengthPower pstr:
+                            foreach (Creature target in pstr.GetInternalData<PossessStrengthPower.Data>().stolenStrength.Keys)
+                                registerCreature(target);
+                            break;
+                        case RupturePower rup:
+                            foreach (CardModel c in rup.GetInternalData<RupturePower.Data>().playedCards.Keys)
+                                registerCard(c);
+                            break;
+                        case SandpitPower sp when sp.Target is { } sTarget:
+                            registerCreature(sTarget);
+                            break;
+                        case ShowOffPower so when so.ShowOffInstance is { } soCard:
+                            registerCard(soCard);
+                            break;
+                        case SwipePower sw when sw.StolenCard is { } swCard:
+                            registerCard(swCard);
+                            break;
+                        case SwordSagePower:
+                            foreach (CardModel card in player.PlayerCombatState?.AllCards ?? [])
+                            {
+                                if (card is SovereignBlade)
+                                    registerCard(card);
+                            }
+                            break;
+                        case ThieveryPower th when th.Target is { } thTarget:
+                            registerCreature(thTarget);
+                            break;
+                        case WitheringPresencePower wp when wp.Target is { } wpTarget:
+                            registerCreature(wpTarget);
+                            break;
+                    }
                 }
             }
         }
@@ -194,6 +207,9 @@ internal static partial class InCombatLiveStateCapturer
                 fields["GeneticAlgorithm._increasedBlock"] = IntVal(ga.IncreasedBlock);
                 fields["GeneticAlgorithm._increase"] = IntVal(ga.DynamicVars["Increase"].IntValue);
                 break;
+            case KinglyPunch kp:
+                fields["KinglyPunch._damage"] = DecimalVal(kp.DynamicVars.Damage.BaseValue);
+                break;
             case MadScience ms:
                 int mappedRider = ms.TinkerTimeRider switch
                 {
@@ -228,6 +244,9 @@ internal static partial class InCombatLiveStateCapturer
             case ShowOff showOff:
                 fields["ShowOff._currentAim"] = IntVal(showOff.CurrentAim);
                 fields["ShowOff._increasedAim"] = IntVal(showOff.IncreasedAim);
+                break;
+            case SovereignBlade sb:
+                fields["SovereignBlade._damage"] = DecimalVal(sb.DynamicVars.Damage.BaseValue);
                 break;
             case TheBall ball:
                 fields["TheBall._damage"] = DecimalVal(ball.DynamicVars.Damage.BaseValue);

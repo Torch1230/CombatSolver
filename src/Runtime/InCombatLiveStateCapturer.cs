@@ -121,7 +121,7 @@ internal static partial class InCombatLiveStateCapturer
         }
 
         // 提前遍历场上 Creature/Power/Relic 所引用的生物和卡牌句柄，确保外键句柄闭合。
-        RegisterPrivateReferenceTargets(state, player, RegisterCreature, RegisterCard);
+        RegisterPrivateReferenceTargets(player, creatureHandles, RegisterCreature, RegisterCard);
 
         var cardsDto = cardHandles
             .OrderBy(static kv => kv.Value)
@@ -253,7 +253,7 @@ internal static partial class InCombatLiveStateCapturer
                 e.CurrentHp,
                 e.MaxHp,
                 e.Block,
-                e.Monster?.NextMove?.Id,
+                CaptureNextMoveId(e.Monster),
                 e.Powers.Select(static pw => new InCombatVerifiedPowerDto(pw.Id.ToString(), pw.Amount)).ToArray())).ToArray(),
             player.Creature.Powers.Select(static pw => new InCombatVerifiedPowerDto(pw.Id.ToString(), pw.Amount)).ToArray());
 
@@ -352,7 +352,7 @@ internal static partial class InCombatLiveStateCapturer
         if (c._temporaryStarCosts.Count == 1)
         {
             TemporaryCardCost starMod = c._temporaryStarCosts[0];
-            if (!starMod.ClearsWhenTurnEnds || starMod.ClearsWhenCardIsPlayed)
+            if (!starMod.ClearsWhenTurnEnds || !starMod.ClearsWhenCardIsPlayed)
             {
                 throw new InCombatLiveCaptureUnsupportedException(
                     "live_card_cost_unsupported",
@@ -403,7 +403,7 @@ internal static partial class InCombatLiveStateCapturer
             TemporaryCostOverrideThisTurnOrUntilPlayed: null,
             TemporaryCostOverrideThisCombat: null,
             TemporaryRetainThisTurn: c._hasSingleTurnRetain,
-            TemporarySlyThisTurn: c.IsSlyThisTurn,
+            TemporarySlyThisTurn: c._hasSingleTurnSly,
             LocalKeywords: c.GetKeywordsWithSources(KeywordSources.Local).Select(static k => k.ToString()).ToArray(),
             KeywordsAddedFromOutside: c._keywordsAddedFromOutside.Select(static k => k.ToString()).ToArray(),
             KeywordsRemovedFromOutside: c._keywordsRemovedFromOutside.Select(static k => k.ToString()).ToArray(),
@@ -452,13 +452,21 @@ internal static partial class InCombatLiveStateCapturer
                 IReadOnlyDictionary<string, InCombatFieldValueDto> postFields) =
                 CaptureMonsterPrivateFields(m, creatureHandles);
 
-            SerializableRng monsterRng = (m._rng ?? m.Rng).ToSerializable();
+            MegaCrit.Sts2.Core.Random.Rng? rawMonsterRng = m._rng ?? m.Rng;
+            if (rawMonsterRng is null)
+            {
+                throw new InCombatLiveCaptureUnsupportedException(
+                    "live_monster_state_unmapped",
+                    $"creatures[{m.Id.Entry}].rng",
+                    $"Monster '{m.Id.Entry}' is missing initialized Rng.");
+            }
+            SerializableRng monsterRng = rawMonsterRng.ToSerializable();
             monsterDto = new InCombatMonsterDto(
                 ToRngDto(monsterRng),
                 m.IsPerformingMove,
                 m.SpawnedThisTurn,
                 currentStateId,
-                m.NextMove?.Id,
+                CaptureNextMoveId(m),
                 m.NextMove?.CanTransitionAway ?? true,
                 sm._performedFirstMove,
                 sm.StateLog.Select(static s => s.Id).ToArray(),
@@ -685,6 +693,12 @@ internal static partial class InCombatLiveStateCapturer
             cardDrawn,
             actorEvents);
     }
+
+    private static string? CaptureNextMoveId(MonsterModel? monster) =>
+        monster?.NextMove?.Id is { Length: > 0 } id
+        && !string.Equals(id, "UNSET_MOVE", StringComparison.Ordinal)
+            ? id
+            : null;
 
     private static InCombatRngStreamDto ToRngDto(SerializableRng r) =>
         new(r.counter, r.state0, r.state1, r.state2, r.state3);
