@@ -59,6 +59,7 @@ internal readonly record struct ExternalRouteSnapshotSummary(
 internal readonly record struct ExternalRouteVerificationResult(
     ExternalRouteVerificationStatus Status,
     IReadOnlyList<CachedContinuation> Continuations,
+    IReadOnlyList<PlanAction> AnnotatedActions,
     int VerifiedPrefixActionCount,
     int VerifiedLastTurn,
     ExternalRouteSnapshotSummary? VerifiedPrefixSummary,
@@ -115,6 +116,7 @@ internal sealed partial class CombatBeamSolver
                 return Illegal($"Root snapshot reached unexpected boundary {currentSnapshot.BoundaryReason}.");
 
             List<CachedContinuation> continuations = [];
+            PlanAction[] annotatedActions = actions.ToArray();
             int verifiedPrefixActionCount = 0;
             int verifiedLastTurn = root.StartTurnNumber - 1;
             ExternalRouteSnapshotSummary? verifiedPrefixSummary = null;
@@ -126,7 +128,7 @@ internal sealed partial class CombatBeamSolver
             for (int index = 0; index < actionsToReplayCount; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                PlanAction action = actions[index];
+                PlanAction action = annotatedActions[index];
 
                 if (currentSnapshot.BoundaryReason != SearchBoundaryReason.None)
                     return Illegal($"Action[{index}] encountered prior boundary {currentSnapshot.BoundaryReason}.");
@@ -145,9 +147,33 @@ internal sealed partial class CombatBeamSolver
                         action,
                         explicitPotionUses,
                         index,
+                        out PredictedCard? resolvedPlayCard,
                         out string? legalityFailure))
                 {
                     return Illegal(legalityFailure!);
+                }
+
+                if (action.Kind == PlanActionKind.PlayCard && resolvedPlayCard is { } card)
+                {
+                    IReadOnlyList<PredictedCard> hand = preSim.State.GetPlayerCombatState(solver._player).Hand.Cards;
+                    string stateKey = CardChoiceSupport.ChoiceCardKey(card);
+                    int stateOccurrence = 0;
+                    foreach (PredictedCard preceding in hand)
+                    {
+                        if (ReferenceEquals(preceding, card))
+                            break;
+                        if (string.Equals(CardChoiceSupport.ChoiceCardKey(preceding), stateKey, StringComparison.Ordinal))
+                            stateOccurrence++;
+                    }
+                    action = action with
+                    {
+                        CardStateKey = stateKey,
+                        CardStateOccurrence = stateOccurrence,
+                        CardUpgradeLevel = card.Preview.CurrentUpgradeLevel,
+                        CardEnchantmentId = card.Preview.Enchantment?.Id.Entry ?? string.Empty,
+                        ReplayCount = Math.Max(0, card.Preview.GetEnchantedReplayCount()),
+                    };
+                    annotatedActions[index] = action;
                 }
 
                 int turnBeforeAction = currentSnapshot.Turn;
@@ -179,6 +205,7 @@ internal sealed partial class CombatBeamSolver
                         action.Turn,
                         root.StartTurnNumber,
                         continuations,
+                        annotatedActions,
                         verifiedPrefixActionCount,
                         verifiedLastTurn,
                         verifiedPrefixSummary);
@@ -191,6 +218,7 @@ internal sealed partial class CombatBeamSolver
                         action.Turn,
                         root.StartTurnNumber,
                         continuations,
+                        annotatedActions,
                         verifiedPrefixActionCount,
                         verifiedLastTurn,
                         verifiedPrefixSummary);
@@ -241,6 +269,7 @@ internal sealed partial class CombatBeamSolver
                     {
                         return UnsupportedFuture(
                             continuations,
+                            annotatedActions,
                             verifiedPrefixActionCount,
                             verifiedLastTurn,
                             verifiedPrefixSummary,
@@ -378,6 +407,7 @@ internal sealed partial class CombatBeamSolver
             return new ExternalRouteVerificationResult(
                 ExternalRouteVerificationStatus.Annotated,
                 continuations,
+                annotatedActions,
                 actionsToReplayCount,
                 Math.Max(root.StartTurnNumber, verifiedLastTurn),
                 verifiedPrefixSummary,
@@ -480,8 +510,10 @@ internal sealed partial class CombatBeamSolver
         PlanAction action,
         int explicitPotionUses,
         int index,
+        out PredictedCard? resolvedPlayCard,
         out string? failureReason)
     {
+        resolvedPlayCard = null;
         if (action.TargetCombatId is uint targetCombatId)
         {
             Creature? target = preCombat.GetCreature(targetCombatId);
@@ -547,6 +579,7 @@ internal sealed partial class CombatBeamSolver
                         $"combatId={action.TargetCombatId?.ToString(CultureInfo.InvariantCulture) ?? "-"} is not legal.";
                     return false;
                 }
+                resolvedPlayCard = card;
                 failureReason = null;
                 return true;
             }
@@ -800,6 +833,7 @@ internal sealed partial class CombatBeamSolver
         int actionTurn,
         int startTurnNumber,
         List<CachedContinuation> continuations,
+        PlanAction[] annotatedActions,
         int verifiedPrefixActionCount,
         int verifiedLastTurn,
         ExternalRouteSnapshotSummary? verifiedPrefixSummary)
@@ -811,6 +845,7 @@ internal sealed partial class CombatBeamSolver
         {
             return UnsupportedFuture(
                 continuations,
+                annotatedActions,
                 verifiedPrefixActionCount,
                 verifiedLastTurn,
                 verifiedPrefixSummary,
@@ -820,10 +855,11 @@ internal sealed partial class CombatBeamSolver
     }
 
     private static ExternalRouteVerificationResult Illegal(string reason)
-        => new(ExternalRouteVerificationStatus.IllegalRoute, [], 0, 0, null, reason);
+        => new(ExternalRouteVerificationStatus.IllegalRoute, [], [], 0, 0, null, reason);
 
     private static ExternalRouteVerificationResult UnsupportedFuture(
         List<CachedContinuation> continuations,
+        PlanAction[] annotatedActions,
         int verifiedPrefixActionCount,
         int verifiedLastTurn,
         ExternalRouteSnapshotSummary? summary,
@@ -831,6 +867,7 @@ internal sealed partial class CombatBeamSolver
         => new(
             ExternalRouteVerificationStatus.UnsupportedFutureContinuation,
             continuations.Where(c => c.StartTurnNumber <= verifiedLastTurn).ToArray(),
+            annotatedActions[..verifiedPrefixActionCount],
             verifiedPrefixActionCount,
             verifiedLastTurn,
             summary,

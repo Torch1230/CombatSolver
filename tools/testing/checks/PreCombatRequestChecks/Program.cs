@@ -1823,6 +1823,252 @@ await Check("critical Harmony patch audit catches combat command and hook patche
     Equal(string.Empty, allowedReason);
     return Task.CompletedTask;
 });
+await Check("ABI v2 symmetric effective envelope version check rejects v2 options under v1 envelopes", () =>
+{
+    var v1Base = new Sts2SimPolicyDto(
+        "Smart",
+        [],
+        true,
+        true,
+        [],
+        new Sts2SimGrowthBudgetsDto(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null),
+        null,
+        false,
+        "ProgressionFirst",
+        "ProgressionFirst",
+        0,
+        true,
+        true,
+        false,
+        false,
+        60,
+        120_000,
+        32,
+        18,
+        24,
+        10_000);
+    var inCombatV1Base = new InCombatSts2SimPolicyDto(
+        "Smart",
+        [],
+        true,
+        true,
+        [],
+        v1Base.GrowthBudgets,
+        null,
+        false,
+        "ProgressionFirst",
+        "ProgressionFirst",
+        0,
+        true,
+        true,
+        false,
+        false,
+        60,
+        22,
+        7,
+        120_000,
+        32,
+        18,
+        24,
+        10_000,
+        null);
+
+    var noveltySearch = new Sts2SimNoveltySearchOptionsDto(2, 1, 2048, 500_000, 128, 32);
+    var noveltyBudget = new Sts2SimNoveltyPortfolioBudgetDto(2, 5_000, 2_500);
+
+    PreCombatSts2SimWireValidator.ValidatePolicy(v1Base, null);
+    PreCombatSts2SimWireValidator.ValidatePolicy(v1Base with { PortfolioOptionsVersion = 1 }, Sts2SimBridgeCapabilitiesDto.V2Default);
+    PreCombatSts2SimWireValidator.ValidatePolicy(v1Base with { PortfolioOptionsVersion = 2 }, Sts2SimBridgeCapabilitiesDto.V2Default);
+    InCombatSts2SimWireValidator.ValidatePolicy(inCombatV1Base, null);
+    InCombatSts2SimWireValidator.ValidatePolicy(inCombatV1Base with { PortfolioOptionsVersion = 1 }, Sts2SimBridgeCapabilitiesDto.V2Default);
+    InCombatSts2SimWireValidator.ValidatePolicy(inCombatV1Base with { PortfolioOptionsVersion = 2 }, Sts2SimBridgeCapabilitiesDto.V2Default);
+
+    Sts2SimPolicyDto[] v1NonDefaultPreCombatCases =
+    [
+        v1Base with { UseNoveltyPortfolio = true },
+        v1Base with { AdaptiveNoveltyRefinement = true },
+        v1Base with { UseEarlyTurnExploration = true },
+        v1Base with { EarlyTurnExplorationDepth = 2, EarlyTurnExplorationBudgetMilliseconds = 1_000 },
+        v1Base with { EarlyTurnExplorationBudgetMilliseconds = 1_000 },
+        v1Base with { BeamWidthPortfolioWidths = [48, 96] },
+        v1Base with { BeamWidthPortfolioPlainBaselineMember = false },
+        v1Base with { OffensiveRefinementPortfolio = true },
+        v1Base with { BoundedOffensiveRefinementPortfolio = true },
+        v1Base with { ReallocatedRefinementPortfolio = false },
+        v1Base with { StopPortfolioAtHpTarget = false },
+        v1Base with { NoveltySearch = noveltySearch },
+        v1Base with { NoveltyBudget = noveltyBudget },
+        v1Base with { PortfolioSchedulingMode = "Parallel" },
+    ];
+    foreach (Sts2SimPolicyDto badPreCombat in v1NonDefaultPreCombatCases)
+    {
+        ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(badPreCombat, null));
+        ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+            badPreCombat,
+            Sts2SimBridgeCapabilitiesDto.V2Default));
+        ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+            badPreCombat with { PortfolioOptionsVersion = 1 },
+            Sts2SimBridgeCapabilitiesDto.V2Default));
+        PreCombatSts2SimWireValidator.ValidatePolicy(
+            badPreCombat with { PortfolioOptionsVersion = 2 },
+            Sts2SimBridgeCapabilitiesDto.V2Default);
+    }
+
+    InCombatSts2SimPolicyDto[] v1NonDefaultInCombatCases =
+    [
+        inCombatV1Base with { UseNoveltyPortfolio = true },
+        inCombatV1Base with { AdaptiveNoveltyRefinement = true },
+        inCombatV1Base with { UseEarlyTurnExploration = true },
+        inCombatV1Base with { EarlyTurnExplorationDepth = 2, EarlyTurnExplorationBudgetMilliseconds = 1_000 },
+        inCombatV1Base with { EarlyTurnExplorationBudgetMilliseconds = 1_000 },
+        inCombatV1Base with { BeamWidthPortfolioWidths = [48, 96] },
+        inCombatV1Base with { BeamWidthPortfolioPlainBaselineMember = false },
+        inCombatV1Base with { OffensiveRefinementPortfolio = true },
+        inCombatV1Base with { BoundedOffensiveRefinementPortfolio = true },
+        inCombatV1Base with { ReallocatedRefinementPortfolio = false },
+        inCombatV1Base with { StopPortfolioAtHpTarget = false },
+        inCombatV1Base with { NoveltySearch = noveltySearch },
+        inCombatV1Base with { NoveltyBudget = noveltyBudget },
+        inCombatV1Base with { PortfolioSchedulingMode = "Sequential" },
+    ];
+    foreach (InCombatSts2SimPolicyDto badInCombat in v1NonDefaultInCombatCases)
+    {
+        ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(badInCombat, null));
+        ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+            badInCombat,
+            Sts2SimBridgeCapabilitiesDto.V2Default));
+        ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+            badInCombat with { PortfolioOptionsVersion = 1 },
+            Sts2SimBridgeCapabilitiesDto.V2Default));
+        InCombatSts2SimWireValidator.ValidatePolicy(
+            badInCombat with { PortfolioOptionsVersion = 2 },
+            Sts2SimBridgeCapabilitiesDto.V2Default);
+    }
+    return Task.CompletedTask;
+});
+await Check("in-combat action choice partitioning places pre-primary nested choices before primary and preserves turn-start timings", () =>
+{
+    static InCombatChoiceTraceDto Trace(string timing, string sourceId, string cardId = "STRIKE") =>
+        new(timing, sourceId, "Hand", [new InCombatChoiceCardTokenDto(cardId, 0, 0, 0)]);
+
+    Sts2SimPartitionedActionChoices empty = Sts2SimPortfolioPolicyBridge.PartitionActionChoices(
+        "PlayCard", "ARMAMENTS", null, []);
+    Equal(-1, empty.PrimaryIndex);
+    Equal(0, empty.ActionChoices.Count);
+    Equal(0, empty.NonActionChoices.Count);
+    Equal(0, empty.NestedChoicesBeforePrimary);
+
+    InCombatChoiceTraceDto primaryCard = Trace("Action", "ARMAMENTS", "BASH");
+    Sts2SimPartitionedActionChoices primaryOnly = Sts2SimPortfolioPolicyBridge.PartitionActionChoices(
+        "PlayCard", "ARMAMENTS", null, [primaryCard]);
+    Equal(0, primaryOnly.PrimaryIndex);
+    Equal(1, primaryOnly.ActionChoices.Count);
+    Equal(0, primaryOnly.NestedChoicesBeforePrimary);
+
+    InCombatChoiceTraceDto postNested = Trace("Action", "UNCEASING_TOP", "DEFEND");
+    Sts2SimPartitionedActionChoices primaryAndPost = Sts2SimPortfolioPolicyBridge.PartitionActionChoices(
+        "PlayCard", "ARMAMENTS", null, [primaryCard, postNested]);
+    Equal(0, primaryAndPost.PrimaryIndex);
+    Equal(2, primaryAndPost.ActionChoices.Count);
+    Equal(0, primaryAndPost.NestedChoicesBeforePrimary);
+
+    InCombatChoiceTraceDto preNested = Trace("Action", "SUNDIAL_POWER", "SHRUG");
+    InCombatChoiceTraceDto potionPrimary = Trace("Action", "GAMBLERS_BREW", "POMMEL");
+    InCombatChoiceTraceDto postNested2 = Trace("Action", "DEAD_BRANCH", "CLASH");
+    InCombatChoiceTraceDto endTurnChoice = Trace("PlayerTurnEnd", "WELL_LAID_PLANS_POWER", "DEFEND");
+    InCombatChoiceTraceDto enemyChoice = Trace("EnemyTurn", "BURNING_PACT", "STRIKE");
+    InCombatChoiceTraceDto startChoice = Trace("PlayerTurnStart", "GAMBLING_CHIP", "BASH");
+
+    Sts2SimPartitionedActionChoices mixed = Sts2SimPortfolioPolicyBridge.PartitionActionChoices(
+        "UsePotion",
+        null,
+        "GAMBLERS_BREW",
+        [preNested, endTurnChoice, potionPrimary, enemyChoice, postNested2, startChoice]);
+    Equal(1, mixed.PrimaryIndex);
+    Equal(1, mixed.NestedChoicesBeforePrimary);
+    Equal(3, mixed.ActionChoices.Count);
+    Equal("SUNDIAL_POWER", mixed.ActionChoices[0].SourceId);
+    Equal("GAMBLERS_BREW", mixed.ActionChoices[1].SourceId);
+    Equal("DEAD_BRANCH", mixed.ActionChoices[2].SourceId);
+    Equal(3, mixed.NonActionChoices.Count);
+    Equal("PlayerTurnEnd", mixed.NonActionChoices[0].Timing);
+    Equal("EnemyTurn", mixed.NonActionChoices[1].Timing);
+    Equal("PlayerTurnStart", mixed.NonActionChoices[2].Timing);
+
+    Sts2SimPartitionedActionChoices nestedOnly = Sts2SimPortfolioPolicyBridge.PartitionActionChoices(
+        "PlayCard",
+        "STRIKE",
+        null,
+        [preNested, postNested, Trace("Action", "", "WOUND")]);
+    Equal(-1, nestedOnly.PrimaryIndex);
+    Equal(3, nestedOnly.NestedChoicesBeforePrimary);
+    Equal(3, nestedOnly.ActionChoices.Count);
+
+    Sts2SimPartitionedActionChoices emptyCardNeverMatchesEmptySource = Sts2SimPortfolioPolicyBridge.PartitionActionChoices(
+        "PlayCard",
+        "",
+        null,
+        [Trace("Action", "", "WOUND")]);
+    Equal(-1, emptyCardNeverMatchesEmptySource.PrimaryIndex);
+    Equal(1, emptyCardNeverMatchesEmptySource.NestedChoicesBeforePrimary);
+    return Task.CompletedTask;
+});
+await Check("attempt work tracker preserves measured peak parallelism across fallback and empty elapsed calls", () =>
+{
+    var measuredTracker = new Sts2SimAttemptWorkTracker();
+    var term = new InCombatTerminalSnapshotDto(
+        false, true, 78, 80, 2, 0, 78, 0, 0, 0, 2, 0, 1, 0, 2, 0, 0, 2, 2, null, false, "Complete", "None", false);
+    var measuredProgress = new InCombatSts2SimProgressDto(
+        100, 2, 80.0, 2, true, 2, 0, null,
+        ExpandedParents: 45,
+        TransitionCount: 250,
+        ChoiceReplayAttempts: 12,
+        ObservedPeakParallelism: 2,
+        ActivePhaseLabel: "Novelty");
+    measuredTracker.RecordProgress(measuredProgress, fallbackParallelism: 8);
+    Equal(2, measuredTracker.Snapshot().ObservedPeakParallelism);
+    Equal(true, measuredTracker.Snapshot().HasMeasuredPeakParallelism);
+
+    measuredTracker.RecordElapsed(TimeSpan.FromMilliseconds(500.0), fallbackParallelism: 8);
+    Equal(2, measuredTracker.Snapshot().ObservedPeakParallelism);
+    Equal(TimeSpan.FromMilliseconds(500.0), measuredTracker.Snapshot().Elapsed);
+
+    measuredTracker.RecordProgress(
+        measuredProgress with { ExpandedParents = 60, ObservedPeakParallelism = null },
+        fallbackParallelism: 8);
+    Equal(2, measuredTracker.Snapshot().ObservedPeakParallelism);
+    Equal(60L, measuredTracker.Snapshot().ExpandedParents);
+
+    var dtoWithoutMeasuredPeak = new InCombatSts2SimResultDto(
+        [],
+        [new InCombatTurnOutcomeDto(2, 2, 0, 20, 0, 0, 0, 2, 0, 0, true)],
+        term,
+        [],
+        120,
+        150.0,
+        ExpandedParents: 75,
+        TransitionCount: 310,
+        ChoiceReplayAttempts: 15,
+        ObservedPeakParallelism: null);
+    measuredTracker.RecordResult(dtoWithoutMeasuredPeak, effectiveDegreeOfParallelism: 8, elapsed: TimeSpan.FromMilliseconds(600.0));
+    Equal(2, measuredTracker.Snapshot().ObservedPeakParallelism);
+    Equal(true, measuredTracker.Snapshot().HasMeasuredPeakParallelism);
+    Equal(75L, measuredTracker.Snapshot().ExpandedParents);
+
+    var emptyFirstTracker = new Sts2SimAttemptWorkTracker();
+    emptyFirstTracker.RecordElapsed(TimeSpan.FromMilliseconds(200.0), fallbackParallelism: 8);
+    Equal(8, emptyFirstTracker.Snapshot().ObservedPeakParallelism);
+    Equal(false, emptyFirstTracker.Snapshot().HasMeasuredPeakParallelism);
+
+    emptyFirstTracker.RecordProgress(measuredProgress, fallbackParallelism: 8);
+    Equal(2, emptyFirstTracker.Snapshot().ObservedPeakParallelism);
+    Equal(true, emptyFirstTracker.Snapshot().HasMeasuredPeakParallelism);
+
+    emptyFirstTracker.RecordElapsed(TimeSpan.FromMilliseconds(750.0), fallbackParallelism: 8);
+    Equal(2, emptyFirstTracker.Snapshot().ObservedPeakParallelism);
+    Equal(TimeSpan.FromMilliseconds(750.0), emptyFirstTracker.Snapshot().Elapsed);
+    return Task.CompletedTask;
+});
 Console.WriteLine($"Passed {passed} pre-combat request, ABI, and idle checks.");
 
 async Task Check(string name, Func<Task> body)

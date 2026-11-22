@@ -129,6 +129,7 @@ internal static class InCombatSts2SimResultMaterializer
         switch (verification.Status)
         {
             case ExternalRouteVerificationStatus.Annotated:
+                actions = verification.AnnotatedActions.ToArray();
                 continuations = resultScope == SolverResultScope.CurrentTurnAdoption
                     ? []
                     : verification.Continuations;
@@ -144,7 +145,7 @@ internal static class InCombatSts2SimResultMaterializer
                 }
 
                 int verifiedTurn = verification.VerifiedLastTurn;
-                actions = actions[..verification.VerifiedPrefixActionCount];
+                actions = verification.AnnotatedActions.Take(verification.VerifiedPrefixActionCount).ToArray();
                 killsAfterAction = killsAfterAction
                     .Where(kv => kv.Key < actions.Length)
                     .ToDictionary(static kv => kv.Key, static kv => kv.Value);
@@ -260,9 +261,23 @@ internal static class InCombatSts2SimResultMaterializer
         long totalChoiceBranchesEvaluated = attemptTotals is { } totals3
             ? Math.Max(metrics.TotalChoiceBranchesEvaluated, totals3.ChoiceReplayAttempts)
             : metrics.TotalChoiceBranchesEvaluated;
-        int maxParallelExpansionConcurrency = attemptTotals is { } totals4
-            ? Math.Max(metrics.MaxParallelExpansionConcurrency, totals4.ObservedPeakParallelism)
-            : metrics.MaxParallelExpansionConcurrency;
+        int maxParallelExpansionConcurrency;
+        if (dto.ObservedPeakParallelism is >= 1)
+        {
+            maxParallelExpansionConcurrency = attemptTotals is { } totals4
+                ? Math.Max(metrics.MaxParallelExpansionConcurrency, totals4.ObservedPeakParallelism)
+                : metrics.MaxParallelExpansionConcurrency;
+        }
+        else if (attemptTotals is { HasMeasuredPeakParallelism: true, ObservedPeakParallelism: >= 1 } measuredTotals)
+        {
+            maxParallelExpansionConcurrency = measuredTotals.ObservedPeakParallelism;
+        }
+        else
+        {
+            maxParallelExpansionConcurrency = attemptTotals is { } totals4
+                ? Math.Max(metrics.MaxParallelExpansionConcurrency, totals4.ObservedPeakParallelism)
+                : metrics.MaxParallelExpansionConcurrency;
+        }
         TimeSpan effectiveTotalElapsed = attemptTotals is { } totals5 && totals5.Elapsed > totalElapsed
             ? totals5.Elapsed
             : totalElapsed;
@@ -380,9 +395,12 @@ internal static class InCombatSts2SimResultMaterializer
         SolverSpeculativeRoutePreview? speculativePreview = null;
         SolverRouteAdoptionSeed? adoptionSeed = null;
 
+        Sts2SimAttemptWorkSnapshot snapshotAfterProgress = attemptWork.Snapshot();
         int previewParallelism = progressDto.ObservedPeakParallelism is >= 1
             ? progressDto.ObservedPeakParallelism.Value
-            : Math.Max(1, effectiveDegreeOfParallelism);
+            : (snapshotAfterProgress.HasMeasuredPeakParallelism && snapshotAfterProgress.ObservedPeakParallelism >= 1
+                ? snapshotAfterProgress.ObservedPeakParallelism
+                : Math.Max(1, effectiveDegreeOfParallelism));
         if (progressDto.CurrentBest is { Actions.Count: > 0 } bestDto)
         {
             TimeSpan elapsed = TimeSpan.FromMilliseconds(Math.Max(0d, progressDto.ElapsedMilliseconds));
@@ -395,7 +413,8 @@ internal static class InCombatSts2SimResultMaterializer
                 elapsed,
                 previewParallelism,
                 SolverResultScope.CurrentTurnAdoption,
-                routeAdoptionCancellation);
+                routeAdoptionCancellation,
+                snapshotAfterProgress);
 
             bool won = !previewResult.Snapshot.PlayerDead
                 && previewResult.Snapshot.AllEnemiesDead
@@ -425,7 +444,11 @@ internal static class InCombatSts2SimResultMaterializer
                 {
                     Sts2SimAttemptWorkSnapshot latest = attemptWork.Snapshot();
                     TimeSpan adoptedElapsed = latest.Elapsed > elapsed ? latest.Elapsed : elapsed;
-                    int adoptedParallelism = Math.Max(previewParallelism, latest.ObservedPeakParallelism);
+                    int adoptedParallelism = latest.HasMeasuredPeakParallelism && latest.ObservedPeakParallelism >= 1
+                        ? (progressDto.ObservedPeakParallelism is >= 1
+                            ? Math.Max(progressDto.ObservedPeakParallelism.Value, latest.ObservedPeakParallelism)
+                            : latest.ObservedPeakParallelism)
+                        : Math.Max(previewParallelism, latest.ObservedPeakParallelism);
                     return MaterializeResult(
                         bestDto,
                         root,
@@ -480,29 +503,29 @@ internal static class InCombatSts2SimResultMaterializer
                 && i + 1 < rawActions.Count
                 && rawActions[i + 1].Turn > src.Turn;
 
-            List<PlanCardChoice> actionChoices = [];
-            List<PlanCardChoice> turnStartChoices = [];
-            foreach (InCombatChoiceTraceDto choiceDto in src.Choices)
+            Sts2SimPartitionedActionChoices partitioned = Sts2SimPortfolioPolicyBridge.PartitionActionChoices(
+                src.Kind,
+                src.CardId,
+                src.PotionId,
+                src.Choices);
+            PlanCardChoice? primaryChoice = null;
+            List<PlanCardChoice> nestedChoiceList = [];
+            for (int c = 0; c < partitioned.ActionChoices.Count; c++)
             {
-                bool isPrimaryActionChoice = string.Equals(choiceDto.Timing, "Action", StringComparison.Ordinal)
-                    && actionChoices.Count == 0
-                    && ((kind == PlanActionKind.PlayCard
-                            && string.Equals(choiceDto.SourceId, src.CardId, StringComparison.Ordinal))
-                        || (kind == PlanActionKind.UsePotion
-                            && string.Equals(choiceDto.SourceId, src.PotionId, StringComparison.Ordinal)));
-                PlanCardChoice mapped = MapChoice(choiceDto, displayNames, isPrimaryActionChoice);
-                if (mapped.Timing == PlanChoiceTiming.Action)
-                    actionChoices.Add(mapped);
+                bool isPrimary = c == partitioned.PrimaryIndex;
+                PlanCardChoice mapped = MapChoice(partitioned.ActionChoices[c], displayNames, isPrimary);
+                if (isPrimary)
+                    primaryChoice = mapped;
                 else
-                    turnStartChoices.Add(mapped);
+                    nestedChoiceList.Add(mapped);
             }
-
-            PlanCardChoice? primaryChoice = actionChoices.Count > 0 ? actionChoices[0] : null;
-            PlanCardChoice[]? nestedChoices = actionChoices.Count > 1
-                ? actionChoices.Skip(1).ToArray()
+            PlanCardChoice[]? nestedChoices = nestedChoiceList.Count > 0
+                ? nestedChoiceList.ToArray()
                 : null;
-            PlanCardChoice[]? mappedTurnStart = turnStartChoices.Count > 0
-                ? turnStartChoices.ToArray()
+            PlanCardChoice[]? mappedTurnStart = partitioned.NonActionChoices.Count > 0
+                ? partitioned.NonActionChoices
+                    .Select(choice => MapChoice(choice, displayNames, isPrimaryActionChoice: false))
+                    .ToArray()
                 : null;
 
             PlanRelicEffect[]? relicEffects = src.FlashedRelicIds.Count > 0
@@ -530,7 +553,7 @@ internal static class InCombatSts2SimResultMaterializer
                 TargetName: targetName,
                 Choice: primaryChoice,
                 NestedChoices: nestedChoices,
-                NestedChoicesBeforePrimary: 0,
+                NestedChoicesBeforePrimary: partitioned.NestedChoicesBeforePrimary,
                 PotionSlot: src.PotionSlot,
                 PotionId: src.PotionId ?? string.Empty,
                 PotionTitle: potionTitle,

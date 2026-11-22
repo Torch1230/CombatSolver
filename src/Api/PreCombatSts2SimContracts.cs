@@ -265,6 +265,26 @@ internal static class PreCombatSts2SimWireValidator
             throw new InvalidDataException(
                 $"Sts2Sim policy reported unsupported PortfolioOptionsVersion={portfolioOptionsVersion}.");
         }
+        int effectivePortfolioVersion = portfolioOptionsVersion ?? 1;
+        bool hasNonDefaultV2Options = useNoveltyPortfolio
+            || adaptiveNoveltyRefinement == true
+            || useEarlyTurnExploration
+            || earlyTurnExplorationDepth is > 0
+            || earlyTurnExplorationBudgetMilliseconds is > 0
+            || beamWidthPortfolioWidths is not null
+            || beamWidthPortfolioPlainBaselineMember == false
+            || offensiveRefinementPortfolio == true
+            || boundedOffensiveRefinementPortfolio == true
+            || reallocatedRefinementPortfolio == false
+            || stopPortfolioAtHpTarget == false
+            || noveltySearch is not null
+            || noveltyBudget is not null
+            || portfolioSchedulingMode is not null;
+        if (effectivePortfolioVersion < 2 && hasNonDefaultV2Options)
+        {
+            throw new InvalidDataException(
+                $"Sts2Sim policy requested v2 portfolio options under PortfolioOptionsVersion={effectivePortfolioVersion}.");
+        }
         if (beamWidthPortfolioWidths is not null)
         {
             if (beamWidthPortfolioWidths.Count > 16)

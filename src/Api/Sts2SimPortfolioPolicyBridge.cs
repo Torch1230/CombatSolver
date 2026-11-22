@@ -69,7 +69,8 @@ internal readonly record struct Sts2SimAttemptWorkSnapshot(
     long TransitionCount,
     long ChoiceReplayAttempts,
     int ObservedPeakParallelism,
-    TimeSpan Elapsed)
+    TimeSpan Elapsed,
+    bool HasMeasuredPeakParallelism = false)
 {
     public bool HasAnyWork =>
         ExpandedParents > 0
@@ -78,6 +79,12 @@ internal readonly record struct Sts2SimAttemptWorkSnapshot(
         || Elapsed > TimeSpan.Zero;
 }
 
+internal readonly record struct Sts2SimPartitionedActionChoices(
+    int PrimaryIndex,
+    IReadOnlyList<InCombatChoiceTraceDto> ActionChoices,
+    IReadOnlyList<InCombatChoiceTraceDto> NonActionChoices,
+    int NestedChoicesBeforePrimary);
+
 internal sealed class Sts2SimAttemptWorkTracker
 {
     private readonly object _sync = new();
@@ -85,6 +92,7 @@ internal sealed class Sts2SimAttemptWorkTracker
     private long _transitionCount;
     private long _choiceReplayAttempts;
     private int _observedPeakParallelism;
+    private bool _hasMeasuredPeakParallelism;
     private TimeSpan _elapsed;
 
     public void RecordProgress(InCombatSts2SimProgressDto progress, int fallbackParallelism)
@@ -99,9 +107,10 @@ internal sealed class Sts2SimAttemptWorkTracker
         long choiceReplayAttempts = progress.ChoiceReplayAttempts is >= 0
             ? progress.ChoiceReplayAttempts.Value
             : 0L;
-        int peakParallelism = progress.ObservedPeakParallelism is >= 1
+        int measuredPeakParallelism = progress.ObservedPeakParallelism is >= 1
             ? progress.ObservedPeakParallelism.Value
-            : Math.Max(0, fallbackParallelism);
+            : 0;
+        int sanitizedFallback = Math.Max(0, fallbackParallelism);
         TimeSpan elapsed = double.IsFinite(progress.ElapsedMilliseconds) && progress.ElapsedMilliseconds > 0d
             ? TimeSpan.FromMilliseconds(progress.ElapsedMilliseconds)
             : TimeSpan.Zero;
@@ -114,7 +123,7 @@ internal sealed class Sts2SimAttemptWorkTracker
             transitionCount = Math.Max(transitionCount, bestMetrics.TotalTransitionCount);
             choiceReplayAttempts = Math.Max(choiceReplayAttempts, bestMetrics.TotalChoiceBranchesEvaluated);
             if (best.ObservedPeakParallelism is >= 1)
-                peakParallelism = Math.Max(peakParallelism, best.ObservedPeakParallelism.Value);
+                measuredPeakParallelism = Math.Max(measuredPeakParallelism, best.ObservedPeakParallelism.Value);
         }
 
         lock (_sync)
@@ -125,8 +134,17 @@ internal sealed class Sts2SimAttemptWorkTracker
                 _transitionCount = transitionCount;
             if (choiceReplayAttempts > _choiceReplayAttempts)
                 _choiceReplayAttempts = choiceReplayAttempts;
-            if (peakParallelism > _observedPeakParallelism)
-                _observedPeakParallelism = peakParallelism;
+            if (measuredPeakParallelism > 0)
+            {
+                _observedPeakParallelism = _hasMeasuredPeakParallelism
+                    ? Math.Max(_observedPeakParallelism, measuredPeakParallelism)
+                    : measuredPeakParallelism;
+                _hasMeasuredPeakParallelism = true;
+            }
+            else if (!_hasMeasuredPeakParallelism && _observedPeakParallelism == 0 && sanitizedFallback > 0)
+            {
+                _observedPeakParallelism = sanitizedFallback;
+            }
             if (elapsed > _elapsed)
                 _elapsed = elapsed;
         }
@@ -137,6 +155,10 @@ internal sealed class Sts2SimAttemptWorkTracker
         ArgumentNullException.ThrowIfNull(result);
         Sts2SimMaterializedResultMetrics metrics =
             Sts2SimPortfolioPolicyBridge.ResolveResultMetrics(result, effectiveDegreeOfParallelism);
+        int measuredPeakParallelism = result.ObservedPeakParallelism is >= 1
+            ? result.ObservedPeakParallelism.Value
+            : 0;
+        int sanitizedFallback = Math.Max(1, effectiveDegreeOfParallelism);
         TimeSpan dtoElapsed = double.IsFinite(result.SearchElapsedMilliseconds) && result.SearchElapsedMilliseconds > 0d
             ? TimeSpan.FromMilliseconds(result.SearchElapsedMilliseconds)
             : TimeSpan.Zero;
@@ -150,8 +172,17 @@ internal sealed class Sts2SimAttemptWorkTracker
                 _transitionCount = metrics.TotalTransitionCount;
             if (metrics.TotalChoiceBranchesEvaluated > _choiceReplayAttempts)
                 _choiceReplayAttempts = metrics.TotalChoiceBranchesEvaluated;
-            if (metrics.MaxParallelExpansionConcurrency > _observedPeakParallelism)
-                _observedPeakParallelism = metrics.MaxParallelExpansionConcurrency;
+            if (measuredPeakParallelism > 0)
+            {
+                _observedPeakParallelism = _hasMeasuredPeakParallelism
+                    ? Math.Max(_observedPeakParallelism, measuredPeakParallelism)
+                    : measuredPeakParallelism;
+                _hasMeasuredPeakParallelism = true;
+            }
+            else if (!_hasMeasuredPeakParallelism && _observedPeakParallelism == 0)
+            {
+                _observedPeakParallelism = sanitizedFallback;
+            }
             if (effectiveElapsed > _elapsed)
                 _elapsed = effectiveElapsed;
         }
@@ -165,7 +196,7 @@ internal sealed class Sts2SimAttemptWorkTracker
         {
             if (sanitizedElapsed > _elapsed)
                 _elapsed = sanitizedElapsed;
-            if (sanitizedParallelism > _observedPeakParallelism)
+            if (!_hasMeasuredPeakParallelism && _observedPeakParallelism == 0 && sanitizedParallelism > 0)
                 _observedPeakParallelism = sanitizedParallelism;
         }
     }
@@ -179,7 +210,8 @@ internal sealed class Sts2SimAttemptWorkTracker
                 _transitionCount,
                 _choiceReplayAttempts,
                 _observedPeakParallelism,
-                _elapsed);
+                _elapsed,
+                _hasMeasuredPeakParallelism);
         }
     }
 }
@@ -492,6 +524,51 @@ internal static class Sts2SimPortfolioPolicyBridge
 
         activePhaseLabel = null;
         return false;
+    }
+
+    public static Sts2SimPartitionedActionChoices PartitionActionChoices(
+        string actionKind,
+        string? cardId,
+        string? potionId,
+        IReadOnlyList<InCombatChoiceTraceDto> choices)
+    {
+        ArgumentNullException.ThrowIfNull(choices);
+
+        List<InCombatChoiceTraceDto> actionChoices = [];
+        List<InCombatChoiceTraceDto> nonActionChoices = [];
+        for (int i = 0; i < choices.Count; i++)
+        {
+            InCombatChoiceTraceDto choice = choices[i];
+            if (string.Equals(choice.Timing, "Action", StringComparison.Ordinal))
+                actionChoices.Add(choice);
+            else
+                nonActionChoices.Add(choice);
+        }
+
+        int primaryIndex = -1;
+        bool isPlayCard = string.Equals(actionKind, "PlayCard", StringComparison.Ordinal)
+            && !string.IsNullOrEmpty(cardId);
+        bool isUsePotion = string.Equals(actionKind, "UsePotion", StringComparison.Ordinal)
+            && !string.IsNullOrEmpty(potionId);
+        if (isPlayCard || isUsePotion)
+        {
+            string expectedSourceId = isPlayCard ? cardId! : potionId!;
+            for (int i = 0; i < actionChoices.Count; i++)
+            {
+                if (string.Equals(actionChoices[i].SourceId, expectedSourceId, StringComparison.Ordinal))
+                {
+                    primaryIndex = i;
+                    break;
+                }
+            }
+        }
+
+        int nestedBeforePrimary = primaryIndex >= 0 ? primaryIndex : actionChoices.Count;
+        return new Sts2SimPartitionedActionChoices(
+            primaryIndex,
+            actionChoices,
+            nonActionChoices,
+            nestedBeforePrimary);
     }
 
     private static bool IsDefaultNoveltyBudget(Sts2SimNoveltyPortfolioBudgetDto budget) =>
