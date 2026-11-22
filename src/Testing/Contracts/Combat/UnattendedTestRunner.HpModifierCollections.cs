@@ -144,6 +144,104 @@ internal sealed partial class UnattendedTestRunner
         finally { snapshot.ReleaseSimulator(); }
     }
 
+    private static string AssertProjectedMultiHitModifiers(CombatState combat, Player player)
+    {
+        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+        var driver = new CombatBeamSolver(root, SolverDisplayNames.Capture(combat),
+            BattleDamageTracker.Observe(combat),
+            SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null));
+        using IDisposable isolation = SimulationNotificationIsolation.Enter();
+        Creature enemy = combat.Enemies[0];
+
+        SimulationSnapshot slipperySingle = driver.ReplayDiagnosticPrefix([]);
+        try
+        {
+            var simulator = (CombatPredictionSimulator)slipperySingle.Simulator;
+            var state = (SimulatedCombatState)simulator.State.CombatState;
+            LizardTail tail = state.RelicsOf(player).OfType<LizardTail>().Single();
+            simulator.StateStore.Get(tail, () => new LizardTailPredictionState(tail)).WasUsed = true;
+            SimCreatureState creature = simulator.State.GetCreature(player.Creature);
+            creature.SetMaxHp(25);
+            creature.CurrentHp = 5;
+            state.SetAmount<SlipperyPower>(player.Creature, 1);
+            string before = driver.CaptureDiagnosticContinuation(slipperySingle).StateText;
+            var result = driver.ProjectDiagnosticThreat(slipperySingle, enemy, 8, 8);
+            if (result.Hp != -4 || driver.CaptureDiagnosticContinuation(slipperySingle).StateText != before)
+            {
+                throw new InvalidOperationException(
+                    $"Slippery 1层面对[8,8]应受9点伤害(剩余-4)且不改状态，实际 Hp={result.Hp}。");
+            }
+        }
+        finally { slipperySingle.ReleaseSimulator(); }
+
+        SimulationSnapshot slipperyOneDamage = driver.ReplayDiagnosticPrefix([]);
+        try
+        {
+            var simulator = (CombatPredictionSimulator)slipperyOneDamage.Simulator;
+            var state = (SimulatedCombatState)simulator.State.CombatState;
+            LizardTail tail = state.RelicsOf(player).OfType<LizardTail>().Single();
+            simulator.StateStore.Get(tail, () => new LizardTailPredictionState(tail)).WasUsed = true;
+            SimCreatureState creature = simulator.State.GetCreature(player.Creature);
+            creature.SetMaxHp(25);
+            creature.CurrentHp = 5;
+            state.SetAmount<SlipperyPower>(player.Creature, 2);
+            string before = driver.CaptureDiagnosticContinuation(slipperyOneDamage).StateText;
+            var result = driver.ProjectDiagnosticThreat(slipperyOneDamage, enemy, 1, 8, 8);
+            if (result.Hp != -5 || driver.CaptureDiagnosticContinuation(slipperyOneDamage).StateText != before)
+            {
+                throw new InvalidOperationException(
+                    $"Slippery 2层面对[1,8,8]应在第1段1伤也消耗层数(剩余-5)，实际 Hp={result.Hp}。");
+            }
+        }
+        finally { slipperyOneDamage.ReleaseSimulator(); }
+
+        SimulationSnapshot bufferThenSlippery = driver.ReplayDiagnosticPrefix([]);
+        try
+        {
+            var simulator = (CombatPredictionSimulator)bufferThenSlippery.Simulator;
+            var state = (SimulatedCombatState)simulator.State.CombatState;
+            LizardTail tail = state.RelicsOf(player).OfType<LizardTail>().Single();
+            simulator.StateStore.Get(tail, () => new LizardTailPredictionState(tail)).WasUsed = true;
+            SimCreatureState creature = simulator.State.GetCreature(player.Creature);
+            creature.SetMaxHp(25);
+            creature.CurrentHp = 5;
+            state.SetAmount<BufferPower>(player.Creature, 1);
+            state.SetAmount<SlipperyPower>(player.Creature, 1);
+            string before = driver.CaptureDiagnosticContinuation(bufferThenSlippery).StateText;
+            var result = driver.ProjectDiagnosticThreat(bufferThenSlippery, enemy, 8, 8);
+            if (result.Hp != 4 || driver.CaptureDiagnosticContinuation(bufferThenSlippery).StateText != before)
+            {
+                throw new InvalidOperationException(
+                    $"Buffer+Slippery 面对[8,8]首段应仅耗Buffer、次段耗Slippery留4HP，实际 Hp={result.Hp}。");
+            }
+        }
+        finally { bufferThenSlippery.ReleaseSimulator(); }
+
+        SimulationSnapshot remnantCap = driver.ReplayDiagnosticPrefix([]);
+        try
+        {
+            var simulator = (CombatPredictionSimulator)remnantCap.Simulator;
+            var state = (SimulatedCombatState)simulator.State.CombatState;
+            BeatingRemnant remnant = (BeatingRemnant)PredictionUtils.CreateRelic(
+                CanonicalModels.Relic<BeatingRemnant>(),
+                player);
+            ReplaceRootRelicsForTurnBoundaryTest(state, player, remnant);
+            SimCreatureState creature = simulator.State.GetCreature(player.Creature);
+            creature.SetMaxHp(30);
+            creature.CurrentHp = 25;
+            string before = driver.CaptureDiagnosticContinuation(remnantCap).StateText;
+            var result = driver.ProjectDiagnosticThreat(remnantCap, enemy, 15, 15);
+            if (result.Hp != 5 || driver.CaptureDiagnosticContinuation(remnantCap).StateText != before)
+            {
+                throw new InvalidOperationException(
+                    $"BeatingRemnant 20伤上限面对[15,15]应总损20剩5HP，实际 Hp={result.Hp}。");
+            }
+        }
+        finally { remnantCap.ReleaseSimulator(); }
+
+        return "ProjectedMultiHitModifiers:SlipperyTwoHits:SlipperyOneDamageHit:BufferBeforeSlippery:BeatingRemnantCap:CompleteStateUnchanged";
+    }
+
     private static string AssertProjectedSandpitBoundary(CombatState combat, Player player)
     {
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);

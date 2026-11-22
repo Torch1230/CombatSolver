@@ -864,7 +864,8 @@ internal static partial class HookMirrors
         PredictedCard? cardSource,
         HpLossHookPhase phases,
         out IReadOnlyList<AbstractModel> modifiers,
-        Func<AbstractModel, bool>? modifierFilter = null)
+        Func<AbstractModel, bool>? modifierFilter = null,
+        Func<BeatingRemnant, decimal>? beatingRemnantDamageReceived = null)
     {
         var context = new ModifyHpLostMirrorContext
         {
@@ -873,7 +874,8 @@ internal static partial class HookMirrors
             Amount = amount,
             Props = props,
             Dealer = dealer,
-            CardSource = cardSource
+            CardSource = cardSource,
+            BeatingRemnantDamageReceivedOverride = beatingRemnantDamageReceived
         };
         List<AbstractModel>? changedModifiers = null;
 
