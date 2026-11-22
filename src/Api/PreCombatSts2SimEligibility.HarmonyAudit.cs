@@ -154,9 +154,6 @@ internal static partial class PreCombatSts2SimEligibility
         return methodName;
     }
 
-    internal static bool IsPureModelDisplayOrMetadataMember(string methodName, string? targetDisplayName = null) =>
-        IsPureCardDisplayOrMetadataMember(ResolveEffectiveMemberName(methodName, targetDisplayName));
-
     internal static bool IsConcreteCardGameplayMethodName(string methodName, string? targetDisplayName = null)
     {
         string effectiveName = ResolveEffectiveMemberName(methodName, targetDisplayName);
@@ -189,31 +186,12 @@ internal static partial class PreCombatSts2SimEligibility
         if (isMonsterModel && string.Equals(methodName, "GenerateMoveStateMachine", StringComparison.Ordinal))
             return PreCombatHarmonyTargetKind.CombatGameplay;
 
-        if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Commands"))
-        {
-            return rootDeclaringTypeName is "VfxCmd" or "SfxCmd"
-                ? PreCombatHarmonyTargetKind.None
-                : PreCombatHarmonyTargetKind.CombatGameplay;
-        }
-
-        if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Hooks")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Combat")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.GameActions")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.MonsterMoves"))
+        if (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.MonsterMoves.Intents", StringComparison.Ordinal)
+            && string.Equals(rootDeclaringTypeName, "AttackIntent", StringComparison.Ordinal)
+            && (string.Equals(methodName, ".ctor", StringComparison.Ordinal)
+                || string.Equals(methodName, "GetSingleDamage", StringComparison.Ordinal)))
         {
             return PreCombatHarmonyTargetKind.CombatGameplay;
-        }
-
-        if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Powers")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Relics")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Potions")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Orbs")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Enchantments")
-            || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Monsters"))
-        {
-            return IsPureModelDisplayOrMetadataMember(methodName, targetDisplayName)
-                ? PreCombatHarmonyTargetKind.None
-                : PreCombatHarmonyTargetKind.CombatGameplay;
         }
 
         if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Cards"))
@@ -221,24 +199,6 @@ internal static partial class PreCombatSts2SimEligibility
             return IsConcreteCardGameplayMethodName(methodName, targetDisplayName)
                 ? PreCombatHarmonyTargetKind.CombatGameplay
                 : PreCombatHarmonyTargetKind.None;
-        }
-
-        if ((string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Entities.Creatures", StringComparison.Ordinal)
-                && string.Equals(rootDeclaringTypeName, "Creature", StringComparison.Ordinal))
-            || (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Entities.Players", StringComparison.Ordinal)
-                && string.Equals(rootDeclaringTypeName, "PlayerCombatState", StringComparison.Ordinal))
-            || (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Entities.Cards", StringComparison.Ordinal)
-                && rootDeclaringTypeName is "CardPile" or "CardEnergyCost" or "CardPlay"))
-        {
-            return PreCombatHarmonyTargetKind.CombatGameplay;
-        }
-
-        if (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Models", StringComparison.Ordinal)
-            && rootDeclaringTypeName is "CardModel" or "PowerModel" or "RelicModel" or "PotionModel" or "OrbModel" or "EnchantmentModel" or "MonsterModel")
-        {
-            return IsPureModelDisplayOrMetadataMember(methodName, targetDisplayName)
-                ? PreCombatHarmonyTargetKind.None
-                : PreCombatHarmonyTargetKind.CombatGameplay;
         }
 
         return PreCombatHarmonyTargetKind.None;
