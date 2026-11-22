@@ -99,7 +99,6 @@ internal static class InCombatSts2SimEligibility
         if (player.ExtraFields.WongoPoints != 0
             || player.ExtraFields.IsPlayingRotatingCharacter
             || run.ExtraFields.FreedRepy
-            || run.ExtraFields.TestSubjectKills != 0
             || run.ExtraFields.UsedDebugCommand
             || !run.ExtraFields.StartedWithNeow)
         {
