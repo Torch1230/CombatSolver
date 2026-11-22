@@ -353,28 +353,33 @@ internal static class PreCombatSts2SimBridge
                 throw new InvalidDataException($"Bridge bundle manifest omits required file '{requiredFile}'.");
         }
 
+        Dictionary<string, byte[]> verifiedAssemblies = new(StringComparer.OrdinalIgnoreCase);
         foreach (Sts2SimBundleFileManifestEntry entry in manifest.Files)
         {
             string fullPath = Path.Combine(bridgeDir, entry.Name);
             if (!File.Exists(fullPath))
                 throw new FileNotFoundException($"Bridge bundle payload missing: {fullPath}", fullPath);
-            string actualSha256 = ComputeFileSha256Hex(fullPath);
+            byte[] fileBytes = File.ReadAllBytes(fullPath);
+            string actualSha256 = Convert.ToHexString(SHA256.HashData(fileBytes));
             if (!string.Equals(actualSha256, entry.Sha256, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidDataException(
                     $"Bridge bundle SHA-256 mismatch for '{entry.Name}': expected {entry.Sha256}, actual {actualSha256}.");
             }
+            if (entry.Name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                verifiedAssemblies[Path.GetFileNameWithoutExtension(entry.Name)] = fileBytes;
+            }
         }
 
-        string bridgeDllPath = Path.Combine(bridgeDir, $"{BridgeAssemblySimpleName}.dll");
         AssemblyLoadContext hostContext = AssemblyLoadContext.GetLoadContext(typeof(PreCombatSts2SimBridge).Assembly)
             ?? AssemblyLoadContext.Default;
         Sts2SimBundleFileManifestEntry? stagedHashing = manifestEntries.GetValueOrDefault($"{HashingAssemblySimpleName}.dll");
         if (File.Exists(Path.Combine(bridgeDir, $"{HashingAssemblySimpleName}.dll")) && stagedHashing is null)
             throw new InvalidDataException("Unmanifested System.IO.Hashing.dll is present in sts2sim directory.");
 
-        var loadContext = new IsolatedBridgeLoadContext(bridgeDir, bridgeDllPath, hostContext, stagedHashing);
-        Assembly bridgeAssembly = loadContext.LoadFromAssemblyPath(bridgeDllPath);
+        var loadContext = new IsolatedBridgeLoadContext(bridgeDir, verifiedAssemblies, hostContext, stagedHashing);
+        Assembly bridgeAssembly = loadContext.LoadFromAssemblyName(new AssemblyName(BridgeAssemblySimpleName));
         Type entryType = bridgeAssembly.GetType(BridgeEntryTypeName, throwOnError: true)
             ?? throw new InvalidOperationException($"Missing entry type {BridgeEntryTypeName}.");
 
@@ -468,12 +473,6 @@ internal static class PreCombatSts2SimBridge
             : Delegate.CreateDelegate(typeof(TDelegate), method, throwOnBindFailure: false) as TDelegate;
     }
 
-    private static string ComputeFileSha256Hex(string path)
-    {
-        using FileStream stream = File.OpenRead(path);
-        return Convert.ToHexString(SHA256.HashData(stream));
-    }
-
     private sealed class ActivatedBridge(
         IsolatedBridgeLoadContext loadContext,
         Action prewarm,
@@ -490,13 +489,11 @@ internal static class PreCombatSts2SimBridge
 
     private sealed class IsolatedBridgeLoadContext(
         string bridgeDir,
-        string bridgeDllPath,
+        IReadOnlyDictionary<string, byte[]> verifiedAssemblies,
         AssemblyLoadContext hostContext,
         Sts2SimBundleFileManifestEntry? stagedHashing)
         : AssemblyLoadContext(name: "CombatSolver.PreCombatSts2Sim", isCollectible: false)
     {
-        private readonly AssemblyDependencyResolver _resolver = new(bridgeDllPath);
-
         protected override Assembly? Load(AssemblyName assemblyName)
         {
             string? simpleName = assemblyName.Name;
@@ -505,14 +502,15 @@ internal static class PreCombatSts2SimBridge
 
             if (simpleName.StartsWith("Sts2Sim.", StringComparison.Ordinal))
             {
-                string? resolvedPath = _resolver.ResolveAssemblyToPath(assemblyName);
-                if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                if (simpleName.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
+                    return null;
+                if (!verifiedAssemblies.TryGetValue(simpleName, out byte[]? verifiedBytes))
                 {
                     throw new FileNotFoundException(
-                        $"Private Sts2Sim dependency '{simpleName}' could not be resolved inside '{bridgeDir}'.",
-                        resolvedPath ?? simpleName);
+                        $"Private Sts2Sim dependency '{simpleName}' could not be resolved from verified manifest in '{bridgeDir}'.",
+                        Path.Combine(bridgeDir, $"{simpleName}.dll"));
                 }
-                return LoadFromAssemblyPath(resolvedPath);
+                return LoadFromStream(new MemoryStream(verifiedBytes, writable: false));
             }
 
             if (string.Equals(simpleName, HashingAssemblySimpleName, StringComparison.Ordinal))
@@ -534,19 +532,13 @@ internal static class PreCombatSts2SimBridge
                 }
 
                 string privatePath = Path.Combine(bridgeDir, $"{HashingAssemblySimpleName}.dll");
-                if (stagedHashing is null || !File.Exists(privatePath))
+                if (stagedHashing is null || !verifiedAssemblies.TryGetValue(HashingAssemblySimpleName, out byte[]? privateBytes))
                 {
                     throw new FileNotFoundException(
                         "Compatible System.IO.Hashing (>= 9.0.0) was not found in host context or sts2sim manifest.",
                         privatePath);
                 }
-                string actualSha = ComputeFileSha256Hex(privatePath);
-                if (!string.Equals(actualSha, stagedHashing.Sha256, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidDataException(
-                        $"Private System.IO.Hashing.dll SHA-256 mismatch: expected {stagedHashing.Sha256}, actual {actualSha}.");
-                }
-                Assembly privateAssembly = LoadFromAssemblyPath(privatePath);
+                Assembly privateAssembly = LoadFromStream(new MemoryStream(privateBytes, writable: false));
                 string actualMvid = privateAssembly.ManifestModule.ModuleVersionId.ToString("D");
                 if (string.IsNullOrWhiteSpace(stagedHashing.Mvid)
                     || !string.Equals(actualMvid, stagedHashing.Mvid, StringComparison.OrdinalIgnoreCase))

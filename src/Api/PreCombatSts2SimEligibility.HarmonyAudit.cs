@@ -187,9 +187,11 @@ internal static partial class PreCombatSts2SimEligibility
             return PreCombatHarmonyTargetKind.CombatGameplay;
 
         if (string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.MonsterMoves.Intents", StringComparison.Ordinal)
-            && string.Equals(rootDeclaringTypeName, "AttackIntent", StringComparison.Ordinal)
-            && (string.Equals(methodName, ".ctor", StringComparison.Ordinal)
-                || string.Equals(methodName, "GetSingleDamage", StringComparison.Ordinal)))
+            && ((string.Equals(rootDeclaringTypeName, "AttackIntent", StringComparison.Ordinal)
+                    && (string.Equals(methodName, ".ctor", StringComparison.Ordinal)
+                        || string.Equals(methodName, "GetSingleDamage", StringComparison.Ordinal)))
+                || (rootDeclaringTypeName is "SingleAttackIntent" or "MultiAttackIntent"
+                    && string.Equals(methodName, ".ctor", StringComparison.Ordinal))))
         {
             return PreCombatHarmonyTargetKind.CombatGameplay;
         }

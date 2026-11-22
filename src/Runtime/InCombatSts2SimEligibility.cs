@@ -102,11 +102,13 @@ internal static class InCombatSts2SimEligibility
                 "Player combat state is missing or not in PlayerTurnPhase.Play.");
         }
 
-        if (player.ExtraFields.WongoPoints != 0
-            || player.ExtraFields.IsPlayingRotatingCharacter
-            || run.ExtraFields.FreedRepy
-            || run.ExtraFields.UsedDebugCommand
-            || !run.ExtraFields.StartedWithNeow)
+        if (PreCombatSts2SimEligibility.HasUnsupportedExtraFields(new PreCombatExtraFieldsState(
+                StartedWithNeow: run.ExtraFields.StartedWithNeow,
+                FreedRepy: run.ExtraFields.FreedRepy,
+                TestSubjectKills: run.ExtraFields.TestSubjectKills,
+                UsedDebugCommand: run.ExtraFields.UsedDebugCommand,
+                WongoPoints: player.ExtraFields.WongoPoints,
+                IsPlayingRotatingCharacter: player.ExtraFields.IsPlayingRotatingCharacter)))
         {
             return InCombatEligibilityResult.Ineligible(
                 "extra_field_unsupported",

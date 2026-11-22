@@ -11,9 +11,6 @@ internal readonly record struct PreCombatExtraFieldsState(
 internal static partial class PreCombatSts2SimEligibility
 {
     internal static bool HasUnsupportedExtraFields(in PreCombatExtraFieldsState extraFields) =>
-        !extraFields.StartedWithNeow
-        || extraFields.FreedRepy
-        || extraFields.UsedDebugCommand
-        || extraFields.WongoPoints != 0
-        || extraFields.IsPlayingRotatingCharacter;
+        extraFields.TestSubjectKills < 0
+        || extraFields.WongoPoints < 0;
 }
