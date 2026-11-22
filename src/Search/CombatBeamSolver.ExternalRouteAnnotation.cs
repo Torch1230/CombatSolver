@@ -11,8 +11,10 @@ internal sealed partial class CombatBeamSolver
         SearchPolicySnapshot policy,
         IReadOnlyList<PlanAction> actions,
         CancellationToken cancellationToken,
-        out IReadOnlyList<CachedContinuation> continuations)
+        out IReadOnlyList<CachedContinuation> continuations,
+        out string? failureReason)
     {
+        failureReason = null;
         if (actions.Count <= 1)
         {
             continuations = [];
@@ -53,19 +55,22 @@ internal sealed partial class CombatBeamSolver
                 snapshot?.ReleaseSimulator();
             }
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
             continuations = [];
+            failureReason = $"{ex.GetType().Name}: {ex.Message}";
             return false;
         }
-        catch (PredictionUnsupportedException)
+        catch (PredictionUnsupportedException ex)
         {
             continuations = [];
+            failureReason = $"{ex.GetType().Name}: {ex.Message}";
             return false;
         }
-        catch (NotSupportedException)
+        catch (NotSupportedException ex)
         {
             continuations = [];
+            failureReason = $"{ex.GetType().Name}: {ex.Message}";
             return false;
         }
     }
