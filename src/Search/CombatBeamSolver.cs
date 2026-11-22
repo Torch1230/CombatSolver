@@ -49,6 +49,8 @@ internal sealed partial class CombatBeamSolver(
 {
     private CancellationToken? _routeMaterializationCancellationToken;
     private bool _validateExternalChoicesAgainstSpec;
+    private List<PlanCardChoice>? _externalBoundActionChoices;
+    private List<PlanCardChoice>? _externalBoundTurnStartChoices;
     private CancellationToken ReplayCancellationToken => _routeMaterializationCancellationToken ?? cancellationToken;
 
     private SolverResult MaterializeAdoptableRoute(Func<SolverResult> materialize)

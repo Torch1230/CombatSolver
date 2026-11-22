@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using CombatSolver.Engine.Common;
@@ -539,11 +540,18 @@ internal static partial class PreCombatSts2SimEligibility
             while (rootDeclaring.DeclaringType is not null)
                 rootDeclaring = rootDeclaring.DeclaringType;
 
+            bool isConcreteCardGameplayOverride = typeof(CardModel).IsAssignableFrom(rootDeclaring)
+                && rootDeclaring != typeof(CardModel)
+                && IsConcreteCardGameplayOverride(rootDeclaring, declaring, method);
+            string targetDisplayName = $"{declaring.FullName}.{method.Name}";
+
             PreCombatHarmonyTargetKind targetKind = ClassifyCriticalHarmonyTarget(
                 rootDeclaring.Namespace,
                 rootDeclaring.Name,
                 method.Name,
-                typeof(MonsterModel).IsAssignableFrom(rootDeclaring));
+                typeof(MonsterModel).IsAssignableFrom(rootDeclaring),
+                isConcreteCardGameplayOverride,
+                targetDisplayName);
             if (targetKind == PreCombatHarmonyTargetKind.None)
                 continue;
 
@@ -552,7 +560,6 @@ internal static partial class PreCombatSts2SimEligibility
                 continue;
 
             bool trustGameplayNeutral = targetKind != PreCombatHarmonyTargetKind.Rng;
-            string targetDisplayName = $"{declaring.FullName}.{method.Name}";
             foreach (Patch patch in info.Prefixes
                          .Concat(info.Postfixes)
                          .Concat(info.Transpilers)
@@ -564,7 +571,8 @@ internal static partial class PreCombatSts2SimEligibility
                     patch,
                     rootDeclaring,
                     method.Name,
-                    targetDisplayName);
+                    targetDisplayName,
+                    isConcreteCardGameplayOverride);
                 if (IsForeignPatchDescriptor(descriptor, trustGameplayNeutral))
                 {
                     reason = $"Foreign Harmony patch {descriptor.PatchDisplayName} " +
@@ -613,11 +621,74 @@ internal static partial class PreCombatSts2SimEligibility
         return false;
     }
 
+    private static bool IsConcreteCardGameplayOverride(Type cardType, Type declaring, MethodBase patchedMethod)
+    {
+        if (declaring == cardType)
+        {
+            if (TryExtractCompilerGeneratedEnclosingMethod(patchedMethod.Name, out string directEnclosing))
+                return HasCardGameplayOverrideNamed(cardType, directEnclosing);
+            return patchedMethod is MethodInfo directMethod
+                && IsCardModelOrAbstractModelGameplayOverride(directMethod);
+        }
+
+        for (Type? current = cardType;
+             current is not null && current != typeof(CardModel) && current != typeof(AbstractModel);
+             current = current.BaseType)
+        {
+            foreach (MethodInfo candidate in current.GetMethods(
+                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+            {
+                if (candidate.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType == declaring
+                    || candidate.GetCustomAttribute<IteratorStateMachineAttribute>()?.StateMachineType == declaring)
+                {
+                    return IsCardModelOrAbstractModelGameplayOverride(candidate);
+                }
+            }
+        }
+
+        if (TryExtractCompilerGeneratedEnclosingMethod(patchedMethod.Name, out string methodEnclosing))
+            return HasCardGameplayOverrideNamed(cardType, methodEnclosing);
+        if (TryExtractCompilerGeneratedEnclosingMethod(declaring.Name, out string typeEnclosing))
+            return HasCardGameplayOverrideNamed(cardType, typeEnclosing);
+        return false;
+    }
+
+    private static bool HasCardGameplayOverrideNamed(Type cardType, string enclosingName)
+    {
+        for (Type? current = cardType;
+             current is not null && current != typeof(CardModel) && current != typeof(AbstractModel);
+             current = current.BaseType)
+        {
+            foreach (MethodInfo candidate in current.GetMethods(
+                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+            {
+                if (string.Equals(candidate.Name, enclosingName, StringComparison.Ordinal)
+                    && IsCardModelOrAbstractModelGameplayOverride(candidate))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static bool IsCardModelOrAbstractModelGameplayOverride(MethodInfo method)
+    {
+        if (!method.IsVirtual)
+            return false;
+        MethodInfo baseDefinition = method.GetBaseDefinition();
+        Type? baseDeclaring = baseDefinition.DeclaringType;
+        if (baseDeclaring != typeof(CardModel) && baseDeclaring != typeof(AbstractModel))
+            return false;
+        return !IsPureCardDisplayOrMetadataMember(baseDefinition.Name);
+    }
+
     private static PreCombatHarmonyPatchDescriptor DescribeHarmonyPatch(
         Patch patch,
         Type rootDeclaring,
         string methodName,
-        string targetDisplayName)
+        string targetDisplayName,
+        bool isConcreteCardGameplayOverride)
     {
         Type? patchType = patch.PatchMethod.DeclaringType;
         bool isBaseGamePatch = false;
@@ -660,7 +731,8 @@ internal static partial class PreCombatSts2SimEligibility
             HasKnownModId: hasKnownModId,
             PatchDisplayName: patchDisplayName,
             TargetDisplayName: targetDisplayName,
-            Owner: patch.owner ?? string.Empty);
+            Owner: patch.owner ?? string.Empty,
+            IsConcreteCardGameplayOverride: isConcreteCardGameplayOverride);
     }
 
     internal static bool HasFullEpochUnlocks(IEnumerable<string>? unlockedEpochs)

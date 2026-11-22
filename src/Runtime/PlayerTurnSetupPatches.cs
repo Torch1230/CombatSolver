@@ -371,8 +371,11 @@ internal static class PlayerTurnSetupCoordinator
     {
         if (!CanApplyCurrentTurn || _active is not { } active)
             return false;
-        if (!active.Interaction.RequestApplyCurrentTurn())
+        if (active.Interaction.CurrentAttemptTurnPreviewBackendAttempt is not { } previewAttempt
+            || !active.Interaction.RequestApplyCurrentTurn(previewAttempt))
+        {
             return false;
+        }
         active.DeployAfterSetup = true;
         active.TakeoverRequested = true;
         SolverOverlay.RefreshControls();

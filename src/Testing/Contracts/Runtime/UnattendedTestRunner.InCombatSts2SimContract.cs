@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using CombatSolver.Api;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Runs;
@@ -57,6 +58,7 @@ internal sealed partial class UnattendedTestRunner
                     $"第 {startedTurn} 回合 Sts2Sim 返回无效路线：turn={turn1Result.StartTurnNumber}, actions={turn1Result.BestNode.Actions.Count}。");
             }
             turn1Result.AssertCompleteTurnOutcomes();
+            VerifyInCombatP2Contracts(turn1Result);
             if (InCombatSolverBackendState.LastUsedBackendForTesting != InCombatBackendKind.Sts2Sim
                 || InCombatSolverBackendState.Sts2SimSuccessCountForTesting != successBeforeTurn1 + 1)
             {
@@ -250,6 +252,138 @@ internal sealed partial class UnattendedTestRunner
         {
             if (_active)
                 PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = null;
+        }
+    }
+
+    private static void VerifyInCombatP2Contracts(SolverResult turn1Result)
+    {
+        // ApplyCurrentTurn validates both non-null preview and current BackendAttempt atomically.
+        SearchInteractionState interaction = new(generation: 1);
+        SolverCurrentTurnPreview preview0 = SolverCurrentTurnPreview.FromResult(turn1Result, candidateVersion: 1);
+        interaction.PublishProgress(new SolverProgress(
+            StartTurnNumber: turn1Result.StartTurnNumber,
+            CurrentTurnNumber: turn1Result.StartTurnNumber,
+            CompletedTurnLayers: 0,
+            PlayDepth: 0,
+            ExpandedNodes: turn1Result.ExpandedNodes,
+            ReviewedWorldlines: turn1Result.TotalExpandedNodes,
+            MaxNodes: 100,
+            FrontierNodes: 0,
+            EndedNodes: 0,
+            ElapsedMilliseconds: 10,
+            Phase: "Sts2Sim",
+            CurrentTurnPreview: preview0,
+            BackendAttempt: 0));
+        if (interaction.CurrentAttemptTurnPreviewBackendAttempt != 0)
+            throw new InvalidOperationException("Expected attempt-0 turn preview before fallback.");
+        if (!interaction.PrepareFallbackToBuiltIn(generation: 1, failedBackendAttempt: 0))
+            throw new InvalidOperationException("Fallback transition to attempt 1 unexpectedly failed.");
+        if (interaction.CurrentAttemptTurnPreviewBackendAttempt is not null
+            || interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 0)
+            || interaction.RequestApplyCurrentTurn())
+        {
+            throw new InvalidOperationException("Stale attempt-0 ApplyCurrentTurn was accepted before attempt-1 preview arrived.");
+        }
+        interaction.PublishProgress(new SolverProgress(
+            StartTurnNumber: turn1Result.StartTurnNumber,
+            CurrentTurnNumber: turn1Result.StartTurnNumber,
+            CompletedTurnLayers: 0,
+            PlayDepth: 0,
+            ExpandedNodes: 1,
+            ReviewedWorldlines: 1,
+            MaxNodes: 100,
+            FrontierNodes: 0,
+            EndedNodes: 0,
+            ElapsedMilliseconds: 12,
+            Phase: "BuiltIn",
+            CurrentTurnPreview: preview0,
+            BackendAttempt: 1));
+        if (interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 0))
+            throw new InvalidOperationException("Stale expectedBackendAttempt=0 succeeded after attempt-1 preview published.");
+        if (!interaction.RequestApplyCurrentTurn(expectedBackendAttempt: 1))
+            throw new InvalidOperationException("Current expectedBackendAttempt=1 failed despite valid preview.");
+
+        // ExternalChoiceBinding binds empty ContextId and repeated manual card SourceId at replay time.
+        var seekerToken = new PlanCardToken("STRIKE_IRONCLAD", 0, string.Empty, 0, 0, string.Empty);
+        var seekerTraceChoice = new PlanCardChoice(
+            PlanChoiceEffect.MoveToHand,
+            PileType.Draw,
+            [seekerToken],
+            SourceId: "SEEKER_STRIKE",
+            ContextId: string.Empty,
+            Timing: PlanChoiceTiming.Action);
+        List<PlanCardChoice> seekerBound = [];
+        var seekerCursor = new TurnStartChoiceCursor(
+            [seekerTraceChoice],
+            externalBinding: new ExternalChoiceBinding("SEEKER_STRIKE", seekerBound.Add));
+        var seekerRequest = new TurnStartChoiceRequest(
+            string.Empty,
+            PlanChoiceEffect.MoveToHand,
+            PileType.Draw,
+            1,
+            ContextId: "seeker:3:STRIKE_IRONCLAD+0",
+            Timing: PlanChoiceTiming.Action);
+        if (!seekerCursor.TryTake(seekerRequest, out PlanCardChoice? boundSeeker)
+            || boundSeeker is null
+            || boundSeeker.SourceId != string.Empty
+            || boundSeeker.ContextId != "seeker:3:STRIKE_IRONCLAD+0"
+            || seekerBound.Count != 1)
+        {
+            throw new InvalidOperationException("ExternalChoiceBinding failed to bind SeekerStrike context.");
+        }
+        seekerCursor.AssertConsumed();
+
+        var repeatedChoice = new PlanCardChoice(
+            PlanChoiceEffect.Exhaust,
+            PileType.Hand,
+            [seekerToken],
+            SourceId: "BURNING_PACT",
+            ContextId: string.Empty,
+            Timing: PlanChoiceTiming.Action);
+        List<PlanCardChoice> repeatedBound = [];
+        var repeatedCursor = new TurnStartChoiceCursor(
+            [repeatedChoice, repeatedChoice],
+            externalBinding: new ExternalChoiceBinding("BURNING_PACT", repeatedBound.Add));
+        var manualRequest = new TurnStartChoiceRequest(
+            string.Empty,
+            PlanChoiceEffect.Exhaust,
+            PileType.Hand,
+            1,
+            ContextId: string.Empty,
+            Timing: PlanChoiceTiming.Action);
+        if (!repeatedCursor.TryTake(manualRequest, out PlanCardChoice? firstManual)
+            || !repeatedCursor.TryTake(manualRequest, out PlanCardChoice? secondManual)
+            || firstManual?.SourceId != string.Empty
+            || secondManual?.SourceId != string.Empty
+            || repeatedBound.Count != 2)
+        {
+            throw new InvalidOperationException("ExternalChoiceBinding failed on repeated manual card choices.");
+        }
+        repeatedCursor.AssertConsumed();
+
+        var mismatchCursor = new TurnStartChoiceCursor(
+            [seekerTraceChoice with { ContextId = "wrong-context" }],
+            externalBinding: new ExternalChoiceBinding("SEEKER_STRIKE"));
+        bool mismatchRejected = false;
+        try
+        {
+            mismatchCursor.TryTake(seekerRequest, out _);
+        }
+        catch (InvalidPlannedChoiceBranchException)
+        {
+            mismatchRejected = true;
+        }
+        if (!mismatchRejected)
+            throw new InvalidOperationException("ExternalChoiceBinding failed to reject mismatched non-empty ContextId.");
+
+        // Materialized potion and battle-loss summaries match verified replay.
+        int explicitPotions = turn1Result.BestNode.Actions.Count(static a => a.Kind == PlanActionKind.UsePotion);
+        if (turn1Result.PotionCount != turn1Result.PotionUses.Count
+            || turn1Result.PlannedPotionIds.Length != turn1Result.PotionUses.Count
+            || turn1Result.ExplicitPotionCount != explicitPotions
+            || turn1Result.ProjectedBattleHpLost < turn1Result.BattleHpLostSoFar + turn1Result.Snapshot.CumulativePlayerHpLost)
+        {
+            throw new InvalidOperationException("Materialized SolverResult potion or battle-loss summary is inconsistent with verified replay.");
         }
     }
 }
