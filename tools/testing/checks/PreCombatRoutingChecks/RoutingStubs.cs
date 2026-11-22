@@ -49,6 +49,13 @@ namespace MegaCrit.Sts2.Core.Runs
         public string Token = Guid.NewGuid().ToString();
         public string? DirectIneligibility;
         public string? MandatoryExclusionCode;
+        internal PreCombatExtraFieldsState ExtraFields = new(
+            StartedWithNeow: true,
+            FreedRepy: false,
+            TestSubjectKills: 0,
+            UsedDebugCommand: false,
+            WongoPoints: 0,
+            IsPlayingRotatingCharacter: false);
         public int CurrentActIndex;
         public int ActFloor = 1;
         public MapCoord? CurrentMapCoord = new(0, 0);
@@ -132,7 +139,7 @@ namespace CombatSolver.Api
         public static PreCombatEligibilityResult Ineligible(string code, string detail, string fp) => new(false, code, detail, fp);
     }
 
-    internal static class PreCombatSts2SimEligibility
+    internal static partial class PreCombatSts2SimEligibility
     {
         public static PreCombatEligibilityResult AssessMandatoryLiveHost(RunState run) =>
             run.MandatoryExclusionCode is { Length: > 0 } code
@@ -159,7 +166,12 @@ namespace CombatSolver.Api
         {
             PreCombatEligibilityResult eligibility = run.MandatoryExclusionCode is { Length: > 0 } code
                 ? PreCombatEligibilityResult.Ineligible(code, $"Excluded by {code}.", code)
-                : PreCombatEligibilityResult.Eligible("eligible");
+                : PreCombatSts2SimEligibility.HasUnsupportedExtraFields(run.ExtraFields)
+                    ? PreCombatEligibilityResult.Ineligible(
+                        "extra_field_unsupported",
+                        "Run or player extra fields contain state outside the bridge cohort.",
+                        "extra_field_unsupported")
+                    : PreCombatEligibilityResult.Eligible("eligible");
             return new PreCombatLiveStateSnapshot(
                 run,
                 Encoding.UTF8.GetBytes("{\"schema_version\":21,\"game_mode\":\"standard\"}"),

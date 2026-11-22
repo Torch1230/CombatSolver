@@ -358,6 +358,80 @@ await Check("RestartWorkerAsync releases busy lease before status and cancels cl
     Equal(PreCombatBackendKind.None, PreCombatForecastApi.GetWorkerStatus().Backend);
 });
 
+await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported extra fields fall back cleanly", async () =>
+{
+    var baselineExtraFields = new PreCombatExtraFieldsState(
+        StartedWithNeow: true,
+        FreedRepy: false,
+        TestSubjectKills: 0,
+        UsedDebugCommand: false,
+        WongoPoints: 0,
+        IsPlayingRotatingCharacter: false);
+    int bridgeInvocations = 0;
+    PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;
+    PreCombatSts2SimBridge.RunRawJsonHookForTesting = (_, _) =>
+    {
+        Interlocked.Increment(ref bridgeInvocations);
+        return Task.FromResult(JsonBytes(SucceededWireJson()));
+    };
+
+    var cosmeticRun = new RunState
+    {
+        ExtraFields = baselineExtraFields with { TestSubjectKills = 3 },
+    };
+    RunManager.Instance.Run = cosmeticRun;
+    PreCombatForecastResult cosmeticResult = await PreCombatForecastApi.ForecastAsync(
+        cosmeticRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new() { SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
+    Equal(PreCombatForecastStatus.Succeeded, cosmeticResult.Status);
+    Equal(PreCombatBackendKind.InProcess, cosmeticResult.ProducingBackend);
+    Equal(1, bridgeInvocations);
+    Equal(0, PreCombatForecastWorker.FallbackCountForTesting);
+    Equal(0, PreCombatForecastWorker.LegacyCalls.Count);
+
+    await PreCombatForecastApi.StopWorkerAsync();
+
+    PreCombatExtraFieldsState[] excludedCases =
+    [
+        baselineExtraFields with { TestSubjectKills = 2, WongoPoints = 1 },
+        baselineExtraFields with { TestSubjectKills = 2, IsPlayingRotatingCharacter = true },
+        baselineExtraFields with { TestSubjectKills = 2, FreedRepy = true },
+        baselineExtraFields with { TestSubjectKills = 2, UsedDebugCommand = true },
+        baselineExtraFields with { TestSubjectKills = 2, StartedWithNeow = false },
+    ];
+    int expectedFallbacks = 0;
+    int expectedLegacyCalls = 0;
+    foreach (PreCombatExtraFieldsState excludedFields in excludedCases)
+    {
+        var excludedRun = new RunState { ExtraFields = excludedFields };
+        RunManager.Instance.Run = excludedRun;
+        CombatSolver.Api.OperatingSystem.WindowsOverride = true;
+        PreCombatForecastResult winResult = await PreCombatForecastApi.ForecastAsync(
+            excludedRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+            options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
+        expectedFallbacks++;
+        expectedLegacyCalls++;
+        Equal(PreCombatForecastStatus.Succeeded, winResult.Status);
+        Equal(PreCombatBackendKind.LegacyProcess, winResult.ProducingBackend);
+        Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
+        Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
+        Equal("extra_field_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
+        Equal(1, bridgeInvocations);
+
+        await PreCombatForecastApi.StopWorkerAsync();
+
+        CombatSolver.Api.OperatingSystem.WindowsOverride = false;
+        PreCombatForecastResult linuxResult = await PreCombatForecastApi.ForecastAsync(
+            excludedRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+            options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
+        Equal(PreCombatForecastStatus.Unsupported, linuxResult.Status);
+        Equal(true, linuxResult.Error?.Contains("extra_field_unsupported", StringComparison.Ordinal) == true);
+        Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
+        Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
+        Equal(1, bridgeInvocations);
+    }
+});
+
 Console.WriteLine($"Passed {passed} portable production routing checks.");
 
 static string FindRepoRoot()

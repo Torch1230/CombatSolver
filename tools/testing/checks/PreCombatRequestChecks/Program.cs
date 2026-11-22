@@ -474,6 +474,32 @@ await Check("idle stale cleanup preserves replacement ownership", PreCombatForec
 await Check("idle cleanup preserves an in-flight cancellation source", PreCombatForecastWorker.CheckIdleCancelDisposeOverlapAsync);
 await Check("idle cancellation before timer startup uses the captured token", PreCombatForecastWorker.CheckIdleCancellationBeforeStartAsync);
 await Check("idle indefinite lifetime cancels the old timer", PreCombatForecastWorker.CheckIndefiniteIdleLifetimeAsync);
+await Check("extra fields eligibility allows cosmetic TestSubjectKills and rejects unsupported fields", () =>
+{
+    var baseline = new PreCombatExtraFieldsState(
+        StartedWithNeow: true,
+        FreedRepy: false,
+        TestSubjectKills: 0,
+        UsedDebugCommand: false,
+        WongoPoints: 0,
+        IsPlayingRotatingCharacter: false);
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 1 }));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 3 }));
+    Equal(false, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 12 }));
+
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { StartedWithNeow = false }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { FreedRepy = true }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { UsedDebugCommand = true }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { WongoPoints = 1 }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { WongoPoints = -1 }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { IsPlayingRotatingCharacter = true }));
+
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 2, FreedRepy = true }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 2, WongoPoints = 1 }));
+    Equal(true, PreCombatSts2SimEligibility.HasUnsupportedExtraFields(baseline with { TestSubjectKills = 2, StartedWithNeow = false }));
+    return Task.CompletedTask;
+});
 Console.WriteLine($"Passed {passed} pre-combat request, ABI, and idle checks.");
 
 async Task Check(string name, Func<Task> body)
