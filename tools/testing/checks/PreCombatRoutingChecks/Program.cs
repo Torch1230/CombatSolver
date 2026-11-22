@@ -358,7 +358,7 @@ await Check("RestartWorkerAsync releases busy lease before status and cancels cl
     Equal(PreCombatBackendKind.None, PreCombatForecastApi.GetWorkerStatus().Backend);
 });
 
-await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported extra fields fall back cleanly", async () =>
+await Check("Vanilla cosmetic and progress extra fields route to InProcess while negative counters fall back cleanly", async () =>
 {
     var baselineExtraFields = new PreCombatExtraFieldsState(
         StartedWithNeow: true,
@@ -375,29 +375,33 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
         return Task.FromResult(JsonBytes(SucceededWireJson()));
     };
 
-    var cosmeticRun = new RunState
+    PreCombatExtraFieldsState[] allowedCases =
+    [
+        baselineExtraFields with { TestSubjectKills = 3 },
+        baselineExtraFields with { WongoPoints = 250, IsPlayingRotatingCharacter = true, FreedRepy = true, UsedDebugCommand = true, StartedWithNeow = false },
+    ];
+    int expectedBridgeCalls = 0;
+    foreach (PreCombatExtraFieldsState allowedFields in allowedCases)
     {
-        ExtraFields = baselineExtraFields with { TestSubjectKills = 3 },
-    };
-    RunManager.Instance.Run = cosmeticRun;
-    PreCombatForecastResult cosmeticResult = await PreCombatForecastApi.ForecastAsync(
-        cosmeticRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
-        options: new() { SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
-    Equal(PreCombatForecastStatus.Succeeded, cosmeticResult.Status);
-    Equal(PreCombatBackendKind.InProcess, cosmeticResult.ProducingBackend);
-    Equal(1, bridgeInvocations);
-    Equal(0, PreCombatForecastWorker.FallbackCountForTesting);
-    Equal(0, PreCombatForecastWorker.LegacyCalls.Count);
+        var cosmeticRun = new RunState { ExtraFields = allowedFields };
+        RunManager.Instance.Run = cosmeticRun;
+        PreCombatForecastResult cosmeticResult = await PreCombatForecastApi.ForecastAsync(
+            cosmeticRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+            options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 1_000, OverallTimeoutMilliseconds = 15_000 });
+        expectedBridgeCalls++;
+        Equal(PreCombatForecastStatus.Succeeded, cosmeticResult.Status);
+        Equal(PreCombatBackendKind.InProcess, cosmeticResult.ProducingBackend);
+        Equal(expectedBridgeCalls, bridgeInvocations);
+        Equal(0, PreCombatForecastWorker.FallbackCountForTesting);
+        Equal(0, PreCombatForecastWorker.LegacyCalls.Count);
 
-    await PreCombatForecastApi.StopWorkerAsync();
+        await PreCombatForecastApi.StopWorkerAsync();
+    }
 
     PreCombatExtraFieldsState[] excludedCases =
     [
-        baselineExtraFields with { TestSubjectKills = 2, WongoPoints = 1 },
-        baselineExtraFields with { TestSubjectKills = 2, IsPlayingRotatingCharacter = true },
-        baselineExtraFields with { TestSubjectKills = 2, FreedRepy = true },
-        baselineExtraFields with { TestSubjectKills = 2, UsedDebugCommand = true },
-        baselineExtraFields with { TestSubjectKills = 2, StartedWithNeow = false },
+        baselineExtraFields with { TestSubjectKills = -1 },
+        baselineExtraFields with { WongoPoints = -1 },
     ];
     int expectedFallbacks = 0;
     int expectedLegacyCalls = 0;
@@ -416,7 +420,7 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
         Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
         Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
         Equal("extra_field_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
-        Equal(1, bridgeInvocations);
+        Equal(expectedBridgeCalls, bridgeInvocations);
 
         await PreCombatForecastApi.StopWorkerAsync();
 
@@ -428,7 +432,7 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
         Equal(true, linuxResult.Error?.Contains("extra_field_unsupported", StringComparison.Ordinal) == true);
         Equal(expectedFallbacks, PreCombatForecastWorker.FallbackCountForTesting);
         Equal(expectedLegacyCalls, PreCombatForecastWorker.LegacyCalls.Count);
-        Equal(1, bridgeInvocations);
+        Equal(expectedBridgeCalls, bridgeInvocations);
     }
 });
 
@@ -544,7 +548,7 @@ await Check("ABI v1 vs v2 portfolio policy routing forwards v2 options and falls
     Equal(2, hookCalls);
 });
 
-await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to Legacy/Unsupported without bridge activation", async () =>
+await Check("Foreign BuiltIn-adapted OnPlay and audited critical patches route to Legacy/Unsupported without bridge activation", async () =>
 {
     int bridgeInvocations = 0;
     PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;
@@ -567,13 +571,10 @@ await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to 
 
     PreCombatHarmonyPatchDescriptor[] foreignCombatPatchCases =
     [
-        new("MegaCrit.Sts2.Core.Commands", "CombatCmd", "EndTurn", false, false, false, true, true, "Mod.Patch", "CombatCmd.EndTurn", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "DamageCmd", "Attack", false, false, false, true, true, "Mod.Patch", "DamageCmd.Attack", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "CardCmd", "Discard", false, false, false, true, true, "Mod.Patch", "CardCmd.Discard", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "PowerCmd", "Apply", false, false, false, true, true, "Mod.Patch", "PowerCmd.Apply", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "RelicCmd", "Obtain", false, false, false, true, true, "Mod.Patch", "RelicCmd.Obtain", "mod"),
-        new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", false, false, false, true, true, "Mod.Patch", "CreatureCmd.Heal", "mod"),
-        new("MegaCrit.Sts2.Core.Hooks", "Hook", "ModifyDamage", false, false, false, true, true, "Mod.Patch", "Hook.ModifyDamage", "mod"),
+        new("MegaCrit.Sts2.Core.Random", "Rng", "NextInt", false, false, false, false, true, "Mod.Patch", "Rng.NextInt", "mod"),
+        new("MegaCrit.Sts2.Core.Models.Monsters", "Mawler", "GenerateMoveStateMachine", true, false, false, true, true, "Mod.Patch", "Mawler.GenerateMoveStateMachine", "mod"),
+        new("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", ".ctor", false, false, false, true, true, "Mod.Patch", "AttackIntent..ctor", "mod"),
+        new("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", "GetSingleDamage", false, false, false, true, true, "Mod.Patch", "AttackIntent.GetSingleDamage", "mod"),
         new("MegaCrit.Sts2.Core.Models.Cards", "Normality", "ShouldPlay", false, false, false, true, true, "Mod.Patch", "Normality.ShouldPlay", "mod"),
     ];
 
@@ -622,6 +623,48 @@ await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to 
             CriticalPatches =
             [
                 new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", false, false, false, false, true, "VisualMod.Patch", "CreatureCmd.Heal", "visual_mod"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Damage", false, false, false, true, true, "MinionLib.Patch", "CreatureCmd.Damage", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "GainBlock", false, false, false, true, true, "MinionLib.Patch", "CreatureCmd.GainBlock", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Entities.Creatures", "Creature", "LoseHpInternal", false, false, false, true, true, "MinionLib.Patch", "Creature.LoseHpInternal", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Models", "CardModel", "FromSerializable", false, false, false, true, true, "MinionLib.Patch", "CardModel.FromSerializable", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Models.Powers", "PersonalHivePower", "AfterDamageReceived", false, false, false, true, true, "MinionLib.Patch", "PersonalHivePower.AfterDamageReceived", "MinionLib"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Combat", "CombatManager", "AfterCombatRoomLoaded", false, false, false, true, true, "QuickLink.Patch", "CombatManager.AfterCombatRoomLoaded", "QuickLink"),
             ],
         },
         new RunState

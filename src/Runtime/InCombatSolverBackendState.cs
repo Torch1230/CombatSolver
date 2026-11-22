@@ -216,10 +216,17 @@ internal static class InCombatSolverBackendState
 
         if (combatState?.RunState is RunState run)
         {
-            PreCombatEligibilityResult hostResult = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(run);
+            PreCombatEligibilityResult hostResult = PreCombatSts2SimEligibility.AssessMandatoryLiveHost(run, forInCombat: true);
             hostEligible = hostResult.IsEligible;
             hostExclusionCode = hostResult.FailureCode;
             hostExclusionDetail = hostResult.Detail;
+            if (hostEligible
+                && InCombatSts2SimEligibility.TryFindActiveCombatModViolation(combatState, out string combatModReason))
+            {
+                hostEligible = false;
+                hostExclusionCode = "gameplay_mod";
+                hostExclusionDetail = combatModReason;
+            }
         }
 
         lock (Sync)

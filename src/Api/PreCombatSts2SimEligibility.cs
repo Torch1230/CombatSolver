@@ -43,7 +43,7 @@ internal static partial class PreCombatSts2SimEligibility
         "STS2-RitsuLib",
     };
 
-    public static PreCombatEligibilityResult AssessMandatoryLiveHost(RunState run)
+    public static PreCombatEligibilityResult AssessMandatoryLiveHost(RunState run, bool forInCombat = false)
     {
         if (run.GameMode == GameMode.Dread)
         {
@@ -51,7 +51,8 @@ internal static partial class PreCombatSts2SimEligibility
                 "dread_mode",
                 "Dread mode routes directly to the legacy solver.",
                 run,
-                null);
+                null,
+                forInCombat);
         }
         if (run.GameMode != GameMode.Standard)
         {
@@ -59,7 +60,8 @@ internal static partial class PreCombatSts2SimEligibility
                 "non_standard_mode",
                 $"Game mode {run.GameMode} routes to the legacy solver.",
                 run,
-                null);
+                null,
+                forInCombat);
         }
         if (run.IsCustomGame)
         {
@@ -67,7 +69,8 @@ internal static partial class PreCombatSts2SimEligibility
                 "custom_game",
                 "Custom games route to the legacy solver.",
                 run,
-                null);
+                null,
+                forInCombat);
         }
         if (RunManager.Instance.DailyTime is not null)
         {
@@ -75,7 +78,8 @@ internal static partial class PreCombatSts2SimEligibility
                 "daily_run",
                 "Daily runs route to the legacy solver.",
                 run,
-                null);
+                null,
+                forInCombat);
         }
         if (run.Modifiers.Count > 0)
         {
@@ -83,7 +87,8 @@ internal static partial class PreCombatSts2SimEligibility
                 "modifiers_present",
                 $"Run has {run.Modifiers.Count} modifier(s).",
                 run,
-                null);
+                null,
+                forInCombat);
         }
         if (run.RunModels.Count != 1 || run.RunModels[0] is not MultiplayerScalingModel)
         {
@@ -91,7 +96,8 @@ internal static partial class PreCombatSts2SimEligibility
                 "non_standard_run_models",
                 "Run models differ from vanilla single-player Standard.",
                 run,
-                null);
+                null,
+                forInCombat);
         }
 
         ReleaseInfo? release = ReleaseInfoManager.Instance.ReleaseInfo;
@@ -104,30 +110,32 @@ internal static partial class PreCombatSts2SimEligibility
                 $"Host game release '{release?.Version ?? "null"}@{release?.Commit ?? "null"}' " +
                 $"does not match {PreCombatSts2SimAbi.SupportedGameVersion}@{PreCombatSts2SimAbi.SupportedGameCommit}.",
                 run,
-                null);
+                null,
+                forInCombat);
         }
 
-        if (TryFindActiveRunModViolation(run, out string modReason))
+        if (TryFindActiveRunModViolation(run, forInCombat, out string modReason))
         {
-            return Ineligible("gameplay_mod", modReason, run, null);
+            return Ineligible("gameplay_mod", modReason, run, null, forInCombat);
         }
 
         if (TryFindCriticalHarmonyPatch(out string patchReason))
         {
-            return Ineligible("gameplay_patch", patchReason, run, null);
+            return Ineligible("gameplay_patch", patchReason, run, null, forInCombat);
         }
 
         Player? livePlayer = LocalContext.GetMe(run) ?? (run.Players.Count > 0 ? run.Players[0] : null);
         if (livePlayer is not null && TryFindForeignCardOnPlayPatch(livePlayer.Deck.Cards, out string deckCardPatchReason))
         {
-            return Ineligible("gameplay_patch", deckCardPatchReason, run, null);
+            return Ineligible("gameplay_patch", deckCardPatchReason, run, null, forInCombat);
         }
 
         string fingerprint = BuildLiveFingerprint(
             isEligible: true,
             failureCode: null,
             run,
-            player: null);
+            player: null,
+            forInCombat);
         return PreCombatEligibilityResult.Eligible(fingerprint);
     }
 
@@ -373,7 +381,7 @@ internal static partial class PreCombatSts2SimEligibility
             : $"{eligibility.FailureCode}:{eligibility.Detail}";
     }
 
-    private static bool TryFindActiveRunModViolation(RunState run, out string reason)
+    private static bool TryFindActiveRunModViolation(RunState run, bool forInCombat, out string reason)
     {
         foreach (AbstractModel subscriber in ModHelper.IterateAllRunStateSubscribers(run))
         {
@@ -383,7 +391,10 @@ internal static partial class PreCombatSts2SimEligibility
                 continue;
             if (mod?.manifest?.affectsGameplay is false)
                 continue;
-            if (PredictionModHookSubscriberInertness.IsPreCombatInert(subscriber, out _))
+            bool isInert = forInCombat
+                ? PredictionModHookSubscriberInertness.IsCombatInert(subscriber, out _)
+                : PredictionModHookSubscriberInertness.IsPreCombatInert(subscriber, out _);
+            if (isInert)
                 continue;
 
             string modId = mod?.manifest?.id ?? type.Assembly.GetName().Name ?? "unknown";
@@ -752,9 +763,10 @@ internal static partial class PreCombatSts2SimEligibility
         string code,
         string detail,
         RunState run,
-        Player? player)
+        Player? player,
+        bool forInCombat = false)
     {
-        string fingerprint = BuildLiveFingerprint(false, code, run, player);
+        string fingerprint = BuildLiveFingerprint(false, code, run, player, forInCombat);
         return PreCombatEligibilityResult.Ineligible(code, detail, fingerprint);
     }
 
@@ -769,7 +781,8 @@ internal static partial class PreCombatSts2SimEligibility
         bool isEligible,
         string? failureCode,
         RunState run,
-        Player? player)
+        Player? player,
+        bool forInCombat = false)
     {
         string mods = string.Join(
             ';',
@@ -800,6 +813,8 @@ internal static partial class PreCombatSts2SimEligibility
             $"debug={run.ExtraFields.UsedDebugCommand}",
             precondition,
             mods);
+        if (forInCombat)
+            raw = $"{raw}|in_combat=true";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
     }
 }
