@@ -46,6 +46,8 @@ internal sealed partial class UnattendedTestRunner
 
         public bool IsActive { get; private set; }
         public bool AutomaticTurnSearchEnabled { get; private set; } = true;
+        internal bool AutomaticTurnSearchEnabledForTesting => AutomaticTurnSearchEnabled;
+        internal void SetAutomaticTurnSearchEnabledForTesting(bool enabled) => AutomaticTurnSearchEnabled = enabled;
         public bool VerifyIncrementalSearch { get; private set; }
         public bool FixedSearchBudget { get; private set; }
         public void ApplyRecordedShortSearchMode(bool enabled) => FixedSearchBudget = enabled;

@@ -32,6 +32,7 @@ internal sealed class SearchInteractionState
     private readonly object _gate = new();
     private int _acceptingTakeover = 1;
     private SearchTakeoverRequest? _takeoverRequest;
+    private Action? _onTakeoverRequested;
 
     public SearchProgressDisplayState ProgressDisplay { get; } = new();
     public SolverProgress? Progress;
@@ -73,6 +74,7 @@ internal sealed class SearchInteractionState
         {
             Volatile.Write(ref _takeoverRequest, null);
             Volatile.Write(ref _acceptingTakeover, 1);
+            _onTakeoverRequested = null;
         }
         Progress = null;
         RenderedProgress = null;
@@ -80,6 +82,18 @@ internal sealed class SearchInteractionState
         StoppedResult = null;
         StoppedStamp = null;
         ProgressDisplay.Restart(Environment.TickCount64);
+    }
+
+    public void SetTakeoverCallback(Action? callback)
+    {
+        bool invokeNow = false;
+        lock (_gate)
+        {
+            _onTakeoverRequested = callback;
+            invokeNow = callback != null && _takeoverRequest != null;
+        }
+        if (invokeNow)
+            callback!();
     }
 
     public bool RequestApplyCurrentTurn()
@@ -93,13 +107,16 @@ internal sealed class SearchInteractionState
 
     private bool RequestTakeover(SearchTakeoverRequest request)
     {
+        Action? callback;
         lock (_gate)
         {
             if (!CanAcceptTakeover || _takeoverRequest != null)
                 return false;
             Volatile.Write(ref _takeoverRequest, request);
-            return true;
+            callback = _onTakeoverRequested;
         }
+        callback?.Invoke();
+        return true;
     }
 
     public SolverResult FinalizeWorkerResult(SolverResult result)

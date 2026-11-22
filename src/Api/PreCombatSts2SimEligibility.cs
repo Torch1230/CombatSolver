@@ -403,7 +403,7 @@ internal static class PreCombatSts2SimEligibility
         return false;
     }
 
-    private static bool TryFindNonVanillaReachablePools(Player player, out string reason)
+    internal static bool TryFindNonVanillaReachablePools(Player player, out string reason)
     {
         CardPoolModel[] cardPools =
         [
@@ -455,7 +455,7 @@ internal static class PreCombatSts2SimEligibility
         return false;
     }
 
-    private static IEnumerable<CardModel> EnumerateReachableNativeCards(Player player)
+    internal static IEnumerable<CardModel> EnumerateReachableNativeCards(Player player)
     {
         CardPoolModel[] mainPools =
         [
@@ -560,7 +560,7 @@ internal static class PreCombatSts2SimEligibility
         return false;
     }
 
-    private static bool TryFindForeignCardOnPlayPatch(IEnumerable<CardModel> deckCards, out string reason)
+    internal static bool TryFindForeignCardOnPlayPatch(IEnumerable<CardModel> deckCards, out string reason)
     {
         try
         {
@@ -598,7 +598,7 @@ internal static class PreCombatSts2SimEligibility
         return true;
     }
 
-    private static bool HasFullEpochUnlocks(IEnumerable<string>? unlockedEpochs)
+    internal static bool HasFullEpochUnlocks(IEnumerable<string>? unlockedEpochs)
     {
         if (unlockedEpochs is null)
             return false;

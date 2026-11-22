@@ -210,6 +210,8 @@ internal static class SolverOverlay
     internal static string? RouteHeadingForTesting => _routeHeadingLabel?.Text;
     internal static string PreCombatBackendBadgeTextForTesting => _preCombatBackendLabel?.Text ?? string.Empty;
     internal static string PreCombatBackendBadgeTooltipForTesting => _preCombatBackendBadge?.TooltipText ?? string.Empty;
+    internal static string InCombatBackendBadgeTextForTesting => PreCombatBackendBadgeTextForTesting;
+    internal static string InCombatBackendBadgeTooltipForTesting => PreCombatBackendBadgeTooltipForTesting;
     internal static string? RewardOutcomeTextForTesting => _rewardOutcomeLabel?.Visible == true
         ? _rewardOutcomeLabel.Text : null;
     internal static string? HpOutcomeTextForTesting => _hpOutcomeLabel?.Text;
@@ -2193,13 +2195,120 @@ internal static class SolverOverlay
         string? reasonDetail = string.IsNullOrWhiteSpace(rawDetail)
             ? null
             : rawDetail.Length <= 160 ? rawDetail : rawDetail[..157] + "...";
+        string preCombatText = text;
+        bool inCombatActive = CombatManager.Instance.IsInProgress;
+        string extraCacheState = inCombatActive ? "combat" : "map";
+        if (inCombatActive)
+        {
+            InCombatBackendDisplaySnapshot inCombat = InCombatSolverBackendState.CaptureDisplaySnapshot(
+                CombatManager.Instance.DebugOnlyGetState(),
+                SolverSettings.Capture());
+            extraCacheState =
+                $"combat|{(int)inCombat.ActiveBackend}|{(int)inCombat.LastUsedBackend}|{inCombat.EffectiveParallelism}|{inCombat.UserEnabled}|{inCombat.HostEligible}|{inCombat.IsBridgeCorrupt}|{inCombat.HasInstalledSts2Sim}|{inCombat.LastFallbackCode}|{inCombat.LastExclusionCode}|{inCombat.HostExclusionCode}|{preCombatText}";
+            if (inCombat.IsBridgeCorrupt)
+            {
+                text = SolverText.Get("引擎：Sts2Sim 异常（回退内置）");
+                summaryTooltip = SolverText.Get("同进程 Sts2Sim 组件加载或校验失败，当前战斗已自动使用内置模拟器。");
+                tone = Danger;
+            }
+            else if (inCombat.ActiveBackend == InCombatBackendKind.Sts2Sim)
+            {
+                int? dop = inCombat.EffectiveParallelism;
+                text = dop is > 0
+                    ? SolverText.Format($"引擎：Sts2Sim 计算中（{dop.Value} 线程）")
+                    : SolverText.Get("引擎：Sts2Sim 计算中");
+                summaryTooltip = dop is > 0
+                    ? SolverText.Format($"当前正在使用同进程 Sts2Sim 模拟器计算本场战斗（请求并行：{dop.Value} 线程）。")
+                    : SolverText.Get("当前正在使用同进程 Sts2Sim 模拟器计算本场战斗。");
+                tone = Accent;
+            }
+            else if (inCombat.LastUsedBackend == InCombatBackendKind.Sts2Sim
+                     && inCombat.UserEnabled
+                     && inCombat.HostEligible
+                     && string.IsNullOrEmpty(inCombat.LastFallbackCode))
+            {
+                int? dop = inCombat.EffectiveParallelism;
+                text = dop is > 0
+                    ? SolverText.Format($"引擎：Sts2Sim（{dop.Value} 线程）")
+                    : SolverText.Get("引擎：Sts2Sim");
+                summaryTooltip = dop is > 0
+                    ? SolverText.Format($"本场战斗已使用同进程 Sts2Sim 模拟器（有效并行：{dop.Value} 线程）。")
+                    : SolverText.Get("同进程 Sts2Sim 模拟器已在本场战斗启用。");
+                tone = Success;
+            }
+            else if (inCombat.ActiveBackend == InCombatBackendKind.None
+                     && inCombat.LastUsedBackend == InCombatBackendKind.None
+                     && inCombat.HasInstalledSts2Sim
+                     && inCombat.UserEnabled
+                     && inCombat.HostEligible
+                     && string.IsNullOrEmpty(inCombat.LastFallbackCode))
+            {
+                text = SolverText.Get("引擎：Sts2Sim（就绪）");
+                summaryTooltip = SolverText.Get("同进程 Sts2Sim 模拟器已就绪，将在本场战斗计算时优先使用。");
+                tone = Accent;
+            }
+            else
+            {
+                int? dop = inCombat.EffectiveParallelism;
+                text = inCombat.LastUsedBackend == InCombatBackendKind.BuiltIn && dop is > 0
+                    ? SolverText.Format($"引擎：内置模拟器（{dop.Value} 线程）")
+                    : SolverText.Get("引擎：内置模拟器");
+                if (inCombat.ActiveBackend == InCombatBackendKind.BuiltIn)
+                {
+                    summaryTooltip = SolverText.Get("当前正在使用内置模拟器计算本场战斗。");
+                    tone = !string.IsNullOrEmpty(inCombat.LastFallbackCode) ? Warning : Accent;
+                }
+                else if (!inCombat.UserEnabled)
+                {
+                    summaryTooltip = SolverText.Get("已按设置关闭战斗内 Sts2Sim，当前使用内置模拟器。");
+                    tone = TextMuted;
+                }
+                else if (!inCombat.HasInstalledSts2Sim)
+                {
+                    summaryTooltip = SolverText.Get("未安装 sts2sim 组件，当前战斗使用内置模拟器。");
+                    tone = TextMuted;
+                }
+                else if (!string.IsNullOrEmpty(inCombat.LastFallbackCode))
+                {
+                    summaryTooltip = SolverText.Get("本次战斗已回退并使用内置模拟器。");
+                    tone = Warning;
+                }
+                else if (!inCombat.HostEligible)
+                {
+                    summaryTooltip = SolverText.Get("当前战斗条件超出 Sts2Sim 支持范围，已自动使用内置模拟器。");
+                    tone = TextMuted;
+                }
+                else
+                {
+                    summaryTooltip = SolverText.Get("当前战斗使用内置模拟器。");
+                    tone = TextMuted;
+                }
+            }
+
+            reasonCode = !string.IsNullOrEmpty(inCombat.HostExclusionCode)
+                ? inCombat.HostExclusionCode
+                : !string.IsNullOrEmpty(inCombat.LastFallbackCode)
+                    ? inCombat.LastFallbackCode
+                    : inCombat.LastExclusionCode;
+            rawDetail = !string.IsNullOrEmpty(inCombat.HostExclusionCode)
+                ? inCombat.HostExclusionDetail
+                : !string.IsNullOrEmpty(inCombat.LastFallbackCode)
+                    ? inCombat.LastFallbackDetail
+                    : inCombat.LastExclusionDetail;
+            reasonDetail = string.IsNullOrWhiteSpace(rawDetail)
+                ? null
+                : rawDetail.Length <= 160 ? rawDetail : rawDetail[..157] + "...";
+        }
+
         string tooltip = string.IsNullOrEmpty(reasonCode)
             ? $"{summaryTooltip}\n{installStatus}"
             : string.IsNullOrEmpty(reasonDetail)
                 ? $"{summaryTooltip}\n{installStatus}\n{SolverText.Format($"分流/回退原因：{reasonCode}")}"
                 : $"{summaryTooltip}\n{installStatus}\n{SolverText.Format($"分流/回退原因：{reasonCode}")}\n{SolverText.Format($"详情：{reasonDetail}")}";
+        if (inCombatActive)
+            tooltip += $"\n{SolverText.Format($"战前引擎：{preCombatText}")}";
 
-        string cacheKey = $"{SolverUiTokens.IsLightTheme}|{SolverText.IsEnglish}|{text}|{tooltip}|{tone}";
+        string cacheKey = $"{SolverUiTokens.IsLightTheme}|{SolverText.IsEnglish}|{extraCacheState}|{text}|{tooltip}|{tone}";
         if (string.Equals(_renderedPreCombatBadgeKey, cacheKey, StringComparison.Ordinal))
             return;
         _renderedPreCombatBadgeKey = cacheKey;

@@ -102,6 +102,7 @@ internal sealed class UnattendedTestRequest
     public bool VerifyForkBoundaries { get; init; }
     public bool VerifyCombatRootSnapshot { get; init; }
     public bool VerifyPreCombatForecastApi { get; init; }
+    public bool VerifyInCombatSts2SimContract { get; init; }
     public bool VerifyBaseLibCardModifierBoundary { get; init; }
     public bool StopAfterCombatRootSnapshotAssertion { get; init; }
     public bool VerifyIncrementalSearch { get; init; }

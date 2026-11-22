@@ -122,6 +122,7 @@ param(
     [switch]$VerifyForkBoundaries,
     [switch]$VerifyCombatRootSnapshot,
     [switch]$VerifyPreCombatForecastApi,
+    [switch]$VerifyInCombatSts2SimContract,
     [switch]$VerifyBaseLibCardModifierBoundary,
     [switch]$StopAfterCombatRootSnapshotAssertion,
     [switch]$VerifyIncrementalSearch,
@@ -868,6 +869,7 @@ $request = [ordered]@{
     verifyForkBoundaries = $VerifyForkBoundaries.IsPresent
     verifyCombatRootSnapshot = $VerifyCombatRootSnapshot.IsPresent
     verifyPreCombatForecastApi = $VerifyPreCombatForecastApi.IsPresent
+    verifyInCombatSts2SimContract = $VerifyInCombatSts2SimContract.IsPresent
     verifyBaseLibCardModifierBoundary = $VerifyBaseLibCardModifierBoundary.IsPresent
     stopAfterCombatRootSnapshotAssertion = $StopAfterCombatRootSnapshotAssertion.IsPresent
     verifyIncrementalSearch = $VerifyIncrementalSearch.IsPresent

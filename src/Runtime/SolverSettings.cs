@@ -111,6 +111,7 @@ internal sealed record SolverSettingsData
     public int PerformanceMigrationVersion { get; init; }
     public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
     public int? SearchMaxDegreeOfParallelism { get; init; }
+    public bool UseSts2SimInCombat { get; init; } = true;
     public bool UseBeamWidthPortfolio { get; init; } = true;
     public bool UseNoveltyPortfolio { get; init; }
     public bool UseEarlyTurnExploration { get; init; }
@@ -164,6 +165,7 @@ internal sealed record SolverSettingsSnapshot(
     public bool UseNoveltyPortfolio { get; init; }
     public bool UseEarlyTurnExploration { get; init; }
     public bool PredictPotionReward { get; init; }
+    public bool UseSts2SimInCombat { get; init; } = true;
 }
 
 internal static class SolverSettings
@@ -280,6 +282,7 @@ internal static class SolverSettings
             $"potion_policy={migrated.PotionPolicy} " +
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"performance_preset={ResolvePerformancePreset(migrated)} " +
+            $"use_sts2sim_in_combat={migrated.UseSts2SimInCombat.ToString().ToLowerInvariant()} " +
             $"beam_width_portfolio={migrated.UseBeamWidthPortfolio.ToString().ToLowerInvariant()} " +
             $"early_turn_exploration={migrated.UseEarlyTurnExploration.ToString().ToLowerInvariant()} " +
             $"max_dop={Capture().SearchMaxDegreeOfParallelism} " +
@@ -330,6 +333,7 @@ internal static class SolverSettings
             UseNoveltyPortfolio = data.UseNoveltyPortfolio,
             UseEarlyTurnExploration = data.UseEarlyTurnExploration,
             PredictPotionReward = data.PredictPotionReward,
+            UseSts2SimInCombat = data.UseSts2SimInCombat,
         };
     }
 
