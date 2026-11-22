@@ -52,6 +52,10 @@ internal static partial class InCombatLiveStateCapturer
             {
                 registerCard(ulCard);
             }
+            else if (relic is Vambrace vam && vam._triggeringCard is { } vamCard)
+            {
+                registerCard(vamCard);
+            }
         }
 
         var scanned = new HashSet<Creature>(ReferenceEqualityComparer.Instance);
@@ -533,7 +537,16 @@ internal static partial class InCombatLiveStateCapturer
                     ul._triggeringCard is not null ? cardHandles[ul._triggeringCard] : null);
                 break;
             case Vambrace vam:
-                fields["Vambrace._triggeredThisCombat"] = BoolVal(vam._blockGainedThisCombat);
+                if (vam._triggeringCard is not null && !vam._blockGainedThisCombat)
+                {
+                    throw new InCombatLiveCaptureUnsupportedException(
+                        "live_private_state_unmapped",
+                        "relics.Vambrace._triggeringCard",
+                        "Vambrace has an active triggering card reference.");
+                }
+                fields["Vambrace._blockGainedThisCombat"] = BoolVal(vam._blockGainedThisCombat);
+                fields["Vambrace._triggeringCard"] = CardHandleVal(
+                    vam._triggeringCard is not null ? cardHandles[vam._triggeringCard] : null);
                 break;
             case VenerableTeaSet vts:
                 fields["VenerableTeaSet._isArmed"] = BoolVal(vts.GainEnergyInNextCombat);
