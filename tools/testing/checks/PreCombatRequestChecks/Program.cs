@@ -1123,6 +1123,7 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
         CardPatch("Normality", "ShouldPlay", affectsGameplay: false),
         CardPatch("Normality", "MoveNext", affectsGameplay: false, isConcreteCardGameplayOverride: true, targetDisplayName: "MegaCrit.Sts2.Core.Models.Cards.Normality+<ShouldPlay>d__3.MoveNext"),
         CardPatch("StrikeIronclad", "get_PortraitPath", affectsGameplay: true),
+        CardPatch("DingyDagger", "get_PortraitPngPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_BetaPortraitPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_OverlayPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_AllPortraitPaths", affectsGameplay: true),
@@ -1139,6 +1140,15 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
 
     Equal(false, PreCombatSts2SimEligibility.TryFindCriticalHarmonyPatchViolation(allowedCardPatches, out string allowedCardReason));
     Equal(string.Empty, allowedCardReason);
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("get_PortraitPngPath"));
+    Equal(
+        PreCombatHarmonyTargetKind.None,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Cards",
+            "DingyDagger",
+            "get_PortraitPngPath",
+            isMonsterModel: false,
+            isConcreteCardGameplayOverride: false));
     return Task.CompletedTask;
 });
 await Check("bridge IsCorrupt reads immutable snapshot without blocking during activation lock", async () =>
@@ -1201,6 +1211,52 @@ await Check("bridge IsCorrupt reads immutable snapshot without blocking during a
         if (Directory.Exists(scratchRoot))
             Directory.Delete(scratchRoot, recursive: true);
     }
+});
+await Check("ApplyCurrentTurn takeover gate rejects unpublished attempt when rendered preview belongs to prior attempt", () =>
+{
+    var gate = new CombatSolver.SearchTakeoverAttemptGate();
+
+    // Legacy direct caller before any progress publication retains attempt-0 compatibility with null expectation.
+    Equal<int?>(null, gate.RenderedTurnPreviewBackendAttempt);
+    Equal(true, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: null));
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 0));
+
+    // Publishing attempt-0 preview without rendering must not satisfy RenderedProgress gating.
+    Equal(true, gate.RecordPublishedProgress(backendAttempt: 0, hasCurrentTurnPreview: true));
+    Equal<int?>(null, gate.RenderedTurnPreviewBackendAttempt);
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 0));
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: null));
+
+    // Once attempt-0 preview renders, attempt 0 becomes actionable.
+    Equal(true, gate.RecordRenderedProgress(backendAttempt: 0, hasCurrentTurnPreview: true));
+    Equal(0, gate.RenderedTurnPreviewBackendAttempt);
+    Equal(true, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 0));
+
+    // If attempt 1 publishes while rendered preview still belongs to attempt 0, neither attempt may apply.
+    gate.AdvanceAttemptOnFallback(failedBackendAttempt: 0, clearRenderedPreview: false);
+    Equal(true, gate.RecordPublishedProgress(backendAttempt: 1, hasCurrentTurnPreview: true));
+    Equal<int?>(null, gate.RenderedTurnPreviewBackendAttempt);
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 0));
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 1));
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: null));
+
+    // Standard fallback clears rendered preview and likewise rejects attempt 1 until attempt 1 renders.
+    gate.Reset();
+    Equal(true, gate.RecordPublishedProgress(backendAttempt: 0, hasCurrentTurnPreview: true));
+    Equal(true, gate.RecordRenderedProgress(backendAttempt: 0, hasCurrentTurnPreview: true));
+    gate.AdvanceAttemptOnFallback(failedBackendAttempt: 0);
+    Equal(true, gate.RecordPublishedProgress(backendAttempt: 1, hasCurrentTurnPreview: true));
+    Equal<int?>(null, gate.RenderedTurnPreviewBackendAttempt);
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 0));
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 1));
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: null));
+
+    // Once attempt 1 renders its preview, attempt 1 succeeds while stale attempt 0 remains rejected.
+    Equal(true, gate.RecordRenderedProgress(backendAttempt: 1, hasCurrentTurnPreview: true));
+    Equal(1, gate.RenderedTurnPreviewBackendAttempt);
+    Equal(false, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 0));
+    Equal(true, gate.CanRequestApplyCurrentTurn(expectedBackendAttempt: 1));
+    return Task.CompletedTask;
 });
 Console.WriteLine($"Passed {passed} pre-combat request, ABI, and idle checks.");
 

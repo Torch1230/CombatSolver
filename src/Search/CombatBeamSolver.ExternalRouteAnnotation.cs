@@ -43,6 +43,10 @@ internal readonly record struct ExternalRoutePotionUseExpectation(
     int Slot,
     string PotionId);
 
+internal readonly record struct ExternalRouteVerifiedPotionUse(
+    int Turn,
+    PredictedPotionUse Use);
+
 internal readonly record struct ExternalRouteSnapshotSummary(
     int Turn,
     bool PlayerDead,
@@ -76,7 +80,7 @@ internal readonly record struct ExternalRouteSnapshotSummary(
     int PostCombatRelicHeal,
     int ProjectedBattleHpLost,
     IReadOnlyList<PredictionGap> PredictionGaps,
-    IReadOnlyList<PredictedPotionUse> VerifiedPotionUses);
+    IReadOnlyList<ExternalRouteVerifiedPotionUse> VerifiedPotionUses);
 
 internal readonly record struct ExternalRouteVerificationResult(
     ExternalRouteVerificationStatus Status,
@@ -89,12 +93,6 @@ internal readonly record struct ExternalRouteVerificationResult(
 
 internal sealed partial class CombatBeamSolver
 {
-    private readonly record struct ReplayedPotionConsumption(
-        int Turn,
-        int Slot,
-        string PotionId,
-        bool Automatic);
-
     private ExternalChoiceBinding? CreateExternalActionChoiceBinding(string? actionSourceId)
         => _validateExternalChoicesAgainstSpec
             ? new ExternalChoiceBinding(actionSourceId, choice => _externalBoundActionChoices?.Add(choice))
@@ -159,18 +157,25 @@ internal sealed partial class CombatBeamSolver
 
             PlanAction[] annotatedActions = [.. actions];
             List<CachedContinuation> continuations = [];
-            List<ReplayedPotionConsumption> replayedPotions = [];
-            int observedPotionUseCount = rootCombat.PotionUses.Count;
+            List<ExternalRouteVerifiedPotionUse> replayedPotions = [];
+            int observedPotionUseCount = 0;
+            while (observedPotionUseCount < rootCombat.PotionUses.Count)
+            {
+                replayedPotions.Add(new ExternalRouteVerifiedPotionUse(
+                    root.StartTurnNumber,
+                    rootCombat.PotionUses[observedPotionUseCount++]));
+            }
             int verifiedPrefixActionCount = 0;
             int verifiedLastTurn = root.StartTurnNumber - 1;
-            int verifiedPotionCountAtCheckpoint = 0;
+            int verifiedPotionCountAtCheckpoint = replayedPotions.Count;
             ExternalRouteSnapshotSummary? verifiedPrefixSummary = CaptureSummary(
                 currentSnapshot,
                 rootSim,
                 rootCombat,
                 root,
                 battleDamage,
-                actionCount: 0);
+                actionCount: 0,
+                replayedPotions);
             int turnHpLost = 0;
             int turnHpRecovered = 0;
             int turnEnemyHpLost = 0;
@@ -279,29 +284,16 @@ internal sealed partial class CombatBeamSolver
                 currentSnapshot = nextSnapshot;
 
                 if (action.Kind == PlanActionKind.UsePotion)
-                {
                     explicitPotionUses++;
-                    replayedPotions.Add(new ReplayedPotionConsumption(
-                        action.Turn,
-                        action.PotionSlot,
-                        action.PotionId,
-                        Automatic: false));
-                }
 
                 CombatPredictionSimulator postSim = (CombatPredictionSimulator)currentSnapshot.Simulator;
                 SimulatedCombatState postCombat = (SimulatedCombatState)postSim.State.CombatState;
 
                 while (observedPotionUseCount < postCombat.PotionUses.Count)
                 {
-                    PredictedPotionUse recordedUse = postCombat.PotionUses[observedPotionUseCount++];
-                    if (recordedUse.Automatic)
-                    {
-                        replayedPotions.Add(new ReplayedPotionConsumption(
-                            turnBeforeAction,
-                            recordedUse.Slot,
-                            recordedUse.PotionId,
-                            Automatic: true));
-                    }
+                    replayedPotions.Add(new ExternalRouteVerifiedPotionUse(
+                        turnBeforeAction,
+                        postCombat.PotionUses[observedPotionUseCount++]));
                 }
 
                 annotatedActions[index] = BindReplayedChoices(
@@ -374,7 +366,7 @@ internal sealed partial class CombatBeamSolver
 
                 if (combatEnded)
                 {
-                    if (!isLastReplayed || (verifyCurrentTurnOnly && hasNextAction && actions[index + 1].Turn == root.StartTurnNumber))
+                    if (!isLastReplayed || hasNextAction)
                         return Illegal($"Combat ended at action[{index}], before subsequent route actions.");
 
                     int actualEnergyLeft = endsTurn ? energyBefore : currentSnapshot.Energy;
@@ -401,7 +393,8 @@ internal sealed partial class CombatBeamSolver
                         postCombat,
                         root,
                         battleDamage,
-                        verifiedPrefixActionCount);
+                        verifiedPrefixActionCount,
+                        replayedPotions);
                 }
                 else if (endsTurn)
                 {
@@ -438,7 +431,8 @@ internal sealed partial class CombatBeamSolver
                         postCombat,
                         root,
                         battleDamage,
-                        verifiedPrefixActionCount);
+                        verifiedPrefixActionCount,
+                        replayedPotions);
 
                     if (!verifyCurrentTurnOnly && hasNextAction && actions[index + 1].Turn > turnBeforeAction)
                     {
@@ -492,7 +486,8 @@ internal sealed partial class CombatBeamSolver
                         postCombat,
                         root,
                         battleDamage,
-                        verifiedPrefixActionCount);
+                        verifiedPrefixActionCount,
+                        replayedPotions);
                 }
             }
 
@@ -1014,7 +1009,7 @@ internal sealed partial class CombatBeamSolver
 
     private static bool CheckPotionExpectations(
         IReadOnlyList<ExternalRoutePotionUseExpectation> expectedAll,
-        IReadOnlyList<ReplayedPotionConsumption> replayedAll,
+        IReadOnlyList<ExternalRouteVerifiedPotionUse> replayedAll,
         int replayedCount,
         int verifiedTurnLimit,
         bool enforceNoFutureEntries,
@@ -1044,13 +1039,13 @@ internal sealed partial class CombatBeamSolver
         int expectedIndex = 0;
         for (int i = 0; i < replayedCount; i++)
         {
-            ReplayedPotionConsumption replayed = replayedAll[i];
+            ExternalRouteVerifiedPotionUse replayed = replayedAll[i];
             bool matchesNextExpected = expectedIndex < expectedScoped.Count
                 && expectedScoped[expectedIndex].Turn == replayed.Turn
-                && expectedScoped[expectedIndex].Slot == replayed.Slot
-                && string.Equals(expectedScoped[expectedIndex].PotionId, replayed.PotionId, StringComparison.Ordinal);
+                && expectedScoped[expectedIndex].Slot == replayed.Use.Slot
+                && string.Equals(expectedScoped[expectedIndex].PotionId, replayed.Use.PotionId, StringComparison.Ordinal);
 
-            if (!replayed.Automatic)
+            if (!replayed.Use.Automatic)
             {
                 if (!matchesNextExpected)
                 {
@@ -1058,7 +1053,7 @@ internal sealed partial class CombatBeamSolver
                         ? $"turn={expectedScoped[expectedIndex].Turn},slot={expectedScoped[expectedIndex].Slot},id={expectedScoped[expectedIndex].PotionId}"
                         : "<missing>";
                     failureReason =
-                        $"Explicit UsePotion ({replayed.Turn},{replayed.Slot},{replayed.PotionId}) " +
+                        $"Explicit UsePotion ({replayed.Turn},{replayed.Use.Slot},{replayed.Use.PotionId}) " +
                         $"does not match PotionUses[{expectedIndex}] ({actualDesc}).";
                     return false;
                 }
@@ -1131,7 +1126,8 @@ internal sealed partial class CombatBeamSolver
         SimulatedCombatState combat,
         CombatRootSnapshot root,
         BattleDamageSnapshot battleDamage,
-        int actionCount)
+        int actionCount,
+        IReadOnlyList<ExternalRouteVerifiedPotionUse> replayedPotions)
     {
         int postCombatRelicHeal = SolverInterimResultOrdering.IsCompleteVictory(
             actionCount,
@@ -1173,7 +1169,7 @@ internal sealed partial class CombatBeamSolver
             PostCombatRelicHeal: postCombatRelicHeal,
             ProjectedBattleHpLost: battleDamage.HpLostSoFar + snapshot.CumulativePlayerHpLost,
             PredictionGaps: snapshot.PredictionGaps.ToArray(),
-            VerifiedPotionUses: combat.PotionUses.ToArray());
+            VerifiedPotionUses: replayedPotions.ToArray());
     }
 
     private static ExternalRouteVerificationResult HandleUnsupportedStep(
@@ -1187,7 +1183,7 @@ internal sealed partial class CombatBeamSolver
         int verifiedLastTurn,
         ExternalRouteSnapshotSummary? verifiedPrefixSummary,
         IReadOnlyList<ExternalRoutePotionUseExpectation> expectedPotionUses,
-        IReadOnlyList<ReplayedPotionConsumption> replayedPotions,
+        IReadOnlyList<ExternalRouteVerifiedPotionUse> replayedPotions,
         int verifiedPotionCountAtCheckpoint)
     {
         string reason = $"{ex.GetType().Name}: {ex.Message}";

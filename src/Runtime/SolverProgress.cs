@@ -48,9 +48,8 @@ internal sealed class SearchInteractionState(int generation = 0)
 {
     private readonly object _gate = new();
     private int _generation = generation;
-    private int _backendAttempt;
+    private readonly SearchTakeoverAttemptGate _attemptGate = new();
     private int _acceptingTakeover = 1;
-    private bool _progressPublished;
     private SearchTakeoverRequest? _takeoverRequest;
     private Action? _onTakeoverRequested;
     private SolverRouteAdoptionSeed? _renderedRouteAdoptionSeed;
@@ -64,7 +63,8 @@ internal sealed class SearchInteractionState(int generation = 0)
         {
             lock (_gate)
             {
-                return _renderedRouteAdoptionSeed is { } seed && seed.BackendAttempt == _backendAttempt
+                return _renderedRouteAdoptionSeed is { } seed
+                    && seed.BackendAttempt == _attemptGate.CurrentBackendAttempt
                     ? seed
                     : null;
             }
@@ -73,7 +73,8 @@ internal sealed class SearchInteractionState(int generation = 0)
         {
             lock (_gate)
             {
-                _renderedRouteAdoptionSeed = value is { } seed && seed.BackendAttempt == _backendAttempt
+                _renderedRouteAdoptionSeed = value is { } seed
+                    && seed.BackendAttempt == _attemptGate.CurrentBackendAttempt
                     ? seed
                     : null;
             }
@@ -82,7 +83,7 @@ internal sealed class SearchInteractionState(int generation = 0)
     public SolverResult? StoppedResult { get; private set; }
     public LiveCombatStamp? StoppedStamp { get; private set; }
 
-    public int CurrentBackendAttempt => Volatile.Read(ref _backendAttempt);
+    public int CurrentBackendAttempt => _attemptGate.CurrentBackendAttempt;
     public SearchTakeoverRequest? CurrentTakeoverRequest
         => Volatile.Read(ref _takeoverRequest);
     public bool CanAcceptTakeover
@@ -99,9 +100,13 @@ internal sealed class SearchInteractionState(int generation = 0)
         {
             lock (_gate)
             {
-                return Volatile.Read(ref Progress) is { CurrentTurnPreview: not null } progress
-                    && progress.BackendAttempt == _backendAttempt
-                    ? progress.BackendAttempt
+                int attempt = _attemptGate.CurrentBackendAttempt;
+                return RenderedProgress is { CurrentTurnPreview: not null } rendered
+                    && rendered.BackendAttempt == attempt
+                    && Volatile.Read(ref Progress) is { CurrentTurnPreview: not null } progress
+                    && progress.BackendAttempt == attempt
+                    && _attemptGate.RenderedTurnPreviewBackendAttempt == attempt
+                    ? rendered.BackendAttempt
                     : null;
             }
         }
@@ -121,12 +126,15 @@ internal sealed class SearchInteractionState(int generation = 0)
     {
         lock (_gate)
         {
-            if (progress.BackendAttempt != _backendAttempt
-                || (progress.RouteAdoptionSeed is { } seed && seed.BackendAttempt != _backendAttempt))
+            int attempt = _attemptGate.CurrentBackendAttempt;
+            if (progress.BackendAttempt != attempt
+                || (progress.RouteAdoptionSeed is { } seed && seed.BackendAttempt != attempt)
+                || !_attemptGate.RecordPublishedProgress(
+                    progress.BackendAttempt,
+                    progress.CurrentTurnPreview != null))
             {
                 return;
             }
-            _progressPublished = true;
             Volatile.Write(ref Progress, progress);
         }
     }
@@ -135,8 +143,9 @@ internal sealed class SearchInteractionState(int generation = 0)
     {
         lock (_gate)
         {
+            int attempt = _attemptGate.CurrentBackendAttempt;
             SolverProgress? progress = Volatile.Read(ref Progress);
-            if (progress == null || progress.BackendAttempt != _backendAttempt
+            if (progress == null || progress.BackendAttempt != attempt
                 || ReferenceEquals(progress, RenderedProgress)
                 || !ProgressDisplay.TryCreate(progress, now, out displayProgress))
             {
@@ -144,9 +153,12 @@ internal sealed class SearchInteractionState(int generation = 0)
                 return false;
             }
             RenderedProgress = displayProgress;
+            _attemptGate.RecordRenderedProgress(
+                displayProgress.BackendAttempt,
+                displayProgress.CurrentTurnPreview != null);
             _renderedRouteAdoptionSeed = displayProgress.SpeculativeRoutePreview == null
                 ? null
-                : (displayProgress.RouteAdoptionSeed is { } seed && seed.BackendAttempt == _backendAttempt
+                : (displayProgress.RouteAdoptionSeed is { } seed && seed.BackendAttempt == attempt
                     ? seed
                     : null);
             return true;
@@ -158,8 +170,7 @@ internal sealed class SearchInteractionState(int generation = 0)
         lock (_gate)
         {
             _generation = generation ?? (_generation + 1);
-            _backendAttempt = 0;
-            _progressPublished = false;
+            _attemptGate.Reset();
             Volatile.Write(ref _takeoverRequest, null);
             Volatile.Write(ref _acceptingTakeover, 1);
             _onTakeoverRequested = null;
@@ -202,19 +213,26 @@ internal sealed class SearchInteractionState(int generation = 0)
         {
             if (!CanAcceptTakeover || _takeoverRequest != null)
                 return false;
+            int currentAttempt = _attemptGate.CurrentBackendAttempt;
             if (request.Kind == SearchTakeoverKind.ApplyCurrentTurn)
             {
-                if (expectedBackendAttempt is { } expected && expected != _backendAttempt)
+                if (!_attemptGate.CanRequestApplyCurrentTurn(expectedBackendAttempt))
                     return false;
-                if ((expectedBackendAttempt.HasValue || _progressPublished || _backendAttempt > 0)
-                    && (Volatile.Read(ref Progress) is not { CurrentTurnPreview: not null } progress
-                        || progress.BackendAttempt != _backendAttempt))
+                bool hasPublishedOrRenderedState = expectedBackendAttempt.HasValue
+                    || currentAttempt > 0
+                    || Volatile.Read(ref Progress) is not null
+                    || RenderedProgress is not null;
+                if (hasPublishedOrRenderedState
+                    && (RenderedProgress is not { CurrentTurnPreview: not null } rendered
+                        || rendered.BackendAttempt != currentAttempt
+                        || Volatile.Read(ref Progress) is not { CurrentTurnPreview: not null } progress
+                        || progress.BackendAttempt != currentAttempt))
                 {
                     return false;
                 }
             }
             if (request.Kind == SearchTakeoverKind.AdoptRoute
-                && (request.RouteAdoptionSeed is null || request.RouteAdoptionSeed.BackendAttempt != _backendAttempt))
+                && (request.RouteAdoptionSeed is null || request.RouteAdoptionSeed.BackendAttempt != currentAttempt))
             {
                 return false;
             }
@@ -246,8 +264,7 @@ internal sealed class SearchInteractionState(int generation = 0)
         {
             if (_generation != generation || _takeoverRequest?.StopAfterResult == true)
                 return false;
-            if (_backendAttempt == failedBackendAttempt)
-                _backendAttempt++;
+            _attemptGate.AdvanceAttemptOnFallback(failedBackendAttempt);
             Volatile.Write(ref Progress, null);
             RenderedProgress = null;
             _renderedRouteAdoptionSeed = null;

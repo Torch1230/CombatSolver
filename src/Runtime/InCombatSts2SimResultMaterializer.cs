@@ -54,10 +54,6 @@ internal static class InCombatSts2SimResultMaterializer
             maxBlockByTurn[turnOutcome.Turn] = turnOutcome.MaxBlock;
             actualBlockByTurn[turnOutcome.Turn] = turnOutcome.ActualBlock;
             energyLeftByTurn[turnOutcome.Turn] = turnOutcome.EnergyLeft;
-            if (turnOutcome.PotionCount > 0)
-                potionCountByTurn[turnOutcome.Turn] = turnOutcome.PotionCount;
-            if (turnOutcome.PotionStrategicCost > 0)
-                potionStrategicCostByTurn[turnOutcome.Turn] = turnOutcome.PotionStrategicCost;
         }
 
         HashSet<int> actionTurns = [];
@@ -206,7 +202,17 @@ internal static class InCombatSts2SimResultMaterializer
                     snapshotHandCount = verifiedSummary.HandCount;
                     snapshotShuffles = verifiedSummary.ShufflesCrossed;
                     snapshotHasRisk = verifiedSummary.HasRisk;
-                    potionUses = verifiedSummary.VerifiedPotionUses.ToArray();
+                    potionUses = verifiedSummary.VerifiedPotionUses
+                        .Select(entry =>
+                        {
+                            AccumulateTurnPotion(
+                                potionCountByTurn,
+                                potionStrategicCostByTurn,
+                                entry.Turn,
+                                entry.Use.StrategicHpCost);
+                            return entry.Use;
+                        })
+                        .ToArray();
                 }
                 else
                 {
@@ -229,15 +235,33 @@ internal static class InCombatSts2SimResultMaterializer
                     snapshotHandCount = terminal.HandCount;
                     snapshotShuffles = terminal.ShufflesCrossed;
                     snapshotHasRisk = terminal.HasRisk;
-                    potionUses = verifiedSummary.VerifiedPotionUses
-                        .Concat(dto.PotionUses
-                            .Where(use => (use.Turn ?? 0) > root.StartTurnNumber)
-                            .Select(use => new PredictedPotionUse(
-                                use.Slot ?? -1,
-                                use.Id,
-                                PotionUsePolicy.StrategicHpCost(use.Id, renewableRock),
-                                Automatic: false)))
-                        .ToArray();
+                    List<PredictedPotionUse> combinedPotions = [];
+                    foreach (ExternalRouteVerifiedPotionUse entry in verifiedSummary.VerifiedPotionUses)
+                    {
+                        AccumulateTurnPotion(
+                            potionCountByTurn,
+                            potionStrategicCostByTurn,
+                            entry.Turn,
+                            entry.Use.StrategicHpCost);
+                        combinedPotions.Add(entry.Use);
+                    }
+                    foreach (Sts2SimPotionUseDto futureUse in dto.PotionUses)
+                    {
+                        if (futureUse.Turn is not { } futureTurn || futureTurn <= root.StartTurnNumber)
+                            continue;
+                        int strategicCost = PotionUsePolicy.StrategicHpCost(futureUse.Id, renewableRock);
+                        AccumulateTurnPotion(
+                            potionCountByTurn,
+                            potionStrategicCostByTurn,
+                            futureTurn,
+                            strategicCost);
+                        combinedPotions.Add(new PredictedPotionUse(
+                            futureUse.Slot ?? -1,
+                            futureUse.Id,
+                            strategicCost,
+                            Automatic: false));
+                    }
+                    potionUses = combinedPotions.ToArray();
                 }
                 break;
 
@@ -262,8 +286,6 @@ internal static class InCombatSts2SimResultMaterializer
                 TrimTurnDictionary(maxBlockByTurn, verifiedTurn);
                 TrimTurnDictionary(actualBlockByTurn, verifiedTurn);
                 TrimTurnDictionary(energyLeftByTurn, verifiedTurn);
-                TrimTurnDictionary(potionCountByTurn, verifiedTurn);
-                TrimTurnDictionary(potionStrategicCostByTurn, verifiedTurn);
 
                 terminalBoundary = SearchBoundaryReason.UnsupportedEffect;
                 resultBoundary = SearchBoundaryReason.UnsupportedEffect;
@@ -302,7 +324,17 @@ internal static class InCombatSts2SimResultMaterializer
                 snapshotHandCount = prefixSummary.HandCount;
                 snapshotShuffles = prefixSummary.ShufflesCrossed;
                 snapshotHasRisk = true;
-                potionUses = prefixSummary.VerifiedPotionUses.ToArray();
+                potionUses = prefixSummary.VerifiedPotionUses
+                    .Select(entry =>
+                    {
+                        AccumulateTurnPotion(
+                            potionCountByTurn,
+                            potionStrategicCostByTurn,
+                            entry.Turn,
+                            entry.Use.StrategicHpCost);
+                        return entry.Use;
+                    })
+                    .ToArray();
                 continuations = resultScope == SolverResultScope.CurrentTurnAdoption
                     ? []
                     : verification.Continuations
@@ -452,6 +484,17 @@ internal static class InCombatSts2SimResultMaterializer
         };
         result.AssertCompleteTurnOutcomes();
         return result;
+
+        static void AccumulateTurnPotion(
+            Dictionary<int, int> countByTurn,
+            Dictionary<int, int> costByTurn,
+            int turn,
+            int strategicHpCost)
+        {
+            countByTurn[turn] = countByTurn.GetValueOrDefault(turn) + 1;
+            if (strategicHpCost > 0)
+                costByTurn[turn] = costByTurn.GetValueOrDefault(turn) + strategicHpCost;
+        }
 
         static void TrimTurnDictionary(Dictionary<int, int> table, int maxTurn)
         {

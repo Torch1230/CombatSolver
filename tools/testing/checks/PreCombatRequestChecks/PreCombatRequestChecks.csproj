@@ -15,6 +15,7 @@
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/InCombatSts2SimContracts.cs" Link="Production/InCombatSts2SimContracts.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatSts2SimEligibility.ExtraFields.cs" Link="Production/PreCombatSts2SimEligibility.ExtraFields.cs" />
     <Compile Include="$(CombatSolverRepositoryRoot)src/Api/PreCombatSts2SimEligibility.HarmonyAudit.cs" Link="Production/PreCombatSts2SimEligibility.HarmonyAudit.cs" />
+    <Compile Include="$(CombatSolverRepositoryRoot)src/Runtime/SearchTakeoverAttemptGate.cs" Link="Production/SearchTakeoverAttemptGate.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="abi-v1-fixtures.json" CopyToOutputDirectory="PreserveNewest" />

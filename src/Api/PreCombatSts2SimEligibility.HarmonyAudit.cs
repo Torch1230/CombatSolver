@@ -35,6 +35,7 @@ internal static partial class PreCombatSts2SimEligibility
         "Description",
         "GetDescription",
         "PortraitPath",
+        "PortraitPngPath",
         "BetaPortraitPath",
         "OverlayPath",
         "AllPortraitPaths",
