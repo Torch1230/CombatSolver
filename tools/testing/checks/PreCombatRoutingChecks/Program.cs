@@ -462,6 +462,7 @@ await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to 
         new("MegaCrit.Sts2.Core.Commands", "RelicCmd", "Obtain", false, false, false, true, true, "Mod.Patch", "RelicCmd.Obtain", "mod"),
         new("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", false, false, false, true, true, "Mod.Patch", "CreatureCmd.Heal", "mod"),
         new("MegaCrit.Sts2.Core.Hooks", "Hook", "ModifyDamage", false, false, false, true, true, "Mod.Patch", "Hook.ModifyDamage", "mod"),
+        new("MegaCrit.Sts2.Core.Models.Cards", "Normality", "ShouldPlay", false, false, false, true, true, "Mod.Patch", "Normality.ShouldPlay", "mod"),
     ];
 
     List<RunState> rejectedRuns = [adaptedOnPlayRun];
@@ -516,6 +517,13 @@ await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to 
             CriticalPatches =
             [
                 new("MegaCrit.Sts2.Core.Runs", "RunManager", "EnterRoomInternal", false, false, false, true, true, "RoomMod.Patch", "RunManager.EnterRoomInternal", "room_mod"),
+            ],
+        },
+        new RunState
+        {
+            CriticalPatches =
+            [
+                new("MegaCrit.Sts2.Core.Models.Cards", "StrikeIronclad", "get_PortraitPath", false, false, false, true, true, "ArtMod.Patch", "StrikeIronclad.get_PortraitPath", "art_mod"),
             ],
         },
     ];

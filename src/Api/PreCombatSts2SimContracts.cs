@@ -197,9 +197,17 @@ internal static class PreCombatSts2SimWireValidator
         if (utf8Json is null || utf8Json.Length == 0)
             throw new InvalidDataException("Sts2Sim bridge returned an empty response payload.");
 
-        Sts2SimBridgeResponseDto? response = JsonSerializer.Deserialize<Sts2SimBridgeResponseDto>(
-            utf8Json,
-            PreCombatSts2SimAbi.JsonOptions);
+        Sts2SimBridgeResponseDto? response;
+        try
+        {
+            response = JsonSerializer.Deserialize<Sts2SimBridgeResponseDto>(
+                utf8Json,
+                PreCombatSts2SimAbi.JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"Sts2Sim bridge response contained invalid JSON: {ex.Message}", ex);
+        }
         if (response is null)
             throw new InvalidDataException("Sts2Sim bridge response deserialized to null.");
 

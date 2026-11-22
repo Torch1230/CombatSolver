@@ -18,7 +18,8 @@ internal readonly record struct PreCombatHarmonyPatchDescriptor(
     bool HasKnownModId,
     string PatchDisplayName,
     string TargetDisplayName,
-    string Owner);
+    string Owner,
+    bool IsConcreteCardGameplayOverride = false);
 
 internal readonly record struct PreCombatCardOnPlayAuditOutcome(
     bool HasForeignPatch,
@@ -27,6 +28,59 @@ internal readonly record struct PreCombatCardOnPlayAuditOutcome(
 
 internal static partial class PreCombatSts2SimEligibility
 {
+    private static readonly HashSet<string> PureCardDisplayOrMetadataMembers = new(StringComparer.Ordinal)
+    {
+        "Title",
+        "TitleLocString",
+        "Description",
+        "GetDescription",
+        "PortraitPath",
+        "BetaPortraitPath",
+        "OverlayPath",
+        "AllPortraitPaths",
+        "Portrait",
+        "BetaPortrait",
+        "Overlay",
+        "IconPath",
+        "FrameMaterial",
+        "FramePath",
+        "BannerMaterial",
+        "VisualCardPool",
+        "ExtraHoverTips",
+        "HoverTips",
+        "ShouldGlowGoldInternal",
+        "ShouldGlowRedInternal",
+        "HasBakedPortrait",
+        "CreateHoverTip",
+        "ToString",
+        "Equals",
+        "GetHashCode",
+        "CompareTo",
+    };
+
+    private static readonly HashSet<string> ConcreteCardGameplayExactNames = new(StringComparer.Ordinal)
+    {
+        "OnPlay",
+        "CanPlay",
+        "ShouldPlay",
+        "OnTurnEndInHand",
+        "OnUpgrade",
+        "OnDowngrade",
+        "OnExhaust",
+        "OnDiscard",
+        "OnDrawn",
+        "OnRetain",
+        "OnShuffle",
+        "OnAddedToDeck",
+        "OnRemovedFromDeck",
+        "OnCreatedInCombat",
+        "OnEnterCombat",
+        "CalculateVars",
+        "GetDamage",
+        "GetBlock",
+        "GetHits",
+    };
+
     private static bool NamespaceEqualsOrStartsWith(string? ns, string prefix) =>
         ns is not null
         && (string.Equals(ns, prefix, StringComparison.Ordinal)
@@ -34,14 +88,95 @@ internal static partial class PreCombatSts2SimEligibility
                 && ns.StartsWith(prefix, StringComparison.Ordinal)
                 && ns[prefix.Length] == '.'));
 
+    internal static bool IsPureCardDisplayOrMetadataMember(string memberName)
+    {
+        string normalized = memberName.StartsWith("get_", StringComparison.Ordinal)
+            || memberName.StartsWith("set_", StringComparison.Ordinal)
+            ? memberName[4..]
+            : memberName;
+        return PureCardDisplayOrMetadataMembers.Contains(normalized);
+    }
+
+    internal static bool TryExtractCompilerGeneratedEnclosingMethod(string name, out string enclosingMethodName)
+    {
+        int index = 0;
+        while (index < name.Length)
+        {
+            int open = name.IndexOf('<', index);
+            if (open < 0)
+                break;
+            int close = name.IndexOf('>', open + 1);
+            if (close < 0)
+                break;
+
+            int nextOpen = name.IndexOf('<', open + 1);
+            if (nextOpen >= 0 && nextOpen < close)
+            {
+                index = nextOpen;
+                continue;
+            }
+
+            if (close > open + 1)
+            {
+                ReadOnlySpan<char> after = name.AsSpan(close + 1);
+                if (after.StartsWith("d__", StringComparison.Ordinal)
+                    || after.StartsWith("g__", StringComparison.Ordinal)
+                    || after.StartsWith("b__", StringComparison.Ordinal))
+                {
+                    enclosingMethodName = name[(open + 1)..close];
+                    return true;
+                }
+            }
+
+            index = close + 1;
+        }
+
+        enclosingMethodName = string.Empty;
+        return false;
+    }
+
+    internal static bool IsConcreteCardGameplayMethodName(string methodName, string? targetDisplayName = null)
+    {
+        string effectiveName;
+        if (TryExtractCompilerGeneratedEnclosingMethod(methodName, out string fromMethod))
+        {
+            effectiveName = fromMethod;
+        }
+        else if (string.Equals(methodName, "MoveNext", StringComparison.Ordinal)
+                 && targetDisplayName is not null
+                 && TryExtractCompilerGeneratedEnclosingMethod(targetDisplayName, out string fromTarget))
+        {
+            effectiveName = fromTarget;
+        }
+        else
+        {
+            effectiveName = methodName;
+        }
+
+        if (IsPureCardDisplayOrMetadataMember(effectiveName))
+            return false;
+
+        return ConcreteCardGameplayExactNames.Contains(effectiveName)
+            || effectiveName.StartsWith("Before", StringComparison.Ordinal)
+            || effectiveName.StartsWith("After", StringComparison.Ordinal)
+            || effectiveName.StartsWith("Modify", StringComparison.Ordinal)
+            || effectiveName.StartsWith("TryModify", StringComparison.Ordinal)
+            || effectiveName.StartsWith("Should", StringComparison.Ordinal);
+    }
+
     internal static PreCombatHarmonyTargetKind ClassifyCriticalHarmonyTarget(
         string? declaringNamespace,
         string? rootDeclaringTypeName,
         string methodName,
-        bool isMonsterModel)
+        bool isMonsterModel,
+        bool isConcreteCardGameplayOverride = false,
+        string? targetDisplayName = null)
     {
         if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Random"))
             return PreCombatHarmonyTargetKind.Rng;
+
+        if (isConcreteCardGameplayOverride)
+            return PreCombatHarmonyTargetKind.CombatGameplay;
 
         if (isMonsterModel && string.Equals(methodName, "GenerateMoveStateMachine", StringComparison.Ordinal))
             return PreCombatHarmonyTargetKind.CombatGameplay;
@@ -65,6 +200,13 @@ internal static partial class PreCombatSts2SimEligibility
             || NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Monsters"))
         {
             return PreCombatHarmonyTargetKind.CombatGameplay;
+        }
+
+        if (NamespaceEqualsOrStartsWith(declaringNamespace, "MegaCrit.Sts2.Core.Models.Cards"))
+        {
+            return IsConcreteCardGameplayMethodName(methodName, targetDisplayName)
+                ? PreCombatHarmonyTargetKind.CombatGameplay
+                : PreCombatHarmonyTargetKind.None;
         }
 
         if ((string.Equals(declaringNamespace, "MegaCrit.Sts2.Core.Entities.Creatures", StringComparison.Ordinal)
@@ -103,7 +245,9 @@ internal static partial class PreCombatSts2SimEligibility
                 patch.DeclaringNamespace,
                 patch.RootDeclaringTypeName,
                 patch.MethodName,
-                patch.IsMonsterModel);
+                patch.IsMonsterModel,
+                patch.IsConcreteCardGameplayOverride,
+                patch.TargetDisplayName);
             if (targetKind == PreCombatHarmonyTargetKind.None)
                 continue;
 

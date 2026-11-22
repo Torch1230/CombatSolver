@@ -1769,8 +1769,8 @@ internal static partial class SolverController
         }
         if (search.Interaction.CurrentTakeoverRequest != null
             || !search.Interaction.CanAcceptTakeover
-            || !search.Interaction.HasCurrentAttemptTurnPreview
-            || !search.Interaction.RequestApplyCurrentTurn())
+            || search.Interaction.CurrentAttemptTurnPreviewBackendAttempt is not { } previewAttempt
+            || !search.Interaction.RequestApplyCurrentTurn(previewAttempt))
         {
             return;
         }

@@ -488,9 +488,17 @@ internal static class InCombatSts2SimWireValidator
         if (utf8Json is null || utf8Json.Length == 0)
             throw new InvalidDataException("Sts2Sim in-combat bridge returned an empty response payload.");
 
-        InCombatSts2SimResponseDto? response = JsonSerializer.Deserialize<InCombatSts2SimResponseDto>(
-            utf8Json,
-            PreCombatSts2SimAbi.JsonOptions);
+        InCombatSts2SimResponseDto? response;
+        try
+        {
+            response = JsonSerializer.Deserialize<InCombatSts2SimResponseDto>(
+                utf8Json,
+                PreCombatSts2SimAbi.JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"Sts2Sim in-combat bridge response contained invalid JSON: {ex.Message}", ex);
+        }
         if (response is null)
             throw new InvalidDataException("Sts2Sim in-combat bridge response deserialized to null.");
 
@@ -503,9 +511,17 @@ internal static class InCombatSts2SimWireValidator
         if (utf8Json is null || utf8Json.Length == 0)
             throw new InvalidDataException("Sts2Sim in-combat progress callback received empty bytes.");
 
-        InCombatSts2SimProgressDto? progress = JsonSerializer.Deserialize<InCombatSts2SimProgressDto>(
-            utf8Json,
-            PreCombatSts2SimAbi.JsonOptions);
+        InCombatSts2SimProgressDto? progress;
+        try
+        {
+            progress = JsonSerializer.Deserialize<InCombatSts2SimProgressDto>(
+                utf8Json,
+                PreCombatSts2SimAbi.JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"Sts2Sim in-combat bridge progress contained invalid JSON: {ex.Message}", ex);
+        }
         if (progress is null)
             throw new InvalidDataException("Sts2Sim in-combat progress deserialized to null.");
 
@@ -608,6 +624,7 @@ internal static class InCombatSts2SimWireValidator
             }
         }
 
+        HashSet<int> actionTurns = [];
         for (int i = 0; i < result.Actions.Count; i++)
         {
             InCombatActionTraceDto? action = result.Actions[i];
@@ -627,6 +644,7 @@ internal static class InCombatSts2SimWireValidator
                     CultureInfo.InvariantCulture,
                     $"{path}.actions[{i}] references turn {action.Turn} without a matching TurnOutcome entry."));
             }
+            actionTurns.Add(action.Turn);
             if (string.Equals(action.Kind, "PlayCard", StringComparison.Ordinal)
                 && (string.IsNullOrWhiteSpace(action.CardId)
                     || action.CardOccurrence < 0
@@ -681,11 +699,19 @@ internal static class InCombatSts2SimWireValidator
         {
             throw new InvalidDataException($"{path}.terminal has invalid Turn={term.Turn} or SearchBoundary '{term.SearchBoundary}'.");
         }
-        if (result.Actions.Count == 0 && !turnOutcomeTurns.Contains(term.Turn))
+        if (result.Actions.Count > 0)
+        {
+            if (!turnOutcomeTurns.SetEquals(actionTurns))
+            {
+                throw new InvalidDataException(
+                    $"{path}.turnOutcomes must match the exact set of action turns.");
+            }
+        }
+        else if (turnOutcomeTurns.Count != 1 || !turnOutcomeTurns.Contains(term.Turn))
         {
             throw new InvalidDataException(string.Create(
                 CultureInfo.InvariantCulture,
-                $"{path}.turnOutcomes is missing entry for terminal turn {term.Turn}."));
+                $"{path}.turnOutcomes for an empty action list must contain exactly terminal turn {term.Turn}."));
         }
         for (int i = 0; i < result.PotionUses.Count; i++)
         {

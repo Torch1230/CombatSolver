@@ -20,12 +20,22 @@ internal sealed record TurnStartChoiceRequest(
 internal sealed class InvalidPlannedChoiceBranchException(string message)
     : InvalidOperationException(message);
 
+internal sealed class ExternalChoiceBinding(
+    string? actionSourceId,
+    Action<PlanCardChoice>? onBoundChoice = null)
+{
+    public string? ActionSourceId { get; } = actionSourceId;
+    public Action<PlanCardChoice>? OnBoundChoice { get; } = onBoundChoice;
+}
+
 internal sealed class TurnStartChoiceCursor(
     IReadOnlyList<PlanCardChoice>? choices,
-    bool validateSelectionAgainstSpec = false)
+    bool validateSelectionAgainstSpec = false,
+    ExternalChoiceBinding? externalBinding = null)
 {
     private readonly IReadOnlyList<PlanCardChoice> _choices = choices ?? [];
     private readonly bool _validateSelectionAgainstSpec = validateSelectionAgainstSpec;
+    private readonly ExternalChoiceBinding? _externalBinding = externalBinding;
     private readonly Func<TurnStartChoiceRequest, PlanCardChoice?>? _automaticPolicy;
     private int _index;
     internal int ConsumedExplicitChoiceCount => _index;
@@ -69,6 +79,7 @@ internal sealed class TurnStartChoiceCursor(
         }
         if (_validateSelectionAgainstSpec && request.Spec is { } spec)
             ValidateChoiceMatchesSpec(choice, spec);
+        choice = BindExternalChoice(choice, request);
         _index++;
         return true;
     }
@@ -86,6 +97,9 @@ internal sealed class TurnStartChoiceCursor(
             return choice != null;
         }
         choice = _choices[_index];
+        if (_validateSelectionAgainstSpec && request.Spec is { } spec)
+            ValidateChoiceMatchesSpec(choice, spec);
+        choice = BindExternalChoice(choice, request);
         _index++;
         return true;
     }
@@ -109,12 +123,43 @@ internal sealed class TurnStartChoiceCursor(
         }
     }
 
-    private static bool Matches(PlanCardChoice choice, TurnStartChoiceRequest request)
-        => string.Equals(choice.SourceId, request.SourceId, StringComparison.Ordinal)
-            && choice.Effect == request.Effect
-            && choice.SourcePile == request.SourcePile
-            && string.Equals(choice.ContextId, request.ContextId, StringComparison.Ordinal)
-            && choice.Timing == request.Timing;
+    private PlanCardChoice BindExternalChoice(PlanCardChoice choice, TurnStartChoiceRequest request)
+    {
+        if (_externalBinding is not { } binding)
+            return choice;
+
+        PlanCardChoice bound = choice with
+        {
+            SourceId = request.SourceId,
+            ContextId = request.ContextId,
+            Timing = request.Timing,
+        };
+        binding.OnBoundChoice?.Invoke(bound);
+        return bound;
+    }
+
+    private bool Matches(PlanCardChoice choice, TurnStartChoiceRequest request)
+    {
+        if (choice.Effect != request.Effect
+            || choice.SourcePile != request.SourcePile
+            || choice.Timing != request.Timing)
+        {
+            return false;
+        }
+        if (_externalBinding is { } binding)
+        {
+            bool sourceMatches = string.Equals(choice.SourceId, request.SourceId, StringComparison.Ordinal)
+                || (string.IsNullOrEmpty(request.SourceId)
+                    && !string.IsNullOrEmpty(binding.ActionSourceId)
+                    && string.Equals(choice.SourceId, binding.ActionSourceId, StringComparison.Ordinal));
+            if (!sourceMatches)
+                return false;
+            return string.IsNullOrEmpty(choice.ContextId)
+                || string.Equals(choice.ContextId, request.ContextId, StringComparison.Ordinal);
+        }
+        return string.Equals(choice.SourceId, request.SourceId, StringComparison.Ordinal)
+            && string.Equals(choice.ContextId, request.ContextId, StringComparison.Ordinal);
+    }
 
     internal static void ValidateChoiceMatchesSpec(PlanCardChoice choice, CardChoiceSpec spec)
     {

@@ -50,6 +50,7 @@ internal sealed class SearchInteractionState(int generation = 0)
     private int _generation = generation;
     private int _backendAttempt;
     private int _acceptingTakeover = 1;
+    private bool _progressPublished;
     private SearchTakeoverRequest? _takeoverRequest;
     private Action? _onTakeoverRequested;
     private SolverRouteAdoptionSeed? _renderedRouteAdoptionSeed;
@@ -92,17 +93,21 @@ internal sealed class SearchInteractionState(int generation = 0)
         => CurrentTakeoverRequest?.Kind == SearchTakeoverKind.AdoptRoute;
     public bool StopRequested
         => CurrentTakeoverRequest?.StopAfterResult == true;
-    public bool HasCurrentAttemptTurnPreview
+    public int? CurrentAttemptTurnPreviewBackendAttempt
     {
         get
         {
             lock (_gate)
             {
                 return Volatile.Read(ref Progress) is { CurrentTurnPreview: not null } progress
-                    && progress.BackendAttempt == _backendAttempt;
+                    && progress.BackendAttempt == _backendAttempt
+                    ? progress.BackendAttempt
+                    : null;
             }
         }
     }
+    public bool HasCurrentAttemptTurnPreview
+        => CurrentAttemptTurnPreviewBackendAttempt.HasValue;
 
     public void InvalidateRenderedRouteAdoptionSeed()
     {
@@ -121,6 +126,7 @@ internal sealed class SearchInteractionState(int generation = 0)
             {
                 return;
             }
+            _progressPublished = true;
             Volatile.Write(ref Progress, progress);
         }
     }
@@ -153,6 +159,7 @@ internal sealed class SearchInteractionState(int generation = 0)
         {
             _generation = generation ?? (_generation + 1);
             _backendAttempt = 0;
+            _progressPublished = false;
             Volatile.Write(ref _takeoverRequest, null);
             Volatile.Write(ref _acceptingTakeover, 1);
             _onTakeoverRequested = null;
@@ -177,8 +184,10 @@ internal sealed class SearchInteractionState(int generation = 0)
             callback!();
     }
 
-    public bool RequestApplyCurrentTurn()
-        => RequestTakeover(new SearchTakeoverRequest(SearchTakeoverKind.ApplyCurrentTurn));
+    public bool RequestApplyCurrentTurn(int? expectedBackendAttempt = null)
+        => RequestTakeover(
+            new SearchTakeoverRequest(SearchTakeoverKind.ApplyCurrentTurn),
+            expectedBackendAttempt);
 
     public bool RequestAdoptRoute(SolverRouteAdoptionSeed seed, bool stopAfterResult = false)
         => RequestTakeover(new SearchTakeoverRequest(
@@ -186,13 +195,24 @@ internal sealed class SearchInteractionState(int generation = 0)
             seed,
             stopAfterResult));
 
-    private bool RequestTakeover(SearchTakeoverRequest request)
+    private bool RequestTakeover(SearchTakeoverRequest request, int? expectedBackendAttempt = null)
     {
         Action? callback;
         lock (_gate)
         {
             if (!CanAcceptTakeover || _takeoverRequest != null)
                 return false;
+            if (request.Kind == SearchTakeoverKind.ApplyCurrentTurn)
+            {
+                if (expectedBackendAttempt is { } expected && expected != _backendAttempt)
+                    return false;
+                if ((expectedBackendAttempt.HasValue || _progressPublished || _backendAttempt > 0)
+                    && (Volatile.Read(ref Progress) is not { CurrentTurnPreview: not null } progress
+                        || progress.BackendAttempt != _backendAttempt))
+                {
+                    return false;
+                }
+            }
             if (request.Kind == SearchTakeoverKind.AdoptRoute
                 && (request.RouteAdoptionSeed is null || request.RouteAdoptionSeed.BackendAttempt != _backendAttempt))
             {
