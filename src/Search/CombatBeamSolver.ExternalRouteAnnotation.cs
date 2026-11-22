@@ -373,7 +373,6 @@ internal sealed partial class CombatBeamSolver
                         return UnsupportedFuture(
                             annotatedActions,
                             continuations,
-                            annotatedActions,
                             verifiedPrefixActionCount,
                             verifiedLastTurn,
                             verifiedPrefixSummary,
@@ -598,7 +597,9 @@ internal sealed partial class CombatBeamSolver
             if (boundActionChoices.Count > 0)
             {
                 nestedChoices = boundActionChoices.ToArray();
-                nestedBeforePrimary = 0;
+                nestedBeforePrimary = choice is null
+                    ? boundActionChoices.Count
+                    : Math.Clamp(action.NestedChoicesBeforePrimary, 0, boundActionChoices.Count);
                 updated = true;
             }
         }
@@ -624,7 +625,7 @@ internal sealed partial class CombatBeamSolver
             else
             {
                 choice = null;
-                nestedBeforePrimary = 0;
+                nestedBeforePrimary = boundActionChoices.Count;
                 nestedChoices = boundActionChoices.ToArray();
             }
             updated = true;

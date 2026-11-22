@@ -2072,6 +2072,23 @@ await Check("in-combat action choice partitioning places pre-primary nested choi
         [Trace("Action", "", "WOUND")]);
     Equal(-1, emptyCardNeverMatchesEmptySource.PrimaryIndex);
     Equal(1, emptyCardNeverMatchesEmptySource.NestedChoicesBeforePrimary);
+
+    InCombatChoiceTraceDto primaryArmaments = Trace("Action", "ARMAMENTS", "BASH");
+    InCombatChoiceTraceDto repeatedArmaments = Trace("Action", "ARMAMENTS", "DEFEND");
+    Sts2SimPartitionedActionChoices repeatedManualChoices = Sts2SimPortfolioPolicyBridge.PartitionActionChoices(
+        "PlayCard",
+        "ARMAMENTS",
+        null,
+        [preNested, primaryArmaments, repeatedArmaments, postNested2]);
+    Equal(1, repeatedManualChoices.PrimaryIndex);
+    Equal(1, repeatedManualChoices.NestedChoicesBeforePrimary);
+    Equal(4, repeatedManualChoices.ActionChoices.Count);
+    Equal("SUNDIAL_POWER", repeatedManualChoices.ActionChoices[0].SourceId);
+    Equal("ARMAMENTS", repeatedManualChoices.ActionChoices[1].SourceId);
+    Equal("BASH", repeatedManualChoices.ActionChoices[1].Cards[0].CardId);
+    Equal("ARMAMENTS", repeatedManualChoices.ActionChoices[2].SourceId);
+    Equal("DEFEND", repeatedManualChoices.ActionChoices[2].Cards[0].CardId);
+    Equal("DEAD_BRANCH", repeatedManualChoices.ActionChoices[3].SourceId);
     return Task.CompletedTask;
 });
 await Check("attempt work tracker preserves measured peak parallelism across fallback and empty elapsed calls", () =>
@@ -2128,6 +2145,38 @@ await Check("attempt work tracker preserves measured peak parallelism across fal
     emptyFirstTracker.RecordElapsed(TimeSpan.FromMilliseconds(750.0), fallbackParallelism: 8);
     Equal(2, emptyFirstTracker.Snapshot().ObservedPeakParallelism);
     Equal(TimeSpan.FromMilliseconds(750.0), emptyFirstTracker.Snapshot().Elapsed);
+
+    // Provisional request DOP (8) on unmeasured progress is replaced by authoritative EffectiveDegreeOfParallelism (2)
+    // on both RecordResult and RecordElapsed, while catch-block provisional RecordElapsed(isAuthoritativeFallback: false) never clobbers it.
+    var unmeasuredResultTracker = new Sts2SimAttemptWorkTracker();
+    InCombatSts2SimProgressDto unmeasuredProgress = measuredProgress with { ObservedPeakParallelism = null };
+    unmeasuredResultTracker.RecordProgress(unmeasuredProgress, fallbackParallelism: 8);
+    Equal(8, unmeasuredResultTracker.Snapshot().ObservedPeakParallelism);
+    Equal(false, unmeasuredResultTracker.Snapshot().HasMeasuredPeakParallelism);
+
+    unmeasuredResultTracker.RecordResult(dtoWithoutMeasuredPeak, effectiveDegreeOfParallelism: 2, elapsed: TimeSpan.FromMilliseconds(320.0));
+    Equal(2, unmeasuredResultTracker.Snapshot().ObservedPeakParallelism);
+    Equal(false, unmeasuredResultTracker.Snapshot().HasMeasuredPeakParallelism);
+
+    unmeasuredResultTracker.RecordElapsed(TimeSpan.FromMilliseconds(400.0), fallbackParallelism: 8, isAuthoritativeFallback: false);
+    Equal(2, unmeasuredResultTracker.Snapshot().ObservedPeakParallelism);
+
+    var unmeasuredElapsedTracker = new Sts2SimAttemptWorkTracker();
+    unmeasuredElapsedTracker.RecordProgress(unmeasuredProgress, fallbackParallelism: 8);
+    Equal(8, unmeasuredElapsedTracker.Snapshot().ObservedPeakParallelism);
+    unmeasuredElapsedTracker.RecordElapsed(TimeSpan.FromMilliseconds(410.0), fallbackParallelism: 2);
+    Equal(2, unmeasuredElapsedTracker.Snapshot().ObservedPeakParallelism);
+    Equal(false, unmeasuredElapsedTracker.Snapshot().HasMeasuredPeakParallelism);
+
+    var measuredThreeTracker = new Sts2SimAttemptWorkTracker();
+    measuredThreeTracker.RecordProgress(measuredProgress with { ObservedPeakParallelism = 3 }, fallbackParallelism: 8);
+    Equal(3, measuredThreeTracker.Snapshot().ObservedPeakParallelism);
+    Equal(true, measuredThreeTracker.Snapshot().HasMeasuredPeakParallelism);
+    measuredThreeTracker.RecordElapsed(TimeSpan.FromMilliseconds(500.0), fallbackParallelism: 8);
+    Equal(3, measuredThreeTracker.Snapshot().ObservedPeakParallelism);
+    measuredThreeTracker.RecordResult(dtoWithoutMeasuredPeak, effectiveDegreeOfParallelism: 8, elapsed: TimeSpan.FromMilliseconds(550.0));
+    Equal(3, measuredThreeTracker.Snapshot().ObservedPeakParallelism);
+    Equal(true, measuredThreeTracker.Snapshot().HasMeasuredPeakParallelism);
     return Task.CompletedTask;
 });
 await Check("concrete card gameplay hook overrides classify as CombatGameplay while metadata getters stay None", () =>
@@ -2224,6 +2273,16 @@ await Check("bridge IsCorrupt reads immutable snapshot without blocking during a
 
         Equal(false, PreCombatSts2SimBridge.IsCorrupt);
         Equal(false, PreCombatSts2SimBridge.IsInCombatUnavailable);
+        Equal(false, PreCombatSts2SimBridge.TryGetCachedCapabilities(out Sts2SimBridgeCapabilitiesDto lockFreeInitial));
+        Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, lockFreeInitial);
+        Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, PreCombatSts2SimBridge.GetActiveCapabilities());
+        PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = Sts2SimBridgeCapabilitiesDto.V2Default;
+        Equal(true, PreCombatSts2SimBridge.TryGetCachedCapabilities(out Sts2SimBridgeCapabilitiesDto lockFreeForced));
+        Equal(Sts2SimBridgeCapabilitiesDto.V2Default, lockFreeForced);
+        Equal(Sts2SimBridgeCapabilitiesDto.V2Default, PreCombatSts2SimBridge.GetActiveCapabilities());
+        PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = null;
+        Equal(false, PreCombatSts2SimBridge.TryGetCachedCapabilities(out Sts2SimBridgeCapabilitiesDto lockFreeCleared));
+        Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, lockFreeCleared);
         PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.CorruptOrIncompatible;
         Equal(true, PreCombatSts2SimBridge.IsCorrupt);
         Equal(InCombatBridgeAvailability.CorruptOrIncompatible, PreCombatSts2SimBridge.EnsureInCombatActivated(out _));
@@ -2244,12 +2303,19 @@ await Check("bridge IsCorrupt reads immutable snapshot without blocking during a
         releaseLock.Set();
         Equal(PreCombatBridgeAvailability.CorruptOrIncompatible, await activationTask);
         Equal(true, PreCombatSts2SimBridge.IsCorrupt);
+        Equal(false, PreCombatSts2SimBridge.TryGetCachedCapabilities(out Sts2SimBridgeCapabilitiesDto afterFailureCaps));
+        Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, afterFailureCaps);
         int attemptsAfterFailure = PreCombatSts2SimBridge.ActivationAttemptCountForTesting;
         Equal(PreCombatBridgeAvailability.CorruptOrIncompatible, PreCombatSts2SimBridge.EnsureActivated(out _));
         Equal(attemptsAfterFailure, PreCombatSts2SimBridge.ActivationAttemptCountForTesting);
 
+        InvalidDataException badCapJsonEx = ExpectThrows<InvalidDataException>(() =>
+            PreCombatSts2SimBridge.DeserializeAndValidateCapabilities("{"));
+        Equal(true, badCapJsonEx.InnerException is JsonException);
+
         PreCombatSts2SimBridge.ResetForTesting();
         Equal(false, PreCombatSts2SimBridge.IsCorrupt);
+        Equal(false, PreCombatSts2SimBridge.TryGetCachedCapabilities(out _));
     }
     finally
     {

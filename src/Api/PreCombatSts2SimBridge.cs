@@ -79,14 +79,16 @@ internal static class PreCombatSts2SimBridge
     private sealed record BridgeAvailabilitySnapshot(
         ActivatedBridge? Activated,
         bool IsCorrupt,
-        string? CorruptReason)
+        string? CorruptReason,
+        Sts2SimBridgeCapabilitiesDto? Capabilities)
     {
-        public static readonly BridgeAvailabilitySnapshot Initial = new(null, false, null);
+        public static readonly BridgeAvailabilitySnapshot Initial = new(null, false, null, null);
     }
 
     private static readonly object Sync = new();
     private static volatile BridgeAvailabilitySnapshot _snapshot = BridgeAvailabilitySnapshot.Initial;
     private static int _availabilityOverrideForTesting = -1;
+    private static Sts2SimBridgeCapabilitiesDto? _capabilitiesOverrideForTesting;
     private static int _activationAttemptCount;
 
     internal static string? ModDirectoryOverrideForTesting { get; set; }
@@ -111,7 +113,11 @@ internal static class PreCombatSts2SimBridge
         set => Volatile.Write(ref _availabilityOverrideForTesting, value is { } forced ? (int)forced : -1);
     }
 
-    internal static Sts2SimBridgeCapabilitiesDto? CapabilitiesOverrideForTesting { get; set; }
+    internal static Sts2SimBridgeCapabilitiesDto? CapabilitiesOverrideForTesting
+    {
+        get => Volatile.Read(ref _capabilitiesOverrideForTesting);
+        set => Volatile.Write(ref _capabilitiesOverrideForTesting, value);
+    }
 
     internal static int ActivationAttemptCountForTesting => Volatile.Read(ref _activationAttemptCount);
 
@@ -153,41 +159,44 @@ internal static class PreCombatSts2SimBridge
 
     public static Sts2SimBridgeCapabilitiesDto GetActiveCapabilities()
     {
-        lock (Sync)
-        {
-            if (CapabilitiesOverrideForTesting is { } forced)
-                return forced;
-            return _snapshot.Activated?.Capabilities ?? Sts2SimBridgeCapabilitiesDto.DefaultV1;
-        }
+        if (CapabilitiesOverrideForTesting is { } forced)
+            return forced;
+        return _snapshot.Capabilities ?? Sts2SimBridgeCapabilitiesDto.DefaultV1;
     }
 
     public static bool TryGetCachedCapabilities(out Sts2SimBridgeCapabilitiesDto capabilities)
     {
-        lock (Sync)
+        if (CapabilitiesOverrideForTesting is { } forced)
         {
-            if (CapabilitiesOverrideForTesting is { } forced)
-            {
-                capabilities = forced;
-                return true;
-            }
-            if (_snapshot.Activated is { } activated)
-            {
-                capabilities = activated.Capabilities;
-                return true;
-            }
-            capabilities = Sts2SimBridgeCapabilitiesDto.DefaultV1;
-            return false;
+            capabilities = forced;
+            return true;
         }
+        if (_snapshot.Capabilities is { } cached)
+        {
+            capabilities = cached;
+            return true;
+        }
+        capabilities = Sts2SimBridgeCapabilitiesDto.DefaultV1;
+        return false;
     }
 
     internal static Sts2SimBridgeCapabilitiesDto DeserializeAndValidateCapabilities(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
             throw new InvalidDataException("Bridge GetCapabilitiesJson returned empty JSON.");
-        Sts2SimBridgeCapabilitiesDto capabilities = JsonSerializer.Deserialize<Sts2SimBridgeCapabilitiesDto>(
-            json,
-            PreCombatSts2SimAbi.JsonOptions)
-            ?? throw new InvalidDataException("Bridge GetCapabilitiesJson deserialized to null.");
+        Sts2SimBridgeCapabilitiesDto? capabilities;
+        try
+        {
+            capabilities = JsonSerializer.Deserialize<Sts2SimBridgeCapabilitiesDto>(
+                json,
+                PreCombatSts2SimAbi.JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"Bridge GetCapabilitiesJson contained invalid JSON: {ex.Message}", ex);
+        }
+        if (capabilities is null)
+            throw new InvalidDataException("Bridge GetCapabilitiesJson deserialized to null.");
         ValidateCapabilities(capabilities);
         return capabilities;
     }
@@ -251,14 +260,14 @@ internal static class PreCombatSts2SimBridge
             {
                 ActivationHookForTesting?.Invoke();
                 ActivatedBridge activated = LoadAndVerifyLocked(bridgeDir);
-                _snapshot = new BridgeAvailabilitySnapshot(activated, false, null);
+                _snapshot = new BridgeAvailabilitySnapshot(activated, false, null, activated.Capabilities);
                 error = null;
                 return PreCombatBridgeAvailability.Ready;
             }
             catch (Exception ex)
             {
                 string reason = $"The installed sts2sim backend could not be activated: {ex.GetBaseException().Message}";
-                _snapshot = new BridgeAvailabilitySnapshot(null, true, reason);
+                _snapshot = new BridgeAvailabilitySnapshot(null, true, reason, null);
                 error = reason;
                 Entry.Logger.Error($"[CombatSolver/PreCombatApi] STS2SIM_BRIDGE_ACTIVATION_FAILED error={ex}");
                 return PreCombatBridgeAvailability.CorruptOrIncompatible;
@@ -370,7 +379,7 @@ internal static class PreCombatSts2SimBridge
         if (state != PreCombatBridgeAvailability.Ready || _snapshot.Activated is not { } activated)
             throw new InvalidOperationException(error ?? $"Sts2Sim backend is not ready ({state}).");
 
-        PreCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting ?? _activated.Capabilities);
+        PreCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting ?? activated.Capabilities);
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(request, PreCombatSts2SimAbi.JsonOptions);
         cancellationToken.ThrowIfCancellationRequested();
         byte[] responseBytes = await activated.RunJsonAsync(payload, cancellationToken).ConfigureAwait(false);
@@ -402,7 +411,7 @@ internal static class PreCombatSts2SimBridge
                 ?? "Installed sts2sim bundle does not export in-combat bridge entrypoints.");
         }
 
-        InCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting ?? _activated.Capabilities);
+        InCombatSts2SimWireValidator.ValidatePolicy(request.Policy, CapabilitiesOverrideForTesting ?? activated.Capabilities);
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(request, PreCombatSts2SimAbi.JsonOptions);
         cancellationToken.ThrowIfCancellationRequested();
         Action<byte[]>? wireProgress = onProgress is null

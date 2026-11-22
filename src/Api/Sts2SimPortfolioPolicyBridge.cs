@@ -91,8 +91,9 @@ internal sealed class Sts2SimAttemptWorkTracker
     private long _expandedParents;
     private long _transitionCount;
     private long _choiceReplayAttempts;
-    private int _observedPeakParallelism;
-    private bool _hasMeasuredPeakParallelism;
+    private int _measuredPeakParallelism;
+    private int _authoritativeFallbackParallelism;
+    private int _provisionalFallbackParallelism;
     private TimeSpan _elapsed;
 
     public void RecordProgress(InCombatSts2SimProgressDto progress, int fallbackParallelism)
@@ -134,17 +135,10 @@ internal sealed class Sts2SimAttemptWorkTracker
                 _transitionCount = transitionCount;
             if (choiceReplayAttempts > _choiceReplayAttempts)
                 _choiceReplayAttempts = choiceReplayAttempts;
-            if (measuredPeakParallelism > 0)
-            {
-                _observedPeakParallelism = _hasMeasuredPeakParallelism
-                    ? Math.Max(_observedPeakParallelism, measuredPeakParallelism)
-                    : measuredPeakParallelism;
-                _hasMeasuredPeakParallelism = true;
-            }
-            else if (!_hasMeasuredPeakParallelism && _observedPeakParallelism == 0 && sanitizedFallback > 0)
-            {
-                _observedPeakParallelism = sanitizedFallback;
-            }
+            if (measuredPeakParallelism > _measuredPeakParallelism)
+                _measuredPeakParallelism = measuredPeakParallelism;
+            if (sanitizedFallback > _provisionalFallbackParallelism)
+                _provisionalFallbackParallelism = sanitizedFallback;
             if (elapsed > _elapsed)
                 _elapsed = elapsed;
         }
@@ -158,7 +152,7 @@ internal sealed class Sts2SimAttemptWorkTracker
         int measuredPeakParallelism = result.ObservedPeakParallelism is >= 1
             ? result.ObservedPeakParallelism.Value
             : 0;
-        int sanitizedFallback = Math.Max(1, effectiveDegreeOfParallelism);
+        int authoritativeFallback = Math.Max(1, effectiveDegreeOfParallelism);
         TimeSpan dtoElapsed = double.IsFinite(result.SearchElapsedMilliseconds) && result.SearchElapsedMilliseconds > 0d
             ? TimeSpan.FromMilliseconds(result.SearchElapsedMilliseconds)
             : TimeSpan.Zero;
@@ -172,23 +166,19 @@ internal sealed class Sts2SimAttemptWorkTracker
                 _transitionCount = metrics.TotalTransitionCount;
             if (metrics.TotalChoiceBranchesEvaluated > _choiceReplayAttempts)
                 _choiceReplayAttempts = metrics.TotalChoiceBranchesEvaluated;
-            if (measuredPeakParallelism > 0)
-            {
-                _observedPeakParallelism = _hasMeasuredPeakParallelism
-                    ? Math.Max(_observedPeakParallelism, measuredPeakParallelism)
-                    : measuredPeakParallelism;
-                _hasMeasuredPeakParallelism = true;
-            }
-            else if (!_hasMeasuredPeakParallelism && _observedPeakParallelism == 0)
-            {
-                _observedPeakParallelism = sanitizedFallback;
-            }
+            if (measuredPeakParallelism > _measuredPeakParallelism)
+                _measuredPeakParallelism = measuredPeakParallelism;
+            if (authoritativeFallback > _authoritativeFallbackParallelism)
+                _authoritativeFallbackParallelism = authoritativeFallback;
             if (effectiveElapsed > _elapsed)
                 _elapsed = effectiveElapsed;
         }
     }
 
-    public void RecordElapsed(TimeSpan elapsed, int fallbackParallelism = 0)
+    public void RecordElapsed(
+        TimeSpan elapsed,
+        int fallbackParallelism = 0,
+        bool isAuthoritativeFallback = true)
     {
         TimeSpan sanitizedElapsed = elapsed > TimeSpan.Zero ? elapsed : TimeSpan.Zero;
         int sanitizedParallelism = Math.Max(0, fallbackParallelism);
@@ -196,8 +186,18 @@ internal sealed class Sts2SimAttemptWorkTracker
         {
             if (sanitizedElapsed > _elapsed)
                 _elapsed = sanitizedElapsed;
-            if (!_hasMeasuredPeakParallelism && _observedPeakParallelism == 0 && sanitizedParallelism > 0)
-                _observedPeakParallelism = sanitizedParallelism;
+            if (sanitizedParallelism > 0)
+            {
+                if (isAuthoritativeFallback)
+                {
+                    if (sanitizedParallelism > _authoritativeFallbackParallelism)
+                        _authoritativeFallbackParallelism = sanitizedParallelism;
+                }
+                else if (sanitizedParallelism > _provisionalFallbackParallelism)
+                {
+                    _provisionalFallbackParallelism = sanitizedParallelism;
+                }
+            }
         }
     }
 
@@ -205,13 +205,18 @@ internal sealed class Sts2SimAttemptWorkTracker
     {
         lock (_sync)
         {
+            int peak = _measuredPeakParallelism >= 1
+                ? _measuredPeakParallelism
+                : (_authoritativeFallbackParallelism >= 1
+                    ? _authoritativeFallbackParallelism
+                    : _provisionalFallbackParallelism);
             return new Sts2SimAttemptWorkSnapshot(
                 _expandedParents,
                 _transitionCount,
                 _choiceReplayAttempts,
-                _observedPeakParallelism,
+                peak,
                 _elapsed,
-                _hasMeasuredPeakParallelism);
+                _measuredPeakParallelism >= 1);
         }
     }
 }

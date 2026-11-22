@@ -4236,7 +4236,7 @@ internal static partial class SolverController
         catch (OperationCanceledException ex) when (bridgeCts.IsCancellationRequested)
         {
             bridgeWatch.Stop();
-            attemptWork.RecordElapsed(bridgeWatch.Elapsed, request.MaxDegreeOfParallelism);
+            attemptWork.RecordElapsed(bridgeWatch.Elapsed, request.MaxDegreeOfParallelism, isAuthoritativeFallback: false);
             SealedSearchTakeover sealedState = sealedTakeover ?? search.Interaction.SealTakeover();
             sealedTakeover = sealedState;
             if (sealedState.Generation != generation)
@@ -4285,7 +4285,7 @@ internal static partial class SolverController
         catch (InvalidDataException ex)
         {
             bridgeWatch.Stop();
-            attemptWork.RecordElapsed(bridgeWatch.Elapsed, request.MaxDegreeOfParallelism);
+            attemptWork.RecordElapsed(bridgeWatch.Elapsed, request.MaxDegreeOfParallelism, isAuthoritativeFallback: false);
             SealedSearchTakeover sealedState = sealedTakeover ?? search.Interaction.SealTakeover();
             if (sealedState.Generation != generation || sealedState.StopAfterResult)
                 throw new OperationCanceledException("Search stopped after invalid Sts2Sim payload.", ex);
@@ -4302,7 +4302,7 @@ internal static partial class SolverController
         catch (InvalidOperationException ex)
         {
             bridgeWatch.Stop();
-            attemptWork.RecordElapsed(bridgeWatch.Elapsed, request.MaxDegreeOfParallelism);
+            attemptWork.RecordElapsed(bridgeWatch.Elapsed, request.MaxDegreeOfParallelism, isAuthoritativeFallback: false);
             SealedSearchTakeover sealedState = sealedTakeover ?? search.Interaction.SealTakeover();
             if (sealedState.Generation != generation || sealedState.StopAfterResult)
                 throw new OperationCanceledException("Search stopped after invalid Sts2Sim operation.", ex);
@@ -4319,7 +4319,7 @@ internal static partial class SolverController
         catch (NotSupportedException ex)
         {
             bridgeWatch.Stop();
-            attemptWork.RecordElapsed(bridgeWatch.Elapsed, request.MaxDegreeOfParallelism);
+            attemptWork.RecordElapsed(bridgeWatch.Elapsed, request.MaxDegreeOfParallelism, isAuthoritativeFallback: false);
             SealedSearchTakeover sealedState = sealedTakeover ?? search.Interaction.SealTakeover();
             if (sealedState.Generation != generation || sealedState.StopAfterResult)
                 throw new OperationCanceledException("Search stopped after unsupported Sts2Sim operation.", ex);

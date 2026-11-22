@@ -26,19 +26,40 @@ internal readonly record struct SealedSearchTakeover(
     };
 }
 
-internal sealed class SolverRouteAdoptionSeed(
-    int candidateVersion,
-    IReadOnlyList<PlanAction> actions,
-    Func<SolverResult> materialize,
-    int backendAttempt = 0)
+internal sealed class SolverRouteAdoptionSeed
 {
-    private readonly Lazy<SolverResult> _materialized = new(
-        materialize,
-        LazyThreadSafetyMode.ExecutionAndPublication);
+    private readonly IReadOnlyList<PlanAction>? _actions;
+    private readonly Lazy<SolverResult> _materialized;
 
-    public int CandidateVersion { get; } = candidateVersion;
-    public IReadOnlyList<PlanAction> Actions { get; } = actions;
-    public int BackendAttempt { get; } = backendAttempt;
+    public SolverRouteAdoptionSeed(
+        int candidateVersion,
+        IReadOnlyList<PlanAction> actions,
+        Func<SolverResult> materialize,
+        int backendAttempt = 0)
+    {
+        ArgumentNullException.ThrowIfNull(actions);
+        ArgumentNullException.ThrowIfNull(materialize);
+        CandidateVersion = candidateVersion;
+        _actions = actions;
+        BackendAttempt = backendAttempt;
+        _materialized = new(materialize, LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
+    public SolverRouteAdoptionSeed(
+        int candidateVersion,
+        Func<SolverResult> materialize,
+        int backendAttempt = 0)
+    {
+        ArgumentNullException.ThrowIfNull(materialize);
+        CandidateVersion = candidateVersion;
+        _actions = null;
+        BackendAttempt = backendAttempt;
+        _materialized = new(materialize, LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
+    public int CandidateVersion { get; }
+    public IReadOnlyList<PlanAction> Actions => _actions ?? _materialized.Value.BestNode.Actions;
+    public int BackendAttempt { get; }
 
     public SolverResult Materialize()
         => _materialized.Value;

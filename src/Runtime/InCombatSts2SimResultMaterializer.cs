@@ -384,7 +384,7 @@ internal static class InCombatSts2SimResultMaterializer
         int maxParallelExpansionConcurrency;
         if (dto.ObservedPeakParallelism is >= 1)
         {
-            maxParallelExpansionConcurrency = attemptTotals is { } totals4
+            maxParallelExpansionConcurrency = attemptTotals is { HasMeasuredPeakParallelism: true } totals4
                 ? Math.Max(metrics.MaxParallelExpansionConcurrency, totals4.ObservedPeakParallelism)
                 : metrics.MaxParallelExpansionConcurrency;
         }
@@ -394,9 +394,7 @@ internal static class InCombatSts2SimResultMaterializer
         }
         else
         {
-            maxParallelExpansionConcurrency = attemptTotals is { } totals4
-                ? Math.Max(metrics.MaxParallelExpansionConcurrency, totals4.ObservedPeakParallelism)
-                : metrics.MaxParallelExpansionConcurrency;
+            maxParallelExpansionConcurrency = metrics.MaxParallelExpansionConcurrency;
         }
         TimeSpan effectiveTotalElapsed = attemptTotals is { } totals5 && totals5.Elapsed > totalElapsed
             ? totals5.Elapsed
@@ -562,16 +560,13 @@ internal static class InCombatSts2SimResultMaterializer
             speculativePreview = SolverSpeculativeRoutePreview.FromResult(previewResult, candidateVersion);
             adoptionSeed = new SolverRouteAdoptionSeed(
                 candidateVersion,
-                previewResult.BestNode.Actions,
                 () =>
                 {
                     Sts2SimAttemptWorkSnapshot latest = attemptWork.Snapshot();
                     TimeSpan adoptedElapsed = latest.Elapsed > elapsed ? latest.Elapsed : elapsed;
-                    int adoptedParallelism = latest.HasMeasuredPeakParallelism && latest.ObservedPeakParallelism >= 1
-                        ? (progressDto.ObservedPeakParallelism is >= 1
-                            ? Math.Max(progressDto.ObservedPeakParallelism.Value, latest.ObservedPeakParallelism)
-                            : latest.ObservedPeakParallelism)
-                        : Math.Max(previewParallelism, latest.ObservedPeakParallelism);
+                    int adoptedParallelism = latest.ObservedPeakParallelism >= 1
+                        ? latest.ObservedPeakParallelism
+                        : previewParallelism;
                     return MaterializeResult(
                         bestDto,
                         root,
