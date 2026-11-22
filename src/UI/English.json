@@ -510,5 +510,7 @@
   "本次战斗已回退并使用内置模拟器。": "This combat fell back to the built-in simulator.",
   "当前正在使用内置模拟器计算本场战斗。": "Currently solving this combat with the built-in simulator.",
   "当前战斗使用内置模拟器。": "Current combat engine: built-in simulator.",
-  "战前引擎：{0}": "Pre-combat engine: {0}"
+  "战前引擎：{0}": "Pre-combat engine: {0}",
+  "正在搜索·Sts2Sim": "Searching · Sts2Sim",
+  "正在搜索·Sts2Sim·{0}": "Searching · Sts2Sim · {0}"
 }

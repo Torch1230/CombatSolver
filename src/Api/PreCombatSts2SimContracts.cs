@@ -229,8 +229,10 @@ internal static class PreCombatSts2SimWireValidator
             policy.PortfolioOptionsVersion,
             policy.BeamWidthPortfolioWidths,
             policy.BeamWidthPortfolioPlainBaselineMember,
+            policy.ReallocatedRefinementPortfolio,
             policy.OffensiveRefinementPortfolio,
             policy.BoundedOffensiveRefinementPortfolio,
+            policy.StopPortfolioAtHpTarget,
             policy.AdaptiveNoveltyRefinement,
             policy.NoveltySearch,
             policy.NoveltyBudget,
@@ -246,8 +248,10 @@ internal static class PreCombatSts2SimWireValidator
         int? portfolioOptionsVersion,
         IReadOnlyList<int>? beamWidthPortfolioWidths,
         bool? beamWidthPortfolioPlainBaselineMember,
+        bool? reallocatedRefinementPortfolio,
         bool? offensiveRefinementPortfolio,
         bool? boundedOffensiveRefinementPortfolio,
+        bool? stopPortfolioAtHpTarget,
         bool? adaptiveNoveltyRefinement,
         Sts2SimNoveltySearchOptionsDto? noveltySearch,
         Sts2SimNoveltyPortfolioBudgetDto? noveltyBudget,
@@ -357,26 +361,45 @@ internal static class PreCombatSts2SimWireValidator
             {
                 throw new InvalidDataException("Sts2Sim policy requested UseNoveltyPortfolio without negotiated support.");
             }
-            if (adaptiveNoveltyRefinement == true && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsAdaptiveNoveltyRefinement))
+            if (adaptiveNoveltyRefinement is not null
+                && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsAdaptiveNoveltyRefinement))
             {
-                throw new InvalidDataException("Sts2Sim policy requested AdaptiveNoveltyRefinement without negotiated support.");
+                throw new InvalidDataException("Sts2Sim policy specified AdaptiveNoveltyRefinement without negotiated support.");
             }
-            if (useEarlyTurnExploration && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsEarlyTurnExploration))
+            if (noveltySearch is not null
+                && (capabilities.PortfolioOptionsVersion < 2
+                    || (!capabilities.SupportsNoveltyPortfolio
+                        && !(adaptiveNoveltyRefinement == true && capabilities.SupportsAdaptiveNoveltyRefinement))))
             {
-                throw new InvalidDataException("Sts2Sim policy requested UseEarlyTurnExploration without negotiated support.");
+                throw new InvalidDataException("Sts2Sim policy specified NoveltySearch without negotiated novelty support.");
+            }
+            if (noveltyBudget is not null
+                && (capabilities.PortfolioOptionsVersion < 2
+                    || (!capabilities.SupportsNoveltyPortfolio && !capabilities.SupportsAdaptiveNoveltyRefinement)))
+            {
+                throw new InvalidDataException("Sts2Sim policy specified NoveltyBudget without negotiated novelty support.");
+            }
+            if ((useEarlyTurnExploration
+                    || earlyTurnExplorationDepth is not null
+                    || earlyTurnExplorationBudgetMilliseconds is not null)
+                && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsEarlyTurnExploration))
+            {
+                throw new InvalidDataException("Sts2Sim policy requested EarlyTurnExploration without negotiated support.");
             }
             if ((beamWidthPortfolioWidths is not null
-                    || beamWidthPortfolioPlainBaselineMember == false
-                    || offensiveRefinementPortfolio == true
-                    || boundedOffensiveRefinementPortfolio == true)
+                    || beamWidthPortfolioPlainBaselineMember is not null
+                    || reallocatedRefinementPortfolio is not null
+                    || offensiveRefinementPortfolio is not null
+                    || boundedOffensiveRefinementPortfolio is not null
+                    || stopPortfolioAtHpTarget is not null)
                 && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsBeamWidthPortfolioFull))
             {
-                throw new InvalidDataException("Sts2Sim policy requested v2 BeamWidthPortfolio options without negotiated support.");
+                throw new InvalidDataException("Sts2Sim policy specified v2 BeamWidthPortfolio options without negotiated support.");
             }
-            if (string.Equals(portfolioSchedulingMode, "Parallel", StringComparison.Ordinal)
+            if (portfolioSchedulingMode is not null
                 && (capabilities.PortfolioOptionsVersion < 2 || !capabilities.SupportsParallelPortfolioScheduling))
             {
-                throw new InvalidDataException("Sts2Sim policy requested Parallel scheduling without negotiated support.");
+                throw new InvalidDataException("Sts2Sim policy specified PortfolioSchedulingMode without negotiated support.");
             }
         }
     }

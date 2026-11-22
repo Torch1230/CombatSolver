@@ -515,6 +515,33 @@ await Check("ABI v1 vs v2 portfolio policy routing forwards v2 options and falls
     Equal(PreCombatBackendKind.LegacyProcess, conflictFallback.ProducingBackend);
     Equal("policy_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
     Equal(2, hookCalls);
+
+    var nonDefaultBeamRun = new RunState
+    {
+        SettingsOverride = new CombatSolver.SolverSettingsSnapshot(
+            SearchMaxDegreeOfParallelism: 4,
+            UseBeamWidthPortfolio: true,
+            UseNoveltyPortfolio: false,
+            UseEarlyTurnExploration: false,
+            ReallocatedRefinementPortfolio: false,
+            StopPortfolioAtHpTarget: false),
+    };
+    PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = Sts2SimBridgeCapabilitiesDto.DefaultV1;
+    RunManager.Instance.Run = nonDefaultBeamRun;
+    PreCombatForecastResult nonDefaultBeamV1Fallback = await PreCombatForecastApi.ForecastAsync(
+        nonDefaultBeamRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 2_000, OverallTimeoutMilliseconds = 15_000, MaxDegreeOfParallelism = 4 });
+    Equal(PreCombatBackendKind.LegacyProcess, nonDefaultBeamV1Fallback.ProducingBackend);
+    Equal("policy_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
+
+    PreCombatSts2SimBridge.CapabilitiesOverrideForTesting =
+        Sts2SimBridgeCapabilitiesDto.V2Default with { SupportsBeamWidthPortfolioFull = false };
+    PreCombatForecastResult nonDefaultBeamPartialV2Fallback = await PreCombatForecastApi.ForecastAsync(
+        nonDefaultBeamRun, new EncounterModel(), 2, 0, PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal,
+        options: new() { ForceRefresh = true, SearchBudgetMilliseconds = 2_000, OverallTimeoutMilliseconds = 15_000, MaxDegreeOfParallelism = 4 });
+    Equal(PreCombatBackendKind.LegacyProcess, nonDefaultBeamPartialV2Fallback.ProducingBackend);
+    Equal("policy_unsupported", PreCombatForecastWorker.LastFallbackCodeForTesting);
+    Equal(2, hookCalls);
 });
 
 await Check("Foreign BuiltIn-adapted OnPlay and combat-command patches route to Legacy/Unsupported without bridge activation", async () =>

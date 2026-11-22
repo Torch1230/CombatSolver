@@ -898,13 +898,7 @@ internal static class SolverOverlay
             _lastProgressReviewedWorldlines = progress.ReviewedWorldlines;
             _lastProgressElapsedMilliseconds = progress.ElapsedMilliseconds;
         }
-        SetReviewText(SolverText.IsEnglish && potionSearchPhase.Length > 0
-            ? reclaimingMemory
-                ? SolverText.Get("正在整理内存")
-                : refiningRoute
-                    ? SolverText.Get("正在精炼路线")
-                    : SolverText.Get("后台计算中")
-            : potionSearchPhase);
+        SetReviewText(FormatSearchReviewPhase(potionSearchPhase, reclaimingMemory, refiningRoute));
         if (_summaryText != null)
         {
             _summaryText.Visible = true;
@@ -931,6 +925,30 @@ internal static class SolverOverlay
             _searchProgressBar.Value = _shownSearchProgressRatio;
         }
         RefreshControls();
+    }
+
+    private static string FormatSearchReviewPhase(
+        string potionSearchPhase,
+        bool reclaimingMemory,
+        bool refiningRoute)
+    {
+        if (potionSearchPhase.Length == 0)
+            return string.Empty;
+        if (CombatSolver.Api.Sts2SimPortfolioPolicyBridge.TryExtractSts2SimActivePhaseLabel(
+                potionSearchPhase,
+                out string? sts2SimPhaseLabel))
+        {
+            return !string.IsNullOrEmpty(sts2SimPhaseLabel)
+                ? SolverText.Format($"正在搜索·Sts2Sim·{sts2SimPhaseLabel}")
+                : SolverText.Get("正在搜索·Sts2Sim");
+        }
+        if (!SolverText.IsEnglish)
+            return potionSearchPhase;
+        return reclaimingMemory
+            ? SolverText.Get("正在整理内存")
+            : refiningRoute
+                ? SolverText.Get("正在精炼路线")
+                : SolverText.Get("后台计算中");
     }
 
     internal static void AdvanceSearchReadouts(double delta)

@@ -192,6 +192,26 @@ internal static class InCombatSts2SimEligibility
         return InCombatEligibilityResult.Eligible();
     }
 
+    public static InCombatEligibilityResult AssessBuiltInOnlyPolicy(SearchPolicySnapshot searchPolicy)
+    {
+        ArgumentNullException.ThrowIfNull(searchPolicy);
+
+        Sts2SimPortfolioPolicyInput input = BuildPortfolioPolicyInput(searchPolicy);
+        if (Sts2SimPortfolioPolicyBridge.IsBuiltInOnlyPolicy(in input, out string? portfolioReason))
+            return InCombatEligibilityResult.Ineligible("policy_unsupported", portfolioReason!);
+
+        GrowthValues growth = searchPolicy.GrowthBudgets;
+        Dictionary<string, int>? extras = growth.Extras.ToDictionary();
+        if (growth.ShowOff != 0 || (extras is not null && extras.Values.Any(static v => v != 0)))
+        {
+            return InCombatEligibilityResult.Ineligible(
+                "policy_unsupported",
+                "ShowOff or third-party GrowthBudgets are nonzero and not mapped to Sts2Sim bridge.");
+        }
+
+        return InCombatEligibilityResult.Eligible();
+    }
+
     internal static Sts2SimPortfolioPolicyInput BuildPortfolioPolicyInput(SearchPolicySnapshot policy)
     {
         SolverSearchProfile profile = policy.Profile;
@@ -205,7 +225,10 @@ internal static class InCombatSts2SimEligibility
                 ns.MaxTurns)
             : null;
         Sts2SimNoveltyPortfolioBudgetDto? noveltyBudget =
-            policy.UseNoveltyPortfolio || profile.AdaptiveNoveltyRefinement
+            policy.UseNoveltyPortfolio
+            || profile.AdaptiveNoveltyRefinement
+            || policy.NoveltySearch is not null
+            || policy.NoveltyBudget != NoveltyPortfolioBudget.Default
                 ? new Sts2SimNoveltyPortfolioBudgetDto(
                     policy.NoveltyBudget.TimeDivisor,
                     policy.NoveltyBudget.MaximumMilliseconds,
@@ -240,7 +263,11 @@ internal static class InCombatSts2SimEligibility
             PileOrderInvariantMask: policy.PileOrderInvariantMask,
             TranspositionPruningDisabledMask: policy.TranspositionPruningDisabledMask,
             StateKeySalt: policy.StateKeySalt,
-            MemoryNoProgressRecoveryLimit: policy.MemoryNoProgressRecoveryLimit);
+            MemoryNoProgressRecoveryLimit: policy.MemoryNoProgressRecoveryLimit,
+            HasBuiltInOnlyProfileTuning: profile.SecondRankBand
+                || profile.BaseScoreOnly
+                || profile.BossTempoHpPricing
+                || profile.AggressivePowerCommitment);
     }
 
     private static bool TryFindUnsupportedSearchPolicy(

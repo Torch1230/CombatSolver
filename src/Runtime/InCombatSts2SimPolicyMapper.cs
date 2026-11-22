@@ -33,10 +33,32 @@ internal static class InCombatSts2SimPolicyMapper
         out int searchBudgetMilliseconds,
         out string? unsupportedReason)
     {
+        ArgumentNullException.ThrowIfNull(player);
+        return TryBuildPolicy(
+            settingsData,
+            settingsSnapshot,
+            searchPolicy,
+            PreCombatSts2SimPolicyMapper.CaptureEffectivePotions(player),
+            capabilities,
+            out policy,
+            out searchBudgetMilliseconds,
+            out unsupportedReason);
+    }
+
+    public static bool TryBuildPolicy(
+        SolverSettingsData settingsData,
+        SolverSettingsSnapshot settingsSnapshot,
+        SearchPolicySnapshot searchPolicy,
+        IReadOnlyList<(int Slot, string PotionId)> effectivePotions,
+        Sts2SimBridgeCapabilitiesDto capabilities,
+        out InCombatSts2SimPolicyDto? policy,
+        out int searchBudgetMilliseconds,
+        out string? unsupportedReason)
+    {
         ArgumentNullException.ThrowIfNull(settingsData);
         ArgumentNullException.ThrowIfNull(settingsSnapshot);
         ArgumentNullException.ThrowIfNull(searchPolicy);
-        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(effectivePotions);
         ArgumentNullException.ThrowIfNull(capabilities);
 
         int rawBudgetMs = searchPolicy.BudgetOverrideMilliseconds
@@ -74,8 +96,6 @@ internal static class InCombatSts2SimPolicyMapper
             return false;
         }
 
-        IReadOnlyList<(int Slot, string PotionId)> effectivePotions =
-            PreCombatSts2SimPolicyMapper.CaptureEffectivePotions(player);
         var directives = new List<Sts2SimPotionDirectiveDto>();
         foreach (PotionSlotDirective directive in searchPolicy.PotionStrategy.Directives)
         {

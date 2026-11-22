@@ -16,7 +16,8 @@ internal static class InCombatSts2SimResultMaterializer
         TimeSpan totalElapsed,
         int effectiveDegreeOfParallelism,
         SolverResultScope resultScope,
-        CancellationToken continuationCancellation)
+        CancellationToken continuationCancellation,
+        Sts2SimAttemptWorkSnapshot? attemptTotals = null)
     {
         PlanAction[] actions = BuildActions(dto.Actions, root, displayNames);
         Dictionary<int, IReadOnlyList<string>> killsAfterAction = BuildKillsAfterAction(
@@ -250,11 +251,27 @@ internal static class InCombatSts2SimResultMaterializer
         Sts2SimMaterializedResultMetrics metrics = Sts2SimPortfolioPolicyBridge.ResolveResultMetrics(
             dto,
             effectiveDegreeOfParallelism);
+        long totalExpandedNodes = attemptTotals is { } totals
+            ? Math.Max(metrics.TotalExpandedNodes, totals.ExpandedParents)
+            : metrics.TotalExpandedNodes;
+        long totalTransitionCount = attemptTotals is { } totals2
+            ? Math.Max(metrics.TotalTransitionCount, totals2.TransitionCount)
+            : metrics.TotalTransitionCount;
+        long totalChoiceBranchesEvaluated = attemptTotals is { } totals3
+            ? Math.Max(metrics.TotalChoiceBranchesEvaluated, totals3.ChoiceReplayAttempts)
+            : metrics.TotalChoiceBranchesEvaluated;
+        int maxParallelExpansionConcurrency = attemptTotals is { } totals4
+            ? Math.Max(metrics.MaxParallelExpansionConcurrency, totals4.ObservedPeakParallelism)
+            : metrics.MaxParallelExpansionConcurrency;
+        TimeSpan effectiveTotalElapsed = attemptTotals is { } totals5 && totals5.Elapsed > totalElapsed
+            ? totals5.Elapsed
+            : totalElapsed;
+
         SolverResult result = new()
         {
             ResultScope = resultScope,
             SingleSessionSearch = true,
-            TotalSearchElapsed = totalElapsed,
+            TotalSearchElapsed = effectiveTotalElapsed,
             TotalWorkerAllocatedBytes = 0L,
             TotalGen0Collections = 0,
             TotalGen1Collections = 0,
@@ -267,13 +284,13 @@ internal static class InCombatSts2SimResultMaterializer
             Snapshot = snapshot,
             Forecast = root.Forecast,
             ExpandedNodes = metrics.ExpandedNodes,
-            TotalExpandedNodes = metrics.TotalExpandedNodes,
+            TotalExpandedNodes = totalExpandedNodes,
             DominatedActionsPruned = 0,
             TopQueueActionsDropped = 0,
             ActionAdmissionRepresentativesProtected = 0,
             DuplicateCardBranchesPruned = 0,
             ChoiceBranchesEvaluated = metrics.ChoiceBranchesEvaluated,
-            TotalChoiceBranchesEvaluated = metrics.TotalChoiceBranchesEvaluated,
+            TotalChoiceBranchesEvaluated = totalChoiceBranchesEvaluated,
             ChoiceReplayAttempts = metrics.ChoiceBranchesEvaluated,
             ShuffleBranchesPruned = 0,
             SoldHpBranchesPruned = 0,
@@ -281,12 +298,12 @@ internal static class InCombatSts2SimResultMaterializer
             ReplayCount = 0,
             ForkCount = 0,
             TransitionCount = metrics.TransitionCount,
-            TotalTransitionCount = metrics.TotalTransitionCount,
+            TotalTransitionCount = totalTransitionCount,
             ReusedNodeSnapshots = 0,
             TranspositionBranchesPruned = 0,
             RepeatableNoProgressBranchesPruned = 0,
             StandPatProbes = 0,
-            MaxParallelExpansionConcurrency = metrics.MaxParallelExpansionConcurrency,
+            MaxParallelExpansionConcurrency = maxParallelExpansionConcurrency,
             TransitionCacheHits = 0,
             WorkerAllocatedBytes = 0L,
             Gen0Collections = 0,
@@ -346,6 +363,7 @@ internal static class InCombatSts2SimResultMaterializer
         InCombatSts2SimProgressDto progressDto,
         int candidateVersion,
         int backendAttempt,
+        Sts2SimAttemptWorkTracker attemptWork,
         CombatRootSnapshot root,
         SolverDisplayNames displayNames,
         BattleDamageSnapshot battleDamage,
@@ -354,6 +372,9 @@ internal static class InCombatSts2SimResultMaterializer
         int requestBudgetMilliseconds,
         CancellationToken routeAdoptionCancellation)
     {
+        ArgumentNullException.ThrowIfNull(attemptWork);
+        attemptWork.RecordProgress(progressDto, effectiveDegreeOfParallelism);
+
         SolverInterimResult? interimResult = null;
         SolverCurrentTurnPreview? turnPreview = null;
         SolverSpeculativeRoutePreview? speculativePreview = null;
@@ -361,7 +382,7 @@ internal static class InCombatSts2SimResultMaterializer
 
         int previewParallelism = progressDto.ObservedPeakParallelism is >= 1
             ? progressDto.ObservedPeakParallelism.Value
-            : effectiveDegreeOfParallelism;
+            : Math.Max(1, effectiveDegreeOfParallelism);
         if (progressDto.CurrentBest is { Actions.Count: > 0 } bestDto)
         {
             TimeSpan elapsed = TimeSpan.FromMilliseconds(Math.Max(0d, progressDto.ElapsedMilliseconds));
@@ -400,20 +421,28 @@ internal static class InCombatSts2SimResultMaterializer
             adoptionSeed = new SolverRouteAdoptionSeed(
                 candidateVersion,
                 previewResult.BestNode.Actions,
-                () => MaterializeResult(
-                    bestDto,
-                    root,
-                    displayNames,
-                    battleDamage,
-                    searchPolicy,
-                    elapsed,
-                    previewParallelism,
-                    SolverResultScope.RouteAdoption,
-                    routeAdoptionCancellation),
+                () =>
+                {
+                    Sts2SimAttemptWorkSnapshot latest = attemptWork.Snapshot();
+                    TimeSpan adoptedElapsed = latest.Elapsed > elapsed ? latest.Elapsed : elapsed;
+                    int adoptedParallelism = Math.Max(previewParallelism, latest.ObservedPeakParallelism);
+                    return MaterializeResult(
+                        bestDto,
+                        root,
+                        displayNames,
+                        battleDamage,
+                        searchPolicy,
+                        adoptedElapsed,
+                        adoptedParallelism,
+                        SolverResultScope.RouteAdoption,
+                        routeAdoptionCancellation,
+                        latest);
+                },
                 backendAttempt: backendAttempt);
         }
 
         Sts2SimMaterializedProgressMetrics metrics = Sts2SimPortfolioPolicyBridge.ResolveProgressMetrics(progressDto);
+        long cumulativeReviewedWorldlines = Math.Max(metrics.ReviewedWorldlines, attemptWork.Snapshot().ExpandedParents);
         int currentTurn = Math.Max(root.StartTurnNumber, progressDto.MaxTurnReached);
         int completedTurns = Math.Max(0, currentTurn - root.StartTurnNumber);
 
@@ -423,7 +452,7 @@ internal static class InCombatSts2SimResultMaterializer
             CompletedTurnLayers: completedTurns,
             PlayDepth: 0,
             ExpandedNodes: metrics.ExpandedNodes,
-            ReviewedWorldlines: metrics.ReviewedWorldlines,
+            ReviewedWorldlines: cumulativeReviewedWorldlines,
             MaxNodes: searchPolicy.Profile.MaxExpandedNodes,
             FrontierNodes: 0,
             EndedNodes: 0,

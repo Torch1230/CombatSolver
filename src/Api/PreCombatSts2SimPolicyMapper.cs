@@ -77,7 +77,11 @@ internal static class PreCombatSts2SimPolicyMapper
             HasContextualRanking: profile.ContextualRanking is not null,
             ContinuousThreatRanking: profile.ContinuousThreatRanking,
             BaseScoreTacticalTies: profile.BaseScoreTacticalTies,
-            HasBeamWeightPerturbation: profile.BeamWeightPerturbation is not null);
+            HasBeamWeightPerturbation: profile.BeamWeightPerturbation is not null,
+            HasBuiltInOnlyProfileTuning: profile.SecondRankBand
+                || profile.BaseScoreOnly
+                || profile.BossTempoHpPricing
+                || profile.AggressivePowerCommitment);
 
         if (!Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(
                 in portfolioInput,

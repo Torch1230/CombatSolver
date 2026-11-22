@@ -518,8 +518,10 @@ internal static class InCombatSts2SimWireValidator
             policy.PortfolioOptionsVersion,
             policy.BeamWidthPortfolioWidths,
             policy.BeamWidthPortfolioPlainBaselineMember,
+            policy.ReallocatedRefinementPortfolio,
             policy.OffensiveRefinementPortfolio,
             policy.BoundedOffensiveRefinementPortfolio,
+            policy.StopPortfolioAtHpTarget,
             policy.AdaptiveNoveltyRefinement,
             policy.NoveltySearch,
             policy.NoveltyBudget,
@@ -564,12 +566,6 @@ internal static class InCombatSts2SimWireValidator
         ArgumentNullException.ThrowIfNull(progress);
         if (progress.ExpandedNodes < 0 || !double.IsFinite(progress.ElapsedMilliseconds) || progress.ElapsedMilliseconds < 0d)
             throw new InvalidDataException("Sts2Sim in-combat progress reported invalid counters.");
-        ValidateExtendedMetrics(
-            progress.ExpandedParents,
-            progress.TransitionCount,
-            progress.ChoiceReplayAttempts,
-            progress.ObservedPeakParallelism,
-            "progress");
         if (progress.CurrentBest is not null)
             ValidateResult(progress.CurrentBest, "progress.currentBest");
     }
@@ -651,12 +647,6 @@ internal static class InCombatSts2SimWireValidator
             throw new InvalidDataException($"{path}.potionUses cannot be null.");
         if (result.ExpandedNodes < 0 || !double.IsFinite(result.SearchElapsedMilliseconds) || result.SearchElapsedMilliseconds < 0d)
             throw new InvalidDataException($"{path} has invalid search telemetry.");
-        ValidateExtendedMetrics(
-            result.ExpandedParents,
-            result.TransitionCount,
-            result.ChoiceReplayAttempts,
-            result.ObservedPeakParallelism,
-            path);
 
         HashSet<int> turnOutcomeTurns = [];
         for (int i = 0; i < result.TurnOutcomes.Count; i++)
@@ -763,26 +753,6 @@ internal static class InCombatSts2SimWireValidator
                     CultureInfo.InvariantCulture,
                     $"{path}.potionUses[{i}] is malformed."));
             }
-        }
-    }
-
-    private static void ValidateExtendedMetrics(
-        long? expandedParents,
-        long? transitionCount,
-        long? choiceReplayAttempts,
-        int? observedPeakParallelism,
-        string path)
-    {
-        if (expandedParents is < 0)
-            throw new InvalidDataException($"{path}.expandedParents cannot be negative ({expandedParents}).");
-        if (transitionCount is < 0)
-            throw new InvalidDataException($"{path}.transitionCount cannot be negative ({transitionCount}).");
-        if (choiceReplayAttempts is < 0)
-            throw new InvalidDataException($"{path}.choiceReplayAttempts cannot be negative ({choiceReplayAttempts}).");
-        if (observedPeakParallelism is not (null or (>= 1 and <= 64)))
-        {
-            throw new InvalidDataException(
-                $"{path}.observedPeakParallelism must be between 1 and 64 ({observedPeakParallelism}).");
         }
     }
 }

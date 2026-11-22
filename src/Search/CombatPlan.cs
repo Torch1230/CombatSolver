@@ -1552,7 +1552,7 @@ internal sealed class SolverResult
     public required int StandPatProbes { get; init; }
     public int ParallelExpansionWaves { get; init; }
     public int ParallelExpansionWorkItems { get; init; }
-    public int MaxParallelExpansionConcurrency { get; init; }
+    public int MaxParallelExpansionConcurrency { get; internal set; }
     public int ParallelActionReplayWaves { get; init; }
     public int ParallelActionReplayWorkItems { get; init; }
     public int MaxParallelActionReplayConcurrency { get; init; }

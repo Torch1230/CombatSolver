@@ -151,6 +151,25 @@ internal static class PreCombatSts2SimBridge
         }
     }
 
+    public static bool TryGetCachedCapabilities(out Sts2SimBridgeCapabilitiesDto capabilities)
+    {
+        lock (Sync)
+        {
+            if (CapabilitiesOverrideForTesting is { } forced)
+            {
+                capabilities = forced;
+                return true;
+            }
+            if (_activated is not null)
+            {
+                capabilities = _activated.Capabilities;
+                return true;
+            }
+            capabilities = Sts2SimBridgeCapabilitiesDto.DefaultV1;
+            return false;
+        }
+    }
+
     internal static Sts2SimBridgeCapabilitiesDto DeserializeAndValidateCapabilities(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))

@@ -925,6 +925,10 @@ await Check("extra fields eligibility allows cosmetic TestSubjectKills and rejec
 await Check("ABI v2 capabilities discovery, defaults, override, and validation", () =>
 {
     PreCombatSts2SimBridge.ResetForTesting();
+    Equal(0, PreCombatSts2SimBridge.ActivationAttemptCountForTesting);
+    Equal(false, PreCombatSts2SimBridge.TryGetCachedCapabilities(out Sts2SimBridgeCapabilitiesDto unactivatedCached));
+    Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, unactivatedCached);
+    Equal(0, PreCombatSts2SimBridge.ActivationAttemptCountForTesting);
     Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, PreCombatSts2SimBridge.GetActiveCapabilities());
     Equal(1, Sts2SimBridgeCapabilitiesDto.DefaultV1.PortfolioOptionsVersion);
     Equal(false, Sts2SimBridgeCapabilitiesDto.DefaultV1.SupportsNoveltyPortfolio);
@@ -949,8 +953,12 @@ await Check("ABI v2 capabilities discovery, defaults, override, and validation",
     Equal(v2, PreCombatSts2SimBridge.DeserializeAndValidateCapabilities(v2Json));
 
     PreCombatSts2SimBridge.CapabilitiesOverrideForTesting = v2;
+    Equal(true, PreCombatSts2SimBridge.TryGetCachedCapabilities(out Sts2SimBridgeCapabilitiesDto forcedCached));
+    Equal(v2, forcedCached);
     Equal(v2, PreCombatSts2SimBridge.GetActiveCapabilities());
+    Equal(0, PreCombatSts2SimBridge.ActivationAttemptCountForTesting);
     PreCombatSts2SimBridge.ResetForTesting();
+    Equal(false, PreCombatSts2SimBridge.TryGetCachedCapabilities(out _));
     Equal(Sts2SimBridgeCapabilitiesDto.DefaultV1, PreCombatSts2SimBridge.GetActiveCapabilities());
 
     ExpectThrows<InvalidDataException>(() => PreCombatSts2SimBridge.DeserializeAndValidateCapabilities(""));
@@ -985,6 +993,10 @@ await Check("ABI v1 vs v2 portfolio policy negotiation, conflicts, and BuiltIn-o
     Equal<string?>(null, v1Err);
     Equal(Sts2SimPortfolioPolicyFields.V1Empty, v1Resolved);
 
+    var noveltySearch = new Sts2SimNoveltySearchOptionsDto(2, 1, 2048, 500_000, 128, 32);
+    var noveltyBudget = new Sts2SimNoveltyPortfolioBudgetDto(2, 5_000, 2_500);
+    var customNoveltyBudget = new Sts2SimNoveltyPortfolioBudgetDto(3, 8_000, 3_000);
+
     Sts2SimPortfolioPolicyInput[] v1Rejected =
     [
         baselineInput with { UseNoveltyPortfolio = true },
@@ -993,9 +1005,13 @@ await Check("ABI v1 vs v2 portfolio policy negotiation, conflicts, and BuiltIn-o
         baselineInput with { BeamWidthPortfolioWidths = [24, 48] },
         baselineInput with { BeamWidthPortfolioWidths = [] },
         baselineInput with { BeamWidthPortfolioPlainBaselineMember = false },
+        baselineInput with { ReallocatedRefinementPortfolio = false },
+        baselineInput with { StopPortfolioAtHpTarget = false },
         baselineInput with { AdaptiveNoveltyRefinement = true },
         baselineInput with { OffensiveRefinementPortfolio = true },
         baselineInput with { BoundedOffensiveRefinementPortfolio = true },
+        baselineInput with { NoveltySearch = noveltySearch },
+        baselineInput with { NoveltyBudget = customNoveltyBudget },
     ];
     foreach (Sts2SimPortfolioPolicyInput rejected in v1Rejected)
     {
@@ -1003,9 +1019,54 @@ await Check("ABI v1 vs v2 portfolio policy negotiation, conflicts, and BuiltIn-o
         Equal(true, !string.IsNullOrWhiteSpace(reason));
     }
 
+    Sts2SimBridgeCapabilitiesDto v2NoBeamFull = Sts2SimBridgeCapabilitiesDto.V2Default with
+    {
+        SupportsBeamWidthPortfolioFull = false,
+        SupportsAdaptiveNoveltyRefinement = false,
+        SupportsEarlyTurnExploration = false,
+        MaxEarlyTurnExplorationDepth = 0,
+        MaxEarlyTurnExplorationBudgetMilliseconds = 0,
+        SupportsParallelPortfolioScheduling = false,
+    };
+    Equal(true, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in baselineInput, v2NoBeamFull, out var partialResolved, out string? partialErr));
+    Equal<string?>(null, partialErr);
+    Equal(2, partialResolved.PortfolioOptionsVersion);
+    Equal<IReadOnlyList<int>?>(null, partialResolved.BeamWidthPortfolioWidths);
+    Equal<bool?>(null, partialResolved.BeamWidthPortfolioPlainBaselineMember);
+    Equal<bool?>(null, partialResolved.ReallocatedRefinementPortfolio);
+    Equal<bool?>(null, partialResolved.OffensiveRefinementPortfolio);
+    Equal<bool?>(null, partialResolved.BoundedOffensiveRefinementPortfolio);
+    Equal<bool?>(null, partialResolved.StopPortfolioAtHpTarget);
+    Equal<bool?>(null, partialResolved.AdaptiveNoveltyRefinement);
+    Equal<int?>(null, partialResolved.EarlyTurnExplorationDepth);
+    Equal<string?>(null, partialResolved.PortfolioSchedulingMode);
+
+    Sts2SimPortfolioPolicyInput[] partialV2Rejected =
+    [
+        baselineInput with { ReallocatedRefinementPortfolio = false },
+        baselineInput with { StopPortfolioAtHpTarget = false },
+        baselineInput with { BeamWidthPortfolioPlainBaselineMember = false },
+        baselineInput with { BeamWidthPortfolioWidths = [30] },
+        baselineInput with { OffensiveRefinementPortfolio = true },
+        baselineInput with { BoundedOffensiveRefinementPortfolio = true },
+        baselineInput with { AdaptiveNoveltyRefinement = true },
+        baselineInput with { EarlyTurnExplorationDepth = 1, EarlyTurnExplorationBudgetMilliseconds = 5_000 },
+    ];
+    foreach (Sts2SimPortfolioPolicyInput rejected in partialV2Rejected)
+    {
+        Equal(false, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in rejected, v2NoBeamFull, out _, out string? partialRejectReason));
+        Equal(true, !string.IsNullOrWhiteSpace(partialRejectReason));
+    }
+
+    Sts2SimBridgeCapabilitiesDto v2AdaptiveOnly = Sts2SimBridgeCapabilitiesDto.V2Default with
+    {
+        SupportsNoveltyPortfolio = false,
+        SupportsAdaptiveNoveltyRefinement = true,
+    };
+    Sts2SimPortfolioPolicyInput standaloneNoveltySearch = baselineInput with { NoveltySearch = noveltySearch };
+    Equal(false, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in standaloneNoveltySearch, v2AdaptiveOnly, out _, out _));
+
     Sts2SimBridgeCapabilitiesDto v2 = Sts2SimBridgeCapabilitiesDto.V2Default;
-    var noveltySearch = new Sts2SimNoveltySearchOptionsDto(2, 1, 2048, 500_000, 128, 32);
-    var noveltyBudget = new Sts2SimNoveltyPortfolioBudgetDto(2, 5_000, 2_500);
     Sts2SimPortfolioPolicyInput fullV2 = baselineInput with
     {
         UseNoveltyPortfolio = true,
@@ -1067,11 +1128,13 @@ await Check("ABI v1 vs v2 portfolio policy negotiation, conflicts, and BuiltIn-o
         baselineInput with { TranspositionPruningDisabledMask = 1 },
         baselineInput with { StateKeySalt = 7 },
         baselineInput with { MemoryNoProgressRecoveryLimit = 3 },
+        baselineInput with { HasBuiltInOnlyProfileTuning = true },
     ];
     foreach (Sts2SimPortfolioPolicyInput unsupported in builtInOnly)
     {
         Equal(false, Sts2SimPortfolioPolicyBridge.TryResolvePortfolioPolicy(in unsupported, v2, out _, out string? reason));
         Equal(true, !string.IsNullOrWhiteSpace(reason));
+        Equal(true, Sts2SimPortfolioPolicyBridge.IsBuiltInOnlyPolicy(in unsupported, out _));
     }
     return Task.CompletedTask;
 });
@@ -1212,6 +1275,74 @@ await Check("ABI v2 policy wire serialization, null omission, and validator boun
     ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
         inCombatV2Policy with { OffensiveRefinementPortfolio = true, BoundedOffensiveRefinementPortfolio = true },
         Sts2SimBridgeCapabilitiesDto.V2Default));
+
+    Sts2SimBridgeCapabilitiesDto v1Caps = Sts2SimBridgeCapabilitiesDto.DefaultV1;
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v1Policy with { ReallocatedRefinementPortfolio = false }, v1Caps));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v1Policy with { StopPortfolioAtHpTarget = false }, v1Caps));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v1Policy with { NoveltySearch = noveltySearch }, v1Caps));
+    ExpectThrows<InvalidDataException>(() => PreCombatSts2SimWireValidator.ValidatePolicy(
+        v1Policy with { NoveltyBudget = noveltyBudget }, v1Caps));
+
+    InCombatSts2SimPolicyDto inCombatBaseline = inCombatV2Policy with
+    {
+        UseNoveltyPortfolio = false,
+        UseEarlyTurnExploration = false,
+        PortfolioOptionsVersion = null,
+        BeamWidthPortfolioWidths = null,
+        BeamWidthPortfolioPlainBaselineMember = null,
+        ReallocatedRefinementPortfolio = null,
+        OffensiveRefinementPortfolio = null,
+        BoundedOffensiveRefinementPortfolio = null,
+        StopPortfolioAtHpTarget = null,
+        AdaptiveNoveltyRefinement = null,
+        NoveltySearch = null,
+        NoveltyBudget = null,
+        EarlyTurnExplorationDepth = null,
+        EarlyTurnExplorationBudgetMilliseconds = null,
+        PortfolioSchedulingMode = null,
+    };
+    InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { PortfolioOptionsVersion = 2 },
+        Sts2SimBridgeCapabilitiesDto.V2Default with
+        {
+            SupportsBeamWidthPortfolioFull = false,
+            SupportsNoveltyPortfolio = false,
+            SupportsAdaptiveNoveltyRefinement = false,
+            SupportsEarlyTurnExploration = false,
+            MaxEarlyTurnExplorationDepth = 0,
+            MaxEarlyTurnExplorationBudgetMilliseconds = 0,
+            SupportsParallelPortfolioScheduling = false,
+        });
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { ReallocatedRefinementPortfolio = false }, v1Caps));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { StopPortfolioAtHpTarget = false }, v1Caps));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { PortfolioOptionsVersion = 2, ReallocatedRefinementPortfolio = true },
+        Sts2SimBridgeCapabilitiesDto.V2Default with { SupportsBeamWidthPortfolioFull = false }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { PortfolioOptionsVersion = 2, StopPortfolioAtHpTarget = true },
+        Sts2SimBridgeCapabilitiesDto.V2Default with { SupportsBeamWidthPortfolioFull = false }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { PortfolioOptionsVersion = 2, AdaptiveNoveltyRefinement = false },
+        Sts2SimBridgeCapabilitiesDto.V2Default with { SupportsAdaptiveNoveltyRefinement = false }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { PortfolioOptionsVersion = 2, NoveltySearch = noveltySearch },
+        Sts2SimBridgeCapabilitiesDto.V2Default with { SupportsNoveltyPortfolio = false }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { PortfolioOptionsVersion = 2, PortfolioSchedulingMode = "Sequential" },
+        Sts2SimBridgeCapabilitiesDto.V2Default with { SupportsParallelPortfolioScheduling = false }));
+    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidatePolicy(
+        inCombatBaseline with { PortfolioOptionsVersion = 2, EarlyTurnExplorationDepth = 0 },
+        Sts2SimBridgeCapabilitiesDto.V2Default with
+        {
+            SupportsEarlyTurnExploration = false,
+            MaxEarlyTurnExplorationDepth = 0,
+            MaxEarlyTurnExplorationBudgetMilliseconds = 0,
+        }));
     return Task.CompletedTask;
 });
 await Check("in-combat v1 compatibility, extended metrics validation, and early-turn timeout wiring", () =>
@@ -1387,20 +1518,136 @@ await Check("in-combat v1 compatibility, extended metrics validation, and early-
     Equal(95L, v2ProgMetrics.ReviewedWorldlines);
     Equal("正在搜索·Sts2Sim·Novelty", v2ProgMetrics.Phase);
 
-    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
-        v2Resp with { Result = v2Resp.Result! with { ExpandedParents = -1 } }));
-    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
-        v2Resp with { Result = v2Resp.Result! with { TransitionCount = -1 } }));
-    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
-        v2Resp with { Result = v2Resp.Result! with { ChoiceReplayAttempts = -1 } }));
-    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
-        v2Resp with { Result = v2Resp.Result! with { ObservedPeakParallelism = 0 } }));
-    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
-        v2Resp with { Result = v2Resp.Result! with { ObservedPeakParallelism = 65 } }));
-    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateProgress(
-        v2Prog with { ObservedPeakParallelism = 0 }));
-    ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateProgress(
-        v2Prog with { ExpandedParents = -1 }));
+    string highDopResultJson = v2ResultJson
+        .Replace("\"observedPeakParallelism\": 6", "\"observedPeakParallelism\": 96", StringComparison.Ordinal);
+    InCombatSts2SimResponseDto highDopResp =
+        InCombatSts2SimWireValidator.DeserializeAndValidateResponse(System.Text.Encoding.UTF8.GetBytes(highDopResultJson));
+    Sts2SimMaterializedResultMetrics highDopMetrics =
+        Sts2SimPortfolioPolicyBridge.ResolveResultMetrics(highDopResp.Result!, highDopResp.EffectiveDegreeOfParallelism);
+    Equal(96, highDopMetrics.MaxParallelExpansionConcurrency);
+
+    string invalidOptionalResultJson = """
+        {
+          "abiVersion": 1,
+          "outcome": "Succeeded",
+          "failureCode": null,
+          "fieldPath": null,
+          "error": null,
+          "result": {
+            "actions": [],
+            "turnOutcomes": [
+              {
+                "turn": 2,
+                "hpLost": 5,
+                "hpRecovered": 0,
+                "enemyHpLost": 20,
+                "soldHp": 0,
+                "maxBlock": 0,
+                "actualBlock": 0,
+                "energyLeft": 1,
+                "potionCount": 0,
+                "potionStrategicCost": 0,
+                "combatEnded": true
+              }
+            ],
+            "terminal": {
+              "playerDead": false,
+              "allEnemiesDead": true,
+              "playerHp": 75,
+              "playerMaxHp": 80,
+              "cumulativePlayerHpLost": 5,
+              "recoveredPlayerHp": 0,
+              "projectedPlayerHp": 75,
+              "playerBlock": 0,
+              "enemyHp": 0,
+              "aliveEnemyCount": 0,
+              "energy": 1,
+              "stars": 0,
+              "handCount": 2,
+              "outstandingStolenResource": 0,
+              "turn": 2,
+              "shufflesCrossed": 0,
+              "postCombatRelicHeal": 0,
+              "projectedBattleHpLost": 5,
+              "combatEndedTurn": 2,
+              "deathTurn": null,
+              "onlyDeathRoutes": false,
+              "confidence": "Complete",
+              "searchBoundary": "None",
+              "hasRisk": false
+            },
+            "potionUses": [],
+            "expandedNodes": 345,
+            "searchElapsedMilliseconds": 42.5,
+            "expandedParents": -1,
+            "transitionCount": -5,
+            "choiceReplayAttempts": -3,
+            "observedPeakParallelism": 0
+          },
+          "bestSoFar": null,
+          "effectiveDegreeOfParallelism": 6,
+          "totalElapsedMilliseconds": 48.0
+        }
+        """;
+    InCombatSts2SimResponseDto fallbackCounterResp =
+        InCombatSts2SimWireValidator.DeserializeAndValidateResponse(System.Text.Encoding.UTF8.GetBytes(invalidOptionalResultJson));
+    Sts2SimMaterializedResultMetrics fallbackCounterMetrics =
+        Sts2SimPortfolioPolicyBridge.ResolveResultMetrics(fallbackCounterResp.Result!, fallbackCounterResp.EffectiveDegreeOfParallelism);
+    Equal(345, fallbackCounterMetrics.ExpandedNodes);
+    Equal(345L, fallbackCounterMetrics.TotalExpandedNodes);
+    Equal(0, fallbackCounterMetrics.TransitionCount);
+    Equal(0, fallbackCounterMetrics.ChoiceBranchesEvaluated);
+    Equal(6, fallbackCounterMetrics.MaxParallelExpansionConcurrency);
+
+    string highDopProgressJson = """
+        {
+          "expandedNodes": 210,
+          "maxTurnReached": 2,
+          "elapsedMilliseconds": 150.0,
+          "currentBestProjectedHpLoss": 8,
+          "currentBestWon": true,
+          "currentBestCombatEndedTurn": 2,
+          "currentBestPotionCount": 0,
+          "currentBest": null,
+          "expandedParents": 104,
+          "transitionCount": 420,
+          "choiceReplayAttempts": 19,
+          "observedPeakParallelism": 96,
+          "activePhaseLabel": "EarlyTurn"
+        }
+        """;
+    InCombatSts2SimProgressDto highDopProg =
+        InCombatSts2SimWireValidator.DeserializeAndValidateProgress(System.Text.Encoding.UTF8.GetBytes(highDopProgressJson));
+    Sts2SimMaterializedProgressMetrics highDopProgMetrics =
+        Sts2SimPortfolioPolicyBridge.ResolveProgressMetrics(highDopProg);
+    Equal(96, highDopProg.ObservedPeakParallelism);
+    Equal(104, highDopProgMetrics.ExpandedNodes);
+    Equal("正在搜索·Sts2Sim·EarlyTurn", highDopProgMetrics.Phase);
+
+    string invalidOptionalProgressJson = """
+        {
+          "expandedNodes": 210,
+          "maxTurnReached": 2,
+          "elapsedMilliseconds": 150.0,
+          "currentBestProjectedHpLoss": 8,
+          "currentBestWon": true,
+          "currentBestCombatEndedTurn": 2,
+          "currentBestPotionCount": 0,
+          "currentBest": null,
+          "expandedParents": -2,
+          "transitionCount": -1,
+          "choiceReplayAttempts": -1,
+          "observedPeakParallelism": 0,
+          "activePhaseLabel": " "
+        }
+        """;
+    InCombatSts2SimProgressDto invalidOptionalProg =
+        InCombatSts2SimWireValidator.DeserializeAndValidateProgress(System.Text.Encoding.UTF8.GetBytes(invalidOptionalProgressJson));
+    Sts2SimMaterializedProgressMetrics invalidOptionalProgMetrics =
+        Sts2SimPortfolioPolicyBridge.ResolveProgressMetrics(invalidOptionalProg);
+    Equal(210, invalidOptionalProgMetrics.ExpandedNodes);
+    Equal(210L, invalidOptionalProgMetrics.ReviewedWorldlines);
+    Equal("正在搜索·Sts2Sim", invalidOptionalProgMetrics.Phase);
 
     Equal(150_000, Sts2SimPortfolioPolicyBridge.ComputeInCombatOverallTimeoutMilliseconds(
         120_000, 0, 0, Sts2SimBridgeCapabilitiesDto.DefaultV1));
@@ -1410,6 +1657,82 @@ await Check("in-combat v1 compatibility, extended metrics validation, and early-
         120_000, 2, 2_400_000, Sts2SimBridgeCapabilitiesDto.V2Default));
     Equal(330_000, Sts2SimPortfolioPolicyBridge.ComputeInCombatOverallTimeoutMilliseconds(
         120_000, 2, 2_400_000, Sts2SimBridgeCapabilitiesDto.V2Default with { MaxEarlyTurnExplorationBudgetMilliseconds = 300_000 }));
+    return Task.CompletedTask;
+});
+await Check("attempt work tracker accumulates adoption/fallback totals and English catalog preserves ActivePhaseLabel", () =>
+{
+    var tracker = new Sts2SimAttemptWorkTracker();
+    Equal(false, tracker.Snapshot().HasAnyWork);
+
+    var term = new InCombatTerminalSnapshotDto(
+        false, true, 78, 80, 2, 0, 78, 0, 0, 0, 2, 0, 1, 0, 2, 0, 0, 2, 2, null, false, "Complete", "None", false);
+    var previewBest = new InCombatSts2SimResultDto(
+        [],
+        [new InCombatTurnOutcomeDto(2, 2, 0, 20, 0, 0, 0, 2, 0, 0, true)],
+        term,
+        [],
+        150,
+        40.0,
+        ExpandedParents: 40,
+        TransitionCount: 220,
+        ChoiceReplayAttempts: 11,
+        ObservedPeakParallelism: 4);
+    var prog1 = new InCombatSts2SimProgressDto(
+        200, 2, 120.0, 2, true, 2, 0, previewBest,
+        ExpandedParents: 80,
+        TransitionCount: 500,
+        ChoiceReplayAttempts: 24,
+        ObservedPeakParallelism: 8,
+        ActivePhaseLabel: "Novelty");
+    tracker.RecordProgress(prog1, fallbackParallelism: 4);
+
+    var prog2LegacyFallback = new InCombatSts2SimProgressDto(
+        260, 2, 300.0, 2, true, 2, 0, null,
+        ExpandedParents: -1,
+        TransitionCount: 640,
+        ChoiceReplayAttempts: null,
+        ObservedPeakParallelism: 0,
+        ActivePhaseLabel: "EarlyTurn");
+    tracker.RecordProgress(prog2LegacyFallback, fallbackParallelism: 4);
+
+    Sts2SimAttemptWorkSnapshot fallbackWork = tracker.Snapshot();
+    Equal(true, fallbackWork.HasAnyWork);
+    Equal(260L, fallbackWork.ExpandedParents);
+    Equal(640L, fallbackWork.TransitionCount);
+    Equal(24L, fallbackWork.ChoiceReplayAttempts);
+    Equal(8, fallbackWork.ObservedPeakParallelism);
+    Equal(TimeSpan.FromMilliseconds(300.0), fallbackWork.Elapsed);
+
+    var finalDto = previewBest with
+    {
+        ExpandedParents = 410,
+        TransitionCount = 1_250,
+        ChoiceReplayAttempts = 53,
+        ObservedPeakParallelism = 12,
+        SearchElapsedMilliseconds = 450.0,
+    };
+    tracker.RecordResult(finalDto, effectiveDegreeOfParallelism: 8, elapsed: TimeSpan.FromMilliseconds(480.0));
+    Sts2SimAttemptWorkSnapshot adoptedTotals = tracker.Snapshot();
+    Equal(410L, adoptedTotals.ExpandedParents);
+    Equal(1_250L, adoptedTotals.TransitionCount);
+    Equal(53L, adoptedTotals.ChoiceReplayAttempts);
+    Equal(12, adoptedTotals.ObservedPeakParallelism);
+    Equal(TimeSpan.FromMilliseconds(480.0), adoptedTotals.Elapsed);
+
+    Equal(true, Sts2SimPortfolioPolicyBridge.TryExtractSts2SimActivePhaseLabel("正在搜索·Sts2Sim", out string? baseLabel));
+    Equal<string?>(null, baseLabel);
+    Equal(true, Sts2SimPortfolioPolicyBridge.TryExtractSts2SimActivePhaseLabel("正在搜索·Sts2Sim·EarlyTurn", out string? earlyLabel));
+    Equal<string?>("EarlyTurn", earlyLabel);
+    Equal(false, Sts2SimPortfolioPolicyBridge.TryExtractSts2SimActivePhaseLabel("正在整理内存", out _));
+    Equal(false, Sts2SimPortfolioPolicyBridge.TryExtractSts2SimActivePhaseLabel(string.Empty, out _));
+
+    string englishJsonPath = Path.Combine(FindRepoRoot(), "src", "UI", "English.json");
+    Dictionary<string, string> catalog = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(englishJsonPath))!;
+    Equal(true, catalog.TryGetValue("正在搜索·Sts2Sim", out string? enBase) && !string.IsNullOrWhiteSpace(enBase));
+    Equal(false, enBase!.Contains("{0}", StringComparison.Ordinal));
+    Equal(true, catalog.TryGetValue("正在搜索·Sts2Sim·{0}", out string? enLabel) && enLabel!.Contains("{0}", StringComparison.Ordinal));
+    Equal(false, enBase.Any(static ch => ch is >= '\u4e00' and <= '\u9fff'));
+    Equal(false, enLabel!.Any(static ch => ch is >= '\u4e00' and <= '\u9fff'));
     return Task.CompletedTask;
 });
 await Check("card OnPlay audit rejects foreign patches for Sts2Sim even when BuiltIn adapted", () =>
