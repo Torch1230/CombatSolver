@@ -192,11 +192,15 @@ await Check("producer-owned ticket keeps refresh result even with late joiner on
     PreCombatForecastResult cached = await Forecast(run);
     Equal("refresh-b", cached.RequestId);
 });
-await Check("stale producer does not overwrite refresh after 32-entry cache eviction", async () =>
+await Check("stale producer neither joins nor overwrites after refresh eviction", async () =>
 {
     RunState staleRun = NewRun();
     Task<PreCombatForecastResult> oldRequest = Forecast(staleRun);
     var oldWork = await NextWork();
+
+    Task<PreCombatForecastResult> refresh = Forecast(staleRun, new() { ForceRefresh = true });
+    (await NextWork()).Succeed("new-owner");
+    Equal("new-owner", (await refresh).RequestId);
 
     for (int i = 0; i < 34; i++)
     {
@@ -206,13 +210,40 @@ await Check("stale producer does not overwrite refresh after 32-entry cache evic
         await task;
     }
 
+    Task<PreCombatForecastResult> afterEvict = Forecast(staleRun);
+    var freshWork = await NextWork();
+
+    oldWork.Succeed("very-late-old");
+    Equal("very-late-old", (await oldRequest).RequestId);
+
+    freshWork.Succeed("after-evict");
+    Equal("after-evict", (await afterEvict).RequestId);
+    Equal("after-evict", (await Forecast(staleRun)).RequestId);
+});
+await Check("stale producer finishing after refresh eviction does not populate cache", async () =>
+{
+    RunState staleRun = NewRun();
+    Task<PreCombatForecastResult> oldRequest = Forecast(staleRun);
+    var oldWork = await NextWork();
+
     Task<PreCombatForecastResult> refresh = Forecast(staleRun, new() { ForceRefresh = true });
     (await NextWork()).Succeed("new-owner");
     Equal("new-owner", (await refresh).RequestId);
 
+    for (int i = 0; i < 34; i++)
+    {
+        RunState filler = NewRun();
+        Task<PreCombatForecastResult> task = Forecast(filler);
+        (await NextWork()).Succeed($"evict-{i}");
+        await task;
+    }
+
     oldWork.Succeed("very-late-old");
-    await oldRequest;
-    Equal("new-owner", (await Forecast(staleRun)).RequestId);
+    Equal("very-late-old", (await oldRequest).RequestId);
+
+    Task<PreCombatForecastResult> postEvict = Forecast(staleRun);
+    (await NextWork()).Succeed("post-evict");
+    Equal("post-evict", (await postEvict).RequestId);
 });
 await Check("stop epoch fences pre-stop active dedup and queued restart", async () =>
 {
@@ -1835,12 +1866,13 @@ await Check("critical Harmony patch audit enforces BuiltIn parity for RNG, monst
         bool? affectsGameplay = true,
         bool isMonsterModel = false,
         bool isTrustedOwner = false,
-        bool hasKnownModId = true) => new(
+        bool hasKnownModId = true,
+        bool isBaseGamePatch = false) => new(
             DeclaringNamespace: ns,
             RootDeclaringTypeName: rootType,
             MethodName: method,
             IsMonsterModel: isMonsterModel,
-            IsBaseGamePatch: false,
+            IsBaseGamePatch: isBaseGamePatch,
             IsTrustedOwner: isTrustedOwner,
             AffectsGameplay: affectsGameplay,
             HasKnownModId: hasKnownModId,
@@ -1851,6 +1883,8 @@ await Check("critical Harmony patch audit enforces BuiltIn parity for RNG, monst
     PreCombatHarmonyPatchDescriptor[] rejectedCombatPatches =
     [
         Patch("MegaCrit.Sts2.Core.Random", "Rng", "NextInt", affectsGameplay: false),
+        Patch("MegaCrit.Sts2.Core.Random", "Rng", "NextInt", affectsGameplay: true, isTrustedOwner: true),
+        Patch("MegaCrit.Sts2.Core.Random", "Rng", "NextInt", affectsGameplay: false, isTrustedOwner: true),
         Patch("MegaCrit.Sts2.Core.Models.Monsters", "Mawler", "GenerateMoveStateMachine", isMonsterModel: true),
         Patch("MegaCrit.Sts2.Core.MonsterMoves.Intents", "AttackIntent", ".ctor"),
         Patch("MegaCrit.Sts2.Core.MonsterMoves.Intents", "SingleAttackIntent", ".ctor"),
@@ -1868,6 +1902,7 @@ await Check("critical Harmony patch audit enforces BuiltIn parity for RNG, monst
 
     PreCombatHarmonyPatchDescriptor[] allowedPatches =
     [
+        Patch("MegaCrit.Sts2.Core.Random", "Rng", "NextInt", affectsGameplay: true, isBaseGamePatch: true),
         Patch("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "GainBlock", affectsGameplay: true),
         Patch("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Damage", affectsGameplay: true),
         Patch("MegaCrit.Sts2.Core.Commands", "CreatureCmd", "Heal", affectsGameplay: true),
@@ -2280,6 +2315,14 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
         CardPatch("StrikeIronclad", "OnExhaust"),
         CardPatch("StrikeIronclad", "OnDiscard"),
         CardPatch("StrikeIronclad", "OnDrawn"),
+        CardPatch("GeneticAlgorithm", "BuffFromPlay"),
+        CardPatch("Claw", "BuffFromClawPlay"),
+        CardPatch("TheShot", "BuffFromFlorescence"),
+        CardPatch("SovereignBlade", "AddDamage"),
+        CardPatch("SovereignBlade", "SetRepeats"),
+        CardPatch("SovereignBlade", "set_CreatedThroughForge"),
+        CardPatch("Wither", "FakeUpgrade"),
+        CardPatch("ShowOff", "IncreaseAim"),
     ];
 
     foreach (PreCombatHarmonyPatchDescriptor descriptor in rejectedCardOverrides)
@@ -2294,6 +2337,11 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
         CardPatch("StrikeIronclad", "get_BetaPortraitPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_OverlayPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_AllPortraitPaths", affectsGameplay: true),
+        CardPatch("SovereignBlade", "get_ExtraRunAssetPaths", affectsGameplay: true),
+        CardPatch("Wither", "get_ExtraRunAssetPaths", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "get_HasBuiltInOverlay", affectsGameplay: true),
+        CardPatch("StrikeIronclad", "AddExtraArgsToDescription", affectsGameplay: true),
+        CardPatch("SovereignBlade", "OnEnqueuePlayVfx", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_Title", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_Description", affectsGameplay: true),
         CardPatch("StrikeIronclad", "GetDescription", affectsGameplay: true),
@@ -2308,6 +2356,26 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
     Equal(false, PreCombatSts2SimEligibility.TryFindCriticalHarmonyPatchViolation(allowedCardPatches, out string allowedCardReason));
     Equal(string.Empty, allowedCardReason);
     Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("get_PortraitPngPath"));
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("get_ExtraRunAssetPaths"));
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("get_HasBuiltInOverlay"));
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("AddExtraArgsToDescription"));
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("OnEnqueuePlayVfx"));
+    Equal(
+        PreCombatHarmonyTargetKind.CombatGameplay,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Cards",
+            "GeneticAlgorithm",
+            "BuffFromPlay",
+            isMonsterModel: false,
+            isConcreteCardGameplayOverride: false));
+    Equal(
+        PreCombatHarmonyTargetKind.None,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Cards",
+            "SovereignBlade",
+            "get_ExtraRunAssetPaths",
+            isMonsterModel: false,
+            isConcreteCardGameplayOverride: false));
     Equal(
         PreCombatHarmonyTargetKind.None,
         PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(

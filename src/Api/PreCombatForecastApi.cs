@@ -548,10 +548,12 @@ public static class PreCombatForecastApi
                     cancellationToken);
             }
 
+            long latestCompletedTicket = LatestCompletedTicket.GetValueOrDefault(key);
             if (!effectiveOptions.ForceRefresh
                 && !effectiveOptions.CancelWorkerWhenCallerCancels
                 && Active.TryGetValue(activeKey, out ActiveProducer? existing)
-                && !existing.Work.IsCompleted)
+                && !existing.Work.IsCompleted
+                && existing.Ticket >= latestCompletedTicket)
             {
                 worker = existing.Work;
             }
