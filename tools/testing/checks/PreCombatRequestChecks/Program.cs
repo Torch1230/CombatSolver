@@ -725,6 +725,10 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
         CardPatch("StrikeIronclad", "OnDiscard"),
         CardPatch("StrikeIronclad", "OnDrawn"),
         CardPatch("GeneticAlgorithm", "BuffFromPlay"),
+        CardPatch("GeneticAlgorithm", "UpdateBlock"),
+        CardPatch("GeneticAlgorithm", "set_CurrentBlock"),
+        CardPatch("GeneticAlgorithm", "set_IncreasedBlock"),
+        CardPatch("TheScythe", "set_CurrentDamage"),
         CardPatch("Claw", "BuffFromClawPlay"),
         CardPatch("TheShot", "BuffFromFlorescence"),
         CardPatch("SovereignBlade", "AddDamage"),
@@ -743,6 +747,9 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
         CardPatch("Normality", "MoveNext", affectsGameplay: false, isConcreteCardGameplayOverride: true, targetDisplayName: "MegaCrit.Sts2.Core.Models.Cards.Normality+<ShouldPlay>d__3.MoveNext"),
         CardPatch("StrikeIronclad", "get_PortraitPath", affectsGameplay: true),
         CardPatch("DingyDagger", "get_PortraitPngPath", affectsGameplay: true),
+        CardPatch("DingyDagger", "GetPortraitFilename", affectsGameplay: true),
+        CardPatch("Wither", "GetPortraitPath", affectsGameplay: true),
+        CardPatch("Wither", "GetPortraitPngPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_BetaPortraitPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_OverlayPath", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_AllPortraitPaths", affectsGameplay: true),
@@ -751,6 +758,7 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
         CardPatch("StrikeIronclad", "get_HasBuiltInOverlay", affectsGameplay: true),
         CardPatch("StrikeIronclad", "AddExtraArgsToDescription", affectsGameplay: true),
         CardPatch("SovereignBlade", "OnEnqueuePlayVfx", affectsGameplay: true),
+        CardPatch("SovereignBlade", "GetVfxNode", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_Title", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_Description", affectsGameplay: true),
         CardPatch("StrikeIronclad", "GetDescription", affectsGameplay: true),
@@ -769,12 +777,30 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
     Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("get_HasBuiltInOverlay"));
     Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("AddExtraArgsToDescription"));
     Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("OnEnqueuePlayVfx"));
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("GetVfxNode"));
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("GetPortraitFilename"));
     Equal(
         PreCombatHarmonyTargetKind.CombatGameplay,
         PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
             "MegaCrit.Sts2.Core.Models.Cards",
             "GeneticAlgorithm",
             "BuffFromPlay",
+            isMonsterModel: false,
+            isConcreteCardGameplayOverride: false));
+    Equal(
+        PreCombatHarmonyTargetKind.CombatGameplay,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Cards",
+            "GeneticAlgorithm",
+            "UpdateBlock",
+            isMonsterModel: false,
+            isConcreteCardGameplayOverride: false));
+    Equal(
+        PreCombatHarmonyTargetKind.CombatGameplay,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Cards",
+            "GeneticAlgorithm",
+            "set_CurrentBlock",
             isMonsterModel: false,
             isConcreteCardGameplayOverride: false));
     Equal(
