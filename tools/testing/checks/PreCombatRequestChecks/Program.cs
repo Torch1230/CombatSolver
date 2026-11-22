@@ -1242,6 +1242,8 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
         CardPatch("StrikeIronclad", "AddExtraArgsToDescription", affectsGameplay: true),
         CardPatch("SovereignBlade", "OnEnqueuePlayVfx", affectsGameplay: true),
         CardPatch("SovereignBlade", "GetVfxNode", affectsGameplay: true),
+        CardPatch("Haze", "SpawnVfx", affectsGameplay: true),
+        CardPatch("SovereignBlade", "RemoveSovereignBladeNode", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_Title", affectsGameplay: true),
         CardPatch("StrikeIronclad", "get_Description", affectsGameplay: true),
         CardPatch("StrikeIronclad", "GetDescription", affectsGameplay: true),
@@ -1262,6 +1264,24 @@ await Check("concrete card gameplay hook overrides classify as CombatGameplay wh
     Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("OnEnqueuePlayVfx"));
     Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("GetVfxNode"));
     Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("GetPortraitFilename"));
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("SpawnVfx"));
+    Equal(true, PreCombatSts2SimEligibility.IsPureCardDisplayOrMetadataMember("RemoveSovereignBladeNode"));
+    Equal(
+        PreCombatHarmonyTargetKind.None,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Cards",
+            "Haze",
+            "SpawnVfx",
+            isMonsterModel: false,
+            isConcreteCardGameplayOverride: false));
+    Equal(
+        PreCombatHarmonyTargetKind.None,
+        PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
+            "MegaCrit.Sts2.Core.Models.Cards",
+            "SovereignBlade",
+            "RemoveSovereignBladeNode",
+            isMonsterModel: false,
+            isConcreteCardGameplayOverride: false));
     Equal(
         PreCombatHarmonyTargetKind.CombatGameplay,
         PreCombatSts2SimEligibility.ClassifyCriticalHarmonyTarget(
