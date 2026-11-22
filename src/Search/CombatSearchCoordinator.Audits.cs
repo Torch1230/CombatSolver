@@ -1277,7 +1277,8 @@ internal static partial class CombatSearchCoordinator
             FrontierNodes: 0,
             EndedNodes: 1,
             ElapsedMilliseconds: 0,
-            Phase: "切换用药路线，正在整理内存"));
+            Phase: "切换用药路线，正在整理内存",
+            BackendAttempt: policy.Interaction?.CurrentBackendAttempt ?? 0));
         long pressureBefore = signal.AllocatedBytes;
         long limitBefore = signal.AllocationLimitBytes;
         try

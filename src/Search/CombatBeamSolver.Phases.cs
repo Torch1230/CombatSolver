@@ -1020,7 +1020,8 @@ internal sealed partial class CombatBeamSolver
                     SolverResultScope.RouteAdoption,
                     candidateSearchedTurnLayers,
                     candidateTimeBudgetReached: false,
-                    routeAdoptionActions: adoptionActions)));
+                    routeAdoptionActions: adoptionActions)),
+                backendAttempt: _interaction?.CurrentBackendAttempt ?? 0);
             lastRoutePreviewAt = System.Environment.TickCount64;
         }
 
@@ -1037,6 +1038,7 @@ internal sealed partial class CombatBeamSolver
             if (!force && elapsedMs - lastProgressMs < 100)
                 return;
             lastProgressMs = elapsedMs;
+            int backendAttempt = _interaction?.CurrentBackendAttempt ?? 0;
             progressCallback?.Invoke(new SolverProgress(
                 _startTurnNumber,
                 currentTurn,
@@ -1053,7 +1055,8 @@ internal sealed partial class CombatBeamSolver
                 currentBestResult,
                 currentTurnPreview,
                 speculativeRoutePreview,
-                routeAdoptionSeed));
+                routeAdoptionSeed,
+                BackendAttempt: backendAttempt));
         }
 
         PublishProgress(_startTurnNumber, 0, 0, 1, 0, "初始化", force: true);

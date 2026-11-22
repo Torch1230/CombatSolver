@@ -36,6 +36,17 @@ internal static class InCombatSts2SimResultMaterializer
 
         foreach (InCombatTurnOutcomeDto turnOutcome in dto.TurnOutcomes)
         {
+            if (turnOutcome.Turn < 1)
+                throw new InvalidDataException($"Sts2Sim TurnOutcome reported invalid Turn={turnOutcome.Turn}.");
+            ExternalRouteTurnExpectation expectation = new(
+                turnOutcome.Turn,
+                turnOutcome.HpLost,
+                turnOutcome.HpRecovered,
+                turnOutcome.EnemyHpLost,
+                turnOutcome.EnergyLeft,
+                turnOutcome.CombatEnded);
+            if (!turnExpectations.TryAdd(turnOutcome.Turn, expectation))
+                throw new InvalidDataException($"Sts2Sim result contains duplicate TurnOutcome for turn {turnOutcome.Turn}.");
             hpLostByTurn[turnOutcome.Turn] = turnOutcome.HpLost;
             hpRecoveredByTurn[turnOutcome.Turn] = turnOutcome.HpRecovered;
             enemyHpLostByTurn[turnOutcome.Turn] = turnOutcome.EnemyHpLost;
@@ -47,25 +58,15 @@ internal static class InCombatSts2SimResultMaterializer
                 potionCountByTurn[turnOutcome.Turn] = turnOutcome.PotionCount;
             if (turnOutcome.PotionStrategicCost > 0)
                 potionStrategicCostByTurn[turnOutcome.Turn] = turnOutcome.PotionStrategicCost;
-            turnExpectations[turnOutcome.Turn] = new ExternalRouteTurnExpectation(
-                turnOutcome.Turn,
-                turnOutcome.HpLost,
-                turnOutcome.HpRecovered,
-                turnOutcome.EnemyHpLost,
-                turnOutcome.EnergyLeft,
-                turnOutcome.CombatEnded);
         }
 
         foreach (PlanAction action in actions)
         {
-            hpLostByTurn.TryAdd(action.Turn, 0);
-            hpRecoveredByTurn.TryAdd(action.Turn, 0);
-            enemyHpLostByTurn.TryAdd(action.Turn, 0);
-            soldHpByTurn.TryAdd(action.Turn, 0);
-            maxBlockByTurn.TryAdd(action.Turn, 0);
-            actualBlockByTurn.TryAdd(action.Turn, 0);
-            energyLeftByTurn.TryAdd(action.Turn, 0);
+            if (!turnExpectations.ContainsKey(action.Turn))
+                throw new InvalidDataException($"Sts2Sim result is missing TurnOutcome for action turn {action.Turn}.");
         }
+        if (actions.Length == 0 && !turnExpectations.ContainsKey(root.StartTurnNumber))
+            throw new InvalidDataException($"Sts2Sim result is missing TurnOutcome for start turn {root.StartTurnNumber}.");
 
         InCombatTerminalSnapshotDto terminal = dto.Terminal;
         ExternalRouteTerminalExpectation terminalExpectation = new(
@@ -344,6 +345,7 @@ internal static class InCombatSts2SimResultMaterializer
     public static SolverProgress MaterializeProgress(
         InCombatSts2SimProgressDto progressDto,
         int candidateVersion,
+        int backendAttempt,
         CombatRootSnapshot root,
         SolverDisplayNames displayNames,
         BattleDamageSnapshot battleDamage,
@@ -407,7 +409,8 @@ internal static class InCombatSts2SimResultMaterializer
                     elapsed,
                     previewParallelism,
                     SolverResultScope.RouteAdoption,
-                    routeAdoptionCancellation));
+                    routeAdoptionCancellation),
+                backendAttempt: backendAttempt);
         }
 
         Sts2SimMaterializedProgressMetrics metrics = Sts2SimPortfolioPolicyBridge.ResolveProgressMetrics(progressDto);
@@ -430,7 +433,8 @@ internal static class InCombatSts2SimResultMaterializer
             CurrentTurnPreview: turnPreview,
             SpeculativeRoutePreview: speculativePreview,
             RouteAdoptionSeed: adoptionSeed,
-            RequestBudgetMilliseconds: requestBudgetMilliseconds);
+            RequestBudgetMilliseconds: requestBudgetMilliseconds,
+            BackendAttempt: backendAttempt);
     }
 
     private static PlanAction[] BuildActions(
@@ -568,7 +572,7 @@ internal static class InCombatSts2SimResultMaterializer
                 card.CardId,
                 card.UpgradeLevel,
                 string.Empty,
-                card.SourceOccurrence,
+                sourcePile == PileType.None ? card.OptionOccurrence : card.SourceOccurrence,
                 card.OptionOccurrence,
                 displayNames.Card(card.CardId, card.UpgradeLevel)))
             .ToArray();

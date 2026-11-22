@@ -432,7 +432,6 @@ await Check("Cosmetic TestSubjectKills routes to InProcess while unsupported ext
     }
 });
 
-<<<<<<< HEAD
 await Check("ABI v1 vs v2 portfolio policy routing forwards v2 options and falls back cleanly on unsupported/conflict", async () =>
 {
     PreCombatSts2SimBridge.AvailabilityOverrideForTesting = PreCombatBridgeAvailability.Ready;

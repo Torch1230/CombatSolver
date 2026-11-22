@@ -222,9 +222,6 @@ internal static class PlayerTurnSetupCoordinator
             : progress.CurrentTurnPreview is { } currentTurn
                 ? SolverOverlaySnapshot.CaptureCurrentTurn(currentTurn)
                 : null;
-        active.Interaction.RenderedRouteAdoptionSeed = progress.SpeculativeRoutePreview == null
-            ? null
-            : progress.RouteAdoptionSeed;
         SolverOverlay.ShowProgress(
             progress,
             active.DeployAfterSetup,
@@ -343,7 +340,7 @@ internal static class PlayerTurnSetupCoordinator
            && active.Interaction.CurrentTakeoverRequest == null
            && active.Interaction.CanAcceptTakeover
            && (active.SearchState == 1 || active.ManualSearchState == 1)
-           && Volatile.Read(ref active.Interaction.Progress)?.CurrentTurnPreview != null;
+           && active.Interaction.HasCurrentAttemptTurnPreview;
 
     public static bool IsApplyingCurrentTurn
         => IsSearching && _active?.Interaction.IsApplyingCurrentTurn == true;
@@ -364,25 +361,32 @@ internal static class PlayerTurnSetupCoordinator
     public static void InvalidateRenderedRouteAdoptionSeed()
     {
         if (_active != null)
-            _active.Interaction.RenderedRouteAdoptionSeed = null;
+            _active.Interaction.InvalidateRenderedRouteAdoptionSeed();
     }
 
     public static void ApplyCurrentTurn()
+        => _ = TryApplyCurrentTurn();
+
+    public static bool TryApplyCurrentTurn()
     {
         if (!CanApplyCurrentTurn || _active is not { } active)
-            return;
+            return false;
         if (!active.Interaction.RequestApplyCurrentTurn())
-            return;
+            return false;
         active.DeployAfterSetup = true;
         active.TakeoverRequested = true;
         SolverOverlay.RefreshControls();
         Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=turn_setup_apply_current_turn");
+        return true;
     }
 
     public static void AdoptCurrentRoute()
+        => _ = TryAdoptCurrentRoute();
+
+    public static bool TryAdoptCurrentRoute()
     {
         if (_active is not { } active)
-            return;
+            return false;
         SolverResult? stoppedResult = active.Interaction.TakeStoppedResult(
             LiveCombatStamp.Capture(active.Combat));
         if (stoppedResult != null)
@@ -391,15 +395,16 @@ internal static class PlayerTurnSetupCoordinator
                 SolverController.ShowTurnSetupResultPreview(host, stoppedResult);
             SolverOverlay.RefreshControls();
             Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=turn_setup_adopt_stopped_route");
-            return;
+            return true;
         }
         SolverRouteAdoptionSeed? seed = active.Interaction.RenderedRouteAdoptionSeed;
         if (seed == null || !active.Interaction.RequestAdoptRoute(seed))
-            return;
+            return false;
         SolverOverlay.RefreshControls();
         Entry.Logger.Info(
             $"[CombatSolver/Test] UI_ACTION action=turn_setup_adopt_current_route " +
             $"candidate_version={seed.CandidateVersion}");
+        return true;
     }
 
     internal static int ManualRecalculationCompletedCountForTesting

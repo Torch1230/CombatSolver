@@ -483,6 +483,30 @@ internal sealed record InCombatSts2SimResponseDto(
 
 internal static class InCombatSts2SimWireValidator
 {
+    private static readonly FrozenSet<string> AllowedActionKinds = new[]
+    {
+        "PlayCard",
+        "UsePotion",
+        "EndTurn",
+    }.ToFrozenSet(StringComparer.Ordinal);
+
+    private static readonly FrozenSet<string> AllowedChoiceTimings = new[]
+    {
+        "Action",
+        "PlayerTurnEnd",
+        "EnemyTurn",
+        "PlayerTurnStart",
+    }.ToFrozenSet(StringComparer.Ordinal);
+
+    private static readonly FrozenSet<string> AllowedChoiceSourcePiles = new[]
+    {
+        "Hand",
+        "Draw",
+        "Discard",
+        "Exhaust",
+        "None",
+    }.ToFrozenSet(StringComparer.Ordinal);
+
     public static void ValidatePolicy(
         InCombatSts2SimPolicyDto policy,
         Sts2SimBridgeCapabilitiesDto? capabilities = null)
@@ -634,23 +658,104 @@ internal static class InCombatSts2SimWireValidator
             result.ObservedPeakParallelism,
             path);
 
+        HashSet<int> turnOutcomeTurns = [];
+        for (int i = 0; i < result.TurnOutcomes.Count; i++)
+        {
+            InCombatTurnOutcomeDto? outcome = result.TurnOutcomes[i];
+            if (outcome is null || outcome.Turn < 1)
+                throw new InvalidDataException($"{path}.turnOutcomes[{i}] is malformed.");
+            if (!turnOutcomeTurns.Add(outcome.Turn))
+            {
+                throw new InvalidDataException(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{path}.turnOutcomes contains duplicate entry for turn {outcome.Turn}."));
+            }
+        }
+
         for (int i = 0; i < result.Actions.Count; i++)
         {
-            InCombatActionTraceDto action = result.Actions[i];
-            if (action.Turn < 1 || string.IsNullOrWhiteSpace(action.Kind) || action.Choices is null)
+            InCombatActionTraceDto? action = result.Actions[i];
+            if (action is null
+                || action.Turn < 1
+                || string.IsNullOrWhiteSpace(action.Kind)
+                || !AllowedActionKinds.Contains(action.Kind)
+                || action.Choices is null
+                || action.FlashedRelicIds is null
+                || action.KilledEnemyCombatIds is null)
+            {
                 throw new InvalidDataException($"{path}.actions[{i}] is malformed.");
+            }
+            if (!turnOutcomeTurns.Contains(action.Turn))
+            {
+                throw new InvalidDataException(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{path}.actions[{i}] references turn {action.Turn} without a matching TurnOutcome entry."));
+            }
+            if (string.Equals(action.Kind, "PlayCard", StringComparison.Ordinal)
+                && (string.IsNullOrWhiteSpace(action.CardId)
+                    || action.CardOccurrence < 0
+                    || action.CardUpgradeLevel < 0
+                    || action.CardEnchantmentId is null))
+            {
+                throw new InvalidDataException($"{path}.actions[{i}] PlayCard metadata is malformed.");
+            }
+            if (string.Equals(action.Kind, "UsePotion", StringComparison.Ordinal)
+                && (string.IsNullOrWhiteSpace(action.PotionId) || action.PotionSlot < 0))
+            {
+                throw new InvalidDataException($"{path}.actions[{i}] UsePotion metadata is malformed.");
+            }
+            for (int r = 0; r < action.FlashedRelicIds.Count; r++)
+            {
+                if (string.IsNullOrWhiteSpace(action.FlashedRelicIds[r]))
+                    throw new InvalidDataException($"{path}.actions[{i}].flashedRelicIds[{r}] is malformed.");
+            }
+            for (int c = 0; c < action.Choices.Count; c++)
+            {
+                InCombatChoiceTraceDto? choice = action.Choices[c];
+                if (choice is null
+                    || string.IsNullOrWhiteSpace(choice.Timing)
+                    || !AllowedChoiceTimings.Contains(choice.Timing)
+                    || choice.SourceId is null
+                    || choice.SourcePile is null
+                    || !AllowedChoiceSourcePiles.Contains(choice.SourcePile)
+                    || choice.Cards is null)
+                {
+                    throw new InvalidDataException($"{path}.actions[{i}].choices[{c}] is malformed.");
+                }
+                bool noneSourcePile = string.Equals(choice.SourcePile, "None", StringComparison.Ordinal);
+                for (int k = 0; k < choice.Cards.Count; k++)
+                {
+                    InCombatChoiceCardTokenDto? card = choice.Cards[k];
+                    if (card is null
+                        || string.IsNullOrWhiteSpace(card.CardId)
+                        || card.UpgradeLevel < 0
+                        || card.OptionOccurrence < 0
+                        || card.SourceOccurrence < (noneSourcePile ? -1 : 0))
+                    {
+                        throw new InvalidDataException($"{path}.actions[{i}].choices[{c}].cards[{k}] is malformed.");
+                    }
+                }
+            }
         }
 
         InCombatTerminalSnapshotDto term = result.Terminal;
-        if (string.IsNullOrWhiteSpace(term.SearchBoundary)
+        if (term.Turn < 1
+            || string.IsNullOrWhiteSpace(term.SearchBoundary)
             || !PreCombatSts2SimAbi.AllowedSearchBoundaries.Contains(term.SearchBoundary))
         {
-            throw new InvalidDataException($"{path}.terminal has invalid SearchBoundary '{term.SearchBoundary}'.");
+            throw new InvalidDataException($"{path}.terminal has invalid Turn={term.Turn} or SearchBoundary '{term.SearchBoundary}'.");
+        }
+        if (result.Actions.Count == 0 && !turnOutcomeTurns.Contains(term.Turn))
+        {
+            throw new InvalidDataException(string.Create(
+                CultureInfo.InvariantCulture,
+                $"{path}.turnOutcomes is missing entry for terminal turn {term.Turn}."));
         }
         for (int i = 0; i < result.PotionUses.Count; i++)
         {
-            Sts2SimPotionUseDto use = result.PotionUses[i];
-            if (string.IsNullOrWhiteSpace(use.Id)
+            Sts2SimPotionUseDto? use = result.PotionUses[i];
+            if (use is null
+                || string.IsNullOrWhiteSpace(use.Id)
                 || use.Turn is not { } potionTurn || potionTurn < 1
                 || use.Slot is not { } potionSlot || potionSlot < 0)
             {
