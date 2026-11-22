@@ -26,9 +26,17 @@
 | `src/Api/PreCombatForecastWorker.Routing.cs` | 预战双后端（进程内 Sts2Sim 桥接 / 遗留隔离进程）单锁调度与停止栅栏 |
 | `src/Api/PreCombatForecastWorker.cs` | 预战独立子进程会话、请求和停止（恐惧模式及不支持场景回落） |
 | `src/Api/PreCombatForecastWorker.Idle.cs` | 空闲计时器发布、取消和取消源释放 |
-| `src/Api/PreCombatSts2SimBridge.cs` | 隔离 `AssemblyLoadContext`、清单 SHA-256 / 运行时 MVID 校验与 UTF-8 JSON ABI 委托 |
+| `src/Api/PreCombatSts2SimBridge.cs` | 隔离 `AssemblyLoadContext`、清单 SHA-256 / 运行时 MVID 校验与 UTF-8 JSON ABI 委托（含战前与战斗内入口） |
+| `src/Api/InCombatSts2SimContracts.cs` | 战斗内 `Sts2Sim` ABI v1 DTO 与响应线格式校验 |
 | `src/Api/PreCombatSts2SimEligibility.cs` | 主线程主机/Mod/构建/有效存档资格判定与恐惧模式直连回落 |
 | `src/Api/PreCombatSts2SimPolicyMapper.cs` | 设置政策映射、未适配功能门禁与主线程药水标题本地化 |
+| `src/Runtime/InCombatSts2SimEligibility.cs` | 战斗内 `Sts2Sim` 准入（用户开关、标准单人、纯原版模型与政策消融门槛） |
+| `src/Runtime/InCombatSts2SimPolicyMapper.cs` | 战斗内政策与最高 600 秒软预算映射 |
+| `src/Runtime/InCombatLiveStateCapturer*.cs` | 主线程实机战斗根状态、`NormalizedSaveJson` 与私域计数采集 |
+| `src/Runtime/InCombatSts2SimResultMaterializer.cs` | `Sts2Sim` 战斗内路线与流式进度物化为只读 `SolverResult` / `SolverProgress` |
+| `src/Runtime/InCombatSolverBackendState.cs` | 战斗内当前及最近求解引擎、有效并行度与回退原因状态 |
+
+`SolverController` 在启用且满足战斗内 `Sts2Sim` 准入时，先在主线程冻结根并采集实机战斗状态，随后在后台 **不进入 `NoGcRegion`** 的情况下调用 `Sts2Sim.PreCombatBridge`（多核并行、流式汇报进度、支持停搜/应用本回合/采用当前路线接管取消）；遇到 `CapabilityMiss`、异常或用户禁用／不兼容条件时记录回退状态并无缝落回 `SearchGcPolicy.EnterSearchScope` + `CombatSearchCoordinator.Solve` 内置模拟引擎。`CombatBeamSolver.ExternalRouteAnnotation` 在 Search 内复用单路线 `Replay` 与 `ContinuationCapture` 标注跨回合续用戳，不引入上游策略或设置引用。
 
 政策由主线程从设置冻结到 `SearchPolicySnapshot`。后台通过请求参数、诊断 sink 与压力信号消费外部能力；算法不读取设置单例或操作 GC。Power 显示变量在主线程根捕获时物化；worker 只消费已物化值。克隆并发边界由 `BaseLibCloneConcurrencyPatch` 与原生克隆隔离规则维护。
 

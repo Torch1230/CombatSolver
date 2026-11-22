@@ -132,7 +132,7 @@ for name in \
     clear-player-hand clear-player-piles clear-run-deck clear-all-powers \
     verify-prediction-failure-boundaries verify-search-policy-snapshot verify-growth-policy \
     verify-controller-session-lifecycle verify-fork-boundaries \
-    verify-combat-root-snapshot verify-pre-combat-forecast-api verify-base-lib-card-modifier-boundary \
+    verify-combat-root-snapshot verify-pre-combat-forecast-api verify-in-combat-sts2sim-contract verify-base-lib-card-modifier-boundary \
     stop-after-combat-root-snapshot-assertion verify-incremental-search \
     force-short-search-only fixed-search-budget measure-search-phases use-novelty-portfolio-for-test hold-after-initial-search; do
     add_option "$name" 0 switch bool

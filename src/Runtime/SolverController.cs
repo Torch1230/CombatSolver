@@ -1302,6 +1302,14 @@ internal static partial class SolverController
                 settings.Profile));
 
             setupStage = "worker_schedule";
+            CombatSolver.Api.InCombatSts2SimRequestDto? inCombatSts2SimRequest = TryPrepareInCombatSts2SimRequest(
+                generation,
+                state,
+                player,
+                settings,
+                searchPolicy,
+                battleDamage);
+            SolverOverlay.RefreshControls();
             SolvedRouteCache routeCache = SolvedRouteCache.Capture(state, rootSnapshot, searchPolicy, battleDamage);
             Task<SolverResult> solveTask = Task.Run(() =>
             {
@@ -1320,6 +1328,25 @@ internal static partial class SolverController
                 SolverResult? finalizedResult = null;
                 try
                 {
+                    if (inCombatSts2SimRequest is not null
+                        && TrySolveWithSts2Sim(
+                            generation,
+                            search,
+                            rootSnapshot,
+                            displayNames,
+                            battleDamage,
+                            searchPolicy,
+                            routeCache,
+                            inCombatSts2SimRequest,
+                            token,
+                            out SolverResult? sts2SimResult))
+                    {
+                        finalizedResult = sts2SimResult;
+                        return finalizedResult!;
+                    }
+
+                    InCombatSolverBackendState.BeginActiveBuiltIn(searchPolicy.MaxDegreeOfParallelism);
+                    SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
                     using ISearchGcScope admittedGcPolicy = gcPolicy = SearchGcPolicy.EnterSearchScope(
                         settings.EnableNoGcRegion,
                         settings.NoGcRegionBudgetBytes,
@@ -1336,10 +1363,13 @@ internal static partial class SolverController
                     token.ThrowIfCancellationRequested();
                     if (!search.Interaction.StopRequested)
                         routeCache.StoreFirst(finalizedResult);
+                    InCombatSolverBackendState.RecordBuiltInCompleted(searchPolicy.MaxDegreeOfParallelism);
+                    SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
                     return finalizedResult;
                 }
                 finally
                 {
+                    InCombatSolverBackendState.ClearActive();
                     worker.Priority = previousPriority;
                     if (gcPolicy?.IsLifecycleCompleted == true)
                     {
@@ -1398,6 +1428,7 @@ internal static partial class SolverController
         catch (Exception ex)
         {
             _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.SearchSetupFailure, ex);
+            LastSearchFailureForTesting = ex;
             CancelSearch();
             _combat.State = null;
             _combat.LatestResult = null;
@@ -2146,6 +2177,7 @@ internal static partial class SolverController
         LastFullAutoStoppedForWorseRecalculationForTesting = false;
         LastFullAutoStoppedAtLiveRiskForTesting = false;
         LastSearchFailureForTesting = null;
+        InCombatSolverBackendState.ResetForCombat();
         BattleDamageTracker.Reset();
         SolverOverlay.Hide();
         // 战斗重置隐藏界面，并登记下一个可操作边界的初始化请求。
@@ -3747,5 +3779,285 @@ internal static partial class SolverController
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("CombatSolver 的主线程控制器被后台线程调用。");
+    }
+
+    private static CombatSolver.Api.InCombatSts2SimRequestDto? TryPrepareInCombatSts2SimRequest(
+        int generation,
+        CombatState state,
+        Player player,
+        SolverSettingsSnapshot settings,
+        SearchPolicySnapshot searchPolicy,
+        BattleDamageSnapshot battleDamage)
+    {
+        InCombatEligibilityResult eligibility = InCombatSts2SimEligibility.Assess(state, settings, searchPolicy);
+        if (!eligibility.IsEligible)
+        {
+            string exclusionCode = eligibility.FailureCode ?? "ineligible";
+            InCombatSolverBackendState.RecordExclusion(exclusionCode, eligibility.Detail);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_EXCLUDED generation={generation} " +
+                $"code={exclusionCode} detail={eligibility.Detail}");
+            return null;
+        }
+        InCombatSolverBackendState.ClearExclusion();
+
+        if (!CombatSolver.Api.PreCombatSts2SimBridge.HasInstalledBackendArtifact())
+        {
+            InCombatSolverBackendState.RecordExclusion("sts2sim_absent", "Installed sts2sim module was not found.");
+            return null;
+        }
+
+        if (CombatSolver.Api.PreCombatSts2SimBridge.IsCorrupt)
+        {
+            InCombatSolverBackendState.RecordFallback("bridge_corrupt", "Installed sts2sim bridge previously failed verification.");
+            return null;
+        }
+
+        if (!InCombatSts2SimPolicyMapper.TryBuildPolicy(
+                SolverSettings.Current,
+                settings,
+                searchPolicy,
+                player,
+                out CombatSolver.Api.InCombatSts2SimPolicyDto? policyDto,
+                out int searchBudgetMs,
+                out string? policyReason)
+            || policyDto is null)
+        {
+            InCombatSolverBackendState.RecordFallback("policy_unsupported", policyReason);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                $"code=policy_unsupported detail={policyReason}");
+            return null;
+        }
+
+        try
+        {
+            (string normalizedSaveJson, CombatSolver.Api.InCombatLiveStateDto liveState, int priorBattleHpLost) =
+                InCombatLiveStateCapturer.Capture(state, battleDamage);
+            int overallTimeoutMs = Math.Min(
+                CombatSolver.Api.InCombatSts2SimAbi.MaxSoftTimeBudgetMilliseconds + 30_000,
+                searchBudgetMs + 30_000);
+            return new CombatSolver.Api.InCombatSts2SimRequestDto(
+                AbiVersion: CombatSolver.Api.InCombatSts2SimAbi.Version,
+                RequestId: $"incombat-{generation}-{Guid.NewGuid():N}",
+                NormalizedSaveJson: normalizedSaveJson,
+                LiveState: liveState,
+                PriorBattleHpLost: priorBattleHpLost,
+                SearchBudgetMilliseconds: searchBudgetMs,
+                OverallTimeoutMilliseconds: overallTimeoutMs,
+                MaxDegreeOfParallelism: searchPolicy.MaxDegreeOfParallelism,
+                Policy: policyDto);
+        }
+        catch (InCombatLiveCaptureUnsupportedException ex)
+        {
+            InCombatSolverBackendState.RecordFallback(ex.FailureCode, ex.Message);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                $"code={ex.FailureCode} field={ex.FieldPath ?? "-"} detail={ex.Message}");
+            return null;
+        }
+    }
+
+    private static bool TrySolveWithSts2Sim(
+        int generation,
+        SolverSearchSession search,
+        CombatRootSnapshot rootSnapshot,
+        SolverDisplayNames displayNames,
+        BattleDamageSnapshot battleDamage,
+        SearchPolicySnapshot searchPolicy,
+        SolvedRouteCache routeCache,
+        CombatSolver.Api.InCombatSts2SimRequestDto request,
+        CancellationToken token,
+        out SolverResult? finalizedResult)
+    {
+        finalizedResult = null;
+        CombatSolver.Api.PreCombatBridgeAvailability availability =
+            CombatSolver.Api.PreCombatSts2SimBridge.EnsureActivated(out string? activationError);
+        if (availability != CombatSolver.Api.PreCombatBridgeAvailability.Ready)
+        {
+            if (availability == CombatSolver.Api.PreCombatBridgeAvailability.CorruptOrIncompatible)
+            {
+                InCombatSolverBackendState.RecordFallback("bridge_corrupt", activationError);
+                Entry.Logger.Warn(
+                    $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                    $"code=bridge_corrupt detail={activationError}");
+                SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+            }
+            return false;
+        }
+
+        InCombatSolverBackendState.BeginActiveSts2Sim(request.MaxDegreeOfParallelism);
+        SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+
+        using CancellationTokenSource bridgeCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        int candidateVersion = 0;
+        Action takeoverCallback = () =>
+        {
+            try
+            {
+                bridgeCts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        };
+        search.Interaction.SetTakeoverCallback(takeoverCallback);
+        try
+        {
+            if (CombatSolver.Api.PreCombatSts2SimBridge.RunInCombatHookForTesting is null)
+                CombatSolver.Api.PreCombatSts2SimBridge.Prewarm();
+
+            Stopwatch bridgeWatch = Stopwatch.StartNew();
+            CombatSolver.Api.InCombatSts2SimResponseDto response = CombatSolver.Api.PreCombatSts2SimBridge
+                .RunInCombatAsync(
+                    request,
+                    progressDto =>
+                    {
+                        int version = Interlocked.Increment(ref candidateVersion);
+                        SolverProgress progress = InCombatSts2SimResultMaterializer.MaterializeProgress(
+                            progressDto,
+                            version,
+                            rootSnapshot,
+                            displayNames,
+                            battleDamage,
+                            searchPolicy,
+                            request.MaxDegreeOfParallelism,
+                            request.SearchBudgetMilliseconds,
+                            token);
+                        PublishSearchProgress(search, progress);
+                    },
+                    bridgeCts.Token)
+                .GetAwaiter()
+                .GetResult();
+            bridgeWatch.Stop();
+
+            switch (response.Outcome)
+            {
+                case "Succeeded":
+                {
+                    SolverResultScope targetScope = search.Interaction.IsApplyingCurrentTurn
+                        ? SolverResultScope.CurrentTurnAdoption
+                        : SolverResultScope.SearchCompletion;
+                    SolverResult materialized = InCombatSts2SimResultMaterializer.MaterializeResult(
+                        response.Result!,
+                        rootSnapshot,
+                        displayNames,
+                        battleDamage,
+                        searchPolicy,
+                        bridgeWatch.Elapsed,
+                        response.EffectiveDegreeOfParallelism,
+                        targetScope,
+                        token);
+                    SolverResult resolved = search.Interaction.FinalizeWorkerResult(materialized);
+                    token.ThrowIfCancellationRequested();
+                    if (!search.Interaction.StopRequested && resolved.ResultScope == SolverResultScope.SearchCompletion)
+                        routeCache.StoreFirst(resolved);
+                    InCombatSolverBackendState.RecordSts2SimSuccess(response.EffectiveDegreeOfParallelism);
+                    SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+                    Entry.Logger.Info(
+                        $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_SUCCEEDED generation={generation} " +
+                        $"turn={rootSnapshot.StartTurnNumber} dop={response.EffectiveDegreeOfParallelism} " +
+                        $"nodes={response.Result!.ExpandedNodes} elapsed_ms={response.TotalElapsedMilliseconds:F1}");
+                    finalizedResult = resolved;
+                    return true;
+                }
+
+                case "Cancelled":
+                case "TimedOut":
+                {
+                    if (token.IsCancellationRequested)
+                        throw new OperationCanceledException(token);
+
+                    SearchTakeoverRequest? takeover = search.Interaction.CurrentTakeoverRequest;
+                    if (takeover is { Kind: SearchTakeoverKind.AdoptRoute, RouteAdoptionSeed: { } seed })
+                    {
+                        SolverResult adopted = search.Interaction.FinalizeWorkerResult(seed.Materialize());
+                        token.ThrowIfCancellationRequested();
+                        InCombatSolverBackendState.RecordSts2SimSuccess(response.EffectiveDegreeOfParallelism);
+                        SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+                        finalizedResult = adopted;
+                        return true;
+                    }
+
+                    if (response.BestSoFar is { } bestSoFar)
+                    {
+                        SolverResultScope targetScope = takeover?.Kind == SearchTakeoverKind.ApplyCurrentTurn
+                            ? SolverResultScope.CurrentTurnAdoption
+                            : SolverResultScope.SearchCompletion;
+                        SolverResult materialized = InCombatSts2SimResultMaterializer.MaterializeResult(
+                            bestSoFar,
+                            rootSnapshot,
+                            displayNames,
+                            battleDamage,
+                            searchPolicy,
+                            bridgeWatch.Elapsed,
+                            response.EffectiveDegreeOfParallelism,
+                            targetScope,
+                            token);
+                        SolverResult resolved = search.Interaction.FinalizeWorkerResult(materialized);
+                        token.ThrowIfCancellationRequested();
+                        InCombatSolverBackendState.RecordSts2SimSuccess(response.EffectiveDegreeOfParallelism);
+                        SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+                        finalizedResult = resolved;
+                        return true;
+                    }
+
+                    string emptyCode = response.Outcome == "TimedOut" ? "sts2sim_timed_out_empty" : "sts2sim_cancelled_empty";
+                    InCombatSolverBackendState.RecordFallback(emptyCode, response.Error);
+                    Entry.Logger.Info(
+                        $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                        $"code={emptyCode} detail={response.Error}");
+                    SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+                    return false;
+                }
+
+                default:
+                {
+                    string fallbackCode = response.FailureCode ?? "sts2sim_failed";
+                    InCombatSolverBackendState.RecordFallback(fallbackCode, response.Error);
+                    Entry.Logger.Info(
+                        $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                        $"code={fallbackCode} field={response.FieldPath ?? "-"} detail={response.Error}");
+                    SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+                    return false;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (InvalidDataException ex)
+        {
+            InCombatSolverBackendState.RecordFallback("bridge_invalid_data", ex.GetBaseException().Message);
+            Entry.Logger.Warn(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                $"code=bridge_invalid_data detail={ex.GetBaseException()}");
+            SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+            return false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            InCombatSolverBackendState.RecordFallback("bridge_invalid_operation", ex.GetBaseException().Message);
+            Entry.Logger.Warn(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                $"code=bridge_invalid_operation detail={ex.GetBaseException()}");
+            SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+            return false;
+        }
+        catch (NotSupportedException ex)
+        {
+            InCombatSolverBackendState.RecordFallback("bridge_not_supported", ex.GetBaseException().Message);
+            Entry.Logger.Warn(
+                $"[CombatSolver/InCombatSts2Sim] STS2SIM_INCOMBAT_FALLBACK generation={generation} " +
+                $"code=bridge_not_supported detail={ex.GetBaseException()}");
+            SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+            return false;
+        }
+        finally
+        {
+            search.Interaction.SetTakeoverCallback(null);
+            InCombatSolverBackendState.ClearActive();
+        }
     }
 }

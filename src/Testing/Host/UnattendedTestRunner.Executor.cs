@@ -39,6 +39,12 @@ internal sealed partial class UnattendedTestRunner
             bool expectedCardPlayed = request.ExpectedPlayedCardId == null;
             bool expectedPotionUsed = request.ExpectedUsedPotionId == null;
             bool expectedPlayerPowerObserved = request.ExpectedObservedPlayerPowerId == null;
+            if (request.VerifyInCombatSts2SimContract)
+            {
+                runner.SetStage("verify_in_combat_sts2sim_contract");
+                await runner.RunInCombatSts2SimContractAsync(combatState, player);
+                return Observation(combatEnded: !CombatManager.Instance.IsInProgress);
+            }
             if (request.ScenarioId is "PRECOMBAT-STS2SIM-ABSENT-CONTRACT"
                 or "PRECOMBAT-STS2SIM-BRIDGE-CONTRACT"
                 or "PRECOMBAT-STS2SIM-PARITY-CONTRACT")

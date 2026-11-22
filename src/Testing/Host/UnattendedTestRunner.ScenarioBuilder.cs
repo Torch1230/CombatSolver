@@ -303,6 +303,16 @@ internal sealed partial class UnattendedTestRunner
                     mutableEncounter,
                     showTransition: false);
             }
+            else if (request.VerifyInCombatSts2SimContract)
+            {
+                MapPoint contractTarget = FindRow0Target(runState);
+                await RunManager.Instance.EnterMapCoordDebug(
+                    contractTarget.coord,
+                    mutableEncounter.RoomType,
+                    contractTarget.PointType,
+                    mutableEncounter,
+                    showTransition: false);
+            }
             else
             {
                 await RunManager.Instance.EnterRoomDebug(

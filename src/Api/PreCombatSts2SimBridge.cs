@@ -45,6 +45,8 @@ internal static class PreCombatSts2SimBridge
 
     internal static Func<Sts2SimBridgeRequestDto, CancellationToken, Task<byte[]>>? RunRawJsonHookForTesting { get; set; }
 
+    internal static Func<InCombatSts2SimRequestDto, Action<InCombatSts2SimProgressDto>?, CancellationToken, Task<InCombatSts2SimResponseDto>>? RunInCombatHookForTesting { get; set; }
+
     internal static PreCombatBridgeAvailability? AvailabilityOverrideForTesting { get; set; }
 
     internal static int ActivationAttemptCountForTesting => Volatile.Read(ref _activationAttemptCount);
@@ -74,6 +76,7 @@ internal static class PreCombatSts2SimBridge
         PrewarmHookForTesting = null;
         RunHookForTesting = null;
         RunRawJsonHookForTesting = null;
+        RunInCombatHookForTesting = null;
         AvailabilityOverrideForTesting = null;
     }
 
@@ -177,6 +180,37 @@ internal static class PreCombatSts2SimBridge
         return PreCombatSts2SimWireValidator.DeserializeAndValidateResponse(responseBytes);
     }
 
+    public static async Task<InCombatSts2SimResponseDto> RunInCombatAsync(
+        InCombatSts2SimRequestDto request,
+        Action<InCombatSts2SimProgressDto>? onProgress,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (RunInCombatHookForTesting is { } hook)
+        {
+            InCombatSts2SimResponseDto hooked = await hook(request, onProgress, cancellationToken).ConfigureAwait(false);
+            InCombatSts2SimWireValidator.ValidateResponse(hooked);
+            return hooked;
+        }
+
+        PreCombatBridgeAvailability state = EnsureActivated(out string? error);
+        if (state != PreCombatBridgeAvailability.Ready || _activated is null)
+            throw new InvalidOperationException(error ?? $"Sts2Sim backend is not ready ({state}).");
+
+        byte[] payload = JsonSerializer.SerializeToUtf8Bytes(request, PreCombatSts2SimAbi.JsonOptions);
+        cancellationToken.ThrowIfCancellationRequested();
+        Action<byte[]>? wireProgress = onProgress is null
+            ? null
+            : bytes =>
+            {
+                InCombatSts2SimProgressDto progress = InCombatSts2SimWireValidator.DeserializeAndValidateProgress(bytes);
+                onProgress(progress);
+            };
+        byte[] responseBytes = await _activated.RunInCombatJsonAsync(payload, wireProgress, cancellationToken).ConfigureAwait(false);
+        return InCombatSts2SimWireValidator.DeserializeAndValidateResponse(responseBytes);
+    }
+
     private static string? ResolveBridgeDirectory()
     {
         if (!string.IsNullOrWhiteSpace(ModDirectoryOverrideForTesting))
@@ -254,16 +288,25 @@ internal static class PreCombatSts2SimBridge
             ?? throw new InvalidOperationException($"Missing entry type {BridgeEntryTypeName}.");
 
         Func<int> getAbiVersion = CreateDelegate<Func<int>>(entryType, "GetAbiVersion");
+        Func<int> getInCombatAbiVersion = CreateDelegate<Func<int>>(entryType, "GetInCombatAbiVersion");
         Func<string> getBundleIdentityJson = CreateDelegate<Func<string>>(entryType, "GetBundleIdentityJson");
         Action prewarm = CreateDelegate<Action>(entryType, "Prewarm");
         Func<byte[], CancellationToken, Task<byte[]>> runJsonAsync =
             CreateDelegate<Func<byte[], CancellationToken, Task<byte[]>>>(entryType, "RunJsonAsync");
+        Func<byte[], Action<byte[]>?, CancellationToken, Task<byte[]>> runInCombatJsonAsync =
+            CreateDelegate<Func<byte[], Action<byte[]>?, CancellationToken, Task<byte[]>>>(entryType, "RunInCombatJsonAsync");
 
         int actualAbi = getAbiVersion();
         if (actualAbi != PreCombatSts2SimAbi.Version)
         {
             throw new InvalidDataException(
                 $"Bridge runtime ABI mismatch: expected {PreCombatSts2SimAbi.Version}, got {actualAbi}.");
+        }
+        int actualInCombatAbi = getInCombatAbiVersion();
+        if (actualInCombatAbi != InCombatSts2SimAbi.Version)
+        {
+            throw new InvalidDataException(
+                $"Bridge in-combat ABI mismatch: expected {InCombatSts2SimAbi.Version}, got {actualInCombatAbi}.");
         }
 
         string identityJson = getBundleIdentityJson();
@@ -282,7 +325,7 @@ internal static class PreCombatSts2SimBridge
         VerifyComponentMvid(manifestEntries, $"{SolverAssemblySimpleName}.dll", identity.SolverMvid);
         VerifyComponentMvid(manifestEntries, $"{CoreAssemblySimpleName}.dll", identity.CoreMvid);
 
-        return new ActivatedBridge(loadContext, prewarm, runJsonAsync);
+        return new ActivatedBridge(loadContext, prewarm, runJsonAsync, runInCombatJsonAsync);
     }
 
     private static void VerifyComponentMvid(
@@ -318,11 +361,13 @@ internal static class PreCombatSts2SimBridge
     private sealed class ActivatedBridge(
         IsolatedBridgeLoadContext loadContext,
         Action prewarm,
-        Func<byte[], CancellationToken, Task<byte[]>> runJsonAsync)
+        Func<byte[], CancellationToken, Task<byte[]>> runJsonAsync,
+        Func<byte[], Action<byte[]>?, CancellationToken, Task<byte[]>> runInCombatJsonAsync)
     {
         public IsolatedBridgeLoadContext LoadContext { get; } = loadContext;
         public Action Prewarm { get; } = prewarm;
         public Func<byte[], CancellationToken, Task<byte[]>> RunJsonAsync { get; } = runJsonAsync;
+        public Func<byte[], Action<byte[]>?, CancellationToken, Task<byte[]>> RunInCombatJsonAsync { get; } = runInCombatJsonAsync;
     }
 
     private sealed class IsolatedBridgeLoadContext(

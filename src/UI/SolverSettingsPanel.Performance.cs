@@ -6,6 +6,7 @@ namespace CombatSolver;
 internal sealed partial class SolverSettingsPanel
 {
     private OptionButton _performancePreset = null!;
+    private CheckButton _useSts2SimInCombat = null!;
     private CheckButton _beamWidthPortfolioEnabled = null!;
     private CheckButton _noveltyPortfolioEnabled = null!;
     private CheckButton _earlyTurnExplorationEnabled = null!;
@@ -26,6 +27,7 @@ internal sealed partial class SolverSettingsPanel
                 {
                     PerformanceMigrationVersion = 0,
                     PerformancePreset = SolverPerformancePreset.VeryHigh,
+                    UseSts2SimInCombat = false,
                     UseBeamWidthPortfolio = true,
                     UseNoveltyPortfolio = true,
                     UseEarlyTurnExploration = true,
@@ -36,6 +38,7 @@ internal sealed partial class SolverSettingsPanel
             bool migrationApplied = migrated.PerformanceMigrationVersion
                     == SolverSettings.CurrentPerformanceMigrationVersion
                 && SolverSettings.ResolvePerformancePreset(migrated) == SolverPerformancePreset.Medium
+                && !migrated.UseSts2SimInCombat
                 && migrated.UseBeamWidthPortfolio
                 && migrated.UseNoveltyPortfolio
                 && migrated.UseEarlyTurnExploration
@@ -92,6 +95,7 @@ internal sealed partial class SolverSettingsPanel
             SolverSettingsData preset = SolverSettings.ApplyPerformancePreset(
                 original with
                 {
+                    UseSts2SimInCombat = false,
                     UseBeamWidthPortfolio = true,
                     UseNoveltyPortfolio = true,
                     UseEarlyTurnExploration = true,
@@ -107,6 +111,7 @@ internal sealed partial class SolverSettingsPanel
                    && postMigrationPreferencePreserved
                    && legacyDefaultApplied
                    && preset.NoGcRegionBudgetGigabytes == 64d
+                   && !roundTripped.UseSts2SimInCombat
                    && roundTripped.UseBeamWidthPortfolio
                    && roundTripped.UseNoveltyPortfolio
                    && roundTripped.UseEarlyTurnExploration
@@ -115,6 +120,8 @@ internal sealed partial class SolverSettingsPanel
                    && CommitPending()
                    && SolverSettings.ResolvePerformancePreset(SolverSettings.Current)
                    == SolverPerformancePreset.High
+                   && !SolverSettings.Current.UseSts2SimInCombat
+                   && !_useSts2SimInCombat.ButtonPressed
                    && SolverSettings.Current.UseBeamWidthPortfolio
                    && _beamWidthPortfolioEnabled.ButtonPressed
                    && SolverSettings.Current.UseNoveltyPortfolio
@@ -138,6 +145,26 @@ internal sealed partial class SolverSettingsPanel
         GridContainer budgetGrid = CreateSettingsGrid();
         _performancePreset = CreatePerformancePresetInput();
         AddBasicRow(budgetGrid, SolverText.Get("性能预设"), _performancePreset);
+        _useSts2SimInCombat = CreateToggle();
+        _reloadInputs.Add(data =>
+            _useSts2SimInCombat.ButtonPressed = data.UseSts2SimInCombat);
+        _useSts2SimInCombat.Toggled += enabled =>
+        {
+            if (_loading)
+                return;
+            SolverSettings.Update(SolverSettings.Current with { UseSts2SimInCombat = enabled });
+            SolverOverlay.RefreshControls();
+            SetStatus(
+                enabled
+                    ? SolverText.Get("战斗内优先使用 Sts2Sim 模拟器已启用，下次搜索生效")
+                    : SolverText.Get("已关闭战斗内 Sts2Sim，将使用内置模拟器"),
+                SolverUiTokens.Palette.Success);
+        };
+        AddBasicRow(
+            budgetGrid,
+            SolverText.Get("战斗内优先使用 Sts2Sim 模拟器"),
+            _useSts2SimInCombat,
+            SolverText.Get("开启后，标准单人战斗会优先在无 No-GC 限制的隔离桥接上下文中并行运行 Sts2Sim 模拟器；遇到不支持的 Mod、模式、策略或状态回退条件时自动切回内置模拟器，不中断计算。"));
         _beamWidthPortfolioEnabled = CreateToggle();
         _reloadInputs.Add(data =>
             _beamWidthPortfolioEnabled.ButtonPressed = data.UseBeamWidthPortfolio);
@@ -352,6 +379,7 @@ internal sealed partial class SolverSettingsPanel
     {
         SolverPerformancePreset preset = SolverSettings.ResolvePerformancePreset(data);
         _performancePreset.Selected = _performancePreset.GetItemIndex((int)preset);
+        _useSts2SimInCombat.ButtonPressed = data.UseSts2SimInCombat;
         _beamWidthPortfolioEnabled.ButtonPressed = data.UseBeamWidthPortfolio;
         _noveltyPortfolioEnabled.ButtonPressed = data.UseNoveltyPortfolio;
         _earlyTurnExplorationEnabled.ButtonPressed = data.UseEarlyTurnExploration;

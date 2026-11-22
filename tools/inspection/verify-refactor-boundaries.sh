@@ -979,6 +979,7 @@ expected_beam_files=(
     CombatBeamSolver.ExpansionExecutor.cs
     CombatBeamSolver.ExpansionPlan.cs
     CombatBeamSolver.Expansion.Replay.cs
+    CombatBeamSolver.ExternalRouteAnnotation.cs
     CombatBeamSolver.FinalPlanOrdering.cs
     CombatBeamSolver.Models.cs
     CombatBeamSolver.NoveltySearch.cs
