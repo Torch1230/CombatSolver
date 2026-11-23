@@ -2,7 +2,7 @@
 
 ## 未发布：战斗内与战前 Sts2Sim 桥接入口
 
-- `INCOMBAT-STS2SIM-IMPLICIT-CHOICE` 核对隐式全选的实例与顺序、同来源的后续手选及多余输入拒绝。女王实机胜线与五角色八个固定随机根的逐动作、RNG 和耗时记录见[战斗内性能与验收](performance/sts2sim-incombat-entry-costs.md)。
+- 运行 `bash tools/testing/run-unattended-test.sh --scenario-id INCOMBAT-STS2SIM-IMPLICIT-CHOICE --encounter-id MAWLER_NORMAL --preserve-native-combat-state-for-test --verify-in-combat-sts2sim-contract --cleanup-instance-on-exit`，核对隐式全选的牌序、来源牌堆内的重复牌位置、同来源的后续手选及多余输入拒绝。女王实机胜线与五角色八个固定随机根的逐动作、RNG 和耗时记录见[战斗内性能与验收](performance/sts2sim-incombat-entry-costs.md)。
 
 - 真机无头场景 `INCOMBAT-STS2SIM-PILE-CHOICE` 使用 `--encounter-id MAWLER_NORMAL --preserve-native-combat-state-for-test --verify-in-combat-sts2sim-contract --cleanup-instance-on-exit`。三种必选药水各覆盖一张候选，另验空牌堆、同名多张、可选跳过及缺失或多余决定。卡牌用例核对随机取样后唯一或两项选择，并以空手牌的 `HIDDEN_DAGGERS` 核对后续生成。已执行的动作逐项对照原生快照。
 
