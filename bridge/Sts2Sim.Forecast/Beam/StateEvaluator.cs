@@ -1155,6 +1155,9 @@ internal sealed class StateEvaluator
         Dictionary<BufferPower, int>? remainingBuffer,
         Dictionary<SlipperyPower, int>? remainingSlippery)
     {
+        if (playerHp <= 0)
+            return;
+
         decimal adjustedDamage = Hook.ModifyDamage(
             state,
             playerCreature,
@@ -1183,6 +1186,7 @@ internal sealed class StateEvaluator
         else if (ReferenceEquals(target, playerCreature)
             && osty is not null
             && ostyHp > 0
+            && props.IsPoweredAttack()
             && HasPower<DieForYouPower>(osty.Powers))
         {
             target = osty;
@@ -1204,43 +1208,39 @@ internal sealed class StateEvaluator
         {
             int absorbed = Math.Min(ostyHp, loss);
             ostyHp -= absorbed;
-            ConsumeSlipperyAfterDamage(osty, absorbed, remainingSlippery);
+            if (ostyHp > 0)
+                ConsumeSlipperyAfterDamage(osty, absorbed, remainingSlippery);
+
             int spillover = loss - absorbed;
-            if (spillover > 0)
-            {
-                decimal overflowLoss = EvaluateAfterOstyHpLoss(
-                    eligibleListeners,
-                    playerCreature,
-                    playerCreature,
-                    spillover,
-                    attacker,
-                    props,
-                    beatingRemnantRemaining,
-                    remainingBuffer,
-                    remainingSlippery);
-                int playerLoss = Math.Max(0, (int)Math.Clamp(overflowLoss, 0m, 999_999_999m));
-                playerHp -= playerLoss;
-                if (beatingRemnantRemaining != int.MaxValue)
-                    beatingRemnantRemaining = Math.Max(0, beatingRemnantRemaining - playerLoss);
-                ConsumeSlipperyAfterDamage(playerCreature, playerLoss, remainingSlippery);
-                if (playerLoss > 0 && gambitActive)
-                {
-                    gambitActive = false;
-                    playerHp = 0;
-                }
-                deathPrevention.TryRevive(ref playerHp);
-            }
-            return;
+            if (spillover == 0)
+                return;
+
+            decimal overflowLoss = EvaluateAfterOstyHpLoss(
+                eligibleListeners,
+                playerCreature,
+                playerCreature,
+                spillover,
+                attacker,
+                props,
+                beatingRemnantRemaining,
+                remainingBuffer,
+                remainingSlippery);
+            loss = (int)Math.Clamp(overflowLoss, 0m, 999_999_999m);
         }
 
-        playerHp -= loss;
-        if (beatingRemnantRemaining != int.MaxValue)
-            beatingRemnantRemaining = Math.Max(0, beatingRemnantRemaining - loss);
-        ConsumeSlipperyAfterDamage(playerCreature, loss, remainingSlippery);
-        if (loss > 0 && gambitActive)
+        int actualLoss = Math.Min(playerHp, loss);
+        playerHp -= actualLoss;
+        // CreatureCmd skips AfterDamageReceived for a lethal hit, then resolves death prevention.
+        if (playerHp > 0 && actualLoss > 0)
         {
-            gambitActive = false;
-            playerHp = 0;
+            if (beatingRemnantRemaining != int.MaxValue)
+                beatingRemnantRemaining = Math.Max(0, beatingRemnantRemaining - actualLoss);
+            ConsumeSlipperyAfterDamage(playerCreature, actualLoss, remainingSlippery);
+            if (gambitActive && props.IsPoweredAttack())
+            {
+                gambitActive = false;
+                playerHp = 0;
+            }
         }
         deathPrevention.TryRevive(ref playerHp);
     }
