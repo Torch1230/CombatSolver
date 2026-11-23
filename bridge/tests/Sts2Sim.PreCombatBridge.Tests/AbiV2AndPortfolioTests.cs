@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CombatSolver;
@@ -180,7 +179,7 @@ public sealed class AbiV2AndPortfolioTests
     [Fact]
     public async Task RunInCombatJsonAsync_V1OmitsExtendedMetrics_V2PopulatesExtendedMetricsAndParentBudget()
     {
-        (string saveJson, InCombatLiveStateDto liveDto) = await CreateMinimalTurn1CombatAsync("NIBBITS_WEAK");
+        (string saveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
 
         BridgePolicyDto v1Policy = TestSaveBuilder.DefaultPolicy(beamWidth: 12, maxExpandedNodes: 600);
         var v1Request = new InCombatBridgeRequestDto(
@@ -301,7 +300,7 @@ public sealed class AbiV2AndPortfolioTests
     [Fact]
     public async Task RunInCombatJsonAsync_V2Cancel_FlushesFinalMetricsOnlyProgressAndPreservesMonotonicity()
     {
-        (string saveJson, InCombatLiveStateDto liveDto) = await CreateMinimalTurn1CombatAsync("NIBBITS_NORMAL");
+        (string saveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_NORMAL");
         BridgePolicyDto v2Policy = TestSaveBuilder.DefaultPolicy(beamWidth: 64, maxExpandedNodes: 500_000, useBeamWidthPortfolio: true) with
         {
             PortfolioOptionsVersion = 2,
@@ -377,7 +376,7 @@ public sealed class AbiV2AndPortfolioTests
     [Fact]
     public async Task RunInCombatJsonAsync_V2BlockingFinalMetricsFlushCallback_ReturnsCancelledWithinWaitBudget()
     {
-        (string saveJson, InCombatLiveStateDto liveDto) = await CreateMinimalTurn1CombatAsync("NIBBITS_NORMAL");
+        (string saveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_NORMAL");
         BridgePolicyDto v2Policy = TestSaveBuilder.DefaultPolicy(beamWidth: 64, maxExpandedNodes: 500_000, useBeamWidthPortfolio: true) with
         {
             PortfolioOptionsVersion = 2,
@@ -654,7 +653,7 @@ public sealed class AbiV2AndPortfolioTests
         }
 
         // 2) 端到端 BridgeEntry：硬期限 30s 下常规进度回调阻塞，用户取消后必须在 3s 内返回且报告 ProgressCallbacksDrained=false 并封闸零后续回调。
-        (string saveJson, InCombatLiveStateDto liveDto) = await CreateMinimalTurn1CombatAsync("NIBBITS_NORMAL");
+        (string saveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_NORMAL");
         BridgePolicyDto v2Policy = TestSaveBuilder.DefaultPolicy(beamWidth: 64, maxExpandedNodes: 250, useBeamWidthPortfolio: true) with
         {
             PortfolioOptionsVersion = 2,
@@ -732,7 +731,7 @@ public sealed class AbiV2AndPortfolioTests
     [Fact]
     public async Task RunInCombatJsonAsync_ReportsProgressCallbacksDrainedContract()
     {
-        (string saveJson, InCombatLiveStateDto liveDto) = await CreateMinimalTurn1CombatAsync("NIBBITS_NORMAL");
+        (string saveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_NORMAL");
         BridgePolicyDto policy = TestSaveBuilder.DefaultPolicy(beamWidth: 16, maxExpandedNodes: 40, useBeamWidthPortfolio: false);
 
         // 1) 未传进度回调时省略 progressCallbacksDrained 字段（null）。
@@ -1129,230 +1128,4 @@ public sealed class AbiV2AndPortfolioTests
             dto.EarlyTurnExplorationDepth,
             dto.EarlyTurnExplorationBudgetMilliseconds,
             dto.PortfolioSchedulingMode);
-
-    private static async Task<(string SaveJson, InCombatLiveStateDto LiveDto)> CreateMinimalTurn1CombatAsync(
-        string encounterId)
-    {
-        TestSaveBuilder.EnsurePrewarmed();
-        RunState run = TestSaveBuilder.CreateRun(characterId: "CHARACTER.IRONCLAD", ascension: 0);
-        MapPoint target = TestSaveBuilder.FindFirstUnvisitedPoint(run, MapPointType.Monster);
-        string saveJson = TestSaveBuilder.SerializeNormalizedSave(run);
-        Assert.True(EncounterCatalog.TryGet(encounterId, out EncounterCatalogEntry entry));
-        ForecastRoomEntryResult entered = await run.EnterForecastCombatAsync(
-            new ForecastTargetSpec(
-                entry.Definition,
-                entry.RoomType,
-                target.coord.row + 1,
-                target.coord.col,
-                target.PointType,
-                false),
-            new ForecastOpeningRunner(CancellationToken.None),
-            encounterMonsterSeedOverride: null);
-
-        CombatRoom room = entered.Room;
-        CombatState state = room.Engine.State;
-        Player player = state.Players[0];
-        PlayerCombatState pcs = player.PlayerCombatState!;
-
-        var creatureHandles = new Dictionary<Creature, int>(ReferenceEqualityComparer.Instance);
-        var cardHandles = new Dictionary<CardModel, int>(ReferenceEqualityComparer.Instance);
-        int RegisterCreature(Creature c) =>
-            creatureHandles.TryGetValue(c, out int h) ? h : creatureHandles[c] = creatureHandles.Count + 1;
-        int RegisterCard(CardModel card)
-        {
-            if (!cardHandles.TryGetValue(card, out int h))
-            {
-                h = cardHandles.Count + 1;
-                cardHandles[card] = h;
-                if (card.DeckVersion is { } dv) RegisterCard(dv);
-                if (card.CloneOf is { } co) RegisterCard(co);
-            }
-            return h;
-        }
-
-        RegisterCreature(player.Creature);
-        foreach (Creature c in state.Allies) RegisterCreature(c);
-        foreach (Creature c in state.Enemies) RegisterCreature(c);
-        foreach (CardModel c in player.Deck.Cards) RegisterCard(c);
-        foreach (CardPile pile in pcs.AllPiles)
-        {
-            foreach (CardModel c in pile.Cards) RegisterCard(c);
-        }
-
-        InCombatCardDto[] cardsDto = cardHandles
-            .OrderBy(kv => kv.Value)
-            .Select(kv => new InCombatCardDto(
-                kv.Value,
-                kv.Key.Id.ToString(),
-                kv.Key.CurrentUpgradeLevel,
-                kv.Key.DeckVersion is not null ? cardHandles[kv.Key.DeckVersion] : null,
-                kv.Key.CloneOf is not null ? cardHandles[kv.Key.CloneOf] : null,
-                kv.Key.IsDupe,
-                kv.Key.ExhaustOnNextPlay,
-                kv.Key.BaseReplayCount,
-                0,
-                kv.Key.FloorAddedToDeck,
-                kv.Key.CanonicalEnergyCostValue,
-                kv.Key.CanonicalEnergyCostValue,
-                kv.Key.CostsXEnergy,
-                [],
-                kv.Key.TemporaryStarCostOverrideThisTurn,
-                kv.Key.TemporaryFreeThisTurn,
-                kv.Key.TemporaryFreeUntilPlayed,
-                kv.Key.TemporaryFreeThisCombat,
-                kv.Key.TemporaryCostOverrideThisTurn,
-                kv.Key.TemporaryCostOverrideThisTurnOrUntilPlayed,
-                kv.Key.TemporaryCostOverrideThisCombat,
-                kv.Key.TemporaryRetainThisTurn,
-                kv.Key.TemporarySlyThisTurn,
-                kv.Key.LocalKeywords.Select(k => k.ToString()).ToArray(),
-                [],
-                [],
-                null,
-                null,
-                new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal)))
-            .ToArray();
-
-        InCombatCreatureDto[] creaturesDto = creatureHandles
-            .OrderBy(kv => kv.Value)
-            .Select(kv =>
-            {
-                Creature c = kv.Key;
-                InCombatMonsterDto? monsterDto = null;
-                if (c.Monster is { } m)
-                {
-                    MonsterMoveStateMachine sm = m.MoveStateMachine!;
-                    var setupFields = new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal);
-                    if (m is Nibbit nib)
-                    {
-                        setupFields["Nibbit._isFront"] = new("Bool", BoolValue: nib.IsFront);
-                        setupFields["Nibbit._isAlone"] = new("Bool", BoolValue: nib.IsAlone);
-                    }
-                    SerializableRng mrng = m.Rng.ToSerializable();
-                    monsterDto = new InCombatMonsterDto(
-                        new InCombatRngStreamDto(mrng.counter, mrng.state0, mrng.state1, mrng.state2, mrng.state3),
-                        m.IsPerformingMove,
-                        m.SpawnedThisTurn,
-                        sm.CurrentState.Id,
-                        m.NextMove?.Id,
-                        m.NextMove?.CanTransitionAway ?? true,
-                        sm.PerformedFirstMove,
-                        sm.StateLog.Select(s => s.Id).ToArray(),
-                        null,
-                        setupFields,
-                        new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal));
-                }
-                return new InCombatCreatureDto(
-                    kv.Value,
-                    c.CombatId,
-                    c.Side.ToString(),
-                    c.SlotName,
-                    c.IsPlayer,
-                    null,
-                    c.Monster?.Id.ToString(),
-                    c.CurrentHp,
-                    c.MaxHp,
-                    c.Block,
-                    c.CumulativeHpLost,
-                    c.CombatState is null,
-                    monsterDto,
-                    []);
-            })
-            .ToArray();
-
-        string[] encounterSlots = ReadField<string[]>(state, "_encounterSlots");
-        uint nextCreatureId = ReadField<uint>(state, "_nextCreatureId");
-        SerializableRunRngSet runRng = state.RunState.Rng.ToSerializable();
-        SerializablePlayerRngSet playerRng = player.PlayerRng.ToSerializable();
-
-        var countersDto = new InCombatPlayerCountersDto(
-            pcs.StarsGainedThisTurn, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        var playerDto = new InCombatPlayerDto(
-            player.Creature.CurrentHp,
-            player.Creature.MaxHp,
-            player.Creature.Block,
-            player.Creature.CumulativeHpLost,
-            player.Gold,
-            player.MaxEnergy,
-            player.BaseOrbSlotCount,
-            player.IsActiveForHooks,
-            player.CanUseOrRemovePotions,
-            pcs.Energy,
-            pcs.Stars,
-            pcs.Phase.ToString(),
-            pcs.TurnNumber,
-            countersDto,
-            pcs.Hand.Cards.Select(c => cardHandles[c]).ToArray(),
-            pcs.DrawPile.Cards.Select(c => cardHandles[c]).ToArray(),
-            pcs.DiscardPile.Cards.Select(c => cardHandles[c]).ToArray(),
-            pcs.ExhaustPile.Cards.Select(c => cardHandles[c]).ToArray(),
-            pcs.PlayPile.Cards.Select(c => cardHandles[c]).ToArray(),
-            player.Deck.Cards.Select(c => cardHandles[c]).ToArray(),
-            player.PotionSlots.Select(p => p?.Id.ToString()).ToArray(),
-            pcs.OrbQueue.Capacity,
-            [],
-            []);
-
-        var verificationDto = new InCombatVerificationDto(
-            player.Creature.CurrentHp,
-            player.Creature.MaxHp,
-            player.Creature.Block,
-            pcs.Energy,
-            pcs.Stars,
-            player.Gold,
-            pcs.OrbQueue.Capacity,
-            [],
-            [],
-            player.PotionSlots.Select(p => p?.Id.ToString()).ToArray(),
-            pcs.Hand.Cards.Select(ToVerifiedCard).ToArray(),
-            pcs.DrawPile.Cards.Select(ToVerifiedCard).ToArray(),
-            pcs.DiscardPile.Cards.Select(ToVerifiedCard).ToArray(),
-            pcs.ExhaustPile.Cards.Select(ToVerifiedCard).ToArray(),
-            state.Enemies.Select(e => new InCombatVerifiedCreatureDto(
-                e.CombatId, e.Monster?.Id.ToString(), e.CurrentHp, e.MaxHp, e.Block, e.Monster?.NextMove?.Id, [])).ToArray(),
-            []);
-
-        var liveDto = new InCombatLiveStateDto(
-            encounterId,
-            room.RoomType.ToString(),
-            encounterSlots,
-            state.CurrentSide.ToString(),
-            state.RoundNumber,
-            state.IsPlayerExtraTurn,
-            state.GoldWasStolen,
-            nextCreatureId,
-            runRng.Seed,
-            runRng.Rngs.ToDictionary(kv => kv.Key.ToString(), kv => new InCombatRngStreamDto(kv.Value.counter, kv.Value.state0, kv.Value.state1, kv.Value.state2, kv.Value.state3), StringComparer.Ordinal),
-            playerRng.Seed,
-            playerRng.Rngs.ToDictionary(kv => kv.Key.ToString(), kv => new InCombatRngStreamDto(kv.Value.counter, kv.Value.state0, kv.Value.state1, kv.Value.state2, kv.Value.state3), StringComparer.Ordinal),
-            playerDto,
-            cardsDto,
-            player.Relics.Select(r => new InCombatRelicDto(r.Id.ToString(), r.IsWax, r.IsMelted, r.StackCount, r.FloorAddedToDeck, new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal))).ToArray(),
-            creaturesDto,
-            state.Allies.Select(c => creatureHandles[c]).ToArray(),
-            state.Enemies.Select(c => creatureHandles[c]).ToArray(),
-            [],
-            [],
-            state.SpawnedEnemies.Select(c => creatureHandles[c]).ToArray(),
-            [],
-            [],
-            new InCombatSemanticHistoryDto([], [], [], [], [], []),
-            verificationDto);
-
-        return (saveJson, liveDto);
-
-        static InCombatVerifiedCardDto ToVerifiedCard(CardModel c) =>
-            new(c.Id.ToString(), c.CurrentUpgradeLevel, c.ResolvedEnergyCostForComparison, c.LocalKeywords.Select(k => k.ToString()).ToArray());
-
-        static T ReadField<T>(object target, string name)
-        {
-            for (Type? t = target.GetType(); t is not null; t = t.BaseType)
-            {
-                FieldInfo? fi = t.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (fi is not null)
-                    return (T)fi.GetValue(target)!;
-            }
-            throw new MissingFieldException(target.GetType().FullName, name);
-        }
-    }
 }

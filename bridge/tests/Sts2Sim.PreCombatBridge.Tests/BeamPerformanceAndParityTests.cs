@@ -108,15 +108,32 @@ public sealed class BeamPerformanceAndParityTests
     [Fact]
     public async Task ForecastRetentionKey_OrderInvariantPilesOver32Cards_AndHistoryParity()
     {
-        CombatState stateA = await CreateMawlerCombatAsync();
-        CombatState stateB = stateA.Clone();
+        (string save, InCombatLiveStateDto opening, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("MAWLER_NORMAL");
+        var turn = new InCombatTurnKeyDto(1, "Player", [1]);
+        int playerHandle = opening.AllyHandles.Single();
+        int enemyHandle = opening.EnemyHandles.Single();
+        int strikeHandle = opening.Cards.First(c => c.CardId == "CARD.STRIKE_IRONCLAD").Handle;
+        var outgoing = new InCombatDamageHistoryEntryDto(enemyHandle, playerHandle, enemyHandle,
+            (int)ValueProp.Move, 4, 2, 4, 0, false, false, false, strikeHandle, 1, "Player", [1]);
+        var incoming = new InCombatDamageHistoryEntryDto(playerHandle, enemyHandle, playerHandle,
+            (int)ValueProp.Move, 0, 5, 0, 0, false, false, true, null, 1, "Player", [1]);
 
-        void PopulateLargeUnorderedPilesAndHistory(CombatState state, bool reversed)
+        CombatState Restore(bool reversed, int energySpent)
         {
+            var dto = opening with
+            {
+                DamageHistory = reversed ? [incoming, outgoing] : [outgoing, incoming],
+                SemanticHistory = opening.SemanticHistory with
+                {
+                    Exhausts = [new(turn, 0)],
+                    EnergySpent = [new(turn, 0, energySpent)],
+                    ActorEvents = [new("DoomApplied", turn, 0)],
+                },
+            };
+            CombatState state = CombatState.RestoreLiveCombat(
+                BridgeSaveRestore.RestoreLive(save), LiveCombatTransplantMapper.Map(dto)).Engine.State;
             Player player = state.Players[0];
             PlayerCombatState pcs = player.PlayerCombatState!;
-            Creature playerCreature = player.Creature;
-            Creature enemy = state.Enemies[0];
 
             var discardOrder = new List<CardModel>(40);
             var exhaustOrder = new List<CardModel>(36);
@@ -149,38 +166,11 @@ public sealed class BeamPerformanceAndParityTests
             for (int i = 0; i < exhaustOrder.Count; i++)
                 pcs.ExhaustPile.AddInternal(exhaustOrder[i]);
 
-            var result1 = new DamageResult(enemy, ValueProp.Move)
-            {
-                BlockedDamage = 2,
-                UnblockedDamage = 4,
-            };
-            var result2 = new DamageResult(playerCreature, ValueProp.Move)
-            {
-                BlockedDamage = 5,
-                UnblockedDamage = 0,
-                WasFullyBlocked = true,
-            };
-            CardModel sourceStrike = CreateCard<StrikeIronclad>(player);
-            if (!reversed)
-            {
-                state.DamageHistory.Record(result1, enemy, playerCreature, sourceStrike, state);
-                state.DamageHistory.Record(result2, playerCreature, enemy, null, state);
-                state.SemanticHistory.RecordExhaust(state, player);
-                state.SemanticHistory.RecordEnergySpent(state, player, 2);
-                state.SemanticHistory.Record(state, CombatSemanticHistory.ActorEvent.DoomApplied, player);
-            }
-            else
-            {
-                state.DamageHistory.Record(result2, playerCreature, enemy, null, state);
-                state.DamageHistory.Record(result1, enemy, playerCreature, sourceStrike, state);
-                state.SemanticHistory.Record(state, CombatSemanticHistory.ActorEvent.DoomApplied, player);
-                state.SemanticHistory.RecordEnergySpent(state, player, 2);
-                state.SemanticHistory.RecordExhaust(state, player);
-            }
+            return state;
         }
 
-        PopulateLargeUnorderedPilesAndHistory(stateA, reversed: false);
-        PopulateLargeUnorderedPilesAndHistory(stateB, reversed: true);
+        CombatState stateA = Restore(reversed: false, energySpent: 2);
+        CombatState stateB = Restore(reversed: true, energySpent: 2);
 
         var evaluator = new StateEvaluator(stateA, CombatPolicy.Default);
         SearchNode nodeA = SearchNode.Create(stateA, null, null, evaluator);
@@ -193,8 +183,7 @@ public sealed class BeamPerformanceAndParityTests
         Assert.Equal(keyA, ForecastRetentionKey.Compute(nodeA));
 
         // 变更弃牌堆任意一张卡或语义历史能量支出后，RetentionKey 必须变化。
-        CombatState mutated = stateA.Clone();
-        mutated.SemanticHistory.RecordEnergySpent(mutated, mutated.Players[0], 1);
+        CombatState mutated = Restore(reversed: false, energySpent: 3);
         SearchNode mutatedNode = SearchNode.Create(mutated, null, null, evaluator);
         Assert.NotEqual(keyA, ForecastRetentionKey.Compute(mutatedNode));
     }
@@ -282,7 +271,7 @@ public sealed class BeamPerformanceAndParityTests
             new ForecastOpeningRunner(CancellationToken.None),
             encounterMonsterSeedOverride: null);
 
-        InCombatLiveStateDto liveDto = ExportMinimalTurn1Dto(entered.Room, "PHROG_PARASITE_ELITE");
+        InCombatLiveStateDto liveDto = SyntheticLiveCombat.CreateSnapshot(entered.Room, "PHROG_PARASITE_ELITE");
         var policy = new InCombatPolicyDto(
             PotionPolicy: "Smart",
             PotionDirectives: [],
@@ -1306,7 +1295,7 @@ public sealed class BeamPerformanceAndParityTests
             new ForecastOpeningRunner(CancellationToken.None),
             encounterMonsterSeedOverride: null);
 
-        InCombatLiveStateDto liveDto = ExportMinimalTurn1Dto(entered.Room, "PHROG_PARASITE_ELITE");
+        InCombatLiveStateDto liveDto = SyntheticLiveCombat.CreateSnapshot(entered.Room, "PHROG_PARASITE_ELITE");
         var policy = new InCombatPolicyDto(
             PotionPolicy: "Smart",
             PotionDirectives: [],
@@ -1635,7 +1624,7 @@ public sealed class BeamPerformanceAndParityTests
     [Fact]
     public async Task LiveCombatTransplantMapper_NegativeOrOverflowingEnergySpent_FailsWithBridgeRequestFailed()
     {
-        (_, InCombatLiveStateDto baseDto, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK");
+        (_, InCombatLiveStateDto baseDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
 
         InCombatLiveStateDto negativeDto = baseDto with
         {
@@ -1743,19 +1732,6 @@ public sealed class BeamPerformanceAndParityTests
             Assert.False(startedThreads[i].IsAlive);
     }
 
-    private static async Task<(string SaveJson, InCombatLiveStateDto LiveDto, CombatRoom Room)> BuildTurn1CombatAsync(
-        string encounterId)
-    {
-        System.Reflection.MethodInfo buildMethod = typeof(InCombatBridgeTests).GetMethod(
-            "BuildTurn1CombatAsync",
-            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(nameof(InCombatBridgeTests), "BuildTurn1CombatAsync");
-        var task = (Task<(string SaveJson, InCombatLiveStateDto LiveDto, CombatRoom Room)>)buildMethod.Invoke(
-            null,
-            [encounterId, false])!;
-        return await task;
-    }
-
     private static void ClearPile(CardPile pile)
     {
         foreach (CardModel card in pile.Cards.ToArray())
@@ -1786,16 +1762,5 @@ public sealed class BeamPerformanceAndParityTests
         var card = (CardModel)ModelDb.Card<TCard>().MutableClone();
         card.AssignOwner(owner);
         return card;
-    }
-
-    private static InCombatLiveStateDto ExportMinimalTurn1Dto(CombatRoom room, string encounterId)
-    {
-        // 复用 BridgeEntry/InCombatBridgeTests 模式直接从测试方法走 ExportLiveState 需要公开或内部构建；
-        // 用反射调用同程序集内的 ExportLiveState 避免在两个测试文件重复 400 行 DTO 构造代码。
-        System.Reflection.MethodInfo exportMethod = typeof(InCombatBridgeTests).GetMethod(
-            "ExportLiveState",
-            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(nameof(InCombatBridgeTests), "ExportLiveState");
-        return (InCombatLiveStateDto)exportMethod.Invoke(null, [room, encounterId])!;
     }
 }
