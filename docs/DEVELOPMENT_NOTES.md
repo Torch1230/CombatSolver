@@ -2,6 +2,10 @@
 
 这里只记录当前未发布的行为变化。发布定稿后将该批次完整移入历史卷。
 
+## 未发布：多段攻击威胁扣减修复
+
+- 多段攻击威胁预测（`CombatBeamSolver.ProjectHpAfterThreat` / `ProjectedHpLossModifiers`，Issue `#267`）在不修改预测分支状态与 `PredictionStateStore` 条目的前提下本地跟踪 `BufferPower`、`SlipperyPower` 逐段消耗，以及 `BeatingRemnant` 本回合累计上限。直接命中和 Osty 溢出均按接收者判断：自然致死伤害跳过 `AfterDamageReceived`，即使随后复活也保留 Slippery 层数、Remnant 额度与 Gambit。Buffer 仍按 HP 修正阶段消费。 `ModifyHpLostMirrors` 的只读判定通过 `Peek` 读取影子状态。
+
 0.50.1 本地定稿的智能药水修复及 PR #213、#224、#226 见[历史卷22](archive/development/volume-22.md)，玩家说明见[0.50.1 更新日志](releases/0.50.1-RELEASE_NOTES.md)。外部发布状态以对应标签及发布记录为准。
 
 0.50.0 的 PR #207、PR #211、智能药水与组合补搜定稿及性能研究见[历史卷20](archive/development/volume-20.md)。其他记录见[归档索引](archive/development/README.md)。

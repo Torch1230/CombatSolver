@@ -17,6 +17,8 @@ using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.ValueProps;
 using CombatSolver.Engine.Common;
 using CombatSolver.Engine.InCombat.Mirrors;
+using CombatSolver.Engine.InCombat.Mirrors.Hooks;
+using CombatSolver.Engine.InCombat.Mirrors.Hooks.Damage;
 using CombatSolver.Engine.InCombat.Mirrors.Orbs;
 using CombatSolver.Engine.InCombat.Mirrors.Hooks.Death;
 using CombatSolver.Engine.InCombat.Simulation;
@@ -1368,10 +1370,12 @@ internal sealed partial class CombatBeamSolver
         }
         Creature? osty = simulatedCombat.GetOsty(_player);
         int ostyHp = osty == null ? 0 : simulator.State.GetCreature(osty).CurrentHp;
-        ProjectedHpLossModifiers? projectedModifiers =
-            simulatedCombat.GetAmount<BufferPower>(_player.Creature) > 0
-            || osty != null && simulatedCombat.GetAmount<BufferPower>(osty) > 0
-                ? new ProjectedHpLossModifiers() : null;
+        ProjectedHpLossModifiers? projectedModifiers = ShouldTrackProjectedModifiers(
+            simulator,
+            simulatedCombat,
+            osty)
+                ? new ProjectedHpLossModifiers(simulator, simulatedCombat, _player)
+                : null;
         ProjectedDeathPrevention deathPrevention = BuildProjectedDeathPrevention(
             simulator,
             simulatedCombat,
@@ -1453,7 +1457,7 @@ internal sealed partial class CombatBeamSolver
         Creature? osty = combat.GetOsty(_player);
         int ostyHp = osty == null ? 0 : simulator.State.GetCreature(osty).CurrentHp;
         var prevention = BuildProjectedDeathPrevention(simulator, combat, player.MaxHp);
-        var modifiers = new ProjectedHpLossModifiers();
+        var modifiers = new ProjectedHpLossModifiers(simulator, combat, _player);
         bool gambitActive = combat.GetAmount<TheGambitPower>(_player.Creature) > 0;
         foreach (int hit in hits)
             ProjectThreatHit(simulator, combat, attacker, hit, osty,
@@ -1514,55 +1518,146 @@ internal sealed partial class CombatBeamSolver
             attacker,
             null,
             HpLossHookPhase.AfterOsty,
-            out var appliedModifiers, projectedModifiers?.Filter);
+            out var appliedModifiers,
+            projectedModifiers?.Filter,
+            projectedModifiers?.BeatingRemnantDamageReceivedLookup);
         projectedModifiers?.Consume(appliedModifiers);
         int loss = Math.Max(0, (int)Math.Floor(hpLoss));
         if (ReferenceEquals(target, osty))
         {
             int absorbed = Math.Min(ostyHp, loss);
             ostyHp -= absorbed;
-            // Native redirected damage applies the original target's AfterOsty hooks
-            // to overkill as a separate loss. Player Buffer must also protect spillover.
+            if (ostyHp > 0)
+                projectedModifiers?.RecordDamageReceived(osty, absorbed);
+            // The player's AfterOsty hooks apply separately to redirected overkill.
+            target = _player.Creature;
             decimal overflow = HookMirrors.ModifyHpLost(
-                simulator, _player.Creature, loss - absorbed, ValueProp.Move,
+                simulator, target, loss - absorbed, ValueProp.Move,
                 attacker, null, HpLossHookPhase.AfterOsty, out var overflowModifiers,
-                projectedModifiers?.Filter);
+                projectedModifiers?.Filter,
+                projectedModifiers?.BeatingRemnantDamageReceivedLookup);
             projectedModifiers?.Consume(overflowModifiers);
-            int playerLoss = Math.Max(0, (int)Math.Floor(overflow));
-            playerHp -= playerLoss;
-            if (playerLoss > 0 && gambitActive)
+            loss = Math.Max(0, (int)Math.Floor(overflow));
+        }
+        playerHp -= loss;
+        // Native Damage skips AfterDamageReceived on a lethal result, before any death save revives the target.
+        if (playerHp > 0 && loss > 0)
+        {
+            projectedModifiers?.RecordDamageReceived(target, loss);
+            if (gambitActive)
             {
                 gambitActive = false;
                 playerHp = 0;
             }
-            deathPrevention.TryRevive(ref playerHp);
-            return;
-        }
-        playerHp -= loss;
-        if (loss > 0 && gambitActive)
-        {
-            gambitActive = false;
-            playerHp = 0;
         }
         deathPrevention.TryRevive(ref playerHp);
     }
 
-    // Forecasts consume finite protection locally; they never decrement live or branch Powers.
+    private bool ShouldTrackProjectedModifiers(
+        CombatPredictionSimulator simulator,
+        SimulatedCombatState combat,
+        Creature? osty)
+    {
+        if (combat.GetAmount<BufferPower>(_player.Creature) > 0
+            || combat.GetAmount<SlipperyPower>(_player.Creature) > 0)
+        {
+            return true;
+        }
+        if (osty is not null
+            && (combat.GetAmount<BufferPower>(osty) > 0
+                || combat.GetAmount<SlipperyPower>(osty) > 0))
+        {
+            return true;
+        }
+        IReadOnlyList<RelicModel> relics = combat.RelicsOf(_player);
+        for (int i = 0; i < relics.Count; i++)
+        {
+            if (relics[i] is BeatingRemnant)
+                return true;
+        }
+        return false;
+    }
+
+    // Forecasts consume finite protection and per-turn damage caps locally;
+    // they never mutate live or branch Powers, Relics, or PredictionStateStore.
     private sealed class ProjectedHpLossModifiers
     {
-        private readonly Dictionary<BufferPower, int> _remaining = [];
+        private readonly CombatPredictionSimulator _simulator;
+        private readonly SimulatedCombatState _combat;
+        private readonly Player _player;
+        private readonly Dictionary<BufferPower, int> _remainingBuffers = [];
+        private readonly Dictionary<SlipperyPower, int> _remainingSlippery = [];
+        private readonly Dictionary<BeatingRemnant, decimal> _beatingRemnantDamageReceived = [];
+
         public Func<AbstractModel, bool> Filter { get; }
+        public Func<BeatingRemnant, decimal> BeatingRemnantDamageReceivedLookup { get; }
 
-        public ProjectedHpLossModifiers() => Filter = Includes;
+        public ProjectedHpLossModifiers(
+            CombatPredictionSimulator simulator,
+            SimulatedCombatState combat,
+            Player player)
+        {
+            _simulator = simulator;
+            _combat = combat;
+            _player = player;
+            Filter = Includes;
+            BeatingRemnantDamageReceivedLookup = GetBeatingRemnantDamageReceived;
+        }
 
-        private bool Includes(AbstractModel model) => model is not BufferPower buffer
-            || (_remaining.TryGetValue(buffer, out int count) ? count : buffer.Amount) > 0;
+        private bool Includes(AbstractModel model) => model switch
+        {
+            BufferPower buffer => (_remainingBuffers.TryGetValue(buffer, out int bufferCount) ? bufferCount : buffer.Amount) > 0,
+            SlipperyPower slippery => GetRemainingSlippery(slippery) > 0,
+            _ => true,
+        };
+
+        private int GetRemainingSlippery(SlipperyPower slippery)
+        {
+            if (_remainingSlippery.TryGetValue(slippery, out int count))
+                return count;
+            return _simulator.StateStore.PeekPowerAmount(slippery).Amount;
+        }
+
+        private decimal GetBeatingRemnantDamageReceived(BeatingRemnant relic)
+        {
+            if (_beatingRemnantDamageReceived.TryGetValue(relic, out decimal recorded))
+                return recorded;
+            decimal initial = _simulator.StateStore.Peek((AbstractModel)relic,
+                static value => new BeatingRemnantPredictionState((BeatingRemnant)value)).DamageReceivedThisTurn;
+            _beatingRemnantDamageReceived[relic] = initial;
+            return initial;
+        }
 
         public void Consume(IEnumerable<AbstractModel> modifiers)
         {
             foreach (AbstractModel model in modifiers)
+            {
                 if (model is BufferPower buffer)
-                    _remaining[buffer] = (_remaining.TryGetValue(buffer, out int count) ? count : buffer.Amount) - 1;
+                    _remainingBuffers[buffer] = (_remainingBuffers.TryGetValue(buffer, out int count) ? count : buffer.Amount) - 1;
+            }
+        }
+
+        public void RecordDamageReceived(Creature target, int unblockedDamage)
+        {
+            if (unblockedDamage < 1)
+                return;
+
+            if (_combat.GetPower<SlipperyPower>(target) is { } slippery)
+            {
+                int remaining = GetRemainingSlippery(slippery);
+                if (remaining > 0)
+                    _remainingSlippery[slippery] = remaining - 1;
+            }
+
+            if (ReferenceEquals(target, _player.Creature))
+            {
+                IReadOnlyList<RelicModel> relics = _combat.RelicsOf(_player);
+                for (int i = 0; i < relics.Count; i++)
+                {
+                    if (relics[i] is BeatingRemnant remnant && ReferenceEquals(remnant.Owner.Creature, target))
+                        _beatingRemnantDamageReceived[remnant] = GetBeatingRemnantDamageReceived(remnant) + unblockedDamage;
+                }
+            }
         }
     }
 

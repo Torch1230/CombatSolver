@@ -36,4 +36,11 @@ internal static class PredictionStateStorePowerAmountExtensions
     {
         return store.Get(power, static value => new PowerAmountPredictionState(value.Amount));
     }
+
+    public static PowerAmountPredictionState PeekPowerAmount(
+        this PredictionStateStore store,
+        PowerModel power)
+    {
+        return store.Peek(power, static value => new PowerAmountPredictionState(value.Amount));
+    }
 }
