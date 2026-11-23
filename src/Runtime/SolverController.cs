@@ -1277,12 +1277,6 @@ internal static partial class SolverController
             Player player = LocalContext.GetMe(state)!;
             int turn = player.PlayerCombatState!.TurnNumber;
             RunStatistics.Activity(state);
-            SolverOverlay.ShowSearching(
-                host,
-                turn,
-                deployWhenReady,
-                _combat.ReviewedWorldlinesTotal,
-                rootSnapshot.PotionRewardOutlook);
             Entry.Logger.Info(
                 $"[CombatSolver/Test] SEARCH_REQUEST generation={generation} reason={reason} " +
                 $"cause={CauseToken(replanCause)} previous_boundary={previousBoundary?.ToString() ?? "-"} " +
@@ -1309,7 +1303,6 @@ internal static partial class SolverController
                 settings,
                 searchPolicy,
                 battleDamage);
-            SolverOverlay.RefreshControls();
             SolvedRouteCache routeCache = SolvedRouteCache.Capture(state, rootSnapshot, searchPolicy, battleDamage);
             Task<SolverResult> solveTask = Task.Run(() =>
             {
@@ -1409,6 +1402,16 @@ internal static partial class SolverController
                 }
             }, token);
             search.WorkerCompletion = solveTask;
+            // The dispatcher presents progress on the next frame. Start the worker before
+            // mounting the first search panel, once every input it can use has been captured.
+            setupStage = "search_overlay";
+            SolverOverlay.ShowSearching(
+                host,
+                turn,
+                deployWhenReady,
+                _combat.ReviewedWorldlinesTotal,
+                rootSnapshot.PotionRewardOutlook);
+            setupStage = "worker_completion";
             if (!UnattendedAsyncActivityTracker.IsRequestActive)
             {
                 // Preserve the production continuation path exactly. The extra lifecycle

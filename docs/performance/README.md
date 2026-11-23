@@ -1,5 +1,7 @@
 # 性能工作入口
 
+- [女王战中独立搜索和游戏内搜索的耗时](sts2sim-incombat-entry-costs.md)记录普通 Beam、forecast、正式桥接和整套游戏搜索的同根比较。
+
 - [同名牌的洗牌排序分配](shuffle-variable-names-20261115.md)：8 张富足代表根的分配对照、原生排序合同及未复现项。
 
 - [结果诊断进程内存读取](diagnostic-process-memory.md)：Windows 慢查询调用栈、单次内存快照、原生失败／并发合同及独立查询基准；既有热补丁实机证据单列。
