@@ -2,6 +2,8 @@
 
 ## 未发布：战斗内与战前 Sts2Sim 桥接入口
 
+- `INCOMBAT-STS2SIM-IMPLICIT-CHOICE` 核对隐式全选的实例与顺序、同来源的后续手选及多余输入拒绝。女王实机胜线与五角色八个固定随机根的逐动作、RNG 和耗时记录见[战斗内性能与验收](performance/sts2sim-incombat-entry-costs.md)。
+
 - 原生战斗内合同的 `InCombatPrivateDecimalFields` 在独立卡牌与能力实例上写入 1.75、2.5、3.25，检查实际捕获的三个字段的类型和值。Core 的公开恢复回归另检查旧整数输入及新小数输入。
 
 - 桥接评分与幕末 Boss 预算合同可运行 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release --filter "FullyQualifiedName~BeamRanking_|FullyQualifiedName~NoveltyBossBudget_|FullyQualifiedName~MawlerInflameParity_IroncladSeedCombatSolver"`。覆盖战前与战斗内的逐段 HP、Pareto 余量和中途排序，负力量评分及两种战损偏好下的探查时限。战前 Mawler 覆盖三种起始 HP 与覆盖值组合，宽度 16、5000 次尝试均须以至多 10 HP 战损取胜。
