@@ -8,6 +8,7 @@ using Sts2Sim.Core.MonsterMoves.Intents;
 using Sts2Sim.Core.Models;
 using Sts2Sim.Core.Models.Afflictions;
 using Sts2Sim.Core.Models.Cards;
+using Sts2Sim.Core.Models.Dread;
 using Sts2Sim.Core.Models.Potions;
 using Sts2Sim.Core.Models.Relics;
 using Sts2Sim.Core.Models.Powers;
@@ -475,6 +476,29 @@ internal sealed class StateEvaluator(
         var deathPrevention = BuildProjectedDeathPrevention(player, creature.MaxHp);
         bool gambitActive = creature.Powers.OfType<TheGambitPower>().Any();
 
+        if (state.RunState.GameMode == Sts2Sim.Core.Runs.GameMode.Dread && state.CurrentSide == CombatSide.Player)
+        {
+            foreach (InsatiableDominionPower miasma in creature.Powers.OfType<InsatiableDominionPower>())
+            {
+                int miasmaDamage = Math.Max(0, miasma.Damage);
+                ProjectHit(
+                    state,
+                    creature,
+                    attacker: null,
+                    miasmaDamage,
+                    ValueProp.Unpowered,
+                    osty,
+                    ref ostyHp,
+                    ref block,
+                    ref hp,
+                    ref gambitActive,
+                    ref beatingRemnantRemaining,
+                    ref deathPrevention,
+                    remainingBuffer,
+                    remainingSlippery);
+            }
+        }
+
         foreach (Creature enemy in state.Enemies)
         {
             if (!enemy.IsAlive || enemy.Monster is not { } monster) continue;
@@ -488,11 +512,12 @@ internal sealed class StateEvaluator(
                 int baseDamage = Math.Max(0, attackIntent.GetSingleDamage([creature], enemy));
                 for (int hit = 0; hit < repeats; hit++)
                 {
-                    ProjectThreatHit(
+                    ProjectHit(
                         state,
                         creature,
                         enemy,
                         baseDamage,
+                        ValueProp.Move,
                         osty,
                         ref ostyHp,
                         ref block,
@@ -513,11 +538,12 @@ internal sealed class StateEvaluator(
             Math.Max(0, initialBlock - block));
     }
 
-    private static void ProjectThreatHit(
+    private static void ProjectHit(
         CombatState state,
         Creature playerCreature,
-        Creature attacker,
+        Creature? attacker,
         int baseDamage,
+        ValueProp props,
         Creature? osty,
         ref int ostyHp,
         ref int block,
@@ -533,12 +559,12 @@ internal sealed class StateEvaluator(
             playerCreature,
             attacker,
             baseDamage,
-            ValueProp.Move,
+            props,
             cardSource: null,
             cardPlay: null,
             out _);
 
-        if (Hook.ModifyPreBlockDamageTarget(state, playerCreature, adjustedDamage, ValueProp.Move, attacker) is not null)
+        if (Hook.ModifyPreBlockDamageTarget(state, playerCreature, adjustedDamage, props, attacker) is not null)
         {
             throw new ProjectionUnsupportedException(
                 "Pre-block damage redirection (e.g., Wuppy's Loyalty) is not supported by forecast threat projection.");
@@ -548,9 +574,9 @@ internal sealed class StateEvaluator(
         block -= (int)blocked;
         decimal damageRemaining = Math.Max(adjustedDamage - blocked, 0m);
 
-        decimal hpLoss = EvaluateBeforeOstyHpLoss(state, playerCreature, damageRemaining, attacker);
+        decimal hpLoss = EvaluateBeforeOstyHpLoss(state, playerCreature, damageRemaining, attacker, props);
 
-        Creature target = Hook.ModifyUnblockedDamageTarget(state, playerCreature, hpLoss, ValueProp.Move, attacker);
+        Creature target = Hook.ModifyUnblockedDamageTarget(state, playerCreature, hpLoss, props, attacker);
         if (ReferenceEquals(target, osty) && ostyHp <= 0)
             target = playerCreature;
         else if (ReferenceEquals(target, playerCreature)
@@ -567,6 +593,7 @@ internal sealed class StateEvaluator(
             playerCreature,
             hpLoss,
             attacker,
+            props,
             beatingRemnantRemaining,
             remainingBuffer,
             remainingSlippery);
@@ -586,6 +613,7 @@ internal sealed class StateEvaluator(
                     playerCreature,
                     spillover,
                     attacker,
+                    props,
                     beatingRemnantRemaining,
                     remainingBuffer,
                     remainingSlippery);
@@ -637,13 +665,14 @@ internal sealed class StateEvaluator(
         CombatState state,
         Creature target,
         decimal amount,
-        Creature attacker)
+        Creature? attacker,
+        ValueProp props)
     {
         decimal result = amount;
         foreach (AbstractModel item in IterateEligibleListeners(state))
-            result = item.ModifyHpLostBeforeOsty(target, result, ValueProp.Move, attacker, cardSource: null);
+            result = item.ModifyHpLostBeforeOsty(target, result, props, attacker, cardSource: null);
         foreach (AbstractModel item in IterateEligibleListeners(state))
-            result = item.ModifyHpLostBeforeOstyLate(target, result, ValueProp.Move, attacker, cardSource: null);
+            result = item.ModifyHpLostBeforeOstyLate(target, result, props, attacker, cardSource: null);
         return result;
     }
 
@@ -652,7 +681,8 @@ internal sealed class StateEvaluator(
         Creature target,
         Creature playerCreature,
         decimal amount,
-        Creature attacker,
+        Creature? attacker,
+        ValueProp props,
         int beatingRemnantRemaining,
         Dictionary<BufferPower, int>? remainingBuffer,
         Dictionary<SlipperyPower, int>? remainingSlippery)
@@ -673,7 +703,7 @@ internal sealed class StateEvaluator(
             {
                 continue;
             }
-            result = item.ModifyHpLostAfterOsty(target, result, ValueProp.Move, attacker, cardSource: null);
+            result = item.ModifyHpLostAfterOsty(target, result, props, attacker, cardSource: null);
         }
 
         foreach (AbstractModel item in IterateEligibleListeners(state))
@@ -686,7 +716,7 @@ internal sealed class StateEvaluator(
                 continue;
             }
             decimal before = result;
-            result = item.ModifyHpLostAfterOstyLate(target, result, ValueProp.Move, attacker, cardSource: null);
+            result = item.ModifyHpLostAfterOstyLate(target, result, props, attacker, cardSource: null);
             if (item is BufferPower consumedBuffer
                 && remainingBuffer is not null
                 && decimal.Truncate(before) != decimal.Truncate(result))
@@ -708,7 +738,7 @@ internal sealed class StateEvaluator(
                     && (power.Owner.Player?.IsActiveForHooks ?? true),
                 MonsterModel monster => monster.Creature.CombatState is not null,
                 OrbModel orb => !orb.HasBeenRemovedFromState && orb.Owner.IsActiveForHooks,
-                CardModel or RelicModel or PotionModel or AfflictionModel or EnchantmentModel => true,
+                CardModel or RelicModel or PotionModel or AfflictionModel or EnchantmentModel or RunModel or DominionModel => true,
                 _ => throw new ProjectionUnsupportedException(
                     $"Threat projection encountered unknown hook listener '{model.GetType().Name}'."),
             };

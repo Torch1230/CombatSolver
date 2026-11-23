@@ -19,3 +19,9 @@ dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 过渡 gitlink 使用经维护者同意的 `iRyougi/sts2-ai` 确切提交，需要该仓库的读取权限。公开 `iRyougi/sts2-sim` 的 `v0.113.1.4` 仅发布 Core。维护者合入恢复接口、导出通用 Solver 并发布新标签后，单独提交依赖升级 PR，更新 `.gitmodules` 的公开 URL 与 gitlink。检验干净检出、两条 ABI 和包内清单后再发布。[跨仓跟踪](https://github.com/iRyougi/sts2-ai/issues/1083)
 
 主模组消费旧 ABI 时仍按协商结果选择内置或遗留后端。模拟器仓库保留 Core、标准模式一致性和通用 Solver，CombatSolver 专用的费用估值、组合与调度在本目录维护。
+
+### 战前 ABI 的模式
+
+schema-21 请求通过 `normalizedSaveJson.game_mode` 指定 `standard`、`blitz` 或 `dread`。Blitz 支持进阶 0–5，Standard 和 Dread 支持 0–10。未知模式返回 `CapabilityMiss/non_standard_mode`，越界进阶返回 `Failed` 并标示 `ascension`。模式与 Dread 领域参与非标准模式的预测状态键。Blitz 药水展望使用独立奖励 RNG，按卡牌、幕强化、药水的顺序预测。Dread 的饥饿领域伤害在敌人攻击意图前按无来源伤害结算。
+
+主 Mod 是否把真实对局送入桥接由现有 eligibility 入口决定。战前 ABI 的能力与战斗内 live 接口分别验收。
