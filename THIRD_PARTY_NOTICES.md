@@ -37,3 +37,29 @@ Random Foreseer code and the portions of Combat Solver derived from it remain su
 Combat Solver does not load or distribute the Random Foreseer assembly as a runtime dependency. This runtime separation does not alter the source relationship described above.
 
 At the time the permission above was granted, the Random Foreseer repository did not contain a public software license. Random Foreseer now publishes its repository under the MIT License. The earlier permission record remains here to preserve the attribution and source history under which the integration began.
+
+## Sts2Sim
+
+The optional simulator bundle uses Sts2Sim by iRyougi and contributors. Its upstream distribution is [iRyougi/sts2-sim](https://github.com/iRyougi/sts2-sim). The bundle manifest records the exact simulator revision. The upstream MIT notice follows.
+
+MIT License
+
+Copyright (c) 2026 iRyougi and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

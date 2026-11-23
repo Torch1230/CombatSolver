@@ -1,9 +1,12 @@
 <Project>
   <PropertyGroup>
     <StageSts2SimBridgeEnabled Condition="'$(StageSts2SimBridgeEnabled)' == ''">true</StageSts2SimBridgeEnabled>
-    <Sts2SimRoot Condition="'$(Sts2SimRoot)' == ''">$(MSBuildProjectDirectory)/../sts2-ai</Sts2SimRoot>
-    <Sts2SimBridgeProject>$(Sts2SimRoot)/src/Sts2Sim.PreCombatBridge/Sts2Sim.PreCombatBridge.csproj</Sts2SimBridgeProject>
-    <Sts2SimBridgeOutputDir>$(Sts2SimRoot)/src/Sts2Sim.PreCombatBridge/bin/$(Configuration)/net9.0</Sts2SimBridgeOutputDir>
+    <!-- Sts2SimRoot is an explicit development override. The default is the checked-in gitlink. -->
+    <_PinnedSts2SimRoot>$(MSBuildProjectDirectory)/vendor/sts2-sim</_PinnedSts2SimRoot>
+    <_Sts2SimSourceRoot Condition="'$(Sts2SimRoot)' == ''">$(_PinnedSts2SimRoot)</_Sts2SimSourceRoot>
+    <_Sts2SimSourceRoot Condition="'$(Sts2SimRoot)' != ''">$(Sts2SimRoot)</_Sts2SimSourceRoot>
+    <Sts2SimBridgeProject>$(MSBuildProjectDirectory)/bridge/Sts2Sim.PreCombatBridge/Sts2Sim.PreCombatBridge.csproj</Sts2SimBridgeProject>
+    <Sts2SimBridgeOutputDir>$(MSBuildProjectDirectory)/bridge/Sts2Sim.PreCombatBridge/bin/$(Configuration)/net9.0</Sts2SimBridgeOutputDir>
     <Sts2SimBridgeStagerProject>$(MSBuildProjectDirectory)/tools/build/Sts2SimBridgeStager/Sts2SimBridgeStager.csproj</Sts2SimBridgeStagerProject>
     <Sts2SimBridgeStagerAssembly>$(MSBuildProjectDirectory)/.local/tool-build/Sts2SimBridgeStager/bin/Release/net9.0/Sts2SimBridgeStager.dll</Sts2SimBridgeStagerAssembly>
   </PropertyGroup>
@@ -15,25 +18,48 @@
            Text="Explicit Sts2SimBridgeDir '$(Sts2SimBridgeDir)' is missing required Sts2Sim bridge artifacts." />
   </Target>
 
-  <Target Name="BuildSts2SimBridge"
-          AfterTargets="Build"
-          Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' == '' and Exists('$(Sts2SimBridgeProject)')">
-    <Exec Command="dotnet build &quot;$(Sts2SimBridgeProject)&quot; -c $(Configuration) --nologo" />
+  <Target Name="ResolveSts2SimSource" Condition="'$(StageSts2SimBridgeEnabled)' == 'true'">
+    <Exec Condition="'$(Sts2SimRoot)' == ''" WorkingDirectory="$(MSBuildProjectDirectory)"
+          Command="git rev-parse :vendor/sts2-sim" ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_ExpectedSts2SimRevision" />
+    </Exec>
+    <Error Condition="('$(Sts2SimBridgeDir)' == '' or '$(Sts2SimRoot)' != '') and !Exists('$(_Sts2SimSourceRoot)/src/Sts2Sim.Solver/Sts2Sim.Solver.csproj')"
+           Text="The simulator checkout must contain Core and Solver. Initialize the pinned dependency with git submodule update --init vendor/sts2-sim, or select a host-only build with -p:StageSts2SimBridgeEnabled=false." />
+    <Exec Condition="'$(Sts2SimBridgeDir)' == '' or '$(Sts2SimRoot)' != ''" WorkingDirectory="$(_Sts2SimSourceRoot)"
+          Command="git rev-parse HEAD" ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_ActualSts2SimRevision" />
+    </Exec>
+    <Error Condition="'$(Sts2SimRoot)' == '' and '$(_ActualSts2SimRevision)' != '' and '$(_ActualSts2SimRevision)' != '$(_ExpectedSts2SimRevision)'"
+           Text="Simulator checkout $(_ActualSts2SimRevision) does not match gitlink $(_ExpectedSts2SimRevision). Run git submodule update --init vendor/sts2-sim." />
+    <Exec Condition="'$(Sts2SimBridgeDir)' == ''" WorkingDirectory="$(_Sts2SimSourceRoot)"
+          Command="git status --porcelain --untracked-files=normal" ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" ItemName="_SimulatorChanges" />
+    </Exec>
+    <Error Condition="'@(_SimulatorChanges)' != ''"
+           Text="The simulator checkout has uncommitted files. Commit development changes before staging a traceable bundle." />
+    <PropertyGroup Condition="'$(Sts2SimRoot)' != ''">
+      <_ExpectedSts2SimRevision>$(_ActualSts2SimRevision)</_ExpectedSts2SimRevision>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="BuildSts2SimBridge" AfterTargets="Build" DependsOnTargets="ResolveSts2SimSource"
+          Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' == ''">
+    <Exec Command="dotnet build &quot;$(Sts2SimBridgeProject)&quot; -c $(Configuration) --nologo -p:Sts2SimSourceRoot=&quot;$(_Sts2SimSourceRoot)&quot;" />
   </Target>
 
   <Target Name="StageSts2SimBridge"
           AfterTargets="BuildSts2SimBridge;Build"
-          DependsOnTargets="BuildSts2SimBridge">
+          DependsOnTargets="ResolveSts2SimSource;BuildSts2SimBridge">
     <PropertyGroup>
       <_Sts2SimStageTargetDir>$(TargetDir)sts2sim</_Sts2SimStageTargetDir>
       <_ResolvedSts2SimSource Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' != ''">$(Sts2SimBridgeDir)</_ResolvedSts2SimSource>
-      <_ResolvedSts2SimSource Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' == '' and Exists('$(Sts2SimBridgeProject)')">$(Sts2SimBridgeOutputDir)</_ResolvedSts2SimSource>
+      <_ResolvedSts2SimSource Condition="'$(StageSts2SimBridgeEnabled)' == 'true' and '$(Sts2SimBridgeDir)' == ''">$(Sts2SimBridgeOutputDir)</_ResolvedSts2SimSource>
     </PropertyGroup>
     <RemoveDir Directories="$(_Sts2SimStageTargetDir)"
                Condition="'$(_ResolvedSts2SimSource)' == '' and Exists('$(_Sts2SimStageTargetDir)')" />
     <Exec Command="dotnet build &quot;$(Sts2SimBridgeStagerProject)&quot; -c Release --nologo -v:q"
           Condition="'$(_ResolvedSts2SimSource)' != ''" />
-    <Exec Command="dotnet &quot;$(Sts2SimBridgeStagerAssembly)&quot; --stage &quot;$(_ResolvedSts2SimSource)&quot; &quot;$(_Sts2SimStageTargetDir)&quot; 1 v0.113.1 d09d48e5"
+    <Exec Command="dotnet &quot;$(Sts2SimBridgeStagerAssembly)&quot; --stage &quot;$(_ResolvedSts2SimSource)&quot; &quot;$(_Sts2SimStageTargetDir)&quot; 1 v0.113.1 d09d48e5 &quot;$(_ExpectedSts2SimRevision)&quot;"
           Condition="'$(_ResolvedSts2SimSource)' != ''" />
   </Target>
 

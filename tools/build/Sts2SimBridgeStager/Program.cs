@@ -1,4 +1,5 @@
 using System.Reflection.Metadata;
+using Sts2Sim.Bundle;
 using System.Reflection.PortableExecutable;
 using System.Security.Cryptography;
 using System.Text;
@@ -37,7 +38,7 @@ internal static class Program
             return 0;
         }
 
-        if (args.Length == 6 && string.Equals(args[0], "--stage", StringComparison.Ordinal))
+        if (args.Length is 6 or 7 && string.Equals(args[0], "--stage", StringComparison.Ordinal))
         {
             string sourceDir = Path.GetFullPath(args[1]);
             string targetDir = Path.GetFullPath(args[2]);
@@ -54,11 +55,12 @@ internal static class Program
                 return 2;
             }
 
-            return StageBundle(sourceDir, targetDir, abiVersion, supportedGameVersion, supportedGameCommit);
+            return StageBundle(sourceDir, targetDir, abiVersion, supportedGameVersion, supportedGameCommit,
+                args.Length == 7 ? args[6] : null);
         }
 
         Console.Error.WriteLine(
-            "Usage: Sts2SimBridgeStager --clean <targetDir> | --stage <sourceDir> <targetDir> <abiVersion> <gameVersion> <gameCommit>");
+            "Usage: Sts2SimBridgeStager --clean <targetDir> | --stage <sourceDir> <targetDir> <abiVersion> <gameVersion> <gameCommit> [expectedSimulatorCommit]");
         return 2;
     }
 
@@ -67,7 +69,8 @@ internal static class Program
         string targetDir,
         int abiVersion,
         string supportedGameVersion,
-        string supportedGameCommit)
+        string supportedGameCommit,
+        string? expectedSimulatorCommit)
     {
         if (HasReparsePointInHierarchy(sourceDir, out string? sourceReparse))
         {
@@ -166,10 +169,26 @@ internal static class Program
                 manifestFiles.Add(new ManifestFileEntry(fileName, sha256, mvid));
             }
 
+            string simulatorCommit;
+            try
+            {
+                simulatorCommit = SimulatorBuildIdentity.ReadCommit(Path.Combine(stagingDir, "Sts2Sim.Core.dll"));
+            }
+            catch (InvalidDataException error)
+            {
+                Console.Error.WriteLine(error.Message);
+                return 2;
+            }
+            if (expectedSimulatorCommit != null && !string.Equals(expectedSimulatorCommit, simulatorCommit, StringComparison.OrdinalIgnoreCase))
+            {
+                Console.Error.WriteLine($"Core revision '{simulatorCommit}' does not match expected simulator revision '{expectedSimulatorCommit}'.");
+                return 2;
+            }
             var manifest = new BundleManifest(
                 abiVersion,
                 supportedGameVersion,
                 supportedGameCommit,
+                simulatorCommit,
                 manifestFiles);
             string manifestJson = JsonSerializer.Serialize(manifest, JsonOptions);
             string manifestPath = Path.Combine(stagingDir, "sts2sim-bundle.manifest.json");
@@ -291,6 +310,7 @@ internal static class Program
         [property: JsonPropertyName("abiVersion")] int AbiVersion,
         [property: JsonPropertyName("supportedGameVersion")] string SupportedGameVersion,
         [property: JsonPropertyName("supportedGameCommit")] string SupportedGameCommit,
+        [property: JsonPropertyName("simulatorCommit")] string SimulatorCommit,
         [property: JsonPropertyName("files")] IReadOnlyList<ManifestFileEntry> Files);
 
     private sealed record ManifestFileEntry(

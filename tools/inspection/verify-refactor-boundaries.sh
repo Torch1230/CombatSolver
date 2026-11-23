@@ -830,6 +830,9 @@ src/Testing/Host/UnattendedTestRunner.ScenarioBuilder.cs	EnterMapCoordDebug
 src/Testing/Host/UnattendedTestRunner.ScenarioBuilder.cs	PreCombatPlayerHp:
 src/Testing/Host/UnattendedTestRunner.ScenarioBuilder.cs	DirectRunSnapshot:ExactStateRestored
 EOF
+require_fixed "$repository_root/CombatSolver.csproj" 'bridge/**;vendor/**' 'exclude simulator and bridge sources from the Godot project'
+require_fixed "$repository_root/tools/build/Sts2SimBridge.targets" 'git rev-parse :vendor/sts2-sim' 'stage from the recorded simulator gitlink'
+forbid_fixed "$repository_root/tools/build/Sts2SimBridge.targets" '$(MSBuildProjectDirectory)/../sts2-ai' 'a sibling checkout must be selected explicitly'
 forbid_fixed "$repository_root/CombatSolver.csproj" 'Sts2Sim.PreCombatBridge.csproj' 'CombatSolver must keep zero compile-time references to Sts2Sim:'
 
 while IFS= read -r -d '' api_file; do

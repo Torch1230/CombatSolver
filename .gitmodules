@@ -1,0 +1,3 @@
+[submodule "vendor/sts2-sim"]
+	path = vendor/sts2-sim
+	url = https://github.com/iRyougi/sts2-ai.git

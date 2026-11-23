@@ -22,6 +22,7 @@
 | `SearchMemoryPressureSignal.cs` | 注入 Search 的分配边界与回收续搜信号 |
 | `NativeChoiceRuntime.cs` | 原生选牌观察与逐实例计划匹配 |
 | `PlayerTurnSetupPatches.cs` | 原生回合准备、选择和部署交接 |
+| `bridge/Sts2Sim.PreCombatBridge/`、`bridge/Sts2Sim.Forecast/` | 消费端持有 UTF-8 JSON 入口、策略、搜索与清单。通用搜索源码及 Core 来自 `vendor/sts2-sim` 的 gitlink。主 Mod 只加载清单列出的程序集。 |
 | `src/Api/PreCombatForecastApi.cs` | 预战公开 API、请求票据与 epoch 准入栅栏、单次缓存发布和实时状态复核 |
 | `src/Api/PreCombatForecastWorker.Routing.cs` | 预战双后端（进程内 Sts2Sim 桥接 / 遗留隔离进程）单锁调度与停止栅栏 |
 | `src/Api/PreCombatForecastWorker.cs` | 预战独立子进程会话、请求和停止（恐惧模式及不支持场景回落） |
