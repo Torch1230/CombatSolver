@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Sts2SimSourceRoot Condition="'$(Sts2SimSourceRoot)' == ''">$(MSBuildThisFileDirectory)../vendor/sts2-sim</Sts2SimSourceRoot>
+  </PropertyGroup>
+</Project>

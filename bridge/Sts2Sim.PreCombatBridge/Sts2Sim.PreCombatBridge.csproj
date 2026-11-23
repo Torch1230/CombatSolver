@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Sts2Sim.PreCombatBridge</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../SimulatorBuildIdentity.cs" />
+    <ProjectReference Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Core/Sts2Sim.Core.csproj" />
+    <ProjectReference Include="../Sts2Sim.Forecast/Sts2Sim.Forecast.csproj" />
+    <InternalsVisibleTo Include="Sts2Sim.PreCombatBridge.Tests" />
+  </ItemGroup>
+
+</Project>

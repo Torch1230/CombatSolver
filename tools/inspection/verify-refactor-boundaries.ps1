@@ -1046,6 +1046,16 @@ foreach ($check in $preCombatApiChecks) {
         $violations.Add("$($check.Path): missing pre-combat isolation boundary '$($check.Text)'")
     }
 }
+$bridgeTargets = Join-Path $repositoryRoot 'tools/build/Sts2SimBridge.targets'
+if (-not (Select-String -LiteralPath (Join-Path $repositoryRoot 'CombatSolver.csproj') -SimpleMatch 'bridge/**;vendor/**' -Quiet)) {
+    $violations.Add('Exclude simulator and bridge sources from the Godot project.')
+}
+if (-not (Select-String -LiteralPath $bridgeTargets -SimpleMatch 'git rev-parse :vendor/sts2-sim' -Quiet)) {
+    $violations.Add('Stage from the recorded simulator gitlink.')
+}
+if (Select-String -LiteralPath $bridgeTargets -SimpleMatch '$(MSBuildProjectDirectory)/../sts2-ai' -Quiet) {
+    $violations.Add('A sibling simulator checkout must be selected explicitly.')
+}
 if (Select-String -LiteralPath (Join-Path $repositoryRoot 'CombatSolver.csproj') -SimpleMatch 'Sts2Sim.PreCombatBridge.csproj' -Quiet) {
     $violations.Add("CombatSolver.csproj: must keep zero compile-time references to Sts2Sim")
 }

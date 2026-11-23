@@ -18,6 +18,7 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bridge/**;vendor/**</DefaultItemExcludes>
     <LangVersion>13.0</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>true</ImplicitUsings>
