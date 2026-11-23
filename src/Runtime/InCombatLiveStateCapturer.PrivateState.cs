@@ -239,7 +239,7 @@ internal static partial class InCombatLiveStateCapturer
         return rewardsByCard;
     }
 
-    private static IReadOnlyDictionary<string, InCombatFieldValueDto> CaptureCardPrivateFields(
+    internal static IReadOnlyDictionary<string, InCombatFieldValueDto> CaptureCardPrivateFields(
         CardModel card,
         CombatState state,
         IReadOnlyDictionary<CardModel, int> cardHandles,
@@ -347,7 +347,7 @@ internal static partial class InCombatLiveStateCapturer
                 fields["TheScythe._increasedDamage"] = IntVal(scythe.IncreasedDamage);
                 break;
             case TheShot shot:
-                fields["TheShot._cardsExhaustedByFlorescence"] = IntVal((int)shot._cardsExhaustedByFlorescence);
+                fields["TheShot._cardsExhaustedByFlorescence"] = DecimalVal(shot._cardsExhaustedByFlorescence);
                 break;
             case Thrash thrash:
                 fields["Thrash._damage"] = DecimalVal(thrash.DynamicVars.Damage.BaseValue + thrash._extraDamage);
@@ -703,7 +703,7 @@ internal static partial class InCombatLiveStateCapturer
             fields);
     }
 
-    private static IReadOnlyDictionary<string, InCombatFieldValueDto> CapturePowerPrivateFields(
+    internal static IReadOnlyDictionary<string, InCombatFieldValueDto> CapturePowerPrivateFields(
         PowerModel power,
         IReadOnlyDictionary<Creature, int> creatureHandles,
         IReadOnlyDictionary<CardModel, int> cardHandles,
@@ -823,8 +823,8 @@ internal static partial class InCombatLiveStateCapturer
                 fields["LullabyPower._proccdThisTurn"] = BoolVal(lullaby._proccdThisTurn);
                 break;
             case MonologuePower mono:
-                fields["MonologuePower._strengthApplied"] = IntVal(mono.DynamicVars["StrengthApplied"].IntValue);
-                fields["MonologuePower._strength"] = IntVal(mono.DynamicVars.Strength.IntValue);
+                fields["MonologuePower._strengthApplied"] = DecimalVal(mono.DynamicVars["StrengthApplied"].BaseValue);
+                fields["MonologuePower._strength"] = DecimalVal(mono.DynamicVars.Strength.BaseValue);
                 break;
             case MythicFormPower mythic:
                 fields["MythicFormPower._upgradedCount"] = IntVal(mythic.DynamicVars["Upgraded"].IntValue);

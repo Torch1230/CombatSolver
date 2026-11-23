@@ -2,6 +2,8 @@
 
 ## 未发布：战斗内与战前 Sts2Sim 桥接入口
 
+- 原生战斗内合同的 `InCombatPrivateDecimalFields` 在独立卡牌与能力实例上写入 1.75、2.5、3.25，检查实际捕获的三个字段的类型和值。Core 的公开恢复回归另检查旧整数输入及新小数输入。
+
 - 桥接迁移可用 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release` 验证 UTF-8 ABI 与搜索合同。暂存检查对照 Core 的内嵌提交与 Git 锁定值。[构建入口](../bridge/README.md)
 
 - `UI-COMPACT-QOL` 覆盖第七回合死亡、仍存活的部分路线，以及历史回血与剩余路线回血的区别。
