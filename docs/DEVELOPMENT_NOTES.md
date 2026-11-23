@@ -2,11 +2,7 @@
 
 这里只记录当前未发布的行为变化。发布定稿后将该批次完整移入历史卷。
 
-## HotKernel v2 架构重写与旧栈清理（开发中）
-
-- **纯值内核与独立热搜引擎（Phase 0–3）**：新增 `src/HotKernel/`（非托管紧凑状态 `HotCombatState`、静态规则目录、主线程根导入 `HotRootBuilder` / `HotRootBundle` 与零分配模拟器 `HotSimulator`）及 `src/HotSearch/`（独立 `HotSearchCoordinator`、确定性多线程展开 `HotParallelExpander`、`HotBeamRetention`、`HotEvaluator`、`HotPlanMaterializer`、`HotEndTurnRiskEvaluator`）。`HotKernel/State|Sim` 与 `HotSearch` 彻底摆脱 `MegaCrit.Sts2.Core.Models` 和托管对象克隆。
-- **旧栈删除与运行时瘦身（Phase 4）**：移除原 `SimulatedCombatState`、`CombatPredictionSimulator`、`MethodMirrorRegistry`、46 分片 `CombatBeamSolver`、旧 `CombatSearchCoordinator`、`PowerCardValuation`、`SearchGcPolicy` / NoGC / ServerGC / 克隆隔离补丁、`src/Strategy/` 及全部第三方 Mod 专属适配；`src/Engine/`、`src/Prediction/`、`src/Search/` 仅保留对外异常、根捕获辅助与策略 DTO，`SolverController` 与 `CombatRootSnapshot` 直连 `HotRootBundle` + `HotSearchCoordinator`。
-- **门禁、测试与离线宿主收口（Phase 4–5）**：重写两平台等价 `tools/inspection/verify-refactor-boundaries.{ps1,sh}`，清理 `src/Testing/` 过时旧内部合同与 29 个失效独立检查项目，将 `OfflineSearchHarness` 直接接入 `HotSearchCoordinator`（保留 `--check-hot-layout` 并将 `--verify-hot-parity` 切换为 Gate A/B/C 自洽与确定性/微基准验证），删除 `.local/tool-tasks/ref-sts2-solver` 并同步架构与测试文档。
+1.0.0 的 HotKernel v2 新一代高速引擎、药水省血阈值与 0.113.1 全量适配见[历史卷 33](archive/development/volume-33.md)，玩家说明见[1.0.0 更新日志](releases/1.0.0-RELEASE_NOTES.md)。
 
 0.50.1 本地定稿的智能药水修复及 PR #213、#224、#226 见[历史卷22](archive/development/volume-22.md)，玩家说明见[0.50.1 更新日志](releases/0.50.1-RELEASE_NOTES.md)。外部发布状态以对应标签及发布记录为准。
 

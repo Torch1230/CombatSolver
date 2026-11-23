@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory)]
     [ValidatePattern('^\d+\.\d+\.\d+$')]
@@ -60,7 +60,6 @@ $quarkReleaseZipPath = Join-Path $repoRoot "releases\CombatSolver-$Version-Quark
 $releaseNotesPath = Resolve-RequiredFile (Join-Path $repoRoot "docs\releases\$Version-RELEASE_NOTES.md") '玩家更新日志'
 $solverDllPath = Resolve-RequiredFile (Join-Path $repoRoot '.godot\mono\temp\bin\Release\CombatSolver.dll') 'Release DLL'
 Assert-ReleaseConnectionMetadata $solverDllPath
-$memoryCleanerPath = Resolve-RequiredFile (Join-Path $repoRoot '.local\tool-build\CombatSolver.MemoryCleaner\bin\Release\net48\CombatSolver.MemoryCleaner.exe') 'MemoryCleaner'
 $licensePath = Resolve-RequiredFile (Join-Path $repoRoot 'LICENSE') 'MIT 许可证'
 $noticesPath = Resolve-RequiredFile (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') '第三方许可'
 $resolvedModUploaderPath = Resolve-RequiredFile $ModUploaderPath 'ModUploader'
@@ -218,7 +217,6 @@ if ($ValidateOnly) {
 if (-not $state.workshop) {
     Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $workshopContentDirectory 'CombatSolver.json') -Force
     Copy-Item -LiteralPath $solverDllPath -Destination (Join-Path $workshopContentDirectory 'CombatSolver.dll') -Force
-    Copy-Item -LiteralPath $memoryCleanerPath -Destination (Join-Path $workshopContentDirectory 'CombatSolver.MemoryCleaner.exe') -Force
     Copy-Item -LiteralPath $licensePath -Destination (Join-Path $workshopContentDirectory 'LICENSE') -Force
     Copy-Item -LiteralPath $noticesPath -Destination (Join-Path $workshopContentDirectory 'THIRD_PARTY_NOTICES.md') -Force
     & $resolvedModUploaderPath upload -w $resolvedWorkshopDirectory

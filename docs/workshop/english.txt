@@ -10,12 +10,12 @@ Once combat starts, it simulates your hand, draw and discard piles, enemy action
 [*]Multi-turn planning: explores future draws, shuffles, enemy actions and resources, not just the current hand.
 [*]Readable routes: displays cards, targets, choices, potions, end-turn actions and important relic triggers by turn.
 [*]Projected HP loss: prioritizes survival, confirmed victory and total combat HP loss rather than immediate damage alone.
-[*]Per-potion policies: choose Smart use, Always use, or Disabled / Protected for each potion. Newly acquired potions default to Smart use.
+[*]Per-potion policies: choose Smart use, Always use, or Disabled / Protected for each potion, and customize each potion's HP threshold. Newly acquired potions default to Smart use.
 [*]Three ways to play: advice only, execute this turn, or continuous auto-play.
 [*]Stop controls: interrupt a search from the overlay and start a new calculation when ready.
 [*]Native card choices: turn-start choices and draw/discard selections still use the game's own screens and animations.
 [*]Route reuse: continues an existing plan when the live game matches its prediction; recalculates when the state changes.
-[*]Adjustable budgets: Low, Medium, High, Very High and Custom presets, with separate memory and parallelism settings.
+[*]Adjustable budgets: Low, Medium, High, Very High and Custom presets, with configurable parallelism and custom parameters.
 [*]Bug reports: upload a report from Settings, or export it locally for manual submission.
 [/list]
 
@@ -43,15 +43,15 @@ Combat Solver source: search for Torch1230/CombatSolver on GitHub.
 
 [list]
 [*]Requires RitsuLib 0.6.11 or later.
-[*]Supports single-player Standard, Dread and Blitz modes in Slay the Spire 2 version 0.113.0 Beta.
+[*]Supports single-player Standard, Dread and Blitz modes in Slay the Spire 2 v0.113.1 (compatible with 0.113.0).
 [*]Single-player combat only; multiplayer is not supported.
 [*]Background search does not modify the live game's RNG.
-[*]Search is bounded by time, node and memory budgets. The recommended route is the best found within those limits, not a guarantee of a mathematically optimal solution.
+[*]Search is bounded by time and node budgets. The recommended route is the best found within those limits, not a guarantee of a mathematically optimal solution.
 [/list]
 
 [h2]Performance[/h2]
 
-Search can use substantial CPU and memory. The default is the Medium preset with a 16 GB search memory budget. The preset and memory budget are saved separately, so adjust them to your PC. Search runs in the background and periodically yields CPU time to reduce its impact on gameplay and animations.
+The redesigned high-speed engine runs with dramatically faster solving and much lower memory usage. It defaults to the Medium preset with parallelism automatically matched to your CPU, and both can be adjusted in Settings. Search runs in the background to minimize impact on gameplay and animations.
 
 [h2]Community and feedback[/h2]
 

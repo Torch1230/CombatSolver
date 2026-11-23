@@ -1,10 +1,8 @@
 # CombatSolver 测试入口
 
-## HotKernel v2 架构重写验证（开发中）
+## 1.0.0 新一代高速引擎与 0.113.1 适配
 
-- **L0 架构与工具门禁**：`pwsh -NoProfile -File tools/inspection/verify-refactor-boundaries.ps1`、`./tools/inspection/verify-refactor-boundaries.sh`、`python -B tools/testing/run-independent-checks.py`（6 项无游戏独立检查）、`python -B tools/inspection/verify-tools.py`、`verify-documentation.py`、`verify-coverage.py`。
-- **离线内核与搜索门禁（`OfflineSearchHarness`）**：`--check-hot-layout`（非托管布局与尺寸合同）与 `--verify-hot-parity`（Gate A 19/19 根捕获与 Pack/Unpack 往返、Gate B 六角色多回合自洽与 DOP=1/8 确定性、Gate C 50,000 次微基准）。
-- **原生无头验证**：由下方 `当前矩阵命令` 覆盖稳定根捕获 + `HotRootBundle` 往返合同及原版自动部署。
+架构/工具门禁、离线内核自洽与确定性、120 场零计划外重算部署压测、300 场差分模糊、离线提速对照及无头首战卡顿验证见[历史卷 33](archive/testing/volume-33.md)。
 
 ## 0.51.9 愚者能力牌路线优化
 
