@@ -6,6 +6,8 @@
 
 - 预测 ABI 与搜索子项目由 CombatSolver 维护。模组经清单装载程序集，模拟器源码由 Git 子模块锁定。暂存会对照 Core DLL 内嵌的提交号，并将其写入清单。
 
+- 桥接预测逐段核对致死、复活与伤后保护的先后顺序。自然致死的一段会跳过伤后回调；下一段仍可使用相应保护。奥斯提溢出伤害按玩家实际承受的一段处理。
+
 - `PreCombatForecastApi`（`ApiVersion = 7`）在标准模式且满足强制宿主排除、原版修饰性/统计 `ExtraFields` 放行、语义级战前 Mod 与 BuiltIn 同口径关键 Harmony 审计（放行战前惰性与辅助功能 Mod，拒绝 `RunState` 战斗订阅者、自定义最大手牌/BaseLib 卡牌修饰器、`MegaCrit.Sts2.Core.Random.*` 全部非原版 RNG 补丁、怪物 `GenerateMoveStateMachine`/`AttackIntent`（含 `SingleAttackIntent`/`MultiAttackIntent` 构造）与 `GetSingleDamage`/具体原版卡牌非纯展示成员（含玩法覆写、状态机及非虚辅助方法与属性）/未封印且不依赖 `AdaptedCardOnPlayMirrors` 的可达牌组 `OnPlay` 补丁、未建模卡池/药水池及 Ritsu 运行时全局治疗/能力监听器，同时放行 `ExtraRunAssetPaths`、`HasBuiltInOverlay`、`AddExtraArgsToDescription`、`OnEnqueuePlayVfx`、`SpawnVfx`、`GetVfxNode`、`RemoveSovereignBladeNode`、`GetPortraitFilename`、`LoadPortrait` 等纯展示成员）及存档资格时，通过先读入校验 SHA-256 与 MVID 字节数组再由 `IsolatedBridgeLoadContext` 以 `LoadFromStream` 延迟加载的隔离上下文与清单 `sts2sim/sts2sim-bundle.manifest.json` 调用同进程 `Sts2Sim.PreCombatBridge` 完成战前预测；ABI v1 支持 `1..64` 并行度上限并校验实际有效线程数不超出请求上限，桥接搜索按父节点波次并行展开且并发执行组合策略成员；规划请求独立评估规划存档内容，同时继承并先决执行宿主强制排除。
 - 恐惧模式（`GameMode.Dread`）及其他不兼容宿主条件固定通过 `dread_mode` 等编码在探测或激活 `sts2sim/` 前直接回退至既有普通求解器路径（Windows 独立子进程，Linux 按既有平台支持口径返回不支持）。
 - `PreCombatForecastWorker` 通过统一单 `Gate` 调度器、`admissionEpoch` / `_stopEpoch` 截止栅栏、请求中断与严格期限分离，以及由生产者持有的完成票据管理同进程会话、遗留回退、互斥锁、重启状态与空闲释放；在交接层完成药水标题本地化与默认 `UseBeamWidthPortfolio`（含通用 `CardType.Power` 能力承诺成员）路由，并向界面提供活动与最近后端、有效并行线程数及分流/回退代码快照。
