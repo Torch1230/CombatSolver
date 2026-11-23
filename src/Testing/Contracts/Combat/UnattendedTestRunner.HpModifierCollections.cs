@@ -147,10 +147,10 @@ internal sealed partial class UnattendedTestRunner
 
     private static string AssertProjectedMultiHitModifiers(CombatState combat, Player player)
     {
-        CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
-        var driver = new CombatBeamSolver(root, SolverDisplayNames.Capture(combat),
+        CombatBeamSolver FreshDriver() => new(CombatRootSnapshot.Capture(combat), SolverDisplayNames.Capture(combat),
             BattleDamageTracker.Observe(combat),
             SolverController.CaptureSearchPolicy(SolverSettings.Capture(), combat, false, null));
+        var driver = FreshDriver();
         using IDisposable isolation = SimulationNotificationIsolation.Enter();
         Creature enemy = combat.Enemies[0];
 
@@ -260,39 +260,57 @@ internal sealed partial class UnattendedTestRunner
         }
         finally { remnantCap.ReleaseSimulator(); }
 
-        SimulationSnapshot remnantRevive = driver.ReplayDiagnosticPrefix([]);
-        try
+        foreach (bool withSlippery in new[] { false, true })
         {
-            var simulator = (CombatPredictionSimulator)remnantRevive.Simulator;
-            var state = (SimulatedCombatState)simulator.State.CombatState;
-            LizardTail tail = state.RelicsOf(player).OfType<LizardTail>().Single();
-            BeatingRemnant remnant = (BeatingRemnant)PredictionUtils.CreateRelic(
-                CanonicalModels.Relic<BeatingRemnant>(),
-                player);
-            ReplaceRootRelicsForTurnBoundaryTest(state, player, tail, remnant);
-            SimCreatureState creature = simulator.State.GetCreature(player.Creature);
-            creature.SetMaxHp(40);
-            creature.CurrentHp = 10;
-            int expectedRevive = (int)LizardTailMirrors.HealAmount(tail, creature.MaxHp);
-            int expectedCap = remnant.DynamicVars[BeatingRemnant._maxHpLossKey].IntValue;
-            int expectedSecondHit = Math.Min(15, expectedCap - creature.CurrentHp);
-            string before = driver.CaptureDiagnosticContinuation(remnantRevive).StateText;
-            var result = driver.ProjectDiagnosticThreat(remnantRevive, enemy, 18, 15);
-            if (result.Hp != expectedRevive - expectedSecondHit
-                || result.DeathSaveUseCount != 1
-                || result.DeathSaveHpRestored != expectedRevive
-                || driver.CaptureDiagnosticContinuation(remnantRevive).StateText != before
-                || simulator.StateStore.TryGetReadOnly<BeatingRemnantPredictionState>(remnant, out _)
-                || simulator.StateStore.HasEntries<BeatingRemnantPredictionState>()
-                || simulator.StateStore.TryGetReadOnly<LizardTailPredictionState>(tail, out _))
+            // Replacing relics edits the test driver's shared root inventory. Give each case its own root.
+            driver = FreshDriver();
+            SimulationSnapshot revival = driver.ReplayDiagnosticPrefix([]);
+            try
             {
-                throw new InvalidOperationException(
-                    $"BeatingRemnant 复活溢出面对[18,15]应保留10点剩余上限留{expectedRevive - expectedSecondHit}HP且不写入状态库，实际 Hp={result.Hp} saves={result.DeathSaveUseCount} restored={result.DeathSaveHpRestored}。");
-            }
-        }
-        finally { remnantRevive.ReleaseSimulator(); }
+                var simulator = (CombatPredictionSimulator)revival.Simulator;
+                var state = (SimulatedCombatState)simulator.State.CombatState;
+                LizardTail tail = state.RelicsOf(player).OfType<LizardTail>().Single();
+                BeatingRemnant remnant = (BeatingRemnant)PredictionUtils.CreateRelic(CanonicalModels.Relic<BeatingRemnant>(), player);
+                ReplaceRootRelicsForTurnBoundaryTest(state, player, tail, remnant);
+                SimCreatureState creature = simulator.State.GetCreature(player.Creature);
+                creature.SetMaxHp(40);
+                creature.CurrentHp = withSlippery ? 1 : 10;
+                if (withSlippery) state.SetAmount<SlipperyPower>(player.Creature, 1);
+                int first = withSlippery ? 8 : 18;
+                int second = withSlippery ? 8 : 15;
+                int expected = withSlippery ? 19 : 5;
+                // A captured root can already own prediction entries (for example the tail).
+                // Check the same membership on both sides of the read-only forecast.
+                var slippery = state.GetPower<SlipperyPower>(player.Creature);
+                (bool, bool, bool, bool, bool) StoreMembership() => (
+                    simulator.StateStore.TryGetReadOnly<BeatingRemnantPredictionState>(remnant, out _),
+                    simulator.StateStore.HasEntries<BeatingRemnantPredictionState>(),
+                    simulator.StateStore.TryGetReadOnly<LizardTailPredictionState>(tail, out _),
+                    simulator.StateStore.HasEntries<PowerAmountPredictionState>(),
+                    slippery != null && simulator.StateStore.TryGetReadOnly<PowerAmountPredictionState>(slippery, out _));
+                string before = driver.CaptureDiagnosticContinuation(revival).StateText;
+                var membership = StoreMembership();
+                var projection = driver.ProjectDiagnosticThreat(revival, enemy, first, second);
+                if (projection != (expected, 1, 20))
+                    throw new InvalidOperationException($"Revival forecast: Slippery={withSlippery}, expected ({expected},1,20), got {projection}.");
+                if (driver.CaptureDiagnosticContinuation(revival).StateText != before || membership != StoreMembership())
+                    throw new InvalidOperationException($"Revival forecast modified state: Slippery={withSlippery}, store {membership} -> {StoreMembership()}.");
 
-        return "ProjectedMultiHitModifiers:SlipperyTwoHits:SlipperyOneDamageHit:BufferBeforeSlippery:BeatingRemnantCap:BeatingRemnantReviveOverkillCap:StoreUnmodified:CompleteStateUnchanged";
+                int SlipperyLeft() => slippery is null ? 0 : simulator.StateStore.PeekPowerAmount(slippery).Amount;
+                decimal RemnantSpent() => simulator.StateStore.Peek(remnant, () => new BeatingRemnantPredictionState(remnant)).DamageReceivedThisTurn;
+                var firstResults = simulator.Damage(player.Creature, first, ValueProp.Move, enemy);
+                if (firstResults.Count != 1 || !firstResults[0].WasTargetKilled || creature.CurrentHp != 20
+                    || !LizardTailMirrors.WasUsed(tail, simulator) || RemnantSpent() != 0
+                    || SlipperyLeft() != (withSlippery ? 1 : 0))
+                    throw new InvalidOperationException($"Lethal hit: HP={creature.CurrentHp}, Slippery={SlipperyLeft()}, Remnant spent={RemnantSpent()}.");
+                simulator.Damage(player.Creature, second, ValueProp.Move, enemy);
+                if (creature.CurrentHp != expected || SlipperyLeft() != 0 || RemnantSpent() != (withSlippery ? 1 : 15))
+                    throw new InvalidOperationException($"Second hit: expected {expected} HP, got {creature.CurrentHp}, Slippery={SlipperyLeft()}, Remnant spent={RemnantSpent()}.");
+            }
+            finally { revival.ReleaseSimulator(); }
+        }
+
+        return "ProjectedMultiHitModifiers:SlipperyTwoHits:SlipperyOneDamageHit:BufferBeforeSlippery:BeatingRemnantCap:BeatingRemnantReviveSkipsLethal:SlipperyReviveSkipsLethal:ExecutedHitsMatch:StoreUnmodified:CompleteStateUnchanged";
     }
 
     private static string AssertProjectedSandpitBoundary(CombatState combat, Player player)

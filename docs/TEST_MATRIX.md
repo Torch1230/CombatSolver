@@ -2,7 +2,7 @@
 
 ## 未发布：多段攻击威胁扣减修复
 
-- 合同覆盖：`HP-MODIFIER-COLLECTIONS` 新增 `AssertProjectedMultiHitModifiers`，覆盖多段攻击下 `SlipperyPower` 逐段消耗、1 点未格挡伤害扣减、`BufferPower` 先于 `SlipperyPower` 消费、`BeatingRemnant` 本回合累计上限、溢出致死复活后剩余上限计算，以及预测延续状态与 `PredictionStateStore` 条目成员不变（Issue `#267`）。早期 Linux 无头基线验证：`180041d4b27a499e87283b1a906b4e69`（`v0.113.1@d09d48e5`，实例已清理）；新增复活溢出上限与状态库成员断言尚未在无头实机中重跑；复跑命令：`./tools/testing/run-unattended-test.sh --scenario-id HP-MODIFIER-COLLECTIONS --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 999 --initial-player-hp 80 --initial-player-max-hp 80 --relics-json '[{"relicId":"LIZARD_TAIL"}]' --stop-after-combat-root-snapshot-assertion --timeout-seconds 120 --cleanup-instance-on-exit`。
+- `HP-MODIFIER-COLLECTIONS` 在 Linux 游戏 `v0.113.1@d09d48e5` 的隔离实例通过，运行 `dbd5eddabf4e448f9cc84d5f81ed7e4d`，28.21 秒，实例已清理。保留 192 行 HP 修正合同。逐段预测与独立执行两次伤害均验证：10/40 HP + BeatingRemnant + LizardTail 受到 18、15 后为 20、5 HP，致死段不会登记 Remnant；1/40 HP + 一层 Slippery + Tail 受到 8、8 后为 20、19 HP，层数依次为 1、0。预测前后的完整续用状态和状态库成员相同。命令为 `bash tools/testing/run-unattended-test.sh --scenario-id HP-MODIFIER-COLLECTIONS --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --enemy-current-hp 999 --initial-player-hp 80 --initial-player-max-hp 80 --relics-json '[{"relicId":"LIZARD_TAIL"}]' --stop-after-combat-root-snapshot-assertion --timeout-seconds 120 --cleanup-instance-on-exit`。
 
 ## 0.51.9 愚者能力牌路线优化
 

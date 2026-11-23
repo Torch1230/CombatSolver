@@ -1527,35 +1527,28 @@ internal sealed partial class CombatBeamSolver
         {
             int absorbed = Math.Min(ostyHp, loss);
             ostyHp -= absorbed;
-            projectedModifiers?.RecordDamageReceived(osty, absorbed);
-            // Native redirected damage applies the original target's AfterOsty hooks
-            // to overkill as a separate loss. Player Buffer, Slippery, and BeatingRemnant
-            // protect or track spillover on the player creature.
+            if (ostyHp > 0)
+                projectedModifiers?.RecordDamageReceived(osty, absorbed);
+            // The player's AfterOsty hooks apply separately to redirected overkill.
+            target = _player.Creature;
             decimal overflow = HookMirrors.ModifyHpLost(
-                simulator, _player.Creature, loss - absorbed, ValueProp.Move,
+                simulator, target, loss - absorbed, ValueProp.Move,
                 attacker, null, HpLossHookPhase.AfterOsty, out var overflowModifiers,
                 projectedModifiers?.Filter,
                 projectedModifiers?.BeatingRemnantDamageReceivedLookup);
             projectedModifiers?.Consume(overflowModifiers);
-            int playerLoss = Math.Max(0, (int)Math.Floor(overflow));
-            int playerUnblockedDamage = Math.Min(playerLoss, Math.Max(0, playerHp));
-            projectedModifiers?.RecordDamageReceived(_player.Creature, playerUnblockedDamage);
-            playerHp -= playerLoss;
-            if (playerLoss > 0 && gambitActive)
+            loss = Math.Max(0, (int)Math.Floor(overflow));
+        }
+        playerHp -= loss;
+        // Native Damage skips AfterDamageReceived on a lethal result, before any death save revives the target.
+        if (playerHp > 0 && loss > 0)
+        {
+            projectedModifiers?.RecordDamageReceived(target, loss);
+            if (gambitActive)
             {
                 gambitActive = false;
                 playerHp = 0;
             }
-            deathPrevention.TryRevive(ref playerHp);
-            return;
-        }
-        int unblockedDamage = Math.Min(loss, Math.Max(0, playerHp));
-        projectedModifiers?.RecordDamageReceived(target, unblockedDamage);
-        playerHp -= loss;
-        if (loss > 0 && gambitActive)
-        {
-            gambitActive = false;
-            playerHp = 0;
         }
         deathPrevention.TryRevive(ref playerHp);
     }
