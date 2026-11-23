@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Entities.Powers;
 
 namespace CombatSolver.HotKernel;
@@ -230,12 +231,32 @@ internal readonly struct HotMonsterMoveEffect
     }
 }
 
+[StructLayout(LayoutKind.Sequential)]
+internal readonly struct HotMonsterAttack
+{
+    public readonly short BaseDamage;
+    public readonly byte Repeats;
+    public readonly byte Flags;
+
+    public HotMonsterAttack(short baseDamage, byte repeats, byte flags = 0)
+    {
+        BaseDamage = baseDamage;
+        Repeats = repeats;
+        Flags = flags;
+    }
+}
+
 internal sealed class HotCardDef
 {
     public required ushort DefId { get; init; }
     public required ushort CanonicalDefId { get; init; }
+    public HotCustomCardId CardId { get; init; }
+    public HotCustomCardId CustomCardId { get; init; }
+    public HotCardDomain Domain { get; init; }
+    public HotCalcVarKind CalcVar { get; init; }
     public required string Entry { get; init; }
     public required CardType Type { get; init; }
+    public CardRarity Rarity { get; init; }
     public required TargetType Target { get; init; }
     public required sbyte BaseCost { get; init; }
     public required sbyte UpgradedCost { get; init; }
@@ -264,8 +285,16 @@ internal sealed class HotCardDef
     public byte Var0Index { get; init; } = 0xFF;
     public byte Var1Index { get; init; } = 0xFF;
     public required bool IsAllowedInBlitz { get; init; }
+    public bool GainsBlock { get; init; }
+    public bool CanBeGeneratedInCombat { get; init; } = true;
+    public int MaxUpgradeLevel { get; init; } = 1;
     public HotCardPrivateKind PrivateKind { get; init; }
     public bool IsStrikeTag { get; init; }
+    public bool IsDefendTag { get; init; }
+    public bool IsShootTag { get; init; }
+    public bool IsOstyAttackTag { get; init; }
+    public bool IsShivTag { get; init; }
+    public bool IsMinionTag { get; init; }
     public byte MelodyTagMask { get; init; }
     public string? RootDupeSourceKey { get; init; }
 
@@ -285,6 +314,8 @@ internal sealed class HotCardDef
 internal sealed class HotPowerDef
 {
     public required ushort DefId { get; init; }
+    public HotPowerId PowerId { get; init; }
+    public HotPowerDomain Domain { get; init; }
     public required string Entry { get; init; }
     public required PowerType Type { get; init; }
     public required HotHookMask HookMask { get; init; }
@@ -303,6 +334,7 @@ internal sealed class HotPowerDef
 internal sealed class HotRelicDef
 {
     public required ushort DefId { get; init; }
+    public HotRelicId RelicId { get; init; }
     public required string Entry { get; init; }
     public required HotHookMask HookMask { get; init; }
     public required bool IsStateful { get; init; }
@@ -311,21 +343,33 @@ internal sealed class HotRelicDef
     public required bool CanGenerateUnknown { get; init; }
     public HotRelicSpecialKind SpecialKind { get; init; }
     public short PrimaryValue { get; init; }
+    public short SecondaryValue { get; init; }
 }
 
 internal sealed class HotPotionDef
 {
     public required ushort DefId { get; init; }
+    public HotCustomPotionId PotionId { get; init; }
+    public HotCustomPotionId CustomPotionId { get; init; }
     public required string Entry { get; init; }
+    public PotionRarity Rarity { get; init; }
     public required TargetType Target { get; init; }
     public required bool CanHealPlayer { get; init; }
     public required bool CanGenerateUnknown { get; init; }
     public short PrimaryValue { get; init; }
+    public short SecondaryValue { get; init; }
+    public int OpStart { get; init; }
+    public byte OpCount { get; init; }
+    public short StrategicHpCost { get; init; }
+    public bool RequiresOpeningUse { get; init; }
+    public bool GeneratesPotionChain { get; init; }
+    public bool IsCombatUsable { get; init; } = true;
 }
 
 internal sealed class HotOrbDef
 {
     public required byte DefId { get; init; }
+    public HotOrbId OrbId { get; init; }
     public required string Entry { get; init; }
     public required short BasePassiveVal { get; init; }
     public required int BaseEvokeVal { get; init; }
@@ -334,6 +378,7 @@ internal sealed class HotOrbDef
 internal sealed class HotEnchantmentDef
 {
     public required byte DefId { get; init; }
+    public HotEnchantmentId EnchantmentId { get; init; }
     public required string Entry { get; init; }
     public required bool HasMomentumExtraDamage { get; init; }
 }
@@ -341,18 +386,24 @@ internal sealed class HotEnchantmentDef
 internal sealed class HotAfflictionDef
 {
     public required byte DefId { get; init; }
+    public HotAfflictionId AfflictionId { get; init; }
     public required string Entry { get; init; }
 }
 
 internal sealed class HotMonsterDef
 {
     public required ushort DefId { get; init; }
+    public HotMonsterId MonsterId { get; init; }
     public required string Entry { get; init; }
     public required string TypeName { get; init; }
     public required HotMonsterStateKind StateKind { get; init; }
     public required int MachineIndex { get; init; }
     public IReadOnlyDictionary<string, int>? StaticInts { get; init; }
     public int TestSubjectBaseMultiClawCount { get; init; }
+    public int MinInitialHp { get; init; }
+    public int MaxInitialHp { get; init; }
+    public bool IsBoss { get; init; }
+    public bool IsElite { get; init; }
 }
 
 internal sealed class HotMonsterNode
@@ -362,6 +413,8 @@ internal sealed class HotMonsterNode
     public required HotMonsterNodeKind NodeKind { get; init; }
     public required int BaseDamage { get; init; }
     public required int Repeats { get; init; }
+    public HotMonsterAttack[] Attacks { get; init; } = [];
+    public bool RemovesOwnerOnMove { get; init; }
     public required short NextNode { get; init; }
     public required short[] BranchTargets { get; init; }
     public required float[] BranchWeights { get; init; }

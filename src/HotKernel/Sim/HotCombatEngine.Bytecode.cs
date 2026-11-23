@@ -5,7 +5,7 @@ namespace CombatSolver.HotKernel;
 internal static partial class HotCombatEngine
 {
     /// <summary>
-    /// Executes the compiled <see cref="HotCardEffectOp"/> bytecode program (and optional custom handler)
+    /// Executes the compiled <see cref="HotCardEffectOp"/> bytecode program (or custom card handler)
     /// for the card currently in the Play pile at <c>s.PlayStart + playOffsetInPlay</c>.
     /// Zero managed heap allocations on the normal path.
     /// </summary>
@@ -15,7 +15,8 @@ internal static partial class HotCombatEngine
         HotRules rules,
         HotExecScratch scratch,
         int playOffsetInPlay,
-        int targetEnemySlot)
+        int targetEnemySlot,
+        int energySpent = 0)
     {
         int curPlayIdx = s.PlayStart + playOffsetInPlay;
         HotCard playedCard = s.Cards[curPlayIdx];
@@ -24,10 +25,77 @@ internal static partial class HotCombatEngine
         ReadOnlySpan<HotCardEffectOp> ops = rules.GetCardOps(playedCard.CardDefId);
         if (ops.IsEmpty)
         {
-            if (cardDef.CustomHandlerId != 0)
-                ExecuteCustomCardHandler(ref s, ref cold, rules, scratch, cardDef.CustomHandlerId, playOffsetInPlay, targetEnemySlot);
+            HotCustomCardId customId = cardDef.CustomCardId != HotCustomCardId.None
+                ? cardDef.CustomCardId
+                : (cardDef.CustomHandlerId != 0 ? (HotCustomCardId)cardDef.CustomHandlerId : cardDef.CardId);
+            if (customId != HotCustomCardId.None)
+                ExecuteCoreCustomCard(ref s, ref cold, rules, scratch, customId, playOffsetInPlay, targetEnemySlot, energySpent);
             return;
         }
+
+        ExecuteBytecodeInternal(ref s, ref cold, rules, scratch, ops, in playedCard, cardDef, playOffsetInPlay, targetEnemySlot, energySpent, potionPrimaryValue: 0);
+    }
+
+    /// <summary>
+    /// Executes an arbitrary compiled <see cref="HotCardEffectOp"/> span against an optional card context.
+    /// Exposed for <c>Sim/Content/*</c> custom cards and potions.
+    /// </summary>
+    internal static void ExecuteBytecode(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ReadOnlySpan<HotCardEffectOp> ops,
+        in HotCard card,
+        HotCardDef? cardDef,
+        int targetEnemySlot)
+    {
+        int playOffset = -1;
+        if (card.CardUid != 0)
+        {
+            int idx = FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
+            if (idx >= 0)
+                playOffset = idx - s.PlayStart;
+        }
+        ExecuteBytecodeInternal(ref s, ref cold, rules, scratch, ops, in card, cardDef, playOffset, targetEnemySlot, energySpent: 0, potionPrimaryValue: 0);
+    }
+
+    /// <summary>
+    /// Executes compiled bytecode for a standard potion definition using its <see cref="HotPotionDef.PrimaryValue"/>.
+    /// </summary>
+    internal static void ExecutePotionBytecode(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ushort potionDefId,
+        int targetEnemySlot)
+    {
+        if (potionDefId == 0 || potionDefId >= rules.Potions.Length)
+            return;
+        ReadOnlySpan<HotCardEffectOp> ops = rules.GetPotionOps(potionDefId);
+        if (ops.IsEmpty)
+            return;
+        HotCard dummyCard = default;
+        ExecuteBytecodeInternal(ref s, ref cold, rules, scratch, ops, in dummyCard, cardDef: null, playOffsetInPlay: -1, targetEnemySlot, energySpent: 0, potionPrimaryValue: rules.Potions[potionDefId].PrimaryValue);
+    }
+
+    private static void ExecuteBytecodeInternal(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ReadOnlySpan<HotCardEffectOp> ops,
+        in HotCard playedCard,
+        HotCardDef? cardDef,
+        int playOffsetInPlay,
+        int targetEnemySlot,
+        int energySpent,
+        int potionPrimaryValue)
+    {
+        int cardIdx = playOffsetInPlay >= 0 ? s.PlayStart + playOffsetInPlay : -1;
+        ushort cardDefId = cardDef != null ? cardDef.DefId : (ushort)0;
+        bool isCardSource = cardDef != null;
 
         for (int i = 0; i < ops.Length; i++)
         {
@@ -36,6 +104,7 @@ internal static partial class HotCombatEngine
 
             HotCardEffectOp op = ops[i];
             HotCardOpFlags flags = (HotCardOpFlags)op.Flags;
+            int liveCardIdx = playOffsetInPlay >= 0 && playOffsetInPlay < s.PlayCount ? s.PlayStart + playOffsetInPlay : cardIdx;
 
             switch (op.Op)
             {
@@ -47,24 +116,12 @@ internal static partial class HotCombatEngine
                     if (IsOverOrEnding(in s) || !IsValidEnemyTarget(in s, targetEnemySlot))
                         break;
 
-                    int dmg = ResolveOpAmount(op, in playedCard, cardDef);
-                    int hits = (flags & HotCardOpFlags.UseCardHits) != 0 ? cardDef.GetHits(playedCard.UpgradeLevel) : 1;
+                    int dmg = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    int hits = cardDef != null && (flags & HotCardOpFlags.UseCardHits) != 0
+                        ? cardDef.GetHits(playedCard.UpgradeLevel)
+                        : 1;
                     bool powered = (flags & HotCardOpFlags.Unpowered) == 0;
-                    byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
-
-                    scratch.AttackActive = true;
-                    for (int h = 0; h < hits; h++)
-                    {
-                        if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
-                            || (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
-                        {
-                            break;
-                        }
-                        DealDamage(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: targetCreatureSlot, baseDamage: dmg, isPoweredAttack: powered);
-                        if (IsOverOrEnding(in s))
-                            break;
-                    }
-                    scratch.AttackActive = false;
+                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, liveCardIdx, targetEnemySlot, dmg, hits, powered);
                     break;
                 }
 
@@ -73,32 +130,12 @@ internal static partial class HotCombatEngine
                     if (IsOverOrEnding(in s))
                         break;
 
-                    int dmg = ResolveOpAmount(op, in playedCard, cardDef);
-                    int hits = (flags & HotCardOpFlags.UseCardHits) != 0 ? cardDef.GetHits(playedCard.UpgradeLevel) : 1;
+                    int dmg = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    int hits = cardDef != null && (flags & HotCardOpFlags.UseCardHits) != 0
+                        ? cardDef.GetHits(playedCard.UpgradeLevel)
+                        : 1;
                     bool powered = (flags & HotCardOpFlags.Unpowered) == 0;
-
-                    Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
-                    scratch.AttackActive = true;
-                    for (int h = 0; h < hits; h++)
-                    {
-                        if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || IsOverOrEnding(in s))
-                            break;
-
-                        int targetCount = SnapshotLivingEnemies(in s, targets);
-                        if (targetCount == 0)
-                            break;
-
-                        for (int t = 0; t < targetCount; t++)
-                        {
-                            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0)
-                                break;
-                            byte enemySlot = targets[t];
-                            if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
-                                continue;
-                            DealDamage(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: dmg, isPoweredAttack: powered);
-                        }
-                    }
-                    scratch.AttackActive = false;
+                    ExecuteAllEnemiesAttack(ref s, ref cold, rules, scratch, liveCardIdx, dmg, hits, powered);
                     break;
                 }
 
@@ -107,26 +144,12 @@ internal static partial class HotCombatEngine
                     if (IsOverOrEnding(in s))
                         break;
 
-                    int dmg = ResolveOpAmount(op, in playedCard, cardDef);
-                    int hits = (flags & HotCardOpFlags.UseCardHits) != 0 ? cardDef.GetHits(playedCard.UpgradeLevel) : 1;
+                    int dmg = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    int hits = cardDef != null && (flags & HotCardOpFlags.UseCardHits) != 0
+                        ? cardDef.GetHits(playedCard.UpgradeLevel)
+                        : 1;
                     bool powered = (flags & HotCardOpFlags.Unpowered) == 0;
-
-                    Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
-                    scratch.AttackActive = true;
-                    for (int h = 0; h < hits; h++)
-                    {
-                        if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || IsOverOrEnding(in s))
-                            break;
-
-                        int targetCount = SnapshotLivingEnemies(in s, targets);
-                        if (targetCount == 0)
-                            break;
-
-                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatTargets], targetCount);
-                        byte enemySlot = targets[pick];
-                        DealDamage(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: dmg, isPoweredAttack: powered);
-                    }
-                    scratch.AttackActive = false;
+                    ExecuteRandomEnemiesAttack(ref s, ref cold, rules, scratch, liveCardIdx, dmg, hits, powered);
                     break;
                 }
 
@@ -140,48 +163,36 @@ internal static partial class HotCombatEngine
                         break;
                     }
 
-                    int dmg = ResolveOpAmount(op, in playedCard, cardDef);
-                    int hits = (flags & HotCardOpFlags.UseCardHits) != 0 ? cardDef.GetHits(playedCard.UpgradeLevel) : 1;
+                    int dmg = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    int hits = cardDef != null && (flags & HotCardOpFlags.UseCardHits) != 0
+                        ? cardDef.GetHits(playedCard.UpgradeLevel)
+                        : 1;
                     bool powered = (flags & HotCardOpFlags.Unpowered) == 0;
-                    byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
-
-                    scratch.AttackActive = true;
-                    for (int h = 0; h < hits; h++)
-                    {
-                        if ((s.Osty.Flags & HotCreatureFlags.Alive) == 0
-                            || (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
-                        {
-                            break;
-                        }
-                        DealDamage(ref s, ref cold, rules, scratch, dealerSlot: 1, targetSlot: targetCreatureSlot, baseDamage: dmg, isPoweredAttack: powered);
-                        if (IsOverOrEnding(in s))
-                            break;
-                    }
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    scratch.AttackActive = false;
+                    ExecuteOstyAttack(ref s, ref cold, rules, scratch, liveCardIdx, targetEnemySlot, dmg, hits, powered);
                     break;
                 }
 
                 case HotCardOpKind.GainBlock:
                 {
-                    int blk = ResolveOpAmount(op, in playedCard, cardDef);
+                    int blk = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
                     bool isCardBlock = (flags & HotCardOpFlags.Unpowered) == 0;
-                    GainBlock(ref s, rules, targetSlot: 0, baseAmount: blk, isCardBlock: isCardBlock);
+                    GainBlockInternal(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: blk, isCardBlock: isCardBlock, cardIdx: liveCardIdx, cardDefId: cardDefId);
                     break;
                 }
 
                 case HotCardOpKind.Draw:
                 {
-                    int drawCount = ResolveOpAmount(op, in playedCard, cardDef);
+                    int drawCount = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
                     DrawCards(ref s, ref cold, rules, scratch, drawCount, fromHandDraw: false);
                     break;
                 }
 
                 case HotCardOpKind.ApplyPowerSelf:
+                case HotCardOpKind.ApplyTempStat:
                 {
                     ushort powerDefId = (ushort)op.Arg0;
-                    int amt = ResolvePowerOpAmount(op, in playedCard, cardDef);
-                    ApplyPower(ref s, rules, ownerSlot: 0, applierSlot: 0, powerDefId: powerDefId, amount: amt);
+                    int amt = ResolvePowerOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    ApplyPower(ref s, ref cold, rules, scratch, ownerSlot: 0, applierSlot: 0, powerDefId: powerDefId, amount: amt, isCardSource: isCardSource);
                     break;
                 }
 
@@ -190,15 +201,15 @@ internal static partial class HotCombatEngine
                     if (!IsValidEnemyTarget(in s, targetEnemySlot))
                         break;
                     ushort powerDefId = (ushort)op.Arg0;
-                    int amt = ResolvePowerOpAmount(op, in playedCard, cardDef);
-                    ApplyPower(ref s, rules, ownerSlot: (byte)(3 + targetEnemySlot), applierSlot: 0, powerDefId: powerDefId, amount: amt);
+                    int amt = ResolvePowerOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    ApplyPower(ref s, ref cold, rules, scratch, ownerSlot: (byte)(3 + targetEnemySlot), applierSlot: 0, powerDefId: powerDefId, amount: amt, isCardSource: isCardSource);
                     break;
                 }
 
                 case HotCardOpKind.ApplyPowerAllEnemies:
                 {
                     ushort powerDefId = (ushort)op.Arg0;
-                    int amt = ResolvePowerOpAmount(op, in playedCard, cardDef);
+                    int amt = ResolvePowerOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
                     Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
                     int targetCount = SnapshotLivingEnemies(in s, targets);
                     for (int t = 0; t < targetCount; t++)
@@ -206,44 +217,33 @@ internal static partial class HotCombatEngine
                         byte enemySlot = targets[t];
                         if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
                             continue;
-                        ApplyPower(ref s, rules, ownerSlot: (byte)(3 + enemySlot), applierSlot: 0, powerDefId: powerDefId, amount: amt);
+                        ApplyPower(ref s, ref cold, rules, scratch, ownerSlot: (byte)(3 + enemySlot), applierSlot: 0, powerDefId: powerDefId, amount: amt, isCardSource: isCardSource);
+                        if (scratch.NeedsChoice)
+                            return;
                     }
-                    break;
-                }
-
-                case HotCardOpKind.ApplyTempStat:
-                {
-                    ushort powerDefId = (ushort)op.Arg0;
-                    int amt = ResolvePowerOpAmount(op, in playedCard, cardDef);
-                    ApplyPower(ref s, rules, ownerSlot: 0, applierSlot: 0, powerDefId: powerDefId, amount: amt);
                     break;
                 }
 
                 case HotCardOpKind.GainEnergy:
                 {
-                    int amt = ResolveOpAmount(op, in playedCard, cardDef);
-                    if (amt > 0)
-                        s.Energy += amt;
+                    int amt = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    GainEnergy(ref s, rules, amt);
                     break;
                 }
 
                 case HotCardOpKind.GainStars:
                 {
-                    int amt = ResolveOpAmount(op, in playedCard, cardDef);
-                    if (amt > 0)
-                    {
-                        s.Stars += amt;
-                        s.Counters[(int)HotCounterSlot.StarsGainedThisTurn] += amt;
-                    }
+                    int amt = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    GainStars(ref s, ref cold, rules, scratch, amt);
                     break;
                 }
 
                 case HotCardOpKind.LoseHp:
                 {
-                    int amt = ResolveOpAmount(op, in playedCard, cardDef);
+                    int amt = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
                     if (amt > 0)
                     {
-                        DealDamage(
+                        DealDamageInternal(
                             ref s,
                             ref cold,
                             rules,
@@ -252,57 +252,89 @@ internal static partial class HotCombatEngine
                             targetSlot: 0,
                             baseDamage: amt,
                             isPoweredAttack: false,
-                            isUnblockable: true);
+                            isUnblockable: true,
+                            cardIdx: liveCardIdx,
+                            cardDefId: cardDefId);
                     }
                     break;
                 }
 
                 case HotCardOpKind.Heal:
                 {
-                    int amt = ResolveOpAmount(op, in playedCard, cardDef);
-                    HealCreature(ref s, targetSlot: 0, amount: amt);
+                    int amt = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    HealCreature(ref s, ref cold, rules, scratch, targetSlot: 0, amount: amt);
+                    break;
+                }
+
+                case HotCardOpKind.Forge:
+                {
+                    int amt = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    Forge(ref s, ref cold, rules, scratch, amt);
+                    break;
+                }
+
+                case HotCardOpKind.ChannelOrb:
+                {
+                    HotOrbId orbId = (HotOrbId)op.Arg0;
+                    int count = (flags & HotCardOpFlags.FixedOne) != 0
+                        ? 1
+                        : Math.Max(1, ResolvePowerOpAmount(op, in playedCard, cardDef, potionPrimaryValue));
+                    for (int k = 0; k < count && !scratch.NeedsChoice; k++)
+                        ChannelOrb(ref s, ref cold, rules, scratch, orbId);
+                    break;
+                }
+
+                case HotCardOpKind.EvokeOrb:
+                {
+                    int count = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    EvokeOrb(ref s, ref cold, rules, scratch, orbIdx: 0, repeat: Math.Max(1, count), dequeue: true);
+                    break;
+                }
+
+                case HotCardOpKind.SummonOsty:
+                {
+                    int amt = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
+                    SummonOsty(ref s, ref cold, rules, scratch, amt);
                     break;
                 }
 
                 case HotCardOpKind.AddFixedCard:
                 {
-                    if ((flags & HotCardOpFlags.AddCloneToDiscard) != 0)
+                    if ((flags & HotCardOpFlags.AddCloneToDiscard) != 0 && liveCardIdx >= 0)
                     {
-                        int livePlayIdx = s.PlayStart + playOffsetInPlay;
-                        ClonePlayedCardToDiscard(ref s, ref cold, rules, livePlayIdx);
+                        ClonePlayedCardToDiscard(ref s, ref cold, rules, scratch, liveCardIdx);
                     }
                     else
                     {
                         ushort generatedDefId = (ushort)op.Arg0;
-                        AddGeneratedFixedCard(ref s, rules, generatedDefId, HotPileKind.Discard, s.DiscardCount);
+                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, generatedDefId, HotPileKind.Discard, dstOffset: -1, upgraded: false, createdByPlayer: true);
                     }
+                    break;
+                }
+
+                case HotCardOpKind.ShootArrow:
+                {
+                    if (cardDef != null && liveCardIdx >= 0)
+                        HotFoolTarot.TryExecuteCustomCard(ref s, ref cold, rules, scratch, cardDef.DefId, ref s.Cards[liveCardIdx], targetEnemySlot, out _);
                     break;
                 }
 
                 case HotCardOpKind.DiscardHand:
                 {
-                    while (s.HandCount > 0 && !IsOverOrEnding(in s))
-                    {
-                        HotPiles.MoveCard(ref s, 0, HotPileKind.Discard, s.DiscardCount);
-                        s.Counters[(int)HotCounterSlot.CardsDiscardedThisTurn]++;
-                    }
+                    while (s.HandCount > 0 && !IsOverOrEnding(in s) && !scratch.NeedsChoice)
+                        DiscardCard(ref s, ref cold, rules, scratch, 0);
                     break;
                 }
 
                 case HotCardOpKind.Custom:
                 {
-                    ushort handlerId = op.Arg0 > 0 ? (ushort)op.Arg0 : cardDef.CustomHandlerId;
-                    ExecuteCustomCardHandler(ref s, ref cold, rules, scratch, handlerId, playOffsetInPlay, targetEnemySlot);
+                    HotCustomCardId customId = op.Arg0 > 0
+                        ? (HotCustomCardId)op.Arg0
+                        : (cardDef != null ? cardDef.CardId : HotCustomCardId.None);
+                    if (customId != HotCustomCardId.None && playOffsetInPlay >= 0)
+                        ExecuteCoreCustomCard(ref s, ref cold, rules, scratch, customId, playOffsetInPlay, targetEnemySlot, energySpent);
                     break;
                 }
-
-                // Reserved Phase 2 character mechanics (Forge, Orbs, Osty summon, Fool arrows)
-                case HotCardOpKind.Forge:
-                case HotCardOpKind.ChannelOrb:
-                case HotCardOpKind.EvokeOrb:
-                case HotCardOpKind.SummonOsty:
-                case HotCardOpKind.ShootArrow:
-                    break;
             }
 
             if (scratch.NeedsChoice)
@@ -310,33 +342,223 @@ internal static partial class HotCombatEngine
         }
     }
 
-    private static void ExecuteCustomCardHandler(
+    internal static void ExecuteSingleTargetAttack(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
         HotRules rules,
         HotExecScratch scratch,
-        ushort customHandlerId,
-        int playOffsetInPlay,
-        int targetEnemySlot)
+        int cardIdx,
+        int targetEnemySlot,
+        int baseDamage,
+        int hits,
+        bool powered)
     {
-        switch (customHandlerId)
-        {
-            case 0:
-                break;
+        if (IsOverOrEnding(in s) || !IsValidEnemyTarget(in s, targetEnemySlot) || hits <= 0)
+            return;
 
-            default:
+        ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
+
+        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+        scratch.AttackActive = true;
+        for (int h = 0; h < hits; h++)
+        {
+            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
+                || (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0
+                || scratch.NeedsChoice)
+            {
+                break;
+            }
+            DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+            if (IsOverOrEnding(in s))
                 break;
         }
+        scratch.AttackActive = false;
+        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+    }
+
+    internal static void ExecuteAllEnemiesAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        int cardIdx,
+        int baseDamage,
+        int hits,
+        bool powered)
+    {
+        if (IsOverOrEnding(in s) || hits <= 0)
+            return;
+
+        ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
+
+        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+        scratch.AttackActive = true;
+        for (int h = 0; h < hits; h++)
+        {
+            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || IsOverOrEnding(in s) || scratch.NeedsChoice)
+                break;
+
+            int targetCount = SnapshotLivingEnemies(in s, targets);
+            if (targetCount == 0)
+                break;
+
+            for (int t = 0; t < targetCount; t++)
+            {
+                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+                    break;
+                byte enemySlot = targets[t];
+                if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                    continue;
+                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId, deferKill: true);
+            }
+            for (int t = 0; t < targetCount; t++)
+            {
+                if (scratch.NeedsChoice)
+                    break;
+                byte enemySlot = targets[t];
+                if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                    && s.Enemies[enemySlot].Vital.CurrentHp <= 0)
+                {
+                    KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false);
+                }
+            }
+        }
+        scratch.AttackActive = false;
+        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+    }
+
+    internal static void ExecuteRandomEnemiesAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        int cardIdx,
+        int baseDamage,
+        int hits,
+        bool powered)
+    {
+        if (IsOverOrEnding(in s) || hits <= 0)
+            return;
+
+        ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+
+        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+        scratch.AttackActive = true;
+        for (int h = 0; h < hits; h++)
+        {
+            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || IsOverOrEnding(in s) || scratch.NeedsChoice)
+                break;
+
+            int enemySlot = PickRandomLivingEnemySlot(ref s);
+            if (enemySlot < 0)
+                break;
+
+            DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+        }
+        scratch.AttackActive = false;
+        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+    }
+
+    internal static void ExecuteOstyAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        int cardIdx,
+        int targetEnemySlot,
+        int baseDamage,
+        int hits,
+        bool powered)
+    {
+        if (IsOverOrEnding(in s)
+            || (s.CombatFlags & HotCombatFlags.HasOsty) == 0
+            || (s.Osty.Flags & HotCreatureFlags.Alive) == 0
+            || !IsValidEnemyTarget(in s, targetEnemySlot)
+            || hits <= 0)
+        {
+            return;
+        }
+
+        ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
+
+        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
+        scratch.AttackActive = true;
+        for (int h = 0; h < hits; h++)
+        {
+            if ((s.Osty.Flags & HotCreatureFlags.Alive) == 0
+                || (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0
+                || scratch.NeedsChoice)
+            {
+                break;
+            }
+            DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 1, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+            if (IsOverOrEnding(in s))
+                break;
+        }
+        s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
+        scratch.AttackActive = false;
+        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int ResolveOpAmount(HotCardEffectOp op, in HotCard card, HotCardDef def)
+    private static void BeginAttackHooks(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        byte dealerSlot,
+        int cardIdx,
+        ushort cardDefId,
+        bool powered)
+    {
+        if ((s.ActiveHookMask & (ulong)HotHookMask.BeforeAttack) == 0)
+            return;
+        HotHookArgs args = new()
+        {
+            ActorSlot = dealerSlot,
+            CardIdx = cardIdx,
+            CardDefId = cardDefId,
+            IsPoweredAttack = powered,
+        };
+        DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.BeforeAttack, ref args);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void EndAttackHooks(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        byte dealerSlot,
+        int cardIdx,
+        ushort cardDefId,
+        bool powered)
+    {
+        if ((s.ActiveHookMask & (ulong)HotHookMask.AfterAttack) == 0)
+            return;
+        HotHookArgs args = new()
+        {
+            ActorSlot = dealerSlot,
+            CardIdx = cardIdx,
+            CardDefId = cardDefId,
+            IsPoweredAttack = powered,
+        };
+        DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterAttack, ref args);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ResolveOpAmount(HotCardEffectOp op, in HotCard card, HotCardDef? def, int potionPrimaryValue)
     {
         HotCardOpFlags flags = (HotCardOpFlags)op.Flags;
         if ((flags & HotCardOpFlags.FixedOne) != 0)
             return 1;
         if ((flags & HotCardOpFlags.LiteralAmount) != 0)
             return op.Arg0;
+        if (def == null)
+            return potionPrimaryValue != 0 ? potionPrimaryValue : op.Arg0;
         if ((flags & HotCardOpFlags.UseCardDamage) != 0)
             return def.GetDamage(card.UpgradeLevel, card.Var0Delta);
         if ((flags & HotCardOpFlags.UseCardBlock) != 0)
@@ -347,11 +569,13 @@ internal static partial class HotCombatEngine
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int ResolvePowerOpAmount(HotCardEffectOp op, in HotCard card, HotCardDef def)
+    private static int ResolvePowerOpAmount(HotCardEffectOp op, in HotCard card, HotCardDef? def, int potionPrimaryValue)
     {
         HotCardOpFlags flags = (HotCardOpFlags)op.Flags;
         if ((flags & HotCardOpFlags.FixedOne) != 0)
             return 1;
+        if (def == null)
+            return potionPrimaryValue != 0 ? potionPrimaryValue : 1;
         if ((flags & HotCardOpFlags.UseCardMagic) != 0)
             return def.GetMagic(card.UpgradeLevel);
         if ((flags & HotCardOpFlags.UseCardDamage) != 0)
@@ -362,7 +586,7 @@ internal static partial class HotCombatEngine
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int SnapshotLivingEnemies(in CombatHotState s, Span<byte> dst)
+    internal static int SnapshotLivingEnemies(in CombatHotState s, Span<byte> dst)
     {
         int rosterCount = s.RosterCount;
         int written = 0;

@@ -18,7 +18,48 @@ internal sealed class HotRules
     public required HotMonsterDef[] Monsters { get; init; }
 
     public required HotCardEffectOp[] EffectOps { get; init; }
+    public HotCardEffectOp[] PotionEffectOps { get; init; } = [];
     public required HotMonsterMachine[] MonsterMachines { get; init; }
+
+    // Dense O(1) enum-ID -> per-root DefId tables (indexed by Hot*Id enum value; 0 = unregistered)
+    public ushort[] CardDefIdByCardId { get; init; } = [];
+    public ushort[] PowerDefIdByPowerId { get; init; } = [];
+    public ushort[] RelicDefIdByRelicId { get; init; } = [];
+    public byte[] RelicStateSlotByRelicId { get; init; } = [];
+    public bool[] HasActiveRelicByRelicId { get; init; } = [];
+    public ushort[] PotionDefIdByPotionId { get; init; } = [];
+    public ushort[] MonsterDefIdByMonsterId { get; init; } = [];
+    public byte[] OrbDefIdByOrbId { get; init; } = [];
+    public byte[] EnchDefIdByEnchId { get; init; } = [];
+    public byte[] AfflDefIdByAfflId { get; init; } = [];
+
+    // Frozen vanilla combat generation / transformation pools (CardDefId / PotionDefId arrays)
+    public ushort[] UnlockedCharacterCardPool { get; init; } = [];
+    public ushort[] UnlockedColorlessCardPool { get; init; } = [];
+    public ushort[] UnlockedCurseCardPool { get; init; } = [];
+    public ushort[] OtherCharacterCardPool { get; init; } = [];
+    public ushort[] TarotCardPool { get; init; } = [];
+    public ushort[] CombatCharacterAttackPool { get; init; } = [];
+    public ushort[] CombatCharacterSkillPool { get; init; } = [];
+    public ushort[] CombatCharacterPowerPool { get; init; } = [];
+    public ushort[] CombatColorlessPool { get; init; } = [];
+    public ushort[] UnlockedPotionPool { get; init; } = [];
+
+    // Encounter & search pruning metadata
+    public HotDominionId Dominion { get; init; }
+    public bool HasAnyHealOrUnknownGeneration { get; init; }
+    public bool HasRenewablePotionShapedRock { get; init; }
+    public bool IsBossEncounter { get; init; }
+    public bool IsEliteEncounter { get; init; }
+    public bool IsTheftEncounter { get; init; }
+    public string CharacterEntry { get; init; } = string.Empty;
+    public string EncounterEntry { get; init; } = string.Empty;
+    public string[] EncounterSlots { get; init; } = [];
+    public int CurrentActIndex { get; init; }
+    public int TotalFloor { get; init; }
+    public int PostCombatRelicUnconditionalHeal { get; init; }
+    public int PostCombatRelicWoundedHeal { get; init; }
+    public int PostCombatRelicWoundedHpPercent { get; init; }
 
     public required ushort[] ActiveRelicDefIds { get; init; }
     public required HotActiveRelic[] ActiveRelics { get; init; }
@@ -68,6 +109,8 @@ internal sealed class HotRules
     public bool HasBurningBlood { get; init; }
     public bool HasOddMushroom { get; init; }
     public bool HasPaperFrog { get; init; }
+    public bool HasPaperPhrog => HasPaperFrog || HasRelic(HotRelicId.PaperPhrog);
+    public bool HasPaperKrane => HasRelic(HotRelicId.PaperKrane);
 
     public ReadOnlySpan<HotCardEffectOp> GetCardOps(ushort cardDefId)
     {
@@ -75,6 +118,74 @@ internal sealed class HotRules
         return def.OpCount == 0
             ? ReadOnlySpan<HotCardEffectOp>.Empty
             : EffectOps.AsSpan(def.OpStart, def.OpCount);
+    }
+
+    public ReadOnlySpan<HotCardEffectOp> GetPotionOps(ushort potionDefId)
+    {
+        HotPotionDef def = Potions[potionDefId];
+        return def.OpCount == 0
+            ? ReadOnlySpan<HotCardEffectOp>.Empty
+            : PotionEffectOps.AsSpan(def.OpStart, def.OpCount);
+    }
+
+    public ushort GetCardDefId(HotCustomCardId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)CardDefIdByCardId.Length ? CardDefIdByCardId[idx] : (ushort)0;
+    }
+
+    public ushort GetPowerDefId(HotPowerId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)PowerDefIdByPowerId.Length ? PowerDefIdByPowerId[idx] : (ushort)0;
+    }
+
+    public ushort GetRelicDefId(HotRelicId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)RelicDefIdByRelicId.Length ? RelicDefIdByRelicId[idx] : (ushort)0;
+    }
+
+    public bool HasRelic(HotRelicId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)HasActiveRelicByRelicId.Length && HasActiveRelicByRelicId[idx];
+    }
+
+    public byte GetRelicStateSlot(HotRelicId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)RelicStateSlotByRelicId.Length ? RelicStateSlotByRelicId[idx] : (byte)0xFF;
+    }
+
+    public ushort GetPotionDefId(HotCustomPotionId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)PotionDefIdByPotionId.Length ? PotionDefIdByPotionId[idx] : (ushort)0;
+    }
+
+    public ushort GetMonsterDefId(HotMonsterId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)MonsterDefIdByMonsterId.Length ? MonsterDefIdByMonsterId[idx] : (ushort)0;
+    }
+
+    public byte GetOrbDefId(HotOrbId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)OrbDefIdByOrbId.Length ? OrbDefIdByOrbId[idx] : (byte)0;
+    }
+
+    public byte GetEnchantmentDefId(HotEnchantmentId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)EnchDefIdByEnchId.Length ? EnchDefIdByEnchId[idx] : (byte)0;
+    }
+
+    public byte GetAfflictionDefId(HotAfflictionId id)
+    {
+        int idx = (int)id;
+        return (uint)idx < (uint)AfflDefIdByAfflId.Length ? AfflDefIdByAfflId[idx] : (byte)0;
     }
 
     public HotMonsterMachine? GetMonsterMachine(ushort monsterDefId)
@@ -286,30 +397,10 @@ internal sealed class HotRules
             "CorpseSlug";
 
     public static HotHookMask GetPowerHookMask(string entry)
-        => entry switch
-        {
-            "STRENGTH_POWER"    => HotHookMask.ModifyDamageAdditive,
-            "WEAK_POWER"        => HotHookMask.ModifyDamageMultiplicative | HotHookMask.AfterTurnEnd,
-            "VULNERABLE_POWER"  => HotHookMask.ModifyDamageMultiplicative | HotHookMask.AfterTurnEnd,
-            "DEXTERITY_POWER"   => HotHookMask.ModifyBlockAdditive,
-            "FRAIL_POWER"       => HotHookMask.ModifyBlockMultiplicative | HotHookMask.AfterTurnEnd,
-            "METALLICIZE_POWER" => HotHookMask.BeforeTurnEnd,
-            "PLATING_POWER"     => HotHookMask.BeforeTurnEnd | HotHookMask.AfterDamageReceived,
-            "BARRICADE_POWER"   => HotHookMask.ShouldClearBlock,
-            "ARTIFACT_POWER"    => HotHookMask.BeforePowerAmountChanged,
-            "THORNS_POWER"      => HotHookMask.AfterDamageReceived,
-            "RITUAL_POWER"      => HotHookMask.AfterTurnEnd,
-            _                   => HotHookMask.None,
-        };
+        => HotPowerCatalog.GetHookMask(entry);
 
     public static HotHookMask GetRelicHookMask(string entry)
-        => entry switch
-        {
-            "BURNING_BLOOD" => HotHookMask.AfterCombatEnd,
-            "ODD_MUSHROOM"  => HotHookMask.ModifyDamageMultiplicative,
-            "PAPER_FROG"    => HotHookMask.ModifyDamageMultiplicative,
-            _               => HotHookMask.None,
-        };
+        => HotRelicCatalog.GetHookMask(entry);
 
     public static void CompilePhase1CardBytecode(
         string entry,
@@ -320,118 +411,15 @@ internal sealed class HotRules
         out byte opCount,
         out ushort customHandlerId)
     {
-        opStart = ops.Count;
-        customHandlerId = 0;
-
-        switch (entry)
-        {
-            case "STRIKE_IRONCLAD":
-            case "BLUDGEON":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
-                break;
-
-            case "DEFEND_IRONCLAD":
-            case "IMPERVIOUS":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.GainBlock, HotCardOpFlags.UseCardBlock));
-                break;
-
-            case "BASH":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.ApplyPowerTarget,
-                    HotCardOpFlags.UseCardMagic,
-                    (short)ensurePowerDefId("VULNERABLE_POWER")));
-                break;
-
-            case "ANGER":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.AddFixedCard,
-                    HotCardOpFlags.AddCloneToDiscard,
-                    (short)cardDefId));
-                break;
-
-            case "CLEAVE":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.AttackAll, HotCardOpFlags.UseCardDamage));
-                break;
-
-            case "THUNDERCLAP":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.AttackAll, HotCardOpFlags.UseCardDamage));
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.ApplyPowerAllEnemies,
-                    HotCardOpFlags.UseCardMagic,
-                    (short)ensurePowerDefId("VULNERABLE_POWER")));
-                break;
-
-            case "POMMEL_STRIKE":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
-                ops.Add(new HotCardEffectOp(HotCardOpKind.Draw, HotCardOpFlags.UseCardMagic));
-                break;
-
-            case "SHRUG_IT_OFF":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.GainBlock, HotCardOpFlags.UseCardBlock));
-                ops.Add(new HotCardEffectOp(HotCardOpKind.Draw, HotCardOpFlags.UseCardMagic));
-                break;
-
-            case "TWIN_STRIKE":
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.Attack,
-                    HotCardOpFlags.UseCardDamage | HotCardOpFlags.UseCardHits));
-                break;
-
-            case "IRON_WAVE":
-                // STS2 0.113.1 IronWave.OnPlay: GainBlock FIRST, then Attack!
-                ops.Add(new HotCardEffectOp(HotCardOpKind.GainBlock, HotCardOpFlags.UseCardBlock));
-                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
-                break;
-
-            case "CLOTHESLINE":
-                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.ApplyPowerTarget,
-                    HotCardOpFlags.UseCardMagic,
-                    (short)ensurePowerDefId("WEAK_POWER")));
-                break;
-
-            case "INFLAME":
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.ApplyPowerSelf,
-                    HotCardOpFlags.UseCardMagic,
-                    (short)ensurePowerDefId("STRENGTH_POWER")));
-                break;
-
-            case "METALLICIZE":
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.ApplyPowerSelf,
-                    HotCardOpFlags.UseCardMagic,
-                    (short)ensurePowerDefId("METALLICIZE_POWER")));
-                break;
-
-            case "STONE_ARMOR":
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.ApplyPowerSelf,
-                    HotCardOpFlags.UseCardMagic,
-                    (short)ensurePowerDefId("PLATING_POWER")));
-                break;
-
-            case "BARRICADE":
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.ApplyPowerSelf,
-                    HotCardOpFlags.FixedOne,
-                    (short)ensurePowerDefId("BARRICADE_POWER")));
-                break;
-
-            case "TREMBLE":
-                ops.Add(new HotCardEffectOp(
-                    HotCardOpKind.ApplyPowerTarget,
-                    HotCardOpFlags.UseCardMagic,
-                    (short)ensurePowerDefId("VULNERABLE_POWER")));
-                break;
-
-            case "ASCENDERS_BANE":
-                break;
-        }
-
-        opCount = (byte)(ops.Count - opStart);
+        HotCustomCardId cardId = HotCardCatalog.FindByEntry(entry);
+        HotCardCatalog.CompileCardBytecode(
+            cardId,
+            cardDefId,
+            powerId => ensurePowerDefId(HotPowerCatalog.Get(powerId).Entry),
+            ops,
+            out opStart,
+            out opCount,
+            out HotCustomCardId customId);
+        customHandlerId = (ushort)customId;
     }
 }

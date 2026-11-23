@@ -33,7 +33,42 @@ internal static partial class HotCombatEngine
         byte dealerSlot = (byte)(3 + enemySlot);
 
         // 1. Attack hits (matches MonsterMoveSemantics.ApplyForecastMove attack loop)
-        if (node.Repeats > 0)
+        if (node.Attacks is { Length: > 0 } multiAttacks)
+        {
+            for (int a = 0; a < multiAttacks.Length; a++)
+            {
+                HotMonsterAttack atk = multiAttacks[a];
+                int hits = Math.Max(0, (int)atk.Repeats);
+                if (hits == 0)
+                    continue;
+
+                scratch.AttackActive = true;
+                for (int h = 0; h < hits; h++)
+                {
+                    if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
+                        || (s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                    {
+                        break;
+                    }
+
+                    DealDamage(
+                        ref s,
+                        ref cold,
+                        rules,
+                        scratch,
+                        dealerSlot: dealerSlot,
+                        targetSlot: 0,
+                        baseDamage: atk.BaseDamage,
+                        isPoweredAttack: true);
+                }
+                s.Enemies[enemySlot].CreatureAttacksThisTurn++;
+                scratch.AttackActive = false;
+
+                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                    return;
+            }
+        }
+        else if (node.Repeats > 0)
         {
             int hits = node.Repeats;
             if (rules.Monsters[monsterDefId].StateKind == HotMonsterStateKind.TestSubject

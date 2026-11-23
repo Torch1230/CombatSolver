@@ -63,6 +63,8 @@ def build_command(item, out, harness):
                       ('transpositionEntryLimit', '--transposition-entry-limit')):
         if item.get(key) is not None:
             args += [flag, str(item[key])]
+    if item.get('backend'):
+        args += ['--backend', str(item['backend'])]
     if item.get('usePortfolio'):
         args.append('--use-portfolio')
     if item.get('measurePhases'):

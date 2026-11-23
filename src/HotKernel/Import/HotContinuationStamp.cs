@@ -567,6 +567,16 @@ internal static class HotContinuationStamp
             text.Append("|dupeSource={").Append(def.RootDupeSourceKey ?? string.Empty).Append('}');
     }
 
+    public static string FormatChoiceCardKey(
+        in HotCard card,
+        HotColdSidecar? cold,
+        HotRules rules)
+    {
+        StringBuilder text = new(160);
+        AppendChoiceCardKey(text, in card, cold, rules);
+        return text.ToString();
+    }
+
     private static void AppendChoiceCardKey(
         StringBuilder text,
         in HotCard card,

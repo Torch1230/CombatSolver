@@ -1,4 +1,6 @@
 using System.Reflection;
+using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -57,6 +59,49 @@ internal static class VanillaRootGate
 
         foreach (Creature escaped in state.EscapedCreatures)
             CheckCreature(escaped);
+    }
+
+    public static void ValidateVanillaOnly(
+        CombatPredictionSimulator simulator,
+        SimulatedCombatState combat,
+        Player player,
+        int potionSlotCount)
+    {
+        ArgumentNullException.ThrowIfNull(simulator);
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(player);
+
+        CheckModel(combat.Encounter, "encounter");
+        CheckModel(player.Character, "character");
+
+        foreach (ModifierModel modifier in combat.Modifiers)
+            CheckModel(modifier, "combat_modifier");
+
+        foreach (RelicModel relic in combat.RelicsOf(player))
+            CheckModel(relic, "relic");
+
+        for (int slot = 0; slot < potionSlotCount; slot++)
+            CheckModel(combat.GetPotionAtSlot(player, slot), "potion");
+
+        SimPlayerCombatState pcs = simulator.State.GetPlayerCombatState(player);
+        foreach (PredictedCard card in pcs.AllCards)
+            CheckCard(card.Preview);
+
+        foreach (OrbModel orb in pcs.OrbQueue.Orbs)
+            CheckModel(orb, "orb");
+
+        foreach (Creature enemy in combat.Enemies)
+            CheckModel(enemy.Monster, "monster");
+
+        foreach (Creature ally in combat.Allies)
+            CheckModel(ally.Monster, "ally");
+
+        foreach (PowerModel power in combat.EffectivePowers())
+        {
+            CheckModel(power, "power");
+            if (power is NightmarePower nightmare)
+                CheckCard(combat.GetNightmareSelection(nightmare).Preview);
+        }
     }
 
     private static void CheckCreature(Creature creature)

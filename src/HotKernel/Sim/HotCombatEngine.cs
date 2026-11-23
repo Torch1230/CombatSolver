@@ -77,13 +77,19 @@ internal static partial class HotCombatEngine
         if ((card.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0)
             return false;
 
-        int energyCost = GetPayableEnergyCost(in s, in card, cold);
-        int starCost = GetPayableStarCost(in s, in card, cold);
+        int energyCost = GetEffectiveEnergyCost(in s, in card, cold, rules, isInPlayablePile: true);
+        int starCost = GetEffectiveStarCost(in s, in card, cold, rules, isInPlayablePile: true);
         if (energyCost > s.Energy || starCost > s.Stars)
             return false;
 
         HotCardDef def = rules.Cards[card.CardDefId];
         if (def.Target == TargetType.AnyEnemy && !HasAnyLivingEnemy(in s))
+            return false;
+
+        if (!CheckShouldPlayRestrictions(in s, in card, def, rules))
+            return false;
+
+        if (!CheckCardIsPlayable(in s, def, rules))
             return false;
 
         return true;
@@ -106,11 +112,48 @@ internal static partial class HotCombatEngine
         return true;
     }
 
+    public static bool CanUsePotion(in CombatHotState s, HotRules rules, int slot)
+    {
+        if (!IsInProgress(in s) || s.TerminalOutcome != HotCombatOutcome.Ongoing)
+            return false;
+        if (s.CurrentSide != HotCombatSide.Player)
+            return false;
+        if ((s.Player.Flags & HotCreatureFlags.Alive) == 0)
+            return false;
+        if ((uint)slot >= (uint)s.PotionSlotCount || (uint)slot >= HotLimits.MaxPotions)
+            return false;
+
+        ushort potionDefId = s.Potions[slot];
+        if (potionDefId == 0 || potionDefId >= rules.Potions.Length)
+            return false;
+
+        HotPotionDef def = rules.Potions[potionDefId];
+        if (!def.IsCombatUsable)
+            return false;
+        if (def.Target == TargetType.AnyEnemy && !HasAnyLivingEnemy(in s))
+            return false;
+
+        return true;
+    }
+
+    public static bool CanUsePotion(in CombatHotState s, HotRules rules, int slot, int targetEnemySlot)
+    {
+        if (!CanUsePotion(in s, rules, slot))
+            return false;
+
+        HotPotionDef def = rules.Potions[s.Potions[slot]];
+        if (def.Target == TargetType.AnyEnemy)
+            return IsValidEnemyTarget(in s, targetEnemySlot);
+
+        return true;
+    }
+
     public static int EnumerateLegalActions(
         in CombatHotState s,
         HotColdSidecar? cold,
         HotRules rules,
-        Span<HotAction> dst)
+        Span<HotAction> dst,
+        bool includePotions = false)
     {
         if (!IsInProgress(in s) || s.TerminalOutcome != HotCombatOutcome.Ongoing || dst.IsEmpty)
             return 0;
@@ -147,6 +190,36 @@ internal static partial class HotCombatEngine
             }
         }
 
+        if (includePotions)
+        {
+            int potionSlots = Math.Min((int)s.PotionSlotCount, HotLimits.MaxPotions);
+            for (int slot = 0; slot < potionSlots; slot++)
+            {
+                if (!CanUsePotion(in s, rules, slot))
+                    continue;
+
+                HotPotionDef pDef = rules.Potions[s.Potions[slot]];
+                if (pDef.Target == TargetType.AnyEnemy)
+                {
+                    for (int r = 0; r < rosterCount; r++)
+                    {
+                        byte enemySlot = s.ActiveEnemyRoster[r];
+                        if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                            continue;
+                        if (written >= dst.Length)
+                            return written;
+                        dst[written++] = HotAction.UsePotion(slot, enemySlot);
+                    }
+                }
+                else
+                {
+                    if (written >= dst.Length)
+                        return written;
+                    dst[written++] = HotAction.UsePotion(slot, -1);
+                }
+            }
+        }
+
         if (written < dst.Length)
             dst[written++] = HotAction.EndTurn();
 
@@ -165,6 +238,7 @@ internal static partial class HotCombatEngine
             return new HotStepResult(Executed: false, NeedsChoice: false, Outcome: s.TerminalOutcome);
 
         scratch.BeginAction(choices);
+        t_requestEndPlayerTurn = false;
 
         bool executed;
         switch (action.Kind)
@@ -173,12 +247,28 @@ internal static partial class HotCombatEngine
                 executed = ExecutePlayCard(ref s, ref cold, rules, scratch, action.SlotOrHandIdx, action.TargetEnemySlot);
                 break;
 
+            case HotActionKind.UsePotion:
+            {
+                if (!CanUsePotion(in s, rules, action.SlotOrHandIdx, action.TargetEnemySlot))
+                {
+                    executed = false;
+                }
+                else
+                {
+                    HotStepResult potionResult = HotPotions.UsePotion(
+                        ref s,
+                        ref cold,
+                        rules,
+                        scratch,
+                        action.SlotOrHandIdx,
+                        action.TargetEnemySlot);
+                    executed = potionResult.Executed;
+                }
+                break;
+            }
+
             case HotActionKind.EndTurn:
                 executed = ExecuteEndTurn(ref s, ref cold, rules, scratch);
-                break;
-
-            case HotActionKind.UsePotion:
-                executed = false;
                 break;
 
             default:
@@ -193,9 +283,10 @@ internal static partial class HotCombatEngine
     }
 
     /// <summary>
-    /// Computes post-combat victory healing from relics such as Burning Blood (STS2 triggers
-    /// <c>BurningBlood.AfterCombatVictory</c> after combat teardown, so in-combat <c>Player.CurrentHp</c>
-    /// stays exact for lockstep <c>ContinuationStamp</c> parity while search evaluation accounts for it).
+    /// Computes post-combat victory healing from relics such as Burning Blood, Black Blood, and
+    /// Meat on the Bone (STS2 triggers post-combat relic healing after combat teardown, so in-combat
+    /// <c>Player.CurrentHp</c> stays exact for lockstep <c>ContinuationStamp</c> parity while search
+    /// evaluation accounts for post-combat recovery).
     /// </summary>
     public static int ComputePostCombatRelicHeal(in CombatHotState s, HotRules rules)
     {
@@ -206,14 +297,309 @@ internal static partial class HotCombatEngine
         if (missingHp == 0)
             return 0;
 
-        int heal = 0;
-        if (rules.HasBurningBlood && rules.BurningBloodRelicDefId != 0)
+        int heal = rules.PostCombatRelicUnconditionalHeal;
+        if (heal == 0 && rules.HasBurningBlood && rules.BurningBloodRelicDefId != 0)
         {
             short bbHeal = rules.Relics[rules.BurningBloodRelicDefId].PrimaryValue;
             heal += bbHeal > 0 ? bbHeal : 6;
         }
 
-        return Math.Min(missingHp, heal);
+        if (rules.PostCombatRelicWoundedHeal > 0
+            && rules.PostCombatRelicWoundedHpPercent > 0
+            && s.Player.MaxHp > 0
+            && s.Player.CurrentHp * 100 <= s.Player.MaxHp * rules.PostCombatRelicWoundedHpPercent)
+        {
+            heal += rules.PostCombatRelicWoundedHeal;
+        }
+
+        return Math.Min(missingHp, Math.Max(0, heal));
+    }
+
+    /// <summary>
+    /// Zero-allocation read-only calculation of <c>CardModel.GetEnergyCostWithModifiers</c>
+    /// (local cost modifiers + early pass + late pass matching STS2 0.113.1).
+    /// </summary>
+    internal static int GetEffectiveEnergyCost(
+        in CombatHotState s,
+        in HotCard card,
+        HotColdSidecar? cold,
+        HotRules rules,
+        bool isInPlayablePile = true)
+    {
+        if ((card.Flags & HotCardFlags.CostsX) != 0)
+            return s.Energy;
+        if (card.BaseEnergyCost < 0)
+            return card.BaseEnergyCost;
+
+        int cost = Math.Max(0, HotCostModifiers.GetLocalEnergyCost(in card, cold));
+        HotCardDef def = rules.Cards[card.CardDefId];
+
+        // 1. Early card-self modifiers
+        if (def.CardId == HotCustomCardId.Coda)
+        {
+            int melodies = CountFinishedMelodies(in s);
+            if (melodies > 0)
+                cost = Math.Max(0, cost - 2 * melodies);
+        }
+        else if (def.CardId == HotCustomCardId.ChoLimbs)
+        {
+            if (s.Fool.MelodyFinished[0] > 0 || s.Fool.MelodyFinished[2] > 0)
+                cost = Math.Max(0, cost - 2);
+        }
+
+        // 2. Early relic modifiers
+        if (def.Type == CardType.Power && rules.HasRelic(HotRelicId.SpikedGauntlets))
+            cost += 1;
+
+        if ((s.ActiveHookMask & (ulong)HotHookMask.ModifyEnergyCost) == 0)
+            return Math.Max(0, cost);
+
+        HotAfflictionId cardAffl = card.AfflId != 0 && card.AfflId < rules.Afflictions.Length
+            ? rules.Afflictions[card.AfflId].AfflictionId
+            : HotAfflictionId.None;
+
+        // 3. Early power pass (BorrowedTime, Tangled, Curious)
+        int powerCount = s.PowerCount;
+        for (int i = 0; i < powerCount; i++)
+        {
+            ref readonly HotPower p = ref s.Powers[i];
+            if (p.OwnerSlot != 0 || p.Amount <= 0 || p.PowerDefId >= rules.Powers.Length)
+                continue;
+
+            switch (rules.Powers[p.PowerDefId].PowerId)
+            {
+                case HotPowerId.BorrowedTimePower:
+                    cost += p.Amount;
+                    break;
+
+                case HotPowerId.TangledPower:
+                    if (cardAffl == HotAfflictionId.Entangled)
+                        cost += p.Amount;
+                    break;
+
+                case HotPowerId.CuriousPower:
+                    if (def.Type == CardType.Power && cost > 0)
+                        cost = Math.Max(0, cost - p.Amount);
+                    break;
+            }
+        }
+
+        // 4. Late power & relic pass (Corruption, FreeAttack/Skill/Power/Card, Veilpiercer, VoidForm, BrilliantScarf)
+        for (int i = 0; i < powerCount; i++)
+        {
+            ref readonly HotPower p = ref s.Powers[i];
+            if (p.OwnerSlot != 0 || p.Amount <= 0 || p.PowerDefId >= rules.Powers.Length)
+                continue;
+
+            switch (rules.Powers[p.PowerDefId].PowerId)
+            {
+                case HotPowerId.CorruptionPower:
+                    if (def.Type == CardType.Skill)
+                        cost = 0;
+                    break;
+
+                case HotPowerId.FreeAttackPower:
+                    if (isInPlayablePile && def.Type == CardType.Attack)
+                        cost = 0;
+                    break;
+
+                case HotPowerId.FreeSkillPower:
+                    if (isInPlayablePile && def.Type == CardType.Skill)
+                        cost = 0;
+                    break;
+
+                case HotPowerId.FreePowerPower:
+                    if (isInPlayablePile && def.Type == CardType.Power)
+                        cost = 0;
+                    break;
+
+                case HotPowerId.FreeCardPower:
+                    if (isInPlayablePile)
+                        cost = 0;
+                    break;
+
+                case HotPowerId.VeilpiercerPower:
+                    if (isInPlayablePile && (card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0)
+                        cost = 0;
+                    break;
+
+                case HotPowerId.VoidFormPower:
+                    if (isInPlayablePile && p.Aux0 < p.Amount)
+                        cost = 0;
+                    break;
+            }
+        }
+
+        if (isInPlayablePile && cost > 0 && IsBrilliantScarfFreePlayReady(in s, rules))
+            cost = 0;
+
+        return Math.Max(0, cost);
+    }
+
+    /// <summary>
+    /// Zero-allocation read-only calculation of <c>CardModel.GetStarCostWithModifiers</c>
+    /// matching STS2 0.113.1 (<c>VoidFormPower</c>, <c>BrilliantScarf</c>).
+    /// </summary>
+    internal static int GetEffectiveStarCost(
+        in CombatHotState s,
+        in HotCard card,
+        HotColdSidecar? cold,
+        HotRules rules,
+        bool isInPlayablePile = true)
+    {
+        if ((card.Flags & HotCardFlags.HasStarCostX) != 0)
+            return s.Stars;
+
+        int cost = Math.Max(0, HotCostModifiers.GetEffectiveStarCost(in card, cold));
+        if (cost <= 0 || !isInPlayablePile)
+            return Math.Max(0, cost);
+
+        if ((s.ActiveHookMask & (ulong)(HotHookMask.ModifyStarCost | HotHookMask.ModifyEnergyCost)) != 0)
+        {
+            int powerCount = s.PowerCount;
+            for (int i = 0; i < powerCount; i++)
+            {
+                ref readonly HotPower p = ref s.Powers[i];
+                if (p.OwnerSlot == 0
+                    && p.Amount > 0
+                    && p.PowerDefId < rules.Powers.Length
+                    && rules.Powers[p.PowerDefId].PowerId == HotPowerId.VoidFormPower
+                    && p.Aux0 < p.Amount)
+                {
+                    return 0;
+                }
+            }
+
+            if (IsBrilliantScarfFreePlayReady(in s, rules))
+                return 0;
+        }
+
+        return cost;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsBrilliantScarfFreePlayReady(in CombatHotState s, HotRules rules)
+    {
+        if (!rules.HasRelic(HotRelicId.BrilliantScarf))
+            return false;
+        byte slot = rules.GetRelicStateSlot(HotRelicId.BrilliantScarf);
+        if (slot == 0xFF || slot >= HotLimits.MaxRelicStates)
+            return false;
+        ushort defId = rules.GetRelicDefId(HotRelicId.BrilliantScarf);
+        int threshold = defId != 0 && rules.Relics[defId].PrimaryValue > 0
+            ? rules.Relics[defId].PrimaryValue
+            : 5;
+        return s.RelicStates[slot].Current == threshold - 1;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CountFinishedMelodies(in CombatHotState s)
+    {
+        int count = 0;
+        if (s.Fool.MelodyFinished[0] > 0) count++;
+        if (s.Fool.MelodyFinished[1] > 0) count++;
+        if (s.Fool.MelodyFinished[2] > 0) count++;
+        return count;
+    }
+
+    private static bool CheckShouldPlayRestrictions(
+        in CombatHotState s,
+        in HotCard card,
+        HotCardDef def,
+        HotRules rules)
+    {
+        int playStarts = s.Counters[(int)HotCounterSlot.CardPlayStartsThisTurn];
+
+        // Velvet Choker relic (default 6 cards per turn)
+        if (rules.HasRelic(HotRelicId.VelvetChoker))
+        {
+            ushort vcDefId = rules.GetRelicDefId(HotRelicId.VelvetChoker);
+            int limit = vcDefId != 0 && rules.Relics[vcDefId].PrimaryValue > 0
+                ? rules.Relics[vcDefId].PrimaryValue
+                : 6;
+            if (playStarts >= limit)
+                return false;
+        }
+
+        // In-hand restriction curses (Enthralled, Normality)
+        int handCount = s.HandCount;
+        for (int i = 0; i < handCount; i++)
+        {
+            ushort handCardDefId = s.Cards[i].CardDefId;
+            if (handCardDefId >= rules.Cards.Length)
+                continue;
+            HotCustomCardId handCardId = rules.Cards[handCardDefId].CardId;
+            if (handCardId == HotCustomCardId.Enthralled && def.CardId != HotCustomCardId.Enthralled)
+                return false;
+            if (handCardId == HotCustomCardId.Normality && playStarts >= 3)
+                return false;
+        }
+
+        // Player power restrictions (Smoggy, ChainsOfBinding, Ringing, Sloth, Encore)
+        HotAfflictionId cardAffl = card.AfflId != 0 && card.AfflId < rules.Afflictions.Length
+            ? rules.Afflictions[card.AfflId].AfflictionId
+            : HotAfflictionId.None;
+
+        int powerCount = s.PowerCount;
+        for (int i = 0; i < powerCount; i++)
+        {
+            ref readonly HotPower p = ref s.Powers[i];
+            if (p.OwnerSlot != 0 || p.Amount <= 0 || p.PowerDefId >= rules.Powers.Length)
+                continue;
+
+            switch (rules.Powers[p.PowerDefId].PowerId)
+            {
+                case HotPowerId.SmoggyPower:
+                    if (cardAffl == HotAfflictionId.Smog)
+                        return false;
+                    break;
+
+                case HotPowerId.ChainsOfBindingPower:
+                    if (cardAffl == HotAfflictionId.Bound && p.Aux0 != 0)
+                        return false;
+                    break;
+
+                case HotPowerId.RingingPower:
+                    if (cardAffl == HotAfflictionId.Ringing && playStarts > 0)
+                        return false;
+                    break;
+
+                case HotPowerId.SlothPower:
+                case HotPowerId.EncorePower:
+                    if (p.Aux0 >= p.Amount)
+                        return false;
+                    break;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool CheckCardIsPlayable(in CombatHotState s, HotCardDef def, HotRules rules)
+    {
+        switch (def.CardId)
+        {
+            case HotCustomCardId.Clash:
+            {
+                int handCount = s.HandCount;
+                for (int i = 0; i < handCount; i++)
+                {
+                    if (rules.Cards[s.Cards[i].CardDefId].Type != CardType.Attack)
+                        return false;
+                }
+                return true;
+            }
+
+            case HotCustomCardId.GrandFinale:
+                return s.DrawCount == 0;
+
+            case HotCustomCardId.HighFive:
+                return (s.CombatFlags & HotCombatFlags.HasOsty) != 0
+                    && (s.Osty.Flags & HotCreatureFlags.Alive) != 0;
+
+            default:
+                return true;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -233,6 +619,54 @@ internal static partial class HotCombatEngine
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void AddEnergyModPreservingInline(
+        ref HotCard card,
+        ref HotColdSidecar? cold,
+        short amount,
+        bool isAbsolute,
+        int expiration,
+        bool isReduceOnly)
+    {
+        if (!isAbsolute && amount == 0)
+            return;
+        if (isAbsolute && amount == 0 && card.BaseEnergyCost < 0)
+            return;
+
+        HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, amount, isAbsolute, expiration, isReduceOnly);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void CostAddThisTurn(ref HotCard card, ref HotColdSidecar? cold, int delta, bool reduceOnly = false)
+        => AddEnergyModPreservingInline(ref card, ref cold, (short)delta, isAbsolute: false, expiration: (int)LocalCostModifierExpiration.EndOfTurn, isReduceOnly: reduceOnly);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void CostAddThisCombat(ref HotCard card, ref HotColdSidecar? cold, int delta, bool reduceOnly = false)
+        => AddEnergyModPreservingInline(ref card, ref cold, (short)delta, isAbsolute: false, expiration: (int)LocalCostModifierExpiration.EndOfCombat, isReduceOnly: reduceOnly);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void CostAddUntilPlayed(ref HotCard card, ref HotColdSidecar? cold, int delta, bool reduceOnly = false)
+        => AddEnergyModPreservingInline(ref card, ref cold, (short)delta, isAbsolute: false, expiration: (int)LocalCostModifierExpiration.WhenPlayed, isReduceOnly: reduceOnly);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void CostSetThisTurn(ref HotCard card, ref HotColdSidecar? cold, int cost, bool reduceOnly = false)
+        => AddEnergyModPreservingInline(ref card, ref cold, (short)cost, isAbsolute: true, expiration: (int)LocalCostModifierExpiration.EndOfTurn, isReduceOnly: reduceOnly);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void CostSetThisCombat(ref HotCard card, ref HotColdSidecar? cold, int cost, bool reduceOnly = false)
+        => AddEnergyModPreservingInline(ref card, ref cold, (short)cost, isAbsolute: true, expiration: (int)LocalCostModifierExpiration.EndOfCombat, isReduceOnly: reduceOnly);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void CostSetThisTurnOrUntilPlayed(ref HotCard card, ref HotColdSidecar? cold, int cost, bool reduceOnly = false)
+        => AddEnergyModPreservingInline(ref card, ref cold, (short)cost, isAbsolute: true, expiration: (int)(LocalCostModifierExpiration.EndOfTurn | LocalCostModifierExpiration.WhenPlayed), isReduceOnly: reduceOnly);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void SetCardToFreeThisTurn(ref HotCard card, ref HotColdSidecar? cold)
+    {
+        CostSetThisTurnOrUntilPlayed(ref card, ref cold, 0);
+        HotCostModifiers.AddTempStarCost(ref card, ref cold, 0, clearsWhenTurnEnds: true, clearsWhenCardIsPlayed: true);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsInProgress(in CombatHotState s)
         => (s.CombatFlags & HotCombatFlags.IsInProgress) != 0;
 
@@ -241,7 +675,7 @@ internal static partial class HotCombatEngine
         => IsInProgress(in s)
             && ((s.CombatFlags & HotCombatFlags.IsAboutToLose) != 0
                 || s.TerminalOutcome != HotCombatOutcome.Ongoing
-                || !HasAnyLivingEnemy(in s));
+                || (!HasAnyLivingEnemy(in s) && !HasAnyRevivingEnemy(in s)));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsOverOrEnding(in CombatHotState s)
@@ -255,6 +689,18 @@ internal static partial class HotCombatEngine
         {
             byte enemySlot = s.ActiveEnemyRoster[i];
             if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0)
+                return true;
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool HasAnyRevivingEnemy(in CombatHotState s)
+    {
+        int enemyCount = s.EnemyCount;
+        for (int e = 0; e < enemyCount; e++)
+        {
+            if (s.Enemies[e].DeathPhase == HotDeathPhase.Reviving)
                 return true;
         }
         return false;
@@ -282,7 +728,7 @@ internal static partial class HotCombatEngine
             return true;
         }
 
-        if (s.TerminalOutcome == HotCombatOutcome.Victory || !HasAnyLivingEnemy(in s))
+        if (s.TerminalOutcome == HotCombatOutcome.Victory || (!HasAnyLivingEnemy(in s) && !HasAnyRevivingEnemy(in s)))
         {
             s.TerminalOutcome = HotCombatOutcome.Victory;
             s.TerminalTurn = (byte)Math.Clamp(s.PlayerTurnNumber, 0, byte.MaxValue);

@@ -77,8 +77,7 @@ internal static class SolverBackendSelector
         => (kind ?? Current) switch
         {
             SolverBackendKind.Legacy => LegacySolverBackend.Instance,
-            SolverBackendKind.Hot => throw new NotImplementedException(
-                "HotSolverBackend is not wired yet (planned for Phase 3)."),
+            SolverBackendKind.Hot => HotSearch.HotSolverBackend.Instance,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
 }
