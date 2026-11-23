@@ -15,6 +15,7 @@ using Sts2Sim.Core.MonsterMoves;
 using Sts2Sim.Core.MonsterMoves.Intents;
 using Sts2Sim.Core.Rooms;
 using Sts2Sim.Core.Runs;
+using Sts2Sim.Core.ValueProps;
 
 namespace Sts2Sim.PreCombatBridge.Tests;
 
@@ -129,16 +130,32 @@ public sealed partial class ForecastSearchAndOpeningTests
     [InlineData(5, 2, 0, false, new[] { 1, 8, 8 }, 0)]
     [InlineData(5, 1, 1, false, new[] { 8, 8 }, 4)]
     [InlineData(25, 0, 0, true, new[] { 15, 15 }, 5)]
+    [InlineData(5, 0, 0, false, new[] { 999_999_999, 999_999_999, 999_999_999 }, 0)]
+    [InlineData(10, 0, 0, true, new[] { 18, 15 }, 5, true)]
+    [InlineData(1, 1, 0, false, new[] { 8, 8 }, 19, true)]
+    [InlineData(10, 0, 0, true, new[] { 21, 15 }, 5, true, 3)]
+    [InlineData(10, 0, 0, false, new[] { 18, 3 }, 0, true, 0, true)]
+    [InlineData(10, 0, 0, false, new[] { 2, 3 }, 17, true, 0, true)]
     public async Task ThreatProjection_MultiHitSlipperyBufferAndBeatingRemnant_MatchesNativePostDamageTiming(
         int initialHp,
         int slipperyStacks,
         int bufferStacks,
         bool addBeatingRemnant,
         int[] incomingHits,
-        int expectedProjectedHp)
+        int expectedProjectedHp,
+        bool hasLizardTail = false,
+        int ostyHp = 0,
+        bool hasGambit = false)
     {
         TestSaveBuilder.EnsurePrewarmed();
         RunState run = TestSaveBuilder.CreateRun();
+        LizardTail? tail = null;
+        if (hasLizardTail)
+        {
+            tail = (LizardTail)ModelDb.Relic<LizardTail>().MutableClone();
+            tail.AssignOwner(run.Players[0]);
+            run.Players[0].AddRelicInternal(tail);
+        }
         if (addBeatingRemnant)
         {
             var remnant = (RelicModel)ModelDb.Relic<BeatingRemnant>().MutableClone();
@@ -155,7 +172,12 @@ public sealed partial class ForecastSearchAndOpeningTests
 
         CombatState combat = entered.Room.Engine.State;
         Creature playerCreature = combat.Players[0].Creature;
+        await CreatureCmd.SetMaxHp(playerCreature, 40);
         playerCreature.SetCurrentHpInternal(initialHp);
+        if (ostyHp > 0)
+            await OstyCmd.Summon(combat.Players[0], ostyHp, null);
+        if (hasGambit)
+            await PowerCmd.Apply<TheGambitPower>(combat, playerCreature, 1m, playerCreature, null);
 
         if (slipperyStacks > 0)
             await PowerCmd.Apply<SlipperyPower>(combat, playerCreature, slipperyStacks, playerCreature, null);
@@ -172,6 +194,42 @@ public sealed partial class ForecastSearchAndOpeningTests
 
         var evaluator = new StateEvaluator(combat, CombatPolicy.Default);
         StateEvaluator.ThreatProjection projection = evaluator.ProjectHpAfterThreat(combat);
-        Assert.Equal(expectedProjectedHp, projection.Hp);
+        Assert.Equal(initialHp, playerCreature.CurrentHp);
+        Assert.Equal(ostyHp, combat.Players[0].Osty?.CurrentHp ?? 0);
+        if (tail is not null) Assert.False(tail.IsUsedUp);
+
+        foreach (int incoming in incomingHits)
+            await CreatureCmd.Damage(combat, [playerCreature], incoming, ValueProp.Move, enemy, null, null);
+
+        Assert.Equal(expectedProjectedHp, playerCreature.CurrentHp);
+        Assert.Equal(playerCreature.CurrentHp, projection.Hp);
+        Assert.Equal(tail?.IsUsedUp == true ? 1 : 0, projection.DeathSaveUseCount);
+        Assert.Equal(tail?.IsUsedUp == true ? 20 : 0, projection.DeathSaveHpRestored);
+    }
+
+    [Fact]
+    public async Task ThreatProjection_UnpoweredMiasmaBypassesOstyAndGambit()
+    {
+        TestSaveBuilder.EnsurePrewarmed();
+        RunState run = TestSaveBuilder.CreateRun(actIndex: 1, gameMode: GameMode.Dread);
+        Assert.True(EncounterCatalog.TryGet("THE_INSATIABLE_BOSS", out EncounterCatalogEntry entry));
+        ForecastRoomEntryResult entered = await run.EnterForecastCombatAsync(
+            new ForecastTargetSpec(entry.Definition, RoomType.Boss, run.Map.BossMapPoint.coord.row + 1, run.Map.BossMapPoint.coord.col, MapPointType.Boss, false),
+            new ForecastOpeningRunner(CancellationToken.None), null);
+        CombatState combat = entered.Room.Engine.State;
+        var player = combat.Players[0];
+        Assert.All(combat.Enemies, enemy => Assert.Empty(enemy.Monster!.NextMove!.Intents.OfType<AttackIntent>()));
+        player.Creature.SetCurrentHpInternal(10);
+        await OstyCmd.Summon(player, 3, null);
+        await PowerCmd.Apply<TheGambitPower>(combat, player.Creature, 1, player.Creature, null);
+        var miasma = (await PowerCmd.Apply<InsatiableDominionPower>(combat, player.Creature, 1, null, null))!;
+
+        var projected = new StateEvaluator(combat, CombatPolicy.Default).ProjectHpAfterThreat(combat);
+        int expected = 10 - miasma.Damage;
+        await miasma.AfterSideTurnEndLate(CombatSide.Player, [player.Creature]);
+        Assert.Equal(expected, player.Creature.CurrentHp);
+        Assert.Equal(3, player.Osty!.CurrentHp);
+        Assert.NotNull(player.Creature.GetPower<TheGambitPower>());
+        Assert.Equal(player.Creature.CurrentHp, projected.Hp);
     }
 }
