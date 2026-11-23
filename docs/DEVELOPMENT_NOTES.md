@@ -4,6 +4,8 @@
 
 ## 未发布：战斗内 Sts2Sim 求解接入、战前桥接、多核并行与界面引擎标识
 
+- 战斗内根快照用原生 decimal 精度传递 `TheShot` 的消耗计数及 `MonologuePower` 的两项力量数值。Core 的恢复接口兼容旧桥接发出的整数字段。
+
 - 预测 ABI 与搜索子项目由 CombatSolver 维护。模组经清单装载程序集，模拟器源码由 Git 子模块锁定。暂存会对照 Core DLL 内嵌的提交号，并将其写入清单。
 
 - `SolverController` 与 `Sts2Sim.PreCombatBridge`（战斗内 ABI v1）打通战斗内路线求解：在开启 `UseSts2SimInCombat`（默认开启）且满足标准单人原版准入（战斗内 `AssessMandatoryLiveHost(..., forInCombat: true)` 改用 `IsCombatInert`、统一使用 `HasUnsupportedExtraFields` 并额外拒绝未建模 `CombatState` 战斗订阅者）时，主线程采集实机战斗根、牌堆、私有状态、历史计数与 9 条战斗 RNG，后台在 `NoGcRegion` 之外按设定并行度运行 `Sts2Sim` 多回合求解并支持第 N 回合中途移植、流式进度推送以及接管/停搜返回最佳中间结果；任何不兼容、能力未命中或捕获异常均 fail-closed 自动回退至内置求解器并更新 `InCombatSolverBackendState`。

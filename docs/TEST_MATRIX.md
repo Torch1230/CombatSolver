@@ -2,6 +2,8 @@
 
 ## 未发布：战斗内与战前 Sts2Sim 桥接入口
 
+- 原生战斗内合同的 `InCombatPrivateDecimalFields` 在独立卡牌与能力实例上写入 1.75、2.5、3.25，检查实际捕获的三个字段的类型和值。Core 的公开恢复回归另检查旧整数输入及新小数输入。
+
 - 桥接迁移可用 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release` 验证 UTF-8 ABI 与搜索合同。暂存检查对照 Core 的内嵌提交与 Git 锁定值。[构建入口](../bridge/README.md)
 
 - 战斗内真机无头合同：`--scenario-id INCOMBAT-STS2SIM-CONTRACT --encounter-id MAWLER_NORMAL --preserve-native-combat-state-for-test --verify-in-combat-sts2sim-contract --cleanup-instance-on-exit`（PowerShell 等价 `-VerifyInCombatSts2SimContract -CleanupInstanceOnExit`），验证第 1 回合 `Sts2Sim` 多核求解与标题栏徽章、第 1 回合原生部署、第 2 回合中途移植续求、`UseSts2SimInCombat = false` 关闭回退以及 `UseNoveltyPortfolio = true` 策略回退。

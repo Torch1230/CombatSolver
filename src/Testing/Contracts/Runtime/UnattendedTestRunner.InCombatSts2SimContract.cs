@@ -3,7 +3,11 @@ using System.Globalization;
 using CombatSolver.Api;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Runs;
 
@@ -19,6 +23,8 @@ internal sealed partial class UnattendedTestRunner
             ?? throw new InvalidOperationException("战斗内 Sts2Sim 合同测试要求活动宿主 NGame。");
         if (!PreCombatSts2SimBridge.HasInstalledBackendArtifact())
             throw new InvalidOperationException("战斗内 Sts2Sim 合同测试要求已安装 sts2sim/ 后端。");
+
+        VerifyLiveDecimalPrivateFields(combatState);
 
         int startedTurn = player.PlayerCombatState?.TurnNumber
             ?? throw new InvalidOperationException("玩家缺少战斗状态。");
@@ -159,6 +165,28 @@ internal sealed partial class UnattendedTestRunner
             SolverSettings.ApplyForTesting(savedSettings);
             _protocolHost.SetAutomaticTurnSearchEnabledForTesting(prevAutoTurn);
         }
+    }
+
+    private void VerifyLiveDecimalPrivateFields(CombatState combatState)
+    {
+        var cardHandles = new Dictionary<CardModel, int>();
+        var shot = (TheShot)ModelDb.Card<TheShot>().ToMutable();
+        shot._cardsExhaustedByFlorescence = 1.75m;
+        var cardFields = InCombatLiveStateCapturer.CaptureCardPrivateFields(
+            shot, combatState, cardHandles, [], new Dictionary<CardModel, int>());
+
+        var monologue = (MonologuePower)ModelDb.Power<MonologuePower>().ToMutable();
+        monologue.DynamicVars["StrengthApplied"].BaseValue = 2.5m;
+        monologue.DynamicVars.Strength.BaseValue = 3.25m;
+        var powerFields = InCombatLiveStateCapturer.CapturePowerPrivateFields(
+            monologue, new Dictionary<Creature, int>(), cardHandles, []);
+        if (cardFields["TheShot._cardsExhaustedByFlorescence"] != new InCombatFieldValueDto("Decimal", DecimalValue: 1.75m)
+            || powerFields["MonologuePower._strengthApplied"] != new InCombatFieldValueDto("Decimal", DecimalValue: 2.5m)
+            || powerFields["MonologuePower._strength"] != new InCombatFieldValueDto("Decimal", DecimalValue: 3.25m))
+        {
+            throw new InvalidOperationException("战斗内快照未保留原生卡牌与能力的小数值。");
+        }
+        _completedChecks.Add("InCombatPrivateDecimalFields");
     }
 
     private static async Task<SolverResult> WaitForManualSearchResultAsync(NGame host, TimeSpan timeout)
