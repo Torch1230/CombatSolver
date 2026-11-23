@@ -586,10 +586,8 @@ internal static partial class InCombatLiveStateCapturer
                 fields["Permafrost._triggeredThisCombat"] = BoolVal(pf._activatedThisCombat);
                 break;
             case Pocketwatch pw:
-                int threshold = pw.DynamicVars["CardThreshold"].IntValue;
-                bool extraDraw = (player.PlayerCombatState?.TurnNumber ?? 1) > 1 && pw._cardsPlayedLastTurn <= threshold;
                 fields["Pocketwatch._cardsPlayedThisTurn"] = IntVal(pw._cardsPlayedThisTurn);
-                fields["Pocketwatch._shouldDrawExtra"] = BoolVal(extraDraw);
+                fields["Pocketwatch._cardsPlayedLastTurn"] = IntVal(pw._cardsPlayedLastTurn);
                 break;
             case PollinousCore pc:
                 fields["PollinousCore._handsSeen"] = IntVal(pc.TurnsSeen);
@@ -660,6 +658,16 @@ internal static partial class InCombatLiveStateCapturer
                         "relics.UnsettlingLamp._triggeringCard",
                         "UnsettlingLamp has an active triggering card reference.");
                 }
+                string[] doubledTemporaryPowers = ul._doubledPowers?.OfType<ITemporaryPower>()
+                    .Select(power => power.InternallyAppliedPower.Id.ToString())
+                    .Distinct(StringComparer.Ordinal).Take(2).ToArray() ?? [];
+                if (doubledTemporaryPowers.Length > 1)
+                {
+                    throw new InCombatLiveCaptureUnsupportedException("live_private_state_unmapped",
+                        "relics.UnsettlingLamp._doubledTemporaryInternalPowerType",
+                        "Multiple temporary power types cannot be represented by one simulator marker.");
+                }
+                fields["UnsettlingLamp._doubledTemporaryInternalPowerType"] = StringVal(doubledTemporaryPowers.FirstOrDefault());
                 fields["UnsettlingLamp._finished"] = BoolVal(ul._isFinishedTriggering);
                 fields["UnsettlingLamp._triggeringCard"] = CardHandleVal(
                     ul._triggeringCard is not null ? cardHandles[ul._triggeringCard] : null);
