@@ -16,6 +16,9 @@ internal static class ModRuntime
     /// <summary>离线会话作用域；释放即把无人测试口径还原（进程退出前 Program 负责释放）。</summary>
     public static IDisposable? Session { get; private set; }
 
+    /// <summary>CLI <c>--no-rollout</c> 单构建 A/B 开关（关闭 Stage 8C 回合边界 Rollout）。</summary>
+    public static bool DisableTurnBoundaryRolloutsOverride { get; set; }
+
     public static string Initialize(HarnessOptions options)
     {
         string logDirectory = options.LogDirectory;
@@ -140,6 +143,7 @@ internal static class ModRuntime
         policy.DetailedDiagnostics,
         policy.MeasurePhasePerformance,
         policy.TranspositionEntryLimit,
+        policy.EnableTurnBoundaryRollouts,
     };
 
     internal sealed record SearchOutcome(
@@ -205,6 +209,8 @@ internal static class ModRuntime
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
             settings, state, includeTurnSetup: false,
             theftPolicy: theftPolicyOverride ?? SolverController.ResolveTheftPolicy(state));
+        if (options.DisableTurnBoundaryRollouts || DisableTurnBoundaryRolloutsOverride)
+            policy = policy with { EnableTurnBoundaryRollouts = false };
         HarnessLog.Trace("search_policy");
 
         Action<SolverProgress>? diagnosticProgress = null;

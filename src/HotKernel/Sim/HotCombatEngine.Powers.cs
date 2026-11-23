@@ -89,12 +89,25 @@ internal static partial class HotCombatEngine
 
                 for (int n = 0; n < snapCount; n++)
                 {
-                    int liveIdx = FindPowerOccurrenceIndex(in s, 0, snapDefIds[n], snapOcc[n]);
+                    ushort defId = snapDefIds[n];
+                    byte occ = snapOcc[n];
+                    int liveIdx = FindPowerOccurrenceIndex(in s, 0, defId, occ);
                     if (liveIdx < 0 || s.Powers[liveIdx].Amount == 0)
                         continue;
 
-                    HotPowerDef def = rules.Powers[snapDefIds[n]];
+                    int beforeOccCount = CountPowerOccurrences(in s, 0, defId);
+                    HotPowerDef def = rules.Powers[defId];
                     DispatchSinglePowerHook(ref s, ref cold, rules, scratch, HotHookMask.AfterSideTurnStart, liveIdx, def, ref args);
+                    int afterOccCount = CountPowerOccurrences(in s, 0, defId);
+                    if (afterOccCount < beforeOccCount)
+                    {
+                        int removed = beforeOccCount - afterOccCount;
+                        for (int m = n + 1; m < snapCount; m++)
+                        {
+                            if (snapDefIds[m] == defId && snapOcc[m] > occ)
+                                snapOcc[m] = (byte)Math.Max(0, snapOcc[m] - removed);
+                        }
+                    }
                     if (scratch.NeedsChoice || IsOverOrEnding(in s))
                         return;
                 }
@@ -292,12 +305,26 @@ internal static partial class HotCombatEngine
                     if (snapOwners[n] != 0)
                         continue;
 
-                    int liveIdx = FindPowerOccurrenceIndex(in s, snapOwners[n], snapDefIds[n], snapOcc[n]);
+                    byte owner = snapOwners[n];
+                    ushort defId = snapDefIds[n];
+                    byte occ = snapOcc[n];
+                    int liveIdx = FindPowerOccurrenceIndex(in s, owner, defId, occ);
                     if (liveIdx < 0 || s.Powers[liveIdx].Amount == 0)
                         continue;
 
-                    HotPowerDef def = rules.Powers[snapDefIds[n]];
+                    int beforeOccCount = CountPowerOccurrences(in s, owner, defId);
+                    HotPowerDef def = rules.Powers[defId];
                     DispatchSinglePowerHook(ref s, ref cold, rules, scratch, hook, liveIdx, def, ref args);
+                    int afterOccCount = CountPowerOccurrences(in s, owner, defId);
+                    if (afterOccCount < beforeOccCount)
+                    {
+                        int removed = beforeOccCount - afterOccCount;
+                        for (int m = n + 1; m < snapCount; m++)
+                        {
+                            if (snapOwners[m] == owner && snapDefIds[m] == defId && snapOcc[m] > occ)
+                                snapOcc[m] = (byte)Math.Max(0, snapOcc[m] - removed);
+                        }
+                    }
                     if (scratch.NeedsChoice)
                         return;
                 }
@@ -337,12 +364,26 @@ internal static partial class HotCombatEngine
                     if (snapOwners[n] == 0)
                         continue;
 
-                    int liveIdx = FindPowerOccurrenceIndex(in s, snapOwners[n], snapDefIds[n], snapOcc[n]);
+                    byte owner = snapOwners[n];
+                    ushort defId = snapDefIds[n];
+                    byte occ = snapOcc[n];
+                    int liveIdx = FindPowerOccurrenceIndex(in s, owner, defId, occ);
                     if (liveIdx < 0 || s.Powers[liveIdx].Amount == 0)
                         continue;
 
-                    HotPowerDef def = rules.Powers[snapDefIds[n]];
+                    int beforeOccCount = CountPowerOccurrences(in s, owner, defId);
+                    HotPowerDef def = rules.Powers[defId];
                     DispatchSinglePowerHook(ref s, ref cold, rules, scratch, hook, liveIdx, def, ref args);
+                    int afterOccCount = CountPowerOccurrences(in s, owner, defId);
+                    if (afterOccCount < beforeOccCount)
+                    {
+                        int removed = beforeOccCount - afterOccCount;
+                        for (int m = n + 1; m < snapCount; m++)
+                        {
+                            if (snapOwners[m] == owner && snapDefIds[m] == defId && snapOcc[m] > occ)
+                                snapOcc[m] = (byte)Math.Max(0, snapOcc[m] - removed);
+                        }
+                    }
                     if (scratch.NeedsChoice)
                         return;
                 }
@@ -389,6 +430,19 @@ internal static partial class HotCombatEngine
             }
         }
         return -1;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CountPowerOccurrences(in CombatHotState s, byte ownerSlot, ushort powerDefId)
+    {
+        int found = 0;
+        int count = s.PowerCount;
+        for (int i = 0; i < count; i++)
+        {
+            if (s.Powers[i].OwnerSlot == ownerSlot && s.Powers[i].PowerDefId == powerDefId)
+                found++;
+        }
+        return found;
     }
 
     private static void DispatchSinglePowerHook(
@@ -568,11 +622,21 @@ internal static partial class HotCombatEngine
             case HotHookMask.AfterShuffle:
                 if (powerId == HotPowerId.StratagemPower && ownerSlot == 0 && amount > 0 && s.DrawCount > 0)
                 {
-                    for (int pick = 0; pick < amount && s.DrawCount > 0; pick++)
+                    int picks = Math.Min(amount, Math.Min((int)s.DrawCount, HotLimits.MaxChoicesPerAction));
+                    Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                    int pickedCount = 0;
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
+                    for (int pick = 0; pick < picks && pickedCount < s.DrawCount; pick++)
                     {
-                        if (!RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, 0, 1, 1, out HotChoiceSelection sel))
+                        if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.DrawPile, 0, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                             return;
-                        int idx = FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
+                        if (sel.CardUidOrIndex != 0)
+                            pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                    }
+                    scratch.EndChoiceGroup();
+                    for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                    {
+                        int idx = FindCardIndexByUid(in s, HotPileKind.Draw, pickedUids[i]);
                         if (idx >= 0)
                             MoveCardToHandOrDiscard(ref s, idx);
                     }
@@ -594,6 +658,10 @@ internal static partial class HotCombatEngine
                 {
                     DealDamage(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: args.TargetSlot, baseDamage: amount, isPoweredAttack: false);
                 }
+                break;
+
+            case HotHookMask.AfterAutoPostPlay:
+                HandleAfterAutoPostPlayPower(ref s, ref cold, rules, scratch, powerId, ownerSlot, amount, ref args);
                 break;
 
             case HotHookMask.BeforeTurnEnd:
@@ -2230,33 +2298,45 @@ internal static partial class HotCombatEngine
                     s.Powers[powerIdx].Aux0 = 0;
                 }
                 break;
+        }
+    }
 
-            case HotPowerId.StampedePower:
-                if (ownerSlot == 0)
+    private static void HandleAfterAutoPostPlayPower(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        HotPowerId powerId,
+        byte ownerSlot,
+        int amount,
+        ref HotHookArgs args)
+    {
+        if (args.Side != HotCombatSide.Player || ownerSlot != 0 || amount <= 0)
+            return;
+
+        if (powerId == HotPowerId.StampedePower)
+        {
+            Span<ushort> attackUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
+            for (int k = 0; k < amount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; k++)
+            {
+                int atkCount = 0;
+                int handCount = s.HandCount;
+                for (int h = 0; h < handCount && atkCount < attackUids.Length; h++)
                 {
-                    Span<ushort> attackUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
-                    for (int k = 0; k < amount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; k++)
+                    ref readonly HotCard hc = ref s.Cards[h];
+                    if (rules.Cards[hc.CardDefId].Type == CardType.Attack
+                        && (hc.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0)
                     {
-                        int atkCount = 0;
-                        int handCount = s.HandCount;
-                        for (int h = 0; h < handCount && atkCount < attackUids.Length; h++)
-                        {
-                            ref readonly HotCard hc = ref s.Cards[h];
-                            if (rules.Cards[hc.CardDefId].Type == CardType.Attack
-                                && (hc.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0)
-                            {
-                                attackUids[atkCount++] = hc.CardUid;
-                            }
-                        }
-                        if (atkCount == 0)
-                            break;
-                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardSelection], atkCount);
-                        int liveIdx = FindCardIndexByUid(in s, HotPileKind.Hand, attackUids[pick]);
-                        if (liveIdx >= 0)
-                            AutoPlayCard(ref s, ref cold, rules, scratch, liveIdx, targetEnemySlot: -1, forceExhaust: false);
+                        attackUids[atkCount++] = hc.CardUid;
                     }
                 }
-                break;
+                if (atkCount == 0)
+                    break;
+                int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardSelection], atkCount);
+                int liveIdx = FindCardIndexByUid(in s, HotPileKind.Hand, attackUids[pick]);
+                if (liveIdx >= 0)
+                    AutoPlayCard(ref s, ref cold, rules, scratch, liveIdx, targetEnemySlot: -1, forceExhaust: false);
+            }
         }
     }
 
@@ -2547,7 +2627,8 @@ internal static partial class HotCombatEngine
                 {
                     s.Powers[powerIdx].Amount--;
                 }
-                else if (ownerSlot >= 3)
+                else if (ownerSlot >= 3
+                    && (s.Enemies[ownerSlot - 3].Vital.Flags & HotCreatureFlags.Alive) != 0)
                 {
                     s.CombatFlags |= HotCombatFlags.BattlewornDummyTimedOut;
                     HotMonsters.CreatureEscaped(ref s, rules, (byte)(ownerSlot - 3));
@@ -2770,12 +2851,22 @@ internal static partial class HotCombatEngine
             case HotPowerId.EntropyPower:
                 if (ownerSlot == 0 && s.HandCount > 0)
                 {
+                    // 0.113.1 EntropyPower.cs:31-35: single simultaneous multi-select from Hand, then transform each in selection order.
                     int picks = Math.Min(amount, Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
-                    for (int k = 0; k < picks && s.HandCount > 0 && !IsOverOrEnding(in s); k++)
+                    Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                    int pickedCount = 0;
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.MultiPick);
+                    for (int k = 0; k < picks && pickedCount < s.HandCount && !IsOverOrEnding(in s); k++)
                     {
-                        if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, out HotChoiceSelection sel))
+                        if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                             return;
-                        int idx = FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
+                        if (sel.CardUidOrIndex != 0)
+                            pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                    }
+                    scratch.EndChoiceGroup();
+                    for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                    {
+                        int idx = FindCardIndexByUid(in s, HotPileKind.Hand, pickedUids[i]);
                         if (idx >= 0)
                             TransformCardToRandomInCombat(ref s, ref cold, rules, idx);
                     }
@@ -2797,25 +2888,44 @@ internal static partial class HotCombatEngine
                 if (ownerSlot == 0)
                 {
                     DrawCards(ref s, ref cold, rules, scratch, amount, fromHandDraw: false);
-                    for (int k = 0; k < amount && s.HandCount > 0; k++)
+                    if (!scratch.NeedsChoice && s.HandCount > 0 && !IsOverOrEnding(in s))
                     {
-                        if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, out HotChoiceSelection sel))
-                            return;
-                        int idx = FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
-                        if (idx >= 0)
-                            DiscardCard(ref s, ref cold, rules, scratch, idx);
+                        int picks = Math.Min(amount, Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
+                        Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                        int pickedCount = 0;
+                        scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
+                        for (int k = 0; k < picks && pickedCount < s.HandCount; k++)
+                        {
+                            if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
+                                return;
+                            if (sel.CardUidOrIndex != 0)
+                                pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                        }
+                        scratch.EndChoiceGroup();
+                        if (pickedCount > 0)
+                            DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: 0);
                     }
                 }
                 break;
 
             case HotPowerId.TyrannyPower:
-                if (ownerSlot == 0)
+                if (ownerSlot == 0 && s.HandCount > 0)
                 {
-                    for (int k = 0; k < amount && s.HandCount > 0; k++)
+                    int picks = Math.Min(amount, Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
+                    Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                    int pickedCount = 0;
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
+                    for (int k = 0; k < picks && pickedCount < s.HandCount; k++)
                     {
-                        if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, out HotChoiceSelection sel))
+                        if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                             return;
-                        int idx = FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
+                        if (sel.CardUidOrIndex != 0)
+                            pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                    }
+                    scratch.EndChoiceGroup();
+                    for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                    {
+                        int idx = FindCardIndexByUid(in s, HotPileKind.Hand, pickedUids[i]);
                         if (idx >= 0)
                             ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);
                     }
@@ -2881,13 +2991,26 @@ internal static partial class HotCombatEngine
                             return;
                     }
                 }
-                for (int k = 0; k < amount && s.DrawCount > 0; k++)
+                if (s.DrawCount > 0)
                 {
-                    if (!RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, 0, 1, 1, out HotChoiceSelection sel))
-                        return;
-                    int idx = FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
-                    if (idx >= 0)
-                        MoveCardToHandOrDiscard(ref s, idx);
+                    int picks = Math.Min(amount, Math.Min((int)s.DrawCount, HotLimits.MaxChoicesPerAction));
+                    Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                    int pickedCount = 0;
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
+                    for (int k = 0; k < picks && pickedCount < s.DrawCount; k++)
+                    {
+                        if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.DrawPile, 0, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
+                            return;
+                        if (sel.CardUidOrIndex != 0)
+                            pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                    }
+                    scratch.EndChoiceGroup();
+                    for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                    {
+                        int idx = FindCardIndexByUid(in s, HotPileKind.Draw, pickedUids[i]);
+                        if (idx >= 0)
+                            MoveCardToHandOrDiscard(ref s, idx);
+                    }
                 }
                 int liveIdx = FindPowerIndex(in s, 0, rules.GetPowerDefId(HotPowerId.ForegoneConclusionPower));
                 if (liveIdx >= 0)

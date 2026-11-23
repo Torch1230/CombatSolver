@@ -242,6 +242,23 @@ internal sealed class SolverResult
     public bool WasRestoredFromCache { get; internal set; }
     public SolverResultScope ResultScope { get; internal set; } = SolverResultScope.SearchCompletion;
     public bool SingleSessionSearch { get; internal set; }
+    /// <summary>
+    /// True when emitted early via <c>onPreliminaryResult</c> after Stage 1 while Stage 2/3 deepening
+    /// continues in the background. Preliminary results must never overwrite persistent route caches.
+    /// </summary>
+    public bool IsPreliminary { get; internal set; }
+    /// <summary>
+    /// Highest adaptive escalation stage completed for this result (<c>1</c>, <c>2</c>, or <c>3</c>).
+    /// </summary>
+    public int EscalationStage { get; internal set; } = 1;
+
+    internal SolverResult CloneAsPreliminary(int escalationStage)
+    {
+        SolverResult copy = (SolverResult)MemberwiseClone();
+        copy.IsPreliminary = true;
+        copy.EscalationStage = escalationStage;
+        return copy;
+    }
 
     public TimeSpan TotalSearchElapsed { get; internal set; }
     public long TotalWorkerAllocatedBytes { get; internal set; }

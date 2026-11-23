@@ -177,6 +177,7 @@ internal static class DeploymentSoakRunner
         int budgetMs = 15_000;
         string repoRoot = ResolveRepoRoot();
         string outPath = Path.Combine(repoRoot, ".local", "offline-harness", "soak-deploy.json");
+        string? dumpOutcomesPath = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -192,6 +193,7 @@ internal static class DeploymentSoakRunner
                 case "--dop": dop = Math.Max(1, int.Parse(NextVal())); break;
                 case "--budget-ms": budgetMs = Math.Max(500, int.Parse(NextVal())); break;
                 case "--out": outPath = Path.GetFullPath(NextVal()); break;
+                case "--dump-outcomes": dumpOutcomesPath = Path.GetFullPath(NextVal()); break;
                 default: throw new ArgumentException($"--soak-deploy 未知选项：{key}");
             }
         }
@@ -241,6 +243,7 @@ internal static class DeploymentSoakRunner
         List<double> solveTimesMs = new(fights * 2);
         List<SoakReplanSample> replanSamples = [];
         List<SoakErrorSample> errorSamples = [];
+        List<FightOutcomeRecord> fightOutcomes = new(fights);
 
         bool customBeam135Stage2Ok = false;
         try
@@ -248,7 +251,7 @@ internal static class DeploymentSoakRunner
             for (int f = 0; f < scenarios.Count; f++)
             {
                 (string tag, CombatSetupSpec setup) = scenarios[f];
-                RunSingleSoakFight(
+                FightOutcomeRecord outcomeRecord = RunSingleSoakFight(
                     loop, f, tag, setup,
                     ref wins, ref defeats, ref hardErrorCount,
                     ref unplannedReplanCount, ref plannedBoundaryReplanCount,
@@ -256,6 +259,7 @@ internal static class DeploymentSoakRunner
                     ref totalTurnsDeployed, ref totalSolves,
                     ref totalHpLoss, ref totalPotionsUsed, ref completedFightsForStats,
                     solveTimesMs, replanSamples, errorSamples);
+                fightOutcomes.Add(outcomeRecord);
 
                 if ((f + 1) % 10 == 0 || f + 1 == scenarios.Count)
                 {
@@ -288,6 +292,24 @@ internal static class DeploymentSoakRunner
         double avgPotionsUsed = completedFightsForStats > 0 ? (double)totalPotionsUsed / completedFightsForStats : 0.0;
         double p50SolveMs = Percentile(solveTimesMs, 0.50);
         double p95SolveMs = Percentile(solveTimesMs, 0.95);
+        BenchmarkSummaryRecord outcomeSummary = BenchmarkOutcomeHelper.BuildSummary(
+            fightOutcomes, totalSw.Elapsed.TotalMilliseconds, peakRssMb, gcGen2, solveTimesMs);
+
+        if (dumpOutcomesPath != null)
+        {
+            BenchmarkOutcomeHelper.WriteOutcomeFile(dumpOutcomesPath, new BenchmarkOutcomeFile
+            {
+                Suite = "soak-deploy",
+                Profile = profile,
+                SearchMode = "Coordinator",
+                PotionPolicy = "Smart",
+                Dop = dop,
+                Seed = seed,
+                BudgetMs = budgetMs,
+                Summary = outcomeSummary,
+                Outcomes = fightOutcomes.ToArray(),
+            });
+        }
 
         object report = new
         {
@@ -311,11 +333,13 @@ internal static class DeploymentSoakRunner
             win_rate = Math.Round(winRate, 4),
             avg_hp_loss = Math.Round(avgHpLoss, 2),
             avg_potions_used = Math.Round(avgPotionsUsed, 2),
+            avg_economic_value_v = outcomeSummary.AvgEconomicValueV,
             p50_solve_ms = Math.Round(p50SolveMs, 1),
             p95_solve_ms = Math.Round(p95SolveMs, 1),
             peak_rss_mb = peakRssMb,
             gc_gen2 = gcGen2,
             custom_beam135_stage2_ok = customBeam135Stage2Ok,
+            outcomes_path = dumpOutcomesPath,
             replan_samples = replanSamples.Take(25).ToArray(),
             error_samples = errorSamples.Take(25).ToArray(),
         };
@@ -327,9 +351,11 @@ internal static class DeploymentSoakRunner
         Console.WriteLine($"fights={fights} wins={wins} defeats={defeats} win_rate={winRate:P1}");
         Console.WriteLine($"hard_error_count={hardErrorCount} hard_error_rate={hardErrorRate:P2} choice_mismatch_count={choiceMismatchCount} custom_beam135_stage2_ok={customBeam135Stage2Ok}");
         Console.WriteLine($"unplanned_replan_count={unplannedReplanCount} unplanned_replan_rate={unplannedReplanRate:P2} (reused={continuationsReused}, planned_boundary={plannedBoundaryReplanCount}, turns={totalTurnsDeployed})");
-        Console.WriteLine($"avg_hp_loss={avgHpLoss:F2} avg_potions_used={avgPotionsUsed:F2} p50_solve_ms={p50SolveMs:F1} p95_solve_ms={p95SolveMs:F1}");
+        Console.WriteLine($"avg_hp_loss={avgHpLoss:F2} avg_potions_used={avgPotionsUsed:F2} avg_economic_value_v={outcomeSummary.AvgEconomicValueV:F2} p50_solve_ms={p50SolveMs:F1} p95_solve_ms={p95SolveMs:F1}");
         Console.WriteLine($"peak_rss_mb={peakRssMb:F1} gc_gen2={gcGen2} elapsed={totalSw.Elapsed.TotalSeconds:F2}s");
         Console.WriteLine($"baseline_json={outPath}");
+        if (dumpOutcomesPath != null)
+            Console.WriteLine($"outcomes_json={dumpOutcomesPath}");
 
         if (replanSamples.Count > 0)
         {
@@ -349,7 +375,7 @@ internal static class DeploymentSoakRunner
         return (hardErrorCount == 0 && unplannedReplanCount == 0 && choiceMismatchCount == 0 && customBeam135Stage2Ok) ? 0 : 1;
     }
 
-    private static void RunSingleSoakFight(
+    private static FightOutcomeRecord RunSingleSoakFight(
         MainLoopContext loop,
         int fightIndex,
         string tag,
@@ -371,13 +397,39 @@ internal static class DeploymentSoakRunner
         List<SoakErrorSample> errorSamples)
     {
         int currentTurn = 0;
+        int replansBeforeFight = unplannedReplanCount;
+        int choiceMismatchesBeforeFight = choiceMismatchCount;
+        string group = $"{setup.CharacterId.ToLowerInvariant()}_{setup.GameMode.ToString().ToLowerInvariant()}";
+        int startHp = setup.PlayerHp ?? 80;
+        int startMaxHp = setup.PlayerMaxHp ?? 80;
+        double fightSolveMs = 0.0;
+        int fightSolveCount = 0;
+        long fightExpandedNodes = 0;
+        long fightTransitions = 0;
+        string fightLastBoundary = "None";
+        int fightPotionsUsed = 0;
+        int alchemizeCount = 0;
+        int rootOptionalPaidRawHpCost = 0;
+        int rootOptionalPaidCount = 0;
+        ushort rootOccupiedMask = 0;
+        ushort rootConsumedMask = 0;
+        short[] rootSlotCosts = [];
+        HotSearchPolicy rootHotPolicy = default;
+        bool hasRootHotPolicy = false;
+        SolverTheftPolicy? fightTheftPolicy = null;
+
         try
         {
             BattleDamageTracker.Reset();
             CombatState combat = RealCombatDriver.StartCombat(loop, setup);
             Player player = LocalContext.GetMe(combat)!;
-            int startHp = player.Creature.CurrentHp;
-            int fightPotionsUsed = 0;
+            startHp = player.Creature.CurrentHp;
+            startMaxHp = player.Creature.MaxHp;
+            int initialUnusedLizardTails = player.Relics
+                .OfType<MegaCrit.Sts2.Core.Models.Relics.LizardTail>()
+                .Count(static t => !t.WasUsed);
+            int initialFairyCount = player.PotionSlots
+                .Count(static p => p != null && string.Equals(p.Id.Entry, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal));
 
             SolverResult? activePlan = null;
             const int maxTurns = 35;
@@ -431,16 +483,40 @@ internal static class DeploymentSoakRunner
                     CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
                     SolverDisplayNames names = SolverDisplayNames.Capture(combat);
                     SolverSettingsSnapshot settings = SolverSettings.Capture();
+                    SolverTheftPolicy? theftPolicy = SolverController.ResolveTheftPolicy(combat);
                     SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
                         settings, combat, includeTurnSetup: false,
-                        theftPolicy: SolverController.ResolveTheftPolicy(combat));
+                        theftPolicy: theftPolicy);
+
+                    if (!hasRootHotPolicy)
+                    {
+                        CombatHotState rootHotState = root.HotRoot.RootState;
+                        rootSlotCosts = HotPotionPolicy.BuildRootSlotCosts(
+                            root, in rootHotState, root.HotRoot.Rules, policy.PotionStrategy.Thresholds);
+                        rootHotPolicy = new HotSearchPolicy(
+                            root, damage, policy, root.HotRoot.Rules, in rootHotState, rootSlotCosts);
+                        int slotCount = Math.Min((int)rootHotState.PotionSlotCount, HotLimits.MaxPotions);
+                        for (int s = 0; s < slotCount; s++)
+                        {
+                            if (rootHotState.Potions[s] != 0)
+                                rootOccupiedMask |= (ushort)(1 << s);
+                        }
+                        fightTheftPolicy = theftPolicy;
+                        hasRootHotPolicy = true;
+                    }
 
                     Stopwatch solveSw = Stopwatch.StartNew();
                     SolverResult solved = HotSearchCoordinator.Solve(
                         root, names, damage, policy, CancellationToken.None, null);
                     solveSw.Stop();
 
-                    solveTimesMs.Add(solveSw.Elapsed.TotalMilliseconds);
+                    double ms = solveSw.Elapsed.TotalMilliseconds;
+                    solveTimesMs.Add(ms);
+                    fightSolveMs += ms;
+                    fightSolveCount++;
+                    fightExpandedNodes += solved.TotalExpandedNodes > 0 ? solved.TotalExpandedNodes : solved.ExpandedNodes;
+                    fightTransitions += solved.TotalTransitionCount > 0 ? solved.TotalTransitionCount : solved.TransitionCount;
+                    fightLastBoundary = solved.BoundaryReason.ToString();
                     totalSolves++;
                     activePlan = solved;
                     BattleDamageTracker.RegisterPlan(combat, activePlan);
@@ -494,6 +570,19 @@ internal static class DeploymentSoakRunner
                             deploymentDrifted = true;
                             break;
                         }
+                        if ((uint)action.PotionSlot < (uint)rootSlotCosts.Length)
+                        {
+                            ushort slotBit = (ushort)(1 << action.PotionSlot);
+                            if ((rootOccupiedMask & ~rootConsumedMask & slotBit) != 0)
+                            {
+                                rootConsumedMask |= slotBit;
+                                if (rootSlotCosts[action.PotionSlot] > 0)
+                                {
+                                    rootOptionalPaidRawHpCost += rootSlotCosts[action.PotionSlot];
+                                    rootOptionalPaidCount++;
+                                }
+                            }
+                        }
                         liveAction = RealCombatAction.UsePotion(potion, target);
                         fightPotionsUsed++;
                     }
@@ -525,6 +614,8 @@ internal static class DeploymentSoakRunner
                             deploymentDrifted = true;
                             break;
                         }
+                        if (string.Equals(action.CardId, "ALCHEMIZE", StringComparison.Ordinal))
+                            alchemizeCount++;
                         liveAction = RealCombatAction.PlayCard(card, target);
                     }
 
@@ -574,29 +665,128 @@ internal static class DeploymentSoakRunner
 
             HotCombatOutcome finalOutcome = RealCombatDriver.GetLiveOutcome(combat);
             int endHp = player.Creature.CurrentHp;
+            int endMaxHp = player.Creature.MaxHp;
+            int hpLoss = Math.Max(0, startHp - endHp);
+            bool won = finalOutcome == HotCombatOutcome.Victory;
+            bool survives = !player.Creature.IsDead && endHp > 0;
             completedFightsForStats++;
-            totalHpLoss += Math.Max(0, startHp - endHp);
+            totalHpLoss += hpLoss;
             totalPotionsUsed += fightPotionsUsed;
 
-            if (finalOutcome == HotCombatOutcome.Victory)
+            if (won)
                 wins++;
             else
                 defeats++;
+
+            int remainingUnusedLizardTails = player.Relics
+                .OfType<MegaCrit.Sts2.Core.Models.Relics.LizardTail>()
+                .Count(static t => !t.WasUsed);
+            int remainingFairyCount = player.PotionSlots
+                .Count(static p => p != null && string.Equals(p.Id.Entry, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal));
+            int lizardTailConsumed = Math.Max(0, initialUnusedLizardTails - remainingUnusedLizardTails);
+            int fairyConsumed = Math.Max(0, initialFairyCount - remainingFairyCount);
+            int deathSaveUses = lizardTailConsumed + fairyConsumed;
+            int deathSaveHpRestored = lizardTailConsumed * (endMaxHp / 2) + fairyConsumed * ((endMaxHp * 30) / 100);
+
+            int postCombatHeal = hasRootHotPolicy
+                ? HotRouteQuality.RankedPostCombatRelicHeal(rootHotPolicy.PostCombatRelicHeal, won, endHp, endMaxHp)
+                : 0;
+            int netHpDeltaCenti = HotRouteQuality.ComputeNetPersistentHpDeltaCenti(
+                endPlayerHp: endHp,
+                postCombatMonotoneHeal: postCombatHeal,
+                initialPlayerHp: startHp,
+                endPlayerMaxHp: endMaxHp,
+                initialPlayerMaxHp: startMaxHp,
+                deathSaveHpRestored: deathSaveHpRestored,
+                growthHpCredit: 0,
+                bossHpRelief: hasRootHotPolicy ? rootHotPolicy.StrategicBossHpRelief : BossHpRelief.None,
+                ignoreLongTermRewards: false);
+            int endEmptySlots = player.PotionSlots.Count(static p => p == null);
+            int netPotionCostCenti = hasRootHotPolicy
+                ? HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
+                    rootOptionalPaidRawHpCost, rootOptionalPaidCount, alchemizeCount, endEmptySlots, in rootHotPolicy)
+                : rootOptionalPaidRawHpCost * HotSearchConstants.HpFixedScale;
+            int strategicDeficit = HotRouteQuality.RoundCentiToHp(-netHpDeltaCenti);
+            int potionStrategicCost = netPotionCostCenti > 0
+                ? Math.Max(1, HotRouteQuality.RoundCentiToHp(netPotionCostCenti))
+                : 0;
+            int enemyHpRemaining = combat.Enemies.Where(static e => e.IsAlive).Sum(static e => e.CurrentHp);
+
+            return new FightOutcomeRecord
+            {
+                FightId = tag,
+                Tier = "soak",
+                Group = group,
+                CharacterId = setup.CharacterId,
+                EncounterId = setup.EncounterId,
+                Won = won,
+                Survives = survives,
+                DeathSaveUseCount = deathSaveUses,
+                StartHp = startHp,
+                EndHp = endHp,
+                StartMaxHp = startMaxHp,
+                EndMaxHp = endMaxHp,
+                HpLoss = hpLoss,
+                StrategicHpDeficit = strategicDeficit,
+                PotionsUsed = fightPotionsUsed,
+                PotionCostHp = potionStrategicCost,
+                NetPersistentHpDeltaCenti = netHpDeltaCenti,
+                NetPotionOpportunityCostCenti = netPotionCostCenti,
+                EconomicValueCenti = (long)netHpDeltaCenti - netPotionCostCenti,
+                Turns = currentTurn,
+                EnemyHpRemaining = enemyHpRemaining,
+                ElapsedMs = Math.Round(fightSolveMs, 2),
+                SolveCount = fightSolveCount,
+                Boundary = fightLastBoundary,
+                ExpandedNodes = fightExpandedNodes,
+                Transitions = fightTransitions,
+                UnplannedReplans = unplannedReplanCount - replansBeforeFight,
+                ChoiceMismatches = choiceMismatchCount - choiceMismatchesBeforeFight,
+                HardErrors = 0,
+                TheftPolicy = fightTheftPolicy?.ToString(),
+                HardError = null,
+            };
         }
         catch (Exception ex)
         {
+            string errDesc;
             if (FindInner<NativeChoicePlanMismatchException>(ex) is { } choiceMismatch)
             {
                 choiceMismatchCount++;
                 hardErrorCount++;
+                errDesc = $"{choiceMismatch.GetType().Name}: {choiceMismatch.Message}";
                 errorSamples.Add(new SoakErrorSample(fightIndex, tag, currentTurn, choiceMismatch.GetType().Name, choiceMismatch.Message));
             }
             else
             {
                 Exception root = Unwrap(ex);
                 hardErrorCount++;
+                errDesc = $"{root.GetType().Name}: {root.Message}";
                 errorSamples.Add(new SoakErrorSample(fightIndex, tag, currentTurn, root.GetType().Name, root.Message));
             }
+
+            return new FightOutcomeRecord
+            {
+                FightId = tag,
+                Tier = "soak",
+                Group = group,
+                CharacterId = setup.CharacterId,
+                EncounterId = setup.EncounterId,
+                Won = false,
+                Survives = false,
+                StartHp = startHp,
+                StartMaxHp = startMaxHp,
+                Turns = currentTurn,
+                ElapsedMs = Math.Round(fightSolveMs, 2),
+                SolveCount = fightSolveCount,
+                Boundary = "Error",
+                ExpandedNodes = fightExpandedNodes,
+                Transitions = fightTransitions,
+                UnplannedReplans = unplannedReplanCount - replansBeforeFight,
+                ChoiceMismatches = choiceMismatchCount - choiceMismatchesBeforeFight,
+                HardErrors = 1,
+                HardError = errDesc,
+            };
         }
         finally
         {

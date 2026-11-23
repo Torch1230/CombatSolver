@@ -26,7 +26,6 @@ internal static class SolverOverlay
     private const long ResizeLayoutIntervalMilliseconds = 16;
     private const double ActiveSearchProgressMaximum = 0.95d;
     private const double MaxElapsedClockLeadSeconds = 1d;
-    private const int SignificantBattleHpLossThreshold = 8;
     private const string SpeedXWarningText =
         "检测到皮皮极速（SpeedX）：其悬浮显示可能持续产生大量临时内存，触发频繁回收，加重长时间游玩时的卡顿。\n需要战斗加速时，建议使用求解器自带的“瞬间”：设置 > 常规 > 自动执行，将“自动出牌速度”设为“瞬间”，“牌间额外停顿（秒）”设为 0。玩家和怪物回合均加速，局外保持原速。点击本消息后不再提示";
     private static Color Background => SolverUiTokens.Palette.Background;
@@ -91,12 +90,8 @@ internal static class SolverOverlay
     private static Button? _relicStrategyButton;
     private static SolverRelicStrategyPanel? _relicStrategyPanel;
     private static bool _relicStrategyVisible;
-    private static PanelContainer? _searchLimitHint;
-    private static Label? _searchLimitHintLabel;
-    private static Button? _performanceHintButton;
     private static Button? _bossHpStrategyHintButton;
     private static Button? _speedXWarningButton;
-    private static SolverMemoryUsageBar? _memoryUsageBar;
     private static SolverPotionStrategyPanel? _potionStrategyPanel;
     private static Control? _rightResizeHandle;
     private static Control? _bottomResizeHandle;
@@ -118,6 +113,7 @@ internal static class SolverOverlay
     private static SolverButtonStyle? _renderedAdoptRouteButtonStyle;
     private static SolverTheftPolicy? _renderedTheftPolicy;
     private static SolverOverlaySnapshot? _lastSnapshot;
+    private static SolverOverlaySnapshot? _preliminarySnapshot;
     private static SolverOverlaySnapshot? _searchBestSnapshot;
     private static PotionRewardOutlook _searchPotionRewardOutlook;
     private static string? _lastMessageText;
@@ -205,13 +201,6 @@ internal static class SolverOverlay
         => EnsureSettingsPanel()?.SearchCompletionNotificationSettingsConfiguredForTesting == true;
     internal static bool SettingsTabsConfiguredForTesting
         => EnsureSettingsPanel()?.SettingsTabsConfiguredForTesting == true;
-    internal static bool MemoryUsageBarConfiguredForTesting
-        => _memoryUsageBar != null
-            && GodotObject.IsInstanceValid(_memoryUsageBar)
-            && _memoryUsageBar.IsInsideTree()
-            && _memoryUsageBar.LayoutConfiguredForTesting;
-    internal static bool ExerciseMemoryUsageBarForTesting()
-        => SolverMemoryUsageBar.ExerciseFormattingForTesting();
     internal static bool VisualSettingsConfiguredForTesting
         => EnsureSettingsPanel()?.VisualSettingsConfiguredForTesting == true;
     internal static bool BossHpStrategySettingsConfiguredForTesting
@@ -246,9 +235,9 @@ internal static class SolverOverlay
             };
         }
     }
-    internal static bool PerformanceHintVisibleForTesting => _performanceHintButton?.Visible == true;
+    internal static bool PerformanceHintVisibleForTesting => false;
     internal static bool SpeedXWarningVisibleForTesting => _speedXWarningButton?.Visible == true;
-    internal static bool SearchLimitHintVisibleForTesting => _searchLimitHint?.Visible == true;
+    internal static bool SearchLimitHintVisibleForTesting => false;
     internal static bool BossHpStrategyHintVisibleForTesting
         => _bossHpStrategyHintButton?.Visible == true;
     internal static string? BossHpStrategyHintTextForTesting => _bossHpStrategyHintButton?.Text;
@@ -261,39 +250,7 @@ internal static class SolverOverlay
     internal static void SettleSearchReadoutsForTesting()
         => EaseSearchReadouts(1d);
     internal static bool ExercisePerformanceHintForTesting()
-    {
-        if (_performanceHintButton == null)
-            return false;
-        SolverSettingsData originalSettings = SolverSettings.Current;
-        bool original = _performanceHintButton.Visible;
-        try
-        {
-            SolverSettings.ApplyForTesting(originalSettings with
-            {
-                ShowBattleDamagePerformanceHint = true,
-            });
-            SetPerformanceHintVisible(IsSignificantBattleHpLoss(true, 7));
-            bool hiddenBelowThreshold = !_performanceHintButton.Visible;
-            SetPerformanceHintVisible(IsSignificantBattleHpLoss(true, 8));
-            bool visibleAtThreshold = _performanceHintButton.Visible
-                && _performanceHintButton.Text.Contains("本场战斗出现大战损", StringComparison.Ordinal)
-                && _performanceHintButton.Text.Contains("若对结果不满意", StringComparison.Ordinal)
-                && _performanceHintButton.Text.Contains("设置 > 性能", StringComparison.Ordinal)
-                && _performanceHintButton.Text.Contains("高或极高", StringComparison.Ordinal)
-                && _performanceHintButton.Text.Contains("点击本消息之后不再提示", StringComparison.Ordinal)
-                && !_performanceHintButton.Text.Contains("跳转", StringComparison.Ordinal);
-            SolverSettings.ApplyForTesting(SolverSettings.RoundTripForTesting(
-                originalSettings with { ShowBattleDamagePerformanceHint = false }));
-            SetPerformanceHintVisible(false);
-            SetPerformanceHintVisible(true);
-            return hiddenBelowThreshold && visibleAtThreshold && !_performanceHintButton.Visible;
-        }
-        finally
-        {
-            SolverSettings.ApplyForTesting(originalSettings);
-            SetPerformanceHintVisible(original);
-        }
-    }
+        => !PerformanceHintVisibleForTesting;
 
     internal static bool ExerciseGuidanceHintsForTesting()
     {
@@ -327,28 +284,10 @@ internal static class SolverOverlay
     }
 
     internal static bool ExerciseSearchLimitHintForTesting()
-    {
-        if (_searchLimitHint == null || _searchLimitHintLabel == null)
-            return false;
-        string? original = _lastSnapshot?.SearchLimitWarningText;
-        try
-        {
-            SetSearchLimitHint(SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.TimeLimit));
-            bool timeLimit = SearchLimitHintVisibleForTesting
-                && _searchLimitHintLabel.Text.Contains("计算尚未彻底穷尽", StringComparison.Ordinal)
-                && _searchLimitHintLabel.Text.Contains("时间上限", StringComparison.Ordinal)
-                && _searchLimitHintLabel.Text.Contains("设置 > 性能", StringComparison.Ordinal);
-            SetSearchLimitHint(SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.NodeLimit));
-            bool nodeLimit = SearchLimitHintVisibleForTesting
-                && _searchLimitHintLabel.Text.Contains("节点上限", StringComparison.Ordinal);
-            SetSearchLimitHint(SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.None));
-            return timeLimit && nodeLimit && !SearchLimitHintVisibleForTesting;
-        }
-        finally
-        {
-            SetSearchLimitHint(original);
-        }
-    }
+        => SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.TimeLimit) == null
+            && SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.NodeLimit) == null
+            && SolverOverlaySnapshot.BuildSearchLimitWarning(SearchBoundaryReason.None) == null
+            && !SearchLimitHintVisibleForTesting;
 
     internal static bool ExerciseBossHpStrategyHintForTesting()
     {
@@ -677,12 +616,11 @@ internal static class SolverOverlay
     public static void Show(Node host, string text)
     {
         _lastSnapshot = null;
+        _preliminarySnapshot = null;
         _lastMessageText = text;
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus(SolverText.Get("求解器消息"), TextMuted);
-        SetSearchLimitHint(null);
-        SetPerformanceHintVisible(false);
         SetCurrentBossHpStrategyHint();
         SetReviewText(null);
         const string legacyTitle = "[b]战斗路线求解器[/b]\n";
@@ -696,12 +634,11 @@ internal static class SolverOverlay
     public static void ShowDisabled(Node host)
     {
         _lastSnapshot = null;
+        _preliminarySnapshot = null;
         _lastMessageText = null;
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus(SolverText.Get("求解器已禁用"), TextMuted);
-        SetSearchLimitHint(null);
-        SetPerformanceHintVisible(false);
         SetBossHpStrategyHint(BossHpRelief.None);
         SetReviewText(null);
         SetMessageContent(SolverText.Format($"[color={SolverUiTokens.Palette.TextSecondaryHex}]自动搜索和路线执行已暂停。[/color]"));
@@ -711,14 +648,17 @@ internal static class SolverOverlay
 
     public static void ShowSearchStopped(Node host)
     {
+        _preliminarySnapshot = null;
         _lastMessageText = null;
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus(SolverText.Get("计算已停止"), Danger);
-        SetSearchLimitHint(null);
-        SetPerformanceHintVisible(false);
         SetCurrentBossHpStrategyHint();
         SetReviewText(null);
+        if (_progressText != null)
+            _progressText.Visible = false;
+        if (_searchProgressBar != null)
+            _searchProgressBar.Visible = false;
         if (_searchBestSnapshot == null && _lastSnapshot == null)
         {
             SetMessageContent(
@@ -737,13 +677,12 @@ internal static class SolverOverlay
     public static void ShowManualCalculationReady(Node host, bool hasPreviousCalculation)
     {
         _lastSnapshot = null;
+        _preliminarySnapshot = null;
         _searchBestSnapshot = null;
         _lastMessageText = null;
         EnsureCreated(host);
         _deployQueued = false;
         SetStatus(SolverText.Get("等待手动计算"), TextMuted);
-        SetSearchLimitHint(null);
-        SetPerformanceHintVisible(false);
         SetCurrentBossHpStrategyHint();
         SetReviewText(null);
         SetMessageContent(
@@ -757,6 +696,7 @@ internal static class SolverOverlay
         EnsureCreated(host);
         if (_lastSnapshot == null)
             throw new InvalidOperationException("保留路线必须先显示对应的搜索结果。");
+        _preliminarySnapshot = null;
         _presentation = SolverOverlayPresentation.Ready;
         _deployQueued = false;
         bool current = SolverController.CanExecuteCurrentTurn;
@@ -764,7 +704,6 @@ internal static class SolverOverlay
             current ? Accent : TextMuted);
         if (_routeHeadingLabel != null)
             _routeHeadingLabel.Text = SolverText.Get(current ? "已保存路线" : "已保存路线（已过期）");
-        SetSearchLimitHint(null);
         ShowLayer();
         RefreshControls();
     }
@@ -785,7 +724,8 @@ internal static class SolverOverlay
         _deployQueued = deployWhenReady;
         _lastSearchDeployWhenReady = deployWhenReady;
         _lastReviewedWorldlinesBeforeSearch = reviewedWorldlinesBeforeSearch;
-        if (bestSnapshot != null)
+        bool showingPreliminary = _preliminarySnapshot != null;
+        if (!showingPreliminary && bestSnapshot != null)
         {
             _searchBestSnapshot = bestSnapshot;
             PopulateRoute(bestSnapshot, resetScroll: false);
@@ -799,14 +739,28 @@ internal static class SolverOverlay
             "切换用药路线",
             StringComparison.Ordinal);
         bool refiningRoute = string.Equals(progress.Phase, "正在精炼路线", StringComparison.Ordinal);
-        SetStatus(
-            reclaimingMemory
-                ? changingPotionGradient ? SolverText.Get("切换用药路线") : SolverText.Get("正在整理内存")
-                : refiningRoute ? SolverText.Get("正在精炼路线") : SolverText.Get("后台计算中"),
-            reclaimingMemory ? Warning : Accent,
-            deployWhenReady ? SolverText.Format($"{routeContext}    已排队执行") : routeContext);
-        if (_routeHeadingLabel != null)
-            _routeHeadingLabel.Text = SolverText.Get("求解器当前考虑（尚未验证）");
+        if (showingPreliminary)
+        {
+            SolverOverlaySnapshot preliminary = _preliminarySnapshot!;
+            Color preliminaryColor = preliminary.StatusTone == SolverOverlayTone.Danger ? Danger : Accent;
+            string preliminaryContext = deployWhenReady
+                ? SolverText.Format($"第 {preliminary.StartTurnNumber} 回合    已排队执行")
+                : SolverText.Format($"第 {preliminary.StartTurnNumber} 回合");
+            SetStatus(SolverText.Get("深化中…"), preliminaryColor, preliminaryContext);
+            if (_routeHeadingLabel != null)
+                _routeHeadingLabel.Text = SolverText.Get("推荐路线（深化中…）");
+        }
+        else
+        {
+            SetStatus(
+                reclaimingMemory
+                    ? changingPotionGradient ? SolverText.Get("切换用药路线") : SolverText.Get("正在整理内存")
+                    : refiningRoute ? SolverText.Get("正在精炼路线") : SolverText.Get("后台计算中"),
+                reclaimingMemory ? Warning : Accent,
+                deployWhenReady ? SolverText.Format($"{routeContext}    已排队执行") : routeContext);
+            if (_routeHeadingLabel != null)
+                _routeHeadingLabel.Text = SolverText.Get("求解器当前考虑（尚未验证）");
+        }
         double reportedElapsedSeconds = progress.ElapsedMilliseconds / 1000d;
         // Elapsed time only runs backwards when a new request reports without ShowSearching first
         // (turn-setup searches); restart the clock there instead of holding the old request's time.
@@ -851,21 +805,29 @@ internal static class SolverOverlay
             _lastProgressReviewedWorldlines = progress.ReviewedWorldlines;
             _lastProgressElapsedMilliseconds = progress.ElapsedMilliseconds;
         }
-        SetReviewText(SolverText.IsEnglish && potionSearchPhase.Length > 0
-            ? reclaimingMemory
-                ? SolverText.Get("正在整理内存")
-                : refiningRoute
-                    ? SolverText.Get("正在精炼路线")
-                    : SolverText.Get("后台计算中")
-            : potionSearchPhase);
-        if (_summaryText != null)
+        if (showingPreliminary)
         {
-            _summaryText.Visible = true;
-            _reviewedWorldlinesSummaryPrefix = _searchBestSnapshot is { } snapshot
-                && !string.IsNullOrWhiteSpace(snapshot.SummaryText)
-                    ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) + "  │  "
-                    : string.Empty;
-            RenderReviewedWorldlinesSummary();
+            _reviewedWorldlinesSummaryPrefix = null;
+            SetReviewText(SolverText.Format($"已查阅 {reviewedWorldlines:N0} 条世界线，后台正在深化更优解…"));
+        }
+        else
+        {
+            SetReviewText(SolverText.IsEnglish && potionSearchPhase.Length > 0
+                ? reclaimingMemory
+                    ? SolverText.Get("正在整理内存")
+                    : refiningRoute
+                        ? SolverText.Get("正在精炼路线")
+                        : SolverText.Get("后台计算中")
+                : potionSearchPhase);
+            if (_summaryText != null)
+            {
+                _summaryText.Visible = true;
+                _reviewedWorldlinesSummaryPrefix = _searchBestSnapshot is { } snapshot
+                    && !string.IsNullOrWhiteSpace(snapshot.SummaryText)
+                        ? SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText) + "  │  "
+                        : string.Empty;
+                RenderReviewedWorldlinesSummary();
+            }
         }
         if (_searchProgressBar != null)
         {
@@ -993,6 +955,7 @@ internal static class SolverOverlay
         _waitingForNextTurnPlan = false;
         SolverController.InvalidateRenderedRouteAdoptionSeed();
         _lastSnapshot = null;
+        _preliminarySnapshot = null;
         _searchBestSnapshot = null;
         _searchPotionRewardOutlook = potionRewardOutlook;
         _lastMessageText = null;
@@ -1012,7 +975,6 @@ internal static class SolverOverlay
         _lastProgressElapsedMilliseconds = 0L;
         _reviewedWorldlinesSummaryPrefix = null;
         EnsureCreated(host);
-        SetSearchLimitHint(null);
         SetCurrentBossHpStrategyHint();
         _deployQueued = deployWhenReady;
         SetStatus(
@@ -1029,7 +991,6 @@ internal static class SolverOverlay
         if (_progressText != null)
             _progressText.Visible = false;
         SetReviewText(null);
-        SetPerformanceHintVisible(false);
         if (_searchProgressBar != null)
         {
             _searchProgressBar.Visible = true;
@@ -1078,17 +1039,80 @@ internal static class SolverOverlay
         _rewardOutcomeLabel.Text = reward ?? string.Empty;
     }
 
+    public static void ShowPreliminaryResult(Node host, SolverOverlaySnapshot snapshot)
+    {
+        _presentation = SolverOverlayPresentation.Searching;
+        _waitingForNextTurnPlan = false;
+        _preliminarySnapshot = snapshot;
+        _lastSnapshot = null;
+        _searchBestSnapshot = snapshot;
+        _lastMessageText = null;
+        _reviewedWorldlinesSummaryPrefix = null;
+        EnsureCreated(host);
+        _deployQueued = false;
+        Color statusColor = snapshot.StatusTone == SolverOverlayTone.Danger ? Danger : Accent;
+        SetStatus(
+            SolverText.Get("深化中…"),
+            statusColor,
+            SolverText.Format($"第 {snapshot.StartTurnNumber} 回合"));
+        if (_summaryPanel != null)
+            _summaryPanel.Visible = true;
+        if (_summaryText != null)
+        {
+            _summaryText.Visible = true;
+            _summaryText.Text = SolverUiTokens.AdaptRichTextToActiveTheme(snapshot.SummaryText)
+                + (snapshot.Turns.Count > SolverWeights.UiTurnRows
+                    ? "\n" + SolverText.Format($"另有 {snapshot.Turns.Count - SolverWeights.UiTurnRows} 回合未展开显示")
+                    : string.Empty);
+        }
+        SetReviewText(SolverText.Get("已找到可打路线，后台正在深化更优解…"));
+        SetCurrentBossHpStrategyHint();
+        if (_searchProgressBar != null)
+            _searchProgressBar.Visible = true;
+        if (_routeHeadingLabel != null)
+            _routeHeadingLabel.Text = SolverText.Get("推荐路线（深化中…）");
+        PopulateRoute(snapshot, resetScroll: true);
+        if (_detailsButton != null)
+            _detailsButton.Visible = false;
+        SetDetailsVisible(false);
+        ShowLayer();
+        RefreshControls();
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] UI_STATE state=preliminary turn={snapshot.StartTurnNumber} " +
+            $"risk={snapshot.HasRisk} only_death_routes={snapshot.OnlyDeathRoutesFound}");
+    }
+
+    public static void ClearPreliminaryRefiningIndicator()
+    {
+        if (_preliminarySnapshot is not { } preliminary)
+            return;
+        _preliminarySnapshot = null;
+        _presentation = SolverOverlayPresentation.Ready;
+        _reviewedWorldlinesSummaryPrefix = null;
+        SetStatus(
+            SolverText.Get("初步路线"),
+            TextMuted,
+            SolverText.Format($"第 {preliminary.StartTurnNumber} 回合"));
+        if (_routeHeadingLabel != null)
+            _routeHeadingLabel.Text = SolverText.Get("初步路线（已停止深化）");
+        if (_progressText != null)
+            _progressText.Visible = false;
+        if (_searchProgressBar != null)
+            _searchProgressBar.Visible = false;
+        SetReviewText(SolverText.Get("检测到手动操作，已停止后台深化"));
+    }
+
     public static void ShowResult(Node host, SolverOverlaySnapshot snapshot)
     {
         _presentation = SolverOverlayPresentation.Ready;
         _waitingForNextTurnPlan = false;
+        _preliminarySnapshot = null;
         _lastSnapshot = snapshot;
         _searchBestSnapshot = null;
         _searchPotionRewardOutlook = default;
         _lastMessageText = null;
         EnsureCreated(host);
         _deployQueued = false;
-        SetSearchLimitHint(snapshot.SearchLimitWarningText);
         Color statusColor = snapshot.StatusTone switch
         {
             SolverOverlayTone.Danger => Danger,
@@ -1110,11 +1134,6 @@ internal static class SolverOverlay
             _progressText.Visible = false;
         SetReviewText(snapshot.ReviewSummaryText);
         bool hasRouteDetails = !string.IsNullOrEmpty(snapshot.DetailsText);
-        SetPerformanceHintVisible(
-            hasRouteDetails
-            && IsSignificantBattleHpLoss(
-                snapshot.ProjectedBattleHpLossKnown,
-                snapshot.ProjectedBattleHpLost));
         SetCurrentBossHpStrategyHint();
         if (_searchProgressBar != null)
             _searchProgressBar.Visible = false;
@@ -1682,12 +1701,19 @@ internal static class SolverOverlay
         }
         else if (SolverController.IsSearching)
         {
-            ShowSearching(
-                host,
-                _lastSearchingTurn,
-                _lastSearchDeployWhenReady,
-                _lastReviewedWorldlinesBeforeSearch,
-                _searchPotionRewardOutlook);
+            if (_preliminarySnapshot is { } preliminary)
+            {
+                ShowPreliminaryResult(host, preliminary);
+            }
+            else
+            {
+                ShowSearching(
+                    host,
+                    _lastSearchingTurn,
+                    _lastSearchDeployWhenReady,
+                    _lastReviewedWorldlinesBeforeSearch,
+                    _searchPotionRewardOutlook);
+            }
         }
         else if (!SolverController.AutomaticCalculationEnabled)
         {
@@ -1767,8 +1793,6 @@ internal static class SolverOverlay
 
         root.AddChild(CreateHeader());
         root.AddChild(CreateSpeedXWarning());
-        root.AddChild(CreateSearchLimitHint());
-        root.AddChild(CreatePerformanceHint());
         root.AddChild(CreateBossHpStrategyHint());
 
         HBoxContainer contentColumns = new()
@@ -1963,7 +1987,7 @@ internal static class SolverOverlay
         _growthStrategyVisible = false;
         _relicStrategyVisible = false;
         SetCollapsed(false);
-        Entry.Logger.Info("[CombatSolver/Test] UI_CREATE responsive=true content_fit_height=true minimum_size_reflow=true draggable=true drag_coordinates=viewport drag_relayout=release_only resizable=right+bottom+corner resize_grip=three_diagonal_lines size_persisted=true route_scroll_expand=true max_width=viewport max_height=viewport route_row_height=44 route_viewport_height=148 visible_unwrapped_route_rows=3 cached_route_rows=16 all_searched_turns=true route_scroll=true persistent_status_card=true compact_title=true compact_footer=true collapsed_action_buttons=true footer_pause_toggles=false settings_pause_toggles=true footer_top_margin=8 details_in_status_row=true battle_hp_in_route_heading=true sold_hp_summary=false three_column_routes=true semantic_action_pills=true full_target_names=true whole_pill_kill_highlight=true text_outline_px=2 wrapped_summary=true summary_bold_metric=true flat_collapse=true plain_details_button=true full_auto_positive_toggle=true no_middle_dot=true status_badge=true plain_action_buttons=true always_show_energy=true plain_route_heading=true settings_button=true settings_persisted=true settings_tabs=general+performance+feedback performance_advanced=collapsed notification_policy=three_state performance_presets=low+medium+high+very_high+custom kill_pill=green_with_target_names status_badge=content_width deployment_speed_settings=true search_status=fixed_columns_seconds only_death_marker=true relic_action_labels=true position_persisted=true theft_policy_buttons=contextual stop_search_button=true");
+        Entry.Logger.Info("[CombatSolver/Test] UI_CREATE responsive=true content_fit_height=true minimum_size_reflow=true draggable=true drag_coordinates=viewport drag_relayout=release_only resizable=right+bottom+corner resize_grip=three_diagonal_lines size_persisted=true route_scroll_expand=true max_width=viewport max_height=viewport route_row_height=44 route_viewport_height=148 visible_unwrapped_route_rows=3 cached_route_rows=16 all_searched_turns=true route_scroll=true persistent_status_card=true compact_title=true compact_footer=true collapsed_action_buttons=true footer_pause_toggles=false settings_pause_toggles=true footer_top_margin=8 details_in_status_row=true battle_hp_in_route_heading=true sold_hp_summary=false three_column_routes=true semantic_action_pills=true full_target_names=true whole_pill_kill_highlight=true text_outline_px=2 wrapped_summary=true summary_bold_metric=true flat_collapse=true plain_details_button=true full_auto_positive_toggle=true no_middle_dot=true status_badge=true plain_action_buttons=true always_show_energy=true plain_route_heading=true settings_button=true settings_persisted=true settings_tabs=general+performance+feedback notification_policy=three_state performance_controls=max_hard_fight_think_seconds+max_dop kill_pill=green_with_target_names status_badge=content_width deployment_speed_settings=true search_status=fixed_columns_seconds only_death_marker=true relic_action_labels=true position_persisted=true theft_policy_buttons=contextual stop_search_button=true memory_bar=false");
         Entry.Logger.Info("[CombatSolver/Test] UI_FEEDBACK_BANNER position=full_width manual_improvement=green unexpected_replan=red export_prompt=full_bug_report");
     }
 
@@ -2177,44 +2201,6 @@ internal static class SolverOverlay
             SolverUiTokens.Spacing.Md,
             SolverUiTokens.Spacing.Xxs);
 
-    private static Control CreatePerformanceHint()
-    {
-        _performanceHintButton = SolverUiTokens.CreateButton(
-            SolverText.Get("本场战斗出现大战损，若对结果不满意可以前往 设置 > 性能，将性能预设调为高或极高后重试。点击本消息之后不再提示"),
-            SolverButtonStyle.Secondary);
-        _performanceHintButton.Name = "PerformanceHint";
-        _performanceHintButton.Visible = false;
-        _performanceHintButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        _performanceHintButton.CustomMinimumSize = new Vector2(0, 44);
-        _performanceHintButton.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _performanceHintButton.AddThemeStyleboxOverride("normal", CreateNoticeBox());
-        _performanceHintButton.AddThemeStyleboxOverride("hover", CreateNoticeBox(hover: true));
-        _performanceHintButton.Pressed += DismissPerformanceHint;
-        return _performanceHintButton;
-    }
-
-    private static Control CreateSearchLimitHint()
-    {
-        _searchLimitHint = new PanelContainer
-        {
-            Name = "SearchLimitHint",
-            Visible = false,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 44),
-        };
-        _searchLimitHint.AddThemeStyleboxOverride("panel", CreateNoticeBox());
-        _searchLimitHintLabel = CreateTextLabel(
-            string.Empty,
-            SolverUiTokens.Type.Body,
-            Warning,
-            FontType.Bold);
-        _searchLimitHintLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _searchLimitHintLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        _searchLimitHint.AddChild(_searchLimitHintLabel);
-        return _searchLimitHint;
-    }
-
     private static Control CreateBossHpStrategyHint()
     {
         _bossHpStrategyHintButton = SolverUiTokens.CreateButton(
@@ -2416,13 +2402,8 @@ internal static class SolverOverlay
         };
         autoStart.AddChild(_autoEnableFullAutoSwitch);
 
-        _memoryUsageBar = new SolverMemoryUsageBar
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
-
         _actionBar = new SolverActionBar(_executeButton, _recalculateButton, _stopSearchButton,
-            _adoptRouteButton, _freezeRouteButton, _fullAutoButton, autoStart, _memoryUsageBar);
+            _adoptRouteButton, _freezeRouteButton, _fullAutoButton, autoStart);
         return _actionBar;
     }
 
@@ -2648,9 +2629,6 @@ internal static class SolverOverlay
         if (_settingsVisible)
             EnsureSettingsPanel()?.Reload();
         ApplyContentVisibility();
-        SetPerformanceHintVisible(
-            !_settingsVisible
-            && HasSignificantBattleHpLoss(_lastSnapshot));
         QueueResponsiveLayout();
         Entry.Logger.Info($"[CombatSolver/Test] UI_ACTION action=settings visible={_settingsVisible}");
     }
@@ -2669,21 +2647,9 @@ internal static class SolverOverlay
             EnsurePotionStrategyPanel()?.Invalidate();
         RefreshControls();
         ApplyContentVisibility();
-        SetPerformanceHintVisible(
-            HasSignificantBattleHpLoss(_lastSnapshot));
         QueueResponsiveLayout();
         Entry.Logger.Info(
             $"[CombatSolver/Test] UI_ACTION action=potion_strategy visible={_potionStrategyVisible}");
-    }
-
-    private static void DismissPerformanceHint()
-    {
-        SolverSettings.Update(SolverSettings.Current with
-        {
-            ShowBattleDamagePerformanceHint = false,
-        });
-        SetPerformanceHintVisible(false);
-        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=performance_hint_dismissed");
     }
 
     private static void DismissSpeedXWarning()
@@ -2774,37 +2740,6 @@ internal static class SolverOverlay
             return;
         _reviewText.Visible = !string.IsNullOrEmpty(text);
         _reviewText.Text = text ?? string.Empty;
-    }
-
-    private static void SetPerformanceHintVisible(bool visible)
-    {
-        visible &= SolverSettings.Current.ShowBattleDamagePerformanceHint;
-        if (_performanceHintButton == null || _performanceHintButton.Visible == visible)
-            return;
-        _performanceHintButton.Visible = visible;
-        QueueResponsiveLayout();
-    }
-
-    private static bool HasSignificantBattleHpLoss(SolverOverlaySnapshot? snapshot)
-        => snapshot is { } value
-            && IsSignificantBattleHpLoss(
-                value.ProjectedBattleHpLossKnown,
-                value.ProjectedBattleHpLost);
-
-    private static bool IsSignificantBattleHpLoss(bool known, int hpLost)
-        => known && hpLost >= SignificantBattleHpLossThreshold;
-
-    private static void SetSearchLimitHint(string? text)
-    {
-        if (_searchLimitHint == null || _searchLimitHintLabel == null)
-            return;
-        bool visible = !string.IsNullOrEmpty(text);
-        bool changed = _searchLimitHint.Visible != visible
-            || !string.Equals(_searchLimitHintLabel.Text, text, StringComparison.Ordinal);
-        _searchLimitHintLabel.Text = text ?? string.Empty;
-        _searchLimitHint.Visible = visible;
-        if (changed)
-            QueueResponsiveLayout();
     }
 
     private static void ToggleDetails()
@@ -3437,7 +3372,6 @@ internal static class SolverOverlay
             _actionBar!.AssertLayoutForTesting();
             RefreshControls();
             if (_solverEnabledButton!.GetParent().Name != "Header"
-                || !MemoryUsageBarConfiguredForTesting
                 || _theftPolicyControls!.GetParent() != _body)
                 throw new InvalidOperationException("Action controls were not separated from header, strategy and maintenance controls.");
             _solverEnabledButton!.EmitSignal(BaseButton.SignalName.Pressed);

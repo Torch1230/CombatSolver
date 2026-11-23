@@ -16,7 +16,7 @@ internal static class HotSearchConstants
     public const int RunEndingPotionTieBreakCenti = 50;// 0.50 HP tie-break on Final Boss (potions expire after fight)
     public const int ReplacedPotionFloorCenti = 50;    // 0.50 HP floor after replacement credit (never waste for 0 gain)
     public const int DeathSavePremiumPercent = 900;
-    public const int MaxBeamWidth = 512;
+    public const int MaxBeamWidth = 640;
     public const int MaximumSearchMaxDegreeOfParallelism = 16;
     public const int MinimumTurnLayerExpandedNodes = 500;
     public const int SetupValueHorizonTurns = 16;
@@ -41,6 +41,7 @@ internal readonly struct HotSearchPolicy
     public readonly int InitialPlayerHp;
     public readonly int InitialPlayerMaxHp;
     public readonly int InitialEnemyCount;
+    public readonly int InitialLiveDeckCount;
     public readonly int BattleHpLostSoFar;
     public readonly int BattlePotionsUsedSoFar;
     public readonly int AcceptableBattleHpLoss;
@@ -120,6 +121,7 @@ internal readonly struct HotSearchPolicy
         InitialPlayerHp = root.InitialPlayerHp;
         InitialPlayerMaxHp = root.InitialPlayerMaxHp;
         InitialEnemyCount = rootState.RosterCount;
+        InitialLiveDeckCount = rootState.HandCount + rootState.DrawCount + rootState.DiscardCount;
         BattleHpLostSoFar = battleDamage.HpLostSoFar;
         BattlePotionsUsedSoFar = battleDamage.PotionsUsedSoFar;
         AcceptableBattleHpLoss = policy.AcceptableBattleHpLoss;
@@ -334,6 +336,7 @@ internal readonly record struct HotRouteKey(
     public byte AlchemizeCount { get; init; }
     public byte EmptyPotionSlots { get; init; }
     public byte RouteTurn { get; init; }
+    public bool IsEventDefeat { get; init; }
 }
 
 /// <summary>
@@ -494,6 +497,7 @@ internal static class HotRouteQuality
             AlchemizeCount = node.AlchemizeCount,
             EmptyPotionSlots = node.EmptyPotionSlots,
             RouteTurn = node.Turn,
+            IsEventDefeat = node.IsEventDefeat,
         };
     }
 
@@ -502,10 +506,13 @@ internal static class HotRouteQuality
     /// </summary>
     public static HotRouteKey FromSolverResult(SolverResult result, in HotSearchPolicy policy)
     {
+        bool isEventDefeat = result.BoundaryReason == SearchBoundaryReason.EventDefeat
+            || result.Snapshot.BoundaryReason == SearchBoundaryReason.EventDefeat;
+
         if (result.ComparisonQuality is { } q)
         {
             return new HotRouteKey(
-                Won: q.Won,
+                Won: q.Won && !isEventDefeat,
                 Survives: q.Survives,
                 DeathSaveUseCount: (byte)Math.Clamp(q.DeathSaveUseCount, 0, byte.MaxValue),
                 OutstandingStolen: q.OutstandingStolenResource,
@@ -515,7 +522,7 @@ internal static class HotRouteQuality
                 RawPotionStrategicCost: q.PotionStrategicCost,
                 GrowthHpCredit: q.GrowthHpCredit,
                 GrowthRewardCount: q.GrowthRewardCount,
-                CombatEndedTurn: q.CombatEndedTurn ?? int.MaxValue,
+                CombatEndedTurn: (q.Won && !isEventDefeat ? q.CombatEndedTurn : null) ?? int.MaxValue,
                 ProjectedBattleHpLost: q.ProjectedBattleHpLost,
                 ProjectedBattlePotionCount: q.ProjectedBattlePotionCount,
                 ExplicitPotionCount: result.ExplicitPotionCount,
@@ -528,11 +535,12 @@ internal static class HotRouteQuality
                 AmbergrisCount: 0)
             {
                 RouteTurn = (byte)Math.Clamp(result.DeathTurn ?? result.CombatEndedTurn ?? result.Snapshot.Turn, 0, byte.MaxValue),
+                IsEventDefeat = isEventDefeat,
             };
         }
 
         SolverSnapshot snap = result.Snapshot;
-        bool won = snap.AllEnemiesDead && !snap.PlayerDead && !result.OnlyDeathRoutesFound;
+        bool won = snap.AllEnemiesDead && !snap.PlayerDead && !result.OnlyDeathRoutesFound && !isEventDefeat;
         bool survives = !snap.PlayerDead && snap.PlayerHp > 0;
         int postCombatHeal = RankedPostCombatRelicHeal(
             policy.PostCombatRelicHeal,
@@ -580,6 +588,7 @@ internal static class HotRouteQuality
             NetPotionOpportunityCostCenti = potionCostCenti,
             EndPlayerMaxHp = snap.PlayerMaxHp,
             RouteTurn = (byte)Math.Clamp(result.DeathTurn ?? result.CombatEndedTurn ?? snap.Turn, 0, byte.MaxValue),
+            IsEventDefeat = isEventDefeat,
         };
     }
 

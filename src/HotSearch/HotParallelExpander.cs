@@ -2,7 +2,6 @@ using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using CombatSolver.HotKernel;
-using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace CombatSolver.HotSearch;
 
@@ -13,12 +12,11 @@ internal struct HotStagedChild
     public HotColdSidecar? Cold;
     public HotHash128 Hash;
     public HotFastSummary Summary;
-    public long Score;
-    public int SetupScore;
+    public HotEvalFeatures Eval;
+    public long RolloutScore;
     public int ChoiceOffset;
     public HotAction Action;
     public byte ChoiceCount;
-    public byte PlayableHandCount;
     public short PotionCostDelta;
     public ushort PotionSlotBit;
     public byte PotionCountDelta;
@@ -37,12 +35,9 @@ internal struct HotChoiceInline
 internal struct HotChoicePrefix
 {
     public HotChoiceInline Selections;
-    public int LastChoicePriority;
-    public int BatchHistoryPlays;
-    public ushort BatchSourceCardDefId;
+    public ushort LastGroupSeq;
     public ushort LastChoiceUid;
-    public ushort BatchDrawCount;
-    public HotChoiceKind BatchChoiceKind;
+    public HotChoiceGroupFlags LastGroupFlags;
     public byte Count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -50,6 +45,22 @@ internal struct HotChoicePrefix
         => MemoryMarshal.CreateReadOnlySpan(
             ref Unsafe.As<HotChoiceInline, HotChoiceSelection>(ref Unsafe.AsRef(in Selections)),
             Count);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct HotResolvedChoice
+{
+    public HotChoicePrefix Prefix;
+    public HotStateHandle StagedHandle;
+    public HotColdSidecar? Cold;
+    public HotHash128 Hash;
+    public HotFastSummary Summary;
+    public HotEvalFeatures Eval;
+    public long LookaheadScore;
+    public int LookaheadHpLost;
+    public int LookaheadBoardInvestment;
+    public bool HasLookahead;
+    public bool LookaheadVictory;
 }
 
 internal readonly record struct HotStandPatResult(
@@ -76,17 +87,32 @@ internal sealed class HotExpansionWorkspace : IDisposable
 {
     private const int InitialStagedChildCapacity = 1024;
     private const int InitialStagedChoiceCapacity = 512;
-    private const int MaxChoiceStackItems = 512;
+    internal const int ChoiceLayerCapacity = 256;
+    internal const int ChoiceResolvedCapacity = 160;
+    internal const int ChoiceTtSize = 512;
+    internal const int ChoiceTtMask = ChoiceTtSize - 1;
 
     public CombatHotState ParentState;
     public CombatHotState WorkingState;
     public CombatHotState EndTurnPrefixState;
+    public CombatHotState ChoiceProbeState;
     public readonly HotExecScratch Scratch = new();
+    public readonly HotExecScratch ChoiceProbeScratch = new();
     public readonly HotAction[] ActionBuf = new HotAction[256];
+    public readonly HotAction[] ChoiceProbeActionBuf = new HotAction[128];
     public readonly HotChoiceSelection[] ChoiceOptBuf = new HotChoiceSelection[128];
-    public readonly int[] ChoicePrioBuf = new int[128];
-    public readonly HotChoicePrefix[] ChoiceStack = new HotChoicePrefix[MaxChoiceStackItems];
-    public readonly PackedStateArena StagingArena = new(blockPayloadBytes: 512 * 1024);
+    public readonly HotChoiceSelection[] ChoiceSubOptBuf = new HotChoiceSelection[128];
+    public readonly HotChoiceSelection[] ChoiceProbeChoiceBuf = new HotChoiceSelection[128];
+    public readonly HotChoicePrefix[] ChoiceLayerA = new HotChoicePrefix[ChoiceLayerCapacity];
+    public readonly HotChoicePrefix[] ChoiceLayerB = new HotChoicePrefix[ChoiceLayerCapacity];
+    public readonly HotResolvedChoice[] ChoiceResolved = new HotResolvedChoice[ChoiceResolvedCapacity];
+    public readonly HotHash128[] LocalChoiceTt = new HotHash128[ChoiceTtSize];
+    public readonly byte[] LocalChoiceTtUsed = new byte[ChoiceTtSize];
+    public readonly long[] MarginalScoreBuf = new long[128];
+    public readonly int[] MarginalOrderBuf = new int[128];
+    public readonly byte[] ResolvedSelectedMarks = new byte[ChoiceResolvedCapacity];
+    // Exact 256 KiB total rent size (blockPayloadBytes + MaxPackedStateBytes == 262,144) so ArrayPool never rounds up 2x!
+    public readonly PackedStateArena StagingArena = new(blockPayloadBytes: (256 * 1024) - HotLimits.MaxPackedStateBytes);
 
     public HotStagedChild[] StagedChildren = new HotStagedChild[InitialStagedChildCapacity];
     public int StagedChildCount;
@@ -225,9 +251,9 @@ internal sealed class HotParallelExpander : IDisposable
     public HotParallelExpander(int maxDegreeOfParallelism)
     {
         _maxWorkers = Math.Clamp(maxDegreeOfParallelism, 1, HotSearchConstants.MaximumSearchMaxDegreeOfParallelism);
-        int wsCount = _maxWorkers == 1 ? 1 : _maxWorkers * 2;
-        _workspaces = new HotExpansionWorkspace[wsCount];
-        for (int i = 0; i < wsCount; i++)
+        // ExpandAndCommitWave and RunStandPatBatch never execute concurrently, so 1 workspace per worker suffices!
+        _workspaces = new HotExpansionWorkspace[_maxWorkers];
+        for (int i = 0; i < _maxWorkers; i++)
             _workspaces[i] = new HotExpansionWorkspace();
 
         _parentMapCapacity = 512;
@@ -412,11 +438,13 @@ internal sealed class HotParallelExpander : IDisposable
                 short nextPotionCost = (short)Math.Clamp(parentPotionCost + staged.PotionCostDelta, 0, short.MaxValue);
                 ushort forcedMask = (ushort)(nextPotionMask & policy.ForcedPotionSlotMask);
 
-                bool isOngoing = staged.Summary.Outcome == HotCombatOutcome.Ongoing && !staged.Summary.IsDefeat;
+                bool isOngoing = staged.Summary.Outcome == HotCombatOutcome.Ongoing
+                    && !staged.Summary.IsDefeat
+                    && !staged.Summary.IsEventDefeat;
 
                 HotTtProbeData probe = new(
                     staged.Hash,
-                    staged.Score,
+                    staged.Eval.Score,
                     staged.Summary.HpLost,
                     nextPotionCost,
                     nextActionCount,
@@ -469,6 +497,8 @@ internal sealed class HotParallelExpander : IDisposable
                     : (byte)Math.Min(byte.MaxValue, parentActionsThisTurn + 1);
 
                 HotNodeFlags flags = staged.Flags;
+                if (endedTurn && staged.ChoiceCount == 0)
+                    flags &= ~HotNodeFlags.HasChoiceLookahead;
                 if (endedTurn) flags |= HotNodeFlags.EndedTurn;
                 if (staged.ChoiceCount > 0) flags |= HotNodeFlags.HasChoice;
                 if (staged.Summary.DeathSaveUseCount > 0) flags |= HotNodeFlags.HasDeathSave;
@@ -478,7 +508,8 @@ internal sealed class HotParallelExpander : IDisposable
                 HotSearchNode childNode = new()
                 {
                     Hash = staged.Hash,
-                    Score = staged.Score,
+                    Score = staged.Eval.Score,
+                    RolloutScore = (flags & HotNodeFlags.HasChoiceLookahead) != 0 ? staged.RolloutScore : 0,
                     Cold = staged.Cold,
                     StateHandle = committedHandle,
                     ParentId = parentNodeId,
@@ -487,9 +518,14 @@ internal sealed class HotParallelExpander : IDisposable
                     HpRecovered = staged.Summary.HpRecovered,
                     PlayerHp = staged.Summary.PlayerHp,
                     EnemyHp = staged.Summary.EnemyHpSum,
-                    SetupScore = staged.SetupScore,
+                    SetupScore = staged.Eval.SetupScore,
+                    BoardInvestment = staged.Eval.BoardInvestment,
+                    MaxDarkEvoke = staged.Eval.MaxDarkEvoke,
+                    TotalPoisonAndDoom = staged.Eval.TotalPoisonAndDoom,
                     PlayerMaxHpDelta = (short)Math.Clamp(policy.InitialPlayerMaxHp - staged.Summary.PlayerMaxHp, short.MinValue, short.MaxValue),
                     PlayerBlock = (short)Math.Clamp(staged.Summary.PlayerBlock, 0, short.MaxValue),
+                    EffectiveDefense = staged.Eval.EffectiveDefense,
+                    OptionalityScore = staged.Eval.OptionalityScore,
                     OutstandingStolen = (short)Math.Clamp(staged.Summary.OutstandingStolen, 0, short.MaxValue),
                     GrowthHpCredit = (short)Math.Clamp(staged.Summary.GrowthHpCredit, short.MinValue, short.MaxValue),
                     PotionStrategicCost = nextPotionCost,
@@ -497,6 +533,7 @@ internal sealed class HotParallelExpander : IDisposable
                     PotionMask = nextPotionMask,
                     ActionCount = nextActionCount,
                     GrowthRewardCount = (ushort)Math.Clamp(staged.Summary.GrowthRewardCount, 0, ushort.MaxValue),
+                    Flags = flags,
                     Action = staged.Action,
                     ChoiceCount = staged.ChoiceCount,
                     PotionCount = nextPotionCount,
@@ -510,10 +547,9 @@ internal sealed class HotParallelExpander : IDisposable
                     ActionsThisTurn = nextActionsThisTurn,
                     AliveEnemyCount = staged.Summary.AliveEnemyCount,
                     RevivingEnemyCount = staged.Summary.RevivingEnemyCount,
-                    PlayableHandCount = staged.PlayableHandCount,
+                    PlayableHandCount = staged.Eval.PlayableHandCount,
                     DeathSaveUseCount = staged.Summary.DeathSaveUseCount,
                     Outcome = staged.Summary.Outcome,
-                    Flags = flags,
                 };
 
                 int childNodeId = nodeArena.AddNode(in childNode);
@@ -522,7 +558,7 @@ internal sealed class HotParallelExpander : IDisposable
                 {
                     victoriesOut.Add(childNodeId);
                 }
-                else if (childNode.IsDefeat)
+                else if (childNode.IsDefeat || childNode.IsEventDefeat)
                 {
                     HotRouteKey defKey = HotRouteQuality.Capture(in childNode, in policy);
                     if (HotPotionPolicy.SatisfiesHardConstraints(in defKey, in policy)
@@ -599,7 +635,7 @@ internal sealed class HotParallelExpander : IDisposable
 
         if (missCount > 0)
         {
-            int wsBase = _maxWorkers == 1 ? 0 : _maxWorkers;
+            const int wsBase = 0;
             int workers = _maxWorkers == 1 || missCount <= 2 ? 1 : Math.Min(_maxWorkers, missCount);
             for (int w = 0; w < workers; w++)
                 _workspaces[wsBase + w].ResetWave();
@@ -670,9 +706,9 @@ internal sealed class HotParallelExpander : IDisposable
                     HpLost: staged.Summary.HpLost,
                     PlayerHp: staged.Summary.PlayerHp,
                     EnemyHp: staged.Summary.EnemyHpSum,
-                    Score: staged.Score,
-                    SetupScore: staged.SetupScore,
-                    PlayableHandCount: staged.PlayableHandCount,
+                    Score: staged.Eval.Score,
+                    SetupScore: staged.Eval.SetupScore,
+                    PlayableHandCount: staged.Eval.PlayableHandCount,
                     RevivingEnemyCount: staged.Summary.RevivingEnemyCount,
                     CommittedHandle: committed,
                     Cold: staged.Cold,
@@ -682,7 +718,8 @@ internal sealed class HotParallelExpander : IDisposable
                 HotSearchNode childNode = new()
                 {
                     Hash = staged.Hash,
-                    Score = staged.Score,
+                    Score = staged.Eval.Score,
+                    RolloutScore = 0,
                     Cold = staged.Cold,
                     StateHandle = committed,
                     ParentId = parentId,
@@ -691,9 +728,14 @@ internal sealed class HotParallelExpander : IDisposable
                     HpRecovered = staged.Summary.HpRecovered,
                     PlayerHp = staged.Summary.PlayerHp,
                     EnemyHp = staged.Summary.EnemyHpSum,
-                    SetupScore = staged.SetupScore,
+                    SetupScore = staged.Eval.SetupScore,
+                    BoardInvestment = staged.Eval.BoardInvestment,
+                    MaxDarkEvoke = staged.Eval.MaxDarkEvoke,
+                    TotalPoisonAndDoom = staged.Eval.TotalPoisonAndDoom,
                     PlayerMaxHpDelta = (short)Math.Clamp(policy.InitialPlayerMaxHp - staged.Summary.PlayerMaxHp, short.MinValue, short.MaxValue),
                     PlayerBlock = (short)Math.Clamp(staged.Summary.PlayerBlock, 0, short.MaxValue),
+                    EffectiveDefense = staged.Eval.EffectiveDefense,
+                    OptionalityScore = staged.Eval.OptionalityScore,
                     OutstandingStolen = (short)Math.Clamp(staged.Summary.OutstandingStolen, 0, short.MaxValue),
                     GrowthHpCredit = (short)Math.Clamp(staged.Summary.GrowthHpCredit, short.MinValue, short.MaxValue),
                     PotionStrategicCost = parent.PotionStrategicCost,
@@ -701,6 +743,8 @@ internal sealed class HotParallelExpander : IDisposable
                     PotionMask = parent.PotionMask,
                     ActionCount = (ushort)Math.Min(ushort.MaxValue, parent.ActionCount + 1),
                     GrowthRewardCount = (ushort)Math.Clamp(staged.Summary.GrowthRewardCount, 0, ushort.MaxValue),
+                    Flags = HotNodeFlags.EndedTurn | HotNodeFlags.StandPat
+                        | (staged.Summary.Outcome != HotCombatOutcome.Ongoing ? HotNodeFlags.IsTerminal : HotNodeFlags.None),
                     Action = HotAction.EndTurn(),
                     ChoiceCount = 0,
                     PotionCount = parent.PotionCount,
@@ -714,11 +758,9 @@ internal sealed class HotParallelExpander : IDisposable
                     ActionsThisTurn = 0,
                     AliveEnemyCount = staged.Summary.AliveEnemyCount,
                     RevivingEnemyCount = staged.Summary.RevivingEnemyCount,
-                    PlayableHandCount = staged.PlayableHandCount,
+                    PlayableHandCount = staged.Eval.PlayableHandCount,
                     DeathSaveUseCount = staged.Summary.DeathSaveUseCount,
                     Outcome = staged.Summary.Outcome,
-                    Flags = HotNodeFlags.EndedTurn | HotNodeFlags.StandPat
-                        | (staged.Summary.Outcome != HotCombatOutcome.Ongoing ? HotNodeFlags.IsTerminal : HotNodeFlags.None),
                 };
 
                 int childId = nodeArena.AddNode(in childNode);
@@ -726,7 +768,7 @@ internal sealed class HotParallelExpander : IDisposable
                 {
                     victoriesOut.Add(childId);
                 }
-                else if (childNode.IsDefeat)
+                else if (childNode.IsDefeat || childNode.IsEventDefeat)
                 {
                     HotRouteKey key = HotRouteQuality.Capture(in childNode, in policy);
                     if (HotPotionPolicy.SatisfiesHardConstraints(in key, in policy)
@@ -812,9 +854,7 @@ internal sealed class HotParallelExpander : IDisposable
             netPotionCostCenti,
             parent.ActionCount + 1,
             evalMode,
-            out long score,
-            out int setupScore,
-            out byte playableHandCount);
+            out HotEvalFeatures eval);
 
         staged = new HotStagedChild
         {
@@ -822,12 +862,10 @@ internal sealed class HotParallelExpander : IDisposable
             Cold = cold,
             Hash = hash,
             Summary = summary,
-            Score = score,
-            SetupScore = setupScore,
+            Eval = eval,
             ChoiceOffset = -1,
             Action = HotAction.EndTurn(),
             ChoiceCount = 0,
-            PlayableHandCount = playableHandCount,
             Flags = HotNodeFlags.EndedTurn | HotNodeFlags.StandPat,
         };
         return true;
@@ -1414,77 +1452,566 @@ internal sealed class HotParallelExpander : IDisposable
         byte explicitPotionDelta,
         byte ambergrisDelta)
     {
-        int firstOptCount = HotCombatEngine.EnumerateChoiceOptions(
+        int rawFirstCount = HotCombatEngine.EnumerateChoiceOptions(
             in ws.WorkingState,
             firstPausedCold,
             rules,
             ws.Scratch,
             ws.ChoiceOptBuf);
-        if (firstOptCount <= 0)
+        if (rawFirstCount <= 0)
             return;
 
         HotChoiceKind firstKind = ws.Scratch.PendingChoiceKind;
-        ushort firstSourceDefId = ws.Scratch.PendingChoiceSourceCardDefId;
-        int firstHistoryPlays = ws.WorkingState.HistoryFinishedPlays;
-        ushort firstDrawCount = ws.WorkingState.DrawCount;
-        int maxBranches = ResolveChoiceBranchCap(firstKind, in config);
+        ushort firstGroupSeq = ws.Scratch.PendingChoiceGroupSeq;
+        HotChoiceGroupFlags firstGroupFlags = ws.Scratch.PendingChoiceGroupFlags;
+        int maxBranches = ResolveChoiceBranchCap(firstKind, action.Kind, in config);
 
-        int sortedFirstCount = PrepareChoiceOptions(
-            in ws.WorkingState,
-            firstPausedCold,
-            rules,
-            firstKind,
-            firstSourceDefId,
-            ws.ChoiceOptBuf,
-            ws.ChoicePrioBuf,
-            firstOptCount,
-            hasPriorBatch: false,
-            priorPrefix: default,
-            enforceCanonicalOrder: false,
-            out bool hasNoneOption);
+        bool hasNone = false;
+        int optCount = 0;
+        for (int i = 0; i < rawFirstCount; i++)
+        {
+            HotChoiceSelection opt = ws.ChoiceOptBuf[i];
+            if (opt.Kind == HotChoiceKind.None)
+            {
+                hasNone = true;
+                continue;
+            }
+            ws.ChoiceOptBuf[optCount++] = opt;
+        }
 
-        HotChoicePrefix[] stack = ws.ChoiceStack;
-        int sp = 0;
+        if (optCount == 0 && !hasNone)
+            return;
 
-        int firstLimit = Math.Min(sortedFirstCount, maxBranches);
-        for (int i = firstLimit - 1; i >= 0 && sp < stack.Length; i--)
+        // Clear per-action local TT for completed post-choice states.
+        ws.LocalChoiceTtUsed.AsSpan().Clear();
+        int resolvedCount = 0;
+
+        int nextExplicit = parent.ExplicitPotionCount + explicitPotionDelta;
+        int nextOptionalPaid = parent.OptionalPaidPotionCount + optionalPaidCountDelta;
+        short nextPotionCost = (short)Math.Clamp(parent.PotionStrategicCost + potionCostDelta, 0, short.MaxValue);
+
+        // Domain-agnostic 2-round coordinate-ascent marginal pre-screening when a multi-pick / optional-subset
+        // prompt has combinatorial fanout exceeding the exact exhaustive layer cap (zero card-ID hardcoding).
+        Span<ushort> screenedUids = stackalloc ushort[16];
+        Span<ushort> screenedDefIds = stackalloc ushort[16];
+        int screenedCount = 0;
+        bool hasScreenedFilter = false;
+
+        bool isMultiPick = (firstGroupFlags & HotChoiceGroupFlags.MultiPick) != 0;
+        bool isOptional = (firstGroupFlags & HotChoiceGroupFlags.Optional) != 0;
+        if (isMultiPick && ((isOptional && optCount > 6) || (!isOptional && optCount > 10)))
+        {
+            hasScreenedFilter = ScreenHighBranchingMultiPick(
+                ws,
+                in parent,
+                in replayBaseState,
+                replayBaseCold,
+                rules,
+                in policy,
+                in evalLookup,
+                in config,
+                in frozenIncumbent,
+                action,
+                isEndTurnStartPrefix,
+                firstGroupSeq,
+                firstGroupFlags,
+                nextExplicit,
+                nextOptionalPaid,
+                nextPotionCost,
+                ref optCount,
+                screenedUids,
+                screenedDefIds,
+                out screenedCount,
+                ref resolvedCount);
+        }
+
+        // Canonical UID sort at depth 0 for unordered groups ensures clean deterministic expansion.
+        if ((firstGroupFlags & HotChoiceGroupFlags.Unordered) != 0 && optCount > 1)
+            SortChoiceOptionsByUid(ws.ChoiceOptBuf.AsSpan(0, optCount));
+
+        HotChoicePrefix[] currLayer = ws.ChoiceLayerA;
+        HotChoicePrefix[] nextLayer = ws.ChoiceLayerB;
+        int currCount = 0;
+
+        if (hasNone && currCount < HotExpansionWorkspace.ChoiceLayerCapacity)
+        {
+            HotChoicePrefix nonePfx = default;
+            nonePfx.Selections[0] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+            nonePfx.Count = 1;
+            nonePfx.LastGroupSeq = firstGroupSeq;
+            nonePfx.LastGroupFlags = firstGroupFlags;
+            currLayer[currCount++] = nonePfx;
+        }
+
+        int depth0Limit = Math.Min(optCount, HotExpansionWorkspace.ChoiceLayerCapacity - currCount);
+        for (int i = 0; i < depth0Limit; i++)
         {
             HotChoiceSelection opt = ws.ChoiceOptBuf[i];
             HotChoicePrefix pfx = default;
             pfx.Selections[0] = opt;
             pfx.Count = 1;
-            pfx.BatchChoiceKind = firstKind;
-            pfx.BatchSourceCardDefId = firstSourceDefId;
-            pfx.BatchHistoryPlays = firstHistoryPlays;
-            pfx.BatchDrawCount = firstDrawCount;
-            pfx.LastChoicePriority = ws.ChoicePrioBuf[i];
+            pfx.LastGroupSeq = firstGroupSeq;
+            pfx.LastGroupFlags = firstGroupFlags;
             pfx.LastChoiceUid = opt.CardUidOrIndex;
-            stack[sp++] = pfx;
+            currLayer[currCount++] = pfx;
         }
 
-        if (hasNoneOption && sp < stack.Length)
+        // Layer-by-layer BFS over choice sequences (eliminates DFS c_0 fixation and supports
+        // exact 1-to-1 multiset bijection via strictly increasing min-class UIDs).
+        while (currCount > 0 && resolvedCount < HotExpansionWorkspace.ChoiceResolvedCapacity)
         {
-            HotChoicePrefix nonePfx = default;
-            nonePfx.Selections[0] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
-            nonePfx.Count = 1;
-            stack[sp++] = nonePfx;
+            int nextCount = 0;
+
+            for (int idx = 0; idx < currCount && resolvedCount < HotExpansionWorkspace.ChoiceResolvedCapacity; idx++)
+            {
+                HotChoicePrefix pfx = currLayer[idx];
+
+                ws.WorkingState = replayBaseState;
+                HotColdSidecar? branchCold = replayBaseCold;
+                if (isEndTurnStartPrefix)
+                    ws.WaveEndTurnPrefixReuses++;
+                ws.WaveChoiceBranches++;
+
+                HotStepResult res;
+                try
+                {
+                    res = isEndTurnStartPrefix
+                        ? HotCombatEngine.StepStartPlayerTurn(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, pfx.AsSpan())
+                        : HotCombatEngine.Step(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, action, pfx.AsSpan());
+                }
+                catch (HotCapacityExceededException)
+                {
+                    ws.WaveCapacityExceededDrops++;
+                    continue;
+                }
+
+                if (!res.Executed)
+                    continue;
+
+                if (!res.NeedsChoice)
+                {
+                    ws.WaveTransitions++;
+                    TryRecordResolvedChoice(
+                        ws,
+                        in parent,
+                        branchCold,
+                        rules,
+                        in policy,
+                        in evalLookup,
+                        in config,
+                        in frozenIncumbent,
+                        in pfx,
+                        nextExplicit,
+                        nextOptionalPaid,
+                        nextPotionCost,
+                        ref resolvedCount);
+                }
+                else if (pfx.Count < HotLimits.MaxChoicesPerAction)
+                {
+                    int subOptCount;
+                    try
+                    {
+                        subOptCount = HotCombatEngine.EnumerateChoiceOptions(
+                            in ws.WorkingState,
+                            branchCold,
+                            rules,
+                            ws.Scratch,
+                            ws.ChoiceSubOptBuf);
+                    }
+                    catch (HotCapacityExceededException)
+                    {
+                        ws.WaveCapacityExceededDrops++;
+                        continue;
+                    }
+
+                    if (subOptCount <= 0)
+                        continue;
+
+                    ushort subGroupSeq = ws.Scratch.PendingChoiceGroupSeq;
+                    HotChoiceGroupFlags subGroupFlags = ws.Scratch.PendingChoiceGroupFlags;
+                    bool sameGroup = subGroupSeq != 0 && subGroupSeq == pfx.LastGroupSeq;
+                    bool enforceCanonicalUid = sameGroup
+                        && (subGroupFlags & HotChoiceGroupFlags.Unordered) != 0
+                        && IsPileChoiceKind(ws.Scratch.PendingChoiceKind);
+                    bool applyScreenedFilter = hasScreenedFilter && subGroupSeq == firstGroupSeq;
+
+                    for (int sIdx = 0; sIdx < subOptCount && nextCount < HotExpansionWorkspace.ChoiceLayerCapacity; sIdx++)
+                    {
+                        HotChoiceSelection opt = ws.ChoiceSubOptBuf[sIdx];
+                        if (opt.Kind == HotChoiceKind.None)
+                        {
+                            HotChoicePrefix stopPfx = pfx;
+                            stopPfx.Selections[stopPfx.Count] = opt;
+                            stopPfx.Count++;
+                            stopPfx.LastGroupSeq = subGroupSeq;
+                            stopPfx.LastGroupFlags = subGroupFlags;
+                            nextLayer[nextCount++] = stopPfx;
+                            continue;
+                        }
+
+                        if (enforceCanonicalUid && opt.CardUidOrIndex <= pfx.LastChoiceUid)
+                            continue;
+
+                        if (applyScreenedFilter
+                            && !ContainsUShort(screenedUids[..screenedCount], opt.CardUidOrIndex)
+                            && !ContainsUShort(screenedDefIds[..screenedCount], opt.CardDefId))
+                        {
+                            continue;
+                        }
+
+                        HotChoicePrefix nextPfx = pfx;
+                        nextPfx.Selections[nextPfx.Count] = opt;
+                        nextPfx.Count++;
+                        nextPfx.LastGroupSeq = subGroupSeq;
+                        nextPfx.LastGroupFlags = subGroupFlags;
+                        nextPfx.LastChoiceUid = opt.CardUidOrIndex;
+                        nextLayer[nextCount++] = nextPfx;
+                    }
+                }
+                else
+                {
+                    ws.WaveCapacityExceededDrops++;
+                }
+            }
+
+            (currLayer, nextLayer) = (nextLayer, currLayer);
+            currCount = nextCount;
         }
 
-        int resolvedCount = 0;
-        int maxWorkSteps = Math.Max(maxBranches * 6, 96);
-        int workSteps = 0;
+        if (resolvedCount <= 0)
+            return;
 
-        while (sp > 0 && resolvedCount < maxBranches && workSteps < maxWorkSteps)
+        try
         {
-            HotChoicePrefix pfx = stack[--sp];
-            workSteps++;
+            CommitResolvedChoices(
+                ws,
+                in parent,
+                rules,
+                in policy,
+                in evalLookup,
+                in config,
+                action,
+                firstKind,
+                isEndTurnStartPrefix,
+                resolvedCount,
+                maxBranches,
+                potionCostDelta,
+                potionSlotBit,
+                optionalPaidCountDelta,
+                explicitPotionDelta,
+                ambergrisDelta);
+        }
+        finally
+        {
+            for (int i = 0; i < resolvedCount; i++)
+                ws.ChoiceResolved[i].Cold = null;
+        }
+    }
 
+    private static bool ScreenHighBranchingMultiPick(
+        HotExpansionWorkspace ws,
+        in HotSearchNode parent,
+        in CombatHotState replayBaseState,
+        HotColdSidecar? replayBaseCold,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
+        in HotWaveExpansionConfig config,
+        in HotIncumbentBound frozenIncumbent,
+        HotAction action,
+        bool isEndTurnStartPrefix,
+        ushort firstGroupSeq,
+        HotChoiceGroupFlags firstGroupFlags,
+        int nextExplicit,
+        int nextOptionalPaid,
+        short nextPotionCost,
+        ref int optCount,
+        Span<ushort> screenedUids,
+        Span<ushort> screenedDefIds,
+        out int screenedCount,
+        ref int resolvedCount)
+    {
+        screenedCount = 0;
+        int n = optCount;
+        bool isOptional = (firstGroupFlags & HotChoiceGroupFlags.Optional) != 0;
+
+        int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
+            nextPotionCost,
+            nextOptionalPaid,
+            parent.AlchemizeCount,
+            parent.EmptyPotionSlots,
+            in policy);
+
+        if (isOptional)
+        {
+            // Optional multi-pick (0..N, e.g. GamblingChip / Purity+ / Guards / Ashwater on 7..10 distinct cards):
+            // 1) Measure O(N) single-item marginal value of [opt[i], None] via 1-turn lookahead rollout.
+            for (int i = 0; i < n; i++)
+            {
+                ws.MarginalOrderBuf[i] = i;
+                ws.MarginalScoreBuf[i] = ProbeOptionalSingleItem(
+                    ws,
+                    in replayBaseState,
+                    replayBaseCold,
+                    rules,
+                    in policy,
+                    in evalLookup,
+                    in config,
+                    action,
+                    isEndTurnStartPrefix,
+                    ws.ChoiceOptBuf[i],
+                    netPotionCostCenti,
+                    parent.ActionCount + 1);
+            }
+
+            SortMarginalIndicesDescending(ws.MarginalOrderBuf.AsSpan(0, n), ws.MarginalScoreBuf, ws.ChoiceOptBuf);
+
+            // 2) Directly evaluate greedy cumulative subsets of size 7..min(N, MaxChoicesPerAction-1)
+            //    so keeping 1..3 cards and mulliganing 7..9 bricks on a 10-card hand is always explored!
+            int maxGreedy = Math.Min(n, HotLimits.MaxChoicesPerAction - 1);
+            for (int subsetSize = 7; subsetSize <= maxGreedy && resolvedCount < HotExpansionWorkspace.ChoiceResolvedCapacity; subsetSize++)
+            {
+                HotChoicePrefix greedyPfx = default;
+                for (int j = 0; j < subsetSize; j++)
+                    greedyPfx.Selections[j] = ws.ChoiceOptBuf[ws.MarginalOrderBuf[j]];
+                greedyPfx.Count = (byte)subsetSize;
+                if ((firstGroupFlags & HotChoiceGroupFlags.Unordered) != 0)
+                    SortPrefixSelectionsByUid(ref greedyPfx);
+
+                ws.WorkingState = replayBaseState;
+                HotColdSidecar? branchCold = replayBaseCold;
+                if (isEndTurnStartPrefix)
+                    ws.WaveEndTurnPrefixReuses++;
+                ws.WaveChoiceBranches++;
+
+                HotStepResult res;
+                try
+                {
+                    res = isEndTurnStartPrefix
+                        ? HotCombatEngine.StepStartPlayerTurn(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, greedyPfx.AsSpan())
+                        : HotCombatEngine.Step(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, action, greedyPfx.AsSpan());
+
+                    if (res.Executed && res.NeedsChoice && ws.Scratch.PendingChoiceMin == 0 && greedyPfx.Count < HotLimits.MaxChoicesPerAction)
+                    {
+                        greedyPfx.Selections[greedyPfx.Count++] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+                        ws.WorkingState = replayBaseState;
+                        branchCold = replayBaseCold;
+                        ws.WaveChoiceBranches++;
+                        res = isEndTurnStartPrefix
+                            ? HotCombatEngine.StepStartPlayerTurn(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, greedyPfx.AsSpan())
+                            : HotCombatEngine.Step(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, action, greedyPfx.AsSpan());
+                    }
+                }
+                catch (HotCapacityExceededException)
+                {
+                    ws.WaveCapacityExceededDrops++;
+                    continue;
+                }
+
+                if (res.Executed && !res.NeedsChoice)
+                {
+                    ws.WaveTransitions++;
+                    TryRecordResolvedChoice(
+                        ws,
+                        in parent,
+                        branchCold,
+                        rules,
+                        in policy,
+                        in evalLookup,
+                        in config,
+                        in frozenIncumbent,
+                        in greedyPfx,
+                        nextExplicit,
+                        nextOptionalPaid,
+                        nextPotionCost,
+                        ref resolvedCount);
+                }
+            }
+
+            // 3) Exhaustively explore all 2^6 = 64 subsets over the Top-6 marginal items.
+            int keep = Math.Min(6, Math.Min(n, screenedUids.Length));
+            CompactScreenedOptions(ws, keep, screenedUids, screenedDefIds, out screenedCount, out optCount);
+            return true;
+        }
+
+        // Fixed-k multi-pick (N > 10, e.g. Charge!! k=2, Dredge k=3, Seance k=2):
+        // Probe option 0 first to observe exact k for this group.
+        Span<ushort> tailAnchors = stackalloc ushort[4];
+        int tailAnchorCount = 0;
+        for (int a = n - 1; a >= 0 && tailAnchorCount < 4; a--)
+            tailAnchors[tailAnchorCount++] = ws.ChoiceOptBuf[a].CardUidOrIndex;
+
+        Span<ushort> headAnchors = stackalloc ushort[4];
+        int headAnchorCount = 0;
+        headAnchors[headAnchorCount++] = ws.ChoiceOptBuf[0].CardUidOrIndex;
+        if (n > 2) headAnchors[headAnchorCount++] = ws.ChoiceOptBuf[n / 2].CardUidOrIndex;
+        if (n > 1) headAnchors[headAnchorCount++] = ws.ChoiceOptBuf[1].CardUidOrIndex;
+        if (n > 3) headAnchors[headAnchorCount++] = ws.ChoiceOptBuf[(n / 2) + 1].CardUidOrIndex;
+
+        long probe0Tail = ProbeFixedKItem(
+            ws,
+            in replayBaseState,
+            replayBaseCold,
+            rules,
+            in policy,
+            in evalLookup,
+            in config,
+            action,
+            isEndTurnStartPrefix,
+            firstGroupSeq,
+            ws.ChoiceOptBuf[0],
+            tailAnchors[..tailAnchorCount],
+            netPotionCostCenti,
+            parent.ActionCount + 1,
+            out int observedK);
+
+        if (observedK <= 1)
+            return false;
+
+        // Round 1: Evaluate every option i against BOTH tail and head/mid anchors (immune to a toxic idx0 trap!).
+        ws.MarginalOrderBuf[0] = 0;
+        long probe0Head = ProbeFixedKItem(
+            ws,
+            in replayBaseState,
+            replayBaseCold,
+            rules,
+            in policy,
+            in evalLookup,
+            in config,
+            action,
+            isEndTurnStartPrefix,
+            firstGroupSeq,
+            ws.ChoiceOptBuf[0],
+            headAnchors[..headAnchorCount],
+            netPotionCostCenti,
+            parent.ActionCount + 1,
+            out _);
+        ws.MarginalScoreBuf[0] = Math.Max(probe0Tail, probe0Head);
+
+        for (int i = 1; i < n; i++)
+        {
+            ws.MarginalOrderBuf[i] = i;
+            long sTail = ProbeFixedKItem(
+                ws,
+                in replayBaseState,
+                replayBaseCold,
+                rules,
+                in policy,
+                in evalLookup,
+                in config,
+                action,
+                isEndTurnStartPrefix,
+                firstGroupSeq,
+                ws.ChoiceOptBuf[i],
+                tailAnchors[..tailAnchorCount],
+                netPotionCostCenti,
+                parent.ActionCount + 1,
+                out int kSeen);
+            if (kSeen > observedK)
+                observedK = kSeen;
+
+            long sHead = ProbeFixedKItem(
+                ws,
+                in replayBaseState,
+                replayBaseCold,
+                rules,
+                in policy,
+                in evalLookup,
+                in config,
+                action,
+                isEndTurnStartPrefix,
+                firstGroupSeq,
+                ws.ChoiceOptBuf[i],
+                headAnchors[..headAnchorCount],
+                netPotionCostCenti,
+                parent.ActionCount + 1,
+                out _);
+            ws.MarginalScoreBuf[i] = Math.Max(sTail, sHead);
+        }
+
+        // Round 2 (Coordinate Ascent): Pair every option i directly alongside the Round-1 MVP winners
+        // so 2-card and 3-card combos (e.g. Bludgeon+ + Slice + Anger on Dredge) surface immediately!
+        SortMarginalIndicesDescending(ws.MarginalOrderBuf.AsSpan(0, n), ws.MarginalScoreBuf, ws.ChoiceOptBuf);
+        Span<ushort> mvpAnchors = stackalloc ushort[4];
+        int mvpAnchorCount = 0;
+        for (int a = 0; a < Math.Min(3, n); a++)
+            mvpAnchors[mvpAnchorCount++] = ws.ChoiceOptBuf[ws.MarginalOrderBuf[a]].CardUidOrIndex;
+        mvpAnchors[mvpAnchorCount++] = ws.ChoiceOptBuf[n - 1].CardUidOrIndex;
+
+        for (int i = 0; i < n; i++)
+        {
+            ws.MarginalOrderBuf[i] = i;
+            long sMvp = ProbeFixedKItem(
+                ws,
+                in replayBaseState,
+                replayBaseCold,
+                rules,
+                in policy,
+                in evalLookup,
+                in config,
+                action,
+                isEndTurnStartPrefix,
+                firstGroupSeq,
+                ws.ChoiceOptBuf[i],
+                mvpAnchors[..mvpAnchorCount],
+                netPotionCostCenti,
+                parent.ActionCount + 1,
+                out _);
+            if (sMvp > ws.MarginalScoreBuf[i])
+                ws.MarginalScoreBuf[i] = sMvp;
+        }
+
+        SortMarginalIndicesDescending(ws.MarginalOrderBuf.AsSpan(0, n), ws.MarginalScoreBuf, ws.ChoiceOptBuf);
+        int targetS = observedK <= 2 ? 10 : observedK == 3 ? 9 : 7;
+        int keepFixed = Math.Min(targetS, Math.Min(n, screenedUids.Length));
+        CompactScreenedOptions(ws, keepFixed, screenedUids, screenedDefIds, out screenedCount, out optCount);
+        return true;
+    }
+
+    private static void CompactScreenedOptions(
+        HotExpansionWorkspace ws,
+        int keep,
+        Span<ushort> screenedUids,
+        Span<ushort> screenedDefIds,
+        out int screenedCount,
+        out int optCount)
+    {
+        Span<HotChoiceSelection> kept = stackalloc HotChoiceSelection[16];
+        for (int i = 0; i < keep; i++)
+        {
+            HotChoiceSelection sel = ws.ChoiceOptBuf[ws.MarginalOrderBuf[i]];
+            kept[i] = sel;
+            screenedUids[i] = sel.CardUidOrIndex;
+            screenedDefIds[i] = sel.CardDefId;
+        }
+        for (int i = 0; i < keep; i++)
+            ws.ChoiceOptBuf[i] = kept[i];
+        screenedCount = keep;
+        optCount = keep;
+    }
+
+    private static long ProbeOptionalSingleItem(
+        HotExpansionWorkspace ws,
+        in CombatHotState replayBaseState,
+        HotColdSidecar? replayBaseCold,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
+        in HotWaveExpansionConfig config,
+        HotAction action,
+        bool isEndTurnStartPrefix,
+        HotChoiceSelection item,
+        int netPotionCostCenti,
+        int childActionCount)
+    {
+        HotChoicePrefix pfx = default;
+        pfx.Selections[0] = item;
+        pfx.Count = 1;
+
+        for (int step = 0; step < 4; step++)
+        {
             ws.WorkingState = replayBaseState;
             HotColdSidecar? branchCold = replayBaseCold;
-            if (isEndTurnStartPrefix)
-                ws.WaveEndTurnPrefixReuses++;
-            ws.WaveChoiceBranches++;
-
             HotStepResult res;
             try
             {
@@ -1494,353 +2021,564 @@ internal sealed class HotParallelExpander : IDisposable
             }
             catch (HotCapacityExceededException)
             {
-                ws.WaveCapacityExceededDrops++;
-                continue;
+                return long.MinValue / 4;
             }
 
             if (!res.Executed)
-                continue;
+                return long.MinValue / 4;
 
             if (!res.NeedsChoice)
             {
-                ws.WaveTransitions++;
-                resolvedCount++;
-                StageCompletedTransition(
-                    ws,
-                    in parent,
+                AssignDeterministicCardUids(ref ws.WorkingState);
+                HotMiniRolloutResult probe = HotRolloutEvaluator.EvaluateChoiceProbe(
+                    in ws.WorkingState,
                     branchCold,
+                    ref ws.ChoiceProbeState,
+                    ws.ChoiceProbeScratch,
+                    ws.ChoiceProbeActionBuf,
+                    ws.ChoiceProbeChoiceBuf,
                     rules,
                     in policy,
                     in evalLookup,
-                    in config,
-                    in frozenIncumbent,
-                    action,
-                    pfx.AsSpan(),
-                    potionCostDelta,
-                    potionSlotBit,
-                    optionalPaidCountDelta,
-                    explicitPotionDelta,
-                    ambergrisDelta);
+                    config.EvalMode,
+                    maxTurnsAhead: 1,
+                    parentNetPotionCostCenti: netPotionCostCenti,
+                    parentActionCount: childActionCount);
+                return EncodeProbeRankScore(in probe);
             }
-            else if (pfx.Count < HotLimits.MaxChoicesPerAction)
+
+            if (pfx.Count >= HotLimits.MaxChoicesPerAction)
+                return long.MinValue / 4;
+
+            if (ws.Scratch.PendingChoiceMin == 0)
             {
-                int subOptCount;
-                try
-                {
-                    subOptCount = HotCombatEngine.EnumerateChoiceOptions(
-                        in ws.WorkingState,
-                        branchCold,
-                        rules,
-                        ws.Scratch,
-                        ws.ChoiceOptBuf);
-                }
-                catch (HotCapacityExceededException)
-                {
-                    ws.WaveCapacityExceededDrops++;
-                    continue;
-                }
-
-                if (subOptCount <= 0)
-                    continue;
-
-                HotChoiceKind subKind = ws.Scratch.PendingChoiceKind;
-                ushort subSourceDefId = ws.Scratch.PendingChoiceSourceCardDefId;
-                int subHistoryPlays = ws.WorkingState.HistoryFinishedPlays;
-                ushort subDrawCount = ws.WorkingState.DrawCount;
-
-                bool sameBatch = IsPileChoiceKind(subKind)
-                    && subKind == pfx.BatchChoiceKind
-                    && subSourceDefId == pfx.BatchSourceCardDefId
-                    && subHistoryPlays == pfx.BatchHistoryPlays;
-
-                bool enforceCanonical = sameBatch && subDrawCount == pfx.BatchDrawCount;
-
-                int subPreparedCount = PrepareChoiceOptions(
-                    in ws.WorkingState,
-                    branchCold,
-                    rules,
-                    subKind,
-                    subSourceDefId,
-                    ws.ChoiceOptBuf,
-                    ws.ChoicePrioBuf,
-                    subOptCount,
-                    hasPriorBatch: sameBatch,
-                    priorPrefix: in pfx,
-                    enforceCanonicalOrder: enforceCanonical,
-                    out bool subHasNone);
-
-                if (subHasNone && sp < stack.Length)
-                {
-                    HotChoicePrefix stopPfx = pfx;
-                    stopPfx.Selections[stopPfx.Count] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
-                    stopPfx.Count++;
-                    stack[sp++] = stopPfx;
-                }
-
-                int subLimit = Math.Min(subPreparedCount, maxBranches);
-                for (int i = subLimit - 1; i >= 0 && sp < stack.Length; i--)
-                {
-                    HotChoiceSelection opt = ws.ChoiceOptBuf[i];
-                    HotChoicePrefix nextPfx = pfx;
-                    nextPfx.Selections[nextPfx.Count] = opt;
-                    nextPfx.Count++;
-                    nextPfx.BatchChoiceKind = subKind;
-                    nextPfx.BatchSourceCardDefId = subSourceDefId;
-                    nextPfx.BatchHistoryPlays = subHistoryPlays;
-                    nextPfx.BatchDrawCount = subDrawCount;
-                    nextPfx.LastChoicePriority = ws.ChoicePrioBuf[i];
-                    nextPfx.LastChoiceUid = opt.CardUidOrIndex;
-                    stack[sp++] = nextPfx;
-                }
+                pfx.Selections[pfx.Count++] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
             }
             else
             {
-                // Branch exceeded HotLimits.MaxChoicesPerAction (16): gracefully drop instead of crashing.
-                ws.WaveCapacityExceededDrops++;
+                int subCount = HotCombatEngine.EnumerateChoiceOptions(
+                    in ws.WorkingState, branchCold, rules, ws.Scratch, ws.ChoiceSubOptBuf);
+                if (subCount <= 0)
+                    return long.MinValue / 4;
+                pfx.Selections[pfx.Count++] = ws.ChoiceSubOptBuf[subCount - 1];
             }
         }
+
+        return long.MinValue / 4;
+    }
+
+    private static long ProbeFixedKItem(
+        HotExpansionWorkspace ws,
+        in CombatHotState replayBaseState,
+        HotColdSidecar? replayBaseCold,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
+        in HotWaveExpansionConfig config,
+        HotAction action,
+        bool isEndTurnStartPrefix,
+        ushort firstGroupSeq,
+        HotChoiceSelection item,
+        ReadOnlySpan<ushort> anchorUids,
+        int netPotionCostCenti,
+        int childActionCount,
+        out int observedGroupPicks)
+    {
+        observedGroupPicks = 1;
+        HotChoicePrefix pfx = default;
+        pfx.Selections[0] = item;
+        pfx.Count = 1;
+
+        for (int step = 0; step < HotLimits.MaxChoicesPerAction; step++)
+        {
+            ws.WorkingState = replayBaseState;
+            HotColdSidecar? branchCold = replayBaseCold;
+            HotStepResult res;
+            try
+            {
+                res = isEndTurnStartPrefix
+                    ? HotCombatEngine.StepStartPlayerTurn(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, pfx.AsSpan())
+                    : HotCombatEngine.Step(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, action, pfx.AsSpan());
+            }
+            catch (HotCapacityExceededException)
+            {
+                return long.MinValue / 4;
+            }
+
+            if (!res.Executed)
+                return long.MinValue / 4;
+
+            if (!res.NeedsChoice)
+            {
+                AssignDeterministicCardUids(ref ws.WorkingState);
+                HotMiniRolloutResult probe = HotRolloutEvaluator.EvaluateChoiceProbe(
+                    in ws.WorkingState,
+                    branchCold,
+                    ref ws.ChoiceProbeState,
+                    ws.ChoiceProbeScratch,
+                    ws.ChoiceProbeActionBuf,
+                    ws.ChoiceProbeChoiceBuf,
+                    rules,
+                    in policy,
+                    in evalLookup,
+                    config.EvalMode,
+                    maxTurnsAhead: 1,
+                    parentNetPotionCostCenti: netPotionCostCenti,
+                    parentActionCount: childActionCount);
+                return EncodeProbeRankScore(in probe);
+            }
+
+            if (pfx.Count >= HotLimits.MaxChoicesPerAction)
+                return long.MinValue / 4;
+
+            if (ws.Scratch.PendingChoiceGroupSeq == firstGroupSeq)
+                observedGroupPicks++;
+
+            int subCount = HotCombatEngine.EnumerateChoiceOptions(
+                in ws.WorkingState, branchCold, rules, ws.Scratch, ws.ChoiceSubOptBuf);
+            if (subCount <= 0)
+                return long.MinValue / 4;
+
+            HotChoiceSelection nextSel = default;
+            bool picked = false;
+            if (ws.Scratch.PendingChoiceGroupSeq == firstGroupSeq)
+            {
+                for (int a = 0; a < anchorUids.Length && !picked; a++)
+                {
+                    ushort targetUid = anchorUids[a];
+                    for (int j = 0; j < subCount; j++)
+                    {
+                        HotChoiceSelection cand = ws.ChoiceSubOptBuf[j];
+                        if (cand.Kind != HotChoiceKind.None && cand.CardUidOrIndex == targetUid)
+                        {
+                            nextSel = cand;
+                            picked = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!picked)
+            {
+                // Fallback deterministically to last non-None option (or None if only None exists).
+                nextSel = ws.ChoiceSubOptBuf[subCount - 1];
+                for (int j = subCount - 1; j >= 0; j--)
+                {
+                    if (ws.ChoiceSubOptBuf[j].Kind != HotChoiceKind.None)
+                    {
+                        nextSel = ws.ChoiceSubOptBuf[j];
+                        break;
+                    }
+                }
+            }
+
+            pfx.Selections[pfx.Count++] = nextSel;
+        }
+
+        return long.MinValue / 4;
+    }
+
+    private static void TryRecordResolvedChoice(
+        HotExpansionWorkspace ws,
+        in HotSearchNode parent,
+        HotColdSidecar? branchCold,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
+        in HotWaveExpansionConfig config,
+        in HotIncumbentBound frozenIncumbent,
+        in HotChoicePrefix pfx,
+        int nextExplicit,
+        int nextOptionalPaid,
+        short nextPotionCost,
+        ref int resolvedCount)
+    {
+        if (resolvedCount >= HotExpansionWorkspace.ChoiceResolvedCapacity)
+            return;
+
+        HotFastSummary summary = HotEvaluator.ExtractStage1(in ws.WorkingState, in policy);
+        int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
+            nextPotionCost,
+            nextOptionalPaid,
+            summary.AlchemizeCount,
+            summary.EmptyPotionSlots,
+            in policy);
+
+        if (HotEvaluator.IsPrunedByCertifiedIncumbent(
+                in summary,
+                nextOptionalPaid,
+                nextExplicit,
+                netPotionCostCenti,
+                in frozenIncumbent,
+                in policy))
+        {
+            ws.WaveIncumbentPrunes++;
+            return;
+        }
+
+        int packedSize = HotStatePacker.ComputePackedSize(in ws.WorkingState);
+        Span<byte> buf = ws.StagingArena.Reserve(packedSize);
+        int written = HotStatePacker.Pack(ref ws.WorkingState, ref branchCold, buf, canonicalize: true);
+        HotStateHandle stagedHandle = ws.StagingArena.CommitReserved(written);
+        HotHash128 hash = HotHash.ComputeHash(ws.StagingArena.GetSpan(stagedHandle), branchCold);
+
+        // Local per-action TT deduplicates equivalent completed post-choice states (e.g. {A,B} == {B,A}).
+        if (!TryInsertLocalChoiceTt(ws, hash))
+            return;
+
+        HotEvaluator.EvaluateState(
+            in ws.WorkingState,
+            branchCold,
+            rules,
+            in policy,
+            in evalLookup,
+            in summary,
+            netPotionCostCenti,
+            parent.ActionCount + 1,
+            config.EvalMode,
+            out HotEvalFeatures eval);
+
+        ws.ChoiceResolved[resolvedCount++] = new HotResolvedChoice
+        {
+            Prefix = pfx,
+            StagedHandle = stagedHandle,
+            Cold = branchCold,
+            Hash = hash,
+            Summary = summary,
+            Eval = eval,
+            LookaheadScore = 0,
+            LookaheadHpLost = summary.HpLost,
+            LookaheadBoardInvestment = eval.BoardInvestment,
+            HasLookahead = false,
+            LookaheadVictory = summary.IsVictory,
+        };
+    }
+
+    private static void CommitResolvedChoices(
+        HotExpansionWorkspace ws,
+        in HotSearchNode parent,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
+        in HotWaveExpansionConfig config,
+        HotAction action,
+        HotChoiceKind firstKind,
+        bool isEndTurnStartPrefix,
+        int resolvedCount,
+        int maxBranches,
+        short potionCostDelta,
+        ushort potionSlotBit,
+        byte optionalPaidCountDelta,
+        byte explicitPotionDelta,
+        byte ambergrisDelta)
+    {
+        bool isDelayedOrTurnSetup = isEndTurnStartPrefix
+            || action.Kind == HotActionKind.TurnSetup
+            || firstKind is HotChoiceKind.DrawPile or HotChoiceKind.DiscardPile or HotChoiceKind.ExhaustPile;
+        bool runMiniRollout = resolvedCount >= 2 && (resolvedCount > maxBranches || isDelayedOrTurnSetup);
+
+        int nextOptionalPaid = parent.OptionalPaidPotionCount + optionalPaidCountDelta;
+        short nextPotionCost = (short)Math.Clamp(parent.PotionStrategicCost + potionCostDelta, 0, short.MaxValue);
+
+        if (runMiniRollout)
+        {
+            for (int i = 0; i < resolvedCount; i++)
+            {
+                ref HotResolvedChoice cand = ref ws.ChoiceResolved[i];
+                HotStatePacker.Unpack(ws.StagingArena.GetSpan(cand.StagedHandle), ref ws.WorkingState);
+                AssignDeterministicCardUids(ref ws.WorkingState);
+
+                int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
+                    nextPotionCost,
+                    nextOptionalPaid,
+                    cand.Summary.AlchemizeCount,
+                    cand.Summary.EmptyPotionSlots,
+                    in policy);
+
+                HotMiniRolloutResult probe = HotRolloutEvaluator.EvaluateChoiceProbe(
+                    in ws.WorkingState,
+                    cand.Cold,
+                    ref ws.ChoiceProbeState,
+                    ws.ChoiceProbeScratch,
+                    ws.ChoiceProbeActionBuf,
+                    ws.ChoiceProbeChoiceBuf,
+                    rules,
+                    in policy,
+                    in evalLookup,
+                    config.EvalMode,
+                    maxTurnsAhead: 1,
+                    parentNetPotionCostCenti: netPotionCostCenti,
+                    parentActionCount: parent.ActionCount + 1);
+
+                cand.LookaheadScore = EncodeProbeRankScore(in probe);
+                cand.LookaheadHpLost = probe.HpLost;
+                cand.LookaheadBoardInvestment = probe.BoardInvestment;
+                cand.LookaheadVictory = probe.IsVictory;
+                cand.HasLookahead = true;
+            }
+        }
+
+        Span<int> selectedIndices = stackalloc int[HotExpansionWorkspace.ChoiceResolvedCapacity];
+        int selectedCount;
+
+        if (resolvedCount <= maxBranches)
+        {
+            selectedCount = resolvedCount;
+            for (int i = 0; i < resolvedCount; i++)
+                selectedIndices[i] = i;
+            SortResolvedIndicesByPrimary(selectedIndices[..selectedCount], ws.ChoiceResolved);
+        }
+        else
+        {
+            // Domain-agnostic MAP-Elites choice shortlisting (zero card-ID hardcoding):
+            // ~55% Lookahead/Primary, ~15% Immediate Eval, ~15% Survival (min HpLost), ~15% BoardInvestment+Optionality.
+            Span<byte> marks = ws.ResolvedSelectedMarks.AsSpan(0, resolvedCount);
+            marks.Clear();
+            selectedCount = 0;
+
+            int cap = Math.Min(maxBranches, resolvedCount);
+            int primaryQuota = Math.Max(1, (cap * 55 + 50) / 100);
+            int immediateQuota = cap >= 4 ? Math.Max(1, (cap * 15) / 100) : 0;
+            int survivalQuota = cap >= 3 ? Math.Max(1, (cap * 15) / 100) : 0;
+            int investQuota = Math.Max(0, cap - primaryQuota - immediateQuota - survivalQuota);
+
+            SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, primaryQuota, 0, selectedIndices, ref selectedCount);
+            SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, immediateQuota, 1, selectedIndices, ref selectedCount);
+            SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, survivalQuota, 2, selectedIndices, ref selectedCount);
+            SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, investQuota, 3, selectedIndices, ref selectedCount);
+
+            if (selectedCount < cap)
+                SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, cap - selectedCount, 0, selectedIndices, ref selectedCount);
+
+            SortResolvedIndicesByPrimary(selectedIndices[..selectedCount], ws.ChoiceResolved);
+        }
+
+        int beforeFilled = CountFilledPotions(in ws.ParentState);
+
+        for (int sIdx = 0; sIdx < selectedCount; sIdx++)
+        {
+            ref readonly HotResolvedChoice cand = ref ws.ChoiceResolved[selectedIndices[sIdx]];
+            int afterFilled = Math.Max(0, Math.Min((int)ws.ParentState.PotionSlotCount, HotLimits.MaxPotions) - cand.Summary.EmptyPotionSlots);
+            int totalConsumed = Math.Max(0, beforeFilled - afterFilled);
+            byte autoPotionDelta = totalConsumed > explicitPotionDelta ? (byte)(totalConsumed - explicitPotionDelta) : (byte)0;
+            byte totalPotionDelta = (byte)(explicitPotionDelta + autoPotionDelta);
+
+            ReadOnlySpan<HotChoiceSelection> choiceSpan = cand.Prefix.AsSpan();
+            int choiceOffset = choiceSpan.Length > 0 ? ws.AppendStagedChoices(choiceSpan) : -1;
+
+            ws.AddStagedChild(new HotStagedChild
+            {
+                StagedHandle = cand.StagedHandle,
+                Cold = cand.Cold,
+                Hash = cand.Hash,
+                Summary = cand.Summary,
+                Eval = cand.Eval,
+                RolloutScore = cand.HasLookahead ? cand.LookaheadScore : 0,
+                ChoiceOffset = choiceOffset,
+                Action = action,
+                ChoiceCount = (byte)choiceSpan.Length,
+                PotionCostDelta = potionCostDelta,
+                PotionSlotBit = potionSlotBit,
+                PotionCountDelta = totalPotionDelta,
+                ExplicitPotionDelta = explicitPotionDelta,
+                OptionalPaidCountDelta = optionalPaidCountDelta,
+                AmbergrisDelta = ambergrisDelta,
+                Flags = cand.HasLookahead ? HotNodeFlags.HasChoiceLookahead : HotNodeFlags.None,
+            });
+        }
+    }
+
+    private static void SelectResolvedTopK(
+        HotResolvedChoice[] resolved,
+        int count,
+        Span<byte> marks,
+        int take,
+        int criterion,
+        Span<int> dst,
+        ref int dstCount)
+    {
+        for (int k = 0; k < take; k++)
+        {
+            int bestIdx = -1;
+            for (int i = 0; i < count; i++)
+            {
+                if (marks[i] != 0)
+                    continue;
+                if (bestIdx < 0 || CompareResolved(in resolved[i], in resolved[bestIdx], criterion) < 0)
+                    bestIdx = i;
+            }
+            if (bestIdx < 0)
+                break;
+            marks[bestIdx] = 1;
+            dst[dstCount++] = bestIdx;
+        }
+    }
+
+    private static void SortResolvedIndicesByPrimary(Span<int> indices, HotResolvedChoice[] resolved)
+    {
+        for (int i = 1; i < indices.Length; i++)
+        {
+            int key = indices[i];
+            int j = i - 1;
+            while (j >= 0 && CompareResolved(in resolved[key], in resolved[indices[j]], criterion: 0) < 0)
+            {
+                indices[j + 1] = indices[j];
+                j--;
+            }
+            indices[j + 1] = key;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CompareResolved(in HotResolvedChoice a, in HotResolvedChoice b, int criterion)
+    {
+        int cmp;
+        switch (criterion)
+        {
+            case 1: // Immediate static eval
+                cmp = b.Eval.Score.CompareTo(a.Eval.Score);
+                if (cmp != 0) return cmp;
+                break;
+            case 2: // Survival (min lookahead HP lost)
+                cmp = a.LookaheadHpLost.CompareTo(b.LookaheadHpLost);
+                if (cmp != 0) return cmp;
+                cmp = a.Summary.HpLost.CompareTo(b.Summary.HpLost);
+                if (cmp != 0) return cmp;
+                break;
+            case 3: // Persistent board investment + optionality
+                cmp = b.LookaheadBoardInvestment.CompareTo(a.LookaheadBoardInvestment);
+                if (cmp != 0) return cmp;
+                cmp = b.Eval.BoardInvestment.CompareTo(a.Eval.BoardInvestment);
+                if (cmp != 0) return cmp;
+                cmp = b.Eval.OptionalityScore.CompareTo(a.Eval.OptionalityScore);
+                if (cmp != 0) return cmp;
+                break;
+        }
+
+        // Primary criterion & tie-break: Victory -> LookaheadScore -> Immediate Eval -> deterministic Hash.
+        cmp = b.LookaheadVictory.CompareTo(a.LookaheadVictory);
+        if (cmp != 0) return cmp;
+        if (a.HasLookahead && b.HasLookahead)
+        {
+            cmp = b.LookaheadScore.CompareTo(a.LookaheadScore);
+            if (cmp != 0) return cmp;
+        }
+        cmp = b.Eval.Score.CompareTo(a.Eval.Score);
+        if (cmp != 0) return cmp;
+        cmp = a.Hash.Lo.CompareTo(b.Hash.Lo);
+        if (cmp != 0) return cmp;
+        return a.Hash.Hi.CompareTo(b.Hash.Hi);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static long EncodeProbeRankScore(in HotMiniRolloutResult probe)
+    {
+        long s = Math.Clamp(probe.Score, -1_000_000_000_000_000L, 1_000_000_000_000_000L);
+        if (probe.IsVictory)
+            return 2_000_000_000_000_000L + s - (long)probe.HpLost * 100_000L;
+        if (probe.IsDefeat)
+            return -2_000_000_000_000_000L + s;
+        if (probe.IsEventDefeat)
+            return -1_500_000_000_000_000L + s;
+        return s;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool TryInsertLocalChoiceTt(HotExpansionWorkspace ws, HotHash128 hash)
+    {
+        int slot = (int)(hash.Lo & HotExpansionWorkspace.ChoiceTtMask);
+        for (int probe = 0; probe < HotExpansionWorkspace.ChoiceTtSize; probe++)
+        {
+            if (ws.LocalChoiceTtUsed[slot] == 0)
+            {
+                ws.LocalChoiceTtUsed[slot] = 1;
+                ws.LocalChoiceTt[slot] = hash;
+                return true;
+            }
+            if (ws.LocalChoiceTt[slot] == hash)
+                return false;
+            slot = (slot + 1) & HotExpansionWorkspace.ChoiceTtMask;
+        }
+        return true;
+    }
+
+    private static void SortChoiceOptionsByUid(Span<HotChoiceSelection> opts)
+    {
+        for (int i = 1; i < opts.Length; i++)
+        {
+            HotChoiceSelection key = opts[i];
+            int j = i - 1;
+            while (j >= 0 && opts[j].CardUidOrIndex > key.CardUidOrIndex)
+            {
+                opts[j + 1] = opts[j];
+                j--;
+            }
+            opts[j + 1] = key;
+        }
+    }
+
+    private static void SortPrefixSelectionsByUid(ref HotChoicePrefix pfx)
+    {
+        int count = pfx.Count;
+        for (int i = 1; i < count; i++)
+        {
+            HotChoiceSelection key = pfx.Selections[i];
+            int j = i - 1;
+            while (j >= 0 && pfx.Selections[j].CardUidOrIndex > key.CardUidOrIndex)
+            {
+                pfx.Selections[j + 1] = pfx.Selections[j];
+                j--;
+            }
+            pfx.Selections[j + 1] = key;
+        }
+    }
+
+    private static void SortMarginalIndicesDescending(Span<int> order, long[] scores, HotChoiceSelection[] opts)
+    {
+        for (int i = 1; i < order.Length; i++)
+        {
+            int key = order[i];
+            long keyScore = scores[key];
+            ushort keyUid = opts[key].CardUidOrIndex;
+            int j = i - 1;
+            while (j >= 0 && (scores[order[j]] < keyScore
+                || (scores[order[j]] == keyScore && opts[order[j]].CardUidOrIndex > keyUid)))
+            {
+                order[j + 1] = order[j];
+                j--;
+            }
+            order[j + 1] = key;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool ContainsUShort(ReadOnlySpan<ushort> span, ushort value)
+    {
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (span[i] == value)
+                return true;
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CountFilledPotions(in CombatHotState state)
+    {
+        int filled = 0;
+        int slots = Math.Min((int)state.PotionSlotCount, HotLimits.MaxPotions);
+        for (int i = 0; i < slots; i++)
+        {
+            if (state.Potions[i] != 0)
+                filled++;
+        }
+        return filled;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsPileChoiceKind(HotChoiceKind kind)
         => kind is HotChoiceKind.HandCard or HotChoiceKind.DrawPile or HotChoiceKind.DiscardPile or HotChoiceKind.ExhaustPile;
-
-    private static int PrepareChoiceOptions(
-        in CombatHotState s,
-        HotColdSidecar? cold,
-        HotRules rules,
-        HotChoiceKind kind,
-        ushort sourceCardDefId,
-        HotChoiceSelection[] optBuf,
-        int[] prioBuf,
-        int rawCount,
-        bool hasPriorBatch,
-        in HotChoicePrefix priorPrefix,
-        bool enforceCanonicalOrder,
-        out bool hasNoneOption)
-    {
-        hasNoneOption = false;
-        int outCount = 0;
-
-        for (int i = 0; i < rawCount; i++)
-        {
-            HotChoiceSelection opt = optBuf[i];
-            if (opt.Kind == HotChoiceKind.None)
-            {
-                hasNoneOption = true;
-                continue;
-            }
-
-            if (hasPriorBatch && IsPileChoiceKind(opt.Kind))
-            {
-                if (IsUidInPrefix(in priorPrefix, opt.Kind, opt.CardUidOrIndex))
-                {
-                    if (!TryFindAlternateEquivalentUid(in s, opt.Kind, opt.CardUidOrIndex, in priorPrefix, out ushort altUid))
-                        continue;
-                    opt = new HotChoiceSelection(opt.Kind, altUid, opt.CardDefId);
-                }
-            }
-
-            int prio = ComputeChoiceOptionPriority(in s, cold, rules, kind, sourceCardDefId, opt);
-
-            if (enforceCanonicalOrder)
-            {
-                if (prio > priorPrefix.LastChoicePriority)
-                    continue;
-                if (prio == priorPrefix.LastChoicePriority && opt.CardUidOrIndex <= priorPrefix.LastChoiceUid)
-                    continue;
-            }
-
-            bool dupOut = false;
-            for (int j = 0; j < outCount; j++)
-            {
-                if (optBuf[j].Kind == opt.Kind && optBuf[j].CardUidOrIndex == opt.CardUidOrIndex)
-                {
-                    dupOut = true;
-                    break;
-                }
-            }
-            if (dupOut)
-                continue;
-
-            optBuf[outCount] = opt;
-            prioBuf[outCount] = prio;
-            outCount++;
-        }
-
-        for (int i = 1; i < outCount; i++)
-        {
-            HotChoiceSelection keyOpt = optBuf[i];
-            int keyPrio = prioBuf[i];
-            int j = i - 1;
-            while (j >= 0 && (prioBuf[j] < keyPrio
-                || (prioBuf[j] == keyPrio && optBuf[j].CardUidOrIndex > keyOpt.CardUidOrIndex)))
-            {
-                optBuf[j + 1] = optBuf[j];
-                prioBuf[j + 1] = prioBuf[j];
-                j--;
-            }
-            optBuf[j + 1] = keyOpt;
-            prioBuf[j + 1] = keyPrio;
-        }
-
-        return outCount;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsUidInPrefix(in HotChoicePrefix pfx, HotChoiceKind kind, ushort uid)
-    {
-        ReadOnlySpan<HotChoiceSelection> span = pfx.AsSpan();
-        for (int i = 0; i < span.Length; i++)
-        {
-            if (span[i].Kind == kind && span[i].CardUidOrIndex == uid)
-                return true;
-        }
-        return false;
-    }
-
-    private static bool TryFindAlternateEquivalentUid(
-        in CombatHotState s,
-        HotChoiceKind kind,
-        ushort pickedUid,
-        in HotChoicePrefix pfx,
-        out ushort altUid)
-    {
-        HotPileKind pile = kind switch
-        {
-            HotChoiceKind.HandCard => HotPileKind.Hand,
-            HotChoiceKind.DrawPile => HotPileKind.Draw,
-            HotChoiceKind.DiscardPile => HotPileKind.Discard,
-            HotChoiceKind.ExhaustPile => HotPileKind.Exhaust,
-            _ => HotPileKind.Hand,
-        };
-
-        int start = HotPiles.ZoneStart(in s, pile);
-        int end = start + HotPiles.ZoneCount(in s, pile);
-        int pickedIdx = -1;
-        for (int i = start; i < end; i++)
-        {
-            if (s.Cards[i].CardUid == pickedUid)
-            {
-                pickedIdx = i;
-                break;
-            }
-        }
-        if (pickedIdx < 0)
-        {
-            altUid = 0;
-            return false;
-        }
-
-        ref readonly HotCard pickedCard = ref s.Cards[pickedIdx];
-        ReadOnlySpan<byte> pickedBytes = HotStatePacker.AsReadOnlyBytes(in pickedCard);
-
-        for (int i = start; i < end; i++)
-        {
-            if (i == pickedIdx)
-                continue;
-            ref readonly HotCard cand = ref s.Cards[i];
-            if (cand.CardDefId != pickedCard.CardDefId || cand.CardUid == 0)
-                continue;
-            if (IsUidInPrefix(in pfx, kind, cand.CardUid))
-                continue;
-
-            ReadOnlySpan<byte> candBytes = HotStatePacker.AsReadOnlyBytes(in cand);
-            if (pickedBytes[4..].SequenceEqual(candBytes[4..]))
-            {
-                altUid = cand.CardUid;
-                return true;
-            }
-        }
-
-        altUid = 0;
-        return false;
-    }
-
-    private static int ComputeChoiceOptionPriority(
-        in CombatHotState s,
-        HotColdSidecar? cold,
-        HotRules rules,
-        HotChoiceKind kind,
-        ushort sourceCardDefId,
-        HotChoiceSelection opt)
-    {
-        if (opt.CardDefId == 0 || opt.CardDefId >= rules.Cards.Length)
-            return 0;
-
-        HotCardDef def = rules.Cards[opt.CardDefId];
-        HotCustomCardId sourceId = sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
-            ? rules.Cards[sourceCardDefId].CardId
-            : HotCustomCardId.None;
-
-        bool isDiscardOrExhaustChoice = kind == HotChoiceKind.HandCard
-            && sourceId is HotCustomCardId.Purity
-                or HotCustomCardId.Prepared
-                or HotCustomCardId.Survivor
-                or HotCustomCardId.TrueGrit
-                or HotCustomCardId.BurningPact;
-
-        int quality = 0;
-        if (def.Type is CardType.Curse or CardType.Status)
-        {
-            quality = -400;
-        }
-        else if (def.IsStrikeTag || def.IsDefendTag)
-        {
-            quality = 60;
-        }
-        else
-        {
-            quality = def.Type switch
-            {
-                CardType.Power => 280,
-                CardType.Skill => 200,
-                CardType.Attack => 190,
-                _ => 120,
-            };
-            quality += def.Rarity switch
-            {
-                CardRarity.Rare => 90,
-                CardRarity.Uncommon => 50,
-                CardRarity.Common => 20,
-                _ => 10,
-            };
-            quality += Math.Min((int)def.SetupWeight * 4, 140);
-            int baseCost = def.BaseCost;
-            if (baseCost == 0)
-                quality += 45;
-            else if (baseCost == 1)
-                quality += 20;
-        }
-
-        if (IsPileChoiceKind(opt.Kind))
-        {
-            HotPileKind pile = opt.Kind switch
-            {
-                HotChoiceKind.HandCard => HotPileKind.Hand,
-                HotChoiceKind.DrawPile => HotPileKind.Draw,
-                HotChoiceKind.DiscardPile => HotPileKind.Discard,
-                _ => HotPileKind.Exhaust,
-            };
-            int idx = HotCombatEngine.FindCardIndexByUid(in s, pile, opt.CardUidOrIndex);
-            if (idx >= 0)
-            {
-                ref readonly HotCard c = ref s.Cards[idx];
-                if ((c.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0)
-                    quality = -450;
-                else
-                {
-                    if (c.UpgradeLevel > 0)
-                        quality += 35;
-                    int liveCost = HotCostModifiers.GetLocalEnergyCost(in c, cold);
-                    if (liveCost == 0)
-                        quality += 30;
-                }
-            }
-        }
-
-        return isDiscardOrExhaustChoice ? -quality : quality;
-    }
 
     private static void StageCompletedTransition(
         HotExpansionWorkspace ws,
@@ -1903,11 +2641,16 @@ internal sealed class HotParallelExpander : IDisposable
             netPotionCostCenti,
             parent.ActionCount + 1,
             config.EvalMode,
-            out long score,
-            out int setupScore,
-            out byte playableHandCount);
+            out HotEvalFeatures eval);
 
         int choiceOffset = choices.Length > 0 ? ws.AppendStagedChoices(choices) : -1;
+
+        // Propagate mid-turn choice lookahead across remaining same-turn non-choice actions
+        // (e.g. Headbutt(Bludgeon+) -> Strike) so tie-breaks stay lookahead-guided until EndTurn.
+        bool inheritLookahead = choices.Length == 0
+            && action.Kind != HotActionKind.EndTurn
+            && action.Kind != HotActionKind.TurnSetup
+            && parent.HasChoiceLookahead;
 
         ws.AddStagedChild(new HotStagedChild
         {
@@ -1915,29 +2658,31 @@ internal sealed class HotParallelExpander : IDisposable
             Cold = childCold,
             Hash = hash,
             Summary = summary,
-            Score = score,
-            SetupScore = setupScore,
+            Eval = eval,
+            RolloutScore = inheritLookahead ? parent.RolloutScore : 0,
             ChoiceOffset = choiceOffset,
             Action = action,
             ChoiceCount = (byte)choices.Length,
-            PlayableHandCount = playableHandCount,
             PotionCostDelta = potionCostDelta,
             PotionSlotBit = potionSlotBit,
             PotionCountDelta = totalPotionDelta,
             ExplicitPotionDelta = explicitPotionDelta,
             OptionalPaidCountDelta = optionalPaidCountDelta,
             AmbergrisDelta = ambergrisDelta,
-            Flags = HotNodeFlags.None,
+            Flags = inheritLookahead ? HotNodeFlags.HasChoiceLookahead : HotNodeFlags.None,
         });
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int ResolveChoiceBranchCap(HotChoiceKind kind, in HotWaveExpansionConfig config)
+    private static int ResolveChoiceBranchCap(HotChoiceKind kind, HotActionKind actionKind, in HotWaveExpansionConfig config)
     {
         int raw = kind == HotChoiceKind.HandCard
             ? config.MaxHandChoiceBranches
             : config.MaxPileChoiceBranches;
-        return Math.Clamp(raw > 0 ? raw : 18, 1, 64);
+        int cap = Math.Clamp(raw > 0 ? raw : 18, 1, 64);
+        if (actionKind == HotActionKind.TurnSetup)
+            cap = Math.Max(cap, 64);
+        return cap;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1946,14 +2691,8 @@ internal sealed class HotParallelExpander : IDisposable
         in CombatHotState after,
         byte explicitPotionDelta)
     {
-        int beforeFilled = 0;
-        int afterFilled = 0;
-        int slots = Math.Min((int)before.PotionSlotCount, HotLimits.MaxPotions);
-        for (int i = 0; i < slots; i++)
-        {
-            if (before.Potions[i] != 0) beforeFilled++;
-            if (after.Potions[i] != 0) afterFilled++;
-        }
+        int beforeFilled = CountFilledPotions(in before);
+        int afterFilled = CountFilledPotions(in after);
         int totalConsumed = Math.Max(0, beforeFilled - afterFilled);
         int auto = totalConsumed - explicitPotionDelta;
         return auto > 0 ? (byte)auto : (byte)0;
@@ -1970,7 +2709,7 @@ internal sealed class HotParallelExpander : IDisposable
         for (int j = 1; j < handCount; j++)
         {
             ref readonly HotCard cj = ref s.Cards[j];
-            if (cj.CardUid != 0 && IsCardUidReferenced(in s, cold, cj.CardUid))
+            if (cj.CardUid != 0 && HotCombatEngine.IsCardUidReferenced(in s, cold, cj.CardUid))
                 continue;
 
             ReadOnlySpan<byte> bytesJ = HotStatePacker.AsReadOnlyBytes(in cj);
@@ -1981,7 +2720,7 @@ internal sealed class HotParallelExpander : IDisposable
                 ref readonly HotCard ci = ref s.Cards[i];
                 if (ci.CardDefId != cj.CardDefId)
                     continue;
-                if (ci.CardUid != 0 && IsCardUidReferenced(in s, cold, ci.CardUid))
+                if (ci.CardUid != 0 && HotCombatEngine.IsCardUidReferenced(in s, cold, ci.CardUid))
                     continue;
 
                 ReadOnlySpan<byte> bytesI = HotStatePacker.AsReadOnlyBytes(in ci);
@@ -1994,35 +2733,6 @@ internal sealed class HotParallelExpander : IDisposable
         }
 
         return dupMask;
-    }
-
-    private static bool IsCardUidReferenced(in CombatHotState s, HotColdSidecar? cold, ushort uid)
-    {
-        if (s.HistoryCourseUid == uid)
-            return true;
-        if (s.Fool.FirstPlayCardUid[0] == uid || s.Fool.FirstPlayCardUid[1] == uid || s.Fool.FirstPlayCardUid[2] == uid)
-            return true;
-
-        int powerCount = s.PowerCount;
-        for (int i = 0; i < powerCount; i++)
-        {
-            if (s.Powers[i].AuxCardUid == uid)
-                return true;
-        }
-
-        if (cold != null)
-        {
-            if (cold.DecimalVars is { Length: > 0 } decs)
-                for (int i = 0; i < decs.Length; i++) if (decs[i].CardUid == uid) return true;
-            if (cold.CostOverflow is { Length: > 0 } co)
-                for (int i = 0; i < co.Length; i++) if (co[i].CardUid == uid) return true;
-            if (cold.RuptureEntries is { Length: > 0 } ru)
-                for (int i = 0; i < ru.Length; i++) if (ru[i].CardUid == uid) return true;
-            if (cold.DampenEntries is { Length: > 0 } da)
-                for (int i = 0; i < da.Length; i++) if (da[i].CardUid == uid) return true;
-        }
-
-        return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -159,6 +159,7 @@ internal static class HotPotions
                 int maxPicks = Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction);
                 Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
                 int pickedCount = 0;
+                scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.Optional | HotChoiceGroupFlags.MultiPick);
                 for (int pick = 0; pick < maxPicks; pick++)
                 {
                     if (pickedCount >= s.HandCount || HotCombatEngine.IsOverOrEnding(in s))
@@ -169,6 +170,7 @@ internal static class HotPotions
                         break;
                     pickedUids[pickedCount++] = sel.CardUidOrIndex;
                 }
+                scratch.EndChoiceGroup();
                 for (int i = 0; i < pickedCount && !HotCombatEngine.IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                 {
                     int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, pickedUids[i]);
@@ -437,6 +439,7 @@ internal static class HotPotions
                 int maxPicks = Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction);
                 Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
                 int pickedCount = 0;
+                scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.Optional | HotChoiceGroupFlags.MultiPick);
                 for (int pick = 0; pick < maxPicks; pick++)
                 {
                     if (pickedCount >= s.HandCount || HotCombatEngine.IsOverOrEnding(in s))
@@ -447,6 +450,7 @@ internal static class HotPotions
                         break;
                     pickedUids[pickedCount++] = sel.CardUidOrIndex;
                 }
+                scratch.EndChoiceGroup();
                 if (pickedCount > 0 && !HotCombatEngine.IsOverOrEnding(in s))
                     HotCombatEngine.DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: pickedCount);
                 break;

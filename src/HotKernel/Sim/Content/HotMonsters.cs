@@ -627,6 +627,7 @@ internal static class HotMonsters
 
         // 16. Victory check (respecting reviving primary enemies & Stock/Infested/Surprise spawns already created).
         if ((s.Player.Flags & HotCreatureFlags.Alive) != 0
+            && (s.CombatFlags & HotCombatFlags.BattlewornDummyTimedOut) == 0
             && !HasAnyLivingOrRevivingPrimaryEnemy(in s, rules))
         {
             s.TerminalOutcome = HotCombatOutcome.Victory;

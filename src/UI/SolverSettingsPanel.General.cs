@@ -72,15 +72,15 @@ internal sealed partial class SolverSettingsPanel
     internal bool ExerciseThresholdOutsideClickForTesting()
     {
         SettingsPage previousPage = _activePage;
-        if (!TrySelectPage(SettingsPage.Performance))
-            throw new InvalidOperationException("Cannot open performance settings for threshold input.");
+        if (!TrySelectPage(SettingsPage.General))
+            throw new InvalidOperationException("Cannot open general settings for threshold input.");
         try
         {
             _acceptableBattleHpLoss.GrabFocus();
             _acceptableBattleHpLoss.Text = "19";
             using InputEventMouseButton click = new() { Pressed = true, ButtonIndex = MouseButton.Left, Position = new Vector2(-1, -1) };
             _Input(click);
-            return _performancePage.IsAncestorOf(_acceptableBattleHpLoss)
+            return _generalPage.IsAncestorOf(_acceptableBattleHpLoss)
                 && !_acceptableBattleHpLoss.HasFocus() && SolverSettings.Current.AcceptableBattleHpLoss == 19;
         }
         finally { TrySelectPage(previousPage); }
@@ -190,6 +190,23 @@ internal sealed partial class SolverSettingsPanel
             SolverText.Get("开启后会在进入战斗局面和每个玩家回合自动开始后台计算；关闭后由主面板手动开始计算。"));
         AddSettingsSection(content, SolverText.Get("开始计算"),
             SolverText.Get("控制求解器启停与自动计算。自动开启全自动可在主界面右侧设置。"), solverGrid);
+
+        GridContainer stopGrid = CreateSettingsGrid();
+        _acceptableBattleHpLoss = CreateAcceptableBattleHpLossInput();
+        CheckButton stopAtHpTarget = CreateToggle();
+        _reloadInputs.Add(data => stopAtHpTarget.ButtonPressed = data.StopAtAcceptableBattleHpLoss);
+        stopAtHpTarget.Toggled += enabled =>
+        {
+            if (_loading) return;
+            SolverSettings.Update(SolverSettings.Current with { StopAtAcceptableBattleHpLoss = enabled });
+            SetStatus(SolverText.Get("已保存，下次搜索生效"), SolverUiTokens.Palette.Success);
+        };
+        AddBasicRow(stopGrid, SolverText.Get("达到战损目标后停止搜索"), stopAtHpTarget,
+            SolverText.Get("默认开启。完整胜利达到战损阈值且没有多用药水时停止；0 表示零损。成长收益尚未满足时继续搜索，击杀成长牌兑现收益后可停止。下次搜索生效。"));
+        AddBasicRow(stopGrid, SolverText.Get("提前结束搜索的战损阈值（HP）"), _acceptableBattleHpLoss,
+            SolverText.Get("默认 0，即零损。启用上方开关后，找到预计整场扣血不超过此值的完整胜利路线就停止搜索；仅保存成长额度而本场没有对应卡牌时仍可早停。"));
+        AddSettingsSection(content, SolverText.Get("搜索停止条件"),
+            SolverText.Get("战损阈值按整场累计扣血计算，下次搜索生效。"), stopGrid);
 
         GridContainer bossStrategyGrid = CreateSettingsGrid();
         _actTransitionBossHpStrategy = CreateBossHpStrategyInput(

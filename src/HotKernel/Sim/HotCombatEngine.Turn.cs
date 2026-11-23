@@ -179,22 +179,71 @@ internal static partial class HotCombatEngine
         HotRules rules,
         HotExecScratch scratch)
     {
-        // AutoPostPlay phase (IAmInvincible on top of draw pile; Stampede/Simpleton run in BeforeTurnEnd below)
+        // AutoPostPlay phase (STS2 0.113.1 CombatManager.cs:1639-1650):
+        // Hook.AfterAutoPostPlayPhaseEntered runs BEFORE PlayerTurnPhase.End and Hook.BeforeSideTurnEnd
+        // (so ChainsOfBindingPower.BeforeSideTurnEnd has not cleared Bound / boundCardPlayed yet).
+        // CombatState.IterateHookListeners order: Player Powers (Stampede, Simpleton) -> DrawPile (IAmInvincible) -> ExhaustPile (HowlFromBeyond).
         s.PlayerPhase = (byte)PlayerTurnPhase.AutoPostPlay;
-        if (s.DrawCount > 0 && !IsOverOrEnding(in s))
+        if ((s.ActiveHookMask & (ulong)HotHookMask.AfterAutoPostPlay) != 0 && !IsOverOrEnding(in s))
         {
-            ushort topDefId = s.Cards[s.DrawStart].CardDefId;
-            if (topDefId < rules.Cards.Length && rules.Cards[topDefId].CardId == HotCustomCardId.IAmInvincible)
+            HotHookArgs postPlayArgs = new()
             {
-                AutoPlayFromDrawPile(ref s, ref cold, rules, scratch, 1, forceExhaust: false);
-                if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
-                    return false;
+                Side = HotCombatSide.Player,
+                ActorSlot = 0,
+            };
+            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterAutoPostPlay, ref postPlayArgs);
+            if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+                return false;
+
+            if (s.DrawCount > 0 && !IsOverOrEnding(in s))
+            {
+                Span<ushort> invUids = stackalloc ushort[HotLimits.MaxCards];
+                int invCount = 0;
+                int drawEnd = s.DrawStart + s.DrawCount;
+                for (int i = s.DrawStart; i < drawEnd; i++)
+                {
+                    ushort defId = s.Cards[i].CardDefId;
+                    if (defId < rules.Cards.Length && rules.Cards[defId].CardId == HotCustomCardId.IAmInvincible)
+                        invUids[invCount++] = s.Cards[i].CardUid;
+                }
+                for (int k = 0; k < invCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; k++)
+                {
+                    if (s.DrawCount > 0 && s.Cards[s.DrawStart].CardUid == invUids[k])
+                    {
+                        AutoPlayFromDrawPile(ref s, ref cold, rules, scratch, 1, forceExhaust: false);
+                        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+                            return false;
+                    }
+                }
+            }
+
+            if (s.ExhaustCount > 0 && !IsOverOrEnding(in s))
+            {
+                Span<ushort> howlUids = stackalloc ushort[HotLimits.MaxCards];
+                int howlCount = 0;
+                int exhEnd = s.ExhaustStart + s.ExhaustCount;
+                for (int i = s.ExhaustStart; i < exhEnd; i++)
+                {
+                    ushort defId = s.Cards[i].CardDefId;
+                    if (defId < rules.Cards.Length && rules.Cards[defId].CardId == HotCustomCardId.HowlFromBeyond)
+                        howlUids[howlCount++] = s.Cards[i].CardUid;
+                }
+                for (int k = 0; k < howlCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; k++)
+                {
+                    int liveIdx = FindCardIndexByUid(in s, HotPileKind.Exhaust, howlUids[k]);
+                    if (liveIdx >= 0)
+                    {
+                        AutoPlayCard(ref s, ref cold, rules, scratch, liveIdx, targetEnemySlot: -1, forceExhaust: false);
+                        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+                            return false;
+                    }
+                }
             }
         }
 
         s.PlayerPhase = (byte)PlayerTurnPhase.End;
 
-        // BeforeSideTurnEnd (Stampede, Simpleton, Plating, Metallicize, Regen, Orichalcum, CloakClasp, RippleBasin, Hailstorm, TheBomb, etc.)
+        // BeforeSideTurnEnd (ChainsOfBinding, Plating, Metallicize, Regen, Orichalcum, CloakClasp, RippleBasin, Hailstorm, TheBomb, etc.)
         if ((s.ActiveHookMask & (ulong)HotHookMask.BeforeTurnEnd) != 0 || rules.Dominion != HotDominionId.None)
         {
             HotHookArgs preEndArgs = new()
@@ -280,6 +329,7 @@ internal static partial class HotCombatEngine
             && GetPowerAmountById(in s, rules, 0, HotPowerId.RetainHandPower) == 0)
         {
             ushort wlpCardDefId = rules.GetCardDefId(HotCustomCardId.WellLaidPlans);
+            scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.Optional | HotChoiceGroupFlags.MultiPick);
             for (int k = 0; k < wlpAmt; k++)
             {
                 if (!HasEligibleHandCardForFilter(in s, rules, HotCustomCardId.WellLaidPlans))
@@ -292,6 +342,7 @@ internal static partial class HotCombatEngine
                 if (idx >= 0)
                     s.Cards[idx].Flags |= HotCardFlags.SingleTurnRetain;
             }
+            scratch.EndChoiceGroup();
         }
 
         // Hand flush (skipped when RunicPyramid or RetainHandPower is active)

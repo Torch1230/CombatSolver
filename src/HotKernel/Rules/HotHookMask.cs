@@ -53,4 +53,5 @@ internal enum HotHookMask : ulong
     AfterHpLost                  = 1UL << 43,
     AfterHeal                    = 1UL << 44,
     ModifyHealAmount             = 1UL << 45,
+    AfterAutoPostPlay            = 1UL << 46,
 }

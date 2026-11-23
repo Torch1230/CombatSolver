@@ -9,17 +9,15 @@ internal sealed partial class SolverActionBar : VBoxContainer
 {
     private readonly HFlowContainer _actions;
     private readonly Control _autoStart;
-    private readonly HBoxContainer _memoryRow;
     private readonly Button _execute;
     private readonly Button _recalculate;
     private readonly Button _stop;
     private readonly Button _adopt;
     private readonly Button _freeze;
     private readonly Button _fullAuto;
-    private readonly Control _memory;
 
     public SolverActionBar(Button execute, Button recalculate, Button stop, Button adopt, Button freeze,
-        Button fullAuto, Control autoStart, Control memory)
+        Button fullAuto, Control autoStart)
     {
         Name = "Footer";
         MouseFilter = MouseFilterEnum.Pass;
@@ -31,7 +29,6 @@ internal sealed partial class SolverActionBar : VBoxContainer
         _adopt = adopt;
         _freeze = freeze;
         _fullAuto = fullAuto;
-        _memory = memory;
         _actions = CreateFlow("CombatActions");
         _autoStart = autoStart;
         HBoxContainer actionRow = new() { Name = "ActionRow", MouseFilter = MouseFilterEnum.Pass };
@@ -45,10 +42,6 @@ internal sealed partial class SolverActionBar : VBoxContainer
         actionRow.AddChild(_actions);
         actionRow.AddChild(autoStart);
         AddChild(actionRow);
-        _memoryRow = new HBoxContainer { Name = "MemoryRow", MouseFilter = MouseFilterEnum.Pass };
-        _memoryRow.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
-        _memoryRow.AddChild(memory);
-        AddChild(_memoryRow);
     }
 
     public void Refresh(SolverActionBarState state)
@@ -59,8 +52,6 @@ internal sealed partial class SolverActionBar : VBoxContainer
         _freeze.Visible = !state.Searching && state.ShowFreeze;
         _execute.Visible = !state.Searching;
         _autoStart.Visible = !state.Collapsed;
-        _memoryRow.Visible = !state.Collapsed;
-        _memory.Visible = !state.Collapsed;
     }
 
     internal void AssertLayoutForTesting()
@@ -85,8 +76,7 @@ internal sealed partial class SolverActionBar : VBoxContainer
                     || _execute.Disabled != executeDisabled
                     || _freeze.Visible != (!searching && freeze)
                     || _execute.Visible == searching
-                    || _memory.Visible == collapsed || _autoStart.Visible == collapsed
-                    || _memoryRow.Visible == collapsed
+                    || _autoStart.Visible == collapsed
                     || _fullAuto.GetParent() != _actions || _fullAuto.GetIndex() != 0
                     || _adopt.GetIndex() != 1 || _freeze.GetIndex() != 2)
                     throw new InvalidOperationException("Action bar layout state did not match its display snapshot.");

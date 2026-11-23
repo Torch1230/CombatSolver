@@ -9,10 +9,10 @@ internal sealed record SolverSearchProfile(
     int SoftTimeBudgetMilliseconds)
 {
     public static SolverSearchProfile Default { get; } = new(
-        BeamWidth: 60,
-        MaxExpandedNodes: 120_000,
-        MaxCardBranchesPerNode: 32,
+        BeamWidth: 96,
+        MaxExpandedNodes: 150_000,
+        MaxCardBranchesPerNode: 64,
         MaxPileChoiceBranchesPerAction: 18,
         MaxHandChoiceBranchesPerAction: 24,
-        SoftTimeBudgetMilliseconds: 120_000);
+        SoftTimeBudgetMilliseconds: 4_000);
 }

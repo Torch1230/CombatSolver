@@ -84,7 +84,8 @@ internal sealed record SolverSettingsData
     public bool StopFullAutoOnWorseRecalculation { get; init; } = true;
     public bool EnableDetailedDiagnosticLogs { get; init; }
     public bool RetainAllCombatLogs { get; init; }
-    public bool ShowBattleDamagePerformanceHint { get; init; } = true;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ShowBattleDamagePerformanceHint { get; init; }
     public bool ShowActTransitionBossHpStrategyHint { get; init; } = true;
     public bool ShowFinalBossHpStrategyHint { get; init; } = true;
     public bool ShowSpeedXWarning { get; init; } = true;
@@ -111,16 +112,26 @@ internal sealed record SolverSettingsData
     public int AcceptableBattleHpLoss { get; init; }
     public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
     public int PerformanceMigrationVersion { get; init; }
-    public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
+    public int MaxHardFightThinkSeconds { get; init; } = SolverSettings.DefaultMaxHardFightThinkSeconds;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SolverPerformancePreset? PerformancePreset { get; init; }
     public int? SearchMaxDegreeOfParallelism { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? SearchTimeLimitSeconds { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SearchBeamWidth { get; init; }
-    // Legacy split fields are read for migration; new writes use SearchBeamWidth.
+    // Legacy split fields are read for migration; new writes omit retired budget fields.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SearchPotionFreeBeamWidth { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SearchPotionBeamWidth { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SearchMaxExpandedNodes { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SearchMaxCardBranchesPerNode { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SearchMaxPileChoiceBranchesPerAction { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SearchMaxHandChoiceBranchesPerAction { get; init; }
     public SolverDeploymentFastMode DeploymentFastMode { get; init; } = SolverDeploymentFastMode.FollowGame;
     public double? DeploymentInterActionDelaySeconds { get; init; }
@@ -156,16 +167,20 @@ internal sealed record SolverSettingsSnapshot(
     public bool IgnoreLongTermRewards { get; init; }
     public bool PredictPotionReward { get; init; }
     public PotionHpThresholds PotionThresholds { get; init; } = PotionHpThresholds.Default;
+    public int MaxHardFightThinkSeconds { get; init; } = SolverSettings.DefaultMaxHardFightThinkSeconds;
+    public bool AdaptiveEscalationEnabled { get; init; } = true;
 }
 
 internal static class SolverSettings
 {
+    public const int MinimumMaxHardFightThinkSeconds = 1;
+    public const int MaximumMaxHardFightThinkSeconds = 15;
+    public const int DefaultMaxHardFightThinkSeconds = 4;
     public const int MaximumAcceptableBattleHpLoss = 100_000;
     public const float MinimumOverlayWidth = 400f;
     public const float MinimumOverlayHeight = 300f;
     public const float MaximumOverlaySize = 100_000f;
-    private const int UnifiedPerformanceMigrationVersion = 243;
-    internal const int CurrentPerformanceMigrationVersion = 246;
+    internal const int CurrentPerformanceMigrationVersion = 247;
     private static readonly SolverPerformanceValues LowPerformance = new(
         new SolverSearchProfile(
             BeamWidth: 45,
@@ -174,7 +189,7 @@ internal static class SolverSettings
             MaxPileChoiceBranchesPerAction: 12,
             MaxHandChoiceBranchesPerAction: 16,
             SoftTimeBudgetMilliseconds: 60_000));
-    private static readonly SolverPerformanceValues MediumPerformance = new(
+    private static SolverPerformanceValues MediumPerformance => new(
         SolverSearchProfile.Default);
     private static readonly SolverPerformanceValues HighPerformance = new(
         new SolverSearchProfile(
@@ -244,7 +259,6 @@ internal static class SolverSettings
             $"stop_on_worse_recalculation={migrated.StopFullAutoOnWorseRecalculation} " +
             $"detailed_diagnostic_logs={migrated.EnableDetailedDiagnosticLogs} " +
             $"retain_all_combat_logs={migrated.RetainAllCombatLogs} " +
-            $"show_battle_damage_performance_hint={migrated.ShowBattleDamagePerformanceHint} " +
             $"show_speedx_warning={migrated.ShowSpeedXWarning} " +
             $"act_transition_boss_hp_strategy={migrated.ActTransitionBossHpStrategy} " +
             $"final_boss_hp_strategy={migrated.FinalBossHpStrategy} " +
@@ -254,7 +268,7 @@ internal static class SolverSettings
             $"potion_policy={migrated.PotionPolicy} " +
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"potion_threshold_overrides={effective.PotionThresholds.Count} " +
-            $"performance_preset={ResolvePerformancePreset(migrated)} " +
+            $"max_hard_fight_think_seconds={effective.MaxHardFightThinkSeconds} " +
             $"max_dop={effective.SearchMaxDegreeOfParallelism} " +
             $"search_budget_ms={effective.Profile.SoftTimeBudgetMilliseconds} " +
             $"deployment_fast_mode={migrated.DeploymentFastMode} " +
@@ -292,6 +306,8 @@ internal static class SolverSettings
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
             PredictPotionReward = data.PredictPotionReward,
             PotionThresholds = ResolvePotionThresholds(data),
+            MaxHardFightThinkSeconds = data.MaxHardFightThinkSeconds,
+            AdaptiveEscalationEnabled = true,
         };
     }
 
@@ -315,7 +331,16 @@ internal static class SolverSettings
     }
 
     public static SolverPerformanceValues ResolvePerformanceValues(SolverSettingsData data)
-        => ResolvePerformancePreset(data) switch
+    {
+        if (data.PerformancePreset == null && !HasExplicitPerformanceValues(data))
+        {
+            return new SolverPerformanceValues(
+                SolverSearchProfile.Default with
+                {
+                    SoftTimeBudgetMilliseconds = checked(data.MaxHardFightThinkSeconds * 1000),
+                });
+        }
+        return ResolvePerformancePreset(data) switch
         {
             SolverPerformancePreset.Low => LowPerformance,
             SolverPerformancePreset.Medium => MediumPerformance,
@@ -324,6 +349,7 @@ internal static class SolverSettings
             SolverPerformancePreset.Custom => BuildCustomPerformance(data),
             _ => throw new ArgumentOutOfRangeException(nameof(data.PerformancePreset)),
         };
+    }
 
     public static SolverSettingsData ApplyPerformancePreset(
         SolverSettingsData data,
@@ -537,6 +563,11 @@ internal static class SolverSettings
         _ = RelicCounterPolicy.ValidateAndCopy(data.RelicCounterRules);
         if (data.PerformanceMigrationVersion < 0)
             throw new InvalidDataException("PerformanceMigrationVersion must be non-negative.");
+        ValidateRange(
+            data.MaxHardFightThinkSeconds,
+            MinimumMaxHardFightThinkSeconds,
+            MaximumMaxHardFightThinkSeconds,
+            nameof(data.MaxHardFightThinkSeconds));
         ValidateRange(data.SearchTimeLimitSeconds, 0.1d, 600d, nameof(data.SearchTimeLimitSeconds));
         ValidateRange(
             data.SearchMaxDegreeOfParallelism,
@@ -669,24 +700,25 @@ internal static class SolverSettings
         if (data.PerformanceMigrationVersion >= CurrentPerformanceMigrationVersion)
             return data;
 
-        SolverSettingsData migrated = data;
-        if (migrated.PerformanceMigrationVersion < UnifiedPerformanceMigrationVersion)
+        int thinkSeconds = data.MaxHardFightThinkSeconds is >= MinimumMaxHardFightThinkSeconds
+            and <= MaximumMaxHardFightThinkSeconds
+                ? data.MaxHardFightThinkSeconds
+                : DefaultMaxHardFightThinkSeconds;
+        return data with
         {
-            migrated = ApplyPerformancePreset(
-                migrated with
-                {
-                    PerformanceMigrationVersion = UnifiedPerformanceMigrationVersion,
-                },
-                SolverPerformancePreset.Medium);
-        }
-        if (migrated.PerformanceMigrationVersion < CurrentPerformanceMigrationVersion)
-        {
-            migrated = migrated with
-            {
-                PerformanceMigrationVersion = CurrentPerformanceMigrationVersion,
-            };
-        }
-        return migrated;
+            PerformanceMigrationVersion = CurrentPerformanceMigrationVersion,
+            MaxHardFightThinkSeconds = thinkSeconds,
+            PerformancePreset = null,
+            SearchTimeLimitSeconds = null,
+            SearchBeamWidth = null,
+            SearchPotionFreeBeamWidth = null,
+            SearchPotionBeamWidth = null,
+            SearchMaxExpandedNodes = null,
+            SearchMaxCardBranchesPerNode = null,
+            SearchMaxPileChoiceBranchesPerAction = null,
+            SearchMaxHandChoiceBranchesPerAction = null,
+            ShowBattleDamagePerformanceHint = false,
+        };
     }
 
     private static SolverPerformanceValues BuildCustomPerformance(SolverSettingsData data)

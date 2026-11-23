@@ -364,10 +364,10 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.Hologram] = new(HotCustomCardId.Hologram, "HOLOGRAM", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Honing] = new(HotCustomCardId.Honing, "HONING", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.Hotfix] = new(HotCustomCardId.Hotfix, "HOTFIX", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
-        arr[(int)HotCustomCardId.HowlFromBeyond] = new(HotCustomCardId.HowlFromBeyond, "HOWL_FROM_BEYOND", HotCardDomain.Ironclad, HotCalcVarKind.None, HotHookMask.BeforeTurnEnd, true, false, false, 0);
+        arr[(int)HotCustomCardId.HowlFromBeyond] = new(HotCustomCardId.HowlFromBeyond, "HOWL_FROM_BEYOND", HotCardDomain.Ironclad, HotCalcVarKind.None, HotHookMask.AfterAutoPostPlay, true, false, false, 0);
         arr[(int)HotCustomCardId.HuddleUp] = new(HotCustomCardId.HuddleUp, "HUDDLE_UP", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Hyperbeam] = new(HotCustomCardId.Hyperbeam, "HYPERBEAM", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
-        arr[(int)HotCustomCardId.IAmInvincible] = new(HotCustomCardId.IAmInvincible, "I_AM_INVINCIBLE", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.BeforeTurnEnd, true, false, false, 0);
+        arr[(int)HotCustomCardId.IAmInvincible] = new(HotCustomCardId.IAmInvincible, "I_AM_INVINCIBLE", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.AfterAutoPostPlay, true, false, false, 0);
         arr[(int)HotCustomCardId.IceLance] = new(HotCustomCardId.IceLance, "ICE_LANCE", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Ignition] = new(HotCustomCardId.Ignition, "IGNITION", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.ImitationLearning] = new(HotCustomCardId.ImitationLearning, "IMITATION_LEARNING", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);

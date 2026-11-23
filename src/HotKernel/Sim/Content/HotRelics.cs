@@ -572,8 +572,10 @@ internal static class HotRelics
                     if (rolled > 0)
                     {
                         HotCombatEngine.SetPendingGeneratedChoiceOptions(options[..rolled]);
+                        scratch.BeginChoiceGroup(HotChoiceGroupFlags.None);
                         if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, sourceCardDefId: 0, minCount: 1, maxCount: 1, out HotChoiceSelection sel))
                             return;
+                        scratch.EndChoiceGroup();
                         if (sel.Kind == HotChoiceKind.GeneratedCard && sel.CardDefId != 0)
                             HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, sel.CardDefId, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
                     }
@@ -2077,8 +2079,10 @@ internal static class HotRelics
                     if (rolled > 0)
                     {
                         HotCombatEngine.SetPendingGeneratedChoiceOptions(options[..rolled]);
+                        scratch.BeginChoiceGroup(HotChoiceGroupFlags.None);
                         if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, sourceCardDefId: 0, minCount: 1, maxCount: 1, out HotChoiceSelection sel))
                             return;
+                        scratch.EndChoiceGroup();
                         if (sel.Kind == HotChoiceKind.GeneratedCard && sel.CardDefId != 0)
                         {
                             int addedIdx = HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, sel.CardDefId, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
@@ -2169,6 +2173,7 @@ internal static class HotRelics
                     int maxPicks = Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction);
                     Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
                     int pickedCount = 0;
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.Optional | HotChoiceGroupFlags.MultiPick);
                     for (int pick = 0; pick < maxPicks; pick++)
                     {
                         if (pickedCount >= s.HandCount || HotCombatEngine.IsOverOrEnding(in s))
@@ -2179,6 +2184,7 @@ internal static class HotRelics
                             break;
                         pickedUids[pickedCount++] = sel.CardUidOrIndex;
                     }
+                    scratch.EndChoiceGroup();
                     if (pickedCount > 0 && !HotCombatEngine.IsOverOrEnding(in s))
                         HotCombatEngine.DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: pickedCount);
                 }
@@ -2284,8 +2290,10 @@ internal static class HotRelics
             case HotRelicId.ToastyMittens:
                 if (s.HandCount > 0)
                 {
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.None);
                     if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 1, maxCount: 1, out HotChoiceSelection sel))
                         return;
+                    scratch.EndChoiceGroup();
                     int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     if (idx >= 0)
                         HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);

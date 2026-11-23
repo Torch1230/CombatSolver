@@ -86,6 +86,7 @@ internal sealed record SolverOverlaySnapshot(
     public string? UsedPotionOutcomeText { get; init; }
     public string? PlannedPotionOutcomeText { get; init; }
     public bool PendingTurnSetup { get; init; }
+    public bool IsPreliminary { get; init; }
     public IReadOnlyList<SolverStrategyOutcome> StrategyOutcomes { get; init; } = [];
     public static SolverOverlaySnapshot Capture(SolverResult result, bool unexpectedReplan)
         => CaptureWithReviewedWorldlines(result, unexpectedReplan, reviewedWorldlinesTotal: 0);
@@ -235,25 +236,36 @@ internal sealed record SolverOverlaySnapshot(
             || unmirrored.Count > 0
             || compensated.Count > 0;
         string confidence = ConfidenceText(result);
+        bool isEventDefeat = result.BoundaryReason == SearchBoundaryReason.EventDefeat;
         SolverOverlayTone statusTone = pendingTurnSetup
             ? SolverOverlayTone.Accent
-            : result.ProjectedBattleHpLossIncrease > 0
-            ? SolverOverlayTone.Danger
-            : result.WasReused || result.WasRestoredFromCache
-                ? SolverOverlayTone.Success
-                : SolverOverlayTone.Accent;
+            : result.IsPreliminary
+                ? (isEventDefeat ? SolverOverlayTone.Danger : SolverOverlayTone.Accent)
+                : isEventDefeat
+                    ? SolverOverlayTone.Danger
+                    : result.ProjectedBattleHpLossIncrease > 0
+                        ? SolverOverlayTone.Danger
+                        : result.WasReused || result.WasRestoredFromCache
+                            ? SolverOverlayTone.Success
+                            : SolverOverlayTone.Accent;
         string statusText = pendingTurnSetup
             ? SolverText.Get("等待回合开始选择")
-            : result.ProjectedBattleHpLossIncrease > 0
-            ? SolverText.Get("重算后战损上升")
-            : result.WasRestoredFromCache
-                ? SolverText.Get("路线已恢复")
-            : result.WasReused
-                ? SolverText.Get("方案已复用")
-                : SolverText.Get("方案就绪");
-        string summaryText = result.CombatEndedTurn == startTurnNumber
-            ? SolverText.Format($"[color={SolverUiTokens.Palette.SuccessHex}]本回合结束战斗  │  {confidence}[/color]")
-            : SolverText.Format($"[color={SolverUiTokens.Palette.TextSecondaryHex}]预计路线 [b]{searchedTurns}[/b] 回合  │  {confidence}[/color]");
+            : result.IsPreliminary
+                ? SolverText.Get("深化中…")
+                : isEventDefeat
+                    ? SolverText.Get("事件挑战失败")
+                    : result.ProjectedBattleHpLossIncrease > 0
+                        ? SolverText.Get("重算后战损上升")
+                        : result.WasRestoredFromCache
+                            ? SolverText.Get("路线已恢复")
+                            : result.WasReused
+                                ? SolverText.Get("方案已复用")
+                                : SolverText.Get("方案就绪");
+        string summaryText = isEventDefeat
+            ? $"[color={SolverUiTokens.Palette.DangerHex}]{SolverText.Get("事件挑战失败")}  │  {confidence}[/color]"
+            : result.CombatEndedTurn == startTurnNumber
+                ? SolverText.Format($"[color={SolverUiTokens.Palette.SuccessHex}]本回合结束战斗  │  {confidence}[/color]")
+                : SolverText.Format($"[color={SolverUiTokens.Palette.TextSecondaryHex}]预计路线 [b]{searchedTurns}[/b] 回合  │  {confidence}[/color]");
         double searchElapsedSeconds = result.TotalSearchElapsed.TotalSeconds;
         long searchWorldlines = result.TotalExpandedNodes > 0
             ? result.TotalExpandedNodes
@@ -305,6 +317,7 @@ internal sealed record SolverOverlaySnapshot(
             BuildSearchLimitWarning(SearchBoundaryForDisplay(result)))
         {
             PendingTurnSetup = pendingTurnSetup,
+            IsPreliminary = result.IsPreliminary,
             RewardOutcomeText = RewardOutcome(result),
             UsedPotionOutcomeText = UsedPotionOutcome(result),
             PlannedPotionOutcomeText = PlannedPotionOutcome(result),
@@ -650,14 +663,7 @@ internal sealed record SolverOverlaySnapshot(
         return result.BoundaryReason;
     }
 
-    internal static string? BuildSearchLimitWarning(SearchBoundaryReason reason) => reason switch
-    {
-        SearchBoundaryReason.TimeLimit
-            => SolverText.Get("计算尚未彻底穷尽，已达到当前设置的【时间上限】；现展示目前找到的最佳路线。若想探索更优世界线，可在 设置 > 性能 中提高上限后重新计算。"),
-        SearchBoundaryReason.NodeLimit
-            => SolverText.Get("计算尚未彻底穷尽，已达到当前设置的【节点上限】；现展示目前找到的最佳路线。若想探索更优世界线，可在 设置 > 性能 中提高上限后重新计算。"),
-        _ => null,
-    };
+    internal static string? BuildSearchLimitWarning(SearchBoundaryReason reason) => null;
 
     private static string BoundaryText(SearchBoundaryReason reason) => reason switch
     {

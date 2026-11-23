@@ -88,6 +88,43 @@ internal readonly struct HotFastSummary
 
     public bool IsVictory => Outcome == HotCombatOutcome.Victory && PlayerHp > 0;
     public bool IsDefeat => Outcome == HotCombatOutcome.Defeat || PlayerHp <= 0;
+    public bool IsEventDefeat => Outcome == HotCombatOutcome.EventDefeat && PlayerHp > 0;
+}
+
+/// <summary>
+/// Zero-allocation Stage 2 evaluation outputs consumed by <see cref="HotSearchNode"/>,
+/// <see cref="HotBeamRetention"/>'s 5 domain-agnostic MAP-Elites niches, and unclamped turn-progress tracking.
+/// </summary>
+internal readonly struct HotEvalFeatures
+{
+    public readonly long Score;
+    public readonly int SetupScore;
+    public readonly int BoardInvestment;
+    public readonly int MaxDarkEvoke;
+    public readonly int TotalPoisonAndDoom;
+    public readonly short EffectiveDefense;
+    public readonly short OptionalityScore;
+    public readonly byte PlayableHandCount;
+
+    public HotEvalFeatures(
+        long score,
+        int setupScore,
+        int boardInvestment,
+        int maxDarkEvoke,
+        int totalPoisonAndDoom,
+        short effectiveDefense,
+        short optionalityScore,
+        byte playableHandCount)
+    {
+        Score = score;
+        SetupScore = setupScore;
+        BoardInvestment = boardInvestment;
+        MaxDarkEvoke = maxDarkEvoke;
+        TotalPoisonAndDoom = totalPoisonAndDoom;
+        EffectiveDefense = effectiveDefense;
+        OptionalityScore = optionalityScore;
+        PlayableHandCount = playableHandCount;
+    }
 }
 
 /// <summary>
@@ -223,6 +260,7 @@ internal readonly struct HotEvalLookup
 internal static class HotEvaluator
 {
     private const long DeathBaseScore = -1_000_000_000_000L;
+    private const long EventDefeatBaseScore = -500_000_000_000L;
     private const long VictoryBaseScore = 10_000_000_000L;
     private const long DeathSavePenaltyScore = 500_000_000L;
     private const long HpWeightPerCenti = 300L;       // 30_000L per 1.00 Persistent HP
@@ -276,13 +314,31 @@ internal static class HotEvaluator
 
         ComputeGrowthSummary(in s, in policy, out int growthHpCredit, out int growthCount);
 
-        HotCombatOutcome outcome = s.TerminalOutcome;
-        if (outcome == HotCombatOutcome.Ongoing)
+        bool dummyTimedOut = (s.CombatFlags & HotCombatFlags.BattlewornDummyTimedOut) != 0;
+        if (dummyTimedOut)
         {
-            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || s.Player.CurrentHp <= 0)
-                outcome = HotCombatOutcome.Defeat;
-            else if (aliveEnemies == 0 && revivingEnemies == 0)
-                outcome = HotCombatOutcome.Victory;
+            // Preserve un-dealt HP of escaped BattlewornDummy so unwinnable fallbacks maximize real damage dealt.
+            int enemyCount = Math.Min((int)s.EnemyCount, HotLimits.MaxEnemies);
+            for (int e = 0; e < enemyCount; e++)
+            {
+                ref readonly HotEnemy enemy = ref s.Enemies[e];
+                if ((enemy.Vital.Flags & HotCreatureFlags.Escaped) != 0)
+                    enemyHpSum += Math.Max(0, enemy.Vital.CurrentHp);
+            }
+        }
+
+        HotCombatOutcome outcome = s.TerminalOutcome;
+        if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || s.Player.CurrentHp <= 0)
+        {
+            outcome = HotCombatOutcome.Defeat;
+        }
+        else if (dummyTimedOut)
+        {
+            outcome = HotCombatOutcome.EventDefeat;
+        }
+        else if (outcome == HotCombatOutcome.Ongoing && aliveEnemies == 0 && revivingEnemies == 0)
+        {
+            outcome = HotCombatOutcome.Victory;
         }
 
         return new HotFastSummary(
@@ -328,7 +384,7 @@ internal static class HotEvaluator
             return false;
         if (policy.TheftPolicy == SolverTheftPolicy.PreserveResources)
             return false;
-        if (summary.IsDefeat)
+        if (summary.IsDefeat || summary.IsEventDefeat)
             return false;
 
         int maxPostCombatHeal = policy.PostCombatRelicHeal.MonotoneHealFor(summary.PlayerHp, summary.PlayerMaxHp);
@@ -400,20 +456,44 @@ internal static class HotEvaluator
         int netPotionCostCenti,
         int actionCount,
         HotEvalMode evalMode,
-        out long score,
-        out int setupScore,
-        out byte playableHandCount)
+        out HotEvalFeatures features)
     {
-        setupScore = 0;
-        playableHandCount = 0;
-
         // 1. Terminal Defeat
         if (summary.IsDefeat)
         {
-            score = DeathBaseScore
+            long defeatScore = DeathBaseScore
                 + (long)summary.Turn * 100_000L
                 - (long)summary.EnemyHpSum * 100L
                 - (long)(summary.AliveEnemyCount + summary.RevivingEnemyCount) * 50_000L;
+            features = new HotEvalFeatures(
+                score: defeatScore,
+                setupScore: 0,
+                boardInvestment: 0,
+                maxDarkEvoke: 0,
+                totalPoisonAndDoom: 0,
+                effectiveDefense: 0,
+                optionalityScore: 0,
+                playableHandCount: 0);
+            return;
+        }
+
+        // 1b. Terminal EventDefeat (e.g. BattlewornDummy timed out & escaped): strictly below Victory/Ongoing, above player death.
+        if (summary.IsEventDefeat)
+        {
+            long eventDefeatScore = EventDefeatBaseScore
+                - (long)summary.DeathSaveUseCount * DeathSavePenaltyScore
+                - (long)summary.EnemyHpSum * EnemyHpWeight
+                - (long)summary.HpLost * 30_000L
+                - (long)netPotionCostCenti * HpWeightPerCenti;
+            features = new HotEvalFeatures(
+                score: eventDefeatScore,
+                setupScore: 0,
+                boardInvestment: 0,
+                maxDarkEvoke: 0,
+                totalPoisonAndDoom: 0,
+                effectiveDefense: 0,
+                optionalityScore: 0,
+                playableHandCount: 0);
             return;
         }
 
@@ -454,7 +534,15 @@ internal static class HotEvaluator
                     victoryScore -= 2_000_000L;
             }
 
-            score = victoryScore;
+            features = new HotEvalFeatures(
+                score: victoryScore,
+                setupScore: 0,
+                boardInvestment: 0,
+                maxDarkEvoke: 0,
+                totalPoisonAndDoom: 0,
+                effectiveDefense: (short)Math.Clamp(summary.PlayerBlock, 0, short.MaxValue),
+                optionalityScore: 0,
+                playableHandCount: 0);
             return;
         }
 
@@ -493,6 +581,9 @@ internal static class HotEvaluator
         int playerSetup = 0;
         int enemyDebuffValue = 0;
         int enemyThreatPowerPenalty = 0;
+        int playerBuffStacks = 0;
+        int enemyDebuffStacks = 0;
+        int totalPoisonAndDoom = 0;
         int minSandpitTurns = int.MaxValue;
 
         Span<int> enemyStr = stackalloc int[HotLimits.MaxEnemies];
@@ -514,18 +605,30 @@ internal static class HotEvaluator
                 continue;
             if (p.OwnerSlot == 0)
             {
+                bool isOneTurnCarryover = false;
                 if (defId == lookup.VulnerableDefId) playerVuln += p.Amount;
                 else if (defId == lookup.IntangibleDefId) playerIntangible += p.Amount;
                 else if (defId == lookup.AccelerantDefId) playerAccelerant += p.Amount;
                 else if (defId == lookup.BarricadeDefId || defId == lookup.BlurDefId) preservesExcessBlock = true;
                 else if (defId == lookup.MetallicizeDefId || defId == lookup.PlatingDefId) playerEndTurnBlock += p.Amount;
                 else if (defId == lookup.BlockNextTurnDefId || defId == lookup.SelfFormingClayDefId || defId == lookup.ToricToughnessDefId)
+                {
                     nextTurnBlock += p.Amount;
-                else if (defId == lookup.EnergyNextTurnDefId) nextTurnEnergy += p.Amount;
-                else if (defId == lookup.DrawCardsNextTurnDefId) nextTurnDraw += p.Amount;
-                else if (defId == lookup.StarNextTurnDefId) nextTurnStars += p.Amount;
-                else if (defId == lookup.SummonNextTurnDefId) nextTurnSummon += p.Amount;
+                    isOneTurnCarryover = true;
+                }
+                else if (defId == lookup.EnergyNextTurnDefId) { nextTurnEnergy += p.Amount; isOneTurnCarryover = true; }
+                else if (defId == lookup.DrawCardsNextTurnDefId) { nextTurnDraw += p.Amount; isOneTurnCarryover = true; }
+                else if (defId == lookup.StarNextTurnDefId) { nextTurnStars += p.Amount; isOneTurnCarryover = true; }
+                else if (defId == lookup.SummonNextTurnDefId) { nextTurnSummon += p.Amount; isOneTurnCarryover = true; }
                 else if (defId == lookup.FurnaceDefId) furnacePower += p.Amount;
+
+                // Domain-agnostic persistent player buff investment (ZERO card/power-ID hardcoding):
+                // permanent Buff powers outweigh transient debuffs/exhaust; counts distinct presence + unclamped stacks.
+                if (!isOneTurnCarryover && p.Amount > 0 && defId < rules.Powers.Length
+                    && rules.Powers[defId].Type == PowerType.Buff)
+                {
+                    playerBuffStacks += 6 + Math.Min(p.Amount, 10_000);
+                }
 
                 playerSetup += ComputePlayerPowerSetupWeight(defId, p.Amount, rules, in lookup);
             }
@@ -547,6 +650,18 @@ internal static class HotEvaluator
                 if (!isAlive)
                     continue;
 
+                if (defId < rules.Powers.Length && rules.Powers[defId].Type == PowerType.Debuff && p.Amount > 0)
+                {
+                    // Cumulative win-condition DoTs (Poison/Doom) stay unclamped; short-duration multiplier debuffs
+                    // (Weak/Vulnerable) cap per enemy so AoE temporary debuffs do not drown out permanent Powers.
+                    bool isCumulativeDot = defId == lookup.PoisonDefId || defId == lookup.DoomDefId;
+                    enemyDebuffStacks += isCumulativeDot ? Math.Min(p.Amount, 10_000) : Math.Min(p.Amount, 4);
+                }
+                else if (defId == lookup.StrengthDefId && p.Amount < 0)
+                {
+                    enemyDebuffStacks += Math.Min(-p.Amount, 8);
+                }
+
                 if (defId == lookup.StrengthDefId)
                 {
                     enemyStr[eSlot] += p.Amount;
@@ -565,11 +680,13 @@ internal static class HotEvaluator
                 else if (defId == lookup.PoisonDefId && p.Amount > 0)
                 {
                     enemyPoison[eSlot] += p.Amount;
-                    enemyDebuffValue += Math.Min(p.Amount, 40) * 3;
+                    totalPoisonAndDoom += Math.Min(p.Amount, 100_000);
+                    enemyDebuffValue += SoftCapPositive(p.Amount, knee: 40, secondKnee: 160) * 3;
                 }
                 else if (defId == lookup.DoomDefId && p.Amount > 0)
                 {
                     enemyDoom[eSlot] += p.Amount;
+                    totalPoisonAndDoom += Math.Min(p.Amount, 100_000);
                 }
                 else if (defId == lookup.RitualDefId && p.Amount > 0)
                 {
@@ -596,6 +713,8 @@ internal static class HotEvaluator
         // Frost orbs trigger at BeforeTurnEnd BEFORE enemies attack, so their passive block enters effectiveDefense.
         int orbScore = 0;
         int frostPassiveBlock = 0;
+        int darkEvokeSum = 0;
+        int maxDarkEvoke = 0;
         int orbCount = s.OrbCount;
         for (int o = 0; o < orbCount; o++)
         {
@@ -610,6 +729,12 @@ internal static class HotEvaluator
             {
                 int triggerCount = (o == 0 && lookup.HasGoldPlatedCables) ? 2 : 1;
                 frostPassiveBlock += passiveVal * triggerCount;
+            }
+            else if (orbId == HotOrbId.Dark)
+            {
+                darkEvokeSum += evokeVal;
+                if (evokeVal > maxDarkEvoke)
+                    maxDarkEvoke = evokeVal;
             }
 
             int val = orbId switch
@@ -797,7 +922,7 @@ internal static class HotEvaluator
                 runningScore -= 140_000L;
         }
 
-        // Orbs & OrbCapacity (Defect): smooth diminishing returns instead of hard 120 cliff, plus credit OrbCapacity.
+        // Orbs & OrbCapacity (Defect): smooth diminishing returns with non-zero tail (no hard 120 cliff), plus OrbCapacity.
         if (orbCapacity > 0)
         {
             playerSetup += orbCapacity * 2;
@@ -805,15 +930,17 @@ internal static class HotEvaluator
         }
         if (orbScore > 0)
         {
-            playerSetup += SoftCapPositive(orbScore / 3, knee: 24, hardCeiling: 72);
-            runningScore += (long)SoftCapPositive(orbScore, knee: 120, hardCeiling: 360) * 2_500L;
+            playerSetup += SoftCapPositive(orbScore / 3, knee: 24, secondKnee: 72);
+            runningScore += (long)SoftCapPositive(orbScore, knee: 120, secondKnee: 360) * 2_500L;
         }
 
-        // Osty (Necrobinder)
+        // Osty (Necrobinder): smooth scaling without hard 80/12 ceiling
+        int ostyHp = 0;
         if ((s.CombatFlags & HotCombatFlags.HasOsty) != 0 && (s.Osty.Flags & HotCreatureFlags.Alive) != 0)
         {
-            runningScore += (long)Math.Min(s.Osty.CurrentHp, 80) * 4_500L;
-            playerSetup += Math.Min(s.Osty.CurrentHp / 4, 12);
+            ostyHp = Math.Max(0, s.Osty.CurrentHp);
+            runningScore += (long)SoftCapPositive(ostyHp, knee: 80, secondKnee: 320) * 4_500L;
+            playerSetup += SoftCapPositive(ostyHp / 4, knee: 12, secondKnee: 48);
         }
 
         // Fool arrows & melodies
@@ -830,10 +957,11 @@ internal static class HotEvaluator
             runningScore += (long)s.Fool.MelodyCardsFinished * 5_000L;
         }
 
-        // Hand potential, retained scaling attacks, and deck clutter
+        // Hand potential, retained cards, and deck clutter
         int handCount = s.HandCount;
         int playableCards = 0;
         int zeroCostPlayable = 0;
+        int retainedCards = 0;
         int handClutter = 0;
         long retainedAttackBonus = 0;
 
@@ -847,8 +975,12 @@ internal static class HotEvaluator
                 continue;
             }
 
-            if (def.CardId == HotCustomCardId.SovereignBlade
-                && ((c.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0 || (c.Flags & HotCardFlags.SingleTurnRetain) != 0))
+            bool isRetained = (c.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0
+                || (c.Flags & HotCardFlags.SingleTurnRetain) != 0;
+            if (isRetained)
+                retainedCards++;
+
+            if (def.CardId == HotCustomCardId.SovereignBlade && isRetained)
             {
                 int bladeDmg = Math.Max(0, def.GetDamage(c.UpgradeLevel, c.Var0Delta));
                 if (furnacePower > 0 && summary.EnemyHpSum > bladeDmg * 2)
@@ -884,7 +1016,7 @@ internal static class HotEvaluator
                 deckClutter++;
         }
 
-        playableHandCount = (byte)Math.Clamp(playableCards, 0, byte.MaxValue);
+        byte playableHandCount = (byte)Math.Clamp(playableCards, 0, byte.MaxValue);
 
         runningScore += (long)Math.Min(summary.Energy, 6) * EnergyWeight;
         runningScore += (long)Math.Min(summary.Stars, 8) * StarWeight;
@@ -895,10 +1027,9 @@ internal static class HotEvaluator
         runningScore -= (long)deckClutter * 4_500L;
 
         int rawTotalSetup = playerSetup + enemyDebuffValue - enemyThreatPowerPenalty;
-        int totalSetup = Math.Clamp(rawTotalSetup, -120, 320);
-        setupScore = totalSetup;
+        int totalSetup = Math.Clamp(rawTotalSetup, -200, 2000);
         int effectiveSetup = totalSetup >= 0
-            ? SoftCapPositive(totalSetup, knee: 80, hardCeiling: 240)
+            ? SoftCapPositive(totalSetup, knee: 80, secondKnee: 240)
             : Math.Max(totalSetup, -64);
         runningScore += (long)effectiveSetup * setupScale;
 
@@ -915,16 +1046,46 @@ internal static class HotEvaluator
                 runningScore -= 2_000_000L;
         }
 
-        score = runningScore;
+        // Niche 4 (Generic Persistent Board Investment — 100% domain-agnostic, ZERO card IDs, UNCLAMPED):
+        // PlayerBuffStacks + EnemyDebuffStacks + OrbCount + OrbCapacity + DarkEvokeCharge/6 + OstyHp/4 + RetainedCards*3 + ThinDeckDelta
+        int currentLiveDeckCount = s.HandCount + s.DrawCount + s.DiscardCount;
+        int rawThinDeckDelta = Math.Max(0, policy.InitialLiveDeckCount - currentLiveDeckCount);
+        int thinDeckDelta = Math.Min((rawThinDeckDelta + 1) >> 1, 6);
+        int boardInvestment = playerBuffStacks
+            + enemyDebuffStacks
+            + orbCount
+            + orbCapacity
+            + (darkEvokeSum / 6)
+            + (ostyHp / 4)
+            + (retainedCards * 3)
+            + thinDeckDelta
+            + s.Fool.MelodyCardsFinished;
+
+        // Niche 5 (Optionality): Energy + Stars + PlayableHandCount + DrawNextTurn
+        int drawNextTurnTotal = Math.Max(0, s.DrawNextTurn) + nextTurnDraw;
+        int rawOptionality = Math.Max(0, summary.Energy) + Math.Max(0, summary.Stars) + playableCards + drawNextTurnTotal;
+
+        features = new HotEvalFeatures(
+            score: runningScore,
+            setupScore: totalSetup,
+            boardInvestment: boardInvestment,
+            maxDarkEvoke: maxDarkEvoke,
+            totalPoisonAndDoom: totalPoisonAndDoom,
+            effectiveDefense: (short)Math.Clamp(effectiveDefense, 0, short.MaxValue),
+            optionalityScore: (short)Math.Clamp(rawOptionality, 0, short.MaxValue),
+            playableHandCount: playableHandCount);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int SoftCapPositive(int value, int knee, int hardCeiling)
+    private static int SoftCapPositive(int value, int knee, int secondKnee)
     {
         if (value <= knee)
             return value;
-        int soft = knee + ((value - knee) >> 1);
-        return soft > hardCeiling ? hardCeiling : soft;
+        int firstBand = knee + ((value - knee) >> 1);
+        if (firstBand <= secondKnee)
+            return firstBand;
+        int tail = secondKnee + ((firstBand - secondKnee) >> 1);
+        return tail > 10_000 ? 10_000 : tail;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -24,7 +24,7 @@ internal static class SolverUiTokens
     public static string BugReportUploadInstructionRichText
         => $"[color={Palette.WarningHex}]{BugReportUploadInstruction}[/color]";
     public static string ParallelSearchFailureInstruction =>
-        SolverText.Get("请先在设置中点击“上传问题包”提交日志，再将“搜索并行度”改为“关闭（单线程）”后重试。");
+        SolverText.Get("请先在设置中点击“上传问题包”提交日志，再将“最大并发线程数”改为“关闭（单线程）”后重试。");
     public static string SearchFailureInstructionRichText(bool parallelSearchWasEnabled)
         => $"[color={Palette.WarningHex}]" +
            $"{(parallelSearchWasEnabled ? ParallelSearchFailureInstruction : BugReportUploadInstruction)}[/color]";

@@ -757,13 +757,16 @@ internal static partial class HotCombatEngine
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
                 if (!scratch.NeedsChoice && !IsOverOrEnding(in s))
                 {
+                    // STS2 0.113.1 Pillage.cs:28-33: inspect the actually drawn CardModel's Type,
+                    // not Hand[^1] (AfterCardDrawn hooks like HellraiserPower may auto-play the drawn card,
+                    // leaving Hand empty or ending with a different card).
                     int maxHand = s.MaxHandSize > 0 ? s.MaxHandSize : 10;
                     while (!IsOverOrEnding(in s) && s.HandCount < maxHand)
                     {
-                        int drawn = DrawCards(ref s, ref cold, rules, scratch, 1, fromHandDraw: false);
-                        if (drawn <= 0 || scratch.NeedsChoice)
+                        int drawn = DrawCards(ref s, ref cold, rules, scratch, 1, fromHandDraw: false, out ushort drawnCardDefId);
+                        if (drawn <= 0 || scratch.NeedsChoice || drawnCardDefId == 0 || drawnCardDefId >= rules.Cards.Length)
                             break;
-                        if (rules.Cards[s.Cards[s.HandCount - 1].CardDefId].Type != CardType.Attack)
+                        if (rules.Cards[drawnCardDefId].Type != CardType.Attack)
                             break;
                     }
                 }
@@ -1100,8 +1103,10 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.EscapePlan:
             {
-                int drawn = DrawCards(ref s, ref cold, rules, scratch, 1, fromHandDraw: false);
-                if (!scratch.NeedsChoice && drawn > 0 && rules.Cards[s.Cards[s.HandCount - 1].CardDefId].Type == CardType.Skill)
+                // STS2 0.113.1 EscapePlan.cs:25-29: inspect the actually drawn CardModel's Type, not Hand[^1].
+                int drawn = DrawCards(ref s, ref cold, rules, scratch, 1, fromHandDraw: false, out ushort drawnCardDefId);
+                if (!scratch.NeedsChoice && drawn > 0 && drawnCardDefId > 0 && drawnCardDefId < rules.Cards.Length
+                    && rules.Cards[drawnCardDefId].Type == CardType.Skill)
                     GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 break;
             }
@@ -1174,6 +1179,7 @@ internal static partial class HotCombatEngine
                 int discCount = Math.Min(GetNamedVarInt(in playedCard, def, "Cards", 2), Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
                 Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
                 int pickedCount = 0;
+                scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
                 for (int k = 0; k < discCount && pickedCount < s.HandCount; k++)
                 {
                     if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
@@ -1181,6 +1187,7 @@ internal static partial class HotCombatEngine
                     if (sel.CardUidOrIndex != 0)
                         pickedUids[pickedCount++] = sel.CardUidOrIndex;
                 }
+                scratch.EndChoiceGroup();
                 if (pickedCount > 0)
                     DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: 0);
                 if (!scratch.NeedsChoice && !IsOverOrEnding(in s))
@@ -1313,6 +1320,7 @@ internal static partial class HotCombatEngine
                     int discCount = Math.Min(count, Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
                     Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
                     int pickedCount = 0;
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
                     for (int k = 0; k < discCount && pickedCount < s.HandCount; k++)
                     {
                         if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
@@ -1320,6 +1328,7 @@ internal static partial class HotCombatEngine
                         if (sel.CardUidOrIndex != 0)
                             pickedUids[pickedCount++] = sel.CardUidOrIndex;
                     }
+                    scratch.EndChoiceGroup();
                     if (pickedCount > 0)
                         DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: 0);
                 }
@@ -2491,16 +2500,29 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.NeowsFury:
             {
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
-                int maxPick = Math.Min(GetNamedVarInt(in playedCard, def, "Cards", 2), Math.Max(0, (s.MaxHandSize > 0 ? s.MaxHandSize : 10) - s.HandCount));
-                for (int k = 0; k < maxPick && s.DiscardCount > 0 && !scratch.NeedsChoice; k++)
+                if (!scratch.NeedsChoice && !IsOverOrEnding(in s) && s.DiscardCount > 0)
                 {
-                    if (!RequestChoice(ref s, scratch, HotChoiceKind.DiscardPile, playedCard.CardDefId, 0, 1, out HotChoiceSelection sel))
-                        return;
-                    if (sel.Kind == HotChoiceKind.None)
-                        break;
-                    int idx = FindCardIndexByUid(in s, HotPileKind.Discard, sel.CardUidOrIndex);
-                    if (idx >= 0)
-                        MoveCardToHandOrDiscard(ref s, idx);
+                    int maxPick = Math.Min(
+                        GetNamedVarInt(in playedCard, def, "Cards", 2),
+                        Math.Min(Math.Max(0, (s.MaxHandSize > 0 ? s.MaxHandSize : 10) - s.HandCount), Math.Min((int)s.DiscardCount, HotLimits.MaxChoicesPerAction)));
+                    Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                    int pickedCount = 0;
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.Optional | HotChoiceGroupFlags.MultiPick);
+                    for (int k = 0; k < maxPick && pickedCount < s.DiscardCount; k++)
+                    {
+                        if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.DiscardPile, playedCard.CardDefId, 0, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
+                            return;
+                        if (sel.Kind == HotChoiceKind.None || sel.CardUidOrIndex == 0)
+                            break;
+                        pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                    }
+                    scratch.EndChoiceGroup();
+                    for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                    {
+                        int idx = FindCardIndexByUid(in s, HotPileKind.Discard, pickedUids[i]);
+                        if (idx >= 0)
+                            MoveCardToHandOrDiscard(ref s, idx);
+                    }
                 }
                 break;
             }
@@ -2538,6 +2560,7 @@ internal static partial class HotCombatEngine
                 int maxExh = Math.Min(GetNamedVarInt(in playedCard, def, "Cards", upgrade > 0 ? 5 : 3), Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
                 Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
                 int pickedCount = 0;
+                scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.Optional | HotChoiceGroupFlags.MultiPick);
                 for (int k = 0; k < maxExh && pickedCount < s.HandCount; k++)
                 {
                     if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 0, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
@@ -2546,6 +2569,7 @@ internal static partial class HotCombatEngine
                         break;
                     pickedUids[pickedCount++] = sel.CardUidOrIndex;
                 }
+                scratch.EndChoiceGroup();
                 for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                 {
                     int idx = FindCardIndexByUid(in s, HotPileKind.Hand, pickedUids[i]);

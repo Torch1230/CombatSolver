@@ -8,48 +8,6 @@ internal sealed record CompleteProjectionBaseline(
     int ProjectedBattleHpLost,
     string StateDifference);
 
-internal readonly record struct SearchMemoryUsageSnapshot(
-    long ProcessWorkingSetBytes,
-    long PhysicalMemoryUsedBytes,
-    long PhysicalMemoryTotalBytes,
-    bool SearchActive)
-{
-    public bool HasPhysicalMemorySample => PhysicalMemoryTotalBytes > 0;
-    public long? PhysicalMemoryAvailableBytes => HasPhysicalMemorySample
-        ? Math.Clamp(PhysicalMemoryTotalBytes - PhysicalMemoryUsedBytes, 0, PhysicalMemoryTotalBytes)
-        : null;
-    public long SystemOccupiedBytes
-        => Math.Clamp(
-            PhysicalMemoryUsedBytes - ProcessWorkingSetBytes,
-            0,
-            PhysicalMemoryTotalBytes);
-    public double SystemSegmentRatio
-        => HasPhysicalMemorySample ? SystemOccupiedBytes / (double)PhysicalMemoryTotalBytes : 0d;
-    public double ProcessSegmentRatio
-        => HasPhysicalMemorySample ? Math.Min(
-            1d - SystemSegmentRatio,
-            Math.Clamp(
-                Math.Min(ProcessWorkingSetBytes, PhysicalMemoryUsedBytes) / (double)PhysicalMemoryTotalBytes,
-                0d,
-                1d)) : 0d;
-    public double MemoryPressureRatio
-        => HasPhysicalMemorySample
-            ? Math.Clamp(PhysicalMemoryUsedBytes / (double)PhysicalMemoryTotalBytes, 0d, 1d)
-            : 0d;
-
-    public static SearchMemoryUsageSnapshot CaptureCurrent(bool searchActive)
-    {
-        GCMemoryInfo info = GC.GetGCMemoryInfo();
-        long total = Math.Max(0, info.TotalAvailableMemoryBytes);
-        long used = total > 0 ? Math.Clamp(info.MemoryLoadBytes, 0, total) : 0;
-        return new SearchMemoryUsageSnapshot(
-            Environment.WorkingSet,
-            used,
-            total,
-            searchActive);
-    }
-}
-
 internal sealed class SearchProgressDisplayState(long startedAtTick)
 {
     public SearchProgressDisplayState() : this(Environment.TickCount64)
@@ -150,6 +108,7 @@ internal sealed class SolverSearchSession(
     public int ReferenceReleaseState;
     public int CancellationDisposeState;
     public bool DeployWhenReady { get; set; } = deployWhenReady;
+    public SolverResult? PreliminaryResult { get; set; }
     public bool PlayerInputObserved { get; private set; }
     public void ObserveInput(string origin)
     {

@@ -745,6 +745,7 @@ internal static partial class HotCombatEngine
     internal static bool IsCombatEnding(in CombatHotState s)
         => IsInProgress(in s)
             && ((s.CombatFlags & HotCombatFlags.IsAboutToLose) != 0
+                || (s.CombatFlags & HotCombatFlags.BattlewornDummyTimedOut) != 0
                 || s.TerminalOutcome != HotCombatOutcome.Ongoing
                 || (!HasAnyLivingEnemy(in s) && !HasAnyRevivingEnemy(in s)));
 
@@ -752,6 +753,7 @@ internal static partial class HotCombatEngine
     internal static bool IsCombatEnding(in CombatHotState s, HotRules rules)
         => IsInProgress(in s)
             && ((s.CombatFlags & HotCombatFlags.IsAboutToLose) != 0
+                || (s.CombatFlags & HotCombatFlags.BattlewornDummyTimedOut) != 0
                 || s.TerminalOutcome != HotCombatOutcome.Ongoing
                 || !HasAnyLivingOrRevivingPrimaryEnemy(in s, rules));
 
@@ -822,6 +824,14 @@ internal static partial class HotCombatEngine
             s.TerminalOutcome = HotCombatOutcome.Defeat;
             s.TerminalTurn = (byte)Math.Clamp(s.PlayerTurnNumber, 0, byte.MaxValue);
             s.CombatFlags &= ~(HotCombatFlags.IsAboutToLose | HotCombatFlags.IsInProgress);
+            return true;
+        }
+
+        if ((s.CombatFlags & HotCombatFlags.BattlewornDummyTimedOut) != 0)
+        {
+            s.TerminalOutcome = HotCombatOutcome.EventDefeat;
+            s.TerminalTurn = (byte)Math.Clamp(s.PlayerTurnNumber, 0, byte.MaxValue);
+            s.CombatFlags &= ~HotCombatFlags.IsInProgress;
             return true;
         }
 

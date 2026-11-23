@@ -272,13 +272,17 @@ internal static partial class HotCombatEngine
 
         if (dealerSlot != 0xFF)
         {
-            if (!IsCreatureSlotValid(in s, dealerSlot) || (GetCreatureRef(ref s, dealerSlot).Flags & HotCreatureFlags.Alive) == 0)
+            if (!IsCreatureSlotValid(in s, dealerSlot))
+                return 0;
+            ref readonly HotCreature dealerRef = ref GetCreatureRef(ref s, dealerSlot);
+            if ((dealerRef.Flags & HotCreatureFlags.Alive) == 0 || dealerRef.CurrentHp <= 0)
                 return 0;
         }
 
         if (!IsCreatureSlotValid(in s, targetSlot))
             return 0;
-        if ((GetCreatureRef(ref s, targetSlot).Flags & HotCreatureFlags.Alive) == 0)
+        ref readonly HotCreature initialTargetRef = ref GetCreatureRef(ref s, targetSlot);
+        if ((initialTargetRef.Flags & HotCreatureFlags.Alive) == 0 || initialTargetRef.CurrentHp <= 0)
             return 0;
 
         decimal modifiedAmount = ComputeModifiedDamage(ref s, ref cold, rules, scratch, dealerSlot, targetSlot, baseDamage, isPoweredAttack, cardIdx, cardDefId);
@@ -317,12 +321,17 @@ internal static partial class HotCombatEngine
                 return 0;
         }
 
-        if ((GetCreatureRef(ref s, targetSlot).Flags & HotCreatureFlags.Alive) == 0)
+        ref readonly HotCreature postBeforeTarget = ref GetCreatureRef(ref s, targetSlot);
+        if ((postBeforeTarget.Flags & HotCreatureFlags.Alive) == 0 || postBeforeTarget.CurrentHp <= 0)
             return 0;
 
         decimal damageRemaining = modifiedAmount;
 
         // Pre-block Wuppy interception when player is targeted on powered attacks (WuppysLoyaltyPower.cs:28-43).
+        // STS2 0.113.1 CreatureCmd.cs:317-356, 455-491: apply HP loss to ALL receivers (Wuppy, Osty, originalTarget)
+        // FIRST, then dispatch post-damage hooks (AfterBlockBroken, AfterCurrentHpChanged, AfterDamageGiven,
+        // AfterDamageReceived) and Kill so e.g. NecroMasteryPower sees Player.IsDead when overkill kills Player.
+        int wuppyLoss = 0;
         if (targetSlot == 0
             && isPoweredAttack
             && damageRemaining > 0m
@@ -334,21 +343,10 @@ internal static partial class HotCombatEngine
             int wuppyPrev = s.Wuppy.CurrentHp;
             bool wuppyKilled = wuppyPrev > 0 && damageRemaining >= wuppyPrev;
             s.Wuppy.CurrentHp = Math.Max(0, wuppyPrev - wuppyDmg);
-            int wuppyLoss = wuppyPrev - s.Wuppy.CurrentHp;
+            wuppyLoss = wuppyPrev - s.Wuppy.CurrentHp;
             int wuppyOverkill = wuppyKilled ? Math.Max(wuppyDmg - wuppyPrev, 0) : 0;
             if (wuppyKilled || s.Wuppy.CurrentHp <= 0)
                 s.Wuppy.Flags &= ~HotCreatureFlags.Alive;
-            if (wuppyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
-            {
-                HotHookArgs wuppyHpArgs = new()
-                {
-                    TargetSlot = 2,
-                    Amount = wuppyLoss,
-                };
-                DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterHpLost, ref wuppyHpArgs);
-                if (scratch.NeedsChoice)
-                    return 0;
-            }
             damageRemaining = wuppyOverkill;
         }
 
@@ -363,19 +361,9 @@ internal static partial class HotCombatEngine
         damageRemaining = Math.Max(damageRemaining - blockedDamage, 0m);
         bool wasBlockBroken = blockBefore > 0 && targetRef.Block == 0 && !isUnblockable && blockedInt > 0;
 
-        if (wasBlockBroken && (s.ActiveHookMask & (ulong)HotHookMask.AfterBlockBroken) != 0)
-        {
-            HotHookArgs brokenArgs = new()
-            {
-                ActorSlot = dealerSlot,
-                TargetSlot = targetSlot,
-            };
-            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterBlockBroken, ref brokenArgs);
-            if (scratch.NeedsChoice)
-                return 0;
-        }
-
         // Post-block Osty interception when player is targeted on powered attacks (DieForYouPower.cs:15-30).
+        int ostyLoss = 0;
+        bool ostyDiedNow = false;
         if (targetSlot == 0
             && isPoweredAttack
             && damageRemaining > 0m
@@ -386,23 +374,13 @@ internal static partial class HotCombatEngine
             int ostyPrev = s.Osty.CurrentHp;
             bool ostyKilled = ostyPrev > 0 && damageRemaining >= ostyPrev;
             s.Osty.CurrentHp = Math.Max(0, ostyPrev - ostyDmg);
-            int ostyLoss = ostyPrev - s.Osty.CurrentHp;
+            ostyLoss = ostyPrev - s.Osty.CurrentHp;
             int ostyOverkill = ostyKilled ? Math.Max(ostyDmg - ostyPrev, 0) : 0;
             if (ostyKilled || s.Osty.CurrentHp <= 0)
-                s.Osty.Flags &= ~HotCreatureFlags.Alive;
-            if (ostyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
             {
-                HotHookArgs ostyHpArgs = new()
-                {
-                    TargetSlot = 1,
-                    Amount = ostyLoss,
-                };
-                DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterHpLost, ref ostyHpArgs);
-                if (scratch.NeedsChoice)
-                    return 0;
+                s.Osty.Flags &= ~HotCreatureFlags.Alive;
+                ostyDiedNow = true;
             }
-            if ((s.Osty.Flags & HotCreatureFlags.Alive) == 0)
-                HotRegentNecro.OnAnyCreatureDeath(ref s, ref cold, rules);
             damageRemaining = ostyOverkill;
         }
 
@@ -432,6 +410,52 @@ internal static partial class HotCombatEngine
         int overkillDamage = wasTargetKilled ? Math.Max(hpLoss - hpPrev, 0) : 0;
         int hitTotalPlusOverkill = blockedInt + unblockedDamage + overkillDamage;
         bool wasFullyBlocked = unblockedDamage == 0 && blockedInt > 0;
+
+        // Post-HP-loss hooks for Wuppy / Osty results (CreatureCmd.cs:455-465) — run AFTER target HP loss.
+        if (wuppyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
+        {
+            HotHookArgs wuppyHpArgs = new()
+            {
+                TargetSlot = 2,
+                Amount = wuppyLoss,
+            };
+            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterHpLost, ref wuppyHpArgs);
+            if (scratch.NeedsChoice)
+            {
+                t_lastHitTotalPlusOverkill = hitTotalPlusOverkill;
+                return unblockedDamage;
+            }
+        }
+
+        if (ostyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
+        {
+            HotHookArgs ostyHpArgs = new()
+            {
+                TargetSlot = 1,
+                Amount = ostyLoss,
+            };
+            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterHpLost, ref ostyHpArgs);
+            if (scratch.NeedsChoice)
+            {
+                t_lastHitTotalPlusOverkill = hitTotalPlusOverkill;
+                return unblockedDamage;
+            }
+        }
+
+        if (wasBlockBroken && (s.ActiveHookMask & (ulong)HotHookMask.AfterBlockBroken) != 0)
+        {
+            HotHookArgs brokenArgs = new()
+            {
+                ActorSlot = dealerSlot,
+                TargetSlot = targetSlot,
+            };
+            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterBlockBroken, ref brokenArgs);
+            if (scratch.NeedsChoice)
+            {
+                t_lastHitTotalPlusOverkill = hitTotalPlusOverkill;
+                return unblockedDamage;
+            }
+        }
 
         if (unblockedDamage > 0)
         {
@@ -463,33 +487,7 @@ internal static partial class HotCombatEngine
         if (isPoweredAttack && dealerSlot == 0 && targetSlot >= 3)
             s.Enemies[targetSlot - 3].PoweredHitsFromPlayer++;
 
-        // AfterDamageReceived hook
-        if ((s.ActiveHookMask & (ulong)HotHookMask.AfterDamageReceived) != 0)
-        {
-            HotHookArgs recvArgs = new()
-            {
-                ActorSlot = dealerSlot,
-                TargetSlot = targetSlot,
-                CardIdx = cardIdx,
-                CardDefId = cardDefId,
-                IsPoweredAttack = isPoweredAttack,
-                IsUnblockable = isUnblockable,
-                BlockedDamage = blockedInt,
-                UnblockedDamage = unblockedDamage,
-                WasBlockBroken = wasBlockBroken,
-                WasFullyBlocked = wasFullyBlocked,
-                WasTargetKilled = wasTargetKilled,
-                Amount = blockedInt + unblockedDamage,
-            };
-            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterDamageReceived, ref recvArgs);
-            if (scratch.NeedsChoice)
-            {
-                t_lastHitTotalPlusOverkill = hitTotalPlusOverkill;
-                return unblockedDamage;
-            }
-        }
-
-        // AfterDamageGiven hook
+        // AfterDamageGiven hook (STS2 0.113.1 CreatureCmd.cs:470-473: runs BEFORE AfterDamageReceived)
         if ((s.ActiveHookMask & (ulong)HotHookMask.AfterDamageGiven) != 0)
         {
             HotHookArgs givenArgs = new()
@@ -514,6 +512,38 @@ internal static partial class HotCombatEngine
                 return unblockedDamage;
             }
         }
+
+        // AfterDamageReceived hook (STS2 0.113.1 CreatureCmd.cs:474-477: skipped when WasTargetKilled && originalTarget.IsDead
+        // so fatal hits that trigger death-preventing revives like LizardTail in Kill() do not fire FlameBarrier/Reflect/etc.)
+        ref readonly HotCreature postGivenTarget = ref GetCreatureRef(ref s, targetSlot);
+        bool targetIsDead = postGivenTarget.CurrentHp <= 0 || (postGivenTarget.Flags & HotCreatureFlags.Alive) == 0;
+        if ((!wasTargetKilled || !targetIsDead) && (s.ActiveHookMask & (ulong)HotHookMask.AfterDamageReceived) != 0)
+        {
+            HotHookArgs recvArgs = new()
+            {
+                ActorSlot = dealerSlot,
+                TargetSlot = targetSlot,
+                CardIdx = cardIdx,
+                CardDefId = cardDefId,
+                IsPoweredAttack = isPoweredAttack,
+                IsUnblockable = isUnblockable,
+                BlockedDamage = blockedInt,
+                UnblockedDamage = unblockedDamage,
+                WasBlockBroken = wasBlockBroken,
+                WasFullyBlocked = wasFullyBlocked,
+                WasTargetKilled = wasTargetKilled,
+                Amount = blockedInt + unblockedDamage,
+            };
+            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterDamageReceived, ref recvArgs);
+            if (scratch.NeedsChoice)
+            {
+                t_lastHitTotalPlusOverkill = hitTotalPlusOverkill;
+                return unblockedDamage;
+            }
+        }
+
+        if (ostyDiedNow)
+            HotRegentNecro.OnAnyCreatureDeath(ref s, ref cold, rules);
 
         if (!deferKill && (wasTargetKilled || GetCreatureRef(ref s, targetSlot).CurrentHp <= 0))
             KillCreature(ref s, ref cold, rules, scratch, targetSlot, force: false);
@@ -1278,6 +1308,11 @@ internal static partial class HotCombatEngine
             if (pid == HotPowerId.PanachePower)
                 flags |= HotPowerFlags.BoolAux;
 
+            // LullabyPower.AfterApplied (LullabyPower.cs:44-51): if Cho, Wah, and Ki were all already
+            // played this turn when Lullaby is applied, ProccdThisTurn starts true.
+            if (pid == HotPowerId.LullabyPower && ownerSlot == 0 && newAmount > 0 && HotFoolTarot.CountMelodies(in s) >= 3)
+                flags |= HotPowerFlags.BoolAux;
+
             // Note: InfernoPower and EnnuiPower start at CanonicalVar 0 (SelfDamage=0 / Cards=0) and
             // are incremented by Inferno/Ennui OnPlay in HotCombatEngine.Bytecode.cs:197-202.
             int initAux0 = pid switch
@@ -1650,7 +1685,9 @@ internal static partial class HotCombatEngine
 
         s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
 
-        if (!HasAnyPrimaryEnemyAliveOrReviving(in s, rules) && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
+        if (!HasAnyPrimaryEnemyAliveOrReviving(in s, rules)
+            && (s.Player.Flags & HotCreatureFlags.Alive) != 0
+            && (s.CombatFlags & HotCombatFlags.BattlewornDummyTimedOut) == 0)
         {
             s.TerminalOutcome = HotCombatOutcome.Victory;
             s.TerminalTurn = (byte)Math.Clamp(s.PlayerTurnNumber, 0, byte.MaxValue);

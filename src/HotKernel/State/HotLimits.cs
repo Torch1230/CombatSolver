@@ -16,7 +16,7 @@ internal static class HotLimits
     public const int MaxMonsterAiRegisters = 4;
     public const int MaxGrowthSlots = 12; // 11 built-in + 1 spare
     public const int MaxHistoryCounters = 6;
-    public const int MaxChoicesPerAction = 16;
+    public const int MaxChoicesPerAction = 24;
     public const int MaxStackAllocElements = 128;
 
     // 524,288 bytes (or 2 MiB slabs) with slack matching sizeof(CombatHotState)
@@ -63,6 +63,7 @@ internal enum HotCombatOutcome : byte
     Ongoing = 0,
     Victory = 1,
     Defeat = 2,
+    EventDefeat = 3,
 }
 
 internal enum HotDeathPhase : byte

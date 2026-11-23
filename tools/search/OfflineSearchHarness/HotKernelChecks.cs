@@ -30,8 +30,8 @@ internal static class HotKernelChecks
             $"Expected HotLimits.MaxPowers=96, got {HotLimits.MaxPowers}.");
         Check(HotLimits.MaxRelicStates == 64,
             $"Expected HotLimits.MaxRelicStates=64, got {HotLimits.MaxRelicStates}.");
-        Check(HotLimits.MaxChoicesPerAction == 16,
-            $"Expected HotLimits.MaxChoicesPerAction=16, got {HotLimits.MaxChoicesPerAction}.");
+        Check(HotLimits.MaxChoicesPerAction == 24,
+            $"Expected HotLimits.MaxChoicesPerAction=24, got {HotLimits.MaxChoicesPerAction}.");
         Check(HotLimits.MaxPackedStateBytes == 17_256,
             $"Expected HotLimits.MaxPackedStateBytes=17256, got {HotLimits.MaxPackedStateBytes}.");
         int hotStructSize = System.Runtime.CompilerServices.Unsafe.SizeOf<CombatHotState>();
@@ -43,7 +43,7 @@ internal static class HotKernelChecks
             $"Expected CombatGeneratedPotionMask offset=182, got {potionMaskOffset}.");
         Console.WriteLine(
             "[PASS] 1. CombatHotState.ValidateLayout() " +
-            "(FixedCore=1128 B, Total=17256 B, MaxPowers=96, MaxRelicStates=64, MaxChoicesPerAction=16, CombatGeneratedPotionMask@182)");
+            "(FixedCore=1128 B, Total=17256 B, MaxPowers=96, MaxRelicStates=64, MaxChoicesPerAction=24, CombatGeneratedPotionMask@182)");
 
         // 2. Populated 30-card state -> Pack -> Unpack -> Pack byte-identical + packed size check
         CombatHotState populated = BuildPopulated30CardState(uidOffset: 100, dirtyPadding: false);

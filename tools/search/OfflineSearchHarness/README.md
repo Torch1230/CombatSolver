@@ -20,9 +20,19 @@ dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHa
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
     --replay-fuzz .local/fuzz-failures/<bucket>.json
 
-# Layer 3：整场求解→部署反重算压测（6 角色 × Standard/Dread/Blitz）
+# Layer 3：无偏整场求解→部署反重算压测（6 角色 × Standard/Dread/Blitz，支持逐场落盘供成对 A/B 对比）
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
-    --soak-deploy --fights 60 --seed 2026 --profile Medium --dop 8
+    --soak-deploy --fights 120 --seed 2026 --profile Medium --dop 8 --dump-outcomes .local/bench/v100-soak-2026.json
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+    --soak-deploy --fights 120 --seed 9001 --profile Medium --dop 8 --dump-outcomes .local/bench/v100-soak-9001-holdout.json
+
+# 既有真实根批量评测（dev-00..11 + GA-IRONCLAD-ELITE-00 + holdout-00..04）
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+    --bench-corpora --tier all --profile Medium --dop 8 --dump-outcomes .local/bench/v100-corpora.json
+
+# 成对 A/B 经济价值 V 与胜率/战损/延迟/可靠性对比（--check-exact 可核对 DOP=1 vs DOP=8 逐位确定性）
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+    --compare-outcomes .local/bench/v100-soak-2026.json .local/bench/cand-soak-2026.json --gate
 
 # Gate A/B/C：19/19 根捕获 + Pack/Unpack 往返 + 多回合自洽 + DOP=1/8 确定性 + 微基准
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --verify-hot-parity
@@ -49,7 +59,9 @@ python3 tools/search/OfflineSearchHarness/compare_results.py \
 | `RealCombatDriver.cs` | 纯 `.NET` 实机 `sts2.dll` 建局（Standard/Dread/Blitz）与动作执行排空 |
 | `HotCoverageAuditor.cs` | Layer 1 `--audit-hot-coverage` 单人全实体静态覆盖与反射字段审计 |
 | `FuzzScenarioGenerator.cs` / `CombatDiffFuzzer.cs` | Layer 2 `--fuzz-combat` / `--replay-fuzz` 覆盖引导锁步差分模糊与归桶回放 |
-| `DeploymentSoakRunner.cs` | Layer 3 `--soak-deploy` 整场搜索→实机部署与反重算压测 |
+| `DeploymentSoakRunner.cs` | Layer 3 `--soak-deploy` 整场搜索→实机部署与反重算压测（含 `--dump-outcomes` 逐场落盘） |
+| `QualityBenchRunner.cs` | `--bench-corpora` 既有真实根（`dev-00..11`、`holdout-00..04`、`GA-IRONCLAD-ELITE-00`）批量评测与落盘 |
+| `BenchmarkOutcomes.cs` | 统一逐场结果结构与 `--compare-outcomes` 成对 A/B 经济价值 V / 可靠性对比器 |
 | `QualityComparison.cs` | 基于 `HotRouteQuality.IsBetter` 的批量结果质量比较 |
 | `AncillaryFailureChecks.cs` | 辅助失败边界与缓存合同检查 |
 | `GeneratedScenarioSetup.cs` | 生成场景开局（走模组注入入口） |

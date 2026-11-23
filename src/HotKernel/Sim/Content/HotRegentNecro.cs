@@ -169,12 +169,14 @@ internal static class HotRegentNecro
                     ushort diveBombId = rules.GetCardDefId(HotCustomCardId.MinionDiveBomb);
                     Span<ushort> chosenUids = stackalloc ushort[Math.Min(picks, HotLimits.MaxChoicesPerAction)];
                     int actualPicks = Math.Min(picks, chosenUids.Length);
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
                     for (int i = 0; i < actualPicks; i++)
                     {
-                        if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                        if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, 1, chosenUids[..i], out HotChoiceSelection sel))
                             return PauseForChoice(in s, out result);
                         chosenUids[i] = sel.CardUidOrIndex;
                     }
+                    scratch.EndChoiceGroup();
                     for (int i = 0; i < actualPicks; i++)
                     {
                         int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, chosenUids[i]);
@@ -403,14 +405,16 @@ internal static class HotRegentNecro
                     Span<ushort> selectedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
                     int selectedCount = 0;
                     int maxPicks = Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction);
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.Optional | HotChoiceGroupFlags.MultiPick);
                     for (int i = 0; i < maxPicks; i++)
                     {
-                        if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 0, (byte)maxPicks, out HotChoiceSelection sel))
+                        if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 0, (byte)maxPicks, selectedUids[..selectedCount], out HotChoiceSelection sel))
                             return PauseForChoice(in s, out result);
                         if (sel.Kind == HotChoiceKind.None || sel.CardUidOrIndex == 0)
                             break;
                         selectedUids[selectedCount++] = sel.CardUidOrIndex;
                     }
+                    scratch.EndChoiceGroup();
                     for (int i = 0; i < selectedCount && !scratch.NeedsChoice; i++)
                     {
                         int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, selectedUids[i]);
@@ -723,11 +727,13 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.SummonForth:
             {
+                // STS2 0.113.1 SummonForth.cs:35-41: move all non-Hand SovereignBlades (including Exhaust)
+                // to Hand (or Discard if Hand full) FIRST, THEN Forge so an exhausted SovereignBlade is
+                // recovered and forged rather than causing Forge to generate a duplicate SovereignBlade.
                 int forge = GetVarInt(in card, def, "Forge", 8);
-                if (forge > 0)
+                MoveSovereignBladesToHand(ref s, rules);
+                if (forge > 0 && !scratch.NeedsChoice)
                     Forge(ref s, ref cold, rules, scratch, forge);
-                if (!scratch.NeedsChoice)
-                    MoveSovereignBladesToHand(ref s, rules);
                 return Complete(in s, scratch, out result);
             }
 
@@ -984,12 +990,14 @@ internal static class HotRegentNecro
                 {
                     Span<ushort> selectedUids = stackalloc ushort[Math.Min(picks, HotLimits.MaxChoicesPerAction)];
                     int actualPicks = Math.Min(picks, selectedUids.Length);
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
                     for (int i = 0; i < actualPicks; i++)
                     {
-                        if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DiscardPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                        if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.DiscardPile, cardDefId, 1, 1, selectedUids[..i], out HotChoiceSelection sel))
                             return PauseForChoice(in s, out result);
                         selectedUids[i] = sel.CardUidOrIndex;
                     }
+                    scratch.EndChoiceGroup();
                     for (int i = 0; i < actualPicks; i++)
                     {
                         int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Discard, selectedUids[i]);
@@ -1414,12 +1422,14 @@ internal static class HotRegentNecro
                     ushort soulId = rules.GetCardDefId(HotCustomCardId.Soul);
                     Span<ushort> selectedUids = stackalloc ushort[Math.Min(picks, HotLimits.MaxChoicesPerAction)];
                     int actualPicks = Math.Min(picks, selectedUids.Length);
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
                     for (int i = 0; i < actualPicks; i++)
                     {
-                        if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                        if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, 1, selectedUids[..i], out HotChoiceSelection sel))
                             return PauseForChoice(in s, out result);
                         selectedUids[i] = sel.CardUidOrIndex;
                     }
+                    scratch.EndChoiceGroup();
                     for (int i = 0; i < actualPicks && !scratch.NeedsChoice; i++)
                     {
                         int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, selectedUids[i]);
@@ -1894,14 +1904,23 @@ internal static class HotRegentNecro
                     args.HandDrawCount += amount;
                     return true;
                 }
-                if (hook == HotHookMask.AfterSideTurnStart && args.Side == HotCombatSide.Player)
+                if (hook == HotHookMask.AfterSideTurnStart && args.Side == HotCombatSide.Player && s.HandCount > 0)
                 {
-                    int picks = Math.Min(amount, (int)s.HandCount);
-                    for (int i = 0; i < picks && s.HandCount > 0; i++)
+                    int picks = Math.Min(amount, Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
+                    Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                    int pickedCount = 0;
+                    scratch.BeginChoiceGroup(HotChoiceGroupFlags.Unordered | HotChoiceGroupFlags.MultiPick);
+                    for (int i = 0; i < picks && pickedCount < s.HandCount; i++)
                     {
-                        if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, out HotChoiceSelection sel))
+                        if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                             return true;
-                        int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
+                        if (sel.CardUidOrIndex != 0)
+                            pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                    }
+                    scratch.EndChoiceGroup();
+                    for (int i = 0; i < pickedCount && !HotCombatEngine.IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                    {
+                        int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, pickedUids[i]);
                         if (idx >= 0)
                             HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, idx);
                     }
@@ -3027,14 +3046,11 @@ internal static class HotRegentNecro
             if (s.Cards[i].CardDefId == bladeDefId)
                 bladeUids[count++] = s.Cards[i].CardUid;
         }
-        int maxHand = s.MaxHandSize > 0 ? s.MaxHandSize : 10;
         for (int i = 0; i < count; i++)
         {
-            if (s.HandCount >= maxHand)
-                break;
             int idx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, bladeUids[i]);
             if (idx >= s.HandCount)
-                HotPiles.MoveCard(ref s, idx, HotPileKind.Hand, s.HandCount);
+                MoveCardToHandOrDiscard(ref s, idx);
         }
     }
 
@@ -3046,14 +3062,18 @@ internal static class HotRegentNecro
     {
         if (putBack <= 0)
             return true;
-        int actual = Math.Min(putBack, HotLimits.MaxChoicesPerAction);
+        int actual = Math.Min(putBack, Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
+        if (actual <= 0)
+            return true;
         Span<ushort> uids = stackalloc ushort[actual];
+        scratch.BeginChoiceGroup(HotChoiceGroupFlags.MultiPick);
         for (int i = 0; i < actual; i++)
         {
-            if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId, 1, 1, out HotChoiceSelection sel))
+            if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId, 1, 1, uids[..i], out HotChoiceSelection sel))
                 return false;
             uids[i] = sel.CardUidOrIndex;
         }
+        scratch.EndChoiceGroup();
         for (int i = actual - 1; i >= 0; i--)
         {
             int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, uids[i]);

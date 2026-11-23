@@ -4,17 +4,24 @@ using System.Runtime.CompilerServices;
 namespace CombatSolver.HotSearch;
 
 /// <summary>
-/// Lean, zero-LINQ beam retention with deterministic counting-sort bucketing by <c>PotionCount</c>,
-/// potion-slot/cost-tier diversity inside potion buckets (protecting scaling/draw/combo potions like
-/// <c>StrengthPotion</c>/<c>SwiftPotion</c>/<c>Duplicator</c>/<c>FruitJuice</c> from being crushed on Turn 1 by
-/// <c>BlockPotion</c>), orthogonal diversity lanes (Survival, Offense, Setup/Scaling, mid-turn Resource/Combo),
-/// and a compact 6-dimensional Pareto front — 100% deterministic.
+/// Zero-LINQ, zero-allocation single-tree domain-agnostic MAP-Elites beam retention:
+/// - Deterministic counting-sort bucketing by <c>PotionCount</c> (<c>0, 1, 2, 3+</c>) with non-starving
+///   potion-signature diversity;
+/// - 5 orthogonal domain-agnostic behavioral niches:
+///   (1) Primary / Rollout-Blended Value (~35%),
+///   (2) Survival / HP Preservation (~18%: min EffectiveNetHpLoss, max PlayerHp + EffectiveDefense),
+///   (3) Tempo / Kill Speed (~15%: min Alive+Reviving, min EnemyHp),
+///   (4) Generic Persistent Board Investment (~18%: unclamped domain-agnostic state delta, zero card IDs),
+///   (5) Optionality + True Full-Pool Pareto (~14%: max Energy+Stars+PlayableHand+DrawNextTurn, and
+///       Pareto scanning the union of top-32 candidates from EACH niche rather than only Top-128 by raw Score).
+/// 100% deterministic across DOP=1 and DOP=N.
 /// </summary>
 internal sealed class HotBeamRetention : IDisposable
 {
     public const int MaxActionsPerTurn = 64;
     public const int MaxPotionBuckets = 4; // 0, 1, 2, 3+
-    private const int MaxParetoScanCandidates = 128;
+    private const int PerNicheParetoTopK = 32;
+    private const int NicheSlotCount = 6; // 0=Primary, 1=Survival, 2=Tempo, 3=BoardInvestment, 4=Optionality, 5=PureRollout
     private const int MaxDistinctPotionSignatures = 16;
 
     private int[] _bucketBuffer;
@@ -34,6 +41,10 @@ internal sealed class HotBeamRetention : IDisposable
     /// <summary>
     /// Prunes <paramref name="candidates"/> into <paramref name="output"/> up to <paramref name="beamWidth"/>.
     /// Guarantees deterministic ordering independent of worker thread scheduling.
+    /// When <paramref name="useRolloutScores"/> is <c>true</c> (Stage 8C turn-boundary rollout prune),
+    /// Primary ranking uses <see cref="HotSearchNode.EffectiveTurnBoundaryScore"/>, protects a pure
+    /// top-<see cref="HotSearchNode.RolloutScore"/> slice inside Niche 1, and feeds rollout leaders into
+    /// full-pool Pareto.
     /// </summary>
     public int PruneLayer(
         ReadOnlySpan<int> candidates,
@@ -41,7 +52,8 @@ internal sealed class HotBeamRetention : IDisposable
         int beamWidth,
         Span<int> output,
         bool isTurnBoundary = true,
-        bool preferPotionBuckets = false)
+        bool preferPotionBuckets = false,
+        bool useRolloutScores = false)
     {
         int n = candidates.Length;
         if (n == 0 || beamWidth <= 0)
@@ -51,11 +63,11 @@ internal sealed class HotBeamRetention : IDisposable
         if (n <= limit)
         {
             candidates.CopyTo(output);
-            SortByScoreDeterministic(output[..n], arena);
+            SortByPrimaryScoreDeterministic(output[..n], arena, useRolloutScores);
             return n;
         }
 
-        EnsureCapacity(n);
+        EnsureCapacity(Math.Max(n, limit + PerNicheParetoTopK));
 
         // 1. Single-pass counting sort bucketing by PotionCount (0, 1, 2, 3+) — ZERO LINQ GroupBy.
         Span<int> bucketCounts = stackalloc int[MaxPotionBuckets];
@@ -92,7 +104,7 @@ internal sealed class HotBeamRetention : IDisposable
         Span<int> bucketQuotas = stackalloc int[MaxPotionBuckets];
         AllocateBucketQuotas(bucketCounts, activeBuckets, limit, preferPotionBuckets, bucketQuotas);
 
-        // 3. Select diverse survivors inside each bucket into output.
+        // 3. Select diverse MAP-Elites survivors inside each bucket into output.
         int totalSelected = 0;
         for (int b = 0; b < MaxPotionBuckets; b++)
         {
@@ -109,12 +121,13 @@ internal sealed class HotBeamRetention : IDisposable
                 bucketIndex: b,
                 isTurnBoundary,
                 preferPotionBuckets,
+                useRolloutScores,
                 output.Slice(totalSelected, limit - totalSelected));
             totalSelected += picked;
         }
 
         // 4. Deterministic final sort so subsequent expansion wave order is invariant.
-        SortByScoreDeterministic(output[..totalSelected], arena);
+        SortByPrimaryScoreDeterministic(output[..totalSelected], arena, useRolloutScores);
         return totalSelected;
     }
 
@@ -144,8 +157,8 @@ internal sealed class HotBeamRetention : IDisposable
         int remaining = totalQuota;
 
         // Under Smart Stage 2 (where Stage 1 already searched 0-paid-potion deeply), preserve ~35% for 0-potion
-        // prefixes so late-turn potions can still emerge, while giving 65% to 1+/2+ potion routes!
-        // Under single-pass/Stage 1 (0-cost potions), preserve 60% for 0-potion routes.
+        // prefixes so late-turn potions can still emerge, while giving 65% to 1+/2+ potion routes.
+        // Under Stage 1 / single-beam, preserve 60% for 0-potion routes.
         if (counts[0] > 0)
         {
             int zeroPct = preferPotionBuckets ? 35 : 60;
@@ -213,6 +226,7 @@ internal sealed class HotBeamRetention : IDisposable
         int bucketIndex,
         bool isTurnBoundary,
         bool preferPotionBuckets,
+        bool useRolloutScores,
         Span<int> dst)
     {
         int count = bucketNodes.Length;
@@ -222,29 +236,28 @@ internal sealed class HotBeamRetention : IDisposable
             return count;
         }
 
-        // Sort bucket by Score descending once -> index 0..count-1 is canonical primary rank.
-        SortByScoreDeterministic(bucketNodes, arena);
+        // Canonical primary ranking: index 0..count-1 is sorted descending by PrimaryScore.
+        SortByPrimaryScoreDeterministic(bucketNodes, arena, useRolloutScores);
 
+        // Mark values: 0 = unselected, 1 = selected into dst, 2 = queued in full-pool Pareto candidate set.
         Span<byte> marks = _selectedMarks.AsSpan(0, count);
         marks.Clear();
 
         int selectedCount = 0;
 
-        // 0. Potion-slot & cost-tier diversity inside potion buckets (b >= 1):
-        // Guarantee top representatives for each distinct (PotionMask, CostTier) so high-tier scaling/draw/combo
-        // potions (SwiftPotion / Duplicator / GamblersBrew / StrengthPotion / FruitJuice / BloodPotion) are NOT
-        // wiped out on Turn 1 by immediate BlockPotion / FirePotion!
-        int potionDiversityQuota = 0;
-        if (bucketIndex >= 1 && quota >= 4)
+        // 0. Non-starving potion-signature diversity inside potion buckets (b >= 1):
+        // Cap strictly so at least 5 slots (and >= 75% of larger buckets) ALWAYS remain for the 5 MAP-Elites niches!
+        if (bucketIndex >= 1 && quota >= 6)
         {
-            potionDiversityQuota = preferPotionBuckets
-                ? Math.Min(MaxDistinctPotionSignatures, Math.Max(2, (quota * 28) / 100))
-                : Math.Min(MaxDistinctPotionSignatures, Math.Max(1, quota / 5));
+            int pctCap = preferPotionBuckets ? (quota * 25) / 100 : (quota * 15) / 100;
+            int potionDiversityQuota = Math.Min(
+                MaxDistinctPotionSignatures,
+                Math.Max(1, Math.Min(pctCap, quota - 5)));
 
             Span<uint> seenKeys = stackalloc uint[MaxDistinctPotionSignatures];
             int seenCount = 0;
 
-            // Round 1: pick best-Score representative for each distinct (PotionMask, PotionStrategicCost) signature.
+            // Round 1: pick best-PrimaryScore representative for each distinct (PotionMask, PotionStrategicCost).
             for (int i = 0; i < count && selectedCount < potionDiversityQuota && seenCount < MaxDistinctPotionSignatures; i++)
             {
                 ref readonly HotSearchNode node = ref arena.GetRef(bucketNodes[i]);
@@ -266,8 +279,8 @@ internal sealed class HotBeamRetention : IDisposable
                 dst[selectedCount++] = bucketNodes[i];
             }
 
-            // Round 2: if multiple distinct signatures exist and budget remains, grant a second representative per signature.
-            if (seenCount > 1 && selectedCount < potionDiversityQuota)
+            // Round 2 (on wide buckets with multiple potion signatures): protect 2nd best-PrimaryScore rep per signature.
+            if (quota >= 16 && seenCount > 1 && selectedCount < potionDiversityQuota)
             {
                 for (int s = 0; s < seenCount && selectedCount < potionDiversityQuota; s++)
                 {
@@ -276,8 +289,8 @@ internal sealed class HotBeamRetention : IDisposable
                     {
                         if (marks[i] != 0)
                             continue;
-                        ref readonly HotSearchNode node = ref arena.GetRef(bucketNodes[i]);
-                        uint sig = ((uint)node.PotionMask << 16) | (ushort)node.PotionStrategicCost;
+                        ref readonly HotSearchNode cand = ref arena.GetRef(bucketNodes[i]);
+                        uint sig = ((uint)cand.PotionMask << 16) | (ushort)cand.PotionStrategicCost;
                         if (sig == targetSig)
                         {
                             marks[i] = 1;
@@ -293,103 +306,209 @@ internal sealed class HotBeamRetention : IDisposable
         if (remainingForLanes <= 0)
             return selectedCount;
 
-        // Lane budgets over remaining quota:
-        // - Turn boundary: ~48% Primary, ~18% Survival, ~12% Offense, ~14% Setup, ~8% 6-dim Pareto
-        // - Mid-turn:      ~44% Primary, ~14% Survival, ~10% Offense, ~12% Setup, ~12% Resource/Combo, ~8% Pareto
-        int primaryQuota = Math.Max(1, (remainingForLanes * (isTurnBoundary ? 48 : 44)) / 100);
-        int survivalQuota = remainingForLanes >= 6 ? Math.Max(1, (remainingForLanes * (isTurnBoundary ? 18 : 14)) / 100) : 0;
-        int offenseQuota = remainingForLanes >= 8 ? Math.Max(1, (remainingForLanes * (isTurnBoundary ? 12 : 10)) / 100) : 0;
-        int setupQuota = remainingForLanes >= 10 ? Math.Max(1, (remainingForLanes * (isTurnBoundary ? 14 : 12)) / 100) : 0;
-        int comboQuota = !isTurnBoundary && remainingForLanes >= 10 ? Math.Max(1, (remainingForLanes * 12) / 100) : 0;
-        int paretoQuota = remainingForLanes >= 12
-            ? Math.Max(1, remainingForLanes - primaryQuota - survivalQuota - offenseQuota - setupQuota - comboQuota)
-            : 0;
+        // 5 Orthogonal MAP-Elites Niche Budgets (~35% Primary, ~18% Survival, ~15% Tempo, ~18% BoardInvestment, ~14% Optionality+Pareto).
+        // Narrow buckets (R = 2..5) still guarantee Survival & BoardInvestment so scaling/survival NEVER starve!
+        ComputeNicheQuotas(
+            remainingForLanes,
+            isTurnBoundary,
+            out int primaryQuota,
+            out int survivalQuota,
+            out int tempoQuota,
+            out int investmentQuota,
+            out int optionalityQuota,
+            out int paretoQuota);
 
-        // 1. Primary Top-K by Score
+        // Stack-allocated per-niche top-32 runners-up for true full-pool Pareto (6 * 32 = 192 ints = 768 B, 0 heap alloc).
+        Span<int> nichePareto = stackalloc int[NicheSlotCount * PerNicheParetoTopK];
+        Span<int> nicheParetoCounts = stackalloc int[NicheSlotCount];
+        nicheParetoCounts.Clear();
+
+        bool hasRolloutCandidates = useRolloutScores && HasAnyRolloutCandidate(bucketNodes, arena);
+        bool hasChoiceLookaheadCandidates = !isTurnBoundary
+            && !hasRolloutCandidates
+            && HasAnyChoiceLookaheadCandidate(bucketNodes, arena);
+
+        // Niche 1 — Primary Value (~35%; when useRolloutScores is active, splits ~70% Blended / ~30% Pure Rollout;
+        // mid-turn with delayed-payoff choice lookahead, protects ~20% of Niche 1 for top choice-lookahead lines).
+        int rolloutPureQuota = (hasRolloutCandidates && primaryQuota >= 3)
+            ? Math.Max(1, (primaryQuota * 30) / 100)
+            : 0;
+        int choiceLookaheadQuota = (hasChoiceLookaheadCandidates && primaryQuota >= 3)
+            ? Math.Max(1, (primaryQuota * 20) / 100)
+            : 0;
+        int blendedPrimaryQuota = primaryQuota - rolloutPureQuota - choiceLookaheadQuota;
+
         int primaryAdded = 0;
-        for (int i = 0; i < count && primaryAdded < primaryQuota && selectedCount < quota; i++)
+        int primaryParetoCount = 0;
+        for (int i = 0; i < count; i++)
         {
             if (marks[i] != 0)
                 continue;
-            marks[i] = 1;
-            dst[selectedCount++] = bucketNodes[i];
-            primaryAdded++;
+            if (primaryAdded < blendedPrimaryQuota && selectedCount < quota)
+            {
+                marks[i] = 1;
+                dst[selectedCount++] = bucketNodes[i];
+                primaryAdded++;
+            }
+            else if (primaryParetoCount < PerNicheParetoTopK)
+            {
+                nichePareto[primaryParetoCount++] = i;
+            }
+            else
+            {
+                break;
+            }
         }
+        nicheParetoCounts[0] = primaryParetoCount;
 
-        // 2. Survival lane (min DeathSave -> min net HpDeficit incl. MaxHpDelta -> max PlayerHp -> max Block -> max Score)
-        if (survivalQuota > 0 && selectedCount < quota)
+        if (hasRolloutCandidates && (rolloutPureQuota > 0 || paretoQuota > 0))
         {
-            selectedCount += PickTopByCustomOrder(
+            int takeRollout = Math.Min(rolloutPureQuota, quota - selectedCount);
+            selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
                 arena,
-                Math.Min(survivalQuota, quota - selectedCount),
+                takeRollout,
+                paretoQuota > 0 ? PerNicheParetoTopK : 0,
                 dst[selectedCount..],
-                CompareSurvival);
+                nichePareto.Slice(5 * PerNicheParetoTopK, PerNicheParetoTopK),
+                out nicheParetoCounts[5],
+                new PureRolloutComparer(useRolloutScores));
         }
-
-        // 3. Offense / Fastest-Kills lane (min Alive+Reviving -> min EnemyHp -> min HpLost -> max Score)
-        if (offenseQuota > 0 && selectedCount < quota)
+        else if (hasChoiceLookaheadCandidates && (choiceLookaheadQuota > 0 || paretoQuota > 0))
         {
-            selectedCount += PickTopByCustomOrder(
+            int takeLookahead = Math.Min(choiceLookaheadQuota, quota - selectedCount);
+            selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
                 arena,
-                Math.Min(offenseQuota, quota - selectedCount),
+                takeLookahead,
+                paretoQuota > 0 ? PerNicheParetoTopK : 0,
                 dst[selectedCount..],
-                CompareOffense);
+                nichePareto.Slice(5 * PerNicheParetoTopK, PerNicheParetoTopK),
+                out nicheParetoCounts[5],
+                new ChoiceLookaheadComparer(useRolloutScores));
         }
 
-        // 4. Setup / Scaling lane (max SetupScore -> min net HpDeficit -> max Score)
-        if (setupQuota > 0 && selectedCount < quota)
+        // Niche 2 — Survival / HP Preservation (~18%: min DeathSave, min EffectiveNetHpLoss, max PlayerHp + EffectiveDefense).
+        if ((survivalQuota > 0 || paretoQuota > 0) && selectedCount < quota)
         {
-            selectedCount += PickTopByCustomOrder(
+            int take = Math.Min(survivalQuota, quota - selectedCount);
+            selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
                 arena,
-                Math.Min(setupQuota, quota - selectedCount),
+                take,
+                paretoQuota > 0 ? PerNicheParetoTopK : 0,
                 dst[selectedCount..],
-                CompareSetup);
+                nichePareto.Slice(1 * PerNicheParetoTopK, PerNicheParetoTopK),
+                out nicheParetoCounts[1],
+                new SurvivalComparer(useRolloutScores));
         }
 
-        // 5. Mid-turn Resource / Combo-Generation lane (preserves BundleOfJoy/Discovery/Dredge/SwiftPotion chains!)
-        if (comboQuota > 0 && selectedCount < quota)
+        // Niche 3 — Tempo / Kill Speed (~15%: min Alive+Reviving, min EnemyHp).
+        if ((tempoQuota > 0 || paretoQuota > 0) && selectedCount < quota)
         {
-            selectedCount += PickTopByCustomOrder(
+            int take = Math.Min(tempoQuota, quota - selectedCount);
+            selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
                 arena,
-                Math.Min(comboQuota, quota - selectedCount),
+                take,
+                paretoQuota > 0 ? PerNicheParetoTopK : 0,
                 dst[selectedCount..],
-                CompareMidTurnCombo);
+                nichePareto.Slice(2 * PerNicheParetoTopK, PerNicheParetoTopK),
+                out nicheParetoCounts[2],
+                new TempoComparer(useRolloutScores));
         }
 
-        // 6. Compact 6-dim Pareto front over top candidates
+        // Niche 4 — Generic Persistent Board Investment (~18%: unclamped domain-agnostic state delta, ZERO card IDs).
+        if ((investmentQuota > 0 || paretoQuota > 0) && selectedCount < quota)
+        {
+            int take = Math.Min(investmentQuota, quota - selectedCount);
+            selectedCount += SelectTopKUnmarked(
+                bucketNodes,
+                marks,
+                arena,
+                take,
+                paretoQuota > 0 ? PerNicheParetoTopK : 0,
+                dst[selectedCount..],
+                nichePareto.Slice(3 * PerNicheParetoTopK, PerNicheParetoTopK),
+                out nicheParetoCounts[3],
+                new BoardInvestmentComparer(useRolloutScores));
+        }
+
+        // Niche 5a — Optionality (max Energy + Stars + PlayableHandCount + DrawNextTurn).
+        if ((optionalityQuota > 0 || paretoQuota > 0) && selectedCount < quota)
+        {
+            int take = Math.Min(optionalityQuota, quota - selectedCount);
+            selectedCount += SelectTopKUnmarked(
+                bucketNodes,
+                marks,
+                arena,
+                take,
+                paretoQuota > 0 ? PerNicheParetoTopK : 0,
+                dst[selectedCount..],
+                nichePareto.Slice(4 * PerNicheParetoTopK, PerNicheParetoTopK),
+                out nicheParetoCounts[4],
+                new OptionalityComparer(useRolloutScores));
+        }
+
+        // Niche 5b — True Full-Pool Pareto scanning top-32 from EACH niche (round-robin interleaved so
+        // deferred BoardInvestment / Survival / Tempo / Optionality lines ranked #150..#1000 by raw Score are visible!).
         if (paretoQuota > 0 && selectedCount < quota)
         {
-            int scanLen = Math.Min(count, MaxParetoScanCandidates);
+            Span<int> paretoPool = stackalloc int[NicheSlotCount * PerNicheParetoTopK];
+            int paretoPoolCount = 0;
+
+            // Round-robin interleave order: BoardInvestment(3), Survival(1), Tempo(2), Optionality(4), PureRollout(5), Primary(0).
+            ReadOnlySpan<int> nicheOrder = [3, 1, 2, 4, 5, 0];
+            for (int rank = 0; rank < PerNicheParetoTopK; rank++)
+            {
+                for (int k = 0; k < nicheOrder.Length; k++)
+                {
+                    int slot = nicheOrder[k];
+                    if (rank >= nicheParetoCounts[slot])
+                        continue;
+                    int idx = nichePareto[slot * PerNicheParetoTopK + rank];
+                    if (marks[idx] != 0)
+                        continue;
+                    marks[idx] = 2;
+                    paretoPool[paretoPoolCount++] = idx;
+                }
+            }
+
             int paretoBudget = Math.Min(paretoQuota, quota - selectedCount);
             int paretoAdded = 0;
 
-            for (int i = 0; i < scanLen && paretoAdded < paretoBudget; i++)
+            for (int p = 0; p < paretoPoolCount && paretoAdded < paretoBudget; p++)
             {
-                if (marks[i] != 0)
-                    continue;
+                int candIdx = paretoPool[p];
+                int candNodeId = bucketNodes[candIdx];
+                ref readonly HotSearchNode cand = ref arena.GetRef(candNodeId);
 
-                ref readonly HotSearchNode cand = ref arena.GetRef(bucketNodes[i]);
-                if (IsDominatedInSixDimPareto(in cand, bucketNodes, scanLen, i, arena))
+                if (IsDominatedInFullPoolPareto(
+                        in cand,
+                        bucketNodes,
+                        dst[..selectedCount],
+                        paretoPool[..paretoPoolCount],
+                        p,
+                        arena,
+                        useRolloutScores))
+                {
                     continue;
+                }
 
-                marks[i] = 1;
-                dst[selectedCount++] = bucketNodes[i];
+                marks[candIdx] = 1;
+                dst[selectedCount++] = candNodeId;
                 paretoAdded++;
             }
         }
 
-        // 7. Spill any unused diversity quota back into Primary Top-K by Score
+        // Spill any unused diversity quota back into Primary Top-K by PrimaryScore.
         for (int i = 0; i < count && selectedCount < quota; i++)
         {
-            if (marks[i] != 0)
+            if (marks[i] == 1)
                 continue;
             marks[i] = 1;
             dst[selectedCount++] = bucketNodes[i];
@@ -398,47 +517,260 @@ internal sealed class HotBeamRetention : IDisposable
         return selectedCount;
     }
 
-    private delegate int NodeIndexComparison(in HotSearchNode a, in HotSearchNode b);
+    private static void ComputeNicheQuotas(
+        int remaining,
+        bool isTurnBoundary,
+        out int primaryQuota,
+        out int survivalQuota,
+        out int tempoQuota,
+        out int investmentQuota,
+        out int optionalityQuota,
+        out int paretoQuota)
+    {
+        primaryQuota = 0;
+        survivalQuota = 0;
+        tempoQuota = 0;
+        investmentQuota = 0;
+        optionalityQuota = 0;
+        paretoQuota = 0;
 
-    private static int PickTopByCustomOrder(
+        switch (remaining)
+        {
+            case <= 0:
+                return;
+            case 1:
+                primaryQuota = 1;
+                return;
+            case 2:
+                primaryQuota = 1;
+                survivalQuota = 1;
+                return;
+            case 3:
+                primaryQuota = 1;
+                survivalQuota = 1;
+                investmentQuota = 1;
+                return;
+            case 4:
+                primaryQuota = 1;
+                survivalQuota = 1;
+                tempoQuota = 1;
+                investmentQuota = 1;
+                return;
+            case 5:
+                primaryQuota = 1;
+                survivalQuota = 1;
+                tempoQuota = 1;
+                investmentQuota = 1;
+                paretoQuota = 1;
+                return;
+            default:
+                survivalQuota = Math.Max(1, (remaining * 18 + 50) / 100);
+                tempoQuota = Math.Max(1, (remaining * 15 + 50) / 100);
+                investmentQuota = Math.Max(1, (remaining * 18 + 50) / 100);
+                int niche5Total = Math.Max(1, (remaining * 14 + 50) / 100);
+                optionalityQuota = niche5Total >= 2
+                    ? Math.Max(1, isTurnBoundary ? (niche5Total * 35 + 50) / 100 : niche5Total / 2)
+                    : (isTurnBoundary ? 0 : 1);
+                paretoQuota = niche5Total - optionalityQuota;
+                primaryQuota = Math.Max(1, remaining - survivalQuota - tempoQuota - investmentQuota - niche5Total);
+                return;
+        }
+    }
+
+    private interface INodeRankComparer
+    {
+        int Compare(in HotSearchNode a, in HotSearchNode b);
+    }
+
+    private readonly struct SurvivalComparer(bool useRolloutScores) : INodeRankComparer
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare(in HotSearchNode a, in HotSearchNode b)
+            => CompareSurvival(in a, in b, useRolloutScores);
+    }
+
+    private readonly struct TempoComparer(bool useRolloutScores) : INodeRankComparer
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare(in HotSearchNode a, in HotSearchNode b)
+            => CompareTempo(in a, in b, useRolloutScores);
+    }
+
+    private readonly struct BoardInvestmentComparer(bool useRolloutScores) : INodeRankComparer
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare(in HotSearchNode a, in HotSearchNode b)
+            => CompareBoardInvestment(in a, in b, useRolloutScores);
+    }
+
+    private readonly struct OptionalityComparer(bool useRolloutScores) : INodeRankComparer
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare(in HotSearchNode a, in HotSearchNode b)
+            => CompareOptionality(in a, in b, useRolloutScores);
+    }
+
+    private readonly struct PureRolloutComparer(bool useRolloutScores) : INodeRankComparer
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare(in HotSearchNode a, in HotSearchNode b)
+            => ComparePureRollout(in a, in b, useRolloutScores);
+    }
+
+    private readonly struct ChoiceLookaheadComparer(bool useRolloutScores) : INodeRankComparer
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare(in HotSearchNode a, in HotSearchNode b)
+            => CompareChoiceLookahead(in a, in b, useRolloutScores);
+    }
+
+    /// <summary>
+    /// Single-pass O(N) bounded max-heap top-K selection over unmarked candidates:
+    /// selects up to <paramref name="take"/> best unmarked nodes into <paramref name="dst"/> (marking them <c>1</c>)
+    /// AND returns up to <paramref name="paretoExtra"/> next-best unmarked runners-up in <paramref name="paretoOut"/>
+    /// for full-pool Pareto scanning. Zero heap allocations, zero delegate indirection, 100% deterministic.
+    /// </summary>
+    private int SelectTopKUnmarked<TComparer>(
         ReadOnlySpan<int> bucketNodes,
         Span<byte> marks,
         HotNodeArena arena,
         int take,
+        int paretoExtra,
         Span<int> dst,
-        NodeIndexComparison compare)
+        Span<int> paretoOut,
+        out int paretoCount,
+        TComparer comparer)
+        where TComparer : struct, INodeRankComparer
     {
+        paretoCount = 0;
+        int totalK = take + paretoExtra;
+        if (totalK <= 0)
+            return 0;
+
         int count = bucketNodes.Length;
-        int added = 0;
+        Span<int> heap = _scratchIndices.AsSpan(0, totalK);
+        int heapSize = 0;
 
-        for (int round = 0; round < take; round++)
+        for (int i = 0; i < count; i++)
         {
-            int bestIdx = -1;
-            for (int i = 0; i < count; i++)
+            if (marks[i] != 0)
+                continue;
+
+            if (heapSize < totalK)
             {
-                if (marks[i] != 0)
-                    continue;
-                if (bestIdx < 0)
+                int pos = heapSize++;
+                heap[pos] = i;
+                while (pos > 0)
                 {
-                    bestIdx = i;
-                    continue;
+                    int parent = (pos - 1) >> 1;
+                    // Max-heap by "worse": keep WORST of top-K at heap[0].
+                    if (IsBetter(heap[parent], heap[pos], bucketNodes, arena, comparer))
+                    {
+                        (heap[parent], heap[pos]) = (heap[pos], heap[parent]);
+                        pos = parent;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
-
-                ref readonly HotSearchNode cand = ref arena.GetRef(bucketNodes[i]);
-                ref readonly HotSearchNode best = ref arena.GetRef(bucketNodes[bestIdx]);
-                int cmp = compare(in cand, in best);
-                if (cmp < 0 || (cmp == 0 && TieBreakDeterministic(in cand, bucketNodes[i], in best, bucketNodes[bestIdx]) < 0))
-                    bestIdx = i;
             }
-
-            if (bestIdx < 0)
-                break;
-
-            marks[bestIdx] = 1;
-            dst[added++] = bucketNodes[bestIdx];
+            else if (IsBetter(i, heap[0], bucketNodes, arena, comparer))
+            {
+                heap[0] = i;
+                int pos = 0;
+                while (true)
+                {
+                    int left = (pos << 1) + 1;
+                    if (left >= heapSize)
+                        break;
+                    int worst = pos;
+                    if (IsBetter(heap[worst], heap[left], bucketNodes, arena, comparer))
+                        worst = left;
+                    int right = left + 1;
+                    if (right < heapSize && IsBetter(heap[worst], heap[right], bucketNodes, arena, comparer))
+                        worst = right;
+                    if (worst == pos)
+                        break;
+                    (heap[pos], heap[worst]) = (heap[worst], heap[pos]);
+                    pos = worst;
+                }
+            }
         }
 
+        if (heapSize == 0)
+            return 0;
+
+        // Insertion-sort the <= totalK winners best-first (canonical deterministic order).
+        for (int i = 1; i < heapSize; i++)
+        {
+            int key = heap[i];
+            int j = i - 1;
+            while (j >= 0 && IsBetter(key, heap[j], bucketNodes, arena, comparer))
+            {
+                heap[j + 1] = heap[j];
+                j--;
+            }
+            heap[j + 1] = key;
+        }
+
+        int added = Math.Min(take, Math.Min(heapSize, dst.Length));
+        for (int i = 0; i < added; i++)
+        {
+            int idx = heap[i];
+            marks[idx] = 1;
+            dst[i] = bucketNodes[idx];
+        }
+
+        int extraLimit = Math.Min(paretoExtra, Math.Min(heapSize - added, paretoOut.Length));
+        for (int i = 0; i < extraLimit; i++)
+            paretoOut[i] = heap[added + i];
+        paretoCount = extraLimit;
+
         return added;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsBetter<TComparer>(
+        int idxA,
+        int idxB,
+        ReadOnlySpan<int> bucketNodes,
+        HotNodeArena arena,
+        TComparer comparer)
+        where TComparer : struct, INodeRankComparer
+    {
+        int idA = bucketNodes[idxA];
+        int idB = bucketNodes[idxB];
+        ref readonly HotSearchNode a = ref arena.GetRef(idA);
+        ref readonly HotSearchNode b = ref arena.GetRef(idB);
+        int cmp = comparer.Compare(in a, in b);
+        return cmp < 0 || (cmp == 0 && TieBreakDeterministic(in a, idA, in b, idB) < 0);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static long PrimaryScore(in HotSearchNode n, bool useRolloutScores)
+        => useRolloutScores ? n.EffectiveTurnBoundaryScore() : n.Score;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool HasAnyRolloutCandidate(ReadOnlySpan<int> bucketNodes, HotNodeArena arena)
+    {
+        for (int i = 0; i < bucketNodes.Length; i++)
+        {
+            if (arena.GetRef(bucketNodes[i]).HasRolloutScore)
+                return true;
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool HasAnyChoiceLookaheadCandidate(ReadOnlySpan<int> bucketNodes, HotNodeArena arena)
+    {
+        for (int i = 0; i < bucketNodes.Length; i++)
+        {
+            if (arena.GetRef(bucketNodes[i]).HasChoiceLookahead)
+                return true;
+        }
+        return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -446,7 +778,7 @@ internal sealed class HotBeamRetention : IDisposable
         => n.HpLost - n.HpRecovered + (n.PlayerMaxHpDelta < 0 ? n.PlayerMaxHpDelta * 2 : n.PlayerMaxHpDelta);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CompareSurvival(in HotSearchNode a, in HotSearchNode b)
+    private static int CompareSurvival(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
     {
         int cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
         if (cmp != 0) return cmp;
@@ -454,17 +786,19 @@ internal sealed class HotBeamRetention : IDisposable
         int bNetLoss = EffectiveNetHpLoss(in b);
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
-        cmp = b.PlayerHp.CompareTo(a.PlayerHp);
+        int aBuf = a.PlayerHp + a.EffectiveDefense;
+        int bBuf = b.PlayerHp + b.EffectiveDefense;
+        cmp = bBuf.CompareTo(aBuf);
         if (cmp != 0) return cmp;
-        cmp = b.PlayerBlock.CompareTo(a.PlayerBlock);
+        cmp = b.PlayerHp.CompareTo(a.PlayerHp);
         if (cmp != 0) return cmp;
         cmp = a.EnemyHp.CompareTo(b.EnemyHp);
         if (cmp != 0) return cmp;
-        return b.Score.CompareTo(a.Score);
+        return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CompareOffense(in HotSearchNode a, in HotSearchNode b)
+    private static int CompareTempo(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
     {
         int aRem = a.AliveEnemyCount + a.RevivingEnemyCount;
         int bRem = b.AliveEnemyCount + b.RevivingEnemyCount;
@@ -472,91 +806,162 @@ internal sealed class HotBeamRetention : IDisposable
         if (cmp != 0) return cmp;
         cmp = a.EnemyHp.CompareTo(b.EnemyHp);
         if (cmp != 0) return cmp;
-        cmp = a.HpLost.CompareTo(b.HpLost);
+        int aNetLoss = EffectiveNetHpLoss(in a);
+        int bNetLoss = EffectiveNetHpLoss(in b);
+        cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
-        return b.Score.CompareTo(a.Score);
+        return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CompareSetup(in HotSearchNode a, in HotSearchNode b)
+    private static int CompareBoardInvestment(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
     {
-        int cmp = b.SetupScore.CompareTo(a.SetupScore);
+        int cmp = b.BoardInvestment.CompareTo(a.BoardInvestment);
         if (cmp != 0) return cmp;
         int aNetLoss = EffectiveNetHpLoss(in a);
         int bNetLoss = EffectiveNetHpLoss(in b);
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
-        return b.Score.CompareTo(a.Score);
+        cmp = b.SetupScore.CompareTo(a.SetupScore);
+        if (cmp != 0) return cmp;
+        return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CompareMidTurnCombo(in HotSearchNode a, in HotSearchNode b)
+    private static int CompareOptionality(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
     {
-        int aPotential = a.PlayableHandCount * 2 + Math.Min((int)a.Energy, 6) * 3;
-        int bPotential = b.PlayableHandCount * 2 + Math.Min((int)b.Energy, 6) * 3;
-        int cmp = bPotential.CompareTo(aPotential);
+        int cmp = b.OptionalityScore.CompareTo(a.OptionalityScore);
         if (cmp != 0) return cmp;
-        cmp = b.SetupScore.CompareTo(a.SetupScore);
+        cmp = b.BoardInvestment.CompareTo(a.BoardInvestment);
         if (cmp != 0) return cmp;
-        return b.Score.CompareTo(a.Score);
+        int aNetLoss = EffectiveNetHpLoss(in a);
+        int bNetLoss = EffectiveNetHpLoss(in b);
+        cmp = aNetLoss.CompareTo(bNetLoss);
+        if (cmp != 0) return cmp;
+        return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ComparePureRollout(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
+    {
+        bool aHas = a.HasRolloutScore;
+        bool bHas = b.HasRolloutScore;
+        if (aHas != bHas)
+            return bHas.CompareTo(aHas);
+        if (aHas)
+        {
+            int cmp = b.RolloutScore.CompareTo(a.RolloutScore);
+            if (cmp != 0) return cmp;
+        }
+        return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CompareChoiceLookahead(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
+    {
+        bool aHas = a.HasChoiceLookahead;
+        bool bHas = b.HasChoiceLookahead;
+        if (aHas != bHas)
+            return bHas.CompareTo(aHas);
+        if (aHas)
+        {
+            int cmp = b.RolloutScore.CompareTo(a.RolloutScore);
+            if (cmp != 0) return cmp;
+        }
+        return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
     }
 
     /// <summary>
-    /// 6-dimensional Pareto dominance check across:
-    /// (1) Effective net HpLoss asc (including MaxHpGain), (2) EnemyHp asc, (3) Alive+Reviving asc,
-    /// (4) SetupScore desc, (5) PotionStrategicCost asc, (6) Score desc.
+    /// True full-pool Pareto dominance test across all selected niche survivors AND the union of
+    /// top-32 runners-up from every niche:
+    /// (1) EffectiveNetHpLoss asc, (2) EnemyHp asc, (3) Alive+Reviving asc,
+    /// (4) BoardInvestment desc, (5) OptionalityScore desc, (6) PotionStrategicCost asc, (7) PrimaryScore desc.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsDominatedInSixDimPareto(
+    private static bool IsDominatedInFullPoolPareto(
         in HotSearchNode candidate,
-        ReadOnlySpan<int> pool,
-        int scanLen,
-        int candidateIdx,
-        HotNodeArena arena)
+        ReadOnlySpan<int> bucketNodes,
+        ReadOnlySpan<int> selectedNodeIds,
+        ReadOnlySpan<int> paretoPoolIndices,
+        int candidatePoolPos,
+        HotNodeArena arena,
+        bool useRolloutScores)
     {
         int candNetLoss = EffectiveNetHpLoss(in candidate);
         int candRem = candidate.AliveEnemyCount + candidate.RevivingEnemyCount;
+        long candPrimary = PrimaryScore(in candidate, useRolloutScores);
 
-        for (int j = 0; j < scanLen; j++)
+        for (int s = 0; s < selectedNodeIds.Length; s++)
         {
-            if (j == candidateIdx)
-                continue;
-            ref readonly HotSearchNode other = ref arena.GetRef(pool[j]);
-            int otherNetLoss = EffectiveNetHpLoss(in other);
-            int otherRem = other.AliveEnemyCount + other.RevivingEnemyCount;
-            if (otherNetLoss <= candNetLoss
-                && other.EnemyHp <= candidate.EnemyHp
-                && otherRem <= candRem
-                && other.SetupScore >= candidate.SetupScore
-                && other.PotionStrategicCost <= candidate.PotionStrategicCost
-                && other.Score >= candidate.Score
-                && (otherNetLoss < candNetLoss
-                    || other.EnemyHp < candidate.EnemyHp
-                    || otherRem < candRem
-                    || other.SetupScore > candidate.SetupScore
-                    || other.PotionStrategicCost < candidate.PotionStrategicCost
-                    || other.Score > candidate.Score))
-            {
+            ref readonly HotSearchNode other = ref arena.GetRef(selectedNodeIds[s]);
+            if (DominatesCandidate(in other, in candidate, candNetLoss, candRem, candPrimary, useRolloutScores))
                 return true;
-            }
         }
+
+        for (int j = 0; j < paretoPoolIndices.Length; j++)
+        {
+            if (j == candidatePoolPos)
+                continue;
+            ref readonly HotSearchNode other = ref arena.GetRef(bucketNodes[paretoPoolIndices[j]]);
+            if (DominatesCandidate(in other, in candidate, candNetLoss, candRem, candPrimary, useRolloutScores))
+                return true;
+        }
+
         return false;
     }
 
-    private static void SortByScoreDeterministic(Span<int> nodeIds, HotNodeArena arena)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool DominatesCandidate(
+        in HotSearchNode other,
+        in HotSearchNode candidate,
+        int candNetLoss,
+        int candRem,
+        long candPrimary,
+        bool useRolloutScores)
+    {
+        int otherNetLoss = EffectiveNetHpLoss(in other);
+        if (otherNetLoss > candNetLoss || other.EnemyHp > candidate.EnemyHp)
+            return false;
+        int otherRem = other.AliveEnemyCount + other.RevivingEnemyCount;
+        if (otherRem > candRem
+            || other.BoardInvestment < candidate.BoardInvestment
+            || other.OptionalityScore < candidate.OptionalityScore
+            || other.PotionStrategicCost > candidate.PotionStrategicCost)
+        {
+            return false;
+        }
+
+        long otherPrimary = PrimaryScore(in other, useRolloutScores);
+        if (otherPrimary < candPrimary)
+            return false;
+
+        return otherNetLoss < candNetLoss
+            || other.EnemyHp < candidate.EnemyHp
+            || otherRem < candRem
+            || other.BoardInvestment > candidate.BoardInvestment
+            || other.OptionalityScore > candidate.OptionalityScore
+            || other.PotionStrategicCost < candidate.PotionStrategicCost
+            || otherPrimary > candPrimary;
+    }
+
+    private readonly struct PrimaryScoreNodeComparer(HotNodeArena arena, bool useRolloutScores) : IComparer<int>
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare(int aId, int bId)
+        {
+            ref readonly HotSearchNode a = ref arena.GetRef(aId);
+            ref readonly HotSearchNode b = ref arena.GetRef(bId);
+            int cmp = PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
+            return cmp != 0 ? cmp : TieBreakDeterministic(in a, aId, in b, bId);
+        }
+    }
+
+    private static void SortByPrimaryScoreDeterministic(Span<int> nodeIds, HotNodeArena arena, bool useRolloutScores)
     {
         if (nodeIds.Length <= 1)
             return;
 
-        nodeIds.Sort((aId, bId) =>
-        {
-            ref readonly HotSearchNode a = ref arena.GetRef(aId);
-            ref readonly HotSearchNode b = ref arena.GetRef(bId);
-            int cmp = b.Score.CompareTo(a.Score);
-            if (cmp != 0)
-                return cmp;
-            return TieBreakDeterministic(in a, aId, in b, bId);
-        });
+        nodeIds.Sort(new PrimaryScoreNodeComparer(arena, useRolloutScores));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -566,6 +971,11 @@ internal sealed class HotBeamRetention : IDisposable
         if (cmp != 0) return cmp;
         cmp = a.EnemyHp.CompareTo(b.EnemyHp);
         if (cmp != 0) return cmp;
+        if (a.HasChoiceLookahead && b.HasChoiceLookahead)
+        {
+            cmp = b.RolloutScore.CompareTo(a.RolloutScore);
+            if (cmp != 0) return cmp;
+        }
         cmp = a.Hash.Lo.CompareTo(b.Hash.Lo);
         if (cmp != 0) return cmp;
         cmp = a.Hash.Hi.CompareTo(b.Hash.Hi);

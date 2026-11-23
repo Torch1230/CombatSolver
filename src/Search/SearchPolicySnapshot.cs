@@ -37,6 +37,26 @@ internal sealed record SearchPolicySnapshot(
     public int TranspositionEntryLimit { get; init; } = DefaultTranspositionEntryLimit;
 
     internal const int DefaultTranspositionEntryLimit = 1_000_000;
+    internal const double DefaultMaxHardFightThinkSeconds = 4.0d;
+    internal const double MinMaxHardFightThinkSeconds = 1.0d;
+    internal const double MaxMaxHardFightThinkSeconds = 15.0d;
+
+    /// <summary>
+    /// Enables 3-stage outcome-driven Anytime Adaptive Escalation (Stage 1 W=96 -> Stage 2 W=220 -> Stage 3 W=400).
+    /// </summary>
+    public bool AdaptiveEscalationEnabled { get; init; } = true;
+
+    /// <summary>
+    /// Live gameplay real-time wall-clock ceiling in seconds for hard-fight deepening (Stage 2/3),
+    /// default 4.0s (range 1..15s). Ignored for escalation gating when <see cref="FixedBudget"/> is true.
+    /// </summary>
+    public double MaxHardFightThinkSeconds { get; init; } = DefaultMaxHardFightThinkSeconds;
+
+    /// <summary>
+    /// Enables Stage 8C turn-boundary 2-pilot deterministic fast rollouts and exact victory promotion.
+    /// Default <c>true</c>; can be toggled off via <c>--no-rollout</c> in offline A/B harnesses.
+    /// </summary>
+    public bool EnableTurnBoundaryRollouts { get; init; } = true;
 
     public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
 

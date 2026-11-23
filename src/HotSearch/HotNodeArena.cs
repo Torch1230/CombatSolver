@@ -6,7 +6,7 @@ using CombatSolver.HotKernel;
 namespace CombatSolver.HotSearch;
 
 [Flags]
-internal enum HotNodeFlags : byte
+internal enum HotNodeFlags : ushort
 {
     None = 0,
     IsRoot = 1 << 0,
@@ -17,6 +17,9 @@ internal enum HotNodeFlags : byte
     ForfeitsGold = 1 << 5,
     HasRisk = 1 << 6,
     StandPat = 1 << 7,
+    HasRolloutScore = 1 << 8,
+    RolloutPromoted = 1 << 9,
+    HasChoiceLookahead = 1 << 10,
 }
 
 /// <summary>
@@ -28,6 +31,7 @@ internal struct HotSearchNode
 {
     public HotHash128 Hash;             // 16 B
     public long Score;                  // 8 B
+    public long RolloutScore;           // 8 B (valid iff HasRolloutScore is set; reserved for P1 rollouts)
     public HotColdSidecar? Cold;        // 8 B (null >99% of vanilla states)
     public HotStateHandle StateHandle;  // 12 B
     public int ParentId;                // 4 B (-1 for root)
@@ -36,9 +40,14 @@ internal struct HotSearchNode
     public int HpRecovered;             // 4 B (cumulative HP recovered from root)
     public int PlayerHp;                // 4 B
     public int EnemyHp;                 // 4 B
-    public int SetupScore;              // 4 B (for scaling/setup diversity lane)
+    public int SetupScore;              // 4 B (legacy heuristic setup score)
+    public int BoardInvestment;         // 4 B (Niche 4: unclamped domain-agnostic persistent board investment)
+    public int MaxDarkEvoke;            // 4 B (unclamped max Dark orb evoke charge for progress tracking)
+    public int TotalPoisonAndDoom;      // 4 B (unclamped sum of enemy Poison + Doom for progress tracking)
     public short PlayerMaxHpDelta;      // 2 B (SIGNED: initialMaxHp - currentMaxHp; negative = MaxHp gain e.g. FruitJuice)
     public short PlayerBlock;           // 2 B (clamped to short.MaxValue)
+    public short EffectiveDefense;      // 2 B (Niche 2: PlayerBlock + Plating/Metallicize + Frost + Wuppy + Osty)
+    public short OptionalityScore;      // 2 B (Niche 5: Energy + Stars + PlayableHandCount + DrawNextTurn)
     public short OutstandingStolen;     // 2 B (stolen gold + stolen cards, clamped)
     public short GrowthHpCredit;        // 2 B
     public short PotionStrategicCost;   // 2 B (exact sum of paid optional root potion HP costs; 0 for Forced/Token/Generated)
@@ -46,6 +55,7 @@ internal struct HotSearchNode
     public ushort PotionMask;           // 2 B (root potion slots consumed; NEVER set for combat-generated potions)
     public ushort ActionCount;          // 2 B
     public ushort GrowthRewardCount;    // 2 B
+    public HotNodeFlags Flags;          // 2 B
     public HotAction Action;            // 3 B (Kind, SlotOrHandIdx, TargetEnemySlot)
     public byte ChoiceCount;            // 1 B (0..HotLimits.MaxChoicesPerAction)
     public byte PotionCount;            // 1 B (total potions used incl. automatic)
@@ -62,11 +72,27 @@ internal struct HotSearchNode
     public byte PlayableHandCount;      // 1 B (playable cards in hand for mid-turn combo diversity)
     public byte DeathSaveUseCount;      // 1 B
     public HotCombatOutcome Outcome;    // 1 B
-    public HotNodeFlags Flags;          // 1 B
 
     public readonly bool IsVictory => Outcome == HotCombatOutcome.Victory && PlayerHp > 0;
     public readonly bool IsDefeat => Outcome == HotCombatOutcome.Defeat || PlayerHp <= 0;
+    public readonly bool IsEventDefeat => Outcome == HotCombatOutcome.EventDefeat && PlayerHp > 0;
     public readonly bool IsTerminal => (Flags & HotNodeFlags.IsTerminal) != 0 || Outcome != HotCombatOutcome.Ongoing;
+    public readonly bool HasRolloutScore => (Flags & HotNodeFlags.HasRolloutScore) != 0;
+    public readonly bool HasChoiceLookahead => (Flags & HotNodeFlags.HasChoiceLookahead) != 0;
+
+    /// <summary>
+    /// Overflow-safe exact integer evaluation of <c>0.35 * Score + 0.65 * RolloutScore</c>
+    /// when <see cref="HasRolloutScore"/> is set; otherwise returns <see cref="Score"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly long EffectiveTurnBoundaryScore()
+    {
+        if (!HasRolloutScore)
+            return Score;
+        long q = (Score / 100L) * 35L + (RolloutScore / 100L) * 65L;
+        long r = (Score % 100L) * 35L + (RolloutScore % 100L) * 65L;
+        return q + (r / 100L);
+    }
 }
 
 /// <summary>

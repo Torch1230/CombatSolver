@@ -313,15 +313,36 @@ internal sealed partial class SolverSettingsPanel
         return row;
     }
 
-    private static void AddGridHeader(GridContainer grid, string text)
+    private static void StyleSpinBox(SpinBox input)
     {
-        Label label = SolverUiTokens.CreateLabel(
-            text,
-            SolverUiTokens.Type.Caption,
-            SolverUiTokens.Palette.TextMuted,
-            FontType.Bold);
-        label.HorizontalAlignment = HorizontalAlignment.Center;
-        grid.AddChild(label);
+        LineEdit lineEdit = input.GetLineEdit();
+        lineEdit.AddThemeFontSizeOverride("font_size", SolverUiTokens.Type.Body);
+        lineEdit.AddThemeColorOverride("font_color", SolverUiTokens.Palette.TextPrimary);
+        lineEdit.AddThemeColorOverride("caret_color", SolverUiTokens.Palette.Accent);
+        lineEdit.AddThemeStyleboxOverride("normal", SolverUiTokens.CreateBox(
+            SolverUiTokens.IsLightTheme
+                ? SolverUiTokens.Palette.Surface
+                : SolverUiTokens.Palette.Background,
+            SolverUiTokens.IsLightTheme
+                ? SolverUiTokens.Palette.Border
+                : SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Small,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Xs));
+        lineEdit.AddThemeStyleboxOverride("hover", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.Border,
+            SolverUiTokens.Radius.Small,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Xs));
+        lineEdit.AddThemeStyleboxOverride("focus", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.Accent,
+            SolverUiTokens.Radius.Small,
+            SolverUiTokens.Spacing.Sm,
+            SolverUiTokens.Spacing.Xs));
+        SolverUiTokens.ApplyTextOutline(lineEdit);
+        lineEdit.ApplyLocaleFontSubstitution(FontType.Regular, "font");
     }
 
     private bool SaveSetting(LineEdit input, SolverSettingsData data, string message)

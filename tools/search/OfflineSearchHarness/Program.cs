@@ -30,6 +30,16 @@ internal static class Program
             return CombatDiffFuzzer.RunReplay(rawArgs[1]);
         if (rawArgs.Length >= 1 && rawArgs[0] == "--soak-deploy")
             return DeploymentSoakRunner.Run(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--bench-corpora")
+            return QualityBenchRunner.RunCorpora(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--bench-choices")
+            return ChoiceBenchRunner.Run(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--replay-bundle")
+            return PlayerBeatReplayRunner.RunReplayBundle(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--bench-player-corpus")
+            return PlayerBeatReplayRunner.RunPlayerCorpus(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--compare-outcomes")
+            return OutcomeComparator.Run(rawArgs.Skip(1).ToArray());
         if (rawArgs.Length == 3 && rawArgs[0] == "--compare-quality-batch")
             return QualityComparison.Run(rawArgs[1], rawArgs[2]);
 
@@ -362,7 +372,13 @@ internal sealed record HarnessOptions
           --audit-hot-coverage   Layer 1：枚举 0.113.1 全部单人实体与 HotKernel 覆盖及反射字段审计
           --fuzz-combat [...]    Layer 2：覆盖引导单人差分模糊（--fights N --seed S --phase all|sweep|synergy --max-turns T --dump-dir PATH）
           --replay-fuzz <json>   Layer 2：确定性回放单条差分/崩溃最小复现包
-          --soak-deploy [...]    Layer 3：整场求解→部署反重算压测（--fights N --seed S --profile Medium|High --dop 8 --out PATH）
+          --soak-deploy [...]    Layer 3：整场求解→部署反重算压测（--fights N --seed S --profile Medium|High --dop 8 --out PATH --dump-outcomes PATH）
+          --bench-corpora [...]  既有真实根批量评测（--tier all|dev|holdout --profile Medium --dop 8 --potion-policy Smart|Disabled --dump-outcomes PATH）
+          --bench-choices [...]  Stage 8D 高分支选牌与回合准备基准（--profile Medium --dop 8 --dump-outcomes PATH）
+          --replay-bundle <path> 纯 .NET 单包回放/锁步差分/部署审计（--lockstep-actions --deploy --dump-diff PATH --no-rollout）
+          --bench-player-corpus <manifest.json>  玩家击败求解器真实语料批量评测与记分板（--split all|dev|holdout --profile Medium --dop 8 --no-rollout --dump-outcomes PATH）
+          --compare-outcomes <base.json> <cand.json> [--out PATH] [--check-exact] [--gate]  成对 A/B 经济价值 V 与胜率/战损/延迟/可靠性对比
+          --no-rollout           关闭 Stage 8C 回合边界 Rollout（单构建 A/B 开关）
           --stop-at-zero-loss    启用零战损达标停止政策
           --production-budget    使用生产预算流程
           --transposition-entry-limit <int>  转置支配表条目上限（0=不设上限）
@@ -393,6 +409,7 @@ internal sealed record HarnessOptions
     public bool ProductionBudget { get; init; }
     public bool StopAtZeroLoss { get; init; }
     public bool VerifyIncremental { get; init; }
+    public bool DisableTurnBoundaryRollouts { get; init; }
     public string Milestone { get; init; } = "M2";
     public string WorkspaceDirectory { get; init; } = string.Empty;
     public string OutputDirectory { get; init; } = string.Empty;
@@ -406,7 +423,7 @@ internal sealed record HarnessOptions
         string character = "IRONCLAD", encounter = "FUZZY_WURM_CRAWLER_WEAK", seed = "OFFLINEHARNESS1";
         int ascension = 0, actIndex = 0, dop = 1, budget = 600_000, transpositionPruneOff = 0;
         int? transpositionEntryLimit = null;
-        bool measurePhases = false, productionBudget = false, stopAtZeroLoss = false, verifyIncremental = false;
+        bool measurePhases = false, productionBudget = false, stopAtZeroLoss = false, verifyIncremental = false, disableRollout = false;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
         string potionPolicy = "Smart", milestone = "M2", language = "eng";
         string profile = "Custom", searchMode = "Evaluate", label = "offline";
@@ -458,6 +475,7 @@ internal sealed record HarnessOptions
                 case "--stop-at-zero-loss": stopAtZeroLoss = true; break;
                 case "--verify-incremental": verifyIncremental = true; break;
                 case "--production-budget": productionBudget = true; break;
+                case "--no-rollout": disableRollout = true; break;
                 case "--disable-transposition-prune": transpositionPruneOff = int.Parse(Value()); break;
                 case "--transposition-entry-limit": transpositionEntryLimit = int.Parse(Value()); break;
                 case "--milestone": milestone = Value(); break;
@@ -505,6 +523,7 @@ internal sealed record HarnessOptions
             ProductionBudget = productionBudget,
             StopAtZeroLoss = stopAtZeroLoss,
             VerifyIncremental = verifyIncremental,
+            DisableTurnBoundaryRollouts = disableRollout,
             Milestone = milestone,
             WorkspaceDirectory = Path.GetFullPath(workspace),
             OutputDirectory = Path.GetFullPath(output ?? Path.Combine(workspace, "offline")),

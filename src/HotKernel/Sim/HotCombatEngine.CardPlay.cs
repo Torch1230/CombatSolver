@@ -757,7 +757,18 @@ internal static partial class HotCombatEngine
         HotExecScratch scratch,
         int drawCount,
         bool fromHandDraw)
+        => DrawCards(ref s, ref cold, rules, scratch, drawCount, fromHandDraw, out _);
+
+    internal static int DrawCards(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        int drawCount,
+        bool fromHandDraw,
+        out ushort lastDrawnCardDefId)
     {
+        lastDrawnCardDefId = 0;
         if (IsOverOrEnding(in s) || drawCount <= 0 || scratch.NeedsChoice)
             return 0;
 
@@ -808,6 +819,7 @@ internal static partial class HotCombatEngine
 
                 int drawnIdx = s.HandCount - 1;
                 ushort drawnDefId = s.Cards[drawnIdx].CardDefId;
+                lastDrawnCardDefId = drawnDefId;
                 HotCardDef drawnDef = rules.Cards[drawnDefId];
 
                 s.HistoryCardsDrawn++;

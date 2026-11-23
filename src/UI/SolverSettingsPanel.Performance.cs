@@ -5,55 +5,68 @@ namespace CombatSolver;
 
 internal sealed partial class SolverSettingsPanel
 {
-    private OptionButton _performancePreset = null!;
-    private Control _advancedParameters = null!;
-    private Button _advancedParametersToggle = null!;
-    private bool _advancedParametersExpanded;
+    private SpinBox _maxHardFightThinkSeconds = null!;
+    private OptionButton _searchParallelism = null!;
 
     internal bool ExercisePerformancePresetPersistenceForTesting()
     {
         SolverSettingsData original = SolverSettings.Current;
         try
         {
-            SolverSettingsData migrated = SolverSettings.ApplyCurrentPerformanceMigrationForTesting(
-                original with
+            const string legacyJson =
+                """
                 {
-                    PerformanceMigrationVersion = 0,
-                    PerformancePreset = SolverPerformancePreset.VeryHigh,
-                });
+                  "performanceMigrationVersion": 246,
+                  "performancePreset": "VeryHigh",
+                  "searchStrengthPreset": "VeryHigh",
+                  "beamWidth": 320,
+                  "maxExpandedNodes": 800000,
+                  "softTimeBudgetSeconds": 300,
+                  "showMemoryMonitor": true,
+                  "showBattleDamagePerformanceHint": true,
+                  "searchTimeLimitSeconds": 300,
+                  "searchBeamWidth": 135,
+                  "searchMaxExpandedNodes": 500000,
+                  "acceptableBattleHpLoss": 11,
+                  "overlayTheme": "Light"
+                }
+                """;
+            SolverSettingsData legacyLoaded = SolverSettings.DeserializeForTesting(legacyJson);
+            SolverSettingsData migrated = SolverSettings.ApplyCurrentPerformanceMigrationForTesting(legacyLoaded);
+            SolverSettings.ApplyForTesting(migrated);
             bool migrationApplied = migrated.PerformanceMigrationVersion
                     == SolverSettings.CurrentPerformanceMigrationVersion
-                && SolverSettings.ResolvePerformancePreset(migrated) == SolverPerformancePreset.Medium;
-            SolverSettingsData customMigrated = SolverSettings.ApplyCurrentPerformanceMigrationForTesting(
-                original with
-                {
-                    PerformanceMigrationVersion = SolverSettings.CurrentPerformanceMigrationVersion - 1,
-                    PerformancePreset = SolverPerformancePreset.Custom,
-                    SearchMaxExpandedNodes = 1_000_001,
-                });
-            SolverSettings.ApplyForTesting(customMigrated);
-            bool customMigrationApplied = customMigrated.PerformanceMigrationVersion
-                    == SolverSettings.CurrentPerformanceMigrationVersion
-                && SolverSettings.ResolvePerformancePreset(customMigrated) == SolverPerformancePreset.Custom
-                && SolverSettings.ResolvePerformanceValues(customMigrated).Profile.MaxExpandedNodes == 1_000_001;
-            string legacyJson =
-                "{\"performanceMigrationVersion\":" +
-                SolverSettings.CurrentPerformanceMigrationVersion + "}";
-            SolverSettingsData legacy = SolverSettings.DeserializeForTesting(legacyJson);
-            bool legacyDefaultApplied = legacy.ShowSpeedXWarning;
-            SolverSettingsData preset = SolverSettings.ApplyPerformancePreset(
+                && migrated.MaxHardFightThinkSeconds == SolverSettings.DefaultMaxHardFightThinkSeconds
+                && migrated.PerformancePreset == null
+                && migrated.SearchBeamWidth == null
+                && migrated.SearchMaxExpandedNodes == null
+                && migrated.SearchTimeLimitSeconds == null
+                && !migrated.ShowBattleDamagePerformanceHint
+                && migrated.AcceptableBattleHpLoss == 11
+                && migrated.OverlayTheme == SolverOverlayTheme.Light
+                && migrated.ShowSpeedXWarning;
+
+            SolverSettingsData customThink = migrated with
+            {
+                MaxHardFightThinkSeconds = 9,
+                SearchMaxDegreeOfParallelism = null,
+            };
+            SolverSettingsData roundTripped = SolverSettings.RoundTripForTesting(customThink);
+            SolverSettings.ApplyForTesting(customThink);
+            Reload();
+            bool controlsSynced = (int)Math.Round(_maxHardFightThinkSeconds.Value) == 9
+                && _searchParallelism.GetItemId(_searchParallelism.Selected) == 0
+                && roundTripped.MaxHardFightThinkSeconds == 9
+                && roundTripped.SearchMaxDegreeOfParallelism == null
+                && CommitPending()
+                && SolverSettings.Current.MaxHardFightThinkSeconds == 9
+                && SolverSettings.Capture().MaxHardFightThinkSeconds == 9;
+
+            SolverSettingsData harnessCompat = SolverSettings.ApplyPerformancePreset(
                 original,
                 SolverPerformancePreset.High);
-            SolverSettingsData roundTripped = SolverSettings.RoundTripForTesting(preset);
-            SolverSettings.ApplyForTesting(preset);
-            Reload();
-            return migrationApplied
-                   && customMigrationApplied
-                   && legacyDefaultApplied
-                   && SolverSettings.ResolvePerformancePreset(roundTripped) == SolverPerformancePreset.High
-                   && CommitPending()
-                   && SolverSettings.ResolvePerformancePreset(SolverSettings.Current)
-                   == SolverPerformancePreset.High;
+            bool harnessOk = SolverSettings.ResolvePerformanceValues(harnessCompat).Profile.BeamWidth > 0;
+            return migrationApplied && controlsSynced && harnessOk;
         }
         finally
         {
@@ -65,267 +78,108 @@ internal sealed partial class SolverSettingsPanel
     private Control CreatePerformancePage()
     {
         VBoxContainer content = CreatePageContent("PerformanceSettingsPage");
-        GridContainer budgetGrid = CreateSettingsGrid();
-        _performancePreset = CreatePerformancePresetInput();
-        AddBasicRow(budgetGrid, SolverText.Get("性能预设"), _performancePreset);
+        GridContainer performanceGrid = CreateSettingsGrid();
+        _maxHardFightThinkSeconds = CreateMaxHardFightThinkSecondsInput();
         AddBasicRow(
-            budgetGrid,
-            SolverText.Get("搜索并行度"),
-            CreateSearchParallelismInput(),
-            SolverText.Get("关闭时使用单线程搜索；2–16 是并行上限，实际并发还会受可独立分支数限制，因此 CPU 不一定满载。提高可能加快大型搜索，也会增加 CPU、峰值内存和帧率压力；超过物理核心数通常只有小幅收益。默认按可用逻辑处理器选择：16 个及以上用 8 线程，4–15 个用 4 线程，2–3 个用 2 线程，其余用单线程；遇到疑似并行问题时请先上传问题包，再切换为关闭。"));
-        AddSettingsSection(content, SolverText.Get("搜索预算"),
-            SolverText.Get("选择性能预设与并行度；详细参数可在下方展开。"), budgetGrid);
-        GridContainer stopGrid = CreateSettingsGrid();
-        _acceptableBattleHpLoss = CreateAcceptableBattleHpLossInput();
-        CheckButton stopAtHpTarget = CreateToggle();
-        _reloadInputs.Add(data => stopAtHpTarget.ButtonPressed = data.StopAtAcceptableBattleHpLoss);
-        stopAtHpTarget.Toggled += enabled =>
-        {
-            if (_loading) return;
-            SolverSettings.Update(SolverSettings.Current with { StopAtAcceptableBattleHpLoss = enabled });
-            SetStatus(SolverText.Get("已保存，下次搜索生效"), SolverUiTokens.Palette.Success);
-        };
-        AddBasicRow(stopGrid, SolverText.Get("达到战损目标后停止搜索"), stopAtHpTarget,
-            SolverText.Get("默认开启。完整胜利达到战损阈值且没有多用药水时停止；0 表示零损。成长收益尚未满足时继续搜索，击杀成长牌兑现收益后可停止。下次搜索生效。"));
-        AddBasicRow(stopGrid, SolverText.Get("提前结束搜索的战损阈值（HP）"), _acceptableBattleHpLoss,
-            SolverText.Get("默认 0，即零损。启用上方开关后，找到预计整场扣血不超过此值的完整胜利路线就停止搜索；仅保存成长额度而本场没有对应卡牌时仍可早停。"));
-        AddSettingsSection(content, SolverText.Get("搜索停止条件"),
-            SolverText.Get("战损阈值按整场累计扣血计算，下次搜索生效。"), stopGrid);
-
-        _advancedParametersToggle = SolverUiTokens.CreateButton(
-            SolverText.Get("展开自定义参数"),
-            SolverButtonStyle.Secondary);
-        _advancedParametersToggle.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _advancedParametersToggle.Pressed += ToggleAdvancedParameters;
-        content.AddChild(_advancedParametersToggle);
-
-        VBoxContainer advanced = CreatePageContent("AdvancedSearchParameters");
-        advanced.AddChild(CreateSectionHeading(SolverText.Get("自定义搜索参数")));
-        GridContainer searchGrid = new()
-        {
-            Columns = 2,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Pass,
-        };
-        searchGrid.AddThemeConstantOverride("h_separation", SolverUiTokens.Spacing.Md);
-        searchGrid.AddThemeConstantOverride("v_separation", SolverUiTokens.Spacing.Sm);
-        AddGridHeader(searchGrid, SolverText.Get("配置项"));
-        AddGridHeader(searchGrid, SolverText.Get("搜索预算"));
-        AddDoubleRow(
-            searchGrid,
-            SolverText.Get("时间上限（秒）"),
-            data => SolverSettings.ResolvePerformanceValues(data).Profile.SoftTimeBudgetMilliseconds / 1000d,
-            (data, value) => AsCustomPerformance(data with { SearchTimeLimitSeconds = value }),
-            0.1d,
-            600d,
-            SolverText.Get("搜索使用一套时间预算，期间持续更新当前最好路线；达到停止条件时提前结束。"));
-        AddIntRow(
-            searchGrid,
-            SolverText.Get("Beam 宽度"),
-            data => SolverSettings.ResolvePerformanceValues(data).Profile.BeamWidth,
-            (data, value) => AsCustomPerformance(data with { SearchBeamWidth = value }),
-            1,
-            512,
-            SolverText.Get("每层保留的候选路线数量。提高后更不容易过早淘汰好路线，但会明显增加计算量和内存占用。"));
-        AddIntRow(
-            searchGrid,
-            SolverText.Get("节点上限"),
-            data => SolverSettings.ResolvePerformanceValues(data).Profile.MaxExpandedNodes,
-            (data, value) => AsCustomPerformance(data with { SearchMaxExpandedNodes = value }),
-            100,
-            null,
-            SolverText.Get("单次搜索最多展开的状态数量。自定义数值不设额外上限；提高后搜索范围更大，也会增加耗时和内存占用。"));
-        AddIntRow(
-            searchGrid,
-            SolverText.Get("单节点出牌分支"),
-            data => SolverSettings.ResolvePerformanceValues(data).Profile.MaxCardBranchesPerNode,
-            (data, value) => AsCustomPerformance(data with { SearchMaxCardBranchesPerNode = value }),
-            1,
-            100,
-            SolverText.Get("每个状态最多继续尝试的出牌动作数量。提高后能覆盖更多出牌顺序，但会放大后续搜索量。"));
-        advanced.AddChild(searchGrid);
-        Label hint = SolverUiTokens.CreateLabel(
-            SolverText.Get("修改任一数值后，性能预设会切换为自定义。"),
-            SolverUiTokens.Type.Caption,
-            SolverUiTokens.Palette.TextMuted);
-        advanced.AddChild(hint);
-        _advancedParameters = advanced;
-        content.AddChild(_advancedParameters);
+            performanceGrid,
+            SolverText.Get("硬仗最大思考时长（秒）"),
+            _maxHardFightThinkSeconds,
+            SolverText.Get("默认 4 秒（范围 1–15 秒）。普通战斗仍会瞬间完成；遇到复杂硬仗时自动逐级深化，最长不超过此设定。下次搜索生效。"));
+        _searchParallelism = CreateSearchParallelismInput();
+        AddBasicRow(
+            performanceGrid,
+            SolverText.Get("最大并发线程数"),
+            _searchParallelism,
+            SolverText.Get("默认选择自动，按可用逻辑处理器决定并发上限（16 核及以上 8 线程、4–15 核 4 线程、2–3 核 2 线程，其余单线程）。关闭时使用单线程；2–16 为并行上限。遇到疑似并行问题时请先上传问题包，再切换为关闭。"));
+        AddSettingsSection(
+            content,
+            SolverText.Get("搜索性能"),
+            SolverText.Get("普通战斗仍会瞬间完成；遇到复杂或高战损硬仗时，求解器会自动深化搜索，最长不超过设定思考时长。"),
+            performanceGrid);
         return CreatePageScroll(content);
     }
 
     private void ReloadPerformancePage(SolverSettingsData data)
     {
-        SolverPerformancePreset preset = SolverSettings.ResolvePerformancePreset(data);
-        _performancePreset.Selected = _performancePreset.GetItemIndex((int)preset);
-        SetAdvancedParametersExpanded(preset == SolverPerformancePreset.Custom);
+        _maxHardFightThinkSeconds.SetValueNoSignal(data.MaxHardFightThinkSeconds);
+        int parallelismId = data.SearchMaxDegreeOfParallelism ?? 0;
+        _searchParallelism.Selected = _searchParallelism.GetItemIndex(parallelismId);
     }
 
-    private OptionButton CreatePerformancePresetInput()
+    private SpinBox CreateMaxHardFightThinkSecondsInput()
     {
-        OptionButton input = CreateOptionInput(260);
-        input.AddItem(SolverText.Get("低档（60 秒）"), (int)SolverPerformancePreset.Low);
-        input.AddItem(SolverText.Get("中档（默认，120 秒）"), (int)SolverPerformancePreset.Medium);
-        input.AddItem(SolverText.Get("高档（180 秒）"), (int)SolverPerformancePreset.High);
-        input.AddItem(SolverText.Get("极高（300 秒）"), (int)SolverPerformancePreset.VeryHigh);
-        input.AddItem(SolverText.Get("自定义"), (int)SolverPerformancePreset.Custom);
-        input.ItemSelected += index =>
+        SpinBox input = new()
+        {
+            Name = "MaxHardFightThinkSecondsInput",
+            MinValue = SolverSettings.MinimumMaxHardFightThinkSeconds,
+            MaxValue = SolverSettings.MaximumMaxHardFightThinkSeconds,
+            Step = 1d,
+            Rounded = true,
+            CustomMinimumSize = new Vector2(140, 34),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            Suffix = " s",
+            UpdateOnTextChanged = false,
+        };
+        StyleSpinBox(input);
+        LineEdit lineEdit = input.GetLineEdit();
+        lineEdit.FocusExited += input.Apply;
+        lineEdit.TextSubmitted += _ => input.Apply();
+        input.ValueChanged += value =>
         {
             if (_loading)
                 return;
-            SolverPerformancePreset preset = (SolverPerformancePreset)input.GetItemId((int)index);
-            SolverSettings.Update(SolverSettings.ApplyPerformancePreset(SolverSettings.Current, preset));
-            Reload();
-            SetStatus(SolverText.Get("性能预设已保存，下次搜索生效"), SolverUiTokens.Palette.Success);
+            int seconds = Math.Clamp(
+                (int)Math.Round(value),
+                SolverSettings.MinimumMaxHardFightThinkSeconds,
+                SolverSettings.MaximumMaxHardFightThinkSeconds);
+            if (SolverSettings.Current.MaxHardFightThinkSeconds == seconds)
+                return;
+            SolverSettings.Update(SolverSettings.Current with
+            {
+                MaxHardFightThinkSeconds = seconds,
+            });
+            SetStatus(
+                SolverText.Format($"硬仗最大思考时长已设为 {seconds} 秒，下次搜索生效"),
+                SolverUiTokens.Palette.Success);
         };
+        _commitInputs.Add(() =>
+        {
+            input.Apply();
+            return true;
+        });
         return input;
     }
 
     private OptionButton CreateSearchParallelismInput()
     {
-        OptionButton input = CreateOptionInput();
+        OptionButton input = CreateOptionInput(220);
+        int defaultDop = SolverWeights.DefaultSearchMaxDegreeOfParallelism;
+        string autoLabel = defaultDop == 1
+            ? SolverText.Get("自动（单线程）")
+            : SolverText.Format($"自动（{defaultDop} 线程）");
+        input.AddItem(autoLabel, 0);
         input.AddItem(SolverText.Get("关闭（单线程）"), 1);
         for (int degree = 2; degree <= SolverWeights.MaximumSearchMaxDegreeOfParallelism; degree++)
             input.AddItem(degree.ToString(CultureInfo.InvariantCulture), degree);
-        _reloadInputs.Add(data =>
-        {
-            int degree = data.SearchMaxDegreeOfParallelism
-                ?? SolverWeights.DefaultSearchMaxDegreeOfParallelism;
-            input.Selected = input.GetItemIndex(degree);
-        });
         input.ItemSelected += index =>
         {
             if (_loading)
                 return;
-            int degree = input.GetItemId((int)index);
+            int selected = input.GetItemId((int)index);
+            int? configured = selected == 0 ? null : selected;
             SolverSettings.Update(SolverSettings.Current with
             {
-                SearchMaxDegreeOfParallelism = degree,
+                SearchMaxDegreeOfParallelism = configured,
             });
             SetStatus(
-                degree == 1
-                    ? SolverText.Get("并行搜索已关闭，下次搜索使用单线程")
-                    : SolverText.Format($"搜索并行度已设为 {degree}，下次搜索生效"),
+                selected == 0
+                    ? SolverText.Get("最大并发线程数已设为自动，下次搜索生效")
+                    : selected == 1
+                        ? SolverText.Get("并行搜索已关闭，下次搜索使用单线程")
+                        : SolverText.Format($"最大并发线程数已设为 {selected}，下次搜索生效"),
                 SolverUiTokens.Palette.Success);
         };
         return input;
     }
-
-    private void AddIntRow(
-        GridContainer grid,
-        string label,
-        Func<SolverSettingsData, int> getDeep,
-        Func<SolverSettingsData, int, SolverSettingsData> setDeep,
-        int minimum,
-        int? maximum,
-        string tooltip)
-    {
-        Label rowLabel = CreateRowLabel(label);
-        LineEdit deepInput = CreateRequiredIntInput(getDeep, setDeep, minimum, maximum);
-        ApplyTooltip(rowLabel, tooltip);
-        ApplyTooltip(deepInput, tooltip);
-        grid.AddChild(rowLabel);
-        grid.AddChild(deepInput);
-    }
-
-    private void AddDoubleRow(
-        GridContainer grid,
-        string label,
-        Func<SolverSettingsData, double> getDeep,
-        Func<SolverSettingsData, double, SolverSettingsData> setDeep,
-        double minimum,
-        double maximum,
-        string tooltip)
-    {
-        Label rowLabel = CreateRowLabel(label);
-        LineEdit deepInput = CreateRequiredDoubleInput(getDeep, setDeep, minimum, maximum);
-        ApplyTooltip(rowLabel, tooltip);
-        ApplyTooltip(deepInput, tooltip);
-        grid.AddChild(rowLabel);
-        grid.AddChild(deepInput);
-    }
-
-    private LineEdit CreateRequiredIntInput(
-        Func<SolverSettingsData, int> getter,
-        Func<SolverSettingsData, int, SolverSettingsData> setter,
-        int minimum,
-        int? maximum)
-    {
-        LineEdit input = CreateInput(string.Empty);
-        _reloadInputs.Add(data => input.Text = getter(data).ToString(CultureInfo.InvariantCulture));
-        bool Commit()
-        {
-            string text = input.Text.Trim();
-            bool parsed = int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value);
-            bool aboveMaximum = maximum is { } configuredMaximum && value > configuredMaximum;
-            if (!parsed || value < minimum || aboveMaximum)
-            {
-                ShowInvalid(input, maximum.HasValue
-                    ? SolverText.Format($"请输入 {minimum}–{maximum.Value} 的整数")
-                    : SolverText.Format($"请输入不小于 {minimum} 的整数"));
-                return false;
-            }
-            if (getter(SolverSettings.Current) == value)
-                return KeepUnchanged(input);
-            return SavePerformanceInput(input, setter(SolverSettings.Current, value));
-        }
-        input.FocusExited += () => Commit();
-        input.TextSubmitted += _ => Commit();
-        _commitInputs.Add(Commit);
-        return input;
-    }
-
-    private LineEdit CreateRequiredDoubleInput(
-        Func<SolverSettingsData, double> getter,
-        Func<SolverSettingsData, double, SolverSettingsData> setter,
-        double minimum,
-        double maximum)
-    {
-        LineEdit input = CreateInput(string.Empty);
-        _reloadInputs.Add(data => input.Text = SolverSettings.FormatSeconds(getter(data)));
-        bool Commit()
-        {
-            string text = input.Text.Trim();
-            if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
-                || value < minimum || value > maximum)
-            {
-                ShowInvalid(input, SolverText.Format($"请输入 {minimum:0.###}–{maximum:0.###} 的数字"));
-                return false;
-            }
-            if (getter(SolverSettings.Current).Equals(value))
-                return KeepUnchanged(input);
-            return SavePerformanceInput(input, setter(SolverSettings.Current, value));
-        }
-        input.FocusExited += () => Commit();
-        input.TextSubmitted += _ => Commit();
-        _commitInputs.Add(Commit);
-        return input;
-    }
-
-    private bool SavePerformanceInput(LineEdit input, SolverSettingsData data)
-    {
-        if (_loading)
-            return true;
-        if (data != SolverSettings.Current)
-            SolverSettings.Update(data);
-        SolverPerformancePreset preset = SolverSettings.ResolvePerformancePreset(data);
-        _performancePreset.Selected = _performancePreset.GetItemIndex((int)preset);
-        SetAdvancedParametersExpanded(preset == SolverPerformancePreset.Custom);
-        input.AddThemeColorOverride("font_color", SolverUiTokens.Palette.TextPrimary);
-        SetStatus(SolverText.Get("已保存，下次搜索生效"), SolverUiTokens.Palette.Success);
-        return true;
-    }
-
-    private void ToggleAdvancedParameters()
-        => SetAdvancedParametersExpanded(!_advancedParametersExpanded);
-
-    private void SetAdvancedParametersExpanded(bool expanded)
-    {
-        _advancedParametersExpanded = expanded;
-        _advancedParameters.Visible = expanded;
-        _advancedParametersToggle.Text = expanded ? SolverText.Get("收起自定义参数") : SolverText.Get("展开自定义参数");
-    }
-
-    private static SolverSettingsData AsCustomPerformance(SolverSettingsData data)
-        => data with { PerformancePreset = SolverPerformancePreset.Custom };
 }

@@ -83,6 +83,23 @@ internal static partial class HotCombatEngine
         t_filteredChoiceUidCount = 0;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void RecordPendingChoiceGroup(HotExecScratch scratch, byte minCount)
+    {
+        if (scratch.ActiveChoiceGroupSeq != 0)
+        {
+            scratch.PendingChoiceGroupSeq = scratch.ActiveChoiceGroupSeq;
+            scratch.PendingChoiceGroupFlags = scratch.ActiveChoiceGroupFlags;
+        }
+        else
+        {
+            scratch.PendingChoiceGroupSeq = ++scratch.NextChoiceGroupSeq;
+            scratch.PendingChoiceGroupFlags = minCount == 0
+                ? HotChoiceGroupFlags.Optional
+                : HotChoiceGroupFlags.None;
+        }
+    }
+
     /// <summary>
     /// Restart-from-parent choice protocol: if a caller-supplied choice exists at
     /// <c>scratch.ChoiceCursor</c>, consumes and returns it immediately (<c>true</c>);
@@ -102,6 +119,8 @@ internal static partial class HotCombatEngine
     {
         if (scratch.ChoiceCursor < scratch.ChoiceCount)
         {
+            if (scratch.ActiveChoiceGroupSeq == 0)
+                scratch.NextChoiceGroupSeq++;
             selected = scratch.Choices[scratch.ChoiceCursor++];
             return true;
         }
@@ -112,6 +131,7 @@ internal static partial class HotCombatEngine
         scratch.PendingChoiceSourceCardDefId = sourceCardDefId;
         scratch.PendingChoiceMin = minCount;
         scratch.PendingChoiceMax = maxCount;
+        RecordPendingChoiceGroup(scratch, minCount);
         selected = default;
         return false;
     }
@@ -132,6 +152,8 @@ internal static partial class HotCombatEngine
     {
         if (scratch.ChoiceCursor < scratch.ChoiceCount)
         {
+            if (scratch.ActiveChoiceGroupSeq == 0)
+                scratch.NextChoiceGroupSeq++;
             selected = scratch.Choices[scratch.ChoiceCursor++];
             return true;
         }
@@ -142,6 +164,7 @@ internal static partial class HotCombatEngine
         scratch.PendingChoiceSourceCardDefId = sourceCardDefId;
         scratch.PendingChoiceMin = minCount;
         scratch.PendingChoiceMax = maxCount;
+        RecordPendingChoiceGroup(scratch, minCount);
         selected = default;
         return false;
     }
@@ -162,6 +185,8 @@ internal static partial class HotCombatEngine
     {
         if (scratch.ChoiceCursor < scratch.ChoiceCount)
         {
+            if (scratch.ActiveChoiceGroupSeq == 0)
+                scratch.NextChoiceGroupSeq++;
             selected = scratch.Choices[scratch.ChoiceCursor++];
             return true;
         }
@@ -172,6 +197,7 @@ internal static partial class HotCombatEngine
         scratch.PendingChoiceSourceCardDefId = sourceCardDefId;
         scratch.PendingChoiceMin = minCount;
         scratch.PendingChoiceMax = maxCount;
+        RecordPendingChoiceGroup(scratch, minCount);
         selected = default;
         return false;
     }
@@ -186,6 +212,24 @@ internal static partial class HotCombatEngine
         HotRules rules,
         HotExecScratch scratch,
         Span<HotChoiceSelection> dst)
+        => EnumerateChoiceOptionsWithClasses(in s, cold, rules, scratch, dst, Span<byte>.Empty);
+
+    /// <summary>
+    /// Lossless canonical choice enumerator:
+    /// - Deduplicates identical cards using full 44-byte card state, UID-reference isolation, and
+    ///   4-bucket <c>DrawPile</c> position preservation (<c>0</c>, <c>1..4</c>, <c>5..9</c>, <c>10+</c>);
+    /// - Emits the <b>minimum non-excluded <c>CardUid</c></b> as the unique representative of each
+    ///   equivalence class, guaranteeing a lossless 1-to-1 bijection between unordered multisets and
+    ///   strictly-increasing-UID sequences;
+    /// - Optionally records each class's available multiplicity into <paramref name="classMultiplicities"/>.
+    /// </summary>
+    public static int EnumerateChoiceOptionsWithClasses(
+        in CombatHotState s,
+        HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        Span<HotChoiceSelection> dst,
+        Span<byte> classMultiplicities)
     {
         if (!scratch.NeedsChoice || dst.IsEmpty)
             return 0;
@@ -200,7 +244,11 @@ internal static partial class HotCombatEngine
         if (kind == HotChoiceKind.GeneratedCard)
         {
             if (scratch.PendingChoiceMin == 0 && written < dst.Length)
+            {
+                if (written < classMultiplicities.Length)
+                    classMultiplicities[written] = 1;
                 dst[written++] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+            }
 
             ushort[]? opts = t_generatedChoiceOptions;
             int optCount = t_generatedChoiceOptionCount;
@@ -222,7 +270,11 @@ internal static partial class HotCombatEngine
                         }
                     }
                     if (!duplicate)
+                    {
+                        if (written < classMultiplicities.Length)
+                            classMultiplicities[written] = 1;
                         dst[written++] = new HotChoiceSelection(HotChoiceKind.GeneratedCard, (ushort)i, defId);
+                    }
                 }
             }
             return written;
@@ -251,16 +303,21 @@ internal static partial class HotCombatEngine
         int zoneCount = HotPiles.ZoneCount(in s, pile);
         if (sourceCardId == HotCustomCardId.KiChant && pile == HotPileKind.Draw)
         {
-            // KiChant lets the player pick from the top N cards of DrawPile (max stored in PendingChoiceMax if >1, else 3).
             int topLimit = scratch.PendingChoiceMax > 0 ? scratch.PendingChoiceMax : 3;
             if (zoneCount > topLimit)
                 zoneCount = topLimit;
         }
 
         if (scratch.PendingChoiceMin == 0 && written < dst.Length)
+        {
+            if (written < classMultiplicities.Length)
+                classMultiplicities[written] = 1;
             dst[written++] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+        }
 
         Span<int> emittedCardIndices = stackalloc int[HotLimits.MaxStackAllocElements];
+        Span<int> emittedOffsets = stackalloc int[HotLimits.MaxStackAllocElements];
+        Span<int> emittedDstSlots = stackalloc int[HotLimits.MaxStackAllocElements];
         int emittedCount = 0;
 
         ReadOnlySpan<ushort> allowedUids = GetPendingFilteredChoiceUids();
@@ -268,9 +325,6 @@ internal static partial class HotCombatEngine
 
         for (int offset = 0; offset < zoneCount; offset++)
         {
-            if (written >= dst.Length)
-                break;
-
             int cardIdx = zoneStart + offset;
             ref readonly HotCard candidate = ref s.Cards[cardIdx];
             if (!allowedUids.IsEmpty && !ContainsUid(allowedUids, candidate.CardUid))
@@ -280,25 +334,49 @@ internal static partial class HotCombatEngine
             if (!MatchesChoiceFilter(in s, in candidate, rules, sourceCardId))
                 continue;
 
-            bool isDup = false;
+            int matchedClass = -1;
             int compareLimit = Math.Min(emittedCount, emittedCardIndices.Length);
             for (int prev = 0; prev < compareLimit; prev++)
             {
                 ref readonly HotCard prior = ref s.Cards[emittedCardIndices[prev]];
-                if (AreChoiceEquivalentCards(in prior, in candidate, cold, rules))
+                if (AreChoiceEquivalentCards(in s, pile, emittedOffsets[prev], offset, in prior, in candidate, cold))
                 {
-                    isDup = true;
+                    matchedClass = prev;
                     break;
                 }
             }
 
-            if (isDup)
+            if (matchedClass >= 0)
+            {
+                int dstSlot = emittedDstSlots[matchedClass];
+                if (dstSlot < classMultiplicities.Length && classMultiplicities[dstSlot] < byte.MaxValue)
+                    classMultiplicities[dstSlot]++;
+
+                // Always keep the minimum non-excluded CardUid as the unique class representative
+                // so unordered multiset enumeration has an exact 1-to-1 strictly-increasing-UID bijection.
+                ushort curRepUid = dst[dstSlot].CardUidOrIndex;
+                if (candidate.CardUid != 0 && (curRepUid == 0 || candidate.CardUid < curRepUid))
+                {
+                    dst[dstSlot] = new HotChoiceSelection(kind, candidate.CardUid, candidate.CardDefId);
+                    emittedCardIndices[matchedClass] = cardIdx;
+                    emittedOffsets[matchedClass] = offset;
+                }
+                continue;
+            }
+
+            if (written >= dst.Length)
                 continue;
 
             if (emittedCount < emittedCardIndices.Length)
+            {
                 emittedCardIndices[emittedCount] = cardIdx;
+                emittedOffsets[emittedCount] = offset;
+                emittedDstSlots[emittedCount] = written;
+            }
             emittedCount++;
 
+            if (written < classMultiplicities.Length)
+                classMultiplicities[written] = 1;
             dst[written++] = new HotChoiceSelection(kind, candidate.CardUid, candidate.CardDefId);
         }
 
@@ -372,50 +450,107 @@ internal static partial class HotCombatEngine
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int DrawPileChoiceBucket(int offset)
+        => offset == 0 ? 0 : offset < 5 ? 1 : offset < 10 ? 2 : 3;
+
+    internal static bool IsCardUidReferenced(in CombatHotState s, HotColdSidecar? cold, ushort uid)
+    {
+        if (uid == 0)
+            return false;
+        if (s.HistoryCourseUid == uid)
+            return true;
+        if (s.Fool.FirstPlayCardUid[0] == uid
+            || s.Fool.FirstPlayCardUid[1] == uid
+            || s.Fool.FirstPlayCardUid[2] == uid)
+        {
+            return true;
+        }
+
+        int powerCount = s.PowerCount;
+        for (int i = 0; i < powerCount; i++)
+        {
+            if (s.Powers[i].AuxCardUid == uid)
+                return true;
+        }
+
+        if (cold != null)
+        {
+            if (cold.DecimalVars is { Length: > 0 } decs)
+            {
+                for (int i = 0; i < decs.Length; i++)
+                {
+                    if (decs[i].CardUid == uid)
+                        return true;
+                }
+            }
+            if (cold.CostOverflow is { Length: > 0 } co)
+            {
+                for (int i = 0; i < co.Length; i++)
+                {
+                    if (co[i].CardUid == uid)
+                        return true;
+                }
+            }
+            if (cold.RuptureEntries is { Length: > 0 } ru)
+            {
+                for (int i = 0; i < ru.Length; i++)
+                {
+                    if (ru[i].CardUid == uid)
+                        return true;
+                }
+            }
+            if (cold.DampenEntries is { Length: > 0 } da)
+            {
+                for (int i = 0; i < da.Length; i++)
+                {
+                    if (da[i].CardUid == uid)
+                        return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool AreChoiceEquivalentCards(
+        in CombatHotState s,
+        HotPileKind pile,
+        int offsetA,
+        int offsetB,
         in HotCard a,
         in HotCard b,
-        HotColdSidecar? cold,
-        HotRules rules)
+        HotColdSidecar? cold)
     {
-        if (a.CardDefId != b.CardDefId
-            || a.UpgradeLevel != b.UpgradeLevel
-            || a.EnchId != b.EnchId
-            || a.EnchAmt != b.EnchAmt
-            || a.EnchStatus != b.EnchStatus
-            || a.AfflId != b.AfflId
-            || a.AfflAmt != b.AfflAmt
-            || a.LocalKeywordsMask != b.LocalKeywordsMask
-            || a.BaseReplayCount != b.BaseReplayCount
-            || a.ExtraReplayThisTurn != b.ExtraReplayThisTurn
-            || a.Var0Delta != b.Var0Delta
-            || a.Var1Delta != b.Var1Delta
-            || a.CardPrivate != b.CardPrivate)
+        if (a.CardDefId != b.CardDefId)
+            return false;
+
+        if (pile == HotPileKind.Draw && DrawPileChoiceBucket(offsetA) != DrawPileChoiceBucket(offsetB))
+            return false;
+
+        if ((a.CardUid != 0 && IsCardUidReferenced(in s, cold, a.CardUid))
+            || (b.CardUid != 0 && IsCardUidReferenced(in s, cold, b.CardUid)))
         {
             return false;
         }
 
-        const HotCardFlags semanticFlags = HotCardFlags.CostsX
-            | HotCardFlags.HasStarCostX
-            | HotCardFlags.ExhaustOnNextPlay
-            | HotCardFlags.IsSlyThisTurn
-            | HotCardFlags.SingleTurnRetain
-            | HotCardFlags.IsDupe
-            | HotCardFlags.ReturnToHandNextTurn;
-        if ((a.Flags & semanticFlags) != (b.Flags & semanticFlags))
+        ReadOnlySpan<byte> bytesA = HotStatePacker.AsReadOnlyBytes(in a);
+        ReadOnlySpan<byte> bytesB = HotStatePacker.AsReadOnlyBytes(in b);
+
+        // Bytes 4..15 cover UpgradeLevel..CostModCount; byte 15 is TempStarCostPacked (masked if bit 7 == 0).
+        if (!bytesA.Slice(4, 11).SequenceEqual(bytesB.Slice(4, 11)))
+            return false;
+        byte starA = (a.TempStarCostPacked & 0x80) != 0 ? a.TempStarCostPacked : (byte)0;
+        byte starB = (b.TempStarCostPacked & 0x80) != 0 ? b.TempStarCostPacked : (byte)0;
+        if (starA != starB)
             return false;
 
-        int costA = (a.Flags & HotCardFlags.CostsX) != 0
-            ? a.CapturedEnergy
-            : HotCostModifiers.GetLocalEnergyCost(in a, cold);
-        int costB = (b.Flags & HotCardFlags.CostsX) != 0
-            ? b.CapturedEnergy
-            : HotCostModifiers.GetLocalEnergyCost(in b, cold);
-        if (costA != costB)
+        // Active inline energy cost modifiers (bytes 16..28, 3 bytes each).
+        int modCount = Math.Min((int)a.CostModCount, HotLimits.MaxEnergyCostMods);
+        if (modCount > 0 && !bytesA.Slice(16, modCount * 3).SequenceEqual(bytesB.Slice(16, modCount * 3)))
             return false;
 
-        int starA = HotCostModifiers.GetEffectiveStarCost(in a, cold);
-        int starB = HotCostModifiers.GetEffectiveStarCost(in b, cold);
-        return starA == starB;
+        // Bytes 28..48 cover EnchId..CardPrivate (20 bytes).
+        return bytesA.Slice(28, 20).SequenceEqual(bytesB.Slice(28, 20));
     }
 }

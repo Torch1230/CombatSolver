@@ -95,7 +95,8 @@ internal static class HotPlanMaterializer
         int currentTurn = state.PlayerTurnNumber;
         int turnStartHpLost = state.Counters[(int)HotCounterSlot.PlayerCumulativeHpLost];
         int turnStartHpRecovered = state.Counters[(int)HotCounterSlot.PlayerRecoveredHp];
-        int turnStartEnemyHp = ComputeTotalAliveEnemyHp(in state);
+        int turnEnemyHpLostAccum = 0;
+        Span<int> enemyHpBeforeStep = stackalloc int[HotLimits.MaxEnemies];
         int turnPeakBlock = state.Player.Block;
         int shufflesCrossed = 0;
         int lastShuffleEvents = state.ShuffleEventCount;
@@ -122,6 +123,7 @@ internal static class HotPlanMaterializer
                 turnPeakBlock = blockBeforeAction;
 
             ulong aliveMaskBefore = CaptureAliveEnemySlotMask(in state);
+            int enemyCountBefore = SnapshotAliveEnemyHp(in state, enemyHpBeforeStep);
             int[] potionSlotsBefore = SnapshotPotionSlots(in state);
             ushort generatedPotionMaskBefore = state.CombatGeneratedPotionMask;
 
@@ -146,6 +148,8 @@ internal static class HotPlanMaterializer
                 HotStepResult setupRes = HotCombatEngine.Step(ref state, ref cold, rules, scratch, hotAction, choices);
                 if (!setupRes.Executed)
                     throw new InvalidOperationException($"HotPlanMaterializer TurnSetup replay failed at step {stepIdx} ({hotAction}).");
+
+                turnEnemyHpLostAccum += AccumulateRealEnemyHpLoss(enemyHpBeforeStep, enemyCountBefore, in state);
 
                 if (state.ShuffleEventCount != lastShuffleEvents)
                 {
@@ -175,6 +179,7 @@ internal static class HotPlanMaterializer
                 bool setupDefeat = state.TerminalOutcome == HotCombatOutcome.Defeat
                     || (state.Player.Flags & HotCreatureFlags.Alive) == 0
                     || state.Player.CurrentHp <= 0;
+                bool setupEventDefeat = state.TerminalOutcome == HotCombatOutcome.EventDefeat && !setupDefeat;
 
                 if (setupVictory && combatEndedTurn == null)
                     combatEndedTurn = actionTurn;
@@ -185,15 +190,14 @@ internal static class HotPlanMaterializer
                 // (exact boundary checked by PlayerTurnSetupPatches.cs:829 and SolverController.ActivateTurnSetupResult).
                 turnSetupPlayState = new ContinuationStamp(HotContinuationStamp.CaptureFromHot(in state, cold, rules));
 
-                if (setupVictory || setupDefeat || stepIdx == nodePath.Length - 1)
+                if (setupVictory || setupDefeat || setupEventDefeat || stepIdx == nodePath.Length - 1)
                 {
                     int curHpLost = state.Counters[(int)HotCounterSlot.PlayerCumulativeHpLost];
                     int curHpRecovered = state.Counters[(int)HotCounterSlot.PlayerRecoveredHp];
-                    int curEnemyHp = ComputeTotalAliveEnemyHp(in state);
 
                     hpLostByTurn[actionTurn] = Math.Max(0, curHpLost - turnStartHpLost);
                     hpRecoveredByTurn[actionTurn] = Math.Max(0, curHpRecovered - turnStartHpRecovered);
-                    enemyHpLostByTurn[actionTurn] = Math.Max(0, turnStartEnemyHp - curEnemyHp);
+                    enemyHpLostByTurn[actionTurn] = turnEnemyHpLostAccum;
                     soldHpByTurn[actionTurn] = 0;
                     actualBlockByTurn[actionTurn] = state.Player.Block;
                     maxBlockByTurn[actionTurn] = Math.Max(turnPeakBlock, state.Player.Block);
@@ -221,6 +225,8 @@ internal static class HotPlanMaterializer
             HotStepResult res = HotCombatEngine.Step(ref state, ref cold, rules, scratch, hotAction, choices);
             if (!res.Executed)
                 throw new InvalidOperationException($"HotPlanMaterializer replay failed at step {stepIdx} ({hotAction}).");
+
+            turnEnemyHpLostAccum += AccumulateRealEnemyHpLoss(enemyHpBeforeStep, enemyCountBefore, in state);
 
             if (state.ShuffleEventCount != lastShuffleEvents)
             {
@@ -256,7 +262,7 @@ internal static class HotPlanMaterializer
                 potionCountByTurn,
                 potionCostByTurn);
 
-            // Record enemy kills caused by this action (keyed by planActions index, NOT raw stepIdx!)
+            // Record enemy kills caused by this action (keyed by planActions index, NOT raw stepIdx!; exclude escaped enemies!)
             ulong aliveMaskAfter = CaptureAliveEnemySlotMask(in state);
             ulong newlyKilled = aliveMaskBefore & ~aliveMaskAfter;
             if (planAction.IsExecutable && newlyKilled != 0)
@@ -265,6 +271,8 @@ internal static class HotPlanMaterializer
                 for (int eSlot = 0; eSlot < state.EnemyCount; eSlot++)
                 {
                     if ((newlyKilled & (1UL << eSlot)) == 0)
+                        continue;
+                    if ((state.Enemies[eSlot].Vital.Flags & HotCreatureFlags.Escaped) != 0)
                         continue;
                     killedNames.Add(ResolveEnemyDisplayName(in state, eSlot, rules, displayNames, rootEnemiesByCombatId));
                 }
@@ -284,6 +292,7 @@ internal static class HotPlanMaterializer
             bool isDefeat = state.TerminalOutcome == HotCombatOutcome.Defeat
                 || (state.Player.Flags & HotCreatureFlags.Alive) == 0
                 || state.Player.CurrentHp <= 0;
+            bool isEventDefeat = state.TerminalOutcome == HotCombatOutcome.EventDefeat && !isDefeat;
 
             if (isVictory && combatEndedTurn == null)
                 combatEndedTurn = actionTurn;
@@ -291,15 +300,14 @@ internal static class HotPlanMaterializer
                 deathTurn = actionTurn;
 
             bool isFinalStep = stepIdx == nodePath.Length - 1;
-            if (endedByTurn || isVictory || isDefeat || isFinalStep)
+            if (endedByTurn || isVictory || isDefeat || isEventDefeat || isFinalStep)
             {
                 int curHpLost = state.Counters[(int)HotCounterSlot.PlayerCumulativeHpLost];
                 int curHpRecovered = state.Counters[(int)HotCounterSlot.PlayerRecoveredHp];
-                int curEnemyHp = ComputeTotalAliveEnemyHp(in state);
 
                 int turnHpLost = Math.Max(0, curHpLost - turnStartHpLost);
                 int turnHpRecovered = Math.Max(0, curHpRecovered - turnStartHpRecovered);
-                int turnEnemyHpLost = Math.Max(0, turnStartEnemyHp - curEnemyHp);
+                int turnEnemyHpLost = turnEnemyHpLostAccum;
                 int actualBlock = endedByTurn ? blockBeforeAction : state.Player.Block;
                 int energyLeft = endedByTurn ? energyBeforeAction : state.Energy;
 
@@ -311,12 +319,12 @@ internal static class HotPlanMaterializer
                 maxBlockByTurn[actionTurn] = Math.Max(turnPeakBlock, actualBlock);
                 energyLeftByTurn[actionTurn] = energyLeft;
 
-                if (endedByTurn && !isVictory && !isDefeat && !isFinalStep)
+                if (endedByTurn && !isVictory && !isDefeat && !isEventDefeat && !isFinalStep)
                 {
                     currentTurn = state.PlayerTurnNumber;
                     turnStartHpLost = curHpLost;
                     turnStartHpRecovered = curHpRecovered;
-                    turnStartEnemyHp = curEnemyHp;
+                    turnEnemyHpLostAccum = 0;
                     turnPeakBlock = state.Player.Block;
 
                     // Capture exact cross-turn continuation stamp via HotContinuationStamp.CaptureFromHot!
@@ -344,6 +352,9 @@ internal static class HotPlanMaterializer
         HotFastSummary finalSummary = HotEvaluator.ExtractStage1(in state, in hotPolicy);
         bool finalWon = (planActions.Count > 0 || hadTurnSetup) && finalSummary.IsVictory;
         bool finalDead = finalSummary.IsDefeat;
+        SearchBoundaryReason effectiveBoundary = finalSummary.IsEventDefeat
+            ? SearchBoundaryReason.EventDefeat
+            : metrics.BoundaryReason;
         int postCombatHeal = finalWon
             ? hotPolicy.PostCombatRelicHeal.HealFor(finalSummary.PlayerHp, finalSummary.PlayerMaxHp)
             : 0;
@@ -364,7 +375,10 @@ internal static class HotPlanMaterializer
         SolverSnapshot snapshot = new(
             HasRisk: false,
             PlayerDead: finalDead,
-            AllEnemiesDead: finalSummary.AliveEnemyCount == 0 && finalSummary.RevivingEnemyCount == 0 && !finalDead,
+            AllEnemiesDead: finalSummary.AliveEnemyCount == 0
+                && finalSummary.RevivingEnemyCount == 0
+                && !finalDead
+                && !finalSummary.IsEventDefeat,
             PlayerHp: finalSummary.PlayerHp,
             PlayerMaxHp: finalSummary.PlayerMaxHp,
             CumulativePlayerHpLost: finalSummary.HpLost,
@@ -382,7 +396,7 @@ internal static class HotPlanMaterializer
             OutstandingStolenResource: finalSummary.OutstandingStolen,
             Turn: finalSummary.Turn,
             ShufflesCrossed: shufflesCrossed,
-            BoundaryReason: metrics.BoundaryReason,
+            BoundaryReason: effectiveBoundary,
             PredictionGaps: Array.Empty<PredictionGap>())
         {
             DeathSavePotionHpRestored = state.DeathSavePotionHpRestored,
@@ -465,7 +479,7 @@ internal static class HotPlanMaterializer
             GcPauseDuration = metrics.GcPauseDuration,
             WorkerYieldCount = 0,
             SearchedTurns = searchedTurns,
-            BoundaryReason = metrics.BoundaryReason,
+            BoundaryReason = effectiveBoundary,
             UnavoidableHpLost = Math.Max(0, battleDamage.HpLostSoFar - battleDamage.SoldHpCommitted) + finalSummary.HpLost,
             SoldHp = battleDamage.SoldHpCommitted,
             FutureSoldHp = 0,
@@ -1990,16 +2004,33 @@ internal static class HotPlanMaterializer
         return string.IsNullOrEmpty(entry) ? $"Enemy#{enemySlot}" : displayNames.Monster(entry);
     }
 
-    private static int ComputeTotalAliveEnemyHp(in CombatHotState s)
+    private static int SnapshotAliveEnemyHp(in CombatHotState s, Span<int> dst)
     {
-        int sum = 0;
-        for (int r = 0; r < s.RosterCount; r++)
+        int enemyCount = Math.Min((int)s.EnemyCount, Math.Min(HotLimits.MaxEnemies, dst.Length));
+        for (int e = 0; e < enemyCount; e++)
         {
-            ref readonly HotEnemy e = ref s.Enemies[s.ActiveEnemyRoster[r]];
-            if ((e.Vital.Flags & HotCreatureFlags.Alive) != 0)
-                sum += Math.Max(0, e.Vital.CurrentHp);
+            ref readonly HotEnemy enemy = ref s.Enemies[e];
+            dst[e] = (enemy.Vital.Flags & HotCreatureFlags.Alive) != 0
+                ? Math.Max(0, enemy.Vital.CurrentHp)
+                : 0;
         }
-        return sum;
+        return enemyCount;
+    }
+
+    private static int AccumulateRealEnemyHpLoss(ReadOnlySpan<int> hpBeforeStep, int enemyCountBefore, in CombatHotState after)
+    {
+        int realLoss = 0;
+        for (int e = 0; e < enemyCountBefore; e++)
+        {
+            int beforeHp = hpBeforeStep[e];
+            if (beforeHp <= 0)
+                continue;
+            // Works uniformly for Alive, Killed (CurrentHp == 0), and Escaped (CreatureEscaped preserves un-dealt CurrentHp).
+            int afterHp = Math.Max(0, after.Enemies[e].Vital.CurrentHp);
+            if (afterHp < beforeHp)
+                realLoss += beforeHp - afterHp;
+        }
+        return realLoss;
     }
 
     private static ulong CaptureAliveEnemySlotMask(in CombatHotState s)

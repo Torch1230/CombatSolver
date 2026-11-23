@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace CombatSolver.HotKernel;
 
 internal enum HotChoiceKind : byte
@@ -8,6 +10,15 @@ internal enum HotChoiceKind : byte
     DiscardPile = 3,
     ExhaustPile = 4,
     GeneratedCard = 5,
+}
+
+[Flags]
+internal enum HotChoiceGroupFlags : byte
+{
+    None = 0,
+    Unordered = 1 << 0,
+    Optional = 1 << 1,
+    MultiPick = 1 << 2,
 }
 
 internal readonly record struct HotChoiceSelection(
@@ -55,6 +66,11 @@ internal sealed class HotExecScratch
     public ushort PendingChoiceSourceCardDefId;
     public byte PendingChoiceMin;
     public byte PendingChoiceMax;
+    public ushort ActiveChoiceGroupSeq;
+    public ushort NextChoiceGroupSeq;
+    public HotChoiceGroupFlags ActiveChoiceGroupFlags;
+    public ushort PendingChoiceGroupSeq;
+    public HotChoiceGroupFlags PendingChoiceGroupFlags;
 
     // Transient attack / play scratch (cleared before every stable boundary)
     public int ActiveDrawDepth;
@@ -66,6 +82,20 @@ internal sealed class HotExecScratch
     public bool UnblockedDamageThisPlay;
     public bool AttackActive;
     public uint AttackUnblockedEnemyMask;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void BeginChoiceGroup(HotChoiceGroupFlags flags = HotChoiceGroupFlags.None)
+    {
+        ActiveChoiceGroupSeq = ++NextChoiceGroupSeq;
+        ActiveChoiceGroupFlags = flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void EndChoiceGroup()
+    {
+        ActiveChoiceGroupSeq = 0;
+        ActiveChoiceGroupFlags = HotChoiceGroupFlags.None;
+    }
 
     public void BeginAction(ReadOnlySpan<HotChoiceSelection> choices)
     {
@@ -79,6 +109,11 @@ internal sealed class HotExecScratch
         PendingChoiceSourceCardDefId = 0;
         PendingChoiceMin = 0;
         PendingChoiceMax = 0;
+        ActiveChoiceGroupSeq = 0;
+        NextChoiceGroupSeq = 0;
+        ActiveChoiceGroupFlags = HotChoiceGroupFlags.None;
+        PendingChoiceGroupSeq = 0;
+        PendingChoiceGroupFlags = HotChoiceGroupFlags.None;
         ActiveDrawDepth = 0;
         PendingPowerChangeCount = 0;
         LastStarsSpent = 0;

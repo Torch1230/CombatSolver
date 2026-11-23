@@ -1372,11 +1372,12 @@ internal static class HotFoolTarot
                 if (ownerSlot < 3)
                     return true;
 
+                // STS2 0.113.1 ImpaledPower.cs:95-109: ANY powered attack from Applier (including subsequent
+                // arrow attacks via ArrowCmd.ImpaleTarget -> attackCommand.Execute BEFORE AddArrow) decrements HitCounter.
                 if (hook == HotHookMask.AfterDamageReceived
                     && args.TargetSlot == ownerSlot
                     && args.ActorSlot == power.ApplierSlot
                     && args.IsPoweredAttack
-                    && !t_isArrowAttackActive
                     && amount > 0)
                 {
                     int counter = power.Aux0 <= 0 ? 3 : power.Aux0;
@@ -1467,7 +1468,12 @@ internal static class HotFoolTarot
 
                 if (hook == HotHookMask.AfterDeath && args.TargetSlot >= 3)
                 {
-                    GrowShowOffFromPower(ref s, rules, powerIdx);
+                    if (HotCombatEngine.GetPowerAmountById(in s, rules, args.TargetSlot, HotPowerId.MinionPower) <= 0)
+                    {
+                        GrowShowOffFromPower(ref s, rules, powerIdx);
+                        HotCombatEngine.RemovePowerAt(ref s, powerIdx);
+                        s.ActiveHookMask = HotCombatEngine.RecomputeActiveHookMask(in s, rules);
+                    }
                     return true;
                 }
                 if (hook == HotHookMask.AfterTurnEnd && args.Side == HotCombatSide.Player)
@@ -1865,7 +1871,7 @@ internal static class HotFoolTarot
 
             case HotPowerId.SimpletonPower:
             {
-                if (hook == HotHookMask.BeforeTurnEnd && ownerSlot == 0 && args.Side == HotCombatSide.Player && amount > 0)
+                if (hook == HotHookMask.AfterAutoPostPlay && ownerSlot == 0 && args.Side == HotCombatSide.Player && amount > 0)
                 {
                     Span<ushort> cheapestUids = stackalloc ushort[HotLimits.MaxCards];
                     for (int k = 0; k < amount && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); k++)
@@ -2166,15 +2172,22 @@ internal static class HotFoolTarot
         HotExecScratch scratch,
         int enemySlot)
     {
-        // 1. Trigger ShowOffPower instances on player.
+        // 1. Trigger and remove ShowOffPower instances on player (ShowOffPower.cs:36-44).
         ushort showOffPowerId = rules.GetPowerDefId(HotPowerId.ShowOffPower);
         if (showOffPowerId != 0)
         {
-            for (int i = 0; i < s.PowerCount; i++)
+            bool removedAny = false;
+            for (int i = s.PowerCount - 1; i >= 0; i--)
             {
                 if (s.Powers[i].OwnerSlot == 0 && s.Powers[i].PowerDefId == showOffPowerId && s.Powers[i].Amount > 0)
+                {
                     GrowShowOffFromPower(ref s, rules, i);
+                    HotCombatEngine.RemovePowerAt(ref s, i);
+                    removedAny = true;
+                }
             }
+            if (removedAny)
+                s.ActiveHookMask = HotCombatEngine.RecomputeActiveHookMask(in s, rules);
         }
 
         // 2. Dislodge all arrows impaled on the dead enemy.
@@ -2366,12 +2379,10 @@ internal static class HotFoolTarot
             powerIdx = FindImpaledPowerByPlayer(in s, targetSlot, impaledDefId);
             if (powerIdx < 0)
             {
+                // STS2 0.113.1 ArrowCmd.cs:191-197: ImpaledPower is applied once with Amount = 1;
+                // subsequent arrows on the same target append to Arrows without incrementing Amount.
                 HotCombatEngine.AddPowerInstance(ref s, rules, targetSlot, applierSlot: 0, powerDefId: impaledDefId, amount: 1, aux0: 3, aux1: 0);
                 powerIdx = FindImpaledPowerByPlayer(in s, targetSlot, impaledDefId);
-            }
-            else
-            {
-                s.Powers[powerIdx].Amount++;
             }
 
             if (powerIdx >= 0)
@@ -2474,15 +2485,11 @@ internal static class HotFoolTarot
             return;
 
         int arrowIdx = PopFirstArrowFromImpaled(ref s.Powers[powerIdx]);
-        int remaining = s.Powers[powerIdx].Amount - 1;
-        if (remaining <= 0)
+        int remainingArrows = (s.Powers[powerIdx].Aux1 >> 25) & 0x07;
+        if (remainingArrows <= 0)
         {
             HotCombatEngine.RemovePowerAt(ref s, powerIdx);
             s.ActiveHookMask = HotCombatEngine.RecomputeActiveHookMask(in s, rules);
-        }
-        else
-        {
-            s.Powers[powerIdx].Amount = remaining;
         }
 
         if (arrowIdx < 0 || arrowIdx >= s.ArrowCount)
@@ -2627,15 +2634,10 @@ internal static class HotFoolTarot
             newCount++;
         }
         s.Powers[powerIdx].Aux1 = newPacked | (newCount << 25);
-        int nextAmt = s.Powers[powerIdx].Amount - (removed ? 1 : 0);
-        if (nextAmt <= 0)
+        if (newCount <= 0)
         {
             HotCombatEngine.RemovePowerAt(ref s, powerIdx);
             s.ActiveHookMask = HotCombatEngine.RecomputeActiveHookMask(in s, rules);
-        }
-        else
-        {
-            s.Powers[powerIdx].Amount = nextAmt;
         }
     }
 

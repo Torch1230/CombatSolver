@@ -198,25 +198,6 @@ internal static partial class SolverController
            || _combat.ReplanCounts.GetValueOrDefault(ReplanCause.ContinuationMissing) > 0
            || _combat.ReplanCounts.GetValueOrDefault(ReplanCause.PlanExhausted) > 0
            || _combat.BugReportIssues.RequiresPlayerUpload);
-    internal static SearchMemoryUsageSnapshot CaptureSearchMemoryUsage()
-        => SearchMemoryUsageSnapshot.CaptureCurrent(IsSearching);
-    internal static void LogSearchMemoryDisplayState(
-        SearchMemoryUsageSnapshot snapshot,
-        string displayState,
-        double displayRatio)
-    {
-        Entry.Logger.Info(
-            $"[CombatSolver/Test] MEMORY_MONITOR_DISPLAY state={displayState} " +
-            $"display_ratio={displayRatio:F3} search_active={snapshot.SearchActive.ToString().ToLowerInvariant()} " +
-            $"physical_memory_used={snapshot.PhysicalMemoryUsedBytes} " +
-            $"physical_memory_total={snapshot.PhysicalMemoryTotalBytes} " +
-            $"physical_memory_available={snapshot.PhysicalMemoryAvailableBytes?.ToString() ?? "unknown"} " +
-            $"physical_sample={snapshot.HasPhysicalMemorySample} " +
-            $"system_occupied={snapshot.SystemOccupiedBytes} " +
-            $"system_segment={snapshot.SystemSegmentRatio:F3} " +
-            $"process_segment={snapshot.ProcessSegmentRatio:F3} " +
-            $"working_set={snapshot.ProcessWorkingSetBytes}");
-    }
     internal static long LastDeployedActionStartedAtMillisecondsForTesting { get; private set; }
     internal static Task LastCombatReferenceReleaseForTesting { get; private set; } = Task.CompletedTask;
     internal static int CombatLifecycleGeneration
@@ -480,6 +461,8 @@ internal static partial class SolverController
             BrightestFlameMaxHpLossLimit = settings.BrightestFlameMaxHpLossLimit,
             GrowthOpportunityTargets = GrowthOpportunityPolicy.Capture(state),
             IgnoreLongTermRewards = settings.IgnoreLongTermRewards,
+            AdaptiveEscalationEnabled = settings.AdaptiveEscalationEnabled,
+            MaxHardFightThinkSeconds = settings.MaxHardFightThinkSeconds,
         };
         CombatBugReportExporter.RecordSearchPolicy(state, policy);
         return policy;
@@ -1142,6 +1125,7 @@ internal static partial class SolverController
                 $"theft_policy={theftPolicy?.ToString() ?? "-"} " +
                 $"act_transition_boss_hp_strategy={searchPolicy.ActTransitionBossHpStrategy} " +
                 $"final_boss_hp_strategy={searchPolicy.FinalBossHpStrategy} " +
+                $"max_hard_fight_think_seconds={searchPolicy.MaxHardFightThinkSeconds:0.###} " +
                 $"max_dop={searchPolicy.MaxDegreeOfParallelism}");
             Entry.Logger.Info(SolverDiagnostics.DescribeStart(
                 state,
@@ -1149,6 +1133,12 @@ internal static partial class SolverController
 
             setupStage = "worker_schedule";
             SolvedRouteCache routeCache = SolvedRouteCache.Capture(state, rootSnapshot, searchPolicy, battleDamage);
+            bool allowPreliminaryPreview = !deployWhenReady
+                && !_combat.FullAutoEnabled
+                && reason is not (SearchReason.Deploy or SearchReason.FullAuto);
+            Action<SolverResult>? onPreliminaryResult = allowPreliminaryPreview
+                ? preliminary => SolverDispatcher.Post(() => HandlePreliminarySearchResult(host, search, preliminary))
+                : null;
             Task<SolverResult> solveTask = Task.Run(() =>
             {
                 if (!searchPolicy.VerifyIncrementalSearch && !searchPolicy.MeasurePhasePerformance
@@ -1170,10 +1160,11 @@ internal static partial class SolverController
                         battleDamage,
                         searchPolicy,
                         token,
-                        progress => PublishSearchProgress(search, progress));
+                        progress => PublishSearchProgress(search, progress),
+                        onPreliminaryResult);
                     SolverResult finalizedResult = search.Interaction.FinalizeWorkerResult(result);
                     token.ThrowIfCancellationRequested();
-                    if (!search.Interaction.StopRequested)
+                    if (!search.Interaction.StopRequested && !finalizedResult.IsPreliminary)
                         routeCache.StoreFirst(finalizedResult);
                     return finalizedResult;
                 }
@@ -1542,7 +1533,14 @@ internal static partial class SolverController
             && PlayerTurnSetupCoordinator.TryStopSearchAtCurrentRoute();
         bool stoppingAtCandidate = stoppingControllerAtCandidate || stoppingSetupAtCandidate;
         if (!stoppingAtCandidate)
+        {
+            if (_search is { PreliminaryResult: { } preliminary, Stamp: var stamp, Interaction: var interaction })
+            {
+                interaction.PreserveStoppedResult(preliminary, stamp);
+                _combat.StoppedSearch = interaction;
+            }
             CancelSearch();
+        }
         bool stoppedTurnSetupSearch = stoppingSetupAtCandidate
             || !stoppingAtCandidate && PlayerTurnSetupCoordinator.StopSearchByUser();
         if (!stoppingAtCandidate && (controllerSearchCanceled || stoppedTurnSetupSearch))
@@ -2331,11 +2329,61 @@ internal static partial class SolverController
         Entry.Logger.Info($"[CombatSolver/Test] CONTROL_MODE_CHANGED mode=manual_plus_solver reason={reason}");
     }
 
+    private static void HandlePreliminarySearchResult(
+        NGame host,
+        SolverSearchSession search,
+        SolverResult preliminary)
+    {
+        AssertMainThread();
+        if (!ReferenceEquals(_search, search)
+            || search.Cancellation.IsCancellationRequested
+            || search.DeployWhenReady
+            || _combat.FullAutoEnabled
+            || search.Interaction.StopRequested
+            || search.Interaction.CurrentTakeoverRequest != null
+            || !preliminary.IsPreliminary)
+        {
+            return;
+        }
+
+        CombatState? currentState = CombatManager.Instance.DebugOnlyGetState();
+        if (!ReferenceEquals(currentState, search.State)
+            || !CanSolve(search.State, out _)
+            || LiveCombatStamp.Capture(search.State) != search.Stamp)
+        {
+            return;
+        }
+
+        search.PreliminaryResult = preliminary;
+        long displayWorldlines = checked(_combat.ReviewedWorldlinesTotal + preliminary.TotalExpandedNodes);
+        SolverOverlaySnapshot snapshot = SolverOverlaySnapshot.CaptureWithReviewedWorldlines(
+            preliminary,
+            UnexpectedReplanCount > 0,
+            displayWorldlines);
+        SolverOverlay.ShowPreliminaryResult(host, snapshot);
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] PRELIMINARY_RESULT_SHOWN generation={search.Generation} " +
+            $"stage={preliminary.EscalationStage} turn={preliminary.StartTurnNumber} " +
+            $"actions={preliminary.BestNode.Actions.Count}");
+    }
+
     internal static void ObserveCombatInput(string origin)
     {
-        _search?.ObserveInput(origin);
-        if (_search is { PlayerInputObserved: true })
-            MarkManualControlObserved("search_player_input");
+        if (_search is not { } search)
+            return;
+        search.ObserveInput(origin);
+        if (!search.PlayerInputObserved)
+            return;
+        MarkManualControlObserved("search_player_input");
+        if (search.PreliminaryResult != null && !search.DeployWhenReady && !_combat.FullAutoEnabled)
+        {
+            int generation = search.Generation;
+            CancelSearch();
+            Entry.Logger.Info(
+                $"[CombatSolver/Test] PRELIMINARY_DEEPENING_CANCELED generation={generation} reason=manual_player_input");
+            SolverOverlay.ClearPreliminaryRefiningIndicator();
+            SolverOverlay.RefreshControls();
+        }
     }
 
     internal static void RecordSearchResultStale(SolverSearchSession search)
@@ -2390,6 +2438,7 @@ internal static partial class SolverController
             return;
         _combat.UploadPolicy.Observe(search.State);
         _search = null;
+        search.PreliminaryResult = null;
         Volatile.Write(ref search.Interaction.Progress, null);
         int generation = search.Generation;
         Entry.Logger.Info($"[CombatSolver/Test] SEARCH_CALLBACK generation={generation} thread={System.Environment.CurrentManagedThreadId} main_thread={NGame.IsMainThread()}");
@@ -3372,6 +3421,7 @@ internal static partial class SolverController
         _search = null;
         if (search == null)
             return;
+        search.PreliminaryResult = null;
         search.Cancellation.Cancel();
         if (!search.CallbackScheduled)
             search.CallbackCompletion.TrySetResult();
