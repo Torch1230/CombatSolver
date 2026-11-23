@@ -1277,7 +1277,7 @@ public sealed class BeamPerformanceAndParityTests
     }
 
     [Fact]
-    public async Task InCombatBridge_BlockedProgressCallback_RespectsHardDeadlineWithoutHanging()
+    public async Task InCombatBridge_DeadlineAfterCallbackEntry_ReturnsWithTheCallbackUndrained()
     {
         TestSaveBuilder.EnsurePrewarmed();
         RunState run = TestSaveBuilder.CreateRun(characterId: "CHARACTER.IRONCLAD", ascension: 10);
@@ -1329,41 +1329,57 @@ public sealed class BeamPerformanceAndParityTests
             LiveState: liveDto,
             PriorBattleHpLost: 0,
             SearchBudgetMilliseconds: 10_000,
-            OverallTimeoutMilliseconds: 350,
+            // The separate coalescing test covers the bridge's 350 ms whole-request hard deadline.
+            // This request allows setup to finish before arming the caller's 350 ms deadline.
+            OverallTimeoutMilliseconds: policy.SoftTimeBudgetMilliseconds,
             MaxDegreeOfParallelism: 4,
             Policy: policy);
 
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(req, BridgeAbi.JsonOptions);
-        using var callbackEntered = new ManualResetEventSlim(false);
+        using var callerDeadline = new CancellationTokenSource();
         using var releaseCallback = new ManualResetEventSlim(false);
-        int returnedFlag = 0;
-        int callbackCount = 0;
+        var callbackEntered = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int returned = 0;
         int postReturnCallbacks = 0;
 
-        byte[] respBytes = await BridgeEntry.RunInCombatJsonAsync(
-            payload,
-            _ =>
+        try
+        {
+            byte[] response = await BridgeEntry.RunInCombatJsonAsync(payload, _ =>
             {
-                if (Volatile.Read(ref returnedFlag) != 0)
-                {
+                if (Volatile.Read(ref returned) != 0)
                     Interlocked.Increment(ref postReturnCallbacks);
+                if (!callbackEntered.TrySetResult(Stopwatch.GetTimestamp()))
                     return;
-                }
-                if (Interlocked.Increment(ref callbackCount) == 1)
+                callerDeadline.CancelAfter(TimeSpan.FromMilliseconds(350));
+                try
                 {
-                    callbackEntered.Set();
                     releaseCallback.Wait(TimeSpan.FromSeconds(15));
                 }
-            },
-            CancellationToken.None);
+                finally
+                {
+                    exited.TrySetResult();
+                }
+            }, callerDeadline.Token);
 
-        Volatile.Write(ref returnedFlag, 1);
-        InCombatBridgeResponseDto resp = JsonSerializer.Deserialize<InCombatBridgeResponseDto>(respBytes, BridgeAbi.JsonOptions)!;
-        Assert.True(callbackEntered.IsSet);
-        Assert.Equal("TimedOut", resp.Outcome);
-        Assert.True(resp.TotalElapsedMilliseconds < 2500, $"Blocked callback bypassed hard deadline: {resp.TotalElapsedMilliseconds}ms");
+            Volatile.Write(ref returned, 1);
+            long returnedAt = Stopwatch.GetTimestamp();
+            var result = JsonSerializer.Deserialize<InCombatBridgeResponseDto>(response, BridgeAbi.JsonOptions)!;
+            Assert.True(callbackEntered.Task.IsCompletedSuccessfully, $"Callback was never entered: {result.Outcome} ({result.Error}).");
+            TimeSpan elapsedWhileBlocked = Stopwatch.GetElapsedTime(await callbackEntered.Task, returnedAt);
+            Assert.Equal("Cancelled", result.Outcome);
+            Assert.False(result.ProgressCallbacksDrained);
+            Assert.False(exited.Task.IsCompleted);
+            Assert.True(elapsedWhileBlocked < TimeSpan.FromMilliseconds(2500),
+                $"Bridge kept an entered callback blocked for {elapsedWhileBlocked.TotalMilliseconds:F1} ms before returning.");
+        }
+        finally
+        {
+            releaseCallback.Set();
+            if (callbackEntered.Task.IsCompletedSuccessfully)
+                await exited.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        }
 
-        releaseCallback.Set();
         await Task.Delay(150);
         Assert.Equal(0, Volatile.Read(ref postReturnCallbacks));
     }
