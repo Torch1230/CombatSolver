@@ -22,22 +22,9 @@ internal static class Program
             return HotKernelChecks.RunLayoutChecks();
         if (rawArgs.Length >= 1 && rawArgs[0] == "--verify-hot-parity")
             return HotKernelChecks.RunParityChecks(rawArgs.Skip(1).ToArray());
-        if (rawArgs.Length == 1 && rawArgs[0] == "--check-result-diagnostics")
-            return ResultDiagnosticsChecks.Run();
-        if (rawArgs.Length == 1 && rawArgs[0] == "--check-primary-incumbents")
-            return PrimaryIncumbentChecks.Run();
-        if (rawArgs.Length == 1 && rawArgs[0] == "--check-boss-tempo")
-            return BossTempoChecks.Run();
-        if (rawArgs.Length == 1 && rawArgs[0] == "--check-early-turn-continuation-bound")
-        {
-            return EarlyTurnContinuationChecks.Run();
-        }
         if (rawArgs.Length == 3 && rawArgs[0] == "--compare-quality-batch")
             return QualityComparison.Run(rawArgs[1], rawArgs[2]);
-        if (rawArgs.Length == 2 && rawArgs[0] == "--ranking-schema")
-            return RankingChecks.WriteSchema(rawArgs[1]);
-        if (rawArgs.Length == 3 && rawArgs[0] == "--check-ranking")
-            return RankingChecks.Run(rawArgs[1], rawArgs[2]);
+
         HarnessOptions options;
         try
         {
@@ -79,16 +66,11 @@ internal static class Program
             });
             Step(steps, "M0.2 初始化游戏静态状态", GameBootstrap.InitializeStaticState);
             Step(steps, "M0.3 初始化模组运行期状态", () => ModRuntime.Initialize(options));
-            DuplicateChoiceProbe.Install(options.OutputDirectory);
-            EquivalenceProbe.Install(options.OutputDirectory);
-            SnapshotOpportunityProbe.Install(options.OutputDirectory);
+
             if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_PROBE_STATICS") is { Length: > 0 } filter)
                 Step(steps, "P 静态构造探针", () => $"types={GameBootstrap.ProbeStaticConstructors(filter)}");
+
             GeneratedScenarioSetup? generated = null;
-            if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_MEMORY_DISPLAY_CHECKS") == "1")
-                MemoryDisplayChecks.Run();
-            if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_MEMORY_DISPLAY_CHECKS") == "baseline")
-                MemoryDisplayChecks.ReproduceOldCapacity();
             UnattendedTestRunner.OfflineScenarioSession? session = null;
             CombatState? combat = null;
 
@@ -146,18 +128,6 @@ internal static class Program
             }
 
             reached = "M1";
-            if (generated?.Request.TheftPolicyForTest is { } theftPolicy)
-                SolverController.SetTheftPolicyForTesting(combat!, theftPolicy);
-            if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_THEFT_BUCKET_CHECKS") == "1")
-                PrimaryIncumbentChecks.RunTheft(combat!);
-            if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_RESOURCE_BUCKET_CHECKS") == "1")
-                PrimaryIncumbentChecks.RunResources(combat!);
-            DuplicateChoiceProbe.RunBuilders(combat!, options.OutputDirectory);
-            SnapshotOpportunityProbe.RunShuffleWitness(combat!, options.OutputDirectory);
-            if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_HISTORY_CHECKS") == "1")
-                HistoryCounterChecks.Run(combat!, options.OutputDirectory);
-            if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_INFUSED_CORE_CHECKS") == "1")
-                InfusedCoreChecks.Run(combat!, options.OutputDirectory);
             payload["budget"] = DescribeBudget(options);
             payload["root"] = OfflineCombat.DescribeRoot(combat!);
             string diagnostics = ModRuntime.DescribeStart(combat!);
@@ -165,22 +135,14 @@ internal static class Program
             File.WriteAllText(Path.Combine(options.OutputDirectory, "root-diagnostics.txt"), diagnostics);
             WriteProgress(options, "M1", "ok", "已到达玩家第一回合");
 
-            if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_FIXED_PREFIX_CONTINUATIONS") == "1")
-            {
-                Step(steps, "M2 固定长前缀续用测量", () =>
-                {
-                    payload["fixedPrefixContinuations"] = FixedPrefixContinuationBenchmark.Run(combat!, options, loop);
-                    return "N4/N8/N17; fixed-prefix-continuations.json";
-                });
-                reached = "M2";
-            }
-            else if (options.Milestone != "M1")
+            if (options.Milestone != "M1")
             {
                 ModRuntime.SearchOutcome? outcome = null;
                 using MemorySampler memory = new(TimeSpan.FromMilliseconds(100));
                 Step(steps, $"M2.1 跑一次固定预算搜索（{options.SearchMode}）", () =>
                 {
-                    outcome = ModRuntime.RunSearchDetailed(combat!, options, loop, session);
+                    outcome = ModRuntime.RunSearchDetailed(
+                        combat!, options, loop, session, generated?.Request.TheftPolicyForTest);
                     var solver = outcome.LegacyMetrics;
                     return $"boundary={solver["boundary"]} total_expanded={solver["totalExpanded"]} "
                         + $"total_transitions={solver["totalTransitions"]} score={solver["score"]} "
@@ -205,13 +167,10 @@ internal static class Program
                     ["continuations"] = outcome.Continuations,
                     ["patchLog"] = ModRuntime.PatchLog.ToArray(),
                 };
-                // 与游戏内 result.json 同名同形的那一份（游戏自己的 Writer 造的）。
                 payload["solverMetrics"] = outcome.SolverMetrics;
-                // 宿主自己从 SolverResult 读的剪枝/复用计数（游戏内 result.json 没有这些字段）。
                 payload["pruneCounters"] = outcome.LegacyMetrics;
                 payload["searchPolicy"] = outcome.Policy;
                 payload["comparisonQuality"] = outcome.Result.ComparisonQuality;
-                payload["phasePerformance"] = ModRuntime.LastPhasePerformance;
                 File.WriteAllText(
                     Path.Combine(options.OutputDirectory, "search-policy.json"),
                     JsonSerializer.Serialize(outcome.Policy, UnattendedTestFiles.JsonOptions));
@@ -246,7 +205,6 @@ internal static class Program
             };
             WriteProgress(options, NextMilestone(reached), "blocked", $"{root.GetType().Name}: {root.Message}");
             Console.Error.WriteLine($"[FAIL] {root.GetType().Name}: {root.Message}");
-            // 包装异常（如 SearchTransitionException）的真正原因在 InnerException 上，必须打出来。
             for (Exception? inner = root.InnerException; inner != null; inner = inner.InnerException)
                 Console.Error.WriteLine($"[FAIL:inner] {inner.GetType().Name}: {inner.Message}");
             Console.Error.WriteLine(root.StackTrace);
@@ -264,7 +222,6 @@ internal static class Program
         payload["steps"] = steps;
         string resultPath = Path.Combine(options.OutputDirectory, "harness-result.json");
         File.WriteAllText(resultPath, JsonSerializer.Serialize(payload, Json));
-        // run_plan.py 直接消费的一份：solverMetrics 与游戏内 result.json 同名同形。
         File.WriteAllText(
             Path.Combine(options.OutputDirectory, "result.json"),
             JsonSerializer.Serialize(new Dictionary<string, object?>
@@ -293,7 +250,6 @@ internal static class Program
                     ? search.GetValueOrDefault("continuations")
                     : null,
                 ["catalogFingerprint"] = payload.GetValueOrDefault("catalogFingerprint"),
-
                 ["error"] = payload.GetValueOrDefault("error"),
             }, UnattendedTestFiles.JsonOptions));
 
@@ -320,17 +276,10 @@ internal static class Program
             profile.MaxHandChoiceBranchesPerAction,
             options.MaxDegreeOfParallelism,
             options.BudgetMilliseconds,
-            options.EarlyTurnExplorationDepth,
-            options.EarlyTurnExplorationBudgetMilliseconds,
             options.PotionPolicy,
             options.SearchMode,
-            options.Backend,
-            options.UsePortfolio,
+            backend = "hot",
             fixedSearchBudget = !options.ProductionBudget,
-            enableNoGcRegion = options.EnableNoGcRegion,
-            noGcRegionBudgetGigabytes = options.EnableNoGcRegion
-                ? options.NoGcRegionBudgetGigabytes
-                : (double?)null,
         };
     }
 
@@ -398,51 +347,19 @@ internal sealed record HarnessOptions
           --dop <int>            搜索并行度（默认 1）
           --budget-ms <int>      搜索预算毫秒（默认 600000）
           --potion-policy <p>    药水政策（默认 Smart）
-          --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
-          --backend <b>          求解后端：legacy（默认）| hot
+          --search-mode <m>      Evaluate（单次 Beam）| Coordinator（HotSearchCoordinator）
+          --backend hot          固定使用 HotKernel + HotSearch 后端
           --check-hot-layout     校验 HotKernel 布局、Pack/Unpack、全字节翻转突变、RNG 与牌堆操作
-          --verify-hot-parity    校验 HotKernel Gate A(19根)、Gate B(锁步动作)、Gate C(微基准)
-          --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
-          --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
-          --unordered-pile-mask <0..15>  实验：状态键里顺序无关的牌堆（1手牌/2抽牌堆/4弃牌堆/8消耗堆）
-          --state-key-salt <int> 实验：给状态指纹异或一个常量（双射，只改数值不改相等关系）
-          --measure-phases       开按阶段的耗时/分配统计（SEARCH_PHASE 行进运行日志）
-          --early-turn-exploration-depth <0|1|2>  Coordinator：离线打开早期回合探索（默认 0 关）
-          --early-turn-exploration-budget-ms <5000..2390000>  探索的请求累计时限（默认 2390000；仅深度大于 0 时有效）
-          --disable-transposition-prune <0..3>  实验：关掉转置支配剪枝（1=候选准入/2=展开准入）
-          --memory-no-progress-limit <int>  实验：连续多少次无进展回收后提前收手（0=关闭）
-          --transposition-entry-limit <int>  实验：转置支配表合并条目上限（0=不设上限；缺省=生产默认 1000000）
-          --stop-at-zero-loss    启用生产零战损达标停止政策
-          --disable-shared-incumbents  消融：仅关闭共享战损基准，保留上游成员内剪枝
-          --verify-shared-incumbent-reuse  Coordinator：核验相同根的跨请求胜利见证续用
-          --stop-portfolio-at-hp-target  Coordinator：显式开启组合达标早停（缺省沿用生产配置）
-          --disable-portfolio-hp-target-stop  Coordinator 消融：关闭组合达标早停
-          --verify-incremental   逐动作完整回放核验（不得用于性能数字）
-          --production-budget    使用生产预算流程，允许预算内的无胜利升级；不用于固定节点逐位对照
-          --enable-no-gc-region   开 Runtime 的搜索内 No-GC 生命周期（默认关闭）
-          --no-gc-region-budget-gigabytes <double>  No-GC 区域预算，单位十进制 GB（默认 1）
-          --signal-ballast-mb <int>  进 No-GC scope 后先持有 N MiB 活对象，制造回收腾不出余量的压力
-          --observe-ordering <N> 最多导出 N 个真实剪枝候选；仅供采集，不能用于性能数据
-          --observe-ordering-states <p>  追加观察给定状态键的生成/准入/回合筛选事件
-          --ordering <mode>     Evaluate 实验：baseline|base|band，复用现有排序成员
-          --ranking-model <p>   实验：有界上下文排序修正；只与 baseline 排序同时使用
-          --bounded-offensive-refinement  组合实验：保留原成员，有界追加进攻成员
-          --disable-bounded-offensive-refinement  显式关闭有界追加
-          --offensive-refinement  组合实验：以更窄的进攻排序成员替换宽成员
-          --beam-weight <term:scale>  单项排序敏感度：CurrentEnergy|PersistentBuffDelta|EnemyHp，scale 0..2
-          --continuous-threat  实验：EndTurn 后尚能出牌的新回合起点，连续计价致死意图
-          --base-score-tactical-ties  实验：基础分成员的单进展值同分截线使用既有战术顺序
-          --reallocated-refinement / --disable-reallocated-refinement  显式覆盖默认组合再分配
-          --adaptive-novelty  实验：原Beam组合完成后，以实际工作量的至多1/8追加结构探索
-          --boss-tempo <mode>  首领追加搜索：on（默认）|off|legacy-pricing|direct（仅Evaluate）
-          --observe-portfolio    导出追加搜索的特征与实际政策标签
-          --portfolio-model <p>  加载可选选择器 JSON；不匹配的版本回退原组合
+          --verify-hot-parity    校验 Gate A(19根捕获)、Gate B(多回合自洽+DOP1/8确定性)、Gate C(微基准)
+          --stop-at-zero-loss    启用零战损达标停止政策
+          --production-budget    使用生产预算流程
+          --transposition-entry-limit <int>  转置支配表条目上限（0=不设上限）
+          --disable-transposition-prune <0..3>  关掉转置支配剪枝位
           --milestone <M1|M2>    跑到哪个里程碑（默认 M2）
           --out <dir>            产物目录（默认 <workspace>/offline）
           --workspace <dir>      工作区目录（默认 .local/offline-harness）
           --language <code>      本地化语言码（默认 eng）
-          --verbose-game-log     把游戏 info/debug 日志也打到标准输出
-        环境变量 OFFLINE_HARNESS_COMBATSOLVER_DLL 可以换掉运行时加载的 CombatSolver.dll。
+          --verbose-game-log     把游戏 info/debug 日志打到标准输出
         """;
 
     public HarnessScenario Scenario { get; init; } = new("IRONCLAD", "FUZZY_WURM_CRAWLER_WEAK", "OFFLINEHARNESS1", 0, 0);
@@ -458,53 +375,12 @@ internal sealed record HarnessOptions
     public int BudgetMilliseconds { get; init; } = 600_000;
     public string PotionPolicy { get; init; } = "Smart";
     public string SearchMode { get; init; } = "Evaluate";
-    public string Backend { get; init; } = "legacy";
-    /// <summary>开宽度组合（协调器的组合成员通道）；Evaluate 模式下没有意义。</summary>
-    public bool UsePortfolio { get; init; }
-    /// <summary>消融：丢掉只带基线宽度、不带排序修饰的组合成员，少跑一次真实搜索。</summary>
-    public bool NoPlainBaselineMember { get; init; }
-    /// <summary>实验：状态键里哪些牌堆改成顺序无关哈希（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）；0 即生产口径。</summary>
-    public int UnorderedPileMask { get; init; }
-    /// <summary>实验：给状态指纹异或一个由该值导出的常量；双射，只改数值不改相等关系。0 即生产口径。</summary>
-    public int StateKeySalt { get; init; }
-    /// <summary>开按阶段统计：每个阶段的耗时与分配字节，落到运行日志的 SEARCH_PHASE 行。</summary>
     public bool MeasureSearchPhases { get; init; }
-    /// <summary>离线打开早期回合探索（0/1/2）；只对 Coordinator 有效，设置不改变生产默认值。</summary>
-    public int EarlyTurnExplorationDepth { get; init; }
-    /// <summary>早期回合探索的请求累计时限毫秒；深度大于 0 时缺省 2,390,000 毫秒，与 40 分钟请求上限扣除 10 秒余量相同。</summary>
-    public int EarlyTurnExplorationBudgetMilliseconds { get; init; }
-    /// <summary>实验：关掉转置支配剪枝的位（1=候选准入/2=展开准入）；0 即生产口径。</summary>
     public int TranspositionPruningDisabledMask { get; init; }
-    /// <summary>实验：连续多少次无进展回收后提前收手；0 即关闭（生产口径）。</summary>
-    public int MemoryNoProgressRecoveryLimit { get; init; }
-    /// <summary>实验：转置支配表合并条目上限；0 = 不设上限，缺省 = 生产默认。</summary>
     public int? TranspositionEntryLimit { get; init; }
     public bool ProductionBudget { get; init; }
     public bool StopAtZeroLoss { get; init; }
-    public bool DisableSharedIncumbents { get; init; }
-    public bool VerifySharedIncumbentReuse { get; init; }
     public bool VerifyIncremental { get; init; }
-    /// <summary>实验：走 Runtime 的搜索内 No-GC 生命周期，供无头宿主复现内存回收与截断。</summary>
-    public bool EnableNoGcRegion { get; init; }
-    /// <summary>No-GC 区域预算；只在 <see cref="EnableNoGcRegion" /> 开启时生效。</summary>
-    public double NoGcRegionBudgetGigabytes { get; init; } = 1d;
-    /// <summary>进入 No-GC scope 后先持有的活对象 MiB，用于制造“回收腾不出余量”的受控压力。</summary>
-    public int SignalBallastMegabytes { get; init; }
-    public int OrderingObservationLimit { get; init; }
-    public string? OrderingWatchedStatesPath { get; init; }
-    public string Ordering { get; init; } = "baseline";
-    public string? RankingModelPath { get; init; }
-    public bool ContinuousThreatRanking { get; init; }
-    public bool BaseScoreTacticalTies { get; init; }
-    public bool AdaptiveNoveltyRefinement { get; init; }
-    public string BossTempo { get; init; } = "on";
-    public bool? ReallocatedRefinementPortfolio { get; init; }
-    public BeamWeightPerturbation? BeamWeightPerturbation { get; init; }
-    public bool OffensiveRefinementPortfolio { get; init; }
-    public bool? BoundedOffensiveRefinementPortfolio { get; init; }
-    public bool? StopPortfolioAtHpTarget { get; init; }
-    public bool ObservePortfolio { get; init; }
-    public string? PortfolioModelPath { get; init; }
     public string Milestone { get; init; } = "M2";
     public string WorkspaceDirectory { get; init; } = string.Empty;
     public string OutputDirectory { get; init; } = string.Empty;
@@ -516,33 +392,12 @@ internal sealed record HarnessOptions
     public static HarnessOptions Parse(string[] args)
     {
         string character = "IRONCLAD", encounter = "FUZZY_WURM_CRAWLER_WEAK", seed = "OFFLINEHARNESS1";
-        int ascension = 0, actIndex = 0, dop = 1, budget = 600_000, unorderedPileMask = 0, stateKeySalt = 0;
-        int transpositionPruneOff = 0, memoryNoProgressLimit = 0, earlyTurnExplorationDepth = 0;
-        int? earlyTurnExplorationBudgetMilliseconds = null;
+        int ascension = 0, actIndex = 0, dop = 1, budget = 600_000, transpositionPruneOff = 0;
         int? transpositionEntryLimit = null;
-        bool measurePhases = false, enableNoGcRegion = false, productionBudget = false;
-        bool stopAtZeroLoss = false, verifyIncremental = false, disableSharedIncumbents = false;
-        bool verifySharedIncumbentReuse = false;
-        double noGcRegionBudgetGigabytes = 1d;
-        int orderingObservationLimit = 0;
-        string? orderingWatchedStatesPath = null;
-        string ordering = "baseline";
-        string? rankingModelPath = null;
-        bool continuousThreatRanking = false;
-        bool baseScoreTacticalTies = false;
-        bool adaptiveNoveltyRefinement = false;
-        string bossTempo = "on";
-        bool? reallocatedRefinementPortfolio = null;
-        BeamWeightPerturbation? beamWeightPerturbation = null;
-        bool offensiveRefinementPortfolio = false;
-        bool? boundedOffensiveRefinementPortfolio = null;
-        bool? stopPortfolioAtHpTarget = null;
-        int signalBallastMegabytes = 0;
+        bool measurePhases = false, productionBudget = false, stopAtZeroLoss = false, verifyIncremental = false;
         int? beam = null, nodes = null, cardBranches = null, pileBranches = null, handBranches = null;
-        bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
-        string? portfolioModelPath = null;
         string potionPolicy = "Smart", milestone = "M2", language = "eng";
-        string profile = "Custom", searchMode = "Evaluate", backend = "legacy", label = "offline";
+        string profile = "Custom", searchMode = "Evaluate", label = "offline";
         string? output = null, requestPath = null;
         string workspace = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "../../../../../../.local/offline-harness"));
@@ -576,49 +431,23 @@ internal sealed record HarnessOptions
                 case "--budget-ms": budget = int.Parse(Value()); break;
                 case "--potion-policy": potionPolicy = Value(); break;
                 case "--search-mode": searchMode = Value(); break;
-                case "--backend": backend = Value().ToLowerInvariant(); break;
-                case "--use-portfolio": usePortfolio = true; break;
-                case "--no-plain-baseline": noPlainBaseline = true; break;
-                case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
-                case "--state-key-salt": stateKeySalt = int.Parse(Value()); break;
+                case "--backend":
+                    string backend = Value().ToLowerInvariant();
+                    if (backend != "hot")
+                        throw new ArgumentException($"仅支持 hot 后端，收到 '{backend}'。");
+                    break;
+                // Plan-JSON compat flags accepted as no-ops so benchmark plans run unchanged.
+                case "--use-portfolio": break;
+                case "--enable-no-gc-region": break;
+                case "--no-gc-region-budget-gigabytes": _ = Value(); break;
+                case "--early-turn-exploration-depth": _ = Value(); break;
+                case "--early-turn-exploration-budget-ms": _ = Value(); break;
                 case "--measure-phases": measurePhases = true; break;
-                case "--early-turn-exploration-depth": earlyTurnExplorationDepth = int.Parse(Value()); break;
-                case "--early-turn-exploration-budget-ms": earlyTurnExplorationBudgetMilliseconds = int.Parse(Value()); break;
                 case "--stop-at-zero-loss": stopAtZeroLoss = true; break;
-                case "--disable-shared-incumbents": disableSharedIncumbents = true; break;
-                case "--verify-shared-incumbent-reuse": verifySharedIncumbentReuse = true; break;
                 case "--verify-incremental": verifyIncremental = true; break;
                 case "--production-budget": productionBudget = true; break;
                 case "--disable-transposition-prune": transpositionPruneOff = int.Parse(Value()); break;
-                case "--memory-no-progress-limit": memoryNoProgressLimit = int.Parse(Value()); break;
                 case "--transposition-entry-limit": transpositionEntryLimit = int.Parse(Value()); break;
-                case "--enable-no-gc-region": enableNoGcRegion = true; break;
-                case "--no-gc-region-budget-gigabytes": noGcRegionBudgetGigabytes = double.Parse(Value()); break;
-                case "--signal-ballast-mb": signalBallastMegabytes = int.Parse(Value()); break;
-                case "--observe-ordering": orderingObservationLimit = int.Parse(Value()); break;
-                case "--observe-ordering-states": orderingWatchedStatesPath = Path.GetFullPath(Value()); break;
-                case "--ordering": ordering = Value(); break;
-                case "--ranking-model": rankingModelPath = Path.GetFullPath(Value()); break;
-                case "--bounded-offensive-refinement": boundedOffensiveRefinementPortfolio = true; break;
-                case "--disable-bounded-offensive-refinement": boundedOffensiveRefinementPortfolio = false; break;
-                case "--offensive-refinement": offensiveRefinementPortfolio = true; break;
-                case "--beam-weight":
-                    string[] termScale = Value().Split(':');
-                    if (termScale.Length != 2 || !Enum.TryParse(termScale[0], out BeamWeightTerm term))
-                        throw new ArgumentException("--beam-weight 需要 Term:Scale。");
-                    beamWeightPerturbation = new BeamWeightPerturbation(term,
-                        double.Parse(termScale[1], System.Globalization.CultureInfo.InvariantCulture));
-                    break;
-                case "--continuous-threat": continuousThreatRanking = true; break;
-                case "--base-score-tactical-ties": baseScoreTacticalTies = true; break;
-                case "--reallocated-refinement": reallocatedRefinementPortfolio = true; break;
-                case "--disable-reallocated-refinement": reallocatedRefinementPortfolio = false; break;
-                case "--adaptive-novelty": adaptiveNoveltyRefinement = true; break;
-                case "--boss-tempo": bossTempo = Value(); break;
-                case "--stop-portfolio-at-hp-target": stopPortfolioAtHpTarget = true; break;
-                case "--disable-portfolio-hp-target-stop": stopPortfolioAtHpTarget = false; break;
-                case "--observe-portfolio": observePortfolio = true; break;
-                case "--portfolio-model": portfolioModelPath = Path.GetFullPath(Value()); break;
                 case "--milestone": milestone = Value(); break;
                 case "--out": output = Value(); break;
                 case "--workspace": workspace = Value(); break;
@@ -633,73 +462,10 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--profile 只接受 Low|Medium|High|VeryHigh|Custom。");
         if (searchMode is not ("Evaluate" or "Coordinator"))
             throw new ArgumentException("--search-mode 只接受 Evaluate 或 Coordinator。");
-        if (backend is not ("legacy" or "hot"))
-            throw new ArgumentException("--backend 只接受 legacy 或 hot。");
-        if (orderingObservationLimit is < 0 or > 100000 || orderingObservationLimit > 0 && searchMode != "Evaluate")
-            throw new ArgumentException("--observe-ordering 仅支持 Evaluate，范围 0..100000。");
-        if (orderingWatchedStatesPath != null && orderingObservationLimit == 0)
-            throw new ArgumentException("--observe-ordering-states 需要有限的 --observe-ordering。");
-        if (ordering is not ("baseline" or "base" or "band") || ordering != "baseline" && searchMode != "Evaluate")
-            throw new ArgumentException("--ordering 只接受 baseline|base|band，非基线仅支持 Evaluate。");
-        if (rankingModelPath != null && ordering != "baseline")
-            throw new ArgumentException("--ranking-model 不能同时叠加其他 --ordering 实验。");
-        if (continuousThreatRanking && (rankingModelPath != null || ordering != "baseline"))
-            throw new ArgumentException("--continuous-threat 必须单独测量，不叠加排序模型或其他成员。");
-        if (baseScoreTacticalTies && (searchMode == "Evaluate" ? ordering != "base" : !usePortfolio))
-            throw new ArgumentException("--base-score-tactical-ties 需要 Evaluate --ordering base 或 Coordinator --use-portfolio。");
-        if (reallocatedRefinementPortfolio.HasValue && (searchMode != "Coordinator" || !usePortfolio))
-            throw new ArgumentException("组合再分配覆盖需要 Coordinator --use-portfolio。");
-        if (reallocatedRefinementPortfolio == true && (noPlainBaseline || adaptiveNoveltyRefinement
-            || offensiveRefinementPortfolio || boundedOffensiveRefinementPortfolio == true))
-            throw new ArgumentException("--reallocated-refinement 不能叠加显式成员列表消融或精炼实验。");
-        if (bossTempo is not ("on" or "off" or "legacy-pricing" or "direct"))
-            throw new ArgumentException("--boss-tempo expects on, off, legacy-pricing or direct.");
-        if (bossTempo == "direct" && searchMode != "Evaluate")
-            throw new ArgumentException("Direct boss tempo traversal requires --search-mode Evaluate.");
-        if (adaptiveNoveltyRefinement && (searchMode != "Coordinator" || !usePortfolio))
-            throw new ArgumentException("--adaptive-novelty 需要 Coordinator --use-portfolio。");
-        if (beamWeightPerturbation != null && (continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
-            throw new ArgumentException("--beam-weight 必须单独测量，不叠加其他排序实验。");
-        if (offensiveRefinementPortfolio && (!usePortfolio || searchMode != "Coordinator"
-            || beamWeightPerturbation != null || continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
-            throw new ArgumentException("--offensive-refinement 需要Coordinator组合且不能叠加其他排序实验。");
-        if (boundedOffensiveRefinementPortfolio.HasValue && (!usePortfolio || searchMode != "Coordinator"))
-            throw new ArgumentException("有界追加参数需要Coordinator组合。");
-        if (boundedOffensiveRefinementPortfolio == true && (offensiveRefinementPortfolio
-            || beamWeightPerturbation != null || continuousThreatRanking || rankingModelPath != null || ordering != "baseline"))
-            throw new ArgumentException("有界追加不能叠加其他排序实验。");
-        if (stopPortfolioAtHpTarget.HasValue && searchMode != "Coordinator")
-            throw new ArgumentException("组合达标早停参数仅用于Coordinator。");
-        if (usePortfolio && searchMode != "Coordinator")
-            throw new ArgumentException("--use-portfolio 只对 --search-mode Coordinator 有效。");
-        if ((observePortfolio || portfolioModelPath != null) && (!usePortfolio || searchMode != "Coordinator"))
-            throw new ArgumentException("选择器实验需要 --search-mode Coordinator --use-portfolio。");
-        if (noPlainBaseline && (!usePortfolio || searchMode != "Coordinator"))
-            throw new ArgumentException("--no-plain-baseline 需要 --search-mode Coordinator --use-portfolio。");
-        if (unorderedPileMask is < 0 or > 15)
-            throw new ArgumentException("--unordered-pile-mask 只接受 0..15（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）。");
         if (transpositionPruneOff is < 0 or > 3)
-            throw new ArgumentException("--disable-transposition-prune 只接受 0..3（1=候选准入/2=展开准入）。");
-        if (memoryNoProgressLimit < 0)
-            throw new ArgumentException("--memory-no-progress-limit 只接受非负数（0=关闭）。");
-        if (earlyTurnExplorationDepth is < 0 or > 2)
-            throw new ArgumentException("--early-turn-exploration-depth 只接受 0|1|2。");
-        if (earlyTurnExplorationDepth > 0 && searchMode != "Coordinator")
-            throw new ArgumentException("--early-turn-exploration-depth 需要 --search-mode Coordinator。");
-        if (earlyTurnExplorationBudgetMilliseconds.HasValue && earlyTurnExplorationDepth == 0)
-            throw new ArgumentException("--early-turn-exploration-budget-ms 需要 --early-turn-exploration-depth 1|2。");
-        if (earlyTurnExplorationBudgetMilliseconds is < 5_000 or > 2_390_000)
-            throw new ArgumentException("--early-turn-exploration-budget-ms 只接受 5000..2390000。");
-        if (earlyTurnExplorationDepth > 0 && milestone != "M2")
-            throw new ArgumentException("早期回合探索需要 --milestone M2 执行实际搜索。");
+            throw new ArgumentException("--disable-transposition-prune 只接受 0..3。");
         if (transpositionEntryLimit is < 0)
-            throw new ArgumentException("--transposition-entry-limit 只接受非负数（0=不设上限）。");
-        if (noGcRegionBudgetGigabytes < 1d || noGcRegionBudgetGigabytes > 256d)
-            throw new ArgumentException("--no-gc-region-budget-gigabytes 只接受 1..256。");
-        if (signalBallastMegabytes is < 0 or > 4096)
-            throw new ArgumentException("--signal-ballast-mb 只接受 0..4096。");
-        if (signalBallastMegabytes > 0 && !enableNoGcRegion)
-            throw new ArgumentException("--signal-ballast-mb 需要 --enable-no-gc-region。");
+            throw new ArgumentException("--transposition-entry-limit 只接受非负数。");
         if (profile == "Custom" && requestPath == null)
         {
             beam ??= 24;
@@ -721,42 +487,12 @@ internal sealed record HarnessOptions
             BudgetMilliseconds = budget,
             PotionPolicy = potionPolicy,
             SearchMode = searchMode,
-            Backend = backend,
-            UsePortfolio = usePortfolio,
-            NoPlainBaselineMember = noPlainBaseline,
-            UnorderedPileMask = unorderedPileMask,
-            StateKeySalt = stateKeySalt,
             MeasureSearchPhases = measurePhases,
-            EarlyTurnExplorationDepth = earlyTurnExplorationDepth,
-            EarlyTurnExplorationBudgetMilliseconds = earlyTurnExplorationDepth == 0
-                ? 0
-                : earlyTurnExplorationBudgetMilliseconds ?? 2_390_000,
             TranspositionPruningDisabledMask = transpositionPruneOff,
             TranspositionEntryLimit = transpositionEntryLimit,
             ProductionBudget = productionBudget,
             StopAtZeroLoss = stopAtZeroLoss,
-            DisableSharedIncumbents = disableSharedIncumbents,
-            VerifySharedIncumbentReuse = verifySharedIncumbentReuse,
             VerifyIncremental = verifyIncremental,
-            MemoryNoProgressRecoveryLimit = memoryNoProgressLimit,
-            EnableNoGcRegion = enableNoGcRegion,
-            NoGcRegionBudgetGigabytes = noGcRegionBudgetGigabytes,
-            SignalBallastMegabytes = signalBallastMegabytes,
-            OrderingObservationLimit = orderingObservationLimit,
-            OrderingWatchedStatesPath = orderingWatchedStatesPath,
-            Ordering = ordering,
-            RankingModelPath = rankingModelPath,
-            ContinuousThreatRanking = continuousThreatRanking,
-            BaseScoreTacticalTies = baseScoreTacticalTies,
-            AdaptiveNoveltyRefinement = adaptiveNoveltyRefinement,
-            BossTempo = bossTempo,
-            ReallocatedRefinementPortfolio = reallocatedRefinementPortfolio,
-            BeamWeightPerturbation = beamWeightPerturbation,
-            OffensiveRefinementPortfolio = offensiveRefinementPortfolio,
-            BoundedOffensiveRefinementPortfolio = boundedOffensiveRefinementPortfolio,
-            StopPortfolioAtHpTarget = stopPortfolioAtHpTarget,
-            ObservePortfolio = observePortfolio,
-            PortfolioModelPath = portfolioModelPath,
             Milestone = milestone,
             WorkspaceDirectory = Path.GetFullPath(workspace),
             OutputDirectory = Path.GetFullPath(output ?? Path.Combine(workspace, "offline")),

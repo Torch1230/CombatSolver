@@ -40,7 +40,7 @@ internal static class CombatBugReportMetadata
     }
 
     internal static string Serialize(string reportId, string? description, BugReportCombat? combat,
-        CombatBugReportClassificationSnapshot classification, ManualProjectionComparison? comparison)
+        CombatBugReportClassificationSnapshot classification)
     {
         if (!Guid.TryParseExact(reportId, "N", out _)) throw new InvalidDataException("问题包编号格式无效。");
         return JsonSerializer.Serialize(new
@@ -57,18 +57,6 @@ internal static class CombatBugReportMetadata
             runStatisticsFailure = RunStatistics.Failure,
             combat,
             classification,
-            comparisonKind = comparison == null ? null : "projected_comparison",
-            manualProjectionComparison = comparison,
-            hpLoss = comparison == null ? null : new
-            {
-                kind = "manual_projection",
-                before = comparison.PreviousProjectedBattleHpLost,
-                after = comparison.CurrentProjectedBattleHpLost,
-                reduction = comparison.PreviousProjectedBattleHpLost - comparison.CurrentProjectedBattleHpLost,
-                additionalPotionCount = comparison.AdditionalPotionCount,
-                potionHpCost = comparison.PotionHpCost,
-                potionAdjustedHpReduction = comparison.PotionAdjustedHpReduction,
-            },
             bundle = new { schemaVersion = 2, checkpointIndexPath = "replay/checkpoint.json" },
         }, Json);
     }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Diagnostics;
+using CombatSolver.HotKernel;
 using CombatSolver.Replay;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -100,7 +101,7 @@ internal sealed class CombatReplayRecording : IDisposable
         recording._choiceContexts[choiceId] = new RecordedChoiceContext(surface.ToString(), source, minimum, maximum,
             cards.Select((card, index) => new RecordedCardIdentity(index, card.Id.ToString(),
                 NetCombatCardDb.Instance.TryGetCardId(card, out uint id) ? id : null,
-                card.CurrentUpgradeLevel, CardChoiceSupport.ChoiceCardKey(card))).ToArray());
+                card.CurrentUpgradeLevel, HotImportSupport.FormatLiveChoiceCardKey(card))).ToArray());
     }
 
     // Called on the main thread. Records and origin bytes are immutable after capture.

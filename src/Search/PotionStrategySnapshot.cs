@@ -119,38 +119,6 @@ internal sealed class PotionStrategySnapshot
             ambergrisCount);
     }
 
-    public ForcedPotionUseEvaluation EvaluateForcedUses(SearchNode node)
-    {
-        int count = 0;
-        int strategicCost = 0;
-        int ambergrisCount = 0;
-        foreach (PotionSlotDirective directive in Directives)
-        {
-            if (directive.Directive != SolverPotionDirective.Force)
-                continue;
-            SearchNode? useNode = null;
-            for (SearchNode? cursor = node; cursor?.Action is { } action; cursor = cursor.Parent)
-            {
-                if (action.Kind == PlanActionKind.UsePotion
-                    && action.PotionSlot == directive.Slot
-                    && string.Equals(action.PotionId, directive.PotionId, StringComparison.Ordinal))
-                {
-                    useNode = cursor;
-                    break;
-                }
-            }
-            if (useNode == null)
-                continue;
-            count++;
-            strategicCost += useNode.Snapshot.ExplicitPotionStrategicCost
-                - useNode.Parent!.Snapshot.ExplicitPotionStrategicCost;
-            if (directive.PotionId == "AMBERGRIS")
-                ambergrisCount++;
-        }
-        return new ForcedPotionUseEvaluation(count == ForcedDirectiveCount,
-            count, strategicCost, ambergrisCount);
-    }
-
     public ForcedPotionUseEvaluation EvaluateForcedUses(
         IReadOnlyList<PredictedPotionUse> potionUses)
     {

@@ -7,36 +7,15 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 CHECKS = (
-    "BfwsResearchChecks",
-    "CardHookReceiverChecks",
-    "CardTargetingChecks",
     "ClientUpdateChecks",
-    "CombatSolver.GcPolicyChecks",
-    "CombatSolver.WavePolicyChecks",
     "DiagnosticLogTests",
-    "ExpansionBatchChecks",
-    "ForkableListLayoutChecks",
     "LoopDisplayChecks",
-    "ModelIdCacheChecks",
-    "ModelPredictionStateChecks",
-    "PortfolioSelectorChecks",
-    "PowerCardValuationChecks",
     "PreCombatRequestChecks",
-    "PredictionStateStoreChecks",
-    "ReachableHandPotentialChecks",
-    "ReachableHandValueChecks",
     "RunStatisticsTests",
-    "RuntimeGcProfileChecks",
-    "SnapshotListBufferChecks",
     "StateFingerprintChecks",
-    "SurgicalResearchChecks",
-    "TranspositionFrontierChecks",
-    "TurnPhaseMirrorChecks",
 )
 EXCLUDED = {
-    "AdaptedOnPlayChecks": "Requires the supported game's Harmony assembly.",
     "PerformanceRecordingTests": "Requires an output directory or an existing EventPipe trace and a mode.",
-    "PowerAmountComparisonChecks": "Requires game, Godot, Harmony and RitsuLib assemblies.",
 }
 
 

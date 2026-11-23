@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using CombatSolver.HotKernel;
+using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace CombatSolver.HotSearch;
 
@@ -17,6 +18,7 @@ internal struct HotStagedChild
     public int ChoiceOffset;
     public HotAction Action;
     public byte ChoiceCount;
+    public byte PlayableHandCount;
     public short PotionCostDelta;
     public ushort PotionSlotBit;
     public byte PotionCountDelta;
@@ -34,6 +36,12 @@ internal struct HotChoiceInline8
 internal struct HotChoicePrefix
 {
     public HotChoiceInline8 Selections;
+    public int LastChoicePriority;
+    public int BatchHistoryPlays;
+    public ushort BatchSourceCardDefId;
+    public ushort LastChoiceUid;
+    public ushort BatchDrawCount;
+    public HotChoiceKind BatchChoiceKind;
     public byte Count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -52,20 +60,22 @@ internal readonly record struct HotStandPatResult(
     int EnemyHp,
     long Score,
     int SetupScore,
+    byte PlayableHandCount,
+    byte RevivingEnemyCount,
     HotStateHandle CommittedHandle,
     HotColdSidecar? Cold,
     HotHash128 Hash);
 
 /// <summary>
 /// Thread-private lock-free expansion workspace owning reusable <see cref="CombatHotState"/> buffers,
-/// <see cref="HotExecScratch"/>, local <see cref="PackedStateArena"/> staging slab, and choice queue.
+/// <see cref="HotExecScratch"/>, local <see cref="PackedStateArena"/> staging slab, and choice stack.
 /// Zero heap allocations after warm-up; reset between waves.
 /// </summary>
 internal sealed class HotExpansionWorkspace : IDisposable
 {
     private const int InitialStagedChildCapacity = 1024;
     private const int InitialStagedChoiceCapacity = 512;
-    private const int MaxChoiceQueueItems = 128;
+    private const int MaxChoiceStackItems = 512;
 
     public CombatHotState ParentState;
     public CombatHotState WorkingState;
@@ -73,7 +83,8 @@ internal sealed class HotExpansionWorkspace : IDisposable
     public readonly HotExecScratch Scratch = new();
     public readonly HotAction[] ActionBuf = new HotAction[256];
     public readonly HotChoiceSelection[] ChoiceOptBuf = new HotChoiceSelection[128];
-    public readonly HotChoicePrefix[] ChoiceQueue = new HotChoicePrefix[MaxChoiceQueueItems];
+    public readonly int[] ChoicePrioBuf = new int[128];
+    public readonly HotChoicePrefix[] ChoiceStack = new HotChoicePrefix[MaxChoiceStackItems];
     public readonly PackedStateArena StagingArena = new(blockPayloadBytes: 512 * 1024);
 
     public HotStagedChild[] StagedChildren = new HotStagedChild[InitialStagedChildCapacity];
@@ -143,6 +154,7 @@ internal readonly struct HotWaveExpansionConfig
     public readonly int MaxCardBranchesPerNode;
     public readonly int MaxHandChoiceBranches;
     public readonly int MaxPileChoiceBranches;
+    public readonly HotEvalMode EvalMode;
     public readonly bool AllowEndTurn;
 
     public HotWaveExpansionConfig(
@@ -152,6 +164,7 @@ internal readonly struct HotWaveExpansionConfig
         int maxCardBranchesPerNode,
         int maxHandChoiceBranches,
         int maxPileChoiceBranches,
+        HotEvalMode evalMode = HotEvalMode.Balanced,
         bool allowEndTurn = true)
     {
         DisableAllPotions = disableAllPotions;
@@ -160,6 +173,7 @@ internal readonly struct HotWaveExpansionConfig
         MaxCardBranchesPerNode = maxCardBranchesPerNode;
         MaxHandChoiceBranches = maxHandChoiceBranches;
         MaxPileChoiceBranches = maxPileChoiceBranches;
+        EvalMode = evalMode;
         AllowEndTurn = allowEndTurn;
     }
 }
@@ -199,8 +213,7 @@ internal sealed class HotParallelExpander : IDisposable
 
     public HotParallelExpander(int maxDegreeOfParallelism)
     {
-        _maxWorkers = Math.Clamp(maxDegreeOfParallelism, 1, SolverWeights.MaximumSearchMaxDegreeOfParallelism);
-        // Allocate 2N workspaces when DOP > 1 (or 1 when DOP == 1) so waves & stand-pat batches stay isolated.
+        _maxWorkers = Math.Clamp(maxDegreeOfParallelism, 1, HotSearchConstants.MaximumSearchMaxDegreeOfParallelism);
         int wsCount = _maxWorkers == 1 ? 1 : _maxWorkers * 2;
         _workspaces = new HotExpansionWorkspace[wsCount];
         for (int i = 0; i < wsCount; i++)
@@ -255,7 +268,6 @@ internal sealed class HotParallelExpander : IDisposable
         for (int w = 0; w < workerCount; w++)
             _workspaces[w].ResetWave();
 
-        // Copy parent IDs into a managed array only if parallel (Parallel.For cannot capture ReadOnlySpan).
         if (workerCount == 1)
         {
             HotExpansionWorkspace ws = _workspaces[0];
@@ -360,7 +372,6 @@ internal sealed class HotParallelExpander : IDisposable
             int parentNodeId = parentIds[p];
             ref readonly HotSearchNode parentNode = ref nodeArena.GetRef(parentNodeId);
 
-            // Capture parent scalars before nodeArena potentially adds chunks
             int parentTurn = parentNode.Turn;
             int parentActionsThisTurn = parentNode.ActionsThisTurn;
             ushort parentActionCount = parentNode.ActionCount;
@@ -389,7 +400,6 @@ internal sealed class HotParallelExpander : IDisposable
 
                 bool isOngoing = staged.Summary.Outcome == HotCombatOutcome.Ongoing && !staged.Summary.IsDefeat;
 
-                // Transposition table dominance check on ongoing states (ZERO mainArena commit if dominated!)
                 HotTtProbeData probe = new(
                     staged.Hash,
                     staged.Score,
@@ -415,8 +425,6 @@ internal sealed class HotParallelExpander : IDisposable
                     }
                 }
 
-                // Commit packed state into mainStateArena ONLY for admitted ongoing children
-                // (terminal Victory/Defeat nodes are never unpacked again; winning routes replay from root).
                 HotStateHandle committedHandle = default;
                 if (isOngoing)
                 {
@@ -478,6 +486,8 @@ internal sealed class HotParallelExpander : IDisposable
                     Turn = (byte)Math.Clamp(staged.Summary.Turn, 0, byte.MaxValue),
                     ActionsThisTurn = nextActionsThisTurn,
                     AliveEnemyCount = staged.Summary.AliveEnemyCount,
+                    RevivingEnemyCount = staged.Summary.RevivingEnemyCount,
+                    PlayableHandCount = staged.PlayableHandCount,
                     DeathSaveUseCount = staged.Summary.DeathSaveUseCount,
                     Outcome = staged.Summary.Outcome,
                     Flags = flags,
@@ -522,6 +532,7 @@ internal sealed class HotParallelExpander : IDisposable
         HotRules rules,
         in HotSearchPolicy policy,
         in HotEvalLookup evalLookup,
+        HotEvalMode evalMode,
         List<int> nextTurnOut,
         List<int> victoriesOut,
         ref int bestFallbackNodeId,
@@ -534,7 +545,6 @@ internal sealed class HotParallelExpander : IDisposable
         if (count == 0)
             return;
 
-        // Partition into cache hits vs misses in deterministic order.
         int[] missIndices = ArrayPool<int>.Shared.Rent(count);
         int[] missNodeIds = ArrayPool<int>.Shared.Rent(count);
         int missCount = 0;
@@ -585,7 +595,7 @@ internal sealed class HotParallelExpander : IDisposable
                     cancellationToken.ThrowIfCancellationRequested();
                     ownerWs[m] = wsBase;
                     executedFlags[m] = RunSingleStandPat(
-                        ws, missNodeIds[m], nodeArena, mainStateArena, rules, in policyCopy, in lookupCopy, out results[m]);
+                        ws, missNodeIds[m], nodeArena, mainStateArena, rules, in policyCopy, in lookupCopy, evalMode, out results[m]);
                 }
             }
             else
@@ -602,12 +612,11 @@ internal sealed class HotParallelExpander : IDisposable
                             break;
                         ownerWs[m] = wsIdx;
                         executedFlags[m] = RunSingleStandPat(
-                            ws, missNodeIds[m], nodeArena, mainStateArena, rules, in policyCopy, in lookupCopy, out results[m]);
+                            ws, missNodeIds[m], nodeArena, mainStateArena, rules, in policyCopy, in lookupCopy, evalMode, out results[m]);
                     }
                 });
             }
 
-            // Deterministic commit of stand-pat results into cache & nextTurnOut.
             for (int m = 0; m < missCount; m++)
             {
                 stats.StandPatProbes++;
@@ -636,6 +645,8 @@ internal sealed class HotParallelExpander : IDisposable
                     EnemyHp: staged.Summary.EnemyHpSum,
                     Score: staged.Score,
                     SetupScore: staged.SetupScore,
+                    PlayableHandCount: staged.PlayableHandCount,
+                    RevivingEnemyCount: staged.Summary.RevivingEnemyCount,
                     CommittedHandle: committed,
                     Cold: staged.Cold,
                     Hash: staged.Hash);
@@ -672,6 +683,8 @@ internal sealed class HotParallelExpander : IDisposable
                     Turn = (byte)Math.Clamp(staged.Summary.Turn, 0, byte.MaxValue),
                     ActionsThisTurn = 0,
                     AliveEnemyCount = staged.Summary.AliveEnemyCount,
+                    RevivingEnemyCount = staged.Summary.RevivingEnemyCount,
+                    PlayableHandCount = staged.PlayableHandCount,
                     DeathSaveUseCount = staged.Summary.DeathSaveUseCount,
                     Outcome = staged.Summary.Outcome,
                     Flags = HotNodeFlags.EndedTurn | HotNodeFlags.StandPat
@@ -710,6 +723,7 @@ internal sealed class HotParallelExpander : IDisposable
         HotRules rules,
         in HotSearchPolicy policy,
         in HotEvalLookup evalLookup,
+        HotEvalMode evalMode,
         out HotStagedChild staged)
     {
         ref readonly HotSearchNode parent = ref nodeArena.GetRef(parentNodeId);
@@ -746,8 +760,10 @@ internal sealed class HotParallelExpander : IDisposable
             in summary,
             parent.PotionStrategicCost,
             parent.ActionCount + 1,
+            evalMode,
             out long score,
-            out int setupScore);
+            out int setupScore,
+            out byte playableHandCount);
 
         staged = new HotStagedChild
         {
@@ -760,6 +776,7 @@ internal sealed class HotParallelExpander : IDisposable
             ChoiceOffset = -1,
             Action = HotAction.EndTurn(),
             ChoiceCount = 0,
+            PlayableHandCount = playableHandCount,
             Flags = HotNodeFlags.EndedTurn | HotNodeFlags.StandPat,
         };
         return true;
@@ -781,7 +798,6 @@ internal sealed class HotParallelExpander : IDisposable
         if (parent.IsTerminal)
             return;
 
-        // Unpack parent ONCE into ws.ParentState; every child restores via fast blittable struct copy (~16 KB L1 copy)
         HotStatePacker.Unpack(mainStateArena.GetSpan(parent.StateHandle), ref ws.ParentState);
         HotColdSidecar? parentCold = parent.Cold;
 
@@ -789,13 +805,10 @@ internal sealed class HotParallelExpander : IDisposable
             && (config.MaxPotionUses < 0 || parent.ExplicitPotionCount < config.MaxPotionUses);
         bool canPlayMoreThisTurn = parent.ActionsThisTurn < HotBeamRetention.MaxActionsPerTurn;
 
-        // Compute sound hand-card duplicate mask BEFORE assigning fresh CardUids (unreferenced cards have CardUid == 0).
         ulong duplicateHandMask = canPlayMoreThisTurn
             ? ComputeDuplicateHandMask(in ws.ParentState, parentCold)
             : 0UL;
 
-        // Assign deterministic non-zero CardUids to all cards so HotCombatEngine.EnumerateChoiceOptions / FindCardIndexByUid
-        // match every card reliably during search AND match verbatim during HotPlanMaterializer replay!
         AssignDeterministicCardUids(ref ws.ParentState);
 
         int actionCount = HotCombatEngine.EnumerateLegalActions(
@@ -932,7 +945,6 @@ internal sealed class HotParallelExpander : IDisposable
         if (!preRes.Executed)
             return;
 
-        // If enemy turn / player turn-end itself needed a choice (e.g. Well-Laid Plans), fall back to full choice tree on EndTurn.
         if (preRes.NeedsChoice)
         {
             ExpandActionWithChoices(
@@ -952,7 +964,6 @@ internal sealed class HotParallelExpander : IDisposable
             return;
         }
 
-        // Combat ended during player turn-end or enemy turn (victory or defeat) -> stage directly!
         if (preRes.Outcome != HotCombatOutcome.Ongoing || !HotCombatEngine.IsInProgress(in ws.EndTurnPrefixState))
         {
             ws.WaveTransitions++;
@@ -964,6 +975,7 @@ internal sealed class HotParallelExpander : IDisposable
                 rules,
                 in policy,
                 in evalLookup,
+                in config,
                 in frozenIncumbent,
                 HotAction.EndTurn(),
                 default,
@@ -974,7 +986,6 @@ internal sealed class HotParallelExpander : IDisposable
             return;
         }
 
-        // Now run StepStartPlayerTurn from shared EndTurnPrefixState!
         ws.WorkingState = ws.EndTurnPrefixState;
         HotColdSidecar? turnCold = prefixCold;
         HotStepResult startRes = HotCombatEngine.StepStartPlayerTurn(
@@ -997,6 +1008,7 @@ internal sealed class HotParallelExpander : IDisposable
                 rules,
                 in policy,
                 in evalLookup,
+                in config,
                 in frozenIncumbent,
                 HotAction.EndTurn(),
                 default,
@@ -1007,88 +1019,25 @@ internal sealed class HotParallelExpander : IDisposable
             return;
         }
 
-        // EndTurnPrefix sharing: branch all turn-start choices directly from ws.EndTurnPrefixState!
+        // EndTurnPrefix sharing with canonical multi-select & prioritized DFS!
         ws.WaveEndTurnPrefixCaptures++;
-        int optCount = HotCombatEngine.EnumerateChoiceOptions(
-            in ws.WorkingState,
+        ExpandChoiceTree(
+            ws,
+            in parent,
+            in ws.EndTurnPrefixState,
+            prefixCold,
             turnCold,
             rules,
-            ws.Scratch,
-            ws.ChoiceOptBuf);
-        if (optCount <= 0)
-            return;
-
-        int maxBranches = ResolveChoiceBranchCap(ws.Scratch.PendingChoiceKind, in config);
-        int limit = Math.Min(optCount, maxBranches);
-
-        HotChoicePrefix[] queue = ws.ChoiceQueue;
-        int qHead = 0;
-        int qTail = 0;
-
-        for (int i = 0; i < limit && qTail < queue.Length; i++)
-        {
-            HotChoicePrefix pfx = default;
-            pfx.Selections[0] = ws.ChoiceOptBuf[i];
-            pfx.Count = 1;
-            queue[qTail++] = pfx;
-        }
-
-        int resolvedCount = 0;
-        while (qHead < qTail && resolvedCount < maxBranches)
-        {
-            HotChoicePrefix pfx = queue[qHead++];
-            ws.WorkingState = ws.EndTurnPrefixState;
-            HotColdSidecar? branchCold = prefixCold;
-            ws.WaveEndTurnPrefixReuses++;
-            ws.WaveChoiceBranches++;
-
-            HotStepResult res = HotCombatEngine.StepStartPlayerTurn(
-                ref ws.WorkingState,
-                ref branchCold,
-                rules,
-                ws.Scratch,
-                pfx.AsSpan());
-
-            if (!res.Executed)
-                continue;
-
-            if (!res.NeedsChoice)
-            {
-                ws.WaveTransitions++;
-                resolvedCount++;
-                StageCompletedTransition(
-                    ws,
-                    in parent,
-                    branchCold,
-                    rules,
-                    in policy,
-                    in evalLookup,
-                    in frozenIncumbent,
-                    HotAction.EndTurn(),
-                    pfx.AsSpan(),
-                    potionCostDelta: 0,
-                    potionSlotBit: 0,
-                    explicitPotionDelta: 0,
-                    ambergrisDelta: 0);
-            }
-            else if (pfx.Count < HotLimits.MaxChoicesPerAction)
-            {
-                int subCount = HotCombatEngine.EnumerateChoiceOptions(
-                    in ws.WorkingState,
-                    branchCold,
-                    rules,
-                    ws.Scratch,
-                    ws.ChoiceOptBuf);
-                int subLimit = Math.Min(subCount, maxBranches);
-                for (int i = 0; i < subLimit && qTail < queue.Length; i++)
-                {
-                    HotChoicePrefix nextPfx = pfx;
-                    nextPfx.Selections[nextPfx.Count] = ws.ChoiceOptBuf[i];
-                    nextPfx.Count++;
-                    queue[qTail++] = nextPfx;
-                }
-            }
-        }
+            in policy,
+            in evalLookup,
+            in config,
+            in frozenIncumbent,
+            HotAction.EndTurn(),
+            isEndTurnStartPrefix: true,
+            potionCostDelta: 0,
+            potionSlotBit: 0,
+            explicitPotionDelta: 0,
+            ambergrisDelta: 0);
     }
 
     private static void ExpandActionWithChoices(
@@ -1131,6 +1080,7 @@ internal sealed class HotParallelExpander : IDisposable
                 rules,
                 in policy,
                 in evalLookup,
+                in config,
                 in frozenIncumbent,
                 action,
                 default,
@@ -1141,46 +1091,127 @@ internal sealed class HotParallelExpander : IDisposable
             return;
         }
 
-        // Choice path: iterative zero-alloc BFS over restart-from-parent ChoiceCursor
+        ExpandChoiceTree(
+            ws,
+            in parent,
+            in ws.ParentState,
+            parentCold,
+            childCold,
+            rules,
+            in policy,
+            in evalLookup,
+            in config,
+            in frozenIncumbent,
+            action,
+            isEndTurnStartPrefix: false,
+            potionCostDelta,
+            potionSlotBit,
+            explicitPotionDelta,
+            ambergrisDelta);
+    }
+
+    /// <summary>
+    /// Canonical prioritized DFS multi-select choice expansion:
+    /// - Eliminates duplicate-UID picks on batch-collect cards (e.g. Dredge) via equivalent-card UID substitution;
+    /// - Eliminates <c>k!</c> permutation blowup via strict canonical <c>(Priority DESC, CardUid ASC)</c> subset ordering;
+    /// - Uses domain-aware option prioritization + DFS so 3-card Dredge/Purity combinations explore the best subsets first
+    ///   without being starved by trivial 1-card early stops!
+    /// 100% deterministic.
+    /// </summary>
+    private static void ExpandChoiceTree(
+        HotExpansionWorkspace ws,
+        in HotSearchNode parent,
+        in CombatHotState replayBaseState,
+        HotColdSidecar? replayBaseCold,
+        HotColdSidecar? firstPausedCold,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
+        in HotWaveExpansionConfig config,
+        in HotIncumbentBound frozenIncumbent,
+        HotAction action,
+        bool isEndTurnStartPrefix,
+        short potionCostDelta,
+        ushort potionSlotBit,
+        byte explicitPotionDelta,
+        byte ambergrisDelta)
+    {
         int firstOptCount = HotCombatEngine.EnumerateChoiceOptions(
             in ws.WorkingState,
-            childCold,
+            firstPausedCold,
             rules,
             ws.Scratch,
             ws.ChoiceOptBuf);
         if (firstOptCount <= 0)
             return;
 
-        int maxBranches = ResolveChoiceBranchCap(ws.Scratch.PendingChoiceKind, in config);
-        int firstLimit = Math.Min(firstOptCount, maxBranches);
+        HotChoiceKind firstKind = ws.Scratch.PendingChoiceKind;
+        ushort firstSourceDefId = ws.Scratch.PendingChoiceSourceCardDefId;
+        int firstHistoryPlays = ws.WorkingState.HistoryFinishedPlays;
+        ushort firstDrawCount = ws.WorkingState.DrawCount;
+        int maxBranches = ResolveChoiceBranchCap(firstKind, in config);
 
-        HotChoicePrefix[] queue = ws.ChoiceQueue;
-        int qHead = 0;
-        int qTail = 0;
+        int sortedFirstCount = PrepareChoiceOptions(
+            in ws.WorkingState,
+            firstPausedCold,
+            rules,
+            firstKind,
+            firstSourceDefId,
+            ws.ChoiceOptBuf,
+            ws.ChoicePrioBuf,
+            firstOptCount,
+            hasPriorBatch: false,
+            priorPrefix: default,
+            enforceCanonicalOrder: false,
+            out bool hasNoneOption);
 
-        for (int i = 0; i < firstLimit && qTail < queue.Length; i++)
+        HotChoicePrefix[] stack = ws.ChoiceStack;
+        int sp = 0;
+
+        // Push non-None options in reverse priority order so highest priority sits on top of the DFS stack!
+        int firstLimit = Math.Min(sortedFirstCount, maxBranches);
+        for (int i = firstLimit - 1; i >= 0 && sp < stack.Length; i--)
         {
+            HotChoiceSelection opt = ws.ChoiceOptBuf[i];
             HotChoicePrefix pfx = default;
-            pfx.Selections[0] = ws.ChoiceOptBuf[i];
+            pfx.Selections[0] = opt;
             pfx.Count = 1;
-            queue[qTail++] = pfx;
+            pfx.BatchChoiceKind = firstKind;
+            pfx.BatchSourceCardDefId = firstSourceDefId;
+            pfx.BatchHistoryPlays = firstHistoryPlays;
+            pfx.BatchDrawCount = firstDrawCount;
+            pfx.LastChoicePriority = ws.ChoicePrioBuf[i];
+            pfx.LastChoiceUid = opt.CardUidOrIndex;
+            stack[sp++] = pfx;
+        }
+
+        // If optional (minCount == 0), push 0-pick [None] on TOP so "pick 0" is always guaranteed 1 slot.
+        if (hasNoneOption && sp < stack.Length)
+        {
+            HotChoicePrefix nonePfx = default;
+            nonePfx.Selections[0] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+            nonePfx.Count = 1;
+            stack[sp++] = nonePfx;
         }
 
         int resolvedCount = 0;
-        while (qHead < qTail && resolvedCount < maxBranches)
+        int maxWorkSteps = Math.Max(maxBranches * 6, 96);
+        int workSteps = 0;
+
+        while (sp > 0 && resolvedCount < maxBranches && workSteps < maxWorkSteps)
         {
-            HotChoicePrefix pfx = queue[qHead++];
-            ws.WorkingState = ws.ParentState;
-            HotColdSidecar? branchCold = parentCold;
+            HotChoicePrefix pfx = stack[--sp];
+            workSteps++;
+
+            ws.WorkingState = replayBaseState;
+            HotColdSidecar? branchCold = replayBaseCold;
+            if (isEndTurnStartPrefix)
+                ws.WaveEndTurnPrefixReuses++;
             ws.WaveChoiceBranches++;
 
-            HotStepResult res = HotCombatEngine.Step(
-                ref ws.WorkingState,
-                ref branchCold,
-                rules,
-                ws.Scratch,
-                action,
-                pfx.AsSpan());
+            HotStepResult res = isEndTurnStartPrefix
+                ? HotCombatEngine.StepStartPlayerTurn(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, pfx.AsSpan())
+                : HotCombatEngine.Step(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, action, pfx.AsSpan());
 
             if (!res.Executed)
                 continue;
@@ -1196,6 +1227,7 @@ internal sealed class HotParallelExpander : IDisposable
                     rules,
                     in policy,
                     in evalLookup,
+                    in config,
                     in frozenIncumbent,
                     action,
                     pfx.AsSpan(),
@@ -1212,16 +1244,318 @@ internal sealed class HotParallelExpander : IDisposable
                     rules,
                     ws.Scratch,
                     ws.ChoiceOptBuf);
-                int subLimit = Math.Min(subOptCount, maxBranches);
-                for (int i = 0; i < subLimit && qTail < queue.Length; i++)
+                if (subOptCount <= 0)
+                    continue;
+
+                HotChoiceKind subKind = ws.Scratch.PendingChoiceKind;
+                ushort subSourceDefId = ws.Scratch.PendingChoiceSourceCardDefId;
+                int subHistoryPlays = ws.WorkingState.HistoryFinishedPlays;
+                ushort subDrawCount = ws.WorkingState.DrawCount;
+
+                bool sameBatch = IsPileChoiceKind(subKind)
+                    && subKind == pfx.BatchChoiceKind
+                    && subSourceDefId == pfx.BatchSourceCardDefId
+                    && subHistoryPlays == pfx.BatchHistoryPlays;
+
+                bool enforceCanonical = sameBatch && subDrawCount == pfx.BatchDrawCount;
+
+                int subPreparedCount = PrepareChoiceOptions(
+                    in ws.WorkingState,
+                    branchCold,
+                    rules,
+                    subKind,
+                    subSourceDefId,
+                    ws.ChoiceOptBuf,
+                    ws.ChoicePrioBuf,
+                    subOptCount,
+                    hasPriorBatch: sameBatch,
+                    priorPrefix: in pfx,
+                    enforceCanonicalOrder: enforceCanonical,
+                    out bool subHasNone);
+
+                // Push [None] (early stop) BEFORE deeper extensions so DFS resolves full subsets first,
+                // then falls back to shorter subsets if branch budget remains!
+                if (subHasNone && sp < stack.Length)
                 {
+                    HotChoicePrefix stopPfx = pfx;
+                    stopPfx.Selections[stopPfx.Count] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+                    stopPfx.Count++;
+                    stack[sp++] = stopPfx;
+                }
+
+                int subLimit = Math.Min(subPreparedCount, maxBranches);
+                for (int i = subLimit - 1; i >= 0 && sp < stack.Length; i--)
+                {
+                    HotChoiceSelection opt = ws.ChoiceOptBuf[i];
                     HotChoicePrefix nextPfx = pfx;
-                    nextPfx.Selections[nextPfx.Count] = ws.ChoiceOptBuf[i];
+                    nextPfx.Selections[nextPfx.Count] = opt;
                     nextPfx.Count++;
-                    queue[qTail++] = nextPfx;
+                    nextPfx.BatchChoiceKind = subKind;
+                    nextPfx.BatchSourceCardDefId = subSourceDefId;
+                    nextPfx.BatchHistoryPlays = subHistoryPlays;
+                    nextPfx.BatchDrawCount = subDrawCount;
+                    nextPfx.LastChoicePriority = ws.ChoicePrioBuf[i];
+                    nextPfx.LastChoiceUid = opt.CardUidOrIndex;
+                    stack[sp++] = nextPfx;
                 }
             }
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsPileChoiceKind(HotChoiceKind kind)
+        => kind is HotChoiceKind.HandCard or HotChoiceKind.DrawPile or HotChoiceKind.DiscardPile or HotChoiceKind.ExhaustPile;
+
+    /// <summary>
+    /// Filters out duplicate UIDs (substituting an equivalent unpicked copy when a batch-collect card like Dredge
+    /// has not removed earlier picks from the pile yet), enforces canonical subset order, separates <c>None</c>,
+    /// and sorts remaining options by deterministic domain priority <c>(Priority DESC, CardUid ASC)</c>.
+    /// </summary>
+    private static int PrepareChoiceOptions(
+        in CombatHotState s,
+        HotColdSidecar? cold,
+        HotRules rules,
+        HotChoiceKind kind,
+        ushort sourceCardDefId,
+        HotChoiceSelection[] optBuf,
+        int[] prioBuf,
+        int rawCount,
+        bool hasPriorBatch,
+        in HotChoicePrefix priorPrefix,
+        bool enforceCanonicalOrder,
+        out bool hasNoneOption)
+    {
+        hasNoneOption = false;
+        int outCount = 0;
+
+        for (int i = 0; i < rawCount; i++)
+        {
+            HotChoiceSelection opt = optBuf[i];
+            if (opt.Kind == HotChoiceKind.None)
+            {
+                hasNoneOption = true;
+                continue;
+            }
+
+            if (hasPriorBatch && IsPileChoiceKind(opt.Kind))
+            {
+                if (IsUidInPrefix(in priorPrefix, opt.Kind, opt.CardUidOrIndex))
+                {
+                    if (!TryFindAlternateEquivalentUid(in s, opt.Kind, opt.CardUidOrIndex, in priorPrefix, out ushort altUid))
+                        continue;
+                    opt = new HotChoiceSelection(opt.Kind, altUid, opt.CardDefId);
+                }
+            }
+
+            int prio = ComputeChoiceOptionPriority(in s, cold, rules, kind, sourceCardDefId, opt);
+
+            if (enforceCanonicalOrder)
+            {
+                // Strict total order: (Priority DESC, CardUid ASC) -> every subset has exactly ONE canonical sequence!
+                if (prio > priorPrefix.LastChoicePriority)
+                    continue;
+                if (prio == priorPrefix.LastChoicePriority && opt.CardUidOrIndex <= priorPrefix.LastChoiceUid)
+                    continue;
+            }
+
+            // Guard against emitting duplicate UIDs if substitution collided with another enumerated entry
+            bool dupOut = false;
+            for (int j = 0; j < outCount; j++)
+            {
+                if (optBuf[j].Kind == opt.Kind && optBuf[j].CardUidOrIndex == opt.CardUidOrIndex)
+                {
+                    dupOut = true;
+                    break;
+                }
+            }
+            if (dupOut)
+                continue;
+
+            optBuf[outCount] = opt;
+            prioBuf[outCount] = prio;
+            outCount++;
+        }
+
+        // Insertion sort (tiny N <= 24): deterministic (Priority DESC, CardUid ASC)
+        for (int i = 1; i < outCount; i++)
+        {
+            HotChoiceSelection keyOpt = optBuf[i];
+            int keyPrio = prioBuf[i];
+            int j = i - 1;
+            while (j >= 0 && (prioBuf[j] < keyPrio
+                || (prioBuf[j] == keyPrio && optBuf[j].CardUidOrIndex > keyOpt.CardUidOrIndex)))
+            {
+                optBuf[j + 1] = optBuf[j];
+                prioBuf[j + 1] = prioBuf[j];
+                j--;
+            }
+            optBuf[j + 1] = keyOpt;
+            prioBuf[j + 1] = keyPrio;
+        }
+
+        return outCount;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsUidInPrefix(in HotChoicePrefix pfx, HotChoiceKind kind, ushort uid)
+    {
+        ReadOnlySpan<HotChoiceSelection> span = pfx.AsSpan();
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (span[i].Kind == kind && span[i].CardUidOrIndex == uid)
+                return true;
+        }
+        return false;
+    }
+
+    private static bool TryFindAlternateEquivalentUid(
+        in CombatHotState s,
+        HotChoiceKind kind,
+        ushort pickedUid,
+        in HotChoicePrefix pfx,
+        out ushort altUid)
+    {
+        HotPileKind pile = kind switch
+        {
+            HotChoiceKind.HandCard => HotPileKind.Hand,
+            HotChoiceKind.DrawPile => HotPileKind.Draw,
+            HotChoiceKind.DiscardPile => HotPileKind.Discard,
+            HotChoiceKind.ExhaustPile => HotPileKind.Exhaust,
+            _ => HotPileKind.Hand,
+        };
+
+        int start = HotPiles.ZoneStart(in s, pile);
+        int end = start + HotPiles.ZoneCount(in s, pile);
+        int pickedIdx = -1;
+        for (int i = start; i < end; i++)
+        {
+            if (s.Cards[i].CardUid == pickedUid)
+            {
+                pickedIdx = i;
+                break;
+            }
+        }
+        if (pickedIdx < 0)
+        {
+            altUid = 0;
+            return false;
+        }
+
+        ref readonly HotCard pickedCard = ref s.Cards[pickedIdx];
+        ReadOnlySpan<byte> pickedBytes = HotStatePacker.AsReadOnlyBytes(in pickedCard);
+
+        for (int i = start; i < end; i++)
+        {
+            if (i == pickedIdx)
+                continue;
+            ref readonly HotCard cand = ref s.Cards[i];
+            if (cand.CardDefId != pickedCard.CardDefId || cand.CardUid == 0)
+                continue;
+            if (IsUidInPrefix(in pfx, kind, cand.CardUid))
+                continue;
+
+            ReadOnlySpan<byte> candBytes = HotStatePacker.AsReadOnlyBytes(in cand);
+            if (pickedBytes[4..].SequenceEqual(candBytes[4..]))
+            {
+                altUid = cand.CardUid;
+                return true;
+            }
+        }
+
+        altUid = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// Deterministic static priority for choice options so top-K branch caps explore the strongest
+    /// fetch/retain/upgrade/discard/exhaust combinations first (zero allocations).
+    /// </summary>
+    private static int ComputeChoiceOptionPriority(
+        in CombatHotState s,
+        HotColdSidecar? cold,
+        HotRules rules,
+        HotChoiceKind kind,
+        ushort sourceCardDefId,
+        HotChoiceSelection opt)
+    {
+        if (opt.CardDefId == 0 || opt.CardDefId >= rules.Cards.Length)
+            return 0;
+
+        HotCardDef def = rules.Cards[opt.CardDefId];
+        HotCustomCardId sourceId = sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
+            ? rules.Cards[sourceCardDefId].CardId
+            : HotCustomCardId.None;
+
+        bool isDiscardOrExhaustChoice = kind == HotChoiceKind.HandCard
+            && sourceId is HotCustomCardId.Purity
+                or HotCustomCardId.Prepared
+                or HotCustomCardId.Survivor
+                or HotCustomCardId.TrueGrit
+                or HotCustomCardId.BurningPact;
+
+        // Compute intrinsic card quality (higher = stronger card to KEEP / FETCH / UPGRADE)
+        int quality = 0;
+        if (def.Type is CardType.Curse or CardType.Status)
+        {
+            quality = -400;
+        }
+        else if (def.IsStrikeTag || def.IsDefendTag)
+        {
+            quality = 60;
+        }
+        else
+        {
+            quality = def.Type switch
+            {
+                CardType.Power => 280,
+                CardType.Skill => 200,
+                CardType.Attack => 190,
+                _ => 120,
+            };
+            quality += def.Rarity switch
+            {
+                CardRarity.Rare => 90,
+                CardRarity.Uncommon => 50,
+                CardRarity.Common => 20,
+                _ => 10,
+            };
+            quality += Math.Min((int)def.SetupWeight * 4, 140);
+            int baseCost = def.BaseCost;
+            if (baseCost == 0)
+                quality += 45; // 0-cost cards are easy to play right after Dredge/Discovery!
+            else if (baseCost == 1)
+                quality += 20;
+        }
+
+        // Factor in card's live upgrade/unplayable flags if present in pile
+        if (IsPileChoiceKind(opt.Kind))
+        {
+            HotPileKind pile = opt.Kind switch
+            {
+                HotChoiceKind.HandCard => HotPileKind.Hand,
+                HotChoiceKind.DrawPile => HotPileKind.Draw,
+                HotChoiceKind.DiscardPile => HotPileKind.Discard,
+                _ => HotPileKind.Exhaust,
+            };
+            int idx = HotCombatEngine.FindCardIndexByUid(in s, pile, opt.CardUidOrIndex);
+            if (idx >= 0)
+            {
+                ref readonly HotCard c = ref s.Cards[idx];
+                if ((c.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0)
+                    quality = -450;
+                else
+                {
+                    if (c.UpgradeLevel > 0)
+                        quality += 35;
+                    int liveCost = HotCostModifiers.GetLocalEnergyCost(in c, cold);
+                    if (liveCost == 0)
+                        quality += 30;
+                }
+            }
+        }
+
+        // For discard/exhaust choices (Purity, Prepared, Survivor), invert so junk/curses/strikes rank FIRST!
+        return isDiscardOrExhaustChoice ? -quality : quality;
     }
 
     private static void StageCompletedTransition(
@@ -1231,6 +1565,7 @@ internal sealed class HotParallelExpander : IDisposable
         HotRules rules,
         in HotSearchPolicy policy,
         in HotEvalLookup evalLookup,
+        in HotWaveExpansionConfig config,
         in HotIncumbentBound frozenIncumbent,
         HotAction action,
         ReadOnlySpan<HotChoiceSelection> choices,
@@ -1239,11 +1574,9 @@ internal sealed class HotParallelExpander : IDisposable
         byte explicitPotionDelta,
         byte ambergrisDelta)
     {
-        // Detect automatic potion consumption (e.g. Fairy in a Bottle triggered during damage/enemy turn)
         byte autoPotionDelta = DetectAutoPotionDelta(in ws.ParentState, in ws.WorkingState, explicitPotionDelta);
         byte totalPotionDelta = (byte)(explicitPotionDelta + autoPotionDelta);
 
-        // Stage 1: zero-alloc scalar summary
         HotFastSummary summary = HotEvaluator.ExtractStage1(in ws.WorkingState, in policy);
 
         int nextExplicit = parent.ExplicitPotionCount + explicitPotionDelta;
@@ -1258,7 +1591,6 @@ internal sealed class HotParallelExpander : IDisposable
             nextPotionMask,
             in policy);
 
-        // Certified 2-bit HP incumbent bound BEFORE packing/hashing/Stage 2!
         if (HotEvaluator.IsPrunedByCertifiedIncumbent(
                 in summary,
                 nextExplicit,
@@ -1270,14 +1602,12 @@ internal sealed class HotParallelExpander : IDisposable
             return;
         }
 
-        // Pack & Hash into worker-local staging arena (canonicalizes CardUids & zeroes padding!)
         int packedSize = HotStatePacker.ComputePackedSize(in ws.WorkingState);
         Span<byte> buf = ws.StagingArena.Reserve(packedSize);
         int written = HotStatePacker.Pack(ref ws.WorkingState, ref childCold, buf, canonicalize: true);
         HotStateHandle stagedHandle = ws.StagingArena.CommitReserved(written);
         HotHash128 hash = HotHash.ComputeHash(ws.StagingArena.GetSpan(stagedHandle), childCold);
 
-        // Stage 2: single-pass heuristic scoring
         HotEvaluator.EvaluateState(
             in ws.WorkingState,
             childCold,
@@ -1287,8 +1617,10 @@ internal sealed class HotParallelExpander : IDisposable
             in summary,
             nextPotionCost,
             parent.ActionCount + 1,
+            config.EvalMode,
             out long score,
-            out int setupScore);
+            out int setupScore,
+            out byte playableHandCount);
 
         int choiceOffset = choices.Length > 0 ? ws.AppendStagedChoices(choices) : -1;
 
@@ -1303,6 +1635,7 @@ internal sealed class HotParallelExpander : IDisposable
             ChoiceOffset = choiceOffset,
             Action = action,
             ChoiceCount = (byte)choices.Length,
+            PlayableHandCount = playableHandCount,
             PotionCostDelta = potionCostDelta,
             PotionSlotBit = potionSlotBit,
             PotionCountDelta = totalPotionDelta,
@@ -1340,11 +1673,6 @@ internal sealed class HotParallelExpander : IDisposable
         return auto > 0 ? (byte)auto : (byte)0;
     }
 
-    /// <summary>
-    /// Computes a bitmask of hand indices <c>j</c> that are byte-for-byte semantically identical to an earlier
-    /// hand card <c>i &lt; j</c> (excluding unreferenced <c>CardUid</c>). Playing either card produces the exact
-    /// same post-state, so skipping duplicates eliminates redundant transitions soundly.
-    /// </summary>
     private static ulong ComputeDuplicateHandMask(in CombatHotState s, HotColdSidecar? cold)
     {
         int handCount = Math.Min((int)s.HandCount, 64);
@@ -1370,7 +1698,6 @@ internal sealed class HotParallelExpander : IDisposable
                 if (ci.CardUid != 0 && IsCardUidReferenced(in s, cold, ci.CardUid))
                     continue;
 
-                // Compare bytes [4..48] (everything after CardDefId [0..2] and CardUid [2..4])
                 ReadOnlySpan<byte> bytesI = HotStatePacker.AsReadOnlyBytes(in ci);
                 if (bytesI[4..].SequenceEqual(bytesJ[4..]))
                 {
@@ -1412,12 +1739,6 @@ internal sealed class HotParallelExpander : IDisposable
         return false;
     }
 
-    /// <summary>
-    /// Deterministically assigns dense non-zero <c>CardUid</c>s to all cards whose <c>CardUid == 0</c>
-    /// after canonical unpacking, preserving any already-referenced <c>CardUid</c>s.
-    /// Shared verbatim between expansion and <see cref="HotPlanMaterializer"/> replay so
-    /// <see cref="HotChoiceSelection.CardUidOrIndex"/> aligns 100% across search and materialization.
-    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void AssignDeterministicCardUids(ref CombatHotState s)
     {
@@ -1451,9 +1772,7 @@ internal sealed class HotParallelExpander : IDisposable
         if (_disposed)
             return;
         _disposed = true;
-
         for (int i = 0; i < _workspaces.Length; i++)
             _workspaces[i].Dispose();
-        _standPatCache.Clear();
     }
 }

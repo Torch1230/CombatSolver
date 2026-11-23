@@ -13,7 +13,6 @@ internal sealed class UnattendedTestIsolationPatch : IPatchMethod
 
     public static ModPatchTarget[] GetTargets()
     {
-        UnattendedTestRunner.PrepareNativeHealingCapabilityBoundary();
         return
         [
             new(

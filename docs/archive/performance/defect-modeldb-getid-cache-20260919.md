@@ -2,7 +2,7 @@
 
 本轮目标是在不改变决策的前提下降低重型战斗根的真实耗时与内存。**主结果**：`sel-defect-elite-01`、100,000 节点、DOP16、VeryHigh、Evaluate、No-GC 16 GB 下，墙钟 67.46 s → **32.19 s（−52.3%）**、selected 分配 90.83 GiB → **33.47 GiB（−63.2%）**、峰值 RSS 28.68 GiB → **14.03 GiB（−51.1%）**、每转移分配 155.9 KB → **54.3 KB（−65.1%）**，score / 战损 / finalHp / 结束回合 / planActions 逐项不变。
 
-改动只有一处：新增 [ModelDbGetIdCachePatch](../../../src/Runtime/ModelDbGetIdCachePatch.cs)，把原生 `ModelDb.GetId(Type)` 的纯类型→`ModelId` 映射缓存起来。
+改动只有一处：新增 ModelDbGetIdCachePatch（`src/Runtime/ModelDbGetIdCachePatch.cs`），把原生 `ModelDb.GetId(Type)` 的纯类型→`ModelId` 映射缓存起来。
 
 ## 1. 归因：不是 fork，也不是容器增长
 
@@ -65,7 +65,7 @@ CardGenerationCardMirrors.SplashOnPlay
 
 `ModelDb` 的可变状态只有内容字典 `_contentById`、`Inject/Remove/ResetForTest`（增删模型内容）与 `_initialCapacity`；`GetId` 不读它们。因此 `Type → ModelId` 是纯值映射，缓存不改变任何一次查询的结果。
 
-实现（[ModelDbGetIdCachePatch.cs](../../../src/Runtime/ModelDbGetIdCachePatch.cs)）：
+实现（`src/Runtime/ModelDbGetIdCachePatch.cs`）：
 
 - `Prefix`：`ConcurrentDictionary<Type, ModelId>` 命中就写回 `__result` 并跳过原方法；`type` 为 null 时放行原方法，不把 `NullReferenceException` 换成字典异常。
 - `Postfix`：只在原方法正常返回后写入；原方法抛异常时 `Postfix` 不运行，失败不会被固化。

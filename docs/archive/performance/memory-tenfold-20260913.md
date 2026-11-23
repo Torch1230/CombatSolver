@@ -32,15 +32,15 @@
 
 ## 3. 为什么算法会把这些对象放大
 
-**逐分支复制整个已物化牌堆。** [SimCardPile.Fork](../../../src/Engine/Common/SimCardPile.cs)为每张卡调用`PredictedCard.Fork`，建立新的包装对象、List和引用数组；[SimPlayerCombatState.Fork](../../../src/Engine/InCombat/Simulation/SimPlayerCombatState.cs)覆盖已物化的手牌、抽牌、弃牌、消耗和打出区。因此一次动作只改变几张卡，也会为其余卡重建包装。普通卡牌PreviewStorage已经写时复制，但包装上的所属牌堆仍是分支可变引用；不能把同一个包装浅共享给父子。
+**逐分支复制整个已物化牌堆。** SimCardPile.Fork（`src/Engine/Common/SimCardPile.cs`）为每张卡调用`PredictedCard.Fork`，建立新的包装对象、List和引用数组；SimPlayerCombatState.Fork（`src/Engine/InCombat/Simulation/SimPlayerCombatState.cs`）覆盖已物化的手牌、抽牌、弃牌、消耗和打出区。因此一次动作只改变几张卡，也会为其余卡重建包装。普通卡牌PreviewStorage已经写时复制，但包装上的所属牌堆仍是分支可变引用；不能把同一个包装浅共享给父子。
 
 历史heap中包装对象为48B；按同类64位布局估算，2305张已物化卡的包装加8B数组引用，单次Fork约129,080B，尚未计列表、Power、其他状态及真实模型克隆。若发生10万次这种Fork，仅该部分累计约12.91GB。这是条件估算，**不是本次2305张样例的实测分配**；当前死灵样例也不具有这一牌数。
 
-**对象图隔离比复制HP昂贵。** [CombatPredictionState.Fork](../../../src/Engine/InCombat/Simulation/CombatPredictionState.cs)复制生物/玩家状态表，[SimulatedCombatState.Fork](../../../src/Search/SimulatedCombatState.Fork.cs)复制或重映射Power、监听成员和各类分支状态，[PredictionStateStore.Fork](../../../src/Engine/Common/PredictionStateStore.cs)还会进入领域自定义Fork。Power克隆包括动态变量集合及其字典。当前[PredictionForkContext](../../../src/Engine/Common/PredictionForking.cs)的映射数组已使用ArrayPool，不能把全部引用登记次数都换算成新数组分配。
+**对象图隔离比复制HP昂贵。** CombatPredictionState.Fork（`src/Engine/InCombat/Simulation/CombatPredictionState.cs`）复制生物/玩家状态表，SimulatedCombatState.Fork（`src/Search/SimulatedCombatState.Fork.cs`）复制或重映射Power、监听成员和各类分支状态，PredictionStateStore.Fork（`src/Engine/Common/PredictionStateStore.cs`）还会进入领域自定义Fork。Power克隆包括动态变量集合及其字典。当前PredictionForkContext（`src/Engine/Common/PredictionForking.cs`）的映射数组已使用ArrayPool，不能把全部引用登记次数都换算成新数组分配。
 
-**先生成、模拟、估值，再判断保留。** [Replay与候选准入](../../../src/Search/CombatBeamSolver.Expansion.cs)从父快照分叉并执行动作；很多分配在转置/Beam淘汰之前已经发生。最终只保留少量节点，不代表只为这些节点付费。生成选牌、嵌套选择、回合尾部选牌、stand-pat探针，以及请求级药水反事实都会增加模拟次数；计数口径可能互相包含，不能把选牌数再机械加到转移数上。
+**先生成、模拟、估值，再判断保留。** Replay与候选准入（`src/Search/CombatBeamSolver.Expansion.cs`）从父快照分叉并执行动作；很多分配在转置/Beam淘汰之前已经发生。最终只保留少量节点，不代表只为这些节点付费。生成选牌、嵌套选择、回合尾部选牌、stand-pat探针，以及请求级药水反事实都会增加模拟次数；计数口径可能互相包含，不能把选牌数再机械加到转移数上。
 
-**并行窗口和祖先链影响同时存活量。** lane可以同时持有多个正在模拟/待归并的分支；并发数不等于全部存活快照数。[SearchNode.Parent与SimulationSnapshot](../../../src/Search/CombatPlan.cs)保留路线和祖先元数据，已淘汰的模拟器有独立释放入口。历史已经采用不可变前缀段共享，[CombatPredictionHistory.Fork](../../../src/Engine/InCombat/Simulation/CombatPredictionHistory.cs)不是每次复制全部历史；不能把现有实现描述为全量深拷贝搜索树。
+**并行窗口和祖先链影响同时存活量。** lane可以同时持有多个正在模拟/待归并的分支；并发数不等于全部存活快照数。[SearchNode.Parent与SimulationSnapshot](../../../src/Search/CombatPlan.cs)保留路线和祖先元数据，已淘汰的模拟器有独立释放入口。历史已经采用不可变前缀段共享，CombatPredictionHistory.Fork（`src/Engine/InCombat/Simulation/CombatPredictionHistory.cs`）不是每次复制全部历史；不能把现有实现描述为全量深拷贝搜索树。
 
 ## 4. 实测：先回收能省多少峰值内存
 

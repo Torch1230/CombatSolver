@@ -169,8 +169,6 @@ internal sealed partial class UnattendedTestRunner
             .GroupBy(item => item.Kind ?? "legacy_unspecified").ToDictionary(group => group.Key, group => group.Count()));
         _writer.ReplayVerification["comparisonScope"] = "checkpoint";
         RecordCheckpointRestored();
-        if (_request.ReplayMode == "RestoreOnly" && _request.ScenarioId == "HAND-DRAW-RELICS-PROBE")
-            await AssertOwnedHandDrawRelicQueriesAsync(combatState, player);
         if (_request.ReplayMode == "ReplayRecorded")
         {
             bool nativeEncodingComparable = _writer.ReplayVerification["nativeStateVerification"] == null;

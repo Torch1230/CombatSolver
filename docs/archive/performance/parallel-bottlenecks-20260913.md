@@ -38,7 +38,7 @@
 
 对本场出现的Power源码逐类静态检查，**4,413,384次**对应没有覆写克隆阶段或InitInternalData的类型。这个数字只是审计候选覆盖量，不是已经验证的免锁资格。VigorPower等覆写类型仍须单独核对，不纳入默认路径。必需验证真实BaseLib持锁并行、变量/owner/内部状态独占、跨域补丁刷新，再做一次匹配预算的速度对照。
 
-入口：[ForkPower](../../../src/Search/SimulatedCombatState.Fork.cs)、[模型克隆](../../../src/Engine/Common/PredictionUtils.cs)、[当前卡牌资格核对](../../../src/Engine/Common/NativeModelCloneConcurrency.cs)。
+入口：ForkPower（`src/Search/SimulatedCombatState.Fork.cs`）、模型克隆（`src/Engine/Common/PredictionUtils.cs`）、当前卡牌资格核对（`src/Engine/Common/NativeModelCloneConcurrency.cs`）。
 
 ## 2. 同父Fork存在真实源写入，不能直接删除锁
 
@@ -48,7 +48,7 @@
 
 后续方向是将可证明的父状态封存前移到准备阶段，再把只读深拷贝移出窄边界；必须先核对所有源写入和第三方Fork回调。**先优化Power克隆再复测Fork锁**，因为当前锁内包含大量Power克隆，不能预先把它们当成两个独立收益来源。
 
-入口：[Fork seed](../../../src/Search/CombatBeamSolver.Expansion.cs)、[模拟器Fork](../../../src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs)、[历史封存](../../../src/Engine/InCombat/Simulation/CombatPredictionHistory.cs)。
+入口：Fork seed（`src/Search/CombatBeamSolver.Expansion.cs`）、模拟器Fork（`src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs`）、历史封存（`src/Engine/InCombat/Simulation/CombatPredictionHistory.cs`）。
 
 ## 3. 回合尾部是当前最粗的展开作业
 
@@ -68,7 +68,7 @@ Tail占上述展开作业累计时间的 **44.39%**。它运行 `GenerateRawEndT
 
 较具体的研究方向是让EndTurn候选在独立批次中提前计算，仍等卡牌/选择/药水完成后才按原序合并并发布stand-pat基线；或拆出独立的回合开始选择回放。当前实现直接写父Aggregate并发布父节点基线，不能直接提前调用。还需保留同父Fork保护、单条选择链预算、快照独占、内存预约和取消/错误排空。它比Power免锁改动范围大，排在后面。
 
-入口：[作业依赖与执行](../../../src/Search/CombatBeamSolver.AdmittedExpansion.cs)、[EndTurn候选生成](../../../src/Search/CombatBeamSolver.ParallelExpansion.cs)、[基线发布](../../../src/Search/CombatBeamSolver.CrossTurnPlanning.cs)。
+入口：作业依赖与执行（`src/Search/CombatBeamSolver.AdmittedExpansion.cs`）、EndTurn候选生成（`src/Search/CombatBeamSolver.ParallelExpansion.cs`）、基线发布（`src/Search/CombatBeamSolver.CrossTurnPlanning.cs`）。
 
 ## 4. 协调线程和元数据不是当前首要嫌疑
 

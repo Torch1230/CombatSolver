@@ -8,7 +8,7 @@
 
 只改一处调用点与其共用的尾部：
 
-- [SimulatedCombatState.RelicTurnStart.cs](../../../src/Search/SimulatedCombatState.RelicTurnStart.cs) 的 `case Crossbow`：候选从 `relic.Owner.Character.CardPool.GetUnlockedCards(...).Where(Type == Attack)` 换成 `simulator.GetDistinctUnlockedCharacterAttacksForCombat(relic.Owner, 1, rng, constraint)`，命中根快照时复用已按战斗/人数过滤的角色攻击牌数组，未命中回退同一条原版路径。
+- `src/Search/SimulatedCombatState.RelicTurnStart.cs` 的 `case Crossbow`：候选从 `relic.Owner.Character.CardPool.GetUnlockedCards(...).Where(Type == Attack)` 换成 `simulator.GetDistinctUnlockedCharacterAttacksForCombat(relic.Owner, 1, rng, constraint)`，命中根快照时复用已按战斗/人数过滤的角色攻击牌数组，未命中回退同一条原版路径。
 - 原 `GenerateRelicCards` 拆成「取候选」与「加牌 + 本回合免费」两段：新 `AddGeneratedRelicCards(simulator, relic, IReadOnlyList<PredictedCard>, setFreeThisTurn)` 保留原版加牌语义，其余 5 个站点继续用原 `GenerateRelicCards`（枚举方式不变）。
 
 等价性前提与原 [生成池复用](dop16-veryhigh-fidelity-20260919.md) 各入口相同：候选集合与顺序不变（两个过滤都保序、可交换）、谓词仍排在随机选择之前、`TakeRandom`/`NextItem` 的 RNG 消耗不变、`PredictedCard.Create` 仍逐分支生成独占卡牌。

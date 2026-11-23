@@ -57,7 +57,7 @@ Windows等价入口：
 ## 0.38.2：精确 OnPlay 补丁适配
 
 - 游戏 0.111.0 的 Release 构建通过，零警告、零错误；Bash 结构门禁通过。
-- `AdaptedOnPlayChecks`：35 项合同、2 项空登记检查通过。使用 Harmony 2.4.2，覆盖完整组合、来源、重载、类别、顺序、冻结及拒绝规则；游戏实体和模拟器外壳使用替身。命令见[工具说明](../../../tools/testing/checks/AdaptedOnPlayChecks/README.md)。
+- `AdaptedOnPlayChecks`：35 项合同、2 项空登记检查通过。使用 Harmony 2.4.2，覆盖完整组合、来源、重载、类别、顺序、冻结及拒绝规则；游戏实体和模拟器外壳使用替身。命令见工具说明（`tools/testing/checks/AdaptedOnPlayChecks/README.md`）。
 - [原生替换](../../../coverage/fixtures/third-party/adapted-card-integration.json)：真实防御 OnPlay 替换执行恰好一次，完整快照、增量回放、Fork 与 T1→T2 对账通过；额外补丁改变 continuation，旧根保持冻结，新根拒绝未登记组合。
 - [缓存路线](../../../coverage/fixtures/third-party/adapted-stale-integration.json)：补丁变化使控制器执行资格失效，移除补丁后恢复。
 - [跨回合续用](../../../coverage/fixtures/third-party/adapted-reuse-integration.json)：第 2 回合精确续用通过，计划外重算为 0。
@@ -123,7 +123,7 @@ Windows等价入口：
 - 原Smart策略、固定每层20000节点、16GB NoGC的完整三层前后哨兵均Passed，实际60000展开/1162247转移/717525选择，84字段和40动作相等。没有触发恢复，不作该机制的提速证据。
 - `STAND-PAT-MEMORY-BOUNDARY` / `fee97c057e1744dea055fe53ad7da20a` Passed：DOP1/DOP2完整结果与动作一致，取消/异常注入后的worker排空及根复用通过，小区域剪枝内存边界与串行相等。用现有Bowlbugs早期native包、RestoreOnly、该ScenarioId、120秒运行；不加组合VerifySearchPolicySnapshot。
 - 组合VerifySearchPolicySnapshot在女王基线/候选均exit139，Bowlbugs加同开关也exit139；没有结果文件，根因未定位，不计通过。聚焦合同未包含这套额外测试。
-- 独立GC工具基础20项、scope8项、检查点1项、恢复状态机6项、真实CLR恢复2项通过；恢复自身一次预留、零强制收集，包含取消/退出/Dispose拒绝复活。命令见[工具README](../../../tools/testing/checks/CombatSolver.GcPolicyChecks/README.md)。Bash/PowerShell结构门禁通过，89个Search文件；最终正常Release0警告/错误。
+- 独立GC工具基础20项、scope8项、检查点1项、恢复状态机6项、真实CLR恢复2项通过；恢复自身一次预留、零强制收集，包含取消/退出/Dispose拒绝复活。命令见工具README（`tools/testing/checks/CombatSolver.GcPolicyChecks/README.md`）。Bash/PowerShell结构门禁通过，89个Search文件；最终正常Release0警告/错误。
 - 全部新数据限Linux headless；未部署Windows、未启动可见Steam，未宣称原100000节点完整请求或最坏暂停改善。
 
 ## 女王原包恢复与性能（2026-09-13）

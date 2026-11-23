@@ -18,7 +18,7 @@ using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using STS2RitsuLib.Patching.Models;
-using CombatSolver.Engine.Common;
+using CombatSolver.HotKernel;
 
 namespace CombatSolver;
 
@@ -154,7 +154,7 @@ internal static class NativeChoiceRuntime
                 .Select(option => new NativeChoiceObservedOption(
                     option.Id.Entry,
                     option.CurrentUpgradeLevel,
-                    CardChoiceSupport.ChoiceCardKey(option)))
+                    HotImportSupport.FormatLiveChoiceCardKey(option)))
                 .ToArray();
         int optionCount = observedOptions.Length;
         NativeChoiceRequest request = new(
@@ -288,7 +288,7 @@ internal sealed class NativeChoiceSession : IDisposable
             $"surface={request.Surface} visible={request.RequiresSurface} source={request.SourceId} " +
             $"options={request.Options.Count} select={request.MinSelect}..{request.MaxSelect} " +
             $"manual_confirmation={request.RequireManualConfirmation} " +
-            $"card_selection_rng={request.Player.RunState.Rng.CombatCardSelection.Counter()}");
+            $"card_selection_rng={request.Player.RunState.Rng.CombatCardSelection._counter}");
     }
 
     public async Task<bool> WaitForFirstVisibleSurfaceAsync(
@@ -567,7 +567,7 @@ internal sealed class NativeChoiceSession : IDisposable
                 $"surface={request.Surface} source={plan.SourceId} context={plan.ContextId} " +
                 $"planned={string.Join(',', plan.Cards.Select(card =>
                     $"{card.CardId}+{card.UpgradeLevel}#src{card.SourceOccurrence}/opt{card.OptionOccurrence}"))} " +
-                $"selected={string.Join(',', selected.Select(CardChoiceSupport.ChoiceCardKey))}");
+                $"selected={string.Join(',', selected.Select(static option => HotImportSupport.FormatLiveChoiceCardKey(option)))}");
             NativeChoiceRuntime.RecordTrace(this, request, "Selected");
             planIndex++;
             if (planIndex == plans.Count)
@@ -605,7 +605,8 @@ internal sealed class NativeChoiceSession : IDisposable
                     .Select(static option => option.Option)
                     .FirstOrDefault()
                 : request.Options
-                    .Where(option => CardChoiceSupport.MatchesToken(option, token))
+                    .Where(option => option.Id.Entry == token.CardId
+                        && option.CurrentUpgradeLevel == token.UpgradeLevel)
                     .Skip(token.OptionOccurrence)
                     .FirstOrDefault();
             if (card == null)
@@ -613,7 +614,7 @@ internal sealed class NativeChoiceSession : IDisposable
                 throw new NativeChoicePlanMismatchException(
                     $"原生选牌页面找不到 {token.CardId}+{token.UpgradeLevel}#{token.OptionOccurrence}；" +
                     $"观测候选={(request.ObservedOptions == null ? "-" : string.Join(',', request.ObservedOptions.Select(option => option.StateKey)))}；" +
-                    $"当前候选={string.Join(',', request.Options.Select(CardChoiceSupport.ChoiceCardKey))}。");
+                    $"当前候选={string.Join(',', request.Options.Select(static option => HotImportSupport.FormatLiveChoiceCardKey(option)))}。");
             }
             if (selected.Contains(card))
                 throw new InvalidOperationException($"原生选牌计划重复选择了 {token.CardId}。");

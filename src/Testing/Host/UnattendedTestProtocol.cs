@@ -1,4 +1,3 @@
-using System.Runtime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CombatSolver.Replay;
@@ -42,10 +41,6 @@ internal sealed class UnattendedTestRequest
     public string CheckpointSelector { get; init; } = CheckpointArchive.DefaultFixtureSelector;
     public string ReplayMode { get; init; } = "RestoreOnly";
     public string? ReplayPolicyOverridePath { get; init; }
-    public int? RecordedPlanRetentionStepForTest { get; init; }
-    public string? RecordedPlanOverridePathForTest { get; init; }
-    public string? DevelopmentStrategyAssemblyPath { get; init; }
-    public string? DevelopmentStrategyParametersPath { get; init; }
     public string? DevelopmentStrategyScriptHash { get; init; }
     public string? DevelopmentStrategyParametersHash { get; init; }
     public string? DevelopmentMonitorStatePath { get; init; }
@@ -95,146 +90,45 @@ internal sealed class UnattendedTestRequest
     public bool ClearPlayerPiles { get; init; }
     public bool ClearRunDeck { get; init; }
     public bool ClearAllPowers { get; init; }
-    public bool VerifyPredictionFailureBoundaries { get; init; }
-    public bool VerifySearchPolicySnapshot { get; init; }
-    public bool VerifyGrowthPolicy { get; init; }
-    public bool VerifyControllerSessionLifecycle { get; init; }
-    public bool VerifyForkBoundaries { get; init; }
     public bool VerifyCombatRootSnapshot { get; init; }
     public bool VerifyPreCombatForecastApi { get; init; }
-    public bool VerifyBaseLibCardModifierBoundary { get; init; }
     public bool StopAfterCombatRootSnapshotAssertion { get; init; }
     public bool VerifyIncrementalSearch { get; init; }
     private bool _fixedSearchBudget;
     private bool _legacyFixedSearchBudget;
     public bool FixedSearchBudget { get => _fixedSearchBudget || _legacyFixedSearchBudget; init => _fixedSearchBudget = value; }
-    [System.Text.Json.Serialization.JsonPropertyName("forceShortSearchOnly")]
-    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    [JsonPropertyName("forceShortSearchOnly")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool LegacyForceShortSearchOnly { get => false; init => _legacyFixedSearchBudget = value; }
     public bool MeasureSearchPhases { get; init; }
     public bool HoldAfterInitialSearch { get; init; }
     public int? SearchBudgetOverrideMilliseconds { get; init; }
-    public int? EarlyTurnExplorationDepthForTest { get; init; }
-    [System.Text.Json.Serialization.JsonPropertyName("shortSearchBudgetOverrideMilliseconds")]
+    [JsonPropertyName("shortSearchBudgetOverrideMilliseconds")]
     public int? LegacyShortSearchBudgetMilliseconds { get; init; }
-    [System.Text.Json.Serialization.JsonPropertyName("deepSearchBudgetOverrideMilliseconds")]
+    [JsonPropertyName("deepSearchBudgetOverrideMilliseconds")]
     public int? LegacyDeepSearchBudgetMilliseconds { get; init; }
     public int? SearchMaxDegreeOfParallelismForTest { get; init; }
-
-    /// <summary>生产协调器的主搜索启用多策略路线探索；普通游戏默认开。</summary>
-    public bool? UseNoveltyPortfolioForTest { get; init; }
-
-    /// <summary>生产协调器的主搜索改用 Beam 宽度组合；普通游戏默认开。</summary>
-    public bool? UseBeamWidthPortfolioForTest { get; init; }
-
-    /// <summary>
-    /// 组合成员宽度；缺省为 [基线, 基线−1, 基线+1, 96]。首项由实现强制成基线宽度，重复项和
-    /// 小于 1 的值会被丢掉。
-    /// </summary>
-    public int[]? BeamWidthPortfolioWidthsForTest { get; init; }
-
-    /// <summary>
-    /// 是否保留那个只带基线宽度、不带任何排序修饰的组合成员。缺省保留；给出 false 时少跑一次真实搜索，
-    /// 候选比较不再保证"不差于今天的单次搜索"。只用于消融实验。
-    /// </summary>
-    public bool? BeamWidthPortfolioPlainBaselineMemberForTest { get; init; }
-
-    /// <summary>
-    /// 实验用：状态键里哪些牌堆改用顺序无关哈希（手牌=1/抽牌堆=2/弃牌堆=4/消耗堆=8）。缺省 0，即生产口径。
-    /// </summary>
-    public int? PileOrderInvariantMaskForTest { get; init; }
-
-    /// <summary>
-    /// 实验用：给状态指纹异或一个由该值导出的常量（双射，只改数值不改相等关系）。缺省 0，即生产口径。
-    /// </summary>
-    public int? StateKeySaltForTest { get; init; }
-
-    /// <summary>
-    /// 实验用：关掉转置支配剪枝的位（1=候选准入，2=展开准入）。缺省 0，即生产口径。
-    /// </summary>
     public int? TranspositionPruningDisabledMaskForTest { get; init; }
-
-    /// <summary>
-    /// 实验用：转置支配表的合并条目上限（0 = 不设上限）。缺省 null = 生产默认上限。
-    /// </summary>
     public int? TranspositionEntryLimitForTest { get; init; }
-
-    /// <summary>
-    /// 实验用：连续多少次搜索内回收没有腾出余量就提前收手（0/缺省 = 关闭，即生产口径）。
-    /// </summary>
-    public int? MemoryNoProgressRecoveryLimitForTest { get; init; }
     public int? ExpectedInitialExpandedNodesAtMost { get; init; }
     public int? ExpectedInitialTransitionsAtMost { get; init; }
     public long? ExpectedInitialTotalExpandedNodesAtMost { get; init; }
     public long? ExpectedInitialTotalTransitionsAtMost { get; init; }
     public SearchBoundaryReason? ExpectedInitialBoundaryReason { get; init; }
     public double? ExpectedInitialTotalElapsedMillisecondsAtMost { get; init; }
-    public long? ExpectedInitialTotalAllocatedBytesAtMost { get; init; }
-    public int? ExpectedInitialGen2CollectionsAtMost { get; init; }
-    public double? ExpectedInitialTotalGcPauseMillisecondsAtMost { get; init; }
-    public double? ExpectedInitialMaxGcPauseMillisecondsAtMost { get; init; }
-    public double? ExpectedInitialMaxMainThreadFrameGapMillisecondsAtMost { get; init; }
-    public int? ExpectedInitialMainThreadFramesOver50MillisecondsAtMost { get; init; }
-    public int? ExpectedInitialMainThreadFramesOver100MillisecondsAtMost { get; init; }
-    public int? ExpectedInitialTransitionCacheHitsAtLeast { get; init; }
-    public int? ExpectedInitialRepeatableNoProgressBranchesPrunedAtLeast { get; init; }
-    public int? ExpectedInitialCycleShapesDetectedAtLeast { get; init; }
-    public int? ExpectedInitialCycleProbeContinuationsExpandedAtLeast { get; init; }
-    public int? ExpectedInitialCycleProbeContinuationsExpandedAtMost { get; init; }
-    public int? ExpectedInitialCycleCandidatesProtectedAtLeast { get; init; }
-    public int? ExpectedInitialCycleContinuationsStoppedAtLeast { get; init; }
-    public int? ExpectedInitialCrossTurnCandidatesProtectedAtLeast { get; init; }
-    public int? ExpectedInitialCrossTurnContinuationsStoppedAtLeast { get; init; }
-    public int? ExpectedInitialNodeLimitSnapshotsReleasedAtLeast { get; init; }
-    public int? ExpectedInitialChoiceBranchesEvaluatedAtLeast { get; init; }
     public int? ExpectedInitialExecutableActionCountAtLeast { get; init; }
     public int? ExpectedInitialUnavoidableHpLost { get; init; }
-    public int? ExpectedInitialSoldHp { get; init; }
-    public int? ExpectedInitialSoldHpAtMost { get; init; }
-    public int? ExpectedInitialSoldHpBranchesPrunedAtLeast { get; init; }
-    public int? ExpectedInitialDeathSaveRelicHp { get; init; }
-    public int? ExpectedInitialActionAdmissionRepresentativesProtectedAtLeast { get; init; }
-    public int? ExpectedInitialHpInvestmentBranchesProtectedAtLeast { get; init; }
     public int? ExpectedInitialPotionCount { get; init; }
-    public bool? ExpectedInitialDeterministicBlockPotionInserted { get; init; }
-    public SolverTheftPolicy? ExpectedInitialTheftPolicy { get; init; }
-    public int? ExpectedInitialOutstandingStolenResource { get; init; }
-    public int? ExpectedInitialPotionHpSavedAtLeast { get; init; }
-    public int? ExpectedInitialPotionBranchesRejectedAtLeast { get; init; }
     public int? ExpectedInitialSearchedTurnsAtLeast { get; init; }
-    public int? ExpectedInitialShufflesCrossedAtLeast { get; init; }
-    public int? ExpectedInitialUnmirroredCount { get; init; }
     public int? ExpectedInitialHpLostAtMost { get; init; }
     public int? ExpectedInitialProjectedBattleHpLost { get; init; }
     public int? ExpectedInitialProjectedBattleHpLostAtMost { get; init; }
-    public int? ExpectedInitialLongTermResourceValueAtLeast { get; init; }
-    public int? ExpectedInitialGrowthRewardCount { get; init; }
-    public int? ExpectedInitialFinalMaxHp { get; init; }
-    public int? ExpectedInitialMaxBlockAtLeast { get; init; }
-    public int? ExpectedInitialActualBlockAtLeast { get; init; }
     public string? ExpectedInitialActionCardId { get; init; }
-    public string? ExpectedInitialAbsentActionCardId { get; init; }
     public string? ExpectedInitialFirstActionCardId { get; init; }
-    public string? ExpectedInitialFirstActionChoiceCardId { get; init; }
-    public string? ExpectedInitialFirstActionPotionId { get; init; }
-    public string? ExpectedInitialActionTitle { get; init; }
-    public int? ExpectedInitialActionReplayCount { get; init; }
     public bool? ExpectedInitialOnlyDeathRoutesFound { get; init; }
     public int? ExpectedInitialCombatEndedTurn { get; init; }
-    public int? ExpectedInitialDeathTurn { get; init; }
-    public int? ExpectedInitialDeathTurnAtLeast { get; init; }
     public int? ExpectedInitialFinalEnemyHpAtMost { get; init; }
-    public bool? ExpectedInitialActEndingBoss { get; init; }
-    public BossHpRelief? ExpectedInitialBossHpRelief { get; init; }
-    public string? ExpectedInitialPlannedChoiceCardId { get; init; }
-    public int? ExpectedInitialTurnStartChoiceTurn { get; init; }
-    public string? ExpectedInitialTurnStartChoiceSourceId { get; init; }
-    public string? ExpectedInitialTurnStartChoiceCardId { get; init; }
-    public string? ExpectedInitialTurnStartChoiceStateContains { get; init; }
-    public string? ExpectedInitialTurnStartChoiceStateExcludes { get; init; }
     public int? ExpectedInitialSetupChoiceCountAtLeast { get; init; }
-    public string? ExpectedInitialSetupChoiceSourceId { get; init; }
-    public string? ExpectedInitialSetupChoiceTextStartsWith { get; init; }
     public bool VerifyInitialSetupWaitsForUserStart { get; init; }
     public bool VerifyTurnSetupManualRecalculate { get; init; }
     public bool VerifyTurnSetupManualRefresh { get; init; }
@@ -246,8 +140,6 @@ internal sealed class UnattendedTestRequest
     public bool ExpectedFullAutoPausedAfterWorseRecalculation { get; init; }
     public bool ExpectedFullAutoPausedAtLiveRisk { get; init; }
     public bool EnableStopOnWorseRecalculationForTest { get; init; }
-    public string? ExpectedInitialRelicEffectId { get; init; }
-    public string? ExpectedInitialRelicEffectSummary { get; init; }
     public int? ExpectedReusedTurn { get; init; }
     public int? ExpectedReusedProjectedBattleHpLost { get; init; }
     public int? ExpectedUnexpectedReplansAtMost { get; init; }
@@ -266,33 +158,22 @@ internal sealed class UnattendedTestRequest
     public SolverPerformancePreset? PerformancePresetForTest { get; init; }
     public int? SearchBeamWidthForTest { get; init; }
     public int? SearchMaxExpandedNodesForTest { get; init; }
-    public BeamWeightTerm? BeamWeightTermForTest { get; init; }
-    public double? BeamWeightScaleForTest { get; init; }
     public int? ShortMaxCardBranchesPerNodeForTest { get; init; }
     public int? DeepMaxCardBranchesPerNodeForTest { get; init; }
     public SolverPotionPolicy? PotionPolicyForTest { get; init; }
     public SolverTheftPolicy? TheftPolicyForTest { get; init; }
+    // Wire-compat nullable field kept for PreCombatForecastWorker and launcher scripts (ignored by HotSearch).
     public bool? EnableNoGcRegionForTest { get; init; }
-    public bool ExpectNoGcFallbackForTest { get; init; }
-    public bool AllowNoGcFallbackForTest { get; init; }
-    public double? NoGcRegionBudgetGigabytesForTest { get; init; }
     public double? DeploymentInterActionDelaySecondsForTest { get; init; }
     public bool AssertDeploymentSpeedRestored { get; init; }
     public bool ExportBugReportAfterSetup { get; init; }
     public bool ExportBugReportAfterCombat { get; init; }
     public bool? EnableDetailedDiagnosticLogsForTest { get; init; }
     public bool ManualEndTurnAfterInitialSearch { get; init; }
-    public bool SingleStepAfterInitialSearch { get; init; }
-    public SingleStepResumeMode? SingleStepResumeModeForTest { get; init; }
-    public int? ExpectedTurnSetupToDeploymentDelayMillisecondsAtLeast { get; init; }
     public bool EnableFullAutoAfterManualEndTurn { get; init; }
-    public int? ExpectedManualDivergencesAtLeast { get; init; }
     public int? ExpectedUnexpectedReplansAtLeast { get; init; }
     public bool StopAfterExpectedUnexpectedReplan { get; init; }
-    public bool ExpectedUnexpectedReplanWarning { get; init; }
-    public bool ExportBugReportAfterUnexpectedReplan { get; init; }
     public string? ExpectedBugReportControlMode { get; init; }
-    public int? ExpectedNoGcRegionRolloversAtLeast { get; init; }
     public int? InjectPlayerHpLossBeforeAutoSearchTurn { get; init; }
     public int InjectPlayerHpLossAmount { get; init; }
     public int? ClearPlayerBlockBeforeEndTurnForTest { get; init; }
@@ -310,32 +191,7 @@ internal sealed class UnattendedPotionCheck
 {
     public string PotionId { get; init; } = string.Empty;
     public string Target { get; init; } = "Player";
-    public bool ProcureThroughGame { get; init; }
     public int TargetIndex { get; init; }
-    public int? PlayerHpBefore { get; init; }
-    public int? PlayerBlockBefore { get; init; }
-    public int? PlayerEnergyBefore { get; init; }
-    public int? PlayerStarsBefore { get; init; }
-    public int? EnemyHpBefore { get; init; }
-    public bool TriggerPlayerSideTurnEndAfterUse { get; init; }
-    public bool TriggerEnemySideTurnEndAfterUse { get; init; }
-    public bool TriggerAutomaticDeath { get; init; }
-    public string[] ChoiceCardIds { get; init; } = [];
-    public string[] NestedChoiceCardIds { get; init; } = [];
-    public bool ClearPlayerHandBeforeUse { get; init; }
-    public UnattendedCardInjection[] Cards { get; init; } = [];
-    public int? ExpectedPlayerHp { get; init; }
-    public int? ExpectedPlayerBlock { get; init; }
-    public int? ExpectedPlayerEnergy { get; init; }
-    public int? ExpectedPlayerStars { get; init; }
-    public int? ExpectedPlayerOrbCapacity { get; init; }
-    public int? ExpectedEnemyHp { get; init; }
-    public Dictionary<string, int> ExpectedPlayerPowers { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedEnemyPowers { get; init; } = new(StringComparer.Ordinal);
-    public string[] ExpectedAbsentPlayerPowers { get; init; } = [];
-    public string[] ExpectedAbsentEnemyPowers { get; init; } = [];
-    public Dictionary<string, int> ExpectedPlayerCardUpgrades { get; init; } = new(StringComparer.Ordinal);
-    public string? ExpectedSurroundedFacing { get; init; }
 }
 
 internal sealed class UnattendedOrbCheck
@@ -351,130 +207,17 @@ internal sealed class UnattendedMonsterMoveCheck
     public int MonsterOccurrence { get; init; }
     public string? SpawnInitialMoveId { get; init; }
     public string MoveId { get; init; } = string.Empty;
-    public bool UseCurrentMove { get; init; }
-    public bool VerifyAeonglassPreviewForkIsolation { get; init; }
-    public SearchBoundaryReason? ExpectedSearchBoundary { get; init; }
-    public bool? ExpectedSimulatedDynamicResolution { get; init; }
     public int? PlayerHpBefore { get; init; }
     public int? PlayerBlockBefore { get; init; }
     public int? PlayerEnergyBefore { get; init; }
     public int? PlayerStarsBefore { get; init; }
-    public int? PlayerGoldBefore { get; init; }
     public int? EnemyHpBefore { get; init; }
     public int? EnemyBlockBefore { get; init; }
-    public int? OstyHpBefore { get; init; }
-    public int? RoundNumberBefore { get; init; }
-    public int? PlayerTurnNumberBefore { get; init; }
-    public bool ClearAllRelicsBeforeMove { get; init; }
-    public UnattendedRelicInjection[] RelicsBeforeMove { get; init; } = [];
-    public bool ClearPlayerOrbsBeforeMove { get; init; }
-    public UnattendedOrbInjection[] OrbsBeforeMove { get; init; } = [];
-    public bool ClearAllPowersBeforeMove { get; init; }
-    public bool ClearPlayerPilesBeforeMove { get; init; }
     public bool ClearPlayerHandBeforeMove { get; init; }
-    public string DerivedHookTarget { get; init; } = "Player";
-    public int? ExpectedModifiedHandDraw { get; init; }
-    public int? ExpectedModifiedMaxEnergy { get; init; }
-    public string DerivedHookCardId { get; init; } = string.Empty;
-    public int DerivedHookBaseValue { get; init; }
-    public int? ExpectedModifiedXValue { get; init; }
-    public string DerivedHookOrbId { get; init; } = string.Empty;
-    public int? ExpectedModifiedOrbValue { get; init; }
-    public int? ExpectedModifiedHandDrawAfterPlayerSetup { get; init; }
-    public int? ExpectedModifiedMaxEnergyAfterPlayerSetup { get; init; }
-    public string? ExpectedStatefulRelicStateAfterPlayerSetup { get; init; }
-    public string? ExpectedMirrorRelicState { get; init; }
-    public bool? ExpectedShouldClearBlock { get; init; }
-    public bool? ExpectedShouldFlush { get; init; }
-    public bool? ExpectedShouldFlushAfterPlayerSetup { get; init; }
-    public bool? ExpectedShouldPlayerResetEnergy { get; init; }
-    public bool? ExpectedShouldPlayerResetEnergyAfterPlayerSetup { get; init; }
-    public bool? ExpectedSimulatedSkipNextMove { get; init; }
-    public bool RollNextMoveAfterActual { get; init; }
-    public string[] MonsterStateLogBefore { get; init; } = [];
-    public bool TriggerPlayerSideTurnEndBeforeMove { get; init; }
-    public bool TriggerEnemySideTurnEndBeforeMove { get; init; }
-    public bool TriggerPlayerSideTurnEndAfterMove { get; init; }
-    public bool TriggerEnemySideTurnEndAfterMove { get; init; }
-    public int EnemySideTurnEndTriggerCount { get; init; }
-    public bool TriggerPlayerSideTurnStartAfterMove { get; init; }
-    public bool TriggerEnemySideTurnStartAfterMove { get; init; }
-    public bool TriggerPlayerTurnEndAfterMove { get; init; }
-    public bool TriggerPlayerSetupAfterMove { get; init; }
-    public string[] PlayerSetupChoiceCardIds { get; init; } = [];
-    public bool TriggerAutoPrePlayAfterPlayerSetup { get; init; }
-    public string[] AutoPrePlayChoiceCardIds { get; init; } = [];
-    public bool KillMonsterAfterMove { get; init; }
-    public int? KillEnemyIndexAfterMove { get; init; }
-    public UnattendedCardInjection? CardBeforeMove { get; init; }
-    public UnattendedCardInjection[] CardsBeforeMove { get; init; } = [];
-    public UnattendedCardInjection? CardAfterMove { get; init; }
-    public UnattendedCardInjection[] CardsAfterMove { get; init; } = [];
-    public UnattendedCardTransformCheck[] CardTransformsAfterMove { get; init; } = [];
-    public UnattendedCardInjection? PlayCardAfterMove { get; init; }
-    public UnattendedCardPlayCheck[] CardPlayChecksBeforeMove { get; init; } = [];
-    public UnattendedCardPlayCheck[] CardPlayChecksAfterMove { get; init; } = [];
-    public UnattendedCardPlayCheck[] CardPlayChecksAfterPlayerSideTurnEnd { get; init; } = [];
-    public UnattendedCardPlayCheck[] CardPlayChecksAfterPlayerSetup { get; init; } = [];
-    public string? LiveEndTurnRiskCardId { get; init; }
-    public string LiveEndTurnRiskChoiceSourceId { get; init; } = string.Empty;
-    public string[] LiveEndTurnRiskChoiceCardIds { get; init; } = [];
-    public string? LiveEndTurnRiskKnowledgeChoiceCardId { get; init; }
     public UnattendedPowerInjection? PowerBeforeMove { get; init; }
     public UnattendedPowerInjection[] PowersBeforeMove { get; init; } = [];
-    public UnattendedPowerInjection[] PowersAfterMove { get; init; } = [];
-    public string? ExpectedNextMoveId { get; init; }
-    public int? ExpectedPlayerHp { get; init; }
-    public int? ExpectedPlayerHpLoss { get; init; }
-    public int? ExpectedOstyHp { get; init; }
-    public int? ExpectedOstyMaxHp { get; init; }
-    public Dictionary<string, int> ExpectedOstyPowers { get; init; } = new(StringComparer.Ordinal);
-    public int? ExpectedPlayerBlock { get; init; }
-    public int? ExpectedPlayerBlockAfterMoveActions { get; init; }
-    public int? ExpectedPlayerBlockGain { get; init; }
-    public int? ExpectedPlayerEnergy { get; init; }
-    public int? ExpectedPlayerStars { get; init; }
-    public int? ExpectedPlayerGold { get; init; }
-    public int? ExpectedPlayerOrbCapacity { get; init; }
-    public int? ExpectedPlayerHandCount { get; init; }
-    public int? ExpectedEnemyBlockGain { get; init; }
-    public int? ExpectedEnemyHpGain { get; init; }
-    public Dictionary<string, int> ExpectedPlayerPowers { get; init; } = new(StringComparer.Ordinal);
-    public string[] ExpectedAbsentPlayerPowers { get; init; } = [];
-    public Dictionary<string, int> ExpectedEnemyPowers { get; init; } = new(StringComparer.Ordinal);
-    public string[] ExpectedAbsentEnemyPowers { get; init; } = [];
-    public Dictionary<string, int> ExpectedPlayerPowerStates { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedEnemyPowerStates { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedPlayerPileCards { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedPlayerPileCardDamageTotals { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedPlayerCardStates { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedPlayerCardCosts { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedPlayerCardEnchantments { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedPlayerCardUpgrades { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedEnemyHpsByModel { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedEnemyBlocksByModel { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, int> ExpectedPlayerOrbs { get; init; } = new(StringComparer.Ordinal);
-}
-
-internal sealed class UnattendedCardPlayCheck
-{
-    public string CardId { get; init; } = string.Empty;
-    public int Occurrence { get; init; }
-    public string Target { get; init; } = "Enemy";
-    public bool ExpectedPlayable { get; init; } = true;
-    public bool UseChoice { get; init; }
-    public string[] ChoiceCardIds { get; init; } = [];
-    public string[] ExpectedExcludedChoiceCardIds { get; init; } = [];
-    public string? ExpectedCardIdAfterPlay { get; init; }
-    public string? ExpectedCardPileAfterPlay { get; init; }
-    public bool AssertForkableAfterPlay { get; init; }
-}
-
-internal sealed class UnattendedCardTransformCheck
-{
-    public string OriginalCardId { get; init; } = string.Empty;
-    public string ReplacementCardId { get; init; } = string.Empty;
-    public int Occurrence { get; init; }
+    public UnattendedCardInjection? CardBeforeMove { get; init; }
+    public UnattendedCardInjection[] CardsBeforeMove { get; init; } = [];
 }
 
 internal sealed class UnattendedPowerInjection
@@ -564,60 +307,15 @@ internal sealed class UnattendedTestResult
 
 internal sealed class UnattendedSolverMetrics
 {
-    public SearchGcLifecycleSnapshot GcLifecycle { get; init; }
-    public SearchGcLifecycleAttribution? GcLifecycleAttribution { get; init; }
     public SearchBoundaryReason Boundary { get; init; }
     public int SelectedExpanded { get; init; }
     public int SelectedTransitions { get; init; }
     public int SelectedChoiceBranches { get; init; }
-    public int RoundReplayPrefixCaptures { get; init; }
-    public int RoundReplayPrefixReuses { get; init; }
-    public int ExecutionChoiceCaptures { get; init; }
-    public int ExecutionChoiceReuses { get; init; }
-    public int CardChoicePrefixAttempts { get; init; }
-    public int CardChoicePrefixCaptures { get; init; }
-    public int CardChoicePrefixReuses { get; init; }
-    public int CardChoicePrefixFallbacks { get; init; }
-    public int PotionChoicePrefixForks { get; init; }
-    public int PotionChoicePrefixCaptures { get; init; }
-    public int PotionChoicePrefixReuses { get; init; }
-    public int PotionChoicePrefixFallbacks { get; init; }
-    public int ChoiceReplayAttempts { get; init; }
-    public int ChoiceReplayBudgetExhaustions { get; init; }
-    public int ChoiceBranchesDroppedByBudget { get; init; }
-    public int CycleReplayAttempts { get; init; }
-    public int CycleReplayActions { get; init; }
-    public int TotalCycleReplayActions { get; init; }
-    public int CycleReplayVictories { get; init; }
-    public int CycleReplayContinuations { get; init; }
-    public int CycleStoppedUnproductive { get; init; }
-    public int CycleStoppedRepetitionBudget { get; init; }
-    public int CycleStoppedFamilyBudget { get; init; }
-    public int CycleStoppedExitBudget { get; init; }
-    public int TurnLayerBudgetStops { get; init; }
-    public int TurnLayerTimeBudgetStops { get; init; }
-    public int TurnLayerNodeBudgetStops { get; init; }
-    public int CycleRegionsDetected { get; init; }
-    public int CycleRegionCandidatesConsidered { get; init; }
-    public int CycleRegionCandidatesAdmitted { get; init; }
-    public int CycleRegionCandidatesDropped { get; init; }
-    public int CycleRegionProgressEpochs { get; init; }
-    public int CycleRegionProbeCandidatesAdmitted { get; init; }
-    public int CycleRegionProgressCandidatesAdmitted { get; init; }
-    public int CycleRegionMaxActionFamilies { get; init; }
-    public int OrderedMutationCandidatesAdmitted { get; init; }
-    public int OrderedMutationLeaseExpiredBudget { get; init; }
-    public int OrderedMutationOrdinaryFallbacks { get; init; }
-    public int OrderedMutationColdAtomicCommitted { get; init; }
-    public int OrderedMutationColdAtomicRejected { get; init; }
     public long TotalExpanded { get; init; }
     public long TotalTransitions { get; init; }
     public long TotalChoiceBranches { get; init; }
     public double ElapsedMilliseconds { get; init; }
     public double TotalElapsedMilliseconds { get; init; }
-    public SearchWorkAttribution[] SearchWorkAttributions { get; init; } = [];
-    public BossTempoSearchTelemetry? BossTempoSearch { get; init; }
-    public BossTempoIterationTelemetry? BossTempoIteration { get; init; }
     public long WorkerAllocatedBytes { get; init; }
     public long TotalWorkerAllocatedBytes { get; init; }
     public int TotalGen0Collections { get; init; }
@@ -626,24 +324,10 @@ internal sealed class UnattendedSolverMetrics
     public double TotalGcPauseMilliseconds { get; init; }
     public double MaxGcPauseMilliseconds { get; init; }
     public int MaxParallelConcurrency { get; init; }
-    public int ParallelActionReplayWaves { get; init; }
-    public int ParallelActionReplayWorkItems { get; init; }
-    public int MaxParallelActionReplayConcurrency { get; init; }
-    public int DeferredRoundChoiceActions { get; init; }
-    public int DeferredRoundChoiceLayerWidthTotal { get; init; }
-    public int MaxDeferredRoundChoiceLayerWidth { get; init; }
-    public int DeferredRoundChoiceFiniteQuotaFallbacks { get; init; }
-    public int DeferredRoundChoiceFinitePrimaryLayers { get; init; }
-    public int DeferredRoundChoiceFinitePendingFallbacks { get; init; }
-    public int ParallelRoundChoiceReplayWaves { get; init; }
-    public int ParallelRoundChoiceReplayWorkItems { get; init; }
-    public int MaxParallelRoundChoiceReplayConcurrency { get; init; }
     public int SearchedTurns { get; init; }
     public int ShufflesCrossed { get; init; }
     public double Score { get; init; }
     public int ProjectedBattleHpLost { get; init; }
-
-    /// <summary>整场必然受击（扣除主动卖血后的被迫掉血），与 <c>RESULT</c> 诊断行同一口径。</summary>
     public int UnavoidableHpLost { get; init; }
     public int PotionCount { get; init; }
     public UnattendedPotionUse[] PotionUses { get; init; } = [];
@@ -652,35 +336,11 @@ internal sealed class UnattendedSolverMetrics
     public int FinalEnemyHp { get; init; }
     public int? CombatEndedTurn { get; init; }
     public double CapturedAtElapsedMilliseconds { get; init; }
-
-    /// <summary>基线成员发布给覆盖层的时刻，相对本次搜索请求开始。组合关闭时是那次单成员搜索的完成时刻。</summary>
-    public double? FirstRoutePublishedMilliseconds { get; init; }
-
-    /// <summary>逐成员明细；组合关闭时是一行。</summary>
-    public BeamWidthPortfolioMemberReport[] PortfolioMembers { get; init; } = [];
-
-    /// <summary>逐张或双能力固定开牌前缀的完整反事实搜索明细。</summary>
-    public PowerRoutePortfolioMemberReport[] PowerRouteMembers { get; init; } = [];
-
-    /// <summary>各成员结束后 <c>GC.GetTotalMemory(false)</c> 的最大值。</summary>
-    public long PeakManagedHeapBytes { get; init; }
     public long ManagedLiveBytes { get; init; }
     public long ManagedHeapBytes { get; init; }
     public long ManagedFragmentedBytes { get; init; }
     public long WorkingSetBytes { get; init; }
-    /// <summary>
-    /// 早期回合探索摘要；探索跳过时为 <c>null</c>（例如开关关闭、结果范围不是
-    /// 搜索完成，或已经证明零战损）。存在但计数为零表示“探索跑了但没尝试”。
-    /// 每条续搜结果保留派发深度、rank、耗时、展开与路线成绩，供离线批量归因。
-    /// </summary>
-    public UnattendedEarlyTurnExplorationMetrics? EarlyTurnExploration { get; init; }
     public long PrivateMemoryBytes { get; init; }
-    public bool ConfiguredNoGcRegionEnabled { get; init; }
-    public long ConfiguredNoGcRegionBudgetBytes { get; init; }
-    public GCLatencyMode GcLatencyMode { get; init; }
-    public bool NoGcRegionActive { get; init; }
-    public long NoGcRegionBudgetBytes { get; init; }
-    public int NoGcRegionRolloverCount { get; init; }
 }
 
 internal sealed class UnattendedPotionUse
@@ -689,26 +349,6 @@ internal sealed class UnattendedPotionUse
     public string Title { get; init; } = string.Empty;
     public int Turn { get; init; }
     public int Slot { get; init; }
-}
-
-/// <summary>
-/// 早期回合探索摘要的无头测试口径与逐续搜详情。
-/// 探索跳过时为 <c>null</c>；探索跑了但前沿为空时计数全零。
-/// </summary>
-internal sealed class UnattendedEarlyTurnExplorationMetrics
-{
-    public int ScoutExpanded { get; init; }
-    public int FrontierCandidates { get; init; }
-    public int Attempted { get; init; }
-    public int Improvements { get; init; }
-    public int? BestLoss { get; init; }
-    public int? BestPotions { get; init; }
-    public int? BestEndedTurn { get; init; }
-    public int? FirstImprovementDepth { get; init; }
-    public int? FirstImprovementRank { get; init; }
-    public long Expanded { get; init; }
-    public string Stop { get; init; } = string.Empty;
-    public EarlyTurnContinuationImprovement[] Continuations { get; init; } = [];
 }
 
 internal sealed class UnattendedStageTiming

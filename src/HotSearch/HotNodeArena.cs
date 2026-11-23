@@ -55,6 +55,8 @@ internal struct HotSearchNode
     public byte Turn;                   // 1 B (PlayerTurnNumber clamped 0..255)
     public byte ActionsThisTurn;        // 1 B (per-turn loop guard)
     public byte AliveEnemyCount;        // 1 B
+    public byte RevivingEnemyCount;     // 1 B (enemies in HotDeathPhase.Reviving e.g. Decimillipede Reattach)
+    public byte PlayableHandCount;      // 1 B (playable cards in hand for mid-turn combo diversity)
     public byte DeathSaveUseCount;      // 1 B
     public HotCombatOutcome Outcome;    // 1 B
     public HotNodeFlags Flags;          // 1 B

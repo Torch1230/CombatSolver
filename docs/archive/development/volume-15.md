@@ -37,4 +37,4 @@ Runtime 一次探测按类型查询信息的能力，捕获已知的平台能力
 
 结构门禁与工具检查通过；原 Android 设备和原包整场回放未执行，移动端性能未验证。
 
-复跑入口见 [测试矩阵](../../TEST_MATRIX.md)及 [GC 工具](../../../tools/testing/checks/CombatSolver.GcPolicyChecks/README.md)。
+复跑入口见 [测试矩阵](../../TEST_MATRIX.md)及 GC 工具（`tools/testing/checks/CombatSolver.GcPolicyChecks/README.md`）。

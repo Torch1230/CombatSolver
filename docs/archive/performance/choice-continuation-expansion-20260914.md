@@ -23,19 +23,19 @@
 
 ## 最快的扩展方式
 
-1. **先推广手动卡牌的自身选择边界。** [CardChoiceSupport.GetSpec](../../../src/Search/CardChoiceSupport.cs)已汇总牌堆移动、弃牌、消耗、变形、复制、关键词与生成选择；[ResolveManualCardChoice](../../../src/Search/SimulatedCombatState.ActionChoices.cs)和[CardChoiceSupport.Apply](../../../src/Search/CardChoiceResolution.cs)是共同入口。已有续执行直接重入这个入口，并复用原出牌结算尾部，因此无需为41张牌分别复制OnPlay。最接近现状的是深谋远虑、微光、光子切割的抽牌后放回牌顶；再补格挡状态以覆盖生存者、武装、全息影像等同类牌。低成本前缀的牌即使接入也可能收益很小。
-2. **给手动药水增加一个共同检查点。** [手动使用路径](../../../src/Search/CombatBeamSolver.Expansion.cs)依次消耗槽位、BeforePotionUsed、Use、Apply选择、AfterPotionUsed、Power/死亡补偿及收尾。候选恢复点在Use完成、Apply之前；保存槽位和药水身份、history/shuffle起点与死亡集合，恢复时不再次消耗或重复触发钩子。4种生成药水共用[生成路径](../../../src/Prediction/PotionOnUseSupport.cs)，重复随机池筛选与候选构造最值得先测；其余5种的Use前缀较薄，不能保证值得保存检查点。
-3. **在现有回合前缀上补来源循环进度。** [RoundTransition](../../../src/Search/CombatBeamSolver.RoundTransition.cs)已有抽牌前/后的检查点，不是从零开始。进一步跳过已执行的Power/Relic，需要将阶段、来源序号和源内进度显式存入执行帧。工具箱、既定事项发生在抽牌前；选择悖论、赌博筹码、烘焙手套及3种Power发生在抽牌后。不能简单重入整段foreach，否则先前的抽牌、随机生成、能量或状态触发会重复。
+1. **先推广手动卡牌的自身选择边界。** CardChoiceSupport.GetSpec（`src/Search/CardChoiceSupport.cs`）已汇总牌堆移动、弃牌、消耗、变形、复制、关键词与生成选择；ResolveManualCardChoice（`src/Search/SimulatedCombatState.ActionChoices.cs`）和CardChoiceSupport.Apply（`src/Search/CardChoiceResolution.cs`）是共同入口。已有续执行直接重入这个入口，并复用原出牌结算尾部，因此无需为41张牌分别复制OnPlay。最接近现状的是深谋远虑、微光、光子切割的抽牌后放回牌顶；再补格挡状态以覆盖生存者、武装、全息影像等同类牌。低成本前缀的牌即使接入也可能收益很小。
+2. **给手动药水增加一个共同检查点。** 手动使用路径（`src/Search/CombatBeamSolver.Expansion.cs`）依次消耗槽位、BeforePotionUsed、Use、Apply选择、AfterPotionUsed、Power/死亡补偿及收尾。候选恢复点在Use完成、Apply之前；保存槽位和药水身份、history/shuffle起点与死亡集合，恢复时不再次消耗或重复触发钩子。4种生成药水共用[生成路径](../../../src/Prediction/PotionOnUseSupport.cs)，重复随机池筛选与候选构造最值得先测；其余5种的Use前缀较薄，不能保证值得保存检查点。
+3. **在现有回合前缀上补来源循环进度。** RoundTransition（`src/Search/CombatBeamSolver.RoundTransition.cs`）已有抽牌前/后的检查点，不是从零开始。进一步跳过已执行的Power/Relic，需要将阶段、来源序号和源内进度显式存入执行帧。工具箱、既定事项发生在抽牌前；选择悖论、赌博筹码、烘焙手套及3种Power发生在抽牌后。不能简单重入整段foreach，否则先前的抽牌、随机生成、能量或状态触发会重复。
 
 每个家族继续使用原候选顺序、选择额度和结算函数；不重写模拟器，不减少搜索预算，不改变路线质量。
 
 ## 为什么不能直接全量放开
 
-- [当前资格](../../../src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs)只允许单层、一次手动出牌，并要求没有活动抽牌/伤害/格挡计数等不支持状态；[Search中的请求](../../../src/Search/SimulatedCombatState.CardContinuation.cs)还限定自身手牌弃牌。推广效果与牌堆的同时，必须复制实际存在的活动字段，不能仅改类型判断。
-- [历史复制](../../../src/Engine/InCombat/Simulation/CombatPredictionHistory.CardContinuation.cs)目前只识别出牌开始、攻击/伤害、抽牌与风险记录，并要求trace来源归属本牌。格挡、候选生成、召唤或其他触发来源需要各自增加重映射合同；生成候选还可能没有进入任何牌堆。普通稳定快照不能代表这些暂停状态。
-- 药水4种生成选择的[探测路径](../../../src/Search/CombatBeamSolver.ParallelExpansion.cs)当前先完整执行无主选择的Use与后置钩子，再从历史取候选；另外5种直接从父状态生成选择。新增检查点必须保留这些原有探测语义；不能为了提前暂停就把GetSpec整体搬到钩子前而改变候选。可先保留原探测，在独立前缀种子上保存Use后边界，再让兄弟恢复。
+- 当前资格（`src/Engine/InCombat/Simulation/CombatPredictionSimulator.CardContinuation.cs`）只允许单层、一次手动出牌，并要求没有活动抽牌/伤害/格挡计数等不支持状态；Search中的请求（`src/Search/SimulatedCombatState.CardContinuation.cs`）还限定自身手牌弃牌。推广效果与牌堆的同时，必须复制实际存在的活动字段，不能仅改类型判断。
+- 历史复制（`src/Engine/InCombat/Simulation/CombatPredictionHistory.CardContinuation.cs`）目前只识别出牌开始、攻击/伤害、抽牌与风险记录，并要求trace来源归属本牌。格挡、候选生成、召唤或其他触发来源需要各自增加重映射合同；生成候选还可能没有进入任何牌堆。普通稳定快照不能代表这些暂停状态。
+- 药水4种生成选择的探测路径（`src/Search/CombatBeamSolver.ParallelExpansion.cs`）当前先完整执行无主选择的Use与后置钩子，再从历史取候选；另外5种直接从父状态生成选择。新增检查点必须保留这些原有探测语义；不能为了提前暂停就把GetSpec整体搬到钩子前而改变候选。可先保留原探测，在独立前缀种子上保存Use后边界，再让兄弟恢复。
 - 外层恢复后再次遇到选择，可像当前实现一样退出作用域并完整回放。要继续优化内部选择，需保存消耗/弃牌循环、自动出牌次数、子CardPlay以及洗牌抽牌进度。尤其“抉择，抉择”和“计策”不能由一个外层帧解决全部嵌套。
-- [低语耳环](../../../src/Search/SimulatedCombatState.AutoPlay.cs)当前通过固定Vakuu策略回答选择，不枚举玩家选择兄弟；其自动出牌可以另做重复工作分析，但不能因为原生调用CardSelectCmd就计入此次选牌复用收益。
+- 低语耳环（`src/Search/SimulatedCombatState.AutoPlay.cs`）当前通过固定Vakuu策略回答选择，不枚举玩家选择兄弟；其自动出牌可以另做重复工作分析，但不能因为原生调用CardSelectCmd就计入此次选牌复用收益。
 - 第三方CardChoice/PotionChoice登记只声明选择定义与应用，没有承诺暂停时状态可复制。未知外部状态继续拒绝检查点；若以后扩展第三方，需显式的阶段/状态复制合同及原生差分，不能自动接纳任意委托或Task。
 
 ## 建议的准入与收益判断

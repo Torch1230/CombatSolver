@@ -5,7 +5,6 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
-using CombatSolver.Engine.Common;
 
 namespace CombatSolver;
 
@@ -13,9 +12,9 @@ internal sealed partial class UnattendedTestRunner
 {
     private async Task AssertNativeChooseOpenGateAsync(CombatState combat, Player player)
     {
-        CardModel[] options = [PredictionUtils.CreateCard(ModelDb.Card<Catastrophe>(), player),
-            PredictionUtils.CreateCard(ModelDb.Card<JackOfAllTrades>(), player),
-            PredictionUtils.CreateCard(ModelDb.Card<Production>(), player)];
+        CardModel[] options = [combat.CreateCard(ModelDb.Card<Catastrophe>(), player),
+            combat.CreateCard(ModelDb.Card<JackOfAllTrades>(), player),
+            combat.CreateCard(ModelDb.Card<Production>(), player)];
         var screen = NChooseACardSelectionScreen.ShowScreen(options, canSkip: true)
             ?? throw new InvalidOperationException("Native choose fixture has no selection screen.");
         Task<IEnumerable<CardModel>> native = screen.CardsSelected();

@@ -1,41 +1,17 @@
-using System.Collections;
 using System.Reflection;
 using System.Text.Json;
 using CombatSolver;
-using HarmonyLib;
+using CombatSolver.HotSearch;
 using MegaCrit.Sts2.Core.Combat;
 
 namespace OfflineSearchHarness;
 
 /// <summary>
-/// 模组侧的离线初始化：日志、固定预算设置、无人测试口径开关，以及把「搜索正确性依赖」的
-/// Harmony 补丁用宿主自己的 Harmony 实例装上（游戏内是 RitsuLib 的 ModPatcher 干这件事）。
+/// 模组侧的离线初始化：日志、固定预算设置、无人测试口径开关，并直连 HotSearchCoordinator + HotRootBuilder 求解。
 /// </summary>
 internal static class ModRuntime
 {
-    /// <summary>搜索正确性/语义相关的补丁；UI、覆盖层、通知、观察类补丁一律不装。</summary>
-    private static readonly string[] SearchPatchTypes =
-    [
-        "CombatSolver.CombatStateTrackerIsolationPatch",
-        "CombatSolver.PowerDynamicVarMaterializationGuardPatch",
-        "CombatSolver.ModelDbGetIdCachePatch",
-        "CombatSolver.BaseLibCloneConcurrencyPatch",
-        "CombatSolver.BaseLibDynamicVarCloneMetadataPatch",
-        "CombatSolver.RitsuDynamicVarCloneMetadataPatch",
-        "CombatSolver.SimulationCardPileLookupPatch",
-        "CombatSolver.RitsuFreePlayVoidIsolationPatch",
-        "CombatSolver.RitsuFreePlayBoolIsolationPatch",
-        "CombatSolver.RitsuFreePlayResolveIsolationPatch",
-        "CombatSolver.RitsuBaseLibTargetTypeLookupPatch",
-        "CombatSolver.RitsuBaseLibTargetTypeResolutionPatch",
-        "CombatSolver.RitsuBaseLibTargetTypeEvidencePatch",
-        "CombatSolver.PowerAmountComparisonPatch",
-    ];
-
     public static List<string> PatchLog { get; } = [];
-
-    /// <summary>阶段表由求解器在搜索结束时发布；离线宿主把它并进结果 JSON，避免只留在异步日志里。</summary>
-    public static string? LastPhasePerformance { get; private set; }
 
     /// <summary>离线会话作用域；释放即把无人测试口径还原（进程退出前 Program 负责释放）。</summary>
     public static IDisposable? Session { get; private set; }
@@ -53,38 +29,17 @@ internal static class ModRuntime
 
         ApplyFixedBudgetSettings(options);
         ApplyUnattendedOverrides(options);
-        SolverBackendSelector.Current = ResolveBackendKind(options.Backend);
-        string cardPileFreeze = FreezeModCardPiles();
-        int applied = ApplySearchPatches();
-        // 离线宿主在 M0.2 已完成 ModelDb.Init，没有 RitsuLib 生命周期事件；注册表此时已定型。
-        ModelDbGetIdCachePatch.MarkModelRegistryInitialized();
 
         SolverSettingsSnapshot snapshot = SolverSettings.Capture();
-        return $"patches_applied={applied}/{SearchPatchTypes.Length} "
-            + $"backend={SolverBackendSelector.Current} "
-            + $"mod_card_piles={DescribeModCardPiles()} freeze={cardPileFreeze} "
+        return $"backend=hot "
             + $"profile={options.Profile} "
             + $"beam={snapshot.Profile.BeamWidth} nodes={snapshot.Profile.MaxExpandedNodes} "
             + $"branches={snapshot.Profile.MaxCardBranchesPerNode}/"
             + $"{snapshot.Profile.MaxPileChoiceBranchesPerAction}/"
             + $"{snapshot.Profile.MaxHandChoiceBranchesPerAction} "
             + $"dop={snapshot.SearchMaxDegreeOfParallelism} "
-            + $"portfolio={UnattendedTestRunner.UseBeamWidthPortfolioOverride} "
-            + $"no_gc={snapshot.EnableNoGcRegion} potion_policy={snapshot.PotionPolicy}";
+            + $"potion_policy={snapshot.PotionPolicy}";
     }
-
-    /// <summary>
-    /// 预设值来自模组自己的 <c>SolverSettings</c>（不抄常量），Custom 沿用
-    /// <c>旧版离线权重拟合入口（历史工具）</c> 写进 combat_solver_settings.json 的默认分支上限 32/18/24。
-    /// plan 里显式给的 beam / nodes / 分支上限再覆盖预设。
-    /// </summary>
-    public static SolverBackendKind ResolveBackendKind(string backend)
-        => backend.ToLowerInvariant() switch
-        {
-            "legacy" => SolverBackendKind.Legacy,
-            "hot" => SolverBackendKind.Hot,
-            _ => throw new ArgumentException($"未知后端 {backend}（仅支持 legacy|hot）。"),
-        };
 
     public static SolverSearchProfile ResolveProfile(HarnessOptions options)
     {
@@ -94,11 +49,10 @@ internal static class ModRuntime
             "Medium" => Preset(SolverPerformancePreset.Medium),
             "High" => Preset(SolverPerformancePreset.High),
             "VeryHigh" => Preset(SolverPerformancePreset.VeryHigh),
-            // Custom 沿用模组自己写进 combat_solver_settings.json 的默认分支上限 32/18/24。
             "Custom" => new SolverSearchProfile(24, 2000, 32, 18, 24, 600_000),
             _ => throw new ArgumentException($"未知预设 {options.Profile}。"),
         };
-        SolverSearchProfile profile = baseline with
+        return baseline with
         {
             BeamWidth = options.Beam ?? baseline.BeamWidth,
             MaxExpandedNodes = options.Nodes ?? baseline.MaxExpandedNodes,
@@ -108,25 +62,23 @@ internal static class ModRuntime
             MaxHandChoiceBranchesPerAction =
                 options.MaxHandChoiceBranchesPerAction ?? baseline.MaxHandChoiceBranchesPerAction,
         };
-        return profile;
     }
 
-    /// <summary>预设值一律问模组自己要，不在宿主里抄常量。</summary>
     private static SolverSearchProfile Preset(SolverPerformancePreset preset)
         => SolverSettings.ResolvePerformanceValues(
             new SolverSettingsData { PerformancePreset = preset }).Profile;
 
-    /// <summary>
-    /// 与 <c>run_mac.py</c> 写进 combat_solver_settings.json 的同一套口径（预设换成解析后的 profile）。
-    /// </summary>
     private static void ApplyFixedBudgetSettings(HarnessOptions options)
     {
         SolverSearchProfile profile = ResolveProfile(options);
         SolverSettingsData? resourceSettings = Environment.GetEnvironmentVariable("OFFLINE_HARNESS_RESOURCE_SETTINGS")
             is { Length: > 0 } resourcePath
-                ? System.Text.Json.JsonSerializer.Deserialize<SolverSettingsData>(File.ReadAllText(resourcePath),
-                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true,
-                        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } })
+                ? JsonSerializer.Deserialize<SolverSettingsData>(File.ReadAllText(resourcePath),
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
+                    })
                     ?? throw new InvalidDataException("Empty resource policy settings.")
                 : null;
         SolverSettings.ApplyForTesting(new SolverSettingsData
@@ -140,10 +92,6 @@ internal static class ModRuntime
             SearchMaxCardBranchesPerNode = profile.MaxCardBranchesPerNode,
             SearchMaxPileChoiceBranchesPerAction = profile.MaxPileChoiceBranchesPerAction,
             SearchMaxHandChoiceBranchesPerAction = profile.MaxHandChoiceBranchesPerAction,
-            EnableNoGcRegion = options.EnableNoGcRegion,
-            NoGcRegionBudgetGigabytes = options.NoGcRegionBudgetGigabytes,
-            UseBeamWidthPortfolio = options.UsePortfolio,
-            UseNoveltyPortfolio = options.AdaptiveNoveltyRefinement,
             StopAtAcceptableBattleHpLoss = options.StopAtZeroLoss,
             OnlineStatisticsEnabled = false,
             SearchCompletionNotificationsEnabled = false,
@@ -154,12 +102,6 @@ internal static class ModRuntime
         });
     }
 
-    /// <summary>
-    /// 无人测试请求里 <c>fixedSearchBudget</c> / <c>searchBudgetOverrideMilliseconds</c> /
-    /// <c>searchMaxDegreeOfParallelismForTest</c> / <c>useBeamWidthPortfolioForTest</c>
-    /// 落在协议主机上，<c>SolverController.CaptureSearchPolicy</c> 从那里读。离线没有协议循环，
-    /// 走模组自己的 <c>UnattendedTestRunner.BeginOfflineSession</c> 写同一批状态。
-    /// </summary>
     private static void ApplyUnattendedOverrides(HarnessOptions options)
         => Session = UnattendedTestRunner.BeginOfflineSession(new UnattendedTestRunner.OfflineSessionOptions
         {
@@ -168,138 +110,13 @@ internal static class ModRuntime
             VerifyIncrementalSearch = options.VerifyIncremental,
             SearchBudgetOverrideMilliseconds = options.BudgetMilliseconds,
             SearchMaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
-            UseBeamWidthPortfolio = options.UsePortfolio,
-            BeamWidthPortfolioPlainBaselineMember = options.NoPlainBaselineMember ? false : null,
-            PileOrderInvariantMask = options.UnorderedPileMask,
-            StateKeySalt = options.StateKeySalt,
             TranspositionPruningDisabledMask = options.TranspositionPruningDisabledMask,
-            MemoryNoProgressRecoveryLimit = options.MemoryNoProgressRecoveryLimit,
             TranspositionEntryLimit = options.TranspositionEntryLimit,
-            EarlyTurnExplorationDepth = options.EarlyTurnExplorationDepth,
-            EarlyTurnExplorationBudgetMilliseconds = options.EarlyTurnExplorationBudgetMilliseconds,
         });
-
-    /// <summary>
-    /// 游戏里 RitsuLib 在模组注册结束后冻结牌堆注册表，<c>SimulationCardPileLookupPatch</c> 的无分配
-    /// 快速路径才会生效；离线宿主没有那一步，于是每次搜索都退回原版 <c>Player.Piles</c> 的
-    /// Concat + 谓词 + 枚举器分配。这里按同一时点（无任何注册牌堆）冻结，让离线指标对应实机路径。
-    /// </summary>
-    private static string FreezeModCardPiles()
-    {
-        const BindingFlags flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-        try
-        {
-            Type registry = typeof(STS2RitsuLib.CardPiles.ModCardPileRegistry);
-            if (registry.GetProperty("IsFrozen", flags)?.GetValue(null) is true)
-                return "already";
-            // RitsuLib 0.111.0 的入口是 FreezeRegistrations(string)，参数是冻结发起方。
-            MethodInfo? freeze = registry.GetMethod("FreezeRegistrations", flags, null, [typeof(string)], null);
-            if (freeze == null)
-                return "no-FreezeRegistrations";
-            freeze.Invoke(null, ["OfflineSearchHarness"]);
-            return "frozen=" + (registry.GetProperty("IsFrozen", flags)?.GetValue(null) ?? "?");
-        }
-        catch (Exception error)
-        {
-            Exception root = error;
-            while (root.InnerException != null) root = root.InnerException;
-            return $"failed:{root.GetType().Name}:{root.Message}";
-        }
-    }
-
-    private static int ApplySearchPatches()
-    {
-        int applied = 0;
-        foreach (string typeName in SearchPatchTypes)
-        {
-            Type? patchType = AccessTools.TypeByName(typeName);
-            if (patchType == null)
-            {
-                PatchLog.Add($"{typeName}: 缺少类型，跳过");
-                continue;
-            }
-            try
-            {
-                object? targets = AccessTools.Method(patchType, "GetTargets")?.Invoke(null, null);
-                if (targets is not IEnumerable list)
-                {
-                    PatchLog.Add($"{typeName}: GetTargets 无结果，跳过");
-                    continue;
-                }
-                HarmonyMethod? prefix = Wrap(patchType, "Prefix");
-                HarmonyMethod? postfix = Wrap(patchType, "Postfix");
-                HarmonyMethod? transpiler = Wrap(patchType, "Transpiler");
-                HarmonyMethod? finalizer = Wrap(patchType, "Finalizer");
-                int patched = 0;
-                foreach (object target in list)
-                {
-                    MethodBase? method = Resolve(target);
-                    if (method == null)
-                        continue;
-                    GameBootstrap.Harmony.Patch(method, prefix, postfix, transpiler, finalizer);
-                    patched++;
-                }
-                PatchLog.Add($"{typeName}: 已装 {patched} 个目标");
-                if (patched > 0)
-                    applied++;
-            }
-            catch (Exception error)
-            {
-                Exception root = error;
-                while (root.InnerException != null) root = root.InnerException;
-                PatchLog.Add($"{typeName}: 失败 {root.GetType().Name}: {root.Message}");
-            }
-        }
-        return applied;
-    }
-
-    private static HarmonyMethod? Wrap(Type patchType, string name)
-    {
-        MethodInfo? method = patchType.GetMethod(name,
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        return method == null ? null : new HarmonyMethod(method);
-    }
-
-    private static MethodBase? Resolve(object target)
-    {
-        Type type = target.GetType();
-        Type targetType = (Type)type.GetProperty("TargetType")!.GetValue(target)!;
-        string methodName = (string)type.GetProperty("MethodName")!.GetValue(target)!;
-        Type[] parameterTypes = (Type[]?)type.GetProperty("ParameterTypes")?.GetValue(target) ?? [];
-        object? methodType = type.GetProperty("HarmonyMethodType")?.GetValue(target);
-        if (methodType is MethodType.Getter)
-            return AccessTools.PropertyGetter(targetType, methodName);
-        if (methodType is MethodType.Setter)
-            return AccessTools.PropertySetter(targetType, methodName);
-        if (methodType is MethodType.Constructor)
-            return AccessTools.Constructor(targetType, parameterTypes);
-        return AccessTools.Method(targetType, methodName, parameterTypes.Length == 0 ? null : parameterTypes)
-            ?? AccessTools.Method(targetType, methodName);
-    }
 
     public static string DescribeStart(CombatState state)
         => SolverDiagnostics.DescribeStart(state, SolverSettings.Capture().Profile);
 
-    /// <summary>把 CombatRootSnapshot.Capture 的各步单独跑一遍，用来定位段错误落在哪一步。</summary>
-    private static void ProbeRootCapture(CombatState state)
-    {
-        HarnessLog.Trace("probe.power_dynamic_vars");
-        PowerDynamicVarWarmup.EnsureMaterialized(state);
-        HarnessLog.Trace("probe.card_dynamic_vars");
-        CardDynamicVarWarmup.EnsureMaterialized(state);
-        HarnessLog.Trace("probe.continuation_stamp");
-        _ = ContinuationStamp.CaptureLive(state);
-        HarnessLog.Trace("probe.hook_listeners");
-        var listeners = state.IterateHookListeners().ToArray();
-        HarnessLog.Trace($"probe.intent_forecast listeners={listeners.Length}");
-        _ = CombatSolver.IntentForecaster.Build(state, SolverWeights.SetupValueHorizonTurns);
-        HarnessLog.Trace("probe.simulated_combat_state");
-        _ = new SimulatedCombatState(state, listeners);
-        HarnessLog.Trace("probe.done");
-    }
-
-    /// <summary>宿主一次搜索的全部产物。</summary>
-    /// <summary>与游戏内 <c>replayVerification.beamWeightFit.policy</c> 同一组字段，方便逐项对账。</summary>
     public static object DescribePolicy(SearchPolicySnapshot policy) => new
     {
         policy.Profile,
@@ -322,12 +139,7 @@ internal static class ModRuntime
         policy.VerifyIncrementalSearch,
         policy.DetailedDiagnostics,
         policy.MeasurePhasePerformance,
-        policy.UseBeamWidthPortfolio,
-        policy.BeamWidthPortfolioPlainBaselineMember,
-        policy.UseNoveltyPortfolio,
-        policy.BeamWidthPortfolioWidths,
-        portfolioSelector = policy.PortfolioExperiment?.Model?.ModelId,
-        observePortfolio = policy.PortfolioExperiment?.Observe != null,
+        policy.TranspositionEntryLimit,
     };
 
     internal sealed record SearchOutcome(
@@ -344,26 +156,18 @@ internal static class ModRuntime
         bool TimeBoundaryObserved,
         double WallSeconds);
 
-    /// <summary>
-    /// Evaluate 口径：单次求解，不经协调器——直接建一个 <c>CombatBeamSolver</c>，用
-    /// <c>SearchRequestWorkTotals</c> 回填 Total* 字段，profile 的软时间预算换成 <c>--budget-ms</c>。
-    /// 组合成员、协调器的审计通道都不参与，所以它量的是「一棵树自己」的搜索量。
-    /// </summary>
     private static SolverResult SolveEvaluate(
         CombatRootSnapshot root,
         SolverDisplayNames names,
         BattleDamageSnapshot damage,
         SearchPolicySnapshot basePolicy,
-        SolverSettingsSnapshot settings,
         int budgetMilliseconds,
         MainLoopContext loop,
         out object describedPolicy,
         ref bool timeBoundary)
     {
-        SearchRequestWorkTotals totals = new();
         SearchPolicySnapshot policy = basePolicy with
         {
-            RequestWorkTotals = totals,
             Profile = basePolicy.Profile with { SoftTimeBudgetMilliseconds = budgetMilliseconds },
         };
         describedPolicy = DescribePolicy(policy);
@@ -375,25 +179,12 @@ internal static class ModRuntime
                     observedTimeBoundary = true;
                 policy.Diagnostics.Info(message);
             },
-            policy.Diagnostics.Debug, policy.Diagnostics.PathObserver);
-        ISolverBackend backend = SolverBackendSelector.Resolve();
+            policy.Diagnostics.Debug);
         SearchPolicySnapshot evaluatePolicy = policy with { Diagnostics = diagnostics };
-        // 与参考跑法一致：求解在工作线程上跑，主线程只泵消息循环。
-        Task<SolverResult> solve = Task.Run(() => backend.SolveSingleBeam(
+        Task<SolverResult> solve = Task.Run(() => HotSearchCoordinator.SolveSingleBeam(
             root, names, damage, evaluatePolicy, CancellationToken.None));
-        loop.RunUntilCompleted(solve, TimeSpan.FromSeconds(660), "CombatBeamSolver.Solve");
+        loop.RunUntilCompleted(solve, TimeSpan.FromSeconds(660), "HotSearchCoordinator.SolveSingleBeam");
         SolverResult result = solve.GetAwaiter().GetResult();
-        if (policy.MeasurePhasePerformance)
-        {
-            string phasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
-            LastPhasePerformance = phasePerformance;
-            policy.Diagnostics.Info(phasePerformance);
-        }
-        SearchRequestWorkSnapshot work = totals.Snapshot();
-        result.TotalExpandedNodes = work.ExpandedNodes;
-        result.TotalTransitionCount = work.TransitionCount;
-        result.TotalChoiceBranchesEvaluated = work.ChoiceBranchesEvaluated;
-        result.TotalSearchElapsed = work.Elapsed;
         timeBoundary = observedTimeBoundary || result.BoundaryReason == SearchBoundaryReason.TimeLimit;
         return result;
     }
@@ -402,10 +193,9 @@ internal static class ModRuntime
         CombatState state,
         HarnessOptions options,
         MainLoopContext loop,
-        UnattendedTestRunner.OfflineScenarioSession? session)
+        UnattendedTestRunner.OfflineScenarioSession? session,
+        SolverTheftPolicy? theftPolicyOverride = null)
     {
-        if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_PROBE_ROOT") == "1")
-            ProbeRootCapture(state);
         System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
         CombatRootSnapshot root = CombatRootSnapshot.Capture(state);
         HarnessLog.Trace("root_captured");
@@ -413,60 +203,24 @@ internal static class ModRuntime
         BattleDamageSnapshot damage = BattleDamageTracker.Observe(state);
         SolverSettingsSnapshot settings = SolverSettings.Capture();
         SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
-            settings, state, includeTurnSetup: false, theftPolicy: SolverController.ResolveTheftPolicy(state));
-        policy = policy with { DisableSharedPrimaryIncumbentsForTesting = options.DisableSharedIncumbents,
-            UseBossTempoSearch = options.BossTempo != "off",
-            BossTempoNormalizeHpPricing = options.BossTempo != "legacy-pricing",
-            BossTempoSearch = options.BossTempo == "direct" ? new(2) : null,
-            Profile = policy.Profile with
-        {
-            BaseScoreOnly = options.Ordering == "base",
-            BossTempoHpPricing = options.BossTempo == "direct",
-            SecondRankBand = options.Ordering == "band",
-            ContextualRanking = options.RankingModelPath == null ? null
-                : ContextualRankingModel.Parse(File.ReadAllText(options.RankingModelPath)),
-            ContinuousThreatRanking = options.ContinuousThreatRanking,
-            BaseScoreTacticalTies = options.BaseScoreTacticalTies,
-            AdaptiveNoveltyRefinement = options.AdaptiveNoveltyRefinement,
-            ReallocatedRefinementPortfolio = options.ReallocatedRefinementPortfolio
-                ?? policy.Profile.ReallocatedRefinementPortfolio,
-            BeamWeightPerturbation = options.BeamWeightPerturbation,
-            OffensiveRefinementPortfolio = options.OffensiveRefinementPortfolio,
-            BoundedOffensiveRefinementPortfolio = options.BoundedOffensiveRefinementPortfolio
-                ?? policy.Profile.BoundedOffensiveRefinementPortfolio,
-            StopPortfolioAtHpTarget = options.StopPortfolioAtHpTarget ?? policy.Profile.StopPortfolioAtHpTarget,
-        } };
-        using OrderingObservations? orderingObservations = options.OrderingObservationLimit > 0
-            ? new OrderingObservations(options.OutputDirectory, options.OrderingObservationLimit,
-                options.OrderingWatchedStatesPath) : null;
-        if (orderingObservations != null)
-            policy = policy with { Diagnostics = new SearchDiagnosticsSink(
-                policy.Diagnostics.Info, policy.Diagnostics.Debug, orderingObservations.Observer) };
-        List<BeamPortfolioObservation> observations = [];
-        if (options.ObservePortfolio || options.PortfolioModelPath != null)
-        {
-            BeamPortfolioSelector? model = options.PortfolioModelPath == null ? null
-                : BeamPortfolioSelector.Parse(File.ReadAllText(options.PortfolioModelPath));
-            policy = policy with
-            {
-                PortfolioExperiment = new BeamPortfolioExperiment(model, observation =>
-                {
-                    if (observations.Count >= 4096)
-                        throw new InvalidOperationException("Portfolio observation limit exceeded.");
-                    observations.Add(observation);
-                }),
-            };
-        }
+            settings, state, includeTurnSetup: false,
+            theftPolicy: theftPolicyOverride ?? SolverController.ResolveTheftPolicy(state));
         HarnessLog.Trace("search_policy");
+
         Action<SolverProgress>? diagnosticProgress = null;
         if (Environment.GetEnvironmentVariable("OFFLINE_HARNESS_STREAM_DIAGNOSTICS") == "1")
         {
             SearchDiagnosticsSink original = policy.Diagnostics;
-            policy = policy with { Diagnostics = new SearchDiagnosticsSink(message =>
+            policy = policy with
             {
-                Console.WriteLine($"[search-diagnostic] {message}");
-                original.Info(message);
-            }, original.Debug, original.PathObserver) };
+                Diagnostics = new SearchDiagnosticsSink(
+                    message =>
+                    {
+                        Console.WriteLine($"[search-diagnostic] {message}");
+                        original.Info(message);
+                    },
+                    original.Debug),
+            };
             long lastProgressMilliseconds = 0;
             diagnosticProgress = progress =>
             {
@@ -481,126 +235,52 @@ internal static class ModRuntime
                     + $"play_depth={progress.PlayDepth} frontier={progress.FrontierNodes}");
             };
         }
+
         bool timeBoundary = false;
         int observedCoordinatorTimeBoundary = 0;
         SearchDiagnosticsSink timeBoundaryDiagnostics = policy.Diagnostics;
-        policy = policy with { Diagnostics = new SearchDiagnosticsSink(message =>
+        policy = policy with
         {
-            // Capture before the bounded journal can drop a late budget event.
-            if (message.Contains("TURN_LAYER_BUDGET reason=time", StringComparison.Ordinal)
-                || message.Contains("SEARCH_TIME_BUDGET", StringComparison.Ordinal))
-                Interlocked.Exchange(ref observedCoordinatorTimeBoundary, 1);
-            timeBoundaryDiagnostics.Info(message);
-        }, timeBoundaryDiagnostics.Debug, timeBoundaryDiagnostics.PathObserver) };
+            Diagnostics = new SearchDiagnosticsSink(
+                message =>
+                {
+                    if (message.Contains("TURN_LAYER_BUDGET reason=time", StringComparison.Ordinal)
+                        || message.Contains("SEARCH_TIME_BUDGET", StringComparison.Ordinal))
+                        Interlocked.Exchange(ref observedCoordinatorTimeBoundary, 1);
+                    timeBoundaryDiagnostics.Info(message);
+                },
+                timeBoundaryDiagnostics.Debug),
+        };
         object describedPolicy = DescribePolicy(policy);
-        SolverCombatSession? incumbentSession = null;
-        if (options.VerifySharedIncumbentReuse)
-        {
-            if (options.SearchMode != "Coordinator" || options.DisableSharedIncumbents)
-                throw new InvalidOperationException("Shared incumbent reuse requires enabled Coordinator search.");
-            incumbentSession = new();
-            policy = policy with { PrimaryIncumbents = incumbentSession.AcquirePrimaryIncumbents(root, policy, damage) };
-        }
-        SolverResult result;
-        if (options.EnableNoGcRegion)
-        {
-            if (options.SignalBallastMegabytes > 0)
-            {
-                // 先收掉建局阶段的可回收对象，让球压测试只面对 scope 开头之后分配的对象。
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
-                GC.WaitForPendingFinalizers();
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
-            }
-            using ISearchGcScope gcScope = SearchGcPolicy.EnterSearchScope(
-                enableNoGcRegion: true,
-                settings.NoGcRegionBudgetBytes,
-                policy.MemoryPressureSignal,
-                CancellationToken.None);
-            byte[]? ballast = options.SignalBallastMegabytes > 0
-                ? new byte[options.SignalBallastMegabytes * 1024L * 1024L]
-                : null;
-            try
-            {
-                result = options.SearchMode == "Coordinator"
-                    ? SolverBackendSelector.Resolve().SolveCoordinator(
-                        root, names, damage, policy, CancellationToken.None, diagnosticProgress)
-                    : SolveEvaluate(root, names, damage, policy, settings,
-                        options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
-            }
-            finally
-            {
-                GC.KeepAlive(ballast);
-            }
-        }
-        else
-        {
-            result = options.SearchMode == "Coordinator"
-                ? SolverBackendSelector.Resolve().SolveCoordinator(
-                    root, names, damage, policy, CancellationToken.None, diagnosticProgress)
-                : SolveEvaluate(root, names, damage, policy, settings,
-                    options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
-        }
-        if (incumbentSession != null)
-        {
-            PrimaryIncumbentTable reused = incumbentSession.AcquirePrimaryIncumbents(root, policy, damage);
-            if (!ReferenceEquals(reused.PotionFreeWitness, result))
-                throw new InvalidOperationException("Same-root request did not retain its executable victory witness.");
-            SolverResult next = SolverBackendSelector.Resolve().SolveCoordinator(root, names, damage,
-                policy with { PrimaryIncumbents = reused }, CancellationToken.None, null);
-            if (next.OnlyDeathRoutesFound || !next.Snapshot.AllEnemiesDead
-                || next.ProjectedBattleHpLost > result.ProjectedBattleHpLost
-                || next.ExplicitPotionCount != result.ExplicitPotionCount
-                || RouteQualityPolicy.Compare(
-                    RouteQuality.FromInterim(CombatSearchCoordinator.CapturePortfolioQuality(root, policy, next)),
-                    RouteQuality.FromInterim(CombatSearchCoordinator.CapturePortfolioQuality(root, policy, result)),
-                    RouteQualityProjection.PotionPolicy, policy.TheftPolicy) > 0)
-                throw new InvalidOperationException("Reused request lost victory quality.");
-            var changed = incumbentSession.AcquirePrimaryIncumbents(root,
-                policy with { PotionPolicy = SolverPotionPolicy.RequireAtLeastOne }, damage);
-            if (changed.PotionFreeWitness != null)
-                throw new InvalidOperationException("Changed policy inherited an incompatible witness.");
-            Console.WriteLine("SHARED_INCUMBENT_REUSE status=Passed same_root=True changed_policy_reset=True");
-        }
-        if (options.SearchMode == "Coordinator" && policy.MeasurePhasePerformance)
-            LastPhasePerformance = SolverDiagnostics.DescribeSearchPhasePerformance(result);
+
+        SolverResult result = options.SearchMode == "Coordinator"
+            ? HotSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
+            : SolveEvaluate(root, names, damage, policy, options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
+
         timeBoundary |= Volatile.Read(ref observedCoordinatorTimeBoundary) != 0;
-        orderingObservations?.WriteSelectedPath(options.OutputDirectory, result);
         HarnessLog.Trace("solved");
         watch.Stop();
+
         File.WriteAllText(Path.Combine(options.OutputDirectory, "quality.json"), JsonSerializer.Serialize(new
         {
-            quality = CombatSearchCoordinator.CapturePortfolioQuality(root, policy, result),
+            quality = HotSearchCoordinator.CaptureQuality(root, policy, result),
             snapshot = result.Snapshot,
             result.ResultScope,
             result.BoundaryReason,
         }, UnattendedTestFiles.JsonOptions));
-        if (policy.PortfolioExperiment != null)
-        {
-            File.WriteAllText(Path.Combine(options.OutputDirectory, "portfolio-observations.json"),
-                JsonSerializer.Serialize(new
-                {
-                    schemaVersion = BeamPortfolioSelector.SchemaVersion,
-                    solverAssemblyId = typeof(CombatSearchCoordinator).Module.ModuleVersionId.ToString(),
-                    gameAssemblyId = typeof(CombatState).Module.ModuleVersionId.ToString(),
-                    featureNames = BeamPortfolioSelector.FeatureNames,
-                    observations,
-                }, UnattendedTestFiles.JsonOptions));
-        }
 
         Dictionary<string, object?> rootCapture = new()
         {
-            ["cards"] = root.CapturedCardCount,
-            ["powers"] = root.CapturedPowerCount,
-            ["listeners"] = root.CapturedHookListenerCount,
-            ["run_mod_subscribers"] = root.CapturedRunModSubscriberCount,
-            ["combat_mod_subscribers"] = root.CapturedCombatModSubscriberCount,
-            ["base_lib_card_modifiers"] = root.CapturedBaseLibCardModifiers,
+            ["cards"] = (int)root.HotRoot.RootState.TotalCardCount,
+            ["powers"] = (int)root.HotRoot.RootState.PowerCount,
+            ["enemies"] = (int)root.HotRoot.RootState.EnemyCount,
+            ["coldSidecar"] = root.HotRoot.RootCold != null,
         };
         return new SearchOutcome(
             result,
             session?.CaptureSolverMetrics(result),
             describedPolicy,
-            BuildLegacyMetrics(result),
+            BuildMetrics(result),
             rootCapture,
             root.ContinuationStamp.StateText,
             root.LiveStamp.StateText,
@@ -619,12 +299,8 @@ internal static class ModRuntime
             watch.Elapsed.TotalSeconds);
     }
 
-    private static Dictionary<string, object?> BuildLegacyMetrics(SolverResult result)
-    {
-
-        // 键名与游戏内 result.json 的 solverMetrics 保持一致，方便逐字段比。耗时/内存/GC 这类
-        // 与环境相关的字段不放进来（固定节点预算下结果与时间无关）。
-        Dictionary<string, object?> metrics = new()
+    private static Dictionary<string, object?> BuildMetrics(SolverResult result)
+        => new()
         {
             ["boundary"] = result.BoundaryReason.ToString(),
             ["selectedExpanded"] = result.ExpandedNodes,
@@ -633,11 +309,6 @@ internal static class ModRuntime
             ["totalExpanded"] = result.TotalExpandedNodes,
             ["totalTransitions"] = result.TotalTransitionCount,
             ["totalChoiceBranches"] = result.TotalChoiceBranchesEvaluated,
-            ["choiceReplayAttempts"] = result.ChoiceReplayAttempts,
-            ["choiceReplayBudgetExhaustions"] = result.ChoiceReplayBudgetExhaustions,
-            ["choiceBranchesDroppedByBudget"] = result.ChoiceBranchesDroppedByBudget,
-            ["roundReplayPrefixCaptures"] = result.RoundReplayPrefixCaptures,
-            // 剪枝/复用计数：量"重复模拟"与各类剪枝占转移数的比例。
             ["dominatedActionsPruned"] = result.DominatedActionsPruned,
             ["topQueueActionsDropped"] = result.TopQueueActionsDropped,
             ["actionAdmissionRepresentativesProtected"] = result.ActionAdmissionRepresentativesProtected,
@@ -653,32 +324,6 @@ internal static class ModRuntime
             ["repeatableNoProgressBranchesPruned"] = result.RepeatableNoProgressBranchesPruned,
             ["standPatProbes"] = result.StandPatProbes,
             ["transitionCacheHits"] = result.TransitionCacheHits,
-            ["roundReplayPrefixReuses"] = result.RoundReplayPrefixReuses,
-            ["cycleRegionsDetected"] = result.CycleRegionsDetected,
-            ["cycleRegionCandidatesConsidered"] = result.CycleRegionCandidatesConsidered,
-            ["cycleRegionCandidatesAdmitted"] = result.CycleRegionCandidatesAdmitted,
-            ["cycleRegionCandidatesDropped"] = result.CycleRegionCandidatesDropped,
-            ["cycleRegionProgressEpochs"] = result.CycleRegionProgressEpochs,
-            ["cycleRegionProbeCandidatesAdmitted"] = result.CycleRegionProbeCandidatesAdmitted,
-            ["cycleRegionProgressCandidatesAdmitted"] = result.CycleRegionProgressCandidatesAdmitted,
-            ["cycleRegionMaxActionFamilies"] = result.CycleRegionMaxActionFamilies,
-            ["orderedMutationCandidatesAdmitted"] = result.OrderedMutationCandidatesAdmitted,
-            ["orderedMutationLeaseExpiredBudget"] = result.OrderedMutationLeaseExpiredBudget,
-            ["orderedMutationOrdinaryFallbacks"] = result.OrderedMutationOrdinaryFallbacks,
-            ["orderedMutationColdAtomicCommitted"] = result.OrderedMutationColdAtomicCommitted,
-            ["orderedMutationColdAtomicRejected"] = result.OrderedMutationColdAtomicRejected,
-            ["deferredRoundChoiceActions"] = result.DeferredRoundChoiceActions,
-            ["deferredRoundChoiceLayerWidthTotal"] = result.DeferredRoundChoiceLayerWidthTotal,
-            ["maxDeferredRoundChoiceLayerWidth"] = result.MaxDeferredRoundChoiceLayerWidth,
-            ["deferredRoundChoiceFiniteQuotaFallbacks"] = result.DeferredRoundChoiceFiniteQuotaFallbacks,
-            ["deferredRoundChoiceFinitePrimaryLayers"] = result.DeferredRoundChoiceFinitePrimaryLayers,
-            ["deferredRoundChoiceFinitePendingFallbacks"] = result.DeferredRoundChoiceFinitePendingFallbacks,
-            ["parallelActionReplayWaves"] = result.ParallelActionReplayWaves,
-            ["parallelActionReplayWorkItems"] = result.ParallelActionReplayWorkItems,
-            ["maxParallelActionReplayConcurrency"] = result.MaxParallelActionReplayConcurrency,
-            ["parallelRoundChoiceReplayWaves"] = result.ParallelRoundChoiceReplayWaves,
-            ["parallelRoundChoiceReplayWorkItems"] = result.ParallelRoundChoiceReplayWorkItems,
-            ["maxParallelRoundChoiceReplayConcurrency"] = result.MaxParallelRoundChoiceReplayConcurrency,
             ["maxParallelConcurrency"] = result.MaxParallelExpansionConcurrency,
             ["searchedTurns"] = result.SearchedTurns,
             ["shufflesCrossed"] = result.Snapshot.ShufflesCrossed,
@@ -690,19 +335,10 @@ internal static class ModRuntime
             ["finalEnemyHp"] = result.Snapshot.EnemyHp,
             ["combatEndedTurn"] = result.CombatEndedTurn,
             ["transpositionCount"] = result.TranspositionCount,
-            ["expandedTranspositionCount"] = result.ExpandedTranspositionCount,
             ["transpositionLimitBypasses"] = result.TranspositionLimitBypasses,
             ["standPatCacheCount"] = result.StandPatCacheCount,
-            ["threatProjectionCacheCount"] = result.ThreatProjectionCacheCount,
-            ["coverageCacheCount"] = result.CoverageCacheCount,
         };
-        return metrics;
-    }
 
-    /// <summary>
-    /// 模组日志由后台写线程持有；进程直接退出会丢掉尚未落盘的最后一段（阶段表恰好在末尾）。
-    /// 用该日志自己的 FIFO 快照屏障等所有已入队条目写完，再结束进程。
-    /// </summary>
     public static void FlushDiagnostics()
     {
         object? logger = typeof(Entry)
@@ -718,31 +354,6 @@ internal static class ModRuntime
             ?.Invoke(journal, null);
         if (capture is Task task)
             task.GetAwaiter().GetResult();
-    }
-
-    /// <summary>
-    /// <c>SimulationCardPileLookupPatch</c> 的快速路径只在 RitsuLib 的模组牌堆注册表冻结、且没有任何
-    /// 注册牌堆时生效。游戏启动流程会冻结它，离线宿主没有这一步；这里把真实取值报出来，避免把
-    /// 「宿主没冻结」误读成搜索分配。
-    /// </summary>
-    private static string DescribeModCardPiles()
-    {
-        try
-        {
-            Type registry = typeof(STS2RitsuLib.CardPiles.ModCardPileRegistry);
-            object? frozen = registry
-                .GetProperty("IsFrozen", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                ?.GetValue(null);
-            object? definitions = registry
-                .GetMethod("GetDefinitionsSnapshot", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                ?.Invoke(null, null);
-            int count = definitions is System.Collections.ICollection collection ? collection.Count : -1;
-            return $"frozen={frozen ?? "?"} definitions={count}";
-        }
-        catch (Exception error)
-        {
-            return $"probe_failed:{error.GetType().Name}";
-        }
     }
 
     private static void SetStatic(Type type, string name, object value)
@@ -761,5 +372,4 @@ internal static class ModRuntime
             ?? throw new MissingFieldException(type.FullName, name);
         field.SetValue(null, value);
     }
-
 }

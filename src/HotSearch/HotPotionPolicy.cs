@@ -5,11 +5,60 @@ using MegaCrit.Sts2.Core.Entities.Potions;
 namespace CombatSolver.HotSearch;
 
 /// <summary>
-/// Single zero-allocation source of truth for potion slot permissions, strategic HP cost,
+/// Standalone zero-allocation source of truth for potion slot permissions, strategic HP cost,
 /// replacement credit, Ambergris threshold, and final Smart/Disabled/RequireAtLeastOne eligibility.
+/// Zero dependencies on legacy <c>PotionUsePolicy</c> or <c>SolverWeights</c>.
 /// </summary>
 internal static class HotPotionPolicy
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ApplyReplacementCredit(
+        int optionalPotionStrategicCost,
+        int optionalPotionCount,
+        int replacementHpCredit)
+        => optionalPotionStrategicCost > 0 && optionalPotionCount > 0 && replacementHpCredit > 0
+            ? Math.Max(1, optionalPotionStrategicCost - replacementHpCredit)
+            : optionalPotionStrategicCost;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int HpSaved(int potionFreeHpDeficit, int potionRouteHpDeficit)
+        => Math.Max(0, potionFreeHpDeficit - potionRouteHpDeficit);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int SmartRequiredHpSaved(
+        int strategicHpCost,
+        BossHpRelief bossHpRelief = BossHpRelief.None)
+        => HotRouteQuality.RawHpRequiredForPersistentValue(strategicHpCost, bossHpRelief);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int AmbergrisRequiredHpSaved(int maximumHp)
+        => (int)Math.Ceiling(maximumHp * HotSearchConstants.AmbergrisMinimumHpSavedFraction);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int EffectiveStrategicHpCost(
+        int strategicHpCost,
+        int ambergrisCount,
+        int maximumHp)
+        => strategicHpCost + ambergrisCount
+            * (AmbergrisRequiredHpSaved(maximumHp) - HotSearchConstants.PotionMinimumHpSaved);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool MeetsAmbergrisRestriction(
+        bool hasPotionFreeBaseline,
+        int ambergrisCount,
+        int strategicHpCost,
+        int maximumHp,
+        int potionFreePlayerHp,
+        int potionRoutePlayerHp)
+    {
+        if (ambergrisCount == 0)
+            return true;
+        if (!hasPotionFreeBaseline)
+            return false;
+        int required = EffectiveStrategicHpCost(strategicHpCost, ambergrisCount, maximumHp);
+        return Math.Max(0, potionRoutePlayerHp - potionFreePlayerHp) >= required;
+    }
+
     /// <summary>
     /// Builds a root-frozen strategic HP cost array indexed by potion slot (<c>0..HotLimits.MaxPotions-1</c>).
     /// Uses <see cref="HotPotionDef.StrategicHpCost"/> from <see cref="HotRules"/> with root snapshot fallback.
@@ -50,7 +99,7 @@ internal static class HotPotionPolicy
             return 0;
         if (def.StrategicHpCost > 0)
             return def.StrategicHpCost;
-        return (short)SolverWeights.PotionMinimumHpSaved;
+        return (short)HotSearchConstants.PotionMinimumHpSaved;
     }
 
     /// <summary>
@@ -117,7 +166,7 @@ internal static class HotPotionPolicy
                 ushort overlap = (ushort)(usedPotionMask & policy.ForcedPotionSlotMask);
                 forcedUsedCount = System.Numerics.BitOperations.PopCount(overlap);
                 forcedUsedAmbergris = System.Numerics.BitOperations.PopCount((uint)(overlap & policy.AmbergrisSlotMask));
-                forcedUsedCost = forcedUsedCount * SolverWeights.PotionMinimumHpSaved;
+                forcedUsedCost = forcedUsedCount * HotSearchConstants.PotionMinimumHpSaved;
             }
         }
 
@@ -128,21 +177,21 @@ internal static class HotPotionPolicy
         if (optionalExplicitCount == 0 && optionalRawCost == 0)
             return 0;
 
-        int afterCredit = PotionUsePolicy.ApplyReplacementCredit(
+        int afterCredit = ApplyReplacementCredit(
             optionalRawCost,
             optionalExplicitCount,
             policy.ReplacementHpCredit);
 
-        int effectiveCost = PotionUsePolicy.EffectiveStrategicHpCost(
+        int effectiveCost = EffectiveStrategicHpCost(
             afterCredit,
             optionalAmbergrisCount,
             policy.InitialPlayerMaxHp);
 
-        return PotionUsePolicy.SmartRequiredHpSaved(effectiveCost, policy.StrategicBossHpRelief);
+        return SmartRequiredHpSaved(effectiveCost, policy.StrategicBossHpRelief);
     }
 
     /// <summary>
-    /// Checks whether a potion-allowed pass can possibly improve upon the Pass 1 baseline under Smart policy.
+    /// Checks whether a potion-allowed pass can possibly improve upon the Stage 1 baseline under Smart policy.
     /// </summary>
     public static bool ShouldRunSmartPotionPass(
         in HotRouteKey baseline,
@@ -153,12 +202,10 @@ internal static class HotPotionPolicy
         if (policy.SearchablePotionCount == 0)
             return false;
 
-        // Count non-disabled, non-forced potions available to explore.
         int availableOptional = policy.SearchablePotionCount - policy.ForcedDirectiveCount;
         if (availableOptional <= 0)
             return false;
 
-        // If baseline failed to win, died, burned a death save, or missed theft recovery, potions can rescue.
         if (!baseline.Won || !baseline.Survives || baseline.DeathSaveUseCount > 0)
             return true;
         if (policy.TheftPolicy == SolverTheftPolicy.PreserveResources
@@ -167,19 +214,16 @@ internal static class HotPotionPolicy
             return true;
         }
 
-        // If baseline already satisfied the acceptable battle HP loss target, skip potion pass.
         if (HotRouteQuality.MeetsVictoryStopTarget(in baseline, in policy))
             return false;
 
-        // Check minimum HP savings bar for spending at least 1 optional potion.
-        int minBar = PotionUsePolicy.SmartRequiredHpSaved(
-            PotionUsePolicy.ApplyReplacementCredit(
-                SolverWeights.PotionMinimumHpSaved,
+        int minBar = SmartRequiredHpSaved(
+            ApplyReplacementCredit(
+                HotSearchConstants.PotionMinimumHpSaved,
                 1,
                 policy.ReplacementHpCredit),
             policy.StrategicBossHpRelief);
 
-        // If we have a 0-cost potion (e.g. renewable Potion-Shaped Rock), allow even if HP loss is small.
         if (policy.HasRenewablePotionShapedRock && baseline.StrategicHpDeficit > 0)
             return true;
 
@@ -196,14 +240,12 @@ internal static class HotPotionPolicy
         bool anyRouteWon,
         in HotSearchPolicy policy)
     {
-        // All forced directives must be satisfied when enforced.
         if (policy.ForcedPotionSlotMask != 0
             && (candidate.PotionMask & policy.ForcedPotionSlotMask) != policy.ForcedPotionSlotMask)
         {
             return false;
         }
 
-        // Ambergris restriction check (against 0-potion baseline when present).
         int optionalAmbergris = Math.Max(0, candidate.AmbergrisCount - policy.ForcedAmbergrisCount);
         if (optionalAmbergris > 0
             && policy.EffectivePotionPolicy == SolverPotionPolicy.Smart
@@ -213,7 +255,7 @@ internal static class HotPotionPolicy
             {
                 // Winning where baseline could not win justifies Ambergris.
             }
-            else if (!PotionUsePolicy.MeetsAmbergrisRestriction(
+            else if (!MeetsAmbergrisRestriction(
                 hasPotionFreeBaseline: true,
                 ambergrisCount: optionalAmbergris,
                 strategicHpCost: Math.Max(0, candidate.RawPotionStrategicCost - policy.ForcedStrategicHpCost),
@@ -245,7 +287,6 @@ internal static class HotPotionPolicy
                     return true;
                 if (baseline is not { } b)
                     return true;
-                // Winning, surviving, preserving a death save, or recovering stolen loot always justifies potions.
                 if (candidate.Won && !b.Won)
                     return true;
                 if (candidate.Survives && !b.Survives)
@@ -259,8 +300,7 @@ internal static class HotPotionPolicy
                     return true;
                 }
 
-                // Otherwise the HP saved must meet or exceed the optional potion strategic cost bar.
-                int hpSaved = PotionUsePolicy.HpSaved(b.StrategicHpDeficit, candidate.StrategicHpDeficit);
+                int hpSaved = HpSaved(b.StrategicHpDeficit, candidate.StrategicHpDeficit);
                 return hpSaved >= candidate.OptionalPotionStrategicCost
                     && (candidate.OptionalPotionStrategicCost > 0 || hpSaved > 0);
             }

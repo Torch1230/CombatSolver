@@ -217,7 +217,7 @@ pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId NOVELTY-
 - `NOVELTY-HP-TARGET-STOP` / `07da6f2abdd0486f947f02fe1e4c922a` Passed：真实前置探索、目标战损、固定重放成长、致命成长、强制一药/保留备用药及至少一药；`ROUTE-CACHE-RECORD-V0111` / `0f890408d5784ecca93e939f84f079ae` Passed，新增策略隔离缓存身份并保留恢复/手动重算语义。
 - 综合 `CONTROLLER-SESSIONS-527` / `51d1ea6438c646bca26081bc9f5c9a89` 在窗口缩放/尺寸持久化断言失败（`configured=True, persistence=False`），尚未到新增设置断言。完整综合场景未通过，新增设置改用上述独立同源合同验证；不把失败归因为新搜索或记成通过。
 - 双组合开关 / `1bb9e9c368824ce892b3efef1bef228b` Passed：30秒请求中实际运行3个Beam宽度，探索加全部Beam成员11,443节点≤24,000主搜索上限；上游药水审计仍按每层节点预算及请求截止时间执行。
-- 原生两端 ScenarioId 参数通用；[复跑方式](../../../tools/testing/checks/BfwsResearchChecks/README.md) 同时说明 PowerShell/Bash 协议与 Linux 独立进程包装器。5 个新根的 10 份对照完整获胜且终局策略摘要相同，但多数成本更高；另有两个场景8份独立ABBA。三场原生部署与首次预测的战损/药水一致且计划外重算0，包含DOP2与真实1GB NoGC预算4次回收续搜；runId和全部代价见报告。没有可见 Steam、FPS 或 Windows 实机性能结论。
+- 原生两端 ScenarioId 参数通用；复跑方式（`tools/testing/checks/BfwsResearchChecks/README.md`） 同时说明 PowerShell/Bash 协议与 Linux 独立进程包装器。5 个新根的 10 份对照完整获胜且终局策略摘要相同，但多数成本更高；另有两个场景8份独立ABBA。三场原生部署与首次预测的战损/药水一致且计划外重算0，包含DOP2与真实1GB NoGC预算4次回收续搜；runId和全部代价见报告。没有可见 Steam、FPS 或 Windows 实机性能结论。
 
 ## 录像回放临时费用与充能球恢复（2026-09-15，未发布）
 

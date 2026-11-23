@@ -1,17 +1,13 @@
-using System.Diagnostics;
 using System.Collections.Frozen;
+using System.Diagnostics;
+using CombatSolver.HotKernel;
+using CombatSolver.HotSearch;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
-using MegaCrit.Sts2.Core.Localization.DynamicVars;
-using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Nodes;
-using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Rooms;
-using CombatSolver.Engine.Common;
-using CombatSolver.Engine.InCombat.Simulation;
 
 namespace CombatSolver;
 
@@ -22,8 +18,7 @@ internal readonly record struct SearchablePotionSlotSnapshot(
 
 internal sealed class CombatRootSnapshot
 {
-    private readonly CombatPredictionSimulator _rootSimulator;
-
+    public HotRootBundle HotRoot { get; }
     public Player PlayerIdentity { get; }
     public IReadOnlyList<Creature> Enemies { get; }
     public IntentForecast Forecast { get; }
@@ -34,8 +29,7 @@ internal sealed class CombatRootSnapshot
     public int TotalFloor { get; }
     public int InitialPlayerHp { get; }
     public int InitialPlayerMaxHp { get; }
-    public int InitialBrightestFlameMaxHpSpent
-        => ((SimulatedCombatState)_rootSimulator.State.CombatState).BrightestFlameMaxHpSpent;
+    public int InitialBrightestFlameMaxHpSpent => HotRoot.RootState.BrightestFlameMaxHpSpent;
     public int PotionSlotCount { get; }
     public IReadOnlyList<SearchablePotionSlotSnapshot> SearchablePotions { get; }
     public int SearchablePotionCount { get; }
@@ -49,49 +43,20 @@ internal sealed class CombatRootSnapshot
     public bool IsActEndingBoss => BossHpRelief != BossHpRelief.None;
     public double CaptureElapsedMilliseconds { get; }
     public int CapturedCardCount { get; }
-    public IReadOnlySet<string> PlayerCardIds { get; }
-    /// <summary>Conservative recovery metadata for portfolio stopping, not a bound on all future healing.</summary>
-    public bool HasVisibleHealingSource { get; }
-    public bool HasOnlyPostCombatHealing { get; }
-    public string HealingBoundCertificationReason { get; }
-    public string? HealingBoundCertificationSourceId { get; }
-    public bool CanCertifyRemainingHealing { get; }
-    internal bool UsesComponentHealingCertificate { get; }
-    internal string? ComponentHealingRejection { get; }
-    // Expanded proof belongs to pruning. Original certificate flags and root
-    // bounds above retain their existing scheduling and audit responsibilities.
-    internal string? PruningComponentHealingRejection { get; }
-    internal bool UsesPruningComponentHealingCertificate => PruningComponentHealingRejection is null;
-    internal int InitialPruningHealingUpperBound { get; }
-    public bool UsesKnownNativeHealingPolicy { get; }
-    internal GrowthValues InitialGrowthRewards
-        => ((SimulatedCombatState)_rootSimulator.State.CombatState).GrowthRewards;
-    internal GrowthValues? ExhaustingGrowthUpperBound { get; }
-    /// <summary>Root card/power/potion healing bound, excluding fixed post-combat healing.</summary>
-    public int InitialRemainingHealingUpperBound { get; }
-    public CombatHistoryDependencies HistoryDependencies { get; }
-    internal CombatRulesSnapshot Rules => ((SimulatedCombatState)_rootSimulator.State.CombatState).Rules;
     public int CapturedPowerCount { get; }
-    public int CapturedHookListenerCount { get; }
-    public int CapturedRunModSubscriberCount { get; }
-    public int CapturedCombatModSubscriberCount { get; }
-    public bool CapturedBaseLibCardModifiers { get; }
-    public bool HasUnusedCardReplayAllocator { get; }
+    public IReadOnlySet<string> PlayerCardIds { get; }
+    internal HotCombatRulesSnapshot Rules => HotRoot.Rules.RulesSnapshot;
     public bool HasRenewablePotionShapedRock { get; }
     public PostCombatRelicHealProfile PostCombatRelicHeal { get; }
     public PotionRewardOutlook PotionRewardOutlook { get; }
-    internal HookLayoutCacheStatistics HookLayoutCacheStatistics
-        => ((SimulatedCombatState)_rootSimulator.State.CombatState).HookLayoutCacheStatistics;
-    internal HookListenerSegmentStatistics HookListenerSegmentStatistics
-        => ((SimulatedCombatState)_rootSimulator.State.CombatState).HookListenerSegmentStatistics;
 
     private CombatRootSnapshot(
+        HotRootBundle hotRoot,
         Player playerIdentity,
         IReadOnlyList<Creature> enemies,
         IntentForecast forecast,
         LiveCombatStamp liveStamp,
         ContinuationStamp continuationStamp,
-        CombatPredictionSimulator rootSimulator,
         int playerCount,
         int startTurnNumber,
         int totalFloor,
@@ -106,26 +71,18 @@ internal sealed class CombatRootSnapshot
         BossHpRelief bossHpRelief,
         double captureElapsedMilliseconds,
         int capturedCardCount,
-        IReadOnlySet<string> playerCardIds,
-        bool hasVisibleHealingSource,
-        StrategicHpRecoveryBoundAssessment healingBoundAssessment,
-        CombatHistoryDependencies historyDependencies,
         int capturedPowerCount,
-        int capturedHookListenerCount,
-        int capturedRunModSubscriberCount,
-        int capturedCombatModSubscriberCount,
-        bool capturedBaseLibCardModifiers,
-        bool hasUnusedCardReplayAllocator,
+        IReadOnlySet<string> playerCardIds,
         bool hasRenewablePotionShapedRock,
         PostCombatRelicHealProfile postCombatRelicHeal,
         PotionRewardOutlook potionRewardOutlook)
     {
+        HotRoot = hotRoot;
         PlayerIdentity = playerIdentity;
         Enemies = enemies;
         Forecast = forecast;
         LiveStamp = liveStamp;
         ContinuationStamp = continuationStamp;
-        _rootSimulator = rootSimulator;
         PlayerCount = playerCount;
         StartTurnNumber = startTurnNumber;
         TotalFloor = totalFloor;
@@ -136,8 +93,8 @@ internal sealed class CombatRootSnapshot
         SearchablePotionCount = searchablePotions.Count;
         MinimumSearchablePotionStrategicCost = searchablePotions.Count == 0
             ? null
-            : searchablePotions.Min(potion => potion.StrategicHpCost);
-        ZeroCostSearchablePotionCount = searchablePotions.Count(potion =>
+            : searchablePotions.Min(static potion => potion.StrategicHpCost);
+        ZeroCostSearchablePotionCount = searchablePotions.Count(static potion =>
             potion.StrategicHpCost == 0);
         InitialAliveEnemyMask = initialAliveEnemyMask;
         CurrentSide = currentSide;
@@ -146,39 +103,8 @@ internal sealed class CombatRootSnapshot
         BossHpRelief = bossHpRelief;
         CaptureElapsedMilliseconds = captureElapsedMilliseconds;
         CapturedCardCount = capturedCardCount;
-        PlayerCardIds = playerCardIds;
-        HasVisibleHealingSource = hasVisibleHealingSource;
-        HasOnlyPostCombatHealing = healingBoundAssessment.IsCertified;
-        HealingBoundCertificationReason = healingBoundAssessment.Reason;
-        HealingBoundCertificationSourceId = healingBoundAssessment.BlockingSourceId;
-        ComponentHealingRejection = StrategicHpRecoveryBound.ComponentHealingRejection(rootSimulator, playerIdentity);
-        UsesComponentHealingCertificate = ComponentHealingRejection is null;
-        CanCertifyRemainingHealing = UsesComponentHealingCertificate
-            || StrategicHpRecoveryBound.CanCertifyRemainingHealingEnvironment(rootSimulator, playerIdentity);
-        UsesKnownNativeHealingPolicy = StrategicHpRecoveryBound.CanUseKnownNativeHealingPolicy(
-            rootSimulator, playerIdentity);
-        ExhaustingGrowthUpperBound = ResourceIncumbentPolicy.CaptureExhaustingGrowthUpperBound(
-            rootSimulator, playerIdentity);
-        InitialRemainingHealingUpperBound = CanCertifyRemainingHealing
-            ? UsesComponentHealingCertificate
-                ? StrategicHpRecoveryBound.ComponentHealingUpperBound(rootSimulator, playerIdentity, postCombatHeal: 0)
-                : StrategicHpRecoveryBound.RemainingHealingUpperBound(rootSimulator, playerIdentity, postCombatHeal: 0)
-            : int.MaxValue;
-        PruningComponentHealingRejection = ComponentHealingRejection is null ? null
-            : StrategicHpRecoveryBound.ComponentHealingRejection(rootSimulator, playerIdentity,
-                useReviewedSources: true);
-        InitialPruningHealingUpperBound = UsesComponentHealingCertificate ? InitialRemainingHealingUpperBound
-            : UsesPruningComponentHealingCertificate
-                ? StrategicHpRecoveryBound.ComponentHealingUpperBound(rootSimulator, playerIdentity,
-                    postCombatHeal: 0, useReviewedSources: true)
-                : int.MaxValue;
-        HistoryDependencies = historyDependencies;
         CapturedPowerCount = capturedPowerCount;
-        CapturedHookListenerCount = capturedHookListenerCount;
-        CapturedRunModSubscriberCount = capturedRunModSubscriberCount;
-        CapturedCombatModSubscriberCount = capturedCombatModSubscriberCount;
-        CapturedBaseLibCardModifiers = capturedBaseLibCardModifiers;
-        HasUnusedCardReplayAllocator = hasUnusedCardReplayAllocator;
+        PlayerCardIds = playerCardIds;
         HasRenewablePotionShapedRock = hasRenewablePotionShapedRock;
         PostCombatRelicHeal = postCombatRelicHeal;
         PotionRewardOutlook = potionRewardOutlook;
@@ -188,96 +114,47 @@ internal sealed class CombatRootSnapshot
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("Combat root snapshot must be captured on the main thread.");
-        Engine.InCombat.Mirrors.Hooks.TurnEnd.AfterSideTurnEndLateMirrors.Seal();
-        Engine.InCombat.Mirrors.Hooks.TurnStart.BeforeSideTurnStartMirrors.Seal();
-        Engine.InCombat.Mirrors.Hooks.TurnStart.BeforeHandDrawMirrors.Seal();
-        Engine.InCombat.Mirrors.Hooks.AfterCreatureAddedMirrors.Seal();
-        Engine.InCombat.Mirrors.Hooks.TurnStart.AfterPlayerTurnStartMirrors.Seal();
-        Engine.InCombat.Mirrors.Hooks.TurnEnd.ExtraTurnMirrors.Seal();
+
         Stopwatch stopwatch = Stopwatch.StartNew();
-
-        PredictionModPatchAudit.ValidateMonsterModels(state.Enemies.Select(enemy => enemy.Monster).OfType<MonsterModel>());
-
-        PowerDynamicVarWarmup.EnsureMaterialized(state);
-        CardDynamicVarWarmup.EnsureMaterialized(state);
-
-        // Listener enumeration and third-party owner discovery are part of root capture.
-        // Take the baseline first so any semantic mutation in those callbacks is rejected by
-        // the existing after-capture stamp without paying for another full serialization.
-        ContinuationStamp continuationBefore = ContinuationStamp.CaptureLive(state);
-        LiveCombatStamp liveBefore = LiveCombatStamp.FromContinuation(continuationBefore);
+        HotRootBundle hotRoot = HotRootBuilder.BuildFromLive(state);
+        CombatHotState rootState = hotRoot.RootState;
+        ContinuationStamp continuationStamp = ContinuationStamp.CaptureFromHot(
+            in rootState,
+            hotRoot.RootCold,
+            hotRoot.Rules);
+        LiveCombatStamp liveStamp = LiveCombatStamp.FromContinuation(continuationStamp);
 
         Player player = LocalContext.GetMe(state)
             ?? throw new InvalidOperationException("找不到本地玩家。");
         PlayerCombatState playerState = player.PlayerCombatState
             ?? throw new InvalidOperationException("玩家没有战斗状态。");
-        AbstractModel[] liveCombatHookListeners = state.IterateHookListeners().ToArray();
-        if (liveCombatHookListeners.Any(PredictionModModelSupport.IsBaseLibCardModifier))
-        {
-            PredictionModModelSupport.RegisterBaseLibCardModifierOwners(
-                state.Players
-                    .Where(candidate => candidate.PlayerCombatState != null)
-                    .SelectMany(candidate => candidate.PlayerCombatState!.AllCards));
-        }
-        IntentForecast forecast = IntentForecaster.Build(state, SolverWeights.SetupValueHorizonTurns);
 
-        SimulatedCombatState simulatedCombat = new(state, liveCombatHookListeners);
-        CombatPredictionSimulator simulator = new(simulatedCombat);
-        ContinuationStamp projected = ContinuationStamp.CapturePredicted(
-            player,
-            simulator,
-            playerState.TurnNumber,
-            forecast,
-            playerState.TurnNumber);
-        bool hasUnusedCardReplayAllocator = simulatedCombat.RelicsOf(player)
-            .OfType<ThrowingAxe>()
-            .Any(relic => !relic.IsMelted && !relic._usedThisCombat);
-        bool hasRenewablePotionShapedRock = simulatedCombat.RelicsOf(player)
-            .OfType<PetrifiedToad>()
-            .Any(relic => !relic.IsMelted);
-        PostCombatRelicHealProfile postCombatRelicHeal = CapturePostCombatRelicHeal(
-            simulatedCombat.RelicsOf(player));
+        IntentForecast forecast = IntentForecaster.Build(state, HotSearchConstants.SetupValueHorizonTurns);
+
+        HotRules rules = hotRoot.Rules;
+        bool hasRenewablePotionShapedRock = rules.HasRenewablePotionShapedRock;
+        PostCombatRelicHealProfile postCombatRelicHeal = new(
+            rules.PostCombatRelicUnconditionalHeal,
+            rules.PostCombatRelicWoundedHeal,
+            rules.PostCombatRelicWoundedHpPercent);
         PotionRewardOutlook potionRewardOutlook = predictPotionReward
-            ? PotionRewardOutlook.Capture(player, state, simulatedCombat.RelicsOf(player))
+            ? PotionRewardOutlook.Capture(player, state, player.Relics.Where(static relic => !relic.IsMelted))
             : PotionRewardOutlook.None;
-        SearchablePotionSlotSnapshot[] searchablePotions = player.PotionSlots
-            .Select((potion, slot) => (Potion: potion, Slot: slot))
-            .Where(item => item.Potion != null && PotionOnUseSupport.CanSearch(item.Potion))
-            .Select(item => new SearchablePotionSlotSnapshot(
-                item.Slot,
-                item.Potion!.Id.Entry,
-                PotionUsePolicy.StrategicHpCost(
-                    item.Potion,
-                    hasRenewablePotionShapedRock)))
-            .ToArray();
-        // Card/Power variables were materialized above; potion metadata is also
-        // inspected on the main thread. Minion healing deliberately preserves auditing.
-        bool hasVisibleHealingSource = playerState.AllCards.Any(card => HasHealingVariables(card.DynamicVars))
-            || player.Creature.Powers.Any(power => power is RegenPower
-                || HasHealingVariables(power.DynamicVars))
-            || player.PotionSlots.Any(potion => potion != null && PotionOnUseSupport.CanSearch(potion)
-                && HasHealingVariables(potion.DynamicVars));
-        StrategicHpRecoveryBoundAssessment healingBoundAssessment =
-            StrategicHpRecoveryBound.Assess(simulator, player);
-        if (!string.Equals(
-                continuationBefore.StateText,
-                projected.StateText,
-                StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException(
-                "Combat root projection differs from the captured live state: " +
-                continuationBefore.DescribeFirstDifference(projected));
-        }
 
-        ContinuationStamp continuationAfter = ContinuationStamp.CaptureLive(state);
-        LiveCombatStamp liveAfter = LiveCombatStamp.FromContinuation(continuationAfter);
-        if (!string.Equals(liveBefore.StateText, liveAfter.StateText, StringComparison.Ordinal)
-            || !string.Equals(
-                continuationBefore.StateText,
-                continuationAfter.StateText,
-                StringComparison.Ordinal))
+        List<SearchablePotionSlotSnapshot> searchablePotions = [];
+        int slotCount = Math.Min((int)hotRoot.RootState.PotionSlotCount, HotLimits.MaxPotions);
+        for (int slot = 0; slot < slotCount; slot++)
         {
-            throw new InvalidOperationException("Combat state changed while the root snapshot was being captured.");
+            ushort defId = hotRoot.RootState.Potions[slot];
+            if (defId == 0 || defId >= rules.Potions.Length)
+                continue;
+            HotPotionDef def = rules.Potions[defId];
+            if (!def.IsCombatUsable)
+                continue;
+            searchablePotions.Add(new SearchablePotionSlotSnapshot(
+                slot,
+                def.Entry,
+                HotPotionPolicy.ComputePotionDefCost(def, hasRenewablePotionShapedRock)));
         }
 
         ulong aliveEnemyMask = 0;
@@ -286,98 +163,40 @@ internal sealed class CombatRootSnapshot
             if (state.Enemies[index].IsAlive)
                 aliveEnemyMask |= 1UL << index;
         }
-        int cardCount = state.Players
-            .Where(candidate => candidate.PlayerCombatState != null)
-            .Sum(candidate => candidate.PlayerCombatState!.AllCards.Count());
+
         IReadOnlySet<string> playerCardIds = playerState.Hand.Cards
             .Concat(playerState.DrawPile.Cards)
             .Concat(playerState.DiscardPile.Cards)
-            .Select(card => card.Id.Entry)
+            .Select(static card => card.Id.Entry)
             .ToFrozenSet(StringComparer.Ordinal);
-        int powerCount = state.Creatures.Sum(creature => creature.Powers.Count);
-        CombatHistoryDependencies historyDependencies = CombatHistoryCounterKey.Capture(
-                playerState.AllCards.Cast<AbstractModel>().Concat(liveCombatHookListeners)
-                    .Concat(player.PotionSlots.OfType<AbstractModel>()),
-                simulatedCombat.RootRunModSubscriberCount != 0
-                    || simulatedCombat.RootCombatModSubscriberCount != 0
-                    || simulatedCombat.RootHasBaseLibCardModifiers
-                    || simulatedCombat.AdaptedOnPlay is not null);
+
         stopwatch.Stop();
 
         return new CombatRootSnapshot(
+            hotRoot,
             player,
             Array.AsReadOnly(state.Enemies.ToArray()),
             forecast,
-            liveBefore,
-            continuationBefore,
-            simulator,
+            liveStamp,
+            continuationStamp,
             state.Players.Count,
             playerState.TurnNumber,
             state.RunState.TotalFloor,
             player.Creature.CurrentHp,
             player.Creature.MaxHp,
             player.PotionSlots.Count,
-            Array.AsReadOnly(searchablePotions),
+            Array.AsReadOnly(searchablePotions.ToArray()),
             aliveEnemyMask,
             state.CurrentSide,
             playerState.Phase,
             state.Encounter?.RoomType,
             ActEndingBossPolicy.ResolveHpRelief(state),
             stopwatch.Elapsed.TotalMilliseconds,
-            cardCount,
+            hotRoot.RootState.TotalCardCount,
+            hotRoot.RootState.PowerCount,
             playerCardIds,
-            hasVisibleHealingSource,
-            healingBoundAssessment,
-            historyDependencies,
-            powerCount,
-            simulatedCombat.RootHookListenerCount,
-            simulatedCombat.RootRunModSubscriberCount,
-            simulatedCombat.RootCombatModSubscriberCount,
-            simulatedCombat.RootHasBaseLibCardModifiers,
-            hasUnusedCardReplayAllocator,
             hasRenewablePotionShapedRock,
             postCombatRelicHeal,
             potionRewardOutlook);
     }
-
-    private static bool HasHealingVariables(DynamicVarSet variables)
-        => variables.TryGetValue("Heal", out _)
-            || variables.TryGetValue("HealPercent", out _)
-            || variables.TryGetValue("RegenPower", out _);
-
-    /// <summary>
-    /// Reads how much HP the player's relics will restore once this fight is won.
-    /// </summary>
-    /// <remarks>
-    /// Melted relics are dropped from the hook listener list by the game, so they heal nothing. The heal
-    /// amounts come from the live models rather than hard-coded constants so a data-layer rebalance of these
-    /// relics is followed without a code change here.
-    /// </remarks>
-    private static PostCombatRelicHealProfile CapturePostCombatRelicHeal(
-        IEnumerable<RelicModel> relics)
-    {
-        int unconditionalHeal = 0;
-        int woundedHeal = 0;
-        int woundedHpPercent = 0;
-        foreach (RelicModel relic in relics)
-        {
-            if (relic.IsMelted)
-                continue;
-            switch (relic)
-            {
-                case BurningBlood or BlackBlood:
-                    unconditionalHeal += relic.DynamicVars.Heal.IntValue;
-                    break;
-                case MeatOnTheBone:
-                    woundedHeal += relic.DynamicVars.Heal.IntValue;
-                    woundedHpPercent = Math.Max(
-                        woundedHpPercent,
-                        relic.DynamicVars[MeatOnTheBone._hpThresholdKey].IntValue);
-                    break;
-            }
-        }
-        return new PostCombatRelicHealProfile(unconditionalHeal, woundedHeal, woundedHpPercent);
-    }
-
-    public CombatPredictionSimulator ForkSimulator() => _rootSimulator.Fork();
 }

@@ -22,28 +22,8 @@ internal sealed partial class UnattendedTestRunner
         private int _injectedPlayerHpLoss;
         private int _clearPlayerBlockBeforeEndTurn;
         private int _clearedPlayerBlock;
-        private DevelopmentStrategyLoader? _strategyLoader;
-        public DevelopmentSearchStrategy? DevelopmentStrategy => _strategyLoader?.Strategy;
+
         public bool ReusedProcess => _acceptedRequestCount > 1;
-
-        public void LoadDevelopmentStrategy(UnattendedTestRequest request)
-        {
-            if (request.DevelopmentStrategyAssemblyPath == null)
-            {
-                if (request.DevelopmentStrategyParametersPath != null)
-                    throw new InvalidDataException("Strategy parameters require a strategy assembly.");
-                return;
-            }
-            if (request.DevelopmentStrategyParametersPath == null
-                || request.DevelopmentStrategyScriptHash == null
-                || request.DevelopmentStrategyParametersHash == null)
-                throw new InvalidDataException("Strategy request is missing frozen inputs or hashes.");
-            _strategyLoader = DevelopmentStrategyLoader.Load(
-                request.DevelopmentStrategyAssemblyPath,
-                request.DevelopmentStrategyParametersPath,
-                request.DevelopmentStrategyParametersHash);
-        }
-
         public bool IsActive { get; private set; }
         public bool AutomaticTurnSearchEnabled { get; private set; } = true;
         public bool VerifyIncrementalSearch { get; private set; }
@@ -53,21 +33,11 @@ internal sealed partial class UnattendedTestRunner
         public void ApplyAct3BossStrategyOverride(bool? enabled) => Act3BossStrategyOverride = enabled;
         public bool MeasureSearchPhases { get; private set; }
         public int? SearchMaxDegreeOfParallelismOverride { get; private set; }
-        public BeamWeightPerturbation? BeamWeightPerturbationOverride { get; private set; }
         public SolverSearchProfile? CheckpointProfileOverride { get; private set; }
         public void ApplyRecordedSearchProfile(SolverSearchProfile? profile) => CheckpointProfileOverride = profile;
-        public bool UseNoveltyPortfolioOverride { get; private set; }
-        public bool UseBeamWidthPortfolioOverride { get; private set; }
-        public IReadOnlyList<int>? BeamWidthPortfolioWidthsOverride { get; private set; }
-        public bool? BeamWidthPortfolioPlainBaselineMemberOverride { get; private set; }
-        public int PileOrderInvariantMaskOverride { get; private set; }
-        public int StateKeySaltOverride { get; private set; }
         public int TranspositionPruningDisabledMaskOverride { get; private set; }
         public int? TranspositionEntryLimitOverride { get; private set; }
-        public int MemoryNoProgressRecoveryLimitOverride { get; private set; }
         public int? SearchBudgetOverrideMilliseconds { get; private set; }
-        public int EarlyTurnExplorationDepth { get; private set; }
-        public int EarlyTurnExplorationBudgetMilliseconds { get; private set; }
 
         public void TryStart(NGame? host)
         {
@@ -177,8 +147,6 @@ internal sealed partial class UnattendedTestRunner
                             throw new InvalidOperationException(
                                 "执行器暂停了初始搜索，但请求没有声明合法的暂停生命周期。");
                         }
-                        // The launcher intentionally keeps this live combat attached to a profiler
-                        // until its release marker is written, then terminates the owned process.
                         await WaitUntilHeldAsync(host);
                         WriteReady(request.RunId, held: true);
                         return;
@@ -251,17 +219,9 @@ internal sealed partial class UnattendedTestRunner
 
                 if (!reclaimedAfterQuiescence)
                 {
-                    int remainingMilliseconds = checked((int)Math.Max(
-                        1,
-                        deadline - System.Environment.TickCount64));
                     consecutiveIdleFrames = 0;
-                    await SearchGcPolicy.ReclaimAfterReferenceReleaseAsync(
-                            "unattended_reuse",
-                            forceCollection: true,
-                            includeCombatLifecyclePressure: false,
-                            Task.CompletedTask,
-                            static () => { })
-                        .WaitAsync(TimeSpan.FromMilliseconds(remainingMilliseconds));
+                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
+                    GC.WaitForPendingFinalizers();
                     reclaimedAfterQuiescence = true;
                     continue;
                 }
@@ -348,8 +308,6 @@ internal sealed partial class UnattendedTestRunner
 
         private void Activate(UnattendedTestRequest request)
         {
-            // Exit requests never expose this process for reuse, so tracking their background
-            // continuations would add work without strengthening the process boundary.
             if (!request.ExitOnComplete)
                 UnattendedAsyncActivityTracker.BeginRequest();
             IsActive = true;
@@ -362,36 +320,8 @@ internal sealed partial class UnattendedTestRunner
             ConfigureSearchOverrides(request);
         }
 
-        public void ConfigureSearchOverrides(
-            UnattendedTestRequest request,
-            bool allowDirectOfflineEarlyTurnExploration = false,
-            int? earlyTurnExplorationBudgetMilliseconds = null)
+        public void ConfigureSearchOverrides(UnattendedTestRequest request)
         {
-            int earlyTurnDepth = request.EarlyTurnExplorationDepthForTest ?? 0;
-            if (earlyTurnDepth is < 0 or > 2)
-                throw new InvalidOperationException("早期回合探索深度必须在 0..2 之间。");
-            if (allowDirectOfflineEarlyTurnExploration)
-            {
-                if (earlyTurnDepth == 0 && earlyTurnExplorationBudgetMilliseconds.HasValue)
-                    throw new InvalidOperationException("关闭早期回合探索时不能指定探索时限。");
-                if (earlyTurnDepth > 0
-                    && earlyTurnExplorationBudgetMilliseconds is not (>= 5_000 and <= 2_390_000))
-                    throw new InvalidOperationException(
-                        "离线早期回合探索时限必须在 5,000..2,390,000 毫秒之间。");
-            }
-            else if (earlyTurnExplorationBudgetMilliseconds.HasValue
-                || earlyTurnDepth > 0
-                    && (request.ReplayMode != "SearchOnly"
-                        || request.TimeoutSeconds is < 15 or > 2400))
-            {
-                throw new InvalidOperationException(
-                    "早期回合探索只支持 15..2400 秒的 SearchOnly 问题包请求。");
-            }
-            EarlyTurnExplorationDepth = earlyTurnDepth;
-            EarlyTurnExplorationBudgetMilliseconds = earlyTurnDepth == 0
-                ? 0
-                : earlyTurnExplorationBudgetMilliseconds
-                    ?? (int)(request.TimeoutSeconds * 1000) - 10_000;
             VerifyIncrementalSearch = request.VerifyIncrementalSearch;
             FixedSearchBudget = request.FixedSearchBudget;
             MeasureSearchPhases = request.MeasureSearchPhases;
@@ -404,30 +334,6 @@ internal sealed partial class UnattendedTestRunner
                     $"实际为 {maxDegreeOfParallelism}。");
             }
             SearchMaxDegreeOfParallelismOverride = request.SearchMaxDegreeOfParallelismForTest;
-            if (request.BeamWeightTermForTest.HasValue != request.BeamWeightScaleForTest.HasValue)
-                throw new InvalidOperationException("Beam 权重敏感度测试必须同时指定项目和倍率。");
-            BeamWeightPerturbationOverride = request.BeamWeightTermForTest is { } term
-                ? new BeamWeightPerturbation(term, request.BeamWeightScaleForTest!.Value)
-                : null;
-            UseNoveltyPortfolioOverride = request.UseNoveltyPortfolioForTest == true;
-            if (request.BeamWidthPortfolioWidthsForTest is { Length: > 0 } widths
-                && widths.Any(static width => width < 1))
-            {
-                throw new InvalidOperationException("组合成员 Beam 宽度必须为正。");
-            }
-            if (request.BeamWidthPortfolioWidthsForTest is { Length: > 0 }
-                && request.UseBeamWidthPortfolioForTest != true)
-            {
-                throw new InvalidOperationException("成员宽度只能与 useBeamWidthPortfolioForTest 一起给出。");
-            }
-            UseBeamWidthPortfolioOverride = request.UseBeamWidthPortfolioForTest == true;
-            BeamWidthPortfolioWidthsOverride = request.BeamWidthPortfolioWidthsForTest is { Length: > 0 } configured
-                ? configured
-                : null;
-            BeamWidthPortfolioPlainBaselineMemberOverride =
-                request.BeamWidthPortfolioPlainBaselineMemberForTest;
-            PileOrderInvariantMaskOverride = request.PileOrderInvariantMaskForTest ?? 0;
-            StateKeySaltOverride = request.StateKeySaltForTest ?? 0;
             TranspositionPruningDisabledMaskOverride =
                 request.TranspositionPruningDisabledMaskForTest ?? 0;
             if (request.TranspositionEntryLimitForTest is { } transpositionEntryLimit
@@ -436,13 +342,6 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidOperationException($"转置表条目上限不能为负，实际为 {transpositionEntryLimit}。");
             }
             TranspositionEntryLimitOverride = request.TranspositionEntryLimitForTest;
-            if (request.MemoryNoProgressRecoveryLimitForTest is { } memoryNoProgressLimit
-                && memoryNoProgressLimit < 0)
-            {
-                throw new InvalidOperationException($"无进展回收上限不能为负，实际为 {memoryNoProgressLimit}。");
-            }
-            MemoryNoProgressRecoveryLimitOverride =
-                request.MemoryNoProgressRecoveryLimitForTest ?? 0;
             SearchBudgetOverrideMilliseconds = request.SearchBudgetOverrideMilliseconds
                 ?? (request.FixedSearchBudget
                     ? request.LegacyShortSearchBudgetMilliseconds ?? request.LegacyDeepSearchBudgetMilliseconds
@@ -451,25 +350,15 @@ internal sealed partial class UnattendedTestRunner
 
         private void Reset()
         {
-            _strategyLoader?.Dispose();
-            _strategyLoader = null;
             IsActive = false;
             AutomaticTurnSearchEnabled = true;
             VerifyIncrementalSearch = false;
             FixedSearchBudget = false;
             MeasureSearchPhases = false;
             SearchMaxDegreeOfParallelismOverride = null;
-            BeamWeightPerturbationOverride = null;
             CheckpointProfileOverride = null;
-            UseNoveltyPortfolioOverride = false;
-            UseBeamWidthPortfolioOverride = false;
-            BeamWidthPortfolioWidthsOverride = null;
-            BeamWidthPortfolioPlainBaselineMemberOverride = null;
-            PileOrderInvariantMaskOverride = 0;
-            StateKeySaltOverride = 0;
             TranspositionPruningDisabledMaskOverride = 0;
             TranspositionEntryLimitOverride = null;
-            MemoryNoProgressRecoveryLimitOverride = 0;
             Act3BossStrategyOverride = null;
             _injectPlayerHpLossTurn = 0;
             _injectPlayerHpLossAmount = 0;
@@ -477,8 +366,6 @@ internal sealed partial class UnattendedTestRunner
             _clearPlayerBlockBeforeEndTurn = 0;
             _clearedPlayerBlock = 0;
             SearchBudgetOverrideMilliseconds = null;
-            EarlyTurnExplorationDepth = 0;
-            EarlyTurnExplorationBudgetMilliseconds = 0;
         }
     }
 }

@@ -41,12 +41,12 @@
 
 | 观察 | 依据 | 对实施的影响 |
 |---|---|---|
-| 当前搜索明确拒绝多人 | [CombatBeamSolver.Phases.cs](../../../src/Search/CombatBeamSolver.Phases.cs)、[SolverController.cs](../../../src/Runtime/SolverController.cs) | 核对 Runtime、Search、UI 等所有入口；通用状态完成后才逐层开放 |
+| 当前搜索明确拒绝多人 | `src/Search/CombatBeamSolver.Phases.cs`、[SolverController.cs](../../../src/Runtime/SolverController.cs) | 核对 Runtime、Search、UI 等所有入口；通用状态完成后才逐层开放 |
 | 根在主线程捕获，后台使用隔离状态 | [CombatRootSnapshot.cs](../../../src/Runtime/CombatRootSnapshot.cs) | 延续所有权设计，扩展到所有相关玩家；后台不得补读 live 值 |
 | 计算期间状态变化会丢弃整个结果 | [SolverController.cs](../../../src/Runtime/SolverController.cs)、[LiveCombatStamp.cs](../../../src/Runtime/LiveCombatStamp.cs) | 多人需要区分旧数值过期、原序列可重评估、下一步已不可执行 |
-| 卡牌目标枚举未展开队友目标 | [CombatBeamSolver.Expansion.Candidates.cs](../../../src/Search/CombatBeamSolver.Expansion.Candidates.cs) | 使用稳定玩家／生物身份表达目标，区分敌人、队友、自身与群体 |
+| 卡牌目标枚举未展开队友目标 | `src/Search/CombatBeamSolver.Expansion.Candidates.cs` | 使用稳定玩家／生物身份表达目标，区分敌人、队友、自身与群体 |
 | 已捕获九条战斗 RNG 的计数与内部状态 | [ContinuationStamp.cs](../../../src/Runtime/ContinuationStamp.cs) | 复用完整状态比较，增加按已执行前缀判断的多人观测 |
-| 现有差分重点围绕一个指定玩家 | [UnattendedTestRunner.StateDiff.cs](../../../src/Testing/Support/UnattendedTestRunner.StateDiff.cs) | 多人差分必须逐玩家比较，不能仅比较本地玩家与敌人 |
+| 现有差分重点围绕一个指定玩家 | `src/Testing/Support/UnattendedTestRunner.StateDiff.cs` | 多人差分必须逐玩家比较，不能仅比较本地玩家与敌人 |
 | 原版存在虚拟多人语义 | 原版 `RunManager.IsSingleplayerOrFakeMultiplayer`、`CombatManager.AllPlayersReadyToEndTurn` | 可作为单进程结算测试起点，但会绕过部分多人结束回合同步 |
 | 原版动作携带玩家身份 | 原版 `PlayCardAction`、`EndPlayerTurnAction` | 脚本指定玩家执行具有源码基础；选牌和完整动作队列链路仍需实测 |
 | 原版提供本机 ENet 联机 | 原版 `NMultiplayerTest` 使用本机地址和房主／客户端服务 | 可验证真实同步；无头启动、多人会话清理与选牌驱动需先做可行性验证 |

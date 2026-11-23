@@ -1,5 +1,6 @@
 using System.Diagnostics;
-using System.Runtime;
+using CombatSolver.HotKernel;
+using CombatSolver.HotSearch;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
@@ -44,14 +45,12 @@ internal static partial class SolverController
     private static SolverSearchSession? _search;
     private static SolverDeploymentSession? _deployment;
     private static CombatBugReportClassificationSnapshot? _lastBugReportClassification;
-    private static ManualProjectionComparison? _lastManualProjectionComparison;
     private static int _nextSearchGeneration;
     private static int _combatLifecycleGeneration;
     private static bool _solverDisabled;
     private static bool _stopFullAutoOnCombatEnd;
     private static bool _stopFullAutoOnDeathTurn = true;
     private static bool _stopFullAutoOnWorseRecalculation = true;
-    private static readonly SearchFramePressureSignal FramePressureSignal = new();
     private static readonly HashSet<string> DeployedCardIdsForTesting = new(StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> DeployedPotionIdsForTesting = new(StringComparer.OrdinalIgnoreCase);
     private static readonly List<Task> PendingSearchReferenceReleases = [];
@@ -192,8 +191,6 @@ internal static partial class SolverController
         => UnexpectedReplanCount;
     internal static int ManualDivergenceCountForTesting
         => _combat.ReplanCounts.GetValueOrDefault(ReplanCause.ManualDivergence);
-    internal static bool ManualRouteImprovementDetected
-        => _combat.ManualRouteImprovementDetected;
     internal static bool AllowsPlayerUploadGuidance
         => _combat.UploadPolicy.AllowsPlayerUploadGuidance;
     internal static bool BugReportUploadRecommended
@@ -201,47 +198,8 @@ internal static partial class SolverController
            || _combat.ReplanCounts.GetValueOrDefault(ReplanCause.ContinuationMissing) > 0
            || _combat.ReplanCounts.GetValueOrDefault(ReplanCause.PlanExhausted) > 0
            || _combat.BugReportIssues.RequiresPlayerUpload);
-    internal static ManualProjectionComparison? LastManualProjectionComparisonForTesting
-        => _combat.LastManualProjectionComparison;
-    internal static int NoGcRegionRolloverCountForTesting
-        => SearchGcPolicy.RolloverCountForTesting;
     internal static SearchMemoryUsageSnapshot CaptureSearchMemoryUsage()
-    {
-        DateTimeOffset sampledAt = DateTimeOffset.UtcNow;
-        long startedAt = System.Environment.TickCount64;
-        SearchMemoryPressureSignal? signal = _search?.MemoryPressureSignal
-            ?? PlayerTurnSetupCoordinator.CurrentMemoryPressureSignal;
-        SearchMemoryPressureUsage pressure = signal?.CaptureUsage()
-            ?? SearchMemoryPressureUsage.Disabled;
-        SolverSettingsSnapshot settings = SolverSettings.Capture();
-        GCMemoryInfo memory = GC.GetGCMemoryInfo();
-        PhysicalMemoryUsage physicalMemory = PhysicalMemoryUsage.Capture(memory);
-        long systemMemoryLimit = pressure.SystemMemoryLimitBytes == long.MaxValue
-            ? SearchGcPolicy.ResolveSystemMemoryLimit(memory)
-            : pressure.SystemMemoryLimitBytes;
-        if (physicalMemory.TotalBytes > 0)
-            systemMemoryLimit = Math.Min(systemMemoryLimit, physicalMemory.TotalBytes);
-        return new SearchMemoryUsageSnapshot(
-            System.Environment.WorkingSet,
-            physicalMemory.UsedBytes,
-            settings.NoGcRegionBudgetBytes,
-            IsSearching,
-            pressure.AllocatedBytes,
-            pressure.AllocationLimitBytes,
-            pressure.ProjectedMemoryLoadBytes,
-            systemMemoryLimit,
-            pressure.Reclaiming,
-            SearchGcPolicy.IsBackgroundReclaiming)
-        {
-            PhysicalMemoryTotalBytes = physicalMemory.IsPhysicalSample ? physicalMemory.TotalBytes : 0,
-            SampledAtUtc = sampledAt,
-            SampleDurationMilliseconds = System.Environment.TickCount64 - startedAt,
-            IsServerGc = GCSettings.IsServerGC,
-            GcMemoryInfoIndex = memory.Index,
-            GcHighMemoryLoadThresholdBytes = memory.HighMemoryLoadThresholdBytes,
-            GcTotalAvailableMemoryBytes = memory.TotalAvailableMemoryBytes,
-        };
-    }
+        => SearchMemoryUsageSnapshot.CaptureCurrent(IsSearching);
     internal static void LogSearchMemoryDisplayState(
         SearchMemoryUsageSnapshot snapshot,
         string displayState,
@@ -250,11 +208,6 @@ internal static partial class SolverController
         Entry.Logger.Info(
             $"[CombatSolver/Test] MEMORY_MONITOR_DISPLAY state={displayState} " +
             $"display_ratio={displayRatio:F3} search_active={snapshot.SearchActive.ToString().ToLowerInvariant()} " +
-            $"foreground_reclaim={snapshot.Reclaiming.ToString().ToLowerInvariant()} " +
-            $"background_reclaim={snapshot.BackgroundReclaiming.ToString().ToLowerInvariant()} " +
-            $"search_allocated={snapshot.SearchAllocatedBytes} search_limit={snapshot.SearchAllocationLimitBytes} " +
-            $"projected_memory_load={snapshot.ProjectedSystemMemoryLoadBytes} " +
-            $"system_memory_limit={snapshot.SystemMemoryLimitBytes} " +
             $"physical_memory_used={snapshot.PhysicalMemoryUsedBytes} " +
             $"physical_memory_total={snapshot.PhysicalMemoryTotalBytes} " +
             $"physical_memory_available={snapshot.PhysicalMemoryAvailableBytes?.ToString() ?? "unknown"} " +
@@ -262,14 +215,7 @@ internal static partial class SolverController
             $"system_occupied={snapshot.SystemOccupiedBytes} " +
             $"system_segment={snapshot.SystemSegmentRatio:F3} " +
             $"process_segment={snapshot.ProcessSegmentRatio:F3} " +
-            $"allocation_pressure={snapshot.AllocationPressureRatio:F3} " +
-            $"system_pressure={snapshot.SystemPressureRatio:F3} " +
-            $"system_pressure_dominates={snapshot.SystemPressureDominates.ToString().ToLowerInvariant()} " +
-            $"configured_budget={snapshot.ConfiguredMemoryBudgetBytes} " +
-            $"working_set={snapshot.ProcessWorkingSetBytes} server_gc={snapshot.IsServerGc} " +
-            $"gc_info_index={snapshot.GcMemoryInfoIndex} high_memory_threshold={snapshot.GcHighMemoryLoadThresholdBytes} " +
-            $"gc_total_available={snapshot.GcTotalAvailableMemoryBytes} " +
-            $"sample_utc={snapshot.SampledAtUtc:O} sample_duration_ms={snapshot.SampleDurationMilliseconds}");
+            $"working_set={snapshot.ProcessWorkingSetBytes}");
     }
     internal static long LastDeployedActionStartedAtMillisecondsForTesting { get; private set; }
     internal static Task LastCombatReferenceReleaseForTesting { get; private set; } = Task.CompletedTask;
@@ -412,23 +358,6 @@ internal static partial class SolverController
                 - cancellationsDisposedBefore);
     }
 
-    internal static void RecordManualProjectionComparisonForTesting(
-        int previousProjectedBattleHpLost,
-        int currentProjectedBattleHpLost,
-        int previousProjectedBattlePotionCount = 0,
-        int currentProjectedBattlePotionCount = 0)
-    {
-        AssertMainThread();
-        if (!UnattendedTestRunner.IsActive)
-            throw new InvalidOperationException("手操战损比较入口只能在无人测试中使用。");
-        RecordManualProjectionComparison(
-            new ManualProjectionBaseline(1, previousProjectedBattleHpLost,
-                previousProjectedBattlePotionCount, "test_manual_state_change"),
-            currentTurnNumber: 1,
-            currentProjectedBattleHpLost,
-            currentProjectedBattlePotionCount);
-    }
-
     internal static bool IsCurrentCombatLifecycle(
         CombatState combat,
         int lifecycleGeneration)
@@ -506,11 +435,6 @@ internal static partial class SolverController
         SolverTheftPolicy? theftPolicy,
         SearchInteractionState? interaction = null)
     {
-        FramePressureSignal.ResetPressure(
-            recoveryEnabled: !string.Equals(
-                DisplayServerNameProvider(),
-                "headless",
-                StringComparison.OrdinalIgnoreCase));
         int maxDegreeOfParallelism = UnattendedTestRunner.SearchMaxDegreeOfParallelismOverride
             ?? settings.SearchMaxDegreeOfParallelism;
         if (maxDegreeOfParallelism < 1
@@ -522,9 +446,7 @@ internal static partial class SolverController
         }
         SolverSearchProfile profile = UnattendedTestRunner.CheckpointProfileOverride ?? settings.Profile;
         SearchPolicySnapshot policy = new(
-            UnattendedTestRunner.BeamWeightPerturbationOverride is { } beamWeightPerturbation
-                ? profile with { BeamWeightPerturbation = beamWeightPerturbation }
-                : profile,
+            profile,
             settings.PotionPolicy,
             CapturePotionStrategy(state, settings.PotionPolicy),
             settings.EnableDetailedDiagnosticLogs,
@@ -540,36 +462,14 @@ internal static partial class SolverController
             settings.AcceptableBattleHpLoss,
             new SearchDiagnosticsSink(
                 Entry.Logger.Journal.Bind("info"),
-                Entry.Logger.Journal.Bind("debug")),
-            FramePressureSignal,
-            new SearchMemoryPressureSignal())
+                Entry.Logger.Journal.Bind("debug")))
         {
             Interaction = interaction,
-            EarlyTurnExplorationDepth = UnattendedTestRunner.EarlyTurnExplorationDepth > 0
-                ? UnattendedTestRunner.EarlyTurnExplorationDepth
-                : settings.UseEarlyTurnExploration ? 2 : 0,
-            EarlyTurnExplorationBudgetMilliseconds =
-                UnattendedTestRunner.EarlyTurnExplorationDepth > 0
-                    ? UnattendedTestRunner.EarlyTurnExplorationBudgetMilliseconds
-                    : settings.UseEarlyTurnExploration ? 2_400_000 : 0,
-            DevelopmentStrategy = UnattendedTestRunner.CurrentDevelopmentStrategy,
-            UseNoveltyPortfolio = settings.UseNoveltyPortfolio
-                || UnattendedTestRunner.UseNoveltyPortfolioOverride,
-            UseBeamWidthPortfolio = settings.UseBeamWidthPortfolio
-                || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             PredictPotionReward = settings.PredictPotionReward,
-            BeamWidthPortfolioWidths = UnattendedTestRunner.BeamWidthPortfolioWidthsOverride,
-            BeamWidthPortfolioPlainBaselineMember =
-                UnattendedTestRunner.BeamWidthPortfolioPlainBaselineMemberOverride,
-            PileOrderInvariantMask = UnattendedTestRunner.PileOrderInvariantMaskOverride,
-            StateKeySalt = UnattendedTestRunner.StateKeySaltOverride,
             TranspositionPruningDisabledMask =
                 UnattendedTestRunner.TranspositionPruningDisabledMaskOverride,
             TranspositionEntryLimit = UnattendedTestRunner.TranspositionEntryLimitOverride
                 ?? SearchPolicySnapshot.DefaultTranspositionEntryLimit,
-            MemoryNoProgressRecoveryLimit =
-                UnattendedTestRunner.MemoryNoProgressRecoveryLimitOverride,
-            PortfolioExperiment = PortfolioSelectorRuntime.Capture(),
             Act3BossStrategy = UnattendedTestRunner.Act3BossStrategyOverride != false
                 && SearchPolicySnapshot.IsAct3BossEncounter(state.RunState.CurrentActIndex, state.Encounter?.Id.Entry),
             // 这里记的是玩家填的原始值；「不考虑局外收益」的折算交给快照上的 Effective* 一处做，
@@ -601,7 +501,6 @@ internal static partial class SolverController
         LastTurnSetupResultForTesting = null;
         LastReusedTurnForTesting = null;
         LastReusedProjectedBattleHpLostForTesting = null;
-        SearchGcPolicy.ResetCountersForTesting();
         BattleDamageTracker.Begin(state);
         CombatShowcaseCollector.BeginCombat();
         CombatBugReportExporter.BeginCombat(state);
@@ -989,17 +888,6 @@ internal static partial class SolverController
         {
             _combat.DeployAfterTurnSetupTurn = null;
         }
-        Task rootCaptureBarrier = SearchGcPolicy.CaptureRootSnapshotBarrier();
-        if (!rootCaptureBarrier.IsCompleted)
-        {
-            DeferSearchUntilRootCaptureBarrier(
-                host,
-                state,
-                reason,
-                deployWhenReady,
-                rootCaptureBarrier);
-            return;
-        }
         // A direct request can arrive after the barrier opened but before the deferred
         // callback reached the dispatcher. The newest request owns the search slot.
         CancelDeferredSearch();
@@ -1011,7 +899,6 @@ internal static partial class SolverController
             if (PlayerTurnSetupCoordinator.TryRecalculatePendingChoice(host, state))
             {
                 _combat.PendingCompleteProjectionBaseline = null;
-                _combat.PendingManualProjectionBaseline = null;
                 Entry.Logger.Info(
                     "[CombatSolver/Test] SEARCH_RESTARTED reason=manual_recalculate_pending_turn_setup");
                 return;
@@ -1027,7 +914,6 @@ internal static partial class SolverController
             if (queuedAfterTurnSetup)
             {
                 _combat.PendingCompleteProjectionBaseline = null;
-                _combat.PendingManualProjectionBaseline = null;
                 SolverOverlay.Show(
                     host,
                     "[b]战斗路线求解器[/b]\n等待当前回合开始选择完成后重新计算。");
@@ -1066,7 +952,6 @@ internal static partial class SolverController
         if (reason != SearchReason.AutoTurnStart)
         {
             _combat.PendingCompleteProjectionBaseline = null;
-            _combat.PendingManualProjectionBaseline = null;
         }
         if (!CanSolve(state, out string rejection))
         {
@@ -1088,17 +973,11 @@ internal static partial class SolverController
             setupStage = "live_stamp";
             LiveCombatStamp stamp = LiveCombatStamp.Capture(state);
             if (reason != SearchReason.AutoTurnStart
-                && _combat.LatestResult is { } previousResult
+                && _combat.LatestResult != null
                 && _combat.LatestStamp is { } previousStamp
                 && previousStamp != stamp)
             {
                 replanCause = ReplanCause.ManualDivergence;
-                _combat.PendingManualProjectionBaseline = new ManualProjectionBaseline(
-                    previousResult.StartTurnNumber,
-                    previousResult.ProjectedBattleHpLost,
-                    previousResult.ProjectedBattlePotionCount,
-                    "field=live_combat_stamp expected={solver_result} actual={manual_state_change}",
-                    CombatBugReportExporter.LastCompletedSearchRootId);
             }
             setupStage = "continuation";
             ContinuationStamp? continuationStamp = reason == SearchReason.AutoTurnStart && _combat.ContinuationSource != null
@@ -1159,15 +1038,6 @@ internal static partial class SolverController
                     : expected == null
                         ? ReplanCause.ContinuationMissing
                         : ReplanCause.StateMismatch;
-                if (replanCause == ReplanCause.ManualDivergence)
-                {
-                    _combat.PendingManualProjectionBaseline = new ManualProjectionBaseline(
-                        _combat.ContinuationSource.StartTurnNumber,
-                        _combat.ContinuationSource.ProjectedBattleHpLost,
-                        _combat.ContinuationSource.ProjectedBattlePotionCount,
-                        difference,
-                        CombatBugReportExporter.LastCompletedSearchRootId);
-                }
                 if (followedBySolver
                     && _combat.ContinuationSource.BoundaryReason == SearchBoundaryReason.None
                     && _combat.ContinuationSource.CombatEndedTurn.HasValue)
@@ -1227,41 +1097,12 @@ internal static partial class SolverController
                 theftPolicy: theftPolicy,
                 interaction: search.Interaction);
             search.MaxDegreeOfParallelism = searchPolicy.MaxDegreeOfParallelism;
-            search.MemoryPressureSignal = searchPolicy.MemoryPressureSignal;
             setupStage = "combat_root_snapshot";
-            long rootCaptureAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
-            CombatRootSnapshot rootSnapshot;
-            try
-            {
-                rootSnapshot = CombatRootSnapshot.Capture(state, settings.PredictPotionReward);
-            }
-            finally
-            {
-                SearchGcPolicy.ReportCombatLifecycleAllocation(
-                    Math.Max(
-                        0,
-                        GC.GetTotalAllocatedBytes(precise: false) - rootCaptureAllocatedAtStart),
-                    "combat_root_snapshot",
-                    settings.EnableNoGcRegion);
-            }
-            searchPolicy = searchPolicy with
-            {
-                PrimaryIncumbents = _combat.AcquirePrimaryIncumbents(
-                    rootSnapshot, searchPolicy, battleDamage),
-            };
+            CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(state, settings.PredictPotionReward);
             Entry.Logger.Info(
                 $"[CombatSolver/Test] COMBAT_ROOT_CAPTURE generation={generation} " +
                 $"elapsed_ms={rootSnapshot.CaptureElapsedMilliseconds:F3} " +
                 $"cards={rootSnapshot.CapturedCardCount} powers={rootSnapshot.CapturedPowerCount} " +
-                $"listeners={rootSnapshot.CapturedHookListenerCount} " +
-                $"run_mod_subscribers={rootSnapshot.CapturedRunModSubscriberCount} " +
-                $"combat_mod_subscribers={rootSnapshot.CapturedCombatModSubscriberCount} " +
-                $"base_lib_card_modifiers={rootSnapshot.CapturedBaseLibCardModifiers} " +
-                $"strategic_hp_recovery_bound={(rootSnapshot.HasOnlyPostCombatHealing ? "certified" : "bypassed")} " +
-                $"known_native_healing_policy={rootSnapshot.UsesKnownNativeHealingPolicy} " +
-                $"strategic_hp_recovery_bound_reason={rootSnapshot.HealingBoundCertificationReason} " +
-                $"strategic_hp_recovery_bound_source={Uri.EscapeDataString(rootSnapshot.HealingBoundCertificationSourceId ?? "-")} " +
-                $"strategic_hp_recovery_bound_postcombat_heal_hp={(rootSnapshot.HasOnlyPostCombatHealing ? Math.Max(0, rootSnapshot.PostCombatRelicHeal.UnconditionalHeal).ToString() : "unbounded")} " +
                 $"potion_reward={rootSnapshot.PotionRewardOutlook.Forecast}" +
                 $"/{rootSnapshot.PotionRewardOutlook.ForecastPotionId ?? "-"}" +
                 $"/credit={rootSnapshot.PotionRewardOutlook.ReplacementHpCredit}");
@@ -1290,12 +1131,6 @@ internal static partial class SolverController
                 $"theft_policy={theftPolicy?.ToString() ?? "-"} " +
                 $"act_transition_boss_hp_strategy={searchPolicy.ActTransitionBossHpStrategy} " +
                 $"final_boss_hp_strategy={searchPolicy.FinalBossHpStrategy} " +
-                $"frame_baseline_samples={FramePressureSignal.BaselineSampleCount} " +
-                $"frame_baseline_ms={FramePressureSignal.BaselineFrameGapMilliseconds:F1} " +
-                $"frame_pressure_threshold_ms={FramePressureSignal.PressureFrameGapMilliseconds:F1} " +
-                $"frame_recovery_enabled={FramePressureSignal.RecoveryEnabled} " +
-                $"no_gc_enabled={settings.EnableNoGcRegion.ToString().ToLowerInvariant()} " +
-                $"no_gc_budget_bytes={settings.NoGcRegionBudgetBytes} " +
                 $"max_dop={searchPolicy.MaxDegreeOfParallelism}");
             Entry.Logger.Info(SolverDiagnostics.DescribeStart(
                 state,
@@ -1316,23 +1151,16 @@ internal static partial class SolverController
                 Thread worker = Thread.CurrentThread;
                 ThreadPriority previousPriority = worker.Priority;
                 worker.Priority = ThreadPriority.BelowNormal;
-                ISearchGcScope? gcPolicy = null;
-                SolverResult? finalizedResult = null;
                 try
                 {
-                    using ISearchGcScope admittedGcPolicy = gcPolicy = SearchGcPolicy.EnterSearchScope(
-                        settings.EnableNoGcRegion,
-                        settings.NoGcRegionBudgetBytes,
-                        searchPolicy.MemoryPressureSignal,
-                        token);
-                    SolverResult result = SolverBackendSelector.Resolve().SolveCoordinator(
+                    SolverResult result = HotSearchCoordinator.Solve(
                         rootSnapshot,
                         displayNames,
                         battleDamage,
                         searchPolicy,
                         token,
                         progress => PublishSearchProgress(search, progress));
-                    finalizedResult = search.Interaction.FinalizeWorkerResult(result);
+                    SolverResult finalizedResult = search.Interaction.FinalizeWorkerResult(result);
                     token.ThrowIfCancellationRequested();
                     if (!search.Interaction.StopRequested)
                         routeCache.StoreFirst(finalizedResult);
@@ -1341,20 +1169,6 @@ internal static partial class SolverController
                 finally
                 {
                     worker.Priority = previousPriority;
-                    if (gcPolicy?.IsLifecycleCompleted == true)
-                    {
-                        SearchGcLifecycleSnapshot gcLifecycle = gcPolicy.Lifecycle;
-                        if (finalizedResult != null)
-                        {
-                            finalizedResult.GcLifecycle = gcLifecycle;
-                            finalizedResult.GcLifecycleAttribution = gcPolicy.LifecycleAttribution;
-                        }
-                        Entry.Logger.Info(
-                            $"[CombatSolver/Test] SEARCH_GC_LIFECYCLE generation={generation} " +
-                            $"completed={(finalizedResult != null).ToString().ToLowerInvariant()} " +
-                            $"attribution={gcPolicy.LifecycleAttribution} " +
-                            gcLifecycle.ToDiagnosticString());
-                    }
                 }
             }, token);
             search.WorkerCompletion = solveTask;
@@ -1404,7 +1218,6 @@ internal static partial class SolverController
             _combat.LatestStamp = null;
             _combat.ContinuationSource = null;
             _combat.PendingCompleteProjectionBaseline = null;
-            _combat.PendingManualProjectionBaseline = null;
             SolverOverlay.Show(
                 host,
                 FormatSearchSetupFailure(ex));
@@ -1716,7 +1529,6 @@ internal static partial class SolverController
         if (!stoppingAtCandidate && (controllerSearchCanceled || stoppedTurnSetupSearch))
             SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Canceled);
         _combat.PendingCompleteProjectionBaseline = null;
-        _combat.PendingManualProjectionBaseline = null;
         SolverOverlay.ShowSearchStopped(host);
         Entry.Logger.Info(
             $"[CombatSolver/Test] SEARCH_STOPPED_BY_USER generation={generation?.ToString() ?? "-"} " +
@@ -2104,7 +1916,7 @@ internal static partial class SolverController
 
     private static void ResetCore(string reason)
     {
-        int lifecycleGeneration = Interlocked.Increment(ref _combatLifecycleGeneration);
+        Interlocked.Increment(ref _combatLifecycleGeneration);
         bool deferredSearchCanceled = _deferredSearchCts != null;
         CancelDeferredSearch();
         Task deferredSearchRelease = DrainDeferredSearchReleases();
@@ -2113,20 +1925,10 @@ internal static partial class SolverController
             || _search != null
             || PlayerTurnSetupCoordinator.IsSearching;
         Task turnSetupRelease = PlayerTurnSetupCoordinator.Reset(reason);
-        long forensicCaptureAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
         Task forensicCaptureRelease = CombatBugReportExporter.CompleteCombat(
             reason,
             CurrentResultForBugReport,
             DescribeReplanAudit());
-        bool automaticGcLifecycleUsed = SearchGcPolicy.AutomaticGcLifecycleUsed;
-        SearchGcPolicy.ReportCombatLifecycleAllocation(
-            Math.Max(
-                0,
-                GC.GetTotalAllocatedBytes(precise: false) - forensicCaptureAllocatedAtStart),
-            "combat_forensic_capture",
-            automaticGcLifecycleUsed);
-        SearchGcPolicy.CombatLifecyclePressure lifecyclePressure =
-            SearchGcPolicy.DetachCombatLifecyclePressure(reason);
         bool hadState = _search != null
             || _deployment != null
             || _combat.State != null
@@ -2135,7 +1937,6 @@ internal static partial class SolverController
         if (_combat.SearchesStarted > 0 || _combat.ContinuationsReused > 0)
             Entry.Logger.Info($"[CombatSolver/Test] REPLAN_SUMMARY reason={reason} {DescribeReplanCounts()}");
         _lastBugReportClassification = CaptureBugReportClassification();
-        _lastManualProjectionComparison = _combat.LastManualProjectionComparison;
         CancelSearch();
         Task searchReferenceRelease = DrainSearchReferenceReleases();
         if (searchCanceled)
@@ -2150,44 +1951,16 @@ internal static partial class SolverController
         SolverOverlay.Hide();
         // 战斗重置隐藏界面，并登记下一个可操作边界的初始化请求。
         SolverOverlay.MarkInitializationPending();
-        bool unattendedRequestActive = UnattendedAsyncActivityTracker.IsRequestActive;
-        Task regionExit = unattendedRequestActive
-            ? Task.CompletedTask
-            : SearchGcPolicy.ExitNoGcRegionWhenSearchesIdleAsync(reason);
-        // The unattended protocol performs one reclaim only after the game and every tracked
-        // callback are quiescent. Starting a fire-and-forget reclaim here would make the 0.18
-        // serialized reclaim chain request a second collection when the protocol joins it.
         Task referenceRelease = Task.WhenAll(
             searchReferenceRelease,
             deploymentReferenceRelease,
             deferredSearchRelease,
             combatDeferredRelease,
             turnSetupRelease,
-            forensicCaptureRelease,
-            regionExit);
+            forensicCaptureRelease);
         LastCombatReferenceReleaseForTesting = referenceRelease;
-        if (unattendedRequestActive)
-        {
+        if (UnattendedAsyncActivityTracker.IsRequestActive)
             TaskHelper.RunSafely(UnattendedAsyncActivityTracker.Track(referenceRelease));
-        }
-        else if (automaticGcLifecycleUsed
-                 && (hadState
-                     || searchCanceled
-                     || !referenceRelease.IsCompletedSuccessfully
-                     || lifecyclePressure.AllocatedBytes > 0))
-        {
-            Stopwatch referenceReleaseStopwatch = Stopwatch.StartNew();
-            TaskHelper.RunSafely(SearchGcPolicy.ReclaimAfterReferenceReleaseAsync(
-                reason,
-                lifecyclePressure.RequiresCollection,
-                includeCombatLifecyclePressure: false,
-                referenceRelease,
-                () => LogCombatReferenceBarrier(
-                    reason,
-                    lifecycleGeneration,
-                    lifecyclePressure,
-                    referenceReleaseStopwatch)));
-        }
         if (hadState)
             Entry.Logger.Info($"[CombatSolver/Test] RESET reason={reason}");
     }
@@ -2233,24 +2006,6 @@ internal static partial class SolverController
             return;
         search.Cancellation.Dispose();
         Interlocked.Increment(ref _searchCtsDisposeCountForTesting);
-    }
-
-    private static void LogCombatReferenceBarrier(
-        string reason,
-        int lifecycleGeneration,
-        SearchGcPolicy.CombatLifecyclePressure lifecyclePressure,
-        Stopwatch stopwatch)
-    {
-        int currentLifecycleGeneration = Volatile.Read(ref _combatLifecycleGeneration);
-        Entry.Logger.Info(
-            $"[CombatSolver/Test] HEAP_REFERENCE_BARRIER reason={reason} " +
-            $"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F1} " +
-            $"lifecycle_epoch={lifecycleGeneration} " +
-            $"current_lifecycle_epoch={currentLifecycleGeneration} " +
-            $"crossed_combat={(currentLifecycleGeneration != lifecycleGeneration).ToString().ToLowerInvariant()} " +
-            $"lifecycle_allocated_bytes={lifecyclePressure.AllocatedBytes} " +
-            $"lifecycle_requires_gen2={lifecyclePressure.RequiresCollection.ToString().ToLowerInvariant()} " +
-            $"managed_live_bytes={GC.GetTotalMemory(forceFullCollection: false)}");
     }
 
     internal static void SimulateDeploymentCompletionForTesting(NGame host, CombatState state)
@@ -2420,15 +2175,6 @@ internal static partial class SolverController
         AssertMainThread();
         double milliseconds = gap.TotalMilliseconds;
         SolverSearchSession? search = _search;
-        bool frameRecoveryAllowed = !string.Equals(
-                DisplayServer.GetName(),
-                "headless",
-                StringComparison.OrdinalIgnoreCase)
-            && DisplayServer.WindowIsFocused();
-        FramePressureSignal.ObserveFrame(
-            milliseconds,
-            searchActive: IsSearching,
-            frameRecoveryAllowed);
         if (search == null)
             return;
         search.ObserveFrame(milliseconds);
@@ -2459,14 +2205,8 @@ internal static partial class SolverController
         string differences = _combat.LastContinuationDifferences.Count == 0
             ? "-"
             : string.Join(System.Environment.NewLine, _combat.LastContinuationDifferences);
-        string manualComparison = _combat.LastManualProjectionComparison is { } comparison
-            ? $"previous={comparison.PreviousProjectedBattleHpLost} current={comparison.CurrentProjectedBattleHpLost} " +
-              $"difference={comparison.Difference} original_turn={comparison.OriginalTurnNumber} " +
-              $"current_turn={comparison.CurrentTurnNumber}"
-            : "-";
         return DescribeReplanCounts() +
-               System.Environment.NewLine + "last_state_differences=" + differences +
-               System.Environment.NewLine + "last_manual_projection_comparison=" + manualComparison;
+               System.Environment.NewLine + "last_state_differences=" + differences;
     }
 
     private static string DescribeReplanCounts()
@@ -2557,7 +2297,6 @@ internal static partial class SolverController
         if (task.IsCanceled)
         {
             _combat.PendingCompleteProjectionBaseline = null;
-            _combat.PendingManualProjectionBaseline = null;
             SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Canceled);
             Entry.Logger.Info($"[CombatSolver/Test] SEARCH_CANCELED generation={generation}");
             return;
@@ -2565,7 +2304,6 @@ internal static partial class SolverController
         if (task.IsFaulted)
         {
             _combat.PendingCompleteProjectionBaseline = null;
-            _combat.PendingManualProjectionBaseline = null;
             Exception ex = task.Exception?.GetBaseException() ?? new InvalidOperationException("后台搜索失败但没有异常对象。");
             _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.SearchFailure, ex);
             LastSearchFailureForTesting = ex;
@@ -2591,7 +2329,6 @@ internal static partial class SolverController
         {
             RecordSearchResultStale(search);
             _combat.PendingCompleteProjectionBaseline = null;
-            _combat.PendingManualProjectionBaseline = null;
             _combat.LatestResult = null;
             _combat.LatestStamp = null;
             SolverOverlay.Show(
@@ -2616,7 +2353,6 @@ internal static partial class SolverController
         if (stopped || currentTurnAdopted)
         {
             _combat.PendingCompleteProjectionBaseline = null;
-            _combat.PendingManualProjectionBaseline = null;
         }
         else
         {
@@ -2694,9 +2430,7 @@ internal static partial class SolverController
     private static void ApplyProjectionBaselines(SolverResult result)
     {
         CompleteProjectionBaseline? recalculationBaseline = _combat.PendingCompleteProjectionBaseline;
-        ManualProjectionBaseline? manualBaseline = _combat.PendingManualProjectionBaseline;
         _combat.PendingCompleteProjectionBaseline = null;
-        _combat.PendingManualProjectionBaseline = null;
         if (recalculationBaseline != null
             && result.ProjectedBattleHpLost > recalculationBaseline.ProjectedBattleHpLost)
         {
@@ -2713,14 +2447,6 @@ internal static partial class SolverController
                 CombatBugReportIssueKind.RecalculationHpLossIncreased,
                 $"预计战损 {recalculationBaseline.ProjectedBattleHpLost} → {result.ProjectedBattleHpLost}，" +
                 $"增加 {result.ProjectedBattleHpLossIncrease} HP");
-        }
-        if (manualBaseline != null)
-        {
-            RecordManualProjectionComparison(
-                manualBaseline,
-                result.StartTurnNumber,
-                result.ProjectedBattleHpLost,
-                result.ProjectedBattlePotionCount);
         }
     }
 
@@ -3119,7 +2845,7 @@ internal static partial class SolverController
                     && (_stopFullAutoOnDeathTurn || _stopFullAutoOnWorseRecalculation))
                 {
                     await UnattendedTestRunner.ApplyScheduledPreEndTurnDriftAsync(state, turn);
-                    LiveEndTurnRiskProjection liveRisk = SolverBackendSelector.Resolve().EvaluateEndTurnRisk(
+                    LiveEndTurnRiskProjection liveRisk = LiveEndTurnRiskEvaluator.Evaluate(
                         state,
                         plannedEndTurn.TurnStartChoices);
                     int plannedHpLoss = result.RequireHpLostForTurn(turn);
@@ -3312,14 +3038,14 @@ internal static partial class SolverController
         {
             CardModel? stateMatch = hand
                 .Where(card => string.Equals(
-                    CardChoiceSupport.ChoiceCardKey(card),
+                    HotImportSupport.FormatLiveChoiceCardKey(card),
                     action.CardStateKey,
                     StringComparison.Ordinal))
                 .Skip(action.CardStateOccurrence)
                 .FirstOrDefault();
             return stateMatch ?? throw new InvalidOperationException(
                 $"部署时找不到计划中的手牌状态 {action.CardId}@{action.CardStateOccurrence}；" +
-                $"当前手牌={string.Join(',', hand.Select(card => CardChoiceSupport.ChoiceCardKey(card)))}。");
+                $"当前手牌={string.Join(',', hand.Select(card => HotImportSupport.FormatLiveChoiceCardKey(card)))}。");
         }
 
         return hand
@@ -3547,66 +3273,6 @@ internal static partial class SolverController
         QueueSearchReferenceRelease(search);
     }
 
-    private static void RecordManualProjectionComparison(
-        ManualProjectionBaseline baseline,
-        int currentTurnNumber,
-        int currentProjectedBattleHpLost,
-        int currentProjectedBattlePotionCount)
-    {
-        ManualProjectionComparison comparison = new(
-            baseline.StartTurnNumber,
-            currentTurnNumber,
-            baseline.ProjectedBattleHpLost,
-            currentProjectedBattleHpLost,
-            baseline.ProjectedBattlePotionCount,
-            currentProjectedBattlePotionCount,
-            baseline.StateDifference,
-            baseline.OriginalCheckpointId,
-            CombatBugReportExporter.CurrentSearchRootId);
-        _combat.LastManualProjectionComparison = comparison;
-        CombatBugReportExporter.RecordComparisonReference(baseline.OriginalCheckpointId);
-        string direction;
-        if (comparison.IsImprovement)
-        {
-            direction = "IMPROVED";
-            _combat.ManualRouteImprovementDetected = true;
-            _combat.BugReportIssues.Record(
-                CombatBugReportIssueKind.BetterWorldline,
-                $"预计战损 {comparison.PreviousProjectedBattleHpLost} → {comparison.CurrentProjectedBattleHpLost}，" +
-                $"下降 {-comparison.Difference} HP；多用药 {comparison.AdditionalPotionCount} 瓶，" +
-                $"折算优化 {comparison.PotionAdjustedHpReduction} HP");
-        }
-        else if (comparison.Difference > 0)
-        {
-            direction = "WORSENED";
-            _combat.BugReportIssues.Record(
-                CombatBugReportIssueKind.ManualHpLossIncreased,
-                $"预计战损 {comparison.PreviousProjectedBattleHpLost} → {comparison.CurrentProjectedBattleHpLost}，" +
-                $"增加 {comparison.Difference} HP");
-        }
-        else if (comparison.Difference < 0)
-        {
-            direction = "POTION_TRADE";
-        }
-        else
-        {
-            direction = "UNCHANGED";
-        }
-
-        Entry.Logger.Info(
-            $"[CombatSolver/Test] MANUAL_ROUTE_{direction} " +
-            $"original_turn={comparison.OriginalTurnNumber} current_turn={comparison.CurrentTurnNumber} " +
-            $"previous_projected_battle_hp_lost={comparison.PreviousProjectedBattleHpLost} " +
-            $"current_projected_battle_hp_lost={comparison.CurrentProjectedBattleHpLost} " +
-            $"difference={comparison.Difference} " +
-            $"previous_projected_battle_potion_count={comparison.PreviousProjectedBattlePotionCount} " +
-            $"current_projected_battle_potion_count={comparison.CurrentProjectedBattlePotionCount} " +
-            $"additional_potion_count={comparison.AdditionalPotionCount} " +
-            $"potion_hp_cost={comparison.PotionHpCost} " +
-            $"potion_adjusted_hp_reduction={comparison.PotionAdjustedHpReduction} " +
-            $"{comparison.StateDifference}");
-    }
-
     private static string FormatSearchFailure(
         Exception exception,
         bool parallelSearchWasEnabled)
@@ -3694,8 +3360,6 @@ internal static partial class SolverController
     internal static CombatBugReportClassificationSnapshot CaptureBugReportClassificationForExport()
         => CombatManager.Instance.IsInProgress ? CaptureBugReportClassification()
             : _lastBugReportClassification ?? CaptureBugReportClassification();
-    internal static ManualProjectionComparison? ManualProjectionComparisonForExport
-        => CombatManager.Instance.IsInProgress ? _combat.LastManualProjectionComparison : _lastManualProjectionComparison;
 
     private static void CompleteDeployment(SolverDeploymentSession deployment)
     {

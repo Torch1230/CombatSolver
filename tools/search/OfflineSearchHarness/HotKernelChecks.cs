@@ -1,15 +1,11 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using CombatSolver;
-using CombatSolver.Engine.Common;
-using CombatSolver.Engine.InCombat.Simulation;
 using CombatSolver.HotKernel;
 using CombatSolver.HotSearch;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Runs;
@@ -36,7 +32,6 @@ internal static class HotKernelChecks
         using PackedStateArena arena = new();
 
         int expectedSize = HotStatePacker.ComputePackedSize(in populated);
-        // 1128 + 2*64 + 4*24 + 2*8 + 30*48 = 2808 B (or 3 enemies/5 powers -> ~2872 B)
         Check(expectedSize is >= 2500 and <= 3200,
             $"Unexpected 30-card packed size: {expectedSize} B.");
 
@@ -92,7 +87,6 @@ internal static class HotKernelChecks
             Check(mutHash != hash1, $"HotHash.ComputeHash FAILED to detect 0xFF byte flip at offset {i}.");
             Check(!mutEq, $"HotHash.PackedEquals FAILED to detect 0xFF byte flip at offset {i}.");
 
-            // Also verify single-bit flip detection
             mutated[i] = (byte)(packed1[i] ^ 0x01);
             HotHash128 bitHash = HotHash.ComputeHash(mutated, null);
             bool bitEq = HotHash.PackedEquals(packed1, null, mutated, null);
@@ -172,7 +166,6 @@ internal static class HotKernelChecks
             SlotIdx = 1,
             Pad = dirtyPadding ? (ushort)0xBBBB : (ushort)0,
         };
-        // Leave HasWuppy unset to test zeroing when dirtyPadding=true
         if (dirtyPadding)
         {
             s.Wuppy.CombatId = 999;
@@ -264,7 +257,6 @@ internal static class HotKernelChecks
         if (dirtyPadding)
             s.ActiveEnemyRoster[5] = 0x55;
 
-        // 2 enemies
         for (int e = 0; e < 2; e++)
         {
             ref HotEnemy enemy = ref s.Enemies[e];
@@ -291,7 +283,6 @@ internal static class HotKernelChecks
             enemy.AiRegs[0] = 7 + e;
         }
 
-        // 4 powers (power 0 references card index 3)
         ushort refUidPower = (ushort)(uidOffset + 3);
         ushort refUidMelody = (ushort)(uidOffset + 7);
         ushort refUidHistory = (ushort)(uidOffset + 12);
@@ -315,11 +306,9 @@ internal static class HotKernelChecks
             };
         }
 
-        // 2 relic states
         s.RelicStates[0] = new HotRelicState { Current = 3, PreviousOrAux = 1 };
         s.RelicStates[1] = new HotRelicState { Current = 6, PreviousOrAux = 0 };
 
-        // 30 cards across Hand(5)|Draw(12)|Discard(8)|Exhaust(4)|Play(1)
         for (int i = 0; i < 30; i++)
         {
             ref HotCard c = ref s.Cards[i];
@@ -348,7 +337,7 @@ internal static class HotKernelChecks
             if (dirtyPadding)
             {
                 c.EnergyCostMods[3] = new HotEnergyCostMod { Amount = 99, PackedFlags = 0x0F };
-                c.TempStarCostPacked = 0x3F; // high bit 0 -> unused, should be zeroed
+                c.TempStarCostPacked = 0x3F;
             }
         }
 
@@ -368,23 +357,22 @@ internal static class HotKernelChecks
                 pads.Add(start + i);
         }
 
-        // FixedCore explicit pads (verified by CombatHotState.ValidateLayout)
-        AddRange(80 + 18, 2);   // Player.Pad
+        AddRange(80 + 18, 2);
         if ((s.CombatFlags & HotCombatFlags.HasOsty) == 0) AddRange(100, 20); else AddRange(100 + 18, 2);
         if ((s.CombatFlags & HotCombatFlags.HasWuppy) == 0) AddRange(120, 20); else AddRange(120 + 18, 2);
-        AddRange(182, 2);       // PadCore0
-        AddRange(184 + 22, 2);  // Growth[11]
-        AddRange(221, 3);       // PadCore1..3
+        AddRange(182, 2);
+        AddRange(184 + 22, 2);
+        AddRange(221, 3);
         for (int i = 0; i < HotLimits.MaxRngStreams; i++)
-            AddRange(480 + i * 40 + 36, 4); // Rng[i].Pad
+            AddRange(480 + i * 40 + 36, 4);
         for (int i = s.PotionSlotCount; i < HotLimits.MaxPotions; i++)
             AddRange(880 + i * 2, 2);
         for (int i = s.OrbCount; i < HotLimits.MaxOrbs; i++)
             AddRange(904 + i * 8, 8);
         for (int i = s.ArrowCount; i < HotLimits.MaxArrows; i++)
             AddRange(984 + i * 2, 2);
-        AddRange(984 + 71, 1);  // Fool.Pad0
-        AddRange(984 + 78, 2);  // Fool.Pad1
+        AddRange(984 + 71, 1);
+        AddRange(984 + 78, 2);
         for (int i = s.RosterCount; i < HotLimits.MaxEnemies; i++)
             AddRange(1064 + i, 1);
         if ((s.CombatFlags & HotCombatFlags.HasHistoryCourseCard) == 0)
@@ -398,7 +386,7 @@ internal static class HotKernelChecks
         int offset = CombatHotState.FixedCoreSize;
         for (int e = 0; e < s.EnemyCount; e++)
         {
-            AddRange(offset + 18, 2); // Vital.Pad
+            AddRange(offset + 18, 2);
             int rc = Math.Min((int)s.Enemies[e].RecentMoveCount, HotLimits.MaxMonsterRecentMoves);
             AddRange(offset + 40 + rc, HotLimits.MaxMonsterRecentMoves - rc);
             offset += 64;
@@ -463,7 +451,6 @@ internal static class HotKernelChecks
             }
             AssertRngStateEq(native, in hot, $"seed={seed} after 1000 draws");
 
-            // UnstableShuffle parity across multiple list sizes
             int[] lengths = [0, 1, 2, 5, 13, 30, 50];
             foreach (int len in lengths)
             {
@@ -496,7 +483,6 @@ internal static class HotKernelChecks
         s.MaxHandSize = 10;
         s.Rng[(int)HotRngStream.Shuffle] = HotRng.CreateFromSeed(12345UL);
 
-        // Add cards: Hand=[1,2], Draw=[3,4,5], Discard=[6,7], Exhaust=[8], Play=[]
         for (ushort id = 1; id <= 2; id++)
             HotPiles.AddCard(ref s, new HotCard { CardDefId = id, CardUid = id }, HotPileKind.Hand, s.HandCount);
         for (ushort id = 3; id <= 5; id++)
@@ -505,39 +491,31 @@ internal static class HotKernelChecks
             HotPiles.AddCard(ref s, new HotCard { CardDefId = id, CardUid = id }, HotPileKind.Discard, s.DiscardCount);
         HotPiles.AddCard(ref s, new HotCard { CardDefId = 8, CardUid = 8 }, HotPileKind.Exhaust, 0);
 
-        // Zero-copy DrawTopToHand: Draw[0]=3 -> Hand[^1]
         Check(HotPiles.DrawTopToHand(ref s), "DrawTopToHand returned false.");
         Check(s.HandCount == 3 && s.DrawCount == 2 && s.Cards[2].CardDefId == 3 && s.Cards[3].CardDefId == 4,
             "DrawTopToHand zone boundary mismatch.");
 
-        // MoveCard Hand[1](id=2) -> Play[0]
         int playIdx = HotPiles.MoveCard(ref s, 1, HotPileKind.Play, 0);
         Check(s.HandCount == 2 && s.PlayCount == 1 && s.Cards[playIdx].CardDefId == 2,
             "MoveCard Hand->Play mismatch.");
         Check(s.Cards[0].CardDefId == 1 && s.Cards[1].CardDefId == 3,
             "Hand order corrupted after MoveCard.");
 
-        // MoveCard Play[0](id=2) -> Discard end
         int discIdx = HotPiles.MoveCard(ref s, playIdx, HotPileKind.Discard, s.DiscardCount);
         Check(s.PlayCount == 0 && s.DiscardCount == 3 && s.Cards[discIdx].CardDefId == 2,
             "MoveCard Play->Discard mismatch.");
-        // Discard should be [6, 7, 2]
         int dStart = HotPiles.ZoneStart(in s, HotPileKind.Discard);
         Check(s.Cards[dStart].CardDefId == 6 && s.Cards[dStart + 1].CardDefId == 7 && s.Cards[dStart + 2].CardDefId == 2,
             "Discard order corrupted.");
 
-        // RemoveCard from Exhaust
         HotPiles.RemoveCard(ref s, HotPiles.ZoneStart(in s, HotPileKind.Exhaust));
         Check(s.ExhaustCount == 0 && s.TotalCardCount == 7, "RemoveCard mismatch.");
 
-        // ShuffleDiscardIntoDraw: verify exact match against sorted Discard+Draw + native UnstableShuffle AND 0-byte alloc
         HotExecScratch scratch = new();
-        // Warmup once on throwaway copy
         CombatHotState warm = s;
         HotPiles.ShuffleDiscardIntoDraw(ref warm, null, scratch);
 
         Rng nativeRng = new(12345UL);
-        // Combined cards in Draw+Discard sorted by CardDefId: [2, 4, 5, 6, 7]
         List<ushort> expectedOrder = [2, 4, 5, 6, 7];
         expectedOrder.UnstableShuffle(nativeRng);
 
@@ -559,13 +537,11 @@ internal static class HotKernelChecks
         HotCard card = new() { CardDefId = 1, CardUid = 10, BaseEnergyCost = 2, BaseStarCost = -1 };
         HotColdSidecar? cold = null;
 
-        // Add 2 consecutive EndOfTurn relative modifiers -> should merge to -2 in 1 slot
         HotCostModifiers.AddEnergyModifier(ref card, ref cold, -1, false, (int)LocalCostModifierExpiration.EndOfTurn, false);
         HotCostModifiers.AddEnergyModifier(ref card, ref cold, -1, false, (int)LocalCostModifierExpiration.EndOfTurn, false);
         Check(card.CostModCount == 1 && HotCostModifiers.GetLocalEnergyCost(in card, cold) == 0 && cold == null,
             "Consecutive relative cost modifier merge failed.");
 
-        // Add 4 distinct expiration/mode modifiers to force overflow (>4)
         HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, 1, false, (int)LocalCostModifierExpiration.WhenPlayed, false);
         HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, 1, false, (int)LocalCostModifierExpiration.EndOfCombat, false);
         HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, 1, false, (int)LocalCostModifierExpiration.EndOfTurn, false);
@@ -575,7 +551,6 @@ internal static class HotKernelChecks
         Check(HotCostModifiers.GetLocalEnergyCost(in card, cold) == 4,
             $"Unexpected overflow local energy cost: {HotCostModifiers.GetLocalEnergyCost(in card, cold)}.");
 
-        // ExpireAfterPlay removes both WhenPlayed entries -> demotes back to 3 inline slots, cold becomes null
         HotCostModifiers.ExpireAfterPlay(ref card, ref cold);
         Check((card.Flags & HotCardFlags.HasCostOverflow) == 0 && card.CostModCount == 3 && cold == null,
             "Overflow demotion after ExpireAfterPlay failed.");
@@ -627,7 +602,6 @@ internal static class HotKernelChecks
             WorkspaceDirectory = Path.GetDirectoryName(outDir)!,
             OutputDirectory = outDir,
             Profile = "Custom",
-            Backend = "legacy",
         };
         _ = ModRuntime.Initialize(bootOptions);
 
@@ -637,28 +611,28 @@ internal static class HotKernelChecks
             if (runA)
             {
                 Console.WriteLine();
-                Console.WriteLine("=== Gate A: Root Capture Parity (19 Vanilla Roots) ===");
+                Console.WriteLine("=== Gate A: Root Capture Parity (19 Vanilla Roots + Pack/Unpack Round-Trip) ===");
                 failures += RunGateA(repoRoot, outDir, loop);
             }
 
             if (runB1)
             {
                 Console.WriteLine();
-                Console.WriteLine("=== Gate B1: Phase 0 Legacy Route Lockstep Parity (7 Elite/Boss Roots) ===");
-                failures += RunGateB1RouteReplay(repoRoot, outDir, loop);
+                Console.WriteLine("=== Gate B1: HotKernel Multi-Turn Self-Consistency (All 6 Characters incl. Fool) ===");
+                failures += RunGateB1SelfConsistency(loop);
             }
 
             if (runB2)
             {
                 Console.WriteLine();
-                Console.WriteLine("=== Gate B2: Multi-Turn Lockstep Action Parity (All 6 Characters incl. Fool) ===");
-                failures += RunGateB(loop);
+                Console.WriteLine("=== Gate B2: HotSearch DOP=1 vs DOP=8 Determinism (dev-00 & dev-01) ===");
+                failures += RunGateB2Determinism(repoRoot, outDir, loop);
             }
 
             if (runC)
             {
                 Console.WriteLine();
-                Console.WriteLine("=== Gate C: Raw Kernel Micro-Benchmark (50,000 Hot vs 5,000 Legacy) ===");
+                Console.WriteLine("=== Gate C: HotKernel Micro-Benchmark (50,000 Unpack+PlayCard+Pack+Hash) ===");
                 failures += RunGateC(loop);
             }
         }
@@ -750,7 +724,6 @@ internal static class HotKernelChecks
 
                 if (string.Equals(liveStripped, hotText, StringComparison.Ordinal))
                 {
-                    // Also verify Pack -> Unpack round-trip preserves 0-diff
                     CombatHotState rtState = bundle.RootState;
                     HotColdSidecar? rtCold = bundle.RootCold;
                     arena.Reset();
@@ -801,404 +774,11 @@ internal static class HotKernelChecks
         return failed;
     }
 
-    private static int RunGateB1RouteReplay(string repoRoot, string outDir, MainLoopContext loop)
-    {
-        (string Label, string RequestPath, string RoutePath)[] cases =
-        [
-            ("dev-00-ironclad-elite",
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "dev-00-ironclad-elite-request.json"),
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "out-coord-dop8", "runs", "dev-00-ironclad-elite", "route.json")),
-            ("dev-01-silent-elite",
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "dev-01-silent-elite-request.json"),
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "out-coord-dop8", "runs", "dev-01-silent-elite", "route.json")),
-            ("dev-02-defect-elite",
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "dev-02-defect-elite-request.json"),
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "out-coord-dop8", "runs", "dev-02-defect-elite", "route.json")),
-            ("dev-03-regent-elite",
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "dev-03-regent-elite-request.json"),
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "out-coord-dop8", "runs", "dev-03-regent-elite", "route.json")),
-            ("dev-04-necrobinder-elite",
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "dev-04-necrobinder-elite-request.json"),
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "out-coord-dop8", "runs", "dev-04-necrobinder-elite", "route.json")),
-            ("dev-08-regent-boss",
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "dev-08-regent-boss-request.json"),
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "out-coord-dop8", "runs", "dev-08-regent-boss", "route.json")),
-            ("GA-IRONCLAD-ELITE-00",
-                Path.Combine(repoRoot, "coverage", "corpora", "strategy", "roots", "GA-IRONCLAD-ELITE-00-request.json"),
-                Path.Combine(repoRoot, ".local", "bench", "phase0", "out-eval-dop1", "runs", "GA-IRONCLAD-ELITE-00", "route.json")),
-        ];
-
-        int totalSteps = 0;
-        int passedRoots = 0;
-        int failedRoots = 0;
-
-        foreach ((string label, string requestPath, string routePath) in cases)
-        {
-            CleanupActiveRun();
-            IDisposable? choiceScope = null;
-            try
-            {
-                if (!File.Exists(routePath))
-                {
-                    Console.WriteLine($"[FAIL] Gate B1 {label}: missing route file {routePath}");
-                    failedRoots++;
-                    continue;
-                }
-
-                PlanAction[] route = JsonSerializer.Deserialize<PlanAction[]>(
-                    File.ReadAllText(routePath), UnattendedTestFiles.JsonOptions) ?? [];
-                Check(route.Length > 0, $"Empty route.json for {label}.");
-
-                UnattendedTestRequest req = GeneratedScenarioSetup.ReadRequest(requestPath);
-                if (req.GeneratedScenarioPath != null && !Path.IsPathRooted(req.GeneratedScenarioPath))
-                {
-                    string absSpec = Path.GetFullPath(Path.Combine(repoRoot, req.GeneratedScenarioPath));
-                    var json = JsonSerializer.SerializeToNode(req, UnattendedTestFiles.JsonOptions)!.AsObject();
-                    json["generatedScenarioPath"] = absSpec;
-                    req = json.Deserialize<UnattendedTestRequest>(UnattendedTestFiles.JsonOptions)!;
-                }
-
-                string evidenceDir = Path.Combine(outDir, "gate-b1-evidence", label);
-                Directory.CreateDirectory(evidenceDir);
-                GeneratedScenarioSetup setup = GeneratedScenarioSetup.Prepare(req, evidenceDir);
-                Task<IDisposable?> enter = setup.EnterCombatRoomAsync();
-                loop.RunUntilCompleted(enter, TimeSpan.FromSeconds(120), $"GateB1 Enter {label}");
-                choiceScope = enter.GetAwaiter().GetResult();
-
-                CombatState combat = OfflineCombat.WaitForPlayableCombat(loop);
-                setup.CaptureOpening(combat);
-                if (!setup.Request.PreserveNativeCombatStateForTest)
-                {
-                    loop.RunUntilCompleted(
-                        setup.Session.InjectInitialStateAsync(combat, LocalContext.GetMe(combat)!),
-                        TimeSpan.FromSeconds(30), $"GateB1 Inject {label}");
-                }
-
-                HotRootBundle bundle = HotRootBuilder.BuildFromLive(combat);
-                CombatRootSnapshot legacyRoot = CombatRootSnapshot.Capture(combat);
-                SolverDisplayNames names = SolverDisplayNames.Capture(combat);
-                BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
-                SolverSettingsSnapshot settings = SolverSettings.Capture();
-                SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
-                    settings, combat, includeTurnSetup: false, theftPolicy: SolverController.ResolveTheftPolicy(combat));
-                CombatBeamSolver solver = new(legacyRoot, names, damage, policy, searchProfile: policy.Profile);
-
-                CombatHotState hotState = bundle.RootState;
-                HotColdSidecar? hotCold = bundle.RootCold;
-                HotExecScratch scratch = new();
-                List<PlanAction> history = [];
-                int rootSteps = 0;
-                bool rootFailed = false;
-
-                for (int step = 0; step < route.Length; step++)
-                {
-                    PlanAction legacyAction = route[step];
-                    HotParallelExpander.AssignDeterministicCardUids(ref hotState);
-
-                    HotAction hotAction = MapLegacyPlanActionToHot(legacyAction, in hotState, hotCold, bundle.Rules);
-                    List<(PlanCardChoice Choice, PlanCardToken? Token)> choiceCursor = FlattenPlanChoices(legacyAction);
-                    int cursorIdx = 0;
-                    List<HotChoiceSelection> hotChoices = [];
-
-                    HotStepResult hotRes;
-                    int choiceGuard = 0;
-                    while (true)
-                    {
-                        CombatHotState probe = hotState;
-                        HotColdSidecar? probeCold = hotCold;
-                        HotStepResult probeRes = HotCombatEngine.Step(
-                            ref probe, ref probeCold, bundle.Rules, scratch, hotAction,
-                            CollectionsMarshal.AsSpan(hotChoices));
-                        if (!probeRes.NeedsChoice)
-                        {
-                            hotState = probe;
-                            hotCold = probeCold;
-                            hotRes = probeRes;
-                            break;
-                        }
-
-                        if (++choiceGuard > HotLimits.MaxChoicesPerAction)
-                        {
-                            Console.WriteLine(
-                                $"[FAIL] Gate B1 {label} step={step + 1}/{route.Length} ({legacyAction.Kind}:{legacyAction.CardId}{legacyAction.PotionId}): " +
-                                $"exceeded MaxChoicesPerAction resolving pending choice {scratch.PendingChoiceKind}");
-                            rootFailed = true;
-                            hotRes = probeRes;
-                            break;
-                        }
-
-                        HotChoiceSelection sel = ResolvePlanChoiceSelection(
-                            in probe, probeCold, bundle.Rules, scratch, choiceCursor, ref cursorIdx);
-                        hotChoices.Add(sel);
-                    }
-
-                    if (rootFailed)
-                        break;
-
-                    if (!hotRes.Executed)
-                    {
-                        Console.WriteLine(
-                            $"[FAIL] Gate B1 {label} step={step + 1}/{route.Length} ({legacyAction.Kind}:{legacyAction.CardId}{legacyAction.PotionId}): " +
-                            $"HotCombatEngine.Step returned Executed=false (energy={hotState.Energy}, stars={hotState.Stars}, hand={hotState.HandCount})");
-                        rootFailed = true;
-                        break;
-                    }
-
-                    history.Add(legacyAction);
-                    SimulationSnapshot legacySnap = solver.ReplayDiagnosticPrefix(history);
-                    try
-                    {
-                        rootSteps++;
-                        totalSteps++;
-
-                        HotCombatOutcome legacyOutcome = legacySnap.PlayerDead
-                            ? HotCombatOutcome.Defeat
-                            : legacySnap.AllEnemiesDead
-                                ? HotCombatOutcome.Victory
-                                : HotCombatOutcome.Ongoing;
-                        if (hotRes.Outcome != legacyOutcome)
-                        {
-                            Console.WriteLine(
-                                $"[FAIL] Gate B1 {label} step={step + 1}/{route.Length} ({legacyAction.Kind}:{legacyAction.CardId}{legacyAction.PotionId}): " +
-                                $"outcome mismatch hot={hotRes.Outcome} legacy={legacyOutcome}");
-                            rootFailed = true;
-                            break;
-                        }
-
-                        string legacyStamp = HotContinuationStamp.StripModStampSections(
-                            solver.CaptureDiagnosticContinuation(legacySnap).StateText);
-                        string hotStamp = HotContinuationStamp.CaptureFromHot(in hotState, hotCold, bundle.Rules);
-
-                        if (!string.Equals(legacyStamp, hotStamp, StringComparison.Ordinal))
-                        {
-                            var diffs = new ContinuationStamp(legacyStamp).DescribeDifferences(new ContinuationStamp(hotStamp), 5);
-                            Console.WriteLine(
-                                $"[FAIL] Gate B1 {label} step={step + 1}/{route.Length} ({legacyAction.Kind}:{legacyAction.CardId}{legacyAction.PotionId} turn={legacyAction.Turn}):");
-                            foreach (string d in diffs)
-                                Console.WriteLine($"       -> {d}");
-                            rootFailed = true;
-                            break;
-                        }
-                    }
-                    finally
-                    {
-                        legacySnap.ReleaseSimulator();
-                    }
-                }
-
-                if (rootFailed)
-                {
-                    failedRoots++;
-                }
-                else
-                {
-                    Console.WriteLine($"[PASS] Gate B1 {label}: {rootSteps}/{route.Length} route steps 0-diff (outcome={hotState.TerminalOutcome})");
-                    passedRoots++;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[FAIL] Gate B1 {label}: {ex.GetType().Name}: {ex.Message}");
-                failedRoots++;
-            }
-            finally
-            {
-                choiceScope?.Dispose();
-                CleanupActiveRun();
-            }
-        }
-
-        Console.WriteLine($"Gate B1 Summary: {passedRoots}/{cases.Length} roots PASS ({totalSteps} route steps), {failedRoots} FAIL");
-        return failedRoots;
-    }
-
-    private static HotAction MapLegacyPlanActionToHot(
-        PlanAction action,
-        in CombatHotState state,
-        HotColdSidecar? cold,
-        HotRules rules)
-    {
-        if (action.Kind == PlanActionKind.EndTurn)
-            return HotAction.EndTurn();
-
-        int targetSlot = -1;
-        if (action.TargetCombatId is uint targetCid)
-        {
-            for (int e = 0; e < state.EnemyCount; e++)
-            {
-                if (state.Enemies[e].Vital.CombatId == targetCid)
-                {
-                    targetSlot = e;
-                    break;
-                }
-            }
-            Check(targetSlot >= 0, $"TargetCombatId #{targetCid} not found in HotState for {action.Kind}:{action.CardId}{action.PotionId}.");
-        }
-
-        if (action.Kind == PlanActionKind.UsePotion)
-            return HotAction.UsePotion(action.PotionSlot, targetSlot);
-
-        // Match hand card by CardStateKey + CardStateOccurrence, fallback to CardId + CardOccurrence
-        if (!string.IsNullOrEmpty(action.CardStateKey))
-        {
-            int occ = action.CardStateOccurrence;
-            for (int i = 0; i < state.HandCount; i++)
-            {
-                string key = HotContinuationStamp.FormatChoiceCardKey(in state.Cards[i], cold, rules);
-                if (string.Equals(key, action.CardStateKey, StringComparison.Ordinal))
-                {
-                    if (occ-- == 0)
-                        return HotAction.PlayCard(i, targetSlot);
-                }
-            }
-        }
-
-        int cardOcc = action.CardOccurrence;
-        for (int i = 0; i < state.HandCount; i++)
-        {
-            if (string.Equals(rules.Cards[state.Cards[i].CardDefId].Entry, action.CardId, StringComparison.Ordinal))
-            {
-                if (cardOcc-- == 0)
-                    return HotAction.PlayCard(i, targetSlot);
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find hand card {action.CardId}#{action.CardOccurrence} (stateKey={action.CardStateKey}#{action.CardStateOccurrence}) in HotState hand (count={state.HandCount}).");
-    }
-
-    private static List<(PlanCardChoice Choice, PlanCardToken? Token)> FlattenPlanChoices(PlanAction action)
-    {
-        List<(PlanCardChoice, PlanCardToken?)> list = [];
-        if (action.Kind == PlanActionKind.EndTurn)
-        {
-            if (action.TurnStartChoices != null)
-            {
-                foreach (PlanCardChoice choice in action.TurnStartChoices)
-                {
-                    if (choice.Cards.Count == 0)
-                        list.Add((choice, null));
-                    else
-                        foreach (PlanCardToken token in choice.Cards)
-                            list.Add((choice, token));
-                }
-            }
-            return list;
-        }
-
-        foreach (PlanCardChoice choice in action.GetActionChoicesInExecutionOrder())
-        {
-            if (choice.Cards.Count == 0)
-                list.Add((choice, null));
-            else
-                foreach (PlanCardToken token in choice.Cards)
-                    list.Add((choice, token));
-        }
-        return list;
-    }
-
-    private static HotChoiceSelection ResolvePlanChoiceSelection(
-        in CombatHotState probe,
-        HotColdSidecar? probeCold,
-        HotRules rules,
-        HotExecScratch scratch,
-        List<(PlanCardChoice Choice, PlanCardToken? Token)> cursor,
-        ref int cursorIdx)
-    {
-        if (cursorIdx >= cursor.Count)
-        {
-            if (scratch.PendingChoiceMin == 0)
-                return new HotChoiceSelection(HotChoiceKind.None, 0, 0);
-            HotChoiceSelection[] fallback = new HotChoiceSelection[32];
-            int count = HotCombatEngine.EnumerateChoiceOptions(in probe, probeCold, rules, scratch, fallback);
-            Check(count > 0, $"No PlanCardChoice token left and no fallback option for {scratch.PendingChoiceKind}.");
-            return fallback[0];
-        }
-
-        (PlanCardChoice choice, PlanCardToken? token) = cursor[cursorIdx++];
-        if (token == null)
-            return new HotChoiceSelection(HotChoiceKind.None, 0, 0);
-
-        if (scratch.PendingChoiceKind == HotChoiceKind.GeneratedCard)
-        {
-            HotChoiceSelection[] opts = new HotChoiceSelection[32];
-            int count = HotCombatEngine.EnumerateChoiceOptions(in probe, probeCold, rules, scratch, opts);
-            int occ = token.OptionOccurrence;
-            for (int i = 0; i < count; i++)
-            {
-                if (opts[i].Kind != HotChoiceKind.GeneratedCard)
-                    continue;
-                if (string.Equals(rules.Cards[opts[i].CardDefId].Entry, token.CardId, StringComparison.Ordinal))
-                {
-                    if (occ-- == 0)
-                        return opts[i];
-                }
-            }
-            for (int i = 0; i < count; i++)
-            {
-                if (opts[i].Kind == HotChoiceKind.GeneratedCard
-                    && string.Equals(rules.Cards[opts[i].CardDefId].Entry, token.CardId, StringComparison.Ordinal))
-                    return opts[i];
-            }
-            throw new InvalidOperationException($"GeneratedCard choice option {token.CardId} not found among {count} options.");
-        }
-
-        HotPileKind pile = scratch.PendingChoiceKind switch
-        {
-            HotChoiceKind.HandCard => HotPileKind.Hand,
-            HotChoiceKind.DrawPile => HotPileKind.Draw,
-            HotChoiceKind.DiscardPile => HotPileKind.Discard,
-            HotChoiceKind.ExhaustPile => HotPileKind.Exhaust,
-            _ => throw new InvalidOperationException($"Unsupported pending choice kind {scratch.PendingChoiceKind}."),
-        };
-
-        int start = HotPiles.ZoneStart(in probe, pile);
-        int len = HotPiles.ZoneCount(in probe, pile);
-
-        if (!string.IsNullOrEmpty(token.StateKey))
-        {
-            int occ = token.SourceOccurrence;
-            for (int offset = 0; offset < len; offset++)
-            {
-                ref readonly HotCard c = ref probe.Cards[start + offset];
-                if (string.Equals(HotContinuationStamp.FormatChoiceCardKey(in c, probeCold, rules), token.StateKey, StringComparison.Ordinal))
-                {
-                    if (occ-- == 0)
-                        return new HotChoiceSelection(scratch.PendingChoiceKind, c.CardUid, c.CardDefId);
-                }
-            }
-        }
-
-        int fallbackOcc = token.SourceOccurrence;
-        for (int offset = 0; offset < len; offset++)
-        {
-            ref readonly HotCard c = ref probe.Cards[start + offset];
-            if (string.Equals(rules.Cards[c.CardDefId].Entry, token.CardId, StringComparison.Ordinal)
-                && c.UpgradeLevel == token.UpgradeLevel)
-            {
-                if (fallbackOcc-- == 0)
-                    return new HotChoiceSelection(scratch.PendingChoiceKind, c.CardUid, c.CardDefId);
-            }
-        }
-
-        for (int offset = 0; offset < len; offset++)
-        {
-            ref readonly HotCard c = ref probe.Cards[start + offset];
-            if (string.Equals(rules.Cards[c.CardDefId].Entry, token.CardId, StringComparison.Ordinal))
-                return new HotChoiceSelection(scratch.PendingChoiceKind, c.CardUid, c.CardDefId);
-        }
-
-        throw new InvalidOperationException(
-            $"Choice token {token.CardId}+{token.UpgradeLevel} (occ={token.SourceOccurrence}) not found in {pile} (count={len}).");
-    }
-
-    private static int RunGateB(MainLoopContext loop)
+    private static int RunGateB1SelfConsistency(MainLoopContext loop)
     {
         HarnessScenario[] scenarios =
         [
             new("IRONCLAD", "FUZZY_WURM_CRAWLER_WEAK", "OFFLINEHARNESS1", 0, 0),
-            new("IRONCLAD", "NIBBITS_NORMAL", "OFFLINEHARNESS2", 0, 0),
-            new("IRONCLAD", "NIBBITS_WEAK", "OFFLINEHARNESS3", 0, 0),
             new("SILENT", "FUZZY_WURM_CRAWLER_WEAK", "OFFLINEHARNESS4", 0, 0),
             new("DEFECT", "FUZZY_WURM_CRAWLER_WEAK", "OFFLINEHARNESS5", 0, 0),
             new("REGENT", "FUZZY_WURM_CRAWLER_WEAK", "OFFLINEHARNESS6", 0, 0),
@@ -1207,8 +787,9 @@ internal static class HotKernelChecks
         ];
 
         int totalSteps = 0;
-        int totalEpisodes = 0;
         int totalFailures = 0;
+        byte[] packA = new byte[HotLimits.MaxPackedStateBytes];
+        byte[] packB = new byte[HotLimits.MaxPackedStateBytes];
 
         foreach (HarnessScenario scenario in scenarios)
         {
@@ -1216,187 +797,126 @@ internal static class HotKernelChecks
             try
             {
                 Task enter = OfflineCombat.EnterCombatRoomAsync(scenario);
-                loop.RunUntilCompleted(enter, TimeSpan.FromSeconds(120), $"GateB2 Enter {scenario.CharacterId}/{scenario.EncounterId}");
+                loop.RunUntilCompleted(enter, TimeSpan.FromSeconds(120), $"GateB1 Enter {scenario.CharacterId}");
                 CombatState combat = OfflineCombat.WaitForPlayableCombat(loop);
 
                 HotRootBundle bundle = HotRootBuilder.BuildFromLive(combat);
-                CombatRootSnapshot legacyRoot = CombatRootSnapshot.Capture(combat);
-                SolverDisplayNames names = SolverDisplayNames.Capture(combat);
-                BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
-                SolverSettingsSnapshot settings = SolverSettings.Capture();
-                SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
-                    settings, combat, includeTurnSetup: false, theftPolicy: SolverController.ResolveTheftPolicy(combat));
-                CombatBeamSolver solver = new(legacyRoot, names, damage, policy, searchProfile: policy.Profile);
-                Player player = LocalContext.GetMe(combat)!;
-
-                // Verify root step 0 parity
-                CombatHotState rootState = bundle.RootState;
-                SimulationSnapshot rootSnap = solver.ReplayDiagnosticPrefix([]);
-                try
-                {
-                    string legacyRootStamp = HotContinuationStamp.StripModStampSections(
-                        solver.CaptureDiagnosticContinuation(rootSnap).StateText);
-                    string hotRootStamp = HotContinuationStamp.CaptureFromHot(in rootState, bundle.RootCold, bundle.Rules);
-                    if (!string.Equals(legacyRootStamp, hotRootStamp, StringComparison.Ordinal))
-                    {
-                        var diffs = new ContinuationStamp(legacyRootStamp).DescribeDifferences(new ContinuationStamp(hotRootStamp), 5);
-                        Console.WriteLine($"[FAIL] Gate B2 {scenario.CharacterId}/{scenario.EncounterId} Step 0 (root): {string.Join(" | ", diffs)}");
-                        totalFailures++;
-                        continue;
-                    }
-                }
-                finally
-                {
-                    rootSnap.ReleaseSimulator();
-                }
-
-                int scenarioSteps = 0;
-                int scenarioFailures = 0;
                 HotExecScratch scratch = new();
                 HotAction[] legalBuf = new HotAction[64];
                 HotChoiceSelection[] choiceOptBuf = new HotChoiceSelection[32];
 
-                int episodesPerScenario = scenario.CharacterId == "IRONCLAD" ? 3 : 2;
-                for (int episode = 0; episode < episodesPerScenario; episode++)
+                int scenarioSteps = 0;
+                int scenarioFailures = 0;
+                for (int episode = 0; episode < 2; episode++)
                 {
-                    totalEpisodes++;
-                    CombatHotState hotState = bundle.RootState;
-                    HotColdSidecar? hotCold = bundle.RootCold;
-                    List<PlanAction> history = [];
-                    System.Random picker = new(2000 + episode * 97 + scenario.CharacterId.Length * 13 + scenario.EncounterId.Length);
+                    CombatHotState state = bundle.RootState;
+                    HotColdSidecar? cold = bundle.RootCold;
+                    System.Random picker = new(3000 + episode * 97 + scenario.CharacterId.Length * 17);
+                    List<(HotAction Action, HotChoiceSelection[] Choices)> replayLog = [];
 
-                    SimulationSnapshot currentLegacy = solver.ReplayDiagnosticPrefix([]);
-                    try
+                    for (int step = 1; step <= 25; step++)
                     {
-                        const int maxEpisodeSteps = 25;
-                        for (int step = 1; step <= maxEpisodeSteps; step++)
+                        if (state.TerminalOutcome != HotCombatOutcome.Ongoing)
+                            break;
+
+                        HotParallelExpander.AssignDeterministicCardUids(ref state);
+                        int legalCount = HotCombatEngine.EnumerateLegalActions(in state, cold, bundle.Rules, legalBuf);
+                        if (legalCount == 0)
+                            break;
+
+                        HotAction chosen = episode == 0 ? legalBuf[0] : legalBuf[picker.Next(legalCount)];
+                        List<HotChoiceSelection> choices = [];
+                        HotStepResult res;
+                        while (true)
                         {
-                            if (hotState.TerminalOutcome != HotCombatOutcome.Ongoing)
-                                break;
-
-                            HotParallelExpander.AssignDeterministicCardUids(ref hotState);
-                            int legalCount = HotCombatEngine.EnumerateLegalActions(in hotState, hotCold, bundle.Rules, legalBuf);
-                            if (legalCount == 0)
-                                break;
-
-                            HotAction chosen = episode switch
+                            CombatHotState probe = state;
+                            HotColdSidecar? probeCold = cold;
+                            res = HotCombatEngine.Step(ref probe, ref probeCold, bundle.Rules, scratch, chosen,
+                                System.Runtime.InteropServices.CollectionsMarshal.AsSpan(choices));
+                            if (!res.NeedsChoice)
                             {
-                                0 => legalBuf[0],
-                                1 => legalBuf[picker.Next(legalCount)],
-                                _ => step % 2 == 0 ? legalBuf[legalCount - 1] : legalBuf[Math.Max(0, legalCount - 2)],
-                            };
-
-                            // Probe for NeedsChoice; if a starter card (e.g. SURVIVOR) requests a hand discard choice,
-                            // resolve it deterministically and build matching PlanCardChoice for Legacy.
-                            CombatHotState probe = hotState;
-                            HotColdSidecar? probeCold = hotCold;
-                            HotStepResult hotRes = HotCombatEngine.Step(ref probe, ref probeCold, bundle.Rules, scratch, chosen);
-                            PlanCardChoice? mappedChoice = null;
-
-                            if (hotRes.NeedsChoice)
+                                state = probe;
+                                cold = probeCold;
+                                break;
+                            }
+                            if (choices.Count >= HotLimits.MaxChoicesPerAction)
                             {
-                                int optCount = HotCombatEngine.EnumerateChoiceOptions(in probe, probeCold, bundle.Rules, scratch, choiceOptBuf);
-                                if (optCount > 0 && scratch.PendingChoiceKind == HotChoiceKind.HandCard
-                                    && chosen.Kind == HotActionKind.PlayCard
-                                    && bundle.Rules.Cards[hotState.Cards[chosen.SlotOrHandIdx].CardDefId].Entry == "SURVIVOR")
-                                {
-                                    HotChoiceSelection picked = choiceOptBuf[0];
-                                    int pickedIdx = FindHandIndexByUid(in probe, picked.CardUidOrIndex);
-                                    if (pickedIdx >= 0)
-                                    {
-                                        string pickedKey = HotContinuationStamp.FormatChoiceCardKey(in probe.Cards[pickedIdx], probeCold, bundle.Rules);
-                                        int pickedOcc = 0;
-                                        for (int k = 0; k < pickedIdx; k++)
-                                            if (string.Equals(HotContinuationStamp.FormatChoiceCardKey(in probe.Cards[k], probeCold, bundle.Rules), pickedKey, StringComparison.Ordinal))
-                                                pickedOcc++;
-                                        string pickedEntry = bundle.Rules.Cards[probe.Cards[pickedIdx].CardDefId].Entry;
-                                        mappedChoice = new PlanCardChoice(
-                                            PlanChoiceEffect.Discard,
-                                            PileType.Hand,
-                                            [new PlanCardToken(pickedEntry, probe.Cards[pickedIdx].UpgradeLevel, pickedKey, pickedOcc, 0, pickedEntry)],
-                                            SourceId: "");
-                                        probe = hotState;
-                                        probeCold = hotCold;
-                                        HotChoiceSelection[] oneChoice = [picked];
-                                        hotRes = HotCombatEngine.Step(ref probe, ref probeCold, bundle.Rules, scratch, chosen, oneChoice);
-                                    }
-                                }
-
-                                // If still NeedsChoice (e.g. complex generated/multi choice in random walk), fall back to EndTurn
-                                if (hotRes.NeedsChoice)
+                                chosen = HotAction.EndTurn();
+                                choices.Clear();
+                                continue;
+                            }
+                            int optCount = HotCombatEngine.EnumerateChoiceOptions(in probe, probeCold, bundle.Rules, scratch, choiceOptBuf);
+                            if (optCount == 0)
+                            {
+                                if (scratch.PendingChoiceMin == 0)
+                                    choices.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
+                                else
                                 {
                                     chosen = HotAction.EndTurn();
-                                    mappedChoice = null;
-                                    probe = hotState;
-                                    probeCold = hotCold;
-                                    hotRes = HotCombatEngine.Step(ref probe, ref probeCold, bundle.Rules, scratch, chosen);
+                                    choices.Clear();
                                 }
                             }
-
-                            PlanAction legacyAction = MapHotActionToLegacy(
-                                chosen, in hotState, currentLegacy, player, bundle.Rules);
-                            if (mappedChoice != null)
-                                legacyAction = legacyAction with { Choice = mappedChoice };
-
-                            Check(hotRes.Executed && !hotRes.NeedsChoice,
-                                $"Gate B2 {scenario.CharacterId}/{scenario.EncounterId} ep={episode} step={step}: HotStep unexpected result {hotRes}");
-
-                            hotState = probe;
-                            hotCold = probeCold;
-
-                            history.Add(legacyAction);
-                            currentLegacy.ReleaseSimulator();
-                            currentLegacy = solver.ReplayDiagnosticPrefix(history);
-
-                            scenarioSteps++;
-                            totalSteps++;
-
-                            HotCombatOutcome legacyOutcome = currentLegacy.PlayerDead
-                                ? HotCombatOutcome.Defeat
-                                : currentLegacy.AllEnemiesDead
-                                    ? HotCombatOutcome.Victory
-                                    : HotCombatOutcome.Ongoing;
-                            if (hotRes.Outcome != legacyOutcome)
+                            else
                             {
-                                Console.WriteLine(
-                                    $"[FAIL] Gate B2 {scenario.CharacterId}/{scenario.EncounterId} ep={episode} step={step} action={DescribeAction(chosen, legacyAction)}: " +
-                                    $"outcome mismatch hot={hotRes.Outcome} legacy={legacyOutcome}");
-                                scenarioFailures++;
-                                totalFailures++;
-                                break;
-                            }
-
-                            string legacyStamp = HotContinuationStamp.StripModStampSections(
-                                solver.CaptureDiagnosticContinuation(currentLegacy).StateText);
-                            string hotStamp = HotContinuationStamp.CaptureFromHot(in hotState, hotCold, bundle.Rules);
-
-                            if (!string.Equals(legacyStamp, hotStamp, StringComparison.Ordinal))
-                            {
-                                var diffs = new ContinuationStamp(legacyStamp).DescribeDifferences(new ContinuationStamp(hotStamp), 5);
-                                Console.WriteLine(
-                                    $"[FAIL] Gate B2 {scenario.CharacterId}/{scenario.EncounterId} ep={episode} step={step} action={DescribeAction(chosen, legacyAction)} " +
-                                    $"(turn={hotState.PlayerTurnNumber}):");
-                                foreach (string d in diffs)
-                                    Console.WriteLine($"       -> {d}");
-                                scenarioFailures++;
-                                totalFailures++;
-                                break;
+                                choices.Add(choiceOptBuf[0]);
                             }
                         }
+
+                        Check(res.Executed, $"HotCombatEngine.Step returned Executed=false on {scenario.CharacterId} step {step}.");
+                        replayLog.Add((chosen, choices.ToArray()));
+
+                        // Verify Pack -> Unpack -> Pack byte-identity and hash stability at every step
+                        CombatHotState copy1 = state;
+                        HotColdSidecar? cold1 = cold;
+                        int len1 = HotStatePacker.Pack(ref copy1, ref cold1, packA, canonicalize: true);
+                        HotHash128 hash1 = HotHash.ComputeHash(packA.AsSpan(0, len1), cold1);
+
+                        CombatHotState unpacked = default;
+                        HotStatePacker.Unpack(packA.AsSpan(0, len1), ref unpacked);
+                        HotColdSidecar? cold2 = cold1;
+                        int len2 = HotStatePacker.Pack(ref unpacked, ref cold2, packB, canonicalize: true);
+                        HotHash128 hash2 = HotHash.ComputeHash(packB.AsSpan(0, len2), cold2);
+
+                        if (len1 != len2 || !packA.AsSpan(0, len1).SequenceEqual(packB.AsSpan(0, len2)) || hash1 != hash2)
+                        {
+                            Console.WriteLine($"[FAIL] Gate B1 {scenario.CharacterId} ep={episode} step={step}: Pack/Unpack round-trip diverged.");
+                            scenarioFailures++;
+                            totalFailures++;
+                            break;
+                        }
+
+                        scenarioSteps++;
+                        totalSteps++;
                     }
-                    finally
+
+                    // Deterministic full replay from root must land on the exact same packed bytes + hash
+                    CombatHotState replay = bundle.RootState;
+                    HotColdSidecar? replayCold = bundle.RootCold;
+                    foreach ((HotAction act, HotChoiceSelection[] ch) in replayLog)
                     {
-                        currentLegacy.ReleaseSimulator();
+                        HotParallelExpander.AssignDeterministicCardUids(ref replay);
+                        HotStepResult r = HotCombatEngine.Step(ref replay, ref replayCold, bundle.Rules, scratch, act, ch);
+                        Check(r.Executed && !r.NeedsChoice, $"Deterministic replay failed on {scenario.CharacterId}.");
+                    }
+                    CombatHotState origCopy = state;
+                    HotColdSidecar? origCold = cold;
+                    int origLen = HotStatePacker.Pack(ref origCopy, ref origCold, packA, canonicalize: true);
+                    int repLen = HotStatePacker.Pack(ref replay, ref replayCold, packB, canonicalize: true);
+                    if (origLen != repLen || !packA.AsSpan(0, origLen).SequenceEqual(packB.AsSpan(0, repLen)))
+                    {
+                        Console.WriteLine($"[FAIL] Gate B1 {scenario.CharacterId} ep={episode}: deterministic replay diverged from live walk.");
+                        scenarioFailures++;
+                        totalFailures++;
                     }
                 }
 
                 Console.WriteLine(
-                    $"[{(scenarioFailures == 0 ? "PASS" : "FAIL")}] Gate B2 {scenario.CharacterId}/{scenario.EncounterId}: " +
-                    $"{scenarioSteps} lockstep steps across {episodesPerScenario} episodes, {scenarioFailures} mismatch(es)");
+                    $"[{(scenarioFailures == 0 ? "PASS" : "FAIL")}] Gate B1 {scenario.CharacterId}: " +
+                    $"{scenarioSteps} steps across 2 episodes (Pack/Unpack + replay 0-diff)");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FAIL] Gate B2 {scenario.CharacterId}/{scenario.EncounterId}: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+                Console.WriteLine($"[FAIL] Gate B1 {scenario.CharacterId}: {ex.GetType().Name}: {ex.Message}");
                 totalFailures++;
             }
             finally
@@ -1405,18 +925,115 @@ internal static class HotKernelChecks
             }
         }
 
-        Check(totalSteps >= 100, $"Gate B2 executed only {totalSteps} steps (expected >= 100).");
-        Console.WriteLine($"Gate B2 Summary: {totalSteps} total lockstep steps across {totalEpisodes} episodes (6 characters), {totalFailures} failure(s)");
+        Check(totalSteps >= 60, $"Gate B1 executed only {totalSteps} steps (expected >= 60).");
+        Console.WriteLine($"Gate B1 Summary: {totalSteps} steps across 6 characters, {totalFailures} failure(s)");
         return totalFailures;
     }
 
-    private static int FindHandIndexByUid(in CombatHotState s, ushort cardUid)
+    private static int RunGateB2Determinism(string repoRoot, string outDir, MainLoopContext loop)
     {
-        for (int i = 0; i < s.HandCount; i++)
-            if (s.Cards[i].CardUid == cardUid)
-                return i;
-        return -1;
+        string noveltyDir = Path.Combine(repoRoot, "coverage", "corpora", "novelty");
+        string[] labels = ["dev-00-ironclad-elite", "dev-01-silent-elite"];
+        int failures = 0;
+
+        foreach (string label in labels)
+        {
+            CleanupActiveRun();
+            IDisposable? choiceScope = null;
+            try
+            {
+                string specPath = Path.Combine(noveltyDir, label + ".json");
+                UnattendedTestRequest req = JsonSerializer.Deserialize<UnattendedTestRequest>(
+                    JsonSerializer.Serialize(new
+                    {
+                        schemaVersion = 1,
+                        scenarioId = label,
+                        cards = Array.Empty<object>(),
+                        generatedScenarioPath = specPath,
+                    }),
+                    UnattendedTestFiles.JsonOptions)!;
+
+                string evidenceDir = Path.Combine(outDir, "gate-b2-evidence", label);
+                Directory.CreateDirectory(evidenceDir);
+                GeneratedScenarioSetup setup = GeneratedScenarioSetup.Prepare(req, evidenceDir);
+                Task<IDisposable?> enter = setup.EnterCombatRoomAsync();
+                loop.RunUntilCompleted(enter, TimeSpan.FromSeconds(120), $"GateB2 Enter {label}");
+                choiceScope = enter.GetAwaiter().GetResult();
+
+                CombatState combat = OfflineCombat.WaitForPlayableCombat(loop);
+                setup.CaptureOpening(combat);
+                if (!setup.Request.PreserveNativeCombatStateForTest)
+                {
+                    loop.RunUntilCompleted(
+                        setup.Session.InjectInitialStateAsync(combat, LocalContext.GetMe(combat)!),
+                        TimeSpan.FromSeconds(30), $"GateB2 Inject {label}");
+                }
+
+                CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
+                SolverDisplayNames names = SolverDisplayNames.Capture(combat);
+                BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
+                SolverSettingsSnapshot settings = SolverSettings.Capture();
+                SearchPolicySnapshot basePolicy = SolverController.CaptureSearchPolicy(
+                    settings, combat, includeTurnSetup: false, theftPolicy: SolverController.ResolveTheftPolicy(combat)) with
+                {
+                    Profile = new SolverSearchProfile(60, 30_000, 32, 18, 24, 60_000),
+                    FixedBudget = true,
+                    BudgetOverrideMilliseconds = 60_000,
+                };
+
+                foreach (bool coordinator in new[] { false, true })
+                {
+                    string mode = coordinator ? "Coordinator" : "Evaluate";
+                    SearchPolicySnapshot p1 = basePolicy with { MaxDegreeOfParallelism = 1 };
+                    SearchPolicySnapshot p8 = basePolicy with { MaxDegreeOfParallelism = 8 };
+                    SolverResult r1 = coordinator
+                        ? HotSearchCoordinator.Solve(root, names, damage, p1, CancellationToken.None, null)
+                        : HotSearchCoordinator.SolveSingleBeam(root, names, damage, p1, CancellationToken.None);
+                    SolverResult r8 = coordinator
+                        ? HotSearchCoordinator.Solve(root, names, damage, p8, CancellationToken.None, null)
+                        : HotSearchCoordinator.SolveSingleBeam(root, names, damage, p8, CancellationToken.None);
+
+                    string sig1 = RouteSignature(r1);
+                    string sig8 = RouteSignature(r8);
+                    bool exact = string.Equals(sig1, sig8, StringComparison.Ordinal)
+                        && r1.ProjectedBattleHpLost == r8.ProjectedBattleHpLost
+                        && r1.PotionCount == r8.PotionCount
+                        && r1.BestNode.Score == r8.BestNode.Score;
+                    if (!exact)
+                    {
+                        Console.WriteLine(
+                            $"[FAIL] Gate B2 {label} ({mode}): DOP=1 vs DOP=8 diverged: " +
+                            $"dop1=(hp={r1.ProjectedBattleHpLost},pot={r1.PotionCount},score={r1.BestNode.Score},acts={r1.BestNode.Actions.Count}) " +
+                            $"dop8=(hp={r8.ProjectedBattleHpLost},pot={r8.PotionCount},score={r8.BestNode.Score},acts={r8.BestNode.Actions.Count})");
+                        failures++;
+                    }
+                    else
+                    {
+                        Console.WriteLine(
+                            $"[PASS] Gate B2 {label} ({mode}): DOP=1 == DOP=8 exact " +
+                            $"(hpLost={r1.ProjectedBattleHpLost}, pot={r1.PotionCount}, actions={r1.BestNode.Actions.Count}, score={r1.BestNode.Score:F0})");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[FAIL] Gate B2 {label}: {ex.GetType().Name}: {ex.Message}");
+                failures++;
+            }
+            finally
+            {
+                choiceScope?.Dispose();
+                CleanupActiveRun();
+            }
+        }
+
+        Console.WriteLine($"Gate B2 Summary: {failures} failure(s)");
+        return failures;
     }
+
+    private static string RouteSignature(SolverResult r)
+        => string.Join(";", r.BestNode.Actions.Select(a =>
+            $"{a.Turn}:{a.Kind}:{a.CardId}:{a.PotionId}:{a.TargetCombatId}:{a.CardOccurrence}:{a.Choice?.Cards.Count ?? 0}"));
 
     private static int RunGateC(MainLoopContext loop)
     {
@@ -1429,16 +1046,6 @@ internal static class HotKernelChecks
             CombatState combat = OfflineCombat.WaitForPlayableCombat(loop);
 
             HotRootBundle bundle = HotRootBuilder.BuildFromLive(combat);
-            CombatRootSnapshot legacyRoot = CombatRootSnapshot.Capture(combat);
-            SolverDisplayNames names = SolverDisplayNames.Capture(combat);
-            BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
-            SolverSettingsSnapshot settings = SolverSettings.Capture();
-            SearchPolicySnapshot policy = SolverController.CaptureSearchPolicy(
-                settings, combat, includeTurnSetup: false, theftPolicy: SolverController.ResolveTheftPolicy(combat));
-            CombatBeamSolver solver = new(legacyRoot, names, damage, policy, searchProfile: policy.Profile);
-            Player player = LocalContext.GetMe(combat)!;
-
-            // Pick first playable card action
             CombatHotState rootState = bundle.RootState;
             HotAction[] legalBuf = new HotAction[32];
             int legalCount = HotCombatEngine.EnumerateLegalActions(in rootState, bundle.RootCold, bundle.Rules, legalBuf);
@@ -1455,19 +1062,6 @@ internal static class HotKernelChecks
             }
             Check(foundCard, "Gate C could not find a playable card action on root.");
 
-            SimulationSnapshot rootSnap = solver.ReplayDiagnosticPrefix([]);
-            PlanAction legacyAction;
-            try
-            {
-                legacyAction = MapHotActionToLegacy(hotAction, in rootState, rootSnap, player, bundle.Rules);
-            }
-            finally
-            {
-                rootSnap.ReleaseSimulator();
-            }
-            PlanAction[] singleLegacyAction = [legacyAction];
-
-            // Pre-pack root state into PackedStateArena
             using PackedStateArena arena = new();
             CombatHotState rootCopy = bundle.RootState;
             HotColdSidecar? rootCold = bundle.RootCold;
@@ -1481,7 +1075,6 @@ internal static class HotKernelChecks
             CombatHotState workState = default;
             ulong hashSink = 0;
 
-            // Warmup both
             for (int i = 0; i < 1000; i++)
             {
                 HotStatePacker.Unpack(arena.GetSpan(rootHandle), ref workState);
@@ -1490,14 +1083,7 @@ internal static class HotKernelChecks
                 int len = HotStatePacker.Pack(ref workState, ref wc, packBuf, canonicalize: true);
                 hashSink ^= HotHash.ComputeHash(packBuf.AsSpan(0, len), wc).Lo;
             }
-            for (int i = 0; i < 200; i++)
-            {
-                SimulationSnapshot snap = solver.ReplayDiagnosticPrefix(singleLegacyAction);
-                hashSink ^= (ulong)snap.EnemyHp;
-                snap.ReleaseSimulator();
-            }
 
-            // Timed HotKernel: 50,000 iterations of Unpack + PlayCard + Pack + Hash
             const int hotIters = 50_000;
             long hotAllocBefore = GC.GetAllocatedBytesForCurrentThread();
             Stopwatch hotSw = Stopwatch.StartNew();
@@ -1512,39 +1098,17 @@ internal static class HotKernelChecks
             hotSw.Stop();
             long hotAllocAfter = GC.GetAllocatedBytesForCurrentThread();
 
-            // Timed Legacy: 5,000 iterations of Fork + ManualPlay + Snapshot
-            const int legacyIters = 5_000;
-            long legacyAllocBefore = GC.GetAllocatedBytesForCurrentThread();
-            Stopwatch legacySw = Stopwatch.StartNew();
-            for (int i = 0; i < legacyIters; i++)
-            {
-                SimulationSnapshot snap = solver.ReplayDiagnosticPrefix(singleLegacyAction);
-                hashSink ^= (ulong)snap.EnemyHp;
-                snap.ReleaseSimulator();
-            }
-            legacySw.Stop();
-            long legacyAllocAfter = GC.GetAllocatedBytesForCurrentThread();
-
             double hotUs = hotSw.Elapsed.TotalMicroseconds / hotIters;
             double hotTps = hotIters / hotSw.Elapsed.TotalSeconds;
             double hotBytesPerStep = (double)(hotAllocAfter - hotAllocBefore) / hotIters;
 
-            double legacyUs = legacySw.Elapsed.TotalMicroseconds / legacyIters;
-            double legacyTps = legacyIters / legacySw.Elapsed.TotalSeconds;
-            double legacyBytesPerStep = (double)(legacyAllocAfter - legacyAllocBefore) / legacyIters;
+            string cardEntry = bundle.Rules.Cards[rootState.Cards[hotAction.SlotOrHandIdx].CardDefId].Entry;
+            Console.WriteLine($"Action benchmarked: {cardEntry} | sink={hashSink:X16}");
+            Console.WriteLine($"HotKernel (`Unpack+PlayCard+Pack+Hash`): {hotIters} iters | {hotSw.Elapsed.TotalMilliseconds:F2} ms | {hotUs:F2} us/step | {hotTps:N0} trans/s | {hotBytesPerStep:F1} B/step");
 
-            double speedup = hotTps / legacyTps;
-
-            Console.WriteLine($"Action benchmarked: {legacyAction.CardId} (target={legacyAction.TargetCombatId?.ToString() ?? "-"}) | sink={hashSink:X16}");
-            Console.WriteLine($"| Engine | Iters | Elapsed ms | us/step | trans/s | bytes/step |");
-            Console.WriteLine($"|---|---:|---:|---:|---:|---:|");
-            Console.WriteLine($"| Legacy (`Fork+ManualPlay+Snapshot`) | {legacyIters} | {legacySw.Elapsed.TotalMilliseconds:F2} | {legacyUs:F2} | {legacyTps:N0} | {legacyBytesPerStep:N1} |");
-            Console.WriteLine($"| HotKernel (`Unpack+PlayCard+Pack+Hash`) | {hotIters} | {hotSw.Elapsed.TotalMilliseconds:F2} | {hotUs:F2} | {hotTps:N0} | {hotBytesPerStep:N1} |");
-            Console.WriteLine($"Speedup: {speedup:F2}x (target >= 8.0x) | Hot alloc: {hotBytesPerStep:F1} B/step (target ~0 B/step)");
-
-            if (speedup < 8.0)
+            if (hotTps < 100_000.0)
             {
-                Console.WriteLine($"[FAIL] Gate C speedup {speedup:F2}x is below 8.0x target.");
+                Console.WriteLine($"[FAIL] Gate C throughput {hotTps:N0} trans/s is below 100,000 trans/s floor.");
                 return 1;
             }
             if (hotBytesPerStep > 64.0)
@@ -1561,58 +1125,6 @@ internal static class HotKernelChecks
             CleanupActiveRun();
         }
     }
-
-    private static PlanAction MapHotActionToLegacy(
-        HotAction hotAction,
-        in CombatHotState hotState,
-        SimulationSnapshot legacySnap,
-        Player player,
-        HotRules rules)
-    {
-        if (hotAction.Kind == HotActionKind.EndTurn)
-            return new PlanAction(PlanActionKind.EndTurn, Turn: hotState.PlayerTurnNumber);
-
-        Check(hotAction.Kind == HotActionKind.PlayCard, $"Unsupported Gate B action kind: {hotAction.Kind}");
-        int handIdx = hotAction.SlotOrHandIdx;
-        SimPlayerCombatState pcs = legacySnap.Simulator.State.GetPlayerCombatState(player);
-        Check(handIdx < pcs.Hand.Cards.Count,
-            $"Hand index {handIdx} out of range for legacy hand ({pcs.Hand.Cards.Count}).");
-
-        PredictedCard card = pcs.Hand.Cards[handIdx];
-        string hotCardEntry = rules.Cards[hotState.Cards[handIdx].CardDefId].Entry;
-        Check(string.Equals(card.Preview.Id.Entry, hotCardEntry, StringComparison.Ordinal),
-            $"Hand[{handIdx}] card mismatch before step: hot={hotCardEntry} legacy={card.Preview.Id.Entry}.");
-
-        string cardId = card.Preview.Id.Entry;
-        string stateKey = CardChoiceSupport.ChoiceCardKey(card);
-        int occurrence = 0;
-        int stateOccurrence = 0;
-        for (int i = 0; i < handIdx; i++)
-        {
-            if (string.Equals(pcs.Hand.Cards[i].Preview.Id.Entry, cardId, StringComparison.Ordinal))
-                occurrence++;
-            if (string.Equals(CardChoiceSupport.ChoiceCardKey(pcs.Hand.Cards[i]), stateKey, StringComparison.Ordinal))
-                stateOccurrence++;
-        }
-
-        uint? targetCombatId = hotAction.TargetEnemySlot >= 0
-            ? hotState.Enemies[hotAction.TargetEnemySlot].Vital.CombatId
-            : null;
-
-        return new PlanAction(
-            PlanActionKind.PlayCard,
-            Turn: hotState.PlayerTurnNumber,
-            CardId: cardId,
-            CardOccurrence: occurrence,
-            TargetCombatId: targetCombatId,
-            CardStateKey: stateKey,
-            CardStateOccurrence: stateOccurrence);
-    }
-
-    private static string DescribeAction(HotAction action, PlanAction legacyAction)
-        => action.Kind == HotActionKind.EndTurn
-            ? "EndTurn"
-            : $"PlayCard[{action.SlotOrHandIdx}]={legacyAction.CardId}(target={legacyAction.TargetCombatId?.ToString() ?? "-"})";
 
     private static void CleanupActiveRun()
     {

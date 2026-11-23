@@ -376,8 +376,7 @@ internal static class CombatBugReportExporter
         string reportId = submissionId ?? Guid.NewGuid().ToString("N");
         string reportJson = CombatBugReportMetadata.Serialize(reportId, playerDescription,
             (_currentSession ?? _lastSession)?.ReportCombat,
-            SolverController.CaptureBugReportClassificationForExport(),
-            SolverController.ManualProjectionComparisonForExport);
+            SolverController.CaptureBugReportClassificationForExport());
         string environmentJson = JsonSerializer.Serialize(new
         {
             schemaVersion = 2,
@@ -1229,11 +1228,6 @@ internal static class CombatBugReportExporter
             settings.BrightestFlameMaxHpLossLimit,
             settings.IgnoreLongTermRewards,
             settings.PredictPotionReward,
-            useNoveltyPortfolio = settings.UseNoveltyPortfolio
-                || UnattendedTestRunner.UseNoveltyPortfolioOverride,
-            settings.UseEarlyTurnExploration,
-            useBeamWidthPortfolio = settings.UseBeamWidthPortfolio
-                || UnattendedTestRunner.UseBeamWidthPortfolioOverride,
             searchMaxDegreeOfParallelism = UnattendedTestRunner.SearchMaxDegreeOfParallelismOverride ?? settings.SearchMaxDegreeOfParallelism,
             profile = settings.Profile with { SoftTimeBudgetMilliseconds = UnattendedTestRunner.SearchBudgetOverrideMilliseconds
                 ?? settings.Profile.SoftTimeBudgetMilliseconds },
@@ -1276,17 +1270,7 @@ internal static class CombatBugReportExporter
         captured["searchMaxDegreeOfParallelism"] = policy.MaxDegreeOfParallelism;
         captured["includeTurnSetup"] = policy.IncludeTurnSetup;
         captured["act3BossStrategy"] = policy.Act3BossStrategy;
-        captured["useBeamWidthPortfolio"] = policy.UseBeamWidthPortfolio;
-        captured["portfolioSelector"] = policy.PortfolioExperiment?.Model?.ModelId;
-        captured["useNoveltyPortfolio"] = policy.UseNoveltyPortfolio;
-        captured["earlyTurnExplorationDepth"] = policy.EarlyTurnExplorationDepth;
-        captured["earlyTurnExplorationBudgetMilliseconds"] =
-            policy.EarlyTurnExplorationBudgetMilliseconds;
         captured["predictPotionReward"] = policy.PredictPotionReward;
-        captured["noveltyBudget"] = JsonSerializer.SerializeToNode(policy.NoveltyBudget, JsonOptions);
-        captured["beamWidthPortfolioWidths"] = JsonSerializer.SerializeToNode(
-            policy.BeamWidthPortfolioWidths,
-            JsonOptions);
         captured["growthOpportunityTarget"] = JsonSerializer.SerializeToNode(
             policy.GrowthOpportunityTargets,
             JsonOptions);
@@ -1339,10 +1323,8 @@ internal static class CombatBugReportExporter
             "solverDisabled", "automaticCalculationEnabled", "stopFullAutoOnCombatEnd", "stopFullAutoOnDeathTurn", "relicStrategyEnabled", "relicCounterRules",
             "stopFullAutoOnWorseRecalculation", "enableDetailedDiagnosticLogs", "retainAllCombatLogs", "potionDirectives",
             "actTransitionBossHpStrategy", "finalBossHpStrategy", "acceptableBattleHpLoss", "stopAtAcceptableBattleHpLoss", "growthBudgets", "brightestFlameMaxHpLossLimit", "performancePreset",
-            "searchMaxDegreeOfParallelism", "useBeamWidthPortfolio", "useNoveltyPortfolio", "showNoveltyPortfolioHint", "showSpeedXWarning", "shortTimeLimitSeconds", "deepTimeLimitSeconds", "enableNoGcRegion",
-            "noGcRegionBudgetGigabytes", "shortBeamWidth", "deepBeamWidth", "shortMaxExpandedNodes", "deepMaxExpandedNodes",
-            "shortMaxCardBranchesPerNode", "deepMaxCardBranchesPerNode", "shortMaxPileChoiceBranchesPerAction",
-            "deepMaxPileChoiceBranchesPerAction", "shortMaxHandChoiceBranchesPerAction", "deepMaxHandChoiceBranchesPerAction",
+            "searchMaxDegreeOfParallelism", "showSpeedXWarning", "searchTimeLimitSeconds", "searchBeamWidth", "searchMaxExpandedNodes",
+            "searchMaxCardBranchesPerNode", "searchMaxPileChoiceBranchesPerAction", "searchMaxHandChoiceBranchesPerAction",
             "deploymentFastMode", "deploymentInterActionDelaySeconds",
         };
         foreach (string key in settings.Select(item => item.Key).Where(key => !fields.Contains(key)).ToArray())

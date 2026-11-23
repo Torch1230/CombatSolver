@@ -253,7 +253,6 @@ internal static partial class PreCombatForecastWorker
                         MapPointType = step.MapPointType,
                     })
                     .ToArray(),
-                EnableNoGcRegionForTest = false,
                 HeadlessFastModeForTest = SolverDeploymentFastMode.Instant,
                 StopAfterInitialSolverResultAssertion = true,
                 ExitOnComplete = false,

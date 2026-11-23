@@ -276,7 +276,7 @@ internal static class HotPlanMaterializer
         SolverSnapshot snapshot = new(
             HasRisk: false,
             PlayerDead: finalDead,
-            AllEnemiesDead: finalSummary.AliveEnemyCount == 0 && !finalDead,
+            AllEnemiesDead: finalSummary.AliveEnemyCount == 0 && finalSummary.RevivingEnemyCount == 0 && !finalDead,
             PlayerHp: finalSummary.PlayerHp,
             PlayerMaxHp: finalSummary.PlayerMaxHp,
             CumulativePlayerHpLost: finalSummary.HpLost,

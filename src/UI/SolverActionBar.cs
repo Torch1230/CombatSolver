@@ -19,7 +19,7 @@ internal sealed partial class SolverActionBar : VBoxContainer
     private readonly Control _memory;
 
     public SolverActionBar(Button execute, Button recalculate, Button stop, Button adopt, Button freeze,
-        Button fullAuto, Control autoStart, Control memory, Button releaseMemory)
+        Button fullAuto, Control autoStart, Control memory)
     {
         Name = "Footer";
         MouseFilter = MouseFilterEnum.Pass;
@@ -48,7 +48,6 @@ internal sealed partial class SolverActionBar : VBoxContainer
         _memoryRow = new HBoxContainer { Name = "MemoryRow", MouseFilter = MouseFilterEnum.Pass };
         _memoryRow.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
         _memoryRow.AddChild(memory);
-        _memoryRow.AddChild(releaseMemory);
         AddChild(_memoryRow);
     }
 

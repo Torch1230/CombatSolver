@@ -27,7 +27,7 @@
 
 ## 1. StateStore：减少所有权之外的容器开销
 
-实现入口：[PredictionStateStore.cs](../../../src/Engine/Common/PredictionStateStore.cs)。
+实现入口：`src/Engine/Common/PredictionStateStore.cs`。
 
 原实现中 `StateEntry` 只有 `OwnedStateEntry` 一种实际子类，`Read()` 和 `Materialize()` 均返回同一个已拥有对象。因此移除这层每条 state 的堆对象包装，保留 `Dictionary<(AbstractModel Model, Type StateType), object>` 的原键及遍历方式。`_states`、`_modelAliases` 和 `_countByType` 在首次需要时创建；空 Fork 不创建三张空字典。
 
@@ -44,7 +44,7 @@
 
 ### 独立检查及分配样本
 
-[PredictionStateStoreChecks](../../../tools/testing/checks/PredictionStateStoreChecks/README.md) 直接编译生产 Store 源码，用最小模型身份和 remap context 测试替身隔离游戏初始化。检查覆盖上述契约，最终候选已通过。它不能替代真实模型 Fork、actual/simulated 或增量回放验证。
+PredictionStateStoreChecks（`tools/testing/checks/PredictionStateStoreChecks/README.md`） 直接编译生产 Store 源码，用最小模型身份和 remap context 测试替身隔离游戏初始化。检查覆盖上述契约，最终候选已通过。它不能替代真实模型 Fork、actual/simulated 或增量回放验证。
 
 每个场景预热 100 次，再运行 20,000 次 Fork；测试 context 在循环中清空并复用，避免把其容量增长混入 Store 的分配差异。结果包含 Store 容器和测试 state 的复制，不包含完整模拟器。
 
@@ -60,9 +60,9 @@
 
 ### 通用 COW 与 typed buckets 的取舍
 
-通用 COW 无法只在 Store 的 `Get` 入口加一层 `Materialize()` 后安全完成。调用者已经能持有可变 state 并直接修改其属性。现有 [ForkBoundaries](../../../src/Testing/Contracts/Runtime/UnattendedTestRunner.ForkBoundaries.cs) 中，`VambracePredictionState` 在 Fork 前取得，Fork 后仍通过原引用修改 `TriggeringCard` 和 `BlockGainedThisCombat`。这种写入不会重新进入 Store，无法由延迟物化拦截。多种 prediction state 还暴露普通可写属性和事务字段。
+通用 COW 无法只在 Store 的 `Get` 入口加一层 `Materialize()` 后安全完成。调用者已经能持有可变 state 并直接修改其属性。现有 ForkBoundaries（`src/Testing/Contracts/Runtime/UnattendedTestRunner.ForkBoundaries.cs`） 中，`VambracePredictionState` 在 Fork 前取得，Fork 后仍通过原引用修改 `TriggeringCard` 和 `BlockGainedThisCombat`。这种写入不会重新进入 Store，无法由延迟物化拦截。多种 prediction state 还暴露普通可写属性和事务字段。
 
-此外，[CombatPredictionSimulator.Fork](../../../src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs) 用 `using PredictionForkContext` 在一次完整 Fork 内统一 remap，返回后就 Dispose。延迟到动作执行时才克隆 state，必须重新解决原映射生命周期、引用一致性和跨对象依赖；不能借用已归还数组的 context。
+此外，CombatPredictionSimulator.Fork（`src/Engine/InCombat/Simulation/CombatPredictionSimulator.cs`） 用 `using PredictionForkContext` 在一次完整 Fork 内统一 remap，返回后就 Dispose。延迟到动作执行时才克隆 state，必须重新解决原映射生命周期、引用一致性和跨对象依赖；不能借用已归还数组的 context。
 
 按类型分桶虽然可能加快 `ReadEntries<T>()`，却会改变原键表中交错类型 state 的全局 Fork 顺序。当前 state Fork 会读取并补充同一个 context；保持每个类型内部顺序不足以证明整个对象图等价。独立检查现已验证交错类型的 Fork 顺序。现阶段保留原键表，利用原有类型计数优化空查询。
 
@@ -114,15 +114,15 @@ Silent / 普通 GC / DOP4，每 solver 2,500 节点，双方各三次交替冷�
 
 ### 最终保留：判型先读，只对 Wither 取得可写预览
 
-生产只在已有 [MonsterMoveEffects](../../../src/Prediction/MonsterMoveEffects.cs) 的递加强度分支调整读取/写入时点：先用 `card.Preview is Wither` 判断，再对匹配者取得 `MutablePreview` 并执行 `FakeUpgrade()`。普通牌不再因只读判型发生 COW；Wither 的写入仍经过原所有权边界。没有恢复 listener slot，也没有添加新的卡牌特例。
+生产只在已有 MonsterMoveEffects（`src/Prediction/MonsterMoveEffects.cs`） 的递加强度分支调整读取/写入时点：先用 `card.Preview is Wither` 判断，再对匹配者取得 `MutablePreview` 并执行 `FakeUpgrade()`。普通牌不再因只读判型发生 COW；Wither 的写入仍经过原所有权边界。没有恢复 listener slot，也没有添加新的卡牌特例。
 
 [两步 native 差分夹具](../../../coverage/fixtures/runtime/gc-aeonglass-preview-ownership.json) Passed，runId `825d477edaa0456b91934583498388ba`。第一次效果生成 Wither，凋零总伤害为 6、敌方力量为 3；第二次升级既有 Wither 并生成下一张，总伤害为 18、力量为 7。完整 actual/simulated 差分继续检查实际结算。
 
-同一夹具显式开启 [预览身份与 Fork 断言](../../../src/Testing/Contracts/Combat/UnattendedTestRunner.AeonglassPreviewOwnership.cs)：行动前保留一个未执行的兄弟分支，行动后验证非 Wither 的原 preview 引用不变、已有 Wither 伤害增长，以及兄弟的所有 preview 身份和 Wither 伤害均不变。该检查已通过，不扩展到整场搜索或可见 Steam 验收。
+同一夹具显式开启 预览身份与 Fork 断言（`src/Testing/Contracts/Combat/UnattendedTestRunner.AeonglassPreviewOwnership.cs`）：行动前保留一个未执行的兄弟分支，行动后验证非 Wither 的原 preview 引用不变、已有 Wither 伤害增长，以及兄弟的所有 preview 身份和 Wither 伤害均不变。该检查已通过，不扩展到整场搜索或可见 Steam 验收。
 
 ## 3. 空 PowerAmount 同步：复用已有 dirty 集合
 
-入口：[CombatPredictionSimulator.PowerAmounts](../../../src/Engine/InCombat/Simulation/CombatPredictionSimulator.PowerAmounts.cs)。
+入口：CombatPredictionSimulator.PowerAmounts（`src/Engine/InCombat/Simulation/CombatPredictionSimulator.PowerAmounts.cs`）。
 
 PowerAmount 同步会先对相关 state 生成快照，逐条应用变化后从 Store 移除；因此这些条目本身已形成待同步集合。原类型计数虽然能避免扫描其他 state，却不能避免调用 `yield ReadEntries<T>()` 时创建枚举器。
 
@@ -138,23 +138,23 @@ dotnet run --project tools/testing/checks/PredictionStateStoreChecks/PredictionS
 
 ## 4. GC 时机与计数
 
-Runtime 的 [SearchGcPolicy](../../../src/Runtime/SearchGcPolicy.cs) 仍独占进程 GC 生命周期。新增的 [scope 计数](../../../src/Runtime/SearchGcLifecycleMetrics.cs) 在取得准入后的 Gate 内开始，在释放准入前冻结：显式 Gen2 调用次数、NoGC start/end 的尝试与成功、restart 和首次观测的意外丢失分别计数。等待旧请求、scope 退出后后台清理不混入该 scope。普通 GC 可以有重叠搜索，明确标为 `SharedProcessWindow`；独占 NoGC 请求标为 `ExclusiveSearchScope`。没有声称按线程精确归属 CLR 的自然 GC。
+Runtime 的 SearchGcPolicy（`src/Runtime/SearchGcPolicy.cs`） 仍独占进程 GC 生命周期。新增的 scope 计数（`src/Runtime/SearchGcLifecycleMetrics.cs`） 在取得准入后的 Gate 内开始，在释放准入前冻结：显式 Gen2 调用次数、NoGC start/end 的尝试与成功、restart 和首次观测的意外丢失分别计数。等待旧请求、scope 退出后后台清理不混入该 scope。普通 GC 可以有重叠搜索，明确标为 `SharedProcessWindow`；独占 NoGC 请求标为 `ExclusiveSearchScope`。没有声称按线程精确归属 CLR 的自然 GC。
 
 结果 JSON 新增 `gcLifecycle` 和可空 `gcLifecycleAttribution`，未从 controller 准入的测试直调 solver 不伪造归因。总暂停继续是进程计数差，最大暂停只记观测到的单段；强制 GC 完成后、重新建立 NoGC 之前采样，避免 start API 覆盖最新 GC 信息。没有 EventPipe trace，不能称为严格最大暂停或按类型 retained heap 账本。
 
-外层 wave 使用 [SearchWaveMemoryPolicy](../../../src/Search/SearchWaveMemoryPolicy.cs) 从实际分配/系统余量中预约，先缩小批次，单个 parent 也放不下才尝试回收或串行回退。出牌深度末尾先剪枝、释放丢弃模拟器并清空原列表；仍有下一次 parent 准入时才检查回收。没有在动作/选择内部增加 checkpoint。
+外层 wave 使用 SearchWaveMemoryPolicy（`src/Search/SearchWaveMemoryPolicy.cs`） 从实际分配/系统余量中预约，先缩小批次，单个 parent 也放不下才尝试回收或串行回退。出牌深度末尾先剪枝、释放丢弃模拟器并清空原列表；仍有下一次 parent 准入时才检查回收。没有在动作/选择内部增加 checkpoint。
 
-Smart 层间使用 [SmartLayerMemoryForecast](../../../src/Search/SmartLayerMemoryForecast.cs) 的同一完整层进程分配与请求转移数预测下一层：bytes/transition 高水位、至少 2 倍转移增长、1.5 倍余量与低估反馈。NodeLimit 是该有限预算层的完整观测；TimeLimit、取消、失败等样本不能支持跳过回收。预测只决定是否省去可选的层间 reset，现有 parent 安全检查点仍生效。跳过回收会让不可达对象一直占用 NoGC 预算，必须同时看峰值，不能只报告暂停减少。
+Smart 层间使用 SmartLayerMemoryForecast（`src/Search/SmartLayerMemoryForecast.cs`） 的同一完整层进程分配与请求转移数预测下一层：bytes/transition 高水位、至少 2 倍转移增长、1.5 倍余量与低估反馈。NodeLimit 是该有限预算层的完整观测；TimeLimit、取消、失败等样本不能支持跳过回收。预测只决定是否省去可选的层间 reset，现有 parent 安全检查点仍生效。跳过回收会让不可达对象一直占用 NoGC 预算，必须同时看峰值，不能只报告暂停减少。
 
 纯检查：基础 GC/预测 19 项、scope 冻结/重叠/取消 8 项、wave 容量与饱和运算专项均通过。普通 GC 自适应并发的 15 项决策检查只证明合成样本下控制器行为，其真实接线单独实验，默认不启用。
 
 ## 5. raw batch 与历史引用
 
-外层 [ParallelExpansion](../../../src/Search/CombatBeamSolver.ParallelExpansion.cs) 按输入序号等候已完成前缀，立即提交并释放 raw batch 与父模拟器，后面的 worker 可以继续运行。任一 worker 或提交异常会先排空已经派发的全部工作，再释放并抛出。顺序、transposition、dominance 和预算仍由 coordinator 独占。单个 parent 的 action/round-choice aggregate 仍会累积 raw candidates；这里没有宣称完全消除了峰值驻留。
+外层 ParallelExpansion（`src/Search/CombatBeamSolver.ParallelExpansion.cs`） 按输入序号等候已完成前缀，立即提交并释放 raw batch 与父模拟器，后面的 worker 可以继续运行。任一 worker 或提交异常会先排空已经派发的全部工作，再释放并抛出。顺序、transposition、dominance 和预算仍由 coordinator 独占。单个 parent 的 action/round-choice aggregate 仍会累积 raw candidates；这里没有宣称完全消除了峰值驻留。
 
-[OwnedExpansionBatch](../../../src/Search/OwnedExpansionBatch.cs) 仅复用三个 List 和两个所有权 HashSet；每个 `_run` 的池最多留两个 storage，每个容器真实容量不得超过 4096，checkpoint 清空闲池。批次使用独立 lease 和原子 Dispose，先清引用再归还，旧批次的重复释放不能接触新租户。没有池化 simulator、node 或 model。[实际源码工具检查](../../../tools/testing/checks/ExpansionBatchChecks/README.md) 的 7 组所有权、部分失败、并发与 WeakReference 检查通过。
+OwnedExpansionBatch（`src/Search/OwnedExpansionBatch.cs`） 仅复用三个 List 和两个所有权 HashSet；每个 `_run` 的池最多留两个 storage，每个容器真实容量不得超过 4096，checkpoint 清空闲池。批次使用独立 lease 和原子 Dispose，先清引用再归还，旧批次的重复释放不能接触新租户。没有池化 simulator、node 或 model。实际源码工具检查（`tools/testing/checks/ExpansionBatchChecks/README.md`） 的 7 组所有权、部分失败、并发与 WeakReference 检查通过。
 
-历史 Started/Finished 的卡牌及 DamageReceived 的卡牌来源改用既有不可变快照，保留原生 `CardPlay` 身份；当前动作是否开始改用精确 trace-frame 身份，不能只凭同一个 Original 认定兄弟 Fork 是同一动作。[历史检查](../../../src/Testing/Contracts/Combat/UnattendedTestRunner.HistoryRetention.cs) 覆盖嵌套/重复动作、共享历史 prefix、deferred 事务、快照升级字段，以及仅保留 forkHistory 时祖先 wrapper/分支的 WeakReference 回收。
+历史 Started/Finished 的卡牌及 DamageReceived 的卡牌来源改用既有不可变快照，保留原生 `CardPlay` 身份；当前动作是否开始改用精确 trace-frame 身份，不能只凭同一个 Original 认定兄弟 Fork 是同一动作。历史检查（`src/Testing/Contracts/Combat/UnattendedTestRunner.HistoryRetention.cs`） 覆盖嵌套/重复动作、共享历史 prefix、deferred 事务、快照升级字段，以及仅保留 forkHistory 时祖先 wrapper/分支的 WeakReference 回收。
 
 这解除了一条明确的历史到 PredictedCard observer 的持有路径；召唤 Creature、原生目标和伤害来源仍有合法模型引用，完整图去引用需要稳定实体 ID 与统一重映射，不能靠删除这几个历史字段完成。
 

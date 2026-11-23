@@ -42,73 +42,17 @@ internal sealed partial class UnattendedTestRunner
             if (ReplayVerification != null && CombatBugReportExporter.LatestEffectivePolicy is { } policy)
                 ReplayVerification["executedPolicy"] = JsonSerializer.SerializeToNode(policy, UnattendedTestFiles.JsonOptions);
             RuntimeMemorySnapshot memory = CaptureRuntimeMemory();
-            SolverSettingsSnapshot configuredSettings = SolverSettings.Capture();
-            GCLatencyMode gcLatencyMode = GCSettings.LatencyMode;
-            long activeNoGcRegionBudgetBytes =
-                SearchGcPolicy.CurrentNoGcRegionBudgetBytesForTesting;
             _solverMetrics = new UnattendedSolverMetrics
             {
-                GcLifecycle = result.GcLifecycle,
-                GcLifecycleAttribution = result.GcLifecycleAttribution,
                 Boundary = result.BoundaryReason,
                 SelectedExpanded = result.ExpandedNodes,
                 SelectedTransitions = result.TransitionCount,
                 SelectedChoiceBranches = result.ChoiceBranchesEvaluated,
-                ChoiceReplayAttempts = result.ChoiceReplayAttempts,
-                RoundReplayPrefixCaptures = result.RoundReplayPrefixCaptures,
-                RoundReplayPrefixReuses = result.RoundReplayPrefixReuses,
-                ExecutionChoiceCaptures = result.ExecutionChoiceCaptures,
-                ExecutionChoiceReuses = result.ExecutionChoiceReuses,
-                CardChoicePrefixAttempts = result.CardChoicePrefixAttempts,
-                CardChoicePrefixCaptures = result.CardChoicePrefixCaptures,
-                CardChoicePrefixReuses = result.CardChoicePrefixReuses,
-                CardChoicePrefixFallbacks = result.CardChoicePrefixFallbacks,
-                PotionChoicePrefixForks = result.PotionChoicePrefixForks,
-                PotionChoicePrefixCaptures = result.PotionChoicePrefixCaptures,
-                PotionChoicePrefixReuses = result.PotionChoicePrefixReuses,
-                PotionChoicePrefixFallbacks = result.PotionChoicePrefixFallbacks,
-                ChoiceReplayBudgetExhaustions = result.ChoiceReplayBudgetExhaustions,
-                ChoiceBranchesDroppedByBudget = result.ChoiceBranchesDroppedByBudget,
-                CycleReplayAttempts = result.CycleReplayAttempts,
-                CycleReplayActions = result.CycleReplayActions,
-                TotalCycleReplayActions = result.TotalCycleReplayActions,
-                CycleReplayVictories = result.CycleReplayVictories,
-                CycleReplayContinuations = result.CycleReplayContinuations,
-                CycleStoppedUnproductive = result.CycleStoppedUnproductive,
-                CycleStoppedRepetitionBudget = result.CycleStoppedRepetitionBudget,
-                CycleStoppedFamilyBudget = result.CycleStoppedFamilyBudget,
-                CycleStoppedExitBudget = result.CycleStoppedExitBudget,
-                TurnLayerBudgetStops = result.TurnLayerBudgetStops,
-                TurnLayerTimeBudgetStops = result.TurnLayerTimeBudgetStops,
-                TurnLayerNodeBudgetStops = result.TurnLayerNodeBudgetStops,
-                CycleRegionsDetected = result.CycleRegionsDetected,
-                CycleRegionCandidatesConsidered = result.CycleRegionCandidatesConsidered,
-                CycleRegionCandidatesAdmitted = result.CycleRegionCandidatesAdmitted,
-                CycleRegionCandidatesDropped = result.CycleRegionCandidatesDropped,
-                CycleRegionProgressEpochs = result.CycleRegionProgressEpochs,
-                CycleRegionProbeCandidatesAdmitted =
-                    result.CycleRegionProbeCandidatesAdmitted,
-                CycleRegionProgressCandidatesAdmitted =
-                    result.CycleRegionProgressCandidatesAdmitted,
-                CycleRegionMaxActionFamilies = result.CycleRegionMaxActionFamilies,
-                OrderedMutationCandidatesAdmitted =
-                    result.OrderedMutationCandidatesAdmitted,
-                OrderedMutationLeaseExpiredBudget =
-                    result.OrderedMutationLeaseExpiredBudget,
-                OrderedMutationOrdinaryFallbacks =
-                    result.OrderedMutationOrdinaryFallbacks,
-                OrderedMutationColdAtomicCommitted =
-                    result.OrderedMutationColdAtomicCommitted,
-                OrderedMutationColdAtomicRejected =
-                    result.OrderedMutationColdAtomicRejected,
                 TotalExpanded = result.TotalExpandedNodes,
                 TotalTransitions = result.TotalTransitionCount,
                 TotalChoiceBranches = result.TotalChoiceBranchesEvaluated,
                 ElapsedMilliseconds = result.Elapsed.TotalMilliseconds,
                 TotalElapsedMilliseconds = result.TotalSearchElapsed.TotalMilliseconds,
-                SearchWorkAttributions = result.SearchWorkAttributions,
-                BossTempoSearch = result.BossTempoSearch,
-                BossTempoIteration = result.BossTempoIteration,
                 WorkerAllocatedBytes = result.WorkerAllocatedBytes,
                 TotalWorkerAllocatedBytes = result.TotalWorkerAllocatedBytes,
                 TotalGen0Collections = result.TotalGen0Collections,
@@ -116,26 +60,7 @@ internal sealed partial class UnattendedTestRunner
                 TotalGen2Collections = result.TotalGen2Collections,
                 TotalGcPauseMilliseconds = result.TotalGcPauseDuration.TotalMilliseconds,
                 MaxGcPauseMilliseconds = result.TotalMaxObservedGcPause.TotalMilliseconds,
-                // E1：早期回合探索摘要直接透出；探索跳过时为 null，
-                // 与 SearchWorkAttributions 里有没有 EarlyTurnContinuation 归因正交。
-                EarlyTurnExploration = CaptureEarlyTurnExplorationMetrics(result.EarlyTurnExploration),
                 MaxParallelConcurrency = result.MaxParallelExpansionConcurrency,
-                ParallelActionReplayWaves = result.ParallelActionReplayWaves,
-                ParallelActionReplayWorkItems = result.ParallelActionReplayWorkItems,
-                MaxParallelActionReplayConcurrency = result.MaxParallelActionReplayConcurrency,
-                DeferredRoundChoiceActions = result.DeferredRoundChoiceActions,
-                DeferredRoundChoiceLayerWidthTotal = result.DeferredRoundChoiceLayerWidthTotal,
-                MaxDeferredRoundChoiceLayerWidth = result.MaxDeferredRoundChoiceLayerWidth,
-                DeferredRoundChoiceFiniteQuotaFallbacks =
-                    result.DeferredRoundChoiceFiniteQuotaFallbacks,
-                DeferredRoundChoiceFinitePrimaryLayers =
-                    result.DeferredRoundChoiceFinitePrimaryLayers,
-                DeferredRoundChoiceFinitePendingFallbacks =
-                    result.DeferredRoundChoiceFinitePendingFallbacks,
-                ParallelRoundChoiceReplayWaves = result.ParallelRoundChoiceReplayWaves,
-                ParallelRoundChoiceReplayWorkItems = result.ParallelRoundChoiceReplayWorkItems,
-                MaxParallelRoundChoiceReplayConcurrency =
-                    result.MaxParallelRoundChoiceReplayConcurrency,
                 SearchedTurns = result.SearchedTurns,
                 ShufflesCrossed = result.Snapshot.ShufflesCrossed,
                 Score = result.BestNode.Score,
@@ -157,25 +82,13 @@ internal sealed partial class UnattendedTestRunner
                 FinalEnemyHp = result.Snapshot.EnemyHp,
                 CombatEndedTurn = result.CombatEndedTurn,
                 CapturedAtElapsedMilliseconds = stopwatch.Elapsed.TotalMilliseconds,
-                // 组合开关关闭时这三项照样有（单成员一行），A/B 才能直接并排比。
-                FirstRoutePublishedMilliseconds = result.PortfolioTelemetry?.FirstRoutePublishedMilliseconds,
-                PortfolioMembers = result.PortfolioTelemetry?.Members.ToArray() ?? [],
-                PowerRouteMembers = result.PortfolioTelemetry?.PowerRouteMembers.ToArray() ?? [],
-                PeakManagedHeapBytes = result.PortfolioTelemetry?.PeakManagedHeapBytes ?? 0,
                 ManagedLiveBytes = GC.GetTotalMemory(forceFullCollection: false),
                 ManagedHeapBytes = memory.ManagedHeapBytes,
                 ManagedFragmentedBytes = memory.ManagedFragmentedBytes,
                 WorkingSetBytes = memory.WorkingSetBytes,
                 PrivateMemoryBytes = memory.PrivateMemoryBytes,
-                ConfiguredNoGcRegionEnabled = configuredSettings.EnableNoGcRegion,
-                ConfiguredNoGcRegionBudgetBytes = configuredSettings.NoGcRegionBudgetBytes,
-                GcLatencyMode = gcLatencyMode,
-                NoGcRegionActive = gcLatencyMode == GCLatencyMode.NoGCRegion,
-                NoGcRegionBudgetBytes = activeNoGcRegionBudgetBytes,
-                NoGcRegionRolloverCount = SearchGcPolicy.RolloverCountForTesting,
             };
-            // Search timing has already stopped. Keep full route/policy/snapshot
-            // evidence outside the timed work and only for explicit test output.
+
             if (!string.IsNullOrWhiteSpace(getRequest().EvidenceDirectory))
             {
                 WriteGeneratedArtifact("search-result.json", new
@@ -201,9 +114,6 @@ internal sealed partial class UnattendedTestRunner
                         result.TranspositionBranchesPruned,
                         result.RepeatableNoProgressBranchesPruned,
                         result.PrimaryIncumbentBranchesPruned,
-                        result.CycleRegionsDetected,
-                        result.CycleRegionCandidatesDropped,
-                        result.CrossTurnCandidatesProtected,
                     },
                     result.ResultScope,
                     result.BoundaryReason,
@@ -212,13 +122,8 @@ internal sealed partial class UnattendedTestRunner
                     {
                         clr = Environment.Version.ToString(),
                         serverGc = GCSettings.IsServerGC,
-                        profile = RuntimeGcProfile.Current.Status.ToString(),
-                        savedNoGcRegionEnabled = SolverSettings.Current.EnableNoGcRegion,
-                        effectiveNoGcRegionEnabled = configuredSettings.EnableNoGcRegion,
                     },
                 });
-                // The journal buffers file writes. Its FIFO snapshot makes the
-                // already completed worker's timestamps available before exit.
                 CombatLogArchive journal = Entry.Logger.Journal.CaptureAsync().GetAwaiter().GetResult();
                 if (journal.Events.Error != null)
                     throw new IOException($"Cannot export runtime timing evidence: {journal.Events.Error}");
@@ -284,28 +189,6 @@ internal sealed partial class UnattendedTestRunner
                 process.WorkingSet64,
                 process.PrivateMemorySize64);
         }
-
-        // 逐续搜纯值随结果输出，便于离线批量数据关联 rank、开局与搜索成本；
-        // 它们不参与候选裁决，也不进入战斗状态键。
-        private static UnattendedEarlyTurnExplorationMetrics? CaptureEarlyTurnExplorationMetrics(
-            EarlyTurnExplorationTelemetry? telemetry)
-            => telemetry is null
-                ? null
-                : new UnattendedEarlyTurnExplorationMetrics
-                {
-                    ScoutExpanded = telemetry.ScoutExpanded,
-                    FrontierCandidates = telemetry.FrontierCandidates,
-                    Attempted = telemetry.Attempted,
-                    Improvements = telemetry.Improvements,
-                    BestLoss = telemetry.BestLoss,
-                    BestPotions = telemetry.BestPotions,
-                    BestEndedTurn = telemetry.BestEndedTurn,
-                    FirstImprovementDepth = telemetry.FirstImprovementDepth,
-                    FirstImprovementRank = telemetry.FirstImprovementRank,
-                    Expanded = telemetry.Expanded,
-                    Stop = telemetry.Stop,
-                    Continuations = telemetry.Continuations.ToArray(),
-                };
 
         private static void WriteResult(UnattendedTestResult result, UnattendedTestRequest request)
         {

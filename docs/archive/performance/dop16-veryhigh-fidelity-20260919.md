@@ -4,7 +4,7 @@
 
 ## 1. 离线宿主此前没有冻结 RitsuLib 内容注册（保真缺陷）
 
-`SimulationCardPileLookupPatch` 的无分配快速路径（[源码](../../../src/Runtime/SimulationCardPileLookupPatch.cs)）只在 `ModCardPileRegistry.IsFrozen` 为真且没有任何已注册模组牌堆时生效。RitsuLib 的[内容注册文档](https://sts2-ritsulib.ritsukage.com/guide/content-packs-and-registries)说明：**它会在游戏完成模型初始化前冻结内容注册**，所以实机在进入任何战斗前该条件已经成立，快速路径是生效的。
+`SimulationCardPileLookupPatch` 的无分配快速路径（源码（`src/Runtime/SimulationCardPileLookupPatch.cs`））只在 `ModCardPileRegistry.IsFrozen` 为真且没有任何已注册模组牌堆时生效。RitsuLib 的[内容注册文档](https://sts2-ritsulib.ritsukage.com/guide/content-packs-and-registries)说明：**它会在游戏完成模型初始化前冻结内容注册**，所以实机在进入任何战斗前该条件已经成立，快速路径是生效的。
 
 离线宿主此前没有这一步：`ModRuntime.Initialize` 只装 Harmony 补丁，从不冻结注册表。实测 `mod_card_piles=frozen=False definitions=0`，于是每次搜索都退回原版 `CardModel.get_Pile`——即 `Player.Piles` 的 `Enumerable.Concat` + `Func<CardPile,bool>` 谓词 + 数组/接口枚举器，每次查询都分配。
 

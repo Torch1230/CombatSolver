@@ -769,4 +769,149 @@ internal sealed partial class UnattendedTestRunner
             _ => throw new InvalidOperationException($"{kind} {input} 不唯一，请使用完整模型 ID。"),
         };
     }
+
+    private static async Task SetBlockAsync(Creature creature, int targetBlock)
+    {
+        if (targetBlock < 0)
+            throw new InvalidOperationException($"测试格挡不能为负数：{targetBlock}。");
+        if (creature.Block > targetBlock)
+        {
+            await CreatureCmd.LoseBlock(
+                new BlockingPlayerChoiceContext(),
+                creature,
+                creature.Block - targetBlock,
+                null);
+        }
+        else if (creature.Block < targetBlock)
+        {
+            await CreatureCmd.GainBlock(
+                creature,
+                targetBlock - creature.Block,
+                MegaCrit.Sts2.Core.ValueProps.ValueProp.Unpowered,
+                null,
+                fast: true);
+        }
+        await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+    }
+
+    private static void SetEnergy(Player player, int targetEnergy)
+    {
+        if (targetEnergy < 0)
+            throw new InvalidOperationException($"测试能量不能为负数：{targetEnergy}。");
+        PlayerCombatState state = player.PlayerCombatState
+            ?? throw new InvalidOperationException("玩家没有 PlayerCombatState。");
+        if (state.Energy > targetEnergy)
+            state.LoseEnergy(state.Energy - targetEnergy);
+        else if (state.Energy < targetEnergy)
+            state.GainEnergy(targetEnergy - state.Energy);
+    }
+
+    private static void SetStars(Player player, int targetStars)
+    {
+        if (targetStars < 0)
+            throw new InvalidOperationException($"测试星能不能为负数：{targetStars}。");
+        PlayerCombatState state = player.PlayerCombatState
+            ?? throw new InvalidOperationException("玩家没有 PlayerCombatState。");
+        if (state.Stars > targetStars)
+            state.LoseStars(state.Stars - targetStars);
+        else if (state.Stars < targetStars)
+            state.GainStars(targetStars - state.Stars);
+    }
+
+    private static OrbModel ResolveOrbForTest(string input)
+    {
+        (Type Type, ModelId Id)[] matches = typeof(OrbModel).Assembly.GetTypes()
+            .Where(type => !type.IsAbstract && typeof(OrbModel).IsAssignableFrom(type))
+            .Select(type => (Type: type, Id: ModelDb.GetId(type)))
+            .Where(pair => pair.Type.Name.Equals(input, StringComparison.OrdinalIgnoreCase)
+                || pair.Type.FullName?.Equals(input, StringComparison.OrdinalIgnoreCase) == true
+                || pair.Id.Entry.Equals(input, StringComparison.OrdinalIgnoreCase)
+                || pair.Id.ToString().Equals(input, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToArray();
+        if (matches.Length == 0)
+            throw new InvalidOperationException($"找不到充能球 {input}。");
+        if (matches.Length > 1)
+            throw new InvalidOperationException($"充能球 {input} 不唯一，请使用完整模型 ID。");
+        return ModelDb.GetByIdOrNull<OrbModel>(matches[0].Id)
+            ?? throw new InvalidOperationException($"游戏模型库未返回测试充能球 {matches[0].Id} 的规范实例。");
+    }
+
+    private static PotionModel InjectPotionForTest(Player player, string potionId)
+    {
+        PotionModel canonical = ResolveUnique(ModelDb.AllPotions, potionId, "药水");
+        PotionModel potion = canonical.ToMutable();
+        int slot = Enumerable.Range(0, player.PotionSlots.Count)
+            .FirstOrDefault(index => player.GetPotionAtSlotIndex(index) == null, -1);
+        if (slot < 0)
+        {
+            player.GetPotionAtSlotIndex(0)!.Discard();
+            slot = 0;
+        }
+        if (!player.AddPotionInternal(potion, slot, silent: false).success)
+            throw new InvalidOperationException($"无法把测试药水 {potionId} 注入槽位 {slot}。");
+        return potion;
+    }
+
+    private void ForceInitialEnemyMoves(CombatState combatState)
+    {
+        if (_request.InitialEnemyMoveIds.Length > combatState.Enemies.Count)
+        {
+            throw new InvalidOperationException(
+                $"配置了 {_request.InitialEnemyMoveIds.Length} 个初始行动，但战斗只有 {combatState.Enemies.Count} 个敌人。");
+        }
+        for (int index = 0; index < _request.InitialEnemyMoveIds.Length; index++)
+        {
+            string moveId = _request.InitialEnemyMoveIds[index];
+            if (string.IsNullOrWhiteSpace(moveId))
+                continue;
+            MonsterModel monster = combatState.Enemies[index].Monster
+                ?? throw new InvalidOperationException($"敌人 {index} 没有 MonsterModel。");
+            var machine = monster.MoveStateMachine
+                ?? throw new InvalidOperationException($"怪物 {monster.Id.Entry} 没有行动状态机。");
+            if (!machine.States.TryGetValue(moveId, out var state)
+                || state is not MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine.MoveState move)
+                throw new InvalidOperationException($"怪物 {monster.Id.Entry} 没有行动 {moveId}。");
+            monster.SetMoveImmediate(move, true);
+        }
+    }
+
+    private void ForceInitialEnemyStateLogs(CombatState combatState)
+    {
+        if (_request.InitialEnemyStateLogs is not { Length: > 0 } logs)
+            return;
+        if (logs.Length != combatState.Enemies.Count)
+        {
+            throw new InvalidOperationException(
+                $"怪物行动历史数量 {logs.Length} 与敌人数 {combatState.Enemies.Count} 不同。");
+        }
+        for (int enemyIndex = 0; enemyIndex < combatState.Enemies.Count; enemyIndex++)
+        {
+            MonsterModel monster = combatState.Enemies[enemyIndex].Monster
+                ?? throw new InvalidOperationException($"敌人 {enemyIndex} 没有 MonsterModel。");
+            var machine = monster.MoveStateMachine
+                ?? throw new InvalidOperationException($"怪物 {monster.Id.Entry} 没有行动状态机。");
+            machine.StateLog.Clear();
+            foreach (string stateId in logs[enemyIndex])
+            {
+                if (!machine.States.TryGetValue(stateId, out var state))
+                    throw new InvalidOperationException($"怪物 {monster.Id.Entry} 没有历史状态 {stateId}。");
+                machine.StateLog.Add(state);
+            }
+        }
+    }
+
+    private static async Task ClearPlayerPilesAsync(Player player, bool skipVisuals = true)
+    {
+        PlayerCombatState playerCombatState = player.PlayerCombatState!;
+        CardModel[] cards =
+        [
+            .. playerCombatState.Hand.Cards,
+            .. playerCombatState.DrawPile.Cards,
+            .. playerCombatState.DiscardPile.Cards,
+            .. playerCombatState.ExhaustPile.Cards,
+        ];
+        await CardPileCmd.RemoveFromCombat(cards, skipVisuals);
+        await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+    }
 }

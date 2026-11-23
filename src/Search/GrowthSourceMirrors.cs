@@ -23,7 +23,7 @@ internal readonly record struct GrowthSourceHandle(string Id)
 /// </para>
 /// <para>
 /// 原版那八个来源写死在 <see cref="GrowthSource"/> 里。局外成长类卡牌很多 mod 都有，它们全部
-/// 落不进那个枚举：既拿不到自己的额度栏，收益也记不进 <see cref="SimulatedCombatState.GrowthRewards"/>，
+/// 落不进那个枚举：既拿不到自己的额度栏，收益也记不进成长回报向量，
 /// 于是必然被判成"白挨伤害"。所以这里开一个登记点。
 /// </para>
 /// <para>

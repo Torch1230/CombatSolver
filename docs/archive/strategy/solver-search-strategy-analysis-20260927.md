@@ -39,7 +39,7 @@ Entry / 回合 Hook
 
 ## 2. 一局求解的生命周期（请求级编排）
 
-编排入口是 [`CombatSearchCoordinator.Solve`](../../../src/Search/CombatSearchCoordinator.cs)。一次请求不是“跑一次 Beam”，而是**多个求解共享一份时间/节点/内存预算的流水线**。
+编排入口是 `CombatSearchCoordinator.Solve`（`src/Search/CombatSearchCoordinator.cs`）。一次请求不是“跑一次 Beam”，而是**多个求解共享一份时间/节点/内存预算的流水线**。
 
 ### 2.1 主搜索
 
@@ -76,7 +76,7 @@ Entry / 回合 Hook
 
 ### 2.4 无胜利时的预算升级
 
-[`CombatSearchCoordinator.FailureRecovery`](../../../src/Search/CombatSearchCoordinator.FailureRecovery.cs) 在“主搜 + 审计后仍无完整胜利”且有剩余时间时，扩大搜索面重搜：
+`CombatSearchCoordinator.FailureRecovery`（`src/Search/CombatSearchCoordinator.FailureRecovery.cs`） 在“主搜 + 审计后仍无完整胜利”且有剩余时间时，扩大搜索面重搜：
 
 - 每轮把 Beam 与节点各乘 `NoVictoryEscalationFactor = 2`（第 1 轮 ×2、第 2 轮 ×4），最多 `MaximumNoVictoryEscalations = 2` 轮；
 - Beam 硬上限 `512`，各类分支硬上限 `100`；
@@ -109,7 +109,7 @@ Entry / 回合 Hook
 
 ### 3.2 动作生成
 
-[`CombatBeamSolver.Expansion`](../../../src/Search/CombatBeamSolver.Expansion.cs) 的 `Expand` 遍历手牌：
+`CombatBeamSolver.Expansion`（`src/Search/CombatBeamSolver.Expansion.cs`） 的 `Expand` 遍历手牌：
 
 - 用 `CanPlayCard` 过滤实际可打；
 - 对**语义等价的可打实例去重**（`BuildPlayableCardKey` 含 ID、升级、能量/星能消耗、重放次数、附魔、灾厄、动态变量等），保留身份差异；
@@ -128,19 +128,19 @@ Entry / 回合 Hook
 
 ### 3.4 选择枚举与回放预算
 
-具体选择（弃牌、检索、置顶、本回合免费、生成、消耗目标等）由 [`CardChoiceSupport.BuildChoices`](../../../src/Search/CardChoiceSupport.cs) 生成：
+具体选择（弃牌、检索、置顶、本回合免费、生成、消耗目标等）由 `CardChoiceSupport.BuildChoices`（`src/Search/CardChoiceSupport.cs`） 生成：
 
 - 手牌选择用 `MaxHandChoiceBranchesPerAction`，牌堆选择用 `MaxPileChoiceBranchesPerAction`；
 - 精确单卡路由（`MaxCount == 1` 且移动类效果）扩大到覆盖全部选项；
 - 手牌多张弃牌组合上限 `min(256, limit × 8)`；
 - 身份敏感选择额外保留 2 个物理实例代表；
 - 回放工作额度：`ResolveFiniteChoiceReplayAttemptLimit = min(512, max(1, 保留叶子 × 4))`，即**每个保留叶子 4 次、全局硬上限 512**；
-- [`PrimaryChoiceReplay`](../../../src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs) 在前缀可保留时，为每个语义兄弟预派发一次“必经”回放，保证原预算偶数分配不因完成次序被某一支独占；
+- `PrimaryChoiceReplay`（`src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs`） 在前缀可保留时，为每个语义兄弟预派发一次“必经”回放，保证原预算偶数分配不因完成次序被某一支独占；
 - 请求级另有 `MaximumCycleReplayActions = 4096`（所有子策略共享的有界终局探测额度）。
 
 ### 3.5 开局前缀
 
-[`CombatBeamSolver.Expansion.Opening`](../../../src/Search/CombatBeamSolver.Expansion.Opening.cs) 提供一组“从原根真实回放过的前缀”构造函数，供协调器组合：
+`CombatBeamSolver.Expansion.Opening`（`src/Search/CombatBeamSolver.Expansion.Opening.cs`） 提供一组“从原根真实回放过的前缀”构造函数，供协调器组合：
 
 - 能力：开局可打能力、检索出的能力、升级后再打的能力、白噪声生成的能力、双能力续接；
 - 药水：开局必需药、格挡药、生成牌药、`TouchOfInsanity`、赌徒特酿全换；
@@ -177,7 +177,7 @@ Entry / 回合 Hook
 
 ## 4. 状态基础分 `Snapshot.Score`
 
-基础分只用于中间判断与去重，不是显示的 HP。权重常量集中在 [`SolverWeights`](../../../src/Search/SolverWeights.cs)，计算在 [`StateEvaluation`](../../../src/Search/CombatBeamSolver.StateEvaluation.cs)。
+基础分只用于中间判断与去重，不是显示的 HP。权重常量集中在 [`SolverWeights`](../../../src/Search/SolverWeights.cs)，计算在 `StateEvaluation`（`src/Search/CombatBeamSolver.StateEvaluation.cs`）。
 
 ### 4.1 常量全表（源码逐字值）
 
@@ -268,11 +268,11 @@ score += focusTargetVulnerableTurns × vulnerableAttackWindow × 5,000
 
 能力的中间价值分三块：
 
-1. **已落地效果**：[`StrategicEffectModel`](../../../src/Search/StrategicEffectModel.cs) 把 Power 投影为五类潜力之和 `RetentionValue = Damage + Prevention + Resource + CardAccess + Scaling`。举例：力量按攻击命中次数、敏捷按格挡技能机会、余像按可打出牌数、墨水按消耗次数、恶魔形态按剩余回合的递增攻击。上下文（剩余回合、攻击/技能/能力机会、抽牌、平均攻击价值、来袭伤害）由当前牌组与威胁推导。
+1. **已落地效果**：`StrategicEffectModel`（`src/Search/StrategicEffectModel.cs`） 把 Power 投影为五类潜力之和 `RetentionValue = Damage + Prevention + Resource + CardAccess + Scaling`。举例：力量按攻击命中次数、敏捷按格挡技能机会、余像按可打出牌数、墨水按消耗次数、恶魔形态按剩余回合的递增攻击。上下文（剩余回合、攻击/技能/能力机会、抽牌、平均攻击价值、来袭伤害）由当前牌组与威胁推导。
 2. **尚未落地的铺垫潜力** `latentSetupValue`：按牌面静态潜力（如 Echo Form 12、Buffer 8、部分集中来源 6、普通能力 2）。
 3. **后续资源潜力** `futureResourceValue`：下回合能量 ×16、抽牌 ×8、星能 ×8、保留手牌 ×4，加召唤物、保留牌与免费机会。
 
-另有一套独立的[能力牌逐卡估值注册表](../../../src/Search/PowerCardValuation)：六个卡池共 104 张单人能力牌（铁甲战士 19、静默猎手 17、故障机器人 20、储君 18、亡灵契约师 18、无色 12）。公共层只持有卡池无关的描述符（卡池、稳定 `CardId`、机制族、路线准入策略），`Cards/<Pool>` 保存逐卡模型与投影。**当前生产搜索实际消费的是**：路线准入策略、开局投影、触发证据、以及“对当前可打能力的固定前缀完整后验”；`Reward/Penalty/Timing` 评估接口目前主要是合同与文档层。承诺席位由 `PowerCommitmentSeatPolicy` 按 Beam 宽度分配。
+另有一套独立的能力牌逐卡估值注册表（`src/Search/PowerCardValuation`）：六个卡池共 104 张单人能力牌（铁甲战士 19、静默猎手 17、故障机器人 20、储君 18、亡灵契约师 18、无色 12）。公共层只持有卡池无关的描述符（卡池、稳定 `CardId`、机制族、路线准入策略），`Cards/<Pool>` 保存逐卡模型与投影。**当前生产搜索实际消费的是**：路线准入策略、开局投影、触发证据、以及“对当前可打能力的固定前缀完整后验”；`Reward/Penalty/Timing` 评估接口目前主要是合同与文档层。承诺席位由 `PowerCommitmentSeatPolicy` 按 Beam 宽度分配。
 
 ---
 
@@ -280,7 +280,7 @@ score += focusTargetVulnerableTurns × vulnerableAttackWindow × 5,000
 
 ### 5.1 `BeamRankScore`
 
-[`BeamRetentionPolicy.Ranking`](../../../src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs) 在节点基础分上加一层只服务中间搜索的估值：
+`BeamRetentionPolicy.Ranking`（`src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs`） 在节点基础分上加一层只服务中间搜索的估值：
 
 ```text
 BeamRankScore = baseScore
@@ -337,7 +337,7 @@ BeamRankScore = baseScore
 
 ### 5.6 外层 `Prune` 与能力席位
 
-[`CombatBeamSolver.Retention`](../../../src/Search/CombatBeamSolver.Retention.cs) 的 `Prune` 在 `RankBest` 结果之上追加循环组合、循环出口、跨回合探针、有序变异与循环区域通道，再做 `SortRetained` 与 `FinalizePrunedSelection`，最后按 `PrimaryIncumbentBound`（战略战损下界）删枝。最终保留规模可以超过 `BeamWidth`，因为各 portfolio 是追加的；`RankBest` 内部的 `effectiveLimit` 也会因路由与有序牌堆扩宽。
+`CombatBeamSolver.Retention`（`src/Search/CombatBeamSolver.Retention.cs`） 的 `Prune` 在 `RankBest` 结果之上追加循环组合、循环出口、跨回合探针、有序变异与循环区域通道，再做 `SortRetained` 与 `FinalizePrunedSelection`，最后按 `PrimaryIncumbentBound`（战略战损下界）删枝。最终保留规模可以超过 `BeamWidth`，因为各 portfolio 是追加的；`RankBest` 内部的 `effectiveLimit` 也会因路由与有序牌堆扩宽。
 
 能力席位配额 `PowerCommitmentSeatPolicy.SeatQuota(beamWidth, aggressive)`：
 
@@ -386,7 +386,7 @@ quota     = min(maximumPowerSeats, requested)
 
 ### 7.1 准入门（排序前硬过滤）
 
-[`FinalPlanOrdering`](../../../src/Search/CombatBeamSolver.FinalPlanOrdering.cs) 先过滤：
+`FinalPlanOrdering`（`src/Search/CombatBeamSolver.FinalPlanOrdering.cs`） 先过滤：
 
 1. **强制用药全部完成**；
 2. **显式用药数 ≥ 最低要求**；
@@ -531,23 +531,23 @@ StrategicHpDeficit = cumulativeHpLost
 |---|---|
 | 真实状态怎么冻结 | [`CombatRootSnapshot`](../../../src/Runtime/CombatRootSnapshot.cs) |
 | 玩家政策与预算快照 | [`SearchPolicySnapshot`](../../../src/Search/SearchPolicySnapshot.cs) |
-| 请求内主搜、药水与补充探索 | [`CombatSearchCoordinator`](../../../src/Search/CombatSearchCoordinator.cs) 及 `.FailureRecovery`、`.PowerRoutes`、`.NoveltyPortfolio`、`.EarlyTurnExploration` |
-| 回合层与预算推进 | [`CombatBeamSolver.Phases`](../../../src/Search/CombatBeamSolver.Phases.cs) 的 `SolveCore` |
-| 动作候选与支配 | [`CombatBeamSolver.Expansion`](../../../src/Search/CombatBeamSolver.Expansion.cs)、[`Expansion.Candidates`](../../../src/Search/CombatBeamSolver.Expansion.Candidates.cs) |
-| 开局前缀 | [`CombatBeamSolver.Expansion.Opening`](../../../src/Search/CombatBeamSolver.Expansion.Opening.cs) |
-| 选牌预算与回放 | [`CardChoiceSupport`](../../../src/Search/CardChoiceSupport.cs)、[`Expansion.Choices`](../../../src/Search/CombatBeamSolver.Expansion.Choices.cs)、[`PrimaryChoiceReplay`](../../../src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs) |
-| 威胁、快照与基础分 | [`CombatBeamSolver.StateEvaluation`](../../../src/Search/CombatBeamSolver.StateEvaluation.cs) |
-| 持续效果与联动价值 | [`StrategicEffectModel`](../../../src/Search/StrategicEffectModel.cs)、[`PowerCardValuation`](../../../src/Search/PowerCardValuation) |
-| 中间排名与保路 | [`BeamRetentionPolicy`](../../../src/Search/CombatBeamSolver.BeamRetentionPolicy.cs)、[`Ranking`](../../../src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs)、[`Routing`](../../../src/Search/CombatBeamSolver.BeamRetentionPolicy.Routing.cs) |
-| 外层保路仲裁 | [`CombatBeamSolver.Retention`](../../../src/Search/CombatBeamSolver.Retention.cs) |
-| 转置与支配 | [`Transpositions`](../../../src/Search/CombatBeamSolver.Transpositions.cs) |
-| 循环、有序变异、跨回合 | [`CyclePlanning`](../../../src/Search/CombatBeamSolver.CyclePlanning.cs)、[`OrderedMutationRetention`](../../../src/Search/CombatBeamSolver.OrderedMutationRetention.cs)、[`CrossTurnPlanning`](../../../src/Search/CombatBeamSolver.CrossTurnPlanning.cs) |
+| 请求内主搜、药水与补充探索 | `CombatSearchCoordinator`（`src/Search/CombatSearchCoordinator.cs`） 及 `.FailureRecovery`、`.PowerRoutes`、`.NoveltyPortfolio`、`.EarlyTurnExploration` |
+| 回合层与预算推进 | `CombatBeamSolver.Phases`（`src/Search/CombatBeamSolver.Phases.cs`） 的 `SolveCore` |
+| 动作候选与支配 | `CombatBeamSolver.Expansion`（`src/Search/CombatBeamSolver.Expansion.cs`）、`Expansion.Candidates`（`src/Search/CombatBeamSolver.Expansion.Candidates.cs`） |
+| 开局前缀 | `CombatBeamSolver.Expansion.Opening`（`src/Search/CombatBeamSolver.Expansion.Opening.cs`） |
+| 选牌预算与回放 | `CardChoiceSupport`（`src/Search/CardChoiceSupport.cs`）、`Expansion.Choices`（`src/Search/CombatBeamSolver.Expansion.Choices.cs`）、`PrimaryChoiceReplay`（`src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs`） |
+| 威胁、快照与基础分 | `CombatBeamSolver.StateEvaluation`（`src/Search/CombatBeamSolver.StateEvaluation.cs`） |
+| 持续效果与联动价值 | `StrategicEffectModel`（`src/Search/StrategicEffectModel.cs`）、`src/Search/PowerCardValuation` |
+| 中间排名与保路 | `BeamRetentionPolicy`（`src/Search/CombatBeamSolver.BeamRetentionPolicy.cs`）、`Ranking`（`src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs`）、`Routing`（`src/Search/CombatBeamSolver.BeamRetentionPolicy.Routing.cs`） |
+| 外层保路仲裁 | `CombatBeamSolver.Retention`（`src/Search/CombatBeamSolver.Retention.cs`） |
+| 转置与支配 | `Transpositions`（`src/Search/CombatBeamSolver.Transpositions.cs`） |
+| 循环、有序变异、跨回合 | `CyclePlanning`（`src/Search/CombatBeamSolver.CyclePlanning.cs`）、`OrderedMutationRetention`（`src/Search/CombatBeamSolver.OrderedMutationRetention.cs`）、`CrossTurnPlanning`（`src/Search/CombatBeamSolver.CrossTurnPlanning.cs`） |
 | 药水策略与机会成本 | [`PotionUsePolicy`](../../../src/Search/PotionUsePolicy.cs)、[`PotionStrategySnapshot`](../../../src/Search/PotionStrategySnapshot.cs)、[`PotionRewardOutlook`](../../../src/Search/PotionRewardOutlook.cs) |
-| 终局政策与顺序 | [`FinalPlanOrdering`](../../../src/Search/CombatBeamSolver.FinalPlanOrdering.cs)、[`ActEndingBossPolicy`](../../../src/Search/ActEndingBossPolicy.cs)、[`SolverInterimResultOrdering`](../../../src/Search/SolverInterimResultOrdering.cs) |
+| 终局政策与顺序 | `FinalPlanOrdering`（`src/Search/CombatBeamSolver.FinalPlanOrdering.cs`）、[`ActEndingBossPolicy`](../../../src/Search/ActEndingBossPolicy.cs)、`SolverInterimResultOrdering`（`src/Search/SolverInterimResultOrdering.cs`） |
 | 成长、遗物、偷窃目标 | [`GrowthPolicy`](../../../src/Search/GrowthPolicy.cs)、[`GrowthOpportunityPolicy`](../../../src/Search/GrowthOpportunityPolicy.cs)、[`RelicCounterPolicy`](../../../src/Search/RelicCounterPolicy.cs)、[`TheftEncounterStrategy`](../../../src/Search/TheftEncounterStrategy.cs) |
-| 宽度组合与门控 | [`BeamWidthPortfolio`](../../../src/Search/BeamWidthPortfolio.cs)、[`BeamWidthPortfolioGate`](../../../src/Search/BeamWidthPortfolioGate.cs)、[`PowerCommitmentPortfolioGate`](../../../src/Search/PowerCommitmentPortfolioGate.cs) |
-| 新颖性搜索 | [`CombatBeamSolver.NoveltySearch`](../../../src/Search/CombatBeamSolver.NoveltySearch.cs)、[`NoveltySearchOptions`](../../../src/Search/NoveltySearchOptions.cs)、[`NoveltyPortfolioBudget`](../../../src/Search/NoveltyPortfolioBudget.cs) |
-| 前两回合深入探索 | [`CombatSearchCoordinator.EarlyTurnExploration`](../../../src/Search/CombatSearchCoordinator.EarlyTurnExploration.cs)、[`CombatBeamSolver.EarlyTurnFrontier`](../../../src/Search/CombatBeamSolver.EarlyTurnFrontier.cs) |
+| 宽度组合与门控 | `BeamWidthPortfolio`（`src/Search/BeamWidthPortfolio.cs`）、`BeamWidthPortfolioGate`（`src/Search/BeamWidthPortfolioGate.cs`）、`PowerCommitmentPortfolioGate`（`src/Search/PowerCommitmentPortfolioGate.cs`） |
+| 新颖性搜索 | `CombatBeamSolver.NoveltySearch`（`src/Search/CombatBeamSolver.NoveltySearch.cs`）、`NoveltySearchOptions`（`src/Search/NoveltySearchOptions.cs`）、`NoveltyPortfolioBudget`（`src/Search/NoveltyPortfolioBudget.cs`） |
+| 前两回合深入探索 | `CombatSearchCoordinator.EarlyTurnExploration`（`src/Search/CombatSearchCoordinator.EarlyTurnExploration.cs`）、`CombatBeamSolver.EarlyTurnFrontier`（`src/Search/CombatBeamSolver.EarlyTurnFrontier.cs`） |
 | 权重常量 | [`SolverWeights`](../../../src/Search/SolverWeights.cs)、[`SolverSearchProfile`](../../../src/Search/SolverSearchProfile.cs) |
 | 节点、动作与结果数据 | [`CombatPlan`](../../../src/Search/CombatPlan.cs) |
 

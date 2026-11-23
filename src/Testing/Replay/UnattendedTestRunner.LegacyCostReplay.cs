@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 
 namespace CombatSolver;
@@ -89,9 +90,9 @@ internal sealed partial class UnattendedTestRunner
                 evidence.BaseStarCost = saved[index].GetProperty("fields").GetProperty("CardModel._baseStarCost").GetInt32();
                 RestoreReplayCardCosts(evidence, saved[index]);
                 StringBuilder expected = new();
-                CardCostStateSupport.Append(expected, evidence);
+                AppendLegacyCardCostState(expected, evidence);
                 StringBuilder actual = new();
-                CardCostStateSupport.Append(actual, live);
+                AppendLegacyCardCostState(actual, live);
                 if (expected.ToString() != actual.ToString())
                     throw new InvalidDataException($"legacy_cost_layers_mismatch:{marker}[{index}]:{live.Id.Entry}");
                 values.Add(expected.ToString());
@@ -99,6 +100,30 @@ internal sealed partial class UnattendedTestRunner
             costs.Add(marker, values);
         }
         return costs;
+    }
+
+    private static void AppendLegacyCardCostState(StringBuilder key, CardModel card)
+    {
+        List<LocalCostModifier> energy = card.EnergyCost._localModifiers;
+        List<TemporaryCardCost> stars = card._temporaryStarCosts;
+        if (energy.Count == 0 && stars.Count == 0)
+            return;
+        key.Append("|cost-state=").Append(card.EnergyCost.GetWithModifiers(CostModifiers.None))
+            .Append(':').Append(energy.Count).Append('[');
+        for (int i = 0; i < energy.Count; i++)
+        {
+            LocalCostModifier m = energy[i];
+            key.Append(m.Amount).Append(':').Append((int)m.Type)
+                .Append(':').Append((int)m.Expiration).Append(':').Append(m.IsReduceOnly).Append(',');
+        }
+        key.Append("]/stars=").Append(card.BaseStarCost).Append(':').Append(stars.Count).Append('[');
+        for (int i = 0; i < stars.Count; i++)
+        {
+            TemporaryCardCost s = stars[i];
+            key.Append(s.Cost).Append(':').Append(s.ClearsWhenTurnEnds)
+                .Append(':').Append(s.ClearsWhenCardIsPlayed).Append(',');
+        }
+        key.Append(']');
     }
 
     private static bool LegacyCardCostContinuationMatches(string expectedField, string actualField,

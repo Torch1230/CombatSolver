@@ -4,10 +4,8 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
-using CombatSolver.Engine.InCombat.Simulation;
 using Godot;
 using System.Reflection;
 
@@ -22,8 +20,6 @@ internal sealed class SolverDisplayNames
     private readonly DingyDaggerDisplayNames _daggerNames;
     private readonly Dictionary<string, string> _potions;
     private readonly Dictionary<string, string> _relics;
-    private readonly Dictionary<string, string> _powers;
-    private readonly Dictionary<string, string> _orbs;
     private readonly bool _english;
     private readonly Dictionary<string, string> _monsters;
     private readonly Dictionary<uint, string> _creatures;
@@ -37,8 +33,6 @@ internal sealed class SolverDisplayNames
         DingyDaggerDisplayNames daggerNames,
         Dictionary<string, string> potions,
         Dictionary<string, string> relics,
-        Dictionary<string, string> powers,
-        Dictionary<string, string> orbs,
         Dictionary<string, string> monsters,
         Dictionary<uint, string> creatures,
         Dictionary<string, int> slotOrder,
@@ -49,8 +43,6 @@ internal sealed class SolverDisplayNames
         _daggerNames = daggerNames;
         _potions = potions;
         _relics = relics;
-        _powers = powers;
-        _orbs = orbs;
         _english = english;
         _monsters = monsters;
         _creatures = creatures;
@@ -125,21 +117,7 @@ internal sealed class SolverDisplayNames
         Dictionary<string, string> relicNames = new(StringComparer.Ordinal);
         foreach (RelicModel relic in player.Relics)
             relicNames.TryAdd(relic.Id.Entry, relic.Title.GetFormattedText());
-        Dictionary<string, string> powerNames = new(StringComparer.Ordinal);
-        foreach (PowerModel power in ModelDb.AllPowers)
-        {
-            string title = power.Title.GetFormattedText();
-            powerNames.TryAdd(power.Id.Entry, title);
-            powerNames.TryAdd(power.GetType().Name, title);
-        }
-        Dictionary<string, string> orbNames = new(StringComparer.Ordinal);
-        foreach (OrbModel orb in ModelDb.Orbs)
-        {
-            string title = orb.Title.GetFormattedText();
-            orbNames.TryAdd(orb.Id.Entry, title);
-            orbNames.TryAdd(orb.GetType().Name, title);
-        }
-        return new SolverDisplayNames(cardNames, DingyDaggerDisplayNames.Capture(), potionNames, relicNames, powerNames, orbNames, monsterNames, creatureNames,
+        return new SolverDisplayNames(cardNames, DingyDaggerDisplayNames.Capture(), potionNames, relicNames, monsterNames, creatureNames,
             slotOrder, room != null,
             LocManager.Instance.Language is not ("zhs" or "zht"));
     }
@@ -197,20 +175,6 @@ internal sealed class SolverDisplayNames
 
     public string Monster(string monsterId)
         => _monsters.GetValueOrDefault(monsterId, monsterId);
-
-    public string DamageSource(CombatDamageSource source)
-        => source.Kind switch
-        {
-            CombatDamageSourceKind.Card => Card(source.Id ?? (_english ? "Card" : "卡牌")),
-            CombatDamageSourceKind.Potion => Potion(source.Id ?? (_english ? "Potion" : "药水")),
-            CombatDamageSourceKind.Relic => Relic(source.Id ?? (_english ? "Relic" : "遗物")),
-            CombatDamageSourceKind.Power => _powers.GetValueOrDefault(source.Id ?? string.Empty, source.Id ?? (_english ? "Power" : "能力")),
-            CombatDamageSourceKind.Poison => _powers[nameof(PoisonPower)],
-            CombatDamageSourceKind.Thorns => _powers[nameof(ThornsPower)],
-            CombatDamageSourceKind.Orb => _orbs.GetValueOrDefault(source.Id ?? string.Empty, source.Id ?? (_english ? "Orb" : "球")),
-            CombatDamageSourceKind.MonsterMove => _english ? "Enemy move" : "敌方行动",
-            _ => _english ? "Unknown effect" : "未知效果",
-        };
 
     public string Creature(Creature? creature) => Creature(creature, null);
 

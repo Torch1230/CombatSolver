@@ -100,7 +100,7 @@ SearchRequestPipeline.Run(root, policy, budgetLedger)
 
 **目标**：消除终局/主要质量比较器族的分叉，建立唯一 `RouteQuality`。
 
-**范围**：[`SolverInterimResultOrdering`](../../../src/Search/SolverInterimResultOrdering.cs)、[`FinalPlanOrdering`](../../../src/Search/CombatBeamSolver.FinalPlanOrdering.cs)、[`BeamRetentionPolicy.Ranking`](../../../src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs) 的 `CompareFinalCandidates`、[`CombatSearchCoordinator`](../../../src/Search/CombatSearchCoordinator.cs) 的 `CompareCompletedResultPrimaryQuality`，以及 cycle/region/crossturn 的专用比较器。
+**范围**：`SolverInterimResultOrdering`（`src/Search/SolverInterimResultOrdering.cs`）、`FinalPlanOrdering`（`src/Search/CombatBeamSolver.FinalPlanOrdering.cs`）、`BeamRetentionPolicy.Ranking`（`src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs`） 的 `CompareFinalCandidates`、`CombatSearchCoordinator`（`src/Search/CombatSearchCoordinator.cs`） 的 `CompareCompletedResultPrimaryQuality`，以及 cycle/region/crossturn 的专用比较器。
 
 **步骤**：
 1. 定义 `RouteQuality`（字段与来源显式），由 `RouteQualityPolicy.Compute(root, policy, snapshot, features)` 产出；
@@ -149,7 +149,7 @@ SearchRequestPipeline.Run(root, policy, budgetLedger)
 
 **目标**：用一个调度器替代约 40 处 `fixedPrefixActions:` 直接构造与十几条补充通道。
 
-**范围**：`CombatSearchCoordinator` 内所有 `new CombatBeamSolver(..., fixedPrefixActions: …)` 调用点、[`Expansion.Opening`](../../../src/Search/CombatBeamSolver.Expansion.Opening.cs)、[`Expansion.Replay`](../../../src/Search/CombatBeamSolver.Expansion.Replay.cs) 的 `ApplyFixedPrefix`、[`BlockPotionInsertion`](../../../src/Search/CombatBeamSolver.BlockPotionInsertion.cs) 的 `ReplayAdjustedRoute`。
+**范围**：`CombatSearchCoordinator` 内所有 `new CombatBeamSolver(..., fixedPrefixActions: …)` 调用点、`Expansion.Opening`（`src/Search/CombatBeamSolver.Expansion.Opening.cs`）、`Expansion.Replay`（`src/Search/CombatBeamSolver.Expansion.Replay.cs`） 的 `ApplyFixedPrefix`、`BlockPotionInsertion`（`src/Search/CombatBeamSolver.BlockPotionInsertion.cs`） 的 `ReplayAdjustedRoute`。
 
 **步骤**：
 1. 定义 `ContinuationSearchRequest`：`Root`、`Prefix`、`Trait`、`PotionPolicyOverride`、`PotionBounds`、`BudgetSlice`、`Purpose`（枚举，替代字符串模式）；
@@ -228,7 +228,7 @@ SearchRequestPipeline.Run(root, policy, budgetLedger)
 
 **目标**：让“先铺垫、后收获”的跨回合计划由受保护子搜索验证，而不是靠中间分“恰好”活下来。
 
-**范围**：[`PowerCardValuation/Commitments`](../../../src/Search/PowerCardValuation/Commitments)、[`CrossTurnPlanning`](../../../src/Search/CombatBeamSolver.CrossTurnPlanning.cs)、[`Phases`](../../../src/Search/CombatBeamSolver.Phases.cs)、[`EarlyTurnFrontier`](../../../src/Search/CombatBeamSolver.EarlyTurnFrontier.cs)。
+**范围**：`src/Search/PowerCardValuation/Commitments`、`CrossTurnPlanning`（`src/Search/CombatBeamSolver.CrossTurnPlanning.cs`）、`Phases`（`src/Search/CombatBeamSolver.Phases.cs`）、`EarlyTurnFrontier`（`src/Search/CombatBeamSolver.EarlyTurnFrontier.cs`）。
 
 **步骤**：
 1. 泛化 `PowerCommitment` → `PlanCommitment`（能力、引擎、复制、药水链、跨回合收益）；

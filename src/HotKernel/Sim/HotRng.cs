@@ -1,6 +1,5 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using CombatSolver.Engine.Common;
 
 namespace CombatSolver.HotKernel;
 
@@ -32,21 +31,6 @@ internal static class HotRng
         rng.Pad = 0;
         return rng;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static HotRngState FromNative(PredictionRngState s) => new()
-    {
-        S0 = s.State0,
-        S1 = s.State1,
-        S2 = s.State2,
-        S3 = s.State3,
-        Counter = s.Counter,
-        Pad = 0,
-    };
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PredictionRngState ToNative(in HotRngState s)
-        => new(s.Counter, s.S0, s.S1, s.S2, s.S3);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong NextULongRaw(ref HotRngState rng)

@@ -1,44 +1,44 @@
 # 离线搜索宿主
 
-不启动 Godot、在普通 .NET 9 进程里跑 CombatSolver 搜索的宿主。
+不启动 Godot、在普通 .NET 9 进程里运行 CombatSolver `HotKernel` + `HotSearchCoordinator` 搜索的离线宿主。
 
-完整说明（构建、单根与批量用法、plan 字段、产物、`Evaluate` 与 `Coordinator` 的口径差别、
-Godot 绕过表、已知限制、验证证据）见 [`docs/OFFLINE_SEARCH_HARNESS.md`](../../../docs/OFFLINE_SEARCH_HARNESS.md)。
+完整背景与指标口径见 [`docs/OFFLINE_SEARCH_HARNESS.md`](../../../docs/OFFLINE_SEARCH_HARNESS.md)。
 
-```
+```bash
 dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
 dotnet build tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Release
 
-# 直接调用生产结果诊断，检查内存字段成功／失败输出；无需启动游戏或建立战斗
-dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-result-diagnostics
+# Gate 0：HotKernel 非托管布局、结构体尺寸与打包合同检查（无需启动游戏）
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-hot-layout
 
-# 单根
+# Gate A/B/C：19/19 根捕获 + Pack/Unpack 往返 + 多回合自洽 + DOP=1/8 确定性 + 微基准
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --verify-hot-parity
+
+# 单根求解（Evaluate 或 Coordinator）
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
     --request <请求.json> --label R1 --out <产物目录> --profile VeryHigh
 
-# 批量
+# 批量计划与双版本质量对比
 python3 tools/search/OfflineSearchHarness/run_plan.py --plan <plan.json> --workspace <dir> --workers 3
-
-# 两份结果逐字段比
 python3 tools/search/OfflineSearchHarness/compare_results.py \
     --left <A>/runs --left-prefix A --right <B>/runs --right-prefix B --out cmp.json
 ```
 
-文件：
+## 文件说明
 
 | 文件 | 作用 |
 |---|---|
-| `Program.cs` | 命令行、分步时间线、产物落盘 |
-| `AssemblyBootstrap.cs` | 运行期解析 `sts2` / `RitsuLib` / `CombatSolver` |
-| `GameBootstrap.cs` | 游戏静态状态初始化与**全部** Godot 绕过（类头有表） |
-| `ModRuntime.cs` | 模组侧初始化、离线会话、搜索正确性补丁、一次求解 |
-| `GeneratedScenarioSetup.cs` | 生成场景开局（走模组自己的注入方法） |
-| `OfflineCombat.cs` / `MainLoopContext.cs` | 建战斗、推进到玩家第一回合、消息循环 |
-| `OfflineLocalization.cs` / `MemorySaveStore.cs` | 空表本地化、内存存档层 |
+| `Program.cs` | 命令行解析、分步时间线、单根/批量路由与产物落盘 |
+| `AssemblyBootstrap.cs` | 运行期解析 `sts2` / `RitsuLib` / `CombatSolver` 程序集 |
+| `GameBootstrap.cs` | 游戏静态状态初始化与全部 Godot 绕过（类头有清单） |
+| `ModRuntime.cs` | 模组初始化、稳定根捕获并直接调用 `HotSearchCoordinator`（`Solve` / `SolveSingleBeam` / `CaptureQuality`） |
+| `HotKernelChecks.cs` | `--check-hot-layout` 内存布局门禁与 `--verify-hot-parity` Gate A/B/C 核对 |
+| `QualityComparison.cs` | 基于 `HotRouteQuality.IsBetter` 的批量结果质量比较 |
+| `AncillaryFailureChecks.cs` | 辅助失败边界与缓存合同检查 |
+| `GeneratedScenarioSetup.cs` | 生成场景开局（走模组注入入口） |
+| `OfflineCombat.cs` / `MainLoopContext.cs` | 建战斗、推进到玩家首回合与消息循环 |
+| `OfflineLocalization.cs` / `MemorySaveStore.cs` | 空表本地化与内存存档层 |
 | `MemorySampler.cs` | 峰值托管堆与工作集采样 |
-| `ResultDiagnosticsChecks.cs` | 生产 `DescribeResult` 的内存字段、不可用标记与日志完整性合同 |
-| `run_plan.py` / `compare_results.py` | 批量运行、逐字段比较 |
+| `run_plan.py` / `compare_results.py` | 批量执行与逐字段比较脚本 |
 
-`--request` 也接受本仓库的固定装备/初始战斗状态夹具，不再强制 generatedScenarioPath；仍不执行 fixture 的 expected 断言。搜索预算、预设与药水政策以宿主 CLI 为准，例如成长循环须显式传 `--potion-policy RequireAtLeastOne`。恢复快照、追加怪物、自定义规则不支持并明确拒绝；特殊 ScenarioId 的原生合同请使用无人游戏测试。`--stop-at-zero-loss` 启用生产零战损达标停止；`--verify-incremental` 对小根逐步完整回放，不用于性能测量。见[循环对照](../../../docs/archive/performance/loop-optimization-20260921.md)。
-
-循环固定边界集使用 `run_loop_boundaries.py`：串行双 DLL A/B，120 秒进程上限，拒绝覆盖已有结果，显式检查 suite 的质量／结构条件并比较完整路线。按 suite 中各 case 的配置运行 Evaluate 或 Coordinator；4096 动作检查使用请求级共享额度，Coordinator 同时核对请求日志与总计数。计数优先从新 `TurnLayerTimeBudgetStops` / `TurnLayerNodeBudgetStops` 读取，旧 DLL 从完整诊断日志回退解析，二者与总数及日志相互核对。局部／全局时间边界或证据不足标为 Inconclusive、退出 2，原始差异／断言观察仍保留，不能用于有效性能均值；可比较差异、断言或宿主失败退出 1，等价退出 0。不自动把不同路线判作质量退化；见[19 根边界与预算审计](../../../docs/archive/performance/loop-boundaries-20260921.md)。
+`--request` 接受固定装备/初始战斗状态夹具与生成场景请求；不执行 fixture 的 expected 断言。搜索预算、预设与药水政策以 CLI 为准，旧计划 JSON 中的 `--use-portfolio`、`--enable-no-gc-region` 等参数作为兼容无操作选项保留。特殊原生交互合同仍使用无头游戏测试（`tools/testing/run-unattended-test.{ps1,sh}`）。

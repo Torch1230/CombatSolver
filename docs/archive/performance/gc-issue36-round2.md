@@ -8,7 +8,7 @@
 
 `using` 保证正常和异常退出均清空引用；嵌套 Snapshot 使用独立 storage。storage 的租用代次同时校验访问与归还，复制的旧 lease 无法清空已经借给后来 Snapshot 的列表。checkpoint 在 worker 排空后丢弃空闲 storage；没有池化 simulator/model，也没有新增静态缓存。
 
-[独立检查](../../../tools/testing/checks/SnapshotListBufferChecks/README.md) 直接编译生产 helper，覆盖嵌套、异常填充、单槽/reset、4096 容量边界、旧 lease 与复制 lease、不同 owner、弱引用回收。它证明容器契约，不替代游戏评分或 RNG 等价。
+独立检查（`tools/testing/checks/SnapshotListBufferChecks/README.md`） 直接编译生产 helper，覆盖嵌套、异常填充、单槽/reset、4096 容量边界、旧 lease 与复制 lease、不同 owner、弱引用回收。它证明容器契约，不替代游戏评分或 RNG 等价。
 
 三次交替冷进程对照，全部在 headless 并行设施移植前完成。Silent 固定每 solver 2500 节点、普通 GC / DOP4；Necrobinder 固定每 solver 576 节点、Smart / NoGC 4 GB / DOP4。前者请求累计 5000 展开 / 19065 转移，后者 1728 / 22541。所有完整 ACTION/TURN、评分、工作量和非时序剪枝逐项一致。
 

@@ -1,8 +1,16 @@
 using System.Runtime.CompilerServices;
 using CombatSolver.HotKernel;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Powers;
 
 namespace CombatSolver.HotSearch;
+
+internal enum HotEvalMode : byte
+{
+    Balanced = 0,
+    SetupAndSurvival = 1,
+    Offense = 2,
+}
 
 /// <summary>
 /// Stage 1 zero-allocation fast summary extracted directly from <see cref="CombatHotState"/>
@@ -25,6 +33,7 @@ internal readonly struct HotFastSummary
     public readonly int GrowthHpCredit;
     public readonly int GrowthRewardCount;
     public readonly byte AliveEnemyCount;
+    public readonly byte RevivingEnemyCount;
     public readonly byte DeathSaveUseCount;
     public readonly bool ForfeitsGold;
     public readonly HotCombatOutcome Outcome;
@@ -45,6 +54,7 @@ internal readonly struct HotFastSummary
         int growthHpCredit,
         int growthRewardCount,
         byte aliveEnemyCount,
+        byte revivingEnemyCount,
         byte deathSaveUseCount,
         bool forfeitsGold,
         HotCombatOutcome outcome)
@@ -64,6 +74,7 @@ internal readonly struct HotFastSummary
         GrowthHpCredit = growthHpCredit;
         GrowthRewardCount = growthRewardCount;
         AliveEnemyCount = aliveEnemyCount;
+        RevivingEnemyCount = revivingEnemyCount;
         DeathSaveUseCount = deathSaveUseCount;
         ForfeitsGold = forfeitsGold;
         Outcome = outcome;
@@ -117,6 +128,7 @@ internal readonly struct HotEvalLookup
     public readonly ushort WeakDefId;
     public readonly ushort FrailDefId;
     public readonly ushort BarricadeDefId;
+    public readonly ushort BlurDefId;
     public readonly ushort MetallicizeDefId;
     public readonly ushort PlatingDefId;
     public readonly ushort ArtifactDefId;
@@ -127,8 +139,19 @@ internal readonly struct HotEvalLookup
     public readonly ushort EchoFormDefId;
     public readonly ushort BufferDefId;
     public readonly ushort WraithFormDefId;
+    public readonly ushort IntangibleDefId;
     public readonly ushort AfterimageDefId;
     public readonly ushort DemonFormDefId;
+    public readonly ushort BlockNextTurnDefId;
+    public readonly ushort EnergyNextTurnDefId;
+    public readonly ushort DrawCardsNextTurnDefId;
+    public readonly ushort StarNextTurnDefId;
+    public readonly ushort SummonNextTurnDefId;
+    public readonly ushort ReattachDefId;
+    public readonly ushort SandpitDefId;
+    public readonly ushort FurnaceDefId;
+    public readonly ushort SelfFormingClayDefId;
+    public readonly ushort ToricToughnessDefId;
     public readonly bool HasPaperKrane;
     public readonly bool HasOddMushroom;
     public readonly bool HasPaperPhrog;
@@ -142,6 +165,7 @@ internal readonly struct HotEvalLookup
         WeakDefId = rules.WeakPowerDefId != 0 ? rules.WeakPowerDefId : rules.GetPowerDefId(HotPowerId.WeakPower);
         FrailDefId = rules.FrailPowerDefId != 0 ? rules.FrailPowerDefId : rules.GetPowerDefId(HotPowerId.FrailPower);
         BarricadeDefId = rules.BarricadePowerDefId != 0 ? rules.BarricadePowerDefId : rules.GetPowerDefId(HotPowerId.BarricadePower);
+        BlurDefId = rules.GetPowerDefId(HotPowerId.BlurPower);
         MetallicizeDefId = rules.MetallicizePowerDefId;
         PlatingDefId = rules.PlatingPowerDefId != 0 ? rules.PlatingPowerDefId : rules.GetPowerDefId(HotPowerId.PlatingPower);
         ArtifactDefId = rules.ArtifactPowerDefId != 0 ? rules.ArtifactPowerDefId : rules.GetPowerDefId(HotPowerId.ArtifactPower);
@@ -152,8 +176,19 @@ internal readonly struct HotEvalLookup
         EchoFormDefId = rules.GetPowerDefId(HotPowerId.EchoFormPower);
         BufferDefId = rules.GetPowerDefId(HotPowerId.BufferPower);
         WraithFormDefId = rules.GetPowerDefId(HotPowerId.WraithFormPower);
+        IntangibleDefId = rules.GetPowerDefId(HotPowerId.IntangiblePower);
         AfterimageDefId = rules.GetPowerDefId(HotPowerId.AfterimagePower);
         DemonFormDefId = rules.GetPowerDefId(HotPowerId.DemonFormPower);
+        BlockNextTurnDefId = rules.GetPowerDefId(HotPowerId.BlockNextTurnPower);
+        EnergyNextTurnDefId = rules.GetPowerDefId(HotPowerId.EnergyNextTurnPower);
+        DrawCardsNextTurnDefId = rules.GetPowerDefId(HotPowerId.DrawCardsNextTurnPower);
+        StarNextTurnDefId = rules.GetPowerDefId(HotPowerId.StarNextTurnPower);
+        SummonNextTurnDefId = rules.GetPowerDefId(HotPowerId.SummonNextTurnPower);
+        ReattachDefId = rules.GetPowerDefId(HotPowerId.ReattachPower);
+        SandpitDefId = rules.GetPowerDefId(HotPowerId.SandpitPower);
+        FurnaceDefId = rules.GetPowerDefId(HotPowerId.FurnacePower);
+        SelfFormingClayDefId = rules.GetPowerDefId(HotPowerId.SelfFormingClayPower);
+        ToricToughnessDefId = rules.GetPowerDefId(HotPowerId.ToricToughnessPower);
         HasPaperKrane = rules.HasPaperKrane;
         HasOddMushroom = rules.HasOddMushroom;
         HasPaperPhrog = rules.HasPaperPhrog;
@@ -162,7 +197,7 @@ internal readonly struct HotEvalLookup
 
 /// <summary>
 /// 2-stage zero-allocation evaluator over <see cref="CombatHotState"/>.
-/// ZERO references to <c>MegaCrit.Sts2.Core.Models.*</c>; ZERO per-state managed allocations.
+/// Operates purely on packed hot-kernel structs; ZERO per-state managed allocations.
 /// </summary>
 internal static class HotEvaluator
 {
@@ -173,8 +208,8 @@ internal static class HotEvaluator
     private const long EnemyHpWeight = 10_000L;
     private const long EnemyBlockWeight = 2_000L;
     private const long EnemyKillBonus = 85_000L;
-    private const long IncomingThreatWeight = 22_000L;
-    private const long SetupWeightScale = 12_000L;
+    private const long IncomingThreatWeight = 24_000L;
+    private const long SetupWeightScale = 14_000L;
     private const long EnergyWeight = 55_000L;
     private const long StarWeight = 18_000L;
     private const long PotionCostWeight = 28_000L;
@@ -187,6 +222,7 @@ internal static class HotEvaluator
         int enemyHpSum = 0;
         int enemyBlockSum = 0;
         byte aliveEnemies = 0;
+        byte revivingEnemies = 0;
 
         int rosterCount = s.RosterCount;
         for (int r = 0; r < rosterCount; r++)
@@ -194,7 +230,11 @@ internal static class HotEvaluator
             byte slot = s.ActiveEnemyRoster[r];
             ref readonly HotEnemy enemy = ref s.Enemies[slot];
             if ((enemy.Vital.Flags & HotCreatureFlags.Alive) == 0)
+            {
+                if (enemy.DeathPhase == HotDeathPhase.Reviving)
+                    revivingEnemies++;
                 continue;
+            }
             aliveEnemies++;
             enemyHpSum += Math.Max(0, enemy.Vital.CurrentHp);
             enemyBlockSum += Math.Max(0, enemy.Vital.Block);
@@ -213,7 +253,7 @@ internal static class HotEvaluator
         {
             if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || s.Player.CurrentHp <= 0)
                 outcome = HotCombatOutcome.Defeat;
-            else if (aliveEnemies == 0)
+            else if (aliveEnemies == 0 && revivingEnemies == 0)
                 outcome = HotCombatOutcome.Victory;
         }
 
@@ -233,6 +273,7 @@ internal static class HotEvaluator
             growthHpCredit: growthHpCredit,
             growthRewardCount: growthCount,
             aliveEnemyCount: aliveEnemies,
+            revivingEnemyCount: revivingEnemies,
             deathSaveUseCount: (byte)Math.Clamp(s.DeathSaveUseCount, 0, byte.MaxValue),
             forfeitsGold: forfeitsGold,
             outcome: outcome);
@@ -259,9 +300,7 @@ internal static class HotEvaluator
 
         int maxHpDeficit = Math.Max(0, policy.InitialPlayerMaxHp - summary.PlayerMaxHp);
         int postCombatMaxPossible = policy.PostCombatRelicHeal.UnconditionalHeal;
-        // Sound lower bound on final strategic HP deficit when no in-combat healing exists:
-        // player can at most avoid further damage and receive post-combat unconditional heal on victory.
-        int minPossibleDeficit = ActEndingBossPolicy.StrategicHpDeficit(
+        int minPossibleDeficit = HotRouteQuality.StrategicHpDeficit(
             summary.HpLost,
             maxHpDeficit,
             summary.HpRecovered + postCombatMaxPossible,
@@ -302,7 +341,7 @@ internal static class HotEvaluator
 
     /// <summary>
     /// Stage 2: Single-pass zero-allocation heuristic over <see cref="CombatHotState"/> contiguous arrays.
-    /// Returns both total <paramref name="score"/> and <paramref name="setupScore"/> (for scaling diversity lane).
+    /// Returns total <paramref name="score"/>, <paramref name="setupScore"/>, and <paramref name="playableHandCount"/>.
     /// </summary>
     public static void EvaluateState(
         in CombatHotState s,
@@ -313,10 +352,13 @@ internal static class HotEvaluator
         in HotFastSummary summary,
         int potionStrategicCost,
         int actionCount,
+        HotEvalMode evalMode,
         out long score,
-        out int setupScore)
+        out int setupScore,
+        out byte playableHandCount)
     {
         setupScore = 0;
+        playableHandCount = 0;
 
         // 1. Terminal Defeat
         if (summary.IsDefeat)
@@ -324,7 +366,7 @@ internal static class HotEvaluator
             score = DeathBaseScore
                 + (long)summary.Turn * 100_000L
                 - (long)summary.EnemyHpSum * 100L
-                - (long)summary.AliveEnemyCount * 50_000L;
+                - (long)(summary.AliveEnemyCount + summary.RevivingEnemyCount) * 50_000L;
             return;
         }
 
@@ -333,13 +375,13 @@ internal static class HotEvaluator
         // 2. Terminal Victory
         if (summary.IsVictory)
         {
-            int postCombatHeal = ActEndingBossPolicy.RankedPostCombatRelicHeal(
+            int postCombatHeal = HotRouteQuality.RankedPostCombatRelicHeal(
                 policy.PostCombatRelicHeal,
                 completeVictory: true,
                 summary.PlayerHp,
                 summary.PlayerMaxHp);
 
-            int strategicDeficit = ActEndingBossPolicy.StrategicHpDeficit(
+            int strategicDeficit = HotRouteQuality.StrategicHpDeficit(
                 summary.HpLost,
                 maxHpDelta,
                 summary.HpRecovered + postCombatHeal,
@@ -366,21 +408,49 @@ internal static class HotEvaluator
             return;
         }
 
+        // Mode multipliers (integer percentages for zero float variance)
+        long setupScale = evalMode switch
+        {
+            HotEvalMode.SetupAndSurvival => (SetupWeightScale * 155L) / 100L,
+            HotEvalMode.Offense => (SetupWeightScale * 85L) / 100L,
+            _ => SetupWeightScale,
+        };
+        long threatWeight = evalMode switch
+        {
+            HotEvalMode.SetupAndSurvival => (IncomingThreatWeight * 120L) / 100L,
+            HotEvalMode.Offense => (IncomingThreatWeight * 85L) / 100L,
+            _ => IncomingThreatWeight,
+        };
+        long enemyHpWeight = evalMode switch
+        {
+            HotEvalMode.Offense => (EnemyHpWeight * 140L) / 100L,
+            HotEvalMode.SetupAndSurvival => (EnemyHpWeight * 92L) / 100L,
+            _ => EnemyHpWeight,
+        };
+
         // 3. Ongoing combat: single-pass scan over powers, enemies, orbs, hand, and resources.
-        int playerStrength = 0;
-        int playerDexterity = 0;
         int playerFocus = 0;
         int playerVuln = 0;
+        int playerIntangible = 0;
         int playerEndTurnBlock = 0;
-        bool hasBarricade = false;
+        int nextTurnBlock = 0;
+        int nextTurnEnergy = 0;
+        int nextTurnDraw = 0;
+        int nextTurnStars = 0;
+        int nextTurnSummon = 0;
+        int furnacePower = 0;
+        bool preservesExcessBlock = false;
         int playerSetup = 0;
         int enemyDebuffValue = 0;
         int enemyThreatPowerPenalty = 0;
+        int minSandpitTurns = int.MaxValue;
 
-        // Stack-local per-enemy stat cache (max 16 enemies -> 64 bytes on stack!)
+        // Stack-local per-enemy stat cache (max 16 enemies -> tiny stack footprint!)
         Span<int> enemyStr = stackalloc int[HotLimits.MaxEnemies];
         Span<byte> enemyWeak = stackalloc byte[HotLimits.MaxEnemies];
-        Span<int> enemyPoisonOrDoom = stackalloc int[HotLimits.MaxEnemies];
+        Span<int> enemyPoison = stackalloc int[HotLimits.MaxEnemies];
+        Span<int> enemyDoom = stackalloc int[HotLimits.MaxEnemies];
+        Span<int> enemyReattachHp = stackalloc int[HotLimits.MaxEnemies];
 
         int powerCount = s.PowerCount;
         for (int i = 0; i < powerCount; i++)
@@ -392,12 +462,18 @@ internal static class HotEvaluator
             ushort defId = p.PowerDefId;
             if (p.OwnerSlot == 0)
             {
-                if (defId == lookup.StrengthDefId) playerStrength += p.Amount;
-                else if (defId == lookup.DexterityDefId) playerDexterity += p.Amount;
-                else if (defId == lookup.FocusDefId) playerFocus += p.Amount;
+                if (defId == lookup.FocusDefId) playerFocus += p.Amount;
                 else if (defId == lookup.VulnerableDefId) playerVuln += p.Amount;
-                else if (defId == lookup.BarricadeDefId) hasBarricade = true;
+                else if (defId == lookup.IntangibleDefId) playerIntangible += p.Amount;
+                else if (defId == lookup.BarricadeDefId || defId == lookup.BlurDefId) preservesExcessBlock = true;
                 else if (defId == lookup.MetallicizeDefId || defId == lookup.PlatingDefId) playerEndTurnBlock += p.Amount;
+                else if (defId == lookup.BlockNextTurnDefId || defId == lookup.SelfFormingClayDefId || defId == lookup.ToricToughnessDefId)
+                    nextTurnBlock += p.Amount;
+                else if (defId == lookup.EnergyNextTurnDefId) nextTurnEnergy += p.Amount;
+                else if (defId == lookup.DrawCardsNextTurnDefId) nextTurnDraw += p.Amount;
+                else if (defId == lookup.StarNextTurnDefId) nextTurnStars += p.Amount;
+                else if (defId == lookup.SummonNextTurnDefId) nextTurnSummon += p.Amount;
+                else if (defId == lookup.FurnaceDefId) furnacePower += p.Amount;
 
                 playerSetup += ComputePlayerPowerSetupWeight(defId, p.Amount, rules, in lookup);
             }
@@ -406,44 +482,64 @@ internal static class HotEvaluator
                 int eSlot = p.OwnerSlot - 3;
                 if ((uint)eSlot >= HotLimits.MaxEnemies)
                     continue;
-                if ((s.Enemies[eSlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+
+                ref readonly HotEnemy ownerEnemy = ref s.Enemies[eSlot];
+                bool isAlive = (ownerEnemy.Vital.Flags & HotCreatureFlags.Alive) != 0;
+                bool isReviving = !isAlive && ownerEnemy.DeathPhase == HotDeathPhase.Reviving;
+
+                if (defId == lookup.ReattachDefId && p.Amount > 0)
+                {
+                    enemyReattachHp[eSlot] = p.Amount;
+                    continue;
+                }
+
+                if (!isAlive)
                     continue;
 
                 if (defId == lookup.StrengthDefId)
                 {
                     enemyStr[eSlot] += p.Amount;
                     if (p.Amount > 0)
-                        enemyThreatPowerPenalty += p.Amount * 2;
+                        enemyThreatPowerPenalty += Math.Min(p.Amount, 20) * 3;
                 }
                 else if (defId == lookup.WeakDefId && p.Amount > 0)
                 {
                     enemyWeak[eSlot] = 1;
-                    enemyDebuffValue += Math.Min(p.Amount, 4) * 3;
+                    enemyDebuffValue += Math.Min(p.Amount, 5) * 4;
                 }
                 else if (defId == lookup.VulnerableDefId && p.Amount > 0)
                 {
-                    enemyDebuffValue += Math.Min(p.Amount, 4) * 4;
+                    enemyDebuffValue += Math.Min(p.Amount, 5) * 5;
                 }
                 else if (defId == lookup.PoisonDefId && p.Amount > 0)
                 {
-                    enemyPoisonOrDoom[eSlot] += p.Amount;
-                    enemyDebuffValue += Math.Min(p.Amount, 30) * 3;
+                    enemyPoison[eSlot] += p.Amount;
+                    enemyDebuffValue += Math.Min(p.Amount, 40) * 3;
                 }
                 else if (defId == lookup.DoomDefId && p.Amount > 0)
                 {
-                    enemyPoisonOrDoom[eSlot] += p.Amount;
-                    enemyDebuffValue += Math.Min(p.Amount, 40) * 2;
+                    enemyDoom[eSlot] += p.Amount;
                 }
                 else if (defId == lookup.RitualDefId && p.Amount > 0)
                 {
-                    enemyThreatPowerPenalty += p.Amount * 4;
+                    enemyThreatPowerPenalty += Math.Min(p.Amount, 10) * 5;
+                }
+                else if (defId == lookup.SandpitDefId && p.Amount > 0)
+                {
+                    if (p.Amount < minSandpitTurns)
+                        minSandpitTurns = p.Amount;
                 }
             }
         }
 
-        // Scan active alive enemies: incoming attack threat + focus-fire concentration.
+        // Scan active roster: incoming attack threat, reviving segment revive-HP penalty, Doom lethal, and focus/AOE shape.
         int incomingDamage = 0;
         int lowestEnemyHp = int.MaxValue;
+        int highestAliveEnemyHp = 0;
+        int revivingHpPenalty = 0;
+        int reattachAliveCount = 0;
+        int doomLethalCount = 0;
+        int effectiveDoomValue = 0;
         int rosterCount = s.RosterCount;
 
         for (int r = 0; r < rosterCount; r++)
@@ -451,22 +547,53 @@ internal static class HotEvaluator
             byte eSlot = s.ActiveEnemyRoster[r];
             ref readonly HotEnemy enemy = ref s.Enemies[eSlot];
             if ((enemy.Vital.Flags & HotCreatureFlags.Alive) == 0)
+            {
+                if (enemy.DeathPhase == HotDeathPhase.Reviving)
+                {
+                    int revHp = enemyReattachHp[eSlot] > 0
+                        ? enemyReattachHp[eSlot]
+                        : Math.Max(15, enemy.Vital.MaxHp / 2);
+                    revivingHpPenalty += revHp;
+                }
                 continue;
+            }
 
-            int effectiveEnemyHp = Math.Max(0, enemy.Vital.CurrentHp - enemyPoisonOrDoom[eSlot]);
+            int curHp = Math.Max(0, enemy.Vital.CurrentHp);
+            bool hasReattach = enemyReattachHp[eSlot] > 0;
+            if (hasReattach)
+                reattachAliveCount++;
+
+            if (enemyDoom[eSlot] > 0)
+            {
+                if (enemyDoom[eSlot] >= curHp && !hasReattach)
+                {
+                    doomLethalCount++;
+                    effectiveDoomValue += curHp;
+                }
+                else
+                {
+                    effectiveDoomValue += Math.Min(enemyDoom[eSlot], curHp);
+                }
+            }
+
+            int effectiveEnemyHp = Math.Max(0, curHp - enemyPoison[eSlot] - enemyDoom[eSlot]);
             if (effectiveEnemyHp < lowestEnemyHp)
                 lowestEnemyHp = effectiveEnemyHp;
+            if (curHp > highestAliveEnemyHp)
+                highestAliveEnemyHp = curHp;
 
             if ((enemy.Flags & HotEnemyFlags.SkipNextMove) != 0)
                 continue;
 
-            incomingDamage += EstimateEnemyIncomingDamage(
+            int rawIncoming = EstimateEnemyIncomingDamage(
                 in enemy,
                 rules,
                 enemyStr[eSlot],
                 enemyWeak[eSlot] != 0,
                 playerVuln > 0,
+                playerIntangible > 0,
                 in lookup);
+            incomingDamage += rawIncoming;
         }
 
         // Effective defense buffer = current block + Plating/Metallicize + Wuppy/Osty absorption
@@ -479,7 +606,7 @@ internal static class HotEvaluator
         int unblockedIncoming = Math.Max(0, incomingDamage - effectiveDefense);
 
         // Compute HP score respecting BossHpRelief
-        int ongoingDeficit = ActEndingBossPolicy.StrategicHpDeficit(
+        int ongoingDeficit = HotRouteQuality.StrategicHpDeficit(
             summary.HpLost,
             maxHpDelta,
             summary.HpRecovered,
@@ -500,30 +627,68 @@ internal static class HotEvaluator
             };
 
             if (unblockedIncoming >= summary.PlayerHp)
-            {
-                // Lethal warning: stronger when player is out of energy to defend.
                 runningScore -= summary.Energy == 0 ? 4_000_000L : 800_000L;
-            }
-            runningScore -= (long)scaledThreat * IncomingThreatWeight;
+
+            runningScore -= (long)scaledThreat * threatWeight;
         }
-        else if (hasBarricade && summary.PlayerBlock > incomingDamage)
+        else if (preservesExcessBlock && summary.PlayerBlock > incomingDamage)
         {
-            // Under Barricade, excess block carries into future turns.
+            // Under Barricade/Blur, excess block carries into future turns.
             int carriedBlock = Math.Min(summary.PlayerBlock - incomingDamage, 60);
-            runningScore += (long)carriedBlock * 12_000L;
+            runningScore += (long)carriedBlock * 14_000L;
         }
 
-        // Offense, kills & focus-fire pressure
-        int killedCount = Math.Max(0, policy.InitialEnemyCount - summary.AliveEnemyCount);
-        runningScore += (long)killedCount * EnemyKillBonus;
-        runningScore -= (long)summary.EnemyHpSum * EnemyHpWeight;
+        // Next-turn defensive/resource carryovers (Prolong, Prophesize, Hegemony, Relax, etc.)
+        long carryoverMult = evalMode == HotEvalMode.SetupAndSurvival ? 125L : 100L;
+        if (nextTurnBlock > 0)
+            runningScore += ((long)Math.Min(nextTurnBlock, 60) * 14_000L * carryoverMult) / 100L;
+        if (nextTurnEnergy > 0)
+            runningScore += ((long)Math.Min(nextTurnEnergy, 6) * 34_000L * carryoverMult) / 100L;
+        if (nextTurnDraw > 0)
+            runningScore += ((long)Math.Min(nextTurnDraw, 6) * 18_000L * carryoverMult) / 100L;
+        if (nextTurnStars > 0)
+            runningScore += (long)Math.Min(nextTurnStars, 8) * 14_000L;
+        if (nextTurnSummon > 0)
+            runningScore += (long)Math.Min(nextTurnSummon, 20) * 6_000L;
+
+        // Offense, permanent kills, reviving-enemy correction, Doom lethal, and focus/AOE shaping
+        int remainingNonDead = summary.AliveEnemyCount + summary.RevivingEnemyCount;
+        int permanentKills = Math.Max(0, policy.InitialEnemyCount - remainingNonDead) + doomLethalCount;
+        runningScore += (long)permanentKills * EnemyKillBonus;
+        runningScore -= (long)summary.EnemyHpSum * enemyHpWeight;
         runningScore -= (long)summary.EnemyBlockSum * EnemyBlockWeight;
-        if (summary.AliveEnemyCount > 1 && lowestEnemyHp < int.MaxValue)
+
+        // Penalize reviving enemies (e.g. Decimillipede Reattach): killing 1 segment alone does NOT save its revive HP!
+        if (revivingHpPenalty > 0)
+            runningScore -= (long)revivingHpPenalty * ((enemyHpWeight * 92L) / 100L);
+
+        // Necrobinder Doom progress & lethal bonus
+        if (effectiveDoomValue > 0)
+            runningScore += (long)effectiveDoomValue * 5_500L;
+
+        bool allReattachEncounter = reattachAliveCount > 0
+            && (reattachAliveCount + summary.RevivingEnemyCount) >= summary.AliveEnemyCount;
+
+        if (allReattachEncounter && summary.AliveEnemyCount > 1)
         {
-            // Focus-fire bonus: damaging the weakest enemy brings a kill closer.
+            // For Reattach encounters (Decimillipede), bringing the HIGHEST segment HP down together
+            // prepares a synchronized AOE clear instead of wasting damage on one reviving segment.
+            runningScore -= (long)highestAliveEnemyHp * 2_500L;
+        }
+        else if (summary.AliveEnemyCount > 1 && lowestEnemyHp < int.MaxValue)
+        {
+            // Normal multi-enemy focus-fire bonus: damaging the weakest enemy brings a permanent kill closer.
             int avgHp = summary.EnemyHpSum / summary.AliveEnemyCount;
             int focusGap = Math.Max(0, avgHp - lowestEnemyHp);
             runningScore += (long)Math.Min(focusGap, 60) * 1_200L;
+        }
+
+        // Boss Sandpit countdown pressure (The Insatiable): reward keeping countdown safe!
+        if (minSandpitTurns < int.MaxValue)
+        {
+            runningScore += (long)Math.Min(minSandpitTurns, 6) * 30_000L;
+            if (minSandpitTurns <= 1 && summary.EnemyHpSum > 60)
+                runningScore -= 140_000L;
         }
 
         // Orbs (Defect)
@@ -552,8 +717,8 @@ internal static class HotEvaluator
         // Osty (Necrobinder)
         if ((s.CombatFlags & HotCombatFlags.HasOsty) != 0 && (s.Osty.Flags & HotCreatureFlags.Alive) != 0)
         {
-            runningScore += (long)Math.Min(s.Osty.CurrentHp, 80) * 3_500L;
-            playerSetup += Math.Min(s.Osty.CurrentHp / 5, 10);
+            runningScore += (long)Math.Min(s.Osty.CurrentHp, 80) * 4_500L;
+            playerSetup += Math.Min(s.Osty.CurrentHp / 4, 12);
         }
 
         // Fool arrows & melodies
@@ -570,11 +735,13 @@ internal static class HotEvaluator
             runningScore += (long)s.Fool.MelodyCardsFinished * 5_000L;
         }
 
-        // Hand potential & energy/stars
+        // Hand potential, retained scaling attacks (e.g. SovereignBlade), and deck clutter
         int handCount = s.HandCount;
         int playableCards = 0;
         int zeroCostPlayable = 0;
         int handClutter = 0;
+        long retainedAttackBonus = 0;
+
         for (int h = 0; h < handCount; h++)
         {
             ref readonly HotCard c = ref s.Cards[h];
@@ -584,6 +751,19 @@ internal static class HotEvaluator
                 handClutter++;
                 continue;
             }
+
+            // Retained Sovereign Blade growth value (prevents dumping a growing blade prematurely under Furnace!)
+            if (def.CardId == HotCustomCardId.SovereignBlade
+                && ((c.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0 || (c.Flags & HotCardFlags.SingleTurnRetain) != 0))
+            {
+                int bladeDmg = Math.Max(0, def.GetDamage(c.UpgradeLevel, c.Var0Delta));
+                if (furnacePower > 0 && summary.EnemyHpSum > bladeDmg * 2)
+                {
+                    long perDmg = evalMode == HotEvalMode.SetupAndSurvival ? 6_500L : 4_800L;
+                    retainedAttackBonus += (long)Math.Min(bladeDmg + furnacePower, 70) * perDmg;
+                }
+            }
+
             if ((c.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0)
                 continue;
 
@@ -601,16 +781,30 @@ internal static class HotEvaluator
             }
         }
 
+        // Count Status/Curse clutter in Draw + Discard so exhausting them (Purity, True Grit) is rewarded.
+        int deckClutter = handClutter;
+        int livePileEnd = s.DiscardStart + s.DiscardCount;
+        for (int idx = s.DrawStart; idx < livePileEnd; idx++)
+        {
+            CardType ct = rules.Cards[s.Cards[idx].CardDefId].Type;
+            if (ct is CardType.Status or CardType.Curse)
+                deckClutter++;
+        }
+
+        playableHandCount = (byte)Math.Clamp(playableCards, 0, byte.MaxValue);
+
         runningScore += (long)Math.Min(summary.Energy, 6) * EnergyWeight;
         runningScore += (long)Math.Min(summary.Stars, 8) * StarWeight;
-        runningScore += (long)Math.Min(playableCards, 8) * 14_000L;
-        runningScore += (long)Math.Min(zeroCostPlayable, 6) * 8_000L;
-        runningScore -= (long)handClutter * 6_000L;
+        runningScore += (long)Math.Min(playableCards, 10) * 18_000L;
+        runningScore += (long)Math.Min(zeroCostPlayable, 8) * 11_000L;
+        runningScore += retainedAttackBonus;
+        runningScore -= (long)handClutter * 4_000L;
+        runningScore -= (long)deckClutter * 4_500L;
 
-        // Setup & debuff totals
-        int totalSetup = Math.Clamp(playerSetup + enemyDebuffValue - enemyThreatPowerPenalty, -64, 64);
+        // Setup & debuff totals (expanded cap so multi-power engines & 3-energy forms outweigh their energy cost!)
+        int totalSetup = Math.Clamp(playerSetup + enemyDebuffValue - enemyThreatPowerPenalty, -80, 96);
         setupScore = totalSetup;
-        runningScore += (long)Math.Clamp(totalSetup, -32, 32) * SetupWeightScale;
+        runningScore += (long)Math.Clamp(totalSetup, -48, 64) * setupScale;
 
         // Potion cost, growth, long-term resources, anger copies, theft
         runningScore -= (long)potionStrategicCost * PotionCostWeight;
@@ -636,6 +830,7 @@ internal static class HotEvaluator
         int enemyStrength,
         bool enemyWeak,
         bool playerVulnerable,
+        bool playerIntangible,
         in HotEvalLookup lookup)
     {
         if (enemy.MonsterDefId == 0 || enemy.CurrentMoveNode < 0)
@@ -655,7 +850,7 @@ internal static class HotEvaluator
                 HotMonsterAttack atk = node.Attacks[i];
                 if (atk.Repeats == 0)
                     continue;
-                int hit = ScaleEnemyHit(atk.BaseDamage, enemyStrength, enemyWeak, playerVulnerable, in lookup);
+                int hit = ScaleEnemyHit(atk.BaseDamage, enemyStrength, enemyWeak, playerVulnerable, playerIntangible, in lookup);
                 total += hit * atk.Repeats;
             }
         }
@@ -667,7 +862,7 @@ internal static class HotEvaluator
             {
                 hits = Math.Max(1, rules.Monsters[enemy.MonsterDefId].TestSubjectBaseMultiClawCount + enemy.AiRegs[1]);
             }
-            int hit = ScaleEnemyHit(node.BaseDamage, enemyStrength, enemyWeak, playerVulnerable, in lookup);
+            int hit = ScaleEnemyHit(node.BaseDamage, enemyStrength, enemyWeak, playerVulnerable, playerIntangible, in lookup);
             total += hit * hits;
         }
 
@@ -680,6 +875,7 @@ internal static class HotEvaluator
         int enemyStrength,
         bool enemyWeak,
         bool playerVulnerable,
+        bool playerIntangible,
         in HotEvalLookup lookup)
     {
         int dmg = baseDamage + enemyStrength;
@@ -689,6 +885,8 @@ internal static class HotEvaluator
             dmg = lookup.HasPaperKrane ? (dmg * 60) / 100 : (dmg * 75) / 100;
         if (playerVulnerable)
             dmg = lookup.HasOddMushroom ? (dmg * 125) / 100 : (dmg * 150) / 100;
+        if (playerIntangible && dmg > 1)
+            dmg = 1;
         return Math.Max(0, dmg);
     }
 
@@ -699,29 +897,144 @@ internal static class HotEvaluator
         HotRules rules,
         in HotEvalLookup lookup)
     {
-        if (defId < rules.Powers.Length)
+        if (defId >= rules.Powers.Length)
+            return 0;
+
+        HotPowerDef def = rules.Powers[defId];
+
+        // CRITICAL: Player Debuffs must NEVER receive a positive catalog SetupWeight!
+        if (def.Type == PowerType.Debuff)
         {
-            short catalogWeight = rules.Powers[defId].SetupWeight;
-            if (catalogWeight != 0)
-                return Math.Clamp(catalogWeight * Math.Clamp(amount, -10, 10) / 2, -24, 24);
+            int mag = Math.Clamp(Math.Abs(amount), 1, 6);
+            return def.PowerId switch
+            {
+                HotPowerId.WeakPower => -mag * 3,
+                HotPowerId.VulnerablePower => -mag * 3,
+                HotPowerId.FrailPower => -mag * 3,
+                HotPowerId.WraithFormPower => -mag * 2,
+                HotPowerId.BiasedCognitionPower => -mag * 2,
+                HotPowerId.NoBlockPower => -mag * 4,
+                HotPowerId.NoDrawPower => -3,
+                HotPowerId.NoEnergyGainPower => -4,
+                HotPowerId.ConstrictPower => -Math.Min(Math.Abs(amount), 12),
+                HotPowerId.BorrowedTimePower => -3,
+                HotPowerId.ChainsOfBindingPower => -mag * 2,
+                HotPowerId.SlothPower => -4,
+                HotPowerId.SlowPower => -2,
+                HotPowerId.MindRotPower => -mag * 3,
+                HotPowerId.TangledPower => -3,
+                HotPowerId.TheGambitPower => -2,
+                _ => -Math.Min(mag, 3),
+            };
         }
 
+        // Next-turn carryover powers are scored directly in EvaluateState (keep small setup credit for Setup lane).
+        switch (def.PowerId)
+        {
+            case HotPowerId.BlockNextTurnPower:
+            case HotPowerId.SelfFormingClayPower:
+            case HotPowerId.ToricToughnessPower:
+                return Math.Min(Math.Max(0, amount) / 4, 14);
+            case HotPowerId.EnergyNextTurnPower:
+                return Math.Min(Math.Max(0, amount) * 3, 12);
+            case HotPowerId.DrawCardsNextTurnPower:
+                return Math.Min(Math.Max(0, amount) * 2, 10);
+            case HotPowerId.StarNextTurnPower:
+            case HotPowerId.SummonNextTurnPower:
+                return Math.Min(Math.Max(0, amount) * 2, 8);
+        }
+
+        // Explicit weights for high-impact Buffs whose catalog SetupWeight is 0 (or needs non-saturating scaling)
+        int posAmt = Math.Clamp(amount, 0, 16);
+        int explicitWeight = def.PowerId switch
+        {
+            // Regent / Silent / Necro / Colorless high-impact forms & engines
+            HotPowerId.VoidFormPower => Math.Min(posAmt, 3) * 14,
+            HotPowerId.SerpentFormPower => Math.Min(posAmt, 12) * 3,
+            HotPowerId.SpeedsterPower => Math.Min(posAmt, 10) * 2,
+            HotPowerId.SpiritOfAshPower => Math.Min(posAmt, 12) * 2,
+            HotPowerId.VeilpiercerPower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.MayhemPower => Math.Min(posAmt, 3) * 10,
+            HotPowerId.AutomationPower => Math.Min(posAmt, 3) * 6,
+            HotPowerId.ReaperFormPower => Math.Min(posAmt, 3) * 12,
+            HotPowerId.FurnacePower => 8 + Math.Min(posAmt, 12) * 2,
+            HotPowerId.OrbitPower => Math.Min(posAmt, 4) * 12,
+            HotPowerId.PagestormPower => Math.Min(posAmt, 4) * 10,
+            HotPowerId.PlatingPower => Math.Min(posAmt, 16) * 2,
+            HotPowerId.ThornsPower => Math.Min(posAmt, 12) * 2,
+            HotPowerId.IntangiblePower => Math.Min(posAmt, 4) * 16,
+            HotPowerId.EchoFormPower => Math.Min(posAmt, 3) * 16,
+            HotPowerId.DemonFormPower => Math.Min(posAmt, 6) * 6,
+            HotPowerId.BufferPower => Math.Min(posAmt, 4) * 8,
+            HotPowerId.AfterimagePower => Math.Min(posAmt, 4) * 8,
+            HotPowerId.BarricadePower => 14,
+            HotPowerId.BlurPower => Math.Min(posAmt, 4) * 5,
+            // Necrobinder engines
+            HotPowerId.CalcifyPower => Math.Min(posAmt, 10) * 2,
+            HotPowerId.DevourLifePower => Math.Min(posAmt, 6) * 4,
+            HotPowerId.HauntPower => Math.Min(posAmt, 6) * 4,
+            HotPowerId.CountdownPower => Math.Min(posAmt, 8) * 3,
+            HotPowerId.NecroMasteryPower => Math.Min(posAmt, 6) * 4,
+            // Regent engines
+            HotPowerId.BlackHolePower => Math.Min(posAmt, 8) * 3,
+            HotPowerId.ArsenalPower => Math.Min(posAmt, 6) * 4,
+            HotPowerId.PillarOfCreationPower => Math.Min(posAmt, 8) * 3,
+            HotPowerId.MonarchsGazePower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.SeekingEdgePower => 10,
+            HotPowerId.HammerTimePower => 12,
+            HotPowerId.RadiancePower => Math.Min(posAmt, 6) * 4,
+            HotPowerId.ParryPower => Math.Min(posAmt, 8) * 2,
+            HotPowerId.CrueltyPower => Math.Min(posAmt, 6) * 3,
+            // Silent / Defect / Ironclad / Colorless engines
+            HotPowerId.AccelerantPower => Math.Min(posAmt, 4) * 4,
+            HotPowerId.FanOfKnivesPower => 8,
+            HotPowerId.PhantomBladesPower => Math.Min(posAmt, 10) * 2,
+            HotPowerId.PanachePower => Math.Min(posAmt, 16),
+            HotPowerId.StratagemPower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.NostalgiaPower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.MasterPlannerPower => 10,
+            HotPowerId.FeralPower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.SubroutinePower => Math.Min(posAmt, 4) * 6,
+            HotPowerId.ThunderPower => Math.Min(posAmt, 10) * 2,
+            HotPowerId.IterationPower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.CoolantPower => Math.Min(posAmt, 8) * 3,
+            HotPowerId.CalamityPower => Math.Min(posAmt, 4) * 6,
+            HotPowerId.HellraiserPower => 10,
+            HotPowerId.CrimsonMantlePower => Math.Min(posAmt, 8) * 3,
+            HotPowerId.InfernoPower => Math.Min(posAmt, 8) * 3,
+            HotPowerId.EntropyPower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.DuplicationPower => Math.Min(posAmt, 4) * 8,
+            HotPowerId.BurstPower => Math.Min(posAmt, 4) * 6,
+            HotPowerId.SignalBoostPower => Math.Min(posAmt, 4) * 6,
+            HotPowerId.OneTwoPunchPower => Math.Min(posAmt, 4) * 6,
+            HotPowerId.FreeCardPower => Math.Min(posAmt, 4) * 6,
+            HotPowerId.FreeSkillPower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.FreePowerPower => Math.Min(posAmt, 4) * 6,
+            HotPowerId.FreeAttackPower => Math.Min(posAmt, 4) * 5,
+            HotPowerId.RetainHandPower => Math.Min(posAmt, 4) * 4,
+            _ => 0,
+        };
+        if (explicitWeight != 0)
+            return Math.Clamp(explicitWeight, -24, 30);
+
+        // Catalog SetupWeight for remaining Buffs (Strength, Dexterity, Focus, Genesis, DarkEmbrace, FeelNoPain, etc.)
+        short catalogWeight = def.SetupWeight;
+        if (catalogWeight != 0)
+        {
+            if (def.StackType == PowerStackType.Single)
+                return Math.Clamp(catalogWeight / 2, -24, 28);
+            int clampedAmt = Math.Clamp(amount, -10, 10);
+            return Math.Clamp((catalogWeight * clampedAmt) / 3, -24, 28);
+        }
+
+        // Fallback for core stats if catalog weight was absent
         int clamped = Math.Clamp(amount, -10, 10);
         if (defId == lookup.StrengthDefId) return clamped * 3;
         if (defId == lookup.DexterityDefId) return clamped * 3;
         if (defId == lookup.FocusDefId) return clamped * 4;
-        if (defId == lookup.BarricadeDefId) return 8;
-        if (defId == lookup.MetallicizeDefId || defId == lookup.PlatingDefId) return Math.Min(amount, 12) * 2;
-        if (defId == lookup.EchoFormDefId) return Math.Min(amount, 3) * 10;
-        if (defId == lookup.BufferDefId) return Math.Min(amount, 4) * 6;
-        if (defId == lookup.WraithFormDefId) return Math.Min(amount, 5) * 6;
-        if (defId == lookup.AfterimageDefId) return Math.Min(amount, 4) * 6;
-        if (defId == lookup.DemonFormDefId) return Math.Min(amount, 6) * 5;
-        if (defId == lookup.ArtifactDefId) return Math.Min(amount, 4) * 3;
-        if (defId == lookup.ThornsDefId) return Math.Min(amount, 8);
-        if (defId == lookup.RitualDefId) return Math.Min(amount, 5) * 5;
-        if (defId == lookup.WeakDefId || defId == lookup.FrailDefId || defId == lookup.VulnerableDefId)
-            return -Math.Min(amount, 4) * 2;
+        if (defId == lookup.MetallicizeDefId) return Math.Min(posAmt, 12) * 2;
+        if (defId == lookup.ArtifactDefId) return Math.Min(posAmt, 4) * 3;
+        if (defId == lookup.RitualDefId) return Math.Min(posAmt, 5) * 5;
 
         return 0;
     }

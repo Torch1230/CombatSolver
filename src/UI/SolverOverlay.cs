@@ -27,8 +27,6 @@ internal static class SolverOverlay
     private const double ActiveSearchProgressMaximum = 0.95d;
     private const double MaxElapsedClockLeadSeconds = 1d;
     private const int SignificantBattleHpLossThreshold = 8;
-    private const string NoveltyPortfolioHintText =
-        "本场战斗预计出现大战损。若对结果不满意，可前往 设置 > 性能 开启“多策略路线搜索（实验）”后重试；它会在现有预算内探索不同打法，结果可能因战斗而异。点击本消息后不再提示";
     private const string SpeedXWarningText =
         "检测到皮皮极速（SpeedX）：其悬浮显示可能持续产生大量临时内存，触发频繁回收，加重长时间游玩时的卡顿。\n需要战斗加速时，建议使用求解器自带的“瞬间”：设置 > 常规 > 自动执行，将“自动出牌速度”设为“瞬间”，“牌间额外停顿（秒）”设为 0。玩家和怪物回合均加速，局外保持原速。点击本消息后不再提示";
     private static Color Background => SolverUiTokens.Palette.Background;
@@ -95,10 +93,8 @@ internal static class SolverOverlay
     private static Label? _searchLimitHintLabel;
     private static Button? _performanceHintButton;
     private static Button? _bossHpStrategyHintButton;
-    private static Button? _noveltyPortfolioHintButton;
     private static Button? _speedXWarningButton;
     private static SolverMemoryUsageBar? _memoryUsageBar;
-    private static Button? _systemMemoryReleaseButton;
     private static SolverPotionStrategyPanel? _potionStrategyPanel;
     private static Control? _rightResizeHandle;
     private static Control? _bottomResizeHandle;
@@ -186,12 +182,6 @@ internal static class SolverOverlay
             && _feedbackBannerLabel.Text.Contains(
                 SolverUiTokens.BugReportUploadInstruction,
                 StringComparison.Ordinal);
-    internal static bool ManualRouteImprovementVisibleForTesting
-        => _feedbackBanner?.Visible == true
-            && _feedbackBannerLabel?.Text.Contains("比求解器更好的世界线", StringComparison.Ordinal) == true
-            && _feedbackBannerLabel.Text.Contains(
-                SolverUiTokens.BugReportUploadInstruction,
-                StringComparison.Ordinal);
     internal static string? ExecuteButtonTextForTesting => _executeButton?.Text;
     internal static bool ExecuteButtonDisabledForTesting => _executeButton?.Disabled ?? true;
     internal static void PressExecuteButtonForTesting()
@@ -213,17 +203,6 @@ internal static class SolverOverlay
         => _settingsPanel?.SearchCompletionNotificationSettingsConfiguredForTesting == true;
     internal static bool SettingsTabsConfiguredForTesting
         => _settingsPanel?.SettingsTabsConfiguredForTesting == true;
-    internal static bool ManualSystemMemoryReleaseButtonConfiguredForTesting
-        => _memoryUsageBar is { MouseFilter: Control.MouseFilterEnum.Pass } bar
-            && GodotObject.IsInstanceValid(bar)
-            && bar.IsInsideTree()
-            && _systemMemoryReleaseButton is { } button
-            && button.GetParent() == bar.GetParent()
-            && button.GetIndex() > bar.GetIndex();
-    internal static bool NoGcControlsConfiguredForTesting
-        => _settingsPanel?.NoGcControlsConfiguredForTesting == true;
-    internal static bool BeamWidthPortfolioControlConfiguredForTesting
-        => _settingsPanel?.BeamWidthPortfolioControlConfiguredForTesting == true;
     internal static bool MemoryUsageBarConfiguredForTesting
         => _memoryUsageBar != null
             && GodotObject.IsInstanceValid(_memoryUsageBar)
@@ -254,8 +233,6 @@ internal static class SolverOverlay
                 HasPresetControlsForTesting: true,
             };
     internal static bool PerformanceHintVisibleForTesting => _performanceHintButton?.Visible == true;
-    internal static bool NoveltyPortfolioHintVisibleForTesting
-        => _noveltyPortfolioHintButton?.Visible == true;
     internal static bool SpeedXWarningVisibleForTesting => _speedXWarningButton?.Visible == true;
     internal static bool SearchLimitHintVisibleForTesting => _searchLimitHint?.Visible == true;
     internal static bool BossHpStrategyHintVisibleForTesting
@@ -306,54 +283,26 @@ internal static class SolverOverlay
 
     internal static bool ExerciseGuidanceHintsForTesting()
     {
-        if (_noveltyPortfolioHintButton == null || _speedXWarningButton == null)
+        if (_speedXWarningButton == null)
             return false;
         SolverSettingsData originalSettings = SolverSettings.Current;
         try
         {
             SolverSettings.Update(SolverSettings.RoundTripForTesting(originalSettings with
             {
-                UseNoveltyPortfolio = false,
-                ShowNoveltyPortfolioHint = true,
                 ShowSpeedXWarning = true,
             }));
-            RefreshGuidanceHints(
-                speedXPresentForTesting: true,
-                projectedBattleHpLostForTesting: 7);
-            bool hiddenBelowThreshold = !NoveltyPortfolioHintVisibleForTesting;
-            RefreshGuidanceHints(
-                speedXPresentForTesting: true,
-                projectedBattleHpLostForTesting: 8);
-            bool visibleAtThreshold = NoveltyPortfolioHintVisibleForTesting
-                && SpeedXWarningVisibleForTesting
-                && _noveltyPortfolioHintButton.Text == SolverText.Get(NoveltyPortfolioHintText)
+            RefreshGuidanceHints(speedXPresentForTesting: false);
+            bool hiddenWhenAbsent = !SpeedXWarningVisibleForTesting;
+            RefreshGuidanceHints(speedXPresentForTesting: true);
+            bool visibleWhenPresent = SpeedXWarningVisibleForTesting
                 && _speedXWarningButton.Text == SolverText.Get(SpeedXWarningText);
-
-            SolverSettings.Update(SolverSettings.Current with { UseNoveltyPortfolio = true });
-            RefreshGuidanceHints(
-                speedXPresentForTesting: true,
-                projectedBattleHpLostForTesting: 8);
-            bool hiddenWhenEnabled = !NoveltyPortfolioHintVisibleForTesting;
-            SolverSettings.Update(SolverSettings.Current with
-            {
-                UseNoveltyPortfolio = false,
-                ShowNoveltyPortfolioHint = true,
-            });
-            RefreshGuidanceHints(
-                speedXPresentForTesting: true,
-                projectedBattleHpLostForTesting: 8);
-            _noveltyPortfolioHintButton.EmitSignal(Button.SignalName.Pressed);
-            bool noveltyDismissed = !SolverSettings.Current.UseNoveltyPortfolio
-                && !SolverSettings.Current.ShowNoveltyPortfolioHint
-                && !NoveltyPortfolioHintVisibleForTesting;
             _speedXWarningButton.EmitSignal(Button.SignalName.Pressed);
             bool speedXDismissed = !SolverSettings.Current.ShowSpeedXWarning
                 && !SpeedXWarningVisibleForTesting;
             SolverSettingsData roundTripped = SolverSettings.RoundTripForTesting(SolverSettings.Current);
-            return hiddenBelowThreshold && visibleAtThreshold && hiddenWhenEnabled
-                && noveltyDismissed && speedXDismissed
-                && !roundTripped.UseNoveltyPortfolio
-                && !roundTripped.ShowNoveltyPortfolioHint
+            return hiddenWhenAbsent && visibleWhenPresent
+                && speedXDismissed
                 && !roundTripped.ShowSpeedXWarning;
         }
         finally
@@ -1783,7 +1732,6 @@ internal static class SolverOverlay
 
         root.AddChild(CreateHeader());
         root.AddChild(CreateSpeedXWarning());
-        root.AddChild(CreateNoveltyPortfolioHint());
         root.AddChild(CreateSearchLimitHint());
         root.AddChild(CreatePerformanceHint());
         root.AddChild(CreateBossHpStrategyHint());
@@ -2103,14 +2051,6 @@ internal static class SolverOverlay
         return button;
     }
 
-    private static Control CreateNoveltyPortfolioHint()
-    {
-        _noveltyPortfolioHintButton = CreateDismissibleGuidanceHint(
-            "NoveltyPortfolioHint",
-            DismissNoveltyPortfolioHint);
-        return _noveltyPortfolioHintButton;
-    }
-
     private static Control CreateSpeedXWarning()
     {
         _speedXWarningButton = CreateDismissibleGuidanceHint(
@@ -2387,51 +2327,9 @@ internal static class SolverOverlay
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
 
-        _systemMemoryReleaseButton = SolverUiTokens.CreateButton(SolverText.Get("强制释放内存"), SolverButtonStyle.Secondary);
-        _systemMemoryReleaseButton.Visible = OperatingSystem.IsWindows();
-        _systemMemoryReleaseButton.Disabled = !OperatingSystem.IsWindows();
-        _systemMemoryReleaseButton.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        _systemMemoryReleaseButton.TooltipText = SolverText.Get("等待搜索退出并回收求解器内存后，请求 Windows 管理员权限，")
-            + SolverText.Get("清空系统工作集与待机列表。其他程序之后重新载入页面时可能短暂卡顿。");
-        _systemMemoryReleaseButton.Pressed += OnSystemMemoryReleasePressed;
-
         _actionBar = new SolverActionBar(_executeButton, _recalculateButton, _stopSearchButton,
-            _adoptRouteButton, _freezeRouteButton, _fullAutoButton, autoStart, _memoryUsageBar, _systemMemoryReleaseButton);
+            _adoptRouteButton, _freezeRouteButton, _fullAutoButton, autoStart, _memoryUsageBar);
         return _actionBar;
-    }
-
-    private static async void OnSystemMemoryReleasePressed()
-    {
-        if (_systemMemoryReleaseButton is not { Disabled: false } button)
-            return;
-
-        button.Disabled = true;
-        button.Text = SolverText.Get("正在释放内存…");
-        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=manual_system_memory_release");
-        SetStatus(SolverText.Get("系统内存释放已安排，搜索退出后将请求管理员权限"), Success);
-        try
-        {
-            await SystemMemoryReleaseService.ReleaseAsync();
-            SetStatus(SolverText.Get("系统内存释放完成"), Success);
-        }
-        catch (OperationCanceledException)
-        {
-            SetStatus(SolverText.Get("已取消管理员授权"), TextMuted);
-        }
-        catch (Exception ex)
-        {
-            Entry.Logger.Error(
-                $"[CombatSolver/Test] SYSTEM_MEMORY_RELEASE_FAILED exception={ex}");
-            SetStatus(SolverText.Get("系统内存释放失败，详情已写入日志"), Danger);
-        }
-        finally
-        {
-            if (GodotObject.IsInstanceValid(button))
-            {
-                button.Disabled = false;
-                button.Text = SolverText.Get("强制释放内存");
-            }
-        }
     }
 
     private static PanelContainer CreateSectionPanel(string name)
@@ -2526,14 +2424,7 @@ internal static class SolverOverlay
 
         string? text;
         Color tone;
-        if (SolverController.AllowsPlayerUploadGuidance && SolverController.ManualRouteImprovementDetected)
-        {
-            text = SolverText.Get("你打出了比求解器更好的世界线。") +
-                   SolverUiTokens.BugReportUploadInstruction +
-                   SolverText.Get("这可以更好地推动算法进步！");
-            tone = Success;
-        }
-        else if (SolverController.AllowsPlayerUploadGuidance && SolverController.UnexpectedReplanCount > 0)
+        if (SolverController.AllowsPlayerUploadGuidance && SolverController.UnexpectedReplanCount > 0)
         {
             text = SolverText.Get("出现计划外重算，可能是模拟或算法问题。") +
                    SolverUiTokens.BugReportUploadInstruction;
@@ -2576,20 +2467,9 @@ internal static class SolverOverlay
             QueueResponsiveLayout();
     }
 
-    internal static void RefreshGuidanceHints(
-        bool? speedXPresentForTesting = null,
-        int? projectedBattleHpLostForTesting = null)
+    internal static void RefreshGuidanceHints(bool? speedXPresentForTesting = null)
     {
         SolverSettingsData settings = SolverSettings.Current;
-        bool projectedBattleDamage = projectedBattleHpLostForTesting is { } projectedBattleHpLost
-            ? IsSignificantBattleHpLoss(true, projectedBattleHpLost)
-            : HasSignificantBattleHpLoss(_lastSnapshot);
-        SetGuidanceHint(
-            _noveltyPortfolioHintButton,
-            settings.ShowNoveltyPortfolioHint
-                && !settings.UseNoveltyPortfolio
-                && projectedBattleDamage,
-            NoveltyPortfolioHintText);
         SetGuidanceHint(
             _speedXWarningButton,
             settings.ShowSpeedXWarning
@@ -2709,16 +2589,6 @@ internal static class SolverOverlay
         });
         SetPerformanceHintVisible(false);
         Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=performance_hint_dismissed");
-    }
-
-    private static void DismissNoveltyPortfolioHint()
-    {
-        SolverSettings.Update(SolverSettings.Current with
-        {
-            ShowNoveltyPortfolioHint = false,
-        });
-        RefreshGuidanceHints();
-        Entry.Logger.Info("[CombatSolver/Test] UI_ACTION action=novelty_portfolio_hint_dismissed");
     }
 
     private static void DismissSpeedXWarning()
@@ -3378,19 +3248,6 @@ internal static class SolverOverlay
                     new Dictionary<int, int> { [1] = 7, [2] = 0, [3] = 2, [5] = 3 },
                     new Dictionary<int, int>(), 3).ProjectedLoss == 12,
                 "pending turn setup preserves already observed damage");
-            SearchGcLifecycleSnapshot beforeGc = SearchGcPolicy.CaptureLifecycle();
-            bool automaticGcBefore = SearchGcPolicy.AutomaticGcLifecycleUsed;
-            System.Runtime.GCLatencyMode latencyBefore = System.Runtime.GCSettings.LatencyMode;
-            using (SearchGcPolicy.EnterSearchScopeForUnsupportedPlatformTesting(
-                       1024L * 1024 * 1024, new SearchMemoryPressureSignal(), CancellationToken.None))
-            {
-                Check(SearchGcPolicy.CaptureLifecycle().NoGcStartAttempts == beforeGc.NoGcStartAttempts
-                    && SearchGcPolicy.AutomaticGcLifecycleUsed == automaticGcBefore
-                    && System.Runtime.GCSettings.LatencyMode == latencyBefore,
-                    "unsupported NoGC uses ordinary GC without owning latency mode");
-            }
-            Check(System.Runtime.GCSettings.LatencyMode == latencyBefore,
-                "unsupported NoGC does not restore latency mode on exit");
             SolverSettings.ApplyForTesting(original with { AutoEnableFullAuto = false, AutomaticCalculationEnabled = false });
             SolverController.BeginCombat(combat);
             EnsureCreated(host);
@@ -3477,7 +3334,7 @@ internal static class SolverOverlay
             _actionBar!.AssertLayoutForTesting();
             RefreshControls();
             if (_solverEnabledButton!.GetParent().Name != "Header"
-                || !ManualSystemMemoryReleaseButtonConfiguredForTesting
+                || !MemoryUsageBarConfiguredForTesting
                 || _theftPolicyControls!.GetParent() != _body)
                 throw new InvalidOperationException("Action controls were not separated from header, strategy and maintenance controls.");
             _solverEnabledButton!.EmitSignal(BaseButton.SignalName.Pressed);

@@ -54,13 +54,9 @@ internal sealed partial class UnattendedTestRunner
                 throw new InvalidDataException("生成场景不能同时恢复问题包或快照。");
             runner.PrepareCheckpointRequest();
             runner._executor.PrepareArchiveSettings();
-            if (runner._request.ScenarioId is "B015-T016-ORIGINAL-PREFIX" or "B015-T016-AFTERIMAGE-ROUTE" && !runner.HasNativeRecording)
-                throw new InvalidDataException("B015 original prefix requires its original native-recording archive.");
             if (runner.HasNativeRecording)
             {
-                ScenarioContext native = runner._request.ScenarioId is "B015-T016-ORIGINAL-PREFIX" or "B015-T016-AFTERIMAGE-ROUTE"
-                    ? await runner.BuildB015OriginalPrefixScenarioAsync()
-                    : await runner.BuildNativeRecordedScenarioAsync();
+                ScenarioContext native = await runner.BuildNativeRecordedScenarioAsync();
                 CombatState = native.CombatState;
                 StartedTurn = native.StartedTurn;
                 return native;

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CombatSolver.HotSearch;
 using Godot;
 
 namespace CombatSolver;
@@ -86,7 +87,6 @@ internal sealed record SolverSettingsData
     public bool ShowBattleDamagePerformanceHint { get; init; } = true;
     public bool ShowActTransitionBossHpStrategyHint { get; init; } = true;
     public bool ShowFinalBossHpStrategyHint { get; init; } = true;
-    public bool ShowNoveltyPortfolioHint { get; init; } = true;
     public bool ShowSpeedXWarning { get; init; } = true;
     public bool SearchCompletionNotificationsEnabled { get; init; } = true;
     public SolverSearchCompletionNotificationMode SearchCompletionNotificationMode { get; init; }
@@ -111,15 +111,9 @@ internal sealed record SolverSettingsData
     public int PerformanceMigrationVersion { get; init; }
     public SolverPerformancePreset? PerformancePreset { get; init; } = SolverPerformancePreset.Medium;
     public int? SearchMaxDegreeOfParallelism { get; init; }
-    public bool UseBeamWidthPortfolio { get; init; } = true;
-    public bool UseNoveltyPortfolio { get; init; }
-    public bool UseEarlyTurnExploration { get; init; }
     public double? SearchTimeLimitSeconds { get; init; }
-    public bool AutoConfigureServerGc { get; init; } = true;
-    public bool EnableNoGcRegion { get; init; } = true;
-    public double? NoGcRegionBudgetGigabytes { get; init; } = 16d;
     public int? SearchBeamWidth { get; init; }
-    // Legacy split fields are read for migration; new writes use Short/SearchBeamWidth.
+    // Legacy split fields are read for migration; new writes use SearchBeamWidth.
     public int? SearchPotionFreeBeamWidth { get; init; }
     public int? SearchPotionBeamWidth { get; init; }
     public int? SearchMaxExpandedNodes { get; init; }
@@ -149,8 +143,6 @@ internal sealed record SolverSettingsSnapshot(
     int AcceptableBattleHpLoss,
     int SearchMaxDegreeOfParallelism,
     SolverSearchProfile Profile,
-    bool EnableNoGcRegion,
-    long NoGcRegionBudgetBytes,
     SolverDeploymentFastMode DeploymentFastMode,
     double DeploymentInterActionDelaySeconds)
 {
@@ -160,22 +152,16 @@ internal sealed record SolverSettingsSnapshot(
     public GrowthValues GrowthBudgets { get; init; }
     public int? BrightestFlameMaxHpLossLimit { get; init; }
     public bool IgnoreLongTermRewards { get; init; }
-    public bool UseBeamWidthPortfolio { get; init; }
-    public bool UseNoveltyPortfolio { get; init; }
-    public bool UseEarlyTurnExploration { get; init; }
     public bool PredictPotionReward { get; init; }
 }
 
 internal static class SolverSettings
 {
-    public const double DefaultNoGcRegionBudgetGigabytes = 16d;
-    public const double MaximumNoGcRegionBudgetGigabytes = 256d;
     public const int MaximumAcceptableBattleHpLoss = 100_000;
     public const float MinimumOverlayWidth = 400f;
     public const float MinimumOverlayHeight = 300f;
     public const float MaximumOverlaySize = 100_000f;
     private const int UnifiedPerformanceMigrationVersion = 243;
-    private const int BeamWidthPortfolioDefaultMigrationVersion = 244;
     internal const int CurrentPerformanceMigrationVersion = 246;
     private static readonly SolverPerformanceValues LowPerformance = new(
         new SolverSearchProfile(
@@ -244,21 +230,7 @@ internal static class SolverSettings
             if (!persisted || migrated != loaded)
                 SaveLocked(migrated);
         }
-        RuntimeGcProfileSelection runtimeProfile = RuntimeGcProfile.Current;
-        SolverSettingsSnapshot effectiveSettings = Capture();
-        string runtimeProfileDescription =
-            $"[CombatSolver/Test] RUNTIME_GC_PROFILE clr={System.Environment.Version} " +
-            $"server_gc={runtimeProfile.IsServerGc.ToString().ToLowerInvariant()} " +
-            $"requested={JsonSerializer.Serialize(runtimeProfile.RequestedProfile)} " +
-            $"status={runtimeProfile.Status} " +
-            $"saved_no_gc_enabled={migrated.EnableNoGcRegion.ToString().ToLowerInvariant()} " +
-            $"effective_no_gc_enabled={effectiveSettings.EnableNoGcRegion.ToString().ToLowerInvariant()} " +
-            "profile_settings_persisted=false";
-        if (runtimeProfile.Status is RuntimeGcProfileStatus.ServerGcUnavailable
-            or RuntimeGcProfileStatus.UnknownProfile)
-            Entry.Logger.Warn(runtimeProfileDescription);
-        else
-            Entry.Logger.Info(runtimeProfileDescription);
+        SolverSettingsSnapshot effective = Capture();
         Entry.Logger.Info(
             $"[CombatSolver/Test] SETTINGS_LOADED persisted={persisted} " +
             $"automatic_calculation={migrated.AutomaticCalculationEnabled.ToString().ToLowerInvariant()} " +
@@ -270,7 +242,6 @@ internal static class SolverSettings
             $"detailed_diagnostic_logs={migrated.EnableDetailedDiagnosticLogs} " +
             $"retain_all_combat_logs={migrated.RetainAllCombatLogs} " +
             $"show_battle_damage_performance_hint={migrated.ShowBattleDamagePerformanceHint} " +
-            $"show_novelty_portfolio_hint={migrated.ShowNoveltyPortfolioHint} " +
             $"show_speedx_warning={migrated.ShowSpeedXWarning} " +
             $"act_transition_boss_hp_strategy={migrated.ActTransitionBossHpStrategy} " +
             $"final_boss_hp_strategy={migrated.FinalBossHpStrategy} " +
@@ -280,12 +251,8 @@ internal static class SolverSettings
             $"potion_policy={migrated.PotionPolicy} " +
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"performance_preset={ResolvePerformancePreset(migrated)} " +
-            $"beam_width_portfolio={migrated.UseBeamWidthPortfolio.ToString().ToLowerInvariant()} " +
-            $"early_turn_exploration={migrated.UseEarlyTurnExploration.ToString().ToLowerInvariant()} " +
-            $"max_dop={Capture().SearchMaxDegreeOfParallelism} " +
-            $"search_budget_ms={Capture().Profile.SoftTimeBudgetMilliseconds} " +
-            $"no_gc_enabled={Capture().EnableNoGcRegion.ToString().ToLowerInvariant()} " +
-            $"no_gc_budget_bytes={Capture().NoGcRegionBudgetBytes} " +
+            $"max_dop={effective.SearchMaxDegreeOfParallelism} " +
+            $"search_budget_ms={effective.Profile.SoftTimeBudgetMilliseconds} " +
             $"deployment_fast_mode={migrated.DeploymentFastMode} " +
             $"deployment_delay_seconds={migrated.DeploymentInterActionDelaySeconds ?? 0d:0.###} " +
             $"overlay_theme={migrated.OverlayTheme} " +
@@ -297,11 +264,6 @@ internal static class SolverSettings
         SolverSettingsData data = Current;
         SolverPerformanceValues performance = ResolvePerformanceValues(data);
         SolverSearchProfile profile = performance.Profile;
-        double noGcGigabytes = data.NoGcRegionBudgetGigabytes
-            ?? DefaultNoGcRegionBudgetGigabytes;
-        long noGcBytes = checked((long)Math.Round(
-            noGcGigabytes * 1_000_000_000d,
-            MidpointRounding.AwayFromZero));
         return new SolverSettingsSnapshot(
             data.SolverDisabled,
             data.StopFullAutoOnCombatEnd,
@@ -315,8 +277,6 @@ internal static class SolverSettings
             data.SearchMaxDegreeOfParallelism
                 ?? SolverWeights.DefaultSearchMaxDegreeOfParallelism,
             profile,
-            RuntimeGcProfile.Current.ResolveEnableNoGcRegion(data.EnableNoGcRegion),
-            noGcBytes,
             data.DeploymentFastMode,
             data.DeploymentInterActionDelaySeconds ?? 0d)
         {
@@ -326,9 +286,6 @@ internal static class SolverSettings
             StopAtAcceptableBattleHpLoss = data.StopAtAcceptableBattleHpLoss,
             BrightestFlameMaxHpLossLimit = data.BrightestFlameMaxHpLossLimit,
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
-            UseBeamWidthPortfolio = data.UseBeamWidthPortfolio,
-            UseNoveltyPortfolio = data.UseNoveltyPortfolio,
-            UseEarlyTurnExploration = data.UseEarlyTurnExploration,
             PredictPotionReward = data.PredictPotionReward,
         };
     }
@@ -549,14 +506,9 @@ internal static class SolverSettings
             throw new InvalidDataException("PerformanceMigrationVersion must be non-negative.");
         ValidateRange(data.SearchTimeLimitSeconds, 0.1d, 600d, nameof(data.SearchTimeLimitSeconds));
         ValidateRange(
-            data.NoGcRegionBudgetGigabytes,
-            1d,
-            MaximumNoGcRegionBudgetGigabytes,
-            nameof(data.NoGcRegionBudgetGigabytes));
-        ValidateRange(
             data.SearchMaxDegreeOfParallelism,
             1,
-            SolverWeights.MaximumSearchMaxDegreeOfParallelism,
+            HotSearchConstants.MaximumSearchMaxDegreeOfParallelism,
             nameof(data.SearchMaxDegreeOfParallelism));
         ValidateRange(data.SearchBeamWidth, 1, 512, nameof(data.SearchBeamWidth));
         ValidateRange(data.SearchPotionFreeBeamWidth, 1, 256, nameof(data.SearchPotionFreeBeamWidth));
@@ -690,17 +642,8 @@ internal static class SolverSettings
                 migrated with
                 {
                     PerformanceMigrationVersion = UnifiedPerformanceMigrationVersion,
-                    NoGcRegionBudgetGigabytes = DefaultNoGcRegionBudgetGigabytes,
                 },
                 SolverPerformancePreset.Medium);
-        }
-        if (migrated.PerformanceMigrationVersion < BeamWidthPortfolioDefaultMigrationVersion)
-        {
-            migrated = migrated with
-            {
-                PerformanceMigrationVersion = BeamWidthPortfolioDefaultMigrationVersion,
-                UseBeamWidthPortfolio = true,
-            };
         }
         if (migrated.PerformanceMigrationVersion < CurrentPerformanceMigrationVersion)
         {

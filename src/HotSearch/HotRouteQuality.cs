@@ -4,6 +4,21 @@ using CombatSolver.HotKernel;
 namespace CombatSolver.HotSearch;
 
 /// <summary>
+/// Standalone search constants for <see cref="CombatSolver.HotSearch"/> so Phase 4 can delete legacy
+/// <c>SolverWeights.cs</c> without breaking any HotSearch compile boundary.
+/// </summary>
+internal static class HotSearchConstants
+{
+    public const int PotionMinimumHpSaved = 9;
+    public const int DeathSavePremiumPercent = 900;
+    public const int MaximumSearchMaxDegreeOfParallelism = 16;
+    public const int MinimumTurnLayerExpandedNodes = 500;
+    public const int SetupValueHorizonTurns = 16;
+    public const int ProgressUiIntervalMilliseconds = 200;
+    public const decimal AmbergrisMinimumHpSavedFraction = 0.40m;
+}
+
+/// <summary>
 /// Zero-allocation distilled search policy frozen once at root entry.
 /// Single source of truth consumed by evaluator, potion policy, retention, incumbent pruning, and coordinator.
 /// </summary>
@@ -61,7 +76,7 @@ internal readonly struct HotSearchPolicy
                 : policy.PotionPolicy;
 
         EncounterBossHpRelief = root.BossHpRelief;
-        StrategicBossHpRelief = ActEndingBossPolicy.ResolveStrategicHpRelief(
+        StrategicBossHpRelief = HotRouteQuality.ResolveStrategicHpRelief(
             root.BossHpRelief,
             policy.ActTransitionBossHpStrategy,
             policy.FinalBossHpStrategy);
@@ -82,9 +97,7 @@ internal readonly struct HotSearchPolicy
         AcceptableBattleHpLoss = policy.AcceptableBattleHpLoss;
         ReplacementHpCredit = root.PotionRewardOutlook.ReplacementHpCredit;
         HasRenewablePotionShapedRock = root.HasRenewablePotionShapedRock || rules.HasRenewablePotionShapedRock;
-        HasAnyHealOrUnknownGeneration = rules.HasAnyHealOrUnknownGeneration
-            || root.HasVisibleHealingSource
-            || !root.CanCertifyRemainingHealing;
+        HasAnyHealOrUnknownGeneration = rules.HasAnyHealOrUnknownGeneration;
         HasGrowthTargets = policy.EffectiveHasGrowthTargets || policy.RelicTargets.Count > 0;
         CanStopAtHpTarget = policy.CanStopAtHpTarget && !HasGrowthTargets;
         IsActEndingBoss = root.IsActEndingBoss;
@@ -94,7 +107,7 @@ internal readonly struct HotSearchPolicy
         IgnoreLongTermRewards = policy.IgnoreLongTermRewards;
         EffectiveGrowthBudgets = policy.EffectiveGrowthBudgets;
         TranspositionEntryLimit = policy.TranspositionEntryLimit;
-        MaxDegreeOfParallelism = Math.Clamp(policy.MaxDegreeOfParallelism, 1, SolverWeights.MaximumSearchMaxDegreeOfParallelism);
+        MaxDegreeOfParallelism = Math.Clamp(policy.MaxDegreeOfParallelism, 1, HotSearchConstants.MaximumSearchMaxDegreeOfParallelism);
 
         ushort forcedMask = 0;
         ushort disabledMask = 0;
@@ -178,23 +191,87 @@ internal readonly record struct HotRouteKey(
     byte AmbergrisCount);
 
 /// <summary>
-/// Single authoritative route quality evaluator and comparator matching <see cref="RouteQualityPolicy"/>.
+/// Standalone authoritative route quality evaluator and comparator.
+/// Zero dependencies on legacy <c>ActEndingBossPolicy</c>, <c>RouteQualityPolicy</c>, or <c>CombatSearchCoordinator</c>.
 /// </summary>
 internal static class HotRouteQuality
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static BossHpRelief ResolveStrategicHpRelief(
+        BossHpRelief encounterHpRelief,
+        BossHpStrategy actTransitionStrategy,
+        BossHpStrategy finalBossStrategy)
+        => encounterHpRelief switch
+        {
+            BossHpRelief.ActClearHeal when actTransitionStrategy == BossHpStrategy.MinimizeHpLoss
+                => BossHpRelief.None,
+            BossHpRelief.RunEnding when finalBossStrategy == BossHpStrategy.MinimizeHpLoss
+                => BossHpRelief.None,
+            _ => encounterHpRelief,
+        };
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int RawHpRequiredForPersistentValue(
+        int persistentHpValue,
+        BossHpRelief bossHpRelief)
+    {
+        if (persistentHpValue <= 0)
+            return 0;
+        return bossHpRelief switch
+        {
+            BossHpRelief.ActClearHeal => persistentHpValue * 5,
+            BossHpRelief.RunEnding => int.MaxValue / 4,
+            _ => persistentHpValue,
+        };
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int PersistentValueOfRecoveredHp(int recoveredHp, BossHpRelief bossHpRelief)
+        => recoveredHp <= 0
+            ? 0
+            : recoveredHp / RawHpRequiredForPersistentValue(1, bossHpRelief);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int DeathSavePremium(int deathSaveHpRestored)
+        => Math.Max(0, deathSaveHpRestored)
+            * HotSearchConstants.DeathSavePremiumPercent
+            / 100;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int StrategicHpDeficit(
+        int cumulativeHpLost,
+        int maxHpDeficit,
+        int recoveredHp,
+        BossHpRelief bossHpRelief,
+        int deathSaveHpRestored = 0)
+        => cumulativeHpLost
+            + maxHpDeficit
+            - PersistentValueOfRecoveredHp(recoveredHp - deathSaveHpRestored, bossHpRelief)
+            + DeathSavePremium(deathSaveHpRestored);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int RankedPostCombatRelicHeal(
+        PostCombatRelicHealProfile profile,
+        bool completeVictory,
+        int finalHp,
+        int finalMaxHp)
+        => completeVictory && finalHp > 0
+            ? profile.MonotoneHealFor(finalHp, finalMaxHp)
+            : 0;
+
     public static HotRouteKey Capture(in HotSearchNode node, in HotSearchPolicy policy)
     {
         bool won = node.ActionCount > 0 && node.IsVictory;
         bool survives = !node.IsDefeat && node.PlayerHp > 0;
 
         int playerMaxHp = Math.Max(1, policy.InitialPlayerMaxHp - node.PlayerMaxHpDelta);
-        int postCombatHeal = ActEndingBossPolicy.RankedPostCombatRelicHeal(
+        int postCombatHeal = RankedPostCombatRelicHeal(
             policy.PostCombatRelicHeal,
             won,
             node.PlayerHp,
             playerMaxHp);
 
-        int strategicDeficit = ActEndingBossPolicy.StrategicHpDeficit(
+        int strategicDeficit = StrategicHpDeficit(
             node.HpLost,
             Math.Max(0, (int)node.PlayerMaxHpDelta),
             node.HpRecovered + postCombatHeal,
@@ -228,6 +305,73 @@ internal static class HotRouteQuality
             Score: node.Score,
             PotionMask: node.PotionMask,
             AmbergrisCount: node.AmbergrisCount);
+    }
+
+    /// <summary>
+    /// Captures a comparable <see cref="HotRouteKey"/> directly from an already-materialized <see cref="SolverResult"/>
+    /// (used for witness comparison without calling legacy <c>CombatSearchCoordinator.CapturePortfolioQuality</c>).
+    /// </summary>
+    public static HotRouteKey FromSolverResult(SolverResult result, in HotSearchPolicy policy)
+    {
+        if (result.ComparisonQuality is { } q)
+        {
+            return new HotRouteKey(
+                Won: q.Won,
+                Survives: q.Survives,
+                DeathSaveUseCount: (byte)Math.Clamp(q.DeathSaveUseCount, 0, byte.MaxValue),
+                OutstandingStolen: q.OutstandingStolenResource,
+                ForfeitsGold: q.ForfeitsEncounterGold,
+                StrategicHpDeficit: q.StrategicHpDeficit,
+                OptionalPotionStrategicCost: q.PotionStrategicCost,
+                RawPotionStrategicCost: q.PotionStrategicCost,
+                GrowthHpCredit: q.GrowthHpCredit,
+                GrowthRewardCount: q.GrowthRewardCount,
+                CombatEndedTurn: q.CombatEndedTurn ?? int.MaxValue,
+                ProjectedBattleHpLost: q.ProjectedBattleHpLost,
+                ProjectedBattlePotionCount: q.ProjectedBattlePotionCount,
+                ExplicitPotionCount: result.ExplicitPotionCount,
+                PlayerHp: result.Snapshot.PlayerHp,
+                EnemyHp: q.EnemyHp,
+                Score: (long)Math.Clamp(q.Score, long.MinValue, long.MaxValue),
+                PotionMask: 0,
+                AmbergrisCount: 0);
+        }
+
+        SolverSnapshot snap = result.Snapshot;
+        bool won = snap.AllEnemiesDead && !snap.PlayerDead && !result.OnlyDeathRoutesFound;
+        bool survives = !snap.PlayerDead && snap.PlayerHp > 0;
+        int postCombatHeal = RankedPostCombatRelicHeal(
+            policy.PostCombatRelicHeal,
+            won,
+            snap.PlayerHp,
+            snap.PlayerMaxHp);
+        int deficit = StrategicHpDeficit(
+            snap.CumulativePlayerHpLost,
+            Math.Max(0, policy.InitialPlayerMaxHp - snap.PlayerMaxHp),
+            snap.RecoveredPlayerHp + postCombatHeal,
+            policy.StrategicBossHpRelief,
+            snap.DeathSaveHpRestored) - snap.StrategicHpCredit;
+
+        return new HotRouteKey(
+            Won: won,
+            Survives: survives,
+            DeathSaveUseCount: (byte)Math.Clamp(snap.ProjectedDeathSaveUseCount, 0, byte.MaxValue),
+            OutstandingStolen: snap.OutstandingStolenResource,
+            ForfeitsGold: snap.ForfeitsEncounterGold,
+            StrategicHpDeficit: deficit,
+            OptionalPotionStrategicCost: result.PotionHpRequired,
+            RawPotionStrategicCost: result.PotionHpRequired,
+            GrowthHpCredit: snap.GrowthHpCredit,
+            GrowthRewardCount: snap.GrowthRewards.Total,
+            CombatEndedTurn: result.CombatEndedTurn ?? int.MaxValue,
+            ProjectedBattleHpLost: result.ProjectedBattleHpLost,
+            ProjectedBattlePotionCount: result.BattlePotionsUsedSoFar + result.PotionCount,
+            ExplicitPotionCount: result.ExplicitPotionCount,
+            PlayerHp: snap.PlayerHp,
+            EnemyHp: snap.EnemyHp,
+            Score: (long)Math.Clamp(result.BestNode.Score, long.MinValue, long.MaxValue),
+            PotionMask: 0,
+            AmbergrisCount: 0);
     }
 
     /// <summary>

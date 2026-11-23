@@ -13,360 +13,103 @@ internal sealed partial class UnattendedTestRunner
         bool ExpectedPlayerPowerObserved,
         bool InitialSearchHeld);
 
+    private bool HasInitialSolverExpectation()
+        => _request.ExpectedInitialExpandedNodesAtMost.HasValue
+            || _request.ExpectedInitialTransitionsAtMost.HasValue
+            || _request.ExpectedInitialTotalExpandedNodesAtMost.HasValue
+            || _request.ExpectedInitialTotalTransitionsAtMost.HasValue
+            || _request.ExpectedInitialBoundaryReason.HasValue
+            || _request.ExpectedInitialTotalElapsedMillisecondsAtMost.HasValue
+            || _request.ExpectedInitialExecutableActionCountAtLeast.HasValue
+            || _request.ExpectedInitialUnavoidableHpLost.HasValue
+            || _request.ExpectedInitialPotionCount.HasValue
+            || _request.ExpectedInitialSearchedTurnsAtLeast.HasValue
+            || _request.ExpectedInitialHpLostAtMost.HasValue
+            || _request.ExpectedInitialProjectedBattleHpLost.HasValue
+            || _request.ExpectedInitialProjectedBattleHpLostAtMost.HasValue
+            || _request.ExpectedInitialActionCardId != null
+            || _request.ExpectedInitialFirstActionCardId != null
+            || _request.ExpectedInitialOnlyDeathRoutesFound.HasValue
+            || _request.ExpectedInitialCombatEndedTurn.HasValue
+            || _request.ExpectedInitialFinalEnemyHpAtMost.HasValue;
+
+    private async Task AssertInitialSolverResultAsync(int startedTurn)
+    {
+        while (SolverController.IsSearching || (_lastObservedResult == null && SolverController.CurrentResultForBugReport == null))
+        {
+            EnsureWithinDeadline();
+            await NextFrameAsync();
+        }
+        SolverResult result = _lastObservedResult
+            ?? SolverController.CurrentResultForBugReport
+            ?? throw new InvalidOperationException("首轮搜索完成后没有可用结果。");
+        if (!_writer.HasSolverMetrics)
+            _writer.CaptureSolverResult(result);
+
+        if (_request.ExpectedInitialBoundaryReason is { } expectedBoundary && result.BoundaryReason != expectedBoundary)
+            throw new InvalidOperationException($"首轮搜索边界为 {result.BoundaryReason}，预期 {expectedBoundary}。");
+        if (_request.ExpectedInitialExpandedNodesAtMost is { } maxExpanded && result.ExpandedNodes > maxExpanded)
+            throw new InvalidOperationException($"首轮展开 {result.ExpandedNodes} 节点，超过上限 {maxExpanded}。");
+        if (_request.ExpectedInitialTransitionsAtMost is { } maxTransitions && result.TransitionCount > maxTransitions)
+            throw new InvalidOperationException($"首轮转移 {result.TransitionCount}，超过上限 {maxTransitions}。");
+        if (_request.ExpectedInitialTotalExpandedNodesAtMost is { } maxTotalExpanded && result.TotalExpandedNodes > maxTotalExpanded)
+            throw new InvalidOperationException($"总展开 {result.TotalExpandedNodes}，超过上限 {maxTotalExpanded}。");
+        if (_request.ExpectedInitialTotalTransitionsAtMost is { } maxTotalTransitions && result.TotalTransitionCount > maxTotalTransitions)
+            throw new InvalidOperationException($"总转移 {result.TotalTransitionCount}，超过上限 {maxTotalTransitions}。");
+        if (_request.ExpectedInitialTotalElapsedMillisecondsAtMost is { } maxElapsed
+            && result.TotalSearchElapsed.TotalMilliseconds > maxElapsed)
+            throw new InvalidOperationException($"总耗时 {result.TotalSearchElapsed.TotalMilliseconds:F1}ms，超过上限 {maxElapsed:F1}ms。");
+        if (_request.ExpectedInitialUnavoidableHpLost is { } expectedUnavoidable && result.UnavoidableHpLost != expectedUnavoidable)
+            throw new InvalidOperationException($"必然战损 {result.UnavoidableHpLost}，预期 {expectedUnavoidable}。");
+        if (_request.ExpectedInitialPotionCount is { } expectedPotions && result.PotionCount != expectedPotions)
+            throw new InvalidOperationException($"路线用药 {result.PotionCount}，预期 {expectedPotions}。");
+        if (_request.ExpectedInitialSearchedTurnsAtLeast is { } minTurns && result.SearchedTurns < minTurns)
+            throw new InvalidOperationException($"搜索回合 {result.SearchedTurns}，低于下限 {minTurns}。");
+        if (_request.ExpectedInitialProjectedBattleHpLost is { } expectedProjectedLoss
+            && result.ProjectedBattleHpLost != expectedProjectedLoss)
+            throw new InvalidOperationException($"预计整场战损 {result.ProjectedBattleHpLost}，预期 {expectedProjectedLoss}。");
+        if (_request.ExpectedInitialProjectedBattleHpLostAtMost is { } maxProjectedLoss
+            && result.ProjectedBattleHpLost > maxProjectedLoss)
+            throw new InvalidOperationException($"预计整场战损 {result.ProjectedBattleHpLost}，超过上限 {maxProjectedLoss}。");
+        if (_request.ExpectedInitialHpLostAtMost is { } maxTurnLoss
+            && result.HpLostByTurn.GetValueOrDefault(startedTurn) > maxTurnLoss)
+            throw new InvalidOperationException($"首回合掉血超过上限 {maxTurnLoss}。");
+        if (_request.ExpectedInitialOnlyDeathRoutesFound is { } expectedDeathOnly && result.OnlyDeathRoutesFound != expectedDeathOnly)
+            throw new InvalidOperationException($"全死路标志为 {result.OnlyDeathRoutesFound}，预期 {expectedDeathOnly}。");
+        if (_request.ExpectedInitialCombatEndedTurn is { } expectedEndTurn && result.CombatEndedTurn != expectedEndTurn)
+            throw new InvalidOperationException($"预计结束回合 {result.CombatEndedTurn}，预期 {expectedEndTurn}。");
+        if (_request.ExpectedInitialFinalEnemyHpAtMost is { } maxEnemyHp && result.Snapshot.EnemyHp > maxEnemyHp)
+            throw new InvalidOperationException($"终局敌方生命 {result.Snapshot.EnemyHp}，超过上限 {maxEnemyHp}。");
+
+        PlanAction[] turnActions = result.BestNode.Actions
+            .Where(action => action.Turn == startedTurn && action.IsExecutable)
+            .ToArray();
+        if (_request.ExpectedInitialExecutableActionCountAtLeast is { } minActions && turnActions.Length < minActions)
+            throw new InvalidOperationException($"首回合可执行动作 {turnActions.Length}，低于下限 {minActions}。");
+        if (_request.ExpectedInitialActionCardId is { } expectedCard
+            && !turnActions.Any(action => action.CardId.Equals(expectedCard, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"首回合路线未包含卡牌 {expectedCard}。");
+        if (_request.ExpectedInitialFirstActionCardId is { } expectedFirstCard
+            && (turnActions.Length == 0 || !turnActions[0].CardId.Equals(expectedFirstCard, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"首回合首动作不是预期卡牌 {expectedFirstCard}。");
+
+        _completedChecks.Add(
+            $"InitialSearch:Turn={startedTurn}:Boundary={result.BoundaryReason}:" +
+            $"Expanded={result.TotalExpandedNodes}:HpLost={result.ProjectedBattleHpLost}:" +
+            $"Potions={result.PotionCount}:EndTurn={result.CombatEndedTurn?.ToString() ?? "-"}");
+    }
+
     private sealed class Assertions(UnattendedTestRunner runner)
     {
         public async Task RunBeforeExecutionAsync(ScenarioContext scenario)
         {
             UnattendedTestRequest request = runner._request;
-            if (request.ScenarioId == "OVERLAY-VISIBILITY-LIFECYCLE")
-            {
-                runner.SetStage("overlay_visibility_lifecycle");
-                await runner.AssertOverlayVisibilityLifecycleAsync(scenario.CombatState);
-            }
-            if (request.ScenarioId == "REMAINING-HEALING-LOUSE")
-            {
-                runner.SetStage("remaining_healing_louse");
-                await runner.AssertRemainingHealingLouseAsync(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "REMAINING-HEALING-POISON")
-            {
-                runner.SetStage("remaining_healing_poison");
-                await runner.AssertRemainingHealingPoisonAsync(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "REMAINING-HEALING-TAINTED")
-            {
-                runner.SetStage("remaining_healing_tainted");
-                await runner.AssertRemainingHealingTaintedAsync(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "REMAINING-HEALING-BOUND")
-            {
-                runner.SetStage("remaining_healing_bound");
-                await runner.AssertRemainingHealingBoundAsync(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "REMAINING-HEALING-SILENT")
-            {
-                runner.SetStage("remaining_healing_silent");
-                await runner.AssertRemainingHealingSilentAsync(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "MEMORY-DISPLAY-CONTRACT")
-            {
-                runner.SetStage("memory_display_contract");
-                SearchMemoryUsageSnapshot sample = AssertMemoryDisplayContract();
-                runner._completedChecks.Add($"MemoryDisplay:PhysicalCapacity:Idle:Search:Reclaim:OverThreshold:ServerGC={sample.IsServerGc}");
-            }
-            if (request.ScenarioId == "POTION-GENERATION-CACHE")
-            {
-                runner.SetStage("potion_generation_cache");
-                runner._completedChecks.Add(AssertPotionGenerationCacheContract(
-                    scenario.CombatState, scenario.Player));
-            }
-            if (request.ScenarioId == "RITSU-TAGS-FAST-PATH")
-            {
-                runner.SetStage("ritsu_tags_fast_path");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertRitsuTagFastPath(scenario.Player));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException("Tag contract changed live combat.");
-            }
-            if (request.ScenarioId == "HP-MODIFIER-COLLECTIONS")
-            {
-                runner.SetStage("hp_modifier_collections");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertHpModifierCollections(scenario.CombatState, scenario.Player));
-                runner._completedChecks.Add(AssertProjectedTailLookup(scenario.CombatState, scenario.Player));
-                runner._completedChecks.Add(AssertProjectedSandpitBoundary(scenario.CombatState, scenario.Player));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException("HP modifier contract changed live combat.");
-            }
-            if (request.ScenarioId == "POTION-LINEAGE-CONTRACT")
-            {
-                runner.SetStage("potion_lineage_contract");
-                CombatBeamSolver.VerifyPotionUseLineageKeyForTesting();
-                runner._completedChecks.Add("PotionLineage:Empty:Ordinal:Duplicates:LongRoute:SharedParent:Cached:MissingId");
-            }
-            if (request.ScenarioId == "EXTRA-GENERATION-CACHE-PERF")
-            {
-                runner.SetStage("extra_generation_cache_measurement");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(MeasureExtraGenerationCache(scenario.CombatState, scenario.Player));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException("Generation cache measurement changed live combat.");
-            }
-            if (request.ScenarioId == "EXTRA-GENERATION-CACHE")
-            {
-                runner.SetStage("extra_generation_cache");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertExtraGenerationCacheContract(
-                    scenario.CombatState, scenario.Player));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException("Generation cache contract changed live combat.");
-            }
-            if (request.ScenarioId == "TURN-START-GENERATION-CACHE")
-            {
-                runner.SetStage("turn_start_generation_cache");
-                runner._completedChecks.Add(AssertTurnStartGenerationCacheContract(
-                    scenario.CombatState, scenario.Player));
-            }
-            if (request.ScenarioId == "TRANSFORMATION-POOL-CACHE")
-            {
-                runner.SetStage("transformation_pool_cache");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertTransformationPoolCacheContract(
-                    scenario.CombatState, scenario.Player));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException(
-                        "Transformation pool cache contract changed live combat.");
-            }
-            if (request.ScenarioId == "SNAPSHOT-COVERAGE-CONTRACT")
-            {
-                runner.SetStage("snapshot_coverage_contract");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertSnapshotCoverageContract(scenario.CombatState));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException("Snapshot coverage contract changed live combat.");
-            }
-            if (request.ScenarioId == "CARD-COST-IDENTITY-CONTRACT")
-            {
-                runner.SetStage("card_cost_identity_contract");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertCardCostIdentityContract(scenario.Player,
-                    SolverDisplayNames.Capture(scenario.CombatState)));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException("Card cost identity contract changed live combat.");
-            }
-            if (request.ScenarioId == "CHOICE-COMBINATION-CONTRACT")
-            {
-                runner.SetStage("choice_combination_contract");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertChoiceCombinationContract(scenario.Player,
-                    SolverDisplayNames.Capture(scenario.CombatState)));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException("Choice combination contract changed live combat.");
-            }
-            if (request.ScenarioId == "CHOICE-TOKEN-CONTRACT")
-            {
-                runner.SetStage("choice_token_contract");
-                runner._completedChecks.Add(AssertChoiceTokenContract(scenario.Player));
-            }
-            if (request.ScenarioId == "GENERATION-HISTORY-CONTRACT")
-            {
-                runner.SetStage("generation_history_contract");
-                AssertGenerationHistoryContract(scenario.Player);
-                runner._completedChecks.Add("GenerationHistory:LatestIdentity:Missing:NullTrace:Original:Preview:ForkIsolation:LongPrefix");
-            }
-            if (request.ScenarioId == "CARD-PLAY-CLEANUP-CONTRACT")
-            {
-                runner.SetStage("card_play_cleanup_contract");
-                AssertCardPlayCleanupContract(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("CardPlayCleanup:Empty:Present:OtherPlay:Complete:Abort:Removed:ForkIsolation");
-            }
-            if (request.ScenarioId == "MIRRORED-HOOK-FILTER")
-            {
-                runner.SetStage("mirrored_hook_filter");
-                runner.AssertMirroredHookFilter(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "HAND-POTENTIAL-COSTS")
-            {
-                runner.SetStage("hand_potential_costs");
-                runner.AssertHandPotentialCosts(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "HP-LOSS-CLAMP")
-            {
-                runner.SetStage("hp_loss_clamp");
-                runner.AssertHpLossClamping(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "CARD-NOTIFICATION-BOUND")
-            {
-                runner.SetStage("card_notification_bound");
-                await runner.AssertCardNotificationBoundAsync(scenario.CombatState, scenario.Player);
-            }
-            if (request.ScenarioId == "COMBAT-MOD-BOUNDARY")
-            {
-                runner.SetStage("combat_mod_boundary");
-                AssertCombatModBoundary(scenario.CombatState);
-                runner._completedChecks.Add("CombatModBoundary:Merchant:GameplayDeclaration:RootUnchanged");
-            }
-            if (request.ScenarioId == "CYCLE-EXIT-REVOKED-PARENT")
-            {
-                runner.SetStage("cycle_exit_revoked_parent");
-                CombatBeamSolver.VerifyCycleExitAdmissionMaterializationPolicyForTesting();
-                runner._completedChecks.Add("CycleExitRevokedParent");
-            }
-            if (request.ScenarioId == "NARROW-ORDERED-PILE-CAPACITY")
-            {
-                runner.SetStage("narrow_ordered_pile_capacity");
-                AssertNarrowOrderedPileCapacity(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("NarrowOrderedPileCapacity");
-            }
-            if (request.ScenarioId == "DISCARD-DRAW-SLY-PENDING")
-            {
-                runner.SetStage("discard_draw_sly_pending");
-                AssertPotionDiscardAndDrawStopsAtNestedPending(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("DiscardDrawSlyPending");
-            }
-            if (request.ScenarioId == "TURN-END-POWER-ORDER-FORK")
-            {
-                runner.SetStage("turn_end_power_order_fork");
-                runner.AssertTurnEndPowerOrderFork(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("TurnEndPowerOrderFork");
-            }
-            if (request.ScenarioId == "PLAYER-END-PHASE-TWO-PENDING")
-            {
-                runner.SetStage("player_end_phase_two_pending");
-                AssertAfterSideTurnEndRelicChoiceSuspends(scenario.CombatState, scenario.Player);
-                AssertEndTurnPowerChoiceSuspends(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("PlayerEndPhaseTwoPending");
-            }
-            if (request.ScenarioId == "BOUND-COUNTER-FORK")
-            {
-                runner.SetStage("bound_counter_fork");
-                AssertBoundCounterFork(scenario.CombatState);
-                runner._completedChecks.Add("BoundCounterFork");
-            }
-            if (request.ScenarioId == "SURROUNDED-STATE-IDENTITY")
-            {
-                runner.SetStage("surrounded_state_identity");
-                AssertSurroundedStateIdentity(scenario.CombatState);
-                runner._completedChecks.Add("SurroundedStateIdentity");
-            }
-            if (request.VerifyPredictionFailureBoundaries)
-            {
-                runner.SetStage("prediction_failure_boundaries");
-                AssertPredictionFailureBoundaries(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("PredictionFailureBoundaries");
-            }
-            if (request.ScenarioId == "ADMITTED-JOB-FAILURE-ACCOUNTING")
-            {
-                runner.SetStage("admitted_job_failure_accounting");
-                await AssertAdmittedJobFailureAccountingAsync(scenario.CombatState);
-                runner._completedChecks.Add("AdmittedJobFailureAccounting");
-            }
-            if (request.ScenarioId == "LAZY-RNG-FORK")
-            {
-                runner.SetStage("lazy_rng_fork");
-                string before = ContinuationStamp.CaptureLive(scenario.CombatState).StateText;
-                runner._completedChecks.Add(AssertLazyRngFork(scenario.CombatState.RunState.Rng, scenario.Player));
-                if (ContinuationStamp.CaptureLive(scenario.CombatState).StateText != before)
-                    throw new InvalidOperationException("RNG Fork contract changed live combat.");
-            }
-            if (request.ScenarioId == "MODEL-CLONE-CONCURRENCY")
-            {
-                runner.SetStage("model_clone_concurrency");
-                AssertModelCloneConcurrency(scenario.CombatState);
-                AssertPowerCloneConcurrency(scenario.CombatState);
-                runner._completedChecks.Add("PowerCloneConcurrency");
-                runner._completedChecks.Add("ModelCloneConcurrency");
-            }
-            if (request.ScenarioId is "END-TURN-CHOICE-REPLAY" or "ADAPTIVE-END-TURN-CHOICE-REPLAY"
-                or "HAND-DRAW-SHUFFLE-CHOICE-REPLAY" or "ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY")
-            {
-                runner.SetStage("end_turn_choice_replay");
-                await AssertEndTurnChoiceReplayAsync(scenario.CombatState,
-                    adaptive: request.ScenarioId == "ADAPTIVE-END-TURN-CHOICE-REPLAY",
-                    handDrawShuffle: request.ScenarioId is "HAND-DRAW-SHUFFLE-CHOICE-REPLAY"
-                        or "ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY",
-                    arsenal: request.ScenarioId == "ARSENAL-HAND-DRAW-SHUFFLE-CHOICE-REPLAY");
-                runner._completedChecks.Add("EndTurnChoiceReplay");
-            }
-            if (request.ScenarioId is "ADJUSTED-ROUTE-INVALID-SUFFIX" or "B015-FIXED-PREFIX-TARGETS")
-            {
-                runner.SetStage("adjusted_route_invalid_suffix");
-                await runner.AssertAdjustedRouteInvalidSuffixAsync(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add(request.ScenarioId == "B015-FIXED-PREFIX-TARGETS"
-                    ? "B015FixedPrefixTargets:LegalGeneratedTarget:AbsentTargetRejected:NativeUnchanged"
-                    : "AdjustedRouteInvalidSuffix");
-            }
-            if (request.ScenarioId == "EARLY-END-TURN")
-            {
-                runner.SetStage("early_end_turn");
-                await AssertEarlyEndTurnAsync(scenario.CombatState);
-                runner._completedChecks.Add("EarlyEndTurn");
-            }
-            if (request.ScenarioId == "SURVIVABLE-SEARCH-BOUNDARY")
-            {
-                runner.SetStage("survivable_search_boundary");
-                await runner.AssertSurvivableBoundaryAsync(scenario.CombatState);
-            }
-            if (request.ScenarioId == "STAND-PAT-MEMORY-BOUNDARY")
-            {
-                runner.SetStage("stand_pat_memory_boundary");
-                await AssertStandPatMemoryBoundaryAsync(scenario.CombatState);
-                runner._completedChecks.Add("StandPatMemoryBoundary");
-            }
-            if (request.VerifySearchPolicySnapshot)
-            {
-                runner.SetStage("search_policy_snapshot");
-                await AssertSearchPolicySnapshotAsync(
-                    scenario.CombatState,
-                    verifyStandPatBatches: request.ScenarioId == "STAND-PAT-PROBE-BATCHES");
-                runner._completedChecks.Add("SearchPolicySnapshot");
-            }
-            if (request.VerifyGrowthPolicy)
-            {
-                runner.SetStage("growth_policy");
-                await runner.AssertGrowthPolicyAsync(scenario.CombatState);
-                runner._completedChecks.Add("GrowthPolicy");
-            }
-            if (request.ScenarioId == "DEFAULT-SEARCH-PARALLELISM")
-            {
-                AssertDefaultSearchParallelism();
-                runner._completedChecks.Add("DefaultSearchParallelism");
-            }
-            if (request.VerifyControllerSessionLifecycle)
-            {
-                runner.SetStage("controller_session_lifecycle");
-                await runner.AssertControllerSessionLifecycleAsync(scenario.CombatState);
-                runner._completedChecks.Add("ControllerSessionLifecycle");
-            }
-            if (request.VerifyForkBoundaries)
-            {
-                runner.SetStage("fork_boundaries");
-                AssertForkBoundaries(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("ForkBoundaries");
-            }
-            if (request.ScenarioId == "POWER-AFFLICTION-ENTRY")
-            {
-                var card = scenario.Player.PlayerCombatState!.Hand.Cards[0];
-                AssertSparsePowerAfflictionCardTracking(scenario.CombatState, scenario.Player, card);
-                AssertVitalSparkKeepsStackedTaintedAmount(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("PowerAfflictionEntry:Fork:Clone:Reentry:TaintedAmounts");
-            }
-            if (request.ScenarioId == "FROZEN-ROOT-LISTENERS")
-            {
-                AssertFrozenRootRunListeners(scenario.CombatState, scenario.Player);
-                AssertPowerListenerCacheTransitionsAndForkIsolation(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("FrozenRootRunListeners:ParentChildGrandchild:CardMutation:PowerRemap");
-            }
-            if (request.ScenarioId == "LONG-TERM-RESOURCE-STAGING")
-            {
-                AssertLongTermResourceStaging(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("LongTermResourceStaging:Uniform:Mixed:AncestorRanks:LiveIsolation");
-            }
             if (request.VerifyCombatRootSnapshot)
             {
                 runner.SetStage("combat_root_snapshot");
-                bool requireInactiveLoadoutSummon = runner._request.ScenarioId == "LOADOUT-EMPTY-ROOT";
-                bool? expectOnlyPostCombatHealing = runner._request.ScenarioId switch
-                {
-                    "HEAL-BOUND-SAFE-ROOT" => true,
-                    "HEAL-BOUND-UNKNOWN-ROOT" => false,
-                    _ => null,
-                };
-                await AssertCombatRootSnapshotAsync(
-                    scenario.CombatState, scenario.Player, requireInactiveLoadoutSummon,
-                    expectOnlyPostCombatHealing);
+                await AssertCombatRootSnapshotAsync(scenario.CombatState, scenario.Player);
                 runner._completedChecks.Add("CombatRootSnapshot");
-                if (requireInactiveLoadoutSummon)
-                    runner._completedChecks.Add("LoadoutInactiveSummonPowers:Loaded:Captured:Forked");
             }
-            if (request.VerifyBaseLibCardModifierBoundary)
-            {
-                runner.SetStage("base_lib_card_modifier_boundary");
-                await AssertBaseLibCardModifierBoundaryAsync(scenario.CombatState, scenario.Player);
-                runner._completedChecks.Add("BaseLibCardModifierBoundary");
-                runner._completedChecks.Add("BaseLibGeneratedClone:NativeState:Created:Hand:Draw:Discard:Exhaust:Play:Removed");
-            }
-
             if (request.ExportBugReportAfterSetup)
             {
                 runner.SetStage("export_bug_report");
@@ -382,8 +125,6 @@ internal sealed partial class UnattendedTestRunner
 
         public void AssertAfterExecution(ScenarioContext scenario, ExecutionOutcome outcome)
         {
-            // Keep actual terminal health alongside projected search metrics, so full-battle
-            // comparisons cannot accidentally report a solver estimate as native outcome.
             runner._completedChecks.Add($"NativeOutcome:combatEnded={outcome.CombatEnded}:turn={outcome.FinishedTurn}"
                 + $":hp={scenario.Player.Creature.CurrentHp}:maxHp={scenario.Player.Creature.MaxHp}");
             UnattendedTestRequest request = runner._request;

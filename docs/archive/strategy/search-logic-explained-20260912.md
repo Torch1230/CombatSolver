@@ -43,7 +43,7 @@ flowchart TD
     L --> M[显示路线并部署当前回合]
 ```
 
-源码：[搜索根](../../../src/Runtime/CombatRootSnapshot.cs)、[政策快照](../../../src/Search/SearchPolicySnapshot.cs)、[协调器](../../../src/Search/CombatSearchCoordinator.cs)、[搜索阶段](../../../src/Search/CombatBeamSolver.Phases.cs)。
+源码：[搜索根](../../../src/Runtime/CombatRootSnapshot.cs)、[政策快照](../../../src/Search/SearchPolicySnapshot.cs)、协调器（`src/Search/CombatSearchCoordinator.cs`）、搜索阶段（`src/Search/CombatBeamSolver.Phases.cs`）。
 
 ## 3. 搜索树怎样长出来
 
@@ -73,7 +73,7 @@ flowchart TD
 
 弃牌、弃后抽、消耗、转变通常按移除估值从低到高尝试；获取等选择按卡牌估值从高到低尝试。同值还涉及语义身份和确定性顺序。后续保路又会为不同选牌选项建立代表，减少单个选项独占队列。
 
-源码：[候选展开](../../../src/Search/CombatBeamSolver.Expansion.cs)、[选牌支持](../../../src/Search/CardChoiceSupport.cs)、[首层选牌回放](../../../src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs)。
+源码：候选展开（`src/Search/CombatBeamSolver.Expansion.cs`）、选牌支持（`src/Search/CardChoiceSupport.cs`）、首层选牌回放（`src/Search/CombatBeamSolver.PrimaryChoiceReplay.cs`）。
 
 ## 4. 卡牌评分：现在确实比较粗
 
@@ -116,7 +116,7 @@ flowchart TD
 
 ## 5. 状态基础分：哪些东西在拉高或拉低分数
 
-下表来自 [SolverWeights](../../../src/Search/SolverWeights.cs) 和 [StateEvaluation](../../../src/Search/CombatBeamSolver.StateEvaluation.cs)。分数只用于中间判断，不是直接显示的 HP。
+下表来自 [SolverWeights](../../../src/Search/SolverWeights.cs) 和 StateEvaluation（`src/Search/CombatBeamSolver.StateEvaluation.cs`）。分数只用于中间判断，不是直接显示的 HP。
 
 | 项目 | 当前计算 |
 |---|---:|
@@ -155,7 +155,7 @@ flowchart TD
 
 但实际死亡检查、HP 评分、累计损失和主动卖血扣分仍在。因此“允许卖血”不代表“卖血启动天然排名靠前”。最后还必须靠能力带来的未来胜利和更低整场成本兑现收益。
 
-源码补充：[主动卖血扣分](../../../src/Search/CombatBeamSolver.Terminal.cs)、[首领血量与保命资源折算](../../../src/Search/ActEndingBossPolicy.cs)。
+源码补充：主动卖血扣分（`src/Search/CombatBeamSolver.Terminal.cs`）、[首领血量与保命资源折算](../../../src/Search/ActEndingBossPolicy.cs)。
 
 ## 6. 能力牌、成长引擎怎样体现价值
 
@@ -174,7 +174,7 @@ flowchart TD
 
 三层特化对部分交互补了更具体的估值，如 `Pagestorm`、`DanseMacabre`、`Demesne`、`PrepTime`。近期 `Lethality` 的三层估值改为考虑可支付的首张攻击潜力和已识别多段攻击，而非只用平均攻击牌价值；它仍没有穷举所有未来回能和强化组合。
 
-源码：[战略效果](../../../src/Search/StrategicEffectModel.cs)、[战略估值登记说明](../../third-party/strategic-effects.md)。未逐一核对中文译名的内部类型在本文保留代码标识，避免自行翻译。
+源码：战略效果（`src/Search/StrategicEffectModel.cs`）、[战略估值登记说明](../../third-party/strategic-effects.md)。未逐一核对中文译名的内部类型在本文保留代码标识，避免自行翻译。
 
 ## 7. Beam 排名：基础分之外还加什么
 
@@ -193,7 +193,7 @@ flowchart TD
 | 相对根增加的敌方力量压制 | 至多 16，乘估计窗口 8/4，再乘 30,000 |
 | 相对根增加的虚弱 | 至多 16，乘预计省血 2/1，再乘 30,000 |
 
-表中的 8/4、2/1 分别对应幕末首领/其他情况。具体公式见 [BeamRetentionPolicy.Ranking](../../../src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs) 的 `BeamRankScore`。
+表中的 8/4、2/1 分别对应幕末首领/其他情况。具体公式见 BeamRetentionPolicy.Ranking（`src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs`） 的 `BeamRankScore`。
 
 **这套公式已经不是纯防守，但仍有明显的近视来源。** 打能力会立即花能量，能量分马上降低；如果这张能力的未来收益没有被模型识别、已经封顶，或者需要再接两张牌才能体现，开能力后的中间状态就可能输给保费或打防的状态。
 
@@ -366,7 +366,7 @@ flowchart TD
 
 另有可证明主要质量下界的停止判断，要求额外条件，不能与用户阈值早停混为一谈。
 
-源码：[政策目标条件](../../../src/Search/SearchPolicySnapshot.cs)、[协调器早停](../../../src/Search/CombatSearchCoordinator.cs)，方法 `HasReachedAcceptableBattleHpLoss`。
+源码：[政策目标条件](../../../src/Search/SearchPolicySnapshot.cs)、协调器早停（`src/Search/CombatSearchCoordinator.cs`），方法 `HasReachedAcceptableBattleHpLoss`。
 
 ## 13. 三层专项当前到底做到了什么
 
@@ -423,15 +423,15 @@ flowchart TD
 |---|---|
 | 真实状态怎么冻结 | [CombatRootSnapshot](../../../src/Runtime/CombatRootSnapshot.cs) |
 | 玩家政策与三层开关 | [SearchPolicySnapshot](../../../src/Search/SearchPolicySnapshot.cs) |
-| 请求内主搜、药水与补充探索 | [CombatSearchCoordinator](../../../src/Search/CombatSearchCoordinator.cs) |
-| 回合层与预算推进 | [Phases](../../../src/Search/CombatBeamSolver.Phases.cs)，`Solve` |
-| 卡牌、药水、选择和动作支配 | [Expansion](../../../src/Search/CombatBeamSolver.Expansion.cs) 的 `Expand`；[Expansion.Candidates](../../../src/Search/CombatBeamSolver.Expansion.Candidates.cs) 的 `Dominates` |
-| 卡牌通用估值与移除顺序 | [CardChoiceSupport](../../../src/Search/CardChoiceSupport.cs)，`CardValue`、`RemovalPriority` |
-| 血量威胁、快照与基础分 | [StateEvaluation](../../../src/Search/CombatBeamSolver.StateEvaluation.cs) |
-| 持续效果与联动价值 | [StrategicEffectModel](../../../src/Search/StrategicEffectModel.cs) |
-| 精确去重、中间排名、代表与 Pareto | [BeamRetentionPolicy](../../../src/Search/CombatBeamSolver.BeamRetentionPolicy.cs) 的 `RankBest`；[BeamRetentionPolicy.Ranking](../../../src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs) 的 `BeamRankScore`、`MultiObjectiveDominates` |
-| 外层保路仲裁 | [Retention](../../../src/Search/CombatBeamSolver.Retention.cs) |
-| 终局政策准入和顺序 | [FinalPlanOrdering](../../../src/Search/CombatBeamSolver.FinalPlanOrdering.cs)，`Select` |
+| 请求内主搜、药水与补充探索 | CombatSearchCoordinator（`src/Search/CombatSearchCoordinator.cs`） |
+| 回合层与预算推进 | Phases（`src/Search/CombatBeamSolver.Phases.cs`），`Solve` |
+| 卡牌、药水、选择和动作支配 | Expansion（`src/Search/CombatBeamSolver.Expansion.cs`） 的 `Expand`；Expansion.Candidates（`src/Search/CombatBeamSolver.Expansion.Candidates.cs`） 的 `Dominates` |
+| 卡牌通用估值与移除顺序 | CardChoiceSupport（`src/Search/CardChoiceSupport.cs`），`CardValue`、`RemovalPriority` |
+| 血量威胁、快照与基础分 | StateEvaluation（`src/Search/CombatBeamSolver.StateEvaluation.cs`） |
+| 持续效果与联动价值 | StrategicEffectModel（`src/Search/StrategicEffectModel.cs`） |
+| 精确去重、中间排名、代表与 Pareto | BeamRetentionPolicy（`src/Search/CombatBeamSolver.BeamRetentionPolicy.cs`） 的 `RankBest`；BeamRetentionPolicy.Ranking（`src/Search/CombatBeamSolver.BeamRetentionPolicy.Ranking.cs`） 的 `BeamRankScore`、`MultiObjectiveDominates` |
+| 外层保路仲裁 | Retention（`src/Search/CombatBeamSolver.Retention.cs`） |
+| 终局政策准入和顺序 | FinalPlanOrdering（`src/Search/CombatBeamSolver.FinalPlanOrdering.cs`），`Select` |
 | 首领回血与一次性保命成本 | [ActEndingBossPolicy](../../../src/Search/ActEndingBossPolicy.cs) |
 | 权重常量 | [SolverWeights](../../../src/Search/SolverWeights.cs) |
 | 节点、动作与结果数据 | [CombatPlan](../../../src/Search/CombatPlan.cs) |

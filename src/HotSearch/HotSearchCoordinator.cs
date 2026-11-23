@@ -48,17 +48,43 @@ internal readonly record struct HotPassOutcome(
     TimeSpan GcPause);
 
 /// <summary>
-/// Clean, unified Phase 3 search coordinator (~450 LOC replacing 42 legacy entry points &amp; 10 PostSearch passes):
-/// - Pass 1: Primary Beam (0-potion baseline under Smart policy, or configured policy) with VictoryStopTarget early exit;
-/// - Pass 2: Smart Allowed-Potion Beam sharing certified Incumbent bound (only when potions available and justified);
-/// - Pass 3: Optional fast wider refinement pass when budget remains and victory/HP target is not yet satisfied.
+/// Standalone Phase 4 Hot-Kernel search coordinator:
+/// - Stage 1: Zero-potion baseline (Pass 1A Balanced Primary -> Pass 1B Wider Setup/Survival Refinement -> Pass 1C No-Victory Offense fallback);
+/// - Stage 2: Smart Allowed-Potion stage (Pass 2A Balanced potion-bucket-focused -> Pass 2B Setup/Survival potion refinement) sharing Stage 1's tightened Incumbent bound.
 /// Reuses a single <see cref="HotNodeArena"/>, <see cref="PackedStateArena"/>, <see cref="HotTranspositionTable"/>
-/// (O(1) generation epoch reset!), and <see cref="HotParallelExpander"/> across passes.
+/// (O(1) generation epoch reset), and <see cref="HotParallelExpander"/> across passes.
+/// Standalone Hot-Kernel decision layer with zero legacy simulator or backend dependencies.
 /// </summary>
 internal static class HotSearchCoordinator
 {
     private const int MaxSearchTurns = 28;
     private const int StandPatTopK = 16;
+
+    /// <summary>
+    /// Captures the canonical comparison quality of an already-materialized <see cref="SolverResult"/>
+    /// against <paramref name="root"/> and <paramref name="policy"/>.
+    /// </summary>
+    public static SolverInterimResult CaptureQuality(
+        CombatRootSnapshot root,
+        SearchPolicySnapshot policy,
+        SolverResult result)
+    {
+        if (result.ComparisonQuality is { } existing)
+            return existing;
+
+        HotRootBundle rootBundle = root.HotRoot;
+        CombatHotState rootState = rootBundle.RootState;
+        short[] rootPotionCosts = HotPotionPolicy.BuildRootSlotCosts(root, in rootState, rootBundle.Rules);
+        BattleDamageSnapshot battleDamage = new(
+            HpLostSoFar: result.BattleHpLostSoFar,
+            SoldHpCommitted: result.SoldHp,
+            PotionsUsedSoFar: result.BattlePotionsUsedSoFar,
+            PotionIdsUsedSoFar: result.BattlePotionIdsUsedSoFar,
+            HpRecoveredOrGainedSoFar: result.BattleHpRecoveredOrGainedSoFar);
+        HotSearchPolicy hotPolicy = new(root, battleDamage, policy, rootBundle.Rules, in rootState, rootPotionCosts);
+        HotRouteKey key = HotRouteQuality.FromSolverResult(result, in hotPolicy);
+        return HotRouteQuality.ToInterimResult(in key, in hotPolicy);
+    }
 
     public static SolverResult SolveSingleBeam(
         CombatRootSnapshot root,
@@ -68,7 +94,7 @@ internal static class HotSearchCoordinator
         CancellationToken cancellationToken)
     {
         Stopwatch requestClock = Stopwatch.StartNew();
-        HotRootBundle rootBundle = HotRootBuilder.BuildFromRootSnapshot(root);
+        HotRootBundle rootBundle = root.HotRoot;
         CombatHotState rootState = rootBundle.RootState;
         short[] rootPotionCosts = HotPotionPolicy.BuildRootSlotCosts(root, in rootState, rootBundle.Rules);
         HotSearchPolicy hotPolicy = new(root, battleDamage, policy, rootBundle.Rules, in rootState, rootPotionCosts);
@@ -109,25 +135,13 @@ internal static class HotSearchCoordinator
             onlyForcedPotions: onlyForced,
             maxPotionUses: -1,
             disableTt: disableTt,
+            evalMode: HotEvalMode.Balanced,
+            preferPotionBuckets: false,
             baselineForEligibility: null,
             ref incumbent,
             progressCallback: null,
             phaseLabel: "正在搜索路线",
             reviewedOffset: 0);
-
-        policy.RequestWorkTotals?.Record(
-            new SearchSolverWorkContribution(
-                pass.Stats.ExpandedParents,
-                pass.Stats.Transitions,
-                pass.Stats.ChoiceBranches,
-                pass.Elapsed,
-                pass.Stats.WorkerAllocatedBytes,
-                pass.Gen0,
-                pass.Gen1,
-                pass.Gen2,
-                pass.GcPause,
-                pass.GcPause),
-            directSearchPurpose: DirectSearchPurpose.PrimaryBeam);
 
         int potionHpRequired = pass.BestKey.OptionalPotionStrategicCost;
         HotMaterializeMetrics metrics = new(
@@ -182,19 +196,17 @@ internal static class HotSearchCoordinator
         return result;
     }
 
-    public static SolverResult SolveCoordinator(
+    public static SolverResult Solve(
         CombatRootSnapshot root,
         SolverDisplayNames displayNames,
         BattleDamageSnapshot battleDamage,
         SearchPolicySnapshot policy,
         CancellationToken cancellationToken,
-        Action<SolverProgress>? progressCallback)
+        Action<SolverProgress>? progressCallback = null)
     {
         Stopwatch requestClock = Stopwatch.StartNew();
-        SearchRequestWorkTotals workTotals = policy.RequestWorkTotals ?? new SearchRequestWorkTotals();
-        BeamWidthPortfolioTelemetry portfolioTelemetry = policy.PortfolioTelemetry ?? new BeamWidthPortfolioTelemetry();
 
-        HotRootBundle rootBundle = HotRootBuilder.BuildFromRootSnapshot(root);
+        HotRootBundle rootBundle = root.HotRoot;
         CombatHotState rootState = rootBundle.RootState;
         short[] rootPotionCosts = HotPotionPolicy.BuildRootSlotCosts(root, in rootState, rootBundle.Rules);
         HotSearchPolicy hotPolicy = new(root, battleDamage, policy, rootBundle.Rules, in rootState, rootPotionCosts);
@@ -212,47 +224,13 @@ internal static class HotSearchCoordinator
         using HotBeamRetention retention = new();
         using HotParallelExpander expander = new(dop);
 
-        // Seed certified incumbent from shared PrimaryIncumbentTable witness if available
         HotIncumbentBound sharedIncumbent = HotIncumbentBound.None;
-        SolverResult? reusedWitness = null;
-        if (!policy.DisableRefinementIncumbentForTesting
-            && !policy.DisableSharedPrimaryIncumbentsForTesting
-            && PrimaryIncumbentTable.CanShareRoot(root)
-            && policy.PrimaryIncumbents?.PotionFreeWitness is { } witness
-            && witness.ExplicitPotionCount == 0
-            && !witness.OnlyDeathRoutesFound
-            && witness.Snapshot.AllEnemiesDead
-            && !witness.Snapshot.PlayerDead
-            && witness.CombatEndedTurn is int witnessEndTurn
-            && hotPolicy.EffectivePotionPolicy != SolverPotionPolicy.RequireAtLeastOne
-            && !hotPolicy.HasForcedDirectives)
-        {
-            reusedWitness = witness;
-            int witnessDeficit = ActEndingBossPolicy.StrategicHpDeficit(
-                witness.Snapshot.CumulativePlayerHpLost,
-                Math.Max(0, root.InitialPlayerMaxHp - witness.Snapshot.PlayerMaxHp),
-                witness.Snapshot.RecoveredPlayerHp
-                    + ActEndingBossPolicy.RankedPostCombatRelicHeal(
-                        hotPolicy.PostCombatRelicHeal, true, witness.Snapshot.PlayerHp, witness.Snapshot.PlayerMaxHp),
-                hotPolicy.StrategicBossHpRelief,
-                witness.Snapshot.DeathSaveHpRestored) - witness.Snapshot.StrategicHpCredit;
-            if (!hotPolicy.HasAnyHealOrUnknownGeneration && witness.Snapshot.ProjectedDeathSaveUseCount == 0)
-            {
-                sharedIncumbent = new HotIncumbentBound(
-                    hasCertifiedZeroPotionBound: true,
-                    bestZeroPotionHpLost: witnessDeficit,
-                    bestZeroPotionEndTurn: witnessEndTurn,
-                    hasCertifiedOverallBound: true,
-                    bestOverallCost: witnessDeficit,
-                    bestOverallEndTurn: witnessEndTurn);
-            }
-        }
 
         int baseBeamWidth = ResolveInitialBeamWidth(policy.Profile.BeamWidth, in hotPolicy);
         bool smartMode = hotPolicy.EffectivePotionPolicy == SolverPotionPolicy.Smart;
-        bool pass1DisablePotions = smartMode && !hotPolicy.HasForcedDirectives
+        bool stage1DisablePotions = smartMode && !hotPolicy.HasForcedDirectives
             || (hotPolicy.EffectivePotionPolicy == SolverPotionPolicy.Disabled && !hotPolicy.HasForcedDirectives);
-        bool pass1OnlyForced = hotPolicy.HasForcedDirectives && (smartMode || hotPolicy.EffectivePotionPolicy == SolverPotionPolicy.Disabled);
+        bool stage1OnlyForced = hotPolicy.HasForcedDirectives && (smartMode || hotPolicy.EffectivePotionPolicy == SolverPotionPolicy.Disabled);
 
         long totalExpanded = 0;
         long totalTransitions = 0;
@@ -262,8 +240,12 @@ internal static class HotSearchCoordinator
         TimeSpan totalGcPause = TimeSpan.Zero;
         int passCount = 0;
 
-        // ---- PASS 1: Primary Beam (0-potion baseline under Smart policy, or configured policy) ----
-        HotPassOutcome pass1 = RunBeamPass(
+        // =========================================================================
+        // STAGE 1: ZERO-POTION BASELINE (or configured Disabled/Allow/Require policy)
+        // =========================================================================
+
+        // ---- PASS 1A: Primary Beam (Balanced) ----
+        HotPassOutcome pass1A = RunBeamPass(
             rootBundle,
             in hotPolicy,
             in evalLookup,
@@ -277,60 +259,52 @@ internal static class HotSearchCoordinator
             expander,
             beamWidth: baseBeamWidth,
             maxNodesForPass: totalNodeLimit,
-            disableAllPotions: pass1DisablePotions,
-            onlyForcedPotions: pass1OnlyForced,
+            disableAllPotions: stage1DisablePotions,
+            onlyForcedPotions: stage1OnlyForced,
             maxPotionUses: -1,
             disableTt: disableTt,
+            evalMode: HotEvalMode.Balanced,
+            preferPotionBuckets: false,
             baselineForEligibility: null,
             ref sharedIncumbent,
             progressCallback: progressCallback,
             phaseLabel: "正在搜索主路线",
             reviewedOffset: 0);
 
-        AccumulatePassTotals(workTotals, pass1, DirectSearchPurpose.PrimaryBeam,
+        AccumulatePassTotals(pass1A,
             ref totalExpanded, ref totalTransitions, ref totalChoices, ref totalAllocated,
             ref totalGen0, ref totalGen1, ref totalGen2, ref totalGcPause, ref passCount);
 
-        HotPassOutcome bestPass = pass1;
-        HotRouteKey baselineKey = pass1.BestKey;
+        HotPassOutcome bestPass = pass1A;
+        HotRouteKey bestPassKey = pass1A.BestKey;
+        HotRouteKey baselineKey = pass1A.BestKey;
         int potionHpSaved = 0;
         int potionBranchesRejected = 0;
-
-        // Materialize Pass 1 winner now ONLY if we will reset arenas for Pass 2/3, so we never lose its path!
         SolverResult? materializedBest = null;
 
-        bool willRunPass2 = smartMode
+        // ---- PASS 1B: Wider Setup & Survival 0-Potion Refinement ----
+        bool runPass1B = !bestPass.StopTargetReached
+            && !budget.IsCanceled
             && !budget.IsTimeExpired
-            && !budget.IsCanceled
-            && totalExpanded < totalNodeLimit
-            && HotPotionPolicy.ShouldRunSmartPotionPass(in baselineKey, in hotPolicy);
-
-        HotRouteKey bestPassKey = bestPass.BestKey;
-        bool canRunRefinement = !pass1.StopTargetReached
-            && !budget.IsCanceled
-            && budget.RemainingMilliseconds > Math.Max(500L, softBudgetMs / 4)
             && totalExpanded < totalNodeLimit
             && (!bestPass.HasVictory
-                || (policy.UseBeamWidthPortfolio
-                    && !HotRouteQuality.MeetsVictoryStopTarget(in bestPassKey, in hotPolicy)
-                    && requestClock.ElapsedMilliseconds < (softBudgetMs * 45) / 100));
+                || (!HotRouteQuality.MeetsVictoryStopTarget(in bestPassKey, in hotPolicy)
+                    && requestClock.ElapsedMilliseconds < (softBudgetMs * 35) / 100));
 
-        if (willRunPass2 || canRunRefinement)
+        if (runPass1B)
         {
             materializedBest = MaterializePassResult(
                 root, displayNames, battleDamage, policy, rootBundle, in hotPolicy, rootPotionCosts,
-                nodeArena, in pass1, tt, expander, totalExpanded, totalTransitions, totalChoices,
+                nodeArena, in bestPass, tt, expander, totalExpanded, totalTransitions, totalChoices,
                 totalAllocated, requestClock.Elapsed, potionHpSaved: 0, potionBranchesRejected: 0);
-            portfolioTelemetry.RecordFirstRoutePublished(requestClock.Elapsed.TotalMilliseconds);
-        }
 
-        // ---- PASS 2: Smart Allowed-Potion Pass (shares Incumbent bound; skips redundant <=1 middle stage!) ----
-        if (willRunPass2)
-        {
-            ResetSearchStateForNextPass(nodeArena, mainStateArena, tt);
+            ResetSearchStateForNextPass(nodeArena, mainStateArena, tt, expander);
             int remainingNodes = (int)Math.Max(1, totalNodeLimit - totalExpanded);
+            int setupBeamWidth = !bestPass.HasVictory
+                ? Math.Clamp(baseBeamWidth * 2, 120, 160)
+                : Math.Clamp(baseBeamWidth * 2, 100, 140);
 
-            HotPassOutcome pass2 = RunBeamPass(
+            HotPassOutcome pass1B = RunBeamPass(
                 rootBundle,
                 in hotPolicy,
                 in evalLookup,
@@ -342,81 +316,60 @@ internal static class HotSearchCoordinator
                 tt,
                 retention,
                 expander,
-                beamWidth: baseBeamWidth,
+                beamWidth: setupBeamWidth,
                 maxNodesForPass: remainingNodes,
-                disableAllPotions: false,
-                onlyForcedPotions: false,
+                disableAllPotions: stage1DisablePotions,
+                onlyForcedPotions: stage1OnlyForced,
                 maxPotionUses: -1,
                 disableTt: disableTt,
-                baselineForEligibility: baselineKey,
+                evalMode: HotEvalMode.SetupAndSurvival,
+                preferPotionBuckets: false,
+                baselineForEligibility: null,
                 ref sharedIncumbent,
                 progressCallback: progressCallback,
-                phaseLabel: "正在评估药水路线",
+                phaseLabel: "正在精炼主路线",
                 reviewedOffset: totalExpanded);
 
-            AccumulatePassTotals(workTotals, pass2, DirectSearchPurpose.SmartPotionGradient,
+            AccumulatePassTotals(pass1B,
                 ref totalExpanded, ref totalTransitions, ref totalChoices, ref totalAllocated,
                 ref totalGen0, ref totalGen1, ref totalGen2, ref totalGcPause, ref passCount);
 
-            HotRouteKey pass2Key = pass2.BestKey;
-            bool pass2Eligible = pass2.HasBest
-                && HotPotionPolicy.IsEligibleFinalRoute(
-                    in pass2Key,
-                    baselineKey,
-                    anyRouteWon: bestPass.HasVictory || pass2.HasVictory,
-                    in hotPolicy);
-
-            if (pass2Eligible
-                && HotRouteQuality.IsBetter(in pass2Key, in bestPassKey, in hotPolicy, includeOptionalPotionCost: true))
+            HotRouteKey pass1BKey = pass1B.BestKey;
+            if (pass1B.HasBest
+                && HotRouteQuality.IsBetter(in pass1BKey, in bestPassKey, in hotPolicy, includeOptionalPotionCost: true))
             {
-                potionHpSaved = pass2Key.ExplicitPotionCount > hotPolicy.ForcedDirectiveCount
-                    ? PotionUsePolicy.HpSaved(baselineKey.StrategicHpDeficit, pass2Key.StrategicHpDeficit)
-                    : 0;
-                bestPass = pass2;
-                bestPassKey = pass2Key;
+                bestPass = pass1B;
+                bestPassKey = pass1BKey;
+                baselineKey = pass1BKey;
                 materializedBest = MaterializePassResult(
                     root, displayNames, battleDamage, policy, rootBundle, in hotPolicy, rootPotionCosts,
-                    nodeArena, in pass2, tt, expander, totalExpanded, totalTransitions, totalChoices,
-                    totalAllocated, requestClock.Elapsed, potionHpSaved, potionBranchesRejected);
-            }
-            else if (pass2.HasBest && pass2Key.ExplicitPotionCount > hotPolicy.ForcedDirectiveCount)
-            {
-                potionBranchesRejected++;
+                    nodeArena, in pass1B, tt, expander, totalExpanded, totalTransitions, totalChoices,
+                    totalAllocated, requestClock.Elapsed, potionHpSaved: 0, potionBranchesRejected: 0);
             }
         }
 
-        // ---- PASS 3: Optional Fast Wider Refinement Pass (only if budget remains & target not met) ----
-        bool runPass3 = !bestPass.StopTargetReached
+        // ---- PASS 1C: No-Victory Offense Escalation (ONLY if Stage 1 still has NO victory) ----
+        bool runPass1C = !bestPass.HasVictory
             && !budget.IsCanceled
-            && budget.RemainingMilliseconds > Math.Max(500L, softBudgetMs / 4)
+            && !budget.IsTimeExpired
             && totalExpanded < totalNodeLimit
-            && (!bestPass.HasVictory
-                || (policy.UseBeamWidthPortfolio
-                    && !HotRouteQuality.MeetsVictoryStopTarget(in bestPassKey, in hotPolicy)
-                    && requestClock.ElapsedMilliseconds < (softBudgetMs * 45) / 100));
+            && requestClock.ElapsedMilliseconds < (softBudgetMs * 35) / 100;
 
-        if (runPass3)
+        if (runPass1C)
         {
             if (materializedBest == null)
             {
                 materializedBest = MaterializePassResult(
                     root, displayNames, battleDamage, policy, rootBundle, in hotPolicy, rootPotionCosts,
                     nodeArena, in bestPass, tt, expander, totalExpanded, totalTransitions, totalChoices,
-                    totalAllocated, requestClock.Elapsed, potionHpSaved, potionBranchesRejected);
+                    totalAllocated, requestClock.Elapsed, potionHpSaved: 0, potionBranchesRejected: 0);
             }
 
-            ResetSearchStateForNextPass(nodeArena, mainStateArena, tt);
-
-            int wideBeam = !bestPass.HasVictory
-                ? Math.Clamp(baseBeamWidth * 2, baseBeamWidth + 20, 160)
-                : Math.Clamp((baseBeamWidth * 3) / 2, baseBeamWidth + 16, 120);
+            ResetSearchStateForNextPass(nodeArena, mainStateArena, tt, expander);
             int remainingNodes = (int)Math.Max(1, totalNodeLimit - totalExpanded);
+            int offenseBeamWidth = Math.Clamp(baseBeamWidth * 2, 120, 160);
 
-            bool pass3DisablePotions = pass1DisablePotions && !willRunPass2;
-            bool pass3OnlyForced = pass1OnlyForced && !willRunPass2;
-            HotRouteKey? pass3Baseline = smartMode && !pass3DisablePotions ? baselineKey : null;
-
-            HotPassOutcome pass3 = RunBeamPass(
+            HotPassOutcome pass1C = RunBeamPass(
                 rootBundle,
                 in hotPolicy,
                 in evalLookup,
@@ -428,44 +381,189 @@ internal static class HotSearchCoordinator
                 tt,
                 retention,
                 expander,
-                beamWidth: wideBeam,
+                beamWidth: offenseBeamWidth,
                 maxNodesForPass: remainingNodes,
-                disableAllPotions: pass3DisablePotions,
-                onlyForcedPotions: pass3OnlyForced,
+                disableAllPotions: stage1DisablePotions,
+                onlyForcedPotions: stage1OnlyForced,
                 maxPotionUses: -1,
                 disableTt: disableTt,
-                baselineForEligibility: pass3Baseline,
+                evalMode: HotEvalMode.Offense,
+                preferPotionBuckets: false,
+                baselineForEligibility: null,
                 ref sharedIncumbent,
                 progressCallback: progressCallback,
-                phaseLabel: "正在精炼路线",
+                phaseLabel: "正在强化攻势搜索",
                 reviewedOffset: totalExpanded);
 
-            AccumulatePassTotals(workTotals, pass3, DirectSearchPurpose.RefinementBeam,
+            AccumulatePassTotals(pass1C,
                 ref totalExpanded, ref totalTransitions, ref totalChoices, ref totalAllocated,
                 ref totalGen0, ref totalGen1, ref totalGen2, ref totalGcPause, ref passCount);
 
-            HotRouteKey pass3Key = pass3.BestKey;
-            bool pass3Eligible = pass3.HasBest
-                && HotPotionPolicy.IsEligibleFinalRoute(
-                    in pass3Key,
-                    pass3Baseline,
-                    anyRouteWon: bestPass.HasVictory || pass3.HasVictory,
-                    in hotPolicy);
-
-            if (pass3Eligible
-                && HotRouteQuality.IsBetter(in pass3Key, in bestPassKey, in hotPolicy, includeOptionalPotionCost: true))
+            HotRouteKey pass1CKey = pass1C.BestKey;
+            if (pass1C.HasBest
+                && HotRouteQuality.IsBetter(in pass1CKey, in bestPassKey, in hotPolicy, includeOptionalPotionCost: true))
             {
-                if (smartMode && pass3Key.ExplicitPotionCount > hotPolicy.ForcedDirectiveCount)
-                    potionHpSaved = PotionUsePolicy.HpSaved(baselineKey.StrategicHpDeficit, pass3Key.StrategicHpDeficit);
-                else
-                    potionHpSaved = 0;
-
-                bestPass = pass3;
-                bestPassKey = pass3Key;
+                bestPass = pass1C;
+                bestPassKey = pass1CKey;
+                baselineKey = pass1CKey;
                 materializedBest = MaterializePassResult(
                     root, displayNames, battleDamage, policy, rootBundle, in hotPolicy, rootPotionCosts,
-                    nodeArena, in pass3, tt, expander, totalExpanded, totalTransitions, totalChoices,
+                    nodeArena, in pass1C, tt, expander, totalExpanded, totalTransitions, totalChoices,
+                    totalAllocated, requestClock.Elapsed, potionHpSaved: 0, potionBranchesRejected: 0);
+            }
+        }
+
+        // =========================================================================
+        // STAGE 2: SMART ALLOWED-POTION PASSES (only when potions can beat Stage 1!)
+        // =========================================================================
+        bool runStage2 = smartMode
+            && !bestPass.StopTargetReached
+            && !budget.IsTimeExpired
+            && !budget.IsCanceled
+            && totalExpanded < totalNodeLimit
+            && HotPotionPolicy.ShouldRunSmartPotionPass(in baselineKey, in hotPolicy);
+
+        if (runStage2)
+        {
+            if (materializedBest == null)
+            {
+                materializedBest = MaterializePassResult(
+                    root, displayNames, battleDamage, policy, rootBundle, in hotPolicy, rootPotionCosts,
+                    nodeArena, in bestPass, tt, expander, totalExpanded, totalTransitions, totalChoices,
+                    totalAllocated, requestClock.Elapsed, potionHpSaved: 0, potionBranchesRejected: 0);
+            }
+
+            // ---- PASS 2A: Smart Allowed-Potion Beam (Balanced, potion-bucket-focused!) ----
+            ResetSearchStateForNextPass(nodeArena, mainStateArena, tt, expander);
+            int remainingNodes = (int)Math.Max(1, totalNodeLimit - totalExpanded);
+            int potionBeamWidth = Math.Clamp((baseBeamWidth * 3) / 2, baseBeamWidth, 100);
+
+            HotPassOutcome pass2A = RunBeamPass(
+                rootBundle,
+                in hotPolicy,
+                in evalLookup,
+                rootPotionCosts,
+                policy.Profile,
+                budget,
+                nodeArena,
+                mainStateArena,
+                tt,
+                retention,
+                expander,
+                beamWidth: potionBeamWidth,
+                maxNodesForPass: remainingNodes,
+                disableAllPotions: false,
+                onlyForcedPotions: false,
+                maxPotionUses: -1,
+                disableTt: disableTt,
+                evalMode: HotEvalMode.Balanced,
+                preferPotionBuckets: true,
+                baselineForEligibility: baselineKey,
+                ref sharedIncumbent,
+                progressCallback: progressCallback,
+                phaseLabel: "正在评估药水路线",
+                reviewedOffset: totalExpanded);
+
+            AccumulatePassTotals(pass2A,
+                ref totalExpanded, ref totalTransitions, ref totalChoices, ref totalAllocated,
+                ref totalGen0, ref totalGen1, ref totalGen2, ref totalGcPause, ref passCount);
+
+            HotRouteKey pass2AKey = pass2A.BestKey;
+            bool pass2AEligible = pass2A.HasBest
+                && HotPotionPolicy.IsEligibleFinalRoute(
+                    in pass2AKey,
+                    baselineKey,
+                    anyRouteWon: bestPass.HasVictory || pass2A.HasVictory,
+                    in hotPolicy);
+
+            if (pass2AEligible
+                && HotRouteQuality.IsBetter(in pass2AKey, in bestPassKey, in hotPolicy, includeOptionalPotionCost: true))
+            {
+                potionHpSaved = pass2AKey.ExplicitPotionCount > hotPolicy.ForcedDirectiveCount
+                    ? HotPotionPolicy.HpSaved(baselineKey.StrategicHpDeficit, pass2AKey.StrategicHpDeficit)
+                    : 0;
+                bestPass = pass2A;
+                bestPassKey = pass2AKey;
+                materializedBest = MaterializePassResult(
+                    root, displayNames, battleDamage, policy, rootBundle, in hotPolicy, rootPotionCosts,
+                    nodeArena, in pass2A, tt, expander, totalExpanded, totalTransitions, totalChoices,
                     totalAllocated, requestClock.Elapsed, potionHpSaved, potionBranchesRejected);
+            }
+            else if (pass2A.HasBest && pass2AKey.ExplicitPotionCount > hotPolicy.ForcedDirectiveCount)
+            {
+                potionBranchesRejected++;
+            }
+
+            // ---- PASS 2B: Smart Potion + Setup/Survival Refinement ----
+            bool runPass2B = !bestPass.StopTargetReached
+                && !budget.IsCanceled
+                && !budget.IsTimeExpired
+                && totalExpanded < totalNodeLimit
+                && (!bestPass.HasVictory
+                    || (bestPassKey.StrategicHpDeficit > 12
+                        && !HotRouteQuality.MeetsVictoryStopTarget(in bestPassKey, in hotPolicy)
+                        && requestClock.ElapsedMilliseconds < (softBudgetMs * 40) / 100));
+
+            if (runPass2B)
+            {
+                ResetSearchStateForNextPass(nodeArena, mainStateArena, tt, expander);
+                int remaining2B = (int)Math.Max(1, totalNodeLimit - totalExpanded);
+
+                HotPassOutcome pass2B = RunBeamPass(
+                    rootBundle,
+                    in hotPolicy,
+                    in evalLookup,
+                    rootPotionCosts,
+                    policy.Profile,
+                    budget,
+                    nodeArena,
+                    mainStateArena,
+                    tt,
+                    retention,
+                    expander,
+                    beamWidth: potionBeamWidth,
+                    maxNodesForPass: remaining2B,
+                    disableAllPotions: false,
+                    onlyForcedPotions: false,
+                    maxPotionUses: -1,
+                    disableTt: disableTt,
+                    evalMode: HotEvalMode.SetupAndSurvival,
+                    preferPotionBuckets: true,
+                    baselineForEligibility: baselineKey,
+                    ref sharedIncumbent,
+                    progressCallback: progressCallback,
+                    phaseLabel: "正在精炼药水路线",
+                    reviewedOffset: totalExpanded);
+
+                AccumulatePassTotals(pass2B,
+                    ref totalExpanded, ref totalTransitions, ref totalChoices, ref totalAllocated,
+                    ref totalGen0, ref totalGen1, ref totalGen2, ref totalGcPause, ref passCount);
+
+                HotRouteKey pass2BKey = pass2B.BestKey;
+                bool pass2BEligible = pass2B.HasBest
+                    && HotPotionPolicy.IsEligibleFinalRoute(
+                        in pass2BKey,
+                        baselineKey,
+                        anyRouteWon: bestPass.HasVictory || pass2B.HasVictory,
+                        in hotPolicy);
+
+                if (pass2BEligible
+                    && HotRouteQuality.IsBetter(in pass2BKey, in bestPassKey, in hotPolicy, includeOptionalPotionCost: true))
+                {
+                    potionHpSaved = pass2BKey.ExplicitPotionCount > hotPolicy.ForcedDirectiveCount
+                        ? HotPotionPolicy.HpSaved(baselineKey.StrategicHpDeficit, pass2BKey.StrategicHpDeficit)
+                        : 0;
+                    bestPass = pass2B;
+                    bestPassKey = pass2BKey;
+                    materializedBest = MaterializePassResult(
+                        root, displayNames, battleDamage, policy, rootBundle, in hotPolicy, rootPotionCosts,
+                        nodeArena, in pass2B, tt, expander, totalExpanded, totalTransitions, totalChoices,
+                        totalAllocated, requestClock.Elapsed, potionHpSaved, potionBranchesRejected);
+                }
+                else if (pass2B.HasBest && pass2BKey.ExplicitPotionCount > hotPolicy.ForcedDirectiveCount)
+                {
+                    potionBranchesRejected++;
+                }
             }
         }
 
@@ -473,17 +571,6 @@ internal static class HotSearchCoordinator
             root, displayNames, battleDamage, policy, rootBundle, in hotPolicy, rootPotionCosts,
             nodeArena, in bestPass, tt, expander, totalExpanded, totalTransitions, totalChoices,
             totalAllocated, requestClock.Elapsed, potionHpSaved, potionBranchesRejected);
-
-        // Ensure reused witness never degrades when VerifySharedIncumbentReuse is active
-        if (reusedWitness != null
-            && RouteQualityPolicy.Compare(
-                RouteQuality.FromInterim(CombatSearchCoordinator.CapturePortfolioQuality(root, policy, reusedWitness)),
-                RouteQuality.FromInterim(CombatSearchCoordinator.CapturePortfolioQuality(root, policy, finalResult)),
-                RouteQualityProjection.PotionPolicy,
-                policy.TheftPolicy) < 0)
-        {
-            finalResult = reusedWitness;
-        }
 
         // Stamp aggregate request-level telemetry cleanly
         finalResult.TotalExpandedNodes = totalExpanded;
@@ -496,30 +583,6 @@ internal static class HotSearchCoordinator
         finalResult.TotalGcPauseDuration = totalGcPause;
         finalResult.TotalSearchElapsed = requestClock.Elapsed;
         finalResult.SingleSessionSearch = passCount <= 1;
-        finalResult.SearchWorkAttributions = workTotals.AttributionSnapshot();
-        finalResult.PortfolioTelemetry = portfolioTelemetry;
-        finalResult.RequestBudget = new SearchRequestBudgetSnapshot(
-            totalExpanded,
-            totalNodeLimit,
-            requestClock.ElapsedMilliseconds,
-            softBudgetMs);
-
-        // Publish reusable potion-free victory witness to PrimaryIncumbentTable if enabled
-        if (!policy.DisableRefinementIncumbentForTesting
-            && !policy.DisableSharedPrimaryIncumbentsForTesting
-            && PrimaryIncumbentTable.CanShareRoot(root)
-            && policy.PrimaryIncumbents != null
-            && finalResult.ExplicitPotionCount == 0
-            && !finalResult.OnlyDeathRoutesFound
-            && finalResult.Snapshot.AllEnemiesDead
-            && !finalResult.Snapshot.PlayerDead
-            && finalResult.CombatEndedTurn is int endTurn)
-        {
-            policy.PrimaryIncumbents.Tighten(
-                ResourceIncumbentPolicy.CompletedBucket(finalResult.Snapshot, 0),
-                new PrimarySearchIncumbent(bestPass.BestKey.StrategicHpDeficit, endTurn, 0));
-            policy.PrimaryIncumbents.PotionFreeWitness = finalResult;
-        }
 
         return finalResult;
     }
@@ -542,6 +605,8 @@ internal static class HotSearchCoordinator
         bool onlyForcedPotions,
         int maxPotionUses,
         bool disableTt,
+        HotEvalMode evalMode,
+        bool preferPotionBuckets,
         HotRouteKey? baselineForEligibility,
         ref HotIncumbentBound incumbent,
         Action<SolverProgress>? progressCallback,
@@ -554,7 +619,6 @@ internal static class HotSearchCoordinator
         int gen2Start = GC.CollectionCount(2);
         TimeSpan gcPauseStart = GC.GetTotalPauseDuration();
 
-        // Pack and insert root state into mainStateArena & nodeArena
         CombatHotState rootState = rootBundle.RootState;
         HotColdSidecar? rootCold = rootBundle.RootCold;
         int rootPackedSize = HotStatePacker.ComputePackedSize(in rootState);
@@ -573,8 +637,10 @@ internal static class HotSearchCoordinator
             in rootSummary,
             potionStrategicCost: 0,
             actionCount: 0,
+            evalMode: evalMode,
             out long rootScore,
-            out int rootSetup);
+            out int rootSetup,
+            out byte rootPlayableHand);
 
         HotSearchNode rootNode = new()
         {
@@ -607,6 +673,8 @@ internal static class HotSearchCoordinator
             Turn = (byte)Math.Clamp(rootSummary.Turn, 0, byte.MaxValue),
             ActionsThisTurn = 0,
             AliveEnemyCount = rootSummary.AliveEnemyCount,
+            RevivingEnemyCount = rootSummary.RevivingEnemyCount,
+            PlayableHandCount = rootPlayableHand,
             DeathSaveUseCount = rootSummary.DeathSaveUseCount,
             Outcome = rootSummary.Outcome,
             Flags = HotNodeFlags.IsRoot,
@@ -621,7 +689,8 @@ internal static class HotSearchCoordinator
             maxPotionUses: maxPotionUses,
             maxCardBranchesPerNode: profile.MaxCardBranchesPerNode,
             maxHandChoiceBranches: profile.MaxHandChoiceBranchesPerAction,
-            maxPileChoiceBranches: profile.MaxPileChoiceBranchesPerAction);
+            maxPileChoiceBranches: profile.MaxPileChoiceBranchesPerAction,
+            evalMode: evalMode);
 
         List<int> currentTurnFrontier = new(beamWidth) { rootNodeId };
         List<int> activeFrontier = new(beamWidth);
@@ -647,11 +716,10 @@ internal static class HotSearchCoordinator
         bool stopTargetReached = false;
         SearchBoundaryReason boundaryReason = SearchBoundaryReason.None;
         int searchedTurns = 0;
-        long lastProgressReportMs = -SolverWeights.ProgressUiIntervalMilliseconds;
+        long lastProgressReportMs = -HotSearchConstants.ProgressUiIntervalMilliseconds;
 
-        // Cross-turn progress tracking (replaces legacy multi-thousand-LOC cross-turn cycle bloat)
         int bestSeenEnemyHp = rootSummary.EnemyHpSum;
-        int bestSeenAliveEnemies = rootSummary.AliveEnemyCount;
+        int bestSeenAliveEnemies = rootSummary.AliveEnemyCount + rootSummary.RevivingEnemyCount;
         int bestSeenSetup = rootSetup;
         int turnsWithoutProgress = 0;
 
@@ -682,11 +750,10 @@ internal static class HotSearchCoordinator
                 nextTurnCandidates.Clear();
 
                 int remainingPassNodes = maxNodesForPass - stats.ExpandedParents;
-                // Prevent Turn 1 draw/combo explosions from consuming the entire node budget before Turn 2+ is explored.
                 int perTurnNodeCap = hasVictory
                     ? remainingPassNodes
                     : Math.Max(
-                        SolverWeights.MinimumTurnLayerExpandedNodes,
+                        HotSearchConstants.MinimumTurnLayerExpandedNodes,
                         Math.Min(remainingPassNodes, Math.Max(beamWidth * 40, maxNodesForPass / 4)));
                 int expandedThisTurn = 0;
 
@@ -719,7 +786,6 @@ internal static class HotSearchCoordinator
                     nextStepCandidates.Clear();
                     victories.Clear();
 
-                    // Freeze incumbent for this wave so DOP=1 and DOP=8/16 prune identically!
                     HotIncumbentBound frozenIncumbent = incumbent;
 
                     ReadOnlySpan<int> parentSlice = System.Runtime.InteropServices.CollectionsMarshal
@@ -748,7 +814,6 @@ internal static class HotSearchCoordinator
 
                     expandedThisTurn += waveCount;
 
-                    // Process discovered victories deterministically
                     ProcessVictories(
                         victories,
                         nodeArena,
@@ -764,7 +829,6 @@ internal static class HotSearchCoordinator
                     if (stopTargetReached)
                         break;
 
-                    // Track best ongoing route seen so far (for graceful NodeLimit/TimeLimit fallback)
                     UpdateBestOngoing(nextStepCandidates, nodeArena, in hotPolicy, ref bestOngoingId, ref bestOngoingKey, ref hasOngoing);
                     UpdateBestOngoing(nextTurnCandidates, nodeArena, in hotPolicy, ref bestOngoingId, ref bestOngoingKey, ref hasOngoing);
 
@@ -784,15 +848,16 @@ internal static class HotSearchCoordinator
                         System.Runtime.InteropServices.CollectionsMarshal.AsSpan(nextStepCandidates),
                         nodeArena,
                         midTurnBeamWidth,
-                        pruneOutBuf.AsSpan(0, midTurnBeamWidth));
+                        pruneOutBuf.AsSpan(0, midTurnBeamWidth),
+                        isTurnBoundary: false,
+                        preferPotionBuckets: preferPotionBuckets);
 
                     activeFrontier.Clear();
                     for (int i = 0; i < kept; i++)
                         activeFrontier.Add(pruneOutBuf[i]);
 
-                    // Throttled progress notification
                     if (progressCallback != null
-                        && budget.ElapsedMilliseconds - lastProgressReportMs >= SolverWeights.ProgressUiIntervalMilliseconds)
+                        && budget.ElapsedMilliseconds - lastProgressReportMs >= HotSearchConstants.ProgressUiIntervalMilliseconds)
                     {
                         lastProgressReportMs = budget.ElapsedMilliseconds;
                         SolverInterimResult? interim = hasVictory
@@ -815,7 +880,6 @@ internal static class HotSearchCoordinator
                     }
                 }
 
-                // Lightweight Stand-Pat lookahead on Top-K active nodes if turn stopped early due to cap
                 if (!stopTargetReached
                     && activeFrontier.Count > 0
                     && nextTurnCandidates.Count < beamWidth
@@ -831,6 +895,7 @@ internal static class HotSearchCoordinator
                         rootBundle.Rules,
                         in hotPolicy,
                         in evalLookup,
+                        evalMode,
                         nextTurnCandidates,
                         victories,
                         ref bestFallbackId,
@@ -858,7 +923,6 @@ internal static class HotSearchCoordinator
                 if (nextTurnCandidates.Count == 0)
                     break;
 
-                // Prune turn boundary candidates into next turn's frontier
                 if (pruneOutBuf.Length < beamWidth)
                 {
                     ArrayPool<int>.Shared.Return(pruneOutBuf, clearArray: false);
@@ -869,7 +933,9 @@ internal static class HotSearchCoordinator
                     System.Runtime.InteropServices.CollectionsMarshal.AsSpan(nextTurnCandidates),
                     nodeArena,
                     beamWidth,
-                    pruneOutBuf.AsSpan(0, beamWidth));
+                    pruneOutBuf.AsSpan(0, beamWidth),
+                    isTurnBoundary: true,
+                    preferPotionBuckets: preferPotionBuckets);
 
                 currentTurnFrontier.Clear();
                 bool layerProgressed = false;
@@ -878,13 +944,14 @@ internal static class HotSearchCoordinator
                     int nid = pruneOutBuf[i];
                     currentTurnFrontier.Add(nid);
                     ref readonly HotSearchNode n = ref nodeArena.GetRef(nid);
+                    int remEnemies = n.AliveEnemyCount + n.RevivingEnemyCount;
                     if (n.EnemyHp < bestSeenEnemyHp) { bestSeenEnemyHp = n.EnemyHp; layerProgressed = true; }
-                    if (n.AliveEnemyCount < bestSeenAliveEnemies) { bestSeenAliveEnemies = n.AliveEnemyCount; layerProgressed = true; }
+                    if (remEnemies < bestSeenAliveEnemies) { bestSeenAliveEnemies = remEnemies; layerProgressed = true; }
                     if (n.SetupScore > bestSeenSetup) { bestSeenSetup = n.SetupScore; layerProgressed = true; }
                 }
 
                 turnsWithoutProgress = layerProgressed ? 0 : turnsWithoutProgress + 1;
-                if (turnsWithoutProgress >= SolverWeights.SetupValueHorizonTurns)
+                if (turnsWithoutProgress >= HotSearchConstants.SetupValueHorizonTurns)
                 {
                     boundaryReason = SearchBoundaryReason.TurnLimit;
                     break;
@@ -896,7 +963,6 @@ internal static class HotSearchCoordinator
             ArrayPool<int>.Shared.Return(pruneOutBuf, clearArray: false);
         }
 
-        // Select final winner for this pass: Victory > Best Surviving Ongoing > Best Fallback (death/root)
         int chosenId;
         HotRouteKey chosenKey;
         bool onlyDeathRoutes;
@@ -965,79 +1031,75 @@ internal static class HotSearchCoordinator
                 hasVictory = true;
                 bestVictoryId = nid;
                 bestVictoryKey = key;
+
+                if (!hotPolicy.HasAnyHealOrUnknownGeneration
+                    && !hotPolicy.HasGrowthTargets
+                    && !hotPolicy.HasForcedDirectives
+                    && hotPolicy.TheftPolicy != SolverTheftPolicy.PreserveResources
+                    && key.DeathSaveUseCount == 0)
+                {
+                    bool zHas = incumbent.HasCertifiedZeroPotionBound;
+                    int zHp = incumbent.BestZeroPotionHpLost;
+                    int zTurn = incumbent.BestZeroPotionEndTurn;
+                    bool oHas = incumbent.HasCertifiedOverallBound;
+                    int oCost = incumbent.BestOverallCost;
+                    int oTurn = incumbent.BestOverallEndTurn;
+                    bool changed = false;
+
+                    if (key.ExplicitPotionCount == 0)
+                    {
+                        if (!zHas || key.StrategicHpDeficit < zHp || (key.StrategicHpDeficit == zHp && key.CombatEndedTurn < zTurn))
+                        {
+                            zHas = true;
+                            zHp = key.StrategicHpDeficit;
+                            zTurn = key.CombatEndedTurn;
+                            changed = true;
+                        }
+                    }
+
+                    int totalCost = key.StrategicHpDeficit + key.OptionalPotionStrategicCost;
+                    if (!oHas || totalCost < oCost || (totalCost == oCost && key.CombatEndedTurn < oTurn))
+                    {
+                        oHas = true;
+                        oCost = totalCost;
+                        oTurn = key.CombatEndedTurn;
+                        changed = true;
+                    }
+
+                    if (changed)
+                    {
+                        incumbent = new HotIncumbentBound(zHas, zHp, zTurn, oHas, oCost, oTurn);
+                        incumbentUpdates++;
+                    }
+                }
+
+                if (HotRouteQuality.MeetsVictoryStopTarget(in key, in hotPolicy))
+                {
+                    stopTargetReached = true;
+                    break;
+                }
             }
-
-            // Tighten certified 2-bit HP incumbent bound (sound when !HasAnyHealOrUnknownGeneration & no death save)
-            if (!hotPolicy.HasAnyHealOrUnknownGeneration
-                && !hotPolicy.HasGrowthTargets
-                && !hotPolicy.HasForcedDirectives
-                && hotPolicy.TheftPolicy != SolverTheftPolicy.PreserveResources
-                && key.DeathSaveUseCount == 0)
-            {
-                bool updated = false;
-                bool hasZero = incumbent.HasCertifiedZeroPotionBound;
-                int zeroHp = incumbent.BestZeroPotionHpLost;
-                int zeroTurn = incumbent.BestZeroPotionEndTurn;
-
-                if (key.ExplicitPotionCount == 0
-                    && (!hasZero
-                        || key.StrategicHpDeficit < zeroHp
-                        || (key.StrategicHpDeficit == zeroHp && key.CombatEndedTurn < zeroTurn)))
-                {
-                    hasZero = true;
-                    zeroHp = key.StrategicHpDeficit;
-                    zeroTurn = key.CombatEndedTurn;
-                    updated = true;
-                }
-
-                int totalCost = key.StrategicHpDeficit + key.OptionalPotionStrategicCost;
-                bool hasOverall = incumbent.HasCertifiedOverallBound;
-                int overallCost = incumbent.BestOverallCost;
-                int overallTurn = incumbent.BestOverallEndTurn;
-
-                if (!hasOverall
-                    || totalCost < overallCost
-                    || (totalCost == overallCost && key.CombatEndedTurn < overallTurn))
-                {
-                    hasOverall = true;
-                    overallCost = totalCost;
-                    overallTurn = key.CombatEndedTurn;
-                    updated = true;
-                }
-
-                if (updated)
-                {
-                    incumbent = new HotIncumbentBound(hasZero, zeroHp, zeroTurn, hasOverall, overallCost, overallTurn);
-                    incumbentUpdates++;
-                }
-            }
-
-            if (HotRouteQuality.MeetsVictoryStopTarget(in key, in hotPolicy))
-                stopTargetReached = true;
         }
     }
 
     private static void UpdateBestOngoing(
-        List<int> candidates,
+        List<int> nodes,
         HotNodeArena nodeArena,
         in HotSearchPolicy hotPolicy,
-        ref int bestOngoingId,
-        ref HotRouteKey bestOngoingKey,
-        ref bool hasOngoing)
+        ref int bestId,
+        ref HotRouteKey bestKey,
+        ref bool hasBest)
     {
-        for (int i = 0; i < candidates.Count; i++)
+        for (int i = 0; i < nodes.Count; i++)
         {
-            int nid = candidates[i];
+            int nid = nodes[i];
             ref readonly HotSearchNode node = ref nodeArena.GetRef(nid);
-            if (node.IsDefeat || node.ActionCount == 0)
-                continue;
-
             HotRouteKey key = HotRouteQuality.Capture(in node, in hotPolicy);
-            if (!hasOngoing || HotRouteQuality.IsBetter(in key, in bestOngoingKey, in hotPolicy, includeOptionalPotionCost: true))
+            if (!hasBest || HotRouteQuality.IsBetter(in key, in bestKey, in hotPolicy, includeOptionalPotionCost: true))
             {
-                hasOngoing = true;
-                bestOngoingId = nid;
-                bestOngoingKey = key;
+                hasBest = true;
+                bestId = nid;
+                bestKey = key;
             }
         }
     }
@@ -1113,9 +1175,7 @@ internal static class HotSearchCoordinator
     }
 
     private static void AccumulatePassTotals(
-        SearchRequestWorkTotals workTotals,
         in HotPassOutcome pass,
-        DirectSearchPurpose purpose,
         ref long totalExpanded,
         ref long totalTransitions,
         ref long totalChoices,
@@ -1135,30 +1195,18 @@ internal static class HotSearchCoordinator
         totalGen2 += pass.Gen2;
         totalGcPause += pass.GcPause;
         passCount++;
-
-        workTotals.Record(
-            new SearchSolverWorkContribution(
-                pass.Stats.ExpandedParents,
-                pass.Stats.Transitions,
-                pass.Stats.ChoiceBranches,
-                pass.Elapsed,
-                pass.Stats.WorkerAllocatedBytes,
-                pass.Gen0,
-                pass.Gen1,
-                pass.Gen2,
-                pass.GcPause,
-                pass.GcPause),
-            directSearchPurpose: purpose);
     }
 
     private static void ResetSearchStateForNextPass(
         HotNodeArena nodeArena,
         PackedStateArena mainStateArena,
-        HotTranspositionTable tt)
+        HotTranspositionTable tt,
+        HotParallelExpander expander)
     {
         nodeArena.Reset();
         mainStateArena.Reset();
         tt.ResetForNextPass();
+        expander.ClearStandPatCache();
     }
 
     private static int ResolveInitialBeamWidth(int configuredBeamWidth, in HotSearchPolicy policy)
@@ -1171,11 +1219,9 @@ internal static class HotSearchCoordinator
 
     private static int ResolveEffectiveDop(SearchPolicySnapshot policy)
     {
-        if (policy.DetailedDiagnostics || policy.VerifyIncrementalSearch)
+        if (policy.DetailedDiagnostics)
             return 1;
-        int dop = Math.Clamp(policy.MaxDegreeOfParallelism, 1, Math.Min(SolverWeights.MaximumSearchMaxDegreeOfParallelism, Environment.ProcessorCount));
-        if (!policy.MemoryPressureSignal.IsEnabled && policy.MemoryPressureSignal.ConservativeParallelismRequired)
-            dop = Math.Min(2, dop);
+        int dop = Math.Clamp(policy.MaxDegreeOfParallelism, 1, Math.Min(HotSearchConstants.MaximumSearchMaxDegreeOfParallelism, Environment.ProcessorCount));
         return Math.Max(1, dop);
     }
 }

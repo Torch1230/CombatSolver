@@ -1,5 +1,11 @@
 # CombatSolver 测试入口
 
+## HotKernel v2 架构重写验证（开发中）
+
+- **L0 架构与工具门禁**：`pwsh -NoProfile -File tools/inspection/verify-refactor-boundaries.ps1`、`./tools/inspection/verify-refactor-boundaries.sh`、`python -B tools/testing/run-independent-checks.py`（6 项无游戏独立检查）、`python -B tools/inspection/verify-tools.py`、`verify-documentation.py`、`verify-coverage.py`。
+- **离线内核与搜索门禁（`OfflineSearchHarness`）**：`--check-hot-layout`（非托管布局与尺寸合同）与 `--verify-hot-parity`（Gate A 19/19 根捕获与 Pack/Unpack 往返、Gate B 六角色多回合自洽与 DOP=1/8 确定性、Gate C 50,000 次微基准）。
+- **原生无头验证**：由下方 `当前矩阵命令` 覆盖稳定根捕获 + `HotRootBundle` 往返合同及原版自动部署。
+
 ## 0.51.9 愚者能力牌路线优化
 
 能力牌登记、万事无忧的触发合同及愚者整场对照见[历史卷 32](archive/testing/volume-32.md)。
@@ -58,7 +64,7 @@
 
 ## 0.50.1 智能药水机会成本
 
-终局单药／双药低收益拒绝与 Force、奖励抵扣、原价高收益哨兵由 `SMART-OPENING-POTION-ADMISSION` 覆盖；跨成员比较由 `python -B tools/testing/checks/BeamWidthPortfolioChecks/run.py` 覆盖（118项通过）。原生 runId `d9629992ac31423586c7465510c18f6d` Passed（23.63秒，含建局），实例已清理。失败基线、同根材料与未验证范围见[问题记录](issues/potion-opportunity-20261006.md)。
+终局单药／双药低收益拒绝与 Force、奖励抵扣、原价高收益哨兵历史结果见[问题记录](issues/potion-opportunity-20261006.md)（原生 runId `d9629992ac31423586c7465510c18f6d` Passed，旧独立检查脚本已随旧栈退出当前树）。
 
 ## 社区批次 Q015：路线保留
 
@@ -85,15 +91,9 @@ pwsh -NoProfile -File tools/testing/run-unattended-test.ps1 -ScenarioId SMART-OP
 
 0.49.2 内容性 Mod 失败分类的原生合同、完整命令及未验证范围见[历史卷19](archive/testing/volume-19.md)。
 
-## 0.49.1 内存提交回归（2026-10-04）
+## 0.49.1 内存提交回归（2026-10-04，历史）
 
-`CombatSolver.GcPolicyChecks` 直接编译生产 Runtime 内存代码。`default-commit` 在未改生产代码时 Failed：显式回退后分配上限仍有效；修复后 2 项 Passed，覆盖普通检查点保留限额、不可分割提交完成回收后续行、后续请求重新建立限额与取消保持原准入。
-
-```bash
-dotnet run --project tools/testing/checks/CombatSolver.GcPolicyChecks/CombatSolver.GcPolicyChecks.csproj -c Release -- default-commit
-```
-
-相邻真实 CLR 回归：`default-entry` 2 项、`recovery-lifecycle` 3 项 Passed，包含实际 NoGC 退出与恢复、显式退出持续生效及诊断失败清理。每项设有 15 或 20 秒截止时间。未重放 18 份原包整场，也没有可见 Steam 或低内存宿主性能结论；[排查记录](issues/0.49.0-memory-commit-regression-20261004.md)保留固定报告身份与触发窗口。
+旧 NoGC / 默认 GC 回收检查记录、固定报告身份与触发窗口保留在[排查记录](issues/0.49.0-memory-commit-regression-20261004.md)；对应 `SearchGcPolicy` 与独立检查已随 HotKernel v2 退役。
 
 ## PR #203 的机制合同
 
@@ -103,16 +103,16 @@ dotnet run --project tools/testing/checks/CombatSolver.GcPolicyChecks/CombatSolv
 
 ## 当前矩阵命令
 
-矩阵启动器只读取本节的平台原生命令；历史记录不作为自动执行清单。以下两项分别检查倾泻手空边界与相邻效果作用域，不运行整场搜索。需要当前游戏及 RitsuLib 路径，矩阵启动器统一管理实例并在结束时清理。
+矩阵启动器只读取本节的平台原生命令；历史记录不作为自动执行清单。以下两项分别检查稳定根捕获 + `HotRootBundle` Pack/Unpack 往返合同，以及原版铁甲战士整场自动部署。需要当前游戏及 RitsuLib 路径，矩阵启动器统一管理实例并在结束时清理。
 
 ```powershell
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId CASCADE-EMPTY-HAND-NATIVE -EnemyCurrentHp 1000 -HeadlessFastModeForTest Instant -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -TimeoutSeconds 120
-pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId EFFECT-SCOPE-ADJACENT-CONTRACT -EnemyCurrentHp 1000 -HeadlessFastModeForTest Instant -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -TimeoutSeconds 120
+pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId COMBAT-ROOT-SNAPSHOT-CONTRACT -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -VerifyCombatRootSnapshot -StopAfterCombatRootSnapshotAssertion -HeadlessFastModeForTest Instant -TimeoutSeconds 120
+pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -ScenarioId IRONCLAD-AUTO-DEPLOY-CONTRACT -CharacterId IRONCLAD -EncounterId FUZZY_WURM_CRAWLER_WEAK -VerifyCombatRootSnapshot -HeadlessFastModeForTest Instant -DeploymentFastModeForTest Instant -DeploymentInterActionDelaySecondsForTest 0 -TimeoutSeconds 120
 ```
 
 ```bash
-./tools/testing/run-unattended-test.sh --scenario-id CASCADE-EMPTY-HAND-NATIVE --enemy-current-hp 1000 --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
-./tools/testing/run-unattended-test.sh --scenario-id EFFECT-SCOPE-ADJACENT-CONTRACT --enemy-current-hp 1000 --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
+./tools/testing/run-unattended-test.sh --scenario-id COMBAT-ROOT-SNAPSHOT-CONTRACT --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --verify-combat-root-snapshot --stop-after-combat-root-snapshot-assertion --headless-fast-mode-for-test Instant --timeout-seconds 120
+./tools/testing/run-unattended-test.sh --scenario-id IRONCLAD-AUTO-DEPLOY-CONTRACT --character-id IRONCLAD --encounter-id FUZZY_WURM_CRAWLER_WEAK --verify-combat-root-snapshot --headless-fast-mode-for-test Instant --deployment-fast-mode-for-test Instant --deployment-inter-action-delay-seconds-for-test 0 --timeout-seconds 120
 ```
 
 

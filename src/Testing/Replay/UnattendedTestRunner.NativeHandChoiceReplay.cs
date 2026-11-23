@@ -26,7 +26,7 @@ internal sealed partial class UnattendedTestRunner
             SetEnergy(player, 3);
             CardModel[] hand = player.PlayerCombatState!.Hand.Cards.ToArray();
             PlanCardChoice Choice(CardModel card) => new(PlanChoiceEffect.Exhaust, PileType.Hand,
-                [new PlanCardToken(card.Id.Entry, card.CurrentUpgradeLevel, CardChoiceSupport.ChoiceCardKey(card), 0, 0, card.Title)],
+                [new PlanCardToken(card.Id.Entry, card.CurrentUpgradeLevel, CombatSolver.HotKernel.HotImportSupport.FormatLiveChoiceCardKey(card), 0, 0, card.Title)],
                 SourceId: "BURNING_PACT");
             using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(12));
             using NativeChoiceSession session = NativeChoiceRuntime.Begin(combat, player, "test:burning_pact");
@@ -63,7 +63,7 @@ internal sealed partial class UnattendedTestRunner
                 [new PlanCardToken(
                     survivorHand[1].Id.Entry,
                     survivorHand[1].CurrentUpgradeLevel,
-                    CardChoiceSupport.ChoiceCardKey(survivorHand[1]),
+                    CombatSolver.HotKernel.HotImportSupport.FormatLiveChoiceCardKey(survivorHand[1]),
                     0,
                     0,
                     survivorHand[1].Title)],

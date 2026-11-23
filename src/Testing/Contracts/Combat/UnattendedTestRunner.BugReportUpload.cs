@@ -25,7 +25,7 @@ internal sealed partial class UnattendedTestRunner
                 data.Write(new byte[200 * 1024]);
             using StreamWriter metadata = new(archive.CreateEntry("report.json").Open());
             metadata.Write(CombatBugReportMetadata.Serialize(submissionId, description, null,
-                new CombatBugReportClassificationSnapshot(0, 0, 0, 0, 0, []), null));
+                new CombatBugReportClassificationSnapshot(0, 0, 0, 0, 0, [])));
         }
         int archiveBytes = checked((int)new FileInfo(path).Length);
         try

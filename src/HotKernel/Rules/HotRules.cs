@@ -69,7 +69,7 @@ internal sealed class HotRules
     public required IReadOnlyDictionary<ushort, byte> RelicDefIdToStateSlot { get; init; }
     public required ulong StaticRelicHookMask { get; init; }
 
-    public required CombatRulesSnapshot RulesSnapshot { get; init; }
+    public required HotCombatRulesSnapshot RulesSnapshot { get; init; }
     public GameMode GameMode => RulesSnapshot.GameMode;
     public int AscensionLevel => RulesSnapshot.AscensionLevel;
     public ulong AscensionsMask => RulesSnapshot.Ascensions;

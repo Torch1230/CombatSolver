@@ -8,14 +8,7 @@ static void Check(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
 }
-if (args.Contains("--process-memory-only"))
-{
-    ProcessMemoryUsageChecks.Run(args.Contains("--process-memory-benchmark"));
-    return;
-}
-CheckManualProjection();
-if (args.Contains("--manual-projection-only")) return;
-ProcessMemoryUsageChecks.Run(measure: false);
+
 string root = Path.Combine(Path.GetTempPath(), "CombatSolver-journal-tests-" + Guid.NewGuid().ToString("N"));
 using CombatDiagnosticJournal journal = new(root);
 journal.Write("info", "process boot");
@@ -64,32 +57,3 @@ Check(!limited.TryAppend("over limit", 20), "queue must reject without waiting")
 EventLogSnapshot limit = await limited.CaptureAsync();
 Check(limit.Error == "event_pending_memory_limit", "missing explicit incomplete marker");
 Console.WriteLine("PASS overload is visible and nonblocking");
-
-static void CheckManualProjection()
-{
-foreach (var test in new[]
-{
-    (Before: 17, After: 9, OldPotions: 0, NewPotions: 1, Adjusted: -1, Improved: false),
-    (Before: 17, After: 8, OldPotions: 0, NewPotions: 1, Adjusted: 0, Improved: true),
-    (Before: 17, After: 7, OldPotions: 0, NewPotions: 1, Adjusted: 1, Improved: true),
-    (Before: 30, After: 13, OldPotions: 1, NewPotions: 3, Adjusted: -1, Improved: false),
-    (Before: 30, After: 12, OldPotions: 1, NewPotions: 3, Adjusted: 0, Improved: true),
-    (Before: 7, After: 3, OldPotions: 1, NewPotions: 1, Adjusted: 4, Improved: true),
-    (Before: 7, After: 7, OldPotions: 0, NewPotions: 0, Adjusted: 0, Improved: false),
-    (Before: 7, After: 8, OldPotions: 0, NewPotions: 1, Adjusted: -10, Improved: false),
-    (Before: 7, After: 3, OldPotions: 2, NewPotions: 1, Adjusted: 4, Improved: true),
-})
-{
-    ManualProjectionComparison comparison = new(1, 2, test.Before, test.After,
-        test.OldPotions, test.NewPotions, "test");
-    Check(comparison.PotionAdjustedHpReduction == test.Adjusted
-        && comparison.IsImprovement == test.Improved, $"potion comparison {test} failed");
-    string serialized = System.Text.Json.JsonSerializer.Serialize(comparison,
-        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
-    using var json = System.Text.Json.JsonDocument.Parse(serialized);
-    Check(json.RootElement.GetProperty("additionalPotionCount").GetInt32() == Math.Max(0, test.NewPotions - test.OldPotions)
-        && json.RootElement.GetProperty("potionAdjustedHpReduction").GetInt32() == test.Adjusted,
-        "potion comparison metadata lost resource costs");
-}
-Console.WriteLine("PASS 9 manual projection boundaries and metadata serialization");
-}

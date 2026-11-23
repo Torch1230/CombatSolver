@@ -1,4 +1,5 @@
 using System.Reflection;
+using CombatSolver.HotSearch;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
@@ -138,8 +139,6 @@ internal static class PlayerTurnSetupCoordinator
         public SolverResult? Result { get; set; }
         public SearchInteractionState Interaction { get; } =
             initialSearch?.SearchPolicy.Interaction ?? new SearchInteractionState();
-        public SearchMemoryPressureSignal? MemoryPressureSignal =
-            initialSearch?.SearchPolicy.MemoryPressureSignal;
         public int SearchState;
         public TaskCompletionSource ManualRecalculationRequested { get; set; } = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -184,7 +183,6 @@ internal static class PlayerTurnSetupCoordinator
     [ThreadStatic]
     private static bool _invokingOriginalAutoPrePlay;
     private static CancellationTokenSource? _cancellation;
-    private static CancellationTokenSource? _deferredSetupCancellation;
     private static ActivePlan? _active;
     private static Task _activeOperation = Task.CompletedTask;
     internal static Action<CancellationToken>? BeforeChoiceSearchForTesting { get; set; }
@@ -324,18 +322,8 @@ internal static class PlayerTurnSetupCoordinator
            && ReferenceEquals(active.Combat, combat);
 
     public static bool IsSearching
-        => _deferredSetupCancellation != null
-           || _active is { InitialSearch: not null, Result: null, SearchState: 1 }
+        => _active is { InitialSearch: not null, Result: null, SearchState: 1 }
            || _active is { ManualSearchState: 1 };
-
-    public static SearchMemoryPressureSignal? CurrentMemoryPressureSignal
-    {
-        get
-        {
-            ActivePlan? active = Volatile.Read(ref _active);
-            return active == null ? null : Volatile.Read(ref active.MemoryPressureSignal);
-        }
-    }
 
     public static bool CanApplyCurrentTurn
         => _active is { } active
@@ -559,13 +547,6 @@ internal static class PlayerTurnSetupCoordinator
         Task operation = _activeOperation;
         cancellation?.Cancel();
         _cancellation = null;
-        if (cancellation != null)
-        {
-            Interlocked.CompareExchange(
-                ref _deferredSetupCancellation,
-                null,
-                cancellation);
-        }
         _activeOperation = Task.CompletedTask;
         DisposeActive();
         if (SolverSettings.Current.EnableDetailedDiagnosticLogs)
@@ -583,11 +564,7 @@ internal static class PlayerTurnSetupCoordinator
 
     public static void CancelForSolverDisabled()
     {
-        // Before the solver core starts, cancellation would make Harmony return from the
-        // intercepted setup without ever invoking the game's original setup. Let the barrier
-        // open and take the main-thread native fallback instead.
-        if (!ReferenceEquals(_deferredSetupCancellation, _cancellation))
-            _cancellation?.Cancel();
+        _cancellation?.Cancel();
         _active?.Choices.ReleaseVisibleSurface();
     }
 
@@ -603,13 +580,6 @@ internal static class PlayerTurnSetupCoordinator
 
     public static bool StopSearchByUser()
     {
-        if (ReferenceEquals(_deferredSetupCancellation, _cancellation)
-            && _deferredSetupCancellation != null)
-        {
-            // SolverController has already set AutomaticSearchPaused. The deferred callback
-            // observes that state and runs the native setup rather than starting a search.
-            return true;
-        }
         if (_active is not { SearchCancellation: not null } active)
             return false;
         active.TakeoverRequested = false;
@@ -633,128 +603,7 @@ internal static class PlayerTurnSetupCoordinator
         _cancellation?.Cancel();
         _cancellation?.Dispose();
         _cancellation = new CancellationTokenSource();
-        CancellationTokenSource cancellation = _cancellation;
         CancellationToken token = _cancellation.Token;
-        Task rootCaptureBarrier = SearchGcPolicy.CaptureRootSnapshotBarrier();
-        if (!rootCaptureBarrier.IsCompleted)
-        {
-            NGame host = NGame.Instance
-                ?? throw new InvalidOperationException("回合准备根快照等待缺少游戏节点。");
-            SolverDispatcher.Ensure(host);
-            Entry.Logger.Info("[CombatSolver/Test] TURN_SETUP_ROOT_CAPTURE_DEFERRED");
-            _deferredSetupCancellation = cancellation;
-            try
-            {
-                await ResumeSetupAfterRootCaptureBarrierAsync(
-                    manager,
-                    turnState,
-                    player,
-                    choiceContext,
-                    combat,
-                    replayChoices,
-                    rootCaptureBarrier,
-                    cancellation);
-            }
-            finally
-            {
-                Interlocked.CompareExchange(
-                    ref _deferredSetupCancellation,
-                    null,
-                    cancellation);
-            }
-            return;
-        }
-        await RunSetupAfterRootCaptureBarrierAsync(
-            manager,
-            turnState,
-            player,
-            choiceContext,
-            combat,
-            replayChoices,
-            token);
-    }
-
-    private static async Task ResumeSetupAfterRootCaptureBarrierAsync(
-        CombatManager manager,
-        object turnState,
-        Player player,
-        HookPlayerChoiceContext choiceContext,
-        CombatState combat,
-        IReadOnlyList<PlanCardChoice>? replayChoices,
-        Task barrier,
-        CancellationTokenSource cancellation)
-    {
-        CancellationToken token = cancellation.Token;
-        try
-        {
-            await barrier.WaitAsync(token).ConfigureAwait(false);
-            token.ThrowIfCancellationRequested();
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            return;
-        }
-
-        TaskCompletionSource<Task> dispatched = new(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        SolverDispatcher.Post(() =>
-        {
-            Interlocked.CompareExchange(
-                ref _deferredSetupCancellation,
-                null,
-                cancellation);
-            if (token.IsCancellationRequested
-                || !ReferenceEquals(_cancellation, cancellation)
-                || !ReferenceEquals(manager.DebugOnlyGetState(), combat))
-            {
-                dispatched.TrySetResult(Task.CompletedTask);
-                return;
-            }
-            try
-            {
-                if (SolverController.SolverDisabled || SolverController.AutomaticSearchPaused)
-                {
-                    Entry.Logger.Info(
-                        "[CombatSolver/Test] TURN_SETUP_ROOT_CAPTURE_FALLBACK reason=solver_inactive");
-                    dispatched.TrySetResult(InvokeOriginalSetupAsync(
-                        manager,
-                        turnState,
-                        player,
-                        choiceContext));
-                    return;
-                }
-                Entry.Logger.Info("[CombatSolver/Test] TURN_SETUP_ROOT_CAPTURE_RESUMED");
-                dispatched.TrySetResult(RunSetupAfterRootCaptureBarrierAsync(
-                    manager,
-                    turnState,
-                    player,
-                    choiceContext,
-                    combat,
-                    replayChoices,
-                    token));
-            }
-            catch (Exception ex)
-            {
-                dispatched.TrySetException(ex);
-            }
-        });
-
-        // A canceled setup still waits for this queued callback to drop its captured combat
-        // references. Once the callback begins the returned core task remains part of Reset's
-        // release barrier until it has fully unwound.
-        Task continuation = await dispatched.Task.ConfigureAwait(false);
-        await continuation.ConfigureAwait(false);
-    }
-
-    private static async Task RunSetupAfterRootCaptureBarrierAsync(
-        CombatManager manager,
-        object turnState,
-        Player player,
-        HookPlayerChoiceContext choiceContext,
-        CombatState combat,
-        IReadOnlyList<PlanCardChoice>? replayChoices,
-        CancellationToken token)
-    {
         InitialSearchContext initialSearch;
         try
         {
@@ -768,21 +617,7 @@ internal static class PlayerTurnSetupCoordinator
                 includeTurnSetup: true,
                 theftPolicy: SolverController.ResolveTheftPolicy(combat),
                 interaction: interaction);
-            long rootCaptureAllocatedAtStart = GC.GetTotalAllocatedBytes(precise: false);
-            CombatRootSnapshot rootSnapshot;
-            try
-            {
-                rootSnapshot = CombatRootSnapshot.Capture(combat, settings.PredictPotionReward);
-            }
-            finally
-            {
-                SearchGcPolicy.ReportCombatLifecycleAllocation(
-                    Math.Max(
-                        0,
-                        GC.GetTotalAllocatedBytes(precise: false) - rootCaptureAllocatedAtStart),
-                    "turn_setup_root_snapshot",
-                    settings.EnableNoGcRegion);
-            }
+            CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(combat, settings.PredictPotionReward);
             initialSearch = new InitialSearchContext(
                 displayNames,
                 settings,
@@ -814,16 +649,7 @@ internal static class PlayerTurnSetupCoordinator
         Entry.Logger.Info(
             $"[CombatSolver/Test] TURN_SETUP_ROOT_CAPTURE turn={player.PlayerCombatState.TurnNumber} " +
             $"elapsed_ms={capturedRoot.CaptureElapsedMilliseconds:F3} " +
-            $"cards={capturedRoot.CapturedCardCount} powers={capturedRoot.CapturedPowerCount} " +
-            $"listeners={capturedRoot.CapturedHookListenerCount} " +
-            $"run_mod_subscribers={capturedRoot.CapturedRunModSubscriberCount} " +
-            $"combat_mod_subscribers={capturedRoot.CapturedCombatModSubscriberCount} " +
-            $"base_lib_card_modifiers={capturedRoot.CapturedBaseLibCardModifiers} " +
-            $"strategic_hp_recovery_bound={(capturedRoot.HasOnlyPostCombatHealing ? "certified" : "bypassed")} " +
-            $"known_native_healing_policy={capturedRoot.UsesKnownNativeHealingPolicy} " +
-            $"strategic_hp_recovery_bound_reason={capturedRoot.HealingBoundCertificationReason} " +
-            $"strategic_hp_recovery_bound_source={Uri.EscapeDataString(capturedRoot.HealingBoundCertificationSourceId ?? "-")} " +
-            $"strategic_hp_recovery_bound_postcombat_heal_hp={(capturedRoot.HasOnlyPostCombatHealing ? Math.Max(0, capturedRoot.PostCombatRelicHeal.UnconditionalHeal).ToString() : "unbounded")}");
+            $"cards={capturedRoot.CapturedCardCount} powers={capturedRoot.CapturedPowerCount}");
         if (replayChoices != null)
         {
             SolverController.ShowTurnSetupContinuationPreview(
@@ -1145,7 +971,6 @@ internal static class PlayerTurnSetupCoordinator
         if (manual) active.ManualSearchState = 1;
         active.Result = null;
         active.Interaction.ResetForSearch();
-        Volatile.Write(ref active.MemoryPressureSignal, context.SearchPolicy.MemoryPressureSignal);
         int turn = active.Player.PlayerCombatState!.TurnNumber;
         SolverOverlay.ShowSearching(host, turn, active.DeployAfterSetup, SolverController.ReviewedWorldlinesTotal,
             context.RootSnapshot.PotionRewardOutlook);
@@ -1165,10 +990,7 @@ internal static class PlayerTurnSetupCoordinator
             worker.Priority = ThreadPriority.BelowNormal;
             try
             {
-                using IDisposable gcPolicy = SearchGcPolicy.EnterLowLatencySearch(
-                    context.Settings.EnableNoGcRegion, context.Settings.NoGcRegionBudgetBytes,
-                    context.SearchPolicy.MemoryPressureSignal, searchToken);
-                SolverResult result = SolverBackendSelector.Resolve().SolveCoordinator(context.RootSnapshot, context.DisplayNames,
+                SolverResult result = HotSearchCoordinator.Solve(context.RootSnapshot, context.DisplayNames,
                     context.BattleDamage, context.SearchPolicy, searchToken, active.Interaction.PublishProgress);
                 SolverResult finalized = active.Interaction.FinalizeWorkerResult(result);
                 searchToken.ThrowIfCancellationRequested();

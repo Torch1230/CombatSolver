@@ -12,7 +12,6 @@ using MegaCrit.Sts2.Core.Odds;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
-using CombatSolver.Engine.Common;
 
 namespace CombatSolver;
 
@@ -104,7 +103,7 @@ internal readonly record struct PotionRewardOutlook(
 
         // RewardsSet.GenerateRewardsFor rolls the potion on the reward stream while building the list, then
         // GenerateWithoutOffering populates gold and potion in that order before it reaches the cards.
-        Rng rewards = player.PlayerRng.Rewards.Clone();
+        Rng rewards = new(player.PlayerRng.Rewards.ToSerializable());
         bool drop = forced || rewards.NextFloat() < chance;
         if (!drop)
             return odds with { Forecast = PotionRewardForecast.NoDrop };
@@ -131,7 +130,7 @@ internal readonly record struct PotionRewardOutlook(
 
         // Blitz populates its three card options before its guaranteed potion. All draws
         // use this private reward stream; card ownership and reward callbacks stay live-owned.
-        Rng rewards = player.PlayerRng.Rewards.Clone();
+        Rng rewards = new(player.PlayerRng.Rewards.ToSerializable());
         CardRarity rarity = room == RoomType.Boss ? CardRarity.Rare : CardRarity.Common;
         CardCreationOptions options = CardCreationOptions.ForNonCombatWithUniformOdds(
             [player.Character.CardPool], card => card.Rarity == rarity)
