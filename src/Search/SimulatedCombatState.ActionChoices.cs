@@ -176,7 +176,8 @@ internal sealed partial class SimulatedCombatState :
             0,
             [],
             [],
-            ReplacementValue: 0d);
+            ReplacementValue: 0d,
+            IsImplicitAllSelection: true);
         TurnStartChoiceRequest request = new(
             string.Empty,
             requiredEmptyChoice.Effect,

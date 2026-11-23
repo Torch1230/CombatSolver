@@ -2,6 +2,8 @@
 
 ## 未发布：战斗内与战前 Sts2Sim 桥接入口
 
+- 真机无头场景 `INCOMBAT-STS2SIM-PILE-CHOICE` 使用 `--encounter-id MAWLER_NORMAL --preserve-native-combat-state-for-test --verify-in-combat-sts2sim-contract --cleanup-instance-on-exit`。三种必选药水各覆盖一张候选，另验空牌堆、同名多张、可选跳过及缺失或多余决定。卡牌用例核对随机取样后唯一或两项选择，并以空手牌的 `HIDDEN_DAGGERS` 核对后续生成。已执行的动作逐项对照原生快照。
+
 - 原生战斗内合同的 `InCombatPrivateDecimalFields` 在独立卡牌与能力实例上写入 1.75、2.5、3.25，检查实际捕获的三个字段的类型和值。Core 的公开恢复回归另检查旧整数输入及新小数输入。
 
 - 桥接评分与幕末 Boss 预算合同可运行 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release --filter "FullyQualifiedName~BeamRanking_|FullyQualifiedName~NoveltyBossBudget_|FullyQualifiedName~MawlerInflameParity_IroncladSeedCombatSolver"`。覆盖战前与战斗内的逐段 HP、Pareto 余量和中途排序，负力量评分及两种战损偏好下的探查时限。战前 Mawler 覆盖三种起始 HP 与覆盖值组合，宽度 16、5000 次尝试均须以至多 10 HP 战损取胜。

@@ -965,7 +965,8 @@ internal static partial class CardChoiceSupport
             options,
             owner.DrawPile.Cards,
             ReplacementValue: 0d,
-            contextId);
+            contextId,
+            IsImplicitAllSelection: options.Count == 1);
     }
 
     // A completed selection is immutable and belongs to exactly one BuildChoices call.
