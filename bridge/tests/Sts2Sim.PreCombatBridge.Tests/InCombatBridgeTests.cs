@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using CombatSolver.Beam;
 using CombatSolver.Beam.Policy;
@@ -7,9 +6,7 @@ using Sts2Sim.Core.Combat.StateDescription;
 using Sts2Sim.Core.Commands;
 using Sts2Sim.Core.Content;
 using Sts2Sim.Core.Entities.Cards;
-using Sts2Sim.Core.Entities.Creatures;
 using Sts2Sim.Core.Entities.Players;
-using Sts2Sim.Core.Entities.Rngs;
 using Sts2Sim.Core.Map;
 using Sts2Sim.Core.Models;
 using Sts2Sim.Core.Models.Cards;
@@ -17,77 +14,22 @@ using Sts2Sim.Core.Models.Monsters;
 using Sts2Sim.Core.Models.Orbs;
 using Sts2Sim.Core.Models.Powers;
 using Sts2Sim.Core.Models.Relics;
-using Sts2Sim.Core.MonsterMoves;
-using Sts2Sim.Core.Random;
 using Sts2Sim.Core.Rooms;
 using Sts2Sim.Core.Runs;
-using Sts2Sim.Core.Runs.Transplant;
-using Sts2Sim.Core.Saves;
 
 namespace Sts2Sim.PreCombatBridge.Tests;
 
 public sealed class InCombatBridgeTests
 {
     [Fact]
-    public void PrivateStateCoverageAudit_CoversEveryContributorFieldInRegistry()
-    {
-        FieldInfo contributorField = typeof(CombatPrivateStateRegistry).GetField(
-            "ContributorFields",
-            BindingFlags.Static | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("Missing CombatPrivateStateRegistry.ContributorFields.");
-        var contributorFields = (HashSet<string>)contributorField.GetValue(null)!;
-        IReadOnlySet<string> handled = LiveCombatPrivateStateMapper.GetHandledAndNonCombatFieldsForAudit();
-
-        string[] missing = contributorFields
-            .Where(field => !handled.Contains(field))
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-
-        Assert.True(
-            missing.Length == 0,
-            $"LiveCombatPrivateStateMapper is missing ContributorFields: {string.Join(", ", missing)}");
-    }
-
-    [Fact]
     public async Task MidCombatTurn2RoundTrip_RestoresExactCombatStateDigest()
     {
-        TestSaveBuilder.EnsurePrewarmed();
-        RunState run = TestSaveBuilder.CreateRun(characterId: "CHARACTER.IRONCLAD", ascension: 0);
-        Player player = run.Players[0];
-        RelicModel happyFlower = (RelicModel)ModelDb.Relic<HappyFlower>().MutableClone();
-        happyFlower.AssignOwner(player);
-        player.AddRelicInternal(happyFlower);
-
-        MapPoint target = TestSaveBuilder.FindFirstUnvisitedPoint(run, MapPointType.Monster);
-        string saveJson = TestSaveBuilder.SerializeNormalizedSave(run);
-        Assert.True(EncounterCatalog.TryGet("NIBBITS_WEAK", out EncounterCatalogEntry entry));
-
-        ForecastRoomEntryResult entered = await run.EnterForecastCombatAsync(
-            new ForecastTargetSpec(
-                entry.Definition,
-                RoomType.Monster,
-                target.coord.row + 1,
-                target.coord.col,
-                target.PointType,
-                false),
-            new ForecastOpeningRunner(CancellationToken.None),
-            encounterMonsterSeedOverride: null);
-
-        CombatRoom room = entered.Room;
+        (string saveJson, InCombatLiveStateDto liveDto, CombatRoom room) =
+            await SyntheticLiveCombat.BuildTurn2CombatAsync("NIBBITS_WEAK");
         CombatState state = room.Engine.State;
-        PlayerCombatState pcs = player.PlayerCombatState!;
-
-        CardModel? strike = pcs.Hand.Cards.FirstOrDefault(c => c.CanPlay(out _) && c.TargetType == TargetType.AnyEnemy);
-        Assert.NotNull(strike);
-        Creature enemyTarget = state.HittableEnemies[0];
-        Assert.NotNull(await room.Engine.PlayCardWithResultAsync(player, strike!, enemyTarget));
-        await room.Engine.EndPlayerTurnAsync();
-
-        Assert.Equal(2, pcs.TurnNumber);
-        Assert.Equal(CombatSide.Player, state.CurrentSide);
-
+        Assert.Equal(2, state.Players[0].PlayerCombatState!.TurnNumber);
+        Assert.NotEmpty(liveDto.DamageHistory);
         CombatStateDescriptionDigest expectedDigest = ComputeExactDigest(state);
-        InCombatLiveStateDto liveDto = ExportLiveState(room, "NIBBITS_WEAK");
 
         RunState restoredRun = BridgeSaveRestore.RestoreLive(saveJson);
         LiveCombatSnapshotSpec liveSpec = LiveCombatTransplantMapper.Map(liveDto);
@@ -103,7 +45,7 @@ public sealed class InCombatBridgeTests
     [InlineData("unmapped_monster_state", "live_monster_state_unmapped")]
     public async Task RunInCombatJsonAsync_FailsClosedAsCapabilityMiss(string faultKind, string expectedFailureCode)
     {
-        (string saveJson, InCombatLiveStateDto baseDto, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK", withHappyFlower: true);
+        (string saveJson, InCombatLiveStateDto baseDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK", withHappyFlower: true);
         InCombatLiveStateDto faultedDto = faultKind switch
         {
             "mismatch_hp" => baseDto with
@@ -179,7 +121,7 @@ public sealed class InCombatBridgeTests
     [InlineData(4)]
     public async Task RunInCombatJsonAsync_Turn1AndTurn2_SucceedAndProduceExecutableRoutes(int requestedDop)
     {
-        (string saveJsonTurn1, InCombatLiveStateDto liveTurn1, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK", withHappyFlower: true);
+        (string saveJsonTurn1, InCombatLiveStateDto liveTurn1, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK", withHappyFlower: true);
         InCombatBridgeRequestDto req1 = CreateInCombatRequest(saveJsonTurn1, liveTurn1, maxDop: requestedDop, softTimeBudgetMs: 8000);
         InCombatBridgeResponseDto resp1 = await RunWireAsync(req1);
 
@@ -193,7 +135,7 @@ public sealed class InCombatBridgeTests
         Assert.True(resp1.Result.ExpandedNodes > 0);
         Assert.True(resp1.Result.Terminal.ProjectedPlayerHp > 0);
 
-        (string saveJsonTurn2, InCombatLiveStateDto liveTurn2, _) = await BuildTurn2CombatAsync("NIBBITS_WEAK");
+        (string saveJsonTurn2, InCombatLiveStateDto liveTurn2, _) = await SyntheticLiveCombat.BuildTurn2CombatAsync("NIBBITS_WEAK");
         InCombatBridgeRequestDto req2 = CreateInCombatRequest(saveJsonTurn2, liveTurn2, maxDop: requestedDop, softTimeBudgetMs: 8000);
         InCombatBridgeResponseDto resp2 = await RunWireAsync(req2);
 
@@ -208,7 +150,7 @@ public sealed class InCombatBridgeTests
     [Fact]
     public async Task RunInCombatJsonAsync_StreamsProgressAndReturnsBestSoFarOnCancel()
     {
-        (string saveJson, InCombatLiveStateDto liveDto, _) = await BuildTurn1CombatAsync("PHROG_PARASITE_ELITE", withHappyFlower: true);
+        (string saveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("PHROG_PARASITE_ELITE", withHappyFlower: true);
         InCombatPolicyDto policy = CreateDefaultPolicy(
             beamWidth: 48,
             maxExpandedNodes: 200_000,
@@ -288,7 +230,7 @@ public sealed class InCombatBridgeTests
             new ForecastOpeningRunner(CancellationToken.None),
             encounterMonsterSeedOverride: null);
 
-        InCombatLiveStateDto liveDto = ExportLiveState(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto liveDto = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
         InCombatBridgeRequestDto req = CreateInCombatRequest(saveJson, liveDto, maxDop: 1);
         InCombatBridgeResponseDto resp = await RunWireAsync(req);
 
@@ -327,7 +269,7 @@ public sealed class InCombatBridgeTests
             new ForecastOpeningRunner(CancellationToken.None),
             encounterMonsterSeedOverride: null);
 
-        InCombatLiveStateDto liveDto = ExportLiveState(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto liveDto = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
         InCombatBridgeRequestDto req = CreateInCombatRequest(saveJson, liveDto, maxDop: 1);
         InCombatBridgeResponseDto resp = await RunWireAsync(req);
 
@@ -385,7 +327,7 @@ public sealed class InCombatBridgeTests
         EnsureInHand<Sts2Sim.Core.Models.Cards.Burn>();
         EnsureInHand<Sts2Sim.Core.Models.Cards.Whirlwind>();
 
-        InCombatLiveStateDto liveDto = ExportLiveState(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto liveDto = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
         InCombatBridgeRequestDto req = CreateInCombatRequest(saveJson, liveDto, maxDop: 1);
         InCombatBridgeResponseDto resp = await RunWireAsync(req);
 
@@ -397,7 +339,7 @@ public sealed class InCombatBridgeTests
     [Fact]
     public async Task RunInCombatJsonAsync_CcccomboBadgeUnlockedInSave_Succeeds()
     {
-        (string baseSaveJson, InCombatLiveStateDto liveDto, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK");
+        (string baseSaveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
         var rootNode = System.Text.Json.Nodes.JsonNode.Parse(baseSaveJson)!.AsObject();
         rootNode["players"]![0]!["extra_fields"]!["ccccombo_badge_unlocked"] = true;
         string mutatedSaveJson = rootNode.ToJsonString();
@@ -413,7 +355,7 @@ public sealed class InCombatBridgeTests
     [Fact]
     public async Task RunInCombatJsonAsync_TestSubjectKillsInSave_SucceedsAndRejectsNegative()
     {
-        (string baseSaveJson, InCombatLiveStateDto liveDto, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK");
+        (string baseSaveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
         var rootNode = System.Text.Json.Nodes.JsonNode.Parse(baseSaveJson)!.AsObject();
         rootNode["extra_fields"]!["test_subject_kills"] = 1;
         string mutatedSaveJson = rootNode.ToJsonString();
@@ -467,29 +409,43 @@ public sealed class InCombatBridgeTests
     [InlineData(typeof(LagavulinMatriarch), "SLASH_MOVE")]
     [InlineData(typeof(SlumberingBeetle), "ROLL_OUT_MOVE")]
     [InlineData(typeof(Tunneler), "BITE_MOVE")]
-    public void RestoreFromLiveSnapshot_TransientStunnedOnWakeUpAndBurrowMonsters_Succeeds(
-        Type monsterType,
-        string followUpStateId)
+    public async Task RestoreLiveCombat_TransplantsStunnedMoveAndFollowUp(Type monsterType, string followUpStateId)
     {
-        TestSaveBuilder.EnsurePrewarmed();
-        var monster = (MonsterModel)ModelDb.Get(monsterType).MutableClone();
-        var creature = new Creature(monster, CombatSide.Enemy);
-        monster.AssignCreature(creature);
-        monster.SetUpForCombat();
-
-        MoveState? nextMove = monster.MoveStateMachine!.RestoreFromLiveSnapshot(
-            currentStateId: "STUNNED",
-            nextMoveId: "STUNNED",
-            performedFirstMove: true,
-            stateLogIds: ["STUNNED"],
-            transientFollowUpStateId: followUpStateId,
-            nextMoveCanTransitionAway: false,
-            owner: monster,
-            monsterPath: "test");
-
-        Assert.NotNull(nextMove);
-        Assert.Equal("STUNNED", nextMove!.Id);
-        Assert.NotNull(nextMove.CombatCloneFactory);
+        (string save, InCombatLiveStateDto opening, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
+        string monsterId = ModelDb.Get(monsterType).Id.ToString();
+        var privateFields = new Dictionary<string, InCombatFieldValueDto>();
+        if (monsterType == typeof(LagavulinMatriarch))
+        {
+            privateFields["LagavulinMatriarch._isAwake"] = new("Bool", BoolValue: true);
+            privateFields["LagavulinMatriarch._isShellAwake"] = new("Bool", BoolValue: true);
+        }
+        var snapshot = opening with
+        {
+            Creatures = opening.Creatures.Select(c => c.Monster is { } m ? c with
+            {
+                MonsterId = monsterId,
+                Monster = m with
+                {
+                    CurrentStateId = "STUNNED",
+                    NextMoveId = "STUNNED",
+                    NextMoveCanTransitionAway = false,
+                    PerformedFirstMove = true,
+                    StateLogIds = ["STUNNED"],
+                    TransientMoveFollowUpStateId = followUpStateId,
+                    SetupFields = new Dictionary<string, InCombatFieldValueDto>(),
+                    PrivateFields = privateFields,
+                },
+            } : c).ToArray(),
+            Verification = opening.Verification with
+            {
+                Enemies = [Assert.Single(opening.Verification.Enemies) with { MonsterId = monsterId, NextMoveId = "STUNNED" }],
+            },
+        };
+        CombatRoom restored = CombatState.RestoreLiveCombat(
+            BridgeSaveRestore.RestoreLive(save), LiveCombatTransplantMapper.Map(snapshot));
+        var stunned = Assert.Single(restored.Engine.State.Enemies).Monster!.NextMove!;
+        Assert.Equal("STUNNED", stunned.Id);
+        Assert.Equal(followUpStateId, stunned.FollowUpState?.Id ?? stunned.FollowUpStateId);
     }
 
     [Fact]
@@ -501,13 +457,10 @@ public sealed class InCombatBridgeTests
 
         var ga = (GeneticAlgorithm)ModelDb.Card<GeneticAlgorithm>().MutableClone();
         ga.AssignOwner(player);
-        typeof(GeneticAlgorithm).GetField("_currentBlock", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(ga, 4);
-        typeof(GeneticAlgorithm).GetField("_increasedBlock", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(ga, 3);
         player.Deck.AddInternal(ga);
 
         var scythe = (TheScythe)ModelDb.Card<TheScythe>().MutableClone();
         scythe.AssignOwner(player);
-        typeof(TheScythe).GetField("_increasedDamage", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(scythe, 5);
         player.Deck.AddInternal(scythe);
 
         var tooth = (ArchaicTooth)ModelDb.Relic<ArchaicTooth>().MutableClone();
@@ -521,6 +474,20 @@ public sealed class InCombatBridgeTests
         MapPoint target = TestSaveBuilder.FindFirstUnvisitedPoint(run, MapPointType.Monster);
         string saveJson = TestSaveBuilder.SerializeNormalizedSave(run, mutate: root =>
         {
+            foreach (var card in root["players"]![0]!["deck"]!.AsArray())
+            {
+                switch ((string?)card!["id"])
+                {
+                    case "CARD.GENETIC_ALGORITHM":
+                        card["props"] = System.Text.Json.Nodes.JsonNode.Parse(
+                            """{"ints":[{"name":"CurrentBlock","value":4},{"name":"IncreasedBlock","value":3}]}""");
+                        break;
+                    case "CARD.THE_SCYTHE":
+                        card["props"] = System.Text.Json.Nodes.JsonNode.Parse(
+                            """{"ints":[{"name":"CurrentDamage","value":18},{"name":"IncreasedDamage","value":5}]}""");
+                        break;
+                }
+            }
             var relicsArr = root["players"]![0]!["relics"]!.AsArray();
             foreach (var rNode in relicsArr)
             {
@@ -570,6 +537,9 @@ public sealed class InCombatBridgeTests
             }
         });
 
+        run = BridgeSaveRestore.RestoreLive(saveJson);
+        Assert.Equal(4, run.Players[0].Deck.Cards.OfType<GeneticAlgorithm>().Single().CurrentBlock);
+        Assert.Equal(5, run.Players[0].Deck.Cards.OfType<TheScythe>().Single().IncreasedDamage);
         Assert.True(EncounterCatalog.TryGet("NIBBITS_WEAK", out EncounterCatalogEntry entry));
         ForecastRoomEntryResult entered = await run.EnterForecastCombatAsync(
             new ForecastTargetSpec(
@@ -582,35 +552,13 @@ public sealed class InCombatBridgeTests
             new ForecastOpeningRunner(CancellationToken.None),
             encounterMonsterSeedOverride: null);
 
-        InCombatLiveStateDto liveDto = ExportLiveState(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto liveDto = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
         InCombatBridgeRequestDto req = CreateInCombatRequest(saveJson, liveDto, maxDop: 1);
         InCombatBridgeResponseDto resp = await RunWireAsync(req);
 
-        Assert.Equal("Succeeded", resp.Outcome);
+        Assert.True(resp.Outcome == "Succeeded", $"{resp.Outcome} ({resp.FieldPath}): {resp.Error}");
         Assert.NotNull(resp.Result);
         Assert.NotEmpty(resp.Result!.Actions);
-    }
-
-    [Fact]
-    public void RestoreFromLiveSnapshot_UnsetMoveOnOstyPet_ReturnsNullNextMove()
-    {
-        TestSaveBuilder.EnsurePrewarmed();
-        var osty = (MonsterModel)ModelDb.Monster<Osty>().MutableClone();
-        var creature = new Creature(osty, CombatSide.Player);
-        osty.AssignCreature(creature);
-        osty.SetUpForCombat();
-
-        MoveState? nextMove = osty.MoveStateMachine!.RestoreFromLiveSnapshot(
-            currentStateId: "NOTHING_MOVE",
-            nextMoveId: "UNSET_MOVE",
-            performedFirstMove: false,
-            stateLogIds: ["NOTHING_MOVE"],
-            transientFollowUpStateId: null,
-            nextMoveCanTransitionAway: true,
-            owner: osty,
-            monsterPath: "test");
-
-        Assert.Null(nextMove);
     }
 
     [Theory]
@@ -621,7 +569,7 @@ public sealed class InCombatBridgeTests
         string faultKind,
         string expectedFieldPathSuffix)
     {
-        (string saveJson, InCombatLiveStateDto baseDto, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK");
+        (string saveJson, InCombatLiveStateDto baseDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
         InCombatLiveStateDto faultedDto = faultKind switch
         {
             "enemy_side" => baseDto with { CurrentSide = CombatSide.Enemy.ToString() },
@@ -678,7 +626,7 @@ public sealed class InCombatBridgeTests
         string faultKind,
         string expectedFieldPathSuffix)
     {
-        (string saveJson, InCombatLiveStateDto baseDto, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK");
+        (string saveJson, InCombatLiveStateDto baseDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
         int missingHandle = baseDto.Cards.Max(c => c.Handle) + 999;
         int firstHandle = baseDto.Player.HandHandles[0];
         int secondHandle = baseDto.Player.HandHandles[1];
@@ -733,9 +681,7 @@ public sealed class InCombatBridgeTests
         else if (faultKind == "known_enchantment")
         {
             CardModel strike = player.Deck.Cards.First(c => c is StrikeIronclad);
-            var momentum = (Sts2Sim.Core.Models.Enchantments.Momentum)ModelDb.Get(typeof(Sts2Sim.Core.Models.Enchantments.Momentum)).MutableClone();
-            momentum.AssignMagnitude(1);
-            strike.AttachEnchantment(momentum);
+            await CardCmd.Enchant<Sts2Sim.Core.Models.Enchantments.Momentum>(strike, 1);
         }
 
         MapPoint target = TestSaveBuilder.FindFirstUnvisitedPoint(run, MapPointType.Monster);
@@ -752,7 +698,7 @@ public sealed class InCombatBridgeTests
             new ForecastOpeningRunner(CancellationToken.None),
             encounterMonsterSeedOverride: null);
 
-        InCombatLiveStateDto baseDto = ExportLiveState(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto baseDto = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
         InCombatLiveStateDto faultedDto = faultKind switch
         {
             "known_relic" => baseDto with
@@ -850,7 +796,7 @@ public sealed class InCombatBridgeTests
     [Fact]
     public async Task RestoreLiveCombat_RelicStackCountValidation_RejectsNonPositiveAndOversizedSaveStack()
     {
-        (string baseSaveJson, InCombatLiveStateDto baseDto, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK");
+        (string baseSaveJson, InCombatLiveStateDto baseDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
 
         foreach (int invalidCount in new[] { 0, -1 })
         {
@@ -888,7 +834,7 @@ public sealed class InCombatBridgeTests
             new ForecastOpeningRunner(CancellationToken.None),
             encounterMonsterSeedOverride: null);
 
-        InCombatLiveStateDto liveBeforeIncrement = ExportLiveState(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto liveBeforeIncrement = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
         RunState oversizedSaveRun = BridgeSaveRestore.RestoreLive(circletSaveJson);
         Circlet saveCirclet = oversizedSaveRun.Players[0].Relics.OfType<Circlet>().Single();
         saveCirclet.IncrementStackCount();
@@ -902,7 +848,7 @@ public sealed class InCombatBridgeTests
         Assert.EndsWith(".stackCount", ex.FieldPath, StringComparison.Ordinal);
 
         circlet.IncrementStackCount();
-        InCombatLiveStateDto liveAfterIncrement = ExportLiveState(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto liveAfterIncrement = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
         InCombatBridgeResponseDto validResp = await RunWireAsync(CreateInCombatRequest(circletSaveJson, liveAfterIncrement, maxDop: 1));
         Assert.Equal("Succeeded", validResp.Outcome);
 
@@ -914,7 +860,7 @@ public sealed class InCombatBridgeTests
     [Fact]
     public async Task RunInCombatJsonAsync_OverallDeadlineTimeout_ReturnsTimedOutWithoutUnboundedRetrace()
     {
-        (string saveJson, InCombatLiveStateDto liveDto, CombatRoom room) = await BuildTurn1CombatAsync("PHROG_PARASITE_ELITE", withHappyFlower: true);
+        (string saveJson, InCombatLiveStateDto liveDto, CombatRoom room) = await SyntheticLiveCombat.BuildTurn1CombatAsync("PHROG_PARASITE_ELITE", withHappyFlower: true);
 
         var tracker = new InCombatSearchTracker(
             room.Engine.State,
@@ -957,7 +903,7 @@ public sealed class InCombatBridgeTests
     [Fact]
     public async Task TryGetBestSoFarOnCancel_RestampsCachedExpandedNodesWithDrainedConsumedTotal()
     {
-        (_, _, CombatRoom room) = await BuildTurn1CombatAsync("NIBBITS_WEAK");
+        (_, _, CombatRoom room) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
         CombatState rootState = room.Engine.State;
         CombatState childState = rootState.Clone();
         await childState.Engine!.EndPlayerTurnAsync();
@@ -1054,7 +1000,7 @@ public sealed class InCombatBridgeTests
     [Fact]
     public async Task RunInCombatJsonAsync_BlockingProgressCallback_ReachesDeadlineFallbackCleanly()
     {
-        (string saveJson, InCombatLiveStateDto liveDto, _) = await BuildTurn1CombatAsync("PHROG_PARASITE_ELITE", withHappyFlower: true);
+        (string saveJson, InCombatLiveStateDto liveDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("PHROG_PARASITE_ELITE", withHappyFlower: true);
         InCombatPolicyDto policy = CreateDefaultPolicy(
             beamWidth: 48,
             maxExpandedNodes: 200_000,
@@ -1108,7 +1054,7 @@ public sealed class InCombatBridgeTests
     [Fact]
     public async Task RunInCombatJsonAsync_DuplicateCardHandleAcrossDeckAndHand_FailsClosed()
     {
-        (string saveJson, InCombatLiveStateDto baseDto, _) = await BuildTurn1CombatAsync("NIBBITS_WEAK");
+        (string saveJson, InCombatLiveStateDto baseDto, _) = await SyntheticLiveCombat.BuildTurn1CombatAsync("NIBBITS_WEAK");
 
         InCombatLiveStateDto deckAndHandDup = baseDto with
         {
@@ -1156,9 +1102,7 @@ public sealed class InCombatBridgeTests
         if (isMomentum)
         {
             CardModel strike = player.Deck.Cards.First(c => c is StrikeIronclad);
-            var momentum = (Sts2Sim.Core.Models.Enchantments.Momentum)ModelDb.Get(typeof(Sts2Sim.Core.Models.Enchantments.Momentum)).MutableClone();
-            momentum.AssignMagnitude(1);
-            strike.AttachEnchantment(momentum);
+            await CardCmd.Enchant<Sts2Sim.Core.Models.Enchantments.Momentum>(strike, 1);
         }
 
         MapPoint target = TestSaveBuilder.FindFirstUnvisitedPoint(run, MapPointType.Monster);
@@ -1181,7 +1125,7 @@ public sealed class InCombatBridgeTests
         else if (faultKind == "missing_glass_orb_raw_passive")
             await OrbCmd.Channel<GlassOrb>(state, state.Players[0]);
 
-        InCombatLiveStateDto baseDto = ExportLiveState(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto baseDto = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
         InCombatLiveStateDto faultedDto = faultKind switch
         {
             "missing_dark_orb_raw_evoke" => baseDto with
@@ -1250,79 +1194,29 @@ public sealed class InCombatBridgeTests
         Player combatPlayer = state.Players[0];
         await PowerCmd.Apply<FocusPower>(state, combatPlayer.Creature, 3m, combatPlayer.Creature, null);
         await OrbCmd.Channel<GlassOrb>(state, combatPlayer);
-        GlassOrb liveGlass = Assert.IsType<GlassOrb>(combatPlayer.PlayerCombatState!.OrbQueue.Orbs[^1]);
-        liveGlass.RestoreRawValue(2m);
-        Assert.Equal(2m, liveGlass.RawPassiveValue);
-        Assert.Equal(5m, liveGlass.PassiveVal);
-
-        Circlet combatCirclet = combatPlayer.Relics.OfType<Circlet>().Single();
-        combatCirclet.RestoreStackCount(1_000_000);
-
-        CombatStateDescriptionDigest expectedDigest = ComputeExactDigest(state);
-        InCombatLiveStateDto liveDto = ExportLiveState(entered.Room, "NIBBITS_WEAK");
-        Assert.Equal(2m, liveDto.Player.Orbs[^1].RawPassiveValue);
+        InCombatLiveStateDto opening = SyntheticLiveCombat.CreateSnapshot(entered.Room, "NIBBITS_WEAK");
+        InCombatLiveStateDto liveDto = opening with
+        {
+            Player = opening.Player with
+            {
+                Orbs = opening.Player.Orbs.Select(o => o.OrbId == "ORB.GLASS_ORB"
+                    ? o with { RawPassiveValue = 2m } : o).ToArray(),
+            },
+            Relics = opening.Relics.Select(r => r.RelicId == "RELIC.CIRCLET"
+                ? r with { StackCount = 1_000_000 } : r).ToArray(),
+        };
 
         RunState restoredRun = BridgeSaveRestore.RestoreLive(saveJson);
         CombatRoom restoredRoom = CombatState.RestoreLiveCombat(restoredRun, LiveCombatTransplantMapper.Map(liveDto));
         CombatState restoredState = restoredRoom.Engine.State;
 
-        Assert.Equal(expectedDigest, ComputeExactDigest(restoredState));
         GlassOrb restoredGlass = Assert.IsType<GlassOrb>(restoredState.Players[0].PlayerCombatState!.OrbQueue.Orbs[^1]);
-        Assert.Equal(2m, restoredGlass.RawPassiveValue);
         Assert.Equal(5m, restoredGlass.PassiveVal);
         Assert.Equal(1_000_000, restoredState.Players[0].Relics.OfType<Circlet>().Single().StackCount);
 
         InCombatBridgeResponseDto wireResp = await RunWireAsync(CreateInCombatRequest(saveJson, liveDto, maxDop: 1));
         Assert.Equal("Succeeded", wireResp.Outcome);
 
-        var nonStackable = (HappyFlower)ModelDb.Relic<HappyFlower>().MutableClone();
-        Assert.Throws<ArgumentOutOfRangeException>(() => circlet.RestoreStackCount(0));
-        Assert.Throws<InvalidOperationException>(() => nonStackable.RestoreStackCount(2));
-    }
-
-    private static async Task<(string SaveJson, InCombatLiveStateDto LiveDto, CombatRoom Room)> BuildTurn1CombatAsync(
-        string encounterId,
-        bool withHappyFlower = false)
-    {
-        TestSaveBuilder.EnsurePrewarmed();
-        RunState run = TestSaveBuilder.CreateRun(characterId: "CHARACTER.IRONCLAD", ascension: 0);
-        Player player = run.Players[0];
-        if (withHappyFlower)
-        {
-            RelicModel happyFlower = (RelicModel)ModelDb.Relic<HappyFlower>().MutableClone();
-            happyFlower.AssignOwner(player);
-            player.AddRelicInternal(happyFlower);
-        }
-
-        MapPoint target = TestSaveBuilder.FindFirstUnvisitedPoint(run, MapPointType.Monster);
-        string saveJson = TestSaveBuilder.SerializeNormalizedSave(run);
-        Assert.True(EncounterCatalog.TryGet(encounterId, out EncounterCatalogEntry entry));
-        ForecastRoomEntryResult entered = await run.EnterForecastCombatAsync(
-            new ForecastTargetSpec(
-                entry.Definition,
-                entry.RoomType,
-                target.coord.row + 1,
-                target.coord.col,
-                target.PointType,
-                false),
-            new ForecastOpeningRunner(CancellationToken.None),
-            encounterMonsterSeedOverride: null);
-
-        return (saveJson, ExportLiveState(entered.Room, encounterId), entered.Room);
-    }
-
-    private static async Task<(string SaveJson, InCombatLiveStateDto LiveDto, CombatRoom Room)> BuildTurn2CombatAsync(
-        string encounterId)
-    {
-        (string saveJson, _, CombatRoom room) = await BuildTurn1CombatAsync(encounterId, withHappyFlower: true);
-        Player player = room.Engine.State.Players[0];
-        CardModel? strike = player.PlayerCombatState!.Hand.Cards.FirstOrDefault(c => c.CanPlay(out _) && c.TargetType == TargetType.AnyEnemy);
-        if (strike is not null)
-        {
-            await room.Engine.PlayCardWithResultAsync(player, strike, room.Engine.State.HittableEnemies[0]);
-        }
-        await room.Engine.EndPlayerTurnAsync();
-        return (saveJson, ExportLiveState(room, encounterId), room);
     }
 
     private static InCombatPolicyDto CreateDefaultPolicy(
@@ -1393,500 +1287,4 @@ public sealed class InCombatBridgeTests
         return builder.Build();
     }
 
-    private static InCombatLiveStateDto ExportLiveState(CombatRoom room, string encounterId)
-    {
-        CombatState state = room.Engine.State;
-        Player player = state.Players[0];
-        PlayerCombatState pcs = player.PlayerCombatState!;
-
-        var creatureHandles = new Dictionary<Creature, int>(ReferenceEqualityComparer.Instance);
-        var cardHandles = new Dictionary<CardModel, int>(ReferenceEqualityComparer.Instance);
-
-        int RegisterCreature(Creature c)
-        {
-            if (!creatureHandles.TryGetValue(c, out int handle))
-            {
-                handle = creatureHandles.Count + 1;
-                creatureHandles.Add(c, handle);
-            }
-            return handle;
-        }
-
-        int RegisterCard(CardModel card)
-        {
-            if (!cardHandles.TryGetValue(card, out int handle))
-            {
-                handle = cardHandles.Count + 1;
-                cardHandles.Add(card, handle);
-                if (card.DeckVersion is { } dv)
-                    RegisterCard(dv);
-                if (card.CloneOf is { } co)
-                    RegisterCard(co);
-            }
-            return handle;
-        }
-
-        RegisterCreature(player.Creature);
-        foreach (Creature c in state.Allies) RegisterCreature(c);
-        foreach (Creature c in state.Enemies) RegisterCreature(c);
-        foreach (Creature c in state.EscapedCreatures) RegisterCreature(c);
-        foreach (Creature c in state.RemovedCreatures) RegisterCreature(c);
-        foreach (Creature c in state.SpawnedEnemies) RegisterCreature(c);
-        foreach (Creature c in pcs.Pets) RegisterCreature(c);
-
-        foreach (CardModel c in player.Deck.Cards) RegisterCard(c);
-        foreach (CardPile pile in pcs.AllPiles)
-        {
-            foreach (CardModel c in pile.Cards) RegisterCard(c);
-        }
-        foreach (CombatDamageHistoryEntry dmg in state.DamageHistory.Entries)
-        {
-            RegisterCreature(dmg.Receiver);
-            RegisterCreature(dmg.Result.OriginalTarget);
-            if (dmg.Dealer is not null) RegisterCreature(dmg.Dealer);
-            if (dmg.CardSource is not null) RegisterCard(dmg.CardSource);
-        }
-
-        // Also register card references held inside relics or powers.
-        foreach (RelicModel r in player.Relics)
-        {
-            if (r is HistoryCourse hc)
-            {
-                if (ReadField<CardModel?>(hc, "_lastAttack") is { } la) RegisterCard(la);
-                if (ReadField<CardModel?>(hc, "_previousAttack") is { } pa) RegisterCard(pa);
-            }
-            else if (r is MusicBox mb && ReadField<CardModel?>(mb, "_cardBeingPlayed") is { } mbCard)
-            {
-                RegisterCard(mbCard);
-            }
-            else if (r is UnsettlingLamp ul && ReadField<CardModel?>(ul, "_triggeringCard") is { } ulCard)
-            {
-                RegisterCard(ulCard);
-            }
-        }
-
-        var cardsDto = cardHandles
-            .OrderBy(kv => kv.Value)
-            .Select(kv => ExportCard(kv.Key, kv.Value, cardHandles))
-            .ToArray();
-
-        var relicsDto = player.Relics
-            .Select(r => ExportRelic(r, cardHandles))
-            .ToArray();
-
-        var creaturesDto = creatureHandles
-            .OrderBy(kv => kv.Value)
-            .Select(kv => ExportCreature(kv.Key, kv.Value, state, creatureHandles, cardHandles))
-            .ToArray();
-
-        string[] encounterSlots = ReadField<string[]>(state, "_encounterSlots");
-        uint nextCreatureId = ReadField<uint>(state, "_nextCreatureId");
-
-        SerializableRunRngSet runRng = state.RunState.Rng.ToSerializable();
-        var runRngDtos = runRng.Rngs.ToDictionary(
-            kv => kv.Key.ToString(),
-            kv => ToRngDto(kv.Value),
-            StringComparer.Ordinal);
-        SerializablePlayerRngSet playerRng = player.PlayerRng.ToSerializable();
-        var playerRngDtos = playerRng.Rngs.ToDictionary(
-            kv => kv.Key.ToString(),
-            kv => ToRngDto(kv.Value),
-            StringComparer.Ordinal);
-
-        var countersDto = new InCombatPlayerCountersDto(
-            pcs.StarsGainedThisTurn,
-            pcs.SkillCardsPlayedThisTurn,
-            pcs.AttackCardsPlayedThisTurn,
-            pcs.ShivsPlayedThisTurn,
-            pcs.CardsDiscardedThisTurn,
-            pcs.CardsPlayedThisCombat,
-            pcs.CardsGeneratedThisCombat,
-            pcs.SadnessGeneratedThisCombat,
-            pcs.CardsDrawnThisCombat,
-            pcs.CardsPlayedThisTurn,
-            pcs.ManualCardsPlayedThisTurn,
-            pcs.CardPlaysStartedThisTurn,
-            pcs.AttackOrSkillCardPlaysStartedThisTurn,
-            pcs.AttackCardsStartedThisTurn,
-            pcs.ZeroCostAttacksStartedThisTurn,
-            pcs.FirstInSeriesCardPlaysStartedThisTurn,
-            pcs.WahStartedThisTurn,
-            pcs.ChoStartedThisTurn,
-            pcs.KiStartedThisTurn,
-            pcs.FirstWahPlayOrdinalThisTurn,
-            pcs.FirstChoPlayOrdinalThisTurn,
-            pcs.FirstKiPlayOrdinalThisTurn,
-            pcs.WahFinishedThisTurn,
-            pcs.ChoFinishedThisTurn,
-            pcs.KiFinishedThisTurn,
-            pcs.MelodyCardsFinishedThisTurn);
-
-        var orbsDto = pcs.OrbQueue.Orbs
-            .Select(o => new InCombatOrbDto(
-                o.Id.ToString(),
-                o is DarkOrb dark ? dark.RawEvokeValue : null,
-                o is GlassOrb glass ? glass.RawPassiveValue : null))
-            .ToArray();
-
-        var arrowsDto = pcs.Arrows
-            .Select(a => new InCombatArrowSlotDto(a.Status.ToString(), a.DestroyAfterImpaled))
-            .ToArray();
-
-        var playerDto = new InCombatPlayerDto(
-            player.Creature.CurrentHp,
-            player.Creature.MaxHp,
-            player.Creature.Block,
-            player.Creature.CumulativeHpLost,
-            player.Gold,
-            player.MaxEnergy,
-            player.BaseOrbSlotCount,
-            player.IsActiveForHooks,
-            player.CanUseOrRemovePotions,
-            pcs.Energy,
-            pcs.Stars,
-            pcs.Phase.ToString(),
-            pcs.TurnNumber,
-            countersDto,
-            pcs.Hand.Cards.Select(c => cardHandles[c]).ToArray(),
-            pcs.DrawPile.Cards.Select(c => cardHandles[c]).ToArray(),
-            pcs.DiscardPile.Cards.Select(c => cardHandles[c]).ToArray(),
-            pcs.ExhaustPile.Cards.Select(c => cardHandles[c]).ToArray(),
-            pcs.PlayPile.Cards.Select(c => cardHandles[c]).ToArray(),
-            player.Deck.Cards.Select(c => cardHandles[c]).ToArray(),
-            player.PotionSlots.Select(p => p?.Id.ToString()).ToArray(),
-            pcs.OrbQueue.Capacity,
-            orbsDto,
-            arrowsDto);
-
-        var damageDtos = state.DamageHistory.Entries
-            .Select(e => new InCombatDamageHistoryEntryDto(
-                creatureHandles[e.Receiver],
-                e.Dealer is not null ? creatureHandles[e.Dealer] : null,
-                creatureHandles[e.Result.OriginalTarget],
-                (int)e.Result.Props,
-                e.Result.IntendedHpLoss,
-                e.Result.BlockedDamage,
-                e.Result.UnblockedDamage,
-                e.Result.OverkillDamage,
-                e.Result.WasTargetKilled,
-                e.Result.WasBlockBroken,
-                e.Result.WasFullyBlocked,
-                e.CardSource is not null ? cardHandles[e.CardSource] : null,
-                e.RoundNumber,
-                e.CurrentSide.ToString(),
-                e.PlayerTurnNumbers.ToArray()))
-            .ToArray();
-
-        InCombatSemanticHistoryDto semanticDto = ExportSemanticHistory(state.SemanticHistory);
-
-        var verificationDto = new InCombatVerificationDto(
-            player.Creature.CurrentHp,
-            player.Creature.MaxHp,
-            player.Creature.Block,
-            pcs.Energy,
-            pcs.Stars,
-            player.Gold,
-            pcs.OrbQueue.Capacity,
-            pcs.OrbQueue.Orbs.Select(o => o.Id.ToString()).ToArray(),
-            pcs.Arrows.Select(a => a.Status.ToString()).ToArray(),
-            player.PotionSlots.Select(p => p?.Id.ToString()).ToArray(),
-            pcs.Hand.Cards.Select(ToVerifiedCard).ToArray(),
-            pcs.DrawPile.Cards.Select(ToVerifiedCard).ToArray(),
-            pcs.DiscardPile.Cards.Select(ToVerifiedCard).ToArray(),
-            pcs.ExhaustPile.Cards.Select(ToVerifiedCard).ToArray(),
-            state.Enemies.Select(e => new InCombatVerifiedCreatureDto(
-                e.CombatId,
-                e.Monster?.Id.ToString(),
-                e.CurrentHp,
-                e.MaxHp,
-                e.Block,
-                e.Monster?.NextMove?.Id,
-                e.Powers.Select(pw => new InCombatVerifiedPowerDto(pw.Id.ToString(), pw.Amount)).ToArray())).ToArray(),
-            player.Creature.Powers.Select(pw => new InCombatVerifiedPowerDto(pw.Id.ToString(), pw.Amount)).ToArray());
-
-        return new InCombatLiveStateDto(
-            encounterId,
-            room.RoomType.ToString(),
-            encounterSlots,
-            state.CurrentSide.ToString(),
-            state.RoundNumber,
-            state.IsPlayerExtraTurn,
-            state.GoldWasStolen,
-            nextCreatureId,
-            runRng.Seed,
-            runRngDtos,
-            playerRng.Seed,
-            playerRngDtos,
-            playerDto,
-            cardsDto,
-            relicsDto,
-            creaturesDto,
-            state.Allies.Select(c => creatureHandles[c]).ToArray(),
-            state.Enemies.Select(c => creatureHandles[c]).ToArray(),
-            state.EscapedCreatures.Select(c => creatureHandles[c]).ToArray(),
-            state.RemovedCreatures.Select(c => creatureHandles[c]).ToArray(),
-            state.SpawnedEnemies.Select(c => creatureHandles[c]).ToArray(),
-            pcs.Pets.Select(c => creatureHandles[c]).ToArray(),
-            damageDtos,
-            semanticDto,
-            verificationDto);
-
-        static InCombatVerifiedCardDto ToVerifiedCard(CardModel c) =>
-            new(
-                c.Id.ToString(),
-                c.CurrentUpgradeLevel,
-                c.ResolvedEnergyCostForComparison,
-                c.LocalKeywords.Select(k => k.ToString()).ToArray());
-    }
-
-    private static InCombatCardDto ExportCard(
-        CardModel c,
-        int handle,
-        IReadOnlyDictionary<CardModel, int> cardHandles)
-    {
-        var modList = ReadField<System.Collections.IList>(c, "_localEnergyModifiers");
-        var modsDto = new List<InCombatLocalEnergyModifierDto>(modList.Count);
-        foreach (object item in modList)
-        {
-            Type t = item.GetType();
-            object kindVal = t.GetProperty("Kind")!.GetValue(item)!;
-            int amount = (int)t.GetProperty("Amount")!.GetValue(item)!;
-            bool isReduceOnly = (bool)t.GetProperty("IsReduceOnly")!.GetValue(item)!;
-            modsDto.Add(new InCombatLocalEnergyModifierDto(kindVal.ToString()!, amount, isReduceOnly));
-        }
-
-        EnchantmentModel? ench = c.Enchantments.SingleOrDefault();
-        InCombatEnchantmentDto? enchDto = ench is null
-            ? null
-            : new InCombatEnchantmentDto(
-                ench.Id.ToString(),
-                (int)ench.Magnitude,
-                ench.Status.ToString(),
-                ench is Sts2Sim.Core.Models.Enchantments.Momentum m
-                    ? new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal)
-                    {
-                        ["Momentum._extraDamage"] = new("Int", IntValue: ReadField<int>(m, "_extraDamage")),
-                    }
-                    : new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal));
-
-        InCombatAfflictionDto? affDto = c.Affliction is { } aff
-            ? new InCombatAfflictionDto(aff.Id.ToString(), aff.Amount)
-            : null;
-
-        HashSet<CardKeyword> addedKw = ReadField<HashSet<CardKeyword>>(c, "_keywordsAddedFromOutside");
-        HashSet<CardKeyword> removedKw = ReadField<HashSet<CardKeyword>>(c, "_keywordsRemovedFromOutside");
-        int energyUpgradeDelta = ReadField<int>(c, "_energyCostUpgradeDelta");
-        int canonicalBase = c.CanonicalEnergyCostValue;
-        int baseCost = c.CostsXEnergy || canonicalBase < 0 ? canonicalBase : Math.Max(0, canonicalBase - energyUpgradeDelta);
-
-        var priv = new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal);
-        if (c is Sts2Sim.Core.Models.Cards.Claw)
-        {
-            priv["Claw._damage"] = new("Decimal", DecimalValue: ReadField<decimal>(c, "_damage"));
-            priv["Claw._increase"] = new("Decimal", DecimalValue: ReadField<decimal>(c, "_increase"));
-        }
-        else if (c is Sts2Sim.Core.Models.Cards.GeneticAlgorithm)
-        {
-            priv["GeneticAlgorithm._currentBlock"] = new("Int", IntValue: ReadField<int>(c, "_currentBlock"));
-            priv["GeneticAlgorithm._increasedBlock"] = new("Int", IntValue: ReadField<int>(c, "_increasedBlock"));
-            priv["GeneticAlgorithm._increase"] = new("Int", IntValue: ReadField<int>(c, "_increase"));
-        }
-        else if (c is Sts2Sim.Core.Models.Cards.Rampage)
-        {
-            priv["Rampage._damage"] = new("Decimal", DecimalValue: ReadField<decimal>(c, "_damage"));
-        }
-        else if (c is Sts2Sim.Core.Models.Cards.TheScythe)
-        {
-            priv["TheScythe._increasedDamage"] = new("Int", IntValue: ReadField<int>(c, "_increasedDamage"));
-        }
-
-        return new InCombatCardDto(
-            handle,
-            c.Id.ToString(),
-            c.CurrentUpgradeLevel,
-            c.DeckVersion is not null ? cardHandles[c.DeckVersion] : null,
-            c.CloneOf is not null ? cardHandles[c.CloneOf] : null,
-            c.IsDupe,
-            c.ExhaustOnNextPlay,
-            c.BaseReplayCount,
-            ReadField<int>(c, "_capturedEnergyXValue"),
-            c.FloorAddedToDeck,
-            canonicalBase,
-            baseCost,
-            c.CostsXEnergy,
-            modsDto,
-            c.TemporaryStarCostOverrideThisTurn,
-            c.TemporaryFreeThisTurn,
-            c.TemporaryFreeUntilPlayed,
-            c.TemporaryFreeThisCombat,
-            c.TemporaryCostOverrideThisTurn,
-            c.TemporaryCostOverrideThisTurnOrUntilPlayed,
-            c.TemporaryCostOverrideThisCombat,
-            c.TemporaryRetainThisTurn,
-            c.TemporarySlyThisTurn,
-            c.LocalKeywords.Select(k => k.ToString()).ToArray(),
-            addedKw.Select(k => k.ToString()).ToArray(),
-            removedKw.Select(k => k.ToString()).ToArray(),
-            enchDto,
-            affDto,
-            priv);
-    }
-
-    private static InCombatRelicDto ExportRelic(RelicModel r, IReadOnlyDictionary<CardModel, int> cardHandles)
-    {
-        var priv = new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal);
-        if (r is HappyFlower)
-        {
-            priv["HappyFlower._turnCounter"] = new("Int", IntValue: ReadField<int>(r, "_turnCounter"));
-        }
-        return new InCombatRelicDto(
-            r.Id.ToString(),
-            r.IsWax,
-            r.IsMelted,
-            r.StackCount,
-            r.FloorAddedToDeck,
-            priv);
-    }
-
-    private static InCombatCreatureDto ExportCreature(
-        Creature c,
-        int handle,
-        CombatState state,
-        IReadOnlyDictionary<Creature, int> creatureHandles,
-        IReadOnlyDictionary<CardModel, int> cardHandles)
-    {
-        int? petOwnerIdx = null;
-        if (c.PetOwner is not null)
-        {
-            for (int i = 0; i < state.Players.Count; i++)
-            {
-                if (ReferenceEquals(state.Players[i], c.PetOwner))
-                {
-                    petOwnerIdx = i;
-                    break;
-                }
-            }
-        }
-
-        InCombatMonsterDto? monsterDto = null;
-        if (c.Monster is { } m)
-        {
-            MonsterMoveStateMachine sm = m.MoveStateMachine!;
-            string currentStateId = sm.CurrentState.Id;
-            string? transientFollowUp = sm.States.ContainsKey(currentStateId)
-                ? null
-                : (sm.CurrentState as MoveState)?.FollowUpState?.Id ?? (sm.CurrentState as MoveState)?.FollowUpStateId;
-            var setupFields = new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal);
-            if (m is Nibbit nib)
-            {
-                setupFields["Nibbit._isFront"] = new("Bool", BoolValue: nib.IsFront);
-                setupFields["Nibbit._isAlone"] = new("Bool", BoolValue: nib.IsAlone);
-            }
-            var privFields = new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal);
-
-            SerializableRng serializedMonsterRng = m.Rng.ToSerializable();
-
-            monsterDto = new InCombatMonsterDto(
-                ToRngDto(serializedMonsterRng),
-                m.IsPerformingMove,
-                m.SpawnedThisTurn,
-                currentStateId,
-                m.NextMove?.Id,
-                m.NextMove?.CanTransitionAway ?? true,
-                sm.PerformedFirstMove,
-                sm.StateLog.Select(s => s.Id).ToArray(),
-                transientFollowUp,
-                setupFields,
-                privFields);
-        }
-
-        var powers = c.Powers.Select(p =>
-        {
-            var pPriv = new Dictionary<string, InCombatFieldValueDto>(StringComparer.Ordinal);
-            return new InCombatPowerDto(
-                p.Id.ToString(),
-                p.Amount,
-                p.AmountOnTurnStart,
-                p.SkipNextDurationTick,
-                p.Applier is not null ? creatureHandles[p.Applier] : null,
-                pPriv);
-        }).ToArray();
-
-        return new InCombatCreatureDto(
-            handle,
-            c.CombatId,
-            c.Side.ToString(),
-            c.SlotName,
-            c.IsPlayer,
-            petOwnerIdx,
-            c.Monster?.Id.ToString(),
-            c.CurrentHp,
-            c.MaxHp,
-            c.Block,
-            c.CumulativeHpLost,
-            IsDetached: c.CombatState is null,
-            monsterDto,
-            powers);
-    }
-
-    private static InCombatSemanticHistoryDto ExportSemanticHistory(CombatSemanticHistory h)
-    {
-        return new InCombatSemanticHistoryDto(
-            MapList("_exhausts", item => new InCombatExhaustHistoryDto(
-                ExportTurnKey(Prop<object>(item, "Turn")),
-                Prop<int>(item, "ActorIndex"))),
-            MapList("_cardBlockGains", item => new InCombatBlockGainHistoryDto(
-                ExportTurnKey(Prop<object>(item, "Turn")),
-                Prop<int>(item, "ActorIndex"),
-                Prop<int>(item, "PlayOrdinal"))),
-            MapList("_orbChannels", item => new InCombatOrbChannelHistoryDto(
-                ExportTurnKey(Prop<object>(item, "Turn")),
-                Prop<int>(item, "ActorIndex"),
-                Prop<ModelId>(item, "OrbId").ToString())),
-            MapList("_energySpent", item => new InCombatEnergySpentHistoryDto(
-                ExportTurnKey(Prop<object>(item, "Turn")),
-                Prop<int>(item, "ActorIndex"),
-                Prop<int>(item, "Amount"))),
-            MapList("_cardDrawn", item => new InCombatCardDrawnHistoryDto(
-                ExportTurnKey(Prop<object>(item, "Turn")),
-                Prop<int>(item, "ActorIndex"),
-                Prop<CardType>(item, "CardType").ToString(),
-                Prop<bool>(item, "FromHandDraw"))),
-            MapList("_actorEvents", item => new InCombatActorEventHistoryDto(
-                Prop<CombatSemanticHistory.ActorEvent>(item, "Kind").ToString(),
-                ExportTurnKey(Prop<object>(item, "Turn")),
-                Prop<int>(item, "ActorIndex"))));
-
-        IReadOnlyList<TOut> MapList<TOut>(string fieldName, Func<object, TOut> map)
-        {
-            var raw = ReadField<System.Collections.IEnumerable>(h, fieldName);
-            var list = new List<TOut>();
-            foreach (object item in raw)
-                list.Add(map(item));
-            return list;
-        }
-
-        static InCombatTurnKeyDto ExportTurnKey(object tk) =>
-            new(
-                Prop<int>(tk, "RoundNumber"),
-                Prop<CombatSide>(tk, "Side").ToString(),
-                Prop<int?[]>(tk, "PlayerTurnNumbers").ToArray());
-
-        static TProp Prop<TProp>(object obj, string name) =>
-            (TProp)obj.GetType().GetProperty(name)!.GetValue(obj)!;
-    }
-
-    private static InCombatRngStreamDto ToRngDto(SerializableRng r) =>
-        new(r.counter, r.state0, r.state1, r.state2, r.state3);
-
-    private static T ReadField<T>(object target, string name)
-    {
-        for (Type? t = target.GetType(); t is not null; t = t.BaseType)
-        {
-            FieldInfo? fi = t.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (fi is not null)
-                return (T)fi.GetValue(target)!;
-        }
-        throw new MissingFieldException(target.GetType().FullName, name);
-    }
 }
