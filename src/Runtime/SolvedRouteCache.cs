@@ -3,19 +3,118 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using CombatSolver.HotKernel;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Multiplayer.Serialization;
+using MegaCrit.Sts2.Core.Runs;
 
 namespace CombatSolver;
 
 /// <summary>Persists value-only plans independently of a live combat's lifetime.</summary>
-internal sealed class SolvedRouteCache(string path)
+internal sealed class SolvedRouteCache
 {
     private const int MaximumEntries = 64;
-    public string Path { get; } = path;
+    private readonly Lazy<string> _path;
+
+    internal SolvedRouteCache(string path)
+    {
+        _path = new Lazy<string>(path);
+    }
+
+    private SolvedRouteCache(Func<string> pathFactory)
+    {
+        _path = new Lazy<string>(pathFactory, LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
+    public string Path => _path.Value;
+
+    private sealed record ModIdentity(
+        string? Id,
+        string? Version,
+        ModLoadState state,
+        Guid[] Assemblies);
+
+    // Property names, casing, and declaration order must match the original anonymous
+    // cache-identity object exactly so persisted route cache filenames remain compatible.
+    private sealed record CacheIdentityPayload(
+        int Schema,
+        Guid Solver,
+        Guid Game,
+        ModIdentity[] Mods,
+        string Seed,
+        int CurrentActIndex,
+        int TotalFloor,
+        int AscensionLevel,
+        HotCombatRulesSnapshot Rules,
+        string? Encounter,
+        string[] Modifiers,
+        byte[] Native,
+        string StateText,
+        BattleDamageSnapshot damage,
+        SolverSearchProfile Profile,
+        SolverPotionPolicy PotionPolicy,
+        IReadOnlyList<PotionSlotDirective> Directives,
+        IReadOnlyList<KeyValuePair<string, int>> PotionThresholdOverrides,
+        GrowthValues GrowthBudgets,
+        IReadOnlyList<RelicCounterTarget> RelicTargets,
+        bool Act3BossStrategy,
+        int? BrightestFlameMaxHpLossLimit,
+        GrowthOpportunityTargets GrowthOpportunityTargets,
+        bool IgnoreLongTermRewards,
+        bool IncludeTurnSetup,
+        SolverTheftPolicy? TheftPolicy,
+        BossHpStrategy ActTransitionBossHpStrategy,
+        BossHpStrategy FinalBossHpStrategy,
+        int AcceptableBattleHpLoss,
+        bool StopAtAcceptableBattleHpLoss,
+        bool PredictPotionReward,
+        int TranspositionPruningDisabledMask,
+        bool FixedBudget,
+        int? BudgetOverrideMilliseconds);
+
+    internal static void WarmUpSerializer()
+    {
+        CacheIdentityPayload dummy = new(
+            Schema: 1,
+            Solver: typeof(SolvedRouteCache).Module.ModuleVersionId,
+            Game: typeof(CombatState).Module.ModuleVersionId,
+            Mods: Array.Empty<ModIdentity>(),
+            Seed: string.Empty,
+            CurrentActIndex: 0,
+            TotalFloor: 0,
+            AscensionLevel: 0,
+            Rules: new HotCombatRulesSnapshot(default, 0, 0, null),
+            Encounter: null,
+            Modifiers: Array.Empty<string>(),
+            Native: Array.Empty<byte>(),
+            StateText: string.Empty,
+            damage: new BattleDamageSnapshot(0, 0, 0, Array.Empty<string>(), 0),
+            Profile: SolverSearchProfile.Default,
+            PotionPolicy: SolverPotionPolicy.Smart,
+            Directives: Array.Empty<PotionSlotDirective>(),
+            PotionThresholdOverrides: Array.Empty<KeyValuePair<string, int>>(),
+            GrowthBudgets: default,
+            RelicTargets: Array.Empty<RelicCounterTarget>(),
+            Act3BossStrategy: false,
+            BrightestFlameMaxHpLossLimit: null,
+            GrowthOpportunityTargets: GrowthOpportunityTargets.Empty,
+            IgnoreLongTermRewards: false,
+            IncludeTurnSetup: false,
+            TheftPolicy: null,
+            ActTransitionBossHpStrategy: BossHpStrategy.ProgressionFirst,
+            FinalBossHpStrategy: BossHpStrategy.ProgressionFirst,
+            AcceptableBattleHpLoss: 0,
+            StopAtAcceptableBattleHpLoss: true,
+            PredictPotionReward: false,
+            TranspositionPruningDisabledMask: 0,
+            FixedBudget: false,
+            BudgetOverrideMilliseconds: null);
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(dummy);
+        _ = SHA256.HashData(bytes);
+    }
 
     public static SolvedRouteCache Capture(
         CombatState state,
@@ -32,52 +131,56 @@ internal sealed class SolvedRouteCache(string path)
         foreach (var player in state.Players)
             NetFullCombatState.CombatPileState.From(player.Deck).Serialize(writer);
         writer.ZeroByteRemainder();
-        byte[] identity = JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            Schema = 1,
-            Solver = typeof(SolvedRouteCache).Module.ModuleVersionId,
-            Game = typeof(CombatState).Module.ModuleVersionId,
-            Mods = ModManager.Mods.Select(mod => new
-            {
-                Id = mod.manifest?.id,
-                Version = mod.version?.ToString(),
+
+        // Freeze all live-state and Godot-API fields on the main thread, then defer
+        // JSON serialization + SHA256 hashing until Path is first read on the worker thread.
+        string cacheDirectory = ProjectSettings.GlobalizePath("user://combat-solver-routes");
+        CacheIdentityPayload payload = new(
+            Schema: 1,
+            Solver: typeof(SolvedRouteCache).Module.ModuleVersionId,
+            Game: typeof(CombatState).Module.ModuleVersionId,
+            Mods: ModManager.Mods.Select(mod => new ModIdentity(
+                mod.manifest?.id,
+                mod.version?.ToString(),
                 mod.state,
-                Assemblies = mod.assemblies.Select(assembly => assembly.ManifestModule.ModuleVersionId).ToArray(),
-            }).ToArray(),
-            Seed = state.RunState.Rng.StringSeed,
-            state.RunState.CurrentActIndex,
-            state.RunState.TotalFloor,
-            state.RunState.AscensionLevel,
-            root.Rules,
-            Encounter = state.Encounter?.Id.Entry,
-            Modifiers = state.Modifiers.Select(modifier => modifier.Id.Entry).ToArray(),
-            Native = writer.Buffer.AsSpan(0, writer.BytePosition).ToArray(),
-            root.ContinuationStamp.StateText,
-            damage,
-            policy.Profile,
-            policy.PotionPolicy,
-            policy.PotionStrategy.Directives,
-            PotionThresholdOverrides = policy.PotionStrategy.Thresholds.Overrides,
-            policy.GrowthBudgets,
-            policy.RelicTargets,
-            policy.Act3BossStrategy,
-            policy.BrightestFlameMaxHpLossLimit,
-            policy.GrowthOpportunityTargets,
-            policy.IgnoreLongTermRewards,
-            policy.IncludeTurnSetup,
-            policy.TheftPolicy,
-            policy.ActTransitionBossHpStrategy,
-            policy.FinalBossHpStrategy,
-            policy.AcceptableBattleHpLoss,
-            policy.StopAtAcceptableBattleHpLoss,
-            policy.PredictPotionReward,
-            policy.TranspositionPruningDisabledMask,
-            policy.FixedBudget,
-            policy.BudgetOverrideMilliseconds,
+                mod.assemblies.Select(assembly => assembly.ManifestModule.ModuleVersionId).ToArray())).ToArray(),
+            Seed: state.RunState.Rng.StringSeed,
+            CurrentActIndex: state.RunState.CurrentActIndex,
+            TotalFloor: state.RunState.TotalFloor,
+            AscensionLevel: state.RunState.AscensionLevel,
+            Rules: root.Rules,
+            Encounter: state.Encounter?.Id.Entry,
+            Modifiers: state.Modifiers.Select(modifier => modifier.Id.Entry).ToArray(),
+            Native: writer.Buffer.AsSpan(0, writer.BytePosition).ToArray(),
+            StateText: root.ContinuationStamp.StateText,
+            damage: damage,
+            Profile: policy.Profile,
+            PotionPolicy: policy.PotionPolicy,
+            Directives: policy.PotionStrategy.Directives,
+            PotionThresholdOverrides: policy.PotionStrategy.Thresholds.Overrides,
+            GrowthBudgets: policy.GrowthBudgets,
+            RelicTargets: policy.RelicTargets,
+            Act3BossStrategy: policy.Act3BossStrategy,
+            BrightestFlameMaxHpLossLimit: policy.BrightestFlameMaxHpLossLimit,
+            GrowthOpportunityTargets: policy.GrowthOpportunityTargets,
+            IgnoreLongTermRewards: policy.IgnoreLongTermRewards,
+            IncludeTurnSetup: policy.IncludeTurnSetup,
+            TheftPolicy: policy.TheftPolicy,
+            ActTransitionBossHpStrategy: policy.ActTransitionBossHpStrategy,
+            FinalBossHpStrategy: policy.FinalBossHpStrategy,
+            AcceptableBattleHpLoss: policy.AcceptableBattleHpLoss,
+            StopAtAcceptableBattleHpLoss: policy.StopAtAcceptableBattleHpLoss,
+            PredictPotionReward: policy.PredictPotionReward,
+            TranspositionPruningDisabledMask: policy.TranspositionPruningDisabledMask,
+            FixedBudget: policy.FixedBudget,
+            BudgetOverrideMilliseconds: policy.BudgetOverrideMilliseconds);
+
+        return new SolvedRouteCache(() =>
+        {
+            byte[] identity = JsonSerializer.SerializeToUtf8Bytes(payload);
+            string key = Convert.ToHexString(SHA256.HashData(identity));
+            return System.IO.Path.Combine(cacheDirectory, key + ".json");
         });
-        string key = Convert.ToHexString(SHA256.HashData(identity));
-        return new SolvedRouteCache(System.IO.Path.Combine(
-            ProjectSettings.GlobalizePath("user://combat-solver-routes"), key + ".json"));
     }
 
     // 缓存是可选功能：读不出来按未命中处理，坏文件改名留作诊断，搜索照常进行。

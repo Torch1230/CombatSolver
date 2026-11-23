@@ -62,6 +62,7 @@ internal sealed class HotExecScratch
     public int LastStarsSpent;
     public int CurrentPlayIndex;
     public int CurrentPlayTargetSlot;
+    public int CardBlockGainsInCurrentPlay;
     public bool UnblockedDamageThisPlay;
     public bool AttackActive;
     public uint AttackUnblockedEnemyMask;
@@ -83,6 +84,7 @@ internal sealed class HotExecScratch
         LastStarsSpent = 0;
         CurrentPlayIndex = 0;
         CurrentPlayTargetSlot = -1;
+        CardBlockGainsInCurrentPlay = 0;
         UnblockedDamageThisPlay = false;
         AttackActive = false;
         AttackUnblockedEnemyMask = 0;

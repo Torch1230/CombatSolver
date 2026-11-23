@@ -180,7 +180,7 @@ internal static class HotSearchCoordinator
             TranspositionLimitBypasses: tt.LimitBypasses,
             StandPatCacheCount: expander.StandPatCacheCount,
             SearchedTurns: pass.SearchedTurns,
-            BoundaryReason: pass.BoundaryReason,
+            BoundaryReason: ResolveEffectiveBoundaryReason(in pass),
             OnlyDeathRoutesFound: pass.OnlyDeathRoutes,
             WorkerAllocatedBytes: pass.Stats.WorkerAllocatedBytes,
             TotalWorkerAllocatedBytes: pass.Stats.WorkerAllocatedBytes,
@@ -727,12 +727,14 @@ internal static class HotSearchCoordinator
         int rootNodeId = nodeArena.AddNode(in rootNode);
         HotRouteKey rootKey = HotRouteQuality.Capture(in rootNode, in hotPolicy);
 
+        int effectiveMaxCardBranches = ResolveEffectiveMaxCardBranches(profile.MaxCardBranchesPerNode);
+
         HotWaveExpansionConfig waveConfig = new(
             allowPaidOptionalPotions: allowPaidOptionalPotions,
             allowZeroCostOptionalPotions: allowZeroCostOptionalPotions,
             allowForcedPotions: allowForcedPotions,
             maxPotionUses: maxPotionUses,
-            maxCardBranchesPerNode: profile.MaxCardBranchesPerNode,
+            maxCardBranchesPerNode: effectiveMaxCardBranches,
             maxHandChoiceBranches: profile.MaxHandChoiceBranchesPerAction,
             maxPileChoiceBranches: profile.MaxPileChoiceBranchesPerAction,
             evalMode: evalMode);
@@ -774,6 +776,8 @@ internal static class HotSearchCoordinator
         int bestSeenAliveEnemies = rootSummary.AliveEnemyCount + rootSummary.RevivingEnemyCount;
         int bestSeenSetup = rootSetup;
         int turnsWithoutProgress = 0;
+        bool hitMaxSearchTurns = false;
+        bool lastTurnHitPerTurnNodeCap = false;
 
         int midTurnBeamWidth = beamWidth;
 
@@ -787,7 +791,7 @@ internal static class HotSearchCoordinator
                     allowZeroCostOptionalPotions: false,
                     allowForcedPotions: false,
                     maxPotionUses: -1,
-                    maxCardBranchesPerNode: profile.MaxCardBranchesPerNode,
+                    maxCardBranchesPerNode: effectiveMaxCardBranches,
                     maxHandChoiceBranches: profile.MaxHandChoiceBranchesPerAction,
                     maxPileChoiceBranches: profile.MaxPileChoiceBranchesPerAction,
                     evalMode: evalMode,
@@ -863,6 +867,15 @@ internal static class HotSearchCoordinator
             {
                 if ((currentTurnFrontier.Count == 0 && (turnLayer > 0 || turnSetupEndedTurnNodes.Count == 0)) || stopTargetReached)
                     break;
+                if (HasExceededPostVictoryTurnCap(
+                    hasVictory,
+                    in bestVictoryKey,
+                    hotPolicy.StartTurnNumber + turnLayer,
+                    in hotPolicy,
+                    allowPaidOptionalPotions))
+                {
+                    break;
+                }
                 if (budget.IsCanceled)
                     budget.CancellationToken.ThrowIfCancellationRequested();
                 if (budget.IsTimeExpired)
@@ -877,6 +890,7 @@ internal static class HotSearchCoordinator
                 }
 
                 searchedTurns = turnLayer + 1;
+                lastTurnHitPerTurnNodeCap = false;
                 activeFrontier.Clear();
                 activeFrontier.AddRange(currentTurnFrontier);
                 nextTurnCandidates.Clear();
@@ -913,6 +927,8 @@ internal static class HotSearchCoordinator
                     {
                         if (stats.ExpandedParents >= maxNodesForPass)
                             boundaryReason = SearchBoundaryReason.NodeLimit;
+                        else
+                            lastTurnHitPerTurnNodeCap = true;
                         break;
                     }
 
@@ -1099,7 +1115,21 @@ internal static class HotSearchCoordinator
                     break;
 
                 if (nextTurnCandidates.Count == 0)
+                {
+                    if (lastTurnHitPerTurnNodeCap && !hasVictory && boundaryReason == SearchBoundaryReason.None)
+                        boundaryReason = SearchBoundaryReason.NodeLimit;
                     break;
+                }
+
+                if (HasExceededPostVictoryTurnCap(
+                    hasVictory,
+                    in bestVictoryKey,
+                    hotPolicy.StartTurnNumber + turnLayer + 1,
+                    in hotPolicy,
+                    allowPaidOptionalPotions))
+                {
+                    break;
+                }
 
                 if (pruneOutBuf.Length < beamWidth)
                 {
@@ -1135,6 +1165,13 @@ internal static class HotSearchCoordinator
                         boundaryReason = SearchBoundaryReason.TurnLimit;
                     break;
                 }
+
+                if (turnLayer == MaxSearchTurns - 1 && currentTurnFrontier.Count > 0)
+                {
+                    hitMaxSearchTurns = true;
+                    if (!hasVictory && boundaryReason == SearchBoundaryReason.None)
+                        boundaryReason = SearchBoundaryReason.TurnLimit;
+                }
             }
         }
         finally
@@ -1147,8 +1184,18 @@ internal static class HotSearchCoordinator
         if (capacityBounded && !hasVictory && boundaryReason == SearchBoundaryReason.None)
             boundaryReason = SearchBoundaryReason.DynamicResolution;
 
+        bool frontierExhaustedInDefeat = !hasVictory
+            && !capacityBounded
+            && boundaryReason == SearchBoundaryReason.None
+            && !lastTurnHitPerTurnNodeCap
+            && !hitMaxSearchTurns
+            && hasBestFallback
+            && !bestFallbackKey.Survives;
+
         int chosenId;
         HotRouteKey chosenKey;
+        bool chosenHasCompletedTurnOngoing;
+        int chosenCompletedOngoingTurn;
         bool onlyDeathRoutes;
         bool isMidTurnFallback;
 
@@ -1156,13 +1203,30 @@ internal static class HotSearchCoordinator
         {
             chosenId = bestVictoryId;
             chosenKey = bestVictoryKey;
+            chosenHasCompletedTurnOngoing = hasCompletedTurnOngoing;
+            chosenCompletedOngoingTurn = hasCompletedTurnOngoing ? bestCompletedTurnOngoingTurn : -1;
             onlyDeathRoutes = false;
+            isMidTurnFallback = false;
+        }
+        else if (frontierExhaustedInDefeat)
+        {
+            // Every explored branch in the search tree ended in defeat without hitting any time/node/turn/capacity
+            // boundary (even if earlier turns survived before all branches died on a later turn).
+            // Return the longest-surviving defeat route with OnlyDeathRoutes = true so UI displays "未找到生还路线"
+            // and DeathTurn reflects the exact terminal defeat turn.
+            chosenId = bestFallbackId;
+            chosenKey = bestFallbackKey;
+            chosenHasCompletedTurnOngoing = false;
+            chosenCompletedOngoingTurn = -1;
+            onlyDeathRoutes = true;
             isMidTurnFallback = false;
         }
         else if (hasCompletedTurnOngoing)
         {
             chosenId = bestCompletedTurnOngoingId;
             chosenKey = bestCompletedTurnOngoingKey;
+            chosenHasCompletedTurnOngoing = true;
+            chosenCompletedOngoingTurn = bestCompletedTurnOngoingTurn;
             onlyDeathRoutes = false;
             isMidTurnFallback = false;
         }
@@ -1173,6 +1237,8 @@ internal static class HotSearchCoordinator
             // truncated mid-turn node that omits EndTurn and triggers repeated PlanExhaustedWithoutEndTurn loops.
             chosenId = bestFallbackId;
             chosenKey = bestFallbackKey;
+            chosenHasCompletedTurnOngoing = false;
+            chosenCompletedOngoingTurn = -1;
             onlyDeathRoutes = !bestFallbackKey.Survives;
             isMidTurnFallback = false;
         }
@@ -1181,6 +1247,8 @@ internal static class HotSearchCoordinator
             // Last-resort fallback only when zero EndTurn/terminal nodes were materialized (e.g. capacity drop).
             chosenId = bestMidTurnOngoingId;
             chosenKey = bestMidTurnOngoingKey;
+            chosenHasCompletedTurnOngoing = false;
+            chosenCompletedOngoingTurn = -1;
             onlyDeathRoutes = false;
             isMidTurnFallback = true;
         }
@@ -1188,6 +1256,8 @@ internal static class HotSearchCoordinator
         {
             chosenId = bestFallbackId;
             chosenKey = bestFallbackKey;
+            chosenHasCompletedTurnOngoing = false;
+            chosenCompletedOngoingTurn = -1;
             onlyDeathRoutes = false;
             isMidTurnFallback = true;
         }
@@ -1198,8 +1268,8 @@ internal static class HotSearchCoordinator
             BestKey: chosenKey,
             HasBest: chosenId >= 0,
             HasVictory: hasVictory,
-            HasCompletedTurnOngoing: hasCompletedTurnOngoing,
-            CompletedOngoingTurn: hasCompletedTurnOngoing ? bestCompletedTurnOngoingTurn : -1,
+            HasCompletedTurnOngoing: chosenHasCompletedTurnOngoing,
+            CompletedOngoingTurn: chosenCompletedOngoingTurn,
             IsMidTurnFallback: isMidTurnFallback,
             OnlyDeathRoutes: onlyDeathRoutes,
             StopTargetReached: stopTargetReached,
@@ -1514,7 +1584,7 @@ internal static class HotSearchCoordinator
             TranspositionLimitBypasses: tt.LimitBypasses,
             StandPatCacheCount: expander.StandPatCacheCount,
             SearchedTurns: pass.SearchedTurns,
-            BoundaryReason: pass.BoundaryReason,
+            BoundaryReason: ResolveEffectiveBoundaryReason(in pass),
             OnlyDeathRoutesFound: pass.OnlyDeathRoutes,
             WorkerAllocatedBytes: pass.Stats.WorkerAllocatedBytes,
             TotalWorkerAllocatedBytes: totalAllocated,
@@ -1608,5 +1678,49 @@ internal static class HotSearchCoordinator
             return 1;
         int maxDop = Math.Max(1, Math.Min(HotSearchConstants.MaximumSearchMaxDegreeOfParallelism, Environment.ProcessorCount));
         return Math.Clamp(policy.MaxDegreeOfParallelism, 1, maxDop);
+    }
+
+    private static SearchBoundaryReason ResolveEffectiveBoundaryReason(in HotPassOutcome pass)
+        => pass.BoundaryReason == SearchBoundaryReason.None && !pass.HasVictory && !pass.OnlyDeathRoutes
+            ? SearchBoundaryReason.TurnLimit
+            : pass.BoundaryReason;
+
+    private static int ResolveEffectiveMaxCardBranches(int configuredMaxCardBranches)
+        => configuredMaxCardBranches >= 32 && configuredMaxCardBranches < 64
+            ? 64
+            : configuredMaxCardBranches;
+
+    private static bool HasExceededPostVictoryTurnCap(
+        bool hasVictory,
+        in HotRouteKey bestVictoryKey,
+        int nextTurnNumber,
+        in HotSearchPolicy hotPolicy,
+        bool allowPaidOptionalPotions)
+    {
+        if (!hasVictory || bestVictoryKey.CombatEndedTurn == int.MaxValue)
+            return false;
+
+        bool canHealOrGrow = hotPolicy.HasAnyHealOrUnknownGeneration
+            || hotPolicy.HasGrowthTargets
+            || (allowPaidOptionalPotions
+                && (hotPolicy.HasPaidHealPotion || hotPolicy.HasPaidFruitJuice || hotPolicy.HasPaidEntropicBrew))
+            || bestVictoryKey.DeathSaveUseCount > 0
+            || (hotPolicy.TheftPolicy == SolverTheftPolicy.PreserveResources
+                && (bestVictoryKey.OutstandingStolen > 0 || bestVictoryKey.ForfeitsGold));
+
+        // Only apply the tight T*+1 cutoff when the best victory is already economically lossless
+        // (<= 0 persistent HP loss and 0 optional paid potion cost) and no heal/growth/recovery remains.
+        // When the best victory still lost HP or spent paid potions, keep a +4 turn horizon so slower,
+        // cleaner defensive/scaling victories (e.g. dev-04 T4 33HP/2pot -> T7 22HP/1pot) are preserved
+        // while still capping post-victory turn waste well below MaxSearchTurns.
+        bool tookPersistentDamage = bestVictoryKey.HasCentiPrecision
+            ? bestVictoryKey.NetPersistentHpDeltaCenti < 0
+            : bestVictoryKey.StrategicHpDeficit > 0;
+        bool spentOptionalPaidPotion = bestVictoryKey.NetPotionOpportunityCostCenti > 0
+            || bestVictoryKey.OptionalPaidPotionCount > 0;
+
+        int maxPostVictoryTurn = bestVictoryKey.CombatEndedTurn
+            + (canHealOrGrow || tookPersistentDamage || spentOptionalPaidPotion ? 4 : 1);
+        return nextTurnNumber > maxPostVictoryTurn;
     }
 }

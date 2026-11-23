@@ -505,7 +505,7 @@ internal static class HotMonsters
             ForceMonsterMove(ref s, rules, slot, "RESPAWN_MOVE");
         }
 
-        if (hasIllusion)
+        if (hasIllusion && HasAnyLivingOrRevivingPrimaryEnemy(in s, rules))
             BeginIllusionRevive(ref s, cold, rules, slot);
 
         if (hasInfested)
@@ -594,6 +594,14 @@ internal static class HotMonsters
         // 15. MinionPower cascade kill: if a primary enemy died and only living minions remain (no reviving primary).
         if (isPrimaryEnemy && !HasAnyLivingOrRevivingPrimaryEnemy(in s, rules))
         {
+            // Clear reviving phase on already-dead secondary enemies (e.g. IllusionPower EyeWithTeeth/Parafright)
+            // once no primary enemies remain, so CombatHotState/KillCreature/IsCombatEnding agree on Victory.
+            for (int e = 0; e < s.EnemyCount; e++)
+            {
+                if (e != slot && s.Enemies[e].DeathPhase == HotDeathPhase.Reviving)
+                    s.Enemies[e].DeathPhase = HotDeathPhase.PermanentlyDead;
+            }
+
             Span<byte> minionsToKill = stackalloc byte[HotLimits.MaxEnemies];
             int minionCount = 0;
             for (int r = 0; r < s.RosterCount; r++)
@@ -619,8 +627,7 @@ internal static class HotMonsters
 
         // 16. Victory check (respecting reviving primary enemies & Stock/Infested/Surprise spawns already created).
         if ((s.Player.Flags & HotCreatureFlags.Alive) != 0
-            && !HotCombatEngine.HasAnyLivingEnemy(in s)
-            && !HasAnyRevivingEnemy(in s))
+            && !HasAnyLivingOrRevivingPrimaryEnemy(in s, rules))
         {
             s.TerminalOutcome = HotCombatOutcome.Victory;
             s.TerminalTurn = (byte)Math.Clamp(s.PlayerTurnNumber, 0, byte.MaxValue);
@@ -3155,7 +3162,7 @@ internal static class HotMonsters
 
         SpawnMonster(ref s, ref cold, rules, scratch, HotMonsterId.SneakyGremlin, sourceSlot: deadSlot, minion: false);
 
-        int fatSlot = AddPreparedSpawn(
+        AddPreparedSpawn(
             ref s,
             ref cold,
             rules,
@@ -3168,35 +3175,38 @@ internal static class HotMonsters
             stockAmount: -1,
             axebotRespawnCount: 0,
             wrigglerSlotIndex: 0,
-            overrideCombatId: fatCombatId);
+            overrideCombatId: fatCombatId,
+            applySurpriseHeistFromSource: true);
+    }
 
-        if (fatSlot < 0)
-            return;
-
+    private static void ApplySurpriseHeistPowers(
+        ref CombatHotState s,
+        HotRules rules,
+        byte deadSlot,
+        byte fatOwnerSlot)
+    {
         ushort thieveryDefId = rules.GetPowerDefId(HotPowerId.ThieveryPower);
         ushort heistDefId = rules.GetPowerDefId(HotPowerId.HeistPower);
-        if (thieveryDefId != 0 && heistDefId != 0)
+        if (thieveryDefId == 0 || heistDefId == 0)
+            return;
+
+        int powerCount = s.PowerCount;
+        for (int i = 0; i < powerCount; i++)
         {
-            byte fatOwnerSlot = (byte)(3 + fatSlot);
-            int powerCount = s.PowerCount;
-            for (int i = 0; i < powerCount; i++)
+            if (s.Powers[i].OwnerSlot == deadSlot
+                && s.Powers[i].PowerDefId == thieveryDefId
+                && s.Powers[i].Amount > 0)
             {
-                if (s.Powers[i].OwnerSlot == deadSlot
-                    && s.Powers[i].PowerDefId == thieveryDefId
-                    && s.Powers[i].Amount > 0)
-                {
-                    int stolenGold = s.Powers[i].Aux0;
-                    int prevCount = s.PowerCount;
-                    HotCombatEngine.AddPowerInstance(
-                        ref s,
-                        rules,
-                        ownerSlot: fatOwnerSlot,
-                        applierSlot: deadSlot,
-                        powerDefId: heistDefId,
-                        amount: stolenGold);
-                    if (s.PowerCount > prevCount)
-                        s.Powers[s.PowerCount - 1].TargetSlot = 0;
-                }
+                int stolenGold = s.Powers[i].Aux0;
+                int addedIdx = HotCombatEngine.AddPowerInstance(
+                    ref s,
+                    rules,
+                    ownerSlot: fatOwnerSlot,
+                    applierSlot: deadSlot,
+                    powerDefId: heistDefId,
+                    amount: stolenGold);
+                if (addedIdx >= 0)
+                    s.Powers[addedIdx].TargetSlot = 0;
             }
         }
     }
@@ -3259,7 +3269,8 @@ internal static class HotMonsters
         int stockAmount,
         int axebotRespawnCount,
         int wrigglerSlotIndex,
-        uint overrideCombatId = 0)
+        uint overrideCombatId = 0,
+        bool applySurpriseHeistFromSource = false)
     {
         if (s.EnemyCount >= HotLimits.MaxEnemies || s.RosterCount >= HotLimits.MaxEnemies)
             return -1;
@@ -3379,6 +3390,12 @@ internal static class HotMonsters
                 RollInitialMove(ref s, ref cold, rules, newSlot, machine);
             }
         }
+
+        // 0.113.1 SurprisePower.cs:26-35 applies HeistPower to FatGremlin BEFORE CreatureCmd.Add(fatGremlin)
+        // triggers Hook.AfterCreatureAddedToCombat (Dominions / PhilosophersStone), so HeistPower precedes
+        // Dominion-applied powers (e.g. ExplosivePower, RitualPower) in FatGremlin's power list.
+        if (applySurpriseHeistFromSource)
+            ApplySurpriseHeistPowers(ref s, rules, sourceSlot, newOwnerSlot);
 
         // AfterCreatureAddedToCombat hooks (Dominions & PhilosophersStone).
         ApplyAfterCreatureAddedHooks(ref s, ref cold, rules, scratch, newSlot, newOwnerSlot);
@@ -4052,11 +4069,23 @@ internal static class HotMonsters
             or HotPowerId.FocusedStrikePower
             or HotPowerId.HotfixPower
             or HotPowerId.SynchronizePower
-            or HotPowerId.HyperbeamFocusDownPower;
+            or HotPowerId.HyperbeamFocusDownPower
+            or HotPowerId.FadePower
+            or HotPowerId.ChoBarbsPower;
 
     internal static void CreatureEscaped(ref CombatHotState s, HotRules rules, byte enemySlot)
     {
         byte ownerSlot = (byte)(3 + enemySlot);
+        ushort mDefId = s.Enemies[enemySlot].MonsterDefId;
+        if (mDefId > 0 && mDefId < rules.Monsters.Length
+            && ResolveMonsterId(rules.Monsters[mDefId]) == HotMonsterId.FatGremlin
+            && !rules.RulesSnapshot.IsBlitz
+            && string.Equals(rules.EncounterEntry, "GREMLIN_MERC_NORMAL", StringComparison.Ordinal))
+        {
+            // 0.113.1 GremlinMercNormal.cs:58-68 & HotImportSupport.ForfeitsEncounterGold:
+            // FatGremlin escaping in non-Blitz GremlinMercNormal forfeits encounter gold.
+            s.CombatFlags |= HotCombatFlags.EncounterGoldForfeited;
+        }
         RemovePowersAfterDeath(ref s, rules, ownerSlot, removeAllBecauseDeparted: true);
         s.Enemies[enemySlot].Vital.Flags &= ~(HotCreatureFlags.Alive | HotCreatureFlags.ActiveInRoster);
         s.Enemies[enemySlot].Vital.Flags |= HotCreatureFlags.Escaped;
@@ -4083,7 +4112,12 @@ internal static class HotMonsters
 
     internal static void ForceStunnedMove(ref CombatHotState s, HotRules rules, byte slot, string? nextMoveId)
     {
-        HotMonsterMachine? machine = rules.GetMonsterMachine(s.Enemies[slot].MonsterDefId);
+        ushort mDefId = s.Enemies[slot].MonsterDefId;
+        bool isTunnelerStun = mDefId > 0 && mDefId < rules.Monsters.Length
+            && ResolveMonsterId(rules.Monsters[mDefId]) == HotMonsterId.Tunneler
+            && string.Equals(nextMoveId, "BITE_MOVE", StringComparison.Ordinal);
+
+        HotMonsterMachine? machine = rules.GetMonsterMachine(mDefId);
         if (machine == null)
         {
             s.Enemies[slot].Flags |= HotEnemyFlags.Stunned | HotEnemyFlags.SkipNextMove;
@@ -4101,6 +4135,10 @@ internal static class HotMonsters
         {
             s.Enemies[slot].CurrentMoveNode = stunnedNode;
             s.Enemies[slot].Flags &= ~HotEnemyFlags.NeedsInitialRoll;
+            // 0.113.1 BurrowedPower.AfterBlockBroken calls Tunneler.GetStunned() -> IsStunned = true
+            // (cleared when STUNNED / StillDizzyMove executes at line 975).
+            if (isTunnelerStun)
+                s.Enemies[slot].Flags |= HotEnemyFlags.Stunned;
             if (followUp >= 0)
                 s.Enemies[slot].AiRegs[3] = followUp + 1;
         }
@@ -4340,16 +4378,6 @@ internal static class HotMonsters
             if (!aliveOrReviving)
                 continue;
             if (minionDefId == 0 || HotCombatEngine.GetPowerAmount(in s, (byte)(3 + eSlot), minionDefId) <= 0)
-                return true;
-        }
-        return false;
-    }
-
-    private static bool HasAnyRevivingEnemy(in CombatHotState s)
-    {
-        for (int r = 0; r < s.RosterCount; r++)
-        {
-            if (s.Enemies[s.ActiveEnemyRoster[r]].DeathPhase == HotDeathPhase.Reviving)
                 return true;
         }
         return false;

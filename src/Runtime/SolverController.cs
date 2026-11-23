@@ -960,18 +960,24 @@ internal static partial class SolverController
             return;
         }
         CombatShowcaseCollector.TryCaptureInitialRoot(state, reason);
-        CombatBugReportExporter.RecordCheckpoint(
-            state,
-            $"search_request_{reason}",
-            CurrentResultForBugReport,
-            DescribeReplanAudit());
+        bool checkpointRecorded = false;
 
-        string setupStage = "battle_damage";
+        string setupStage = "hot_root";
         try
         {
+            CapturedHotRoot capturedHotRoot = CombatRootSnapshot.CaptureHotRoot(state);
+            CombatBugReportExporter.RecordCheckpoint(
+                state,
+                $"search_request_{reason}",
+                CurrentResultForBugReport,
+                DescribeReplanAudit(),
+                precomputedStateText: capturedHotRoot.ContinuationStamp.StateText);
+            checkpointRecorded = true;
+
+            setupStage = "battle_damage";
             BattleDamageSnapshot battleDamage = BattleDamageTracker.Observe(state);
             setupStage = "live_stamp";
-            LiveCombatStamp stamp = LiveCombatStamp.Capture(state);
+            LiveCombatStamp stamp = LiveCombatStamp.FromContinuation(capturedHotRoot.ContinuationStamp);
             if (reason != SearchReason.AutoTurnStart
                 && _combat.LatestResult != null
                 && _combat.LatestStamp is { } previousStamp
@@ -981,7 +987,7 @@ internal static partial class SolverController
             }
             setupStage = "continuation";
             ContinuationStamp? continuationStamp = reason == SearchReason.AutoTurnStart && _combat.ContinuationSource != null
-                ? ContinuationStamp.CaptureLive(state)
+                ? capturedHotRoot.ContinuationStamp
                 : null;
             if (continuationStamp != null
                 && _combat.ContinuationSource!.TryCreateContinuation(
@@ -1006,7 +1012,8 @@ internal static partial class SolverController
                     state,
                     "search_reused",
                     reused,
-                    DescribeReplanAudit());
+                    DescribeReplanAudit(),
+                    precomputedStateText: capturedHotRoot.ContinuationStamp.StateText);
                 SolverOverlay.ShowResult(
                     host,
                     SolverOverlaySnapshot.CaptureWithReviewedWorldlines(
@@ -1101,7 +1108,8 @@ internal static partial class SolverController
             CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(
                 state,
                 settings.PredictPotionReward,
-                settings.PotionThresholds);
+                settings.PotionThresholds,
+                capturedHotRoot);
             Entry.Logger.Info(
                 $"[CombatSolver/Test] COMBAT_ROOT_CAPTURE generation={generation} " +
                 $"elapsed_ms={rootSnapshot.CaptureElapsedMilliseconds:F3} " +
@@ -1214,6 +1222,14 @@ internal static partial class SolverController
         }
         catch (Exception ex)
         {
+            if (!checkpointRecorded)
+            {
+                CombatBugReportExporter.RecordCheckpoint(
+                    state,
+                    $"search_request_{reason}",
+                    CurrentResultForBugReport,
+                    DescribeReplanAudit());
+            }
             _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.SearchSetupFailure, ex);
             CancelSearch();
             _combat.State = null;

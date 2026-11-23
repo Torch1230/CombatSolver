@@ -71,8 +71,8 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.BoneFlute] = new(HotRelicId.BoneFlute, "BONE_FLUTE", HotHookMask.AfterAttack, false, false, false, false);
         arr[(int)HotRelicId.BoneTea] = new(HotRelicId.BoneTea, "BONE_TEA", HotHookMask.AfterSideTurnStart, true, false, false, false);
         arr[(int)HotRelicId.BookOfFiveRings] = new(HotRelicId.BookOfFiveRings, "BOOK_OF_FIVE_RINGS", HotHookMask.AfterCardEnteredCombat, false, false, true, false);
-        arr[(int)HotRelicId.BookRepairKnife] = new(HotRelicId.BookRepairKnife, "BOOK_REPAIR_KNIFE", HotHookMask.AfterDeath, false, false, true, false);
-        arr[(int)HotRelicId.Bookmark] = new(HotRelicId.Bookmark, "BOOKMARK", HotHookMask.BeforeTurnEnd, false, false, false, false);
+        arr[(int)HotRelicId.BookRepairKnife] = new(HotRelicId.BookRepairKnife, "BOOK_REPAIR_KNIFE", HotHookMask.None, false, false, true, false);
+        arr[(int)HotRelicId.Bookmark] = new(HotRelicId.Bookmark, "BOOKMARK", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.BoomingConch] = new(HotRelicId.BoomingConch, "BOOMING_CONCH", HotHookMask.ModifyHandDraw | HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.BoundPhylactery] = new(HotRelicId.BoundPhylactery, "BOUND_PHYLACTERY", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.BowlerHat] = new(HotRelicId.BowlerHat, "BOWLER_HAT", HotHookMask.None, false, false, false, false);
@@ -120,7 +120,7 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.Ectoplasm] = new(HotRelicId.Ectoplasm, "ECTOPLASM", HotHookMask.ModifyMaxEnergy, false, false, false, false);
         arr[(int)HotRelicId.ElectricShrymp] = new(HotRelicId.ElectricShrymp, "ELECTRIC_SHRYMP", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.EmberTea] = new(HotRelicId.EmberTea, "EMBER_TEA", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.EmotionChip] = new(HotRelicId.EmotionChip, "EMOTION_CHIP", HotHookMask.AfterDamageReceived | HotHookMask.AfterSideTurnStart | HotHookMask.AfterCombatEnd, true, false, false, false);
+        arr[(int)HotRelicId.EmotionChip] = new(HotRelicId.EmotionChip, "EMOTION_CHIP", HotHookMask.AfterDamageReceived | HotHookMask.AfterCombatEnd, true, false, false, false);
         arr[(int)HotRelicId.EmptyCage] = new(HotRelicId.EmptyCage, "EMPTY_CAGE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.EternalFeather] = new(HotRelicId.EternalFeather, "ETERNAL_FEATHER", HotHookMask.None, false, false, true, false);
         arr[(int)HotRelicId.ExerciseMat] = new(HotRelicId.ExerciseMat, "EXERCISE_MAT", HotHookMask.AfterSideTurnStart, false, false, false, false);
@@ -334,7 +334,7 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.TuningFork] = new(HotRelicId.TuningFork, "TUNING_FORK", HotHookMask.AfterCardPlayed, false, true, false, false);
         arr[(int)HotRelicId.Twine] = new(HotRelicId.Twine, "TWINE", HotHookMask.BeforeAttack, false, false, false, false);
         arr[(int)HotRelicId.TwistedFunnel] = new(HotRelicId.TwistedFunnel, "TWISTED_FUNNEL", HotHookMask.BeforeSideTurnStart, false, false, false, false);
-        arr[(int)HotRelicId.UnceasingTop] = new(HotRelicId.UnceasingTop, "UNCEASING_TOP", HotHookMask.AfterCardEnteredCombat, false, false, false, false);
+        arr[(int)HotRelicId.UnceasingTop] = new(HotRelicId.UnceasingTop, "UNCEASING_TOP", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.UndyingSigil] = new(HotRelicId.UndyingSigil, "UNDYING_SIGIL", HotHookMask.ModifyDamageMultiplicative, false, false, false, false);
         arr[(int)HotRelicId.UnsettlingLamp] = new(HotRelicId.UnsettlingLamp, "UNSETTLING_LAMP", HotHookMask.BeforeSideTurnStart | HotHookMask.BeforePowerAmountChanged | HotHookMask.AfterCardPlayed | HotHookMask.AfterCombatEnd, true, false, false, false);
         arr[(int)HotRelicId.Vajra] = new(HotRelicId.Vajra, "VAJRA", HotHookMask.None, false, false, false, false);

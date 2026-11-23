@@ -51,20 +51,36 @@ internal static class HotPotions
         s.Potions[slot] = 0;
         s.CombatGeneratedPotionMask &= (ushort)~(1 << slot);
 
-        if (def.OpCount > 0 && potionId != HotCustomPotionId.BeetleJuice)
+        // SurroundedPower.BeforePotionUsed: face targeted enemy before potion effect executes.
+        if (needsEnemyTarget && targetEnemySlot >= 0)
+            HotCombatEngine.UpdateSurroundedFacingForTarget(ref s, rules, (byte)(3 + targetEnemySlot));
+
+        HotCombatEngine.EnterCardOrPotionEffect();
+        try
         {
-            HotCombatEngine.ExecutePotionBytecode(ref s, ref cold, rules, scratch, potionDefId, targetEnemySlot);
+            if (def.OpCount > 0 && potionId != HotCustomPotionId.BeetleJuice)
+            {
+                HotCombatEngine.ExecutePotionBytecode(ref s, ref cold, rules, scratch, potionDefId, targetEnemySlot);
+            }
+            else
+            {
+                ExecutePotionEffect(ref s, ref cold, rules, scratch, potionId, def, targetEnemySlot);
+            }
         }
-        else
+        finally
         {
-            ExecutePotionEffect(ref s, ref cold, rules, scratch, potionId, def, targetEnemySlot);
+            HotCombatEngine.ExitCardOrPotionEffect();
         }
 
         if (scratch.NeedsChoice)
             return new HotStepResult(Executed: true, NeedsChoice: true, Outcome: s.TerminalOutcome);
 
         if ((s.Player.Flags & HotCreatureFlags.Alive) != 0)
+        {
             HotRelics.OnPotionUsed(ref s, ref cold, rules, scratch, potionDefId);
+            if (!scratch.NeedsChoice)
+                HotCombatEngine.CheckForEmptyHand(ref s, ref cold, rules, scratch);
+        }
 
         if (!scratch.NeedsChoice)
             HotCombatEngine.CheckWinCondition(ref s, rules);
@@ -876,7 +892,7 @@ internal static class HotPotions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void SetCardFreeThisTurn(ref HotCard card, ref HotColdSidecar? cold)
     {
-        if ((card.Flags & HotCardFlags.CostsX) == 0 && card.BaseEnergyCost >= 0)
+        if (card.BaseEnergyCost >= 0 || (card.Flags & HotCardFlags.CostsX) != 0)
         {
             HotCostModifiers.AddEnergyModifierExact(
                 ref card,
@@ -886,15 +902,12 @@ internal static class HotPotions
                 expiration: (int)(LocalCostModifierExpiration.EndOfTurn | LocalCostModifierExpiration.WhenPlayed),
                 isReduceOnly: false);
         }
-        if ((card.Flags & HotCardFlags.HasStarCostX) == 0)
-        {
-            HotCostModifiers.AddTempStarCost(
-                ref card,
-                ref cold,
-                cost: 0,
-                clearsWhenTurnEnds: true,
-                clearsWhenCardIsPlayed: true);
-        }
+        HotCostModifiers.AddTempStarCost(
+            ref card,
+            ref cold,
+            cost: 0,
+            clearsWhenTurnEnds: true,
+            clearsWhenCardIsPlayed: true);
     }
 
     internal static void CollectMelodyCandidates(
@@ -930,7 +943,7 @@ internal static class HotPotions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void SetCardFreeThisCombat(ref HotCard card, ref HotColdSidecar? cold)
     {
-        if ((card.Flags & HotCardFlags.CostsX) == 0 && card.BaseEnergyCost >= 0)
+        if (card.BaseEnergyCost >= 0 || (card.Flags & HotCardFlags.CostsX) != 0)
         {
             HotCostModifiers.AddEnergyModifierExact(
                 ref card,
@@ -940,21 +953,18 @@ internal static class HotPotions
                 expiration: (int)LocalCostModifierExpiration.EndOfCombat,
                 isReduceOnly: false);
         }
-        if ((card.Flags & HotCardFlags.HasStarCostX) == 0)
-        {
-            HotCostModifiers.AddTempStarCost(
-                ref card,
-                ref cold,
-                cost: 0,
-                clearsWhenTurnEnds: false,
-                clearsWhenCardIsPlayed: false);
-        }
+        HotCostModifiers.AddTempStarCost(
+            ref card,
+            ref cold,
+            cost: 0,
+            clearsWhenTurnEnds: false,
+            clearsWhenCardIsPlayed: false);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void SetCardEnergyThisTurnOrUntilPlayed(ref HotCard card, ref HotColdSidecar? cold, short cost)
     {
-        if ((card.Flags & HotCardFlags.CostsX) == 0 && card.BaseEnergyCost >= 0)
+        if (cost != 0 || card.BaseEnergyCost >= 0 || (card.Flags & HotCardFlags.CostsX) != 0)
         {
             HotCostModifiers.AddEnergyModifierExact(
                 ref card,

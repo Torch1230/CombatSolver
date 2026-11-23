@@ -44,6 +44,8 @@ internal static class SolverOverlay
     private static PanelContainer? _panel;
     private static Viewport? _viewport;
     private static ScrollContainer? _routeScroll;
+    private static VBoxContainer? _routesContainer;
+    private static VBoxContainer? _primaryColumn;
     private static VBoxContainer? _body;
     private static VBoxContainer? _mainStack;
     private static ColorRect? _footerDivider;
@@ -198,11 +200,11 @@ internal static class SolverOverlay
     internal static bool MessageWrappingEnabledForTesting
         => _summaryText is { FitContent: true, AutowrapMode: TextServer.AutowrapMode.WordSmart };
     internal static bool UploadProgressConfiguredForTesting
-        => _settingsPanel?.UploadProgressConfiguredForTesting == true;
+        => EnsureSettingsPanel()?.UploadProgressConfiguredForTesting == true;
     internal static bool SearchCompletionNotificationSettingsConfiguredForTesting
-        => _settingsPanel?.SearchCompletionNotificationSettingsConfiguredForTesting == true;
+        => EnsureSettingsPanel()?.SearchCompletionNotificationSettingsConfiguredForTesting == true;
     internal static bool SettingsTabsConfiguredForTesting
-        => _settingsPanel?.SettingsTabsConfiguredForTesting == true;
+        => EnsureSettingsPanel()?.SettingsTabsConfiguredForTesting == true;
     internal static bool MemoryUsageBarConfiguredForTesting
         => _memoryUsageBar != null
             && GodotObject.IsInstanceValid(_memoryUsageBar)
@@ -211,11 +213,11 @@ internal static class SolverOverlay
     internal static bool ExerciseMemoryUsageBarForTesting()
         => SolverMemoryUsageBar.ExerciseFormattingForTesting();
     internal static bool VisualSettingsConfiguredForTesting
-        => _settingsPanel?.VisualSettingsConfiguredForTesting == true;
+        => EnsureSettingsPanel()?.VisualSettingsConfiguredForTesting == true;
     internal static bool BossHpStrategySettingsConfiguredForTesting
-        => _settingsPanel?.BossHpStrategySettingsConfiguredForTesting == true;
+        => EnsureSettingsPanel()?.BossHpStrategySettingsConfiguredForTesting == true;
     internal static bool AcceptableBattleHpLossSettingsConfiguredForTesting
-        => _settingsPanel?.AcceptableBattleHpLossSettingsConfiguredForTesting == true;
+        => EnsureSettingsPanel()?.AcceptableBattleHpLossSettingsConfiguredForTesting == true;
     internal static bool ResizeUiConfiguredForTesting
         => _rightResizeHandle != null
             && _bottomResizeHandle != null
@@ -223,8 +225,18 @@ internal static class SolverOverlay
             && _body?.SizeFlagsVertical == Control.SizeFlags.ExpandFill
             && _routeScroll?.SizeFlagsVertical == Control.SizeFlags.ExpandFill;
     internal static bool PotionStrategyUiConfiguredForTesting
-        => _potionStrategyButton != null
-            && _potionStrategyPanel is
+    {
+        get
+        {
+            if (_potionStrategyButton == null)
+                return false;
+            SolverPotionStrategyPanel? panel = EnsurePotionStrategyPanel();
+            if (panel == null)
+                return false;
+            CombatState? combat = CombatManager.Instance.DebugOnlyGetState();
+            if (combat != null && CombatManager.Instance.IsInProgress && panel.RowCountForTesting == 0)
+                panel.Refresh(combat, SolverController.IsDeploying);
+            return panel is
             {
                 RowCountForTesting: > 0,
                 RowsUseIconAndTextForTesting: true,
@@ -232,6 +244,8 @@ internal static class SolverOverlay
                 IsSlimForTesting: true,
                 HasPresetControlsForTesting: true,
             };
+        }
+    }
     internal static bool PerformanceHintVisibleForTesting => _performanceHintButton?.Visible == true;
     internal static bool SpeedXWarningVisibleForTesting => _speedXWarningButton?.Visible == true;
     internal static bool SearchLimitHintVisibleForTesting => _searchLimitHint?.Visible == true;
@@ -381,14 +395,14 @@ internal static class SolverOverlay
     }
     internal static bool ExercisePotionStrategyUiForTesting()
     {
-        if (_potionStrategyButton == null || _potionStrategyPanel == null)
+        if (_potionStrategyButton == null || EnsurePotionStrategyPanel() is not { } panel)
             return false;
         bool original = _potionStrategyVisible;
         if (!original)
             TogglePotionStrategy();
         bool opened = _potionStrategyVisible
-            && _potionStrategyPanel.Visible
-            && ReferenceEquals(_potionStrategyPanel.GetParent(), _layer);
+            && panel.Visible
+            && ReferenceEquals(panel.GetParent(), _layer);
         if (!original)
             TogglePotionStrategy();
         return opened && _potionStrategyVisible == original;
@@ -456,17 +470,17 @@ internal static class SolverOverlay
         ? SolverOverlayTheme.Light
         : SolverOverlayTheme.Dark;
     internal static bool ExerciseUploadCompletionTransitionForTesting()
-        => _settingsPanel?.ExerciseUploadCompletionTransitionForTesting() == true;
+        => EnsureSettingsPanel()?.ExerciseUploadCompletionTransitionForTesting() == true;
     internal static bool ExercisePerformancePresetPersistenceForTesting()
-        => _settingsPanel?.ExercisePerformancePresetPersistenceForTesting() == true;
+        => EnsureSettingsPanel()?.ExercisePerformancePresetPersistenceForTesting() == true;
     internal static bool ExerciseSettingsTabSwitchingForTesting()
-        => _settingsPanel?.ExerciseSettingsTabSwitchingForTesting() == true;
+        => EnsureSettingsPanel()?.ExerciseSettingsTabSwitchingForTesting() == true;
     internal static bool ExerciseSearchCompletionNotificationPolicyForTesting()
-        => _settingsPanel?.ExerciseSearchCompletionNotificationPolicyForTesting() == true;
+        => EnsureSettingsPanel()?.ExerciseSearchCompletionNotificationPolicyForTesting() == true;
     internal static bool ExerciseVisualSettingsForTesting()
-        => _settingsPanel?.ExerciseVisualSettingsForTesting() == true;
+        => EnsureSettingsPanel()?.ExerciseVisualSettingsForTesting() == true;
     internal static bool ExerciseBossHpStrategySettingsForTesting()
-        => _settingsPanel?.ExerciseBossHpStrategySettingsForTesting() == true;
+        => EnsureSettingsPanel()?.ExerciseBossHpStrategySettingsForTesting() == true;
     internal static bool ExerciseAcceptableBattleHpLossSettingsForTesting()
     {
         SolverSettingsData original = SolverSettings.Current;
@@ -477,7 +491,7 @@ internal static class SolverOverlay
                 AcceptableBattleHpLoss = 17,
                 GrowthBudgets = new GrowthValues(Feed: 3, GeneticAlgorithm: 2),
             }));
-            _settingsPanel?.Reload();
+            EnsureSettingsPanel()?.Reload();
             return AcceptableBattleHpLossSettingsConfiguredForTesting;
         }
         finally
@@ -1034,15 +1048,13 @@ internal static class SolverOverlay
             _hpRecoveredOutcomeLabel.Visible = false;
         if (_deathOutcomeLabel != null)
             _deathOutcomeLabel.Visible = false;
-        for (int index = 0; index < SolverWeights.UiTurnRows; index++)
-        {
-            SetRouteRowVisible(index, index == 0);
-            if (index != 0)
-                continue;
-            RouteRows[index].TurnLabel.Text = SolverText.Format($"第 {turn} 回合");
-            RouteRows[index].ShowStatus(SolverText.Get("等待当前回合候选…"));
-            RouteRows[index].SetOutcome(string.Empty, TextMuted);
-        }
+        SolverRouteRow firstRow = EnsureRouteRow(0);
+        firstRow.Visible = true;
+        firstRow.TurnLabel.Text = SolverText.Format($"第 {turn} 回合");
+        firstRow.ShowStatus(SolverText.Get("等待当前回合候选…"));
+        firstRow.SetOutcome(string.Empty, TextMuted);
+        for (int index = 1; index < SolverWeights.UiTurnRows; index++)
+            SetRouteRowVisible(index, false);
         if (_routeScroll != null)
             _routeScroll.ScrollVertical = 0;
         if (_summaryPanel != null)
@@ -1185,14 +1197,18 @@ internal static class SolverOverlay
             _deathOutcomeLabel.Visible = snapshot.OnlyDeathRoutesFound;
         for (int index = 0; index < SolverWeights.UiTurnRows; index++)
         {
-            SetRouteRowVisible(index, index < snapshot.Turns.Count);
             if (index >= snapshot.Turns.Count)
+            {
+                SetRouteRowVisible(index, false);
                 continue;
+            }
+            SolverRouteRow row = EnsureRouteRow(index);
+            row.Visible = true;
             SolverOverlayTurnSnapshot turn = snapshot.Turns[index];
-            RouteRows[index].TurnLabel.Text = SolverText.Format($"第 {turn.Turn} 回合");
-            RouteRows[index].Populate(turn);
+            row.TurnLabel.Text = SolverText.Format($"第 {turn.Turn} 回合");
+            row.Populate(turn);
             if (index == 0 && snapshot.PendingTurnSetup)
-                RouteRows[0].SetTurnStartChoiceDeploymentState(active: true, completed: false);
+                row.SetTurnStartChoiceDeploymentState(active: true, completed: false);
             // Damage alone reads wrong on a turn that also heals: the player wants the number the
             // turn actually leaves them at, not the hits they took on the way there.
             int netHpChange = turn.HpRecovered - turn.HpLoss;
@@ -1201,7 +1217,7 @@ internal static class SolverOverlay
                 : netHpChange != 0
                     ? $"{HpChangeText.Signed(netHpChange)} HP"
                     : "0 HP";
-            RouteRows[index].SetOutcome(
+            row.SetOutcome(
                 outcome,
                 turn.CombatEnded ? Success : netHpChange < 0 ? Danger : netHpChange > 0 ? Success : TextMuted,
                 energyText: SolverText.Format($"余 {turn.EnergyLeft} 费"),
@@ -1508,7 +1524,8 @@ internal static class SolverOverlay
             _growthStrategyButton.Disabled = !combatActive;
             _growthStrategyButton.AddThemeColorOverride("font_color", _growthStrategyVisible ? Accent : SolverUiTokens.Palette.TextSecondary);
         }
-        _growthStrategyPanel?.Refresh(SolverController.IsDeploying);
+        if (_growthStrategyVisible)
+            _growthStrategyPanel?.Refresh(SolverController.IsDeploying);
         if (_relicStrategyButton != null)
         {
             _relicStrategyButton.Disabled = !combatActive;
@@ -1524,9 +1541,12 @@ internal static class SolverOverlay
                     ? Accent
                     : SolverUiTokens.Palette.TextSecondary);
         }
-        _potionStrategyPanel?.Refresh(
-            combatActive ? combat : null,
-            SolverController.IsDeploying);
+        if (_potionStrategyVisible)
+        {
+            _potionStrategyPanel?.Refresh(
+                combatActive ? combat : null,
+                SolverController.IsDeploying);
+        }
         bool showTheftPolicy = combat != null
             && combatActive
             && TheftEncounterStrategy.IsApplicable(combat);
@@ -1616,6 +1636,13 @@ internal static class SolverOverlay
             _viewport.SizeChanged -= ApplyResponsiveLayout;
         _layer = null;
         _panel = null;
+        _primaryColumn = null;
+        _routesContainer = null;
+        _settingsPanel = null;
+        _potionStrategyPanel = null;
+        _growthStrategyPanel = null;
+        _relicStrategyPanel = null;
+        Array.Clear(RouteRows);
         _viewport = null;
         _rightResizeHandle = null;
         _bottomResizeHandle = null;
@@ -1676,7 +1703,15 @@ internal static class SolverOverlay
         _growthStrategyVisible = wasGrowthStrategyVisible;
         _relicStrategyVisible = wasRelicStrategyVisible;
         if (wasSettingsVisible)
-            _settingsPanel?.Reload();
+            EnsureSettingsPanel()?.Reload();
+        if (wasPotionStrategyVisible)
+            EnsurePotionStrategyPanel();
+        if (wasGrowthStrategyVisible)
+            EnsureGrowthStrategyPanel();
+        if (wasRelicStrategyVisible)
+            EnsureRelicStrategyPanel();
+        if (wasPotionStrategyVisible || wasGrowthStrategyVisible || wasRelicStrategyVisible)
+            RefreshControls();
         SetCollapsed(wasSettingsVisible ? false : wasCollapsed);
         if (!wasSettingsVisible && !wasCollapsed && wereDetailsVisible && _lastSnapshot != null)
             SetDetailsVisible(true);
@@ -1755,6 +1790,7 @@ internal static class SolverOverlay
         };
         primaryColumn.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
         contentColumns.AddChild(primaryColumn);
+        _primaryColumn = primaryColumn;
         primaryColumn.AddChild(CreateFeedbackBanner());
         primaryColumn.AddChild(CreateDivider());
 
@@ -1768,27 +1804,12 @@ internal static class SolverOverlay
         primaryColumn.AddChild(lowerStack);
         _mainStack = lowerStack;
 
-        _settingsPanel = new SolverSettingsPanel
-        {
-            Visible = false,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-        };
-        _settingsPanel.ResetPositionRequested += ResetOverlayPosition;
-        _settingsPanel.PotionRewardPredictionChanged += OnPotionRewardPredictionChanged;
-        primaryColumn.AddChild(_settingsPanel);
-
-        _potionStrategyPanel = new SolverPotionStrategyPanel();
-        _growthStrategyPanel = new SolverGrowthStrategyPanel();
-        _relicStrategyPanel = new SolverRelicStrategyPanel();
-        _potionStrategyPanel.CloseRequested += TogglePotionStrategy;
-        _growthStrategyPanel.CloseRequested += ToggleGrowthStrategy;
-        _relicStrategyPanel.CloseRequested += ToggleRelicStrategy;
-        _relicStrategyPanel.PolicyChanged += OnRelicPolicyChanged;
-        _growthStrategyPanel.PolicyChanged += OnGrowthPolicyChanged;
-        _growthStrategyPanel.BrightestFlameLimitChanged += OnBrightestFlameLimitChanged;
-        _growthStrategyPanel.IgnoreLongTermRewardsChanged += OnIgnoreLongTermRewardsChanged;
-        _potionStrategyPanel.DirectiveChanged += OnPotionDirectiveChanged;
-        _potionStrategyPanel.PresetRequested += OnPotionPresetRequested;
+        // Defer constructing hidden settings and strategy sidebars until first opened so
+        // Combat 1 Turn 1 never pays ~600 hidden Control/SpinBox/texture loads on the main thread.
+        _settingsPanel = null;
+        _potionStrategyPanel = null;
+        _growthStrategyPanel = null;
+        _relicStrategyPanel = null;
 
         _body = new VBoxContainer
         {
@@ -1872,12 +1893,10 @@ internal static class SolverOverlay
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         routes.AddThemeConstantOverride("separation", SolverUiTokens.Spacing.Sm);
-        for (int index = 0; index < SolverWeights.UiTurnRows; index++)
-        {
-            SolverRouteRow row = new(index);
-            RouteRows[index] = row;
-            routes.AddChild(row);
-        }
+        _routesContainer = routes;
+        Array.Clear(RouteRows);
+        // Only pre-create row 0 for the initial searching display; additional rows materialize on demand.
+        EnsureRouteRow(0);
         _routeScroll = new ScrollContainer
         {
             Name = "RouteScroll",
@@ -1911,9 +1930,6 @@ internal static class SolverOverlay
         lowerStack.AddChild(footerArea);
 
         layer.AddChild(panel);
-        layer.AddChild(_potionStrategyPanel);
-        layer.AddChild(_growthStrategyPanel);
-        layer.AddChild(_relicStrategyPanel);
         _rightResizeHandle = CreateResizeHandle("RightResizeHandle", ResizeEdge.Right);
         _bottomResizeHandle = CreateResizeHandle("BottomResizeHandle", ResizeEdge.Bottom);
         _cornerResizeHandle = CreateResizeHandle("CornerResizeHandle", ResizeEdge.BottomRight);
@@ -1945,10 +1961,88 @@ internal static class SolverOverlay
         _settingsVisible = false;
         _potionStrategyVisible = false;
         _growthStrategyVisible = false;
-        SetCollapsed(false);
         _relicStrategyVisible = false;
+        SetCollapsed(false);
         Entry.Logger.Info("[CombatSolver/Test] UI_CREATE responsive=true content_fit_height=true minimum_size_reflow=true draggable=true drag_coordinates=viewport drag_relayout=release_only resizable=right+bottom+corner resize_grip=three_diagonal_lines size_persisted=true route_scroll_expand=true max_width=viewport max_height=viewport route_row_height=44 route_viewport_height=148 visible_unwrapped_route_rows=3 cached_route_rows=16 all_searched_turns=true route_scroll=true persistent_status_card=true compact_title=true compact_footer=true collapsed_action_buttons=true footer_pause_toggles=false settings_pause_toggles=true footer_top_margin=8 details_in_status_row=true battle_hp_in_route_heading=true sold_hp_summary=false three_column_routes=true semantic_action_pills=true full_target_names=true whole_pill_kill_highlight=true text_outline_px=2 wrapped_summary=true summary_bold_metric=true flat_collapse=true plain_details_button=true full_auto_positive_toggle=true no_middle_dot=true status_badge=true plain_action_buttons=true always_show_energy=true plain_route_heading=true settings_button=true settings_persisted=true settings_tabs=general+performance+feedback performance_advanced=collapsed notification_policy=three_state performance_presets=low+medium+high+very_high+custom kill_pill=green_with_target_names status_badge=content_width deployment_speed_settings=true search_status=fixed_columns_seconds only_death_marker=true relic_action_labels=true position_persisted=true theft_policy_buttons=contextual stop_search_button=true");
         Entry.Logger.Info("[CombatSolver/Test] UI_FEEDBACK_BANNER position=full_width manual_improvement=green unexpected_replan=red export_prompt=full_bug_report");
+    }
+
+    private static SolverRouteRow EnsureRouteRow(int index)
+    {
+        if (RouteRows[index] is { } existing && GodotObject.IsInstanceValid(existing))
+            return existing;
+        // Materialize sequentially so child indices inside _routesContainer always match 0..index.
+        for (int i = 0; i <= index; i++)
+        {
+            if (RouteRows[i] is { } current && GodotObject.IsInstanceValid(current))
+                continue;
+            SolverRouteRow created = new(i);
+            RouteRows[i] = created;
+            _routesContainer?.AddChild(created);
+        }
+        return RouteRows[index]!;
+    }
+
+    private static SolverSettingsPanel? EnsureSettingsPanel()
+    {
+        if (_settingsPanel != null && GodotObject.IsInstanceValid(_settingsPanel))
+            return _settingsPanel;
+        if (_primaryColumn == null || !GodotObject.IsInstanceValid(_primaryColumn))
+            return null;
+        _settingsPanel = new SolverSettingsPanel
+        {
+            Visible = false,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        _settingsPanel.ResetPositionRequested += ResetOverlayPosition;
+        _settingsPanel.PotionRewardPredictionChanged += OnPotionRewardPredictionChanged;
+        _primaryColumn.AddChild(_settingsPanel);
+        return _settingsPanel;
+    }
+
+    private static SolverPotionStrategyPanel? EnsurePotionStrategyPanel()
+    {
+        if (_potionStrategyPanel != null && GodotObject.IsInstanceValid(_potionStrategyPanel))
+            return _potionStrategyPanel;
+        if (_layer == null || !GodotObject.IsInstanceValid(_layer))
+            return null;
+        _potionStrategyPanel = new SolverPotionStrategyPanel();
+        _potionStrategyPanel.CloseRequested += TogglePotionStrategy;
+        _potionStrategyPanel.DirectiveChanged += OnPotionDirectiveChanged;
+        _potionStrategyPanel.PresetRequested += OnPotionPresetRequested;
+        _layer.AddChild(_potionStrategyPanel);
+        _potionStrategyPanel.Modulate = Colors.White;
+        return _potionStrategyPanel;
+    }
+
+    private static SolverGrowthStrategyPanel? EnsureGrowthStrategyPanel()
+    {
+        if (_growthStrategyPanel != null && GodotObject.IsInstanceValid(_growthStrategyPanel))
+            return _growthStrategyPanel;
+        if (_layer == null || !GodotObject.IsInstanceValid(_layer))
+            return null;
+        _growthStrategyPanel = new SolverGrowthStrategyPanel();
+        _growthStrategyPanel.CloseRequested += ToggleGrowthStrategy;
+        _growthStrategyPanel.PolicyChanged += OnGrowthPolicyChanged;
+        _growthStrategyPanel.BrightestFlameLimitChanged += OnBrightestFlameLimitChanged;
+        _growthStrategyPanel.IgnoreLongTermRewardsChanged += OnIgnoreLongTermRewardsChanged;
+        _layer.AddChild(_growthStrategyPanel);
+        _growthStrategyPanel.Modulate = Colors.White;
+        return _growthStrategyPanel;
+    }
+
+    private static SolverRelicStrategyPanel? EnsureRelicStrategyPanel()
+    {
+        if (_relicStrategyPanel != null && GodotObject.IsInstanceValid(_relicStrategyPanel))
+            return _relicStrategyPanel;
+        if (_layer == null || !GodotObject.IsInstanceValid(_layer))
+            return null;
+        _relicStrategyPanel = new SolverRelicStrategyPanel();
+        _relicStrategyPanel.CloseRequested += ToggleRelicStrategy;
+        _relicStrategyPanel.PolicyChanged += OnRelicPolicyChanged;
+        _layer.AddChild(_relicStrategyPanel);
+        _relicStrategyPanel.Modulate = Colors.White;
+        return _relicStrategyPanel;
     }
 
     private static Control CreateHeader()
@@ -2503,8 +2597,8 @@ internal static class SolverOverlay
 
     private static void SetRouteRowVisible(int index, bool visible)
     {
-        if (RouteRows[index] != null)
-            RouteRows[index].Visible = visible;
+        if (RouteRows[index] is { } row && GodotObject.IsInstanceValid(row))
+            row.Visible = visible;
     }
 
     private static void ShowLayer()
@@ -2552,7 +2646,7 @@ internal static class SolverOverlay
         if (_settingsVisible)
             _growthStrategyVisible = false;
         if (_settingsVisible)
-            _settingsPanel?.Reload();
+            EnsureSettingsPanel()?.Reload();
         ApplyContentVisibility();
         SetPerformanceHintVisible(
             !_settingsVisible
@@ -2571,7 +2665,8 @@ internal static class SolverOverlay
         _settingsVisible = false;
         _potionStrategyVisible = !_potionStrategyVisible;
         _growthStrategyVisible = false;
-        _potionStrategyPanel?.Invalidate();
+        if (_potionStrategyVisible)
+            EnsurePotionStrategyPanel()?.Invalidate();
         RefreshControls();
         ApplyContentVisibility();
         SetPerformanceHintVisible(
@@ -2802,6 +2897,14 @@ internal static class SolverOverlay
             _cornerResizeHandle.Visible = !_collapsed;
         if (_footerDivider != null)
             _footerDivider.Visible = !_collapsed && !_settingsVisible;
+        if (!_collapsed && _settingsVisible)
+            EnsureSettingsPanel();
+        if (!_collapsed && !_settingsVisible && _potionStrategyVisible)
+            EnsurePotionStrategyPanel();
+        if (!_collapsed && !_settingsVisible && _growthStrategyVisible)
+            EnsureGrowthStrategyPanel();
+        if (!_collapsed && !_settingsVisible && _relicStrategyVisible)
+            EnsureRelicStrategyPanel();
         if (_settingsPanel != null)
             _settingsPanel.Visible = !_collapsed && _settingsVisible;
         if (_potionStrategyPanel != null)
@@ -3435,6 +3538,8 @@ internal static class SolverOverlay
         _settingsVisible = false;
         _potionStrategyVisible = false;
         _growthStrategyVisible = !_growthStrategyVisible;
+        if (_growthStrategyVisible)
+            EnsureGrowthStrategyPanel();
         RefreshControls();
         ApplyContentVisibility();
         QueueResponsiveLayout();
@@ -3464,6 +3569,8 @@ internal static class SolverOverlay
         _potionStrategyVisible = false;
         _growthStrategyVisible = false;
         _relicStrategyVisible = !_relicStrategyVisible;
+        if (_relicStrategyVisible)
+            EnsureRelicStrategyPanel();
         RefreshControls();
         ApplyContentVisibility();
         QueueResponsiveLayout();
@@ -3483,6 +3590,7 @@ internal static class SolverOverlay
             && bounds.Position.X >= 0 && bounds.Position.Y >= 0 && bounds.End.X <= viewport.X && bounds.End.Y <= viewport.Y;
         ToggleGrowthStrategy();
         valid &= !_relicStrategyPanel.Visible && _growthStrategyPanel!.Visible;
+        EnsurePotionStrategyPanel();
         ApplyOverlayOpacity();
         foreach (PanelContainer strategy in new PanelContainer[] { _relicStrategyPanel, _growthStrategyPanel!, _potionStrategyPanel! })
         {

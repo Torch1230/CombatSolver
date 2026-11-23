@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace CombatSolver.HotKernel;
@@ -11,8 +12,44 @@ internal static partial class HotCombatEngine
     [ThreadStatic]
     private static bool t_requestEndPlayerTurn;
 
+    [ThreadStatic]
+    private static int t_cardOrPotionEffectDepth;
+
     internal static void RequestPlayerTurnEnd()
         => t_requestEndPlayerTurn = true;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void EnterCardOrPotionEffect()
+        => t_cardOrPotionEffectDepth++;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void ExitCardOrPotionEffect()
+    {
+        if (t_cardOrPotionEffectDepth > 0)
+            t_cardOrPotionEffectDepth--;
+    }
+
+    internal static void CheckForEmptyHand(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch)
+    {
+        if (IsOverOrEnding(in s)
+            || scratch.NeedsChoice
+            || s.HandCount != 0
+            || s.PlayCount != 0
+            || t_cardOrPotionEffectDepth > 0
+            || (s.Player.Flags & HotCreatureFlags.Alive) == 0
+            || s.CurrentSide != HotCombatSide.Player
+            || !rules.HasRelic(HotRelicId.UnceasingTop))
+        {
+            return;
+        }
+
+        if ((uint)(s.PlayerPhase - (byte)PlayerTurnPhase.AutoPrePlay) <= 2u)
+            DrawCards(ref s, ref cold, rules, scratch, 1, fromHandDraw: false);
+    }
 
     /// <summary>
     /// Full manual card-play lifecycle matching <c>CombatPredictionSimulator.ManualPlay</c>,
@@ -77,9 +114,22 @@ internal static partial class HotCombatEngine
 
         t_requestEndPlayerTurn = false;
         HotRegentNecro.ClearPendingEndTurnRequest();
-        bool played = ResolveMovedCardInPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue, starValue, isAutoPlay: false, forceExhaust: false);
+        int savedCardBlockGains = scratch.CardBlockGainsInCurrentPlay;
+        bool played;
+        EnterCardOrPotionEffect();
+        try
+        {
+            played = ResolveMovedCardInPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue, starValue, isAutoPlay: false, forceExhaust: false);
+        }
+        finally
+        {
+            scratch.CardBlockGainsInCurrentPlay = savedCardBlockGains;
+            ExitCardOrPotionEffect();
+        }
         bool endTurnRequested = t_requestEndPlayerTurn | HotRegentNecro.ConsumePendingEndTurnRequest();
         t_requestEndPlayerTurn = false;
+        if (played)
+            CheckForEmptyHand(ref s, ref cold, rules, scratch);
         if (played && endTurnRequested && !scratch.NeedsChoice && !CheckWinCondition(ref s, rules) && !IsOverOrEnding(in s))
             ExecuteEndTurn(ref s, ref cold, rules, scratch);
         return played;
@@ -142,7 +192,21 @@ internal static partial class HotCombatEngine
         bool alreadyInPlay = cardIdx >= s.PlayStart && cardIdx < s.PlayStart + s.PlayCount;
         int playIdx = alreadyInPlay ? cardIdx : HotPiles.MoveCard(ref s, cardIdx, HotPileKind.Play, s.PlayCount);
         int playOffsetInPlay = playIdx - s.PlayStart;
-        return ResolveMovedCardInPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue: energyValue, starValue: starValue, isAutoPlay: true, forceExhaust: forceExhaust);
+        int savedCardBlockGains = scratch.CardBlockGainsInCurrentPlay;
+        bool played;
+        EnterCardOrPotionEffect();
+        try
+        {
+            played = ResolveMovedCardInPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue: energyValue, starValue: starValue, isAutoPlay: true, forceExhaust: forceExhaust);
+        }
+        finally
+        {
+            scratch.CardBlockGainsInCurrentPlay = savedCardBlockGains;
+            ExitCardOrPotionEffect();
+        }
+        if (played)
+            CheckForEmptyHand(ref s, ref cold, rules, scratch);
+        return played;
     }
 
     private static void MoveCardToResultPileWithoutPlaying(
@@ -219,7 +283,21 @@ internal static partial class HotCombatEngine
 
         int playIdx = HotPiles.AddCard(ref s, in copy, HotPileKind.Play, s.PlayCount);
         int playOffsetInPlay = playIdx - s.PlayStart;
-        return ResolveMovedCardInPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue: energyValue, starValue: starValue, isAutoPlay: true, forceExhaust: forceExhaust);
+        int savedCardBlockGains = scratch.CardBlockGainsInCurrentPlay;
+        bool played;
+        EnterCardOrPotionEffect();
+        try
+        {
+            played = ResolveMovedCardInPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue: energyValue, starValue: starValue, isAutoPlay: true, forceExhaust: forceExhaust);
+        }
+        finally
+        {
+            scratch.CardBlockGainsInCurrentPlay = savedCardBlockGains;
+            ExitCardOrPotionEffect();
+        }
+        if (played)
+            CheckForEmptyHand(ref s, ref cold, rules, scratch);
+        return played;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -379,6 +457,7 @@ internal static partial class HotCombatEngine
                 break;
 
             scratch.CurrentPlayIndex = playIndex;
+            scratch.CardBlockGainsInCurrentPlay = 0;
             int curPlayIdx = s.PlayStart + playOffsetInPlay;
 
             // RecordCardPlayStarted
@@ -472,8 +551,11 @@ internal static partial class HotCombatEngine
             // RecordCardPlayFinished
             s.HistoryFinishedPlays++;
             curPlayIdx = s.PlayStart + playOffsetInPlay;
-            if (cardDef.CardId == HotCustomCardId.Bounce && curPlayIdx < s.TotalCardCount)
+            if (cardDef.CardId is HotCustomCardId.Bounce or HotCustomCardId.ThrummingHatchet or HotCustomCardId.Bolas
+                && curPlayIdx < s.TotalCardCount)
+            {
                 s.Cards[curPlayIdx].CardPrivate = (short)s.PlayerTurnNumber;
+            }
             bool playedWasEthereal = curPlayIdx < s.TotalCardCount
                 && IsCardEthereal(in s, in s.Cards[curPlayIdx], rules);
             if (playedWasEthereal)
@@ -573,6 +655,14 @@ internal static partial class HotCombatEngine
             // Enchantment AfterCardPlayed (disable single-use Sown/Swift/Glam/Vigorous, scale Goopy)
             if (playOffsetInPlay < s.PlayCount && s.Cards[s.PlayStart + playOffsetInPlay].CardUid == playCardUid)
                 ExecuteEnchantmentAfterPlay(ref s, rules, s.PlayStart + playOffsetInPlay);
+
+            // CardModel.OnPlayWrapper (CardModel.cs:2140-2149): TransformIntoAfterPlay on last play in series (MourningBlow -> Sadness).
+            if (playIndex == playCount - 1 && cardDef.CardId == HotCustomCardId.MourningBlow && !IsOverOrEnding(in s))
+            {
+                HotFoolTarot.TransformMourningBlowAfterPlay(ref s, ref cold, rules, scratch, playCardUid);
+                if (scratch.NeedsChoice)
+                    return true;
+            }
         }
 
         // 4. Move from Play -> Result pile & expire WhenPlayed cost modifiers
@@ -602,7 +692,7 @@ internal static partial class HotCombatEngine
                 }
                 else if (resultPile == ResultPileDrawTop)
                 {
-                    if (!IsCombatEnding(in s))
+                    if (!IsCombatEnding(in s, rules))
                     {
                         int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Draw, 0);
                         HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
@@ -612,9 +702,22 @@ internal static partial class HotCombatEngine
                         HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
                     }
                 }
+                else if (resultPile == ResultPileHandTop)
+                {
+                    if (!IsCombatEnding(in s, rules))
+                    {
+                        int dstIdx = MoveCardToHandOrDiscardTop(ref s, finalPlayIdx);
+                        if (dstIdx >= 0)
+                            HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
+                    }
+                    else
+                    {
+                        HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
+                    }
+                }
                 else if (resultPile == (byte)HotPileKind.Hand)
                 {
-                    if (!IsCombatEnding(in s))
+                    if (!IsCombatEnding(in s, rules))
                     {
                         int dstIdx = MoveCardToHandOrDiscard(ref s, finalPlayIdx);
                         if (dstIdx >= 0)
@@ -627,7 +730,7 @@ internal static partial class HotCombatEngine
                 }
                 else
                 {
-                    if (!IsCombatEnding(in s))
+                    if (!IsCombatEnding(in s, rules))
                     {
                         int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Discard, s.DiscardCount);
                         HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
@@ -795,7 +898,7 @@ internal static partial class HotCombatEngine
         // Sly keyword: automatically plays the discarded card for free (Reflex, Tactician, Sly skills)
         if (isSly && !IsOverOrEnding(in s))
         {
-            int liveIdx = FindCardIndexByUid(in s, HotPileKind.Discard, cardUid);
+            int liveIdx = FindCardIndexByUidAnyPile(in s, cardUid);
             if (liveIdx >= 0)
                 AutoPlayCard(ref s, ref cold, rules, scratch, liveIdx);
         }
@@ -866,7 +969,7 @@ internal static partial class HotCombatEngine
 
         for (int i = 0; i < slyCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
         {
-            int liveIdx = FindCardIndexByUid(in s, HotPileKind.Discard, slyUids[i]);
+            int liveIdx = FindCardIndexByUidAnyPile(in s, slyUids[i]);
             if (liveIdx >= 0)
                 AutoPlayCard(ref s, ref cold, rules, scratch, liveIdx);
         }
@@ -1080,6 +1183,16 @@ internal static partial class HotCombatEngine
             : HotPiles.MoveCard(ref s, srcIdx, HotPileKind.Discard, s.DiscardCount);
     }
 
+    internal static int MoveCardToHandOrDiscardTop(ref CombatHotState s, int srcIdx)
+    {
+        if ((uint)srcIdx >= (uint)s.TotalCardCount)
+            return -1;
+        int maxHand = s.MaxHandSize > 0 ? s.MaxHandSize : 10;
+        return s.HandCount < maxHand
+            ? HotPiles.MoveCard(ref s, srcIdx, HotPileKind.Hand, 0)
+            : HotPiles.MoveCard(ref s, srcIdx, HotPileKind.Discard, 0);
+    }
+
     internal static void ClonePlayedCardToDiscard(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
@@ -1094,7 +1207,7 @@ internal static partial class HotCombatEngine
         ushort srcUid = clone.CardUid;
         ushort cloneUid = s.NextCardUid++;
         clone.CardUid = cloneUid;
-        clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
+        clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe);
         clone.Flags |= HotCardFlags.IsClone;
 
         if ((clone.Flags & HotCardFlags.HasCostOverflow) != 0 && cold?.CostOverflow is { Length: > 0 } overflows)

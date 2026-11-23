@@ -4,9 +4,11 @@ using System.Reflection;
 using System.Text;
 using CombatSolver.Engine.Common;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Ascension;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.FoolArrows;
 using MegaCrit.Sts2.Core.Factories;
+using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
@@ -162,6 +164,15 @@ internal static class HotImportSupport
             ?? throw PredictionUnsupportedException.ForContent(
                 $"Attack intent has no prediction damage calculation: {monster.GetType().FullName}.{moveId}/{attack.GetType().FullName}.",
                 attack.GetType(), monster.GetType());
+        // PreRegisterSpawnableMonsters compiles unattached encounter prototypes (e.g. dead TheForgotten
+        // during mid-combat CaptureLive); TheForgotten.DreadDamage reads base.Creature.GetPowerAmount<DexterityPower>(),
+        // which throws when _creature == null. Use the 0.113.1 TheForgotten.cs:28 base value (0 Dexterity).
+        if (monster._creature == null
+            && monster is TheForgotten
+            && string.Equals(moveId, "DREAD", StringComparison.Ordinal))
+        {
+            return AscensionHelper.GetValueIfAscension(AscensionLevel.DeadlyEnemies, 15, 13);
+        }
         return Math.Max(0, (int)calculate());
     }
 

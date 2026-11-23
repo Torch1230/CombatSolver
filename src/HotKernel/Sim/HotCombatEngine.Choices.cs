@@ -360,7 +360,7 @@ internal static partial class HotCombatEngine
             HotCustomCardId.SecretWeapon => def.Type == CardType.Attack,
             HotCustomCardId.SecretTechnique => def.Type == CardType.Skill,
             HotCustomCardId.HandTrick => def.Type == CardType.Skill && (card.Flags & HotCardFlags.IsSlyThisTurn) == 0,
-            HotCustomCardId.HeirloomHammer => def.Domain == HotCardDomain.Colorless,
+            HotCustomCardId.HeirloomHammer => def.IsVisualColorless,
             HotCustomCardId.SculptingStrike => (card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) == 0,
             HotCustomCardId.Snap => (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0,
             HotCustomCardId.DecisionsDecisions => def.Type == CardType.Skill && (card.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0,

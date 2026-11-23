@@ -390,8 +390,12 @@ internal static partial class HotCombatEngine
         int hits,
         bool powered)
     {
-        if (IsOverOrEnding(in s) || !IsValidEnemyTarget(in s, targetEnemySlot) || hits <= 0)
+        t_lastAttackUnblockedDamage = 0;
+        t_lastAttackTotalPlusOverkill = 0;
+        if (IsOverOrEnding(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0 || !IsValidEnemyTarget(in s, targetEnemySlot))
             return;
+        if (hits < 0)
+            hits = 0;
 
         ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
@@ -399,6 +403,8 @@ internal static partial class HotCombatEngine
 
         BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
         scratch.AttackActive = true;
+        int totalUnblocked = 0;
+        int totalPlusOverkill = 0;
         for (int h = 0; h < hits; h++)
         {
             if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
@@ -407,12 +413,17 @@ internal static partial class HotCombatEngine
             {
                 break;
             }
-            DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+            totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+            totalPlusOverkill += t_lastHitTotalPlusOverkill;
             if (IsOverOrEnding(in s))
                 break;
         }
         scratch.AttackActive = false;
+        t_lastAttackUnblockedDamage = totalUnblocked;
+        t_lastAttackTotalPlusOverkill = totalPlusOverkill;
         EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+        t_lastAttackUnblockedDamage = totalUnblocked;
+        t_lastAttackTotalPlusOverkill = totalPlusOverkill;
     }
 
     internal static void ExecuteAllEnemiesAttack(
@@ -425,8 +436,10 @@ internal static partial class HotCombatEngine
         int hits,
         bool powered)
     {
-        if (IsOverOrEnding(in s) || hits <= 0)
+        if (IsOverOrEnding(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0)
             return;
+        if (hits < 0)
+            hits = 0;
 
         ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
@@ -478,8 +491,10 @@ internal static partial class HotCombatEngine
         int hits,
         bool powered)
     {
-        if (IsOverOrEnding(in s) || hits <= 0)
+        if (IsOverOrEnding(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0)
             return;
+        if (hits < 0)
+            hits = 0;
 
         ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
@@ -515,11 +530,12 @@ internal static partial class HotCombatEngine
         if (IsOverOrEnding(in s)
             || (s.CombatFlags & HotCombatFlags.HasOsty) == 0
             || (s.Osty.Flags & HotCreatureFlags.Alive) == 0
-            || !IsValidEnemyTarget(in s, targetEnemySlot)
-            || hits <= 0)
+            || !IsValidEnemyTarget(in s, targetEnemySlot))
         {
             return;
         }
+        if (hits < 0)
+            hits = 0;
 
         ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);

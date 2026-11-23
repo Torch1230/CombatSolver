@@ -222,6 +222,8 @@ internal sealed record SolverOverlaySnapshot(
         BattleDamageSnapshot? observedBattleDamage)
     {
         int searchedTurns = result.StartTurnNumber + result.SearchedTurns - startTurnNumber;
+        if (result.CombatEndedTurn is { } endedTurn && endedTurn >= startTurnNumber)
+            searchedTurns = Math.Min(searchedTurns, endedTurn - startTurnNumber + 1);
         if (searchedTurns <= 0)
         {
             throw new InvalidOperationException(

@@ -884,6 +884,19 @@ internal sealed class HotParallelExpander : IDisposable
             ? ComputeDuplicatePotionSlotMask(in ws.ParentState, rules, rootPotionCosts, in policy, in config, parent.ExplicitPotionCount)
             : (ushort)0;
 
+        // Distinct-card-first capping: when unique PlayCard actions exceed MaxCardBranchesPerNode,
+        // allocate budget round-robin by per-card target rank so rightmost newly-drawn cards are NEVER dropped.
+        Span<byte> keepPlayCardAction = stackalloc byte[256];
+        bool filterPlayCards = false;
+        if (canPlayMoreThisTurn && config.MaxCardBranchesPerNode > 0 && actionCount > config.MaxCardBranchesPerNode)
+        {
+            filterPlayCards = BuildDistinctCardFirstMask(
+                ws.ActionBuf.AsSpan(0, actionCount),
+                duplicateHandMask,
+                config.MaxCardBranchesPerNode,
+                keepPlayCardAction);
+        }
+
         int cardBranchesEmitted = 0;
 
         for (int a = 0; a < actionCount; a++)
@@ -951,8 +964,15 @@ internal sealed class HotParallelExpander : IDisposable
                     ws.WaveDuplicateCardsPruned++;
                     continue;
                 }
-                if (config.MaxCardBranchesPerNode > 0 && cardBranchesEmitted >= config.MaxCardBranchesPerNode)
+                if (filterPlayCards)
+                {
+                    if ((uint)a >= (uint)keepPlayCardAction.Length || keepPlayCardAction[a] == 0)
+                        continue;
+                }
+                else if (config.MaxCardBranchesPerNode > 0 && cardBranchesEmitted >= config.MaxCardBranchesPerNode)
+                {
                     continue;
+                }
 
                 cardBranchesEmitted++;
                 try
@@ -1040,6 +1060,70 @@ internal sealed class HotParallelExpander : IDisposable
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Selects up to <paramref name="maxCardBranches"/> non-duplicate <see cref="HotActionKind.PlayCard"/>
+    /// indices in round-robin order by per-hand-card target rank (emitting at least 1 action per distinct
+    /// playable card before multi-enemy targeting fills the cap). Zero heap allocation, 100% deterministic.
+    /// Returns <c>false</c> when total non-duplicate PlayCard actions do not exceed the cap.
+    /// </summary>
+    private static bool BuildDistinctCardFirstMask(
+        ReadOnlySpan<HotAction> actions,
+        ulong duplicateHandMask,
+        int maxCardBranches,
+        Span<byte> keepMask)
+    {
+        int count = Math.Min(actions.Length, keepMask.Length);
+        Span<byte> nextRankForHand = stackalloc byte[64];
+        Span<byte> actionRank = stackalloc byte[256];
+        nextRankForHand.Clear();
+
+        int nonDupPlayCardCount = 0;
+        int maxRank = 0;
+
+        for (int a = 0; a < count; a++)
+        {
+            HotAction act = actions[a];
+            if (act.Kind != HotActionKind.PlayCard)
+            {
+                actionRank[a] = byte.MaxValue;
+                continue;
+            }
+
+            byte handIdx = act.SlotOrHandIdx;
+            if (handIdx < 64 && (duplicateHandMask & (1UL << handIdx)) != 0)
+            {
+                actionRank[a] = byte.MaxValue;
+                continue;
+            }
+
+            nonDupPlayCardCount++;
+            byte rank = handIdx < 64 ? nextRankForHand[handIdx]++ : (byte)0;
+            actionRank[a] = rank;
+            if (rank > maxRank)
+                maxRank = rank;
+        }
+
+        if (nonDupPlayCardCount <= maxCardBranches)
+            return false;
+
+        keepMask[..count].Clear();
+        int remaining = maxCardBranches;
+
+        for (int targetRank = 0; targetRank <= maxRank && remaining > 0; targetRank++)
+        {
+            for (int a = 0; a < count && remaining > 0; a++)
+            {
+                if (actionRank[a] == targetRank)
+                {
+                    keepMask[a] = 1;
+                    remaining--;
+                }
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

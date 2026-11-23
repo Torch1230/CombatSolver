@@ -104,6 +104,7 @@ public static class Entry
                 host.TreeExiting += Logger.Journal.Dispose;
             }
             UnattendedTestRunner.TryStart(host);
+            SolverWarmup.StartBackgroundWarmup();
         }
     }
 

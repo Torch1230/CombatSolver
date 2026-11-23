@@ -177,9 +177,9 @@ internal static class HotPlanMaterializer
                     || state.Player.CurrentHp <= 0;
 
                 if (setupVictory && combatEndedTurn == null)
-                    combatEndedTurn = state.TerminalTurn > 0 ? state.TerminalTurn : actionTurn;
+                    combatEndedTurn = actionTurn;
                 if (setupDefeat && deathTurn == null)
-                    deathTurn = state.TerminalTurn > 0 ? state.TerminalTurn : actionTurn;
+                    deathTurn = actionTurn;
 
                 // Capture Play-phase ContinuationStamp immediately after TurnSetup completes
                 // (exact boundary checked by PlayerTurnSetupPatches.cs:829 and SolverController.ActivateTurnSetupResult).
@@ -286,9 +286,9 @@ internal static class HotPlanMaterializer
                 || state.Player.CurrentHp <= 0;
 
             if (isVictory && combatEndedTurn == null)
-                combatEndedTurn = state.TerminalTurn > 0 ? state.TerminalTurn : actionTurn;
+                combatEndedTurn = actionTurn;
             if (isDefeat && deathTurn == null)
-                deathTurn = state.TerminalTurn > 0 ? state.TerminalTurn : actionTurn;
+                deathTurn = actionTurn;
 
             bool isFinalStep = stepIdx == nodePath.Length - 1;
             if (endedByTurn || isVictory || isDefeat || isFinalStep)
@@ -311,7 +311,7 @@ internal static class HotPlanMaterializer
                 maxBlockByTurn[actionTurn] = Math.Max(turnPeakBlock, actualBlock);
                 energyLeftByTurn[actionTurn] = energyLeft;
 
-                if (endedByTurn && !isVictory && !isDefeat)
+                if (endedByTurn && !isVictory && !isDefeat && !isFinalStep)
                 {
                     currentTurn = state.PlayerTurnNumber;
                     turnStartHpLost = curHpLost;
@@ -404,15 +404,16 @@ internal static class HotPlanMaterializer
         int explicitPotionCount = potionUses.Count(static u => !u.Automatic);
         int searchedTurns = Math.Max(
             1,
-            metrics.SearchedTurns > 0
-                ? metrics.SearchedTurns
-                : planActions.Count == 0
-                    ? 1
-                    : planActions.Max(static a => a.Turn) - root.StartTurnNumber + 1);
+            planActions.Count == 0
+                ? 1
+                : planActions.Max(static a => a.Turn) - root.StartTurnNumber + 1);
 
         SolverResult result = new()
         {
-            ComparisonQuality = HotRouteQuality.ToInterimResult(in winningKey, in hotPolicy),
+            ComparisonQuality = HotRouteQuality.ToInterimResult(in winningKey, in hotPolicy) with
+            {
+                CombatEndedTurn = combatEndedTurn,
+            },
             ComparisonRootState = root.ContinuationStamp.StateText,
             TotalSearchElapsed = metrics.TotalSearchElapsed,
             TotalWorkerAllocatedBytes = metrics.TotalWorkerAllocatedBytes,

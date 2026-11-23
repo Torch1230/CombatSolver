@@ -16,6 +16,11 @@ internal readonly record struct SearchablePotionSlotSnapshot(
     string PotionId,
     int StrategicHpCost);
 
+internal readonly record struct CapturedHotRoot(
+    HotRootBundle HotRoot,
+    ContinuationStamp ContinuationStamp,
+    double ElapsedMilliseconds);
+
 internal sealed class CombatRootSnapshot
 {
     public HotRootBundle HotRoot { get; }
@@ -103,10 +108,7 @@ internal sealed class CombatRootSnapshot
         PotionRewardOutlook = potionRewardOutlook;
     }
 
-    public static CombatRootSnapshot Capture(
-        CombatState state,
-        bool predictPotionReward = false,
-        PotionHpThresholds? potionThresholds = null)
+    public static CapturedHotRoot CaptureHotRoot(CombatState state)
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("Combat root snapshot must be captured on the main thread.");
@@ -118,6 +120,38 @@ internal sealed class CombatRootSnapshot
             in rootState,
             hotRoot.RootCold,
             hotRoot.Rules);
+        stopwatch.Stop();
+        return new CapturedHotRoot(hotRoot, continuationStamp, stopwatch.Elapsed.TotalMilliseconds);
+    }
+
+    public static CombatRootSnapshot Capture(
+        CombatState state,
+        bool predictPotionReward = false,
+        PotionHpThresholds? potionThresholds = null,
+        CapturedHotRoot? prebuiltRoot = null)
+    {
+        if (!NGame.IsMainThread())
+            throw new InvalidOperationException("Combat root snapshot must be captured on the main thread.");
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        double priorElapsedMilliseconds = 0d;
+        HotRootBundle hotRoot;
+        ContinuationStamp continuationStamp;
+        if (prebuiltRoot is { } reusedRoot)
+        {
+            hotRoot = reusedRoot.HotRoot;
+            continuationStamp = reusedRoot.ContinuationStamp;
+            priorElapsedMilliseconds = reusedRoot.ElapsedMilliseconds;
+        }
+        else
+        {
+            hotRoot = HotRootBuilder.BuildFromLive(state);
+            CombatHotState rootState = hotRoot.RootState;
+            continuationStamp = ContinuationStamp.CaptureFromHot(
+                in rootState,
+                hotRoot.RootCold,
+                hotRoot.Rules);
+        }
         LiveCombatStamp liveStamp = LiveCombatStamp.FromContinuation(continuationStamp);
 
         Player player = LocalContext.GetMe(state)
@@ -198,7 +232,7 @@ internal sealed class CombatRootSnapshot
             playerState.Phase,
             state.Encounter?.RoomType,
             ActEndingBossPolicy.ResolveHpRelief(state),
-            stopwatch.Elapsed.TotalMilliseconds,
+            priorElapsedMilliseconds + stopwatch.Elapsed.TotalMilliseconds,
             hotRoot.RootState.TotalCardCount,
             hotRoot.RootState.PowerCount,
             playerCardIds,

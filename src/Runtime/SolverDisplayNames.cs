@@ -5,7 +5,9 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Runs;
 using Godot;
 using System.Reflection;
 
@@ -14,14 +16,21 @@ namespace CombatSolver;
 internal sealed class SolverDisplayNames
 {
     private static string? _canonicalCardLanguage;
-    private static Dictionary<(string Id, int Upgrade), string>? _canonicalCardNames;
+    private static IReadOnlyDictionary<(string Id, int Upgrade), string>? _canonicalCardNames;
+    private static string? _canonicalMonsterLanguage;
+    private static IReadOnlyDictionary<string, string>? _canonicalMonsterNames;
+    private static string? _pendingWarmupLanguage;
+    private static CardModel[]? _pendingWarmupCards;
+    private static int _pendingWarmupIndex;
+    private static Dictionary<(string Id, int Upgrade), string>? _pendingWarmupCardNames;
 
-    private readonly Dictionary<(string Id, int Upgrade), string> _cards;
+    private readonly IReadOnlyDictionary<(string Id, int Upgrade), string> _canonicalCards;
+    private readonly Dictionary<(string Id, int Upgrade), string> _combatCards;
     private readonly DingyDaggerDisplayNames _daggerNames;
     private readonly Dictionary<string, string> _potions;
     private readonly Dictionary<string, string> _relics;
     private readonly bool _english;
-    private readonly Dictionary<string, string> _monsters;
+    private readonly IReadOnlyDictionary<string, string> _monsters;
     private readonly Dictionary<uint, string> _creatures;
     private readonly Dictionary<string, int> _slotOrder;
     private readonly bool _positioned;
@@ -29,17 +38,19 @@ internal sealed class SolverDisplayNames
         "EncounterSlots", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!;
 
     private SolverDisplayNames(
-        Dictionary<(string Id, int Upgrade), string> cards,
+        IReadOnlyDictionary<(string Id, int Upgrade), string> canonicalCards,
+        Dictionary<(string Id, int Upgrade), string> combatCards,
         DingyDaggerDisplayNames daggerNames,
         Dictionary<string, string> potions,
         Dictionary<string, string> relics,
-        Dictionary<string, string> monsters,
+        IReadOnlyDictionary<string, string> monsters,
         Dictionary<uint, string> creatures,
         Dictionary<string, int> slotOrder,
         bool positioned,
         bool english)
     {
-        _cards = cards;
+        _canonicalCards = canonicalCards;
+        _combatCards = combatCards;
         _daggerNames = daggerNames;
         _potions = potions;
         _relics = relics;
@@ -48,6 +59,59 @@ internal sealed class SolverDisplayNames
         _creatures = creatures;
         _slotOrder = slotOrder;
         _positioned = positioned;
+    }
+
+    /// <summary>
+    /// Incrementally warms canonical monster and card display names on idle main-thread frames
+    /// (e.g. main menu / map) so the first combat never stalls formatting all ~600 cards at once.
+    /// Runs strictly on the main thread because <c>LocManager.SmartFormat</c> is not thread-safe.
+    /// </summary>
+    internal static void WarmUpNextBatch(int maxCards = 32)
+    {
+        NGame? game = NGame.Instance;
+        if (game == null || (game.MainMenu == null && !RunManager.Instance.IsInProgress))
+            return;
+        string? language = LocManager.Instance?.Language;
+        if (string.IsNullOrEmpty(language))
+            return;
+
+        if (_canonicalMonsterNames == null
+            || !string.Equals(_canonicalMonsterLanguage, language, StringComparison.Ordinal))
+        {
+            _ = CanonicalMonsterNames(language);
+            return;
+        }
+
+        if (_canonicalCardNames != null
+            && string.Equals(_canonicalCardLanguage, language, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (_pendingWarmupCards == null
+            || _pendingWarmupCardNames == null
+            || !string.Equals(_pendingWarmupLanguage, language, StringComparison.Ordinal))
+        {
+            _pendingWarmupLanguage = language;
+            _pendingWarmupCards = ModelDb.AllCards.ToArray();
+            _pendingWarmupIndex = 0;
+            _pendingWarmupCardNames = new Dictionary<(string Id, int Upgrade), string>(_pendingWarmupCards.Length * 2);
+        }
+
+        int end = Math.Min(_pendingWarmupIndex + maxCards, _pendingWarmupCards.Length);
+        for (int i = _pendingWarmupIndex; i < end; i++)
+            CaptureCardTitles(_pendingWarmupCardNames, _pendingWarmupCards[i], overwrite: false);
+        _pendingWarmupIndex = end;
+
+        if (_pendingWarmupIndex >= _pendingWarmupCards.Length)
+        {
+            _canonicalCardNames = _pendingWarmupCardNames;
+            _canonicalCardLanguage = language;
+            _pendingWarmupCards = null;
+            _pendingWarmupCardNames = null;
+            _pendingWarmupLanguage = null;
+            _pendingWarmupIndex = 0;
+        }
     }
 
     public static SolverDisplayNames Capture(CombatState state)
@@ -61,13 +125,13 @@ internal sealed class SolverDisplayNames
             .Concat(combat.DiscardPile.Cards)
             .Concat(combat.ExhaustPile.Cards)
             .Concat(combat.PlayPile.Cards);
-        Dictionary<(string Id, int Upgrade), string> cardNames = CanonicalCardNames();
+        string language = LocManager.Instance.Language;
+        IReadOnlyDictionary<(string Id, int Upgrade), string> canonicalCards = CanonicalCardNames(language);
+        Dictionary<(string Id, int Upgrade), string> combatCards = [];
         foreach (CardModel card in cards)
-            CaptureCardTitles(cardNames, card, overwrite: true);
+            CaptureCardTitles(combatCards, card, overwrite: true);
 
-        Dictionary<string, string> monsterNames = new(StringComparer.Ordinal);
-        foreach (MonsterModel monster in ModelDb.Monsters)
-            monsterNames.TryAdd(monster.Id.Entry, monster.Title.GetFormattedText());
+        IReadOnlyDictionary<string, string> monsterNames = CanonicalMonsterNames(language);
         Dictionary<uint, string> creatureNames = [];
         NCombatRoom? room = NCombatRoom.Instance;
         Control? slots = room == null ? null : (Control?)EncounterSlotsProperty.GetValue(room);
@@ -117,31 +181,66 @@ internal sealed class SolverDisplayNames
         Dictionary<string, string> relicNames = new(StringComparer.Ordinal);
         foreach (RelicModel relic in player.Relics)
             relicNames.TryAdd(relic.Id.Entry, relic.Title.GetFormattedText());
-        return new SolverDisplayNames(cardNames, DingyDaggerDisplayNames.Capture(), potionNames, relicNames, monsterNames, creatureNames,
+        return new SolverDisplayNames(canonicalCards, combatCards, DingyDaggerDisplayNames.Capture(), potionNames, relicNames, monsterNames, creatureNames,
             slotOrder, room != null,
-            LocManager.Instance.Language is not ("zhs" or "zht"));
+            language is not ("zhs" or "zht"));
     }
 
     public string Card(CardModel card)
         => Card(card.Id.Entry, card.CurrentUpgradeLevel);
 
     public string Card(string cardId, int upgradeLevel = 0)
-        => cardId == "DINGY_DAGGER" ? _daggerNames.Format(upgradeLevel)
-            : _cards.GetValueOrDefault((cardId, upgradeLevel), cardId);
-
-    private static Dictionary<(string Id, int Upgrade), string> CanonicalCardNames()
     {
-        string language = LocManager.Instance.Language;
+        if (cardId == "DINGY_DAGGER")
+            return _daggerNames.Format(upgradeLevel);
+        (string Id, int Upgrade) key = (cardId, upgradeLevel);
+        if (_combatCards.TryGetValue(key, out string? combatTitle))
+            return combatTitle;
+        return _canonicalCards.GetValueOrDefault(key, cardId);
+    }
+
+    private static IReadOnlyDictionary<string, string> CanonicalMonsterNames(string language)
+    {
+        if (_canonicalMonsterNames == null
+            || !string.Equals(_canonicalMonsterLanguage, language, StringComparison.Ordinal))
+        {
+            Dictionary<string, string> monsterNames = new(StringComparer.Ordinal);
+            foreach (MonsterModel monster in ModelDb.Monsters)
+                monsterNames.TryAdd(monster.Id.Entry, monster.Title.GetFormattedText());
+            _canonicalMonsterNames = monsterNames;
+            _canonicalMonsterLanguage = language;
+        }
+        return _canonicalMonsterNames;
+    }
+
+    private static IReadOnlyDictionary<(string Id, int Upgrade), string> CanonicalCardNames(string language)
+    {
         if (_canonicalCardNames == null || !string.Equals(_canonicalCardLanguage, language, StringComparison.Ordinal))
         {
-            Dictionary<(string Id, int Upgrade), string> names = [];
-            foreach (CardModel canonical in ModelDb.AllCards)
-                CaptureCardTitles(names, canonical, overwrite: false);
+            Dictionary<(string Id, int Upgrade), string> names;
+            if (_pendingWarmupCards != null
+                && _pendingWarmupCardNames != null
+                && string.Equals(_pendingWarmupLanguage, language, StringComparison.Ordinal))
+            {
+                names = _pendingWarmupCardNames;
+                for (int i = _pendingWarmupIndex; i < _pendingWarmupCards.Length; i++)
+                    CaptureCardTitles(names, _pendingWarmupCards[i], overwrite: false);
+                _pendingWarmupCards = null;
+                _pendingWarmupCardNames = null;
+                _pendingWarmupLanguage = null;
+                _pendingWarmupIndex = 0;
+            }
+            else
+            {
+                names = [];
+                foreach (CardModel canonical in ModelDb.AllCards)
+                    CaptureCardTitles(names, canonical, overwrite: false);
+            }
             _canonicalCardNames = names;
             _canonicalCardLanguage = language;
         }
 
-        return new Dictionary<(string Id, int Upgrade), string>(_canonicalCardNames);
+        return _canonicalCardNames;
     }
 
     private static void CaptureCardTitles(

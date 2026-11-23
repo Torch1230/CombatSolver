@@ -333,6 +333,7 @@ internal readonly record struct HotRouteKey(
     public int EndPlayerMaxHp { get; init; }
     public byte AlchemizeCount { get; init; }
     public byte EmptyPotionSlots { get; init; }
+    public byte RouteTurn { get; init; }
 }
 
 /// <summary>
@@ -492,6 +493,7 @@ internal static class HotRouteQuality
             EndPlayerMaxHp = endPlayerMaxHp,
             AlchemizeCount = node.AlchemizeCount,
             EmptyPotionSlots = node.EmptyPotionSlots,
+            RouteTurn = node.Turn,
         };
     }
 
@@ -523,7 +525,10 @@ internal static class HotRouteQuality
                     ? (long)Math.Clamp(q.Score, -1_000_000_000_000_000d, 1_000_000_000_000_000d)
                     : 0L,
                 PotionMask: 0,
-                AmbergrisCount: 0);
+                AmbergrisCount: 0)
+            {
+                RouteTurn = (byte)Math.Clamp(result.DeathTurn ?? result.CombatEndedTurn ?? result.Snapshot.Turn, 0, byte.MaxValue),
+            };
         }
 
         SolverSnapshot snap = result.Snapshot;
@@ -574,6 +579,7 @@ internal static class HotRouteQuality
             NetPersistentHpDeltaCenti = netHpDeltaCenti,
             NetPotionOpportunityCostCenti = potionCostCenti,
             EndPlayerMaxHp = snap.PlayerMaxHp,
+            RouteTurn = (byte)Math.Clamp(result.DeathTurn ?? result.CombatEndedTurn ?? snap.Turn, 0, byte.MaxValue),
         };
     }
 
@@ -657,10 +663,19 @@ internal static class HotRouteQuality
         if (cmp != 0)
             return cmp;
 
-        // 7. Faster victory turn
-        cmp = a.CombatEndedTurn.CompareTo(b.CombatEndedTurn);
-        if (cmp != 0)
-            return cmp;
+        // 7. Faster victory turn; for defeat-only routes, prefer surviving MORE turns before death.
+        if (!a.Won && !a.Survives && !b.Won && !b.Survives)
+        {
+            cmp = b.RouteTurn.CompareTo(a.RouteTurn);
+            if (cmp != 0)
+                return cmp;
+        }
+        else
+        {
+            cmp = a.CombatEndedTurn.CompareTo(b.CombatEndedTurn);
+            if (cmp != 0)
+                return cmp;
+        }
 
         // 8. Lower raw projected battle HP loss on equal persistent HP
         cmp = a.ProjectedBattleHpLost.CompareTo(b.ProjectedBattleHpLost);

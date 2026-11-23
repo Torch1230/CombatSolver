@@ -130,11 +130,20 @@ internal sealed partial class SolverRelicStrategyPanel : PanelContainer
         }
         Button others = new() { Text = SolverText.Get("查看其他计数遗物"), ToggleMode = true };
         VBoxContainer inventory = new() { Visible = false, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        foreach (RelicModel relic in ModelDb.AllRelics.Where(relic => RelicCounterCatalog.Identify(relic) == null
-            && relic.GetType().GetProperty(nameof(RelicModel.DisplayAmount))!.DeclaringType != typeof(RelicModel)))
-            AddUnavailable(inventory, relic, RelicCounterCatalog.UnavailableReason(relic));
-        AddUnavailable(inventory, ModelDb.Relic<Lantern>(), "首回合触发，没有跨战斗计数。");
-        others.Toggled += visible => inventory.Visible = visible;
+        bool inventoryPopulated = false;
+        others.Toggled += visible =>
+        {
+            if (visible && !inventoryPopulated)
+            {
+                inventoryPopulated = true;
+                foreach (RelicModel relic in ModelDb.AllRelics.Where(relic => RelicCounterCatalog.Identify(relic) == null
+                    && relic.GetType().GetProperty(nameof(RelicModel.DisplayAmount))!.DeclaringType != typeof(RelicModel)))
+                    AddUnavailable(inventory, relic, RelicCounterCatalog.UnavailableReason(relic));
+                AddUnavailable(inventory, ModelDb.Relic<Lantern>(), "首回合触发，没有跨战斗计数。");
+                SolverUiTokens.StyleStrategyText(inventory);
+            }
+            inventory.Visible = visible;
+        };
         rows.AddChild(others);
         rows.AddChild(inventory);
         scroll.AddChild(rows);

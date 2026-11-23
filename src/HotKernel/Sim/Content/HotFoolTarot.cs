@@ -189,17 +189,13 @@ internal static class HotFoolTarot
                         return PauseForChoice(in s, out result);
                     if (arrowIdx >= 0 && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                     {
-                        byte targetSlot = (byte)(3 + targetEnemySlot);
                         int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                         int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                        int hpBefore = s.Enemies[targetEnemySlot].Vital.CurrentHp;
-                        int blkBefore = s.Enemies[targetEnemySlot].Vital.Block;
                         ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, dmg, 1, playIdx);
                         if (scratch.NeedsChoice)
                             return PauseForChoice(in s, out result);
 
-                        int dealt = Math.Max(0, (hpBefore - s.Enemies[targetEnemySlot].Vital.CurrentHp)
-                            + (blkBefore - s.Enemies[targetEnemySlot].Vital.Block));
+                        int dealt = HotCombatEngine.t_lastAttackTotalPlusOverkill;
                         if (dealt > 0)
                             HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StretchPower, dealt, isCardSource: true);
                         if (!scratch.NeedsChoice)
@@ -220,14 +216,11 @@ internal static class HotFoolTarot
                     {
                         int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                         int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                        int hpBefore = s.Enemies[targetEnemySlot].Vital.CurrentHp;
-                        int blkBefore = s.Enemies[targetEnemySlot].Vital.Block;
                         ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, dmg, 1, playIdx);
                         if (scratch.NeedsChoice)
                             return PauseForChoice(in s, out result);
 
-                        int spreadDmg = Math.Max(0, (hpBefore - s.Enemies[targetEnemySlot].Vital.CurrentHp)
-                            + (blkBefore - s.Enemies[targetEnemySlot].Vital.Block));
+                        int spreadDmg = HotCombatEngine.t_lastAttackTotalPlusOverkill;
 
                         // Spread damage (unpowered/capped copy) to all other living enemies.
                         if (spreadDmg > 0)
@@ -733,44 +726,8 @@ internal static class HotFoolTarot
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
-                // Transform self into Sadness after play (0.113.1 MourningBlow.OnPlay -> CardCmd.Transform).
-                // Preserve CardUid so CardPlay.cs resolves the Play->Hand move after OnPlay,
-                // while clearing HasDeckVersion/enchantment/affliction/cost/keyword deltas.
-                if (!HotCombatEngine.IsOverOrEnding(in s))
-                {
-                    ushort sadnessDefId = rules.GetCardDefId(HotCustomCardId.Sadness);
-                    int livePlayIdx = sadnessDefId != 0
-                        ? HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid)
-                        : -1;
-                    if (livePlayIdx >= 0)
-                    {
-                        HotCardDef sadDef = rules.Cards[sadnessDefId];
-                        s.Cards[livePlayIdx] = new HotCard
-                        {
-                            CardDefId = sadnessDefId,
-                            CardUid = card.CardUid,
-                            UpgradeLevel = 0,
-                            BaseEnergyCost = sadDef.BaseCost,
-                            BaseStarCost = sadDef.BaseStarCost,
-                            LocalKeywordsMask = (HotCardKeywordMask)sadDef.BaseKeywords,
-                            Flags = HotCombatEngine.GetInitialCardFlags(sadDef),
-                        };
-                        s.HistoryCardsGenerated++;
-                        s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore]++;
-                        if (sadDef.HookMask != HotHookMask.None)
-                            s.ActiveHookMask |= (ulong)sadDef.HookMask;
-                        if ((s.ActiveHookMask & (ulong)HotHookMask.AfterCardEnteredCombat) != 0)
-                        {
-                            HotHookArgs enterArgs = new()
-                            {
-                                ActorSlot = 0,
-                                CardIdx = livePlayIdx,
-                                CardDefId = sadnessDefId,
-                            };
-                            HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardEnteredCombat, ref enterArgs);
-                        }
-                    }
-                }
+                // Transform into Sadness executes in CardPlay.cs AFTER Enchantment.OnPlay (e.g. Corrupted)
+                // and AfterCardPlayed via TransformMourningBlowAfterPlay (0.113.1 CardModel.cs:2140-2149).
                 return Complete(in s, scratch, out result);
             }
 
@@ -818,20 +775,24 @@ internal static class HotFoolTarot
                 ushort joyId = rules.GetCardDefId(HotCustomCardId.Joy);
                 if (sadnessId != 0 && joyId != 0)
                 {
-                    Span<int> sadIndices = stackalloc int[HotLimits.MaxCards];
+                    Span<ushort> sadUids = stackalloc ushort[HotLimits.MaxCards];
                     int sadCount = 0;
                     for (int i = 0; i < s.HandCount; i++)
                     {
                         if (s.Cards[i].CardDefId == sadnessId)
-                            sadIndices[sadCount++] = i;
+                            sadUids[sadCount++] = s.Cards[i].CardUid;
                     }
                     if (sadCount > 0)
                     {
-                        HotRng.UnstableShuffle(sadIndices[..sadCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
-                        int chosenIdx = sadIndices[0];
-                        int offset = chosenIdx;
-                        HotPiles.RemoveCard(ref s, chosenIdx);
-                        HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, joyId, HotPileKind.Hand, offset, upgraded: false, createdByPlayer: true);
+                        if (sadCount > 1)
+                            HotCombatEngine.StableSortUidsForShuffle(in s, rules, cold, sadUids[..sadCount]);
+                        HotRng.UnstableShuffle(sadUids[..sadCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+                        int chosenIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sadUids[0]);
+                        if (chosenIdx >= 0)
+                        {
+                            HotPiles.RemoveCard(ref s, chosenIdx);
+                            HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, joyId, HotPileKind.Hand, chosenIdx, upgraded: false, createdByPlayer: true);
+                        }
                     }
                 }
                 return Complete(in s, scratch, out result);
@@ -983,8 +944,6 @@ internal static class HotFoolTarot
                 if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    if (IsEnemyImpaledAny(in s, rules, targetEnemySlot))
-                        dmg *= 2;
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg);
                 }
                 return Complete(in s, scratch, out result);
@@ -1143,12 +1102,11 @@ internal static class HotFoolTarot
             case HotCustomCardId.TheFool:
             {
                 int count = HotRegentNecro.GetVarInt(in card, def, "Cards", Math.Max(1, def.GetMagic(card.UpgradeLevel)));
-                for (int i = 0; i < count && s.HandCount > 0 && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); i++)
+                for (int i = 0; i < count && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); i++)
                 {
-                    int chosenIdx = PickRandomHandCardForAutoPlay(ref s, rules);
-                    if (chosenIdx < 0)
-                        break;
-                    HotCombatEngine.AutoPlayCard(ref s, ref cold, rules, scratch, chosenIdx);
+                    int chosenIdx = PickRandomHandCardForAutoPlay(ref s, rules, cold);
+                    if (chosenIdx >= 0)
+                        HotCombatEngine.AutoPlayCard(ref s, ref cold, rules, scratch, chosenIdx);
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -1286,21 +1244,20 @@ internal static class HotFoolTarot
             case HotCustomCardId.TheWorld:
             {
                 int maxHand = s.MaxHandSize > 0 ? s.MaxHandSize : 10;
-                int count = Math.Max(0, Math.Min(HotRegentNecro.GetVarInt(in card, def, "Cards", 3), maxHand - s.HandCount));
-                int moveCount = Math.Min(count, (int)s.DiscardCount);
-                if (moveCount > 0)
+                int count = Math.Max(0, Math.Min(HotRegentNecro.GetVarInt(in card, def, "Cards", 5), maxHand - s.HandCount));
+                Span<ushort> discardUids = stackalloc ushort[HotLimits.MaxCards];
+                int dCount = s.DiscardCount;
+                for (int i = 0; i < dCount; i++)
+                    discardUids[i] = s.Cards[s.DiscardStart + i].CardUid;
+                // 0.113.1 TheWorld.cs:28 -> TakeRandom -> UnstableShuffle unconditionally consumes
+                // 1 NextULong on CombatCardSelection even when dCount == 0 or count == 0.
+                HotRng.UnstableShuffle(discardUids[..dCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+                int moveCount = Math.Min(count, dCount);
+                for (int i = 0; i < moveCount; i++)
                 {
-                    Span<ushort> discardUids = stackalloc ushort[HotLimits.MaxCards];
-                    int dCount = s.DiscardCount;
-                    for (int i = 0; i < dCount; i++)
-                        discardUids[i] = s.Cards[s.DiscardStart + i].CardUid;
-                    HotRng.UnstableShuffle(discardUids[..dCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
-                    for (int i = 0; i < moveCount; i++)
-                    {
-                        int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Discard, discardUids[i]);
-                        if (idx >= 0)
-                            MoveCardToHandOrDiscard(ref s, idx);
-                    }
+                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Discard, discardUids[i]);
+                    if (idx >= 0)
+                        MoveCardToHandOrDiscard(ref s, idx);
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -1701,6 +1658,8 @@ internal static class HotFoolTarot
                         }
                         if (sadCount > 0)
                         {
+                            if (sadCount > 1)
+                                HotCombatEngine.StableSortUidsForShuffle(in s, rules, cold, sadUids[..sadCount]);
                             HotRng.UnstableShuffle(sadUids[..sadCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
                             int toTransform = Math.Min(amount, sadCount);
                             for (int i = 0; i < toTransform && !scratch.NeedsChoice; i++)
@@ -2331,7 +2290,10 @@ internal static class HotFoolTarot
         int cardIdx = -1)
     {
         if (hits <= 0 || !HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+        {
+            HotCombatEngine.t_lastAttackTotalPlusOverkill = 0;
             return;
+        }
 
         bool prevActive = t_isArrowAttackActive;
         int prevCardDef = t_activeArrowCardDefId;
@@ -2694,7 +2656,7 @@ internal static class HotFoolTarot
         return impaledDefId != 0 && FindImpaledPowerByPlayer(in s, (byte)(3 + enemySlot), impaledDefId) >= 0;
     }
 
-    private static bool IsEnemyImpaledAny(in CombatHotState s, HotRules rules, int enemySlot)
+    internal static bool IsEnemyImpaledAny(in CombatHotState s, HotRules rules, int enemySlot)
     {
         ushort impaledDefId = rules.GetPowerDefId(HotPowerId.ImpaledPower);
         return impaledDefId != 0 && HotCombatEngine.GetPowerAmount(in s, (byte)(3 + enemySlot), impaledDefId) > 0;
@@ -2797,29 +2759,83 @@ internal static class HotFoolTarot
         return count;
     }
 
-    private static int PickRandomHandCardForAutoPlay(ref CombatHotState s, HotRules rules)
+    private static int PickRandomHandCardForAutoPlay(ref CombatHotState s, HotRules rules, HotColdSidecar? cold)
     {
-        if (s.HandCount == 0)
-            return -1;
-
-        Span<int> playable = stackalloc int[HotLimits.MaxCards];
+        Span<ushort> uids = stackalloc ushort[HotLimits.MaxCards];
         int playableCount = 0;
         for (int i = 0; i < s.HandCount; i++)
         {
             if ((s.Cards[i].LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0)
-                playable[playableCount++] = i;
-        }
-        if (playableCount > 0)
-        {
-            HotRng.UnstableShuffle(playable[..playableCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
-            return playable[0];
+                uids[playableCount++] = s.Cards[i].CardUid;
         }
 
-        Span<int> all = stackalloc int[HotLimits.MaxCards];
+        // STS2 0.113.1 TheFool.cs:27-32: StableShuffle sorts by CardModel.CompareTo then UnstableShuffle
+        // (which unconditionally consumes 1 NextULong on CombatCardSelection even when empty).
+        if (playableCount > 1)
+            HotCombatEngine.StableSortUidsForShuffle(in s, rules, cold, uids[..playableCount]);
+        HotRng.UnstableShuffle(uids[..playableCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+        if (playableCount > 0)
+            return HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, uids[0]);
+
         int allCount = s.HandCount;
         for (int i = 0; i < allCount; i++)
-            all[i] = i;
-        HotRng.UnstableShuffle(all[..allCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
-        return all[0];
+            uids[i] = s.Cards[i].CardUid;
+        if (allCount > 1)
+            HotCombatEngine.StableSortUidsForShuffle(in s, rules, cold, uids[..allCount]);
+        HotRng.UnstableShuffle(uids[..allCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+        return allCount > 0
+            ? HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, uids[0])
+            : -1;
+    }
+
+    /// <summary>
+    /// Executes STS2 0.113.1 <c>CardModel.TransformIntoAfterPlay</c> for <c>MourningBlow</c>
+    /// (<c>CardModel.cs:2140-2149</c>, <c>MourningBlow.cs:30-33</c>): transforms the played card
+    /// in the Play pile into <c>Sadness</c> AFTER <c>Enchantment.OnPlay</c> (e.g. <c>Corrupted</c>)
+    /// and <c>AfterCardPlayed</c>. Preserves <paramref name="cardUid"/> so <c>CardPlay.cs</c>
+    /// resolves the Play-&gt;Hand result pile move cleanly.
+    /// </summary>
+    internal static void TransformMourningBlowAfterPlay(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ushort cardUid)
+    {
+        if (HotCombatEngine.IsOverOrEnding(in s))
+            return;
+
+        ushort sadnessDefId = rules.GetCardDefId(HotCustomCardId.Sadness);
+        int livePlayIdx = sadnessDefId != 0
+            ? HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid)
+            : -1;
+        if (livePlayIdx < 0)
+            return;
+
+        HotCardDef sadDef = rules.Cards[sadnessDefId];
+        s.Cards[livePlayIdx] = new HotCard
+        {
+            CardDefId = sadnessDefId,
+            CardUid = cardUid,
+            UpgradeLevel = 0,
+            BaseEnergyCost = sadDef.BaseCost,
+            BaseStarCost = sadDef.BaseStarCost,
+            LocalKeywordsMask = (HotCardKeywordMask)sadDef.BaseKeywords,
+            Flags = HotCombatEngine.GetInitialCardFlags(sadDef),
+        };
+        s.HistoryCardsGenerated++;
+        s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore]++;
+        if (sadDef.HookMask != HotHookMask.None)
+            s.ActiveHookMask |= (ulong)sadDef.HookMask;
+        if ((s.ActiveHookMask & (ulong)HotHookMask.AfterCardEnteredCombat) != 0)
+        {
+            HotHookArgs enterArgs = new()
+            {
+                ActorSlot = 0,
+                CardIdx = livePlayIdx,
+                CardDefId = sadnessDefId,
+            };
+            HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardEnteredCombat, ref enterArgs);
+        }
     }
 }

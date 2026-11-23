@@ -34,6 +34,7 @@ internal enum HotCounterSlot : byte
     SadnessGeneratedBefore       = 20,
     BaseMaxEnergy                = 21,
     BaseHandDraw                 = 22,
+    CardBlockGainsThisTurn       = 23,
 }
 
 internal enum HotCardOpKind : byte
@@ -296,6 +297,7 @@ internal sealed class HotCardDef
     public bool IsShivTag { get; init; }
     public bool IsMinionTag { get; init; }
     public byte MelodyTagMask { get; init; }
+    public bool IsVisualColorless { get; init; }
     public string? RootDupeSourceKey { get; init; }
 
     public int GetDamage(byte upgradeLevel, short var0Delta)
@@ -327,7 +329,8 @@ internal sealed class HotPowerDef
     public required decimal[] DefaultVarValues { get; init; }
     public string?[]? OrderedVarStrings { get; init; }
     public HotPowerSpecialKind SpecialKind { get; init; }
-    public bool IsInstanced { get; init; }
+    public PowerInstanceType InstanceType { get; init; }
+    public bool IsInstanced => InstanceType != PowerInstanceType.None;
     public PowerStackType StackType { get; init; }
 }
 

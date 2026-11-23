@@ -215,6 +215,10 @@ internal static partial class HotCombatEngine
                 return false;
         }
 
+        // STS2 0.113.1 Regret.BeforeSideTurnEnd captures Pile.Cards.Count after Powers/Relics/Potions/Orbs
+        // and BEFORE DoTurnEnd Ethereal exhaust (CombatState.IterateHookListeners -> DoTurnEnd).
+        int regretHandCount = s.HandCount;
+
         // Ethereal exhaust & Turn-End-In-Hand cards (Burn, Decay, Regret, Doubt, Shame, Infection, Toxic, Wither, Beckon, BadLuck, Debt)
         bool hasHexPower = GetPowerAmountById(in s, rules, 0, HotPowerId.HexPower) > 0;
         byte hexedDefId = hasHexPower ? rules.GetAfflictionDefId(HotAfflictionId.Hexed) : (byte)0;
@@ -247,13 +251,12 @@ internal static partial class HotCombatEngine
 
         if (turnEndCount > 0)
         {
-            int handCountSnapshot = s.HandCount;
             for (int t = 0; t < turnEndCount; t++)
             {
                 int idx = FindCardIndexByUid(in s, HotPileKind.Hand, turnEndUids[t]);
                 if (idx < 0)
                     continue;
-                ExecuteTurnEndInHandCard(ref s, ref cold, rules, scratch, idx, handCountSnapshot);
+                ExecuteTurnEndInHandCard(ref s, ref cold, rules, scratch, idx, regretHandCount);
                 if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
                     return false;
             }
@@ -309,6 +312,10 @@ internal static partial class HotCombatEngine
             }
         }
 
+        // AfterFlush hooks (Bookmark reduces a retained card's cost by 1 until played; runs after
+        // WellLaidPlans + SlumberingEssence + Hand Flush and before EndOfTurnCleanup clears SingleTurnRetain).
+        HotRelics.OnAfterFlush(ref s, ref cold, rules);
+
         // CardModel.EndOfTurnCleanup across all combat cards.
         // CardModel.IsSlyThisTurn returns true if Keywords.Contains(Sly) || HasSingleTurnSly (CardModel.cs:700-706);
         // preserve IsSlyThisTurn on intrinsic Sly cards when clearing HasSingleTurnSly.
@@ -316,7 +323,7 @@ internal static partial class HotCombatEngine
         for (int i = 0; i < totalCards; i++)
         {
             ref HotCard c = ref s.Cards[i];
-            c.Flags &= ~HotCardFlags.SingleTurnRetain;
+            c.Flags &= ~(HotCardFlags.SingleTurnRetain | HotCardFlags.FetchPlayedThisTurn);
             if ((c.LocalKeywordsMask & HotCardKeywordMask.Sly) == 0)
                 c.Flags &= ~HotCardFlags.IsSlyThisTurn;
             c.ExtraReplayThisTurn = 0;
@@ -592,27 +599,31 @@ internal static partial class HotCombatEngine
                 return;
         }
 
-        // Card-level BeforeHandDraw: Bounce returns itself to Hand if played last player turn (Bounce.cs:40-49).
+        // Card-level BeforeHandDraw: Bounce, ThrummingHatchet, and Bolas return themselves to Hand
+        // if played last player turn (Bounce.cs:34-44, ThrummingHatchet.cs:33-43, Bolas.cs:39-49).
+        // Match by CardId (not canonical CardDefId) so enchanted/variant defs also match.
         if (s.PlayerTurnNumber > 1 && !scratch.NeedsChoice && !IsOverOrEnding(in s))
         {
-            ushort bounceDefId = rules.GetCardDefId(HotCustomCardId.Bounce);
-            if (bounceDefId != 0)
+            short prevTurn = (short)(s.PlayerTurnNumber - 1);
+            Span<ushort> returnUids = stackalloc ushort[32];
+            int returnCount = 0;
+            int totalCards = s.TotalCardCount;
+            for (int c = s.HandCount; c < totalCards && returnCount < returnUids.Length; c++)
             {
-                short prevTurn = (short)(s.PlayerTurnNumber - 1);
-                Span<ushort> bounceUids = stackalloc ushort[16];
-                int bounceCount = 0;
-                int totalCards = s.TotalCardCount;
-                for (int c = s.HandCount; c < totalCards && bounceCount < bounceUids.Length; c++)
+                if (s.Cards[c].CardPrivate != prevTurn)
+                    continue;
+                ushort defId = s.Cards[c].CardDefId;
+                if (defId < rules.Cards.Length
+                    && rules.Cards[defId].CardId is HotCustomCardId.Bounce or HotCustomCardId.ThrummingHatchet or HotCustomCardId.Bolas)
                 {
-                    if (s.Cards[c].CardDefId == bounceDefId && s.Cards[c].CardPrivate == prevTurn)
-                        bounceUids[bounceCount++] = s.Cards[c].CardUid;
+                    returnUids[returnCount++] = s.Cards[c].CardUid;
                 }
-                for (int b = 0; b < bounceCount && !IsOverOrEnding(in s); b++)
-                {
-                    int liveIdx = FindCardIndexByUidAnyPile(in s, bounceUids[b]);
-                    if (liveIdx >= s.HandCount)
-                        MoveCardToHandOrDiscard(ref s, liveIdx);
-                }
+            }
+            for (int b = 0; b < returnCount && !IsOverOrEnding(in s); b++)
+            {
+                int liveIdx = FindCardIndexByUidAnyPile(in s, returnUids[b]);
+                if (liveIdx >= s.HandCount)
+                    MoveCardToHandOrDiscard(ref s, liveIdx);
             }
         }
 
@@ -691,6 +702,17 @@ internal static partial class HotCombatEngine
         if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
             return;
 
+        // STS2 0.113.1 CombatManager.SetupPlayerTurn (line 948) fires Hook.AfterPlayerTurnStart
+        // (13 player powers: Loop, CrimsonMantle, Ecstasy, Entropy, Inferno, RollingBoulder,
+        // ToolsOfTheTrade, Tyranny, YouAreMine, Amnesia, GodByrd, Hibernate, SummonNextTurn;
+        // 11 player relics: EmotionChip, Bellows, BoneTea, ChoicesParadox, FestivePopper,
+        // GamblingChip, MercuryHourglass, MrStruggles, RoyalPoison, ToastyMittens, VexingPuzzlebox)
+        // BEFORE CombatManager.cs:805 fires Hook.AfterSideTurnStart (Plating decrement, Poison tick,
+        // BiasedCognition Focus loss, Coolant, DemonForm, NoxiousFumes, WraithForm, Rampart, etc.).
+        DispatchPlayerTurnStartHooks(ref s, ref cold, rules, scratch, takingExtraTurn);
+        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+            return;
+
         // Player side turn start: PlatingPower decrements by 1 when PlayerTurnNumber != 1.
         ushort platingDefId = rules.PlatingPowerDefId != 0 ? rules.PlatingPowerDefId : rules.GetPowerDefId(HotPowerId.PlatingPower);
         if (s.PlayerTurnNumber != 1 && platingDefId != 0)
@@ -701,7 +723,7 @@ internal static partial class HotCombatEngine
         if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
             return;
 
-        // AfterPlayerTurnStart / AfterSideTurnStart (BiasedCognition, Coolant, DemonForm, Entropy, NoxiousFumes, WraithForm, Loop, ToolsOfTheTrade, Tyranny, Rampart, YouAreMine, relics)
+        // Remaining AfterSideTurnStart listeners (BiasedCognition, Coolant, DemonForm, NoxiousFumes, WraithForm, Rampart, remaining relics, Dominion)
         if ((s.ActiveHookMask & (ulong)HotHookMask.AfterSideTurnStart) != 0 || rules.Dominion != HotDominionId.None)
         {
             HotHookArgs afterStartArgs = new()
@@ -710,7 +732,7 @@ internal static partial class HotCombatEngine
                 ActorSlot = 0,
                 BoolFlag = takingExtraTurn,
             };
-            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterSideTurnStart, ref afterStartArgs);
+            DispatchAfterSideTurnStartRemaining(ref s, ref cold, rules, scratch, ref afterStartArgs);
             if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
                 return;
         }
@@ -1146,6 +1168,7 @@ internal static partial class HotCombatEngine
         s.Counters[(int)HotCounterSlot.SkillsPlayedThisTurn] = 0;
         s.Counters[(int)HotCounterSlot.CardsPlayedThisTurn] = 0;
         s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn] = 0;
+        s.Counters[(int)HotCounterSlot.CardBlockGainsThisTurn] = 0;
 
         for (int m = 0; m < 3; m++)
         {

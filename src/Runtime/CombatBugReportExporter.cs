@@ -282,12 +282,13 @@ internal static class CombatBugReportExporter
         CombatState state,
         string label,
         SolverResult? result,
-        string replanAudit)
+        string replanAudit,
+        string? precomputedStateText = null)
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("战斗取证只能从游戏主线程采集。");
         EnsureSession(state);
-        RecordCheckpointCore(state, label, result, replanAudit);
+        RecordCheckpointCore(state, label, result, replanAudit, precomputedStateText);
     }
 
     internal static ReplayCheckpointMaterial CaptureReplayCheckpoint(CombatState state)
@@ -573,7 +574,7 @@ internal static class CombatBugReportExporter
     }
 
     private static void RecordCheckpointCore(
-        CombatState state, string label, SolverResult? result, string replanAudit)
+        CombatState state, string label, SolverResult? result, string replanAudit, string? precomputedStateText = null)
     {
         ForensicSession session = _currentSession
             ?? throw new InvalidOperationException("Missing forensic session.");
@@ -592,7 +593,7 @@ internal static class CombatBugReportExporter
         bool queued = false;
         try
         {
-            CaptureCheckpointCore(state, label, result, replanAudit);
+            CaptureCheckpointCore(state, label, result, replanAudit, precomputedStateText);
             queued = true;
         }
         catch (Exception error) when (error is InvalidOperationException or NotSupportedException or JsonException or IOException)
@@ -613,7 +614,8 @@ internal static class CombatBugReportExporter
         CombatState state,
         string label,
         SolverResult? result,
-        string replanAudit)
+        string replanAudit,
+        string? precomputedStateText = null)
     {
         ForensicSession session = _currentSession
             ?? throw new InvalidOperationException("记录战斗取证检查点时没有活动会话。");
@@ -659,7 +661,7 @@ internal static class CombatBugReportExporter
             && session.Recording != null && session.LastSearchableEventCursor == session.Recording.EventCursor
             && LocalContext.GetMe(state)?.PlayerCombatState?.Phase.ToString() == "Play"
             && !RunManager.Instance.ActionExecutor.IsRunning
-            && session.CachedCombatStateText == ContinuationStamp.CaptureLive(state).StateText)
+            && session.CachedCombatStateText == (precomputedStateText ?? ContinuationStamp.CaptureLive(state).StateText))
         {
             string completedRoute = DescribeRoute(result);
             string control = SolverController.ControlModeForBugReport;
@@ -679,7 +681,7 @@ internal static class CombatBugReportExporter
         Player? localPlayer = LocalContext.GetMe(state);
         string stateText = localPlayer?.PlayerCombatState == null
             ? string.Empty
-            : ContinuationStamp.CaptureLive(state).StateText;
+            : precomputedStateText ?? ContinuationStamp.CaptureLive(state).StateText;
         ulong captureFrame = Godot.Engine.GetProcessFrames();
         int historyEntryCount = CombatManager.Instance.History.Entries.Count();
         ForensicCombatCapture combatCapture;

@@ -146,11 +146,15 @@ internal readonly struct HotEvalLookup
     public readonly ushort ThornsDefId;
     public readonly ushort RitualDefId;
     public readonly ushort PoisonDefId;
+    public readonly ushort AccelerantDefId;
     public readonly ushort DoomDefId;
     public readonly ushort EchoFormDefId;
     public readonly ushort BufferDefId;
     public readonly ushort WraithFormDefId;
     public readonly ushort IntangibleDefId;
+    public readonly ushort SlipperyDefId;
+    public readonly ushort HardToKillDefId;
+    public readonly ushort HardenedShellDefId;
     public readonly ushort AfterimageDefId;
     public readonly ushort DemonFormDefId;
     public readonly ushort BlockNextTurnDefId;
@@ -166,6 +170,7 @@ internal readonly struct HotEvalLookup
     public readonly bool HasPaperKrane;
     public readonly bool HasOddMushroom;
     public readonly bool HasPaperPhrog;
+    public readonly bool HasGoldPlatedCables;
 
     public HotEvalLookup(HotRules rules)
     {
@@ -183,11 +188,15 @@ internal readonly struct HotEvalLookup
         ThornsDefId = rules.ThornsPowerDefId != 0 ? rules.ThornsPowerDefId : rules.GetPowerDefId(HotPowerId.ThornsPower);
         RitualDefId = rules.RitualPowerDefId != 0 ? rules.RitualPowerDefId : rules.GetPowerDefId(HotPowerId.RitualPower);
         PoisonDefId = rules.GetPowerDefId(HotPowerId.PoisonPower);
+        AccelerantDefId = rules.GetPowerDefId(HotPowerId.AccelerantPower);
         DoomDefId = rules.GetPowerDefId(HotPowerId.DoomPower);
         EchoFormDefId = rules.GetPowerDefId(HotPowerId.EchoFormPower);
         BufferDefId = rules.GetPowerDefId(HotPowerId.BufferPower);
         WraithFormDefId = rules.GetPowerDefId(HotPowerId.WraithFormPower);
         IntangibleDefId = rules.GetPowerDefId(HotPowerId.IntangiblePower);
+        SlipperyDefId = rules.GetPowerDefId(HotPowerId.SlipperyPower);
+        HardToKillDefId = rules.GetPowerDefId(HotPowerId.HardToKillPower);
+        HardenedShellDefId = rules.GetPowerDefId(HotPowerId.HardenedShellPower);
         AfterimageDefId = rules.GetPowerDefId(HotPowerId.AfterimagePower);
         DemonFormDefId = rules.GetPowerDefId(HotPowerId.DemonFormPower);
         BlockNextTurnDefId = rules.GetPowerDefId(HotPowerId.BlockNextTurnPower);
@@ -203,6 +212,7 @@ internal readonly struct HotEvalLookup
         HasPaperKrane = rules.HasPaperKrane;
         HasOddMushroom = rules.HasOddMushroom;
         HasPaperPhrog = rules.HasPaperPhrog;
+        HasGoldPlatedCables = rules.HasRelic(HotRelicId.GoldPlatedCables);
     }
 }
 
@@ -469,9 +479,9 @@ internal static class HotEvaluator
         };
 
         // 3. Ongoing combat: single-pass scan over powers, enemies, orbs, hand, and resources.
-        int playerFocus = 0;
         int playerVuln = 0;
         int playerIntangible = 0;
+        int playerAccelerant = 0;
         int playerEndTurnBlock = 0;
         int nextTurnBlock = 0;
         int nextTurnEnergy = 0;
@@ -490,6 +500,7 @@ internal static class HotEvaluator
         Span<int> enemyPoison = stackalloc int[HotLimits.MaxEnemies];
         Span<int> enemyDoom = stackalloc int[HotLimits.MaxEnemies];
         Span<int> enemyReattachHp = stackalloc int[HotLimits.MaxEnemies];
+        Span<byte> enemyHasDamageCap = stackalloc byte[HotLimits.MaxEnemies];
 
         int powerCount = s.PowerCount;
         for (int i = 0; i < powerCount; i++)
@@ -499,11 +510,13 @@ internal static class HotEvaluator
                 continue;
 
             ushort defId = p.PowerDefId;
+            if (defId == 0)
+                continue;
             if (p.OwnerSlot == 0)
             {
-                if (defId == lookup.FocusDefId) playerFocus += p.Amount;
-                else if (defId == lookup.VulnerableDefId) playerVuln += p.Amount;
+                if (defId == lookup.VulnerableDefId) playerVuln += p.Amount;
                 else if (defId == lookup.IntangibleDefId) playerIntangible += p.Amount;
+                else if (defId == lookup.AccelerantDefId) playerAccelerant += p.Amount;
                 else if (defId == lookup.BarricadeDefId || defId == lookup.BlurDefId) preservesExcessBlock = true;
                 else if (defId == lookup.MetallicizeDefId || defId == lookup.PlatingDefId) playerEndTurnBlock += p.Amount;
                 else if (defId == lookup.BlockNextTurnDefId || defId == lookup.SelfFormingClayDefId || defId == lookup.ToricToughnessDefId)
@@ -567,8 +580,50 @@ internal static class HotEvaluator
                     if (p.Amount < minSandpitTurns)
                         minSandpitTurns = p.Amount;
                 }
+                else if (p.Amount > 0
+                    && (defId == lookup.IntangibleDefId
+                        || defId == lookup.BufferDefId
+                        || defId == lookup.SlipperyDefId
+                        || defId == lookup.HardToKillDefId
+                        || defId == lookup.HardenedShellDefId))
+                {
+                    enemyHasDamageCap[eSlot] = 1;
+                }
             }
         }
+
+        // Scan orbs once: orb.PassiveVal & orb.EvokeVal already include player Focus via HotCombatEngine.Orbs.
+        // Frost orbs trigger at BeforeTurnEnd BEFORE enemies attack, so their passive block enters effectiveDefense.
+        int orbScore = 0;
+        int frostPassiveBlock = 0;
+        int orbCount = s.OrbCount;
+        for (int o = 0; o < orbCount; o++)
+        {
+            HotOrb orb = s.Orbs[o];
+            HotOrbId orbId = HotCombatEngine.GetOrbId(rules, orb.OrbTypeId);
+            if (orbId == HotOrbId.None)
+                continue;
+
+            int passiveVal = Math.Max(0, (int)orb.PassiveVal);
+            int evokeVal = Math.Max(0, orb.EvokeVal);
+            if (orbId == HotOrbId.Frost)
+            {
+                int triggerCount = (o == 0 && lookup.HasGoldPlatedCables) ? 2 : 1;
+                frostPassiveBlock += passiveVal * triggerCount;
+            }
+
+            int val = orbId switch
+            {
+                HotOrbId.Lightning => passiveVal * 2 + evokeVal,
+                HotOrbId.Frost => passiveVal * 3 + evokeVal,
+                HotOrbId.Dark => evokeVal + passiveVal * 2,
+                HotOrbId.Plasma => 18,
+                HotOrbId.Glass => passiveVal * 2 + evokeVal,
+                _ => passiveVal + evokeVal / 2,
+            };
+            orbScore += val;
+        }
+        int orbCapacity = Math.Min((int)s.OrbCapacity, HotLimits.MaxOrbs);
 
         // Scan active roster: incoming attack threat, reviving segment revive-HP penalty, Doom lethal, and focus/AOE shape.
         int incomingDamage = 0;
@@ -614,13 +669,27 @@ internal static class HotEvaluator
                 }
             }
 
-            int effectiveEnemyHp = Math.Max(0, curHp - enemyPoison[eSlot] - enemyDoom[eSlot]);
+            // Poison ticks at start of enemy turn BEFORE enemy attacks (1 + Accelerant ticks, HotCombatEngine.Turn.cs:402-446).
+            int poison = enemyPoison[eSlot];
+            long poisonTickDamage = 0;
+            if (poison > 0)
+            {
+                int ticks = Math.Min(poison, 1 + Math.Max(0, playerAccelerant));
+                poisonTickDamage = ((long)ticks * (2L * poison - ticks + 1L)) / 2L;
+            }
+            bool poisonLethalBeforeAttack = curHp > 0
+                && poisonTickDamage >= curHp
+                && !hasReattach
+                && enemyHasDamageCap[eSlot] == 0;
+
+            int effectivePoisonReduction = (int)Math.Min((long)curHp, poisonTickDamage);
+            int effectiveEnemyHp = Math.Max(0, curHp - effectivePoisonReduction - enemyDoom[eSlot]);
             if (effectiveEnemyHp < lowestEnemyHp)
                 lowestEnemyHp = effectiveEnemyHp;
             if (curHp > highestAliveEnemyHp)
                 highestAliveEnemyHp = curHp;
 
-            if ((enemy.Flags & HotEnemyFlags.SkipNextMove) != 0)
+            if ((enemy.Flags & HotEnemyFlags.SkipNextMove) != 0 || poisonLethalBeforeAttack)
                 continue;
 
             int rawIncoming = EstimateEnemyIncomingDamage(
@@ -634,8 +703,9 @@ internal static class HotEvaluator
             incomingDamage += rawIncoming;
         }
 
-        // Effective defense buffer = current block + Plating/Metallicize + Wuppy/Osty absorption
-        int effectiveDefense = summary.PlayerBlock + playerEndTurnBlock;
+        // Effective defense buffer = current block + Plating/Metallicize + Frost BeforeTurnEnd passives + Wuppy/Osty absorption
+        int endTurnBlock = summary.PlayerBlock + playerEndTurnBlock + frostPassiveBlock;
+        int effectiveDefense = endTurnBlock;
         if ((s.CombatFlags & HotCombatFlags.HasWuppy) != 0 && (s.Wuppy.Flags & HotCreatureFlags.Alive) != 0)
             effectiveDefense += s.Wuppy.CurrentHp;
         if ((s.CombatFlags & HotCombatFlags.HasOsty) != 0 && (s.Osty.Flags & HotCreatureFlags.Alive) != 0)
@@ -674,9 +744,9 @@ internal static class HotEvaluator
 
             runningScore -= (long)scaledThreat * threatWeight;
         }
-        else if (preservesExcessBlock && summary.PlayerBlock > incomingDamage)
+        else if (preservesExcessBlock && endTurnBlock > incomingDamage)
         {
-            int carriedBlock = Math.Min(summary.PlayerBlock - incomingDamage, 60);
+            int carriedBlock = Math.Min(endTurnBlock - incomingDamage, 60);
             runningScore += (long)carriedBlock * 14_000L;
         }
 
@@ -727,28 +797,17 @@ internal static class HotEvaluator
                 runningScore -= 140_000L;
         }
 
-        // Orbs (Defect)
-        int orbScore = 0;
-        int orbCount = s.OrbCount;
-        for (int o = 0; o < orbCount; o++)
+        // Orbs & OrbCapacity (Defect): smooth diminishing returns instead of hard 120 cliff, plus credit OrbCapacity.
+        if (orbCapacity > 0)
         {
-            HotOrb orb = s.Orbs[o];
-            if (orb.OrbTypeId == 0 || orb.OrbTypeId >= rules.Orbs.Length)
-                continue;
-            HotOrbId orbId = rules.Orbs[orb.OrbTypeId].OrbId;
-            int val = orbId switch
-            {
-                HotOrbId.Lightning => Math.Max(0, orb.PassiveVal + playerFocus) * 2 + Math.Max(0, orb.EvokeVal + playerFocus),
-                HotOrbId.Frost => Math.Max(0, orb.PassiveVal + playerFocus) * 3 + Math.Max(0, orb.EvokeVal + playerFocus),
-                HotOrbId.Dark => orb.EvokeVal + Math.Max(0, orb.PassiveVal + playerFocus) * 2,
-                HotOrbId.Plasma => 18,
-                HotOrbId.Glass => Math.Max(0, (int)orb.PassiveVal) * 2 + orb.EvokeVal,
-                _ => orb.PassiveVal + orb.EvokeVal / 2,
-            };
-            orbScore += val;
+            playerSetup += orbCapacity * 2;
+            runningScore += (long)orbCapacity * 18_000L;
         }
-        playerSetup += Math.Min(orbScore / 3, 24);
-        runningScore += (long)Math.Min(orbScore, 120) * 2_500L;
+        if (orbScore > 0)
+        {
+            playerSetup += SoftCapPositive(orbScore / 3, knee: 24, hardCeiling: 72);
+            runningScore += (long)SoftCapPositive(orbScore, knee: 120, hardCeiling: 360) * 2_500L;
+        }
 
         // Osty (Necrobinder)
         if ((s.CombatFlags & HotCombatFlags.HasOsty) != 0 && (s.Osty.Flags & HotCreatureFlags.Alive) != 0)
@@ -835,9 +894,13 @@ internal static class HotEvaluator
         runningScore -= (long)handClutter * 4_000L;
         runningScore -= (long)deckClutter * 4_500L;
 
-        int totalSetup = Math.Clamp(playerSetup + enemyDebuffValue - enemyThreatPowerPenalty, -80, 96);
+        int rawTotalSetup = playerSetup + enemyDebuffValue - enemyThreatPowerPenalty;
+        int totalSetup = Math.Clamp(rawTotalSetup, -120, 320);
         setupScore = totalSetup;
-        runningScore += (long)Math.Clamp(totalSetup, -48, 64) * setupScale;
+        int effectiveSetup = totalSetup >= 0
+            ? SoftCapPositive(totalSetup, knee: 80, hardCeiling: 240)
+            : Math.Max(totalSetup, -64);
+        runningScore += (long)effectiveSetup * setupScale;
 
         // Long-term resources, anger copies, theft (GrowthHpCredit already included inside ongoingNetHpDeltaCenti!)
         runningScore += (long)summary.GrowthRewardCount * 5_000L;
@@ -853,6 +916,15 @@ internal static class HotEvaluator
         }
 
         score = runningScore;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int SoftCapPositive(int value, int knee, int hardCeiling)
+    {
+        if (value <= knee)
+            return value;
+        int soft = knee + ((value - knee) >> 1);
+        return soft > hardCeiling ? hardCeiling : soft;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

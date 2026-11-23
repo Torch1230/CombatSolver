@@ -26,6 +26,7 @@ using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.ValueProps;
 using STS2RitsuLib;
 
 namespace CombatSolver.HotKernel;
@@ -81,7 +82,7 @@ internal static partial class HotRootBuilder
         public required string[] OrderedVarNames { get; init; }
         public required decimal[] DefaultVarValues { get; init; }
         public string?[]? OrderedVarStrings { get; init; }
-        public required bool IsInstanced { get; init; }
+        public required PowerInstanceType InstanceType { get; init; }
     }
 
     private static CanonicalPowerTemplate?[] BuildCanonicalPowerTemplates()
@@ -101,7 +102,7 @@ internal static partial class HotRootBuilder
                 OrderedVarNames = varNames,
                 DefaultVarValues = varValues,
                 OrderedVarStrings = varStrings,
-                IsInstanced = power.InstanceType != PowerInstanceType.None,
+                InstanceType = power.InstanceType,
             };
         }
         return table;
@@ -142,6 +143,7 @@ internal static partial class HotRootBuilder
         public required bool IsShivTag { get; init; }
         public required bool IsMinionTag { get; init; }
         public required byte MelodyTagMask { get; init; }
+        public required bool IsVisualColorless { get; init; }
     }
 
     // =========================================================================
@@ -1253,6 +1255,21 @@ internal static partial class HotRootBuilder
                 }
                 break;
             }
+
+            case JugglingPower juggling:
+            {
+                // 0.113.1 JugglingPower.cs:16-54: preserve mid-turn attack count (Aux0) and pending clone card.
+                JugglingPower.Data data = juggling.GetInternalData<JugglingPower.Data>();
+                aux0 = data.attacksPlayedThisTurn;
+                if (data.cardToClone is { } cloneCard && cardToUid.TryGetValue(cloneCard, out ushort cloneUid))
+                    auxCardUid = cloneUid;
+                break;
+            }
+
+            case FeralPower feral:
+                // 0.113.1 FeralPower.cs:15-35: preserve mid-turn zero-cost attacks played count (Aux0).
+                aux0 = feral.GetInternalData<FeralPower.Data>().zeroCostAttacksPlayed;
+                break;
         }
 
         return new HotPower
@@ -1308,15 +1325,15 @@ internal static partial class HotRootBuilder
             TheScythe scythe => scythe.IncreasedDamage,
             TheShot shot => (int)shot._cardsExhaustedByFlorescence,
             ShowOff showOff => ((short)showOff.CurrentAim & 0xFFFF) | (((short)showOff.IncreasedAim & 0xFFFF) << 16),
-            Bounce bounce => CaptureBounceLastPlayTurn(bounce),
+            Bounce or ThrummingHatchet or Bolas => CaptureReturnNextTurnLastPlayTurn(card),
             _ => 0,
         };
 
-    private static int CaptureBounceLastPlayTurn(Bounce bounce)
+    private static int CaptureReturnNextTurnLastPlayTurn(CardModel card)
     {
-        Player? owner = bounce.Owner;
+        Player? owner = card.Owner;
         PlayerCombatState? pcs = owner?.PlayerCombatState;
-        ICombatState? combatState = bounce.CombatState;
+        ICombatState? combatState = card.CombatState;
         CombatHistory? history = CombatManager.Instance?.History;
         if (owner == null || pcs == null || combatState == null || history == null)
             return 0;
@@ -1326,7 +1343,7 @@ internal static partial class HotRootBuilder
         bool playedLastTurn = false;
         foreach (CardPlayFinishedEntry entry in history.CardPlaysFinished)
         {
-            if (!ReferenceEquals(entry.CardPlay.Card, bounce))
+            if (!ReferenceEquals(entry.CardPlay.Card, card))
                 continue;
             if (entry.HappenedThisTurn(combatState))
                 playedThisTurn = true;
@@ -1396,6 +1413,7 @@ internal static partial class HotRootBuilder
         int hasLostHpThisTurn = 0;
         int wasDoomAppliedThisTurn = 0;
         int ostyAttacks = 0;
+        int cardBlockGains = 0;
 
         int[] melodyStarted = new int[3];
         int[] melodyFinished = new int[3];
@@ -1507,6 +1525,13 @@ internal static partial class HotRootBuilder
                 case CreatureAttackedEntry atk when thisTurn && player.Osty != null && ReferenceEquals(atk.Actor, player.Osty):
                     ostyAttacks++;
                     break;
+
+                case BlockGainedEntry blk when thisTurn
+                    && blk.CardPlay != null
+                    && ReferenceEquals(blk.CardPlay.Player, player)
+                    && blk.Props.IsCardOrMonsterMove():
+                    cardBlockGains++;
+                    break;
             }
         }
 
@@ -1529,6 +1554,7 @@ internal static partial class HotRootBuilder
         hot.Counters[(int)HotCounterSlot.CardsPlayedThisTurn] = cardPlayStarts;
         hot.Counters[(int)HotCounterSlot.OstyAttacksThisTurn] = ostyAttacks;
         hot.Counters[(int)HotCounterSlot.SadnessGeneratedBefore] = sadnessGenerated;
+        hot.Counters[(int)HotCounterSlot.CardBlockGainsThisTurn] = cardBlockGains;
 
         hot.BrightestFlameMaxHpSpent = brightestFlameMaxHp;
         hot.HistoryFinishedPlays = finishedPlays;
@@ -1812,7 +1838,7 @@ internal static partial class HotRootBuilder
                     OrderedVarNames = tpl?.OrderedVarNames ?? [],
                     DefaultVarValues = tpl?.DefaultVarValues ?? [],
                     OrderedVarStrings = tpl?.OrderedVarStrings,
-                    IsInstanced = tpl?.IsInstanced ?? false,
+                    InstanceType = tpl?.InstanceType ?? PowerInstanceType.None,
                     SpecialKind = ClassifyPowerSpecialById(pe.Id),
                 });
                 PowerDefIdByEntry[pe.Entry] = defId;
@@ -1850,13 +1876,15 @@ internal static partial class HotRootBuilder
                     return existingId;
                 }
                 if (existing.OrderedVarNames.Length == 0 && varNames.Length == 0 && existing.Type == power.Type
-                    && existing.StackType == power.StackType && existing.IsInstanced == (power.InstanceType != PowerInstanceType.None))
+                    && existing.StackType == power.StackType && existing.InstanceType == power.InstanceType)
                 {
                     return existingId;
                 }
                 if (VarsMatchExact(existing.OrderedVarNames, existing.DefaultVarValues, existing.OrderedVarStrings,
                         varNames, varValues, varStrings)
-                    && existing.Type == power.Type)
+                    && existing.Type == power.Type
+                    && existing.StackType == power.StackType
+                    && existing.InstanceType == power.InstanceType)
                 {
                     return existingId;
                 }
@@ -1879,7 +1907,7 @@ internal static partial class HotRootBuilder
                 DefaultVarValues = varValues,
                 OrderedVarStrings = varStrings,
                 SpecialKind = ClassifyPowerSpecial(power),
-                IsInstanced = power.InstanceType != PowerInstanceType.None,
+                InstanceType = power.InstanceType,
                 StackType = power.StackType,
             };
             Powers.Add(def);
@@ -2007,6 +2035,7 @@ internal static partial class HotRootBuilder
                 IsShivTag = canonical.IsShivTag,
                 IsMinionTag = canonical.IsMinionTag,
                 MelodyTagMask = canonical.MelodyTagMask,
+                IsVisualColorless = canonical.IsVisualColorless,
                 RootDupeSourceKey = dupeKey,
             };
             Cards.Add(variant);
@@ -2085,6 +2114,7 @@ internal static partial class HotRootBuilder
                 IsShivTag = tpl.IsShivTag,
                 IsMinionTag = tpl.IsMinionTag,
                 MelodyTagMask = tpl.MelodyTagMask,
+                IsVisualColorless = tpl.IsVisualColorless,
             };
 
             Cards.Add(def);
@@ -2173,6 +2203,7 @@ internal static partial class HotRootBuilder
                 IsShivTag = isShiv,
                 IsMinionTag = isMinion,
                 MelodyTagMask = melodyMask,
+                IsVisualColorless = baseModel.VisualCardPool.IsColorless,
             };
         }
 

@@ -433,7 +433,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotEnchantmentId.Goopy:
-                s.Cards[cardIdx].Var1Delta = (short)(s.Cards[cardIdx].Var1Delta + Math.Max(1, (int)s.Cards[cardIdx].EnchAmt));
+                s.Cards[cardIdx].EnchAmt++;
                 break;
         }
     }
@@ -618,6 +618,10 @@ internal static partial class HotCombatEngine
                 }
                 break;
 
+            case HotCustomCardId.DrumOfBattle:
+                DrawCards(ref s, ref cold, rules, scratch, GetNamedVarInt(in playedCard, def, "Cards", 2), fromHandDraw: false);
+                break;
+
             case HotCustomCardId.EvilEye:
                 GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice && s.Counters[(int)HotCounterSlot.CardsExhaustedThisTurn] > 0)
@@ -659,8 +663,7 @@ internal static partial class HotCombatEngine
                     if (scratch.NeedsChoice)
                         return;
                 }
-                if (handBefore > 0)
-                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, s.PlayStart + playOffsetInPlay, targetEnemySlot, baseDmg, handBefore, powered: true);
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, s.PlayStart + playOffsetInPlay, targetEnemySlot, baseDmg, handBefore, powered: true);
                 break;
             }
 
@@ -771,10 +774,14 @@ internal static partial class HotCombatEngine
                 ushort rockId = rules.GetCardDefId(HotCustomCardId.GiantRock);
                 if (rockId != 0)
                 {
-                    for (int i = 0; i < s.HandCount; i++)
+                    for (int i = 0; i < s.HandCount && !IsOverOrEnding(in s); i++)
                     {
                         if (rules.Cards[s.Cards[i].CardDefId].Type == CardType.Attack)
-                            TransformCardInPlace(ref s, ref cold, rules, i, rockId, upgrade > 0);
+                        {
+                            TransformCardInPlace(ref s, ref cold, rules, scratch, i, rockId, upgrade > 0);
+                            if (scratch.NeedsChoice)
+                                return;
+                        }
                     }
                 }
                 break;
@@ -793,22 +800,27 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.SecondWind:
             {
-                int handIdx = 0;
-                while (handIdx < s.HandCount && !IsOverOrEnding(in s))
+                // STS2 0.113.1 SecondWind.cs:29-33: snapshot non-Attack hand cards via GetCards().ToList() BEFORE exhausting,
+                // so cards drawn mid-loop (e.g. DarkEmbrace) are NOT exhausted.
+                Span<ushort> nonAtkUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
+                int nonAtkCount = 0;
+                for (int i = 0; i < s.HandCount && nonAtkCount < nonAtkUids.Length; i++)
                 {
-                    if (rules.Cards[s.Cards[handIdx].CardDefId].Type != CardType.Attack)
+                    if (rules.Cards[s.Cards[i].CardDefId].Type != CardType.Attack)
+                        nonAtkUids[nonAtkCount++] = s.Cards[i].CardUid;
+                }
+                for (int i = 0; i < nonAtkCount && !IsOverOrEnding(in s); i++)
+                {
+                    int idx = FindCardIndexByUidAnyPile(in s, nonAtkUids[i]);
+                    if (idx >= 0 && HotPiles.PileOfIndex(in s, idx) != HotPileKind.Exhaust)
                     {
-                        ExhaustCard(ref s, ref cold, rules, scratch, handIdx, causedByEthereal: false);
-                        if (scratch.NeedsChoice)
-                            return;
-                        GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
+                        ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);
                         if (scratch.NeedsChoice)
                             return;
                     }
-                    else
-                    {
-                        handIdx++;
-                    }
+                    GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
+                    if (scratch.NeedsChoice)
+                        return;
                 }
                 break;
             }
@@ -942,8 +954,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Whirlwind:
             {
                 int x = Math.Max(0, (int)playedCard.CapturedEnergy);
-                if (x > 0)
-                    ExecuteAllEnemiesAttack(ref s, ref cold, rules, scratch, livePlayIdx, baseDmg, x, powered: true);
+                ExecuteAllEnemiesAttack(ref s, ref cold, rules, scratch, livePlayIdx, baseDmg, x, powered: true);
                 break;
             }
 
@@ -1074,7 +1085,11 @@ internal static partial class HotCombatEngine
                 {
                     waves--;
                     int aliveBefore = CountLivingEnemies(in s);
-                    ExecuteAllEnemiesAttack(ref s, ref cold, rules, scratch, s.PlayStart + playOffsetInPlay, baseDmg, 1, powered: true);
+                    int curPlayIdx = s.PlayStart + playOffsetInPlay;
+                    int waveDmg = (uint)curPlayIdx < (uint)s.TotalCardCount
+                        ? def.GetDamage(s.Cards[curPlayIdx].UpgradeLevel, s.Cards[curPlayIdx].Var0Delta)
+                        : baseDmg;
+                    ExecuteAllEnemiesAttack(ref s, ref cold, rules, scratch, curPlayIdx, waveDmg, 1, powered: true);
                     if (scratch.NeedsChoice)
                         return;
                     int killed = Math.Max(0, aliveBefore - CountLivingEnemies(in s));
@@ -1112,8 +1127,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Finisher:
             {
                 int atkHits = s.Counters[(int)HotCounterSlot.AttacksPlayedThisTurn];
-                if (atkHits > 0)
-                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, atkHits, powered: true);
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, atkHits, powered: true);
                 break;
             }
 
@@ -1125,8 +1139,7 @@ internal static partial class HotCombatEngine
                     if (rules.Cards[s.Cards[i].CardDefId].Type == CardType.Skill)
                         skillCount++;
                 }
-                if (skillCount > 0)
-                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, skillCount, powered: true);
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, skillCount, powered: true);
                 break;
             }
 
@@ -1255,7 +1268,9 @@ internal static partial class HotCombatEngine
                             clone.CardUid = 0;
                             clone.AfflId = 0;
                             clone.AfflAmt = 0;
-                            clone.Flags &= ~(HotCardFlags.SingleTurnRetain | HotCardFlags.IsSlyThisTurn | HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
+                            clone.Flags &= ~(HotCardFlags.SingleTurnRetain | HotCardFlags.IsSlyThisTurn | HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe);
+                            if ((clone.LocalKeywordsMask & HotCardKeywordMask.Sly) != 0)
+                                clone.Flags |= HotCardFlags.IsSlyThisTurn;
                             clone.Flags |= HotCardFlags.IsClone;
                             clone.ExtraReplayThisTurn = 0;
                             int detachedIdx = AddDetachedCard(ref cold, in clone);
@@ -1332,8 +1347,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Skewer:
             {
                 int x = Math.Max(0, (int)playedCard.CapturedEnergy);
-                if (x > 0)
-                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, x, powered: true);
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, x, powered: true);
                 break;
             }
 
@@ -1416,7 +1430,7 @@ internal static partial class HotCombatEngine
                 {
                     HotCard copy = s.Cards[s.PlayStart + playOffsetInPlay];
                     copy.CardUid = s.NextCardUid++;
-                    copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
+                    copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe);
                     copy.Flags |= HotCardFlags.IsClone;
                     CostSetThisCombat(ref copy, ref cold, 0);
                     AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Discard, -1, createdByPlayer: true);
@@ -1454,8 +1468,7 @@ internal static partial class HotCombatEngine
             }
 
             case HotCustomCardId.Barrage:
-                if (s.OrbCount > 0)
-                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, s.OrbCount, powered: true);
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, s.OrbCount, powered: true);
                 break;
 
             case HotCustomCardId.BiasedCognition:
@@ -1520,10 +1533,14 @@ internal static partial class HotCombatEngine
                 ushort fuelId = rules.GetCardDefId(HotCustomCardId.Fuel);
                 if (!scratch.NeedsChoice && fuelId != 0)
                 {
-                    for (int i = 0; i < s.HandCount; i++)
+                    for (int i = 0; i < s.HandCount && !IsOverOrEnding(in s); i++)
                     {
                         if (rules.Cards[s.Cards[i].CardDefId].Type == CardType.Status)
-                            TransformCardInPlace(ref s, ref cold, rules, i, fuelId, upgrade > 0);
+                        {
+                            TransformCardInPlace(ref s, ref cold, rules, scratch, i, fuelId, upgrade > 0);
+                            if (scratch.NeedsChoice)
+                                return;
+                        }
                     }
                 }
                 break;
@@ -1605,8 +1622,7 @@ internal static partial class HotCombatEngine
                         i++;
                     }
                 }
-                if (statusExhausted > 0)
-                    ExecuteRandomEnemiesAttack(ref s, ref cold, rules, scratch, s.PlayStart + playOffsetInPlay, baseDmg, statusExhausted, powered: true);
+                ExecuteRandomEnemiesAttack(ref s, ref cold, rules, scratch, s.PlayStart + playOffsetInPlay, baseDmg, statusExhausted, powered: true);
                 break;
             }
 
@@ -1654,8 +1670,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.HelixDrill:
             {
                 int hHits = EvaluateCalcVar(in s, rules, scratch, in playedCard, def, targetEnemySlot, energySpent);
-                if (hHits > 0)
-                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, hHits, powered: true);
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, hHits, powered: true);
                 break;
             }
 
@@ -2266,7 +2281,7 @@ internal static partial class HotCombatEngine
                             BaseEnergyCost = cdef.BaseCost,
                             BaseStarCost = cdef.BaseStarCost,
                             LocalKeywordsMask = (HotCardKeywordMask)cdef.BaseKeywords,
-                            Flags = HotCardFlags.None,
+                            Flags = GetInitialCardFlags(cdef),
                         };
                         HotPotions.SetCardFreeThisCombat(ref generated, ref cold);
                         AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in generated, HotPileKind.Draw, dstOffset: -2, createdByPlayer: true);
@@ -2278,8 +2293,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.MyShinies:
             {
                 int hitCount = EvaluateCalcVar(in s, rules, scratch, in playedCard, def, targetEnemySlot, energySpent);
-                if (hitCount > 0)
-                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg > 0 ? baseDmg : 1, hitCount, powered: true);
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg > 0 ? baseDmg : 1, hitCount, powered: true);
                 break;
             }
 
@@ -2319,7 +2333,7 @@ internal static partial class HotCombatEngine
                         {
                             HotCard copy = tpl;
                             copy.CardUid = s.NextCardUid++;
-                            copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
+                            copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe);
                             copy.Flags |= HotCardFlags.IsClone;
                             AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, -1, createdByPlayer: true);
                         }
@@ -2338,7 +2352,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.Entrench:
-                GainBlock(ref s, ref cold, rules, scratch, 0, s.Player.Block, isCardBlock: false);
+                GainBlockInternal(ref s, ref cold, rules, scratch, 0, s.Player.Block, isCardBlock: true, cardIdx: livePlayIdx, cardDefId: playedCard.CardDefId, isUnpowered: true);
                 break;
 
             case HotCustomCardId.FeedingFrenzy:
@@ -2350,10 +2364,8 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.Fisticuffs:
             {
-                int hpBefore = IsValidEnemyTarget(in s, targetEnemySlot) ? s.Enemies[targetEnemySlot].Vital.CurrentHp + s.Enemies[targetEnemySlot].Vital.Block : 0;
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
-                int hpAfter = targetEnemySlot >= 0 && targetEnemySlot < s.EnemyCount ? s.Enemies[targetEnemySlot].Vital.CurrentHp + s.Enemies[targetEnemySlot].Vital.Block : 0;
-                int dealt = Math.Max(0, hpBefore - hpAfter);
+                int dealt = t_lastAttackTotalPlusOverkill;
                 if (!scratch.NeedsChoice && dealt > 0)
                     GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, dealt);
                 break;
@@ -2496,10 +2508,8 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Omnislice:
                 if (IsValidEnemyTarget(in s, targetEnemySlot))
                 {
-                    int hpBefore = s.Enemies[targetEnemySlot].Vital.CurrentHp + s.Enemies[targetEnemySlot].Vital.Block;
                     ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
-                    int hpAfter = s.Enemies[targetEnemySlot].Vital.CurrentHp + s.Enemies[targetEnemySlot].Vital.Block;
-                    int dealt = Math.Max(0, hpBefore - hpAfter);
+                    int dealt = t_lastAttackTotalPlusOverkill;
                     if (!scratch.NeedsChoice && dealt > 0)
                     {
                         Span<byte> others = stackalloc byte[HotLimits.MaxEnemies];
@@ -2600,7 +2610,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.SeekerStrike:
             {
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
-                if (!scratch.NeedsChoice && !IsOverOrEnding(in s) && s.DrawCount > 0)
+                if (!scratch.NeedsChoice && !IsOverOrEnding(in s))
                 {
                     int drawStart = s.DrawStart;
                     int drawCount = s.DrawCount;
@@ -2613,6 +2623,7 @@ internal static partial class HotCombatEngine
                         drawIndices[i] = drawStart + i;
 
                     // STS2 0.113.1 SeekerStrike.cs:36: DrawPile.Cards.ToList().StableShuffle(CombatCardSelection).Take(Cards)
+                    // Unconditionally consumes 1 NextULong even when drawCount == 0.
                     for (int i = 1; i < drawCount; i++)
                     {
                         int keyIdx = drawIndices[i];
@@ -2626,17 +2637,20 @@ internal static partial class HotCombatEngine
                     }
                     HotRng.UnstableShuffle(drawIndices, ref s.Rng[(int)HotRngStream.CombatCardSelection]);
 
-                    Span<ushort> allowedUids = takeCount <= HotLimits.MaxStackAllocElements
-                        ? stackalloc ushort[HotLimits.MaxStackAllocElements]
-                        : new ushort[takeCount];
-                    for (int i = 0; i < takeCount; i++)
-                        allowedUids[i] = s.Cards[drawIndices[i]].CardUid;
+                    if (takeCount > 0)
+                    {
+                        Span<ushort> allowedUids = takeCount <= HotLimits.MaxStackAllocElements
+                            ? stackalloc ushort[HotLimits.MaxStackAllocElements]
+                            : new ushort[takeCount];
+                        for (int i = 0; i < takeCount; i++)
+                            allowedUids[i] = s.Cards[drawIndices[i]].CardUid;
 
-                    if (!RequestChoiceFiltered(ref s, scratch, HotChoiceKind.DrawPile, playedCard.CardDefId, 1, 1, allowedUids[..takeCount], out HotChoiceSelection sel))
-                        return;
-                    int idx = FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
-                    if (idx >= 0)
-                        MoveCardToHandOrDiscard(ref s, idx);
+                        if (!RequestChoiceFiltered(ref s, scratch, HotChoiceKind.DrawPile, playedCard.CardDefId, 1, 1, allowedUids[..takeCount], out HotChoiceSelection sel))
+                            return;
+                        int idx = FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
+                        if (idx >= 0)
+                            MoveCardToHandOrDiscard(ref s, idx);
+                    }
                 }
                 break;
             }
@@ -2687,8 +2701,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Volley:
             {
                 int x = Math.Max(0, (int)playedCard.CapturedEnergy);
-                if (x > 0)
-                    ExecuteRandomEnemiesAttack(ref s, ref cold, rules, scratch, livePlayIdx, baseDmg, x, powered: true);
+                ExecuteRandomEnemiesAttack(ref s, ref cold, rules, scratch, livePlayIdx, baseDmg, x, powered: true);
                 break;
             }
 
@@ -2763,6 +2776,16 @@ internal static partial class HotCombatEngine
         int cardIdx,
         ushort newCardDefId,
         bool upgraded)
+        => TransformCardInPlace(ref s, ref cold, rules, scratch: null, cardIdx, newCardDefId, upgraded);
+
+    internal static void TransformCardInPlace(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch? scratch,
+        int cardIdx,
+        ushort newCardDefId,
+        bool upgraded)
     {
         if (cardIdx < 0 || cardIdx >= s.TotalCardCount || newCardDefId == 0 || newCardDefId >= rules.Cards.Length)
             return;
@@ -2781,8 +2804,23 @@ internal static partial class HotCombatEngine
         if (doUpgrade)
             ApplyUpgradeKeywords(ref transformed, newDef.CardId);
         s.Cards[cardIdx] = transformed;
+        HotPiles.MaybeGainArrowSlotOnPileEnter(ref s, newCardDefId, rules);
+        s.HistoryCardsGenerated++;
+        if (newDef.CardId == HotCustomCardId.Sadness)
+            s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore]++;
         if (newDef.HookMask != HotHookMask.None)
             s.ActiveHookMask |= (ulong)newDef.HookMask;
+
+        if (scratch != null && (s.ActiveHookMask & (ulong)HotHookMask.AfterCardEnteredCombat) != 0)
+        {
+            HotHookArgs enterArgs = new()
+            {
+                ActorSlot = 0,
+                CardIdx = cardIdx,
+                CardDefId = newCardDefId,
+            };
+            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardEnteredCombat, ref enterArgs);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

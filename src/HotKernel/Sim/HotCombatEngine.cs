@@ -700,7 +700,7 @@ internal static partial class HotCombatEngine
     {
         if (!isAbsolute && amount == 0)
             return;
-        if (isAbsolute && amount == 0 && card.BaseEnergyCost < 0)
+        if (isAbsolute && amount == 0 && card.BaseEnergyCost < 0 && (card.Flags & HotCardFlags.CostsX) == 0)
             return;
 
         HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, amount, isAbsolute, expiration, isReduceOnly);
@@ -749,6 +749,13 @@ internal static partial class HotCombatEngine
                 || (!HasAnyLivingEnemy(in s) && !HasAnyRevivingEnemy(in s)));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsCombatEnding(in CombatHotState s, HotRules rules)
+        => IsInProgress(in s)
+            && ((s.CombatFlags & HotCombatFlags.IsAboutToLose) != 0
+                || s.TerminalOutcome != HotCombatOutcome.Ongoing
+                || !HasAnyLivingOrRevivingPrimaryEnemy(in s, rules));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsOverOrEnding(in CombatHotState s)
         => !IsInProgress(in s) || IsCombatEnding(in s);
 
@@ -768,10 +775,29 @@ internal static partial class HotCombatEngine
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool HasAnyRevivingEnemy(in CombatHotState s)
     {
-        int enemyCount = s.EnemyCount;
-        for (int e = 0; e < enemyCount; e++)
+        int rosterCount = s.RosterCount;
+        for (int i = 0; i < rosterCount; i++)
         {
-            if (s.Enemies[e].DeathPhase == HotDeathPhase.Reviving)
+            byte enemySlot = s.ActiveEnemyRoster[i];
+            if (s.Enemies[enemySlot].DeathPhase == HotDeathPhase.Reviving)
+                return true;
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool HasAnyLivingOrRevivingPrimaryEnemy(in CombatHotState s, HotRules rules)
+    {
+        ushort minionDefId = rules.GetPowerDefId(HotPowerId.MinionPower);
+        int rosterCount = s.RosterCount;
+        for (int i = 0; i < rosterCount; i++)
+        {
+            byte enemySlot = s.ActiveEnemyRoster[i];
+            bool aliveOrReviving = (s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                || s.Enemies[enemySlot].DeathPhase == HotDeathPhase.Reviving;
+            if (!aliveOrReviving)
+                continue;
+            if (minionDefId == 0 || GetPowerAmount(in s, (byte)(3 + enemySlot), minionDefId) <= 0)
                 return true;
         }
         return false;
@@ -799,7 +825,7 @@ internal static partial class HotCombatEngine
             return true;
         }
 
-        if (s.TerminalOutcome == HotCombatOutcome.Victory || (!HasAnyLivingEnemy(in s) && !HasAnyRevivingEnemy(in s)))
+        if (s.TerminalOutcome == HotCombatOutcome.Victory || !HasAnyLivingOrRevivingPrimaryEnemy(in s, rules))
         {
             s.TerminalOutcome = HotCombatOutcome.Victory;
             s.TerminalTurn = (byte)Math.Clamp(s.PlayerTurnNumber, 0, byte.MaxValue);
