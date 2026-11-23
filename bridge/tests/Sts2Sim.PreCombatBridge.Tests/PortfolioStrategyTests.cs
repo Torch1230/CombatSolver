@@ -821,6 +821,65 @@ public sealed class PortfolioStrategyTests
         Assert.True(portResult.TotalExpandedNodes > 0);
     }
 
+    [Theory]
+    [InlineData(CombatSolver.Beam.Policy.BossHpStrategy.ProgressionFirst)]
+    [InlineData(CombatSolver.Beam.Policy.BossHpStrategy.MinimizeHpLoss)]
+    public async Task NoveltyBossBudget_UsesEncounterRegardlessOfHpPreference(
+        CombatSolver.Beam.Policy.BossHpStrategy preference)
+    {
+        CombatState root = await CreateAct0BossRootAsync();
+        CombatPolicy policy = CombatPolicy.Default with { ActTransitionBossHpStrategy = preference };
+        var budget = new BeamBudget(32, 2000, 10, 10, 10, TimeSpan.FromSeconds(8));
+        var portfolio = new PreCombatPortfolioOptions(UseBeamWidthPortfolio: false, UseNoveltyPortfolio: true);
+        Assert.Equal(preference == CombatSolver.Beam.Policy.BossHpStrategy.MinimizeHpLoss,
+            PolicyRootOperands.Capture(root, policy).BossHpRelief == CombatSolver.Beam.Policy.BossHpRelief.None);
+        bool isBoss = NoveltySearchRunner.IsActEndingBoss(root);
+        Assert.Equal(TimeSpan.FromSeconds(2), NoveltySearchRunner.ComputeExplorationBudget(budget, portfolio, isBoss)!.TimeLimit);
+    }
+
+    [Theory]
+    [InlineData(true, -12_000d)]
+    [InlineData(false, 8_000d)]
+    public async Task BeamRanking_UsesEffectivePolarityForNegativeCounter(bool onPlayer, double perStack)
+    {
+        CombatState state = await CreateSilentCombatAsync("NIBBITS_NORMAL");
+        var player = state.Players[0].Creature;
+        Creature owner = onPlayer ? player : state.Enemies[0];
+        foreach (Creature enemy in state.Enemies)
+            typeof(MonsterModel).GetProperty(nameof(MonsterModel.NextMove))!.SetValue(
+                enemy.Monster, new MoveState("IDLE", _ => Task.CompletedTask));
+        var evaluator = new StateEvaluator(state, CombatPolicy.Default);
+        double before = evaluator.Score(state, 0, 0, 0, default, 0, 0);
+        await PowerCmd.Apply<StrengthPower>(state, owner, -3, player, null);
+        Assert.Equal(before + 3 * perStack, evaluator.Score(state, 0, 0, 0, default, 0, 0));
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(-3, true)]
+    [InlineData(6, true)]
+    public async Task BeamRanking_ProjectsModifiedDamageForEachAttackHit(int strength, bool weak)
+    {
+        CombatState state = await CreateSilentCombatAsync("NIBBITS_NORMAL");
+        Creature player = state.Players[0].Creature;
+        Creature enemy = state.Enemies[0];
+        foreach (Creature other in state.Enemies.Skip(1).ToArray())
+            await CreatureCmd.Kill(other);
+        if (strength != 0)
+            await PowerCmd.Apply<StrengthPower>(state, enemy, strength, player, null);
+        if (weak)
+            await PowerCmd.Apply<WeakPower>(state, enemy, 1, player, null);
+        const int damage = 10, hits = 2;
+        typeof(MonsterModel).GetProperty(nameof(MonsterModel.NextMove))!.SetValue(
+            enemy.Monster, new MoveState("MULTI", _ => Task.CompletedTask, new MultiAttackIntent(damage, hits)));
+        var evaluator = new StateEvaluator(state, CombatPolicy.Default);
+        BeamSearchNode node = BeamSearchNode.Create(state, null, null, evaluator);
+        for (int i = 0; i < hits; i++)
+            await CreatureCmd.Damage(state, [player], damage, ValueProp.Move, enemy, null, null);
+        Assert.Equal(player.CurrentHp, node.ProjectedHp);
+        Assert.Equal(player.CurrentHp, node.UnblockedHpMargin);
+    }
+
     [Fact]
     public async Task NoveltySearchAndFeatures_BoundedWitnessesEscapeOrderAndCoreFacts()
     {
@@ -845,12 +904,6 @@ public sealed class PortfolioStrategyTests
         CoreNoveltyFeatures.CaptureNoveltyFacts(node, CombatPolicy.Default, facts, counts, order);
         Assert.Contains(facts, f => f.Kind == BfwsFactKind.Power && f.Slot == 0 && f.Key == "STRENGTH_POWER" && f.Value == 1500);
         Assert.Contains(facts, f => f.Kind == BfwsFactKind.Power && f.Slot == 1 && f.Key == "STRENGTH_POWER" && f.Value == 4);
-
-        CombatState bossRoot = await CreateAct0BossRootAsync();
-        CombatPolicy bossProgression = CombatPolicy.Default with { ActTransitionBossHpStrategy = CombatSolver.Beam.Policy.BossHpStrategy.ProgressionFirst };
-        CombatPolicy bossMinimize = CombatPolicy.Default with { ActTransitionBossHpStrategy = CombatSolver.Beam.Policy.BossHpStrategy.MinimizeHpLoss };
-        Assert.True(NoveltySearchRunner.IsActEndingBoss(bossRoot, bossProgression, PolicyRootOperands.Capture(bossRoot, bossProgression)));
-        Assert.False(NoveltySearchRunner.IsActEndingBoss(bossRoot, bossMinimize, PolicyRootOperands.Capture(bossRoot, bossMinimize)));
 
         CombatState noveltyRoot = await CreateSilentCombatAsync("NIBBITS_NORMAL", addPowers: true);
         var portfolio = new PreCombatPortfolioOptions(

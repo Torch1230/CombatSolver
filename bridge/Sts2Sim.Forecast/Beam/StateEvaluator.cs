@@ -75,7 +75,10 @@ internal readonly record struct NodeEvalMetrics(
     int LiveDeckClutter,
     int LiveCardCount,
     uint? FocusTargetCombatId,
-    bool HasPositiveOrbEngine);
+    bool HasPositiveOrbEngine)
+{
+    public int UnblockedHpMargin { get; init; }
+}
 
 /// <summary>Core-state ranking using the primary terms of CombatBeamSolver.StateEvaluation.cs and SolverWeights.cs @ d231e9e5.</summary>
 internal sealed class StateEvaluator
@@ -555,7 +558,7 @@ internal sealed class StateEvaluator
             applyAggressivePowerCommitment: false,
             applyBaseScoreOnly: false,
             enemyHpWeightScale: 1.0d,
-            out _);
+            out _, out _);
 
     public double EvaluateForNode(
         CombatState state,
@@ -578,7 +581,7 @@ internal sealed class StateEvaluator
             applyAggressivePowerCommitment: _memberMode == BeamMemberSearchMode.AggressivePowerCommitment,
             applyBaseScoreOnly: _memberMode == BeamMemberSearchMode.BaseScoreOnly,
             enemyHpWeightScale: _memberMode == BeamMemberSearchMode.OffensiveRefinement ? 1.5d : 1.0d,
-            out int projectedHp);
+            out int projectedHp, out int unblockedHpMargin);
 
         int longTermResourceValue = _policy.IgnoreLongTermRewards
             ? 0
@@ -592,7 +595,7 @@ internal sealed class StateEvaluator
                 _policy,
                 projectedHp,
                 longTermResourceValue,
-                targetScratch);
+                targetScratch) with { UnblockedHpMargin = unblockedHpMargin };
         }
         finally
         {
@@ -615,7 +618,7 @@ internal sealed class StateEvaluator
             applyAggressivePowerCommitment: _memberMode == BeamMemberSearchMode.AggressivePowerCommitment,
             applyBaseScoreOnly: _memberMode == BeamMemberSearchMode.BaseScoreOnly,
             enemyHpWeightScale: _memberMode == BeamMemberSearchMode.OffensiveRefinement ? 1.5d : 1.0d,
-            out _);
+            out _, out _);
 
     public int StrategicHpLowerBound(SearchNode node)
     {
@@ -677,11 +680,23 @@ internal sealed class StateEvaluator
             && SatisfiesTheftPolicy(node);
     }
 
+    private static double SignedPowerStacks(PowerModel power)
+    {
+        int amount = power.Amount;
+        int magnitude = Math.Abs(Math.Clamp(amount, -8, 8));
+        return power.GetTypeForAmount(amount) switch
+        {
+            PowerType.Buff => magnitude,
+            PowerType.Debuff => -magnitude,
+            _ => 0,
+        };
+    }
+
     private double ScoreCore(CombatState state, int actionCount, int potionUses,
         int forcedPotionUses, GrowthCounts growth, int deathSaveHpRestored,
         int escapedTheft, bool applyAggressivePowerCommitment,
         bool applyBaseScoreOnly, double enemyHpWeightScale,
-        out int projectedHp)
+        out int projectedHp, out int unblockedHpMargin)
     {
         CombatEngine engine = state.Engine ?? throw new InvalidOperationException("Combat has no engine.");
         Player player = state.Players[0];
@@ -689,6 +704,7 @@ internal sealed class StateEvaluator
         if (!engine.IsInProgress && !engine.Won || !creature.IsAlive)
         {
             projectedHp = 0;
+            unblockedHpMargin = int.MinValue;
             return SolverWeights.DeathPenalty;
         }
 
@@ -710,12 +726,7 @@ internal sealed class StateEvaluator
 
             if (!applyBaseScoreOnly)
             {
-                playerPowerPolarity += power.Type switch
-                {
-                    PowerType.Buff => Math.Clamp(power.Amount, 0, 8) * 12_000d,
-                    PowerType.Debuff => -Math.Clamp(power.Amount, 0, 8) * 12_000d,
-                    _ => 0d,
-                };
+                playerPowerPolarity += SignedPowerStacks(power) * 12_000d;
             }
             if (applyAggressivePowerCommitment && power.Type == PowerType.Buff && power.Amount > 0)
                 aggressivePowerScore += 120_000d + Math.Clamp((double)power.Amount, 0d, 8d) * 78_000d;
@@ -741,9 +752,15 @@ internal sealed class StateEvaluator
                     {
                         if (intents[ii] is AttackIntent attack)
                         {
-                            threat += Math.Max(0, attack.GetTotalDamage(targetScratch, enemy));
+                            // Core intents expose base damage. Apply the same attack modifiers as
+                            // CreatureCmd before truncating each hit and counting its repeats.
+                            int repeats = Math.Max(0, attack.Repeats);
+                            decimal damage = Hook.ModifyDamage(state, creature, enemy,
+                                attack.GetSingleDamage(targetScratch, enemy), ValueProp.Move, null, null, out _);
+                            int perHit = (int)Math.Clamp(damage, 0m, int.MaxValue);
+                            threat = (int)Math.Min(int.MaxValue, threat + (long)perHit * repeats);
                             if (bufferCharges > 0)
-                                incomingHits += Math.Max(0, attack.Repeats);
+                                incomingHits += repeats;
                         }
                     }
                 }
@@ -753,12 +770,7 @@ internal sealed class StateEvaluator
                     for (int p = 0; p < enemyPowers.Count; p++)
                     {
                         PowerModel power = enemyPowers[p];
-                        enemyPowerScore += power.Type switch
-                        {
-                            PowerType.Buff => -Math.Clamp(power.Amount, 0, 8) * 8_000d,
-                            PowerType.Debuff => Math.Clamp(power.Amount, 0, 8) * 8_000d,
-                            _ => 0d,
-                        };
+                        enemyPowerScore -= SignedPowerStacks(power) * 8_000d;
                     }
                 }
             }
@@ -772,6 +784,7 @@ internal sealed class StateEvaluator
         // Buffer charge against the average incoming hit, capped by damage.
         int averageHit = Math.Max(1, threat / Math.Max(1, incomingHits));
         int bufferPrevention = (int)Math.Min(threat, (long)bufferCharges * averageHit);
+        unblockedHpMargin = creature.CurrentHp - Math.Max(0, threat - creature.Block);
         int exposed = Math.Max(0, threat - creature.Block - bufferPrevention);
         projectedHp = (!engine.IsInProgress && engine.Won)
             ? Math.Max(0, creature.CurrentHp)

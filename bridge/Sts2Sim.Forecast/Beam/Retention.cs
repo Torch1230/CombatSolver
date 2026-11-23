@@ -6,7 +6,6 @@ using Sts2Sim.Core.Entities.Creatures;
 using Sts2Sim.Core.Entities.Players;
 using Sts2Sim.Core.Entities.Powers;
 using Sts2Sim.Core.Models;
-using Sts2Sim.Core.MonsterMoves.Intents;
 
 namespace CombatSolver.Beam;
 
@@ -161,10 +160,8 @@ internal static class Retention
                 {
                     DecoratedEntry entry = entries[i];
                     SearchNode node = entry.Node;
-                    (double enemyRemaining, int hpMargin) = includeParetoProgress
-                        ? ComputeProgressMetrics(node)
-                        : (EnemyRemaining(node), 0);
-                    progress.Add(new ProgressEntry(node, entry.Key, enemyRemaining, hpMargin, i));
+                    progress.Add(new ProgressEntry(node, entry.Key, EnemyRemaining(node),
+                        includeParetoProgress ? node.UnblockedHpMargin : 0, i));
                 }
 
                 if (includeParetoProgress)
@@ -291,51 +288,6 @@ internal static class Retention
         }
     }
 
-    private static (double EnemyRemaining, int HpMargin) ComputeProgressMetrics(SearchNode node)
-    {
-        CombatState state = node.State;
-        Creature creature = state.Players[0].Creature;
-        IReadOnlyList<Creature> enemies = state.Enemies;
-        double enemyRemaining = 0d;
-        if (!creature.IsAlive)
-        {
-            for (int e = 0; e < enemies.Count; e++)
-            {
-                Creature enemy = enemies[e];
-                if (enemy.IsAlive)
-                    enemyRemaining += enemy.CurrentHp + enemy.Block * 0.5;
-            }
-            return (enemyRemaining, int.MinValue);
-        }
-
-        int threat = 0;
-        Creature[] singleTarget = RentSingleTarget(creature);
-        try
-        {
-            for (int e = 0; e < enemies.Count; e++)
-            {
-                Creature enemy = enemies[e];
-                if (!enemy.IsAlive) continue;
-                enemyRemaining += enemy.CurrentHp + enemy.Block * 0.5;
-                if (enemy.Monster?.NextMove?.Intents is { } intents)
-                {
-                    for (int ii = 0; ii < intents.Count; ii++)
-                    {
-                        if (intents[ii] is AttackIntent attack)
-                            threat += Math.Max(0, attack.GetTotalDamage(singleTarget, enemy));
-                    }
-                }
-            }
-        }
-        finally
-        {
-            singleTarget[0] = null!;
-        }
-
-        int exposed = Math.Max(0, threat - creature.Block);
-        return (enemyRemaining, creature.CurrentHp - exposed);
-    }
-
     private static double EnemyRemaining(SearchNode node)
     {
         double total = 0d;
@@ -359,21 +311,6 @@ internal static class Retention
                 return true;
         }
         return false;
-    }
-
-    [ThreadStatic]
-    private static Creature[]? _singleTargetScratch;
-
-    private static Creature[] RentSingleTarget(Creature creature)
-    {
-        Creature[]? arr = _singleTargetScratch;
-        if (arr is null)
-        {
-            arr = new Creature[1];
-            _singleTargetScratch = arr;
-        }
-        arr[0] = creature;
-        return arr;
     }
 
     private static SetupSignatureKey BuildSetupSignature(SearchNode node, List<SetupToken> arena)

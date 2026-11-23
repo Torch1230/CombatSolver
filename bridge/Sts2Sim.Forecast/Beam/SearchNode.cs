@@ -90,6 +90,7 @@ internal sealed class SearchNode
     public int EscapedTheft { get; }
     public ForecastSearchBoundary NodeBoundary { get; }
     internal PowerCommitment? PowerCommitment { get; }
+    public int UnblockedHpMargin => _metrics.UnblockedHpMargin;
     public int ProjectedHp => _metrics.ProjectedHp;
     public int PersistentBuffValue => _metrics.PersistentBuffValue;
     public int FutureResourceValue => _metrics.FutureResourceValue;

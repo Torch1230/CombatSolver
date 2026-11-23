@@ -64,11 +64,16 @@ internal static class NoveltySearchRunner
         };
     }
 
-    internal static bool IsActEndingBoss(
-        CombatState root,
-        CombatPolicy policy,
-        PolicyRootOperands? rootPolicyOperands = null) =>
-        (rootPolicyOperands?.BossHpRelief ?? BossHpPolicy.Resolve(root, policy)) != CombatSolver.Beam.Policy.BossHpRelief.None;
+    // The scout time divisor uses the encounter's actual recovery point. HP pricing
+    // can suppress both kinds of relief when comparing routes, but cannot move that point.
+    internal static bool IsActEndingBoss(CombatState root) =>
+        BossHpPolicy.Resolve(root, EncounterRecoveryPolicy) != CombatSolver.Beam.Policy.BossHpRelief.None;
+
+    private static readonly CombatPolicy EncounterRecoveryPolicy = CombatPolicy.Default with
+    {
+        ActTransitionBossHpStrategy = CombatSolver.Beam.Policy.BossHpStrategy.ProgressionFirst,
+        FinalBossHpStrategy = CombatSolver.Beam.Policy.BossHpStrategy.ProgressionFirst,
+    };
 
     internal static ForecastPassOutcome RunNoveltyPass(
         CombatState root,

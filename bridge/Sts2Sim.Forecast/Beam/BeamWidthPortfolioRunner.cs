@@ -168,7 +168,7 @@ internal static class BeamWidthPortfolioRunner
         List<ForecastPassOutcome> allPasses,
         CancellationToken ct)
     {
-        bool isBoss = NoveltySearchRunner.IsActEndingBoss(root, policy, rootPolicyOperands);
+        bool isBoss = NoveltySearchRunner.IsActEndingBoss(root);
         if (portfolio.AdaptiveNoveltyRefinement)
         {
             var sharedNodes = new SharedNodeBudget(budget.NodeLimit);
