@@ -6,7 +6,7 @@
 
 - 桥接迁移可用 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release` 验证 UTF-8 ABI 与搜索合同。暂存检查对照 Core 的内嵌提交与 Git 锁定值。[构建入口](../bridge/README.md)
 
-- 桥接测试 `ThreatProjection_` 对比真实引擎与预测的逐段结算，覆盖蜥蜴尾巴复活、有限保护、奥斯提溢出及致死回调的顺序。三项代表场景在两轮攻击后分别剩余 5、19、5 HP。
+- 桥接测试 `ThreatProjection_` 对比真实引擎与预测的逐段结算，覆盖蜥蜴尾巴复活、有限保护、奥斯提溢出及致死回调的顺序。三项代表场景在两段伤害结算后分别剩余 5、19、5 HP。
 
 - `UI-COMPACT-QOL` 覆盖第七回合死亡、仍存活的部分路线，以及历史回血与剩余路线回血的区别。
 
