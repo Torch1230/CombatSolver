@@ -1325,7 +1325,7 @@ internal static partial class SolverController
                         settings.NoGcRegionBudgetBytes,
                         searchPolicy.MemoryPressureSignal,
                         token);
-                    SolverResult result = CombatSearchCoordinator.Solve(
+                    SolverResult result = SolverBackendSelector.Resolve().SolveCoordinator(
                         rootSnapshot,
                         displayNames,
                         battleDamage,
@@ -3119,7 +3119,7 @@ internal static partial class SolverController
                     && (_stopFullAutoOnDeathTurn || _stopFullAutoOnWorseRecalculation))
                 {
                     await UnattendedTestRunner.ApplyScheduledPreEndTurnDriftAsync(state, turn);
-                    LiveEndTurnRiskProjection liveRisk = LiveEndTurnRiskEvaluator.Evaluate(
+                    LiveEndTurnRiskProjection liveRisk = SolverBackendSelector.Resolve().EvaluateEndTurnRisk(
                         state,
                         plannedEndTurn.TurnStartChoices);
                     int plannedHpLoss = result.RequireHpLostForTurn(turn);

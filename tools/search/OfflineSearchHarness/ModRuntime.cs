@@ -53,6 +53,7 @@ internal static class ModRuntime
 
         ApplyFixedBudgetSettings(options);
         ApplyUnattendedOverrides(options);
+        SolverBackendSelector.Current = ResolveBackendKind(options.Backend);
         string cardPileFreeze = FreezeModCardPiles();
         int applied = ApplySearchPatches();
         // 离线宿主在 M0.2 已完成 ModelDb.Init，没有 RitsuLib 生命周期事件；注册表此时已定型。
@@ -60,6 +61,7 @@ internal static class ModRuntime
 
         SolverSettingsSnapshot snapshot = SolverSettings.Capture();
         return $"patches_applied={applied}/{SearchPatchTypes.Length} "
+            + $"backend={SolverBackendSelector.Current} "
             + $"mod_card_piles={DescribeModCardPiles()} freeze={cardPileFreeze} "
             + $"profile={options.Profile} "
             + $"beam={snapshot.Profile.BeamWidth} nodes={snapshot.Profile.MaxExpandedNodes} "
@@ -76,6 +78,14 @@ internal static class ModRuntime
     /// <c>旧版离线权重拟合入口（历史工具）</c> 写进 combat_solver_settings.json 的默认分支上限 32/18/24。
     /// plan 里显式给的 beam / nodes / 分支上限再覆盖预设。
     /// </summary>
+    public static SolverBackendKind ResolveBackendKind(string backend)
+        => backend.ToLowerInvariant() switch
+        {
+            "legacy" => SolverBackendKind.Legacy,
+            "hot" => SolverBackendKind.Hot,
+            _ => throw new ArgumentException($"未知后端 {backend}（仅支持 legacy|hot）。"),
+        };
+
     public static SolverSearchProfile ResolveProfile(HarnessOptions options)
     {
         SolverSearchProfile baseline = options.Profile switch
@@ -366,10 +376,11 @@ internal static class ModRuntime
                 policy.Diagnostics.Info(message);
             },
             policy.Diagnostics.Debug, policy.Diagnostics.PathObserver);
-        CombatBeamSolver solver = new(
-            root, names, damage, policy with { Diagnostics = diagnostics }, searchProfile: policy.Profile);
+        ISolverBackend backend = SolverBackendSelector.Resolve();
+        SearchPolicySnapshot evaluatePolicy = policy with { Diagnostics = diagnostics };
         // 与参考跑法一致：求解在工作线程上跑，主线程只泵消息循环。
-        Task<SolverResult> solve = Task.Run(solver.Solve);
+        Task<SolverResult> solve = Task.Run(() => backend.SolveSingleBeam(
+            root, names, damage, evaluatePolicy, CancellationToken.None));
         loop.RunUntilCompleted(solve, TimeSpan.FromSeconds(660), "CombatBeamSolver.Solve");
         SolverResult result = solve.GetAwaiter().GetResult();
         if (policy.MeasurePhasePerformance)
@@ -511,7 +522,8 @@ internal static class ModRuntime
             try
             {
                 result = options.SearchMode == "Coordinator"
-                    ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
+                    ? SolverBackendSelector.Resolve().SolveCoordinator(
+                        root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                     : SolveEvaluate(root, names, damage, policy, settings,
                         options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
             }
@@ -523,7 +535,8 @@ internal static class ModRuntime
         else
         {
             result = options.SearchMode == "Coordinator"
-                ? CombatSearchCoordinator.Solve(root, names, damage, policy, CancellationToken.None, diagnosticProgress)
+                ? SolverBackendSelector.Resolve().SolveCoordinator(
+                    root, names, damage, policy, CancellationToken.None, diagnosticProgress)
                 : SolveEvaluate(root, names, damage, policy, settings,
                     options.BudgetMilliseconds, loop, out describedPolicy, ref timeBoundary);
         }
@@ -532,7 +545,7 @@ internal static class ModRuntime
             PrimaryIncumbentTable reused = incumbentSession.AcquirePrimaryIncumbents(root, policy, damage);
             if (!ReferenceEquals(reused.PotionFreeWitness, result))
                 throw new InvalidOperationException("Same-root request did not retain its executable victory witness.");
-            SolverResult next = CombatSearchCoordinator.Solve(root, names, damage,
+            SolverResult next = SolverBackendSelector.Resolve().SolveCoordinator(root, names, damage,
                 policy with { PrimaryIncumbents = reused }, CancellationToken.None, null);
             if (next.OnlyDeathRoutesFound || !next.Snapshot.AllEnemiesDead
                 || next.ProjectedBattleHpLost > result.ProjectedBattleHpLost

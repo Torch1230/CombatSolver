@@ -449,7 +449,7 @@ internal sealed record SolverOverlaySnapshot(
         {
             // Physical hand occurrence is deployment metadata, not visible action
             // identity. Stable combat IDs remain mandatory grouping boundaries.
-            CycleIdentity = CombatBeamSolver.BuildCycleActionKey(action with
+            CycleIdentity = PlanActionKeyHelper.BuildCycleActionKey(action with
             {
                 CardOccurrence = 0,
                 TargetIndex = action.TargetCombatId.HasValue ? -1 : action.TargetIndex,

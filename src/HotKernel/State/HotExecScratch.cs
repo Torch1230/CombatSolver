@@ -1,0 +1,88 @@
+namespace CombatSolver.HotKernel;
+
+internal enum HotChoiceKind : byte
+{
+    None = 0,
+    HandCard = 1,
+    DrawPile = 2,
+    DiscardPile = 3,
+    ExhaustPile = 4,
+    GeneratedCard = 5,
+}
+
+internal readonly record struct HotChoiceSelection(
+    HotChoiceKind Kind,
+    ushort CardUidOrIndex,
+    ushort CardDefId);
+
+internal struct HotListenerEntry
+{
+    public byte SourceKind; // 0=Relic, 1=Power, 2=Card, 3=Orb, 4=Dominion
+    public ushort DefId;
+    public ushort SlotOrIndex;
+    public byte OwnerSlot;
+}
+
+internal struct HotPendingPowerChange
+{
+    public ushort PowerDefId;
+    public byte OwnerSlot;
+    public byte ApplierSlot;
+    public int AmountDelta;
+    public ushort AuxCardUid;
+}
+
+/// <summary>
+/// Thread-local / lane-owned reusable scratch memory eliminating stack-overflow risk on large piles
+/// and eliminating all per-step heap allocations for choices, shuffles, listeners, and power changes.
+/// </summary>
+internal sealed class HotExecScratch
+{
+    public const int MaxListeners = 512;
+    public const int MaxPendingPowerChanges = 128;
+
+    public readonly HotCard[] ShuffleCards = new HotCard[HotLimits.MaxCards];
+    public readonly HotCard[] ShuffleScratch = new HotCard[HotLimits.MaxCards];
+    public readonly int[] ShuffleOriginalIdx = new int[HotLimits.MaxCards];
+    public readonly HotListenerEntry[] Listeners = new HotListenerEntry[MaxListeners];
+    public readonly HotPendingPowerChange[] PendingPowerChanges = new HotPendingPowerChange[MaxPendingPowerChanges];
+    public readonly HotChoiceSelection[] Choices = new HotChoiceSelection[HotLimits.MaxChoicesPerAction];
+
+    public int ChoiceCount;
+    public int ChoiceCursor;
+    public bool NeedsChoice;
+    public HotChoiceKind PendingChoiceKind;
+    public ushort PendingChoiceSourceCardDefId;
+    public byte PendingChoiceMin;
+    public byte PendingChoiceMax;
+
+    // Transient attack / play scratch (cleared before every stable boundary)
+    public int ActiveDrawDepth;
+    public int PendingPowerChangeCount;
+    public int LastStarsSpent;
+    public int CurrentPlayIndex;
+    public int CurrentPlayTargetSlot;
+    public bool UnblockedDamageThisPlay;
+    public bool AttackActive;
+
+    public void BeginAction(ReadOnlySpan<HotChoiceSelection> choices)
+    {
+        int copyCount = Math.Min(choices.Length, HotLimits.MaxChoicesPerAction);
+        if (copyCount > 0)
+            choices[..copyCount].CopyTo(Choices);
+        ChoiceCount = copyCount;
+        ChoiceCursor = 0;
+        NeedsChoice = false;
+        PendingChoiceKind = HotChoiceKind.None;
+        PendingChoiceSourceCardDefId = 0;
+        PendingChoiceMin = 0;
+        PendingChoiceMax = 0;
+        ActiveDrawDepth = 0;
+        PendingPowerChangeCount = 0;
+        LastStarsSpent = 0;
+        CurrentPlayIndex = 0;
+        CurrentPlayTargetSlot = -1;
+        UnblockedDamageThisPlay = false;
+        AttackActive = false;
+    }
+}

@@ -1168,7 +1168,7 @@ internal static class PlayerTurnSetupCoordinator
                 using IDisposable gcPolicy = SearchGcPolicy.EnterLowLatencySearch(
                     context.Settings.EnableNoGcRegion, context.Settings.NoGcRegionBudgetBytes,
                     context.SearchPolicy.MemoryPressureSignal, searchToken);
-                SolverResult result = CombatSearchCoordinator.Solve(context.RootSnapshot, context.DisplayNames,
+                SolverResult result = SolverBackendSelector.Resolve().SolveCoordinator(context.RootSnapshot, context.DisplayNames,
                     context.BattleDamage, context.SearchPolicy, searchToken, active.Interaction.PublishProgress);
                 SolverResult finalized = active.Interaction.FinalizeWorkerResult(result);
                 searchToken.ThrowIfCancellationRequested();

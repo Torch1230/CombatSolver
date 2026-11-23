@@ -1992,3 +1992,59 @@ internal sealed class SolverResult
         return $"{text} [color=#73c991][b]击杀 {string.Join("、", kills)}[/b][/color]";
     }
 }
+
+internal static class PlanActionKeyHelper
+{
+    public static StateFingerprint BuildCycleActionKey(PlanAction action)
+    {
+        StateFingerprintBuilder key = new();
+        key.Add((int)action.Kind);
+        key.Add(action.Turn);
+        key.Add(action.CardId);
+        key.Add(action.CardOccurrence);
+        key.Add(action.TargetIndex);
+        key.Add(action.TargetCombatId ?? uint.MaxValue);
+        key.Add(action.PotionId);
+        key.Add(action.PotionSlot);
+        key.Add(action.NestedChoicesBeforePrimary);
+        AppendCycleChoiceKey(ref key, action.Choice);
+        AppendCycleChoiceListKey(ref key, action.NestedChoices);
+        AppendCycleChoiceListKey(ref key, action.TurnStartChoices);
+        return key.Finish();
+    }
+
+    private static void AppendCycleChoiceListKey(
+        ref StateFingerprintBuilder key,
+        IReadOnlyList<PlanCardChoice>? choices)
+    {
+        key.Add(choices?.Count ?? -1);
+        if (choices == null)
+            return;
+        foreach (PlanCardChoice choice in choices)
+            AppendCycleChoiceKey(ref key, choice);
+    }
+
+    private static void AppendCycleChoiceKey(
+        ref StateFingerprintBuilder key,
+        PlanCardChoice? choice)
+    {
+        if (choice == null)
+        {
+            key.Add(-1);
+            return;
+        }
+        key.Add((int)choice.Effect);
+        key.Add((int)choice.SourcePile);
+        key.Add(choice.SourceId);
+        key.Add(choice.ContextId);
+        key.Add((int)choice.Timing);
+        key.Add(choice.Cards.Count);
+        foreach (PlanCardToken card in choice.Cards)
+        {
+            key.Add(card.CardId);
+            key.Add(card.UpgradeLevel);
+            key.Add(card.SourceOccurrence);
+            key.Add(card.OptionOccurrence);
+        }
+    }
+}

@@ -18,6 +18,10 @@ internal static class Program
 
     private static int Main(string[] rawArgs)
     {
+        if (rawArgs.Length == 1 && rawArgs[0] == "--check-hot-layout")
+            return HotKernelChecks.RunLayoutChecks();
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--verify-hot-parity")
+            return HotKernelChecks.RunParityChecks(rawArgs.Skip(1).ToArray());
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-result-diagnostics")
             return ResultDiagnosticsChecks.Run();
         if (rawArgs.Length == 1 && rawArgs[0] == "--check-primary-incumbents")
@@ -320,6 +324,7 @@ internal static class Program
             options.EarlyTurnExplorationBudgetMilliseconds,
             options.PotionPolicy,
             options.SearchMode,
+            options.Backend,
             options.UsePortfolio,
             fixedSearchBudget = !options.ProductionBudget,
             enableNoGcRegion = options.EnableNoGcRegion,
@@ -394,6 +399,9 @@ internal sealed record HarnessOptions
           --budget-ms <int>      搜索预算毫秒（默认 600000）
           --potion-policy <p>    药水政策（默认 Smart）
           --search-mode <m>      Evaluate（单次求解，不经协调器，默认）| Coordinator（生产协调器）
+          --backend <b>          求解后端：legacy（默认）| hot
+          --check-hot-layout     校验 HotKernel 布局、Pack/Unpack、全字节翻转突变、RNG 与牌堆操作
+          --verify-hot-parity    校验 HotKernel Gate A(19根)、Gate B(锁步动作)、Gate C(微基准)
           --use-portfolio        开宽度组合（只对 --search-mode Coordinator 有效）
           --no-plain-baseline    消融：丢掉普通基线成员（需 --use-portfolio）
           --unordered-pile-mask <0..15>  实验：状态键里顺序无关的牌堆（1手牌/2抽牌堆/4弃牌堆/8消耗堆）
@@ -450,6 +458,7 @@ internal sealed record HarnessOptions
     public int BudgetMilliseconds { get; init; } = 600_000;
     public string PotionPolicy { get; init; } = "Smart";
     public string SearchMode { get; init; } = "Evaluate";
+    public string Backend { get; init; } = "legacy";
     /// <summary>开宽度组合（协调器的组合成员通道）；Evaluate 模式下没有意义。</summary>
     public bool UsePortfolio { get; init; }
     /// <summary>消融：丢掉只带基线宽度、不带排序修饰的组合成员，少跑一次真实搜索。</summary>
@@ -533,7 +542,7 @@ internal sealed record HarnessOptions
         bool usePortfolio = false, observePortfolio = false, noPlainBaseline = false;
         string? portfolioModelPath = null;
         string potionPolicy = "Smart", milestone = "M2", language = "eng";
-        string profile = "Custom", searchMode = "Evaluate", label = "offline";
+        string profile = "Custom", searchMode = "Evaluate", backend = "legacy", label = "offline";
         string? output = null, requestPath = null;
         string workspace = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "../../../../../../.local/offline-harness"));
@@ -567,6 +576,7 @@ internal sealed record HarnessOptions
                 case "--budget-ms": budget = int.Parse(Value()); break;
                 case "--potion-policy": potionPolicy = Value(); break;
                 case "--search-mode": searchMode = Value(); break;
+                case "--backend": backend = Value().ToLowerInvariant(); break;
                 case "--use-portfolio": usePortfolio = true; break;
                 case "--no-plain-baseline": noPlainBaseline = true; break;
                 case "--unordered-pile-mask": unorderedPileMask = int.Parse(Value()); break;
@@ -623,6 +633,8 @@ internal sealed record HarnessOptions
             throw new ArgumentException("--profile 只接受 Low|Medium|High|VeryHigh|Custom。");
         if (searchMode is not ("Evaluate" or "Coordinator"))
             throw new ArgumentException("--search-mode 只接受 Evaluate 或 Coordinator。");
+        if (backend is not ("legacy" or "hot"))
+            throw new ArgumentException("--backend 只接受 legacy 或 hot。");
         if (orderingObservationLimit is < 0 or > 100000 || orderingObservationLimit > 0 && searchMode != "Evaluate")
             throw new ArgumentException("--observe-ordering 仅支持 Evaluate，范围 0..100000。");
         if (orderingWatchedStatesPath != null && orderingObservationLimit == 0)
@@ -709,6 +721,7 @@ internal sealed record HarnessOptions
             BudgetMilliseconds = budget,
             PotionPolicy = potionPolicy,
             SearchMode = searchMode,
+            Backend = backend,
             UsePortfolio = usePortfolio,
             NoPlainBaselineMember = noPlainBaseline,
             UnorderedPileMask = unorderedPileMask,

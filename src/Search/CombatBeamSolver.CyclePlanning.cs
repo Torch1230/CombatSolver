@@ -2773,11 +2773,7 @@ internal sealed partial class CombatBeamSolver
     }
 
     internal static StateFingerprint BuildCycleActionKey(PlanAction action)
-    {
-        StateFingerprintBuilder key = new();
-        AppendCycleActionKey(ref key, action);
-        return key.Finish();
-    }
+        => PlanActionKeyHelper.BuildCycleActionKey(action);
 
     private static string DescribeCycleActions(SearchNode child, int actionCount)
     {

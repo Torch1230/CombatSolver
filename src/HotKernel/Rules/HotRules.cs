@@ -1,0 +1,437 @@
+using MegaCrit.Sts2.Core.Runs;
+
+namespace CombatSolver.HotKernel;
+
+/// <summary>
+/// Root-frozen immutable rule tables, bytecode ops, compiled monster machines, active relic hook routing,
+/// and Phase 1 coverage manifest shared across all search branches of a combat root.
+/// </summary>
+internal sealed class HotRules
+{
+    public required HotCardDef[] Cards { get; init; }
+    public required HotPowerDef[] Powers { get; init; }
+    public required HotRelicDef[] Relics { get; init; }
+    public required HotPotionDef[] Potions { get; init; }
+    public required HotOrbDef[] Orbs { get; init; }
+    public required HotEnchantmentDef[] Enchantments { get; init; }
+    public required HotAfflictionDef[] Afflictions { get; init; }
+    public required HotMonsterDef[] Monsters { get; init; }
+
+    public required HotCardEffectOp[] EffectOps { get; init; }
+    public required HotMonsterMachine[] MonsterMachines { get; init; }
+
+    public required ushort[] ActiveRelicDefIds { get; init; }
+    public required HotActiveRelic[] ActiveRelics { get; init; }
+    public required byte[] StatefulRelicOrder { get; init; }
+    public required byte[] TrackedRelicOrder { get; init; }
+    public required byte[][] RelicHooksByBit { get; init; }
+    public required IReadOnlyDictionary<ushort, byte> RelicDefIdToStateSlot { get; init; }
+    public required ulong StaticRelicHookMask { get; init; }
+
+    public required CombatRulesSnapshot RulesSnapshot { get; init; }
+    public GameMode GameMode => RulesSnapshot.GameMode;
+    public int AscensionLevel => RulesSnapshot.AscensionLevel;
+    public ulong AscensionsMask => RulesSnapshot.Ascensions;
+    public string? DominionId => RulesSnapshot.DominionId;
+    public required byte MaxHandSize { get; init; }
+    public required bool EncounterGoldForfeited { get; init; }
+    public required int BaseMaxEnergy { get; init; }
+    public required int BaseHandDraw { get; init; }
+
+    public required string[] EnemySlotNames { get; init; }
+    public required string[] EnemyMonsterEntries { get; init; }
+    public required HotRootPetSnapshot[] RootPets { get; init; }
+    public required byte[] RootAllyOwnerSlots { get; init; }
+    public required HotCoverageManifest CoverageManifest { get; init; }
+
+    public required IReadOnlyDictionary<string, ushort> CardDefIdByEntry { get; init; }
+    public required IReadOnlyDictionary<string, ushort> PowerDefIdByEntry { get; init; }
+    public required IReadOnlyDictionary<string, ushort> RelicDefIdByEntry { get; init; }
+    public required IReadOnlyDictionary<string, ushort> MonsterDefIdByEntry { get; init; }
+
+    // Pre-resolved Phase 1 well-known DefIds (0 if not registered)
+    public ushort VulnerablePowerDefId { get; init; }
+    public ushort WeakPowerDefId { get; init; }
+    public ushort FrailPowerDefId { get; init; }
+    public ushort StrengthPowerDefId { get; init; }
+    public ushort DexterityPowerDefId { get; init; }
+    public ushort MetallicizePowerDefId { get; init; }
+    public ushort PlatingPowerDefId { get; init; }
+    public ushort BarricadePowerDefId { get; init; }
+    public ushort ArtifactPowerDefId { get; init; }
+    public ushort ThornsPowerDefId { get; init; }
+    public ushort RitualPowerDefId { get; init; }
+    public ushort BurningBloodRelicDefId { get; init; }
+    public ushort OddMushroomRelicDefId { get; init; }
+    public ushort PaperFrogRelicDefId { get; init; }
+
+    public bool HasBurningBlood { get; init; }
+    public bool HasOddMushroom { get; init; }
+    public bool HasPaperFrog { get; init; }
+
+    public ReadOnlySpan<HotCardEffectOp> GetCardOps(ushort cardDefId)
+    {
+        HotCardDef def = Cards[cardDefId];
+        return def.OpCount == 0
+            ? ReadOnlySpan<HotCardEffectOp>.Empty
+            : EffectOps.AsSpan(def.OpStart, def.OpCount);
+    }
+
+    public HotMonsterMachine? GetMonsterMachine(ushort monsterDefId)
+    {
+        if (monsterDefId >= Monsters.Length)
+            return null;
+        int idx = Monsters[monsterDefId].MachineIndex;
+        return idx >= 0 && idx < MonsterMachines.Length ? MonsterMachines[idx] : null;
+    }
+
+    public ushort FindCardDefId(string entry)
+        => CardDefIdByEntry.TryGetValue(entry, out ushort id) ? id : (ushort)0;
+
+    public ushort FindPowerDefId(string entry)
+        => PowerDefIdByEntry.TryGetValue(entry, out ushort id) ? id : (ushort)0;
+
+    public ushort FindRelicDefId(string entry)
+        => RelicDefIdByEntry.TryGetValue(entry, out ushort id) ? id : (ushort)0;
+
+    /// <summary>
+    /// Exact zero-allocation card comparator matching <see cref="CombatSolver.Engine.InCombat.Simulation.CombatCardOrdering"/>
+    /// for <c>HotPiles.ShuffleDiscardIntoDraw</c>.
+    /// </summary>
+    public int CompareCardsForShuffle(
+        in HotCard a,
+        in HotCard b,
+        in CombatHotState s,
+        HotColdSidecar? cold)
+    {
+        HotCardDef defA = Cards[a.CardDefId];
+        HotCardDef defB = Cards[b.CardDefId];
+
+        int cmp = string.CompareOrdinal(defA.Entry, defB.Entry);
+        if (cmp != 0)
+            return cmp;
+
+        cmp = a.UpgradeLevel.CompareTo(b.UpgradeLevel);
+        if (cmp != 0)
+            return cmp;
+
+        if (a.EnchId != b.EnchId)
+        {
+            if (a.EnchId == 0)
+                return -1;
+            if (b.EnchId == 0)
+                return 1;
+            cmp = string.CompareOrdinal(Enchantments[a.EnchId].Entry, Enchantments[b.EnchId].Entry);
+            if (cmp != 0)
+                return cmp;
+        }
+
+        if (a.AfflId != b.AfflId)
+        {
+            if (a.AfflId == 0)
+                return -1;
+            if (b.AfflId == 0)
+                return 1;
+            cmp = string.CompareOrdinal(Afflictions[a.AfflId].Entry, Afflictions[b.AfflId].Entry);
+            if (cmp != 0)
+                return cmp;
+        }
+
+        int costA = (a.Flags & HotCardFlags.CostsX) != 0
+            ? a.CapturedEnergy
+            : Math.Max(0, GetCardLocalEnergyCost(in a, cold));
+        int costB = (b.Flags & HotCardFlags.CostsX) != 0
+            ? b.CapturedEnergy
+            : Math.Max(0, GetCardLocalEnergyCost(in b, cold));
+        cmp = costA.CompareTo(costB);
+        if (cmp != 0)
+            return cmp;
+
+        cmp = a.BaseReplayCount.CompareTo(b.BaseReplayCount);
+        if (cmp != 0)
+            return cmp;
+
+        string[] namesA = defA.OrderedVarNames;
+        if (namesA.Length == 0)
+            return 0;
+
+        string[] namesB = defB.OrderedVarNames;
+        if (ReferenceEquals(namesA, namesB) || namesA.Length == namesB.Length)
+        {
+            for (int i = 0; i < namesA.Length; i++)
+            {
+                if (!ReferenceEquals(namesA, namesB) && !string.Equals(namesA[i], namesB[i], StringComparison.Ordinal))
+                    break;
+                decimal valA = GetCardVarValue(in a, defA, i);
+                decimal valB = GetCardVarValue(in b, defB, i);
+                cmp = valA.CompareTo(valB);
+                if (cmp != 0)
+                    return cmp;
+            }
+            if (ReferenceEquals(namesA, namesB))
+                return 0;
+        }
+
+        for (int i = 0; i < namesA.Length; i++)
+        {
+            int idxB = FindOrderedNameIndex(namesB, namesA[i]);
+            if (idxB < 0)
+                continue;
+            decimal valA = GetCardVarValue(in a, defA, i);
+            decimal valB = GetCardVarValue(in b, defB, idxB);
+            cmp = valA.CompareTo(valB);
+            if (cmp != 0)
+                return cmp;
+        }
+
+        return 0;
+    }
+
+    public static decimal GetCardVarValue(in HotCard card, HotCardDef def, int varIndex)
+    {
+        decimal value = card.UpgradeLevel > 0 && varIndex < def.UpgradedVarValues.Length
+            ? def.UpgradedVarValues[varIndex]
+            : def.BaseVarValues[varIndex];
+        if (varIndex == def.Var0Index && card.Var0Delta != 0)
+            value += card.Var0Delta;
+        else if (varIndex == def.Var1Index && card.Var1Delta != 0)
+            value += card.Var1Delta;
+        return value;
+    }
+
+    /// <summary>
+    /// Computes <c>CardEnergyCost.GetWithModifiers(CostModifiers.Local)</c> matching STS2 0.113.1.
+    /// </summary>
+    public static int GetCardLocalEnergyCost(in HotCard card, HotColdSidecar? cold)
+        => HotCostModifiers.GetLocalEnergyCost(in card, cold);
+
+    /// <summary>
+    /// Computes <c>CardModel.CurrentStarCost</c> matching STS2 0.113.1.
+    /// </summary>
+    public static int GetCardCurrentStarCost(in HotCard card, HotColdSidecar? cold)
+        => HotCostModifiers.GetEffectiveStarCost(in card, cold);
+
+    private static int FindOrderedNameIndex(string[] sortedNames, string target)
+    {
+        int lo = 0;
+        int hi = sortedNames.Length - 1;
+        while (lo <= hi)
+        {
+            int mid = (lo + hi) >> 1;
+            int cmp = string.CompareOrdinal(sortedNames[mid], target);
+            if (cmp == 0)
+                return mid;
+            if (cmp < 0)
+                lo = mid + 1;
+            else
+                hi = mid - 1;
+        }
+        return -1;
+    }
+
+    // ---- Phase 1 Vertical Slice Bytecode & Coverage Catalog ----
+
+    public static bool IsPhase1SupportedCard(string entry)
+        => entry is
+            "STRIKE_IRONCLAD" or
+            "DEFEND_IRONCLAD" or
+            "BASH" or
+            "ANGER" or
+            "CLEAVE" or
+            "POMMEL_STRIKE" or
+            "SHRUG_IT_OFF" or
+            "TWIN_STRIKE" or
+            "IRON_WAVE" or
+            "CLOTHESLINE" or
+            "INFLAME" or
+            "METALLICIZE" or
+            "ASCENDERS_BANE" or
+            // STS2 0.113.1 Act 1 Ironclad equivalents
+            "THUNDERCLAP" or
+            "STONE_ARMOR" or
+            "BARRICADE" or
+            "BLUDGEON" or
+            "IMPERVIOUS" or
+            "TREMBLE";
+
+    public static bool IsPhase1SupportedPower(string entry)
+        => entry is
+            "VULNERABLE_POWER" or
+            "WEAK_POWER" or
+            "FRAIL_POWER" or
+            "STRENGTH_POWER" or
+            "DEXTERITY_POWER" or
+            "METALLICIZE_POWER" or
+            "PLATING_POWER" or
+            "BARRICADE_POWER" or
+            "ARTIFACT_POWER" or
+            "THORNS_POWER" or
+            "RITUAL_POWER";
+
+    public static bool IsPhase1SupportedRelic(string entry)
+        => entry is
+            "BURNING_BLOOD" or
+            "ODD_MUSHROOM" or
+            "PAPER_FROG";
+
+    public static bool IsPhase1SupportedMonsterType(string typeName)
+        => typeName is
+            "FuzzyWurmCrawler" or
+            "Nibbit" or
+            "BowlbugEgg" or
+            "BowlbugRock" or
+            "CalcifiedCultist" or
+            "SludgeSpinner" or
+            "Flyconid" or
+            "CorpseSlug";
+
+    public static HotHookMask GetPowerHookMask(string entry)
+        => entry switch
+        {
+            "STRENGTH_POWER"    => HotHookMask.ModifyDamageAdditive,
+            "WEAK_POWER"        => HotHookMask.ModifyDamageMultiplicative | HotHookMask.AfterTurnEnd,
+            "VULNERABLE_POWER"  => HotHookMask.ModifyDamageMultiplicative | HotHookMask.AfterTurnEnd,
+            "DEXTERITY_POWER"   => HotHookMask.ModifyBlockAdditive,
+            "FRAIL_POWER"       => HotHookMask.ModifyBlockMultiplicative | HotHookMask.AfterTurnEnd,
+            "METALLICIZE_POWER" => HotHookMask.BeforeTurnEnd,
+            "PLATING_POWER"     => HotHookMask.BeforeTurnEnd | HotHookMask.AfterDamageReceived,
+            "BARRICADE_POWER"   => HotHookMask.ShouldClearBlock,
+            "ARTIFACT_POWER"    => HotHookMask.BeforePowerAmountChanged,
+            "THORNS_POWER"      => HotHookMask.AfterDamageReceived,
+            "RITUAL_POWER"      => HotHookMask.AfterTurnEnd,
+            _                   => HotHookMask.None,
+        };
+
+    public static HotHookMask GetRelicHookMask(string entry)
+        => entry switch
+        {
+            "BURNING_BLOOD" => HotHookMask.AfterCombatEnd,
+            "ODD_MUSHROOM"  => HotHookMask.ModifyDamageMultiplicative,
+            "PAPER_FROG"    => HotHookMask.ModifyDamageMultiplicative,
+            _               => HotHookMask.None,
+        };
+
+    public static void CompilePhase1CardBytecode(
+        string entry,
+        ushort cardDefId,
+        Func<string, ushort> ensurePowerDefId,
+        List<HotCardEffectOp> ops,
+        out int opStart,
+        out byte opCount,
+        out ushort customHandlerId)
+    {
+        opStart = ops.Count;
+        customHandlerId = 0;
+
+        switch (entry)
+        {
+            case "STRIKE_IRONCLAD":
+            case "BLUDGEON":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
+                break;
+
+            case "DEFEND_IRONCLAD":
+            case "IMPERVIOUS":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.GainBlock, HotCardOpFlags.UseCardBlock));
+                break;
+
+            case "BASH":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.ApplyPowerTarget,
+                    HotCardOpFlags.UseCardMagic,
+                    (short)ensurePowerDefId("VULNERABLE_POWER")));
+                break;
+
+            case "ANGER":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.AddFixedCard,
+                    HotCardOpFlags.AddCloneToDiscard,
+                    (short)cardDefId));
+                break;
+
+            case "CLEAVE":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.AttackAll, HotCardOpFlags.UseCardDamage));
+                break;
+
+            case "THUNDERCLAP":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.AttackAll, HotCardOpFlags.UseCardDamage));
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.ApplyPowerAllEnemies,
+                    HotCardOpFlags.UseCardMagic,
+                    (short)ensurePowerDefId("VULNERABLE_POWER")));
+                break;
+
+            case "POMMEL_STRIKE":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Draw, HotCardOpFlags.UseCardMagic));
+                break;
+
+            case "SHRUG_IT_OFF":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.GainBlock, HotCardOpFlags.UseCardBlock));
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Draw, HotCardOpFlags.UseCardMagic));
+                break;
+
+            case "TWIN_STRIKE":
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.Attack,
+                    HotCardOpFlags.UseCardDamage | HotCardOpFlags.UseCardHits));
+                break;
+
+            case "IRON_WAVE":
+                // STS2 0.113.1 IronWave.OnPlay: GainBlock FIRST, then Attack!
+                ops.Add(new HotCardEffectOp(HotCardOpKind.GainBlock, HotCardOpFlags.UseCardBlock));
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
+                break;
+
+            case "CLOTHESLINE":
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage));
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.ApplyPowerTarget,
+                    HotCardOpFlags.UseCardMagic,
+                    (short)ensurePowerDefId("WEAK_POWER")));
+                break;
+
+            case "INFLAME":
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.ApplyPowerSelf,
+                    HotCardOpFlags.UseCardMagic,
+                    (short)ensurePowerDefId("STRENGTH_POWER")));
+                break;
+
+            case "METALLICIZE":
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.ApplyPowerSelf,
+                    HotCardOpFlags.UseCardMagic,
+                    (short)ensurePowerDefId("METALLICIZE_POWER")));
+                break;
+
+            case "STONE_ARMOR":
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.ApplyPowerSelf,
+                    HotCardOpFlags.UseCardMagic,
+                    (short)ensurePowerDefId("PLATING_POWER")));
+                break;
+
+            case "BARRICADE":
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.ApplyPowerSelf,
+                    HotCardOpFlags.FixedOne,
+                    (short)ensurePowerDefId("BARRICADE_POWER")));
+                break;
+
+            case "TREMBLE":
+                ops.Add(new HotCardEffectOp(
+                    HotCardOpKind.ApplyPowerTarget,
+                    HotCardOpFlags.UseCardMagic,
+                    (short)ensurePowerDefId("VULNERABLE_POWER")));
+                break;
+
+            case "ASCENDERS_BANE":
+                break;
+        }
+
+        opCount = (byte)(ops.Count - opStart);
+    }
+}
