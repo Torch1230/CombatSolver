@@ -5,8 +5,14 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 
 namespace CombatSolver;
 
-internal static class InCombatSts2SimResultMaterializer
+internal sealed class InCombatSts2SimResultMaterializer
 {
+    // Each attempt has one root, policy and damage snapshot. Only cache its verified display data.
+    private sealed record VerifiedPreview(InCombatSts2SimResultDto Route, SolverInterimResult Interim,
+        SolverCurrentTurnPreview CurrentTurn, SolverSpeculativeRoutePreview Speculative);
+
+    private VerifiedPreview? _lastPreview;
+
     public static SolverResult MaterializeResult(
         InCombatSts2SimResultDto dto,
         CombatRootSnapshot root,
@@ -535,7 +541,7 @@ internal static class InCombatSts2SimResultMaterializer
         }
     }
 
-    public static SolverProgress MaterializeProgress(
+    public SolverProgress MaterializeProgress(
         InCombatSts2SimProgressDto progressDto,
         int candidateVersion,
         int backendAttempt,
@@ -565,42 +571,11 @@ internal static class InCombatSts2SimResultMaterializer
         if (progressDto.CurrentBest is { Actions.Count: > 0 } bestDto)
         {
             TimeSpan elapsed = TimeSpan.FromMilliseconds(Math.Max(0d, progressDto.ElapsedMilliseconds));
-            SolverResult previewResult = MaterializeResult(
-                bestDto,
-                root,
-                displayNames,
-                battleDamage,
-                searchPolicy,
-                elapsed,
-                previewParallelism,
-                SolverResultScope.CurrentTurnAdoption,
-                routeAdoptionCancellation,
-                snapshotAfterProgress);
-
-            bool won = !previewResult.Snapshot.PlayerDead
-                && previewResult.Snapshot.AllEnemiesDead
-                && previewResult.CombatEndedTurn.HasValue;
-            interimResult = new SolverInterimResult(
-                Won: won,
-                OutstandingStolenResource: previewResult.Snapshot.OutstandingStolenResource,
-                ProjectedBattleHpLost: previewResult.ProjectedBattleHpLost,
-                StrategicHpDeficit: previewResult.ProjectedBattleHpLost,
-                PotionStrategicCost: previewResult.PotionHpRequired,
-                ProjectedBattlePotionCount: previewResult.ProjectedBattlePotionCount,
-                EnemyHp: previewResult.Snapshot.EnemyHp,
-                Score: 0d,
-                CombatEndedTurn: previewResult.CombatEndedTurn)
-            {
-                TheftPolicy = searchPolicy.TheftPolicy,
-                ForfeitsEncounterGold = previewResult.Snapshot.ForfeitsEncounterGold,
-                Survives = !previewResult.Snapshot.PlayerDead && previewResult.Snapshot.ProjectedPlayerHp > 0,
-                DeathSaveUseCount = previewResult.Snapshot.ProjectedDeathSaveUseCount,
-                GrowthHpCredit = previewResult.Snapshot.GrowthHpCredit,
-                GrowthRewardCount = previewResult.Snapshot.GrowthRewards.Total,
-            };
-
-            turnPreview = SolverCurrentTurnPreview.FromResult(previewResult, candidateVersion);
-            speculativePreview = SolverSpeculativeRoutePreview.FromResult(previewResult, candidateVersion);
+            VerifiedPreview preview = GetVerifiedPreview(bestDto, candidateVersion, root, displayNames,
+                battleDamage, searchPolicy, elapsed, previewParallelism, routeAdoptionCancellation, snapshotAfterProgress);
+            interimResult = preview.Interim;
+            turnPreview = preview.CurrentTurn with { CandidateVersion = candidateVersion };
+            speculativePreview = preview.Speculative with { CandidateVersion = candidateVersion };
             adoptionSeed = new SolverRouteAdoptionSeed(
                 candidateVersion,
                 () =>
@@ -648,6 +623,57 @@ internal static class InCombatSts2SimResultMaterializer
             RouteAdoptionSeed: adoptionSeed,
             RequestBudgetMilliseconds: requestBudgetMilliseconds,
             BackendAttempt: backendAttempt);
+    }
+
+    private VerifiedPreview GetVerifiedPreview(InCombatSts2SimResultDto bestDto, int candidateVersion,
+        CombatRootSnapshot root, SolverDisplayNames displayNames, BattleDamageSnapshot battleDamage,
+        SearchPolicySnapshot searchPolicy, TimeSpan elapsed, int previewParallelism,
+        CancellationToken routeAdoptionCancellation, Sts2SimAttemptWorkSnapshot snapshotAfterProgress)
+    {
+        routeAdoptionCancellation.ThrowIfCancellationRequested();
+        VerifiedPreview? cached = Volatile.Read(ref _lastPreview);
+        if (cached is not null && cached.Route.HasSameRoute(bestDto))
+            return cached;
+
+        SolverResult previewResult = MaterializeResult(
+            bestDto,
+            root,
+            displayNames,
+            battleDamage,
+            searchPolicy,
+            elapsed,
+            previewParallelism,
+            SolverResultScope.CurrentTurnAdoption,
+            routeAdoptionCancellation,
+            snapshotAfterProgress);
+
+        bool won = !previewResult.Snapshot.PlayerDead
+            && previewResult.Snapshot.AllEnemiesDead
+            && previewResult.CombatEndedTurn.HasValue;
+        var interim = new SolverInterimResult(
+            Won: won,
+            OutstandingStolenResource: previewResult.Snapshot.OutstandingStolenResource,
+            ProjectedBattleHpLost: previewResult.ProjectedBattleHpLost,
+            StrategicHpDeficit: previewResult.ProjectedBattleHpLost,
+            PotionStrategicCost: previewResult.PotionHpRequired,
+            ProjectedBattlePotionCount: previewResult.ProjectedBattlePotionCount,
+            EnemyHp: previewResult.Snapshot.EnemyHp,
+            Score: 0d,
+            CombatEndedTurn: previewResult.CombatEndedTurn)
+        {
+            TheftPolicy = searchPolicy.TheftPolicy,
+            ForfeitsEncounterGold = previewResult.Snapshot.ForfeitsEncounterGold,
+            Survives = !previewResult.Snapshot.PlayerDead && previewResult.Snapshot.ProjectedPlayerHp > 0,
+            DeathSaveUseCount = previewResult.Snapshot.ProjectedDeathSaveUseCount,
+            GrowthHpCredit = previewResult.Snapshot.GrowthHpCredit,
+            GrowthRewardCount = previewResult.Snapshot.GrowthRewards.Total,
+        };
+
+        var verified = new VerifiedPreview(bestDto, interim,
+            SolverCurrentTurnPreview.FromResult(previewResult, candidateVersion),
+            SolverSpeculativeRoutePreview.FromResult(previewResult, candidateVersion));
+        Volatile.Write(ref _lastPreview, verified);
+        return verified;
     }
 
     private static PlanAction[] BuildActions(

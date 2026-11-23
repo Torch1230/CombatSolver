@@ -401,7 +401,28 @@ internal sealed record InCombatActionTraceDto(
     int PotionSlot,
     IReadOnlyList<InCombatChoiceTraceDto> Choices,
     IReadOnlyList<string> FlashedRelicIds,
-    IReadOnlyList<uint> KilledEnemyCombatIds);
+    IReadOnlyList<uint> KilledEnemyCombatIds)
+{
+    internal bool HasSameTrace(InCombatActionTraceDto other)
+    {
+        if (Turn != other.Turn || Kind != other.Kind || CardId != other.CardId
+            || CardOccurrence != other.CardOccurrence || CardUpgradeLevel != other.CardUpgradeLevel
+            || CardEnchantmentId != other.CardEnchantmentId || TargetIndex != other.TargetIndex
+            || TargetCombatId != other.TargetCombatId || PotionId != other.PotionId || PotionSlot != other.PotionSlot
+            || Choices.Count != other.Choices.Count || !FlashedRelicIds.SequenceEqual(other.FlashedRelicIds)
+            || !KilledEnemyCombatIds.SequenceEqual(other.KilledEnemyCombatIds))
+            return false;
+
+        for (int i = 0; i < Choices.Count; i++)
+        {
+            InCombatChoiceTraceDto left = Choices[i], right = other.Choices[i];
+            if (left.Timing != right.Timing || left.SourceId != right.SourceId || left.SourcePile != right.SourcePile
+                || !left.Cards.SequenceEqual(right.Cards))
+                return false;
+        }
+        return true;
+    }
+}
 
 internal sealed record InCombatTurnOutcomeDto(
     int Turn,
@@ -453,7 +474,19 @@ internal sealed record InCombatSts2SimResultDto(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? TransitionCount = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? ChoiceReplayAttempts = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? ObservedPeakParallelism = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ActivePhaseLabel = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ActivePhaseLabel = null)
+{
+    internal bool HasSameRoute(InCombatSts2SimResultDto other)
+    {
+        if (Actions.Count != other.Actions.Count || Terminal != other.Terminal
+            || !TurnOutcomes.SequenceEqual(other.TurnOutcomes) || !PotionUses.SequenceEqual(other.PotionUses))
+            return false;
+        for (int i = 0; i < Actions.Count; i++)
+            if (!Actions[i].HasSameTrace(other.Actions[i]))
+                return false;
+        return true;
+    }
+}
 
 internal sealed record InCombatSts2SimProgressDto(
     long ExpandedNodes,

@@ -450,6 +450,23 @@ await Check("in-combat ABI v1 wire validator rejects malformed nested traces and
         InCombatSts2SimAbi.Version, "Succeeded", null, null, null, validResult, null, 1, 4.0);
     InCombatSts2SimWireValidator.ValidateResponse(validResponse);
 
+    // Independent wire packets can carry the same route with newer counters.
+    InCombatSts2SimResultDto repeated = JsonSerializer.Deserialize<InCombatSts2SimResultDto>(
+        JsonSerializer.Serialize(validResult, PreCombatSts2SimAbi.JsonOptions), PreCombatSts2SimAbi.JsonOptions)!;
+    Equal(true, validResult.HasSameRoute(repeated with { ExpandedNodes = 100, SearchElapsedMilliseconds = 250 }));
+    Equal(false, validResult.HasSameRoute(repeated with { Terminal = repeated.Terminal with { HasRisk = true } }));
+    Equal(false, validResult.HasSameRoute(repeated with { PotionUses = [new("FIRE_POTION", 1, 0)] }));
+    Equal(false, validResult.HasSameRoute(repeated with { TurnOutcomes = [repeated.TurnOutcomes[0] with { EnergyLeft = repeated.TurnOutcomes[0].EnergyLeft + 1 }] }));
+    InCombatActionTraceDto firstAction = repeated.Actions[0];
+    foreach (InCombatActionTraceDto different in new[]
+    {
+        firstAction with { CardOccurrence = 1 }, firstAction with { CardEnchantmentId = "GLAM" },
+        firstAction with { TargetCombatId = 2 }, firstAction with { KilledEnemyCombatIds = [2] },
+        firstAction with { FlashedRelicIds = [] }, firstAction with { Choices = firstAction.Choices.Reverse().ToArray() },
+        firstAction with { Choices = [validChoiceHand with { Cards = [validChoiceHand.Cards[0] with { SourceOccurrence = 0 }] }, validChoiceGenerated] },
+    })
+        Equal(false, validResult.HasSameRoute(repeated with { Actions = [different, repeated.Actions[1]] }));
+
     // One-action damaging turn with empty TurnOutcomes list must fail.
     ExpectThrows<InvalidDataException>(() => InCombatSts2SimWireValidator.ValidateResponse(
         validResponse with

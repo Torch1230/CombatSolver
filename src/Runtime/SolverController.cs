@@ -4021,6 +4021,7 @@ internal static partial class SolverController
 
         int sts2SimAttempt = search.Interaction.CurrentBackendAttempt;
         var attemptWork = new CombatSolver.Api.Sts2SimAttemptWorkTracker();
+        var materializer = new InCombatSts2SimResultMaterializer();
         InCombatSolverBackendState.BeginActiveSts2Sim(request.MaxDegreeOfParallelism);
         SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
 
@@ -4051,7 +4052,7 @@ internal static partial class SolverController
                     progressDto =>
                     {
                         int version = Interlocked.Increment(ref candidateVersion);
-                        SolverProgress progress = InCombatSts2SimResultMaterializer.MaterializeProgress(
+                        SolverProgress progress = materializer.MaterializeProgress(
                             progressDto,
                             version,
                             sts2SimAttempt,
