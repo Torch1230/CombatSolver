@@ -123,7 +123,7 @@ impl AttackBuilder {
         hooks::before_attack(state, content, info)?;
         let attack_count = hooks::modify_attack_hit_count(state, content, info, self.hit_count)?;
 
-        let mut all_results = Vec::new();
+        let mut all_results = Vec::with_capacity(attack_count.max(0) as usize);
         for _ in 0..attack_count {
             if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
                 break;
@@ -271,7 +271,7 @@ pub fn damage_targets_with_hook_mode(
         }
     }
 
-    let mut pending: Vec<(DamageResult, bool)> = Vec::with_capacity(targets.len());
+    let mut pending: SmallVec<[(DamageResult, bool); 4]> = SmallVec::with_capacity(targets.len());
     for &target in targets {
         if state.creature(target).is_none_or(|c| c.is_dead()) {
             continue;
@@ -290,7 +290,7 @@ pub fn damage_targets_with_hook_mode(
         pending.extend(singles);
     }
 
-    let mut killed: Vec<DamageResult> = Vec::new();
+    let mut killed: SmallVec<[DamageResult; 4]> = SmallVec::new();
     for (result, prevented) in &pending {
         if *prevented {
             continue;

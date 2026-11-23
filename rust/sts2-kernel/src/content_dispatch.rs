@@ -3,10 +3,60 @@ use crate::error::KernelError;
 use crate::state::{BattleState, CardHandle, CreatureHandle, PowerInst};
 use smallvec::SmallVec;
 use sts2_types::{
-    CardId, CardKeywords, CardMeta, CardPilePosition, CardStaticFlags, CardType, Dec, DominionId,
-    EnchantmentId, HookMask, HookSlot, MonsterId, MonsterMeta, OrbId, OrbMeta, PileType, PotionId,
-    PotionMeta, PowerId, PowerMeta, RelicId, RelicMeta, RunModelId, TargetType, ValueProp,
+    AfflictionId, CardId, CardKeywords, CardMeta, CardPilePosition, CardStaticFlags, CardType, Dec,
+    DominionId, EnchantmentId, HookMask, HookSlot, MonsterId, MonsterMeta, OrbId, OrbMeta,
+    PileType, PotionId, PotionMeta, PowerId, PowerMeta, RelicId, RelicMeta, RunModelId, TargetType,
+    ValueProp,
 };
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct CategoryHookMasks {
+    pub all_cards: HookMask,
+    pub deck_cards: HookMask,
+    pub all_enchantments: HookMask,
+    pub all_afflictions: HookMask,
+    pub all_potions: HookMask,
+    pub all_orbs: HookMask,
+    pub all_relics: HookMask,
+    pub all_powers: HookMask,
+    pub all_monsters: HookMask,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct HookMaskTableView {
+    pub categories: CategoryHookMasks,
+    pub cards: &'static [HookMask],
+    pub powers: &'static [HookMask],
+    pub relics: &'static [HookMask],
+    pub potions: &'static [HookMask],
+    pub monsters: &'static [HookMask],
+    pub orbs: &'static [HookMask],
+    pub enchantments: &'static [HookMask],
+    pub afflictions: &'static [HookMask],
+}
+
+pub mod rollout_op_flags {
+    pub const HAS_DRAW: u8 = 1 << 0;
+    pub const HAS_ENERGY_OR_STAR_GAIN: u8 = 1 << 1;
+    pub const HAS_ENGINE_OP: u8 = 1 << 2;
+    pub const HAS_SELF_BUFF: u8 = 1 << 3;
+    pub const HAS_ENEMY_DEBUFF: u8 = 1 << 4;
+    pub const HAS_SELF_HP_LOSS: u8 = 1 << 5;
+    pub const HAS_ATTACK: u8 = 1 << 6;
+    pub const HAS_BLOCK: u8 = 1 << 7;
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct CardRolloutProfile {
+    pub base_damage: i16,
+    pub upg_damage: i16,
+    pub hits: u8,
+    pub upg_hits: u8,
+    pub base_block: i16,
+    pub upg_block: i16,
+    pub setup_weight: u8,
+    pub op_flags: u8,
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HookListener {
@@ -488,6 +538,69 @@ pub trait ContentDispatcher {
         } else {
             power.amount <= 0
         })
+    }
+
+    fn category_hook_masks(&self) -> Option<CategoryHookMasks> {
+        None
+    }
+
+    fn hook_mask_tables(&self) -> Option<HookMaskTableView> {
+        None
+    }
+
+    #[inline]
+    fn card_rollout_profile(&self, _id: CardId) -> CardRolloutProfile {
+        CardRolloutProfile::default()
+    }
+
+    #[inline]
+    fn card_hook_mask(&self, id: CardId) -> Result<HookMask, KernelError> {
+        Ok(self.card_meta(id)?.hook_mask)
+    }
+
+    #[inline]
+    fn power_hook_mask(&self, id: PowerId) -> Result<HookMask, KernelError> {
+        Ok(self.power_meta(id)?.hook_mask)
+    }
+
+    #[inline]
+    fn relic_hook_mask(&self, id: RelicId) -> Result<HookMask, KernelError> {
+        Ok(self.relic_meta(id)?.hook_mask)
+    }
+
+    #[inline]
+    fn potion_hook_mask(&self, id: PotionId) -> Result<HookMask, KernelError> {
+        Ok(self.potion_meta(id)?.hook_mask)
+    }
+
+    #[inline]
+    fn monster_hook_mask(&self, id: MonsterId) -> Result<HookMask, KernelError> {
+        Ok(self.monster_meta(id)?.hook_mask)
+    }
+
+    #[inline]
+    fn orb_hook_mask(&self, id: OrbId) -> Result<HookMask, KernelError> {
+        Ok(self.orb_meta(id)?.hook_mask)
+    }
+
+    #[inline]
+    fn enchantment_hook_mask_for_card(
+        &self,
+        state: &BattleState,
+        card: CardHandle,
+        _id: EnchantmentId,
+    ) -> Result<HookMask, KernelError> {
+        self.listener_hook_mask(state, HookListener::Enchantment(card))
+    }
+
+    #[inline]
+    fn affliction_hook_mask_for_card(
+        &self,
+        state: &BattleState,
+        card: CardHandle,
+        _id: AfflictionId,
+    ) -> Result<HookMask, KernelError> {
+        self.listener_hook_mask(state, HookListener::Affliction(card))
     }
 
     fn listener_hook_mask(

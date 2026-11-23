@@ -757,7 +757,7 @@ fn map_policy(
             || potion_directives
                 .iter()
                 .any(|d| d.directive != SolverPotionDirective::Disabled),
-        allow_random_cards: false,
+        allow_random_cards: true,
         max_degree_of_parallelism: effective_dop,
         potion_policy,
         potion_directives,
@@ -802,11 +802,12 @@ fn map_policy(
             .early_turn_exploration_budget_milliseconds
             .unwrap_or(0)
             .max(0) as u64,
-        use_boss_tempo_search: true,
+        use_boss_tempo_search: false,
         acceptable_battle_hp_loss: p.acceptable_battle_hp_loss.max(0),
         stop_at_acceptable_battle_hp_loss: p.stop_at_acceptable_battle_hp_loss,
         potion_free_beam_width: p.potion_free_beam_width.map(|v| v as usize),
         potion_beam_width: p.potion_beam_width.map(|v| v as usize),
+        max_turns: if req.live_state.room_type == "Boss" { 40 } else { 28 },
         max_card_branches_per_node: p.max_card_branches_per_node as usize,
         max_pile_choice_branches_per_action: p.max_pile_choice_branches_per_action as usize,
         max_hand_choice_branches_per_action: p.max_hand_choice_branches_per_action as usize,

@@ -424,18 +424,26 @@ impl CombatEngine {
         content: &dyn ContentDispatcher,
         card_handle: CardHandle,
     ) -> Result<bool, KernelError> {
+        Ok(Self::can_play_card_with_costs(state, content, card_handle)?.is_some())
+    }
+
+    pub fn can_play_card_with_costs(
+        state: &mut BattleState,
+        content: &dyn ContentDispatcher,
+        card_handle: CardHandle,
+    ) -> Result<Option<(i32, i32)>, KernelError> {
         let (card_id, pile) = match state.card(card_handle) {
             Some(c) => (c.id, c.pile),
-            None => return Ok(false),
+            None => return Ok(None),
         };
         if pile != PileType::Hand {
-            return Ok(false);
+            return Ok(None);
         }
         if card_pile::card_has_keyword(state, content, card_handle, CardKeywords::UNPLAYABLE)? {
-            return Ok(false);
+            return Ok(None);
         }
         if !hooks::should_play(state, content, card_handle)? {
-            return Ok(false);
+            return Ok(None);
         }
         let target_type = content.card_resolved_target_type(state, card_handle)?;
         if target_type == sts2_types::TargetType::AnyAlly {
@@ -444,19 +452,23 @@ impl CombatEngine {
                     && state.creature(h).is_some_and(|c| c.is_alive())
             });
             if !has_ally {
-                return Ok(false);
+                return Ok(None);
             }
         }
         let _ = card_id;
         let energy_cost = ordering::resolve_energy_cost(state, content, card_handle)?;
         if state.player.energy < energy_cost {
-            return Ok(false);
+            return Ok(None);
         }
         let star_cost = ordering::resolve_star_cost(state, content, card_handle)?;
         if state.player.stars < star_cost {
-            return Ok(false);
+            return Ok(None);
         }
-        content.card_is_playable(state, card_handle)
+        if content.card_is_playable(state, card_handle)? {
+            Ok(Some((energy_cost, star_cost)))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn play_card(

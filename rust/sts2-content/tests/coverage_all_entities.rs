@@ -377,3 +377,85 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
 
     assert_eq!(total, 1562);
 }
+
+#[test]
+fn hook_mask_tables_and_rollout_profiles_match_per_entity_queries() {
+    use sts2_kernel::rollout_op_flags as op;
+    let content = Sts2Content;
+    let tables = content
+        .hook_mask_tables()
+        .expect("Sts2Content must expose hook_mask_tables");
+    let cats = content
+        .category_hook_masks()
+        .expect("Sts2Content must expose category_hook_masks");
+    assert_eq!(tables.categories, cats);
+    assert_eq!(
+        tables.categories.deck_cards,
+        sts2_types::HookMask::EMPTY.with(HookSlot::AfterCombatEnd)
+    );
+
+    for idx in 0..CardId::COUNT {
+        let id: CardId = unsafe { std::mem::transmute(idx as u16) };
+        assert_eq!(tables.cards[idx], content.card_hook_mask(id).unwrap());
+    }
+    for idx in 0..PowerId::COUNT {
+        let id: PowerId = unsafe { std::mem::transmute(idx as u16) };
+        assert_eq!(tables.powers[idx], content.power_hook_mask(id).unwrap());
+    }
+    for idx in 0..RelicId::COUNT {
+        let id: RelicId = unsafe { std::mem::transmute(idx as u16) };
+        assert_eq!(tables.relics[idx], content.relic_hook_mask(id).unwrap());
+    }
+    for idx in 0..PotionId::COUNT {
+        let id: PotionId = unsafe { std::mem::transmute(idx as u16) };
+        assert_eq!(tables.potions[idx], content.potion_hook_mask(id).unwrap());
+    }
+    for idx in 0..MonsterId::COUNT {
+        let id: MonsterId = unsafe { std::mem::transmute(idx as u16) };
+        assert_eq!(tables.monsters[idx], content.monster_hook_mask(id).unwrap());
+    }
+    for idx in 0..OrbId::COUNT {
+        let id: OrbId = unsafe { std::mem::transmute(idx as u8) };
+        assert_eq!(tables.orbs[idx], content.orb_hook_mask(id).unwrap());
+    }
+    assert_eq!(tables.enchantments.len(), EnchantmentId::COUNT);
+    for idx in 0..EnchantmentId::COUNT {
+        let id: EnchantmentId = unsafe { std::mem::transmute(idx as u16) };
+        assert_eq!(
+            tables.enchantments[idx],
+            orbs_enchantments_afflictions::enchantment_hook_mask(id).unwrap()
+        );
+    }
+    assert_eq!(tables.afflictions.len(), AfflictionId::COUNT);
+    for idx in 0..AfflictionId::COUNT {
+        let id: AfflictionId = unsafe { std::mem::transmute(idx as u16) };
+        assert_eq!(
+            tables.afflictions[idx],
+            orbs_enchantments_afflictions::affliction_hook_mask(id).unwrap()
+        );
+    }
+
+    let fight_me = content.card_rollout_profile(CardId::FightMe);
+    assert_eq!((fight_me.base_damage, fight_me.upg_damage, fight_me.hits, fight_me.upg_hits), (5, 6, 2, 2));
+    assert_ne!(fight_me.op_flags & op::HAS_ATTACK, 0);
+    assert_ne!(fight_me.op_flags & op::HAS_SELF_BUFF, 0);
+
+    let boomerang = content.card_rollout_profile(CardId::SwordBoomerang);
+    assert_eq!((boomerang.base_damage, boomerang.hits, boomerang.upg_hits), (3, 3, 4));
+
+    let seven_stars = content.card_rollout_profile(CardId::SevenStars);
+    assert_eq!((seven_stars.base_damage, seven_stars.hits, seven_stars.upg_hits), (7, 7, 7));
+
+    let glow = content.card_rollout_profile(CardId::Glow);
+    assert_ne!(glow.op_flags & op::HAS_DRAW, 0);
+    assert_ne!(glow.op_flags & op::HAS_ENERGY_OR_STAR_GAIN, 0);
+    assert_ne!(glow.op_flags & op::HAS_SELF_BUFF, 0);
+
+    let havoc = content.card_rollout_profile(CardId::Havoc);
+    assert_ne!(havoc.op_flags & op::HAS_DRAW, 0);
+
+    let dash = content.card_rollout_profile(CardId::Dash);
+    assert_eq!((dash.base_damage, dash.upg_damage, dash.base_block, dash.upg_block), (10, 13, 10, 13));
+    assert_ne!(dash.op_flags & op::HAS_ATTACK, 0);
+    assert_ne!(dash.op_flags & op::HAS_BLOCK, 0);
+}

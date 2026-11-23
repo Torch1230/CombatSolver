@@ -5,9 +5,11 @@ use smallvec::SmallVec;
 
 pub const TT_SHARD_COUNT: usize = 256;
 
-/// 6-dimensional Pareto non-dominance label matching `CombatBeamSolver.Transpositions.cs`.
+/// 8-dimensional Pareto non-dominance label matching `HotTranspositionTable.cs`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TranspositionLabel {
+    pub forced_used_mask: u64,
+    pub death_save_use_count: i32,
     pub potion_count: i32,
     pub potion_strategic_cost: i32,
     pub future_sold_hp: i32,
@@ -19,12 +21,14 @@ pub struct TranspositionLabel {
 impl TranspositionLabel {
     #[inline]
     pub fn dominates(&self, other: &Self) -> bool {
-        self.potion_count <= other.potion_count
+        (self.forced_used_mask & other.forced_used_mask) == other.forced_used_mask
+            && self.death_save_use_count <= other.death_save_use_count
+            && self.potion_count <= other.potion_count
             && self.potion_strategic_cost <= other.potion_strategic_cost
             && self.future_sold_hp <= other.future_sold_hp
             && self.cumulative_player_hp_lost <= other.cumulative_player_hp_lost
-            && self.action_count <= other.action_count
             && self.score >= other.score
+            && (self.action_count <= other.action_count || self.score > other.score)
     }
 }
 
@@ -89,15 +93,12 @@ impl TranspositionFrontier {
 #[derive(Clone, Debug)]
 struct TtBucketEntry {
     generation: u32,
-    key_offset: u32,
-    key_len: u32,
     frontier: TranspositionFrontier,
 }
 
 #[derive(Debug)]
 pub struct TtShard {
-    entries: HashMap<StateHash, SmallVec<[TtBucketEntry; 1]>, ahash::RandomState>,
-    key_arena: Vec<u8>,
+    entries: HashMap<StateHash, TtBucketEntry, ahash::RandomState>,
     active_entries: usize,
 }
 
@@ -110,7 +111,6 @@ impl Default for TtShard {
                 0xbf58_476d_1ce4_e5b9,
                 0x94d0_49bb_1331_11eb,
             )),
-            key_arena: Vec::with_capacity(4096),
             active_entries: 0,
         }
     }
@@ -119,7 +119,6 @@ impl Default for TtShard {
 impl TtShard {
     fn clear_all(&mut self) {
         self.entries.clear();
-        self.key_arena.clear();
         self.active_entries = 0;
     }
 
@@ -128,23 +127,15 @@ impl TtShard {
         &self,
         generation: u32,
         hash: StateHash,
-        canonical_key: &[u8],
         label: &TranspositionLabel,
     ) -> bool {
-        let Some(bucket) = self.entries.get(&hash) else {
+        let Some(entry) = self.entries.get(&hash) else {
             return false;
         };
-        for entry in bucket {
-            if entry.generation != generation {
-                continue;
-            }
-            let start = entry.key_offset as usize;
-            let end = start + entry.key_len as usize;
-            if &self.key_arena[start..end] == canonical_key {
-                return entry.frontier.is_dominated_by(label);
-            }
+        if entry.generation != generation {
+            return false;
         }
-        false
+        entry.frontier.is_dominated_by(label)
     }
 
     pub fn try_insert(
@@ -152,51 +143,36 @@ impl TtShard {
         generation: u32,
         entry_limit_per_shard: usize,
         hash: StateHash,
-        canonical_key: &[u8],
         label: TranspositionLabel,
     ) -> bool {
-        let bucket = self.entries.entry(hash).or_default();
-        for entry in bucket.iter_mut() {
-            if entry.generation != generation {
-                continue;
-            }
-            let start = entry.key_offset as usize;
-            let end = start + entry.key_len as usize;
-            if &self.key_arena[start..end] == canonical_key {
+        if let Some(entry) = self.entries.get_mut(&hash) {
+            if entry.generation == generation {
                 return entry.frontier.try_accept(label);
             }
-        }
-        // Evict stale-generation slot inside this bucket if present, before appending.
-        if let Some(stale) = bucket.iter_mut().find(|e| e.generation != generation) {
-            let key_offset = self.key_arena.len() as u32;
-            let key_len = canonical_key.len() as u32;
-            self.key_arena.extend_from_slice(canonical_key);
-            stale.generation = generation;
-            stale.key_offset = key_offset;
-            stale.key_len = key_len;
-            stale.frontier = TranspositionFrontier::new(label);
+            if self.active_entries >= entry_limit_per_shard {
+                return true;
+            }
+            entry.generation = generation;
+            entry.frontier = TranspositionFrontier::new(label);
             self.active_entries += 1;
             return true;
         }
         if self.active_entries >= entry_limit_per_shard {
-            // Mirror C# AtTranspositionEntryLimit: allow candidate without growing table further.
             return true;
         }
-        let key_offset = self.key_arena.len() as u32;
-        let key_len = canonical_key.len() as u32;
-        self.key_arena.extend_from_slice(canonical_key);
-        bucket.push(TtBucketEntry {
-            generation,
-            key_offset,
-            key_len,
-            frontier: TranspositionFrontier::new(label),
-        });
+        self.entries.insert(
+            hash,
+            TtBucketEntry {
+                generation,
+                frontier: TranspositionFrontier::new(label),
+            },
+        );
         self.active_entries += 1;
         true
     }
 }
 
-/// 256-sharded Pareto Transposition Table with O(1) generation reset and exact byte-equality verification.
+/// 256-sharded Pareto Transposition Table with O(1) generation reset keyed by 128-bit `StateHash`.
 #[derive(Debug)]
 pub struct ShardedParetoTT {
     shards: Vec<TtShard>,
@@ -225,7 +201,7 @@ impl ShardedParetoTT {
         self.generation
     }
 
-    /// O(1) pass reset via generation bump (clears arenas only if generation wraps or key arenas grow huge).
+    /// O(1) pass reset via generation bump (clears tables only when generation wraps or tables grow large).
     pub fn reset_generation(&mut self) {
         if self.generation == u32::MAX {
             self.generation = 1;
@@ -235,9 +211,10 @@ impl ShardedParetoTT {
             return;
         }
         self.generation += 1;
+        let cap4 = self.entry_limit_per_shard * 4;
         for shard in &mut self.shards {
             shard.active_entries = 0;
-            if shard.key_arena.len() > 2 * 1024 * 1024 {
+            if shard.entries.len() > cap4 {
                 shard.clear_all();
             }
         }
@@ -245,21 +222,140 @@ impl ShardedParetoTT {
 
     /// Lock-free read-only probe against committed entries in the current generation.
     #[inline]
-    pub fn probe_dominated(
-        &self,
-        hash: StateHash,
-        canonical_key: &[u8],
-        label: &TranspositionLabel,
-    ) -> bool {
+    pub fn probe_dominated(&self, hash: StateHash, label: &TranspositionLabel) -> bool {
         let shard = &self.shards[hash.shard_index()];
-        shard.probe_dominated(self.generation, hash, canonical_key, label)
+        shard.probe_dominated(self.generation, hash, label)
+    }
+
+    /// Inserts a single candidate sequentially into the shard for `hash`.
+    #[inline]
+    pub fn try_insert_single(&mut self, hash: StateHash, label: TranspositionLabel) -> bool {
+        let shard = &mut self.shards[hash.shard_index()];
+        let accepted = shard.try_insert(
+            self.generation,
+            self.entry_limit_per_shard,
+            hash,
+            label,
+        );
+        if !accepted {
+            self.branches_pruned += 1;
+        }
+        accepted
+    }
+
+    /// Zero-allocation in-place variant of `insert_sharded_batch_reused` reusing `shard_accepted`
+    /// scratch buffers across waves and passes.
+    /// Each shard's items MUST already be sorted by `(parent_rank, action_ord, choice_ord)`!
+    pub fn insert_sharded_batch_in_place<T: Send>(
+        &mut self,
+        shard_buckets: &mut [Vec<(usize, StateHash, TranspositionLabel, T)>],
+        shard_accepted: &mut [Vec<(usize, T)>],
+        is_parallel: bool,
+        out: &mut Vec<(usize, T)>,
+    ) {
+        let generation = self.generation;
+        let cap = self.entry_limit_per_shard;
+
+        out.clear();
+        if is_parallel {
+            let pruned_total: u64 = self
+                .shards
+                .par_iter_mut()
+                .zip(shard_buckets.par_iter_mut())
+                .zip(shard_accepted.par_iter_mut())
+                .map(|((shard, items), acc)| {
+                    acc.clear();
+                    if items.is_empty() {
+                        return 0u64;
+                    }
+                    let mut pruned = 0u64;
+                    for (sort_idx, hash, label, payload) in items.drain(..) {
+                        if shard.try_insert(generation, cap, hash, label) {
+                            acc.push((sort_idx, payload));
+                        } else {
+                            pruned += 1;
+                        }
+                    }
+                    pruned
+                })
+                .sum();
+            self.branches_pruned += pruned_total;
+            for acc in shard_accepted.iter_mut() {
+                out.extend(acc.drain(..));
+            }
+        } else {
+            for (shard, items) in self.shards.iter_mut().zip(shard_buckets.iter_mut()) {
+                for (sort_idx, hash, label, payload) in items.drain(..) {
+                    if shard.try_insert(generation, cap, hash, label) {
+                        out.push((sort_idx, payload));
+                    } else {
+                        self.branches_pruned += 1;
+                    }
+                }
+            }
+        }
+        out.sort_unstable_by_key(|(idx, _)| *idx);
+    }
+
+    /// Deterministically deduplicates and inserts shard-bucketed candidates in parallel across all 256 shards,
+    /// draining `shard_buckets` in-place and appending accepted `(sort_idx, T)` items into `out` (then sorting `out`).
+    /// Each shard's items MUST already be sorted by `(parent_rank, action_ord, choice_ord)`!
+    pub fn insert_sharded_batch_reused<T>(
+        &mut self,
+        shard_buckets: &mut [Vec<(usize, StateHash, TranspositionLabel, T)>],
+        is_parallel: bool,
+        out: &mut Vec<(usize, T)>,
+    ) where
+        T: Send,
+    {
+        let generation = self.generation;
+        let cap = self.entry_limit_per_shard;
+
+        out.clear();
+        if is_parallel {
+            let shard_outputs: Vec<(Vec<(usize, T)>, u64)> = self
+                .shards
+                .par_iter_mut()
+                .zip(shard_buckets.par_iter_mut())
+                .map(|(shard, items)| {
+                    if items.is_empty() {
+                        return (Vec::new(), 0u64);
+                    }
+                    let mut accepted = Vec::with_capacity(items.len());
+                    let mut pruned = 0u64;
+                    for (sort_idx, hash, label, payload) in items.drain(..) {
+                        if shard.try_insert(generation, cap, hash, label) {
+                            accepted.push((sort_idx, payload));
+                        } else {
+                            pruned += 1;
+                        }
+                    }
+                    (accepted, pruned)
+                })
+                .collect();
+            for (mut acc, pruned) in shard_outputs {
+                self.branches_pruned += pruned;
+                out.append(&mut acc);
+            }
+        } else {
+            for (shard, items) in self.shards.iter_mut().zip(shard_buckets.iter_mut()) {
+                for (sort_idx, hash, label, payload) in items.drain(..) {
+                    if shard.try_insert(generation, cap, hash, label) {
+                        out.push((sort_idx, payload));
+                    } else {
+                        self.branches_pruned += 1;
+                    }
+                }
+            }
+        }
+        out.sort_unstable_by_key(|(idx, _)| *idx);
     }
 
     /// Deterministically deduplicates and inserts shard-bucketed candidates in parallel across all 256 shards.
     /// Each shard's items MUST already be sorted by `(parent_rank, action_ord, choice_ord)`!
-    pub fn insert_sharded_batch<'a, T, F>(
+    pub fn insert_sharded_batch<T, F>(
         &mut self,
-        shard_buckets: Vec<Vec<(usize, StateHash, &'a [u8], TranspositionLabel, T)>>,
+        mut shard_buckets: Vec<Vec<(usize, StateHash, TranspositionLabel, T)>>,
         is_parallel: bool,
         mut on_pruned: F,
     ) -> Vec<(usize, T)>
@@ -267,52 +363,13 @@ impl ShardedParetoTT {
         T: Send,
         F: FnMut(usize),
     {
-        let generation = self.generation;
-        let cap = self.entry_limit_per_shard;
-
-        let mut shard_outputs: Vec<(Vec<(usize, T)>, u64)> = if is_parallel {
-            self.shards
-                .par_iter_mut()
-                .zip(shard_buckets.into_par_iter())
-                .map(|(shard, items)| {
-                    let mut accepted = Vec::with_capacity(items.len());
-                    let mut pruned = 0u64;
-                    for (sort_idx, hash, key_bytes, label, payload) in items {
-                        if shard.try_insert(generation, cap, hash, key_bytes, label) {
-                            accepted.push((sort_idx, payload));
-                        } else {
-                            pruned += 1;
-                        }
-                    }
-                    (accepted, pruned)
-                })
-                .collect()
-        } else {
-            self.shards
-                .iter_mut()
-                .zip(shard_buckets.into_iter())
-                .map(|(shard, items)| {
-                    let mut accepted = Vec::with_capacity(items.len());
-                    let mut pruned = 0u64;
-                    for (sort_idx, hash, key_bytes, label, payload) in items {
-                        if shard.try_insert(generation, cap, hash, key_bytes, label) {
-                            accepted.push((sort_idx, payload));
-                        } else {
-                            pruned += 1;
-                        }
-                    }
-                    (accepted, pruned)
-                })
-                .collect()
-        };
-
+        let before = self.branches_pruned;
         let mut total_accepted = Vec::new();
-        for (mut acc, pruned) in shard_outputs.drain(..) {
-            self.branches_pruned += pruned;
-            on_pruned(pruned as usize);
-            total_accepted.append(&mut acc);
+        self.insert_sharded_batch_reused(&mut shard_buckets, is_parallel, &mut total_accepted);
+        let pruned_delta = (self.branches_pruned - before) as usize;
+        if pruned_delta > 0 {
+            on_pruned(pruned_delta);
         }
-        total_accepted.sort_unstable_by_key(|(idx, _)| *idx);
         total_accepted
     }
 }

@@ -9,7 +9,8 @@ pub mod snapshot;
 pub mod state;
 
 pub use content_dispatch::{
-    AttackContextInfo, ContentDispatcher, HookArgs, HookListener, HookResult,
+    rollout_op_flags, AttackContextInfo, CardRolloutProfile, CategoryHookMasks, ContentDispatcher,
+    HookArgs, HookListener, HookMaskTableView, HookResult,
 };
 pub use continuation::{
     ChoiceRequest, ChoiceTiming, ContinuationFrame, PendingContinuation, StepOutcome,

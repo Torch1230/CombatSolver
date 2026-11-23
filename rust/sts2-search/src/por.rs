@@ -6,8 +6,8 @@ use sts2_kernel::ordering::{resolve_energy_cost, resolve_star_cost};
 use sts2_kernel::state::{BattleState, CardHandle, CreatureHandle, FieldValue};
 use sts2_kernel::ContentDispatcher;
 use sts2_types::{
-    CardId, CardKeywords, CardStaticFlags, HookMask, HookSlot, PotionId, PowerStaticFlags,
-    RelicStaticFlags,
+    CardId, CardKeywords, CardRarity, CardStaticFlags, CardTags, CardType, HookMask, HookSlot,
+    PileType, PotionId, PowerStaticFlags, RelicStaticFlags,
 };
 
 const ORDER_SENSITIVE_HOOKS: HookMask = HookMask::EMPTY
@@ -218,10 +218,11 @@ pub struct HandCardEquivKey {
     pub ext_hash: u64,
 }
 
-pub fn card_equiv_key(
-    state: &mut BattleState,
-    content: &dyn ContentDispatcher,
+pub fn card_equiv_key_with_costs(
+    state: &BattleState,
     handle: CardHandle,
+    energy_cost: i32,
+    star_cost: i32,
 ) -> HandCardEquivKey {
     let Some(card) = state.card(handle).copied() else {
         return HandCardEquivKey {
@@ -235,8 +236,6 @@ pub fn card_equiv_key(
             ext_hash: 0,
         };
     };
-    let energy_cost = resolve_energy_cost(state, content, handle).unwrap_or(card.base_energy_cost);
-    let star_cost = resolve_star_cost(state, content, handle).unwrap_or(0);
     let affliction_bits = card
         .affliction
         .map_or(0, |a| ((a.id as u64) << 32) | (a.amount as u64 & 0xffff_ffff));
@@ -269,21 +268,45 @@ pub fn card_equiv_key(
     }
 }
 
+pub fn card_equiv_key(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    handle: CardHandle,
+) -> HandCardEquivKey {
+    let Some(card) = state.card(handle).copied() else {
+        return HandCardEquivKey {
+            card_id: CardId::StrikeIronclad,
+            upgrade_level: -1,
+            energy_cost: -1,
+            star_cost: -1,
+            keywords_bits: 0,
+            temp_flags_bits: 0,
+            affliction_bits: 0,
+            ext_hash: 0,
+        };
+    };
+    let energy_cost = resolve_energy_cost(state, content, handle).unwrap_or(card.base_energy_cost);
+    let star_cost = resolve_star_cost(state, content, handle).unwrap_or(0);
+    card_equiv_key_with_costs(state, handle, energy_cost, star_cost)
+}
+
 /// Deduplicates playable hand cards by exact equivalence key while preserving first-slot order.
 pub fn dedup_playable_hand_cards(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     enable_dedup: bool,
 ) -> SmallVec<[CardHandle; 12]> {
-    let hand = state.player.hand.clone();
+    let hand = SmallVec::<[CardHandle; 16]>::from_slice(&state.player.hand);
     let mut playable = SmallVec::<[CardHandle; 12]>::new();
     let mut seen = SmallVec::<[HandCardEquivKey; 12]>::new();
     for ch in hand {
-        if !sts2_kernel::CombatEngine::can_play_card(state, content, ch).unwrap_or(false) {
+        let Ok(Some((energy_cost, star_cost))) =
+            sts2_kernel::CombatEngine::can_play_card_with_costs(state, content, ch)
+        else {
             continue;
-        }
+        };
         if enable_dedup {
-            let key = card_equiv_key(state, content, ch);
+            let key = card_equiv_key_with_costs(state, ch, energy_cost, star_cost);
             if seen.contains(&key) {
                 continue;
             }
@@ -294,12 +317,109 @@ pub fn dedup_playable_hand_cards(
     playable
 }
 
+/// Short-circuit check for whether any card in hand can currently be played.
+pub fn has_any_playable_hand_card(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+) -> bool {
+    let hand = SmallVec::<[CardHandle; 16]>::from_slice(&state.player.hand);
+    for ch in hand {
+        if sts2_kernel::CombatEngine::can_play_card(state, content, ch).unwrap_or(false) {
+            return true;
+        }
+    }
+    false
+}
+
+#[inline]
+fn is_usable_potion_slot(
+    slot: usize,
+    pid: PotionId,
+    policy: &crate::SearchPolicy,
+    allow_paid_optional: bool,
+    renewable_potion_shaped_rock: bool,
+) -> (bool, bool) {
+    // FairyInABottle is passive-only (triggered on lethal damage).
+    if pid == PotionId::FairyInABottle {
+        return (false, false);
+    }
+    if !policy.allows_explicit_potion_use(slot, pid, false) {
+        return (false, false);
+    }
+    let directive = policy.potion_directive_for(slot, pid);
+    let is_forced = directive == crate::eval::SolverPotionDirective::Force;
+    if !allow_paid_optional && !is_forced {
+        let cost = crate::eval::PotionValuationRegistry::strategic_hp_cost_with_overrides(
+            pid,
+            renewable_potion_shaped_rock,
+            &policy.potion_hp_threshold_overrides,
+        );
+        if cost > 0 {
+            return (false, false);
+        }
+    }
+    (true, is_forced)
+}
+
+/// Short-circuit check for whether any potion slot can currently be used under this pass policy.
+pub fn has_any_usable_potion_for_pass(
+    state: &BattleState,
+    sensitivity: &CombatOrderSensitivity,
+    policy: &crate::SearchPolicy,
+    allow_paid_optional: bool,
+    renewable_potion_shaped_rock: bool,
+) -> bool {
+    if !state.player.can_use_or_remove_potions {
+        return false;
+    }
+    let player_hp = state
+        .player_creature()
+        .map_or(state.player.current_hp, |c| c.current_hp);
+    let player_max_hp = state
+        .player_creature()
+        .map_or(state.player.max_hp, |c| c.max_hp);
+    for (slot, maybe_id) in state.player.potion_slots.iter().enumerate() {
+        let Some(pid) = *maybe_id else { continue };
+        let (allowed, is_forced) = is_usable_potion_slot(
+            slot,
+            pid,
+            policy,
+            allow_paid_optional,
+            renewable_potion_shaped_rock,
+        );
+        if !allowed {
+            continue;
+        }
+        if !is_forced
+            && pid == PotionId::BloodPotion
+            && player_hp >= player_max_hp
+            && !sensitivity.any_heal_hook
+        {
+            continue;
+        }
+        return true;
+    }
+    false
+}
+
 /// Deduplicates potion slots by `PotionId` and skips disallowed, passive, or provably no-op potions.
 pub fn dedup_and_filter_potions(
     state: &BattleState,
     sensitivity: &CombatOrderSensitivity,
     policy: &crate::SearchPolicy,
     enable_dedup: bool,
+) -> SmallVec<[(usize, PotionId); 5]> {
+    dedup_and_filter_potions_for_pass(state, sensitivity, policy, enable_dedup, true, false)
+}
+
+/// Pass-aware potion deduplication filtering optional paid potions when `allow_paid_optional == false`.
+pub fn dedup_and_filter_potions_for_pass(
+    state: &BattleState,
+    sensitivity: &CombatOrderSensitivity,
+    policy: &crate::SearchPolicy,
+    enable_dedup: bool,
+    allow_paid_optional: bool,
+    renewable_potion_shaped_rock: bool,
 ) -> SmallVec<[(usize, PotionId); 5]> {
     let mut out = SmallVec::<[(usize, PotionId); 5]>::new();
     if !state.player.can_use_or_remove_potions {
@@ -315,15 +435,16 @@ pub fn dedup_and_filter_potions(
     let mut non_forced_seen: SmallVec<[PotionId; 5]> = SmallVec::new();
     for (slot, maybe_id) in state.player.potion_slots.iter().enumerate() {
         let Some(pid) = *maybe_id else { continue };
-        // FairyInABottle is passive-only (triggered on lethal damage).
-        if pid == PotionId::FairyInABottle {
+        let (allowed, is_forced) = is_usable_potion_slot(
+            slot,
+            pid,
+            policy,
+            allow_paid_optional,
+            renewable_potion_shaped_rock,
+        );
+        if !allowed {
             continue;
         }
-        if !policy.allows_explicit_potion_use(slot, pid, false) {
-            continue;
-        }
-        let directive = policy.potion_directive_for(slot, pid);
-        let is_forced = directive == crate::eval::SolverPotionDirective::Force;
         if enable_dedup && !is_forced {
             if non_forced_seen.contains(&pid) {
                 continue;
@@ -342,6 +463,63 @@ pub fn dedup_and_filter_potions(
     out
 }
 
+/// Domain-agnostic card quality heuristic used to order choice candidates before bounded subset enumeration.
+pub fn choice_candidate_quality(
+    state: &BattleState,
+    content: &dyn ContentDispatcher,
+    ch: CardHandle,
+) -> i32 {
+    let Some(card) = state.card(ch) else {
+        return 0;
+    };
+    let Ok(meta) = content.card_meta(card.id) else {
+        return 0;
+    };
+    if card.has_local_keyword(CardKeywords::UNPLAYABLE) {
+        return -450;
+    }
+    if matches!(meta.card_type, CardType::Curse | CardType::Status) {
+        return -400;
+    }
+    let mut quality = if meta
+        .base_tags
+        .intersects(CardTags::STRIKE | CardTags::DEFEND)
+    {
+        60
+    } else {
+        let mut q = match meta.card_type {
+            CardType::Power => 280,
+            CardType::Skill => 200,
+            CardType::Attack => 190,
+            _ => 120,
+        };
+        q += match meta.rarity {
+            CardRarity::Rare | CardRarity::Ancient => 90,
+            CardRarity::Uncommon => 50,
+            CardRarity::Common | CardRarity::Event => 20,
+            _ => 10,
+        };
+        if card.base_energy_cost == 0 {
+            q += 40;
+        } else if card.base_energy_cost == 1 {
+            q += 15;
+        }
+        q
+    };
+    if meta.flags.contains(CardStaticFlags::HAS_GROWTH) {
+        quality += 60;
+    }
+    if card.upgrade_level > 0 {
+        quality += 35;
+    }
+    if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST)
+        && sts2_kernel::ordering::resolve_local_energy_cost(state, ch, false) == 0
+    {
+        quality += 30;
+    }
+    quality
+}
+
 /// Enumerates canonical multiset choice index selections for a `ChoiceRequest` without duplicate
 /// equivalent card combinations (e.g., picking 2 of 5 cards where 3 are identical `Strike+0`).
 pub fn enumerate_canonical_choices(
@@ -356,91 +534,286 @@ pub fn enumerate_canonical_choices(
         return vec![Vec::new()];
     }
 
-    let equiv_keys: Vec<HandCardEquivKey> = if enable_multiset_dedup {
+    let cap = max_branches.max(1);
+    let equiv_keys: SmallVec<[HandCardEquivKey; 24]> = if enable_multiset_dedup {
         req.candidates
             .iter()
             .map(|&ch| card_equiv_key(state, content, ch))
             .collect()
     } else {
-        Vec::new()
+        SmallVec::new()
     };
+
+    let ordered: SmallVec<[usize; 24]> = if n > 1 {
+        let qualities: SmallVec<[i32; 24]> = req
+            .candidates
+            .iter()
+            .map(|&ch| choice_candidate_quality(state, content, ch))
+            .collect();
+        let mut desc: SmallVec<[usize; 24]> = (0..n).collect();
+        desc.sort_unstable_by_key(|&i| (-qualities[i], i));
+        if req.source_pile == PileType::Hand {
+            let mut asc: SmallVec<[usize; 24]> = (0..n).collect();
+            asc.sort_unstable_by_key(|&i| (qualities[i], i));
+            let mut used: SmallVec<[bool; 24]> = smallvec::smallvec![false; n];
+            let mut mixed = SmallVec::with_capacity(n);
+            let (mut lo_i, mut hi_i) = (0usize, 0usize);
+            while mixed.len() < n {
+                while lo_i < n && used[asc[lo_i]] {
+                    lo_i += 1;
+                }
+                if lo_i < n {
+                    let idx = asc[lo_i];
+                    used[idx] = true;
+                    mixed.push(idx);
+                    lo_i += 1;
+                }
+                if mixed.len() >= n {
+                    break;
+                }
+                while hi_i < n && used[desc[hi_i]] {
+                    hi_i += 1;
+                }
+                if hi_i < n {
+                    let idx = desc[hi_i];
+                    used[idx] = true;
+                    mixed.push(idx);
+                    hi_i += 1;
+                }
+            }
+            mixed
+        } else {
+            desc
+        }
+    } else {
+        smallvec::smallvec![0]
+    };
+
+    // For canonical multiset enumeration over `ordered`, an occurrence of a key may only be chosen
+    // when its immediately preceding occurrence in `ordered` is also chosen.
+    let mut prev_dup: SmallVec<[Option<usize>; 24]> = SmallVec::with_capacity(n);
+    if enable_multiset_dedup {
+        for pos in 0..n {
+            let key = equiv_keys[ordered[pos]];
+            let prev = (0..pos).rev().find(|&p| equiv_keys[ordered[p]] == key);
+            prev_dup.push(prev);
+        }
+    }
+
+    fn push_normalized(
+        ordered: &[usize],
+        picked_positions: &[usize],
+        out: &mut Vec<Vec<usize>>,
+    ) {
+        let mut sel: Vec<usize> = picked_positions.iter().map(|&p| ordered[p]).collect();
+        sel.sort_unstable();
+        out.push(sel);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn dfs_prefix(
+        start: usize,
+        max_pos: usize,
+        target_len: usize,
+        ordered: &[usize],
+        prev_dup: &[Option<usize>],
+        enable_dedup: bool,
+        picked: &mut Vec<usize>,
+        out: &mut Vec<Vec<usize>>,
+        len_cap: usize,
+    ) {
+        if out.len() >= len_cap {
+            return;
+        }
+        if picked.len() == target_len {
+            push_normalized(ordered, picked, out);
+            return;
+        }
+        let need = target_len - picked.len();
+        if max_pos.saturating_sub(start) < need {
+            return;
+        }
+        for pos in start..=max_pos - need {
+            if enable_dedup {
+                if let Some(prev) = prev_dup[pos] {
+                    if !picked.contains(&prev) {
+                        continue;
+                    }
+                }
+            }
+            picked.push(pos);
+            dfs_prefix(
+                pos + 1,
+                max_pos,
+                target_len,
+                ordered,
+                prev_dup,
+                enable_dedup,
+                picked,
+                out,
+                len_cap,
+            );
+            picked.pop();
+            if out.len() >= len_cap {
+                return;
+            }
+        }
+    }
+
+    fn enumerate_for_len(
+        len: usize,
+        n: usize,
+        ordered: &[usize],
+        equiv_keys: &[HandCardEquivKey],
+        prev_dup: &[Option<usize>],
+        enable_dedup: bool,
+        len_cap: usize,
+    ) -> Vec<Vec<usize>> {
+        let mut out = Vec::new();
+        if len == 0 {
+            out.push(Vec::new());
+            return out;
+        }
+        if len == 1 {
+            let mut seen: SmallVec<[HandCardEquivKey; 16]> = SmallVec::new();
+            for &orig_idx in ordered {
+                if enable_dedup {
+                    let k = equiv_keys[orig_idx];
+                    if seen.contains(&k) {
+                        continue;
+                    }
+                    seen.push(k);
+                }
+                out.push(vec![orig_idx]);
+                if out.len() >= len_cap {
+                    break;
+                }
+            }
+            return out;
+        }
+
+        let mut picked = Vec::with_capacity(len);
+        for max_pos in (len - 1)..n {
+            if out.len() >= len_cap {
+                break;
+            }
+            if !enable_dedup {
+                picked.clear();
+                picked.push(max_pos);
+                dfs_prefix(
+                    0,
+                    max_pos,
+                    len,
+                    ordered,
+                    prev_dup,
+                    false,
+                    &mut picked,
+                    &mut out,
+                    len_cap,
+                );
+                continue;
+            }
+
+            let mut chain: SmallVec<[usize; 8]> = SmallVec::new();
+            let mut cur_p = Some(max_pos);
+            while let Some(p) = cur_p {
+                chain.push(p);
+                if chain.len() > len {
+                    break;
+                }
+                cur_p = prev_dup[p];
+            }
+            if chain.len() > len {
+                continue;
+            }
+            picked.clear();
+            for &p in chain.iter().rev() {
+                picked.push(p);
+            }
+            let prefix_limit = chain[chain.len() - 1];
+            dfs_prefix(
+                0,
+                prefix_limit,
+                len,
+                ordered,
+                prev_dup,
+                true,
+                &mut picked,
+                &mut out,
+                len_cap,
+            );
+        }
+        out
+    }
 
     let mut results = Vec::new();
     if req.can_skip && req.min_count == 0 {
         results.push(Vec::new());
     }
 
-    let min_pick = req.min_count.max(if req.can_skip { 1 } else { req.min_count });
+    let min_pick = req.min_count.max(usize::from(req.can_skip));
     let max_pick = req.max_count.min(n);
 
-    fn dfs(
-        start: usize,
-        target_len: usize,
-        n: usize,
-        equiv_keys: &[HandCardEquivKey],
-        enable_dedup: bool,
-        cur: &mut Vec<usize>,
-        out: &mut Vec<Vec<usize>>,
-        cap: usize,
-    ) {
-        if out.len() >= cap {
-            return;
+    if min_pick > max_pick {
+        if results.is_empty() {
+            results.push(Vec::new());
         }
-        if cur.len() == target_len {
-            out.push(cur.clone());
-            return;
-        }
-        let need = target_len - cur.len();
-        let mut seen_at_depth: SmallVec<[HandCardEquivKey; 16]> = SmallVec::new();
-        for idx in start..=n - need {
-            if enable_dedup {
-                let key = equiv_keys[idx];
-                if seen_at_depth.contains(&key) {
-                    continue;
-                }
-                seen_at_depth.push(key);
-            }
-            cur.push(idx);
-            dfs(
-                idx + 1,
-                target_len,
-                n,
-                equiv_keys,
-                enable_dedup,
-                cur,
-                out,
-                cap,
-            );
-            cur.pop();
-            if out.len() >= cap {
-                return;
-            }
-        }
+        return results;
     }
 
-    let mut cur = Vec::with_capacity(max_pick);
-    for len in min_pick..=max_pick {
-        if len == 0 {
-            if !results.iter().any(|v| v.is_empty()) {
-                results.push(Vec::new());
+    if min_pick == max_pick {
+        let len_rem = cap.saturating_sub(results.len());
+        if len_rem > 0 {
+            results.extend(enumerate_for_len(
+                min_pick,
+                n,
+                &ordered,
+                &equiv_keys,
+                &prev_dup,
+                enable_multiset_dedup,
+                len_rem,
+            ));
+        }
+    } else {
+        let mut by_len: SmallVec<[Vec<Vec<usize>>; 8]> =
+            SmallVec::with_capacity(max_pick - min_pick + 1);
+        let mut total = results.len();
+        for len in min_pick..=max_pick {
+            let group = enumerate_for_len(
+                len,
+                n,
+                &ordered,
+                &equiv_keys,
+                &prev_dup,
+                enable_multiset_dedup,
+                cap,
+            );
+            total = total.saturating_add(group.len());
+            by_len.push(group);
+        }
+        if total <= cap {
+            for group in by_len {
+                results.extend(group);
             }
-            continue;
-        }
-        if len > n {
-            break;
-        }
-        dfs(
-            0,
-            len,
-            n,
-            &equiv_keys,
-            enable_multiset_dedup,
-            &mut cur,
-            &mut results,
-            max_branches.max(1),
-        );
-        if results.len() >= max_branches.max(1) {
-            break;
+        } else {
+            let mut offsets: SmallVec<[usize; 8]> = smallvec::smallvec![0; by_len.len()];
+            while results.len() < cap {
+                let mut progressed = false;
+                for (g_idx, group) in by_len.iter().enumerate() {
+                    if results.len() >= cap {
+                        break;
+                    }
+                    let pos = offsets[g_idx];
+                    if pos < group.len() {
+                        results.push(group[pos].clone());
+                        offsets[g_idx] = pos + 1;
+                        progressed = true;
+                    }
+                }
+                if !progressed {
+                    break;
+                }
+            }
         }
     }
 

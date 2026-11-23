@@ -9,6 +9,7 @@ pub mod packer;
 pub mod por;
 pub mod portfolio;
 pub mod pruning;
+pub mod rollout;
 pub mod tt;
 
 use boss_tempo::BossTempoSearchOptions;

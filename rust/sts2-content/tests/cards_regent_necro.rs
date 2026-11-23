@@ -1167,3 +1167,53 @@ fn necrobinder_death_march_pull_from_below_drain_power_and_osty_summon() {
     // Ensure creature/osty imports stay exercised
     let _ = (creature::heal, osty::summon);
 }
+
+#[test]
+fn iam_invincible_autoplays_at_auto_post_play_without_spending_energy_and_triggers_make_it_so() {
+    let content = Sts2Content;
+    let mut choices = SmallVec::new();
+    let (mut state, _enemies) = build_battle(
+        CharacterId::Regent,
+        &[CardId::DefendRegent, CardId::DefendRegent],
+        &[
+            CardId::IAmInvincible,
+            CardId::StrikeRegent,
+            CardId::StrikeRegent,
+            CardId::StrikeRegent,
+            CardId::StrikeRegent,
+            CardId::StrikeRegent,
+        ],
+        &[CardId::MakeItSo],
+        &[],
+        3,
+        100,
+    );
+    let d0 = state.player.hand[0];
+    let d1 = state.player.hand[1];
+    let inv_h = state.player.draw[0];
+    let mis_h = state.player.discard[0];
+    let player_h = state.player.creature_handle;
+
+    // Prevent end-of-turn hand flush so MakeItSo staying in Hand on Round 2 directly proves turn-end trigger.
+    power::apply(&mut state, &content, PowerId::RetainHandPower, player_h, Dec::ONE, Some(player_h), None)
+        .unwrap();
+
+    // Playing 2 Skills mid-turn must NOT trigger IAmInvincible on top of draw (no AfterCardPlayed autoplay).
+    let start_energy = state.player.energy;
+    CombatEngine::play_card(&mut state, &content, d0, None, &mut choices).unwrap();
+    CombatEngine::play_card(&mut state, &content, d1, None, &mut choices).unwrap();
+    assert_eq!(state.player.energy, start_energy - 2);
+    assert_eq!(state.player.counters.skill_cards_played_this_turn, 2);
+    assert_eq!(state.player.draw.first().copied(), Some(inv_h));
+    assert_eq!(state.card(mis_h).unwrap().pile, PileType::Discard);
+
+    // Zero energy at turn end must not block IAmInvincible auto-play (spend_resources == false).
+    state.player.energy = 0;
+
+    // Ending player turn triggers IAmInvincible in AfterAutoPostPlayPhaseEntered without spending energy,
+    // which counts as the 3rd Skill played this turn and returns MakeItSo from Discard into Hand.
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    assert_eq!(state.round_number, 2);
+    assert_eq!(state.card(inv_h).unwrap().pile, PileType::Discard);
+    assert_eq!(state.card(mis_h).unwrap().pile, PileType::Hand);
+}

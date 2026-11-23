@@ -538,7 +538,31 @@ pub extern "C" fn sts2_rs_solve_in_combat_host_v1(
         let bytes = serde_json::to_vec(&resp).unwrap_or_default();
         write_owned_bytes(bytes, out_ptr, out_len)
     }));
-    res.unwrap_or(-2)
+    match res {
+        Ok(rc) => rc,
+        Err(payload) => {
+            let msg = payload
+                .downcast_ref::<&str>()
+                .copied()
+                .or_else(|| payload.downcast_ref::<String>().map(|s| s.as_str()))
+                .unwrap_or("unknown panic");
+            let resp = host_wire::HostSolveResponse {
+                abi_version: ABI_VERSION as i32,
+                outcome: "Failed".to_owned(),
+                failure_code: Some("rust_kernel_panic".to_owned()),
+                field_path: None,
+                error: Some(format!("Rust combat kernel panicked: {msg}")),
+                result: None,
+                best_so_far: None,
+                effective_degree_of_parallelism: 1,
+                total_elapsed_milliseconds: 0.0,
+            };
+            match serde_json::to_vec(&resp) {
+                Ok(bytes) => write_owned_bytes(bytes, out_ptr, out_len),
+                Err(_) => -2,
+            }
+        }
+    }
 }
 
 #[unsafe(no_mangle)]

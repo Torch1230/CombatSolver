@@ -203,6 +203,19 @@ internal static class InCombatRustKernelResultMaterializer
             ? Math.Max(1, HotRouteQuality.RoundCentiToHp(netPotionCostCenti))
             : 0;
 
+        HotEvalLookup evalLookup = new(rules);
+        HotEvaluator.EvaluateState(
+            in state,
+            cold,
+            rules,
+            in hotPolicy,
+            in evalLookup,
+            in summary,
+            netPotionCostCenti,
+            hotActions.Length,
+            HotEvalMode.Balanced,
+            out HotEvalFeatures terminalEval);
+
         HotRouteKey winningKey = new(
             Won: won,
             Survives: survives,
@@ -220,7 +233,7 @@ internal static class InCombatRustKernelResultMaterializer
             ExplicitPotionCount: explicitPotionCount,
             PlayerHp: summary.PlayerHp,
             EnemyHp: summary.EnemyHpSum,
-            Score: 0L,
+            Score: terminalEval.Score,
             PotionMask: potionMask,
             AmbergrisCount: ambergrisCount)
         {
@@ -433,7 +446,8 @@ internal static class InCombatRustKernelResultMaterializer
             HotStepResult quickRes = HotCombatEngine.Step(ref quickProbe, ref quickCold, rules, probeScratch, action);
             if (quickRes.NeedsChoice)
             {
-                if (probeScratch.PendingChoiceMin == 0)
+                if (probeScratch.PendingChoiceMin == 0
+                    || TryPickForcedPileChoice(in quickProbe, rules, probeScratch, out _))
                 {
                     var optList = new List<HotChoiceSelection>(4);
                     while (true)
@@ -454,13 +468,26 @@ internal static class InCombatRustKernelResultMaterializer
                             error = null;
                             return true;
                         }
-                        if (probeScratch.PendingChoiceMin != 0 || optList.Count >= HotLimits.MaxChoicesPerAction)
+                        if (optList.Count >= HotLimits.MaxChoicesPerAction)
                         {
                             resolved = [];
                             error = $"Step {stepIdx} HotKernel required mandatory choice '{probeScratch.PendingChoiceKind}' missing from Rust trace.";
                             return false;
                         }
-                        optList.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
+                        if (probeScratch.PendingChoiceMin == 0)
+                        {
+                            optList.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
+                        }
+                        else if (TryPickForcedPileChoice(in optProbe, rules, probeScratch, out HotChoiceSelection forced))
+                        {
+                            optList.Add(forced);
+                        }
+                        else
+                        {
+                            resolved = [];
+                            error = $"Step {stepIdx} HotKernel required mandatory choice '{probeScratch.PendingChoiceKind}' missing from Rust trace.";
+                            return false;
+                        }
                     }
                 }
 
@@ -517,6 +544,11 @@ internal static class InCombatRustKernelResultMaterializer
                     selections.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
                     continue;
                 }
+                if (TryPickForcedPileChoice(in probeState, rules, probeScratch, out HotChoiceSelection forcedTail))
+                {
+                    selections.Add(forcedTail);
+                    continue;
+                }
                 resolved = [];
                 error = $"Step {stepIdx} exhausted Rust choice prompts while HotKernel requested '{probeScratch.PendingChoiceKind}'.";
                 return false;
@@ -550,6 +582,11 @@ internal static class InCombatRustKernelResultMaterializer
                 cardInPromptIdx = 0;
                 if (promptIdx >= traceChoices.Count)
                 {
+                    if (TryPickForcedPileChoice(in probeState, rules, probeScratch, out HotChoiceSelection forcedAfterPrompt))
+                    {
+                        selections.Add(forcedAfterPrompt);
+                        continue;
+                    }
                     resolved = [];
                     error = $"Step {stepIdx} ran out of Rust choices for HotKernel prompt '{probeScratch.PendingChoiceKind}'.";
                     return false;
@@ -573,6 +610,11 @@ internal static class InCombatRustKernelResultMaterializer
             HotChoiceKind pendingKind = probeScratch.PendingChoiceKind;
             if (!TryMatchChoiceToken(in probeState, rules, pendingKind, token, out HotChoiceSelection matchedSelection, out string? matchErr))
             {
+                if (cardInPromptIdx == 0 && TryPickForcedPileChoice(in probeState, rules, probeScratch, out HotChoiceSelection forcedMid))
+                {
+                    selections.Add(forcedMid);
+                    continue;
+                }
                 resolved = [];
                 error = $"Step {stepIdx} prompt {promptIdx}[{cardInPromptIdx}]: {matchErr}";
                 return false;
@@ -580,7 +622,10 @@ internal static class InCombatRustKernelResultMaterializer
 
             selections.Add(matchedSelection);
             cardInPromptIdx++;
-            if (cardInPromptIdx >= currentPrompt.Cards.Count && probeScratch.PendingChoiceMin > 0)
+            bool reachedPromptCap = probeScratch.PendingChoiceMax > 0
+                && (probeScratch.PendingChoiceMax == 1 || cardInPromptIdx >= probeScratch.PendingChoiceMax);
+            if (cardInPromptIdx >= currentPrompt.Cards.Count
+                && (probeScratch.PendingChoiceMin > 0 || reachedPromptCap))
             {
                 promptIdx++;
                 cardInPromptIdx = 0;
@@ -589,6 +634,80 @@ internal static class InCombatRustKernelResultMaterializer
 
         resolved = [];
         error = $"Step {stepIdx} exceeded MaxChoicesPerAction ({HotLimits.MaxChoicesPerAction}).";
+        return false;
+    }
+
+    private static bool TryPickForcedPileChoice(
+        in CombatHotState probeState,
+        HotRules rules,
+        HotExecScratch probeScratch,
+        out HotChoiceSelection selection)
+    {
+        if (probeScratch.PendingChoiceMin == 0)
+        {
+            selection = default;
+            return false;
+        }
+
+        HotPileKind? maybePile = probeScratch.PendingChoiceKind switch
+        {
+            HotChoiceKind.HandCard => HotPileKind.Hand,
+            HotChoiceKind.DrawPile => HotPileKind.Draw,
+            HotChoiceKind.DiscardPile => HotPileKind.Discard,
+            HotChoiceKind.ExhaustPile => HotPileKind.Exhaust,
+            _ => null,
+        };
+        if (maybePile is not { } pile)
+        {
+            selection = default;
+            return false;
+        }
+
+        int zoneStart = HotPiles.ZoneStart(in probeState, pile);
+        int zoneCount = HotPiles.ZoneCount(in probeState, pile);
+        ushort sourceDefId = probeScratch.PendingChoiceSourceCardDefId;
+        if (sourceDefId > 0 && sourceDefId < rules.Cards.Length
+            && rules.Cards[sourceDefId].CardId == HotCustomCardId.KiChant
+            && pile == HotPileKind.Draw)
+        {
+            int topLimit = probeScratch.PendingChoiceMax > 0 ? probeScratch.PendingChoiceMax : 3;
+            if (zoneCount > topLimit)
+                zoneCount = topLimit;
+        }
+
+        ReadOnlySpan<ushort> allowedUids = HotCombatEngine.GetPendingFilteredChoiceUids();
+        ReadOnlySpan<ushort> excludedUids = HotCombatEngine.GetPendingExcludedChoiceUids();
+
+        int eligibleCount = 0;
+        ushort firstUid = 0;
+        ushort firstDefId = 0;
+        for (int i = 0; i < zoneCount; i++)
+        {
+            ref readonly HotCard card = ref probeState.Cards[zoneStart + i];
+            bool isAllowed = (allowedUids.IsEmpty || ContainsUid(allowedUids, card.CardUid))
+                && (excludedUids.IsEmpty || !ContainsUid(excludedUids, card.CardUid));
+            if (!isAllowed)
+                continue;
+            if (eligibleCount == 0)
+            {
+                firstUid = card.CardUid;
+                firstDefId = card.CardDefId;
+            }
+            eligibleCount++;
+            if (eligibleCount > probeScratch.PendingChoiceMin)
+            {
+                selection = default;
+                return false;
+            }
+        }
+
+        if (eligibleCount > 0 && eligibleCount <= probeScratch.PendingChoiceMin)
+        {
+            selection = new HotChoiceSelection(probeScratch.PendingChoiceKind, firstUid, firstDefId);
+            return true;
+        }
+
+        selection = default;
         return false;
     }
 

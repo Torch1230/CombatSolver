@@ -5,46 +5,203 @@ pub mod orbs_enchantments_afflictions;
 pub mod potions;
 pub mod powers;
 pub mod relics;
+pub mod rollout_profiles;
 
 use smallvec::SmallVec;
+use std::sync::LazyLock;
 use sts2_kernel::{
-    BattleState, CardHandle, ContentDispatcher, CreatureHandle, HookArgs, HookListener, HookResult,
-    KernelError,
+    BattleState, CardHandle, CardRolloutProfile, CategoryHookMasks, ContentDispatcher,
+    CreatureHandle, HookArgs, HookListener, HookMaskTableView, HookResult, KernelError,
 };
 use sts2_kernel::content_dispatch::{CardPlayContext, CardPlayOutcome};
 use sts2_types::{
-    CardId, CardMeta, CardPilePosition, CardType, Dec, EnchantmentId, HookMask, HookSlot,
-    MonsterId, MonsterMeta, OrbId, OrbMeta, PileType, PotionId, PotionMeta, PowerId, PowerMeta,
-    RelicId, RelicMeta, TargetType, ValueProp,
+    AfflictionId, CardId, CardMeta, CardPilePosition, CardType, Dec, EnchantmentId, HookMask,
+    HookSlot, MonsterId, MonsterMeta, OrbId, OrbMeta, PileType, PotionId, PotionMeta, PowerId,
+    PowerMeta, RelicId, RelicMeta, TargetType, ValueProp,
 };
+
+struct ContentMetaTables {
+    card_metas: [&'static CardMeta; CardId::COUNT],
+    power_metas: [&'static PowerMeta; PowerId::COUNT],
+    relic_metas: [&'static RelicMeta; RelicId::COUNT],
+    potion_metas: [&'static PotionMeta; PotionId::COUNT],
+    monster_metas: [&'static MonsterMeta; MonsterId::COUNT],
+    orb_metas: [&'static OrbMeta; OrbId::COUNT],
+    cards: [HookMask; CardId::COUNT],
+    powers: [HookMask; PowerId::COUNT],
+    relics: [HookMask; RelicId::COUNT],
+    potions: [HookMask; PotionId::COUNT],
+    monsters: [HookMask; MonsterId::COUNT],
+    orbs: [HookMask; OrbId::COUNT],
+    enchantments: [HookMask; EnchantmentId::COUNT],
+    afflictions: [HookMask; AfflictionId::COUNT],
+    categories: CategoryHookMasks,
+    card_rollout_profiles: [CardRolloutProfile; CardId::COUNT],
+}
+
+static CONTENT_TABLES: LazyLock<ContentMetaTables> = LazyLock::new(|| {
+    let card_metas: [&'static CardMeta; CardId::COUNT] = std::array::from_fn(|idx| {
+        let id: CardId = unsafe { core::mem::transmute(idx as u16) };
+        cards::card_meta(id).expect("valid card meta")
+    });
+    let mut cards = [HookMask::EMPTY; CardId::COUNT];
+    let mut card_rollout_profiles = [CardRolloutProfile::default(); CardId::COUNT];
+    let mut all_cards = HookMask::EMPTY;
+    for (idx, meta) in card_metas.iter().enumerate() {
+        let mask = meta.hook_mask;
+        cards[idx] = mask;
+        let id: CardId = unsafe { core::mem::transmute(idx as u16) };
+        card_rollout_profiles[idx] = rollout_profiles::build_card_rollout_profile(id, meta);
+        all_cards = all_cards.union(mask);
+    }
+
+    let power_metas: [&'static PowerMeta; PowerId::COUNT] = std::array::from_fn(|idx| {
+        let id: PowerId = unsafe { core::mem::transmute(idx as u16) };
+        powers::power_meta(id).expect("valid power meta")
+    });
+    let mut powers = [HookMask::EMPTY; PowerId::COUNT];
+    let mut all_powers = HookMask::EMPTY;
+    for (idx, meta) in power_metas.iter().enumerate() {
+        let mask = meta.hook_mask;
+        powers[idx] = mask;
+        all_powers = all_powers.union(mask);
+    }
+
+    let relic_metas: [&'static RelicMeta; RelicId::COUNT] = std::array::from_fn(|idx| {
+        let id: RelicId = unsafe { core::mem::transmute(idx as u16) };
+        relics::relic_meta(id).expect("valid relic meta")
+    });
+    let mut relics = [HookMask::EMPTY; RelicId::COUNT];
+    let mut all_relics = HookMask::EMPTY;
+    for (idx, meta) in relic_metas.iter().enumerate() {
+        let mask = meta.hook_mask;
+        relics[idx] = mask;
+        all_relics = all_relics.union(mask);
+    }
+
+    let potion_metas: [&'static PotionMeta; PotionId::COUNT] = std::array::from_fn(|idx| {
+        let id: PotionId = unsafe { core::mem::transmute(idx as u16) };
+        potions::potion_meta(id).expect("valid potion meta")
+    });
+    let mut potions = [HookMask::EMPTY; PotionId::COUNT];
+    let mut all_potions = HookMask::EMPTY;
+    for (idx, meta) in potion_metas.iter().enumerate() {
+        let mask = meta.hook_mask;
+        potions[idx] = mask;
+        all_potions = all_potions.union(mask);
+    }
+
+    let monster_metas: [&'static MonsterMeta; MonsterId::COUNT] = std::array::from_fn(|idx| {
+        let id: MonsterId = unsafe { core::mem::transmute(idx as u16) };
+        monsters::monster_meta(id).expect("valid monster meta")
+    });
+    let mut monsters = [HookMask::EMPTY; MonsterId::COUNT];
+    let mut all_monsters = HookMask::EMPTY;
+    for (idx, meta) in monster_metas.iter().enumerate() {
+        let mask = meta.hook_mask;
+        monsters[idx] = mask;
+        all_monsters = all_monsters.union(mask);
+    }
+
+    let orb_metas: [&'static OrbMeta; OrbId::COUNT] = std::array::from_fn(|idx| {
+        let id: OrbId = unsafe { core::mem::transmute(idx as u8) };
+        orbs_enchantments_afflictions::orb_meta(id).expect("valid orb meta")
+    });
+    let mut orbs = [HookMask::EMPTY; OrbId::COUNT];
+    let mut all_orbs = HookMask::EMPTY;
+    for (idx, meta) in orb_metas.iter().enumerate() {
+        let mask = meta.hook_mask;
+        orbs[idx] = mask;
+        all_orbs = all_orbs.union(mask);
+    }
+
+    let mut enchantments = [HookMask::EMPTY; EnchantmentId::COUNT];
+    let mut all_enchantments = HookMask::EMPTY;
+    let mut idx = 0usize;
+    while idx < EnchantmentId::COUNT {
+        let id: EnchantmentId = unsafe { core::mem::transmute(idx as u16) };
+        let mask = orbs_enchantments_afflictions::enchantment_hook_mask(id)
+            .expect("valid enchantment mask");
+        enchantments[idx] = mask;
+        all_enchantments = all_enchantments.union(mask);
+        idx += 1;
+    }
+
+    let mut afflictions = [HookMask::EMPTY; AfflictionId::COUNT];
+    let mut all_afflictions = HookMask::EMPTY;
+    let mut idx = 0usize;
+    while idx < AfflictionId::COUNT {
+        let id: AfflictionId = unsafe { core::mem::transmute(idx as u16) };
+        let mask = orbs_enchantments_afflictions::affliction_hook_mask(id)
+            .expect("valid affliction mask");
+        afflictions[idx] = mask;
+        all_afflictions = all_afflictions.union(mask);
+        idx += 1;
+    }
+
+    ContentMetaTables {
+        card_metas,
+        power_metas,
+        relic_metas,
+        potion_metas,
+        monster_metas,
+        orb_metas,
+        cards,
+        powers,
+        relics,
+        potions,
+        monsters,
+        orbs,
+        enchantments,
+        afflictions,
+        categories: CategoryHookMasks {
+            all_cards,
+            deck_cards: HookMask::EMPTY.with(HookSlot::AfterCombatEnd),
+            all_enchantments,
+            all_afflictions,
+            all_potions,
+            all_orbs,
+            all_relics,
+            all_powers,
+            all_monsters,
+        },
+        card_rollout_profiles,
+    }
+});
 
 /// Authoritative Wave 0 content dispatcher; Wave 1/2 modules plug directly into the per-category routers.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Sts2Content;
 
 impl ContentDispatcher for Sts2Content {
+    #[inline]
     fn card_meta(&self, id: CardId) -> Result<&'static CardMeta, KernelError> {
-        cards::card_meta(id)
+        Ok(CONTENT_TABLES.card_metas[id as usize])
     }
 
+    #[inline]
     fn power_meta(&self, id: PowerId) -> Result<&'static PowerMeta, KernelError> {
-        powers::power_meta(id)
+        Ok(CONTENT_TABLES.power_metas[id as usize])
     }
 
+    #[inline]
     fn relic_meta(&self, id: RelicId) -> Result<&'static RelicMeta, KernelError> {
-        relics::relic_meta(id)
+        Ok(CONTENT_TABLES.relic_metas[id as usize])
     }
 
+    #[inline]
     fn potion_meta(&self, id: PotionId) -> Result<&'static PotionMeta, KernelError> {
-        potions::potion_meta(id)
+        Ok(CONTENT_TABLES.potion_metas[id as usize])
     }
 
+    #[inline]
     fn monster_meta(&self, id: MonsterId) -> Result<&'static MonsterMeta, KernelError> {
-        monsters::monster_meta(id)
+        Ok(CONTENT_TABLES.monster_metas[id as usize])
     }
 
+    #[inline]
     fn orb_meta(&self, id: OrbId) -> Result<&'static OrbMeta, KernelError> {
-        orbs_enchantments_afflictions::orb_meta(id)
+        Ok(CONTENT_TABLES.orb_metas[id as usize])
     }
 
     fn card_is_playable(&self, state: &BattleState, card: CardHandle) -> Result<bool, KernelError> {
@@ -329,6 +486,82 @@ impl ContentDispatcher for Sts2Content {
         )
     }
 
+    #[inline]
+    fn category_hook_masks(&self) -> Option<CategoryHookMasks> {
+        Some(CONTENT_TABLES.categories)
+    }
+
+    #[inline]
+    fn hook_mask_tables(&self) -> Option<HookMaskTableView> {
+        Some(HookMaskTableView {
+            categories: CONTENT_TABLES.categories,
+            cards: &CONTENT_TABLES.cards,
+            powers: &CONTENT_TABLES.powers,
+            relics: &CONTENT_TABLES.relics,
+            potions: &CONTENT_TABLES.potions,
+            monsters: &CONTENT_TABLES.monsters,
+            orbs: &CONTENT_TABLES.orbs,
+            enchantments: &CONTENT_TABLES.enchantments,
+            afflictions: &CONTENT_TABLES.afflictions,
+        })
+    }
+
+    #[inline]
+    fn card_rollout_profile(&self, id: CardId) -> CardRolloutProfile {
+        CONTENT_TABLES.card_rollout_profiles[id as usize]
+    }
+
+    #[inline]
+    fn card_hook_mask(&self, id: CardId) -> Result<HookMask, KernelError> {
+        Ok(CONTENT_TABLES.cards[id as usize])
+    }
+
+    #[inline]
+    fn power_hook_mask(&self, id: PowerId) -> Result<HookMask, KernelError> {
+        Ok(CONTENT_TABLES.powers[id as usize])
+    }
+
+    #[inline]
+    fn relic_hook_mask(&self, id: RelicId) -> Result<HookMask, KernelError> {
+        Ok(CONTENT_TABLES.relics[id as usize])
+    }
+
+    #[inline]
+    fn potion_hook_mask(&self, id: PotionId) -> Result<HookMask, KernelError> {
+        Ok(CONTENT_TABLES.potions[id as usize])
+    }
+
+    #[inline]
+    fn monster_hook_mask(&self, id: MonsterId) -> Result<HookMask, KernelError> {
+        Ok(CONTENT_TABLES.monsters[id as usize])
+    }
+
+    #[inline]
+    fn orb_hook_mask(&self, id: OrbId) -> Result<HookMask, KernelError> {
+        Ok(CONTENT_TABLES.orbs[id as usize])
+    }
+
+    #[inline]
+    fn enchantment_hook_mask_for_card(
+        &self,
+        _state: &BattleState,
+        _card: CardHandle,
+        id: EnchantmentId,
+    ) -> Result<HookMask, KernelError> {
+        Ok(CONTENT_TABLES.enchantments[id as usize])
+    }
+
+    #[inline]
+    fn affliction_hook_mask_for_card(
+        &self,
+        _state: &BattleState,
+        _card: CardHandle,
+        id: AfflictionId,
+    ) -> Result<HookMask, KernelError> {
+        Ok(CONTENT_TABLES.afflictions[id as usize])
+    }
+
+    #[inline]
     fn listener_hook_mask(
         &self,
         state: &BattleState,
@@ -342,7 +575,7 @@ impl ContentDispatcher for Sts2Content {
                     .get(idx)
                     .ok_or_else(|| KernelError::InvalidState("missing relic".to_owned()))?
                     .id;
-                Ok(relics::relic_meta(id)?.hook_mask)
+                Ok(CONTENT_TABLES.relics[id as usize])
             }
             HookListener::Potion(idx) => {
                 let id = state
@@ -351,7 +584,7 @@ impl ContentDispatcher for Sts2Content {
                     .get(idx)
                     .and_then(|s| *s)
                     .ok_or_else(|| KernelError::InvalidState("missing potion".to_owned()))?;
-                Ok(potions::potion_meta(id)?.hook_mask)
+                Ok(CONTENT_TABLES.potions[id as usize])
             }
             HookListener::Power {
                 creature,
@@ -362,15 +595,15 @@ impl ContentDispatcher for Sts2Content {
                     .and_then(|c| c.powers.iter().find(|p| p.handle == power_handle))
                     .ok_or_else(|| KernelError::InvalidState("missing power".to_owned()))?
                     .id;
-                Ok(powers::power_meta(id)?.hook_mask)
+                Ok(CONTENT_TABLES.powers[id as usize])
             }
-            HookListener::DetachedPower { power, .. } => Ok(powers::power_meta(power.id)?.hook_mask),
+            HookListener::DetachedPower { power, .. } => Ok(CONTENT_TABLES.powers[power.id as usize]),
             HookListener::Monster(ch) => {
                 let id = state
                     .creature(ch)
                     .and_then(|c| c.monster_id)
                     .ok_or_else(|| KernelError::InvalidState("missing monster".to_owned()))?;
-                Ok(monsters::monster_meta(id)?.hook_mask)
+                Ok(CONTENT_TABLES.monsters[id as usize])
             }
             HookListener::Orb(idx) => {
                 let id = state
@@ -379,14 +612,14 @@ impl ContentDispatcher for Sts2Content {
                     .get(idx)
                     .ok_or_else(|| KernelError::InvalidState("missing orb".to_owned()))?
                     .id;
-                Ok(orbs_enchantments_afflictions::orb_meta(id)?.hook_mask)
+                Ok(CONTENT_TABLES.orbs[id as usize])
             }
             HookListener::Card(h) => {
                 let id = state
                     .card(h)
                     .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
                     .id;
-                Ok(cards::card_meta(id)?.hook_mask)
+                Ok(CONTENT_TABLES.cards[id as usize])
             }
             HookListener::Enchantment(h) => {
                 let id = state
@@ -394,14 +627,14 @@ impl ContentDispatcher for Sts2Content {
                     .and_then(|c| state.card_ext(c.ext_index))
                     .and_then(|e| e.enchantment.as_ref().map(|x| x.id))
                     .ok_or_else(|| KernelError::InvalidState("missing enchantment".to_owned()))?;
-                orbs_enchantments_afflictions::enchantment_hook_mask(id)
+                Ok(CONTENT_TABLES.enchantments[id as usize])
             }
             HookListener::Affliction(h) => {
                 let id = state
                     .card(h)
                     .and_then(|c| c.affliction.map(|a| a.id))
                     .ok_or_else(|| KernelError::InvalidState("missing affliction".to_owned()))?;
-                orbs_enchantments_afflictions::affliction_hook_mask(id)
+                Ok(CONTENT_TABLES.afflictions[id as usize])
             }
             HookListener::RunModel(id) => dread_blitz::run_model_hook_mask(id),
             HookListener::Dominion(id) => dread_blitz::dominion_hook_mask(id),

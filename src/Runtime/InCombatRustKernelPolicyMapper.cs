@@ -41,9 +41,19 @@ internal static class InCombatRustKernelPolicyMapper
             return false;
         }
 
-        int rawBudgetMs = searchPolicy.BudgetOverrideMilliseconds
-            ?? searchPolicy.Profile.SoftTimeBudgetMilliseconds;
-        searchBudgetMilliseconds = Math.Clamp(rawBudgetMs, 500, RustKernelAbi.MaxSoftTimeBudgetMilliseconds);
+        long liveThinkCeilingMs = (long)Math.Round(
+            Math.Clamp(
+                searchPolicy.MaxHardFightThinkSeconds > 0d
+                    ? searchPolicy.MaxHardFightThinkSeconds
+                    : SearchPolicySnapshot.DefaultMaxHardFightThinkSeconds,
+                SearchPolicySnapshot.MinMaxHardFightThinkSeconds,
+                SearchPolicySnapshot.MaxMaxHardFightThinkSeconds) * 1000d);
+        long rawBudgetMs = searchPolicy.BudgetOverrideMilliseconds is { } overrideMs
+            ? overrideMs
+            : (!searchPolicy.FixedBudget && searchPolicy.AdaptiveEscalationEnabled
+                ? liveThinkCeilingMs
+                : searchPolicy.Profile.SoftTimeBudgetMilliseconds);
+        searchBudgetMilliseconds = (int)Math.Clamp(rawBudgetMs, 500L, RustKernelAbi.MaxSoftTimeBudgetMilliseconds);
 
         var relicCounterRules = new List<RustKernelRelicCounterRuleDto>(settingsSnapshot.RelicCounterRules.Length);
         foreach (RelicCounterRule rule in settingsSnapshot.RelicCounterRules)
@@ -69,7 +79,7 @@ internal static class InCombatRustKernelPolicyMapper
                 rule.Priority));
         }
 
-        GrowthValues gb = searchPolicy.GrowthBudgets;
+        GrowthValues gb = searchPolicy.EffectiveGrowthBudgets;
         var growthDto = new RustKernelGrowthBudgetsDto(
             gb.HandOfGreed,
             gb.TheHunt,
@@ -105,7 +115,7 @@ internal static class InCombatRustKernelPolicyMapper
         int? potionFreeBeamWidth = profile == settingsSnapshot.Profile ? settingsData.SearchPotionFreeBeamWidth : null;
         int? potionBeamWidth = profile == settingsSnapshot.Profile ? settingsData.SearchPotionBeamWidth : null;
 
-        bool useBeamWidthPortfolio = searchPolicy.AdaptiveEscalationEnabled && !searchPolicy.FixedBudget;
+        bool useBeamWidthPortfolio = searchPolicy.AdaptiveEscalationEnabled;
 
         policy = new RustKernelPolicyDto(
             PotionPolicy: searchPolicy.PotionPolicy.ToString(),

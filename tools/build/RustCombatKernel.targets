@@ -34,7 +34,8 @@
   </Target>
 
   <Target Name="CopyModRustCombatKernel"
-          AfterTargets="CopyMod"
+          AfterTargets="CopyMod;StageRustCombatKernel"
+          DependsOnTargets="StageRustCombatKernel"
           Condition="'$(CopyModOnBuild)' == 'true'">
     <PropertyGroup>
       <_RustKernelStageTargetDir>$(TargetDir)rust-kernel</_RustKernelStageTargetDir>

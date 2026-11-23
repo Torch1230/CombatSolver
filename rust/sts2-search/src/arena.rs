@@ -132,6 +132,13 @@ impl MainStateArena {
         let o = handle.offset as usize;
         &s[o..o + handle.len as usize]
     }
+
+    pub fn clear(&mut self) {
+        self.slabs.truncate(4);
+        for s in &mut self.slabs {
+            s.clear();
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -213,6 +220,7 @@ pub struct SearchNode {
     pub potion_count: u16,
     pub explicit_potion_count: u16,
     pub automatic_potion_count: u16,
+    pub used_potion_slot_mask: u16,
     pub potion_strategic_cost: i32,
     pub explicit_potion_strategic_cost: i32,
     pub ambergris_count: u16,

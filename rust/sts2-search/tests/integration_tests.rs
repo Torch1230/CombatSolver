@@ -11,9 +11,9 @@ use sts2_kernel::{
 };
 use sts2_search::arena::{LocalStateSlab, MainStateArena, NodeArena, SearchNode};
 use sts2_search::eval::{
-    BossHpRelief, BossHpStrategy, FastEvalSummary, PotionSlotDirective, PotionUsePolicy,
-    PowerCardValuationRegistry, PowerRoutePriority, RelicCounterId, RelicCounterRule,
-    RootEvalBaseline, RouteQuality, RouteQualityPolicy, RouteQualityProjection,
+    BossHpRelief, BossHpStrategy, FastEvalSummary, FullEvalDetails, PotionSlotDirective,
+    PotionUsePolicy, PowerCardValuationRegistry, PowerRoutePriority, RelicCounterId,
+    RelicCounterRule, RootEvalBaseline, RouteQuality, RouteQualityPolicy, RouteQualityProjection,
     SolverPotionDirective, SolverPotionPolicy,
 };
 use sts2_search::hash::StateHash;
@@ -1300,6 +1300,7 @@ fn stop_at_acceptable_hp_loss_and_split_beam_quotas_and_choice_caps() {
         potion_count: explicit_potions,
         explicit_potion_count: explicit_potions,
         automatic_potion_count: 0,
+        used_potion_slot_mask: 0,
         potion_strategic_cost: 0,
         explicit_potion_strategic_cost: 0,
         ambergris_count: 0,
@@ -1419,4 +1420,645 @@ fn portfolio_refinement_and_adaptive_novelty_options() {
         .unwrap();
     assert!(resp.stats.won);
     assert!(replay_actions_to_end(&root, &resp.actions).won);
+}
+
+#[test]
+fn any_player_potions_execute_and_replay_cleanly() {
+    use sts2_search::eval::SolverPotionDirective;
+
+    let deck = vec![
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+    ];
+    let root = build_combat(
+        CharacterId::Ironclad,
+        &deck,
+        &[RelicId::BurningBlood],
+        &[
+            PotionId::BlockPotion,
+            PotionId::ShipInABottle,
+            PotionId::AttackPotion,
+        ],
+        &[(MonsterId::Nibbit, 30)],
+        RoomType::Monster,
+        "ANY_PLAYER_POTION_TEST",
+    );
+    let policy = SearchPolicy {
+        beam_width: 32,
+        max_nodes: 3000,
+        time_budget_ms: 5_000,
+        allow_potions: true,
+        allow_random_cards: true,
+        potion_policy: SolverPotionPolicy::Smart,
+        potion_directives: vec![
+            PotionSlotDirective {
+                slot: 0,
+                potion_id: PotionId::BlockPotion,
+                directive: SolverPotionDirective::Force,
+            },
+            PotionSlotDirective {
+                slot: 1,
+                potion_id: PotionId::ShipInABottle,
+                directive: SolverPotionDirective::Force,
+            },
+            PotionSlotDirective {
+                slot: 2,
+                potion_id: PotionId::AttackPotion,
+                directive: SolverPotionDirective::Force,
+            },
+        ],
+        use_beam_width_portfolio: false,
+        ..Default::default()
+    };
+
+    let resp = SearchEngine
+        .solve_state(&root, &policy, &Sts2Content)
+        .unwrap();
+    assert!(resp.stats.won);
+    assert_eq!(resp.stats.potion_count, 3);
+    let expected_player_handle = root.player.creature_handle.0 as i32;
+    let mut used_ids = Vec::new();
+    for act in &resp.actions {
+        if let PlannedAction::UsePotion {
+            potion_id,
+            target_handle,
+            ..
+        } = act
+        {
+            assert_eq!(*target_handle, Some(expected_player_handle));
+            used_ids.push(*potion_id);
+        }
+    }
+    assert!(used_ids.contains(&PotionId::BlockPotion));
+    assert!(used_ids.contains(&PotionId::ShipInABottle));
+    assert!(used_ids.contains(&PotionId::AttackPotion));
+    assert!(replay_actions_to_end(&root, &resp.actions).won);
+}
+
+#[test]
+fn unwinnable_combat_exhausting_cleanly_reports_death_only_without_node_limit() {
+    let deck = vec![
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+    ];
+    let mut root = build_combat(
+        CharacterId::Ironclad,
+        &deck,
+        &[],
+        &[],
+        &[(MonsterId::Nibbit, 200)],
+        RoomType::Monster,
+        "EXHAUSTIVE_DEATH_TEST",
+    );
+    root.player.current_hp = 5;
+    root.creatures[0].current_hp = 5;
+
+    let policy = SearchPolicy {
+        beam_width: 32,
+        max_nodes: 10_000,
+        time_budget_ms: 5_000,
+        allow_potions: false,
+        use_beam_width_portfolio: false,
+        ..Default::default()
+    };
+    let resp = SearchEngine
+        .solve_state(&root, &policy, &Sts2Content)
+        .unwrap();
+    assert!(!resp.stats.won);
+    assert_eq!(resp.stats.termination, "None");
+    let end = replay_actions_to_end(&root, &resp.actions);
+    assert!(!end.won);
+    assert!(end.player.current_hp <= 0 || !end.has_living_player_creature());
+}
+
+#[test]
+fn beam_retention_niche_selectors_keep_best_not_worst() {
+    let mut arena = NodeArena::default();
+    let baseline = RootEvalBaseline::default();
+    let mut nodes = Vec::new();
+
+    for i in 0..24u64 {
+        let is_best_rollout = i == 23;
+        let is_best_survival = i == 22;
+        let is_best_tempo = i == 21;
+        let is_best_setup = i == 20;
+        let is_best_control = i == 19;
+
+        let full = FullEvalDetails {
+            beam_rank_score: (100 - i as i32) as f64,
+            rollout_score: Some(if is_best_rollout {
+                100_000.0
+            } else {
+                (i as f64) * 10.0
+            }),
+            unblocked_incoming: if is_best_survival { 0 } else { 50 },
+            board_investment: if is_best_setup { 500 } else { 1 },
+            persistent_buff_value: if is_best_setup { 500 } else { 1 },
+            enemy_strength_suppression: if is_best_control { 40 } else { 0 },
+            enemy_combat_dist_hash: i + 1,
+            unordered_pile_hash: i + 100,
+            ..Default::default()
+        };
+        let full_idx = arena.full_evals.len() as u32;
+        arena.full_evals.push(full);
+        let nid = arena.push_node(SearchNode {
+            parent: None,
+            action: None,
+            extra_end_turn: None,
+            choices_offset: 0,
+            choices_len: 0,
+            state_handle: Default::default(),
+            canonical_key_handle: Default::default(),
+            state_hash: StateHash((i + 1) as u128),
+            turn: 1,
+            action_count: 1,
+            potion_count: 0,
+            explicit_potion_count: 0,
+            automatic_potion_count: 0,
+            used_potion_slot_mask: 0,
+            potion_strategic_cost: 0,
+            explicit_potion_strategic_cost: 0,
+            ambergris_count: 0,
+            forced_used_mask: 0,
+            forced_strategic_hp_cost: 0,
+            forced_ambergris_count: 0,
+            future_sold_hp: 0,
+            retention_rank: 0,
+            is_terminal: false,
+            boundary_rank: 0,
+            fast_eval: FastEvalSummary {
+                projected_player_hp: if is_best_survival { 80 } else { 40 },
+                alive_enemy_count: if is_best_tempo { 0 } else { 2 },
+                raw_enemy_hp: if is_best_tempo { 0 } else { 100 },
+                enemy_hp: if is_best_tempo { 0 } else { 100 },
+                base_score: (100 - i as i32) as f64,
+                ..Default::default()
+            },
+            full_eval_idx: Some(full_idx),
+        });
+        nodes.push(nid);
+    }
+
+    let kept = BeamRetentionPolicy::prune_wave_with_rollout(
+        &mut arena,
+        &nodes,
+        10,
+        None,
+        None,
+        &baseline,
+        false,
+        false,
+        false,
+        true,
+    );
+    assert_eq!(kept.len(), 10);
+    assert!(kept.contains(&nodes[23]), "pure rollout leader must be retained");
+    assert!(kept.contains(&nodes[22]), "survival leader must be retained");
+    assert!(kept.contains(&nodes[21]), "tempo leader must be retained");
+    assert!(kept.contains(&nodes[20]), "setup leader must be retained");
+    assert!(kept.contains(&nodes[19]), "control leader must be retained");
+}
+
+#[test]
+fn potion_bucket_diversity_distinguishes_equal_cost_slots() {
+    let mut arena = NodeArena::default();
+    let baseline = RootEvalBaseline::default();
+    let mut nodes = Vec::new();
+
+    // 13 high-scoring candidates from slot 0 plus 1 lower-scoring candidate each from slot 1 and slot 2 (all cost 9).
+    for i in 0..15u64 {
+        let slot = match i {
+            13 => 1u16,
+            14 => 2u16,
+            _ => 0u16,
+        };
+        let score = if slot == 0 {
+            1_000.0 - i as f64
+        } else {
+            100.0 - i as f64
+        };
+        let full = FullEvalDetails {
+            beam_rank_score: score,
+            enemy_combat_dist_hash: i + 1,
+            unordered_pile_hash: i + 100,
+            ..Default::default()
+        };
+        let full_idx = arena.full_evals.len() as u32;
+        arena.full_evals.push(full);
+        let nid = arena.push_node(SearchNode {
+            parent: None,
+            action: None,
+            extra_end_turn: None,
+            choices_offset: 0,
+            choices_len: 0,
+            state_handle: Default::default(),
+            canonical_key_handle: Default::default(),
+            state_hash: StateHash((i + 1) as u128),
+            turn: 1,
+            action_count: 1,
+            potion_count: 1,
+            explicit_potion_count: 1,
+            automatic_potion_count: 0,
+            used_potion_slot_mask: 1u16 << slot,
+            potion_strategic_cost: 9,
+            explicit_potion_strategic_cost: 9,
+            ambergris_count: 0,
+            forced_used_mask: 0,
+            forced_strategic_hp_cost: 0,
+            forced_ambergris_count: 0,
+            future_sold_hp: 0,
+            retention_rank: 0,
+            is_terminal: false,
+            boundary_rank: 0,
+            fast_eval: FastEvalSummary {
+                base_score: score,
+                ..Default::default()
+            },
+            full_eval_idx: Some(full_idx),
+        });
+        nodes.push(nid);
+    }
+
+    let kept = BeamRetentionPolicy::prune_wave_with_rollout(
+        &mut arena,
+        &nodes,
+        12,
+        None,
+        None,
+        &baseline,
+        false,
+        false,
+        true,
+        false,
+    );
+    assert_eq!(kept.len(), 12);
+    assert!(kept.contains(&nodes[13]), "slot 1 potion route must survive diversity");
+    assert!(kept.contains(&nodes[14]), "slot 2 potion route must survive diversity");
+}
+
+#[test]
+fn run_ending_boss_prefers_potion_victory_over_death() {
+    let deck = vec![
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+    ];
+    let mut root = build_combat(
+        CharacterId::Ironclad,
+        &deck,
+        &[],
+        &[PotionId::FirePotion],
+        &[(MonsterId::Nibbit, 38)],
+        RoomType::Boss,
+        "RUN_ENDING_POTION_WIN_TEST",
+    );
+    Arc::make_mut(&mut root.static_ctx).act_index = 2;
+    root.player.current_hp = 5;
+    root.creatures[0].current_hp = 5;
+
+    let policy = SearchPolicy {
+        beam_width: 32,
+        max_nodes: 5_000,
+        time_budget_ms: 5_000,
+        allow_potions: true,
+        potion_policy: SolverPotionPolicy::Smart,
+        use_beam_width_portfolio: true,
+        final_boss_hp_strategy: BossHpStrategy::ProgressionFirst,
+        is_non_final_act3_boss: false,
+        ..Default::default()
+    };
+    let resp = SearchEngine
+        .solve_state(&root, &policy, &Sts2Content)
+        .unwrap();
+    assert!(resp.stats.won);
+    assert!(resp.stats.potion_count >= 1);
+    assert!(replay_actions_to_end(&root, &resp.actions).won);
+}
+
+#[test]
+fn pack_unpack_roundtrip_preserves_compact_cards_and_counters() {
+    use sts2_kernel::state::AfflictionInst;
+    use sts2_kernel::{
+        CardExtension, CardTempFlags, EnchantmentInst, LocalEnergyModifier,
+    };
+    use sts2_search::packer::{empty_scratch_state, pack_state, unpack_state};
+    use sts2_types::{AfflictionId, Dec, EnchantmentId, EnchantmentStatus, LocalEnergyModifierKind};
+
+    let deck = vec![
+        CardId::StrikeIronclad,
+        CardId::Bash,
+        CardId::DefendIronclad,
+        CardId::Inflame,
+    ];
+    let mut root = build_combat(
+        CharacterId::Ironclad,
+        &deck,
+        &[RelicId::BurningBlood],
+        &[PotionId::FirePotion],
+        &[(MonsterId::Nibbit, 40)],
+        RoomType::Monster,
+        "PACK_UNPACK_ROUNDTRIP_TEST",
+    );
+
+    // Populate non-zero PlayerCounters across multiple fields.
+    root.player.counters.stars_gained_this_turn = Dec::from_i32(3);
+    root.player.counters.attack_cards_played_this_turn = 2;
+    root.player.counters.cards_played_this_combat = 7;
+    root.player.counters.cards_drawn_this_combat = 5;
+    root.player.counters.melody_cards_finished_this_turn = 1;
+
+    // Populate card extensions, upgrades, overrides, affliction, flags, and transform on cards.
+    root.card_extensions.push(CardExtension {
+        local_energy_modifiers: smallvec::smallvec![LocalEnergyModifier {
+            kind: LocalEnergyModifierKind::AddThisTurn,
+            amount: -1,
+            is_reduce_only: true,
+        }],
+        enchantment: Some(EnchantmentInst {
+            id: EnchantmentId::Sharp,
+            amount: 3,
+            status: EnchantmentStatus::Normal,
+            private_fields: Default::default(),
+        }),
+        private_fields: Default::default(),
+    });
+    if let Some(c0) = root.cards.get_mut(0) {
+        c0.upgrade_level = 1;
+        c0.base_energy_cost = 0;
+        c0.captured_energy_x_value = 2;
+        c0.base_replay_count = 1;
+        c0.floor_added_to_deck = Some(4);
+        c0.temp_star_cost_override_this_turn = Some(1);
+        c0.temp_cost_override_this_turn = Some(0);
+        c0.temp_cost_override_this_turn_or_until_played = Some(2);
+        c0.temp_cost_override_this_combat = Some(1);
+        c0.keywords_added_from_outside = sts2_types::CardKeywords::RETAIN;
+        c0.keywords_removed_from_outside = sts2_types::CardKeywords::EXHAUST;
+        c0.temp_flags = CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::TEMPORARY_RETAIN_TURN;
+        c0.affliction = Some(AfflictionInst {
+            id: AfflictionId::Hexed,
+            amount: 2,
+        });
+        c0.ext_index = Some(0);
+        c0.transform_into_after_play = Some(CardId::Wound);
+    }
+    if let Some(c1) = root.cards.get_mut(1) {
+        c1.removed_from_state = true;
+    }
+
+    let mut packed = Vec::new();
+    pack_state(&root, &mut packed);
+
+    let mut restored = empty_scratch_state(root.static_ctx.clone());
+    // Seed an existing card_extension entry to verify in-place reuse does not leak stale fields.
+    restored.card_extensions.push(CardExtension {
+        local_energy_modifiers: smallvec::smallvec![LocalEnergyModifier {
+            kind: LocalEnergyModifierKind::FreeThisCombat,
+            amount: 0,
+            is_reduce_only: false,
+        }],
+        enchantment: None,
+        private_fields: [(
+            "stale".to_owned(),
+            sts2_kernel::FieldValue::Int(99),
+        )]
+        .into_iter()
+        .collect(),
+    });
+    restored.card_extensions.push(CardExtension::default());
+    unpack_state(&packed, root.static_ctx.clone(), &mut restored).unwrap();
+
+    assert_eq!(restored, root);
+}
+
+#[test]
+fn non_boss_setup_scoring_does_not_cliff_at_four_and_credits_regen() {
+    use sts2_search::eval::{compute_beam_rank_score_with_mode, evaluate_fast, evaluate_full, EvalMode};
+
+    let deck = vec![CardId::StrikeIronclad, CardId::DefendIronclad];
+    let mut root = build_combat(
+        CharacterId::Silent,
+        &deck,
+        &[],
+        &[PotionId::RegenPotion],
+        &[(MonsterId::Nibbit, 40)],
+        RoomType::Monster,
+        "NON_BOSS_SETUP_SCORING_TEST",
+    );
+    root.player.current_hp = 56;
+    root.player.max_hp = 70;
+    root.creatures[0].current_hp = 56;
+    root.creatures[0].max_hp = 70;
+    let baseline = RootEvalBaseline::from_state_with_policy(&root, &Sts2Content, &SearchPolicy::default());
+
+    let mut state_small_buff = root.clone();
+    state_small_buff.creatures[0].powers.push(sts2_kernel::PowerInst {
+        handle: 100,
+        id: sts2_types::PowerId::PlatingPower,
+        amount: 2,
+        amount_on_turn_start: 2,
+        skip_next_duration_tick: false,
+        applier_handle: None,
+        ext_index: None,
+    });
+    let mut state_large_buff = state_small_buff.clone();
+    state_large_buff.creatures[0].powers.push(sts2_kernel::PowerInst {
+        handle: 101,
+        id: sts2_types::PowerId::BarricadePower,
+        amount: 1,
+        amount_on_turn_start: 1,
+        skip_next_duration_tick: false,
+        applier_handle: None,
+        ext_index: None,
+    });
+    state_large_buff.creatures[0].powers.push(sts2_kernel::PowerInst {
+        handle: 102,
+        id: sts2_types::PowerId::DexterityPower,
+        amount: 3,
+        amount_on_turn_start: 3,
+        skip_next_duration_tick: false,
+        applier_handle: None,
+        ext_index: None,
+    });
+
+    let f_small = evaluate_fast(&state_small_buff, &Sts2Content, &baseline, None);
+    let d_small = evaluate_full(&state_small_buff, &Sts2Content, &f_small, &baseline);
+    let f_large = evaluate_fast(&state_large_buff, &Sts2Content, &baseline, None);
+    let d_large = evaluate_full(&state_large_buff, &Sts2Content, &f_large, &baseline);
+    assert!(d_small.persistent_buff_value >= 4);
+    assert!(d_large.persistent_buff_value > d_small.persistent_buff_value + 10);
+    assert!(
+        d_large.beam_rank_score > d_small.beam_rank_score,
+        "stacked non-boss powers above 4 must increase beam score"
+    );
+
+    let mut state_regen = root.clone();
+    state_regen.creatures[0].powers.push(sts2_kernel::PowerInst {
+        handle: 103,
+        id: sts2_types::PowerId::RegenPower,
+        amount: 5,
+        amount_on_turn_start: 5,
+        skip_next_duration_tick: false,
+        applier_handle: None,
+        ext_index: None,
+    });
+    let f_base = evaluate_fast(&root, &Sts2Content, &baseline, None);
+    let d_base = evaluate_full(&root, &Sts2Content, &f_base, &baseline);
+    let s_base = compute_beam_rank_score_with_mode(
+        &f_base,
+        &d_base,
+        &baseline,
+        false,
+        false,
+        None,
+        EvalMode::Balanced,
+        0,
+        0,
+    );
+    let f_regen = evaluate_fast(&state_regen, &Sts2Content, &baseline, None);
+    let d_regen = evaluate_full(&state_regen, &Sts2Content, &f_regen, &baseline);
+    let s_regen = compute_beam_rank_score_with_mode(
+        &f_regen,
+        &d_regen,
+        &baseline,
+        false,
+        false,
+        None,
+        EvalMode::Balanced,
+        9,
+        0,
+    );
+    assert!(d_regen.expected_regen_heal >= 14);
+    assert!(
+        s_regen > s_base,
+        "RegenPotion on wounded player must outweigh its Turn-1 opportunity cost: {s_regen} vs {s_base}"
+    );
+}
+
+#[test]
+fn select_final_plan_credits_fruit_juice_max_hp_gain_at_two_to_one() {
+    use sts2_search::arena::SearchNode;
+    use sts2_search::eval::{select_final_plan, FastEvalSummary, SolverPotionPolicy};
+
+    let deck = vec![CardId::StrikeIronclad, CardId::DefendIronclad];
+    let mut root = build_combat(
+        CharacterId::Defect,
+        &deck,
+        &[],
+        &[PotionId::FruitJuice],
+        &[(MonsterId::Nibbit, 10)],
+        RoomType::Elite,
+        "FRUIT_JUICE_MAX_HP_CREDIT_TEST",
+    );
+    root.player.current_hp = 60;
+    root.player.max_hp = 75;
+    root.creatures[0].current_hp = 60;
+    root.creatures[0].max_hp = 75;
+    let baseline = RootEvalBaseline::from_state_with_policy(&root, &Sts2Content, &SearchPolicy::default());
+    let mut arena = NodeArena::default();
+
+    // 0-potion victory taking 11 HP lost
+    let n_zero = arena.push_node(SearchNode {
+        parent: None,
+        action: None,
+        extra_end_turn: None,
+        choices_offset: 0,
+        choices_len: 0,
+        state_handle: Default::default(),
+        canonical_key_handle: Default::default(),
+        state_hash: StateHash(1),
+        turn: 4,
+        action_count: 8,
+        potion_count: 0,
+        explicit_potion_count: 0,
+        automatic_potion_count: 0,
+        used_potion_slot_mask: 0,
+        potion_strategic_cost: 0,
+        explicit_potion_strategic_cost: 0,
+        ambergris_count: 0,
+        forced_used_mask: 0,
+        forced_strategic_hp_cost: 0,
+        forced_ambergris_count: 0,
+        future_sold_hp: 0,
+        retention_rank: 0,
+        is_terminal: true,
+        boundary_rank: 0,
+        fast_eval: FastEvalSummary {
+            player_hp: 49,
+            player_max_hp: 75,
+            projected_player_hp: 49,
+            cumulative_hp_lost: 11,
+            recovered_hp: 0,
+            all_enemies_dead: true,
+            won: true,
+            combat_ended_turn: Some(4),
+            base_score: 9_999_647_630.0,
+            ..Default::default()
+        },
+        full_eval_idx: None,
+    });
+
+    // Fruit Juice victory: same 11 HP lost, heals 5 (54 HP) and +5 MaxHP (80), cost 9 -> +15 persistent HP credit!
+    let n_fruit = arena.push_node(SearchNode {
+        parent: None,
+        action: None,
+        extra_end_turn: None,
+        choices_offset: 0,
+        choices_len: 0,
+        state_handle: Default::default(),
+        canonical_key_handle: Default::default(),
+        state_hash: StateHash(2),
+        turn: 4,
+        action_count: 9,
+        potion_count: 1,
+        explicit_potion_count: 1,
+        automatic_potion_count: 0,
+        used_potion_slot_mask: 1,
+        potion_strategic_cost: 9,
+        explicit_potion_strategic_cost: 9,
+        ambergris_count: 0,
+        forced_used_mask: 0,
+        forced_strategic_hp_cost: 0,
+        forced_ambergris_count: 0,
+        future_sold_hp: 0,
+        retention_rank: 0,
+        is_terminal: true,
+        boundary_rank: 0,
+        fast_eval: FastEvalSummary {
+            player_hp: 54,
+            player_max_hp: 80,
+            projected_player_hp: 54,
+            cumulative_hp_lost: 11,
+            recovered_hp: 5,
+            all_enemies_dead: true,
+            won: true,
+            combat_ended_turn: Some(4),
+            base_score: 9_999_830_620.0,
+            ..Default::default()
+        },
+        full_eval_idx: None,
+    });
+
+    let selected = select_final_plan(
+        &arena,
+        &[n_zero, n_fruit],
+        &baseline,
+        SolverPotionPolicy::Smart,
+        None,
+        0,
+        0,
+    )
+    .unwrap();
+    assert_eq!(
+        selected.node_id, n_fruit,
+        "FruitJuice (+5 HP heal + +5 MaxHP * 2 = +15 HP value) must beat 0-potion at cost 9"
+    );
 }

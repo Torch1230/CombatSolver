@@ -636,11 +636,22 @@ impl BattleState {
 
     #[inline]
     pub fn card(&self, handle: CardHandle) -> Option<&CardInst> {
+        let idx = handle.0.wrapping_sub(1) as usize;
+        if let Some(c) = self.cards.get(idx) {
+            if c.handle == handle {
+                return Some(c);
+            }
+        }
         self.cards.iter().find(|c| c.handle == handle)
     }
 
     #[inline]
     pub fn card_mut(&mut self, handle: CardHandle) -> Option<&mut CardInst> {
+        let idx = handle.0.wrapping_sub(1) as usize;
+        let is_direct = self.cards.get(idx).is_some_and(|c| c.handle == handle);
+        if is_direct {
+            return self.cards.get_mut(idx);
+        }
         self.cards.iter_mut().find(|c| c.handle == handle)
     }
 
@@ -650,7 +661,12 @@ impl BattleState {
     }
 
     pub fn card_ext_mut(&mut self, handle: CardHandle) -> Option<&mut CardExtension> {
-        let idx = self.cards.iter().position(|c| c.handle == handle)?;
+        let fast_idx = handle.0.wrapping_sub(1) as usize;
+        let idx = if self.cards.get(fast_idx).is_some_and(|c| c.handle == handle) {
+            fast_idx
+        } else {
+            self.cards.iter().position(|c| c.handle == handle)?
+        };
         let ext_idx = match self.cards[idx].ext_index {
             Some(i) => i as usize,
             None => {
@@ -665,11 +681,22 @@ impl BattleState {
 
     #[inline]
     pub fn creature(&self, handle: CreatureHandle) -> Option<&CreatureInst> {
+        let idx = handle.0.wrapping_sub(1) as usize;
+        if let Some(c) = self.creatures.get(idx) {
+            if c.handle == handle {
+                return Some(c);
+            }
+        }
         self.creatures.iter().find(|c| c.handle == handle)
     }
 
     #[inline]
     pub fn creature_mut(&mut self, handle: CreatureHandle) -> Option<&mut CreatureInst> {
+        let idx = handle.0.wrapping_sub(1) as usize;
+        let is_direct = self.creatures.get(idx).is_some_and(|c| c.handle == handle);
+        if is_direct {
+            return self.creatures.get_mut(idx);
+        }
         self.creatures.iter_mut().find(|c| c.handle == handle)
     }
 

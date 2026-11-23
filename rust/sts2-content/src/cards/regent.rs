@@ -1833,22 +1833,15 @@ pub fn dispatch_hook(
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?;
     match ci.id {
         CardId::IAmInvincible => {
-            if slot == HookSlot::AfterCardPlayed {
-                if let HookArgs::CardPlay(ctx) = args {
-                    if ctx.card != card && state.player.draw.first().copied() == Some(card) {
-                        let before = state.player.counters.cards_played_this_turn;
-                        let outcome = autoplay::from_cards(state, content, &[card], None, true)?;
-                        if let StepOutcome::NeedsChoice(req) = outcome {
-                            return Err(KernelError::Unsupported {
-                                kind: "CardHookChoice",
-                                id: req.source_id,
-                            });
-                        }
-                        let delta = state.player.counters.cards_played_this_turn - before;
-                        if delta > 0 {
-                            state.player.counters.manual_cards_played_this_turn += delta;
-                        }
-                    }
+            if slot == HookSlot::AfterAutoPostPlayPhaseEntered
+                && state.player.draw.first().copied() == Some(card)
+            {
+                let outcome = autoplay::from_cards(state, content, &[card], None, false)?;
+                if let StepOutcome::NeedsChoice(req) = outcome {
+                    return Err(KernelError::Unsupported {
+                        kind: "CardHookChoice",
+                        id: req.source_id,
+                    });
                 }
             }
             Ok(HookResult::default())
@@ -1888,7 +1881,7 @@ pub fn dispatch_hook(
                         let is_skill = content.card_meta(played_ci.id)?.card_type == CardType::Skill;
                         let in_non_hand_combat_pile = matches!(
                             ci.pile,
-                            PileType::Draw | PileType::Discard | PileType::Exhaust | PileType::Play
+                            PileType::Draw | PileType::Discard | PileType::Exhaust
                         );
                         let count = state.player.counters.skill_cards_played_this_turn;
                         if is_skill && in_non_hand_combat_pile && count > 0 && count % 3 == 0 {
