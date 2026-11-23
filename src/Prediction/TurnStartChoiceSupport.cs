@@ -22,8 +22,10 @@ internal sealed class InvalidPlannedChoiceBranchException(string message)
 
 internal sealed class ExternalChoiceBinding(
     string? actionSourceId,
-    Action<PlanCardChoice>? onBoundChoice = null)
+    Action<PlanCardChoice>? onBoundChoice = null,
+    Func<CardModel, string>? cardName = null)
 {
+    public Func<CardModel, string> CardName { get; } = cardName ?? (static card => card.Id.Entry);
     public string? ActionSourceId { get; } = actionSourceId;
     public Action<PlanCardChoice>? OnBoundChoice { get; } = onBoundChoice;
 }
@@ -56,52 +58,47 @@ internal sealed class TurnStartChoiceCursor(
         => new(automaticPolicy, true);
 
     public bool TryTake(TurnStartChoiceRequest request, out PlanCardChoice? choice)
-    {
-        // The callback can synchronously open and consume a deeper choice from this same cursor.
-        // Run it before matching the original request, then re-read the cursor position.
-        if (!InvokeBeforeNextTake())
-        {
-            choice = null;
-            return false;
-        }
-        if (_index >= _choices.Count)
-        {
-            choice = _automaticPolicy?.Invoke(request);
-            return choice != null;
-        }
-        choice = _choices[_index];
-        if (!Matches(choice, request))
-        {
-            throw new InvalidPlannedChoiceBranchException(
-                $"回合开始选牌顺序不一致：计划 {choice.SourceId}/{choice.Effect}/{choice.SourcePile}，" +
-                $"当前需要 {request.SourceId}/{request.Effect}/{request.SourcePile}；" +
-                $"计划上下文={choice.ContextId}，当前上下文={request.ContextId}。");
-        }
-        if (_validateSelectionAgainstSpec && request.Spec is { } spec)
-            ValidateChoiceMatchesSpec(choice, spec);
-        choice = BindExternalChoice(choice, request);
-        _index++;
-        return true;
-    }
+        => TryTake(request, requireMatch: true, out choice);
 
     public bool TryTakeIfMatches(TurnStartChoiceRequest request, out PlanCardChoice? choice)
+        => TryTake(request, requireMatch: false, out choice);
+
+    private bool TryTake(TurnStartChoiceRequest request, bool requireMatch, out PlanCardChoice? choice)
     {
+        // This callback may synchronously consume another choice from the same cursor.
         if (!InvokeBeforeNextTake())
         {
             choice = null;
             return false;
         }
-        if (_index >= _choices.Count || !Matches(_choices[_index], request))
+
+        // The wire records player decisions. The native deployment plan also observes
+        // mandatory selections that the game applies in pile order without opening a screen.
+        if (_externalBinding is { } binding && request.Spec is { IsImplicitAllSelection: true } spec)
         {
-            choice = _automaticPolicy?.Invoke(request);
-            return choice != null;
+            choice = BindExternalChoice(CardChoiceSupport.BuildImplicitAllChoice(spec, binding.CardName), request);
+            return true;
         }
-        choice = _choices[_index];
-        if (_validateSelectionAgainstSpec && request.Spec is { } spec)
-            ValidateChoiceMatchesSpec(choice, spec);
-        choice = BindExternalChoice(choice, request);
-        _index++;
-        return true;
+
+        if (_index < _choices.Count)
+        {
+            PlanCardChoice next = _choices[_index];
+            if (Matches(next, request))
+            {
+                if (_validateSelectionAgainstSpec && request.Spec is { } explicitSpec)
+                    ValidateChoiceMatchesSpec(next, explicitSpec);
+                choice = BindExternalChoice(next, request);
+                _index++;
+                return true;
+            }
+            if (requireMatch)
+                throw new InvalidPlannedChoiceBranchException(
+                    $"回合开始选牌顺序不一致：计划 {next.SourceId}/{next.Effect}/{next.SourcePile}，" +
+                    $"当前需要 {request.SourceId}/{request.Effect}/{request.SourcePile}；" +
+                    $"计划上下文={next.ContextId}，当前上下文={request.ContextId}。");
+        }
+        choice = _automaticPolicy?.Invoke(request);
+        return choice != null;
     }
 
     public IDisposable BeforeNextTake(Func<bool> callback)

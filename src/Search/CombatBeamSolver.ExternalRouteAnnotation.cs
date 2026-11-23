@@ -95,12 +95,12 @@ internal sealed partial class CombatBeamSolver
 {
     private ExternalChoiceBinding? CreateExternalActionChoiceBinding(string? actionSourceId)
         => _validateExternalChoicesAgainstSpec
-            ? new ExternalChoiceBinding(actionSourceId, choice => _externalBoundActionChoices?.Add(choice))
+            ? new ExternalChoiceBinding(actionSourceId, choice => _externalBoundActionChoices?.Add(choice), displayNames.Card)
             : null;
 
     private ExternalChoiceBinding? CreateExternalTurnStartChoiceBinding()
         => _validateExternalChoicesAgainstSpec
-            ? new ExternalChoiceBinding(null, choice => _externalBoundTurnStartChoices?.Add(choice))
+            ? new ExternalChoiceBinding(null, choice => _externalBoundTurnStartChoices?.Add(choice), displayNames.Card)
             : null;
 
     internal static ExternalRouteVerificationResult VerifyAndAnnotateExternalRoute(

@@ -202,12 +202,14 @@ internal static partial class CardChoiceSupport
         };
     }
 
+    internal static PlanCardChoice BuildImplicitAllChoice(CardChoiceSpec spec, Func<CardModel, string> displayName)
+        => new(spec.Effect, spec.SourcePile,
+            ToTokens(spec.Options, spec.Options, spec.SourceCards, displayName), ContextId: spec.ContextId);
+
     public static PlanCardChoice BuildAutomaticPolicyChoice(CardChoiceSpec spec)
     {
         if (spec.IsImplicitAllSelection)
-            return new PlanCardChoice(spec.Effect, spec.SourcePile,
-                ToTokens(spec.Options, spec.Options, spec.SourceCards, static card => card.Id.Entry),
-                ContextId: spec.ContextId);
+            return BuildImplicitAllChoice(spec, static card => card.Id.Entry);
         int count = Math.Min(spec.MinCount, spec.Options.Count);
         bool fromHand = spec.SourcePile == PileType.Hand;
         List<PredictedCard> selection = (fromHand
@@ -262,8 +264,7 @@ internal static partial class CardChoiceSupport
         if (spec.MaxCount < spec.MinCount)
             return [];
         if (spec.IsImplicitAllSelection)
-            return [new PlanCardChoice(spec.Effect, spec.SourcePile,
-                ToTokens(spec.Options, spec.Options, spec.SourceCards, displayNames.Card), ContextId: spec.ContextId)];
+            return [BuildImplicitAllChoice(spec, displayNames.Card)];
 
         int minTake = Math.Min(spec.MinCount, spec.Options.Count);
         int maxTake = Math.Min(spec.MaxCount, spec.Options.Count);
