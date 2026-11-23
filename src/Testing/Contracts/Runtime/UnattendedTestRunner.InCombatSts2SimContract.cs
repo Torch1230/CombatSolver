@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using CombatSolver.Api;
 using CombatSolver.Engine.Common;
+using CombatSolver.Engine.InCombat.Simulation;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -9,6 +10,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -23,6 +25,11 @@ internal sealed partial class UnattendedTestRunner
         CombatState combatState,
         Player player)
     {
+        if (_request.ScenarioId == "INCOMBAT-STS2SIM-PILE-CHOICE")
+        {
+            await VerifyExternalPileEffectsAsync(combatState, player);
+            return;
+        }
         await VerifyExternalImplicitChoicesAsync(combatState, player);
         _completedChecks.Add("ExternalImplicitChoices:NativeOrder:ManualCursor:StrictWire");
         if (_request.ScenarioId == "INCOMBAT-STS2SIM-IMPLICIT-CHOICE")
@@ -173,6 +180,121 @@ internal sealed partial class UnattendedTestRunner
         {
             SolverSettings.ApplyForTesting(savedSettings);
             _protocolHost.SetAutomaticTurnSearchEnabledForTesting(prevAutoTurn);
+        }
+    }
+
+    private async Task VerifyExternalPileEffectsAsync(CombatState live, Player player)
+    {
+        foreach (var relic in player.Relics.ToArray()) await RelicCmd.Remove(relic);
+        foreach (var potion in player.PotionSlots.ToArray()) potion?.Discard();
+        foreach (var (id, pile, count, manual) in new[]
+        {
+            ("LIQUID_MEMORIES", PileType.Discard, 1, false),
+            ("DROPLET_OF_PRECOGNITION", PileType.Draw, 1, false),
+            ("TOUCH_OF_INSANITY", PileType.Hand, 1, false),
+            ("LIQUID_MEMORIES", PileType.Discard, 0, false),
+            ("LIQUID_MEMORIES", PileType.Discard, 2, true),
+            ("ASHWATER", PileType.Hand, 1, true),
+        })
+        {
+            await ClearPlayerPilesAsync(player);
+            for (int i = 0; i < count; i++)
+                await InjectCardAsync(live, player, new() { CardId = "STRIKE_IRONCLAD", Pile = pile.ToString() });
+            var potion = InjectPotionForTest(player, id);
+            var slot = player.GetPotionSlotIndex(potion);
+            var root = CombatRootSnapshot.Capture(live);
+            var names = SolverDisplayNames.Capture(live);
+            var damage = BattleDamageTracker.Observe(live);
+            var policy = SolverController.CaptureSearchPolicy(SolverSettings.Capture(), live, false, null);
+            var spec = PotionChoiceSupport.GetSpec(root.ForkSimulator(), potion);
+            var selected = new PlanCardToken("STRIKE_IRONCLAD", 0, "", Math.Max(0, count - 1), Math.Max(0, count - 1), "");
+            var explicitChoice = new PlanCardChoice(spec.Effect, pile, id == "ASHWATER" ? [] : [selected]);
+            var wire = new PlanAction(PlanActionKind.UsePotion, root.StartTurnNumber, PotionSlot: slot, PotionId: id,
+                Choice: manual ? explicitChoice : null);
+            var pcs = player.PlayerCombatState!;
+            var turn = root.StartTurnNumber;
+            var expectedHand = pcs.Hand.Cards.Count + (pile != PileType.Hand && count > 0 ? 1 : 0);
+            var terminal = new ExternalRouteTerminalExpectation(turn, false, false, player.Creature.CurrentHp,
+                player.Creature.MaxHp, player.Creature.Block, live.Enemies.Sum(enemy => enemy.CurrentHp),
+                live.Enemies.Count, pcs.Energy, pcs.Stars, expectedHand, damage.HpLostSoFar, null, null);
+            ExternalRouteVerificationResult Verify(PlanAction action) => CombatBeamSolver.VerifyAndAnnotateExternalRoute(
+                root, names, damage, policy, [action], new Dictionary<int, ExternalRouteTurnExpectation>
+                { [turn] = new(turn, 0, 0, 0, pcs.Energy, false) }, terminal, [new(turn, slot, id)], false, default);
+
+            var valid = Verify(wire);
+            if (valid.Status != ExternalRouteVerificationStatus.Annotated)
+                throw new InvalidOperationException($"{id}/{count} rejected: {valid.FailureReason}");
+            var annotated = valid.AnnotatedActions.Single();
+            if (count == 0 ? annotated.Choice != null : annotated.Choice is null
+                || !annotated.Choice.Cards.Select(c => c.SourceOccurrence)
+                    .SequenceEqual(explicitChoice.Cards.Select(c => c.SourceOccurrence)))
+                throw new InvalidOperationException($"{id}/{count} annotated the wrong instance.");
+            var invalid = Verify(wire with { Choice = manual ? null : explicitChoice });
+            if (invalid.Status != ExternalRouteVerificationStatus.IllegalRoute)
+                throw new InvalidOperationException($"{id}/{count} accepted a missing or extra explicit decision.");
+
+            var driver = new CombatBeamSolver(root, names, damage, policy);
+            var replay = driver.ReplayDiagnosticPrefix([annotated]);
+            MoveStateSnapshot predicted;
+            try
+            {
+                var sim = (CombatPredictionSimulator)replay.Simulator;
+                predicted = CaptureSimulated(sim, (SimulatedCombatState)sim.State.CombatState, player, live.Enemies[0]);
+            }
+            finally { replay.ReleaseSimulator(); }
+            var nativeSelector = new PlannedCardSelector(manual ? [explicitChoice] : []);
+            using (NativeTestCardSelectors.Push(nativeSelector))
+            {
+                potion.EnqueueManualUse(null);
+                await RunManager.Instance.ActionExecutor.FinishedExecutingActions();
+            }
+            nativeSelector.AssertConsumed();
+            AssertSnapshotEqual(predicted, CaptureActual(live, player, live.Enemies[0]), id, $"ExternalPileChoice/{count}");
+            _completedChecks.Add($"ExternalPileChoice:{id}:{count}");
+        }
+
+        foreach (var (id, drawCount) in new[] { ("HIDDEN_DAGGERS", 0), ("SEEKER_STRIKE", 1), ("SEEKER_STRIKE", 2) })
+        {
+            await ClearPlayerPilesAsync(player);
+            SetEnergy(player, 3);
+            await InjectCardAsync(live, player, new() { CardId = id, Pile = "Hand" });
+            for (int i = 0; i < drawCount; i++)
+                await InjectCardAsync(live, player, new() { CardId = "STRIKE_IRONCLAD", Pile = "Draw" });
+            var enemy = live.Enemies[0];
+            var target = id == "SEEKER_STRIKE" ? enemy : null;
+            var actualCard = FindActualHandCard(player, id, 0);
+            var sim = CombatRootSnapshot.Capture(live).ForkSimulator();
+            var combat = (SimulatedCombatState)sim.State.CombatState;
+            List<PlanCardChoice> bound = [];
+            var external = new TurnStartChoiceCursor([], true, new ExternalChoiceBinding(id, bound.Add));
+            combat.BeginActionChoices(external);
+            try
+            {
+                using (combat.BeginCardExecutionScope(new HashSet<uint>()))
+                    sim.ManualPlay(sim.State.FindCard(actualCard)!, target, out _);
+            }
+            finally { combat.EndActionChoices(); }
+            if (drawCount == 2)
+            {
+                if (combat.PendingTurnStartChoice?.Spec?.Options.Count != 2 || bound.Count != 0)
+                    throw new InvalidOperationException("Two Seeker Strike options require a decision.");
+                _completedChecks.Add("ExternalPileChoice:SEEKER_STRIKE:TwoOptionsPending");
+                continue;
+            }
+            if (sim.HasPendingChoice || bound.Count != 1 || bound[0].Cards.Count != drawCount)
+                throw new InvalidOperationException($"{id}/{drawCount} failed to bind its native selection.");
+            var predicted = CaptureSimulated(sim, combat, player, enemy);
+            using (NativeTestCardSelectors.Push(new PlannedCardSelector(Array.Empty<PlanCardChoice>())))
+            {
+                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var action = await SolverController.EnqueueAndCaptureActionAsync(
+                    queued => queued is PlayCardAction play && ReferenceEquals(play.NetCombatCard.ToCardModelOrNull(), actualCard),
+                    () => { if (!actualCard.TryManualPlay(target)) throw new InvalidOperationException($"{id} refused native play."); },
+                    deadline.Token);
+                await action.CompletionTask.WaitAsync(deadline.Token);
+            }
+            AssertSnapshotEqual(predicted, CaptureActual(live, player, enemy), id, "ExternalPileChoice");
+            _completedChecks.Add($"ExternalPileChoice:{id}:{drawCount}");
         }
     }
 

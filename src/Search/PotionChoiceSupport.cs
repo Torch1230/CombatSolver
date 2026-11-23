@@ -18,6 +18,28 @@ internal static class PotionChoiceSupport
             or LiquidMemories
             or TouchOfInsanity;
 
+    internal static bool UsesNativePileChoice(PotionModel potion)
+        => potion is (Ashwater or DropletOfPrecognition or GamblersBrew or LiquidMemories or TouchOfInsanity)
+            && !PotionChoiceMirrors.RequiresChoice(potion);
+
+    internal static PlanCardChoice? BindExternalPileChoice(
+        CombatPredictionSimulator simulator, PotionModel potion, PlanCardChoice? wireChoice, Func<CardModel, string> cardName)
+    {
+        CardChoiceSpec spec = GetSpec(simulator, potion);
+        if (spec.Options.Count == 0 || spec.IsImplicitAllSelection)
+        {
+            if (wireChoice is not null)
+                throw new InvalidPlannedChoiceBranchException($"Unexpected explicit choice for automatic {potion.Id.Entry} selection.");
+            return spec.Options.Count == 0 ? null : CardChoiceSupport.BuildImplicitAllChoice(spec, cardName);
+        }
+        if (wireChoice is null)
+            throw new InvalidPlannedChoiceBranchException($"Missing player decision for {potion.Id.Entry}.");
+        if (!string.IsNullOrEmpty(wireChoice.ContextId) && wireChoice.ContextId != spec.ContextId)
+            throw new InvalidPlannedChoiceBranchException($"Wrong choice context for {potion.Id.Entry}.");
+        TurnStartChoiceCursor.ValidateChoiceMatchesSpec(wireChoice, spec);
+        return wireChoice with { SourceId = string.Empty, ContextId = spec.ContextId, Timing = PlanChoiceTiming.Action };
+    }
+
     public static CardChoiceSpec GetSpec(
         CombatPredictionSimulator simulator,
         PotionModel potion)
@@ -162,7 +184,8 @@ internal static class PotionChoiceSupport
     {
         List<PredictedCard> optionList = options.ToList();
         IReadOnlyList<PredictedCard> source = state.GetCardPile(pile)?.Cards ?? [];
-        return new CardChoiceSpec(effect, pile, minCount, maxCount, optionList, source, 0d);
+        return new CardChoiceSpec(effect, pile, minCount, maxCount, optionList, source, 0d,
+            IsImplicitAllSelection: minCount == 1 && maxCount == 1 && optionList.Count == 1);
     }
 
     internal static bool GeneratesCardChoice(PotionModel potion)
