@@ -56,6 +56,11 @@ internal static class ForecastRetentionKey
         builder.Append(state.Engine?.Won ?? false);
         builder.Append(state.RunState.Rng.Seed);
         CombatStateDescription.AppendRunRng(ref builder, state.RunState.Rng);
+        if (state.RunState.GameMode != Sts2Sim.Core.Runs.GameMode.Standard)
+        {
+            builder.Append((int)state.RunState.GameMode);
+            builder.Append(state.Dominion?.Id.ToString() ?? string.Empty);
+        }
 
         builder.Append(state.Players.Count);
         foreach (Player player in state.Players)

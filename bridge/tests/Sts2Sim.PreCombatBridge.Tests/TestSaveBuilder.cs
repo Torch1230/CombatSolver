@@ -28,11 +28,12 @@ internal static class TestSaveBuilder
         string seed = DefaultSeed,
         int ascension = 10,
         int actIndex = 0,
-        string characterId = "CHARACTER.SILENT")
+        string characterId = "CHARACTER.SILENT",
+        GameMode gameMode = GameMode.Standard)
     {
         EnsurePrewarmed();
         ActDefinition[] acts = [new Overgrowth(), new Hive(), new Glory()];
-        var run = new RunState(seed, acts, ascension);
+        var run = new RunState(seed, acts, ascension, gameMode);
         CharacterModel character = ModelDb.GetById<CharacterModel>(ModelId.Deserialize(characterId));
         var player = Sts2Sim.Core.Entities.Players.Player.CreateForNewRun(character, run);
         run.AddPlayer(player);
@@ -53,7 +54,7 @@ internal static class TestSaveBuilder
         var root = new JsonObject
         {
             ["schema_version"] = 21,
-            ["game_mode"] = "standard",
+            ["game_mode"] = run.GameMode.ToString().ToLowerInvariant(),
             ["is_custom_game"] = false,
             ["dailyTime"] = null,
             ["modifiers"] = new JsonArray(),

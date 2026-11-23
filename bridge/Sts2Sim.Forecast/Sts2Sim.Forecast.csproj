@@ -33,7 +33,6 @@
     <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/GrowthOpportunityTargets.cs" Link="Upstream/Beam/Policy/GrowthOpportunityTargets.cs" />
     <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/OpeningPolicyLedger.cs" Link="Upstream/Beam/Policy/OpeningPolicyLedger.cs" />
     <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/PolicyTargetTracker.cs" Link="Upstream/Beam/Policy/PolicyTargetTracker.cs" />
-    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/PotionRewardOutlook.cs" Link="Upstream/Beam/Policy/PotionRewardOutlook.cs" />
     <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/PredictionLedgerSink.cs" Link="Upstream/Beam/Policy/PredictionLedgerSink.cs" />
     <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/RelicCounterLedger.cs" Link="Upstream/Beam/Policy/RelicCounterLedger.cs" />
     <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/TheftLedger.cs" Link="Upstream/Beam/Policy/TheftLedger.cs" />
