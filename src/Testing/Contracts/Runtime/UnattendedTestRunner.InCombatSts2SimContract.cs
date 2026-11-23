@@ -1,10 +1,14 @@
 using System.Diagnostics;
 using System.Globalization;
 using CombatSolver.Api;
+using CombatSolver.Engine.Common;
+using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -19,6 +23,11 @@ internal sealed partial class UnattendedTestRunner
         CombatState combatState,
         Player player)
     {
+        await VerifyExternalImplicitChoicesAsync(combatState, player);
+        _completedChecks.Add("ExternalImplicitChoices:NativeOrder:ManualCursor:StrictWire");
+        if (_request.ScenarioId == "INCOMBAT-STS2SIM-IMPLICIT-CHOICE")
+            return;
+
         NGame host = NGame.Instance
             ?? throw new InvalidOperationException("战斗内 Sts2Sim 合同测试要求活动宿主 NGame。");
         if (!PreCombatSts2SimBridge.HasInstalledBackendArtifact())
@@ -165,6 +174,109 @@ internal sealed partial class UnattendedTestRunner
             SolverSettings.ApplyForTesting(savedSettings);
             _protocolHost.SetAutomaticTurnSearchEnabledForTesting(prevAutoTurn);
         }
+    }
+
+    private static async Task VerifyExternalImplicitChoicesAsync(CombatState combat, Player player)
+    {
+        // Three equal-looking instances make source and filtered-option occurrences distinguishable.
+        PredictedCard[] source = Enumerable.Range(0, 3)
+            .Select(_ => PredictedCard.Create(CanonicalModels.Card<StrikeIronclad>(), player)).ToArray();
+        var simulator = CombatRootSnapshot.Capture(combat).ForkSimulator();
+        var discard = simulator.State.GetPlayerCombatState(player).DiscardPile;
+        var hologram = PredictedCard.Create(CanonicalModels.Card<Hologram>(), player);
+        discard.Clear();
+        if (CardChoiceSupport.GetSpec(simulator, hologram) is not null)
+            throw new InvalidOperationException("Hologram offered an empty discard choice.");
+        discard.Add(source[0]);
+        if (CardChoiceSupport.GetSpec(simulator, hologram) is not { IsImplicitAllSelection: true, Options.Count: 1 })
+            throw new InvalidOperationException("Hologram did not mark its only discard as implicit.");
+        discard.Add(source[1]);
+        if (CardChoiceSupport.GetSpec(simulator, hologram) is not { IsImplicitAllSelection: false, Options.Count: 2 })
+            throw new InvalidOperationException("Hologram inferred a choice from two discards.");
+
+        const string sourceId = "HOLOGRAM";
+        const PlanChoiceEffect effect = PlanChoiceEffect.MoveToHand;
+        const PileType pile = PileType.Discard;
+        TurnStartChoiceRequest Request(PredictedCard[] options, int min, int max, bool implicitAll = false)
+            => new(sourceId, effect, pile, min,
+                new CardChoiceSpec(effect, pile, min, max, options, source, 0, IsImplicitAllSelection: implicitAll));
+
+        var one = Request([source[1]], 1, 1, implicitAll: true);
+        var both = Request([source[1], source[2]], 2, 2, implicitAll: true);
+        var multiple = Request(source, 1, 1);
+        var confirmOne = Request([source[1]], 1, 1);
+        var optional = Request([source[1]], 0, 1);
+        var pickThird = new PlanCardChoice(effect, pile,
+            [new PlanCardToken(source[2].Preview.Id.Entry, 0, "", 2, 2, "")], SourceId: sourceId);
+        var confirm = pickThird with { Cards = [pickThird.Cards[0] with { SourceOccurrence = 1, OptionOccurrence = 0 }] };
+        var skip = pickThird with { Cards = [] };
+        PlanCardChoice[] wire = [pickThird, confirm, skip];
+        List<PlanCardChoice> bound = [];
+        var cursor = new TurnStartChoiceCursor(wire, validateSelectionAgainstSpec: true,
+            externalBinding: new ExternalChoiceBinding(sourceId, bound.Add));
+        var nativeSelector = new PlannedCardSelector(wire);
+        using var selectorScope = NativeTestCardSelectors.Push(nativeSelector);
+
+        async Task<CardModel[]> SelectNative(TurnStartChoiceRequest request, bool manual = false)
+        {
+            CardChoiceSpec spec = request.Spec!;
+            var prefs = new CardSelectorPrefs(CardSelectorPrefs.DiscardSelectionPrompt, spec.MinCount, spec.MaxCount);
+            if (manual)
+                prefs = prefs with { RequireManualConfirmation = true };
+            return (await CardSelectCmd.FromSimpleGrid(new ThrowingPlayerChoiceContext(),
+                spec.Options.Select(card => card.Preview).ToArray(), player, prefs)).ToArray();
+        }
+
+        if ((await SelectNative(Request([], 1, 1))).Length != 0)
+            throw new InvalidOperationException("Native zero-option selection returned a card.");
+
+        async Task CheckStep(TurnStartChoiceRequest request, int consumed, int[] optionIndices, int[] sourceIndices,
+            bool matchIfPresent = false, bool manual = false)
+        {
+            CardModel[] actual = await SelectNative(request, manual);
+            PlanCardChoice? choice;
+            bool resolved = matchIfPresent ? cursor.TryTakeIfMatches(request, out choice) : cursor.TryTake(request, out choice);
+            if (!resolved || choice is null || choice.SourceId != sourceId || choice.Timing != request.Timing
+                || cursor.ConsumedExplicitChoiceCount != consumed
+                || !choice.Cards.Select(card => card.OptionOccurrence).SequenceEqual(optionIndices)
+                || !choice.Cards.Select(card => card.SourceOccurrence).SequenceEqual(sourceIndices)
+                || !actual.SequenceEqual(sourceIndices.Select(i => source[i].Preview)))
+                throw new InvalidOperationException($"External choice differs from native selection at bound step {bound.Count}.");
+            TurnStartChoiceCursor.ValidateChoiceMatchesSpec(choice, request.Spec!);
+        }
+
+        await CheckStep(one, 0, [0], [1]);
+        await CheckStep(both, 0, [0, 1], [1, 2], matchIfPresent: true);
+        await CheckStep(multiple, 1, [2], [2]);
+        await CheckStep(confirmOne, 2, [0], [1], matchIfPresent: true, manual: true);
+        await CheckStep(optional, 3, [], []);
+        cursor.AssertConsumed();
+        nativeSelector.AssertConsumed();
+        if (bound.Count != 5
+            || !bound.SelectMany(choice => choice.Cards).Select(card => card.SourceOccurrence).SequenceEqual([1, 1, 2, 2, 1]))
+            throw new InvalidOperationException("External action annotation lost or reordered a choice.");
+
+        var missing = new TurnStartChoiceCursor([], validateSelectionAgainstSpec: true,
+            externalBinding: new ExternalChoiceBinding(sourceId));
+        if (missing.TryTake(multiple, out _) || missing.TryTakeIfMatches(confirmOne, out _) || missing.TryTake(optional, out _))
+            throw new InvalidOperationException("A missing manual or optional decision was inferred.");
+        var builtIn = new TurnStartChoiceCursor([]);
+        if (builtIn.TryTake(one, out _) || builtIn.TryTakeIfMatches(both, out _))
+            throw new InvalidOperationException("The built-in search cursor consumed an unscripted choice.");
+
+        var extra = new TurnStartChoiceCursor([confirm], validateSelectionAgainstSpec: true,
+            externalBinding: new ExternalChoiceBinding(sourceId));
+        if (!extra.TryTake(one, out _) || extra.ConsumedExplicitChoiceCount != 0)
+            throw new InvalidOperationException("An implicit request consumed an extra explicit choice.");
+        try
+        {
+            extra.AssertConsumed();
+        }
+        catch (InvalidPlannedChoiceBranchException)
+        {
+            return;
+        }
+        throw new InvalidOperationException("An extra wire decision for an implicit choice was accepted.");
     }
 
     private void VerifyLiveDecimalPrivateFields(CombatState combatState)
