@@ -37,20 +37,23 @@ internal struct HotSearchNode
     public int PlayerHp;                // 4 B
     public int EnemyHp;                 // 4 B
     public int SetupScore;              // 4 B (for scaling/setup diversity lane)
-    public short PlayerMaxHpDelta;      // 2 B (max(0, initialMaxHp - currentMaxHp))
+    public short PlayerMaxHpDelta;      // 2 B (SIGNED: initialMaxHp - currentMaxHp; negative = MaxHp gain e.g. FruitJuice)
     public short PlayerBlock;           // 2 B (clamped to short.MaxValue)
     public short OutstandingStolen;     // 2 B (stolen gold + stolen cards, clamped)
     public short GrowthHpCredit;        // 2 B
-    public short PotionStrategicCost;   // 2 B
+    public short PotionStrategicCost;   // 2 B (exact sum of paid optional root potion HP costs; 0 for Forced/Token/Generated)
     public short DeathSaveHpRestored;   // 2 B
-    public ushort PotionMask;           // 2 B (root potion slots consumed)
+    public ushort PotionMask;           // 2 B (root potion slots consumed; NEVER set for combat-generated potions)
     public ushort ActionCount;          // 2 B
     public ushort GrowthRewardCount;    // 2 B
     public HotAction Action;            // 3 B (Kind, SlotOrHandIdx, TargetEnemySlot)
     public byte ChoiceCount;            // 1 B (0..HotLimits.MaxChoicesPerAction)
     public byte PotionCount;            // 1 B (total potions used incl. automatic)
     public byte ExplicitPotionCount;    // 1 B (manual UsePotion actions)
+    public byte OptionalPaidPotionCount;// 1 B (paid optional root potions used)
     public byte AmbergrisCount;         // 1 B
+    public byte AlchemizeCount;         // 1 B (s.Growth[4] clamped for slot-refill accounting)
+    public byte EmptyPotionSlots;       // 1 B (open slots in belt after this node)
     public byte Energy;                 // 1 B (clamped to byte.MaxValue)
     public byte Turn;                   // 1 B (PlayerTurnNumber clamped 0..255)
     public byte ActionsThisTurn;        // 1 B (per-turn loop guard)
@@ -109,32 +112,49 @@ internal sealed class HotNodeArena : IDisposable
     }
 
     /// <summary>
-    /// Appends a contiguous slice of <see cref="HotChoiceSelection"/>s into the chunked choice slab.
-    /// Ensures each node's slice stays contiguous within a single chunk for zero-copy <see cref="ReadOnlySpan{T}"/> reads.
+    /// Gracefully appends a contiguous slice of <see cref="HotChoiceSelection"/>s into the chunked choice slab.
+    /// Returns <c>false</c> (without throwing) if <paramref name="choices"/> exceeds <see cref="HotLimits.MaxChoicesPerAction"/>.
     /// </summary>
-    public int AppendChoices(ReadOnlySpan<HotChoiceSelection> choices)
+    public bool TryAppendChoices(ReadOnlySpan<HotChoiceSelection> choices, out int offset)
     {
         int len = choices.Length;
         if (len == 0)
-            return -1;
+        {
+            offset = -1;
+            return true;
+        }
         if (len > HotLimits.MaxChoicesPerAction)
-            throw new ArgumentOutOfRangeException(nameof(choices), len, "Choice count exceeds HotLimits.MaxChoicesPerAction.");
+        {
+            offset = -1;
+            return false;
+        }
 
-        int offset = _choiceCount;
-        int inChunk = offset & ChunkMask;
+        int nextOffset = _choiceCount;
+        int inChunk = nextOffset & ChunkMask;
         if (inChunk + len > ChunkSize)
         {
             // Advance cleanly to next chunk boundary so the slice is contiguous.
-            offset = ((offset >> ChunkShift) + 1) << ChunkShift;
+            nextOffset = ((nextOffset >> ChunkShift) + 1) << ChunkShift;
             inChunk = 0;
         }
 
-        int chunkIdx = offset >> ChunkShift;
+        int chunkIdx = nextOffset >> ChunkShift;
         while (chunkIdx >= _choiceChunks.Count)
             _choiceChunks.Add(ArrayPool<HotChoiceSelection>.Shared.Rent(ChunkSize));
 
         choices.CopyTo(_choiceChunks[chunkIdx].AsSpan(inChunk, len));
-        _choiceCount = offset + len;
+        _choiceCount = nextOffset + len;
+        offset = nextOffset;
+        return true;
+    }
+
+    /// <summary>
+    /// Appends a contiguous slice of <see cref="HotChoiceSelection"/>s into the chunked choice slab.
+    /// </summary>
+    public int AppendChoices(ReadOnlySpan<HotChoiceSelection> choices)
+    {
+        if (!TryAppendChoices(choices, out int offset))
+            throw new ArgumentOutOfRangeException(nameof(choices), choices.Length, "Choice count exceeds HotLimits.MaxChoicesPerAction.");
         return offset;
     }
 

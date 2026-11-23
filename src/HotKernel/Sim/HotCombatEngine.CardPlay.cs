@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace CombatSolver.HotKernel;
@@ -93,13 +94,107 @@ internal static partial class HotCombatEngine
         int targetEnemySlot = -1,
         bool forceExhaust = false)
     {
-        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+        if (IsOverOrEnding(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
             return false;
         if ((uint)cardIdx >= (uint)s.TotalCardCount)
             return false;
 
-        HotCardDef cardDef = rules.Cards[s.Cards[cardIdx].CardDefId];
-        if (cardDef.Target == TargetType.AnyEnemy)
+        ref readonly HotCard autoCardCheck = ref s.Cards[cardIdx];
+        if (autoCardCheck.CardDefId == 0 || autoCardCheck.CardDefId >= rules.Cards.Length)
+            return false;
+
+        HotCardDef cardDef = rules.Cards[autoCardCheck.CardDefId];
+        if ((autoCardCheck.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0
+            || !CheckShouldPlayRestrictions(in s, in autoCardCheck, cardDef, rules))
+        {
+            MoveCardToResultPileWithoutPlaying(ref s, ref cold, rules, scratch, cardIdx, forceExhaust);
+            return false;
+        }
+
+        TargetType effectiveTarget = GetEffectiveCardTargetType(in s, in autoCardCheck, cardDef, rules);
+        if (effectiveTarget == TargetType.AnyEnemy)
+        {
+            if (targetEnemySlot < 0 || !IsValidEnemyTarget(in s, targetEnemySlot))
+            {
+                targetEnemySlot = PickRandomLivingEnemySlot(ref s);
+                if (targetEnemySlot < 0)
+                {
+                    MoveCardToResultPileWithoutPlaying(ref s, ref cold, rules, scratch, cardIdx, forceExhaust);
+                    return false;
+                }
+            }
+        }
+
+        ref HotCard autoCard = ref s.Cards[cardIdx];
+        bool costsX = (autoCard.Flags & HotCardFlags.CostsX) != 0;
+        bool starCostsX = (autoCard.Flags & HotCardFlags.HasStarCostX) != 0;
+        if (costsX)
+            autoCard.CapturedEnergy = (short)s.Energy;
+
+        int energyValue = costsX
+            ? s.Energy
+            : GetEffectiveEnergyCost(in s, in autoCard, cold, rules, isInPlayablePile: true);
+        int starValue = starCostsX
+            ? s.Stars
+            : GetEffectiveStarCost(in s, in autoCard, cold, rules, isInPlayablePile: true);
+        scratch.LastStarsSpent = starValue;
+
+        bool alreadyInPlay = cardIdx >= s.PlayStart && cardIdx < s.PlayStart + s.PlayCount;
+        int playIdx = alreadyInPlay ? cardIdx : HotPiles.MoveCard(ref s, cardIdx, HotPileKind.Play, s.PlayCount);
+        int playOffsetInPlay = playIdx - s.PlayStart;
+        return ResolveMovedCardInPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue: energyValue, starValue: starValue, isAutoPlay: true, forceExhaust: forceExhaust);
+    }
+
+    private static void MoveCardToResultPileWithoutPlaying(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        int cardIdx,
+        bool forceExhaust)
+    {
+        if ((uint)cardIdx >= (uint)s.TotalCardCount)
+            return;
+
+        bool alreadyInPlay = cardIdx >= s.PlayStart && cardIdx < s.PlayStart + s.PlayCount;
+        int playIdx = alreadyInPlay ? cardIdx : HotPiles.MoveCard(ref s, cardIdx, HotPileKind.Play, s.PlayCount);
+        ref HotCard card = ref s.Cards[playIdx];
+
+        if ((card.Flags & HotCardFlags.IsDupe) != 0)
+        {
+            HotPiles.RemoveCard(ref s, playIdx);
+            s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+        }
+        else if (forceExhaust
+            || (card.Flags & HotCardFlags.ExhaustOnNextPlay) != 0
+            || (card.LocalKeywordsMask & HotCardKeywordMask.Exhaust) != 0)
+        {
+            if ((card.Flags & HotCardFlags.ExhaustOnNextPlay) != 0)
+                card.Flags &= ~HotCardFlags.ExhaustOnNextPlay;
+            ExhaustCard(ref s, ref cold, rules, scratch, playIdx, causedByEthereal: false);
+        }
+        else
+        {
+            HotPiles.MoveCard(ref s, playIdx, HotPileKind.Discard, s.DiscardCount);
+        }
+    }
+
+    internal static bool AutoPlayTransientCard(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        in HotCard card,
+        int targetEnemySlot = -1,
+        bool forceExhaust = false)
+    {
+        if (IsOverOrEnding(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+            return false;
+        if (card.CardDefId == 0 || card.CardDefId >= rules.Cards.Length)
+            return false;
+
+        HotCardDef cardDef = rules.Cards[card.CardDefId];
+        if (GetEffectiveCardTargetType(in s, in card, cardDef, rules) == TargetType.AnyEnemy)
         {
             if (targetEnemySlot < 0 || !IsValidEnemyTarget(in s, targetEnemySlot))
             {
@@ -109,17 +204,37 @@ internal static partial class HotCombatEngine
             }
         }
 
-        ref readonly HotCard autoCard = ref s.Cards[cardIdx];
-        int energyValue = (autoCard.Flags & HotCardFlags.CostsX) != 0
-            ? s.Energy
-            : GetEffectiveEnergyCost(in s, in autoCard, cold, rules, isInPlayablePile: true);
-        int starValue = (autoCard.Flags & HotCardFlags.HasStarCostX) != 0
-            ? s.Stars
-            : GetEffectiveStarCost(in s, in autoCard, cold, rules, isInPlayablePile: true);
+        HotCard copy = card;
+        bool costsX = (copy.Flags & HotCardFlags.CostsX) != 0;
+        if (costsX)
+            copy.CapturedEnergy = (short)s.Energy;
 
-        int playIdx = HotPiles.MoveCard(ref s, cardIdx, HotPileKind.Play, s.PlayCount);
+        int energyValue = costsX
+            ? s.Energy
+            : GetEffectiveEnergyCost(in s, in copy, cold, rules, isInPlayablePile: true);
+        int starValue = (copy.Flags & HotCardFlags.HasStarCostX) != 0
+            ? s.Stars
+            : GetEffectiveStarCost(in s, in copy, cold, rules, isInPlayablePile: true);
+        scratch.LastStarsSpent = starValue;
+
+        int playIdx = HotPiles.AddCard(ref s, in copy, HotPileKind.Play, s.PlayCount);
         int playOffsetInPlay = playIdx - s.PlayStart;
         return ResolveMovedCardInPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue: energyValue, starValue: starValue, isAutoPlay: true, forceExhaust: forceExhaust);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static int GetEnchantedReplayCount(in HotCard card, HotRules rules)
+    {
+        int count = card.BaseReplayCount + card.ExtraReplayThisTurn;
+        if (card.EnchId != 0 && card.EnchId < rules.Enchantments.Length)
+        {
+            HotEnchantmentId ench = rules.Enchantments[card.EnchId].EnchantmentId;
+            if (ench == HotEnchantmentId.Spiral)
+                count += card.EnchAmt > 0 ? card.EnchAmt : 1;
+            else if (ench == HotEnchantmentId.Glam && card.EnchStatus == 0)
+                count += 1;
+        }
+        return count;
     }
 
     internal static void AutoPlayFromDrawPile(
@@ -130,7 +245,16 @@ internal static partial class HotCombatEngine
         int count,
         bool forceExhaust = false)
     {
-        for (int i = 0; i < count && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+        if (IsOverOrEnding(in s) || count <= 0 || scratch.NeedsChoice)
+            return;
+
+        // STS2 0.113.1 CardPileCmd.AutoPlayFromDrawPile stages all pulled cards into PileType.Play
+        // before auto-playing each one in order.
+        int cap = Math.Min(count, HotLimits.MaxStackAllocElements);
+        Span<ushort> stagedUids = stackalloc ushort[cap];
+        int stagedCount = 0;
+
+        for (int i = 0; i < cap && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
         {
             if (s.DrawCount == 0 && s.DiscardCount > 0)
             {
@@ -146,7 +270,21 @@ internal static partial class HotCombatEngine
             if (s.DrawCount == 0)
                 break;
 
-            AutoPlayCard(ref s, ref cold, rules, scratch, s.DrawStart, targetEnemySlot: -1, forceExhaust: forceExhaust);
+            ushort uid = s.Cards[s.DrawStart].CardUid;
+            HotPiles.MoveCard(ref s, s.DrawStart, HotPileKind.Play, s.PlayCount);
+            stagedUids[stagedCount++] = uid;
+        }
+
+        for (int i = 0; i < stagedCount && !IsOverOrEnding(in s) && (s.Player.Flags & HotCreatureFlags.Alive) != 0 && !scratch.NeedsChoice; i++)
+        {
+            int playIdx = FindCardIndexByUid(in s, HotPileKind.Play, stagedUids[i]);
+            if (playIdx < 0)
+                continue;
+
+            if (forceExhaust)
+                s.Cards[playIdx].Flags |= HotCardFlags.ExhaustOnNextPlay;
+
+            AutoPlayCard(ref s, ref cold, rules, scratch, playIdx, targetEnemySlot: -1, forceExhaust: forceExhaust);
         }
     }
 
@@ -166,13 +304,14 @@ internal static partial class HotCombatEngine
         scratch.CurrentPlayTargetSlot = targetEnemySlot;
 
         ref HotCard playCard = ref s.Cards[playIdx];
+        ushort playCardUid = playCard.CardUid;
         ushort cardDefId = playCard.CardDefId;
         HotCardDef cardDef = rules.Cards[cardDefId];
         byte targetCreatureSlot = targetEnemySlot >= 0 && targetEnemySlot < s.EnemyCount
             ? (byte)(3 + targetEnemySlot)
             : (byte)0xFF;
 
-        // 1. Determine base result pile
+        // 1. Determine base result pile (including CardModel.GetResultLocationForCardPlay overrides)
         byte resultPile;
         if ((playCard.Flags & HotCardFlags.IsDupe) != 0 || cardDef.Type == CardType.Power)
         {
@@ -188,7 +327,13 @@ internal static partial class HotCombatEngine
         }
         else
         {
-            resultPile = (byte)HotPileKind.Discard;
+            resultPile = cardDef.CardId switch
+            {
+                HotCustomCardId.ParticleWall or HotCustomCardId.MourningBlow => (byte)HotPileKind.Hand,
+                HotCustomCardId.ShiningStrike => ResultPileDrawTop,
+                HotCustomCardId.TrickShot when HotFoolTarot.CountAvailableArrows(in s) > 0 => (byte)HotPileKind.Hand,
+                _ => (byte)HotPileKind.Discard,
+            };
         }
 
         // ModifyCardPlayResultLocation hook (Corruption, Rebound, Feral, Nostalgia)
@@ -207,9 +352,9 @@ internal static partial class HotCombatEngine
             resultPile = locArgs.ResultPile;
         }
 
-        // 2. Determine play count (ModifyCardPlayCount: Burst, Duplication, EchoForm, OneTwoPunch, SignalBoost, TagTeam, ThrowingAxe)
+        // 2. Determine play count (Spiral enchantment + ModifyCardPlayCount: Burst, Duplication, EchoForm, OneTwoPunch, SignalBoost, TagTeam, ThrowingAxe)
         int liveIdxForCount = s.PlayStart + playOffsetInPlay;
-        int playCount = 1 + s.Cards[liveIdxForCount].BaseReplayCount + s.Cards[liveIdxForCount].ExtraReplayThisTurn;
+        int playCount = 1 + GetEnchantedReplayCount(in s.Cards[liveIdxForCount], rules);
         if ((s.ActiveHookMask & (ulong)HotHookMask.ModifyCardPlayCount) != 0)
         {
             HotHookArgs cntArgs = new()
@@ -254,6 +399,9 @@ internal static partial class HotCombatEngine
             {
                 s.Counters[(int)HotCounterSlot.PowerPlayStartsThisTurn]++;
             }
+
+            if (cardDef.CardId == HotCustomCardId.BrightestFlame && curPlayIdx < s.TotalCardCount)
+                s.BrightestFlameMaxHpSpent += GetNamedVarInt(in s.Cards[curPlayIdx], cardDef, "MaxHp", 2);
 
             if (cardDef.MelodyTagMask != 0)
             {
@@ -324,7 +472,11 @@ internal static partial class HotCombatEngine
             // RecordCardPlayFinished
             s.HistoryFinishedPlays++;
             curPlayIdx = s.PlayStart + playOffsetInPlay;
-            if (curPlayIdx < s.TotalCardCount && (s.Cards[curPlayIdx].LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0)
+            if (cardDef.CardId == HotCustomCardId.Bounce && curPlayIdx < s.TotalCardCount)
+                s.Cards[curPlayIdx].CardPrivate = (short)s.PlayerTurnNumber;
+            bool playedWasEthereal = curPlayIdx < s.TotalCardCount
+                && IsCardEthereal(in s, in s.Cards[curPlayIdx], rules);
+            if (playedWasEthereal)
                 s.HistoryEtherealPlays++;
 
             if (cardDef.MelodyTagMask != 0)
@@ -339,7 +491,17 @@ internal static partial class HotCombatEngine
 
             s.Counters[(int)HotCounterSlot.CardsPlayedThisTurn]++;
             if (cardDef.Type == CardType.Attack)
+            {
                 s.Counters[(int)HotCounterSlot.AttacksPlayedThisTurn]++;
+                if (rules.HasRelic(HotRelicId.HistoryCourse)
+                    && curPlayIdx < s.TotalCardCount
+                    && (s.Cards[curPlayIdx].Flags & HotCardFlags.IsDupe) == 0)
+                {
+                    s.HistoryCourseCard = s.Cards[curPlayIdx];
+                    s.HistoryCourseUid = s.Cards[curPlayIdx].CardUid;
+                    s.CombatFlags |= HotCombatFlags.HasHistoryCourseCard;
+                }
+            }
             else if (cardDef.Type == CardType.Skill)
                 s.Counters[(int)HotCounterSlot.SkillsPlayedThisTurn]++;
 
@@ -354,6 +516,24 @@ internal static partial class HotCombatEngine
                     {
                         if (s.Cards[c].CardDefId == pinpointId)
                             CostAddThisTurn(ref s.Cards[c], ref cold, -1);
+                    }
+                }
+            }
+            if (playedWasEthereal)
+            {
+                ushort bansheeId = rules.GetCardDefId(HotCustomCardId.BansheesCry);
+                if (bansheeId != 0)
+                {
+                    HotCardDef bansheeDef = rules.Cards[bansheeId];
+                    int total = s.TotalCardCount;
+                    for (int c = 0; c < total; c++)
+                    {
+                        if (s.Cards[c].CardDefId == bansheeId)
+                        {
+                            int delta = GetNamedVarInt(in s.Cards[c], bansheeDef, "Energy", 2);
+                            if (delta > 0)
+                                CostAddThisCombat(ref s.Cards[c], ref cold, -delta);
+                        }
                     }
                 }
             }
@@ -386,70 +566,76 @@ internal static partial class HotCombatEngine
                     return true;
             }
 
+            // RightHandHand.AfterCardPlayedLate: return Discard RightHandHand copies to Hand when EnergyValue >= Energy var (2).
+            if (energyValue > 0 && s.DiscardCount > 0 && !scratch.NeedsChoice && !IsOverOrEnding(in s))
+                TriggerRightHandHandAfterCardPlayedLate(ref s, rules, energyValue);
+
             // Enchantment AfterCardPlayed (disable single-use Sown/Swift/Glam/Vigorous, scale Goopy)
-            if (playOffsetInPlay < s.PlayCount)
+            if (playOffsetInPlay < s.PlayCount && s.Cards[s.PlayStart + playOffsetInPlay].CardUid == playCardUid)
                 ExecuteEnchantmentAfterPlay(ref s, rules, s.PlayStart + playOffsetInPlay);
         }
 
         // 4. Move from Play -> Result pile & expire WhenPlayed cost modifiers
-        if ((s.Player.Flags & HotCreatureFlags.Alive) != 0 && playOffsetInPlay < s.PlayCount)
+        if ((s.Player.Flags & HotCreatureFlags.Alive) != 0)
         {
-            int finalPlayIdx = s.PlayStart + playOffsetInPlay;
-
-            if (resultPile == ResultPileRemoveFromCombat)
+            int finalPlayIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid);
+            if (finalPlayIdx >= 0)
             {
-                HotPiles.RemoveCard(ref s, finalPlayIdx);
-                s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
-            }
-            else if (resultPile == (byte)HotPileKind.Exhaust)
-            {
-                if (!IsOverOrEnding(in s))
+                if (resultPile == ResultPileRemoveFromCombat)
                 {
-                    int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Exhaust, s.ExhaustCount);
-                    HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
-                    s.Counters[(int)HotCounterSlot.CardsExhaustedThisTurn]++;
-                    FireAfterCardExhausted(ref s, ref cold, rules, scratch, dstIdx, causedByEthereal: false);
+                    HotPiles.RemoveCard(ref s, finalPlayIdx);
+                    s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
                 }
-                else
+                else if (resultPile == (byte)HotPileKind.Exhaust)
                 {
-                    HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
-                }
-            }
-            else if (resultPile == ResultPileDrawTop)
-            {
-                if (!IsCombatEnding(in s))
-                {
-                    int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Draw, 0);
-                    HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
-                }
-                else
-                {
-                    HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
-                }
-            }
-            else if (resultPile == (byte)HotPileKind.Hand)
-            {
-                if (!IsCombatEnding(in s))
-                {
-                    int dstIdx = MoveCardToHandOrDiscard(ref s, finalPlayIdx);
-                    if (dstIdx >= 0)
+                    if (!IsOverOrEnding(in s))
+                    {
+                        int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Exhaust, s.ExhaustCount);
                         HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
+                        s.Counters[(int)HotCounterSlot.CardsExhaustedThisTurn]++;
+                        FireAfterCardExhausted(ref s, ref cold, rules, scratch, dstIdx, causedByEthereal: false);
+                    }
+                    else
+                    {
+                        HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
+                    }
+                }
+                else if (resultPile == ResultPileDrawTop)
+                {
+                    if (!IsCombatEnding(in s))
+                    {
+                        int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Draw, 0);
+                        HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
+                    }
+                    else
+                    {
+                        HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
+                    }
+                }
+                else if (resultPile == (byte)HotPileKind.Hand)
+                {
+                    if (!IsCombatEnding(in s))
+                    {
+                        int dstIdx = MoveCardToHandOrDiscard(ref s, finalPlayIdx);
+                        if (dstIdx >= 0)
+                            HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
+                    }
+                    else
+                    {
+                        HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
+                    }
                 }
                 else
                 {
-                    HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
-                }
-            }
-            else
-            {
-                if (!IsCombatEnding(in s))
-                {
-                    int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Discard, s.DiscardCount);
-                    HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
-                }
-                else
-                {
-                    HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
+                    if (!IsCombatEnding(in s))
+                    {
+                        int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Discard, s.DiscardCount);
+                        HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
+                    }
+                    else
+                    {
+                        HotCostModifiers.ExpireAfterPlay(ref s.Cards[finalPlayIdx], ref cold);
+                    }
                 }
             }
         }
@@ -615,6 +801,77 @@ internal static partial class HotCombatEngine
         }
     }
 
+    /// <summary>
+    /// Exact STS2 0.113.1 <c>CardCmd.DiscardAndDraw(cardsToDiscard, cardsToDraw)</c>:
+    /// discards all cards in <paramref name="cardUids"/> first (firing <c>AfterCardDiscarded</c>
+    /// without firing Sly yet), then draws <paramref name="drawCount"/> cards, and finally
+    /// auto-plays all discarded Sly cards in discard order.
+    /// </summary>
+    internal static void DiscardCardsAndDraw(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ReadOnlySpan<ushort> cardUids,
+        int drawCount)
+    {
+        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+            return;
+
+        Span<ushort> slyUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
+        int slyCount = 0;
+
+        for (int i = 0; i < cardUids.Length; i++)
+        {
+            ushort uid = cardUids[i];
+            if (uid == 0)
+                continue;
+            int idx = FindCardIndexByUid(in s, HotPileKind.Hand, uid);
+            if (idx < 0)
+                idx = FindCardIndexByUidAnyPile(in s, uid);
+            if (idx < 0)
+                continue;
+
+            bool isFromHand = idx < s.HandCount;
+            bool isSly = isFromHand
+                && ((s.Cards[idx].LocalKeywordsMask & HotCardKeywordMask.Sly) != 0
+                    || (s.Cards[idx].Flags & HotCardFlags.IsSlyThisTurn) != 0);
+            if (isSly && slyCount < slyUids.Length)
+                slyUids[slyCount++] = uid;
+
+            ushort cardDefId = s.Cards[idx].CardDefId;
+            int dstIdx = HotPiles.MoveCard(ref s, idx, HotPileKind.Discard, s.DiscardCount);
+            s.Counters[(int)HotCounterSlot.CardsDiscardedThisTurn]++;
+
+            if ((s.ActiveHookMask & (ulong)HotHookMask.AfterCardDiscarded) != 0)
+            {
+                HotHookArgs discArgs = new()
+                {
+                    ActorSlot = 0,
+                    CardIdx = dstIdx,
+                    CardDefId = cardDefId,
+                };
+                DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardDiscarded, ref discArgs);
+                if (scratch.NeedsChoice)
+                    return;
+            }
+        }
+
+        if (drawCount > 0 && !IsOverOrEnding(in s) && !scratch.NeedsChoice)
+        {
+            DrawCards(ref s, ref cold, rules, scratch, drawCount, fromHandDraw: false);
+            if (scratch.NeedsChoice)
+                return;
+        }
+
+        for (int i = 0; i < slyCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+        {
+            int liveIdx = FindCardIndexByUid(in s, HotPileKind.Discard, slyUids[i]);
+            if (liveIdx >= 0)
+                AutoPlayCard(ref s, ref cold, rules, scratch, liveIdx);
+        }
+    }
+
     internal static void ExhaustCard(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
@@ -686,9 +943,131 @@ internal static partial class HotCombatEngine
             return false;
 
         card.UpgradeLevel++;
-        if (card.UpgradeLevel == 1 && def.UpgradedCost != def.BaseCost && card.BaseEnergyCost == def.BaseCost)
-            card.BaseEnergyCost = def.UpgradedCost;
+        if (card.UpgradeLevel == 1)
+        {
+            if (def.UpgradedCost != def.BaseCost && card.BaseEnergyCost == def.BaseCost)
+                card.BaseEnergyCost = def.UpgradedCost;
+            ApplyUpgradeKeywords(ref card, def.CardId);
+        }
         return true;
+    }
+
+    /// <summary>
+    /// Applies STS2 0.113.1 <c>CardModel.OnUpgrade()</c> keyword additions/removals
+    /// (updates <c>LocalKeywordsMask</c> only, matching <c>CardModel.AddKeyword/RemoveKeyword</c>
+    /// when <c>_isUpgrading == true</c>).
+    /// </summary>
+    internal static void ApplyUpgradeKeywords(ref HotCard card, HotCustomCardId cardId)
+    {
+        switch (cardId)
+        {
+            case HotCustomCardId.Afterimage:
+            case HotCustomCardId.Aggression:
+            case HotCustomCardId.Arsenal:
+            case HotCustomCardId.BeaconOfHope:
+            case HotCustomCardId.BigBang:
+            case HotCustomCardId.CallOfTheVoid:
+            case HotCustomCardId.Entropy:
+            case HotCustomCardId.HelloWorld:
+            case HotCustomCardId.InfiniteBlades:
+            case HotCustomCardId.Juggling:
+            case HotCustomCardId.Lullaby:
+            case HotCustomCardId.MachineLearning:
+            case HotCustomCardId.MadScience:
+            case HotCustomCardId.Soulbound:
+            case HotCustomCardId.Speedster:
+            case HotCustomCardId.Tyranny:
+                card.LocalKeywordsMask |= HotCardKeywordMask.Innate;
+                break;
+
+            case HotCustomCardId.Anointed:
+            case HotCustomCardId.CalculatedGamble:
+            case HotCustomCardId.Dredge:
+            case HotCustomCardId.GoldAxe:
+            case HotCustomCardId.Misery:
+            case HotCustomCardId.Monologue:
+            case HotCustomCardId.ReaperForm:
+            case HotCustomCardId.RoyalGamble:
+            case HotCustomCardId.Scrawl:
+            case HotCustomCardId.TimesUp:
+            case HotCustomCardId.Wish:
+            case HotCustomCardId.Wisp:
+                card.LocalKeywordsMask |= HotCardKeywordMask.Retain;
+                break;
+
+            case HotCustomCardId.Chill:
+            case HotCustomCardId.DemonicShield:
+            case HotCustomCardId.Discovery:
+            case HotCustomCardId.Fusion:
+            case HotCustomCardId.Graveblast:
+            case HotCustomCardId.Hologram:
+            case HotCustomCardId.Hotfix:
+            case HotCustomCardId.Ignition:
+            case HotCustomCardId.KnowThyPlace:
+            case HotCustomCardId.Mimic:
+            case HotCustomCardId.Mirage:
+            case HotCustomCardId.Prolong:
+            case HotCustomCardId.Rainbow:
+            case HotCustomCardId.SecretTechnique:
+            case HotCustomCardId.SecretWeapon:
+            case HotCustomCardId.ThinkingAhead:
+            case HotCustomCardId.Transfigure:
+            case HotCustomCardId.Underworld:
+            case HotCustomCardId.Voltaic:
+                card.LocalKeywordsMask &= ~HotCardKeywordMask.Exhaust;
+                break;
+
+            case HotCustomCardId.Apparition:
+            case HotCustomCardId.EchoForm:
+            case HotCustomCardId.VoidForm:
+                card.LocalKeywordsMask &= ~HotCardKeywordMask.Ethereal;
+                break;
+        }
+    }
+
+    private static void TriggerRightHandHandAfterCardPlayedLate(
+        ref CombatHotState s,
+        HotRules rules,
+        int energyValue)
+    {
+        ushort rhhId = rules.GetCardDefId(HotCustomCardId.RightHandHand);
+        if (rhhId == 0)
+            return;
+
+        HotCardDef rhhDef = rules.Cards[rhhId];
+        Span<ushort> rhhUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
+        int rhhCount = 0;
+        int discStart = s.DiscardStart;
+        int discEnd = discStart + s.DiscardCount;
+        for (int d = discStart; d < discEnd && rhhCount < rhhUids.Length; d++)
+        {
+            if (s.Cards[d].CardDefId == rhhId
+                && energyValue >= GetNamedVarInt(in s.Cards[d], rhhDef, "Energy", 2))
+            {
+                rhhUids[rhhCount++] = s.Cards[d].CardUid;
+            }
+        }
+        for (int r = 0; r < rhhCount; r++)
+        {
+            int dIdx = FindCardIndexByUid(in s, HotPileKind.Discard, rhhUids[r]);
+            if (dIdx >= 0)
+                MoveCardToHandOrDiscard(ref s, dIdx);
+        }
+    }
+
+    /// <summary>
+    /// Exact STS2 0.113.1 <c>CardModel.AddKeyword</c> outside <c>OnUpgrade()</c>:
+    /// updates <c>LocalKeywordsMask</c>, <c>KeywordsAddedOutsideMask</c>, and clears
+    /// <c>KeywordsRemovedOutsideMask</c>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void ApplyCardKeywordOutsideUpgrade(ref HotCard card, HotCardKeywordMask keyword)
+    {
+        card.LocalKeywordsMask |= keyword;
+        card.KeywordsAddedOutsideMask |= keyword;
+        card.KeywordsRemovedOutsideMask &= ~keyword;
+        if ((keyword & HotCardKeywordMask.Sly) != 0)
+            card.Flags |= HotCardFlags.IsSlyThisTurn;
     }
 
     internal static int MoveCardToHandOrDiscard(ref CombatHotState s, int srcIdx)
@@ -791,7 +1170,6 @@ internal static partial class HotCombatEngine
             : dstOffset;
 
         HotPiles.AddCard(ref s, in created, actualPile, actualOffset);
-        s.HistoryCardsGenerated++;
         if (def.HookMask != HotHookMask.None)
             s.ActiveHookMask |= (ulong)def.HookMask;
     }
@@ -847,9 +1225,33 @@ internal static partial class HotCombatEngine
             actualOffset = Math.Clamp(dstOffset, 0, zoneCount);
 
         int addedIdx = HotPiles.AddCard(ref s, in card, actualPile, actualOffset);
-        s.HistoryCardsGenerated++;
-        if (createdByPlayer && def.CardId == HotCustomCardId.Sadness)
-            s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore]++;
+        if (createdByPlayer)
+        {
+            s.HistoryCardsGenerated++;
+            if (def.CardId == HotCustomCardId.Sadness)
+                s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore]++;
+        }
+        // STS2 0.113.1 Aeonglass.AfterCardGeneratedForCombat (Aeonglass.cs:168-184):
+        // newly generated Wither cards (e.g. from WitheringPresencePower) immediately match WitherUpgradeCount (AiRegs[1]).
+        if (def.CardId == HotCustomCardId.Wither)
+        {
+            int expectedUpgrade = 0;
+            for (int r = 0; r < s.RosterCount; r++)
+            {
+                byte eSlot = s.ActiveEnemyRoster[r];
+                if ((s.Enemies[eSlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                    continue;
+                ushort mDefId = s.Enemies[eSlot].MonsterDefId;
+                if (mDefId > 0 && mDefId < rules.Monsters.Length && rules.Monsters[mDefId].MonsterId == HotMonsterId.Aeonglass)
+                    expectedUpgrade += s.Enemies[eSlot].AiRegs[1];
+            }
+            if (expectedUpgrade > s.Cards[addedIdx].CardPrivate)
+            {
+                int diff = expectedUpgrade - s.Cards[addedIdx].CardPrivate;
+                s.Cards[addedIdx].CardPrivate = expectedUpgrade;
+                s.Cards[addedIdx].Var0Delta += (short)(diff * 3);
+            }
+        }
         if (def.HookMask != HotHookMask.None)
             s.ActiveHookMask |= (ulong)def.HookMask;
 
@@ -875,6 +1277,16 @@ internal static partial class HotCombatEngine
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardGenerated, ref genArgs);
         }
 
+        // BansheesCry.AfterCardEnteredCombat: reduce cost by Energy var per Ethereal card already finished this combat (non-clones)
+        if (def.CardId == HotCustomCardId.BansheesCry
+            && (s.Cards[addedIdx].Flags & HotCardFlags.IsClone) == 0
+            && s.HistoryEtherealPlays > 0)
+        {
+            int delta = GetNamedVarInt(in s.Cards[addedIdx], def, "Energy", 2);
+            if (delta > 0)
+                CostAddThisCombat(ref s.Cards[addedIdx], ref cold, -(s.HistoryEtherealPlays * delta));
+        }
+
         // RocketPunch: any Status card generated by player reduces RocketPunch energy cost until played
         if (createdByPlayer && def.Type == CardType.Status)
         {
@@ -896,8 +1308,7 @@ internal static partial class HotCombatEngine
     private static HotCard CreateFreshCard(ref CombatHotState s, HotCardDef def, bool upgraded)
     {
         bool doUpgrade = upgraded && def.MaxUpgradeLevel > 0;
-        HotCardFlags flags = IsEnergyCostXCard(def.CardId) ? HotCardFlags.CostsX : HotCardFlags.None;
-        return new HotCard
+        HotCard card = new()
         {
             CardDefId = def.DefId,
             CardUid = s.NextCardUid++,
@@ -909,7 +1320,10 @@ internal static partial class HotCombatEngine
             LocalKeywordsMask = (HotCardKeywordMask)def.BaseKeywords,
             KeywordsAddedOutsideMask = HotCardKeywordMask.None,
             KeywordsRemovedOutsideMask = HotCardKeywordMask.None,
-            Flags = flags,
+            Flags = GetInitialCardFlags(def),
         };
+        if (doUpgrade)
+            ApplyUpgradeKeywords(ref card, def.CardId);
+        return card;
     }
 }

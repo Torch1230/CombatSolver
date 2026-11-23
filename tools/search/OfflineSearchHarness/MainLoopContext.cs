@@ -81,6 +81,23 @@ internal sealed class MainLoopContext : SynchronizationContext
             PumpOnce(TimeSpan.FromMilliseconds(5));
     }
 
+    /// <summary>把当前队列里所有已就绪的续体全部同步跑完（零等待）。</summary>
+    public int DrainPending()
+    {
+        int count = 0;
+        while (_queue.TryTake(out var item, 0))
+        {
+            PumpedCallbacks++;
+            count++;
+            item.Callback(item.State);
+        }
+        return count;
+    }
+
+    /// <summary>等待最多 waitMilliseconds 毫秒取一条续体执行。</summary>
+    public bool PumpOnce(int waitMilliseconds)
+        => PumpOnce(TimeSpan.FromMilliseconds(waitMilliseconds));
+
     private bool PumpOnce(TimeSpan wait)
     {
         if (!_queue.TryTake(out var item, (int)wait.TotalMilliseconds))

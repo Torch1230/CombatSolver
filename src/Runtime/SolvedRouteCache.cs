@@ -57,6 +57,7 @@ internal sealed class SolvedRouteCache(string path)
             policy.Profile,
             policy.PotionPolicy,
             policy.PotionStrategy.Directives,
+            PotionThresholdOverrides = policy.PotionStrategy.Thresholds.Overrides,
             policy.GrowthBudgets,
             policy.RelicTargets,
             policy.Act3BossStrategy,

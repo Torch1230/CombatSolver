@@ -37,7 +37,6 @@ internal static unsafe class HotStatePacker
 
     public static void ZeroExplicitPadding(ref CombatHotState s)
     {
-        s.PadCore0 = 0;
         s.PadCore1 = 0;
         s.PadCore2 = 0;
         s.PadCore3 = 0;
@@ -63,7 +62,15 @@ internal static unsafe class HotStatePacker
         for (int i = Math.Min((int)s.RosterCount, HotLimits.MaxEnemies); i < HotLimits.MaxEnemies; i++)
             s.ActiveEnemyRoster[i] = 0;
 
-        for (int i = Math.Min((int)s.PotionSlotCount, HotLimits.MaxPotions); i < HotLimits.MaxPotions; i++)
+        int activePotionSlots = Math.Min((int)s.PotionSlotCount, HotLimits.MaxPotions);
+        ushort validPotionMask = 0;
+        for (int i = 0; i < activePotionSlots; i++)
+        {
+            if (s.Potions[i] != 0)
+                validPotionMask |= (ushort)(1 << i);
+        }
+        s.CombatGeneratedPotionMask &= validPotionMask;
+        for (int i = activePotionSlots; i < HotLimits.MaxPotions; i++)
             s.Potions[i] = 0;
 
         for (int i = Math.Min((int)s.OrbCount, HotLimits.MaxOrbs); i < HotLimits.MaxOrbs; i++)
@@ -252,7 +259,7 @@ internal static unsafe class HotStatePacker
         if (powerCount > 0)
         {
             ReadOnlySpan<HotPower> powers = MemoryMarshal.CreateReadOnlySpan(
-                ref Unsafe.As<HotPower64, HotPower>(ref Unsafe.AsRef(in s.Powers)),
+                ref Unsafe.As<HotPower96, HotPower>(ref Unsafe.AsRef(in s.Powers)),
                 powerCount);
             for (int i = 0; i < powerCount; i++)
             {

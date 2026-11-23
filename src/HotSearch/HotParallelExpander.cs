@@ -23,19 +23,20 @@ internal struct HotStagedChild
     public ushort PotionSlotBit;
     public byte PotionCountDelta;
     public byte ExplicitPotionDelta;
+    public byte OptionalPaidCountDelta;
     public byte AmbergrisDelta;
     public HotNodeFlags Flags;
 }
 
 [InlineArray(HotLimits.MaxChoicesPerAction)]
-internal struct HotChoiceInline8
+internal struct HotChoiceInline
 {
     private HotChoiceSelection _element0;
 }
 
 internal struct HotChoicePrefix
 {
-    public HotChoiceInline8 Selections;
+    public HotChoiceInline Selections;
     public int LastChoicePriority;
     public int BatchHistoryPlays;
     public ushort BatchSourceCardDefId;
@@ -47,7 +48,7 @@ internal struct HotChoicePrefix
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly ReadOnlySpan<HotChoiceSelection> AsSpan()
         => MemoryMarshal.CreateReadOnlySpan(
-            ref Unsafe.As<HotChoiceInline8, HotChoiceSelection>(ref Unsafe.AsRef(in Selections)),
+            ref Unsafe.As<HotChoiceInline, HotChoiceSelection>(ref Unsafe.AsRef(in Selections)),
             Count);
 }
 
@@ -99,6 +100,7 @@ internal sealed class HotExpansionWorkspace : IDisposable
     public int WaveIncumbentPrunes;
     public int WaveEndTurnPrefixCaptures;
     public int WaveEndTurnPrefixReuses;
+    public int WaveCapacityExceededDrops;
     public long WaveAllocatedBytes;
 
     public void ResetWave()
@@ -116,6 +118,7 @@ internal sealed class HotExpansionWorkspace : IDisposable
         WaveIncumbentPrunes = 0;
         WaveEndTurnPrefixCaptures = 0;
         WaveEndTurnPrefixReuses = 0;
+        WaveCapacityExceededDrops = 0;
         WaveAllocatedBytes = 0;
         StagingArena.Reset();
     }
@@ -148,8 +151,9 @@ internal sealed class HotExpansionWorkspace : IDisposable
 
 internal readonly struct HotWaveExpansionConfig
 {
-    public readonly bool DisableAllPotions;
-    public readonly bool OnlyForcedPotions;
+    public readonly bool AllowPaidOptionalPotions;
+    public readonly bool AllowZeroCostOptionalPotions;
+    public readonly bool AllowForcedPotions;
     public readonly int MaxPotionUses;
     public readonly int MaxCardBranchesPerNode;
     public readonly int MaxHandChoiceBranches;
@@ -157,9 +161,12 @@ internal readonly struct HotWaveExpansionConfig
     public readonly HotEvalMode EvalMode;
     public readonly bool AllowEndTurn;
 
+    public bool AllowAnyPotions => AllowPaidOptionalPotions || AllowZeroCostOptionalPotions || AllowForcedPotions;
+
     public HotWaveExpansionConfig(
-        bool disableAllPotions,
-        bool onlyForcedPotions,
+        bool allowPaidOptionalPotions,
+        bool allowZeroCostOptionalPotions,
+        bool allowForcedPotions,
         int maxPotionUses,
         int maxCardBranchesPerNode,
         int maxHandChoiceBranches,
@@ -167,8 +174,9 @@ internal readonly struct HotWaveExpansionConfig
         HotEvalMode evalMode = HotEvalMode.Balanced,
         bool allowEndTurn = true)
     {
-        DisableAllPotions = disableAllPotions;
-        OnlyForcedPotions = onlyForcedPotions;
+        AllowPaidOptionalPotions = allowPaidOptionalPotions;
+        AllowZeroCostOptionalPotions = allowZeroCostOptionalPotions;
+        AllowForcedPotions = allowForcedPotions;
         MaxPotionUses = maxPotionUses;
         MaxCardBranchesPerNode = maxCardBranchesPerNode;
         MaxHandChoiceBranches = maxHandChoiceBranches;
@@ -189,6 +197,7 @@ internal struct HotWaveStats
     public int EndTurnPrefixCaptures;
     public int EndTurnPrefixReuses;
     public int StandPatProbes;
+    public int CapacityExceededDrops;
     public int ParallelWaves;
     public int ParallelWorkItems;
     public int MaxConcurrency;
@@ -198,7 +207,9 @@ internal struct HotWaveStats
 /// <summary>
 /// Lock-free coarse-wave parallel expander using private worker <see cref="HotExpansionWorkspace"/>s
 /// and strict parent-index ordered commit on the coordinator thread.
-/// Guarantees 100% deterministic byte-for-byte parity between <c>DOP=1</c> and <c>DOP=8/16</c>.
+/// Guarantees 100% deterministic byte-for-byte parity between <c>DOP=1</c> and <c>DOP=8/16</c>,
+/// graceful <see cref="HotCapacityExceededException"/> branch containment, sound potion dedup/no-op
+/// hygiene, and <see cref="HotActionKind.TurnSetup"/> root expansion.
 /// </summary>
 internal sealed class HotParallelExpander : IDisposable
 {
@@ -363,6 +374,7 @@ internal sealed class HotParallelExpander : IDisposable
             stats.IncumbentPrunes += ws.WaveIncumbentPrunes;
             stats.EndTurnPrefixCaptures += ws.WaveEndTurnPrefixCaptures;
             stats.EndTurnPrefixReuses += ws.WaveEndTurnPrefixReuses;
+            stats.CapacityExceededDrops += ws.WaveCapacityExceededDrops;
             stats.WorkerAllocatedBytes += ws.WaveAllocatedBytes;
         }
 
@@ -378,6 +390,7 @@ internal sealed class HotParallelExpander : IDisposable
             ushort parentPotionMask = parentNode.PotionMask;
             byte parentPotionCount = parentNode.PotionCount;
             byte parentExplicitPotions = parentNode.ExplicitPotionCount;
+            byte parentOptionalPaid = parentNode.OptionalPaidPotionCount;
             byte parentAmbergris = parentNode.AmbergrisCount;
             short parentPotionCost = parentNode.PotionStrategicCost;
 
@@ -394,6 +407,7 @@ internal sealed class HotParallelExpander : IDisposable
                 ushort nextPotionMask = (ushort)(parentPotionMask | staged.PotionSlotBit);
                 byte nextPotionCount = (byte)Math.Min(byte.MaxValue, parentPotionCount + staged.PotionCountDelta);
                 byte nextExplicitPotions = (byte)Math.Min(byte.MaxValue, parentExplicitPotions + staged.ExplicitPotionDelta);
+                byte nextOptionalPaid = (byte)Math.Min(byte.MaxValue, parentOptionalPaid + staged.OptionalPaidCountDelta);
                 byte nextAmbergris = (byte)Math.Min(byte.MaxValue, parentAmbergris + staged.AmbergrisDelta);
                 short nextPotionCost = (short)Math.Clamp(parentPotionCost + staged.PotionCostDelta, 0, short.MaxValue);
                 ushort forcedMask = (ushort)(nextPotionMask & policy.ForcedPotionSlotMask);
@@ -425,6 +439,18 @@ internal sealed class HotParallelExpander : IDisposable
                     }
                 }
 
+                int choiceOffset = -1;
+                if (staged.ChoiceCount > 0 && staged.ChoiceOffset >= 0)
+                {
+                    if (!nodeArena.TryAppendChoices(
+                            ws.StagedChoices.AsSpan(staged.ChoiceOffset, staged.ChoiceCount),
+                            out choiceOffset))
+                    {
+                        stats.CapacityExceededDrops++;
+                        continue;
+                    }
+                }
+
                 HotStateHandle committedHandle = default;
                 if (isOngoing)
                 {
@@ -436,15 +462,9 @@ internal sealed class HotParallelExpander : IDisposable
                         tt.InsertAdmitted(in probe, committedHandle, staged.Cold, mainStateArena);
                 }
 
-                int choiceOffset = -1;
-                if (staged.ChoiceCount > 0 && staged.ChoiceOffset >= 0)
-                {
-                    choiceOffset = nodeArena.AppendChoices(
-                        ws.StagedChoices.AsSpan(staged.ChoiceOffset, staged.ChoiceCount));
-                }
-
+                bool isTurnSetup = staged.Action.Kind == HotActionKind.TurnSetup;
                 bool endedTurn = staged.Action.Kind == HotActionKind.EndTurn || staged.Summary.Turn > parentTurn;
-                byte nextActionsThisTurn = endedTurn
+                byte nextActionsThisTurn = (endedTurn || isTurnSetup)
                     ? (byte)0
                     : (byte)Math.Min(byte.MaxValue, parentActionsThisTurn + 1);
 
@@ -468,7 +488,7 @@ internal sealed class HotParallelExpander : IDisposable
                     PlayerHp = staged.Summary.PlayerHp,
                     EnemyHp = staged.Summary.EnemyHpSum,
                     SetupScore = staged.SetupScore,
-                    PlayerMaxHpDelta = (short)Math.Clamp(policy.InitialPlayerMaxHp - staged.Summary.PlayerMaxHp, 0, short.MaxValue),
+                    PlayerMaxHpDelta = (short)Math.Clamp(policy.InitialPlayerMaxHp - staged.Summary.PlayerMaxHp, short.MinValue, short.MaxValue),
                     PlayerBlock = (short)Math.Clamp(staged.Summary.PlayerBlock, 0, short.MaxValue),
                     OutstandingStolen = (short)Math.Clamp(staged.Summary.OutstandingStolen, 0, short.MaxValue),
                     GrowthHpCredit = (short)Math.Clamp(staged.Summary.GrowthHpCredit, short.MinValue, short.MaxValue),
@@ -481,7 +501,10 @@ internal sealed class HotParallelExpander : IDisposable
                     ChoiceCount = staged.ChoiceCount,
                     PotionCount = nextPotionCount,
                     ExplicitPotionCount = nextExplicitPotions,
+                    OptionalPaidPotionCount = nextOptionalPaid,
                     AmbergrisCount = nextAmbergris,
+                    AlchemizeCount = staged.Summary.AlchemizeCount,
+                    EmptyPotionSlots = staged.Summary.EmptyPotionSlots,
                     Energy = (byte)Math.Clamp(staged.Summary.Energy, 0, byte.MaxValue),
                     Turn = (byte)Math.Clamp(staged.Summary.Turn, 0, byte.MaxValue),
                     ActionsThisTurn = nextActionsThisTurn,
@@ -502,7 +525,8 @@ internal sealed class HotParallelExpander : IDisposable
                 else if (childNode.IsDefeat)
                 {
                     HotRouteKey defKey = HotRouteQuality.Capture(in childNode, in policy);
-                    if (!hasBestFallback || HotRouteQuality.IsBetter(in defKey, in bestFallbackKey, in policy))
+                    if (HotPotionPolicy.SatisfiesHardConstraints(in defKey, in policy)
+                        && (!hasBestFallback || HotRouteQuality.IsBetter(in defKey, in bestFallbackKey, in policy)))
                     {
                         hasBestFallback = true;
                         bestFallbackKey = defKey;
@@ -522,7 +546,7 @@ internal sealed class HotParallelExpander : IDisposable
     }
 
     /// <summary>
-    /// Runs lightweight Stand-Pat (<c>EndTurn</c>) lookahead on Top-K non-dominated active candidates
+    /// Runs lightweight Stand-Pat (<c>EndTurn</c>) lookahead on selected active candidates
     /// (cached by <see cref="HotHash128"/>, executed in parallel read-only batch when <c>DOP &gt; 1</c>).
     /// </summary>
     public void RunStandPatBatch(
@@ -617,6 +641,9 @@ internal sealed class HotParallelExpander : IDisposable
                 });
             }
 
+            for (int w = 0; w < workers; w++)
+                stats.CapacityExceededDrops += _workspaces[wsBase + w].WaveCapacityExceededDrops;
+
             for (int m = 0; m < missCount; m++)
             {
                 stats.StandPatProbes++;
@@ -665,7 +692,7 @@ internal sealed class HotParallelExpander : IDisposable
                     PlayerHp = staged.Summary.PlayerHp,
                     EnemyHp = staged.Summary.EnemyHpSum,
                     SetupScore = staged.SetupScore,
-                    PlayerMaxHpDelta = (short)Math.Clamp(policy.InitialPlayerMaxHp - staged.Summary.PlayerMaxHp, 0, short.MaxValue),
+                    PlayerMaxHpDelta = (short)Math.Clamp(policy.InitialPlayerMaxHp - staged.Summary.PlayerMaxHp, short.MinValue, short.MaxValue),
                     PlayerBlock = (short)Math.Clamp(staged.Summary.PlayerBlock, 0, short.MaxValue),
                     OutstandingStolen = (short)Math.Clamp(staged.Summary.OutstandingStolen, 0, short.MaxValue),
                     GrowthHpCredit = (short)Math.Clamp(staged.Summary.GrowthHpCredit, short.MinValue, short.MaxValue),
@@ -678,7 +705,10 @@ internal sealed class HotParallelExpander : IDisposable
                     ChoiceCount = 0,
                     PotionCount = parent.PotionCount,
                     ExplicitPotionCount = parent.ExplicitPotionCount,
+                    OptionalPaidPotionCount = parent.OptionalPaidPotionCount,
                     AmbergrisCount = parent.AmbergrisCount,
+                    AlchemizeCount = staged.Summary.AlchemizeCount,
+                    EmptyPotionSlots = staged.Summary.EmptyPotionSlots,
                     Energy = (byte)Math.Clamp(staged.Summary.Energy, 0, byte.MaxValue),
                     Turn = (byte)Math.Clamp(staged.Summary.Turn, 0, byte.MaxValue),
                     ActionsThisTurn = 0,
@@ -693,11 +723,14 @@ internal sealed class HotParallelExpander : IDisposable
 
                 int childId = nodeArena.AddNode(in childNode);
                 if (childNode.IsVictory)
+                {
                     victoriesOut.Add(childId);
+                }
                 else if (childNode.IsDefeat)
                 {
                     HotRouteKey key = HotRouteQuality.Capture(in childNode, in policy);
-                    if (!hasBestFallback || HotRouteQuality.IsBetter(in key, in bestFallbackKey, in policy))
+                    if (HotPotionPolicy.SatisfiesHardConstraints(in key, in policy)
+                        && (!hasBestFallback || HotRouteQuality.IsBetter(in key, in bestFallbackKey, in policy)))
                     {
                         hasBestFallback = true;
                         bestFallbackKey = key;
@@ -731,13 +764,24 @@ internal sealed class HotParallelExpander : IDisposable
         AssignDeterministicCardUids(ref ws.WorkingState);
         HotColdSidecar? cold = parent.Cold;
 
-        HotStepResult res = HotCombatEngine.Step(
-            ref ws.WorkingState,
-            ref cold,
-            rules,
-            ws.Scratch,
-            HotAction.EndTurn(),
-            default);
+        HotStepResult res;
+        try
+        {
+            res = HotCombatEngine.Step(
+                ref ws.WorkingState,
+                ref cold,
+                rules,
+                ws.Scratch,
+                HotAction.EndTurn(),
+                default);
+        }
+        catch (HotCapacityExceededException)
+        {
+            ws.WaveCapacityExceededDrops++;
+            staged = default;
+            return false;
+        }
+
         if (!res.Executed || res.NeedsChoice)
         {
             staged = default;
@@ -751,6 +795,13 @@ internal sealed class HotParallelExpander : IDisposable
         HotHash128 hash = HotHash.ComputeHash(ws.StagingArena.GetSpan(handle), cold);
 
         HotFastSummary summary = HotEvaluator.ExtractStage1(in ws.WorkingState, in policy);
+        int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
+            parent.PotionStrategicCost,
+            parent.OptionalPaidPotionCount,
+            summary.AlchemizeCount,
+            summary.EmptyPotionSlots,
+            in policy);
+
         HotEvaluator.EvaluateState(
             in ws.WorkingState,
             cold,
@@ -758,7 +809,7 @@ internal sealed class HotParallelExpander : IDisposable
             in policy,
             in evalLookup,
             in summary,
-            parent.PotionStrategicCost,
+            netPotionCostCenti,
             parent.ActionCount + 1,
             evalMode,
             out long score,
@@ -801,7 +852,7 @@ internal sealed class HotParallelExpander : IDisposable
         HotStatePacker.Unpack(mainStateArena.GetSpan(parent.StateHandle), ref ws.ParentState);
         HotColdSidecar? parentCold = parent.Cold;
 
-        bool allowPotions = !config.DisableAllPotions
+        bool allowPotions = config.AllowAnyPotions
             && (config.MaxPotionUses < 0 || parent.ExplicitPotionCount < config.MaxPotionUses);
         bool canPlayMoreThisTurn = parent.ActionsThisTurn < HotBeamRetention.MaxActionsPerTurn;
 
@@ -811,12 +862,27 @@ internal sealed class HotParallelExpander : IDisposable
 
         AssignDeterministicCardUids(ref ws.ParentState);
 
-        int actionCount = HotCombatEngine.EnumerateLegalActions(
-            in ws.ParentState,
-            parentCold,
-            rules,
-            ws.ActionBuf,
-            includePotions: allowPotions);
+        int actionCount;
+        try
+        {
+            actionCount = HotCombatEngine.EnumerateLegalActions(
+                in ws.ParentState,
+                parentCold,
+                rules,
+                ws.ActionBuf,
+                includePotions: allowPotions);
+        }
+        catch (HotCapacityExceededException)
+        {
+            ws.WaveCapacityExceededDrops++;
+            return;
+        }
+
+        // Pre-compute duplicate unprotected potion slot mask (only expand lowest-index slot of identical
+        // (PotionDefId, IsGenerated, IsForced) potions!).
+        ushort duplicatePotionSlotMask = allowPotions
+            ? ComputeDuplicatePotionSlotMask(in ws.ParentState, rules, rootPotionCosts, in policy, in config, parent.ExplicitPotionCount)
+            : (ushort)0;
 
         int cardBranchesEmitted = 0;
 
@@ -824,19 +890,53 @@ internal sealed class HotParallelExpander : IDisposable
         {
             HotAction action = ws.ActionBuf[a];
 
+            if (action.Kind == HotActionKind.TurnSetup)
+            {
+                try
+                {
+                    ExpandActionWithChoices(
+                        ws,
+                        in parent,
+                        parentCold,
+                        rules,
+                        in policy,
+                        in evalLookup,
+                        in config,
+                        in frozenIncumbent,
+                        action,
+                        potionCostDelta: 0,
+                        potionSlotBit: 0,
+                        optionalPaidCountDelta: 0,
+                        explicitPotionDelta: 0,
+                        ambergrisDelta: 0);
+                }
+                catch (HotCapacityExceededException)
+                {
+                    ws.WaveCapacityExceededDrops++;
+                }
+                continue;
+            }
+
             if (action.Kind == HotActionKind.EndTurn)
             {
                 if (!config.AllowEndTurn)
                     continue;
-                ExpandEndTurnAction(
-                    ws,
-                    in parent,
-                    parentCold,
-                    rules,
-                    in policy,
-                    in evalLookup,
-                    in config,
-                    in frozenIncumbent);
+                try
+                {
+                    ExpandEndTurnAction(
+                        ws,
+                        in parent,
+                        parentCold,
+                        rules,
+                        in policy,
+                        in evalLookup,
+                        in config,
+                        in frozenIncumbent);
+                }
+                catch (HotCapacityExceededException)
+                {
+                    ws.WaveCapacityExceededDrops++;
+                }
                 continue;
             }
 
@@ -855,73 +955,169 @@ internal sealed class HotParallelExpander : IDisposable
                     continue;
 
                 cardBranchesEmitted++;
-                ExpandActionWithChoices(
-                    ws,
-                    in parent,
-                    parentCold,
-                    rules,
-                    in policy,
-                    in evalLookup,
-                    in config,
-                    in frozenIncumbent,
-                    action,
-                    potionCostDelta: 0,
-                    potionSlotBit: 0,
-                    explicitPotionDelta: 0,
-                    ambergrisDelta: 0);
+                try
+                {
+                    ExpandActionWithChoices(
+                        ws,
+                        in parent,
+                        parentCold,
+                        rules,
+                        in policy,
+                        in evalLookup,
+                        in config,
+                        in frozenIncumbent,
+                        action,
+                        potionCostDelta: 0,
+                        potionSlotBit: 0,
+                        optionalPaidCountDelta: 0,
+                        explicitPotionDelta: 0,
+                        ambergrisDelta: 0);
+                }
+                catch (HotCapacityExceededException)
+                {
+                    ws.WaveCapacityExceededDrops++;
+                }
             }
             else if (action.Kind == HotActionKind.UsePotion)
             {
                 int slot = action.SlotOrHandIdx;
-                if ((uint)slot >= (uint)ws.ParentState.PotionSlotCount)
+                if ((uint)slot >= (uint)ws.ParentState.PotionSlotCount || (uint)slot >= HotLimits.MaxPotions)
                     continue;
+                if ((duplicatePotionSlotMask & (ushort)(1 << slot)) != 0)
+                    continue;
+
                 ushort pDefId = ws.ParentState.Potions[slot];
-                if (!HotPotionPolicy.IsSlotAllowedForPass(
+                if (!HotPotionPolicy.TryClassifyPotionUseForPass(
+                        in ws.ParentState,
                         slot,
                         pDefId,
                         rules,
+                        rootPotionCosts,
                         in policy,
-                        config.DisableAllPotions,
-                        config.OnlyForcedPotions,
+                        config.AllowPaidOptionalPotions,
+                        config.AllowZeroCostOptionalPotions,
+                        config.AllowForcedPotions,
                         parent.ExplicitPotionCount,
-                        config.MaxPotionUses))
+                        config.MaxPotionUses,
+                        out _,
+                        out bool isForced,
+                        out short optionalPaidCostDelta,
+                        out byte optionalPaidCountDelta,
+                        out ushort rootPotionSlotBit))
                 {
                     continue;
                 }
 
                 HotPotionDef pDef = rules.Potions[pDefId];
-                short pCost = slot < rootPotionCosts.Length && rootPotionCosts[slot] >= 0
-                    ? rootPotionCosts[slot]
-                    : HotPotionPolicy.ComputePotionDefCost(pDef, policy.HasRenewablePotionShapedRock);
-                ushort slotBit = (ushort)(1 << slot);
-                byte isAmbergris = (pDef.PotionId == HotCustomPotionId.Ambergris
-                    || string.Equals(pDef.Entry, "AMBERGRIS", StringComparison.Ordinal))
+                if (HotPotionPolicy.IsProvableNoOpPotionUse(in ws.ParentState, pDef, isForced, in policy))
+                    continue;
+
+                byte isAmbergris = HotPotionPolicy.ResolvePotionId(pDef) == HotCustomPotionId.Ambergris
                     ? (byte)1
                     : (byte)0;
 
-                ExpandActionWithChoices(
-                    ws,
-                    in parent,
-                    parentCold,
-                    rules,
-                    in policy,
-                    in evalLookup,
-                    in config,
-                    in frozenIncumbent,
-                    action,
-                    potionCostDelta: pCost,
-                    potionSlotBit: slotBit,
-                    explicitPotionDelta: 1,
-                    ambergrisDelta: isAmbergris);
+                try
+                {
+                    ExpandActionWithChoices(
+                        ws,
+                        in parent,
+                        parentCold,
+                        rules,
+                        in policy,
+                        in evalLookup,
+                        in config,
+                        in frozenIncumbent,
+                        action,
+                        potionCostDelta: optionalPaidCostDelta,
+                        potionSlotBit: rootPotionSlotBit,
+                        optionalPaidCountDelta: optionalPaidCountDelta,
+                        explicitPotionDelta: 1,
+                        ambergrisDelta: isAmbergris);
+                }
+                catch (HotCapacityExceededException)
+                {
+                    ws.WaveCapacityExceededDrops++;
+                }
             }
         }
     }
 
     /// <summary>
-    /// Expands <see cref="HotActionKind.EndTurn"/> using <c>EndTurnPrefix</c> sharing:
-    /// runs <see cref="HotCombatEngine.StepEndTurnBeforePlayerStart"/> once into <c>ws.EndTurnPrefixState</c>,
-    /// then branches any turn-start choices from that shared prefix without re-simulating the enemy turn!
+    /// Deduplicates identical allowed potions across slots by <c>(PotionDefId, IsGenerated, IsForced)</c>,
+    /// expanding only the lowest-index slot in each equivalence class.
     /// </summary>
+    private static ushort ComputeDuplicatePotionSlotMask(
+        in CombatHotState s,
+        HotRules rules,
+        short[] rootPotionCosts,
+        in HotSearchPolicy policy,
+        in HotWaveExpansionConfig config,
+        int currentExplicitPotionCount)
+    {
+        int slotCount = Math.Min((int)s.PotionSlotCount, HotLimits.MaxPotions);
+        if (slotCount <= 1)
+            return 0;
+
+        Span<ushort> seenDef = stackalloc ushort[HotLimits.MaxPotions];
+        Span<byte> seenFlags = stackalloc byte[HotLimits.MaxPotions];
+        Span<short> seenCost = stackalloc short[HotLimits.MaxPotions];
+        int seenCount = 0;
+        ushort dupMask = 0;
+
+        for (int slot = 0; slot < slotCount; slot++)
+        {
+            ushort defId = s.Potions[slot];
+            if (defId == 0 || defId >= rules.Potions.Length)
+                continue;
+
+            if (!HotPotionPolicy.TryClassifyPotionUseForPass(
+                    in s,
+                    slot,
+                    defId,
+                    rules,
+                    rootPotionCosts,
+                    in policy,
+                    config.AllowPaidOptionalPotions,
+                    config.AllowZeroCostOptionalPotions,
+                    config.AllowForcedPotions,
+                    currentExplicitPotionCount,
+                    config.MaxPotionUses,
+                    out bool isGenerated,
+                    out bool isForced,
+                    out short costDelta,
+                    out _,
+                    out _))
+            {
+                continue;
+            }
+
+            byte flags = (byte)((isGenerated ? 1 : 0) | (isForced ? 2 : 0));
+            bool duplicate = false;
+            for (int k = 0; k < seenCount; k++)
+            {
+                if (seenDef[k] == defId && seenFlags[k] == flags && seenCost[k] == costDelta)
+                {
+                    duplicate = true;
+                    break;
+                }
+            }
+
+            if (duplicate)
+            {
+                dupMask |= (ushort)(1 << slot);
+            }
+            else
+            {
+                seenDef[seenCount] = defId;
+                seenFlags[seenCount] = flags;
+                seenCost[seenCount] = costDelta;
+                seenCount++;
+            }
+        }
+
+        return dupMask;
+    }
+
     private static void ExpandEndTurnAction(
         HotExpansionWorkspace ws,
         in HotSearchNode parent,
@@ -959,6 +1155,7 @@ internal sealed class HotParallelExpander : IDisposable
                 HotAction.EndTurn(),
                 potionCostDelta: 0,
                 potionSlotBit: 0,
+                optionalPaidCountDelta: 0,
                 explicitPotionDelta: 0,
                 ambergrisDelta: 0);
             return;
@@ -981,6 +1178,7 @@ internal sealed class HotParallelExpander : IDisposable
                 default,
                 potionCostDelta: 0,
                 potionSlotBit: 0,
+                optionalPaidCountDelta: 0,
                 explicitPotionDelta: 0,
                 ambergrisDelta: 0);
             return;
@@ -1014,12 +1212,12 @@ internal sealed class HotParallelExpander : IDisposable
                 default,
                 potionCostDelta: 0,
                 potionSlotBit: 0,
+                optionalPaidCountDelta: 0,
                 explicitPotionDelta: 0,
                 ambergrisDelta: 0);
             return;
         }
 
-        // EndTurnPrefix sharing with canonical multi-select & prioritized DFS!
         ws.WaveEndTurnPrefixCaptures++;
         ExpandChoiceTree(
             ws,
@@ -1036,6 +1234,7 @@ internal sealed class HotParallelExpander : IDisposable
             isEndTurnStartPrefix: true,
             potionCostDelta: 0,
             potionSlotBit: 0,
+            optionalPaidCountDelta: 0,
             explicitPotionDelta: 0,
             ambergrisDelta: 0);
     }
@@ -1052,10 +1251,10 @@ internal sealed class HotParallelExpander : IDisposable
         HotAction action,
         short potionCostDelta,
         ushort potionSlotBit,
+        byte optionalPaidCountDelta,
         byte explicitPotionDelta,
         byte ambergrisDelta)
     {
-        // Fast path: 0 choices (90%+ of all card plays and potions)
         ws.WorkingState = ws.ParentState;
         HotColdSidecar? childCold = parentCold;
 
@@ -1086,6 +1285,7 @@ internal sealed class HotParallelExpander : IDisposable
                 default,
                 potionCostDelta,
                 potionSlotBit,
+                optionalPaidCountDelta,
                 explicitPotionDelta,
                 ambergrisDelta);
             return;
@@ -1106,18 +1306,11 @@ internal sealed class HotParallelExpander : IDisposable
             isEndTurnStartPrefix: false,
             potionCostDelta,
             potionSlotBit,
+            optionalPaidCountDelta,
             explicitPotionDelta,
             ambergrisDelta);
     }
 
-    /// <summary>
-    /// Canonical prioritized DFS multi-select choice expansion:
-    /// - Eliminates duplicate-UID picks on batch-collect cards (e.g. Dredge) via equivalent-card UID substitution;
-    /// - Eliminates <c>k!</c> permutation blowup via strict canonical <c>(Priority DESC, CardUid ASC)</c> subset ordering;
-    /// - Uses domain-aware option prioritization + DFS so 3-card Dredge/Purity combinations explore the best subsets first
-    ///   without being starved by trivial 1-card early stops!
-    /// 100% deterministic.
-    /// </summary>
     private static void ExpandChoiceTree(
         HotExpansionWorkspace ws,
         in HotSearchNode parent,
@@ -1133,6 +1326,7 @@ internal sealed class HotParallelExpander : IDisposable
         bool isEndTurnStartPrefix,
         short potionCostDelta,
         ushort potionSlotBit,
+        byte optionalPaidCountDelta,
         byte explicitPotionDelta,
         byte ambergrisDelta)
     {
@@ -1168,7 +1362,6 @@ internal sealed class HotParallelExpander : IDisposable
         HotChoicePrefix[] stack = ws.ChoiceStack;
         int sp = 0;
 
-        // Push non-None options in reverse priority order so highest priority sits on top of the DFS stack!
         int firstLimit = Math.Min(sortedFirstCount, maxBranches);
         for (int i = firstLimit - 1; i >= 0 && sp < stack.Length; i--)
         {
@@ -1185,7 +1378,6 @@ internal sealed class HotParallelExpander : IDisposable
             stack[sp++] = pfx;
         }
 
-        // If optional (minCount == 0), push 0-pick [None] on TOP so "pick 0" is always guaranteed 1 slot.
         if (hasNoneOption && sp < stack.Length)
         {
             HotChoicePrefix nonePfx = default;
@@ -1209,9 +1401,18 @@ internal sealed class HotParallelExpander : IDisposable
                 ws.WaveEndTurnPrefixReuses++;
             ws.WaveChoiceBranches++;
 
-            HotStepResult res = isEndTurnStartPrefix
-                ? HotCombatEngine.StepStartPlayerTurn(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, pfx.AsSpan())
-                : HotCombatEngine.Step(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, action, pfx.AsSpan());
+            HotStepResult res;
+            try
+            {
+                res = isEndTurnStartPrefix
+                    ? HotCombatEngine.StepStartPlayerTurn(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, pfx.AsSpan())
+                    : HotCombatEngine.Step(ref ws.WorkingState, ref branchCold, rules, ws.Scratch, action, pfx.AsSpan());
+            }
+            catch (HotCapacityExceededException)
+            {
+                ws.WaveCapacityExceededDrops++;
+                continue;
+            }
 
             if (!res.Executed)
                 continue;
@@ -1233,17 +1434,28 @@ internal sealed class HotParallelExpander : IDisposable
                     pfx.AsSpan(),
                     potionCostDelta,
                     potionSlotBit,
+                    optionalPaidCountDelta,
                     explicitPotionDelta,
                     ambergrisDelta);
             }
             else if (pfx.Count < HotLimits.MaxChoicesPerAction)
             {
-                int subOptCount = HotCombatEngine.EnumerateChoiceOptions(
-                    in ws.WorkingState,
-                    branchCold,
-                    rules,
-                    ws.Scratch,
-                    ws.ChoiceOptBuf);
+                int subOptCount;
+                try
+                {
+                    subOptCount = HotCombatEngine.EnumerateChoiceOptions(
+                        in ws.WorkingState,
+                        branchCold,
+                        rules,
+                        ws.Scratch,
+                        ws.ChoiceOptBuf);
+                }
+                catch (HotCapacityExceededException)
+                {
+                    ws.WaveCapacityExceededDrops++;
+                    continue;
+                }
+
                 if (subOptCount <= 0)
                     continue;
 
@@ -1273,8 +1485,6 @@ internal sealed class HotParallelExpander : IDisposable
                     enforceCanonicalOrder: enforceCanonical,
                     out bool subHasNone);
 
-                // Push [None] (early stop) BEFORE deeper extensions so DFS resolves full subsets first,
-                // then falls back to shorter subsets if branch budget remains!
                 if (subHasNone && sp < stack.Length)
                 {
                     HotChoicePrefix stopPfx = pfx;
@@ -1299,6 +1509,11 @@ internal sealed class HotParallelExpander : IDisposable
                     stack[sp++] = nextPfx;
                 }
             }
+            else
+            {
+                // Branch exceeded HotLimits.MaxChoicesPerAction (16): gracefully drop instead of crashing.
+                ws.WaveCapacityExceededDrops++;
+            }
         }
     }
 
@@ -1306,11 +1521,6 @@ internal sealed class HotParallelExpander : IDisposable
     private static bool IsPileChoiceKind(HotChoiceKind kind)
         => kind is HotChoiceKind.HandCard or HotChoiceKind.DrawPile or HotChoiceKind.DiscardPile or HotChoiceKind.ExhaustPile;
 
-    /// <summary>
-    /// Filters out duplicate UIDs (substituting an equivalent unpicked copy when a batch-collect card like Dredge
-    /// has not removed earlier picks from the pile yet), enforces canonical subset order, separates <c>None</c>,
-    /// and sorts remaining options by deterministic domain priority <c>(Priority DESC, CardUid ASC)</c>.
-    /// </summary>
     private static int PrepareChoiceOptions(
         in CombatHotState s,
         HotColdSidecar? cold,
@@ -1351,14 +1561,12 @@ internal sealed class HotParallelExpander : IDisposable
 
             if (enforceCanonicalOrder)
             {
-                // Strict total order: (Priority DESC, CardUid ASC) -> every subset has exactly ONE canonical sequence!
                 if (prio > priorPrefix.LastChoicePriority)
                     continue;
                 if (prio == priorPrefix.LastChoicePriority && opt.CardUidOrIndex <= priorPrefix.LastChoiceUid)
                     continue;
             }
 
-            // Guard against emitting duplicate UIDs if substitution collided with another enumerated entry
             bool dupOut = false;
             for (int j = 0; j < outCount; j++)
             {
@@ -1376,7 +1584,6 @@ internal sealed class HotParallelExpander : IDisposable
             outCount++;
         }
 
-        // Insertion sort (tiny N <= 24): deterministic (Priority DESC, CardUid ASC)
         for (int i = 1; i < outCount; i++)
         {
             HotChoiceSelection keyOpt = optBuf[i];
@@ -1466,10 +1673,6 @@ internal sealed class HotParallelExpander : IDisposable
         return false;
     }
 
-    /// <summary>
-    /// Deterministic static priority for choice options so top-K branch caps explore the strongest
-    /// fetch/retain/upgrade/discard/exhaust combinations first (zero allocations).
-    /// </summary>
     private static int ComputeChoiceOptionPriority(
         in CombatHotState s,
         HotColdSidecar? cold,
@@ -1493,7 +1696,6 @@ internal sealed class HotParallelExpander : IDisposable
                 or HotCustomCardId.TrueGrit
                 or HotCustomCardId.BurningPact;
 
-        // Compute intrinsic card quality (higher = stronger card to KEEP / FETCH / UPGRADE)
         int quality = 0;
         if (def.Type is CardType.Curse or CardType.Status)
         {
@@ -1522,12 +1724,11 @@ internal sealed class HotParallelExpander : IDisposable
             quality += Math.Min((int)def.SetupWeight * 4, 140);
             int baseCost = def.BaseCost;
             if (baseCost == 0)
-                quality += 45; // 0-cost cards are easy to play right after Dredge/Discovery!
+                quality += 45;
             else if (baseCost == 1)
                 quality += 20;
         }
 
-        // Factor in card's live upgrade/unplayable flags if present in pile
         if (IsPileChoiceKind(opt.Kind))
         {
             HotPileKind pile = opt.Kind switch
@@ -1554,7 +1755,6 @@ internal sealed class HotParallelExpander : IDisposable
             }
         }
 
-        // For discard/exhaust choices (Purity, Prepared, Survivor), invert so junk/curses/strikes rank FIRST!
         return isDiscardOrExhaustChoice ? -quality : quality;
     }
 
@@ -1571,6 +1771,7 @@ internal sealed class HotParallelExpander : IDisposable
         ReadOnlySpan<HotChoiceSelection> choices,
         short potionCostDelta,
         ushort potionSlotBit,
+        byte optionalPaidCountDelta,
         byte explicitPotionDelta,
         byte ambergrisDelta)
     {
@@ -1580,21 +1781,21 @@ internal sealed class HotParallelExpander : IDisposable
         HotFastSummary summary = HotEvaluator.ExtractStage1(in ws.WorkingState, in policy);
 
         int nextExplicit = parent.ExplicitPotionCount + explicitPotionDelta;
+        int nextOptionalPaid = parent.OptionalPaidPotionCount + optionalPaidCountDelta;
         short nextPotionCost = (short)Math.Clamp(parent.PotionStrategicCost + potionCostDelta, 0, short.MaxValue);
-        ushort nextPotionMask = (ushort)(parent.PotionMask | potionSlotBit);
-        byte nextAmbergris = (byte)Math.Min(byte.MaxValue, parent.AmbergrisCount + ambergrisDelta);
 
-        int optionalPotionReq = HotPotionPolicy.ComputeOptionalPotionRequiredHp(
+        int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
             nextPotionCost,
-            nextExplicit,
-            nextAmbergris,
-            nextPotionMask,
+            nextOptionalPaid,
+            summary.AlchemizeCount,
+            summary.EmptyPotionSlots,
             in policy);
 
         if (HotEvaluator.IsPrunedByCertifiedIncumbent(
                 in summary,
+                nextOptionalPaid,
                 nextExplicit,
-                optionalPotionReq,
+                netPotionCostCenti,
                 in frozenIncumbent,
                 in policy))
         {
@@ -1615,7 +1816,7 @@ internal sealed class HotParallelExpander : IDisposable
             in policy,
             in evalLookup,
             in summary,
-            nextPotionCost,
+            netPotionCostCenti,
             parent.ActionCount + 1,
             config.EvalMode,
             out long score,
@@ -1640,6 +1841,7 @@ internal sealed class HotParallelExpander : IDisposable
             PotionSlotBit = potionSlotBit,
             PotionCountDelta = totalPotionDelta,
             ExplicitPotionDelta = explicitPotionDelta,
+            OptionalPaidCountDelta = optionalPaidCountDelta,
             AmbergrisDelta = ambergrisDelta,
             Flags = HotNodeFlags.None,
         });

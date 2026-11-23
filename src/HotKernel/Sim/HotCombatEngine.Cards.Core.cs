@@ -99,7 +99,7 @@ internal static partial class HotCombatEngine
 
             case HotCalcVarKind.MyShinies:
             {
-                decimal goldDiv = GetNamedVarDecimal(in card, def, "Gold", 50m);
+                decimal goldDiv = GetNamedVarDecimal(in card, def, "Gold", card.UpgradeLevel > 0 ? 10m : 20m);
                 return goldDiv > 0m ? s.Gold / goldDiv : 0m;
             }
 
@@ -376,8 +376,7 @@ internal static partial class HotCombatEngine
         switch (kind)
         {
             case HotEnchantmentId.Adroit:
-                if (amt > 0)
-                    GainBlock(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: amt, isCardBlock: true);
+                GainBlockInternal(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: amt, isCardBlock: true, cardIdx: livePlayIdx, cardDefId: s.Cards[livePlayIdx].CardDefId);
                 break;
 
             case HotEnchantmentId.Corrupted:
@@ -386,9 +385,10 @@ internal static partial class HotCombatEngine
 
             case HotEnchantmentId.Inky:
             {
-                int weakAmt = amt > 0 ? amt : 1;
+                // STS2 0.113.1 Inky.cs:17,19,35: ShowAmount => false, CanonicalVars => PowerVar<WeakPower>(1m) (always 1).
+                const int weakAmt = 1;
                 HotCardDef def = rules.Cards[s.Cards[livePlayIdx].CardDefId];
-                if (def.Target == TargetType.AllEnemies)
+                if (GetEffectiveCardTargetType(in s, in s.Cards[livePlayIdx], def, rules) == TargetType.AllEnemies)
                     ApplyPowerToAllLivingEnemies(ref s, ref cold, rules, scratch, HotPowerId.WeakPower, weakAmt, isCardSource: true);
                 else if (IsValidEnemyTarget(in s, targetEnemySlot))
                     ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.WeakPower, weakAmt, isCardSource: true);
@@ -462,7 +462,17 @@ internal static partial class HotCombatEngine
         int magic = def.GetMagic(upgrade);
         int hits = def.GetHits(upgrade);
 
-        // Route Regent/Necrobinder and Fool/Tarot domains cleanly to @content-extra
+        // KnowledgeDemon.IChoosable curse tokens only apply their power in OnChosen(), NOT OnPlay() (0.113.1).
+        if (cardId is HotCustomCardId.Amnesia
+            or HotCustomCardId.Disintegration
+            or HotCustomCardId.MindRot
+            or HotCustomCardId.Sloth
+            or HotCustomCardId.WasteAway)
+        {
+            return;
+        }
+
+        // Route Regent/Necrobinder, Fool/Tarot, and cross-domain Token custom cards
         if (def.Domain is HotCardDomain.Regent or HotCardDomain.Necrobinder)
         {
             HotRegentNecro.TryExecuteCustomCard(ref s, ref cold, rules, scratch, playedCard.CardDefId, ref s.Cards[livePlayIdx], targetEnemySlot, out _);
@@ -473,12 +483,19 @@ internal static partial class HotCombatEngine
             HotFoolTarot.TryExecuteCustomCard(ref s, ref cold, rules, scratch, playedCard.CardDefId, ref s.Cards[livePlayIdx], targetEnemySlot, out _);
             return;
         }
+        if (def.Domain == HotCardDomain.Token)
+        {
+            if (HotRegentNecro.TryExecuteCustomCard(ref s, ref cold, rules, scratch, playedCard.CardDefId, ref s.Cards[livePlayIdx], targetEnemySlot, out _))
+                return;
+            if (HotFoolTarot.TryExecuteCustomCard(ref s, ref cold, rules, scratch, playedCard.CardDefId, ref s.Cards[livePlayIdx], targetEnemySlot, out _))
+                return;
+        }
 
         switch (cardId)
         {
             // ===================== IRONCLAD =====================
             case HotCustomCardId.Armaments:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (upgrade > 0)
                 {
                     for (int i = 0; i < s.HandCount; i++)
@@ -533,7 +550,7 @@ internal static partial class HotCombatEngine
                 }
                 if (!scratch.NeedsChoice && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
                 {
-                    int str = GetNamedVarInt(in playedCard, def, "Strength", magic > 0 ? magic : 1);
+                    int str = GetNamedVarInt(in playedCard, def, "StrengthPower", magic > 0 ? magic : 1);
                     ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StrengthPower, str, isCardSource: true);
                 }
                 break;
@@ -602,13 +619,13 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.EvilEye:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice && s.Counters[(int)HotCounterSlot.CardsExhaustedThisTurn] > 0)
-                    GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                    GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 break;
 
             case HotCustomCardId.ExpectAFight:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice)
                 {
                     int eDelta = GetNamedVarInt(in playedCard, def, "Energy", magic > 0 ? magic : 1);
@@ -628,7 +645,7 @@ internal static partial class HotCombatEngine
                 if (wasAlive && !scratch.NeedsChoice && (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
                 {
                     int maxHpGain = GetNamedVarInt(in playedCard, def, "MaxHp", magic > 0 ? magic : 3);
-                    GainMaxHp(ref s, 0, maxHpGain);
+                    GainMaxHp(ref s, ref cold, rules, scratch, 0, maxHpGain);
                 }
                 break;
             }
@@ -660,7 +677,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.FlameBarrier:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice)
                 {
                     int dmgBack = GetNamedVarInt(in playedCard, def, "DamageBack", magic > 0 ? magic : 4);
@@ -784,7 +801,7 @@ internal static partial class HotCombatEngine
                         ExhaustCard(ref s, ref cold, rules, scratch, handIdx, causedByEthereal: false);
                         if (scratch.NeedsChoice)
                             return;
-                        GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                        GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                         if (scratch.NeedsChoice)
                             return;
                     }
@@ -866,9 +883,23 @@ internal static partial class HotCombatEngine
                         int chosenIdx = atkIndices[HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardSelection], atkCount)];
                         HotCard exhCard = s.Cards[chosenIdx];
                         HotCardDef exhDef = rules.Cards[exhCard.CardDefId];
-                        int addDmg = exhDef.CalcVar != HotCalcVarKind.None
+                        int rawDmg = exhDef.CalcVar != HotCalcVarKind.None
                             ? EvaluateCalcVar(in s, rules, scratch, in exhCard, exhDef, -1, 0)
-                            : exhDef.GetDamage(exhCard.UpgradeLevel, exhCard.Var0Delta);
+                            : (HasNamedVar(exhDef, "Damage")
+                                ? exhDef.GetDamage(exhCard.UpgradeLevel, exhCard.Var0Delta)
+                                : GetNamedVarInt(in exhCard, exhDef, "OstyDamage", exhDef.GetDamage(exhCard.UpgradeLevel, exhCard.Var0Delta)));
+                        decimal modifiedDmg = ComputeModifiedDamage(
+                            ref s,
+                            ref cold,
+                            rules,
+                            scratch,
+                            dealerSlot: 0,
+                            targetSlot: 0xFF,
+                            baseDamage: rawDmg,
+                            isPoweredAttack: true,
+                            cardIdx: chosenIdx,
+                            cardDefId: exhCard.CardDefId);
+                        int addDmg = (int)Math.Floor(modifiedDmg);
                         int curPlay = s.PlayStart + playOffsetInPlay;
                         s.Cards[curPlay].Var0Delta = (short)(s.Cards[curPlay].Var0Delta + addDmg);
                         ExhaustCard(ref s, ref cold, rules, scratch, chosenIdx, causedByEthereal: false);
@@ -878,7 +909,7 @@ internal static partial class HotCombatEngine
             }
 
             case HotCustomCardId.TrueGrit:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice && !IsOverOrEnding(in s) && s.HandCount > 0)
                 {
                     if (upgrade > 0)
@@ -919,7 +950,7 @@ internal static partial class HotCombatEngine
             // ===================== SILENT =====================
             case HotCustomCardId.Abrasive:
             {
-                int dex = GetNamedVarInt(in playedCard, def, "Dexterity", 1);
+                int dex = GetNamedVarInt(in playedCard, def, "DexterityPower", 1);
                 int thorns = GetNamedVarInt(in playedCard, def, "ThornsPower", magic > 0 ? magic : 4);
                 ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.DexterityPower, dex, isCardSource: true);
                 ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.ThornsPower, thorns, isCardSource: true);
@@ -954,7 +985,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.BouncingFlask:
             {
                 int repeat = GetNamedVarInt(in playedCard, def, "Repeat", 3);
-                int poison = GetNamedVarInt(in playedCard, def, "Poison", magic > 0 ? magic : 3);
+                int poison = GetNamedVarInt(in playedCard, def, "PoisonPower", magic > 0 ? magic : 3);
                 for (int r = 0; r < repeat; r++)
                 {
                     int eSlot = PickRandomLivingEnemySlot(ref s);
@@ -970,7 +1001,7 @@ internal static partial class HotCombatEngine
                 {
                     byte eSlot = (byte)(3 + targetEnemySlot);
                     if (GetPowerAmountById(in s, rules, eSlot, HotPowerId.PoisonPower) > 0)
-                        ApplyPowerById(ref s, ref cold, rules, scratch, eSlot, 0, HotPowerId.PoisonPower, GetNamedVarInt(in playedCard, def, "Poison", magic > 0 ? magic : 9), isCardSource: true);
+                        ApplyPowerById(ref s, ref cold, rules, scratch, eSlot, 0, HotPowerId.PoisonPower, GetNamedVarInt(in playedCard, def, "PoisonPower", magic > 0 ? magic : 9), isCardSource: true);
                 }
                 break;
 
@@ -986,19 +1017,19 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.CalculatedGamble:
             {
                 int handBefore = s.HandCount;
-                for (int i = 0; i < handBefore && s.HandCount > 0; i++)
-                {
-                    DiscardCard(ref s, ref cold, rules, scratch, 0);
-                    if (scratch.NeedsChoice)
-                        return;
-                }
                 if (handBefore > 0)
-                    DrawCards(ref s, ref cold, rules, scratch, handBefore, fromHandDraw: false);
+                {
+                    int cap = Math.Min(handBefore, HotLimits.MaxStackAllocElements);
+                    Span<ushort> handUids = stackalloc ushort[cap];
+                    for (int i = 0; i < cap; i++)
+                        handUids[i] = s.Cards[i].CardUid;
+                    DiscardCardsAndDraw(ref s, ref cold, rules, scratch, handUids, drawCount: cap);
+                }
                 break;
             }
 
             case HotCustomCardId.CloakAndDagger:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice)
                     GenerateShivsToHand(ref s, ref cold, rules, scratch, magic > 0 ? magic : 1, upgraded: false, inky: false);
                 break;
@@ -1025,12 +1056,12 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.DeadlyPoison:
                 if (IsValidEnemyTarget(in s, targetEnemySlot))
-                    ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.PoisonPower, GetNamedVarInt(in playedCard, def, "Poison", magic > 0 ? magic : 5), isCardSource: true);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.PoisonPower, GetNamedVarInt(in playedCard, def, "PoisonPower", magic > 0 ? magic : 5), isCardSource: true);
                 break;
 
             case HotCustomCardId.DodgeAndRoll:
             {
-                int gained = GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                int gained = GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice && gained > 0)
                     ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.BlockNextTurnPower, gained, isCardSource: true);
                 break;
@@ -1056,7 +1087,7 @@ internal static partial class HotCombatEngine
             {
                 int drawn = DrawCards(ref s, ref cold, rules, scratch, 1, fromHandDraw: false);
                 if (!scratch.NeedsChoice && drawn > 0 && rules.Cards[s.Cards[s.HandCount - 1].CardDefId].Type == CardType.Skill)
-                    GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                    GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 break;
             }
 
@@ -1105,7 +1136,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.HandTrick:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice && HasEligibleHandCardForFilter(in s, rules, HotCustomCardId.HandTrick))
                 {
                     if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, out HotChoiceSelection sel))
@@ -1118,8 +1149,8 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.Haze:
             {
-                int poison = GetNamedVarInt(in playedCard, def, "Poison", magic > 0 ? magic : 4);
-                int weak = GetNamedVarInt(in playedCard, def, "Weak", 2);
+                int poison = GetNamedVarInt(in playedCard, def, "PoisonPower", upgrade > 0 ? 6 : 4);
+                int weak = GetNamedVarInt(in playedCard, def, "WeakPower", upgrade > 0 ? 2 : 1);
                 ApplyPowerToAllLivingEnemies(ref s, ref cold, rules, scratch, HotPowerId.PoisonPower, poison, isCardSource: true);
                 ApplyPowerToAllLivingEnemies(ref s, ref cold, rules, scratch, HotPowerId.WeakPower, weak, isCardSource: true);
                 break;
@@ -1127,17 +1158,20 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.HiddenDaggers:
             {
-                int discCount = Math.Min(GetNamedVarInt(in playedCard, def, "Cards", 2), s.HandCount);
-                for (int k = 0; k < discCount && s.HandCount > 0; k++)
+                int discCount = Math.Min(GetNamedVarInt(in playedCard, def, "Cards", 2), Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
+                Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                int pickedCount = 0;
+                for (int k = 0; k < discCount && pickedCount < s.HandCount; k++)
                 {
-                    if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                         return;
-                    int idx = FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
-                    if (idx >= 0)
-                        DiscardCard(ref s, ref cold, rules, scratch, idx);
+                    if (sel.CardUidOrIndex != 0)
+                        pickedUids[pickedCount++] = sel.CardUidOrIndex;
                 }
-                if (!scratch.NeedsChoice)
-                    GenerateShivsToHand(ref s, ref cold, rules, scratch, GetNamedVarInt(in playedCard, def, "Shivs", 2), upgraded: false, inky: false);
+                if (pickedCount > 0)
+                    DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: 0);
+                if (!scratch.NeedsChoice && !IsOverOrEnding(in s))
+                    GenerateShivsToHand(ref s, ref cold, rules, scratch, GetNamedVarInt(in playedCard, def, "Shivs", 2), upgraded: upgrade > 0, inky: false);
                 break;
             }
 
@@ -1196,14 +1230,14 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Mirage:
             {
                 int blk = EvaluateCalcVar(in s, rules, scratch, in playedCard, def, -1, energySpent);
-                GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, blk);
                 break;
             }
 
             case HotCustomCardId.Neutralize:
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
                 if (!scratch.NeedsChoice && IsValidEnemyTarget(in s, targetEnemySlot))
-                    ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.WeakPower, GetNamedVarInt(in playedCard, def, "Weak", magic > 0 ? magic : 1), isCardSource: true);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.WeakPower, GetNamedVarInt(in playedCard, def, "WeakPower", magic > 0 ? magic : 1), isCardSource: true);
                 break;
 
             case HotCustomCardId.Nightmare:
@@ -1216,14 +1250,24 @@ internal static partial class HotCombatEngine
                     {
                         ushort nmId = rules.GetPowerDefId(HotPowerId.NightmarePower);
                         if (nmId != 0)
-                            AddPowerInstance(ref s, rules, 0, 0, nmId, 3, aux0: s.Cards[idx].CardDefId, aux1: 0, auxCardUid: s.Cards[idx].CardUid);
+                        {
+                            HotCard clone = s.Cards[idx];
+                            clone.CardUid = 0;
+                            clone.AfflId = 0;
+                            clone.AfflAmt = 0;
+                            clone.Flags &= ~(HotCardFlags.SingleTurnRetain | HotCardFlags.IsSlyThisTurn | HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
+                            clone.Flags |= HotCardFlags.IsClone;
+                            clone.ExtraReplayThisTurn = 0;
+                            int detachedIdx = AddDetachedCard(ref cold, in clone);
+                            AddPowerInstance(ref s, rules, 0, 0, nmId, 3, aux0: detachedIdx, aux1: 0, auxCardUid: 0);
+                        }
                     }
                 }
                 break;
 
             case HotCustomCardId.Outbreak:
             {
-                int poison = GetNamedVarInt(in playedCard, def, "Poison", magic > 0 ? magic : 3);
+                int poison = GetNamedVarInt(in playedCard, def, "PoisonPower", magic > 0 ? magic : 9);
                 ApplyPowerToAllLivingEnemies(ref s, ref cold, rules, scratch, HotPowerId.PoisonPower, poison, isCardSource: true);
                 Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
                 int tCount = SnapshotLivingEnemies(in s, targets);
@@ -1249,26 +1293,41 @@ internal static partial class HotCombatEngine
             {
                 int count = GetNamedVarInt(in playedCard, def, "Cards", magic > 0 ? magic : 1);
                 DrawCards(ref s, ref cold, rules, scratch, count, fromHandDraw: false);
-                for (int k = 0; k < count && s.HandCount > 0 && !IsOverOrEnding(in s); k++)
+                if (!scratch.NeedsChoice && !IsOverOrEnding(in s) && s.HandCount > 0)
                 {
-                    if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, out HotChoiceSelection sel))
-                        return;
-                    int idx = FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
-                    if (idx >= 0)
-                        DiscardCard(ref s, ref cold, rules, scratch, idx);
+                    int discCount = Math.Min(count, Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
+                    Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                    int pickedCount = 0;
+                    for (int k = 0; k < discCount && pickedCount < s.HandCount; k++)
+                    {
+                        if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
+                            return;
+                        if (sel.CardUidOrIndex != 0)
+                            pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                    }
+                    if (pickedCount > 0)
+                        DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: 0);
                 }
                 break;
             }
 
             case HotCustomCardId.ShadowStep:
-                while (s.HandCount > 0 && !IsOverOrEnding(in s))
+            {
+                int handBefore = s.HandCount;
+                if (handBefore > 0 && !IsOverOrEnding(in s))
                 {
-                    DiscardCard(ref s, ref cold, rules, scratch, 0);
+                    int cap = Math.Min(handBefore, HotLimits.MaxStackAllocElements);
+                    Span<ushort> handUids = stackalloc ushort[cap];
+                    for (int i = 0; i < cap; i++)
+                        handUids[i] = s.Cards[i].CardUid;
+                    DiscardCardsAndDraw(ref s, ref cold, rules, scratch, handUids, drawCount: 0);
                     if (scratch.NeedsChoice)
                         return;
                 }
-                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.ShadowStepPower, 1, isCardSource: true);
+                if (!IsOverOrEnding(in s))
+                    ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.ShadowStepPower, 1, isCardSource: true);
                 break;
+            }
 
             case HotCustomCardId.Skewer:
             {
@@ -1279,32 +1338,42 @@ internal static partial class HotCombatEngine
             }
 
             case HotCustomCardId.Slice:
-            case HotCustomCardId.Shiv:
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
+                break;
+
+            case HotCustomCardId.Shiv:
+                if (GetPowerAmountById(in s, rules, 0, HotPowerId.FanOfKnivesPower) > 0)
+                    ExecuteAllEnemiesAttack(ref s, ref cold, rules, scratch, livePlayIdx, baseDmg, 1, powered: true);
+                else
+                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
                 break;
 
             case HotCustomCardId.StormOfSteel:
             {
                 int discarded = s.HandCount;
-                for (int i = 0; i < discarded && s.HandCount > 0; i++)
+                if (discarded > 0)
                 {
-                    DiscardCard(ref s, ref cold, rules, scratch, 0);
+                    int cap = Math.Min(discarded, HotLimits.MaxStackAllocElements);
+                    Span<ushort> handUids = stackalloc ushort[cap];
+                    for (int i = 0; i < cap; i++)
+                        handUids[i] = s.Cards[i].CardUid;
+                    DiscardCardsAndDraw(ref s, ref cold, rules, scratch, handUids, drawCount: 0);
                     if (scratch.NeedsChoice)
                         return;
+                    if (!IsOverOrEnding(in s))
+                        GenerateShivsToHand(ref s, ref cold, rules, scratch, cap, upgraded: upgrade > 0, inky: false);
                 }
-                if (discarded > 0)
-                    GenerateShivsToHand(ref s, ref cold, rules, scratch, discarded, upgraded: upgrade > 0, inky: false);
                 break;
             }
 
             case HotCustomCardId.Suppress:
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
                 if (!scratch.NeedsChoice && IsValidEnemyTarget(in s, targetEnemySlot))
-                    ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.WeakPower, GetNamedVarInt(in playedCard, def, "Weak", magic > 0 ? magic : 3), isCardSource: true);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.WeakPower, GetNamedVarInt(in playedCard, def, "WeakPower", magic > 0 ? magic : 3), isCardSource: true);
                 break;
 
             case HotCustomCardId.Survivor:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice && !IsOverOrEnding(in s) && s.HandCount > 0)
                 {
                     if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, out HotChoiceSelection sel))
@@ -1395,7 +1464,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.BoostAway:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice)
                 {
                     ushort dazedId = rules.GetCardDefId(HotCustomCardId.Dazed);
@@ -1406,8 +1475,8 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.BulkUp:
                 RemoveOrbSlots(ref s, GetNamedVarInt(in playedCard, def, "OrbSlots", 1));
-                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StrengthPower, GetNamedVarInt(in playedCard, def, "Strength", magic > 0 ? magic : 2), isCardSource: true);
-                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.DexterityPower, GetNamedVarInt(in playedCard, def, "Dexterity", magic > 0 ? magic : 2), isCardSource: true);
+                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StrengthPower, GetNamedVarInt(in playedCard, def, "StrengthPower", magic > 0 ? magic : 2), isCardSource: true);
+                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.DexterityPower, GetNamedVarInt(in playedCard, def, "DexterityPower", magic > 0 ? magic : 2), isCardSource: true);
                 break;
 
             case HotCustomCardId.Capacitor:
@@ -1447,7 +1516,7 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.Compact:
             {
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 ushort fuelId = rules.GetCardDefId(HotCustomCardId.Fuel);
                 if (!scratch.NeedsChoice && fuelId != 0)
                 {
@@ -1506,7 +1575,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.FightThrough:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice)
                 {
                     ushort woundId = rules.GetCardDefId(HotCustomCardId.Wound);
@@ -1549,7 +1618,7 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.GeneticAlgorithm:
             {
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 int curPlay = s.PlayStart + playOffsetInPlay;
                 int inc = GetNamedVarInt(in playedCard, def, "Increase", magic > 0 ? magic : 2);
                 s.Cards[curPlay].Var1Delta = (short)(s.Cards[curPlay].Var1Delta + inc);
@@ -1558,7 +1627,7 @@ internal static partial class HotCombatEngine
             }
 
             case HotCustomCardId.Glacier:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice)
                 {
                     ChannelOrb(ref s, ref cold, rules, scratch, HotOrbId.Frost);
@@ -1569,7 +1638,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.GoForTheEyes:
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
                 if (!scratch.NeedsChoice && IsValidEnemyTarget(in s, targetEnemySlot) && IsEnemyIntendingToAttack(in s, rules, targetEnemySlot))
-                    ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.WeakPower, GetNamedVarInt(in playedCard, def, "Weak", magic > 0 ? magic : 1), isCardSource: true);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.WeakPower, GetNamedVarInt(in playedCard, def, "WeakPower", magic > 0 ? magic : 1), isCardSource: true);
                 break;
 
             case HotCustomCardId.GunkUp:
@@ -1591,12 +1660,12 @@ internal static partial class HotCombatEngine
             }
 
             case HotCustomCardId.Hibernate:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.HibernatePower, magic > 0 ? magic : 1, isCardSource: true);
                 break;
 
             case HotCustomCardId.Hologram:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (!scratch.NeedsChoice && !IsOverOrEnding(in s) && s.DiscardCount > 0)
                 {
                     if (!RequestChoice(ref s, scratch, HotChoiceKind.DiscardPile, playedCard.CardDefId, 1, 1, out HotChoiceSelection sel))
@@ -1719,12 +1788,8 @@ internal static partial class HotCombatEngine
                         if ((c.Flags & HotCardFlags.CostsX) != 0 || GetEffectiveEnergyCost(in s, in c, cold, rules) != 0)
                             toDiscardUids[discCount++] = c.CardUid;
                     }
-                    for (int k = 0; k < discCount; k++)
-                    {
-                        int idx = FindCardIndexByUid(in s, HotPileKind.Hand, toDiscardUids[k]);
-                        if (idx >= 0)
-                            DiscardCard(ref s, ref cold, rules, scratch, idx);
-                    }
+                    if (discCount > 0)
+                        DiscardCardsAndDraw(ref s, ref cold, rules, scratch, toDiscardUids[..discCount], drawCount: 0);
                 }
                 break;
             }
@@ -1802,7 +1867,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Uproar:
             {
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, hits, powered: true);
-                if (!scratch.NeedsChoice && !IsOverOrEnding(in s) && s.DrawCount > 0)
+                if (!scratch.NeedsChoice && !IsOverOrEnding(in s))
                 {
                     Span<ushort> playableAtks = stackalloc ushort[HotLimits.MaxStackAllocElements];
                     Span<ushort> allAtks = stackalloc ushort[HotLimits.MaxStackAllocElements];
@@ -1818,11 +1883,20 @@ internal static partial class HotCombatEngine
                                 playableAtks[pCount++] = s.Cards[i].CardUid;
                         }
                     }
-                    ushort chosenUid = 0;
-                    if (pCount > 0)
-                        chosenUid = playableAtks[HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardSelection], pCount)];
-                    else if (aCount > 0)
-                        chosenUid = allAtks[HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardSelection], aCount)];
+                    // STS2 0.113.1 Uproar.cs:34-44: ToList().StableShuffle(CombatCardSelection).FirstOrDefault().
+                    // Unconditionally consumes 1 NextULong on playableAtks, and a 2nd on allAtks when playableAtks is empty.
+                    if (pCount > 1)
+                        StableSortUidsForShuffle(in s, rules, cold, playableAtks[..pCount]);
+                    HotRng.UnstableShuffle(playableAtks[..pCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+                    ushort chosenUid = pCount > 0 ? playableAtks[0] : (ushort)0;
+                    if (chosenUid == 0)
+                    {
+                        if (aCount > 1)
+                            StableSortUidsForShuffle(in s, rules, cold, allAtks[..aCount]);
+                        HotRng.UnstableShuffle(allAtks[..aCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+                        if (aCount > 0)
+                            chosenUid = allAtks[0];
+                    }
                     if (chosenUid != 0)
                     {
                         int idx = FindCardIndexByUid(in s, HotPileKind.Draw, chosenUid);
@@ -1844,10 +1918,9 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.WhiteNoise:
                 if (rules.CombatCharacterPowerPool.Length > 0)
                 {
-                    int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules.CombatCharacterPowerPool.Length);
-                    int idx = AddGeneratedFixedCard(ref s, ref cold, rules, scratch, rules.CombatCharacterPowerPool[pick], HotPileKind.Hand, -1, false, true);
-                    if (idx >= 0)
-                        SetCardToFreeThisTurn(ref s.Cards[idx], ref cold);
+                    Span<ushort> picked = stackalloc ushort[1];
+                    if (HotPotions.TakeRandomDistinct(rules.CombatCharacterPowerPool, 1, ref s.Rng[(int)HotRngStream.CombatCardGeneration], picked) > 0 && picked[0] != 0)
+                        HotPotions.AddGeneratedFreeThisTurnToHand(ref s, ref cold, rules, scratch, picked[0]);
                 }
                 break;
 
@@ -1866,7 +1939,9 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.BrightestFlame:
                 GainEnergy(ref s, rules, GetNamedVarInt(in playedCard, def, "Energy", 2));
-                LoseMaxHp(ref s, ref cold, rules, scratch, 0, GetNamedVarInt(in playedCard, def, "MaxHp", 1));
+                DrawCards(ref s, ref cold, rules, scratch, GetNamedVarInt(in playedCard, def, "Cards", 2), fromHandDraw: false);
+                if (!scratch.NeedsChoice)
+                    LoseMaxHp(ref s, ref cold, rules, scratch, 0, GetNamedVarInt(in playedCard, def, "MaxHp", 2));
                 break;
 
             case HotCustomCardId.Coordinate:
@@ -1874,19 +1949,14 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.Discovery:
-            case HotCustomCardId.Abundance:
-            case HotCustomCardId.Splash:
             {
-                ushort[] pool = cardId == HotCustomCardId.Splash
-                    ? rules.CombatCharacterAttackPool
-                    : rules.UnlockedCharacterCardPool;
+                ushort[] pool = rules.UnlockedCharacterCardPool;
                 if (pool.Length > 0)
                 {
                     Span<ushort> rolled = stackalloc ushort[3];
                     int rolledCount = RollDistinctFromPool(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules, pool, rolled);
                     SetPendingGeneratedChoiceOptions(rolled[..rolledCount]);
-                    byte minPick = cardId == HotCustomCardId.Abundance ? (byte)1 : (byte)0;
-                    if (!RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, playedCard.CardDefId, minPick, 1, out HotChoiceSelection sel))
+                    if (!RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, playedCard.CardDefId, 0, 1, out HotChoiceSelection sel))
                         return;
                     if (sel.Kind == HotChoiceKind.GeneratedCard && sel.CardDefId != 0)
                     {
@@ -1895,6 +1965,321 @@ internal static partial class HotCombatEngine
                             SetCardToFreeThisTurn(ref s.Cards[idx], ref cold);
                     }
                 }
+                break;
+            }
+
+            case HotCustomCardId.Abundance:
+            {
+                ushort[] pool = rules.CombatCharacterPowerPool;
+                if (pool.Length > 0)
+                {
+                    Span<ushort> rolled = stackalloc ushort[3];
+                    int rolledCount = RollDistinctFromPool(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules, pool, rolled);
+                    SetPendingGeneratedChoiceOptions(rolled[..rolledCount]);
+                    if (!RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, playedCard.CardDefId, 1, 1, out HotChoiceSelection sel))
+                        return;
+                    if (sel.Kind == HotChoiceKind.GeneratedCard && sel.CardDefId != 0)
+                    {
+                        int idx = AddGeneratedFixedCard(ref s, ref cold, rules, scratch, sel.CardDefId, HotPileKind.Hand, -1, upgraded: true, createdByPlayer: true);
+                        if (idx >= 0)
+                            SetCardToFreeThisTurn(ref s.Cards[idx], ref cold);
+                    }
+                }
+                break;
+            }
+
+            case HotCustomCardId.Splash:
+            {
+                ushort[] otherPool = rules.OtherCharacterCardPool;
+                if (otherPool.Length > 0)
+                {
+                    Span<ushort> otherAttacks = otherPool.Length <= 512
+                        ? stackalloc ushort[otherPool.Length]
+                        : new ushort[otherPool.Length];
+                    int atkCount = 0;
+                    for (int i = 0; i < otherPool.Length; i++)
+                    {
+                        ushort id = otherPool[i];
+                        if (id != 0 && id < rules.Cards.Length && rules.Cards[id].Type == CardType.Attack && IsCombatGeneratableCard(rules.Cards[id]))
+                            otherAttacks[atkCount++] = id;
+                    }
+                    if (atkCount > 0)
+                    {
+                        Span<ushort> work = otherAttacks[..atkCount];
+                        HotRng.UnstableShuffle(work, ref s.Rng[(int)HotRngStream.CombatCardGeneration]);
+                        int rolledCount = Math.Min(3, atkCount);
+                        SetPendingGeneratedChoiceOptions(work[..rolledCount]);
+                        if (!RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, playedCard.CardDefId, 0, 1, out HotChoiceSelection sel))
+                            return;
+                        if (sel.Kind == HotChoiceKind.GeneratedCard && sel.CardDefId != 0)
+                        {
+                            int idx = AddGeneratedFixedCard(ref s, ref cold, rules, scratch, sel.CardDefId, HotPileKind.Hand, -1, upgraded: upgrade > 0, createdByPlayer: true);
+                            if (idx >= 0)
+                                SetCardToFreeThisTurn(ref s.Cards[idx], ref cold);
+                        }
+                    }
+                }
+                break;
+            }
+
+            case HotCustomCardId.Alchemize:
+                if (HotPotions.TryProcureRandomCombatPotion(ref s, ref cold, rules, scratch))
+                    s.Growth[4]++;
+                break;
+
+            case HotCustomCardId.Anointed:
+            {
+                int maxHand = s.MaxHandSize > 0 ? s.MaxHandSize : 10;
+                int room = Math.Max(0, maxHand - s.HandCount);
+                Span<ushort> rareUids = stackalloc ushort[HotLimits.MaxCards];
+                int rareCount = 0;
+                int drawStart = s.DrawStart;
+                int drawEnd = drawStart + s.DrawCount;
+                for (int i = drawStart; i < drawEnd; i++)
+                {
+                    if (rules.Cards[s.Cards[i].CardDefId].Rarity == CardRarity.Rare)
+                        rareUids[rareCount++] = s.Cards[i].CardUid;
+                }
+                // Matches IEnumerableExtensions.TakeRandom (UnstableShuffle always consumes 1 NextULong).
+                HotRng.UnstableShuffle(rareUids[..rareCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+                int take = Math.Min(room, rareCount);
+                for (int i = 0; i < take && !IsOverOrEnding(in s); i++)
+                {
+                    int idx = FindCardIndexByUid(in s, HotPileKind.Draw, rareUids[i]);
+                    if (idx >= 0)
+                        MoveCardToHandOrDiscard(ref s, idx);
+                }
+                break;
+            }
+
+            case HotCustomCardId.BeatDown:
+            {
+                int count = GetNamedVarInt(in playedCard, def, "Cards", upgrade > 0 ? 4 : 3);
+                Span<ushort> atkUids = stackalloc ushort[HotLimits.MaxCards];
+                int atkCount = 0;
+                int discStart = s.DiscardStart;
+                int discEnd = discStart + s.DiscardCount;
+                for (int i = discStart; i < discEnd; i++)
+                {
+                    ref readonly HotCard c = ref s.Cards[i];
+                    if (rules.Cards[c.CardDefId].Type == CardType.Attack
+                        && (c.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0)
+                    {
+                        atkUids[atkCount++] = c.CardUid;
+                    }
+                }
+                StableSortUidsForShuffle(in s, rules, cold, atkUids[..atkCount]);
+                HotRng.UnstableShuffle(atkUids[..atkCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+                int playCount = Math.Min(count, atkCount);
+                for (int i = 0; i < playCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                {
+                    int idx = FindCardIndexByUid(in s, HotPileKind.Discard, atkUids[i]);
+                    if (idx < 0)
+                        continue;
+                    HotCardDef targetDef = rules.Cards[s.Cards[idx].CardDefId];
+                    int targetSlot = targetDef.Target == TargetType.AnyEnemy
+                        ? PickRandomLivingEnemySlot(ref s)
+                        : -1;
+                    AutoPlayCard(ref s, ref cold, rules, scratch, idx, targetEnemySlot: targetSlot, forceExhaust: false);
+                }
+                break;
+            }
+
+            case HotCustomCardId.Catastrophe:
+            {
+                int count = GetNamedVarInt(in playedCard, def, "Cards", upgrade > 0 ? 3 : 2);
+                Span<ushort> drawUids = stackalloc ushort[HotLimits.MaxCards];
+                for (int i = 0; i < count && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                {
+                    int playableCount = 0;
+                    int drawStart = s.DrawStart;
+                    int drawEnd = drawStart + s.DrawCount;
+                    for (int d = drawStart; d < drawEnd; d++)
+                    {
+                        if ((s.Cards[d].LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0)
+                            drawUids[playableCount++] = s.Cards[d].CardUid;
+                    }
+                    StableSortUidsForShuffle(in s, rules, cold, drawUids[..playableCount]);
+                    HotRng.UnstableShuffle(drawUids[..playableCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+                    ushort chosenUid = playableCount > 0 ? drawUids[0] : (ushort)0;
+                    if (chosenUid == 0)
+                    {
+                        int allCount = 0;
+                        drawStart = s.DrawStart;
+                        drawEnd = drawStart + s.DrawCount;
+                        for (int d = drawStart; d < drawEnd; d++)
+                            drawUids[allCount++] = s.Cards[d].CardUid;
+                        StableSortUidsForShuffle(in s, rules, cold, drawUids[..allCount]);
+                        HotRng.UnstableShuffle(drawUids[..allCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+                        if (allCount > 0)
+                            chosenUid = drawUids[0];
+                    }
+                    if (chosenUid != 0)
+                    {
+                        int idx = FindCardIndexByUid(in s, HotPileKind.Draw, chosenUid);
+                        if (idx >= 0)
+                            AutoPlayCard(ref s, ref cold, rules, scratch, idx, targetEnemySlot: -1, forceExhaust: false);
+                    }
+                }
+                break;
+            }
+
+            case HotCustomCardId.Distraction:
+            {
+                Span<ushort> pick = stackalloc ushort[1];
+                int rolled = RollDistinctFromPool(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules, rules.CombatCharacterSkillPool, pick);
+                if (rolled > 0 && pick[0] != 0)
+                    HotPotions.AddGeneratedFreeThisTurnToHand(ref s, ref cold, rules, scratch, pick[0]);
+                break;
+            }
+
+            case HotCustomCardId.HiddenGem:
+            {
+                if (s.DrawCount > 0)
+                {
+                    int replayAdd = GetNamedVarInt(in playedCard, def, "Replay", upgrade > 0 ? 3 : 2);
+                    Span<int> eligible = stackalloc int[HotLimits.MaxCards];
+                    Span<int> preferred = stackalloc int[HotLimits.MaxCards];
+                    int eligCount = 0;
+                    int prefCount = 0;
+                    int drawStart = s.DrawStart;
+                    int drawEnd = drawStart + s.DrawCount;
+                    for (int i = drawStart; i < drawEnd; i++)
+                    {
+                        ref readonly HotCard c = ref s.Cards[i];
+                        if ((c.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0)
+                            continue;
+                        CardType cType = rules.Cards[c.CardDefId].Type;
+                        if (cType is CardType.Curse or CardType.Quest)
+                            continue;
+                        if (GetEnchantedReplayCount(in c, rules) >= 1)
+                            continue;
+                        eligible[eligCount++] = i;
+                        if (cType is CardType.Attack or CardType.Skill or CardType.Power)
+                            preferred[prefCount++] = i;
+                    }
+                    ReadOnlySpan<int> poolSpan = prefCount > 0 ? preferred[..prefCount] : eligible[..eligCount];
+                    if (poolSpan.Length > 0)
+                    {
+                        int chosenIdx = poolSpan[HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardSelection], poolSpan.Length)];
+                        s.Cards[chosenIdx].BaseReplayCount = (byte)Math.Min(byte.MaxValue, s.Cards[chosenIdx].BaseReplayCount + replayAdd);
+                    }
+                }
+                break;
+            }
+
+            case HotCustomCardId.MadScience:
+            {
+                CardType msType = (CardType)(playedCard.CardPrivate & 0xFFFF);
+                if (msType == CardType.None)
+                    msType = def.Type;
+                HotTinkerRiderEffect rider = (HotTinkerRiderEffect)((playedCard.CardPrivate >> 16) & 0xFFFF);
+
+                switch (msType)
+                {
+                    case CardType.Attack:
+                    {
+                        int msHits = rider == HotTinkerRiderEffect.Violence
+                            ? GetNamedVarInt(in playedCard, def, "ViolenceHits", 3)
+                            : 1;
+                        ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg > 0 ? baseDmg : 12, msHits, powered: true);
+                        break;
+                    }
+                    case CardType.Skill:
+                        GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk > 0 ? baseBlk : 8);
+                        break;
+                    case CardType.Power:
+                        switch (rider)
+                        {
+                            case HotTinkerRiderEffect.Expertise:
+                                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StrengthPower, GetNamedVarInt(in playedCard, def, "ExpertiseStrength", 2), isCardSource: true);
+                                if (!scratch.NeedsChoice)
+                                    ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.DexterityPower, GetNamedVarInt(in playedCard, def, "ExpertiseDexterity", 2), isCardSource: true);
+                                break;
+                            case HotTinkerRiderEffect.Curious:
+                                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.CuriousPower, GetNamedVarInt(in playedCard, def, "CuriousReduction", 1), isCardSource: true);
+                                break;
+                            case HotTinkerRiderEffect.Improvement:
+                                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.ImprovementPower, 1, isCardSource: true);
+                                s.Growth[9]++;
+                                break;
+                        }
+                        break;
+                }
+
+                if (!scratch.NeedsChoice && !IsOverOrEnding(in s))
+                {
+                    switch (rider)
+                    {
+                        case HotTinkerRiderEffect.Sapping:
+                            if (IsValidEnemyTarget(in s, targetEnemySlot))
+                            {
+                                byte eSlot = (byte)(3 + targetEnemySlot);
+                                ApplyPowerById(ref s, ref cold, rules, scratch, eSlot, 0, HotPowerId.WeakPower, GetNamedVarInt(in playedCard, def, "SappingWeak", 2), isCardSource: true);
+                                if (!scratch.NeedsChoice)
+                                    ApplyPowerById(ref s, ref cold, rules, scratch, eSlot, 0, HotPowerId.VulnerablePower, GetNamedVarInt(in playedCard, def, "SappingVulnerable", 2), isCardSource: true);
+                            }
+                            break;
+                        case HotTinkerRiderEffect.Choking:
+                            if (IsValidEnemyTarget(in s, targetEnemySlot))
+                                ApplyPowerById(ref s, ref cold, rules, scratch, (byte)(3 + targetEnemySlot), 0, HotPowerId.StranglePower, GetNamedVarInt(in playedCard, def, "ChokingDamage", 6), isCardSource: true);
+                            break;
+                        case HotTinkerRiderEffect.Energized:
+                            GainEnergy(ref s, rules, GetNamedVarInt(in playedCard, def, "EnergizedEnergy", 2));
+                            break;
+                        case HotTinkerRiderEffect.Wisdom:
+                            DrawCards(ref s, ref cold, rules, scratch, GetNamedVarInt(in playedCard, def, "WisdomCards", 3), fromHandDraw: false);
+                            break;
+                        case HotTinkerRiderEffect.Chaos:
+                        {
+                            Span<ushort> pick = stackalloc ushort[1];
+                            int rolled = RollDistinctFromPool(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules, rules.UnlockedCharacterCardPool, pick);
+                            if (rolled > 0 && pick[0] != 0)
+                                HotPotions.AddGeneratedFreeThisTurnToHand(ref s, ref cold, rules, scratch, pick[0]);
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+
+            case HotCustomCardId.Metamorphosis:
+            {
+                int count = GetNamedVarInt(in playedCard, def, "Cards", upgrade > 0 ? 5 : 3);
+                ushort[] atkPool = rules.CombatCharacterAttackPool;
+                if (count > 0 && atkPool.Length > 0)
+                {
+                    Span<ushort> rolled = count <= HotLimits.MaxStackAllocElements
+                        ? stackalloc ushort[HotLimits.MaxStackAllocElements]
+                        : new ushort[count];
+                    for (int i = 0; i < count; i++)
+                        rolled[i] = atkPool[HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], atkPool.Length)];
+                    for (int i = 0; i < count && !scratch.NeedsChoice && !IsOverOrEnding(in s); i++)
+                    {
+                        ushort cid = rolled[i];
+                        HotCardDef cdef = rules.Cards[cid];
+                        HotCard generated = new()
+                        {
+                            CardDefId = cid,
+                            CardUid = s.NextCardUid++,
+                            UpgradeLevel = 0,
+                            BaseEnergyCost = cdef.BaseCost,
+                            BaseStarCost = cdef.BaseStarCost,
+                            LocalKeywordsMask = (HotCardKeywordMask)cdef.BaseKeywords,
+                            Flags = HotCardFlags.None,
+                        };
+                        HotPotions.SetCardFreeThisCombat(ref generated, ref cold);
+                        AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in generated, HotPileKind.Draw, dstOffset: -2, createdByPlayer: true);
+                    }
+                }
+                break;
+            }
+
+            case HotCustomCardId.MyShinies:
+            {
+                int hitCount = EvaluateCalcVar(in s, rules, scratch, in playedCard, def, targetEnemySlot, energySpent);
+                if (hitCount > 0)
+                    ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg > 0 ? baseDmg : 1, hitCount, powered: true);
                 break;
             }
 
@@ -1958,7 +2343,7 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.FeedingFrenzy:
             {
-                int str = GetNamedVarInt(in playedCard, def, "Strength", magic > 0 ? magic : 5);
+                int str = GetNamedVarInt(in playedCard, def, "StrengthPower", magic > 0 ? magic : 5);
                 ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.FeedingFrenzyPower, str, isCardSource: true);
                 break;
             }
@@ -1970,7 +2355,7 @@ internal static partial class HotCombatEngine
                 int hpAfter = targetEnemySlot >= 0 && targetEnemySlot < s.EnemyCount ? s.Enemies[targetEnemySlot].Vital.CurrentHp + s.Enemies[targetEnemySlot].Vital.Block : 0;
                 int dealt = Math.Max(0, hpBefore - hpAfter);
                 if (!scratch.NeedsChoice && dealt > 0)
-                    GainBlock(ref s, ref cold, rules, scratch, 0, dealt, isCardBlock: true);
+                    GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, dealt);
                 break;
             }
 
@@ -2088,7 +2473,7 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.Mimic:
                 if (IsValidEnemyTarget(in s, targetEnemySlot))
-                    GainBlock(ref s, ref cold, rules, scratch, 0, s.Enemies[targetEnemySlot].Vital.Block, isCardBlock: true);
+                    GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, s.Enemies[targetEnemySlot].Vital.Block);
                 break;
 
             case HotCustomCardId.NeowsFury:
@@ -2134,20 +2519,26 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.Prowess:
-                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StrengthPower, GetNamedVarInt(in playedCard, def, "Strength", magic > 0 ? magic : 1), isCardSource: true);
-                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.DexterityPower, GetNamedVarInt(in playedCard, def, "Dexterity", magic > 0 ? magic : 1), isCardSource: true);
+                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StrengthPower, GetNamedVarInt(in playedCard, def, "StrengthPower", magic > 0 ? magic : 1), isCardSource: true);
+                ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.DexterityPower, GetNamedVarInt(in playedCard, def, "DexterityPower", magic > 0 ? magic : 1), isCardSource: true);
                 break;
 
             case HotCustomCardId.Purity:
             {
-                int maxExh = GetNamedVarInt(in playedCard, def, "Cards", upgrade > 0 ? 5 : 3);
-                for (int k = 0; k < maxExh && s.HandCount > 0; k++)
+                int maxExh = Math.Min(GetNamedVarInt(in playedCard, def, "Cards", upgrade > 0 ? 5 : 3), Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
+                Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                int pickedCount = 0;
+                for (int k = 0; k < maxExh && pickedCount < s.HandCount; k++)
                 {
-                    if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 0, 1, out HotChoiceSelection sel))
+                    if (!RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 0, 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                         return;
-                    if (sel.Kind == HotChoiceKind.None)
+                    if (sel.Kind == HotChoiceKind.None || sel.CardUidOrIndex == 0)
                         break;
-                    int idx = FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
+                    pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                }
+                for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                {
+                    int idx = FindCardIndexByUid(in s, HotPileKind.Hand, pickedUids[i]);
                     if (idx >= 0)
                         ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);
                 }
@@ -2155,7 +2546,7 @@ internal static partial class HotCombatEngine
             }
 
             case HotCustomCardId.Relax:
-                GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.DrawCardsNextTurnPower, GetNamedVarInt(in playedCard, def, "Cards", 2), isCardSource: true);
                 ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.EnergyNextTurnPower, GetNamedVarInt(in playedCard, def, "Energy", 2), isCardSource: true);
                 break;
@@ -2174,7 +2565,7 @@ internal static partial class HotCombatEngine
                 if (rbId != 0)
                 {
                     int initDmg = GetNamedVarInt(in playedCard, def, "RollingBoulderPower", baseDmg > 0 ? baseDmg : 5);
-                    int incDmg = GetNamedVarInt(in playedCard, def, "Damage", 5);
+                    int incDmg = GetNamedVarInt(in playedCard, def, "IncrementAmount", 5);
                     int pIdx = FindPowerIndex(in s, 0, rbId);
                     ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.RollingBoulderPower, initDmg, isCardSource: true);
                     pIdx = FindPowerIndex(in s, 0, rbId);
@@ -2207,16 +2598,48 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.SeekerStrike:
+            {
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
-                if (!scratch.NeedsChoice && s.DrawCount > 0)
+                if (!scratch.NeedsChoice && !IsOverOrEnding(in s) && s.DrawCount > 0)
                 {
-                    if (!RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, playedCard.CardDefId, 1, 1, out HotChoiceSelection sel))
+                    int drawStart = s.DrawStart;
+                    int drawCount = s.DrawCount;
+                    int takeCount = Math.Min(GetNamedVarInt(in playedCard, def, "Cards", 3), drawCount);
+                    Span<int> indices = drawCount <= HotLimits.MaxStackAllocElements
+                        ? stackalloc int[HotLimits.MaxStackAllocElements]
+                        : new int[drawCount];
+                    Span<int> drawIndices = indices[..drawCount];
+                    for (int i = 0; i < drawCount; i++)
+                        drawIndices[i] = drawStart + i;
+
+                    // STS2 0.113.1 SeekerStrike.cs:36: DrawPile.Cards.ToList().StableShuffle(CombatCardSelection).Take(Cards)
+                    for (int i = 1; i < drawCount; i++)
+                    {
+                        int keyIdx = drawIndices[i];
+                        int j = i - 1;
+                        while (j >= 0 && rules.CompareCardsForShuffle(in s.Cards[drawIndices[j]], in s.Cards[keyIdx], in s, cold) > 0)
+                        {
+                            drawIndices[j + 1] = drawIndices[j];
+                            j--;
+                        }
+                        drawIndices[j + 1] = keyIdx;
+                    }
+                    HotRng.UnstableShuffle(drawIndices, ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+
+                    Span<ushort> allowedUids = takeCount <= HotLimits.MaxStackAllocElements
+                        ? stackalloc ushort[HotLimits.MaxStackAllocElements]
+                        : new ushort[takeCount];
+                    for (int i = 0; i < takeCount; i++)
+                        allowedUids[i] = s.Cards[drawIndices[i]].CardUid;
+
+                    if (!RequestChoiceFiltered(ref s, scratch, HotChoiceKind.DrawPile, playedCard.CardDefId, 1, 1, allowedUids[..takeCount], out HotChoiceSelection sel))
                         return;
                     int idx = FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
                     if (idx >= 0)
                         MoveCardToHandOrDiscard(ref s, idx);
                 }
                 break;
+            }
 
             case HotCustomCardId.Shockwave:
             {
@@ -2226,10 +2649,14 @@ internal static partial class HotCombatEngine
                 break;
             }
 
+            case HotCustomCardId.Slimed:
+                DrawCards(ref s, ref cold, rules, scratch, GetNamedVarInt(in playedCard, def, "Cards", 1), fromHandDraw: false);
+                break;
+
             case HotCustomCardId.Stack:
             {
                 int blk = EvaluateCalcVar(in s, rules, scratch, in playedCard, def, -1, energySpent);
-                GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, blk);
                 break;
             }
 
@@ -2268,24 +2695,41 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Whistle:
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
                 if (!scratch.NeedsChoice && IsValidEnemyTarget(in s, targetEnemySlot))
-                    s.Enemies[targetEnemySlot].Flags |= HotEnemyFlags.SkipNextMove | HotEnemyFlags.Stunned;
+                    HotMonsters.ForceStunnedMove(ref s, rules, (byte)targetEnemySlot, null);
                 break;
 
             default:
                 // Generic fallback for unmapped basic attack/block/draw cards
                 if (baseBlk > 0)
-                    GainBlock(ref s, ref cold, rules, scratch, 0, baseBlk, isCardBlock: true);
+                    GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, baseBlk);
                 if (baseDmg > 0)
                 {
-                    if (def.Target == TargetType.AllEnemies)
+                    TargetType effectiveTarget = GetEffectiveCardTargetType(in s, in playedCard, def, rules);
+                    if (effectiveTarget == TargetType.AllEnemies)
                         ExecuteAllEnemiesAttack(ref s, ref cold, rules, scratch, livePlayIdx, baseDmg, hits, powered: true);
-                    else if (def.Target == TargetType.RandomEnemy)
+                    else if (effectiveTarget == TargetType.RandomEnemy)
                         ExecuteRandomEnemiesAttack(ref s, ref cold, rules, scratch, livePlayIdx, baseDmg, hits, powered: true);
                     else if (IsValidEnemyTarget(in s, targetEnemySlot))
                         ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, hits, powered: true);
                 }
                 break;
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GainPlayedCardBlock(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        int playOffsetInPlay,
+        ushort cardDefId,
+        int baseAmount)
+    {
+        int cardIdx = playOffsetInPlay >= 0 && playOffsetInPlay < s.PlayCount
+            ? s.PlayStart + playOffsetInPlay
+            : -1;
+        return GainBlockInternal(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: baseAmount, isCardBlock: true, cardIdx: cardIdx, cardDefId: cardDefId);
     }
 
     internal static void GenerateShivsToHand(
@@ -2323,16 +2767,20 @@ internal static partial class HotCombatEngine
         if (cardIdx < 0 || cardIdx >= s.TotalCardCount || newCardDefId == 0 || newCardDefId >= rules.Cards.Length)
             return;
         HotCardDef newDef = rules.Cards[newCardDefId];
-        s.Cards[cardIdx] = new HotCard
+        bool doUpgrade = upgraded && newDef.MaxUpgradeLevel > 0;
+        HotCard transformed = new()
         {
             CardDefId = newCardDefId,
             CardUid = s.NextCardUid++,
-            UpgradeLevel = upgraded && newDef.MaxUpgradeLevel > 0 ? (byte)1 : (byte)0,
-            BaseEnergyCost = upgraded && newDef.MaxUpgradeLevel > 0 ? newDef.UpgradedCost : newDef.BaseCost,
+            UpgradeLevel = doUpgrade ? (byte)1 : (byte)0,
+            BaseEnergyCost = doUpgrade ? newDef.UpgradedCost : newDef.BaseCost,
             BaseStarCost = newDef.BaseStarCost,
             LocalKeywordsMask = (HotCardKeywordMask)newDef.BaseKeywords,
-            Flags = HotCardFlags.None,
+            Flags = GetInitialCardFlags(newDef),
         };
+        if (doUpgrade)
+            ApplyUpgradeKeywords(ref transformed, newDef.CardId);
+        s.Cards[cardIdx] = transformed;
         if (newDef.HookMask != HotHookMask.None)
             s.ActiveHookMask |= (ulong)newDef.HookMask;
     }
@@ -2346,16 +2794,35 @@ internal static partial class HotCombatEngine
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsEnergyCostXCard(HotCustomCardId cardId)
-        => cardId is HotCustomCardId.Cascade
+        => cardId is HotCustomCardId.Brace
+            or HotCustomCardId.Cascade
             or HotCustomCardId.Dirge
             or HotCustomCardId.Eradicate
             or HotCustomCardId.HeavenlyDrill
             or HotCustomCardId.Malaise
             or HotCustomCardId.MultiCast
+            or HotCustomCardId.RepeatShot
             or HotCustomCardId.Skewer
             or HotCustomCardId.Tempest
             or HotCustomCardId.Volley
             or HotCustomCardId.Whirlwind;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsStarCostXCard(HotCustomCardId cardId)
+        => cardId == HotCustomCardId.Stardust;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static HotCardFlags GetInitialCardFlags(HotCardDef def)
+    {
+        HotCardFlags flags = HotCardFlags.None;
+        if (IsEnergyCostXCard(def.CardId))
+            flags |= HotCardFlags.CostsX;
+        if (IsStarCostXCard(def.CardId))
+            flags |= HotCardFlags.HasStarCostX;
+        if (((HotCardKeywordMask)def.BaseKeywords & HotCardKeywordMask.Sly) != 0)
+            flags |= HotCardFlags.IsSlyThisTurn;
+        return flags;
+    }
 
     private static void GenerateRandomFromPoolWithReplacement(
         ref CombatHotState s,
@@ -2438,6 +2905,45 @@ internal static partial class HotCombatEngine
         int written = Math.Min(dst.Length, filteredCount);
         work[..written].CopyTo(dst);
         return written;
+    }
+
+    private static int AddDetachedCard(ref HotColdSidecar? cold, in HotCard card)
+    {
+        HotCard[]? existing = cold?.DetachedCards;
+        int len = existing?.Length ?? 0;
+        HotCard[] next = new HotCard[len + 1];
+        if (existing != null && len > 0)
+            existing.CopyTo(next, 0);
+        next[len] = card;
+        cold = cold == null
+            ? new HotColdSidecar(DetachedCards: next)
+            : cold with { DetachedCards = next };
+        return len;
+    }
+
+    internal static void StableSortUidsForShuffle(
+        in CombatHotState s,
+        HotRules rules,
+        HotColdSidecar? cold,
+        Span<ushort> uids)
+    {
+        for (int i = 1; i < uids.Length; i++)
+        {
+            ushort keyUid = uids[i];
+            int keyIdx = FindCardIndexByUidAnyPile(in s, keyUid);
+            if (keyIdx < 0)
+                continue;
+            int j = i - 1;
+            while (j >= 0)
+            {
+                int prevIdx = FindCardIndexByUidAnyPile(in s, uids[j]);
+                if (prevIdx < 0 || rules.CompareCardsForShuffle(in s.Cards[prevIdx], in s.Cards[keyIdx], in s, cold) <= 0)
+                    break;
+                uids[j + 1] = uids[j];
+                j--;
+            }
+            uids[j + 1] = keyUid;
+        }
     }
 
     private static bool HasAnyUpgradableCardInHand(in CombatHotState s, HotRules rules)
@@ -2528,5 +3034,20 @@ internal static partial class HotCombatEngine
                 hi = mid - 1;
         }
         return -1;
+    }
+
+    // Mirrors MegaCrit.Sts2.Core.Models.Events.TinkerTime.RiderEffect (0.113.1) without importing Core.Models into Sim.
+    private enum HotTinkerRiderEffect
+    {
+        None = 0,
+        Sapping = 1,
+        Violence = 2,
+        Choking = 3,
+        Energized = 4,
+        Wisdom = 5,
+        Chaos = 6,
+        Expertise = 7,
+        Curious = 8,
+        Improvement = 9,
     }
 }

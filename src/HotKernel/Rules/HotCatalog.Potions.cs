@@ -44,7 +44,7 @@ internal static class HotPotionCatalog
         arr[(int)HotCustomPotionId.Ambergris] = new(HotCustomPotionId.Ambergris, "AMBERGRIS", false, true, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.Ashwater] = new(HotCustomPotionId.Ashwater, "ASHWATER", false, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.AttackPotion] = new(HotCustomPotionId.AttackPotion, "ATTACK_POTION", false, false, true, 9, false, false, true);
-        arr[(int)HotCustomPotionId.BeetleJuice] = new(HotCustomPotionId.BeetleJuice, "BEETLE_JUICE", true, false, false, 9, false, false, true);
+        arr[(int)HotCustomPotionId.BeetleJuice] = new(HotCustomPotionId.BeetleJuice, "BEETLE_JUICE", false, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.BlessingOfTheForge] = new(HotCustomPotionId.BlessingOfTheForge, "BLESSING_OF_THE_FORGE", false, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.BlockPotion] = new(HotCustomPotionId.BlockPotion, "BLOCK_POTION", true, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.BloodPotion] = new(HotCustomPotionId.BloodPotion, "BLOOD_POTION", false, true, false, 9, false, false, true);
@@ -77,7 +77,7 @@ internal static class HotPotionCatalog
         arr[(int)HotCustomPotionId.GhostInAJar] = new(HotCustomPotionId.GhostInAJar, "GHOST_IN_A_JAR", true, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.GigantificationPotion] = new(HotCustomPotionId.GigantificationPotion, "GIGANTIFICATION_POTION", true, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.GlowwaterPotion] = new(HotCustomPotionId.GlowwaterPotion, "GLOWWATER_POTION", false, false, false, 18, false, false, true);
-        arr[(int)HotCustomPotionId.HeartOfIron] = new(HotCustomPotionId.HeartOfIron, "HEART_OF_IRON", true, true, false, 9, false, false, true);
+        arr[(int)HotCustomPotionId.HeartOfIron] = new(HotCustomPotionId.HeartOfIron, "HEART_OF_IRON", true, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.KingsCourage] = new(HotCustomPotionId.KingsCourage, "KINGS_COURAGE", true, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.LiquidBronze] = new(HotCustomPotionId.LiquidBronze, "LIQUID_BRONZE", true, false, false, 9, true, false, true);
         arr[(int)HotCustomPotionId.LiquidMemories] = new(HotCustomPotionId.LiquidMemories, "LIQUID_MEMORIES", false, false, false, 14, false, false, true);
@@ -123,9 +123,6 @@ internal static class HotPotionCatalog
         customPotionId = HotCustomPotionId.None;
         switch (potionId)
         {
-            case HotCustomPotionId.BeetleJuice:
-                ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerTarget, HotCardOpFlags.UseCardMagic, (short)ensurePowerDefId(HotPowerId.ShrinkPower)));
-                break;
             case HotCustomPotionId.BlockPotion:
                 ops.Add(new HotCardEffectOp(HotCardOpKind.GainBlock, HotCardOpFlags.Unpowered | HotCardOpFlags.UseCardBlock, 0));
                 break;

@@ -22,6 +22,14 @@ internal static class Program
             return HotKernelChecks.RunLayoutChecks();
         if (rawArgs.Length >= 1 && rawArgs[0] == "--verify-hot-parity")
             return HotKernelChecks.RunParityChecks(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--audit-hot-coverage")
+            return HotCoverageAuditor.Run(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--fuzz-combat")
+            return CombatDiffFuzzer.RunFuzz(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length == 2 && rawArgs[0] == "--replay-fuzz")
+            return CombatDiffFuzzer.RunReplay(rawArgs[1]);
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--soak-deploy")
+            return DeploymentSoakRunner.Run(rawArgs.Skip(1).ToArray());
         if (rawArgs.Length == 3 && rawArgs[0] == "--compare-quality-batch")
             return QualityComparison.Run(rawArgs[1], rawArgs[2]);
 
@@ -351,6 +359,10 @@ internal sealed record HarnessOptions
           --backend hot          固定使用 HotKernel + HotSearch 后端
           --check-hot-layout     校验 HotKernel 布局、Pack/Unpack、全字节翻转突变、RNG 与牌堆操作
           --verify-hot-parity    校验 Gate A(19根捕获)、Gate B(多回合自洽+DOP1/8确定性)、Gate C(微基准)
+          --audit-hot-coverage   Layer 1：枚举 0.113.1 全部单人实体与 HotKernel 覆盖及反射字段审计
+          --fuzz-combat [...]    Layer 2：覆盖引导单人差分模糊（--fights N --seed S --phase all|sweep|synergy --max-turns T --dump-dir PATH）
+          --replay-fuzz <json>   Layer 2：确定性回放单条差分/崩溃最小复现包
+          --soak-deploy [...]    Layer 3：整场求解→部署反重算压测（--fights N --seed S --profile Medium|High --dop 8 --out PATH）
           --stop-at-zero-loss    启用零战损达标停止政策
           --production-budget    使用生产预算流程
           --transposition-entry-limit <int>  转置支配表条目上限（0=不设上限）

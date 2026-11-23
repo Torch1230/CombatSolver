@@ -35,6 +35,8 @@ internal readonly struct HotFastSummary
     public readonly byte AliveEnemyCount;
     public readonly byte RevivingEnemyCount;
     public readonly byte DeathSaveUseCount;
+    public readonly byte AlchemizeCount;
+    public readonly byte EmptyPotionSlots;
     public readonly bool ForfeitsGold;
     public readonly HotCombatOutcome Outcome;
 
@@ -56,6 +58,8 @@ internal readonly struct HotFastSummary
         byte aliveEnemyCount,
         byte revivingEnemyCount,
         byte deathSaveUseCount,
+        byte alchemizeCount,
+        byte emptyPotionSlots,
         bool forfeitsGold,
         HotCombatOutcome outcome)
     {
@@ -76,6 +80,8 @@ internal readonly struct HotFastSummary
         AliveEnemyCount = aliveEnemyCount;
         RevivingEnemyCount = revivingEnemyCount;
         DeathSaveUseCount = deathSaveUseCount;
+        AlchemizeCount = alchemizeCount;
+        EmptyPotionSlots = emptyPotionSlots;
         ForfeitsGold = forfeitsGold;
         Outcome = outcome;
     }
@@ -85,31 +91,36 @@ internal readonly struct HotFastSummary
 }
 
 /// <summary>
-/// Simple 2-bit certified HP incumbent bound frozen at the start of each wave so DOP=1 and DOP=N
+/// Certified HP incumbent bound in exact centi-HP frozen at the start of each wave so DOP=1 and DOP=N
 /// make 100% deterministic identical pruning decisions.
+/// Preserves exact tie-break priority (<c>V = NetPersistentHpDeltaCenti - NetPotionCostCenti</c> first,
+/// then <c>NetPersistentHpDeltaCenti</c> before <c>EndTurn</c>) so Stage 2 potion winners tying on V are NEVER pruned!
 /// </summary>
 internal readonly struct HotIncumbentBound
 {
     public readonly bool HasCertifiedZeroPotionBound;
-    public readonly int BestZeroPotionHpLost;
+    public readonly int BestZeroPotionHpDeltaCenti;
     public readonly int BestZeroPotionEndTurn;
     public readonly bool HasCertifiedOverallBound;
-    public readonly int BestOverallCost; // StrategicHpDeficit + OptionalPotionStrategicCost
+    public readonly long BestOverallValueCenti;
+    public readonly int BestOverallHpDeltaCenti;
     public readonly int BestOverallEndTurn;
 
     public HotIncumbentBound(
         bool hasCertifiedZeroPotionBound,
-        int bestZeroPotionHpLost,
+        int bestZeroPotionHpDeltaCenti,
         int bestZeroPotionEndTurn,
         bool hasCertifiedOverallBound,
-        int bestOverallCost,
+        long bestOverallValueCenti,
+        int bestOverallHpDeltaCenti,
         int bestOverallEndTurn)
     {
         HasCertifiedZeroPotionBound = hasCertifiedZeroPotionBound;
-        BestZeroPotionHpLost = bestZeroPotionHpLost;
+        BestZeroPotionHpDeltaCenti = bestZeroPotionHpDeltaCenti;
         BestZeroPotionEndTurn = bestZeroPotionEndTurn;
         HasCertifiedOverallBound = hasCertifiedOverallBound;
-        BestOverallCost = bestOverallCost;
+        BestOverallValueCenti = bestOverallValueCenti;
+        BestOverallHpDeltaCenti = bestOverallHpDeltaCenti;
         BestOverallEndTurn = bestOverallEndTurn;
     }
 
@@ -196,15 +207,15 @@ internal readonly struct HotEvalLookup
 }
 
 /// <summary>
-/// 2-stage zero-allocation evaluator over <see cref="CombatHotState"/>.
-/// Operates purely on packed hot-kernel structs; ZERO per-state managed allocations.
+/// 2-stage zero-allocation evaluator over <see cref="CombatHotState"/> aligned 1:1 with
+/// <see cref="HotRouteQuality"/> and <see cref="HotPotionPolicy"/>'s unified centi-HP objective.
 /// </summary>
 internal static class HotEvaluator
 {
     private const long DeathBaseScore = -1_000_000_000_000L;
     private const long VictoryBaseScore = 10_000_000_000L;
     private const long DeathSavePenaltyScore = 500_000_000L;
-    private const long HpWeight = 30_000L;
+    private const long HpWeightPerCenti = 300L;       // 30_000L per 1.00 Persistent HP
     private const long EnemyHpWeight = 10_000L;
     private const long EnemyBlockWeight = 2_000L;
     private const long EnemyKillBonus = 85_000L;
@@ -212,7 +223,6 @@ internal static class HotEvaluator
     private const long SetupWeightScale = 14_000L;
     private const long EnergyWeight = 55_000L;
     private const long StarWeight = 18_000L;
-    private const long PotionCostWeight = 28_000L;
 
     /// <summary>
     /// Stage 1: Zero-allocation scalar extraction straight from <see cref="CombatHotState"/>.
@@ -238,6 +248,14 @@ internal static class HotEvaluator
             aliveEnemies++;
             enemyHpSum += Math.Max(0, enemy.Vital.CurrentHp);
             enemyBlockSum += Math.Max(0, enemy.Vital.Block);
+        }
+
+        int emptyPotionSlots = 0;
+        int slotCount = Math.Min((int)s.PotionSlotCount, HotLimits.MaxPotions);
+        for (int i = 0; i < slotCount; i++)
+        {
+            if (s.Potions[i] == 0)
+                emptyPotionSlots++;
         }
 
         int hpLost = s.Counters[(int)HotCounterSlot.PlayerCumulativeHpLost];
@@ -275,19 +293,24 @@ internal static class HotEvaluator
             aliveEnemyCount: aliveEnemies,
             revivingEnemyCount: revivingEnemies,
             deathSaveUseCount: (byte)Math.Clamp(s.DeathSaveUseCount, 0, byte.MaxValue),
+            alchemizeCount: (byte)Math.Clamp((int)s.Growth[4], 0, byte.MaxValue),
+            emptyPotionSlots: (byte)emptyPotionSlots,
             forfeitsGold: forfeitsGold,
             outcome: outcome);
     }
 
     /// <summary>
-    /// Checks the 2-bit certified HP incumbent bound right after Stage 1 (before Stage 2 scoring).
+    /// Certified centi-HP incumbent bound check right after Stage 1 (before Stage 2 scoring).
     /// Sound only when <c>!policy.HasAnyHealOrUnknownGeneration</c> and no growth/forced/theft trade-offs override HP.
+    /// Respects exact tie-break order (<c>V</c> -> <c>NetPersistentHpDeltaCenti</c> -> <c>Turn</c>) so Stage 2
+    /// potion routes tying on <c>V</c> while winning on <c>NetPersistentHpDeltaCenti</c> are NEVER pruned.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPrunedByCertifiedIncumbent(
         in HotFastSummary summary,
+        int optionalPaidCount,
         int explicitPotionCount,
-        int optionalPotionRequiredHp,
+        int netPotionCostCenti,
         in HotIncumbentBound bound,
         in HotSearchPolicy policy)
     {
@@ -298,41 +321,54 @@ internal static class HotEvaluator
         if (summary.IsDefeat)
             return false;
 
-        int maxHpDeficit = Math.Max(0, policy.InitialPlayerMaxHp - summary.PlayerMaxHp);
-        int postCombatMaxPossible = policy.PostCombatRelicHeal.UnconditionalHeal;
-        int minPossibleDeficit = HotRouteQuality.StrategicHpDeficit(
-            summary.HpLost,
-            maxHpDeficit,
-            summary.HpRecovered + postCombatMaxPossible,
-            policy.StrategicBossHpRelief,
-            summary.DeathSaveHpRestored);
+        int maxPostCombatHeal = policy.PostCombatRelicHeal.MonotoneHealFor(summary.PlayerHp, summary.PlayerMaxHp);
+        int upperBoundHpDeltaCenti = HotRouteQuality.ComputeNetPersistentHpDeltaCenti(
+            endPlayerHp: summary.PlayerHp,
+            postCombatMonotoneHeal: maxPostCombatHeal,
+            initialPlayerHp: policy.InitialPlayerHp,
+            endPlayerMaxHp: summary.PlayerMaxHp,
+            initialPlayerMaxHp: policy.InitialPlayerMaxHp,
+            deathSaveHpRestored: summary.DeathSaveHpRestored,
+            growthHpCredit: 0,
+            bossHpRelief: policy.StrategicBossHpRelief,
+            ignoreLongTermRewards: policy.IgnoreLongTermRewards);
 
-        if (explicitPotionCount == 0 && bound.HasCertifiedZeroPotionBound)
+        // Zero-potion certified bound (only applies to 0-potion branches when no paid potion has been spent yet)
+        if (optionalPaidCount == 0 && explicitPotionCount == 0 && bound.HasCertifiedZeroPotionBound)
         {
             if (summary.DeathSaveUseCount > 0)
                 return true;
-            if (minPossibleDeficit > bound.BestZeroPotionHpLost)
+            if (upperBoundHpDeltaCenti < bound.BestZeroPotionHpDeltaCenti)
                 return true;
-            if (minPossibleDeficit == bound.BestZeroPotionHpLost
+            if (upperBoundHpDeltaCenti == bound.BestZeroPotionHpDeltaCenti
                 && !summary.IsVictory
-                && summary.Turn >= bound.BestZeroPotionEndTurn)
+                && summary.Turn > bound.BestZeroPotionEndTurn)
             {
                 return true;
             }
         }
 
+        // Overall unified economic value bound: V = NetPersistentHpDeltaCenti - NetPotionCostCenti
         if (bound.HasCertifiedOverallBound)
         {
-            long minTotalCost = (long)minPossibleDeficit + optionalPotionRequiredHp;
             if (summary.DeathSaveUseCount > 0)
                 return true;
-            if (minTotalCost > bound.BestOverallCost)
+
+            long upperBoundValueCenti = (long)upperBoundHpDeltaCenti - netPotionCostCenti;
+            if (upperBoundValueCenti < bound.BestOverallValueCenti)
                 return true;
-            if (minTotalCost == bound.BestOverallCost
-                && !summary.IsVictory
-                && summary.Turn >= bound.BestOverallEndTurn)
+
+            if (upperBoundValueCenti == bound.BestOverallValueCenti)
             {
-                return true;
+                // Tie on V is broken by NetPersistentHpDeltaCenti DESC BEFORE Turn ASC!
+                if (upperBoundHpDeltaCenti < bound.BestOverallHpDeltaCenti)
+                    return true;
+                if (upperBoundHpDeltaCenti == bound.BestOverallHpDeltaCenti
+                    && !summary.IsVictory
+                    && summary.Turn > bound.BestOverallEndTurn)
+                {
+                    return true;
+                }
             }
         }
 
@@ -341,7 +377,8 @@ internal static class HotEvaluator
 
     /// <summary>
     /// Stage 2: Single-pass zero-allocation heuristic over <see cref="CombatHotState"/> contiguous arrays.
-    /// Returns total <paramref name="score"/>, <paramref name="setupScore"/>, and <paramref name="playableHandCount"/>.
+    /// Uses the EXACT same <c>NetPersistentHpDeltaCenti</c> and <c>NetPotionOpportunityCostCenti</c> as
+    /// <see cref="HotRouteQuality"/> so heuristic ranking and terminal arbitration never contradict each other.
     /// </summary>
     public static void EvaluateState(
         in CombatHotState s,
@@ -350,7 +387,7 @@ internal static class HotEvaluator
         in HotSearchPolicy policy,
         in HotEvalLookup lookup,
         in HotFastSummary summary,
-        int potionStrategicCost,
+        int netPotionCostCenti,
         int actionCount,
         HotEvalMode evalMode,
         out long score,
@@ -370,8 +407,6 @@ internal static class HotEvaluator
             return;
         }
 
-        int maxHpDelta = Math.Max(0, policy.InitialPlayerMaxHp - summary.PlayerMaxHp);
-
         // 2. Terminal Victory
         if (summary.IsVictory)
         {
@@ -381,20 +416,25 @@ internal static class HotEvaluator
                 summary.PlayerHp,
                 summary.PlayerMaxHp);
 
-            int strategicDeficit = HotRouteQuality.StrategicHpDeficit(
-                summary.HpLost,
-                maxHpDelta,
-                summary.HpRecovered + postCombatHeal,
-                policy.StrategicBossHpRelief,
-                summary.DeathSaveHpRestored) - summary.GrowthHpCredit;
+            int netHpDeltaCenti = HotRouteQuality.ComputeNetPersistentHpDeltaCenti(
+                endPlayerHp: summary.PlayerHp,
+                postCombatMonotoneHeal: postCombatHeal,
+                initialPlayerHp: policy.InitialPlayerHp,
+                endPlayerMaxHp: summary.PlayerMaxHp,
+                initialPlayerMaxHp: policy.InitialPlayerMaxHp,
+                deathSaveHpRestored: summary.DeathSaveHpRestored,
+                growthHpCredit: summary.GrowthHpCredit,
+                bossHpRelief: policy.StrategicBossHpRelief,
+                ignoreLongTermRewards: policy.IgnoreLongTermRewards);
+
+            long vCenti = (long)netHpDeltaCenti - netPotionCostCenti;
 
             long victoryScore = VictoryBaseScore
                 - (long)summary.DeathSaveUseCount * DeathSavePenaltyScore
-                - (long)strategicDeficit * HpWeight
-                - (long)potionStrategicCost * PotionCostWeight
+                + vCenti * HpWeightPerCenti
+                + (long)netHpDeltaCenti * 2L
                 - (long)summary.Turn * 5_000L
                 - (long)actionCount * 10L
-                + (long)summary.GrowthHpCredit * 20_000L
                 + (long)summary.GrowthRewardCount * 5_000L;
 
             if (policy.TheftPolicy == SolverTheftPolicy.PreserveResources)
@@ -445,7 +485,6 @@ internal static class HotEvaluator
         int enemyThreatPowerPenalty = 0;
         int minSandpitTurns = int.MaxValue;
 
-        // Stack-local per-enemy stat cache (max 16 enemies -> tiny stack footprint!)
         Span<int> enemyStr = stackalloc int[HotLimits.MaxEnemies];
         Span<byte> enemyWeak = stackalloc byte[HotLimits.MaxEnemies];
         Span<int> enemyPoison = stackalloc int[HotLimits.MaxEnemies];
@@ -485,7 +524,6 @@ internal static class HotEvaluator
 
                 ref readonly HotEnemy ownerEnemy = ref s.Enemies[eSlot];
                 bool isAlive = (ownerEnemy.Vital.Flags & HotCreatureFlags.Alive) != 0;
-                bool isReviving = !isAlive && ownerEnemy.DeathPhase == HotDeathPhase.Reviving;
 
                 if (defId == lookup.ReattachDefId && p.Amount > 0)
                 {
@@ -605,18 +643,23 @@ internal static class HotEvaluator
 
         int unblockedIncoming = Math.Max(0, incomingDamage - effectiveDefense);
 
-        // Compute HP score respecting BossHpRelief
-        int ongoingDeficit = HotRouteQuality.StrategicHpDeficit(
-            summary.HpLost,
-            maxHpDelta,
-            summary.HpRecovered,
-            policy.StrategicBossHpRelief,
-            summary.DeathSaveHpRestored) - summary.GrowthHpCredit;
+        // Unified centi-HP persistent delta minus exact net potion opportunity cost
+        int ongoingNetHpDeltaCenti = HotRouteQuality.ComputeNetPersistentHpDeltaCenti(
+            endPlayerHp: summary.PlayerHp,
+            postCombatMonotoneHeal: 0,
+            initialPlayerHp: policy.InitialPlayerHp,
+            endPlayerMaxHp: summary.PlayerMaxHp,
+            initialPlayerMaxHp: policy.InitialPlayerMaxHp,
+            deathSaveHpRestored: summary.DeathSaveHpRestored,
+            growthHpCredit: summary.GrowthHpCredit,
+            bossHpRelief: policy.StrategicBossHpRelief,
+            ignoreLongTermRewards: policy.IgnoreLongTermRewards);
 
-        long runningScore = -(long)ongoingDeficit * HpWeight
+        long runningScore = (long)ongoingNetHpDeltaCenti * HpWeightPerCenti
+            - (long)netPotionCostCenti * HpWeightPerCenti
             - (long)summary.DeathSaveUseCount * DeathSavePenaltyScore;
 
-        // Threat evaluation: heavy penalty when unblocked incoming damage threatens lethal
+        // Threat evaluation: aligned with BossHpRelief while still heavily penalizing lethal incoming damage
         if (unblockedIncoming > 0)
         {
             int scaledThreat = policy.StrategicBossHpRelief switch
@@ -633,12 +676,11 @@ internal static class HotEvaluator
         }
         else if (preservesExcessBlock && summary.PlayerBlock > incomingDamage)
         {
-            // Under Barricade/Blur, excess block carries into future turns.
             int carriedBlock = Math.Min(summary.PlayerBlock - incomingDamage, 60);
             runningScore += (long)carriedBlock * 14_000L;
         }
 
-        // Next-turn defensive/resource carryovers (Prolong, Prophesize, Hegemony, Relax, etc.)
+        // Next-turn defensive/resource carryovers
         long carryoverMult = evalMode == HotEvalMode.SetupAndSurvival ? 125L : 100L;
         if (nextTurnBlock > 0)
             runningScore += ((long)Math.Min(nextTurnBlock, 60) * 14_000L * carryoverMult) / 100L;
@@ -658,11 +700,9 @@ internal static class HotEvaluator
         runningScore -= (long)summary.EnemyHpSum * enemyHpWeight;
         runningScore -= (long)summary.EnemyBlockSum * EnemyBlockWeight;
 
-        // Penalize reviving enemies (e.g. Decimillipede Reattach): killing 1 segment alone does NOT save its revive HP!
         if (revivingHpPenalty > 0)
             runningScore -= (long)revivingHpPenalty * ((enemyHpWeight * 92L) / 100L);
 
-        // Necrobinder Doom progress & lethal bonus
         if (effectiveDoomValue > 0)
             runningScore += (long)effectiveDoomValue * 5_500L;
 
@@ -671,19 +711,15 @@ internal static class HotEvaluator
 
         if (allReattachEncounter && summary.AliveEnemyCount > 1)
         {
-            // For Reattach encounters (Decimillipede), bringing the HIGHEST segment HP down together
-            // prepares a synchronized AOE clear instead of wasting damage on one reviving segment.
             runningScore -= (long)highestAliveEnemyHp * 2_500L;
         }
         else if (summary.AliveEnemyCount > 1 && lowestEnemyHp < int.MaxValue)
         {
-            // Normal multi-enemy focus-fire bonus: damaging the weakest enemy brings a permanent kill closer.
             int avgHp = summary.EnemyHpSum / summary.AliveEnemyCount;
             int focusGap = Math.Max(0, avgHp - lowestEnemyHp);
             runningScore += (long)Math.Min(focusGap, 60) * 1_200L;
         }
 
-        // Boss Sandpit countdown pressure (The Insatiable): reward keeping countdown safe!
         if (minSandpitTurns < int.MaxValue)
         {
             runningScore += (long)Math.Min(minSandpitTurns, 6) * 30_000L;
@@ -735,7 +771,7 @@ internal static class HotEvaluator
             runningScore += (long)s.Fool.MelodyCardsFinished * 5_000L;
         }
 
-        // Hand potential, retained scaling attacks (e.g. SovereignBlade), and deck clutter
+        // Hand potential, retained scaling attacks, and deck clutter
         int handCount = s.HandCount;
         int playableCards = 0;
         int zeroCostPlayable = 0;
@@ -752,7 +788,6 @@ internal static class HotEvaluator
                 continue;
             }
 
-            // Retained Sovereign Blade growth value (prevents dumping a growing blade prematurely under Furnace!)
             if (def.CardId == HotCustomCardId.SovereignBlade
                 && ((c.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0 || (c.Flags & HotCardFlags.SingleTurnRetain) != 0))
             {
@@ -781,7 +816,6 @@ internal static class HotEvaluator
             }
         }
 
-        // Count Status/Curse clutter in Draw + Discard so exhausting them (Purity, True Grit) is rewarded.
         int deckClutter = handClutter;
         int livePileEnd = s.DiscardStart + s.DiscardCount;
         for (int idx = s.DrawStart; idx < livePileEnd; idx++)
@@ -801,14 +835,12 @@ internal static class HotEvaluator
         runningScore -= (long)handClutter * 4_000L;
         runningScore -= (long)deckClutter * 4_500L;
 
-        // Setup & debuff totals (expanded cap so multi-power engines & 3-energy forms outweigh their energy cost!)
         int totalSetup = Math.Clamp(playerSetup + enemyDebuffValue - enemyThreatPowerPenalty, -80, 96);
         setupScore = totalSetup;
         runningScore += (long)Math.Clamp(totalSetup, -48, 64) * setupScale;
 
-        // Potion cost, growth, long-term resources, anger copies, theft
-        runningScore -= (long)potionStrategicCost * PotionCostWeight;
-        runningScore += (long)summary.GrowthHpCredit * 25_000L;
+        // Long-term resources, anger copies, theft (GrowthHpCredit already included inside ongoingNetHpDeltaCenti!)
+        runningScore += (long)summary.GrowthRewardCount * 5_000L;
         runningScore += (long)Math.Min(s.LongTermResourceValue, 20) * 3_500L;
         runningScore -= (long)s.AngerCopiesGenerated * 10_000L;
         runningScore -= (long)actionCount * 5L;
@@ -902,7 +934,6 @@ internal static class HotEvaluator
 
         HotPowerDef def = rules.Powers[defId];
 
-        // CRITICAL: Player Debuffs must NEVER receive a positive catalog SetupWeight!
         if (def.Type == PowerType.Debuff)
         {
             int mag = Math.Clamp(Math.Abs(amount), 1, 6);
@@ -928,7 +959,6 @@ internal static class HotEvaluator
             };
         }
 
-        // Next-turn carryover powers are scored directly in EvaluateState (keep small setup credit for Setup lane).
         switch (def.PowerId)
         {
             case HotPowerId.BlockNextTurnPower:
@@ -944,11 +974,9 @@ internal static class HotEvaluator
                 return Math.Min(Math.Max(0, amount) * 2, 8);
         }
 
-        // Explicit weights for high-impact Buffs whose catalog SetupWeight is 0 (or needs non-saturating scaling)
         int posAmt = Math.Clamp(amount, 0, 16);
         int explicitWeight = def.PowerId switch
         {
-            // Regent / Silent / Necro / Colorless high-impact forms & engines
             HotPowerId.VoidFormPower => Math.Min(posAmt, 3) * 14,
             HotPowerId.SerpentFormPower => Math.Min(posAmt, 12) * 3,
             HotPowerId.SpeedsterPower => Math.Min(posAmt, 10) * 2,
@@ -969,13 +997,11 @@ internal static class HotEvaluator
             HotPowerId.AfterimagePower => Math.Min(posAmt, 4) * 8,
             HotPowerId.BarricadePower => 14,
             HotPowerId.BlurPower => Math.Min(posAmt, 4) * 5,
-            // Necrobinder engines
             HotPowerId.CalcifyPower => Math.Min(posAmt, 10) * 2,
             HotPowerId.DevourLifePower => Math.Min(posAmt, 6) * 4,
             HotPowerId.HauntPower => Math.Min(posAmt, 6) * 4,
             HotPowerId.CountdownPower => Math.Min(posAmt, 8) * 3,
             HotPowerId.NecroMasteryPower => Math.Min(posAmt, 6) * 4,
-            // Regent engines
             HotPowerId.BlackHolePower => Math.Min(posAmt, 8) * 3,
             HotPowerId.ArsenalPower => Math.Min(posAmt, 6) * 4,
             HotPowerId.PillarOfCreationPower => Math.Min(posAmt, 8) * 3,
@@ -985,7 +1011,6 @@ internal static class HotEvaluator
             HotPowerId.RadiancePower => Math.Min(posAmt, 6) * 4,
             HotPowerId.ParryPower => Math.Min(posAmt, 8) * 2,
             HotPowerId.CrueltyPower => Math.Min(posAmt, 6) * 3,
-            // Silent / Defect / Ironclad / Colorless engines
             HotPowerId.AccelerantPower => Math.Min(posAmt, 4) * 4,
             HotPowerId.FanOfKnivesPower => 8,
             HotPowerId.PhantomBladesPower => Math.Min(posAmt, 10) * 2,
@@ -1017,7 +1042,6 @@ internal static class HotEvaluator
         if (explicitWeight != 0)
             return Math.Clamp(explicitWeight, -24, 30);
 
-        // Catalog SetupWeight for remaining Buffs (Strength, Dexterity, Focus, Genesis, DarkEmbrace, FeelNoPain, etc.)
         short catalogWeight = def.SetupWeight;
         if (catalogWeight != 0)
         {
@@ -1027,7 +1051,6 @@ internal static class HotEvaluator
             return Math.Clamp((catalogWeight * clampedAmt) / 3, -24, 28);
         }
 
-        // Fallback for core stats if catalog weight was absent
         int clamped = Math.Clamp(amount, -10, 10);
         if (defId == lookup.StrengthDefId) return clamped * 3;
         if (defId == lookup.DexterityDefId) return clamped * 3;

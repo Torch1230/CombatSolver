@@ -1,6 +1,8 @@
+using CombatSolver.HotKernel;
 using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Extensions;
 using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Hooks;
@@ -33,21 +35,6 @@ internal enum PotionRewardForecast
 /// <summary>
 /// What the player can expect from the potion reward once this fight is won.
 /// </summary>
-/// <remarks>
-/// Vanilla rolls one potion reward per combat room through <see cref="PotionRewardOdds.Roll"/> on the player's
-/// reward RNG, a seeded counter stream that is saved with the run and untouched during combat. The odds start at
-/// 40%, rise 10% after every combat that rolled nothing and fall 10% after every drop, elites add 12.5%, and
-/// White Beast Statue forces the drop. Reward generation then populates the rewards in a fixed order on the same
-/// stream: the gold amount, the potion (a rarity roll, then a pick from the unlocked pools), then the cards.
-/// Cloning the stream at root capture and replaying those draws therefore tells exactly whether a potion drops
-/// and which one, the same way the search replays the shuffle stream to predict draws. When the mirror cannot
-/// be trusted (the tutorial reward set) the outlook keeps only the saved odds.
-///
-/// The outlook matters only when the belt is full: a potion spent in this fight frees the slot the reward would
-/// otherwise have nowhere to go, so the reward's value comes back as a credit against the strategic cost of
-/// spending. With an open slot the reward lands either way and the credit is zero. Sozu blocks procurement
-/// entirely, so it also zeroes the credit.
-/// </remarks>
 internal readonly record struct PotionRewardOutlook(
     float DropChance,
     bool BeltFull,
@@ -69,10 +56,6 @@ internal readonly record struct PotionRewardOutlook(
     /// <summary>
     /// HP the expected reward is worth to a route that spends a paid potion, in the strategic-cost scale.
     /// </summary>
-    /// <remarks>
-    /// A confirmed drop is valued at the tier of the potion it will give. The credit is a route-level amount:
-    /// one freed slot receives at most one reward, so it is applied once per route rather than once per potion.
-    /// </remarks>
     public int ReplacementHpCredit => BeltFull && !ProcureBlocked && Forecast == PotionRewardForecast.Drop
         ? ForecastPotionStrategicHpCost
         : 0;
@@ -83,14 +66,16 @@ internal readonly record struct PotionRewardOutlook(
     public static PotionRewardOutlook Capture(
         Player player,
         CombatState state,
-        IEnumerable<RelicModel> relics)
+        IEnumerable<RelicModel> relics,
+        PotionHpThresholds? thresholds = null)
     {
         if (state.Encounter?.RoomType is not { } room || !room.IsCombatRoom())
             return None;
+        PotionHpThresholds effectiveThresholds = thresholds ?? PotionHpThresholds.Default;
         bool beltFull = player.PotionSlots.Count > 0 && player.PotionSlots.All(potion => potion != null);
         bool procureBlocked = relics.OfType<Sozu>().Any();
         if (player.RunState.GameMode == GameMode.Blitz)
-            return CaptureBlitz(player, state, beltFull, procureBlocked);
+            return CaptureBlitz(player, state, beltFull, procureBlocked, effectiveThresholds);
         bool forced = Hook.ShouldForcePotionReward(player.RunState, player, room);
         float chance = forced ? 1f : DropChanceFor(player.PlayerOdds.PotionReward.CurrentValue, room);
         PotionRewardOutlook odds = new(chance, beltFull, procureBlocked) { Enabled = true };
@@ -101,8 +86,6 @@ internal readonly record struct PotionRewardOutlook(
         if (IsTutorialRewardSet(player, room, runState))
             return odds;
 
-        // RewardsSet.GenerateRewardsFor rolls the potion on the reward stream while building the list, then
-        // GenerateWithoutOffering populates gold and potion in that order before it reaches the cards.
         Rng rewards = new(player.PlayerRng.Rewards.ToSerializable());
         bool drop = forced || rewards.NextFloat() < chance;
         if (!drop)
@@ -113,11 +96,16 @@ internal readonly record struct PotionRewardOutlook(
         {
             Forecast = PotionRewardForecast.Drop,
             ForecastPotionId = potion.Id.Entry,
-            ForecastPotionStrategicHpCost = PotionUsePolicy.StrategicHpCost(potion),
+            ForecastPotionStrategicHpCost = ResolveCatalogCost(potion, effectiveThresholds, player.Creature.MaxHp),
         };
     }
 
-    private static PotionRewardOutlook CaptureBlitz(Player player, CombatState state, bool beltFull, bool procureBlocked)
+    private static PotionRewardOutlook CaptureBlitz(
+        Player player,
+        CombatState state,
+        bool beltFull,
+        bool procureBlocked,
+        PotionHpThresholds thresholds)
     {
         var run = player.RunState;
         var encounter = state.Encounter!;
@@ -128,8 +116,6 @@ internal readonly record struct PotionRewardOutlook(
         if (!drop)
             return new(0, beltFull, procureBlocked, PotionRewardForecast.NoDrop, null, 0) { Enabled = true };
 
-        // Blitz populates its three card options before its guaranteed potion. All draws
-        // use this private reward stream; card ownership and reward callbacks stay live-owned.
         Rng rewards = new(player.PlayerRng.Rewards.ToSerializable());
         CardRarity rarity = room == RoomType.Boss ? CardRarity.Rare : CardRarity.Common;
         CardCreationOptions options = CardCreationOptions.ForNonCombatWithUniformOdds(
@@ -143,8 +129,6 @@ internal readonly record struct PotionRewardOutlook(
                 .Where(card => card.IsAllowedInRun(run) && card.Rarity is not (CardRarity.Basic or CardRarity.Ancient)).ToArray();
             selected.Add(rewards.NextItem(candidates) ?? throw new InvalidOperationException("Empty Blitz reward card pool."));
         }
-        // Native early modifiers only upgrade these Other-source rewards. The late
-        // enchantments affect Wing Charm's candidate set; keep their original hook order.
         HashSet<CardModel> enchanted = [];
         foreach (AbstractModel listener in run.IterateHookListeners(null))
         {
@@ -171,21 +155,26 @@ internal readonly record struct PotionRewardOutlook(
         }
         PotionModel potion = PotionFactory.CreateRandomPotionOutOfCombat(player, rewards);
         return new(1, beltFull, procureBlocked, PotionRewardForecast.Drop, potion.Id.Entry,
-            PotionUsePolicy.StrategicHpCost(potion)) { Enabled = true };
+            ResolveCatalogCost(potion, thresholds, player.Creature.MaxHp)) { Enabled = true };
     }
 
-    /// <summary>
-    /// Mirrors the roll threshold in <see cref="PotionRewardOdds.Roll"/>: the saved odds plus half the elite
-    /// bonus, clamped to a probability.
-    /// </summary>
+    private static int ResolveCatalogCost(PotionModel potion, PotionHpThresholds thresholds, int playerMaxHp)
+    {
+        if (thresholds.TryGetOverride(potion.Id.Entry, out int overrideHp))
+            return overrideHp;
+        if (potion.Rarity == PotionRarity.Token)
+            return 0;
+        HotCustomPotionId id = HotPotionCatalog.FindByEntry(potion.Id.Entry);
+        if (id == HotCustomPotionId.Ambergris)
+            return PotionHpThresholds.DefaultAmbergrisCost(playerMaxHp);
+        if (id != HotCustomPotionId.None)
+            return HotPotionCatalog.Get(id).BaseStrategicHpCost;
+        return PotionHpThresholds.DefaultStandard;
+    }
+
     public static float DropChanceFor(float currentOdds, RoomType roomType)
         => Math.Clamp(currentOdds + (roomType == RoomType.Elite ? EliteDropBonus : 0f), 0f, 1f);
 
-    /// <summary>
-    /// The very first Ironclad run replaces the early monster and elite rewards with scripted tutorial rewards
-    /// (<c>RewardsSet.TryGenerateTutorialRewards</c>), which pick their potion without the reward stream; the
-    /// mirror stays silent there rather than guess which fights the script still covers.
-    /// </summary>
     private static bool IsTutorialRewardSet(Player player, RoomType room, IRunState runState)
     {
         if (room is not (RoomType.Monster or RoomType.Elite)
@@ -203,10 +192,6 @@ internal readonly record struct PotionRewardOutlook(
         return monsterRooms <= 7;
     }
 
-    /// <summary>
-    /// <c>GoldReward.Populate</c> draws once for the amount. Monster rooms skip the gold reward entirely when the
-    /// room's gold proportion is zero; elites and bosses always include it.
-    /// </summary>
     private static void ReplayGoldPopulate(Rng rewards, EncounterModel encounter, RoomType room, CombatRoom? combatRoom)
     {
         int min = encounter.MinGoldReward;

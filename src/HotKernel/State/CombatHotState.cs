@@ -54,7 +54,7 @@ internal struct CombatHotState
     public ushort PlayCount;
     public ushort NextCardUid;
     public ushort HistoryCourseUid;
-    public ushort PadCore0;
+    public ushort CombatGeneratedPotionMask;
     public HotUShort12 Growth;
 
     // 208..224 (16 bytes -> total 224, % 8 == 0)
@@ -100,13 +100,13 @@ internal struct CombatHotState
     // 1128..2152 (16 x 64 B = 1,024 B)
     public HotEnemy16 Enemies;
 
-    // 2152..3688 (64 x 24 B = 1,536 B)
-    public HotPower64 Powers;
+    // 2152..4456 (96 x 24 B = 2,304 B)
+    public HotPower96 Powers;
 
-    // 3688..3944 (32 x 8 B = 256 B)
-    public HotRelicState32 RelicStates;
+    // 4456..4968 (64 x 8 B = 512 B)
+    public HotRelicState64 RelicStates;
 
-    // 3944..16232 (256 x 48 B = 12,288 B)
+    // 4968..17256 (256 x 48 B = 12,288 B)
     public HotCard256 Cards;
 
     public readonly int TotalCardCount => HandCount + DrawCount + DiscardCount + ExhaustCount + PlayCount;
@@ -134,6 +134,7 @@ internal struct CombatHotState
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(CombatFlags)), 140, "Offset.CombatFlags");
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(HistoryFinishedPlays)), 144, "Offset.HistoryFinishedPlays");
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(HandCount)), 168, "Offset.HandCount");
+        AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(CombatGeneratedPotionMask)), 182, "Offset.CombatGeneratedPotionMask");
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(Growth)), 184, "Offset.Growth");
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(CurrentSide)), 208, "Offset.CurrentSide");
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(Counters)), 224, "Offset.Counters");
@@ -145,11 +146,12 @@ internal struct CombatHotState
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(HistoryCourseCard)), 1080, "Offset.HistoryCourseCard");
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(Enemies)), FixedCoreSize, "Offset.Enemies");
         AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(Powers)), 2152, "Offset.Powers");
-        AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(RelicStates)), 3688, "Offset.RelicStates");
-        AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(Cards)), 3944, "Offset.Cards");
+        AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(RelicStates)), 4456, "Offset.RelicStates");
+        AssertEq((int)Marshal.OffsetOf<CombatHotState>(nameof(Cards)), 4968, "Offset.Cards");
 
         int totalSize = sizeof(CombatHotState);
-        AssertEq(totalSize, 16232, nameof(CombatHotState));
+        AssertEq(totalSize, 17256, nameof(CombatHotState));
+        AssertEq(totalSize, HotLimits.MaxPackedStateBytes, nameof(HotLimits.MaxPackedStateBytes));
         if (FixedCoreSize % 8 != 0)
             throw new InvalidOperationException("FixedCoreSize must be 8-byte aligned.");
         if (totalSize >= 32768)

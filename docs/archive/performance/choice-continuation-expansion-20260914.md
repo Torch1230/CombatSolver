@@ -24,7 +24,7 @@
 ## 最快的扩展方式
 
 1. **先推广手动卡牌的自身选择边界。** CardChoiceSupport.GetSpec（`src/Search/CardChoiceSupport.cs`）已汇总牌堆移动、弃牌、消耗、变形、复制、关键词与生成选择；ResolveManualCardChoice（`src/Search/SimulatedCombatState.ActionChoices.cs`）和CardChoiceSupport.Apply（`src/Search/CardChoiceResolution.cs`）是共同入口。已有续执行直接重入这个入口，并复用原出牌结算尾部，因此无需为41张牌分别复制OnPlay。最接近现状的是深谋远虑、微光、光子切割的抽牌后放回牌顶；再补格挡状态以覆盖生存者、武装、全息影像等同类牌。低成本前缀的牌即使接入也可能收益很小。
-2. **给手动药水增加一个共同检查点。** 手动使用路径（`src/Search/CombatBeamSolver.Expansion.cs`）依次消耗槽位、BeforePotionUsed、Use、Apply选择、AfterPotionUsed、Power/死亡补偿及收尾。候选恢复点在Use完成、Apply之前；保存槽位和药水身份、history/shuffle起点与死亡集合，恢复时不再次消耗或重复触发钩子。4种生成药水共用[生成路径](../../../src/Prediction/PotionOnUseSupport.cs)，重复随机池筛选与候选构造最值得先测；其余5种的Use前缀较薄，不能保证值得保存检查点。
+2. **给手动药水增加一个共同检查点。** 手动使用路径（`src/Search/CombatBeamSolver.Expansion.cs`）依次消耗槽位、BeforePotionUsed、Use、Apply选择、AfterPotionUsed、Power/死亡补偿及收尾。候选恢复点在Use完成、Apply之前；保存槽位和药水身份、history/shuffle起点与死亡集合，恢复时不再次消耗或重复触发钩子。4种生成药水共用生成路径（`src/Prediction/PotionOnUseSupport.cs`），重复随机池筛选与候选构造最值得先测；其余5种的Use前缀较薄，不能保证值得保存检查点。
 3. **在现有回合前缀上补来源循环进度。** RoundTransition（`src/Search/CombatBeamSolver.RoundTransition.cs`）已有抽牌前/后的检查点，不是从零开始。进一步跳过已执行的Power/Relic，需要将阶段、来源序号和源内进度显式存入执行帧。工具箱、既定事项发生在抽牌前；选择悖论、赌博筹码、烘焙手套及3种Power发生在抽牌后。不能简单重入整段foreach，否则先前的抽牌、随机生成、能量或状态触发会重复。
 
 每个家族继续使用原候选顺序、选择额度和结算函数；不重写模拟器，不减少搜索预算，不改变路线质量。

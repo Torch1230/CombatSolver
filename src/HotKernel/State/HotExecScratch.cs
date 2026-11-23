@@ -64,6 +64,7 @@ internal sealed class HotExecScratch
     public int CurrentPlayTargetSlot;
     public bool UnblockedDamageThisPlay;
     public bool AttackActive;
+    public uint AttackUnblockedEnemyMask;
 
     public void BeginAction(ReadOnlySpan<HotChoiceSelection> choices)
     {
@@ -84,5 +85,6 @@ internal sealed class HotExecScratch
         CurrentPlayTargetSlot = -1;
         UnblockedDamageThisPlay = false;
         AttackActive = false;
+        AttackUnblockedEnemyMask = 0;
     }
 }

@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Powers;
 
 namespace CombatSolver.HotKernel;
@@ -7,6 +8,12 @@ internal static partial class HotCombatEngine
 {
     private const decimal SettlementCeilingDecimal = 999_999_999m;
     private const long SettlementCeilingLong = 999_999_999L;
+
+    [ThreadStatic]
+    internal static decimal t_lastGainBlockDecimal;
+
+    [ThreadStatic]
+    internal static int t_lastAttackUnblockedDamage;
 
     /// <summary>
     /// Exact STS2 0.113.1 block gain (Phase 1 compatibility overload without sidecar/scratch).
@@ -76,6 +83,7 @@ internal static partial class HotCombatEngine
         int cardIdx,
         ushort cardDefId)
     {
+        t_lastGainBlockDecimal = 0m;
         if (IsOverOrEnding(in s) || !IsCreatureSlotValid(in s, targetSlot))
             return 0;
         if ((GetCreatureRef(ref s, targetSlot).Flags & HotCreatureFlags.Alive) == 0)
@@ -83,7 +91,7 @@ internal static partial class HotCombatEngine
 
         decimal block = baseAmount;
 
-        // Card enchantment additive block (Nimble / Steady)
+        // Card enchantment additive block (Nimble / Goopy)
         if (isCardBlock && cardIdx >= 0 && cardIdx < s.TotalCardCount && s.Cards[cardIdx].EnchId != 0)
         {
             byte eId = s.Cards[cardIdx].EnchId;
@@ -92,6 +100,8 @@ internal static partial class HotCombatEngine
                 HotEnchantmentId kind = rules.Enchantments[eId].EnchantmentId;
                 if (kind == HotEnchantmentId.Nimble)
                     block += s.Cards[cardIdx].EnchAmt;
+                else if (kind == HotEnchantmentId.Goopy && s.Cards[cardIdx].EnchAmt > 1)
+                    block += s.Cards[cardIdx].EnchAmt - 1;
             }
         }
 
@@ -128,6 +138,8 @@ internal static partial class HotCombatEngine
                 block *= mulArgs.DecimalMultiplier;
         }
 
+        decimal decimalResult = Math.Max(0m, block);
+        t_lastGainBlockDecimal = decimalResult;
         if (block <= 0m)
             return 0;
 
@@ -164,6 +176,7 @@ internal static partial class HotCombatEngine
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterBlockGained, ref afterArgs);
         }
 
+        t_lastGainBlockDecimal = decimalResult;
         return gained;
     }
 
@@ -256,19 +269,33 @@ internal static partial class HotCombatEngine
 
         decimal damageRemaining = modifiedAmount;
 
-        // Pre-block Wuppy interception when player is targeted.
+        // Pre-block Wuppy interception when player is targeted on powered attacks (WuppysLoyaltyPower.cs:28-43).
         if (targetSlot == 0
+            && isPoweredAttack
             && damageRemaining > 0m
             && (s.CombatFlags & HotCombatFlags.HasWuppy) != 0
-            && (s.Wuppy.Flags & HotCreatureFlags.Alive) != 0)
+            && (s.Wuppy.Flags & HotCreatureFlags.Alive) != 0
+            && (rules.HasRelic(HotRelicId.Wuppy) || GetPowerAmountById(in s, rules, 2, HotPowerId.WuppysLoyaltyPower) > 0))
         {
             int wuppyDmg = (int)Math.Clamp(damageRemaining, 0m, SettlementCeilingDecimal);
             int wuppyPrev = s.Wuppy.CurrentHp;
             bool wuppyKilled = wuppyPrev > 0 && damageRemaining >= wuppyPrev;
             s.Wuppy.CurrentHp = Math.Max(0, wuppyPrev - wuppyDmg);
+            int wuppyLoss = wuppyPrev - s.Wuppy.CurrentHp;
             int wuppyOverkill = wuppyKilled ? Math.Max(wuppyDmg - wuppyPrev, 0) : 0;
             if (wuppyKilled || s.Wuppy.CurrentHp <= 0)
                 s.Wuppy.Flags &= ~HotCreatureFlags.Alive;
+            if (wuppyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
+            {
+                HotHookArgs wuppyHpArgs = new()
+                {
+                    TargetSlot = 2,
+                    Amount = wuppyLoss,
+                };
+                DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterHpLost, ref wuppyHpArgs);
+                if (scratch.NeedsChoice)
+                    return 0;
+            }
             damageRemaining = wuppyOverkill;
         }
 
@@ -295,7 +322,7 @@ internal static partial class HotCombatEngine
                 return 0;
         }
 
-        // Post-block Osty interception when player is targeted on powered attacks.
+        // Post-block Osty interception when player is targeted on powered attacks (DieForYouPower.cs:15-30).
         if (targetSlot == 0
             && isPoweredAttack
             && damageRemaining > 0m
@@ -306,9 +333,23 @@ internal static partial class HotCombatEngine
             int ostyPrev = s.Osty.CurrentHp;
             bool ostyKilled = ostyPrev > 0 && damageRemaining >= ostyPrev;
             s.Osty.CurrentHp = Math.Max(0, ostyPrev - ostyDmg);
+            int ostyLoss = ostyPrev - s.Osty.CurrentHp;
             int ostyOverkill = ostyKilled ? Math.Max(ostyDmg - ostyPrev, 0) : 0;
             if (ostyKilled || s.Osty.CurrentHp <= 0)
                 s.Osty.Flags &= ~HotCreatureFlags.Alive;
+            if (ostyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
+            {
+                HotHookArgs ostyHpArgs = new()
+                {
+                    TargetSlot = 1,
+                    Amount = ostyLoss,
+                };
+                DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterHpLost, ref ostyHpArgs);
+                if (scratch.NeedsChoice)
+                    return 0;
+            }
+            if ((s.Osty.Flags & HotCreatureFlags.Alive) == 0)
+                HotRegentNecro.OnAnyCreatureDeath(ref s, ref cold, rules);
             damageRemaining = ostyOverkill;
         }
 
@@ -344,6 +385,12 @@ internal static partial class HotCombatEngine
                 s.HistoryUnblockedHitsReceived++;
                 s.Counters[(int)HotCounterSlot.HasLostHpThisTurn] = 1;
                 s.Counters[(int)HotCounterSlot.PlayerCumulativeHpLost] += unblockedDamage;
+            }
+            else if (targetSlot >= 3 && scratch.AttackActive)
+            {
+                int enemyIdx = targetSlot - 3;
+                if ((uint)enemyIdx < 32u)
+                    scratch.AttackUnblockedEnemyMask |= 1u << enemyIdx;
             }
             scratch.UnblockedDamageThisPlay = true;
 
@@ -465,6 +512,157 @@ internal static partial class HotCombatEngine
         return DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot, (byte)(3 + enemySlot), baseDamage, isPoweredAttack, isUnblockable, -1, 0);
     }
 
+    internal static void ExecuteDealerSingleTargetAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        byte dealerSlot,
+        int cardIdx,
+        ushort cardDefId,
+        int targetEnemySlot,
+        int baseDamage,
+        int hits,
+        bool powered)
+    {
+        if (IsOverOrEnding(in s) || !IsValidEnemyTarget(in s, targetEnemySlot) || hits <= 0)
+            return;
+        if (dealerSlot == 1 && ((s.CombatFlags & HotCombatFlags.HasOsty) == 0 || (s.Osty.Flags & HotCreatureFlags.Alive) == 0))
+            return;
+        if (cardDefId == 0 && cardIdx >= 0 && cardIdx < s.TotalCardCount)
+            cardDefId = s.Cards[cardIdx].CardDefId;
+
+        hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
+        byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
+
+        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+        scratch.AttackActive = true;
+        int totalUnblocked = 0;
+        for (int h = 0; h < hits; h++)
+        {
+            if (IsOverOrEnding(in s)
+                || (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0
+                || scratch.NeedsChoice)
+            {
+                break;
+            }
+            if (dealerSlot == 0 && (s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                break;
+            if (dealerSlot == 1 && (s.Osty.Flags & HotCreatureFlags.Alive) == 0)
+                break;
+            totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot, targetCreatureSlot, baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+        }
+        scratch.AttackActive = false;
+        t_lastAttackUnblockedDamage = totalUnblocked;
+        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+    }
+
+    internal static void ExecuteDealerAllEnemiesAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        byte dealerSlot,
+        int cardIdx,
+        ushort cardDefId,
+        int baseDamage,
+        int hits,
+        bool powered)
+    {
+        if (IsOverOrEnding(in s) || hits <= 0)
+            return;
+        if (dealerSlot == 1 && ((s.CombatFlags & HotCombatFlags.HasOsty) == 0 || (s.Osty.Flags & HotCreatureFlags.Alive) == 0))
+            return;
+        if (cardDefId == 0 && cardIdx >= 0 && cardIdx < s.TotalCardCount)
+            cardDefId = s.Cards[cardIdx].CardDefId;
+
+        hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
+        Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
+
+        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+        scratch.AttackActive = true;
+        for (int h = 0; h < hits; h++)
+        {
+            if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                break;
+            if (dealerSlot == 0 && (s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                break;
+            if (dealerSlot == 1 && (s.Osty.Flags & HotCreatureFlags.Alive) == 0)
+                break;
+
+            int targetCount = SnapshotLivingEnemies(in s, targets);
+            if (targetCount == 0)
+                break;
+
+            for (int t = 0; t < targetCount; t++)
+            {
+                if (scratch.NeedsChoice)
+                    break;
+                if (dealerSlot == 0 && (s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                    break;
+                if (dealerSlot == 1 && (s.Osty.Flags & HotCreatureFlags.Alive) == 0)
+                    break;
+                byte enemySlot = targets[t];
+                if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                    continue;
+                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot, (byte)(3 + enemySlot), baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId, deferKill: true);
+            }
+            for (int t = 0; t < targetCount; t++)
+            {
+                if (scratch.NeedsChoice)
+                    break;
+                byte enemySlot = targets[t];
+                if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                    && s.Enemies[enemySlot].Vital.CurrentHp <= 0)
+                {
+                    KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false);
+                }
+            }
+        }
+        scratch.AttackActive = false;
+        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+    }
+
+    internal static void ExecuteDealerRandomEnemyAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        byte dealerSlot,
+        int cardIdx,
+        ushort cardDefId,
+        int baseDamage,
+        int hits,
+        bool powered)
+    {
+        if (IsOverOrEnding(in s) || hits <= 0)
+            return;
+        if (dealerSlot == 1 && ((s.CombatFlags & HotCombatFlags.HasOsty) == 0 || (s.Osty.Flags & HotCreatureFlags.Alive) == 0))
+            return;
+        if (cardDefId == 0 && cardIdx >= 0 && cardIdx < s.TotalCardCount)
+            cardDefId = s.Cards[cardIdx].CardDefId;
+
+        hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
+
+        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+        scratch.AttackActive = true;
+        for (int h = 0; h < hits; h++)
+        {
+            if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                break;
+            if (dealerSlot == 0 && (s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                break;
+            if (dealerSlot == 1 && (s.Osty.Flags & HotCreatureFlags.Alive) == 0)
+                break;
+            int enemySlot = PickRandomLivingEnemySlot(ref s);
+            if (enemySlot < 0)
+                break;
+            DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot, (byte)(3 + enemySlot), baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+        }
+        scratch.AttackActive = false;
+        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int PickRandomLivingEnemySlot(ref CombatHotState s)
     {
@@ -492,7 +690,8 @@ internal static partial class HotCombatEngine
         if (!isPoweredAttack)
             return Math.Max(0m, damage);
 
-        // Card enchantment additive damage (Sharp / Momentum / Vigorous)
+        // Card enchantment additive & multiplicative damage (Hook.ModifyDamage lines 1541-1551:
+        // EnchantDamageAdditive then EnchantDamageMultiplicative run BEFORE Strength/Vigor/Weak/Vulnerable).
         if (cardIdx >= 0 && cardIdx < s.TotalCardCount && s.Cards[cardIdx].EnchId != 0)
         {
             byte eId = s.Cards[cardIdx].EnchId;
@@ -505,6 +704,12 @@ internal static partial class HotCombatEngine
                     damage += s.Cards[cardIdx].EnchPrivate;
                 else if (kind == HotEnchantmentId.Vigorous && s.Cards[cardIdx].EnchStatus == 0)
                     damage += s.Cards[cardIdx].EnchAmt;
+                else if (kind == HotEnchantmentId.TezcatarasEmber)
+                    damage += 3m;
+                else if (kind == HotEnchantmentId.Instinct)
+                    damage *= 2m;
+                else if (kind == HotEnchantmentId.Corrupted)
+                    damage *= 1.5m;
             }
         }
 
@@ -604,8 +809,33 @@ internal static partial class HotCombatEngine
         ref HotCreature c = ref GetCreatureRef(ref s, targetSlot);
         if ((c.Flags & HotCreatureFlags.Alive) == 0)
             return;
-        c.MaxHp += amount;
-        c.CurrentHp = Math.Min(c.MaxHp, c.CurrentHp + amount);
+        int oldMax = c.MaxHp;
+        int nextMax = (int)Math.Min((long)oldMax + amount, SettlementCeilingLong);
+        int delta = nextMax - oldMax;
+        c.MaxHp = nextMax;
+        if (delta > 0)
+            HealCreature(ref s, targetSlot, delta);
+    }
+
+    internal static void GainMaxHp(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        byte targetSlot,
+        int amount)
+    {
+        if (amount <= 0 || !IsCreatureSlotValid(in s, targetSlot))
+            return;
+        ref HotCreature c = ref GetCreatureRef(ref s, targetSlot);
+        if ((c.Flags & HotCreatureFlags.Alive) == 0)
+            return;
+        int oldMax = c.MaxHp;
+        int nextMax = (int)Math.Min((long)oldMax + amount, SettlementCeilingLong);
+        int delta = nextMax - oldMax;
+        c.MaxHp = nextMax;
+        if (delta > 0)
+            HealCreature(ref s, ref cold, rules, scratch, targetSlot, delta);
     }
 
     internal static void LoseMaxHp(
@@ -658,6 +888,12 @@ internal static partial class HotCombatEngine
             return;
         s.Stars += amount;
         s.Counters[(int)HotCounterSlot.StarsGainedThisTurn] += amount;
+
+        // 0.113.1 BlackHolePower.AfterStarsGained (sole combat listener of AfterStarsGained):
+        // deals Unpowered AOE damage to all living enemies whenever player gains > 0 stars.
+        int blackHoleAmt = GetPowerAmountById(in s, rules, 0, HotPowerId.BlackHolePower);
+        if (blackHoleAmt > 0 && !IsOverOrEnding(in s) && !scratch.NeedsChoice)
+            DamageAllEnemies(ref s, ref cold, rules, scratch, dealerSlot: 0, baseDamage: blackHoleAmt, isPoweredAttack: false);
     }
 
     internal static void Forge(
@@ -717,24 +953,7 @@ internal static partial class HotCombatEngine
         HotRules rules,
         HotExecScratch scratch,
         int amount)
-    {
-        if (amount <= 0 || IsOverOrEnding(in s))
-            return;
-        s.CombatFlags |= HotCombatFlags.HasOsty;
-        if ((s.Osty.Flags & HotCreatureFlags.Alive) == 0)
-        {
-            s.Osty.Flags = HotCreatureFlags.Alive | HotCreatureFlags.IsOsty | HotCreatureFlags.IsPet;
-            s.Osty.SlotIdx = 1;
-            s.Osty.MaxHp = amount;
-            s.Osty.CurrentHp = amount;
-            s.Osty.Block = 0;
-        }
-        else
-        {
-            s.Osty.MaxHp += amount;
-            s.Osty.CurrentHp = Math.Min(s.Osty.MaxHp, s.Osty.CurrentHp + amount);
-        }
-    }
+        => HotRegentNecro.SummonOsty(ref s, ref cold, rules, scratch, amount);
 
     /// <summary>
     /// Exact STS2 0.113.1 power application (Phase 1 compatibility overload).
@@ -899,10 +1118,10 @@ internal static partial class HotCombatEngine
             amount = preArgs.Amount;
         }
 
-        bool allowNegative = pid is HotPowerId.StrengthPower or HotPowerId.DexterityPower or HotPowerId.FocusPower
+        bool allowNegative = pid is HotPowerId.StrengthPower or HotPowerId.DexterityPower or HotPowerId.FocusPower or HotPowerId.ShrinkPower
             || powerDefId == rules.StrengthPowerDefId
             || powerDefId == rules.DexterityPowerDefId;
-        bool isDebuff = (def.Type == PowerType.Debuff && amount > 0)
+        bool isDebuff = (def.Type == PowerType.Debuff && (amount > 0 || pid == HotPowerId.ShrinkPower))
             || (def.Type == PowerType.Buff && allowNegative && amount < 0);
 
         // Artifact negation for incoming debuffs.
@@ -924,6 +1143,8 @@ internal static partial class HotCombatEngine
 
         int existingIdx = def.IsInstanced ? -1 : FindPowerIndex(in s, ownerSlot, powerDefId);
         int prevAmount = existingIdx >= 0 ? s.Powers[existingIdx].Amount : 0;
+        if (pid == HotPowerId.MinionPower && existingIdx >= 0 && prevAmount > 0 && amount > 0)
+            return 0;
         long sum = (long)prevAmount + amount;
         int newAmount = (int)Math.Clamp(sum, allowNegative ? -SettlementCeilingLong : 0L, SettlementCeilingLong);
         int delta = newAmount - prevAmount;
@@ -939,6 +1160,8 @@ internal static partial class HotCombatEngine
         else if (existingIdx >= 0)
         {
             s.Powers[existingIdx].Amount = newAmount;
+            if (amount > 0 && pid == HotPowerId.CrimsonMantlePower)
+                s.Powers[existingIdx].Aux0++;
         }
         else
         {
@@ -961,13 +1184,21 @@ internal static partial class HotCombatEngine
                 flags |= HotPowerFlags.WasJustAppliedByEnemy;
             }
 
+            // PanachePower.InitInternalData starts with alreadyApplied = false so the Panache card's
+            // own AfterCardPlayed does not decrement CardsLeft from 5 -> 4 (PanachePower.cs:22,51-63).
+            if (pid == HotPowerId.PanachePower)
+                flags |= HotPowerFlags.BoolAux;
+
+            // Note: InfernoPower and EnnuiPower start at CanonicalVar 0 (SelfDamage=0 / Cards=0) and
+            // are incremented by Inferno/Ennui OnPlay in HotCombatEngine.Bytecode.cs:197-202.
             int initAux0 = pid switch
             {
                 HotPowerId.PanachePower => 5,
                 HotPowerId.AutomationPower => 10,
                 HotPowerId.CacophonyPower => 3,
-                HotPowerId.InfernoPower => 1,
                 HotPowerId.CrimsonMantlePower => 1,
+                HotPowerId.InsatiableDominionPower => 2 + s.PlayerTurnNumber,
+                HotPowerId.WitheringPresencePower => 6,
                 _ => 0,
             };
 
@@ -988,9 +1219,25 @@ internal static partial class HotCombatEngine
         }
 
         if (pid == HotPowerId.DoomPower && delta > 0)
+        {
             s.Counters[(int)HotCounterSlot.WasDoomAppliedThisTurn] = 1;
+        }
         else if (pid == HotPowerId.FocusPower && ownerSlot == 0 && delta != 0)
+        {
             SyncOrbsOnFocusChanged(ref s, rules, delta);
+        }
+        else if (ownerSlot == 0 && newAmount > 0 && pid is HotPowerId.HexPower or HotPowerId.TangledPower or HotPowerId.RingingPower)
+        {
+            ApplyPlayerPowerCardAffliction(ref s, rules, pid, newAmount);
+        }
+        else if (pid == HotPowerId.IllusionPower && newAmount > 0 && ownerSlot >= 3
+            && GetPowerAmountById(in s, rules, ownerSlot, HotPowerId.MinionPower) <= 0)
+        {
+            // 0.113.1 IllusionPower.AfterApplied: automatically applies MinionPower(1) if not already present.
+            ushort minionDefId = rules.GetPowerDefId(HotPowerId.MinionPower);
+            if (minionDefId != 0)
+                ApplyPowerRaw(ref s, ref cold, rules, scratch, ownerSlot, 0xFF, minionDefId, 1, isCardSource: false);
+        }
 
         if (delta != 0 && scratch != null && (s.ActiveHookMask & (ulong)HotHookMask.AfterPowerAmountChanged) != 0)
         {
@@ -1059,6 +1306,7 @@ internal static partial class HotCombatEngine
             return;
         }
 
+        int prevAmount = s.Powers[idx].Amount;
         if (newAmount == 0)
         {
             RemovePowerAt(ref s, idx);
@@ -1068,6 +1316,9 @@ internal static partial class HotCombatEngine
         {
             s.Powers[idx].Amount = newAmount;
         }
+
+        if (ownerSlot == 0 && newAmount != prevAmount && rules.Powers[powerDefId].PowerId == HotPowerId.FocusPower)
+            SyncOrbsOnFocusChanged(ref s, rules, newAmount - prevAmount);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1212,18 +1463,40 @@ internal static partial class HotCombatEngine
 
         if (targetSlot == 1)
         {
+            int ostyLoss = s.Osty.CurrentHp;
             s.Osty.CurrentHp = 0;
             s.Osty.Flags &= ~HotCreatureFlags.Alive;
-            RemoveAllPowersForOwner(ref s, 1);
+            if (ostyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
+            {
+                HotHookArgs ostyHpArgs = new()
+                {
+                    TargetSlot = 1,
+                    Amount = ostyLoss,
+                };
+                DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterHpLost, ref ostyHpArgs);
+            }
+            RemoveDeadPetPowers(ref s, rules, ownerSlot: 1, keepPowerId: HotPowerId.DieForYouPower);
+            HotRegentNecro.OnAnyCreatureDeath(ref s, ref cold, rules);
             s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
             return;
         }
 
         if (targetSlot == 2)
         {
+            int wuppyLoss = s.Wuppy.CurrentHp;
             s.Wuppy.CurrentHp = 0;
             s.Wuppy.Flags &= ~HotCreatureFlags.Alive;
-            RemoveAllPowersForOwner(ref s, 2);
+            if (wuppyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
+            {
+                HotHookArgs wuppyHpArgs = new()
+                {
+                    TargetSlot = 2,
+                    Amount = wuppyLoss,
+                };
+                DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterHpLost, ref wuppyHpArgs);
+            }
+            RemoveDeadPetPowers(ref s, rules, ownerSlot: 2, keepPowerId: HotPowerId.WuppysLoyaltyPower);
+            HotRegentNecro.OnAnyCreatureDeath(ref s, ref cold, rules);
             s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
             return;
         }
@@ -1260,13 +1533,14 @@ internal static partial class HotCombatEngine
 
         // Remove permanently dead enemy's removable powers (HotMonsters leaves them intact until AfterDeath finishes;
         // if enemy stays in ActiveEnemyRoster e.g. ReattachPower/AdaptablePower/PainfulStabs, preserve non-removable death powers).
+        // Per 0.113.1 AfterRemoved semantics: only clear Tainted if VitalSparkPower was actually removed from this dead enemy.
+        // GalvanicPower has NO AfterRemoved (Galvanized persists), and SmoggyPower clears Smog only at player AfterSideTurnEnd.
         if (s.Enemies[enemySlot].DeathPhase != HotDeathPhase.Reviving)
-            RemoveDeadEnemyPowers(ref s, rules, enemySlot, targetSlot);
-
-        // Clear card afflictions whose source enemy/power was removed on death (VitalSpark -> Tainted,
-        // Galvanic -> Galvanized, Hex/Tangled/Ringing via NormalizeCardAfflictions).
-        HotMonsters.NormalizeCardAfflictions(ref s, rules);
-        ClearOrphanedEnemyCardAfflictions(ref s, rules);
+        {
+            bool removedVitalSpark = RemoveDeadEnemyPowers(ref s, rules, enemySlot, targetSlot);
+            if (removedVitalSpark)
+                HotMonsters.ClearCardAffliction(ref s, rules, HotAfflictionId.Tainted);
+        }
 
         s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
 
@@ -1277,13 +1551,43 @@ internal static partial class HotCombatEngine
         }
     }
 
-    private static void RemoveDeadEnemyPowers(ref CombatHotState s, HotRules rules, byte enemySlot, byte ownerSlot)
+    private static void RemoveDeadPetPowers(ref CombatHotState s, HotRules rules, byte ownerSlot, HotPowerId keepPowerId)
     {
+        int i = 0;
+        while (i < s.PowerCount)
+        {
+            ref readonly HotPower p = ref s.Powers[i];
+            if (p.OwnerSlot != ownerSlot)
+            {
+                i++;
+                continue;
+            }
+            if (p.PowerDefId < rules.Powers.Length && rules.Powers[p.PowerDefId].PowerId == keepPowerId)
+                i++;
+            else
+                RemovePowerAt(ref s, i);
+        }
+    }
+
+    private static bool RemoveDeadEnemyPowers(ref CombatHotState s, HotRules rules, byte enemySlot, byte ownerSlot)
+    {
+        bool removedVitalSpark = false;
         bool departed = (s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.ActiveInRoster) == 0;
         if (departed)
         {
+            for (int k = 0; k < s.PowerCount; k++)
+            {
+                ref readonly HotPower p = ref s.Powers[k];
+                if (p.OwnerSlot == ownerSlot
+                    && p.PowerDefId < rules.Powers.Length
+                    && rules.Powers[p.PowerDefId].PowerId == HotPowerId.VitalSparkPower)
+                {
+                    removedVitalSpark = true;
+                    break;
+                }
+            }
             RemoveAllPowersForOwner(ref s, ownerSlot);
-            return;
+            return removedVitalSpark;
         }
 
         int i = 0;
@@ -1296,61 +1600,117 @@ internal static partial class HotCombatEngine
                 continue;
             }
 
-            bool keep = p.PowerDefId < rules.Powers.Length
-                && rules.Powers[p.PowerDefId].PowerId is
-                    HotPowerId.AdaptablePower
-                    or HotPowerId.DieForYouPower
-                    or HotPowerId.IllusionPower
-                    or HotPowerId.MinionPower
-                    or HotPowerId.PainfulStabsPower
-                    or HotPowerId.ReattachPower
-                    or HotPowerId.SteamEruptionPower;
+            HotPowerId pid = p.PowerDefId < rules.Powers.Length ? rules.Powers[p.PowerDefId].PowerId : HotPowerId.None;
+            bool keep = pid is
+                HotPowerId.AdaptablePower
+                or HotPowerId.DieForYouPower
+                or HotPowerId.IllusionPower
+                or HotPowerId.MinionPower
+                or HotPowerId.PainfulStabsPower
+                or HotPowerId.ReattachPower
+                or HotPowerId.SteamEruptionPower;
             if (keep)
+            {
                 i++;
+            }
             else
+            {
+                if (pid == HotPowerId.VitalSparkPower)
+                    removedVitalSpark = true;
                 RemovePowerAt(ref s, i);
+            }
+        }
+        return removedVitalSpark;
+    }
+
+    internal static void ApplyPlayerPowerCardAffliction(ref CombatHotState s, HotRules rules, HotPowerId powerId, int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        if (powerId == HotPowerId.HexPower)
+        {
+            byte hexId = rules.GetAfflictionDefId(HotAfflictionId.Hexed);
+            if (hexId == 0)
+                return;
+            short clamped = (short)Math.Clamp(amount, 0, short.MaxValue);
+            int total = s.TotalCardCount;
+            for (int c = 0; c < total; c++)
+            {
+                ref HotCard card = ref s.Cards[c];
+                if (card.AfflId == 0)
+                {
+                    card.AfflId = hexId;
+                    card.AfflAmt = clamped;
+                }
+            }
+        }
+        else if (powerId == HotPowerId.TangledPower)
+        {
+            byte entId = rules.GetAfflictionDefId(HotAfflictionId.Entangled);
+            if (entId == 0)
+                return;
+            int total = s.TotalCardCount;
+            for (int c = 0; c < total; c++)
+            {
+                ref HotCard card = ref s.Cards[c];
+                if (card.AfflId == 0 && card.CardDefId < rules.Cards.Length && rules.Cards[card.CardDefId].Type == CardType.Attack)
+                {
+                    card.AfflId = entId;
+                    card.AfflAmt = 1;
+                }
+            }
+        }
+        else if (powerId == HotPowerId.RingingPower)
+        {
+            byte ringId = rules.GetAfflictionDefId(HotAfflictionId.Ringing);
+            if (ringId == 0)
+                return;
+            int total = s.TotalCardCount;
+            for (int c = 0; c < total; c++)
+            {
+                ref HotCard card = ref s.Cards[c];
+                if (card.AfflId == 0)
+                {
+                    card.AfflId = ringId;
+                    card.AfflAmt = 1;
+                }
+            }
         }
     }
 
-    private static void ClearOrphanedEnemyCardAfflictions(ref CombatHotState s, HotRules rules)
+    /// <summary>
+    /// Exact STS2 0.113.1 global+local Ethereal check (<c>CardModel.Keywords.Contains(Ethereal)</c>):
+    /// true when the card has local <c>Ethereal</c> OR carries <c>Hexed</c> while player has <c>HexPower</c>
+    /// (<c>HexPower.TryModifyKeywordsInCombat</c>, never mutating <c>LocalKeywordsMask</c>).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsCardEthereal(in CombatHotState s, in HotCard card, HotRules rules)
     {
-        bool hasVitalSpark = false;
-        bool hasGalvanic = false;
-        bool hasSmoggy = false;
-        int powerCount = s.PowerCount;
-        for (int i = 0; i < powerCount; i++)
+        if ((card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0)
+            return true;
+        if (card.AfflId != 0
+            && card.AfflId < rules.Afflictions.Length
+            && rules.Afflictions[card.AfflId].AfflictionId == HotAfflictionId.Hexed)
         {
-            ref readonly HotPower p = ref s.Powers[i];
-            if (p.Amount <= 0 || p.PowerDefId >= rules.Powers.Length)
-                continue;
-            if (!IsCreatureSlotValid(in s, p.OwnerSlot)
-                || (GetCreatureRef(ref s, p.OwnerSlot).Flags & HotCreatureFlags.Alive) == 0)
-            {
-                continue;
-            }
-            HotPowerId pid = rules.Powers[p.PowerDefId].PowerId;
-            if (pid == HotPowerId.VitalSparkPower) hasVitalSpark = true;
-            else if (pid == HotPowerId.GalvanicPower) hasGalvanic = true;
-            else if (pid == HotPowerId.SmoggyPower) hasSmoggy = true;
+            return GetPowerAmountById(in s, rules, 0, HotPowerId.HexPower) > 0;
         }
+        return false;
+    }
 
-        if (hasVitalSpark && hasGalvanic && hasSmoggy)
-            return;
-
-        int totalCards = s.TotalCardCount;
-        for (int c = 0; c < totalCards; c++)
+    internal static void ClearHexedAffliction(ref CombatHotState s, HotRules rules)
+    {
+        int total = s.TotalCardCount;
+        for (int c = 0; c < total; c++)
         {
-            byte afflDefId = s.Cards[c].AfflId;
-            if (afflDefId == 0 || afflDefId >= rules.Afflictions.Length)
+            ref HotCard card = ref s.Cards[c];
+            if (card.AfflId == 0 || card.AfflId >= rules.Afflictions.Length)
                 continue;
-            HotAfflictionId affl = rules.Afflictions[afflDefId].AfflictionId;
-            if ((!hasVitalSpark && affl == HotAfflictionId.Tainted)
-                || (!hasGalvanic && affl == HotAfflictionId.Galvanized)
-                || (!hasSmoggy && affl == HotAfflictionId.Smog))
-            {
-                s.Cards[c].AfflId = 0;
-                s.Cards[c].AfflAmt = 0;
-            }
+            if (rules.Afflictions[card.AfflId].AfflictionId != HotAfflictionId.Hexed)
+                continue;
+
+            card.AfflId = 0;
+            card.AfflAmt = 0;
         }
     }
 }

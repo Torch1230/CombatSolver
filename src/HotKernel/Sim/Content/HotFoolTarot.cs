@@ -50,6 +50,83 @@ internal static class HotFoolTarot
         HotCardDef def = rules.Cards[cardDefId];
         HotCustomCardId cardId = def.CardId;
 
+        HotRules? prevRules = HotPiles.PushActiveRules(rules);
+        try
+        {
+            HotCard cardSnapshot = card;
+            return TryExecuteCustomCardBody(ref s, ref cold, rules, scratch, cardDefId, def, cardId, cardSnapshot, targetEnemySlot, out result);
+        }
+        finally
+        {
+            HotPiles.PopActiveRules(prevRules);
+        }
+    }
+
+    private static void ExecutePlayedCardSingleAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ushort cardUid,
+        ushort cardDefId,
+        int targetEnemySlot,
+        int baseDamage,
+        int hits = 1)
+    {
+        int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
+        HotCombatEngine.ExecuteDealerSingleTargetAttack(
+            ref s, ref cold, rules, scratch,
+            dealerSlot: 0, cardIdx: playIdx, cardDefId: cardDefId,
+            targetEnemySlot: targetEnemySlot, baseDamage: baseDamage, hits: hits, powered: true);
+    }
+
+    private static void ExecutePlayedCardAllEnemiesAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ushort cardUid,
+        ushort cardDefId,
+        int baseDamage,
+        int hits = 1)
+    {
+        int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
+        HotCombatEngine.ExecuteDealerAllEnemiesAttack(
+            ref s, ref cold, rules, scratch,
+            dealerSlot: 0, cardIdx: playIdx, cardDefId: cardDefId,
+            baseDamage: baseDamage, hits: hits, powered: true);
+    }
+
+    private static void GainPlayedCardBlock(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ushort cardUid,
+        ushort cardDefId,
+        int baseBlock)
+    {
+        int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
+        HotCombatEngine.GainBlockInternal(
+            ref s, ref cold, rules, scratch,
+            targetSlot: 0, baseAmount: baseBlock, isCardBlock: true,
+            cardIdx: playIdx, cardDefId: cardDefId);
+    }
+
+    private static bool TryExecuteCustomCardBody(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ushort cardDefId,
+        HotCardDef def,
+        HotCustomCardId cardId,
+        HotCard card,
+        int targetEnemySlot,
+        out HotStepResult result)
+    {
+        result = default;
+
         switch (cardId)
         {
             // =====================================================================
@@ -80,12 +157,13 @@ internal static class HotFoolTarot
                 if (hits > 0 && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                 {
                     int dmg = cardId == HotCustomCardId.TheShot
-                        ? HotRegentNecro.GetVarInt(in card, def, "CalculationBase", 10)
+                        ? HotRegentNecro.GetVarInt(in card, def, "CalculationBase", 0)
                             + HotRegentNecro.GetVarInt(in card, def, "ExtraDamage", HotRegentNecro.GetVarInt(in card, def, "CalculationExtra", 10)) * card.CardPrivate
                             + card.Var0Delta
                         : def.GetDamage(card.UpgradeLevel, card.Var0Delta);
 
-                    bool shot = ExecuteShootArrowCard(ref s, ref cold, rules, scratch, cardDefId, dmg, hits, targetEnemySlot);
+                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
+                    bool shot = ExecuteShootArrowCard(ref s, ref cold, rules, scratch, cardDefId, dmg, hits, targetEnemySlot, playIdx);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
 
@@ -113,9 +191,10 @@ internal static class HotFoolTarot
                     {
                         byte targetSlot = (byte)(3 + targetEnemySlot);
                         int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
+                        int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
                         int hpBefore = s.Enemies[targetEnemySlot].Vital.CurrentHp;
                         int blkBefore = s.Enemies[targetEnemySlot].Vital.Block;
-                        ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, dmg, 1);
+                        ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, dmg, 1, playIdx);
                         if (scratch.NeedsChoice)
                             return PauseForChoice(in s, out result);
 
@@ -140,9 +219,10 @@ internal static class HotFoolTarot
                     if (arrowIdx >= 0 && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                     {
                         int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
+                        int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
                         int hpBefore = s.Enemies[targetEnemySlot].Vital.CurrentHp;
                         int blkBefore = s.Enemies[targetEnemySlot].Vital.Block;
-                        ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, dmg, 1);
+                        ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, dmg, 1, playIdx);
                         if (scratch.NeedsChoice)
                             return PauseForChoice(in s, out result);
 
@@ -187,7 +267,7 @@ internal static class HotFoolTarot
                 if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
@@ -276,7 +356,7 @@ internal static class HotFoolTarot
                     int extra = HotRegentNecro.GetVarInt(in card, def, "ExtraDamage", HotRegentNecro.GetVarInt(in card, def, "CalculationExtra", 6));
                     int sadnessCount = s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore];
                     int dmg = calcBase + extra * sadnessCount + card.Var0Delta;
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg);
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -294,18 +374,15 @@ internal static class HotFoolTarot
                     if (id > 0 && id < rules.Cards.Length && rules.Cards[id].IsShootTag)
                         shootCandidates[shootCount++] = id;
                 }
+                // 0.113.1 BlotOutTheSky.cs:29 -> CardFactory.GetDistinctForCombat -> TakeRandom(1, rng) ->
+                // ListExtensions.UnstableShuffle(rng): unconditionally consumes 1 NextULong even when empty,
+                // then shuffles the candidate span and takes index 0.
+                HotRng.UnstableShuffle(shootCandidates[..shootCount], ref s.Rng[(int)HotRngStream.CombatCardGeneration]);
                 if (shootCount > 0)
                 {
-                    int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], shootCount);
-                    ushort chosenDefId = shootCandidates[pick];
+                    ushort chosenDefId = shootCandidates[0];
                     HotCard created = CreateFreshCard(ref s, rules, chosenDefId, upgraded: false);
-                    HotCostModifiers.AddEnergyModifier(
-                        ref created,
-                        ref cold,
-                        amount: 0,
-                        isAbsolute: true,
-                        expiration: (int)LocalCostModifierExpiration.EndOfTurn,
-                        isReduceOnly: false);
+                    HotCombatEngine.SetCardToFreeThisTurn(ref created, ref cold);
                     HotCombatEngine.AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in created, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
                 }
                 return Complete(in s, scratch, out result);
@@ -318,7 +395,7 @@ internal static class HotFoolTarot
                 {
                     bool impaled = IsEnemyImpaledAny(in s, rules, targetEnemySlot);
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
 
@@ -361,7 +438,7 @@ internal static class HotFoolTarot
             case HotCustomCardId.ChoBarbs:
             {
                 int blk = def.GetBlock(card.UpgradeLevel, card.Var1Delta);
-                HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 if (!scratch.NeedsChoice)
                 {
                     int barbs = HotRegentNecro.GetVarInt(in card, def, "ChoBarbsPower", Math.Max(1, def.GetMagic(card.UpgradeLevel)));
@@ -378,7 +455,7 @@ internal static class HotFoolTarot
             case HotCustomCardId.ChoChorus:
             {
                 int blk = def.GetBlock(card.UpgradeLevel, card.Var1Delta);
-                HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 if (scratch.NeedsChoice)
                     return PauseForChoice(in s, out result);
 
@@ -405,7 +482,7 @@ internal static class HotFoolTarot
                 int blk = def.GetBlock(card.UpgradeLevel, card.Var1Delta);
                 int times = cardId == HotCustomCardId.ChoLimbs || CountAvailableArrows(in s) > 0 ? 2 : 1;
                 for (int i = 0; i < times && !scratch.NeedsChoice; i++)
-                    HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                    GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 return Complete(in s, scratch, out result);
             }
 
@@ -413,7 +490,7 @@ internal static class HotFoolTarot
             {
                 int stretch = HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.StretchPower);
                 int blk = def.GetBlock(card.UpgradeLevel, card.Var1Delta);
-                HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 if (!scratch.NeedsChoice && stretch > 0)
                     HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StretchPower, stretch, isCardSource: true);
                 return Complete(in s, scratch, out result);
@@ -422,7 +499,7 @@ internal static class HotFoolTarot
             case HotCustomCardId.ChoReady:
             {
                 int blk = def.GetBlock(card.UpgradeLevel, card.Var1Delta);
-                HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 if (!scratch.NeedsChoice)
                 {
                     int aim = HotRegentNecro.GetVarInt(in card, def, "AimPower", Math.Max(1, def.GetMagic(card.UpgradeLevel)));
@@ -529,14 +606,14 @@ internal static class HotFoolTarot
                 int calcBase = HotRegentNecro.GetVarInt(in card, def, "CalculationBase", def.GetBlock(card.UpgradeLevel, card.Var1Delta));
                 int calcExtra = HotRegentNecro.GetVarInt(in card, def, "CalculationExtra", card.UpgradeLevel > 0 ? 6 : 4);
                 int blk = calcBase + calcExtra * CountMelodies(in s) + card.Var1Delta;
-                HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 return Complete(in s, scratch, out result);
             }
 
             case HotCustomCardId.Jest:
             {
                 int blk = def.GetBlock(card.UpgradeLevel, card.Var1Delta);
-                HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 if (!scratch.NeedsChoice)
                 {
                     int sad = HotRegentNecro.GetVarInt(in card, def, "Cards", 1);
@@ -551,15 +628,29 @@ internal static class HotFoolTarot
                 if (s.DrawCount == 0 && s.DiscardCount > 0)
                 {
                     HotPiles.ShuffleDiscardIntoDraw(ref s, rules, scratch, cold);
+                    if ((s.ActiveHookMask & (ulong)HotHookMask.AfterShuffle) != 0)
+                    {
+                        HotHookArgs shArgs = new() { ActorSlot = 0 };
+                        HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterShuffle, ref shArgs);
+                        if (scratch.NeedsChoice)
+                            return PauseForChoice(in s, out result);
+                    }
                 }
                 else if (s.DrawCount < lookCount && s.DiscardCount > 0)
                 {
-                    // Preserve original top cards on top of Draw after shuffling Discard into Draw.
+                    // Preserve original top cards on top of Draw after shuffling Discard into Draw (KiChant.cs:45-47).
                     int origCount = s.DrawCount;
                     Span<ushort> origUids = stackalloc ushort[Math.Min(origCount, HotLimits.MaxCards)];
                     for (int i = 0; i < origUids.Length; i++)
                         origUids[i] = s.Cards[s.DrawStart + i].CardUid;
                     HotPiles.ShuffleDiscardIntoDraw(ref s, rules, scratch, cold);
+                    if ((s.ActiveHookMask & (ulong)HotHookMask.AfterShuffle) != 0)
+                    {
+                        HotHookArgs shArgs = new() { ActorSlot = 0 };
+                        HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterShuffle, ref shArgs);
+                        if (scratch.NeedsChoice)
+                            return PauseForChoice(in s, out result);
+                    }
                     for (int i = origUids.Length - 1; i >= 0; i--)
                     {
                         int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, origUids[i]);
@@ -617,7 +708,7 @@ internal static class HotFoolTarot
                 {
                     int hits = cardId == HotCustomCardId.WahKi ? def.GetHits(card.UpgradeLevel) : 1;
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    AttackSingleHits(ref s, ref cold, rules, scratch, targetEnemySlot, dmg, hits);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: hits);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
@@ -638,23 +729,47 @@ internal static class HotFoolTarot
                 if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
-                // Transform self into Sadness after play (in-place update of Play card).
-                ushort sadnessDefId = rules.GetCardDefId(HotCustomCardId.Sadness);
-                if (sadnessDefId != 0)
+                // Transform self into Sadness after play (0.113.1 MourningBlow.OnPlay -> CardCmd.Transform).
+                // Preserve CardUid so CardPlay.cs resolves the Play->Hand move after OnPlay,
+                // while clearing HasDeckVersion/enchantment/affliction/cost/keyword deltas.
+                if (!HotCombatEngine.IsOverOrEnding(in s))
                 {
-                    HotCardDef sadDef = rules.Cards[sadnessDefId];
-                    card.CardDefId = sadnessDefId;
-                    card.UpgradeLevel = 0;
-                    card.BaseEnergyCost = sadDef.BaseCost;
-                    card.BaseStarCost = sadDef.BaseStarCost;
-                    card.LocalKeywordsMask = (HotCardKeywordMask)sadDef.BaseKeywords;
-                    card.Var0Delta = 0;
-                    card.Var1Delta = 0;
-                    card.CardPrivate = 0;
+                    ushort sadnessDefId = rules.GetCardDefId(HotCustomCardId.Sadness);
+                    int livePlayIdx = sadnessDefId != 0
+                        ? HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid)
+                        : -1;
+                    if (livePlayIdx >= 0)
+                    {
+                        HotCardDef sadDef = rules.Cards[sadnessDefId];
+                        s.Cards[livePlayIdx] = new HotCard
+                        {
+                            CardDefId = sadnessDefId,
+                            CardUid = card.CardUid,
+                            UpgradeLevel = 0,
+                            BaseEnergyCost = sadDef.BaseCost,
+                            BaseStarCost = sadDef.BaseStarCost,
+                            LocalKeywordsMask = (HotCardKeywordMask)sadDef.BaseKeywords,
+                            Flags = HotCombatEngine.GetInitialCardFlags(sadDef),
+                        };
+                        s.HistoryCardsGenerated++;
+                        s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore]++;
+                        if (sadDef.HookMask != HotHookMask.None)
+                            s.ActiveHookMask |= (ulong)sadDef.HookMask;
+                        if ((s.ActiveHookMask & (ulong)HotHookMask.AfterCardEnteredCombat) != 0)
+                        {
+                            HotHookArgs enterArgs = new()
+                            {
+                                ActorSlot = 0,
+                                CardIdx = livePlayIdx,
+                                CardDefId = sadnessDefId,
+                            };
+                            HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardEnteredCombat, ref enterArgs);
+                        }
+                    }
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -678,7 +793,7 @@ internal static class HotFoolTarot
                 {
                     byte targetSlot = (byte)(3 + targetEnemySlot);
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, targetSlot, dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
 
@@ -695,7 +810,7 @@ internal static class HotFoolTarot
                 if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
@@ -729,7 +844,7 @@ internal static class HotFoolTarot
                     int hits = HotRegentNecro.GetVarInt(in card, def, "CalculationBase", 1)
                         + HotRegentNecro.GetVarInt(in card, def, "CalculationExtra", 1) * CountMelodies(in s);
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    AttackSingleHits(ref s, ref cold, rules, scratch, targetEnemySlot, dmg, hits);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: hits);
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -773,7 +888,7 @@ internal static class HotFoolTarot
                 if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
@@ -787,7 +902,7 @@ internal static class HotFoolTarot
                 if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
@@ -804,7 +919,7 @@ internal static class HotFoolTarot
                 {
                     bool aliveBefore = (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0;
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
 
@@ -812,7 +927,7 @@ internal static class HotFoolTarot
                     if (killed)
                     {
                         int onKill = HotRegentNecro.GetVarInt(in card, def, "OnKillDamage", dmg);
-                        HotCombatEngine.DamageAllEnemies(ref s, ref cold, rules, scratch, 0, onKill, isPoweredAttack: true);
+                        ExecutePlayedCardAllEnemiesAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, onKill, hits: 1);
                     }
                 }
                 return Complete(in s, scratch, out result);
@@ -835,8 +950,7 @@ internal static class HotFoolTarot
             {
                 int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                 int times = PlayedMelody(in s, 1) || PlayedMelody(in s, 2) ? 2 : 1;
-                for (int i = 0; i < times && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); i++)
-                    HotCombatEngine.DamageAllEnemies(ref s, ref cold, rules, scratch, 0, dmg, isPoweredAttack: true);
+                ExecutePlayedCardAllEnemiesAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, dmg, hits: times);
                 return Complete(in s, scratch, out result);
             }
 
@@ -844,14 +958,14 @@ internal static class HotFoolTarot
             case HotCustomCardId.WahChoKi:
             {
                 int blk = def.GetBlock(card.UpgradeLevel, card.Var1Delta);
-                HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 if (scratch.NeedsChoice)
                     return PauseForChoice(in s, out result);
 
                 if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
@@ -871,7 +985,7 @@ internal static class HotFoolTarot
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     if (IsEnemyImpaledAny(in s, rules, targetEnemySlot))
                         dmg *= 2;
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg);
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -879,7 +993,7 @@ internal static class HotFoolTarot
             case HotCustomCardId.WahSweep:
             {
                 int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                HotCombatEngine.DamageAllEnemies(ref s, ref cold, rules, scratch, 0, dmg, isPoweredAttack: true);
+                ExecutePlayedCardAllEnemiesAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, dmg);
                 return Complete(in s, scratch, out result);
             }
 
@@ -889,7 +1003,7 @@ internal static class HotFoolTarot
                 int extra = HotRegentNecro.GetVarInt(in card, def, "ExtraDamage", HotRegentNecro.GetVarInt(in card, def, "CalculationExtra", 4));
                 int melodyCards = CountMelodyCardsInCombat(in s, rules);
                 int dmg = calcBase + extra * melodyCards + card.Var0Delta;
-                HotCombatEngine.DamageAllEnemies(ref s, ref cold, rules, scratch, 0, dmg, isPoweredAttack: true);
+                ExecutePlayedCardAllEnemiesAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, dmg);
                 return Complete(in s, scratch, out result);
             }
 
@@ -899,7 +1013,7 @@ internal static class HotFoolTarot
                 {
                     byte targetSlot = (byte)(3 + targetEnemySlot);
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, targetSlot, dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                     int vuln = HotRegentNecro.GetVarInt(in card, def, "VulnerablePower", HotRegentNecro.GetVarInt(in card, def, "Vulnerable", Math.Max(1, def.GetMagic(card.UpgradeLevel))));
@@ -953,7 +1067,7 @@ internal static class HotFoolTarot
             case HotCustomCardId.MightyShield:
             {
                 int blk = def.GetBlock(card.UpgradeLevel, card.Var1Delta);
-                HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, blk, isCardBlock: true);
+                GainPlayedCardBlock(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, blk);
                 if (!scratch.NeedsChoice)
                 {
                     int dazedCount = HotRegentNecro.GetVarInt(in card, def, "Cards", 2);
@@ -967,7 +1081,7 @@ internal static class HotFoolTarot
             case HotCustomCardId.MightyWeapon:
             {
                 int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                HotCombatEngine.DamageAllEnemies(ref s, ref cold, rules, scratch, 0, dmg, isPoweredAttack: true);
+                ExecutePlayedCardAllEnemiesAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, dmg);
                 if (!scratch.NeedsChoice)
                 {
                     int dazedCount = HotRegentNecro.GetVarInt(in card, def, "Cards", 2);
@@ -1081,7 +1195,7 @@ internal static class HotFoolTarot
                 for (int i = 0; i < rolledCount && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); i++)
                 {
                     HotCard generated = CreateFreshCard(ref s, rules, rolled[i], upgraded: false);
-                    HotCostModifiers.AddEnergyModifier(
+                    HotCostModifiers.AddEnergyModifierExact(
                         ref generated,
                         ref cold,
                         amount: -1,
@@ -1164,7 +1278,7 @@ internal static class HotFoolTarot
                     int calcBase = HotRegentNecro.GetVarInt(in card, def, "CalculationBase", 0);
                     int extra = HotRegentNecro.GetVarInt(in card, def, "ExtraDamage", HotRegentNecro.GetVarInt(in card, def, "CalculationExtra", card.UpgradeLevel > 0 ? 3 : 2));
                     int dmg = calcBase + extra * rules.TotalFloor + card.Var0Delta;
-                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + targetEnemySlot), dmg, isPoweredAttack: true);
+                    ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg);
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -1211,6 +1325,8 @@ internal static class HotFoolTarot
 
             // =====================================================================
             // KNOWLEDGE DEMON / STATUS TOKEN CARDS
+            // 0.113.1 Amnesia/Disintegration/MindRot/Sloth/WasteAway implement KnowledgeDemon.IChoosable.OnChosen()
+            // ONLY and do NOT override CardModel.OnPlay() — direct PlayCard from hand is a no-op.
             // =====================================================================
 
             case HotCustomCardId.Amnesia:
@@ -1218,19 +1334,7 @@ internal static class HotFoolTarot
             case HotCustomCardId.MindRot:
             case HotCustomCardId.Sloth:
             case HotCustomCardId.WasteAway:
-            {
-                HotPowerId statusPower = cardId switch
-                {
-                    HotCustomCardId.Amnesia => HotPowerId.AmnesiaPower,
-                    HotCustomCardId.Disintegration => HotPowerId.DisintegrationPower,
-                    HotCustomCardId.MindRot => HotPowerId.MindRotPower,
-                    HotCustomCardId.Sloth => HotPowerId.SlothPower,
-                    _ => HotPowerId.WasteAwayPower,
-                };
-                int amt = Math.Max(1, def.GetMagic(card.UpgradeLevel));
-                HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, statusPower, amt, isCardSource: true);
                 return Complete(in s, scratch, out result);
-            }
 
             default:
                 return false;
@@ -1461,9 +1565,19 @@ internal static class HotFoolTarot
                 switch (hook)
                 {
                     case HotHookMask.BeforeCardPlayed:
+                    {
+                        bool cardGainsBlock = args.CardDefId < rules.Cards.Length && rules.Cards[args.CardDefId].GainsBlock;
+                        if (!cardGainsBlock && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
+                        {
+                            byte enchId = s.Cards[args.CardIdx].EnchId;
+                            if (enchId != 0 && enchId < rules.Enchantments.Length
+                                && rules.Enchantments[enchId].EnchantmentId == HotEnchantmentId.Adroit)
+                            {
+                                cardGainsBlock = true;
+                            }
+                        }
                         if (args.ActorSlot == 0
-                            && args.CardDefId < rules.Cards.Length
-                            && rules.Cards[args.CardDefId].GainsBlock
+                            && cardGainsBlock
                             && (power.Flags & HotPowerFlags.BoolAux) == 0)
                         {
                             power.Flags |= HotPowerFlags.BoolAux;
@@ -1471,6 +1585,7 @@ internal static class HotFoolTarot
                             power.Aux1 = 0;
                         }
                         return true;
+                    }
 
                     case HotHookMask.ModifyBlockAdditive:
                         if (args.TargetSlot == 0 && args.IsCardBlock && (power.Flags & HotPowerFlags.BoolAux) != 0)
@@ -1648,11 +1763,13 @@ internal static class HotFoolTarot
                 if (ownerSlot != 0 || amount <= 0)
                     return true;
 
+                // 0.113.1 KiVersePower.cs:19-36: any melody tag (Wah/Cho/Ki), +1 play count, decrements on use.
                 if (hook == HotHookMask.ModifyCardPlayCount
                     && args.CardDefId < rules.Cards.Length
-                    && (rules.Cards[args.CardDefId].MelodyTagMask & MelodyKiBit) != 0)
+                    && rules.Cards[args.CardDefId].MelodyTagMask != 0)
                 {
-                    args.PlayCount += amount;
+                    args.PlayCount++;
+                    HotCombatEngine.SetPowerAmount(ref s, rules, 0, power.PowerDefId, amount - 1);
                     return true;
                 }
                 if (hook == HotHookMask.AfterTurnEnd && args.Side == HotCombatSide.Player)
@@ -1677,29 +1794,44 @@ internal static class HotFoolTarot
                     byte mask = rules.Cards[args.CardDefId].MelodyTagMask;
                     if (mask != 0)
                     {
-                        int firstCount = 0;
-                        for (int m = 0; m < 3; m++)
+                        switch (powerId)
                         {
-                            if ((mask & (1 << m)) != 0 && s.Fool.MelodyStarted[m] == 1)
-                                firstCount++;
-                        }
-                        if (firstCount > 0)
-                        {
-                            int totalAmt = firstCount * amount;
-                            switch (powerId)
+                            case HotPowerId.LostLutePower:
+                            case HotPowerId.MotifPower:
                             {
-                                case HotPowerId.LostLutePower:
-                                    HotCombatEngine.DrawCards(ref s, ref cold, rules, scratch, totalAmt, fromHandDraw: false);
-                                    break;
-                                case HotPowerId.SongPathPower:
-                                    HotCombatEngine.AutoPlayFromDrawPile(ref s, ref cold, rules, scratch, totalAmt);
-                                    break;
-                                case HotPowerId.MotifPower:
-                                    HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, totalAmt, isCardBlock: false);
-                                    break;
-                                case HotPowerId.ViolentChordPower:
-                                    HotCombatEngine.DamageAllEnemies(ref s, ref cold, rules, scratch, 0, totalAmt, isPoweredAttack: false);
-                                    break;
+                                // 0.113.1 LostLutePower.cs:33-53 & MotifPower.cs:33-53:
+                                // count Wah/Cho/Ki tags on this card with CardPlaysStarted count == 1 this turn.
+                                int firstCount = 0;
+                                for (int m = 0; m < 3; m++)
+                                {
+                                    if ((mask & (1 << m)) != 0 && s.Fool.MelodyStarted[m] == 1)
+                                        firstCount++;
+                                }
+                                if (firstCount > 0)
+                                {
+                                    int totalAmt = firstCount * amount;
+                                    if (powerId == HotPowerId.LostLutePower)
+                                        HotCombatEngine.AutoPlayFromDrawPile(ref s, ref cold, rules, scratch, totalAmt, forceExhaust: false);
+                                    else
+                                        HotCombatEngine.DrawCards(ref s, ref cold, rules, scratch, totalAmt, fromHandDraw: false);
+                                }
+                                break;
+                            }
+
+                            case HotPowerId.SongPathPower:
+                            {
+                                // 0.113.1 SongPathPower.cs:27-31: Cho only, MelodyCmd.IsFirstPlayThisTurn (identity check).
+                                if ((mask & MelodyChoBit) != 0 && IsFirstMelodyPlayIdentity(in s, in args, melodyIdx: 1))
+                                    HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, 0, amount, isCardBlock: false);
+                                break;
+                            }
+
+                            case HotPowerId.ViolentChordPower:
+                            {
+                                // 0.113.1 ViolentChordPower.cs:23-27: Wah only, MelodyCmd.IsFirstPlayThisTurn (identity check).
+                                if ((mask & MelodyWahBit) != 0 && IsFirstMelodyPlayIdentity(in s, in args, melodyIdx: 0))
+                                    HotCombatEngine.DamageAllEnemies(ref s, ref cold, rules, scratch, 0, amount, isPoweredAttack: false);
+                                break;
                             }
                         }
                     }
@@ -1826,16 +1958,19 @@ internal static class HotFoolTarot
                 if (ownerSlot != 0 || amount <= 0)
                     return true;
 
+                // InsatiableDominionPower.cs:22,32-55: DisplayAmount = 2 + TurnNumber;
+                // deals blockable Unpowered damage at player AfterSideTurnEndLate.
                 if (hook == HotHookMask.AfterSideTurnStart && args.Side == HotCombatSide.Player)
                 {
-                    power.Aux0 = 0; // Reset per-turn damage accumulator
+                    power.Aux0 = 2 + s.PlayerTurnNumber;
                     return true;
                 }
                 if (hook == HotHookMask.AfterTurnEnd && args.Side == HotCombatSide.Player)
                 {
-                    int dmg = power.Aux0 > 0 ? power.Aux0 : amount;
+                    int dmg = 2 + s.PlayerTurnNumber;
+                    power.Aux0 = dmg;
                     if (dmg > 0)
-                        HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0xFF, 0, dmg, isPoweredAttack: false, isUnblockable: true);
+                        HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0xFF, 0, dmg, isPoweredAttack: false, isUnblockable: false);
                     return true;
                 }
                 return true;
@@ -1890,26 +2025,26 @@ internal static class HotFoolTarot
 
             case HotDominionId.KnowledgeDemonDominion:
             {
-                // On player turn 1 BeforeHandDraw, KnowledgeDemonDominion offers 3 curse choices
-                // (already resolved before stable combat root in most fights; safe no-op after turn 1).
-                if (hook == HotHookMask.BeforeHandDraw && s.PlayerTurnNumber == 1)
+                // On player turn 1 BeforeHandDraw, KnowledgeDemonDominion offers [Sloth, Amnesia]
+                // and executes the chosen card's OnChosen() (SlothPower(3) or AmnesiaPower(1)).
+                if (hook == HotHookMask.BeforeHandDraw && s.PlayerTurnNumber <= 1)
                 {
-                    // Handled by root capture; if triggered dynamically on turn 1, pick default Disintegration/Sloth/WasteAway via GeneratedCard choice.
-                    Span<ushort> options = stackalloc ushort[3];
+                    Span<ushort> options = stackalloc ushort[2];
                     int count = 0;
-                    ushort a = rules.GetCardDefId(HotCustomCardId.Disintegration);
-                    ushort b = rules.GetCardDefId(HotCustomCardId.MindRot);
-                    ushort c = rules.GetCardDefId(HotCustomCardId.Sloth);
-                    if (a != 0) options[count++] = a;
-                    if (b != 0) options[count++] = b;
-                    if (c != 0) options[count++] = c;
+                    ushort slothId = rules.GetCardDefId(HotCustomCardId.Sloth);
+                    ushort amnesiaId = rules.GetCardDefId(HotCustomCardId.Amnesia);
+                    if (slothId != 0) options[count++] = slothId;
+                    if (amnesiaId != 0) options[count++] = amnesiaId;
                     if (count > 0)
                     {
                         HotCombatEngine.SetPendingGeneratedChoiceOptions(options[..count]);
                         if (HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, 0, 1, 1, out HotChoiceSelection sel)
                             && sel.CardDefId != 0)
                         {
-                            HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, sel.CardDefId, HotPileKind.Draw, dstOffset: -2, upgraded: false, createdByPlayer: false);
+                            if (sel.CardDefId == slothId)
+                                HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.SlothPower, 3, isCardSource: true);
+                            else if (sel.CardDefId == amnesiaId)
+                                HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.AmnesiaPower, 1, isCardSource: true);
                         }
                     }
                 }
@@ -2008,6 +2143,16 @@ internal static class HotFoolTarot
     internal static bool PlayedMelody(in CombatHotState s, int melodyIdx)
         => (uint)melodyIdx < 3 && s.Fool.MelodyFinished[melodyIdx] > 0;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsFirstMelodyPlayIdentity(in CombatHotState s, in HotHookArgs args, int melodyIdx)
+    {
+        if ((uint)melodyIdx >= 3 || s.Fool.MelodyStarted[melodyIdx] == 0)
+            return false;
+        if ((uint)args.CardIdx < (uint)s.TotalCardCount && s.Fool.FirstPlayCardUid[melodyIdx] != 0)
+            return s.Fool.FirstPlayCardUid[melodyIdx] == s.Cards[args.CardIdx].CardUid && args.PlayIndex == 0;
+        return s.Fool.MelodyStarted[melodyIdx] == 1 && args.PlayIndex == 0;
+    }
+
     internal static bool ShootArrow(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
@@ -2103,7 +2248,8 @@ internal static class HotFoolTarot
         ushort cardDefId,
         int baseDamage,
         int hits,
-        int targetEnemySlot)
+        int targetEnemySlot,
+        int cardIdx = -1)
     {
         if (!HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
             return false;
@@ -2115,7 +2261,7 @@ internal static class HotFoolTarot
         if (!HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
             return true;
 
-        ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, baseDamage, hits);
+        ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, baseDamage, hits, cardIdx);
         if (scratch.NeedsChoice)
             return false;
 
@@ -2181,7 +2327,8 @@ internal static class HotFoolTarot
         ushort sourceCardDefId,
         int targetEnemySlot,
         int baseDamage,
-        int hits)
+        int hits,
+        int cardIdx = -1)
     {
         if (hits <= 0 || !HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
             return;
@@ -2193,10 +2340,10 @@ internal static class HotFoolTarot
 
         try
         {
-            // Snapshot AimPower & QuietusPower before arrow attack; DealDamage invokes
-            // ModifyDamageAdditive (AimPower, incl. HeavyShot 2x via t_activeArrowCardDefId)
-            // and ModifyDamageMultiplicative (QuietusPower, HoningPower, SerratedArrowsPower)
-            // in exact STS2 additive -> multiplicative order.
+            // Snapshot AimPower & QuietusPower before arrow attack; ExecuteDealerSingleTargetAttack invokes
+            // BeforeAttack/AfterAttack, enchantment damage modifiers (via cardIdx),
+            // ModifyDamageAdditive (AimPower, incl. HeavyShot 2x via t_activeArrowCardDefId),
+            // and ModifyDamageMultiplicative (QuietusPower, HoningPower, SerratedArrowsPower).
             ushort aimDefId = rules.GetPowerDefId(HotPowerId.AimPower);
             int aimIdx = aimDefId != 0 ? HotCombatEngine.FindPowerIndex(in s, 0, aimDefId) : -1;
             int aimAmount = aimIdx >= 0 ? s.Powers[aimIdx].Amount : 0;
@@ -2204,15 +2351,18 @@ internal static class HotFoolTarot
             ushort quietusDefId = rules.GetPowerDefId(HotPowerId.QuietusPower);
             int quietusAmt = quietusDefId != 0 ? HotCombatEngine.GetPowerAmount(in s, 0, quietusDefId) : 0;
 
-            byte targetSlot = (byte)(3 + targetEnemySlot);
-            for (int h = 0; h < hits; h++)
-            {
-                if (HotCombatEngine.IsOverOrEnding(in s) || scratch.NeedsChoice)
-                    break;
-                if ((s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
-                    break;
-                HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, targetSlot, baseDamage, isPoweredAttack: true);
-            }
+            HotCombatEngine.ExecuteDealerSingleTargetAttack(
+                ref s,
+                ref cold,
+                rules,
+                scratch,
+                dealerSlot: 0,
+                cardIdx: cardIdx,
+                cardDefId: sourceCardDefId,
+                targetEnemySlot: targetEnemySlot,
+                baseDamage: baseDamage,
+                hits: hits,
+                powered: true);
 
             // Consume AimPower & QuietusPower after arrow attack completes.
             if (aimAmount > 0 && aimDefId != 0)
@@ -2573,26 +2723,6 @@ internal static class HotFoolTarot
         return Math.Max(0, x);
     }
 
-    private static void AttackSingleHits(
-        ref CombatHotState s,
-        ref HotColdSidecar? cold,
-        HotRules rules,
-        HotExecScratch scratch,
-        int targetEnemySlot,
-        int dmg,
-        int hits)
-    {
-        if (hits <= 0 || !HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
-            return;
-        byte targetSlot = (byte)(3 + targetEnemySlot);
-        for (int h = 0; h < hits && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); h++)
-        {
-            if ((s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
-                break;
-            HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, targetSlot, dmg, isPoweredAttack: true);
-        }
-    }
-
     private static void AddFixedCardsToHand(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
@@ -2628,7 +2758,7 @@ internal static class HotFoolTarot
             LocalKeywordsMask = (HotCardKeywordMask)def.BaseKeywords,
             KeywordsAddedOutsideMask = HotCardKeywordMask.None,
             KeywordsRemovedOutsideMask = HotCardKeywordMask.None,
-            Flags = HotCardFlags.None,
+            Flags = HotCombatEngine.GetInitialCardFlags(def),
         };
     }
 

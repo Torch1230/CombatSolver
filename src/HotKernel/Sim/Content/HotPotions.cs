@@ -49,8 +49,9 @@ internal static class HotPotions
         // Consume slot BEFORE executing effect (matches STS2 PotionCmd.Use: frees slot for EntropicBrew
         // and updates potion belt occupancy for BeltBuckle; safe under restart-from-parent choice protocol).
         s.Potions[slot] = 0;
+        s.CombatGeneratedPotionMask &= (ushort)~(1 << slot);
 
-        if (def.OpCount > 0)
+        if (def.OpCount > 0 && potionId != HotCustomPotionId.BeetleJuice)
         {
             HotCombatEngine.ExecutePotionBytecode(ref s, ref cold, rules, scratch, potionDefId, targetEnemySlot);
         }
@@ -89,6 +90,7 @@ internal static class HotPotions
                 continue;
 
             s.Potions[i] = 0;
+            s.CombatGeneratedPotionMask &= (ushort)~(1 << i);
             s.Player.Flags |= HotCreatureFlags.Alive;
             s.CombatFlags &= ~HotCombatFlags.IsAboutToLose;
 
@@ -139,19 +141,23 @@ internal static class HotPotions
             case HotCustomPotionId.Ashwater:
             {
                 int maxPicks = Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction);
+                Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                int pickedCount = 0;
                 for (int pick = 0; pick < maxPicks; pick++)
                 {
-                    if (s.HandCount == 0 || HotCombatEngine.IsOverOrEnding(in s))
+                    if (pickedCount >= s.HandCount || HotCombatEngine.IsOverOrEnding(in s))
                         break;
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 0, maxCount: 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 0, maxCount: 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                         return;
                     if (sel.Kind == HotChoiceKind.None || sel.CardUidOrIndex == 0)
                         break;
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
+                    pickedUids[pickedCount++] = sel.CardUidOrIndex;
+                }
+                for (int i = 0; i < pickedCount && !HotCombatEngine.IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                {
+                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, pickedUids[i]);
                     if (idx >= 0)
                         HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);
-                    if (scratch.NeedsChoice)
-                        return;
                 }
                 break;
             }
@@ -173,8 +179,9 @@ internal static class HotPotions
                 break;
 
             case HotCustomPotionId.BeetleJuice:
+                // STS2 0.113.1 BeetleJuice.cs: applies ShrinkPower with RepeatVar(4), not DamageDecrease(30).
                 if (enemyCreatureSlot != 0xFF)
-                    HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, enemyCreatureSlot, 0, HotPowerId.ShrinkPower, PrimaryOrDefault(def, 4));
+                    HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, enemyCreatureSlot, 0, HotPowerId.ShrinkPower, 4);
                 break;
 
             case HotCustomPotionId.BlessingOfTheForge:
@@ -224,35 +231,30 @@ internal static class HotPotions
 
             case HotCustomPotionId.BottledSong:
             {
+                // STS2 0.113.1 BottledSong.cs: scans ALL unlocked character card pools for Wah/Cho/Ki,
+                // rolls all 3 melody cards first, then adds them free-this-turn to Hand.
                 Span<ushort> candidates = stackalloc ushort[MaxStackPoolCards];
                 Span<ushort> picked = stackalloc ushort[1];
-                ushort[] pool = rules.UnlockedCharacterCardPool;
+                Span<ushort> rolledCards = stackalloc ushort[3];
+                int rolledCount = 0;
 
                 for (int m = 0; m < 3; m++)
                 {
-                    if (HotCombatEngine.IsOverOrEnding(in s) || scratch.NeedsChoice)
-                        return;
-
                     byte melodyBit = (byte)(1 << m);
                     int candCount = 0;
-                    for (int i = 0; i < pool.Length && candCount < candidates.Length; i++)
-                    {
-                        ushort cid = pool[i];
-                        if (cid == 0 || cid >= rules.Cards.Length)
-                            continue;
-                        HotCardDef cDef = rules.Cards[cid];
-                        if ((cDef.MelodyTagMask & melodyBit) == 0 || !IsCombatGeneratable(cDef))
-                            continue;
-                        candidates[candCount++] = cid;
-                    }
+                    CollectMelodyCandidates(rules.UnlockedCharacterCardPool, rules, melodyBit, candidates, ref candCount);
+                    CollectMelodyCandidates(rules.OtherCharacterCardPool, rules, melodyBit, candidates, ref candCount);
 
                     if (candCount == 0)
                         continue;
 
                     int got = TakeRandomDistinct(candidates[..candCount], 1, ref s.Rng[(int)HotRngStream.CombatCardGeneration], picked);
                     if (got > 0 && picked[0] != 0)
-                        AddGeneratedFreeThisTurnToHand(ref s, ref cold, rules, scratch, picked[0]);
+                        rolledCards[rolledCount++] = picked[0];
                 }
+
+                for (int i = 0; i < rolledCount && !HotCombatEngine.IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                    AddGeneratedFreeThisTurnToHand(ref s, ref cold, rules, scratch, rolledCards[i]);
                 break;
             }
 
@@ -402,7 +404,7 @@ internal static class HotPotions
             }
 
             case HotCustomPotionId.FruitJuice:
-                HotCombatEngine.GainMaxHp(ref s, targetSlot: 0, amount: PrimaryOrDefault(def, 5));
+                HotCombatEngine.GainMaxHp(ref s, ref cold, rules, scratch, targetSlot: 0, amount: PrimaryOrDefault(def, 5));
                 break;
 
             case HotCustomPotionId.FyshOil:
@@ -417,26 +419,20 @@ internal static class HotPotions
             case HotCustomPotionId.GamblersBrew:
             {
                 int maxPicks = Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction);
-                int discarded = 0;
+                Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                int pickedCount = 0;
                 for (int pick = 0; pick < maxPicks; pick++)
                 {
-                    if (s.HandCount == 0 || HotCombatEngine.IsOverOrEnding(in s))
+                    if (pickedCount >= s.HandCount || HotCombatEngine.IsOverOrEnding(in s))
                         break;
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 0, maxCount: 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 0, maxCount: 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                         return;
                     if (sel.Kind == HotChoiceKind.None || sel.CardUidOrIndex == 0)
                         break;
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
-                    if (idx >= 0)
-                    {
-                        HotCombatEngine.DiscardCard(ref s, ref cold, rules, scratch, idx);
-                        discarded++;
-                    }
-                    if (scratch.NeedsChoice)
-                        return;
+                    pickedUids[pickedCount++] = sel.CardUidOrIndex;
                 }
-                if (discarded > 0 && !HotCombatEngine.IsOverOrEnding(in s))
-                    HotCombatEngine.DrawCards(ref s, ref cold, rules, scratch, discarded, fromHandDraw: false);
+                if (pickedCount > 0 && !HotCombatEngine.IsOverOrEnding(in s))
+                    HotCombatEngine.DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: pickedCount);
                 break;
             }
 
@@ -632,9 +628,22 @@ internal static class HotPotions
 
             case HotCustomPotionId.TouchOfInsanity:
             {
-                if (s.HandCount == 0)
+                Span<ushort> eligibleUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
+                int eligibleCount = 0;
+                int handCount = s.HandCount;
+                for (int i = 0; i < handCount && eligibleCount < eligibleUids.Length; i++)
+                {
+                    ref readonly HotCard c = ref s.Cards[i];
+                    bool costsLocalEnergy = (c.Flags & HotCardFlags.CostsX) == 0 && HotCostModifiers.GetLocalEnergyCost(in c, cold) > 0;
+                    bool costsGlobalEnergy = (c.Flags & HotCardFlags.CostsX) == 0 && HotCombatEngine.GetEffectiveEnergyCost(in s, in c, cold, rules, isInPlayablePile: true) > 0;
+                    bool costsLocalStars = (c.Flags & HotCardFlags.HasStarCostX) == 0 && HotCostModifiers.GetEffectiveStarCost(in c, cold) > 0;
+                    bool costsGlobalStars = (c.Flags & HotCardFlags.HasStarCostX) == 0 && HotCombatEngine.GetEffectiveStarCost(in s, in c, cold, rules, isInPlayablePile: true) > 0;
+                    if (costsLocalEnergy || costsGlobalEnergy || costsLocalStars || costsGlobalStars)
+                        eligibleUids[eligibleCount++] = c.CardUid;
+                }
+                if (eligibleCount == 0)
                     break;
-                if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 1, maxCount: 1, out HotChoiceSelection sel))
+                if (!HotCombatEngine.RequestChoiceFiltered(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 1, maxCount: 1, eligibleUids[..eligibleCount], out HotChoiceSelection sel))
                     return;
                 int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                 if (idx >= 0)
@@ -689,58 +698,125 @@ internal static class HotPotions
         HotRules rules,
         HotExecScratch scratch)
     {
-        if (rules.HasRelic(HotRelicId.Sozu))
-            return;
-
         ushort[] pool = rules.UnlockedPotionPool;
         if (pool.Length == 0)
             return;
 
+        bool hasSozu = rules.HasRelic(HotRelicId.Sozu);
         int slotCount = GetSlotCount(in s);
-        Span<ushort> rarityCandidates = stackalloc ushort[MaxStackPotions];
 
         for (int slotIdx = 0; slotIdx < slotCount; slotIdx++)
         {
             if (s.Potions[slotIdx] != 0)
                 continue;
 
-            // Matches PotionFactory.CreateRandomPotionOutOfCombat: roll rarity (<=0.1 Rare, <=0.35 Uncommon, else Common),
-            // then pick uniformly via NonCombatGeneration RNG.
-            float roll = HotRng.NextFloat(ref s.Rng[(int)HotRngStream.NonCombatGeneration]);
-            PotionRarity rarity = roll <= 0.1f
-                ? PotionRarity.Rare
-                : (roll <= 0.35f ? PotionRarity.Uncommon : PotionRarity.Common);
+            // Matches EntropicBrew.OnUse -> PotionFactory.CreateRandomPotionOutOfCombat (NonCombatGeneration RNG)
+            // followed by PotionCmd.TryToProcure (breaks on failure such as Sozu AFTER rolling the first potion).
+            ushort chosenDefId = RollRandomPotion(
+                pool,
+                rules,
+                ref s.Rng[(int)HotRngStream.NonCombatGeneration],
+                inCombatOnly: false);
 
-            int candCount = 0;
-            for (int i = 0; i < pool.Length && candCount < rarityCandidates.Length; i++)
-            {
-                ushort pDefId = pool[i];
-                if (pDefId == 0 || pDefId >= rules.Potions.Length)
-                    continue;
-                if (rules.Potions[pDefId].Rarity == rarity)
-                    rarityCandidates[candCount++] = pDefId;
-            }
-
-            ushort chosenDefId;
-            if (candCount > 0)
-            {
-                int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.NonCombatGeneration], candCount);
-                chosenDefId = rarityCandidates[pick];
-            }
-            else
-            {
-                int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.NonCombatGeneration], pool.Length);
-                chosenDefId = pool[pick];
-            }
-
-            if (chosenDefId == 0)
-                continue;
+            if (hasSozu || chosenDefId == 0)
+                break;
 
             s.Potions[slotIdx] = chosenDefId;
+            s.CombatGeneratedPotionMask |= (ushort)(1 << slotIdx);
             HotRelics.OnPotionProcured(ref s, ref cold, rules, scratch, chosenDefId);
             if (scratch.NeedsChoice)
                 return;
         }
+    }
+
+    /// <summary>
+    /// Exact STS2 0.113.1 <c>Alchemize</c>: rolls <c>PotionFactory.CreateRandomPotionInCombat</c>
+    /// using <see cref="HotRngStream.CombatPotionGeneration"/> first, then attempts <c>PotionCmd.TryToProcure</c>
+    /// into the first open slot (respecting <c>Sozu</c>, marking <c>CombatGeneratedPotionMask</c>,
+    /// and firing <c>OnPotionProcured</c>). Returns true iff a potion was actually procured.
+    /// </summary>
+    internal static bool TryProcureRandomCombatPotion(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch)
+    {
+        ushort[] pool = rules.UnlockedPotionPool;
+        if (pool.Length == 0)
+            return false;
+
+        ushort chosenDefId = RollRandomPotion(
+            pool,
+            rules,
+            ref s.Rng[(int)HotRngStream.CombatPotionGeneration],
+            inCombatOnly: true);
+
+        if (chosenDefId == 0 || rules.HasRelic(HotRelicId.Sozu))
+            return false;
+
+        int slotCount = GetSlotCount(in s);
+        for (int slotIdx = 0; slotIdx < slotCount; slotIdx++)
+        {
+            if (s.Potions[slotIdx] != 0)
+                continue;
+
+            s.Potions[slotIdx] = chosenDefId;
+            s.CombatGeneratedPotionMask |= (ushort)(1 << slotIdx);
+            HotRelics.OnPotionProcured(ref s, ref cold, rules, scratch, chosenDefId);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static ushort RollRandomPotion(
+        ushort[] pool,
+        HotRules rules,
+        ref HotRngState rng,
+        bool inCombatOnly)
+    {
+        // Matches PotionFactory.CreateRandomPotions: roll rarity (<=0.1 Rare, <=0.35 Uncommon, else Common),
+        // then NextItem over options matching that rarity.
+        float roll = HotRng.NextFloat(ref rng);
+        PotionRarity rarity = roll <= 0.1f
+            ? PotionRarity.Rare
+            : (roll <= 0.35f ? PotionRarity.Uncommon : PotionRarity.Common);
+
+        Span<ushort> rarityCandidates = stackalloc ushort[MaxStackPotions];
+        int candCount = 0;
+        for (int i = 0; i < pool.Length && candCount < rarityCandidates.Length; i++)
+        {
+            ushort pDefId = pool[i];
+            if (pDefId == 0 || pDefId >= rules.Potions.Length)
+                continue;
+            HotPotionDef pDef = rules.Potions[pDefId];
+            if (inCombatOnly && !pDef.CanBeGeneratedInCombat)
+                continue;
+            if (pDef.Rarity == rarity)
+                rarityCandidates[candCount++] = pDefId;
+        }
+
+        if (candCount > 0)
+        {
+            int pick = HotRng.NextInt(ref rng, candCount);
+            return rarityCandidates[pick];
+        }
+
+        // Fallback if filtered rarity bucket was empty (should not occur in vanilla pools)
+        Span<ushort> allCandidates = stackalloc ushort[MaxStackPotions];
+        int allCount = 0;
+        for (int i = 0; i < pool.Length && allCount < allCandidates.Length; i++)
+        {
+            ushort pDefId = pool[i];
+            if (pDefId == 0 || pDefId >= rules.Potions.Length)
+                continue;
+            if (inCombatOnly && !rules.Potions[pDefId].CanBeGeneratedInCombat)
+                continue;
+            allCandidates[allCount++] = pDefId;
+        }
+        if (allCount == 0)
+            return 0;
+        return allCandidates[HotRng.NextInt(ref rng, allCount)];
     }
 
     internal static void AddGeneratedFreeThisTurnToHand(
@@ -766,7 +842,7 @@ internal static class HotPotions
             LocalKeywordsMask = (HotCardKeywordMask)def.BaseKeywords,
             KeywordsAddedOutsideMask = HotCardKeywordMask.None,
             KeywordsRemovedOutsideMask = HotCardKeywordMask.None,
-            Flags = HotCardFlags.None,
+            Flags = HotCombatEngine.GetInitialCardFlags(def),
         };
         SetCardFreeThisTurn(ref card, ref cold);
         HotCombatEngine.AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in card, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
@@ -802,7 +878,7 @@ internal static class HotPotions
     {
         if ((card.Flags & HotCardFlags.CostsX) == 0 && card.BaseEnergyCost >= 0)
         {
-            HotCostModifiers.AddEnergyModifier(
+            HotCostModifiers.AddEnergyModifierExact(
                 ref card,
                 ref cold,
                 amount: 0,
@@ -821,12 +897,42 @@ internal static class HotPotions
         }
     }
 
+    internal static void CollectMelodyCandidates(
+        ushort[] pool,
+        HotRules rules,
+        byte melodyMask,
+        Span<ushort> candidates,
+        ref int candCount)
+    {
+        for (int i = 0; i < pool.Length && candCount < candidates.Length; i++)
+        {
+            ushort cid = pool[i];
+            if (cid == 0 || cid >= rules.Cards.Length)
+                continue;
+            HotCardDef cDef = rules.Cards[cid];
+            if ((cDef.MelodyTagMask & melodyMask) == 0 || !IsCombatGeneratable(cDef))
+                continue;
+
+            bool duplicate = false;
+            for (int j = 0; j < candCount; j++)
+            {
+                if (candidates[j] == cid)
+                {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate)
+                candidates[candCount++] = cid;
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void SetCardFreeThisCombat(ref HotCard card, ref HotColdSidecar? cold)
     {
         if ((card.Flags & HotCardFlags.CostsX) == 0 && card.BaseEnergyCost >= 0)
         {
-            HotCostModifiers.AddEnergyModifier(
+            HotCostModifiers.AddEnergyModifierExact(
                 ref card,
                 ref cold,
                 amount: 0,
@@ -834,7 +940,7 @@ internal static class HotPotions
                 expiration: (int)LocalCostModifierExpiration.EndOfCombat,
                 isReduceOnly: false);
         }
-        if ((card.Flags & HotCardFlags.HasStarCostX) == 0 && card.BaseStarCost >= 0)
+        if ((card.Flags & HotCardFlags.HasStarCostX) == 0)
         {
             HotCostModifiers.AddTempStarCost(
                 ref card,
@@ -850,7 +956,7 @@ internal static class HotPotions
     {
         if ((card.Flags & HotCardFlags.CostsX) == 0 && card.BaseEnergyCost >= 0)
         {
-            HotCostModifiers.AddEnergyModifier(
+            HotCostModifiers.AddEnergyModifierExact(
                 ref card,
                 ref cold,
                 amount: cost,

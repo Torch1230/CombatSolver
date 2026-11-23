@@ -356,11 +356,13 @@ internal static class HotMonsters
         short nextNodeId = currentNode.NextNode;
         if ((nextNodeId < 0
                 || string.Equals(currentNode.MoveId, "STUNNED", StringComparison.Ordinal)
-                || string.Equals(currentNode.MoveId, "REVIVE_MOVE", StringComparison.Ordinal))
+                || string.Equals(currentNode.MoveId, "REVIVE_MOVE", StringComparison.Ordinal)
+                || (s.Enemies[slot].Flags & HotEnemyFlags.Stunned) != 0)
             && s.Enemies[slot].AiRegs[3] > 0)
         {
             nextNodeId = (short)(s.Enemies[slot].AiRegs[3] - 1);
             s.Enemies[slot].AiRegs[3] = 0;
+            s.Enemies[slot].Flags &= ~HotEnemyFlags.Stunned;
         }
 
         if (nextNodeId < 0)
@@ -379,11 +381,19 @@ internal static class HotMonsters
         HotMonsterId monsterId = ResolveMonsterId(rules.Monsters[s.Enemies[slot].MonsterDefId]);
         short startNode = machine.InitialNode;
 
-        // Replacement Axebot spawned by StockPower starts in BOOT_UP_MOVE (stored in AiRegs[3] if pending).
+        // Replacement Axebot / Wriggler spawned moves stored in AiRegs[3] (1-based) if pending.
         if (s.Enemies[slot].AiRegs[3] > 0)
         {
             startNode = (short)(s.Enemies[slot].AiRegs[3] - 1);
             s.Enemies[slot].AiRegs[3] = 0;
+        }
+        else if (monsterId == HotMonsterId.TwoTailedRat)
+        {
+            // Per 0.113.1 TwoTailedRat.cs:134-137, mid-combat summoned TwoTailedRat has StarterMoveIndex == -1
+            // and starts at randomBranchState ("RAND") rather than the initial encounter rat's starter move.
+            short randNode = machine.FindNode("RAND");
+            if (randNode >= 0)
+                startNode = randNode;
         }
 
         if (startNode >= 0)
@@ -532,11 +542,9 @@ internal static class HotMonsters
 
         bool isNowReviving = s.Enemies[slot].DeathPhase == HotDeathPhase.Reviving;
 
-        // 9. RavenousPower on surviving enemy teammates: force STUNNED move node for continuation parity.
-        // On permanent death, HotCombatEngine.KillCreature dispatches HotHookMask.AfterDeath which runs
-        // HandleAfterDeathPower (applying Strength + SkipNextMove); only apply Strength here when reviving
-        // (since KillCreature returns early and skips AfterDeath for Reviving enemies).
-        TriggerRavenousOnTeammates(ref s, ref cold, rules, scratch, slot, applyStrength: isNowReviving);
+        // 9. RavenousPower on surviving enemy teammates (RavenousPower.cs:24-35):
+        // stuns surviving teammates and grants them Strength equal to RavenousPower amount.
+        TriggerRavenousOnTeammates(ref s, ref cold, rules, scratch, slot, applyStrength: true);
 
         // 10. Refund PossessStrength / PossessSpeed stolen stats back to Player.
         RefundPossessedStats(ref s, ref cold, rules, scratch, deadSlot);
@@ -2398,8 +2406,9 @@ internal static class HotMonsters
 
         HotCombatEngine.ApplyPower(ref s, ref cold, rules, scratch, ownerSlot: 0, applierSlot: casterSlot, powerDefId: dampenDefId, amount: 1);
         int dampenIdx = HotCombatEngine.FindPowerIndex(in s, ownerSlot: 0, dampenDefId);
-        if (dampenIdx >= 0)
-            s.Powers[dampenIdx].Aux0 |= casterBit;
+        if (dampenIdx < 0)
+            return;
+        s.Powers[dampenIdx].Aux0 |= casterBit;
 
         // Downgrade all currently upgraded player cards and record original upgrade levels in HotColdSidecar.DampenEntries.
         int totalCards = s.TotalCardCount;
@@ -2426,11 +2435,22 @@ internal static class HotMonsters
             if (card.UpgradeLevel == 0)
                 continue;
 
+            if (card.CardUid == 0)
+                card.CardUid = s.NextCardUid++;
+
             byte origUpg = card.UpgradeLevel;
             card.DampenOrigUpg = origUpg;
             card.UpgradeLevel = 0;
             if (card.CardDefId < rules.Cards.Length)
-                card.BaseEnergyCost = rules.Cards[card.CardDefId].BaseCost;
+            {
+                // Match 0.113.1 CardModel.DowngradeInternal (CardModel.cs:2336-2358).
+                HotCardDef def = rules.Cards[card.CardDefId];
+                card.BaseEnergyCost = def.BaseCost;
+                card.BaseStarCost = def.BaseStarCost;
+                card.LocalKeywordsMask = ((HotCardKeywordMask)def.BaseKeywords | card.KeywordsAddedOutsideMask)
+                    & ~card.KeywordsRemovedOutsideMask;
+                ReapplyEnchantmentOnDowngrade(ref card, rules);
+            }
 
             next[cursor++] = new HotDampenEntry(card.CardUid, origUpg, dampenIdx);
         }
@@ -2438,6 +2458,37 @@ internal static class HotMonsters
         cold = cold == null
             ? new HotColdSidecar(DampenEntries: next)
             : cold with { DampenEntries = next };
+    }
+
+    private static void ReapplyEnchantmentOnDowngrade(ref HotCard card, HotRules rules)
+    {
+        if (card.EnchId == 0 || card.EnchId >= rules.Enchantments.Length)
+            return;
+
+        switch (rules.Enchantments[card.EnchId].EnchantmentId)
+        {
+            case HotEnchantmentId.Goopy:
+                card.LocalKeywordsMask |= HotCardKeywordMask.Exhaust;
+                break;
+
+            case HotEnchantmentId.RoyallyApproved:
+                card.LocalKeywordsMask |= HotCardKeywordMask.Innate | HotCardKeywordMask.Retain;
+                break;
+
+            case HotEnchantmentId.SoulsPower:
+                card.LocalKeywordsMask &= ~HotCardKeywordMask.Exhaust;
+                break;
+
+            case HotEnchantmentId.Steady:
+                card.LocalKeywordsMask |= HotCardKeywordMask.Retain;
+                break;
+
+            case HotEnchantmentId.TezcatarasEmber:
+                if (card.BaseEnergyCost > 0 && (card.Flags & HotCardFlags.CostsX) == 0)
+                    card.BaseEnergyCost = 0;
+                card.LocalKeywordsMask |= HotCardKeywordMask.Eternal;
+                break;
+        }
     }
 
     internal static void RemoveDampenCaster(
@@ -2472,7 +2523,7 @@ internal static class HotMonsters
             return;
         }
 
-        // Last caster died: remove DampenPower and restore all dampened cards.
+        // Last caster died: remove DampenPower and restore all dampened cards (DampenPower.cs:58-71).
         HotCombatEngine.RemovePowerAt(ref s, dampenIdx);
         s.ActiveHookMask = HotCombatEngine.RecomputeActiveHookMask(in s, rules);
 
@@ -2484,7 +2535,7 @@ internal static class HotMonsters
                 int cardIdx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, entry.CardUid);
                 if (cardIdx < 0)
                     continue;
-                while (s.Cards[cardIdx].UpgradeLevel < entry.OriginalUpgrade)
+                for (int u = 0; u < entry.OriginalUpgrade; u++)
                     HotCombatEngine.UpgradeCard(ref s, rules, cardIdx);
                 s.Cards[cardIdx].DampenOrigUpg = 0;
             }
@@ -2492,18 +2543,17 @@ internal static class HotMonsters
             HotColdSidecar updated = cold with { DampenEntries = null };
             cold = updated.IsEmpty ? null : updated;
         }
-        else
+
+        // Fallback sweep: restore any dampened card whose CardUid wasn't matched via DampenEntries.
+        int total = s.TotalCardCount;
+        for (int i = 0; i < total; i++)
         {
-            int total = s.TotalCardCount;
-            for (int i = 0; i < total; i++)
-            {
-                byte origUpg = s.Cards[i].DampenOrigUpg;
-                if (origUpg == 0)
-                    continue;
-                while (s.Cards[i].UpgradeLevel < origUpg)
-                    HotCombatEngine.UpgradeCard(ref s, rules, i);
-                s.Cards[i].DampenOrigUpg = 0;
-            }
+            byte origUpg = s.Cards[i].DampenOrigUpg;
+            if (origUpg == 0)
+                continue;
+            for (int u = 0; u < origUpg; u++)
+                HotCombatEngine.UpgradeCard(ref s, rules, i);
+            s.Cards[i].DampenOrigUpg = 0;
         }
     }
 
@@ -2587,6 +2637,8 @@ internal static class HotMonsters
         int hex = HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.HexPower);
         int tangled = HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.TangledPower);
         int ringing = HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.RingingPower);
+        if (hex <= 0 && tangled <= 0 && ringing <= 0)
+            return;
 
         byte hexedDef = rules.GetAfflictionDefId(HotAfflictionId.Hexed);
         byte entangledDef = rules.GetAfflictionDefId(HotAfflictionId.Entangled);
@@ -2596,36 +2648,45 @@ internal static class HotMonsters
         for (int i = 0; i < total; i++)
         {
             ref HotCard card = ref s.Cards[i];
-            if (card.AfflId == 0)
+            if (card.AfflId != 0)
+                continue;
+
+            if (hex > 0 && hexedDef != 0)
             {
-                if (hex > 0 && hexedDef != 0)
-                {
-                    card.AfflId = hexedDef;
-                    card.AfflAmt = (short)hex;
-                }
-                else if (tangled > 0 && entangledDef != 0
-                    && card.CardDefId < rules.Cards.Length
-                    && rules.Cards[card.CardDefId].Type == CardType.Attack)
-                {
-                    card.AfflId = entangledDef;
-                    card.AfflAmt = 1;
-                }
-                else if (ringing > 0 && ringingDef != 0)
-                {
-                    card.AfflId = ringingDef;
-                    card.AfflAmt = 1;
-                }
+                card.AfflId = hexedDef;
+                card.AfflAmt = (short)hex;
             }
-            else if (card.AfflId < rules.Afflictions.Length)
+            else if (tangled > 0 && entangledDef != 0
+                && card.CardDefId < rules.Cards.Length
+                && rules.Cards[card.CardDefId].Type == CardType.Attack)
             {
-                HotAfflictionId afflId = rules.Afflictions[card.AfflId].AfflictionId;
-                if ((hex <= 0 && afflId == HotAfflictionId.Hexed)
-                    || (tangled <= 0 && afflId == HotAfflictionId.Entangled)
-                    || (ringing <= 0 && afflId == HotAfflictionId.Ringing))
-                {
-                    card.AfflId = 0;
-                    card.AfflAmt = 0;
-                }
+                card.AfflId = entangledDef;
+                card.AfflAmt = 1;
+            }
+            else if (ringing > 0 && ringingDef != 0)
+            {
+                card.AfflId = ringingDef;
+                card.AfflAmt = 1;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clears a specific affliction from all combat cards (matching STS2 0.113.1
+    /// <c>HexPower/TangledPower/RingingPower.AfterRemoved</c> without stripping unrelated afflictions).
+    /// </summary>
+    internal static void ClearCardAffliction(ref CombatHotState s, HotRules rules, HotAfflictionId targetAffliction)
+    {
+        int total = s.TotalCardCount;
+        for (int i = 0; i < total; i++)
+        {
+            ref HotCard card = ref s.Cards[i];
+            if (card.AfflId != 0
+                && card.AfflId < rules.Afflictions.Length
+                && rules.Afflictions[card.AfflId].AfflictionId == targetAffliction)
+            {
+                card.AfflId = 0;
+                card.AfflAmt = 0;
             }
         }
     }
@@ -3059,8 +3120,7 @@ internal static class HotMonsters
         int respawnCount = Math.Max(0, 2 - newStock);
         int hpBonus = respawnCount * 10;
         bool tough = IsTough(rules);
-        int minHp = (tough ? 76 : 70) + hpBonus;
-        int maxHp = (tough ? 86 : 78) + hpBonus;
+        int hp = (tough ? 80 : 70) + hpBonus;
 
         SpawnMonster(
             ref s,
@@ -3070,8 +3130,8 @@ internal static class HotMonsters
             HotMonsterId.Axebot,
             sourceSlot: deadSlot,
             minion: false,
-            customMinHp: minHp,
-            customMaxHp: maxHp,
+            customMinHp: hp,
+            customMaxHp: hp,
             stockAmount: newStock,
             axebotRespawnCount: respawnCount);
     }
@@ -3083,17 +3143,17 @@ internal static class HotMonsters
         HotExecScratch scratch,
         byte deadSlot)
     {
-        // Match DeathPowerSupport.cs:92-105 exact Niche RNG order:
-        // 1) Roll FatGremlin HP first
-        // 2) Create & add SneakyGremlin (rolls SneakyGremlin HP + initial move if player turn)
-        // 3) Add FatGremlin with HeistPower copied from dead GremlinMerc's ThieveryPower(s), then roll initial move.
+        // Match STS2 0.113.1 SurprisePower.cs:24-35 exact creation & Niche RNG order:
+        // 1) CreateCreature(FatGremlin, "fat") -> rolls FatGremlin HP & claims FatGremlin CombatId FIRST
+        // 2) CreatureCmd.Add<SneakyGremlin>("sneaky") -> rolls SneakyGremlin HP, claims next CombatId, adds to combat
+        // 3) CreatureCmd.Add(fatGremlin) with HeistPower copied from dead GremlinMerc's ThieveryPower(s).
         ushort fatDefId = FindMonsterDefId(rules, HotMonsterId.FatGremlin);
-        int fatHp = fatDefId != 0 ? RollSpawnHp(in s, ref s.Rng[(int)HotRngStream.Niche], rules, HotMonsterId.FatGremlin, fatDefId, 0, 0) : 0;
+        if (fatDefId == 0)
+            throw new InvalidOperationException("HotMonsters.TriggerSurpriseSpawn: FatGremlin was not pre-registered in HotRules.Monsters.");
+        int fatHp = RollSpawnHp(in s, ref s.Rng[(int)HotRngStream.Niche], rules, HotMonsterId.FatGremlin, fatDefId, 0, 0);
+        uint fatCombatId = s.NextCreatureId++;
 
         SpawnMonster(ref s, ref cold, rules, scratch, HotMonsterId.SneakyGremlin, sourceSlot: deadSlot, minion: false);
-
-        if (fatDefId == 0)
-            return;
 
         int fatSlot = AddPreparedSpawn(
             ref s,
@@ -3107,7 +3167,8 @@ internal static class HotMonsters
             minion: false,
             stockAmount: -1,
             axebotRespawnCount: 0,
-            wrigglerSlotIndex: 0);
+            wrigglerSlotIndex: 0,
+            overrideCombatId: fatCombatId);
 
         if (fatSlot < 0)
             return;
@@ -3159,7 +3220,7 @@ internal static class HotMonsters
 
         ushort monsterDefId = FindMonsterDefId(rules, monsterId);
         if (monsterDefId == 0)
-            return -1;
+            throw new InvalidOperationException($"HotMonsters.SpawnMonster: monster '{monsterId}' was not pre-registered in HotRules.Monsters.");
 
         int baseHp = RollSpawnHp(
             in s,
@@ -3197,7 +3258,8 @@ internal static class HotMonsters
         bool minion,
         int stockAmount,
         int axebotRespawnCount,
-        int wrigglerSlotIndex)
+        int wrigglerSlotIndex,
+        uint overrideCombatId = 0)
     {
         if (s.EnemyCount >= HotLimits.MaxEnemies || s.RosterCount >= HotLimits.MaxEnemies)
             return -1;
@@ -3209,7 +3271,7 @@ internal static class HotMonsters
         enemy = default;
         enemy.Vital = new HotCreature
         {
-            CombatId = s.NextCreatureId++,
+            CombatId = overrideCombatId != 0 ? overrideCombatId : s.NextCreatureId++,
             CurrentHp = baseHp,
             MaxHp = baseHp,
             Block = 0,
@@ -3230,7 +3292,18 @@ internal static class HotMonsters
         else if (monsterId == HotMonsterId.Wriggler && wrigglerSlotIndex > 0)
             enemy.AiRegs[0] = wrigglerSlotIndex;
 
+        // Assign exact STS2 0.113.1 encounter slot into AiRegs[2] (1-based) and keep ActiveEnemyRoster
+        // sorted in EncounterSlots order to match live CombatState.SortEnemiesBySlotName().
+        if (rules.EncounterSlots.Length > 0)
+        {
+            int chosenEncounterSlotIdx = ChooseSpawnEncounterSlot(in s, rules, monsterId, sourceSlot, wrigglerSlotIndex);
+            if (chosenEncounterSlotIdx >= 0)
+                s.Enemies[newSlot].AiRegs[2] = chosenEncounterSlotIdx + 1;
+        }
+
         s.ActiveEnemyRoster[s.RosterCount++] = newSlot;
+        if (rules.EncounterSlots.Length > 0 && s.RosterCount > 1)
+            SortActiveEnemyRosterByEncounterSlots(ref s, rules);
 
         // Native entrance powers (MonsterSpawnSupport.ApplyNativeEntrancePowers).
         switch (monsterId)
@@ -3331,6 +3404,156 @@ internal static class HotMonsters
 
         if (rules.HasRelic(HotRelicId.PhilosophersStone))
             HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, newOwnerSlot, 0, HotPowerId.StrengthPower, 1);
+
+        if (rules.IsFurCoatActiveInCurrentRoom && rules.HasRelic(HotRelicId.FurCoat) && s.Enemies[newEnemySlot].Vital.CurrentHp > 1)
+            s.Enemies[newEnemySlot].Vital.CurrentHp = 1;
+    }
+
+    private static int GetEnemyEncounterSlotOrder(in CombatHotState s, HotRules rules, byte enemySlot)
+    {
+        string[] encSlots = rules.EncounterSlots;
+        if (encSlots.Length == 0)
+            return -1;
+        if (enemySlot < rules.EnemySlotNames.Length)
+        {
+            string name = rules.EnemySlotNames[enemySlot];
+            for (int i = 0; i < encSlots.Length; i++)
+            {
+                if (string.Equals(encSlots[i], name, StringComparison.Ordinal))
+                    return i;
+            }
+            return -1;
+        }
+        int encIdx1 = s.Enemies[enemySlot].AiRegs[2];
+        return encIdx1 > 0 && encIdx1 <= encSlots.Length ? encIdx1 - 1 : -1;
+    }
+
+    private static int ChooseSpawnEncounterSlot(
+        in CombatHotState s,
+        HotRules rules,
+        HotMonsterId monsterId,
+        byte sourceSlot,
+        int wrigglerSlotIndex)
+    {
+        string[] encSlots = rules.EncounterSlots;
+        if (encSlots.Length == 0)
+            return -1;
+
+        static int FindNamedSlot(string[] slots, string name)
+        {
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (string.Equals(slots[i], name, StringComparison.Ordinal))
+                    return i;
+            }
+            return -1;
+        }
+
+        switch (monsterId)
+        {
+            case HotMonsterId.Wriggler:
+                if (wrigglerSlotIndex > 0)
+                {
+                    int wIdx = FindNamedSlot(encSlots, $"wriggler{wrigglerSlotIndex}");
+                    if (wIdx >= 0)
+                        return wIdx;
+                }
+                return FindFirstUnoccupiedEncounterSlot(in s, rules);
+
+            case HotMonsterId.EyeWithTeeth:
+            case HotMonsterId.Parafright:
+            {
+                int illIdx = FindNamedSlot(encSlots, "illusion");
+                return illIdx >= 0 ? illIdx : FindFirstUnoccupiedEncounterSlot(in s, rules);
+            }
+
+            case HotMonsterId.SneakyGremlin:
+            {
+                int sneakyIdx = FindNamedSlot(encSlots, "sneaky");
+                return sneakyIdx >= 0 ? sneakyIdx : FindFirstUnoccupiedEncounterSlot(in s, rules);
+            }
+
+            case HotMonsterId.FatGremlin:
+            {
+                int fatIdx = FindNamedSlot(encSlots, "fat");
+                return fatIdx >= 0 ? fatIdx : FindFirstUnoccupiedEncounterSlot(in s, rules);
+            }
+
+            case HotMonsterId.Axebot:
+                if (sourceSlot >= 3)
+                {
+                    int srcIdx = GetEnemyEncounterSlotOrder(in s, rules, (byte)(sourceSlot - 3));
+                    if (srcIdx >= 0)
+                        return srcIdx;
+                }
+                return FindFirstUnoccupiedEncounterSlot(in s, rules);
+
+            case HotMonsterId.ToughEgg:
+            case HotMonsterId.TwoTailedRat:
+                return FindLastUnoccupiedEncounterSlot(in s, rules);
+
+            default:
+                return FindFirstUnoccupiedEncounterSlot(in s, rules);
+        }
+    }
+
+    private static int FindFirstUnoccupiedEncounterSlot(in CombatHotState s, HotRules rules)
+    {
+        string[] encSlots = rules.EncounterSlots;
+        for (int idx = 0; idx < encSlots.Length; idx++)
+        {
+            bool occupied = false;
+            for (int r = 0; r < s.RosterCount; r++)
+            {
+                byte activeSlot = s.ActiveEnemyRoster[r];
+                if (GetEnemyEncounterSlotOrder(in s, rules, activeSlot) == idx)
+                {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (!occupied)
+                return idx;
+        }
+        return -1;
+    }
+
+    private static int FindLastUnoccupiedEncounterSlot(in CombatHotState s, HotRules rules)
+    {
+        string[] encSlots = rules.EncounterSlots;
+        for (int idx = encSlots.Length - 1; idx >= 0; idx--)
+        {
+            bool occupied = false;
+            for (int r = 0; r < s.RosterCount; r++)
+            {
+                byte activeSlot = s.ActiveEnemyRoster[r];
+                if (GetEnemyEncounterSlotOrder(in s, rules, activeSlot) == idx)
+                {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (!occupied)
+                return idx;
+        }
+        return -1;
+    }
+
+    private static void SortActiveEnemyRosterByEncounterSlots(ref CombatHotState s, HotRules rules)
+    {
+        int count = s.RosterCount;
+        for (int i = 1; i < count; i++)
+        {
+            byte key = s.ActiveEnemyRoster[i];
+            int keyOrder = GetEnemyEncounterSlotOrder(in s, rules, key);
+            int j = i - 1;
+            while (j >= 0 && GetEnemyEncounterSlotOrder(in s, rules, s.ActiveEnemyRoster[j]) > keyOrder)
+            {
+                s.ActiveEnemyRoster[j + 1] = s.ActiveEnemyRoster[j];
+                j--;
+            }
+            s.ActiveEnemyRoster[j + 1] = key;
+        }
     }
 
     private static int RollSpawnHp(
@@ -3401,7 +3624,7 @@ internal static class HotMonsters
             HotMonsterId.SneakyGremlin => tough ? 11 : 10,
             HotMonsterId.Wriggler => tough ? 18 : 17,
             HotMonsterId.ToughEgg => tough ? 15 : 14,
-            HotMonsterId.Axebot => tough ? 76 : 70,
+            HotMonsterId.Axebot => tough ? 80 : 70,
             _ => 20,
         };
     }
@@ -3423,7 +3646,7 @@ internal static class HotMonsters
             HotMonsterId.SneakyGremlin => tough ? 15 : 14,
             HotMonsterId.Wriggler => tough ? 22 : 21,
             HotMonsterId.ToughEgg => tough ? 19 : 18,
-            HotMonsterId.Axebot => tough ? 86 : 78,
+            HotMonsterId.Axebot => tough ? 80 : 70,
             _ => 20,
         };
     }
@@ -3721,8 +3944,8 @@ internal static class HotMonsters
                 i++;
         }
 
-        if (removedHex)
-            NormalizeCardAfflictions(ref s, rules);
+        if (removedHex && HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.HexPower) <= 0)
+            ClearCardAffliction(ref s, rules, HotAfflictionId.Hexed);
     }
 
     private static bool ShouldEnemyBeRemovedFromCombatAfterDeath(in CombatHotState s, HotRules rules, byte ownerSlot)
@@ -3831,7 +4054,7 @@ internal static class HotMonsters
             or HotPowerId.SynchronizePower
             or HotPowerId.HyperbeamFocusDownPower;
 
-    private static void CreatureEscaped(ref CombatHotState s, HotRules rules, byte enemySlot)
+    internal static void CreatureEscaped(ref CombatHotState s, HotRules rules, byte enemySlot)
     {
         byte ownerSlot = (byte)(3 + enemySlot);
         RemovePowersAfterDeath(ref s, rules, ownerSlot, removeAllBecauseDeparted: true);
@@ -3867,8 +4090,54 @@ internal static class HotMonsters
             return;
         }
 
-        short followUp = nextMoveId != null ? machine.FindNode(nextMoveId) : s.Enemies[slot].CurrentMoveNode;
         short stunnedNode = machine.FindNode("STUNNED");
+        short followUp = nextMoveId != null
+            ? machine.FindNode(nextMoveId)
+            : (s.Enemies[slot].CurrentMoveNode != stunnedNode
+                ? s.Enemies[slot].CurrentMoveNode
+                : (s.Enemies[slot].AiRegs[3] > 0 ? (short)(s.Enemies[slot].AiRegs[3] - 1) : (short)-1));
+
+        if (stunnedNode >= 0)
+        {
+            s.Enemies[slot].CurrentMoveNode = stunnedNode;
+            s.Enemies[slot].Flags &= ~HotEnemyFlags.NeedsInitialRoll;
+            if (followUp >= 0)
+                s.Enemies[slot].AiRegs[3] = followUp + 1;
+        }
+        else
+        {
+            s.Enemies[slot].Flags |= HotEnemyFlags.Stunned | HotEnemyFlags.SkipNextMove;
+            if (followUp >= 0)
+                s.Enemies[slot].AiRegs[3] = followUp + 1;
+        }
+    }
+
+    /// <summary>
+    /// Stuns <paramref name="slot"/> with follow-up resolved to the current state's next state
+    /// (matching <c>FlutterPower.AfterDamageReceived</c>: <c>StateLog.Last().GetNextState(...)</c>).
+    /// </summary>
+    internal static void ForceStunnedWithNextMove(ref CombatHotState s, HotRules rules, byte slot)
+    {
+        HotMonsterMachine? machine = rules.GetMonsterMachine(s.Enemies[slot].MonsterDefId);
+        if (machine == null)
+        {
+            ForceStunnedMove(ref s, rules, slot, null);
+            return;
+        }
+
+        short cur = s.Enemies[slot].CurrentMoveNode;
+        short stunnedNode = machine.FindNode("STUNNED");
+        short followUp = -1;
+        if (cur >= 0 && cur < machine.Nodes.Length && cur != stunnedNode)
+        {
+            short next = machine.Nodes[cur].NextNode;
+            followUp = next >= 0 ? next : cur;
+        }
+        else if (s.Enemies[slot].AiRegs[3] > 0)
+        {
+            followUp = (short)(s.Enemies[slot].AiRegs[3] - 1);
+        }
+
         if (stunnedNode >= 0)
         {
             s.Enemies[slot].CurrentMoveNode = stunnedNode;

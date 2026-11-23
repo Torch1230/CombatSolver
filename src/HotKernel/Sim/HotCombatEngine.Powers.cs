@@ -30,74 +30,135 @@ internal static partial class HotCombatEngine
         if (!hasMask && rules.Dominion == HotDominionId.None)
             return;
 
+        HotRules? prevRules = HotPiles.PushActiveRules(rules);
+        try
+        {
         int bit = BitOperations.TrailingZeroCount(bitMask);
 
-        // 1. Active Relics participating in this hook bit (O(active matching relics))
-        if (hasMask && (uint)bit < (uint)rules.RelicHooksByBit.Length)
-        {
-            byte[] relicIndices = rules.RelicHooksByBit[bit];
-            for (int r = 0; r < relicIndices.Length; r++)
-            {
-                HotRelics.DispatchRelicHook(ref s, ref cold, rules, scratch, hook, relicIndices[r], ref args);
-                if (scratch.NeedsChoice)
-                    return;
-            }
-        }
-
-        // 2. Active Powers participating in this hook bit
-        if (hasMask && s.PowerCount > 0)
+        // Exact STS2 0.113.1 CombatState.IterateHookListeners order:
+        // 1. Player Powers (ownerSlot == 0) -> 2. Player Relics -> 3. Non-player Powers (ownerSlot != 0) -> 4. Dread Dominion.
+        if (hasMask)
         {
             if (IsReadOnlyModifierHook(hook))
             {
-                int powerCount = s.PowerCount;
-                for (int i = 0; i < powerCount; i++)
+                if (s.PowerCount > 0)
                 {
-                    ref readonly HotPower p = ref s.Powers[i];
-                    if (p.Amount == 0 || p.PowerDefId >= rules.Powers.Length)
-                        continue;
+                    int powerCount = s.PowerCount;
+                    for (int i = 0; i < powerCount; i++)
+                    {
+                        ref readonly HotPower p = ref s.Powers[i];
+                        if (p.OwnerSlot != 0 || p.Amount == 0 || p.PowerDefId >= rules.Powers.Length)
+                            continue;
 
-                    HotPowerDef def = rules.Powers[p.PowerDefId];
-                    if (((ulong)def.HookMask & bitMask) == 0)
-                        continue;
+                        HotPowerDef def = rules.Powers[p.PowerDefId];
+                        if (((ulong)def.HookMask & bitMask) == 0)
+                            continue;
 
-                    DispatchSinglePowerHook(ref s, ref cold, rules, scratch, hook, i, def, ref args);
-                    if (scratch.NeedsChoice)
-                        return;
+                        DispatchSinglePowerHook(ref s, ref cold, rules, scratch, hook, i, def, ref args);
+                        if (scratch.NeedsChoice)
+                            return;
+                    }
+                }
+
+                if ((uint)bit < (uint)rules.RelicHooksByBit.Length)
+                {
+                    byte[] relicIndices = rules.RelicHooksByBit[bit];
+                    for (int r = 0; r < relicIndices.Length; r++)
+                    {
+                        HotRelics.DispatchRelicHook(ref s, ref cold, rules, scratch, hook, relicIndices[r], ref args);
+                        if (scratch.NeedsChoice)
+                            return;
+                    }
+                }
+
+                if (s.PowerCount > 0)
+                {
+                    int powerCount = s.PowerCount;
+                    for (int i = 0; i < powerCount; i++)
+                    {
+                        ref readonly HotPower p = ref s.Powers[i];
+                        if (p.OwnerSlot == 0 || p.Amount == 0 || p.PowerDefId >= rules.Powers.Length)
+                            continue;
+
+                        HotPowerDef def = rules.Powers[p.PowerDefId];
+                        if (((ulong)def.HookMask & bitMask) == 0)
+                            continue;
+
+                        DispatchSinglePowerHook(ref s, ref cold, rules, scratch, hook, i, def, ref args);
+                        if (scratch.NeedsChoice)
+                            return;
+                    }
                 }
             }
             else
             {
-                // Snapshot only matching (OwnerSlot, PowerDefId, Occurrence) so mid-hook power
-                // additions/removals never skip or double-fire listeners.
+                // Snapshot all matching (OwnerSlot, PowerDefId, Occurrence) up front to match
+                // CombatState.IterateHookListeners snapshot semantics so mid-hook additions/removals
+                // never skip or double-fire listeners.
                 Span<byte> snapOwners = stackalloc byte[HotLimits.MaxPowers];
                 Span<ushort> snapDefIds = stackalloc ushort[HotLimits.MaxPowers];
                 Span<byte> snapOcc = stackalloc byte[HotLimits.MaxPowers];
                 int snapCount = 0;
 
-                int powerCount = s.PowerCount;
-                for (int i = 0; i < powerCount; i++)
+                if (s.PowerCount > 0)
                 {
-                    ref readonly HotPower p = ref s.Powers[i];
-                    if (p.Amount == 0 || p.PowerDefId >= rules.Powers.Length)
-                        continue;
-
-                    if (((ulong)rules.Powers[p.PowerDefId].HookMask & bitMask) == 0)
-                        continue;
-
-                    byte occ = 0;
-                    for (int k = 0; k < i; k++)
+                    int powerCount = s.PowerCount;
+                    for (int i = 0; i < powerCount; i++)
                     {
-                        if (s.Powers[k].OwnerSlot == p.OwnerSlot && s.Powers[k].PowerDefId == p.PowerDefId)
-                            occ++;
+                        ref readonly HotPower p = ref s.Powers[i];
+                        if (p.Amount == 0 || p.PowerDefId >= rules.Powers.Length)
+                            continue;
+
+                        if (((ulong)rules.Powers[p.PowerDefId].HookMask & bitMask) == 0)
+                            continue;
+
+                        byte occ = 0;
+                        for (int k = 0; k < i; k++)
+                        {
+                            if (s.Powers[k].OwnerSlot == p.OwnerSlot && s.Powers[k].PowerDefId == p.PowerDefId)
+                                occ++;
+                        }
+                        snapOwners[snapCount] = p.OwnerSlot;
+                        snapDefIds[snapCount] = p.PowerDefId;
+                        snapOcc[snapCount] = occ;
+                        snapCount++;
                     }
-                    snapOwners[snapCount] = p.OwnerSlot;
-                    snapDefIds[snapCount] = p.PowerDefId;
-                    snapOcc[snapCount] = occ;
-                    snapCount++;
                 }
 
+                // 1. Player Powers (ownerSlot == 0)
                 for (int n = 0; n < snapCount; n++)
                 {
+                    if (snapOwners[n] != 0)
+                        continue;
+
+                    int liveIdx = FindPowerOccurrenceIndex(in s, snapOwners[n], snapDefIds[n], snapOcc[n]);
+                    if (liveIdx < 0 || s.Powers[liveIdx].Amount == 0)
+                        continue;
+
+                    HotPowerDef def = rules.Powers[snapDefIds[n]];
+                    DispatchSinglePowerHook(ref s, ref cold, rules, scratch, hook, liveIdx, def, ref args);
+                    if (scratch.NeedsChoice)
+                        return;
+                }
+
+                // 2. Player Relics
+                if ((uint)bit < (uint)rules.RelicHooksByBit.Length)
+                {
+                    byte[] relicIndices = rules.RelicHooksByBit[bit];
+                    for (int r = 0; r < relicIndices.Length; r++)
+                    {
+                        HotRelics.DispatchRelicHook(ref s, ref cold, rules, scratch, hook, relicIndices[r], ref args);
+                        if (scratch.NeedsChoice)
+                            return;
+                    }
+                }
+
+                // 3. Non-player Powers (pets / enemies)
+                for (int n = 0; n < snapCount; n++)
+                {
+                    if (snapOwners[n] == 0)
+                        continue;
+
                     int liveIdx = FindPowerOccurrenceIndex(in s, snapOwners[n], snapDefIds[n], snapOcc[n]);
                     if (liveIdx < 0 || s.Powers[liveIdx].Amount == 0)
                         continue;
@@ -110,9 +171,14 @@ internal static partial class HotCombatEngine
             }
         }
 
-        // 3. Active Dread Dominion
+        // 4. Active Dread Dominion
         if (rules.Dominion != HotDominionId.None)
             HotFoolTarot.TryDispatchDominionHook(ref s, ref cold, rules, scratch, hook, ref args);
+        }
+        finally
+        {
+            HotPiles.PopActiveRules(prevRules);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -162,7 +228,11 @@ internal static partial class HotCombatEngine
             if (HotRegentNecro.TryDispatchPowerHook(ref s, ref cold, rules, scratch, hook, powerIdx, ref args))
                 return;
         }
-        else if (def.Domain == HotPowerDomain.Fool)
+        else if (def.Domain == HotPowerDomain.Fool
+            || def.PowerId is HotPowerId.FlankingPower
+                or HotPowerId.AeonglassDominionPower
+                or HotPowerId.InsatiableDominionPower
+                or HotPowerId.LagavulinMatriarchDominionPower)
         {
             if (HotFoolTarot.TryDispatchPowerHook(ref s, ref cold, rules, scratch, hook, powerIdx, ref args))
                 return;
@@ -241,7 +311,7 @@ internal static partial class HotCombatEngine
                     RemovePowerAt(ref s, powerIdx);
                     s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
                     s.Enemies[ownerSlot - 3].Vital.Block = 0;
-                    s.Enemies[ownerSlot - 3].Flags |= HotEnemyFlags.SkipNextMove | HotEnemyFlags.Stunned;
+                    HotMonsters.ForceStunnedMove(ref s, rules, (byte)(ownerSlot - 3), "BITE_MOVE");
                 }
                 break;
 
@@ -254,7 +324,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotHookMask.AfterAttack:
-                HandleAfterAttack(ref s, rules, powerIdx, powerId, ownerSlot, ref args);
+                HandleAfterAttack(ref s, ref cold, rules, scratch, powerIdx, powerId, ownerSlot, amount, ref args);
                 break;
 
             case HotHookMask.BeforeCardPlayed:
@@ -289,6 +359,8 @@ internal static partial class HotCombatEngine
             case HotHookMask.ModifyMaxEnergy:
                 if (ownerSlot == 0 && amount > 0 && powerId is HotPowerId.PyrePower or HotPowerId.FriendshipPower)
                     args.MaxEnergy += amount;
+                else if (ownerSlot == 0 && amount > 0 && powerId == HotPowerId.WasteAwayPower)
+                    args.MaxEnergy -= amount;
                 break;
 
             case HotHookMask.ShouldClearBlock:
@@ -499,10 +571,15 @@ internal static partial class HotCombatEngine
                     args.DecimalMultiplier *= 0.5m;
                 break;
 
+            case HotPowerId.ShrinkPower:
+                if (args.ActorSlot == ownerSlot && amount != 0)
+                    args.DecimalMultiplier *= 0.7m;
+                break;
+
             case HotPowerId.SlowPower:
                 if (args.TargetSlot == ownerSlot)
                 {
-                    int slowCount = s.Powers[powerIdx].Aux0 > 0 ? s.Powers[powerIdx].Aux0 : amount;
+                    int slowCount = s.Powers[powerIdx].Aux0;
                     if (slowCount > 0)
                         args.DecimalMultiplier *= 1m + 0.1m * slowCount;
                 }
@@ -530,6 +607,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.ConductorsBatonPower:
+            case HotPowerId.SoarPower:
                 if (args.TargetSlot == ownerSlot && amount > 0)
                     args.DecimalMultiplier *= 0.5m;
                 break;
@@ -537,8 +615,9 @@ internal static partial class HotCombatEngine
             case HotPowerId.SurroundedPower:
                 if (args.TargetSlot == ownerSlot && args.ActorSlot != 0xFF)
                 {
-                    int facing = s.Powers[powerIdx].Aux0; // 1 = Left, 2 = Right
-                    if ((facing == 2 && GetPowerAmountById(in s, rules, args.ActorSlot, HotPowerId.BackAttackLeftPower) > 0)
+                    // SurroundedPower.Direction: Right = 0, Left = 1 (SurroundedPower.cs:19-23,56-71).
+                    int facing = s.Powers[powerIdx].Aux0;
+                    if (((facing == 0 || facing == 2) && GetPowerAmountById(in s, rules, args.ActorSlot, HotPowerId.BackAttackLeftPower) > 0)
                         || (facing == 1 && GetPowerAmountById(in s, rules, args.ActorSlot, HotPowerId.BackAttackRightPower) > 0))
                     {
                         args.DecimalMultiplier *= 1.5m;
@@ -570,6 +649,11 @@ internal static partial class HotCombatEngine
             case HotPowerId.SlipperyPower:
                 if (args.DecimalValue > 1m)
                     args.DecimalValue = 1m;
+                break;
+
+            case HotPowerId.HardToKillPower:
+                if (args.BoolFlag && args.DecimalValue > amount)
+                    args.DecimalValue = amount;
                 break;
 
             case HotPowerId.HardenedShellPower:
@@ -702,7 +786,7 @@ internal static partial class HotCombatEngine
                         RemovePowerAt(ref s, powerIdx);
                         s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
                         if (ownerSlot >= 3)
-                            s.Enemies[ownerSlot - 3].Flags |= HotEnemyFlags.SkipNextMove | HotEnemyFlags.Stunned;
+                            HotMonsters.ForceStunnedWithNextMove(ref s, rules, (byte)(ownerSlot - 3));
                     }
                 }
                 break;
@@ -735,7 +819,8 @@ internal static partial class HotCombatEngine
                     ushort platingId = rules.PlatingPowerDefId != 0 ? rules.PlatingPowerDefId : rules.GetPowerDefId(HotPowerId.PlatingPower);
                     if (platingId != 0)
                         SetPowerAmount(ref s, rules, ownerSlot, platingId, 0);
-                    s.Enemies[ownerSlot - 3].Flags |= HotEnemyFlags.Awake | HotEnemyFlags.SkipNextMove;
+                    s.Enemies[ownerSlot - 3].Flags |= HotEnemyFlags.Awake;
+                    HotMonsters.ForceStunnedMove(ref s, rules, (byte)(ownerSlot - 3), "SLASH_MOVE");
                     int liveIdx = FindPowerIndex(in s, ownerSlot, rules.GetPowerDefId(HotPowerId.AsleepPower));
                     if (liveIdx >= 0)
                     {
@@ -756,7 +841,8 @@ internal static partial class HotCombatEngine
                     {
                         RemovePowerAt(ref s, powerIdx);
                         s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
-                        s.Enemies[ownerSlot - 3].Flags |= HotEnemyFlags.Awake | HotEnemyFlags.SkipNextMove;
+                        s.Enemies[ownerSlot - 3].Flags |= HotEnemyFlags.Awake;
+                        HotMonsters.ForceStunnedMove(ref s, rules, (byte)(ownerSlot - 3), "ROLL_OUT_MOVE");
                     }
                 }
                 break;
@@ -767,7 +853,7 @@ internal static partial class HotCombatEngine
                     RemovePowerAt(ref s, powerIdx);
                     s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
                     s.Enemies[ownerSlot - 3].Vital.Block = 0;
-                    s.Enemies[ownerSlot - 3].Flags |= HotEnemyFlags.SkipNextMove | HotEnemyFlags.Stunned;
+                    HotMonsters.ForceStunnedMove(ref s, rules, (byte)(ownerSlot - 3), "BITE_MOVE");
                 }
                 break;
 
@@ -779,7 +865,77 @@ internal static partial class HotCombatEngine
                     KillCreature(ref s, ref cold, rules, scratch, ownerSlot, force: false);
                 }
                 break;
+
+            case HotPowerId.ShriekPower:
+                if (ownerSlot >= 3
+                    && args.UnblockedDamage > 0
+                    && GetCreatureRef(ref s, ownerSlot).CurrentHp <= amount)
+                {
+                    HotMonsters.ForceStunnedMove(ref s, rules, (byte)(ownerSlot - 3), "TERROR_MOVE");
+                    RemovePowerAt(ref s, powerIdx);
+                    s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+                }
+                break;
+
+            case HotPowerId.PlowPower:
+                if (ownerSlot >= 3
+                    && args.UnblockedDamage > 0
+                    && GetCreatureRef(ref s, ownerSlot).CurrentHp <= amount)
+                {
+                    // 0.113.1 PlowPower.cs:37-51: remove all TemporaryStrengthPower instances & StrengthPower,
+                    // stun owner (CeremonialBeast -> BEAST_CRY_MOVE), and remove PlowPower.
+                    RemoveAllTemporaryStrengthPowers(ref s, rules, ownerSlot);
+                    ushort strDefId = rules.StrengthPowerDefId != 0
+                        ? rules.StrengthPowerDefId
+                        : rules.GetPowerDefId(HotPowerId.StrengthPower);
+                    if (strDefId != 0)
+                        SetPowerAmount(ref s, rules, ownerSlot, strDefId, 0);
+                    byte enemyIdx = (byte)(ownerSlot - 3);
+                    bool isCeremonialBeast = s.Enemies[enemyIdx].MonsterDefId < rules.Monsters.Length
+                        && rules.Monsters[s.Enemies[enemyIdx].MonsterDefId].MonsterId == HotMonsterId.CeremonialBeast;
+                    if (isCeremonialBeast && rules.RulesSnapshot.IsDread)
+                    {
+                        // 0.113.1 CeremonialBeast.SetStunned(): applies RitualPower(2) in Dread mode.
+                        ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, ownerSlot, HotPowerId.RitualPower, 2);
+                    }
+                    HotMonsters.ForceStunnedMove(ref s, rules, enemyIdx, isCeremonialBeast ? "BEAST_CRY_MOVE" : null);
+                    ushort plowDefId = rules.GetPowerDefId(HotPowerId.PlowPower);
+                    if (plowDefId != 0)
+                        SetPowerAmount(ref s, rules, ownerSlot, plowDefId, 0);
+                }
+                break;
         }
+    }
+
+    private static void RemoveAllTemporaryStrengthPowers(ref CombatHotState s, HotRules rules, byte ownerSlot)
+    {
+        bool removed = false;
+        for (int i = s.PowerCount - 1; i >= 0; i--)
+        {
+            if (s.Powers[i].OwnerSlot != ownerSlot || s.Powers[i].PowerDefId >= rules.Powers.Length)
+                continue;
+
+            HotPowerId pid = rules.Powers[s.Powers[i].PowerDefId].PowerId;
+            if (pid is HotPowerId.CoordinatePower
+                or HotPowerId.CrushUnderPower
+                or HotPowerId.DarkShacklesPower
+                or HotPowerId.DyingStarPower
+                or HotPowerId.EnfeeblingTouchPower
+                or HotPowerId.FeedingFrenzyPower
+                or HotPowerId.FlexPotionPower
+                or HotPowerId.ManglePower
+                or HotPowerId.MonarchsGazeStrengthDownPower
+                or HotPowerId.PiercingWailPower
+                or HotPowerId.ReptileTrinketPower
+                or HotPowerId.SetupStrikePower
+                or HotPowerId.ShacklingPotionPower)
+            {
+                RemovePowerAt(ref s, i);
+                removed = true;
+            }
+        }
+        if (removed)
+            s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
     }
 
     private static void HandleAfterDamageGiven(
@@ -829,12 +985,30 @@ internal static partial class HotCombatEngine
 
     private static void HandleAfterAttack(
         ref CombatHotState s,
+        ref HotColdSidecar? cold,
         HotRules rules,
+        HotExecScratch scratch,
         int powerIdx,
         HotPowerId powerId,
         byte ownerSlot,
+        int amount,
         ref HotHookArgs args)
     {
+        if (powerId == HotPowerId.SkittishPower)
+        {
+            if (ownerSlot >= 3
+                && amount > 0
+                && (s.Powers[powerIdx].Flags & HotPowerFlags.BoolAux) == 0
+                && args.IsPoweredAttack
+                && args.CardDefId != 0
+                && (scratch.AttackUnblockedEnemyMask & (1u << (ownerSlot - 3))) != 0)
+            {
+                s.Powers[powerIdx].Flags |= HotPowerFlags.BoolAux;
+                GainBlock(ref s, ref cold, rules, scratch, ownerSlot, amount, isCardBlock: false);
+            }
+            return;
+        }
+
         if (args.ActorSlot != ownerSlot)
             return;
 
@@ -899,7 +1073,7 @@ internal static partial class HotCombatEngine
 
             case HotPowerId.VeilpiercerPower:
                 if (ownerSlot == 0 && amount > 0 && args.CardIdx >= 0
-                    && (s.Cards[args.CardIdx].LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0)
+                    && IsCardEthereal(in s, in s.Cards[args.CardIdx], rules))
                 {
                     DecrementPowerAt(ref s, rules, powerIdx);
                 }
@@ -912,7 +1086,7 @@ internal static partial class HotCombatEngine
 
             case HotPowerId.SpiritOfAshPower:
                 if (ownerSlot == 0 && amount > 0 && args.CardIdx >= 0
-                    && (s.Cards[args.CardIdx].LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0)
+                    && IsCardEthereal(in s, in s.Cards[args.CardIdx], rules))
                 {
                     GainBlock(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: amount, isCardBlock: false);
                 }
@@ -934,6 +1108,7 @@ internal static partial class HotCombatEngine
 
             case HotPowerId.ChainsOfBindingPower:
                 if (ownerSlot == 0 && args.CardIdx >= 0
+                    && (s.Cards[args.CardIdx].Flags & HotCardFlags.IsDupe) == 0
                     && s.Cards[args.CardIdx].AfflId != 0
                     && rules.Afflictions[s.Cards[args.CardIdx].AfflId].AfflictionId == HotAfflictionId.Bound)
                 {
@@ -972,10 +1147,11 @@ internal static partial class HotCombatEngine
             case HotPowerId.SurroundedPower:
                 if (ownerSlot == 0 && args.TargetSlot != 0xFF)
                 {
+                    // SurroundedPower.Direction: Right = 0, Left = 1 (SurroundedPower.cs:102-119).
                     if (GetPowerAmountById(in s, rules, args.TargetSlot, HotPowerId.BackAttackLeftPower) > 0)
                         s.Powers[powerIdx].Aux0 = 1;
                     else if (GetPowerAmountById(in s, rules, args.TargetSlot, HotPowerId.BackAttackRightPower) > 0)
-                        s.Powers[powerIdx].Aux0 = 2;
+                        s.Powers[powerIdx].Aux0 = 0;
                 }
                 break;
         }
@@ -1074,6 +1250,12 @@ internal static partial class HotCombatEngine
             case HotPowerId.PanachePower:
                 if (ownerSlot == 0 && amount > 0)
                 {
+                    // PanachePower.cs:50-63: ignore the Panache card's own AfterCardPlayed.
+                    if ((s.Powers[powerIdx].Flags & HotPowerFlags.BoolAux) != 0)
+                    {
+                        s.Powers[powerIdx].Flags &= ~HotPowerFlags.BoolAux;
+                        break;
+                    }
                     int left = s.Powers[powerIdx].Aux0 > 0 ? s.Powers[powerIdx].Aux0 : 5;
                     left--;
                     if (left <= 0)
@@ -1090,7 +1272,11 @@ internal static partial class HotCombatEngine
 
             case HotPowerId.MasterPlannerPower:
                 if (ownerSlot == 0 && cardDef.Type == CardType.Skill && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
+                {
                     s.Cards[args.CardIdx].LocalKeywordsMask |= HotCardKeywordMask.Sly;
+                    s.Cards[args.CardIdx].KeywordsAddedOutsideMask |= HotCardKeywordMask.Sly;
+                    s.Cards[args.CardIdx].Flags |= HotCardFlags.IsSlyThisTurn;
+                }
                 break;
 
             case HotPowerId.JugglingPower:
@@ -1177,11 +1363,11 @@ internal static partial class HotCombatEngine
             case HotPowerId.WitheringPresencePower:
                 if (ownerSlot >= 3 && s.Powers[powerIdx].TargetSlot == 0)
                 {
-                    int left = s.Powers[powerIdx].Aux0 > 0 ? s.Powers[powerIdx].Aux0 : 3;
+                    int left = s.Powers[powerIdx].Aux0 > 0 ? s.Powers[powerIdx].Aux0 : 6;
                     left--;
                     if (left <= 0)
                     {
-                        s.Powers[powerIdx].Aux0 = 3;
+                        s.Powers[powerIdx].Aux0 = 6;
                         ushort witherId = rules.GetCardDefId(HotCustomCardId.Wither);
                         if (witherId != 0)
                             AddGeneratedFixedCard(ref s, ref cold, rules, scratch, witherId, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: false);
@@ -1204,11 +1390,12 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.TenderPower:
-                if (args.ActorSlot == 0 && ownerSlot >= 3)
+                if (args.ActorSlot == 0 && ownerSlot == 0)
                 {
+                    byte applier = s.Powers[powerIdx].ApplierSlot;
                     s.Powers[powerIdx].Aux0++;
-                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, 0, HotPowerId.StrengthPower, -1);
-                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, 0, HotPowerId.DexterityPower, -1);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, applier, HotPowerId.StrengthPower, -1);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, applier, HotPowerId.DexterityPower, -1);
                 }
                 break;
 
@@ -1413,7 +1600,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.VeilpiercerPower:
-                if (args.CardIdx >= 0 && (s.Cards[args.CardIdx].LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0)
+                if (args.CardIdx >= 0 && IsCardEthereal(in s, in s.Cards[args.CardIdx], rules))
                     args.IntValue = 0;
                 break;
 
@@ -1437,12 +1624,18 @@ internal static partial class HotCombatEngine
         {
             case HotPowerId.MachineLearningPower:
             case HotPowerId.DrawCardsNextTurnPower:
-            case HotPowerId.ClarityPower:
             case HotPowerId.DemesnePower:
                 args.HandDrawCount += amount;
                 break;
-            case HotPowerId.WasteAwayPower:
+            case HotPowerId.ClarityPower:
+                // 0.113.1 ClarityPower.cs:22-29: always +1 card; Amount tracks turns remaining.
+                args.HandDrawCount += 1;
+                break;
+            case HotPowerId.MindRotPower:
                 args.HandDrawCount = Math.Max(0, args.HandDrawCount - amount);
+                break;
+            case HotPowerId.AmnesiaPower:
+                args.HandDrawCount = Math.Max(0, args.HandDrawCount - 2);
                 break;
         }
     }
@@ -1507,7 +1700,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.PagestormPower:
-                if ((s.Cards[args.CardIdx].LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0 && amount > 0)
+                if (IsCardEthereal(in s, in s.Cards[args.CardIdx], rules) && amount > 0)
                     DrawCards(ref s, ref cold, rules, scratch, amount, fromHandDraw: false);
                 break;
 
@@ -1556,6 +1749,24 @@ internal static partial class HotCombatEngine
                     else
                     {
                         s.Powers[powerIdx].Aux0 = left;
+                    }
+                }
+                break;
+
+            case HotPowerId.ChainsOfBindingPower:
+                // 0.113.1 ChainsOfBindingPower.cs:41-51: afflict first `amount` unafflicted drawn cards
+                // during player's turn with Bound(amount) (Bound.CanAfflictUnplayableCards == true).
+                if (s.CurrentSide == HotCombatSide.Player
+                    && amount > 0
+                    && s.Cards[args.CardIdx].AfflId == 0
+                    && s.Powers[powerIdx].Aux1 < amount)
+                {
+                    byte boundId = rules.GetAfflictionDefId(HotAfflictionId.Bound);
+                    if (boundId != 0)
+                    {
+                        s.Cards[args.CardIdx].AfflId = boundId;
+                        s.Cards[args.CardIdx].AfflAmt = (short)amount;
+                        s.Powers[powerIdx].Aux1++;
                     }
                 }
                 break;
@@ -1670,9 +1881,8 @@ internal static partial class HotCombatEngine
                     if (hexId != 0)
                     {
                         card.AfflId = hexId;
-                        card.AfflAmt = 1;
+                        card.AfflAmt = (short)Math.Clamp(amount, 0, short.MaxValue);
                     }
-                    card.LocalKeywordsMask |= HotCardKeywordMask.Ethereal;
                 }
                 break;
         }
@@ -1757,8 +1967,7 @@ internal static partial class HotCombatEngine
 
             case HotPowerId.RegenPower:
                 HealCreature(ref s, ref cold, rules, scratch, ownerSlot, amount);
-                if (args.Side == HotCombatSide.Enemy)
-                    DecrementPowerAt(ref s, rules, powerIdx);
+                DecrementPowerAt(ref s, rules, powerIdx);
                 break;
 
             case HotPowerId.HailstormPower:
@@ -1790,9 +1999,39 @@ internal static partial class HotCombatEngine
                     for (int c = 0; c < total; c++)
                     {
                         if (s.Cards[c].AfflId != 0 && rules.Afflictions[s.Cards[c].AfflId].AfflictionId == HotAfflictionId.Bound)
+                        {
                             s.Cards[c].AfflId = 0;
+                            s.Cards[c].AfflAmt = 0;
+                        }
                     }
-                    s.Powers[powerIdx].Flags &= ~HotPowerFlags.BoolAux;
+                    s.Powers[powerIdx].Aux0 = 0;
+                }
+                break;
+
+            case HotPowerId.StampedePower:
+                if (ownerSlot == 0)
+                {
+                    Span<ushort> attackUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
+                    for (int k = 0; k < amount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; k++)
+                    {
+                        int atkCount = 0;
+                        int handCount = s.HandCount;
+                        for (int h = 0; h < handCount && atkCount < attackUids.Length; h++)
+                        {
+                            ref readonly HotCard hc = ref s.Cards[h];
+                            if (rules.Cards[hc.CardDefId].Type == CardType.Attack
+                                && (hc.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0)
+                            {
+                                attackUids[atkCount++] = hc.CardUid;
+                            }
+                        }
+                        if (atkCount == 0)
+                            break;
+                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardSelection], atkCount);
+                        int liveIdx = FindCardIndexByUid(in s, HotPileKind.Hand, attackUids[pick]);
+                        if (liveIdx >= 0)
+                            AutoPlayCard(ref s, ref cold, rules, scratch, liveIdx, targetEnemySlot: -1, forceExhaust: false);
+                    }
                 }
                 break;
         }
@@ -1809,6 +2048,13 @@ internal static partial class HotCombatEngine
         int amount,
         ref HotHookArgs args)
     {
+        if (powerId is HotPowerId.IntangiblePower or HotPowerId.NoBlockPower)
+        {
+            if (args.Side == HotCombatSide.Enemy)
+                DecrementPowerAt(ref s, rules, powerIdx);
+            return;
+        }
+
         bool ownerParticipates = IsSlotOnCurrentSide(args.Side, ownerSlot);
 
         // Opponent-side turn-end expirations
@@ -1820,6 +2066,10 @@ internal static partial class HotCombatEngine
             {
                 RemovePowerAt(ref s, powerIdx);
                 s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+            }
+            else if (powerId == HotPowerId.SkittishPower)
+            {
+                s.Powers[powerIdx].Flags &= ~HotPowerFlags.BoolAux;
             }
             return;
         }
@@ -1888,11 +2138,12 @@ internal static partial class HotCombatEngine
             case HotPowerId.TenderPower:
             {
                 int cardsPlayed = s.Powers[powerIdx].Aux0;
+                byte applier = s.Powers[powerIdx].ApplierSlot;
                 s.Powers[powerIdx].Aux0 = 0;
                 if (cardsPlayed > 0)
                 {
-                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, 0, HotPowerId.StrengthPower, cardsPlayed);
-                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, 0, HotPowerId.DexterityPower, cardsPlayed);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, applier, HotPowerId.StrengthPower, cardsPlayed);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, applier, HotPowerId.DexterityPower, cardsPlayed);
                 }
                 break;
             }
@@ -1952,11 +2203,6 @@ internal static partial class HotCombatEngine
                 break;
             }
 
-            case HotPowerId.RegenPower:
-                if (args.Side == HotCombatSide.Player)
-                    DecrementPowerAt(ref s, rules, powerIdx);
-                break;
-
             case HotPowerId.PanachePower:
                 s.Powers[powerIdx].Aux0 = 5;
                 break;
@@ -1974,6 +2220,20 @@ internal static partial class HotCombatEngine
                 s.Powers[powerIdx].Aux0 = 0;
                 break;
 
+            case HotPowerId.TangledPower:
+                RemovePowerAt(ref s, powerIdx);
+                if (ownerSlot == 0)
+                    HotMonsters.ClearCardAffliction(ref s, rules, HotAfflictionId.Entangled);
+                s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+                break;
+
+            case HotPowerId.RingingPower:
+                RemovePowerAt(ref s, powerIdx);
+                if (ownerSlot == 0)
+                    HotMonsters.ClearCardAffliction(ref s, rules, HotAfflictionId.Ringing);
+                s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+                break;
+
             // Transient 1-turn clears
             case HotPowerId.NoDrawPower:
             case HotPowerId.BorrowedTimePower:
@@ -1987,17 +2247,20 @@ internal static partial class HotCombatEngine
             case HotPowerId.CorrosiveWavePower:
             case HotPowerId.GravityPower:
             case HotPowerId.StranglePower:
-            case HotPowerId.TangledPower:
-            case HotPowerId.RingingPower:
                 RemovePowerAt(ref s, powerIdx);
                 s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+                break;
+
+            case HotPowerId.ShrinkPower:
+                // ShrinkPower.cs:41,82: negative Amount is infinite (ShrinkerBeetle) and never ticks down.
+                if (amount > 0)
+                    DecrementPowerAt(ref s, rules, powerIdx);
                 break;
 
             // Duration decrements
             case HotPowerId.DoubleDamagePower:
             case HotPowerId.RetainHandPower:
             case HotPowerId.DebilitatePower:
-            case HotPowerId.ShrinkPower:
             case HotPowerId.HatchPower:
                 DecrementPowerAt(ref s, rules, powerIdx);
                 break;
@@ -2041,6 +2304,36 @@ internal static partial class HotCombatEngine
 
             case HotPowerId.HyperbeamFocusDownPower:
                 RetireTempStat(ref s, ref cold, rules, scratch, powerIdx, ownerSlot, HotPowerId.FocusPower, +amount);
+                break;
+
+            case HotPowerId.EscapeArtistPower:
+                if (amount > 1)
+                    s.Powers[powerIdx].Amount--;
+                break;
+
+            case HotPowerId.DisintegrationPower:
+                if (amount > 0)
+                    DealDamage(ref s, ref cold, rules, scratch, dealerSlot: ownerSlot, targetSlot: ownerSlot, baseDamage: amount, isPoweredAttack: false);
+                break;
+
+            case HotPowerId.AmnesiaPower:
+                if (ownerSlot == 0 && args.Side == HotCombatSide.Player)
+                {
+                    RemovePowerAt(ref s, powerIdx);
+                    s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+                }
+                break;
+
+            case HotPowerId.BattlewornDummyTimeLimitPower:
+                if (amount > 1)
+                {
+                    s.Powers[powerIdx].Amount--;
+                }
+                else if (ownerSlot >= 3)
+                {
+                    s.CombatFlags |= HotCombatFlags.BattlewornDummyTimedOut;
+                    HotMonsters.CreatureEscaped(ref s, rules, (byte)(ownerSlot - 3));
+                }
                 break;
         }
     }
@@ -2113,6 +2406,26 @@ internal static partial class HotCombatEngine
         int amount,
         ref HotHookArgs args)
     {
+        // RampartPower (LivingShield): enemy-owned power that grants unpowered Block to TurretOperator on non-extra player turn start.
+        if (powerId == HotPowerId.RampartPower)
+        {
+            if (args.Side == HotCombatSide.Player && !args.BoolFlag && amount > 0)
+            {
+                int rosterCount = s.RosterCount;
+                for (int r = 0; r < rosterCount; r++)
+                {
+                    byte eSlot = s.ActiveEnemyRoster[r];
+                    if ((s.Enemies[eSlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                        && s.Enemies[eSlot].MonsterDefId < rules.Monsters.Length
+                        && rules.Monsters[s.Enemies[eSlot].MonsterDefId].MonsterId == HotMonsterId.TurretOperator)
+                    {
+                        GainBlock(ref s, ref cold, rules, scratch, (byte)(3 + eSlot), amount, isCardBlock: false);
+                    }
+                }
+            }
+            return;
+        }
+
         if (!IsSlotOnCurrentSide(args.Side, ownerSlot) || amount <= 0)
             return;
 
@@ -2136,6 +2449,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.FeralPower:
+            case HotPowerId.SlowPower:
                 s.Powers[powerIdx].Aux0 = 0;
                 break;
 
@@ -2152,6 +2466,11 @@ internal static partial class HotCombatEngine
                 RemovePowerAt(ref s, powerIdx);
                 s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
                 ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, ownerSlot, HotPowerId.DoubleDamagePower, amount);
+                break;
+
+            case HotPowerId.AmnesiaPower:
+                if (ownerSlot == 0 && args.Side == HotCombatSide.Player)
+                    LoseEnergy(ref s, 1);
                 break;
 
             case HotPowerId.ReflectPower:
@@ -2220,29 +2539,32 @@ internal static partial class HotCombatEngine
 
             case HotPowerId.NightmarePower:
                 if (ownerSlot == 0)
+                    TriggerNightmarePower(ref s, ref cold, rules, scratch, powerIdx, amount);
+                break;
+
+            case HotPowerId.EntropyPower:
+                if (ownerSlot == 0 && s.HandCount > 0)
                 {
-                    ushort targetUid = s.Powers[powerIdx].AuxCardUid;
-                    ushort targetDefId = (ushort)s.Powers[powerIdx].Aux0;
+                    int picks = Math.Min(amount, Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction));
+                    for (int k = 0; k < picks && s.HandCount > 0 && !IsOverOrEnding(in s); k++)
+                    {
+                        if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, 0, 1, 1, out HotChoiceSelection sel))
+                            return;
+                        int idx = FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
+                        if (idx >= 0)
+                            TransformCardToRandomInCombat(ref s, ref cold, rules, idx);
+                    }
+                }
+                break;
+
+            case HotPowerId.YouAreMinePower:
+                if (ownerSlot == 0 && s.PlayerTurnNumber >= 2)
+                {
                     RemovePowerAt(ref s, powerIdx);
                     s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
-                    int srcIdx = FindCardIndexByUidAnyPile(in s, targetUid);
-                    if (srcIdx >= 0)
-                    {
-                        HotCard template = s.Cards[srcIdx];
-                        for (int k = 0; k < amount; k++)
-                        {
-                            HotCard copy = template;
-                            copy.CardUid = s.NextCardUid++;
-                            copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
-                            copy.Flags |= HotCardFlags.IsClone;
-                            AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
-                        }
-                    }
-                    else if (targetDefId != 0)
-                    {
-                        for (int k = 0; k < amount; k++)
-                            AddGeneratedFixedCard(ref s, ref cold, rules, scratch, targetDefId, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
-                    }
+                    ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0xFF, HotPowerId.WeakPower, amount);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0xFF, HotPowerId.VulnerablePower, amount);
+                    ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0xFF, HotPowerId.FrailPower, amount);
                 }
                 break;
 
@@ -2271,29 +2593,6 @@ internal static partial class HotCombatEngine
                         int idx = FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                         if (idx >= 0)
                             ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);
-                    }
-                }
-                break;
-
-            case HotPowerId.CreativeAiPower:
-                if (ownerSlot == 0 && rules.CombatCharacterPowerPool.Length > 0)
-                {
-                    for (int k = 0; k < amount; k++)
-                    {
-                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules.CombatCharacterPowerPool.Length);
-                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, rules.CombatCharacterPowerPool[pick], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
-                    }
-                }
-                break;
-
-            case HotPowerId.HelloWorldPower:
-                if (ownerSlot == 0 && rules.UnlockedCharacterCardPool.Length > 0)
-                {
-                    int genCount = s.Powers[powerIdx].AmountOnTurnStart > 0 ? s.Powers[powerIdx].AmountOnTurnStart : amount;
-                    for (int k = 0; k < genCount; k++)
-                    {
-                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules.UnlockedCharacterCardPool.Length);
-                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, rules.UnlockedCharacterCardPool[pick], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
                     }
                 }
                 break;
@@ -2341,31 +2640,8 @@ internal static partial class HotCombatEngine
             }
 
             case HotPowerId.NightmarePower:
-            {
-                ushort targetUid = s.Powers[powerIdx].AuxCardUid;
-                ushort targetDefId = (ushort)s.Powers[powerIdx].Aux0;
-                RemovePowerAt(ref s, powerIdx);
-                s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
-                int srcIdx = FindCardIndexByUidAnyPile(in s, targetUid);
-                if (srcIdx >= 0)
-                {
-                    HotCard template = s.Cards[srcIdx];
-                    for (int k = 0; k < amount; k++)
-                    {
-                        HotCard copy = template;
-                        copy.CardUid = s.NextCardUid++;
-                        copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
-                        copy.Flags |= HotCardFlags.IsClone;
-                        AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
-                    }
-                }
-                else if (targetDefId != 0)
-                {
-                    for (int k = 0; k < amount; k++)
-                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, targetDefId, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
-                }
+                TriggerNightmarePower(ref s, ref cold, rules, scratch, powerIdx, amount);
                 break;
-            }
 
             case HotPowerId.ForegoneConclusionPower:
             {
@@ -2400,10 +2676,13 @@ internal static partial class HotCombatEngine
             case HotPowerId.CreativeAiPower:
                 if (rules.CombatCharacterPowerPool.Length > 0)
                 {
-                    for (int k = 0; k < amount; k++)
+                    Span<ushort> picked = stackalloc ushort[1];
+                    for (int k = 0; k < amount && !scratch.NeedsChoice && !IsOverOrEnding(in s); k++)
                     {
-                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules.CombatCharacterPowerPool.Length);
-                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, rules.CombatCharacterPowerPool[pick], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
+                        // 0.113.1 CreativeAiPower.cs:27: CardFactory.GetDistinctForCombat(..., 1, CombatCardGeneration)
+                        // -> TakeRandom(1, rng) -> UnstableShuffle + Take(1).
+                        if (HotPotions.TakeRandomDistinct(rules.CombatCharacterPowerPool, 1, ref s.Rng[(int)HotRngStream.CombatCardGeneration], picked) > 0)
+                            AddGeneratedFixedCard(ref s, ref cold, rules, scratch, picked[0], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
                     }
                 }
                 break;
@@ -2411,24 +2690,55 @@ internal static partial class HotCombatEngine
             case HotPowerId.HelloWorldPower:
                 if (rules.UnlockedCharacterCardPool.Length > 0)
                 {
+                    // 0.113.1 HelloWorldPower.cs:25-28: GetDistinctForCombat(where Rarity == Common, AmountOnTurnStart, rng).
                     int genCount = s.Powers[powerIdx].AmountOnTurnStart > 0 ? s.Powers[powerIdx].AmountOnTurnStart : amount;
-                    for (int k = 0; k < genCount; k++)
+                    Span<ushort> commonPool = stackalloc ushort[Math.Min(rules.UnlockedCharacterCardPool.Length, 256)];
+                    int commonCount = 0;
+                    for (int i = 0; i < rules.UnlockedCharacterCardPool.Length && commonCount < commonPool.Length; i++)
                     {
-                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules.UnlockedCharacterCardPool.Length);
-                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, rules.UnlockedCharacterCardPool[pick], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
+                        ushort cid = rules.UnlockedCharacterCardPool[i];
+                        if (cid > 0 && cid < rules.Cards.Length
+                            && rules.Cards[cid].Rarity == CardRarity.Common
+                            && IsCombatGeneratableCard(rules.Cards[cid]))
+                        {
+                            commonPool[commonCount++] = cid;
+                        }
                     }
+                    int pickCap = Math.Min(genCount, 16);
+                    Span<ushort> picked = stackalloc ushort[pickCap];
+                    int taken = HotPotions.TakeRandomDistinct(commonPool[..commonCount], pickCap, ref s.Rng[(int)HotRngStream.CombatCardGeneration], picked);
+                    for (int k = 0; k < taken && !scratch.NeedsChoice && !IsOverOrEnding(in s); k++)
+                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, picked[k], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
                 }
                 break;
 
             case HotPowerId.CallOfTheVoidPower:
                 if (rules.UnlockedCharacterCardPool.Length > 0)
                 {
-                    for (int k = 0; k < amount; k++)
+                    // 0.113.1 CallOfTheVoidPower.cs:30-45: loop amount times calling GetDistinctForCombat(elig, 1, rng).
+                    Span<ushort> elig = stackalloc ushort[Math.Min(rules.UnlockedCharacterCardPool.Length, 256)];
+                    int eligCount = 0;
+                    for (int i = 0; i < rules.UnlockedCharacterCardPool.Length && eligCount < elig.Length; i++)
                     {
-                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules.UnlockedCharacterCardPool.Length);
-                        int addedIdx = AddGeneratedFixedCard(ref s, ref cold, rules, scratch, rules.UnlockedCharacterCardPool[pick], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
-                        if (addedIdx >= 0)
-                            s.Cards[addedIdx].LocalKeywordsMask |= HotCardKeywordMask.Ethereal;
+                        ushort cid = rules.UnlockedCharacterCardPool[i];
+                        if (cid > 0 && cid < rules.Cards.Length && IsCombatGeneratableCard(rules.Cards[cid]))
+                            elig[eligCount++] = cid;
+                    }
+                    if (eligCount > 0)
+                    {
+                        Span<ushort> picked = stackalloc ushort[1];
+                        for (int k = 0; k < amount && !scratch.NeedsChoice && !IsOverOrEnding(in s); k++)
+                        {
+                            if (HotPotions.TakeRandomDistinct(elig[..eligCount], 1, ref s.Rng[(int)HotRngStream.CombatCardGeneration], picked) > 0)
+                            {
+                                int addedIdx = AddGeneratedFixedCard(ref s, ref cold, rules, scratch, picked[0], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
+                                if (addedIdx >= 0)
+                                {
+                                    s.Cards[addedIdx].LocalKeywordsMask |= HotCardKeywordMask.Ethereal;
+                                    s.Cards[addedIdx].KeywordsAddedOutsideMask |= HotCardKeywordMask.Ethereal;
+                                }
+                            }
+                        }
                     }
                 }
                 break;
@@ -2436,11 +2746,12 @@ internal static partial class HotCombatEngine
             case HotPowerId.SpectrumShiftPower:
                 if (rules.CombatColorlessPool.Length > 0)
                 {
-                    for (int k = 0; k < amount; k++)
-                    {
-                        int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], rules.CombatColorlessPool.Length);
-                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, rules.CombatColorlessPool[pick], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
-                    }
+                    // 0.113.1 SpectrumShiftPower.cs:25: GetDistinctForCombat(colorless, amount, rng).
+                    int pickCap = Math.Min(amount, 16);
+                    Span<ushort> picked = stackalloc ushort[pickCap];
+                    int taken = HotPotions.TakeRandomDistinct(rules.CombatColorlessPool, pickCap, ref s.Rng[(int)HotRngStream.CombatCardGeneration], picked);
+                    for (int k = 0; k < taken && !scratch.NeedsChoice && !IsOverOrEnding(in s); k++)
+                        AddGeneratedFixedCard(ref s, ref cold, rules, scratch, picked[k], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
                 }
                 break;
 
@@ -2557,11 +2868,56 @@ internal static partial class HotCombatEngine
         // Enemy-side AfterDeath powers (Ravenous, CrabRage, Explosive, Stock, Adaptable, Illusion,
         // Infested, Reattach, Surprise, Dampen, Heist, Swipe, etc.) are executed inside
         // HotMonsters.HandleEnemyDeathEffect so they never double-trigger.
-        _ = powerIdx;
-        _ = powerId;
-        _ = ownerSlot;
-        _ = amount;
-        _ = args;
+        switch (powerId)
+        {
+            case HotPowerId.HexPower:
+                if (ownerSlot == 0 && args.TargetSlot == s.Powers[powerIdx].ApplierSlot)
+                {
+                    RemovePowerAt(ref s, powerIdx);
+                    ClearHexedAffliction(ref s, rules);
+                    s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+                }
+                break;
+
+            case HotPowerId.ShrinkPower:
+                if (args.TargetSlot == s.Powers[powerIdx].ApplierSlot && args.TargetSlot >= 3)
+                {
+                    RemovePowerAt(ref s, powerIdx);
+                    s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+                }
+                break;
+
+            case HotPowerId.SurroundedPower:
+                if (ownerSlot == 0 && args.TargetSlot >= 3)
+                {
+                    // SurroundedPower.cs:90-100: when an enemy dies, if all remaining living enemies are
+                    // on one side, update Facing toward them (Right = 0, Left = 1).
+                    bool anyLiving = false;
+                    bool allLeft = true;
+                    bool allRight = true;
+                    int rosterCount = s.RosterCount;
+                    for (int r = 0; r < rosterCount; r++)
+                    {
+                        byte eSlot = s.ActiveEnemyRoster[r];
+                        if ((s.Enemies[eSlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                            continue;
+                        anyLiving = true;
+                        byte cSlot = (byte)(3 + eSlot);
+                        if (GetPowerAmountById(in s, rules, cSlot, HotPowerId.BackAttackLeftPower) <= 0)
+                            allLeft = false;
+                        if (GetPowerAmountById(in s, rules, cSlot, HotPowerId.BackAttackRightPower) <= 0)
+                            allRight = false;
+                    }
+                    if (anyLiving)
+                    {
+                        if (allLeft)
+                            s.Powers[powerIdx].Aux0 = 1;
+                        else if (allRight)
+                            s.Powers[powerIdx].Aux0 = 0;
+                    }
+                }
+                break;
+        }
     }
 
     /// <summary>
@@ -2621,6 +2977,108 @@ internal static partial class HotCombatEngine
 
             SetPowerAmount(ref s, rules, targetSlot, poisonDefId, cur - 1);
         }
+    }
+
+    private static void TriggerNightmarePower(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        int powerIdx,
+        int amount)
+    {
+        ushort targetUid = s.Powers[powerIdx].AuxCardUid;
+        int aux0 = s.Powers[powerIdx].Aux0;
+        RemovePowerAt(ref s, powerIdx);
+        s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+
+        if (targetUid == 0 && aux0 >= 0 && cold?.DetachedCards is { Length: > 0 } detached && aux0 < detached.Length)
+        {
+            HotCard template = detached[aux0];
+            for (int k = 0; k < amount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; k++)
+            {
+                HotCard copy = template;
+                copy.CardUid = s.NextCardUid++;
+                copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
+                copy.Flags |= HotCardFlags.IsClone;
+                AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
+            }
+            return;
+        }
+
+        if (targetUid != 0)
+        {
+            int srcIdx = FindCardIndexByUidAnyPile(in s, targetUid);
+            if (srcIdx >= 0)
+            {
+                HotCard template = s.Cards[srcIdx];
+                for (int k = 0; k < amount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; k++)
+                {
+                    HotCard copy = template;
+                    copy.CardUid = s.NextCardUid++;
+                    copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
+                    copy.Flags |= HotCardFlags.IsClone;
+                    AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
+                }
+                return;
+            }
+        }
+
+        if (aux0 > 0 && aux0 < rules.Cards.Length && targetUid != 0)
+        {
+            for (int k = 0; k < amount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; k++)
+                AddGeneratedFixedCard(ref s, ref cold, rules, scratch, (ushort)aux0, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
+        }
+    }
+
+    private static void TransformCardToRandomInCombat(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        int cardIdx)
+    {
+        if ((uint)cardIdx >= (uint)s.TotalCardCount)
+            return;
+        HotCard orig = s.Cards[cardIdx];
+        if (orig.CardDefId == 0 || orig.CardDefId >= rules.Cards.Length)
+            return;
+
+        HotCardDef origDef = rules.Cards[orig.CardDefId];
+        ushort[] pool = origDef.Rarity == CardRarity.Curse
+            ? rules.UnlockedCurseCardPool
+            : (origDef.Type == CardType.Quest
+                || origDef.Rarity is CardRarity.Event or CardRarity.Ancient or CardRarity.Token
+                || origDef.Domain == HotCardDomain.Colorless
+                ? rules.CombatColorlessPool
+                : rules.UnlockedCharacterCardPool);
+
+        if (pool.Length == 0)
+            return;
+
+        Span<ushort> candidates = pool.Length <= 512
+            ? stackalloc ushort[pool.Length]
+            : new ushort[pool.Length];
+        int candCount = 0;
+        bool isCurseOrSpecial = origDef.Rarity is CardRarity.Curse or CardRarity.Status;
+
+        for (int i = 0; i < pool.Length; i++)
+        {
+            ushort id = pool[i];
+            if (id == 0 || id >= rules.Cards.Length)
+                continue;
+            HotCardDef d = rules.Cards[id];
+            if (d.CanonicalDefId == origDef.CanonicalDefId || !d.CanBeGeneratedInCombat)
+                continue;
+            if (!isCurseOrSpecial && d.Rarity is not (CardRarity.Common or CardRarity.Uncommon or CardRarity.Rare))
+                continue;
+            candidates[candCount++] = id;
+        }
+
+        if (candCount == 0)
+            return;
+
+        ushort replacementId = candidates[HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], candCount)];
+        TransformCardInPlace(ref s, ref cold, rules, cardIdx, replacementId, upgraded: false);
     }
 
     internal static void RetireTempStat(

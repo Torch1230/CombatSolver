@@ -94,13 +94,13 @@ internal struct HotEnemy16
 }
 
 [InlineArray(HotLimits.MaxPowers)]
-internal struct HotPower64
+internal struct HotPower96
 {
     private HotPower _element0;
 }
 
 [InlineArray(HotLimits.MaxRelicStates)]
-internal struct HotRelicState32
+internal struct HotRelicState64
 {
     private HotRelicState _element0;
 }

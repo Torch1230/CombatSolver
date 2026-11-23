@@ -11,6 +11,19 @@ dotnet build tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Re
 # Gate 0：HotKernel 非托管布局、结构体尺寸与打包合同检查（无需启动游戏）
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-hot-layout
 
+# Layer 1：0.113.1 全部单人实体覆盖与 HotRootBuilder/HotImportSupport 反射字段审计
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --audit-hot-coverage
+
+# Layer 2：覆盖引导单人步进锁步差分模糊与失败包回放
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+    --fuzz-combat --fights 120 --seed 2026 --phase all --max-turns 8
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+    --replay-fuzz .local/fuzz-failures/<bucket>.json
+
+# Layer 3：整场求解→部署反重算压测（6 角色 × Standard/Dread/Blitz）
+dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll \
+    --soak-deploy --fights 60 --seed 2026 --profile Medium --dop 8
+
 # Gate A/B/C：19/19 根捕获 + Pack/Unpack 往返 + 多回合自洽 + DOP=1/8 确定性 + 微基准
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --verify-hot-parity
 
@@ -33,6 +46,10 @@ python3 tools/search/OfflineSearchHarness/compare_results.py \
 | `GameBootstrap.cs` | 游戏静态状态初始化与全部 Godot 绕过（类头有清单） |
 | `ModRuntime.cs` | 模组初始化、稳定根捕获并直接调用 `HotSearchCoordinator`（`Solve` / `SolveSingleBeam` / `CaptureQuality`） |
 | `HotKernelChecks.cs` | `--check-hot-layout` 内存布局门禁与 `--verify-hot-parity` Gate A/B/C 核对 |
+| `RealCombatDriver.cs` | 纯 `.NET` 实机 `sts2.dll` 建局（Standard/Dread/Blitz）与动作执行排空 |
+| `HotCoverageAuditor.cs` | Layer 1 `--audit-hot-coverage` 单人全实体静态覆盖与反射字段审计 |
+| `FuzzScenarioGenerator.cs` / `CombatDiffFuzzer.cs` | Layer 2 `--fuzz-combat` / `--replay-fuzz` 覆盖引导锁步差分模糊与归桶回放 |
+| `DeploymentSoakRunner.cs` | Layer 3 `--soak-deploy` 整场搜索→实机部署与反重算压测 |
 | `QualityComparison.cs` | 基于 `HotRouteQuality.IsBetter` 的批量结果质量比较 |
 | `AncillaryFailureChecks.cs` | 辅助失败边界与缓存合同检查 |
 | `GeneratedScenarioSetup.cs` | 生成场景开局（走模组注入入口） |

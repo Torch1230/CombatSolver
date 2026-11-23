@@ -63,7 +63,11 @@ internal static partial class HotCombatEngine
 
         ushort focusDefId = rules.GetPowerDefId(HotPowerId.FocusPower);
         int focus = focusDefId != 0 ? GetPowerAmount(in s, ownerSlot: 0, focusDefId) : 0;
-        return Math.Max(0, baseValue + focus);
+        // 0.113.1 CombatState.IterateHookListeners: player Powers (FocusPower clamps >= 0) run before player Relics (InfusedCore +1 on LightningOrb).
+        int value = Math.Max(0, baseValue + focus);
+        if (orbId == HotOrbId.Lightning && rules.HasRelic(HotRelicId.InfusedCore))
+            value += 1;
+        return value;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

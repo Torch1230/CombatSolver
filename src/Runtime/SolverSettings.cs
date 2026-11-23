@@ -94,6 +94,8 @@ internal sealed record SolverSettingsData
     [JsonIgnore]
     public SolverPotionPolicy PotionPolicy { get; init; } = SolverPotionPolicy.Smart;
     public PersistedPotionDirective[] PotionDirectives { get; init; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, int>? PotionHpThresholdOverrides { get; init; }
     public bool PredictPotionReward { get; init; }
     public bool RelicStrategyEnabled { get; init; } = true;
     public RelicCounterRule[] RelicCounterRules { get; init; } = [];
@@ -153,6 +155,7 @@ internal sealed record SolverSettingsSnapshot(
     public int? BrightestFlameMaxHpLossLimit { get; init; }
     public bool IgnoreLongTermRewards { get; init; }
     public bool PredictPotionReward { get; init; }
+    public PotionHpThresholds PotionThresholds { get; init; } = PotionHpThresholds.Default;
 }
 
 internal static class SolverSettings
@@ -250,6 +253,7 @@ internal static class SolverSettings
             $"search_notification_mode={migrated.SearchCompletionNotificationMode} " +
             $"potion_policy={migrated.PotionPolicy} " +
             $"potion_directives={migrated.PotionDirectives.Length} " +
+            $"potion_threshold_overrides={effective.PotionThresholds.Count} " +
             $"performance_preset={ResolvePerformancePreset(migrated)} " +
             $"max_dop={effective.SearchMaxDegreeOfParallelism} " +
             $"search_budget_ms={effective.Profile.SoftTimeBudgetMilliseconds} " +
@@ -287,6 +291,7 @@ internal static class SolverSettings
             BrightestFlameMaxHpLossLimit = data.BrightestFlameMaxHpLossLimit,
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
             PredictPotionReward = data.PredictPotionReward,
+            PotionThresholds = ResolvePotionThresholds(data),
         };
     }
 
@@ -357,6 +362,34 @@ internal static class SolverSettings
             SaveLocked(data);
         }
     }
+
+    public static PotionHpThresholds ResolvePotionThresholds(SolverSettingsData data)
+        => PotionHpThresholds.FromDictionary(data.PotionHpThresholdOverrides);
+
+    public static SolverSettingsData ApplyPotionThresholdOverride(
+        SolverSettingsData data,
+        string potionId,
+        int? thresholdHp)
+    {
+        if (string.IsNullOrWhiteSpace(potionId))
+            throw new ArgumentException("Potion ID must not be empty.", nameof(potionId));
+
+        PotionHpThresholds current = ResolvePotionThresholds(data);
+        PotionHpThresholds updated = thresholdHp is { } value
+            ? current.WithOverride(potionId, value)
+            : current.WithoutOverride(potionId);
+        if (updated == current)
+            return data;
+        return data with
+        {
+            PotionHpThresholdOverrides = updated.ToDictionary(),
+        };
+    }
+
+    public static SolverSettingsData ClearAllPotionThresholdOverrides(SolverSettingsData data)
+        => ResolvePotionThresholds(data).IsEmpty
+            ? data
+            : data with { PotionHpThresholdOverrides = null };
 
     public static SolverPotionDirective ResolvePotionDirective(int slot, string potionId)
     {
@@ -528,6 +561,7 @@ internal static class SolverSettings
         }
         if (!Enum.IsDefined(data.PotionPolicy))
             throw new InvalidDataException($"Unknown potion policy {data.PotionPolicy}.");
+        PotionHpThresholds.ValidateDictionary(data.PotionHpThresholdOverrides);
         if (!Enum.IsDefined(data.ActTransitionBossHpStrategy))
         {
             throw new InvalidDataException(

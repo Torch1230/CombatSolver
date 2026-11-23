@@ -8,6 +8,7 @@ internal enum HotActionKind : byte
     PlayCard = 0,
     UsePotion = 1,
     EndTurn = 2,
+    TurnSetup = 3,
 }
 
 internal readonly record struct HotAction(
@@ -23,6 +24,9 @@ internal readonly record struct HotAction(
 
     public static HotAction EndTurn()
         => new(HotActionKind.EndTurn, 0, -1);
+
+    public static HotAction TurnSetup()
+        => new(HotActionKind.TurnSetup, 0, -1);
 }
 
 internal readonly record struct HotStepResult(
@@ -58,6 +62,10 @@ internal static partial class HotCombatEngine
         return mask;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool HasPendingTurnSetup(in CombatHotState s)
+        => (s.CombatFlags & HotCombatFlags.PendingTurnSetup) != 0;
+
     public static bool CanPlayCard(
         in CombatHotState s,
         HotColdSidecar? cold,
@@ -65,6 +73,8 @@ internal static partial class HotCombatEngine
         int handIdx)
     {
         if (!IsInProgress(in s) || s.TerminalOutcome != HotCombatOutcome.Ongoing)
+            return false;
+        if (HasPendingTurnSetup(in s))
             return false;
         if (s.CurrentSide != HotCombatSide.Player)
             return false;
@@ -83,7 +93,7 @@ internal static partial class HotCombatEngine
             return false;
 
         HotCardDef def = rules.Cards[card.CardDefId];
-        if (def.Target == TargetType.AnyEnemy && !HasAnyLivingEnemy(in s))
+        if (GetEffectiveCardTargetType(in s, in card, def, rules) == TargetType.AnyEnemy && !HasAnyLivingEnemy(in s))
             return false;
 
         if (!CheckShouldPlayRestrictions(in s, in card, def, rules))
@@ -105,16 +115,57 @@ internal static partial class HotCombatEngine
         if (!CanPlayCard(in s, cold, rules, handIdx))
             return false;
 
-        HotCardDef def = rules.Cards[s.Cards[handIdx].CardDefId];
-        if (def.Target == TargetType.AnyEnemy)
+        ref readonly HotCard card = ref s.Cards[handIdx];
+        HotCardDef def = rules.Cards[card.CardDefId];
+        if (GetEffectiveCardTargetType(in s, in card, def, rules) == TargetType.AnyEnemy)
             return IsValidEnemyTarget(in s, targetEnemySlot);
 
         return true;
     }
 
+    /// <summary>
+    /// Exact STS2 0.113.1 dynamic <c>CardModel.TargetType</c> resolution:
+    /// <c>Shiv</c> becomes <see cref="TargetType.AllEnemies"/> with <c>FanOfKnivesPower</c>;
+    /// <c>SovereignBlade</c> becomes <see cref="TargetType.AllEnemies"/> with <c>SeekingEdgePower</c>;
+    /// <c>MadScience</c> uses <see cref="TargetType.AnyEnemy"/> when its TinkerTimeType is Attack, else <see cref="TargetType.Self"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static TargetType GetEffectiveCardTargetType(
+        in CombatHotState s,
+        in HotCard card,
+        HotCardDef def,
+        HotRules rules)
+    {
+        switch (def.CardId)
+        {
+            case HotCustomCardId.Shiv:
+                return GetPowerAmountById(in s, rules, 0, HotPowerId.FanOfKnivesPower) > 0
+                    ? TargetType.AllEnemies
+                    : TargetType.AnyEnemy;
+
+            case HotCustomCardId.SovereignBlade:
+                return GetPowerAmountById(in s, rules, 0, HotPowerId.SeekingEdgePower) > 0
+                    ? TargetType.AllEnemies
+                    : TargetType.AnyEnemy;
+
+            case HotCustomCardId.MadScience:
+            {
+                CardType msType = (CardType)(card.CardPrivate & 0xFFFF);
+                if (msType == CardType.None)
+                    msType = def.Type;
+                return msType == CardType.Attack ? TargetType.AnyEnemy : TargetType.Self;
+            }
+
+            default:
+                return def.Target;
+        }
+    }
+
     public static bool CanUsePotion(in CombatHotState s, HotRules rules, int slot)
     {
         if (!IsInProgress(in s) || s.TerminalOutcome != HotCombatOutcome.Ongoing)
+            return false;
+        if (HasPendingTurnSetup(in s))
             return false;
         if (s.CurrentSide != HotCombatSide.Player)
             return false;
@@ -160,6 +211,12 @@ internal static partial class HotCombatEngine
         if (s.CurrentSide != HotCombatSide.Player || (s.Player.Flags & HotCreatureFlags.Alive) == 0)
             return 0;
 
+        if (HasPendingTurnSetup(in s))
+        {
+            dst[0] = HotAction.TurnSetup();
+            return 1;
+        }
+
         int written = 0;
         int handCount = s.HandCount;
         int rosterCount = s.RosterCount;
@@ -169,8 +226,9 @@ internal static partial class HotCombatEngine
             if (!CanPlayCard(in s, cold, rules, handIdx))
                 continue;
 
-            HotCardDef def = rules.Cards[s.Cards[handIdx].CardDefId];
-            if (def.Target == TargetType.AnyEnemy)
+            ref readonly HotCard handCard = ref s.Cards[handIdx];
+            HotCardDef def = rules.Cards[handCard.CardDefId];
+            if (GetEffectiveCardTargetType(in s, in handCard, def, rules) == TargetType.AnyEnemy)
             {
                 for (int r = 0; r < rosterCount; r++)
                 {
@@ -238,48 +296,61 @@ internal static partial class HotCombatEngine
             return new HotStepResult(Executed: false, NeedsChoice: false, Outcome: s.TerminalOutcome);
 
         scratch.BeginAction(choices);
+        ClearPendingChoiceUidFilters();
         t_requestEndPlayerTurn = false;
 
-        bool executed;
-        switch (action.Kind)
+        HotRules? prevRules = HotPiles.PushActiveRules(rules);
+        try
         {
-            case HotActionKind.PlayCard:
-                executed = ExecutePlayCard(ref s, ref cold, rules, scratch, action.SlotOrHandIdx, action.TargetEnemySlot);
-                break;
-
-            case HotActionKind.UsePotion:
+            bool executed;
+            switch (action.Kind)
             {
-                if (!CanUsePotion(in s, rules, action.SlotOrHandIdx, action.TargetEnemySlot))
+                case HotActionKind.PlayCard:
+                    executed = ExecutePlayCard(ref s, ref cold, rules, scratch, action.SlotOrHandIdx, action.TargetEnemySlot);
+                    break;
+
+                case HotActionKind.UsePotion:
                 {
+                    if (!CanUsePotion(in s, rules, action.SlotOrHandIdx, action.TargetEnemySlot))
+                    {
+                        executed = false;
+                    }
+                    else
+                    {
+                        HotStepResult potionResult = HotPotions.UsePotion(
+                            ref s,
+                            ref cold,
+                            rules,
+                            scratch,
+                            action.SlotOrHandIdx,
+                            action.TargetEnemySlot);
+                        executed = potionResult.Executed;
+                    }
+                    break;
+                }
+
+                case HotActionKind.EndTurn:
+                    executed = ExecuteEndTurn(ref s, ref cold, rules, scratch);
+                    break;
+
+                case HotActionKind.TurnSetup:
+                    executed = ExecuteTurnSetup(ref s, ref cold, rules, scratch);
+                    break;
+
+                default:
                     executed = false;
-                }
-                else
-                {
-                    HotStepResult potionResult = HotPotions.UsePotion(
-                        ref s,
-                        ref cold,
-                        rules,
-                        scratch,
-                        action.SlotOrHandIdx,
-                        action.TargetEnemySlot);
-                    executed = potionResult.Executed;
-                }
-                break;
+                    break;
             }
 
-            case HotActionKind.EndTurn:
-                executed = ExecuteEndTurn(ref s, ref cold, rules, scratch);
-                break;
+            if (executed && !scratch.NeedsChoice)
+                CheckWinCondition(ref s, rules);
 
-            default:
-                executed = false;
-                break;
+            return new HotStepResult(executed, scratch.NeedsChoice, s.TerminalOutcome);
         }
-
-        if (executed && !scratch.NeedsChoice)
-            CheckWinCondition(ref s, rules);
-
-        return new HotStepResult(executed, scratch.NeedsChoice, s.TerminalOutcome);
+        finally
+        {
+            HotPiles.PopActiveRules(prevRules);
+        }
     }
 
     /// <summary>
@@ -419,7 +490,7 @@ internal static partial class HotCombatEngine
                     break;
 
                 case HotPowerId.VeilpiercerPower:
-                    if (isInPlayablePile && (card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0)
+                    if (isInPlayablePile && IsCardEthereal(in s, in card, rules))
                         cost = 0;
                     break;
 

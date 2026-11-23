@@ -58,6 +58,7 @@ internal static class HotMonsterCatalog
             HotMonsterId.TheObscura => [HotMonsterId.Parafright],
             HotMonsterId.TwoTailedRat => [HotMonsterId.TwoTailedRat],
             HotMonsterId.Fabricator => [HotMonsterId.Guardbot, HotMonsterId.Noisebot, HotMonsterId.Zapbot, HotMonsterId.Stabbot],
+            HotMonsterId.PhrogParasite => [HotMonsterId.Wriggler],
             HotMonsterId.InfestedPrism => [HotMonsterId.Wriggler],
             HotMonsterId.GremlinMerc => [HotMonsterId.FatGremlin, HotMonsterId.SneakyGremlin],
             HotMonsterId.Axebot => [HotMonsterId.Axebot],

@@ -43,27 +43,52 @@ internal static class HotContinuationStamp
 
         // 3. Pets (non-Osty)
         text.Append(";pets=");
+        bool hasWuppy = (state.CombatFlags & HotCombatFlags.HasWuppy) != 0;
+        bool emittedWuppy = false;
         for (int i = 0; i < rules.RootPets.Length; i++)
         {
             HotRootPetSnapshot pet = rules.RootPets[i];
-            int hp = pet.IsWuppySlot && (state.CombatFlags & HotCombatFlags.HasWuppy) != 0 ? state.Wuppy.CurrentHp : pet.CurrentHp;
-            int maxHp = pet.IsWuppySlot && (state.CombatFlags & HotCombatFlags.HasWuppy) != 0 ? state.Wuppy.MaxHp : pet.MaxHp;
-            int blk = pet.IsWuppySlot && (state.CombatFlags & HotCombatFlags.HasWuppy) != 0 ? state.Wuppy.Block : pet.Block;
-            text.Append(pet.CombatId).Append(':').Append(pet.MonsterEntry).Append(':')
+            bool useHotWuppy = pet.IsWuppySlot && hasWuppy;
+            if (pet.IsWuppySlot)
+                emittedWuppy = true;
+            uint petCid = useHotWuppy && state.Wuppy.CombatId != 0 && state.Wuppy.CombatId != uint.MaxValue
+                ? state.Wuppy.CombatId
+                : pet.CombatId;
+            int hp = useHotWuppy ? state.Wuppy.CurrentHp : pet.CurrentHp;
+            int maxHp = useHotWuppy ? state.Wuppy.MaxHp : pet.MaxHp;
+            int blk = useHotWuppy ? state.Wuppy.Block : pet.Block;
+            text.Append(petCid).Append(':').Append(pet.MonsterEntry).Append(':')
                 .Append(hp).Append('/').Append(maxHp).Append('/').Append(blk).Append(',');
         }
+        if (hasWuppy && !emittedWuppy)
+        {
+            text.Append(state.Wuppy.CombatId).Append(":WUPPY:")
+                .Append(state.Wuppy.CurrentHp).Append('/')
+                .Append(state.Wuppy.MaxHp).Append('/')
+                .Append(state.Wuppy.Block).Append(',');
+        }
+
+        // Resolve active enemy roster ordering & slot names (matching live CombatState.SortEnemiesBySlotName)
+        int rosterCount = Math.Min((int)state.RosterCount, HotLimits.MaxEnemies);
+        Span<byte> orderedRoster = stackalloc byte[HotLimits.MaxEnemies];
+        string[]? resolvedSlotNames = ResolveActiveEnemyRosterAndSlotNames(
+            in state,
+            rules,
+            orderedRoster[..rosterCount]);
 
         // 4. Enemies (;E{index}=...)
-        for (int idx = 0; idx < state.RosterCount; idx++)
+        for (int idx = 0; idx < rosterCount; idx++)
         {
-            byte enemySlot = state.ActiveEnemyRoster[idx];
+            byte enemySlot = orderedRoster[idx];
             ref readonly HotEnemy enemy = ref state.Enemies[enemySlot];
-            string monsterEntry = enemySlot < rules.EnemyMonsterEntries.Length
-                ? rules.EnemyMonsterEntries[enemySlot]
-                : (enemy.MonsterDefId > 0 ? rules.Monsters[enemy.MonsterDefId].Entry : "null");
-            string slotName = enemySlot < rules.EnemySlotNames.Length
-                ? rules.EnemySlotNames[enemySlot]
-                : "-";
+            string monsterEntry = enemy.MonsterDefId > 0 && enemy.MonsterDefId < rules.Monsters.Length
+                ? rules.Monsters[enemy.MonsterDefId].Entry
+                : (enemySlot < rules.EnemyMonsterEntries.Length
+                    ? rules.EnemyMonsterEntries[enemySlot]
+                    : "null");
+            string slotName = resolvedSlotNames != null
+                ? resolvedSlotNames[enemySlot]
+                : (enemySlot < rules.EnemySlotNames.Length ? rules.EnemySlotNames[enemySlot] : "-");
             string moveId = ResolveMoveId(rules, enemy.MonsterDefId, enemy.CurrentMoveNode);
 
             text.Append(";E").Append(idx).Append('=')
@@ -77,18 +102,18 @@ internal static class HotContinuationStamp
         }
 
         // 5. Monster AI logs (;AI{index}=...)
-        for (int idx = 0; idx < state.RosterCount; idx++)
+        for (int idx = 0; idx < rosterCount; idx++)
         {
-            byte enemySlot = state.ActiveEnemyRoster[idx];
+            byte enemySlot = orderedRoster[idx];
             ref readonly HotEnemy enemy = ref state.Enemies[enemySlot];
             text.Append(";AI").Append(idx).Append('=');
             AppendMonsterAiLog(text, in enemy, enemySlot, cold, rules);
         }
 
         // 6. Monster state & death phase (;MS{index}=...)
-        for (int idx = 0; idx < state.RosterCount; idx++)
+        for (int idx = 0; idx < rosterCount; idx++)
         {
-            byte enemySlot = state.ActiveEnemyRoster[idx];
+            byte enemySlot = orderedRoster[idx];
             ref readonly HotEnemy enemy = ref state.Enemies[enemySlot];
             text.Append(";MS").Append(idx).Append('=');
             AppendMonsterState(text, in enemy, rules);
@@ -110,14 +135,14 @@ internal static class HotContinuationStamp
         text.Append(";FlameHp=").Append(state.BrightestFlameMaxHpSpent);
         text.Append(";AttackStarts=").Append(state.Counters[(int)HotCounterSlot.AttackPlayStartsThisTurn]);
 
-        // 9. Orbs (;O=)
+        // 9. Orbs (;O=) — compute live Focus-adjusted PassiveVal/EvokeVal matching 0.113.1 OrbModel properties
         text.Append(";O=").Append(state.OrbCapacity).Append(':');
         for (int i = 0; i < state.OrbCount; i++)
         {
             HotOrb orb = state.Orbs[i];
             text.Append(rules.Orbs[orb.OrbTypeId].Entry).Append('[')
-                .Append(orb.PassiveVal).Append('/')
-                .Append(orb.EvokeVal).Append("],");
+                .Append(HotCombatEngine.GetOrbPassiveValue(in state, rules, in orb)).Append('/')
+                .Append(HotCombatEngine.GetOrbEvokeValue(in state, rules, in orb)).Append("],");
         }
 
         // 10. Potions (;potions=)
@@ -165,15 +190,17 @@ internal static class HotContinuationStamp
         }
 
         // 13. Powers (;P=) grouped in exact CombatState.Creatures order (Allies then active Enemies)
+        Span<byte> allyOwnerSlots = stackalloc byte[HotLimits.MaxEnemies + 4];
+        int allyOwnerCount = BuildActiveAllyOwnerSlots(in state, rules, allyOwnerSlots);
         text.Append(";P=");
-        for (int i = 0; i < rules.RootAllyOwnerSlots.Length; i++)
+        for (int i = 0; i < allyOwnerCount; i++)
         {
-            byte allySlot = rules.RootAllyOwnerSlots[i];
+            byte allySlot = allyOwnerSlots[i];
             AppendPowersForOwner(text, in state, cold, rules, allySlot, ResolveAllyCombatId(in state, rules, allySlot));
         }
-        for (int idx = 0; idx < state.RosterCount; idx++)
+        for (int idx = 0; idx < rosterCount; idx++)
         {
-            byte enemySlot = state.ActiveEnemyRoster[idx];
+            byte enemySlot = orderedRoster[idx];
             uint enemyCid = state.Enemies[enemySlot].Vital.CombatId;
             AppendPowersForOwner(text, in state, cold, rules, ownerSlot: (byte)(3 + enemySlot), ownerCombatId: enemyCid);
         }
@@ -193,7 +220,7 @@ internal static class HotContinuationStamp
         for (int i = 0; i < state.PowerCount; i++)
         {
             ref readonly HotPower p = ref state.Powers[i];
-            if (p.OwnerSlot != 0 || rules.Powers[p.PowerDefId].SpecialKind != HotPowerSpecialKind.ShowOff)
+            if (p.OwnerSlot != 0 || p.Amount == 0 || rules.Powers[p.PowerDefId].SpecialKind != HotPowerSpecialKind.ShowOff)
                 continue;
             if (p.AuxCardUid == 0)
             {
@@ -220,7 +247,7 @@ internal static class HotContinuationStamp
         }
 
         text.Append(";impaled=");
-        AppendImpaledPowers(text, in state, rules);
+        AppendImpaledPowers(text, in state, rules, allyOwnerSlots[..allyOwnerCount], orderedRoster[..rosterCount]);
 
         text.Append(";fool_powers=");
         for (int i = 0; i < state.PowerCount; i++)
@@ -493,7 +520,7 @@ internal static class HotContinuationStamp
         }
 
         AppendCardCostState(text, in card, cold);
-        AppendCardInstanceState(text, in card, def);
+        AppendCardInstanceState(text, in card, def, cold, rules);
 
         text.Append("/keywords=[");
         AppendKeywordMask(text, card.LocalKeywordsMask);
@@ -545,7 +572,12 @@ internal static class HotContinuationStamp
             .Append(':').Append(mod.IsReduceOnly).Append(',');
     }
 
-    private static void AppendCardInstanceState(StringBuilder text, in HotCard card, HotCardDef def)
+    private static void AppendCardInstanceState(
+        StringBuilder text,
+        in HotCard card,
+        HotCardDef def,
+        HotColdSidecar? cold,
+        HotRules rules)
     {
         text.Append("|keywordsAdded=");
         AppendKeywordMask(text, card.KeywordsAddedOutsideMask);
@@ -564,7 +596,34 @@ internal static class HotContinuationStamp
         bool isDupe = (card.Flags & HotCardFlags.IsDupe) != 0;
         text.Append("|dupe=").Append(isDupe);
         if (isDupe)
-            text.Append("|dupeSource={").Append(def.RootDupeSourceKey ?? string.Empty).Append('}');
+        {
+            text.Append("|dupeSource={");
+            if (!string.IsNullOrEmpty(def.RootDupeSourceKey))
+            {
+                text.Append(def.RootDupeSourceKey);
+            }
+            else
+            {
+                HotCard reconstructedSource = ReconstructDupeSourceCard(in card, def);
+                AppendChoiceCardKey(text, in reconstructedSource, cold, rules);
+            }
+            text.Append('}');
+        }
+    }
+
+    private static HotCard ReconstructDupeSourceCard(in HotCard dupeCard, HotCardDef def)
+    {
+        HotCard source = dupeCard;
+        source.Flags &= ~(HotCardFlags.IsDupe | HotCardFlags.IsClone);
+        HotCardKeywordMask baseKeywords = (HotCardKeywordMask)def.BaseKeywords;
+        if ((baseKeywords & HotCardKeywordMask.Exhaust) != 0
+            && (source.LocalKeywordsMask & HotCardKeywordMask.Exhaust) == 0
+            && (source.KeywordsRemovedOutsideMask & HotCardKeywordMask.Exhaust) != 0)
+        {
+            source.LocalKeywordsMask |= HotCardKeywordMask.Exhaust;
+            source.KeywordsRemovedOutsideMask &= ~HotCardKeywordMask.Exhaust;
+        }
+        return source;
     }
 
     public static string FormatChoiceCardKey(
@@ -615,7 +674,7 @@ internal static class HotContinuationStamp
             .Append(':').Append(card.AfflId == 0 ? 0 : card.AfflAmt)
             .Append("|baselib=-");
         AppendCardCostState(text, in card, cold);
-        AppendCardInstanceState(text, in card, def);
+        AppendCardInstanceState(text, in card, def, cold, rules);
     }
 
     private static void AppendKeywordMask(StringBuilder text, HotCardKeywordMask mask)
@@ -699,9 +758,7 @@ internal static class HotContinuationStamp
             for (int v = 0; v < def.OrderedVarNames.Length; v++)
             {
                 string varName = def.OrderedVarNames[v];
-                decimal val = def.SpecialKind == HotPowerSpecialKind.Impaled && varName == "HitCounter"
-                    ? p.Aux0
-                    : def.DefaultVarValues[v];
+                decimal val = ResolvePowerVarValue(in p, def, v, varName);
                 text.Append(varName).Append('=').Append(val);
                 if (def.OrderedVarStrings != null && def.OrderedVarStrings[v] is { } strVal)
                     text.Append(':').Append(strVal);
@@ -711,12 +768,43 @@ internal static class HotContinuationStamp
             switch (def.SpecialKind)
             {
                 case HotPowerSpecialKind.Surrounded:
-                    text.Append("Facing=").Append((SurroundedPower.Direction)p.Aux0).Append(',');
+                {
+                    // 0.113.1 SurroundedPower.Direction: Right = 0, Left = 1.
+                    // Normalize legacy Aux0 == 2 (Right) from HotCombatEngine.Powers so Facing never prints "2".
+                    SurroundedPower.Direction facing = p.Aux0 == (int)SurroundedPower.Direction.Left
+                        ? SurroundedPower.Direction.Left
+                        : SurroundedPower.Direction.Right;
+                    text.Append("Facing=").Append(facing).Append(',');
                     break;
+                }
                 case HotPowerSpecialKind.Nightmare:
                     text.Append("Selected=");
-                    if (cold?.DetachedCards is { Length: > 0 } detached && p.Aux0 >= 0 && p.Aux0 < detached.Length)
+                    if (p.AuxCardUid == 0
+                        && cold?.DetachedCards is { Length: > 0 } detached
+                        && p.Aux0 >= 0
+                        && p.Aux0 < detached.Length)
+                    {
                         AppendCard(text, in detached[p.Aux0], cold, rules);
+                    }
+                    else if (p.AuxCardUid != 0)
+                    {
+                        int srcIdx = FindCardIndexByUid(in state, p.AuxCardUid);
+                        if (srcIdx >= 0)
+                        {
+                            HotCard nmCard = PrepareNightmareSelectedCard(in state.Cards[srcIdx], cold, out HotColdSidecar? nmCold);
+                            AppendCard(text, in nmCard, nmCold, rules);
+                        }
+                        else if (p.Aux0 > 0 && p.Aux0 < rules.Cards.Length)
+                        {
+                            HotCard nmCard = BuildCanonicalCard((ushort)p.Aux0, rules);
+                            AppendCard(text, in nmCard, cold: null, rules);
+                        }
+                    }
+                    else if (p.Aux0 > 0 && p.Aux0 < rules.Cards.Length)
+                    {
+                        HotCard nmCard = BuildCanonicalCard((ushort)p.Aux0, rules);
+                        AppendCard(text, in nmCard, cold: null, rules);
+                    }
                     break;
                 case HotPowerSpecialKind.Orbit:
                     text.Append("EnergyRemainder=").Append(p.Aux0).Append(',');
@@ -727,17 +815,422 @@ internal static class HotContinuationStamp
         }
     }
 
-    private static void AppendImpaledPowers(StringBuilder text, in CombatHotState state, HotRules rules)
+    private static decimal ResolvePowerVarValue(in HotPower p, HotPowerDef def, int varIndex, string varName)
+    {
+        if (def.SpecialKind == HotPowerSpecialKind.Impaled && string.Equals(varName, "HitCounter", StringComparison.Ordinal))
+            return p.Aux0;
+
+        switch (def.PowerId)
+        {
+            case HotPowerId.TheBombPower:
+                if (string.Equals(varName, "Damage", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.ThieveryPower:
+                if (string.Equals(varName, "Gold", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return def.DefaultVarValues[varIndex] + p.Aux0;
+                break;
+
+            case HotPowerId.PanachePower:
+                if (string.Equals(varName, "CardsLeft", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.SlowPower:
+                if (string.Equals(varName, "SlowAmount", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                if (string.Equals(varName, "DisplayAmount", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0 * 10m;
+                break;
+
+            case HotPowerId.InfernoPower:
+                if (string.Equals(varName, "SelfDamage", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.EnnuiPower:
+                if (string.Equals(varName, "Cards", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.CrimsonMantlePower:
+                if (string.Equals(varName, "SelfDamage", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.WitheringPresencePower:
+                if (string.Equals(varName, "CardsLeft", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.MonologuePower:
+                if (string.Equals(varName, "StrengthApplied", StringComparison.Ordinal) && p.Aux1 > 0)
+                    return p.Aux1;
+                break;
+
+            case HotPowerId.MythicFormPower:
+                if (string.Equals(varName, "Upgraded", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.EncorePower:
+                if (string.Equals(varName, "PlaysRemaining", StringComparison.Ordinal))
+                    return Math.Max(0, p.Amount - p.Aux0);
+                break;
+
+            case HotPowerId.InsatiableDominionPower:
+                if (string.Equals(varName, "Damage", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.CacophonyPower:
+                if (string.Equals(varName, "Cards", StringComparison.Ordinal) && p.Aux0 > 0)
+                    return p.Aux0;
+                break;
+
+            case HotPowerId.ToricToughnessPower:
+                if (string.Equals(varName, "Block", StringComparison.Ordinal))
+                {
+                    if (p.Aux1 > 0)
+                        return (decimal)p.Aux1 / 100m;
+                    if (p.Aux0 > 0)
+                        return p.Aux0;
+                }
+                break;
+        }
+
+        return def.DefaultVarValues[varIndex];
+    }
+
+    private static HotCard PrepareNightmareSelectedCard(
+        in HotCard source,
+        HotColdSidecar? cold,
+        out HotColdSidecar? adjustedCold)
+    {
+        // Match NightmarePower.SetSelectedCard: CreateClone() + ClearAffliction() + EndOfTurnCleanup().
+        HotCard copy = source;
+        copy.Flags &= ~(HotCardFlags.HasDeckVersion
+            | HotCardFlags.RemovedFromState
+            | HotCardFlags.ExhaustOnNextPlay
+            | HotCardFlags.SingleTurnRetain
+            | HotCardFlags.IsSlyThisTurn
+            | HotCardFlags.IsDupe);
+        copy.Flags |= HotCardFlags.IsClone;
+        copy.AfflId = 0;
+        copy.AfflAmt = 0;
+        copy.ExtraReplayThisTurn = 0;
+
+        if ((copy.Flags & HotCardFlags.HasCostOverflow) == 0)
+        {
+            int write = 0;
+            int count = Math.Min((int)copy.CostModCount, HotLimits.MaxEnergyCostMods);
+            for (int m = 0; m < count; m++)
+            {
+                HotEnergyCostMod mod = copy.EnergyCostMods[m];
+                if (!mod.ClearsOnTurnEnd)
+                    copy.EnergyCostMods[write++] = mod;
+            }
+            for (int m = write; m < HotLimits.MaxEnergyCostMods; m++)
+                copy.EnergyCostMods[m] = default;
+            copy.CostModCount = (byte)write;
+
+            if ((copy.TempStarCostPacked & 0x80) != 0 && (copy.TempStarCostPacked & 0x40) != 0)
+                copy.TempStarCostPacked = 0;
+
+            adjustedCold = cold;
+            return copy;
+        }
+
+        if (cold?.CostOverflow is { Length: > 0 } overflows)
+        {
+            for (int i = 0; i < overflows.Length; i++)
+            {
+                if (overflows[i].CardUid != copy.CardUid)
+                    continue;
+                HotEnergyCostMod[] keptEnergy = Array.FindAll(overflows[i].EnergyMods, static m => !m.ClearsOnTurnEnd);
+                HotTempStarCost[] keptStars = Array.FindAll(overflows[i].TempStarCosts, static t => !t.ClearsWhenTurnEnds);
+                adjustedCold = new HotColdSidecar(CostOverflow: [new HotCardCostOverflow(copy.CardUid, keptEnergy, keptStars)]);
+                return copy;
+            }
+        }
+
+        adjustedCold = cold;
+        return copy;
+    }
+
+    private static HotCard BuildCanonicalCard(ushort cardDefId, HotRules rules)
+    {
+        HotCardDef def = rules.Cards[cardDefId];
+        return new HotCard
+        {
+            CardDefId = cardDefId,
+            BaseEnergyCost = def.BaseCost,
+            BaseStarCost = def.BaseStarCost,
+            LocalKeywordsMask = (HotCardKeywordMask)def.BaseKeywords,
+        };
+    }
+
+    private static string[]? ResolveActiveEnemyRosterAndSlotNames(
+        in CombatHotState state,
+        HotRules rules,
+        Span<byte> orderedRoster)
+    {
+        int rosterCount = orderedRoster.Length;
+        bool hasSummoned = false;
+        for (int i = 0; i < rosterCount; i++)
+        {
+            byte eSlot = state.ActiveEnemyRoster[i];
+            orderedRoster[i] = eSlot;
+            if (eSlot >= rules.EnemySlotNames.Length)
+                hasSummoned = true;
+        }
+
+        if (!hasSummoned)
+            return null;
+
+        int tableLen = Math.Max((int)state.EnemyCount, rules.EnemySlotNames.Length);
+        string[] slotNames = new string[tableLen];
+        string[] encounterSlots = rules.EncounterSlots;
+        ulong occupiedMask = 0UL;
+
+        // Pass 1: root enemies keep their exact captured SlotName.
+        for (int i = 0; i < rosterCount; i++)
+        {
+            byte eSlot = orderedRoster[i];
+            if (eSlot < rules.EnemySlotNames.Length)
+            {
+                string name = rules.EnemySlotNames[eSlot];
+                slotNames[eSlot] = name;
+                MarkEncounterSlotOccupied(encounterSlots, name, ref occupiedMask);
+            }
+        }
+
+        // Pass 2: summoned enemies with an explicit encounter slot index recorded in AiRegs[2] (1-based).
+        for (int i = 0; i < rosterCount; i++)
+        {
+            byte eSlot = orderedRoster[i];
+            if (eSlot < rules.EnemySlotNames.Length || slotNames[eSlot] != null)
+                continue;
+            int encodedSlot = state.Enemies[eSlot].AiRegs[2];
+            if (encodedSlot > 0 && encodedSlot <= encounterSlots.Length)
+            {
+                int encIdx = encodedSlot - 1;
+                slotNames[eSlot] = encounterSlots[encIdx];
+                if (encIdx < 64)
+                    occupiedMask |= 1UL << encIdx;
+            }
+        }
+
+        // Pass 3: deterministic STS2 0.113.1 fallback in ascending enemySlot (spawn) order.
+        Span<byte> unresolved = stackalloc byte[HotLimits.MaxEnemies];
+        int unresolvedCount = 0;
+        for (int i = 0; i < rosterCount; i++)
+        {
+            byte eSlot = orderedRoster[i];
+            if (slotNames[eSlot] == null)
+                unresolved[unresolvedCount++] = eSlot;
+        }
+        // Sort unresolved by ascending enemySlot (exact spawn order) before claiming free encounter slots.
+        for (int i = 1; i < unresolvedCount; i++)
+        {
+            byte key = unresolved[i];
+            int j = i - 1;
+            while (j >= 0 && unresolved[j] > key)
+            {
+                unresolved[j + 1] = unresolved[j];
+                j--;
+            }
+            unresolved[j + 1] = key;
+        }
+
+        for (int i = 0; i < unresolvedCount; i++)
+        {
+            byte eSlot = unresolved[i];
+            ref readonly HotEnemy enemy = ref state.Enemies[eSlot];
+            string derived = DeriveSummonedEnemySlotName(in enemy, rules, encounterSlots, ref occupiedMask);
+            slotNames[eSlot] = derived;
+            MarkEncounterSlotOccupied(encounterSlots, derived, ref occupiedMask);
+        }
+
+        // Match CombatManager.AddCreature -> CombatState.SortEnemiesBySlotName() when encounter defines Slots.
+        if (encounterSlots.Length > 0 && rosterCount > 1)
+        {
+            for (int i = 1; i < rosterCount; i++)
+            {
+                byte keySlot = orderedRoster[i];
+                int keyOrder = FindEncounterSlotIndex(encounterSlots, slotNames[keySlot]);
+                int j = i - 1;
+                while (j >= 0 && FindEncounterSlotIndex(encounterSlots, slotNames[orderedRoster[j]]) > keyOrder)
+                {
+                    orderedRoster[j + 1] = orderedRoster[j];
+                    j--;
+                }
+                orderedRoster[j + 1] = keySlot;
+            }
+        }
+
+        return slotNames;
+    }
+
+    private static string DeriveSummonedEnemySlotName(
+        in HotEnemy enemy,
+        HotRules rules,
+        string[] encounterSlots,
+        ref ulong occupiedMask)
+    {
+        HotMonsterId monsterId = enemy.MonsterDefId > 0 && enemy.MonsterDefId < rules.Monsters.Length
+            ? rules.Monsters[enemy.MonsterDefId].MonsterId
+            : HotMonsterId.None;
+
+        switch (monsterId)
+        {
+            case HotMonsterId.EyeWithTeeth:
+            case HotMonsterId.Parafright:
+                return "illusion";
+
+            case HotMonsterId.SneakyGremlin:
+                return "sneaky";
+
+            case HotMonsterId.FatGremlin:
+                return "fat";
+
+            case HotMonsterId.Wriggler:
+                return enemy.AiRegs[0] > 0
+                    ? $"wriggler{enemy.AiRegs[0]}"
+                    : ClaimFirstFreeEncounterSlot(encounterSlots, ref occupiedMask);
+
+            case HotMonsterId.Axebot:
+                for (int r = 0; r < rules.EnemySlotNames.Length && r < rules.EnemyMonsterEntries.Length; r++)
+                {
+                    if (string.Equals(rules.EnemyMonsterEntries[r], "AXEBOT", StringComparison.Ordinal))
+                        return rules.EnemySlotNames[r];
+                }
+                return encounterSlots.Length == 1 ? encounterSlots[0] : "front";
+
+            case HotMonsterId.ToughEgg:
+            case HotMonsterId.TwoTailedRat:
+                return ClaimLastFreeEncounterSlot(encounterSlots, ref occupiedMask);
+
+            case HotMonsterId.GasBomb:
+            case HotMonsterId.Guardbot:
+            case HotMonsterId.Noisebot:
+            case HotMonsterId.Zapbot:
+            case HotMonsterId.Stabbot:
+                return ClaimFirstFreeEncounterSlot(encounterSlots, ref occupiedMask);
+
+            default:
+                return ClaimFirstFreeEncounterSlot(encounterSlots, ref occupiedMask);
+        }
+    }
+
+    private static string ClaimFirstFreeEncounterSlot(string[] encounterSlots, ref ulong occupiedMask)
+    {
+        for (int i = 0; i < encounterSlots.Length; i++)
+        {
+            if (i < 64 && (occupiedMask & (1UL << i)) != 0)
+                continue;
+            if (i < 64)
+                occupiedMask |= 1UL << i;
+            return encounterSlots[i];
+        }
+        return "-";
+    }
+
+    private static string ClaimLastFreeEncounterSlot(string[] encounterSlots, ref ulong occupiedMask)
+    {
+        for (int i = encounterSlots.Length - 1; i >= 0; i--)
+        {
+            if (i < 64 && (occupiedMask & (1UL << i)) != 0)
+                continue;
+            if (i < 64)
+                occupiedMask |= 1UL << i;
+            return encounterSlots[i];
+        }
+        return "-";
+    }
+
+    private static void MarkEncounterSlotOccupied(string[] encounterSlots, string slotName, ref ulong occupiedMask)
+    {
+        int idx = FindEncounterSlotIndex(encounterSlots, slotName);
+        if (idx >= 0 && idx < 64)
+            occupiedMask |= 1UL << idx;
+    }
+
+    private static int FindEncounterSlotIndex(string[] encounterSlots, string? slotName)
+    {
+        if (string.IsNullOrEmpty(slotName))
+            return -1;
+        for (int i = 0; i < encounterSlots.Length; i++)
+        {
+            if (string.Equals(encounterSlots[i], slotName, StringComparison.Ordinal))
+                return i;
+        }
+        return -1;
+    }
+
+    private static int BuildActiveAllyOwnerSlots(
+        in CombatHotState state,
+        HotRules rules,
+        Span<byte> dst)
+    {
+        int count = 0;
+        bool hasOstySlot = false;
+        bool hasWuppySlot = false;
+        for (int i = 0; i < rules.RootAllyOwnerSlots.Length && count < dst.Length; i++)
+        {
+            byte slot = rules.RootAllyOwnerSlots[i];
+            dst[count++] = slot;
+            if (slot == 1)
+                hasOstySlot = true;
+            else if (slot == 2)
+                hasWuppySlot = true;
+        }
+
+        bool appendOsty = !hasOstySlot && (state.CombatFlags & HotCombatFlags.HasOsty) != 0;
+        bool appendWuppy = !hasWuppySlot && (state.CombatFlags & HotCombatFlags.HasWuppy) != 0;
+
+        if (appendOsty && appendWuppy)
+        {
+            if (state.Osty.CombatId <= state.Wuppy.CombatId)
+            {
+                if (count < dst.Length) dst[count++] = 1;
+                if (count < dst.Length) dst[count++] = 2;
+            }
+            else
+            {
+                if (count < dst.Length) dst[count++] = 2;
+                if (count < dst.Length) dst[count++] = 1;
+            }
+        }
+        else if (appendOsty)
+        {
+            if (count < dst.Length) dst[count++] = 1;
+        }
+        else if (appendWuppy)
+        {
+            if (count < dst.Length) dst[count++] = 2;
+        }
+
+        return count;
+    }
+
+    private static void AppendImpaledPowers(
+        StringBuilder text,
+        in CombatHotState state,
+        HotRules rules,
+        ReadOnlySpan<byte> allyOwnerSlots,
+        ReadOnlySpan<byte> orderedRoster)
     {
         // Emit in exact CombatState.Creatures order matching state.Creatures.SelectMany(c => c.Powers).OfType<ImpaledPower>()
-        for (int i = 0; i < rules.RootAllyOwnerSlots.Length; i++)
+        for (int i = 0; i < allyOwnerSlots.Length; i++)
         {
-            byte allySlot = rules.RootAllyOwnerSlots[i];
+            byte allySlot = allyOwnerSlots[i];
             AppendImpaledForOwner(text, in state, rules, allySlot, ResolveAllyCombatId(in state, rules, allySlot));
         }
-        for (int idx = 0; idx < state.RosterCount; idx++)
+        for (int idx = 0; idx < orderedRoster.Length; idx++)
         {
-            byte enemySlot = state.ActiveEnemyRoster[idx];
+            byte enemySlot = orderedRoster[idx];
             AppendImpaledForOwner(text, in state, rules, (byte)(3 + enemySlot), state.Enemies[enemySlot].Vital.CombatId);
         }
     }

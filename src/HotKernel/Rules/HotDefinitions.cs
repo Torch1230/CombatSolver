@@ -364,6 +364,7 @@ internal sealed class HotPotionDef
     public bool RequiresOpeningUse { get; init; }
     public bool GeneratesPotionChain { get; init; }
     public bool IsCombatUsable { get; init; } = true;
+    public bool CanBeGeneratedInCombat { get; init; } = true;
 }
 
 internal sealed class HotOrbDef

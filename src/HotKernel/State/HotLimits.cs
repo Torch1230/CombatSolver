@@ -3,9 +3,9 @@ namespace CombatSolver.HotKernel;
 internal static class HotLimits
 {
     public const int MaxCards = 256;
-    public const int MaxPowers = 64;
+    public const int MaxPowers = 96;
     public const int MaxEnemies = 16;
-    public const int MaxRelicStates = 32;
+    public const int MaxRelicStates = 64;
     public const int MaxCounters = 64;
     public const int MaxPotions = 12;
     public const int MaxOrbs = 10;
@@ -16,7 +16,7 @@ internal static class HotLimits
     public const int MaxMonsterAiRegisters = 4;
     public const int MaxGrowthSlots = 12; // 11 built-in + 1 spare
     public const int MaxHistoryCounters = 6;
-    public const int MaxChoicesPerAction = 8;
+    public const int MaxChoicesPerAction = 16;
     public const int MaxStackAllocElements = 128;
 
     // 524,288 bytes (or 2 MiB slabs) with slack matching sizeof(CombatHotState)
@@ -156,6 +156,7 @@ internal enum HotCombatFlags : uint
     HasOsty = 1 << 6,
     HasWuppy = 1 << 7,
     HasHistoryCourseCard = 1 << 8,
+    PendingTurnSetup = 1 << 9,
 }
 
 internal sealed class HotCapacityExceededException(string reason) : Exception(reason);

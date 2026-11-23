@@ -4,16 +4,18 @@ using System.Runtime.CompilerServices;
 namespace CombatSolver.HotSearch;
 
 /// <summary>
-/// Lean, zero-LINQ beam retention (~460 LOC replacing 18,481 LOC of legacy retention/cycle/ordered-mutation).
-/// Single-pass counting-sort bucketing by <c>PotionCount</c> into pooled slices, followed by quota allocation
-/// across Primary Top-K, orthogonal diversity lanes (Survival, Offense, Setup/Scaling, mid-turn Resource/Combo),
+/// Lean, zero-LINQ beam retention with deterministic counting-sort bucketing by <c>PotionCount</c>,
+/// potion-slot/cost-tier diversity inside potion buckets (protecting scaling/draw/combo potions like
+/// <c>StrengthPotion</c>/<c>SwiftPotion</c>/<c>Duplicator</c>/<c>FruitJuice</c> from being crushed on Turn 1 by
+/// <c>BlockPotion</c>), orthogonal diversity lanes (Survival, Offense, Setup/Scaling, mid-turn Resource/Combo),
 /// and a compact 6-dimensional Pareto front — 100% deterministic.
 /// </summary>
 internal sealed class HotBeamRetention : IDisposable
 {
     public const int MaxActionsPerTurn = 64;
-    private const int MaxPotionBuckets = 4; // 0, 1, 2, 3+
+    public const int MaxPotionBuckets = 4; // 0, 1, 2, 3+
     private const int MaxParetoScanCandidates = 128;
+    private const int MaxDistinctPotionSignatures = 16;
 
     private int[] _bucketBuffer;
     private int[] _scratchIndices;
@@ -104,7 +106,9 @@ internal sealed class HotBeamRetention : IDisposable
                 slice,
                 arena,
                 quota,
+                bucketIndex: b,
                 isTurnBoundary,
+                preferPotionBuckets,
                 output.Slice(totalSelected, limit - totalSelected));
             totalSelected += picked;
         }
@@ -139,9 +143,9 @@ internal sealed class HotBeamRetention : IDisposable
 
         int remaining = totalQuota;
 
-        // Under Smart Pass 2 (where Stage 1 already searched 0-potion deeply), preserve ~35% for 0-potion
+        // Under Smart Stage 2 (where Stage 1 already searched 0-paid-potion deeply), preserve ~35% for 0-potion
         // prefixes so late-turn potions can still emerge, while giving 65% to 1+/2+ potion routes!
-        // Under single-pass/Allow mode, preserve 60% for 0-potion routes.
+        // Under single-pass/Stage 1 (0-cost potions), preserve 60% for 0-potion routes.
         if (counts[0] > 0)
         {
             int zeroPct = preferPotionBuckets ? 35 : 60;
@@ -151,7 +155,6 @@ internal sealed class HotBeamRetention : IDisposable
             remaining -= take;
         }
 
-        // When preferring potion buckets, favor 1-potion slightly over 2+/3+ since 1-potion is cheaper.
         int otherBuckets = 0;
         for (int b = 1; b < MaxPotionBuckets; b++)
         {
@@ -184,7 +187,6 @@ internal sealed class HotBeamRetention : IDisposable
             }
         }
 
-        // Spill any leftover slots round-robin starting from bucket 1 when preferring potions, else bucket 0.
         int startBucket = preferPotionBuckets ? 1 : 0;
         while (remaining > 0)
         {
@@ -208,7 +210,9 @@ internal sealed class HotBeamRetention : IDisposable
         Span<int> bucketNodes,
         HotNodeArena arena,
         int quota,
+        int bucketIndex,
         bool isTurnBoundary,
+        bool preferPotionBuckets,
         Span<int> dst)
     {
         int count = bucketNodes.Length;
@@ -226,26 +230,93 @@ internal sealed class HotBeamRetention : IDisposable
 
         int selectedCount = 0;
 
-        // Lane budgets:
+        // 0. Potion-slot & cost-tier diversity inside potion buckets (b >= 1):
+        // Guarantee top representatives for each distinct (PotionMask, CostTier) so high-tier scaling/draw/combo
+        // potions (SwiftPotion / Duplicator / GamblersBrew / StrengthPotion / FruitJuice / BloodPotion) are NOT
+        // wiped out on Turn 1 by immediate BlockPotion / FirePotion!
+        int potionDiversityQuota = 0;
+        if (bucketIndex >= 1 && quota >= 4)
+        {
+            potionDiversityQuota = preferPotionBuckets
+                ? Math.Min(MaxDistinctPotionSignatures, Math.Max(2, (quota * 28) / 100))
+                : Math.Min(MaxDistinctPotionSignatures, Math.Max(1, quota / 5));
+
+            Span<uint> seenKeys = stackalloc uint[MaxDistinctPotionSignatures];
+            int seenCount = 0;
+
+            // Round 1: pick best-Score representative for each distinct (PotionMask, PotionStrategicCost) signature.
+            for (int i = 0; i < count && selectedCount < potionDiversityQuota && seenCount < MaxDistinctPotionSignatures; i++)
+            {
+                ref readonly HotSearchNode node = ref arena.GetRef(bucketNodes[i]);
+                uint sig = ((uint)node.PotionMask << 16) | (ushort)node.PotionStrategicCost;
+                bool seen = false;
+                for (int s = 0; s < seenCount; s++)
+                {
+                    if (seenKeys[s] == sig)
+                    {
+                        seen = true;
+                        break;
+                    }
+                }
+                if (seen)
+                    continue;
+
+                seenKeys[seenCount++] = sig;
+                marks[i] = 1;
+                dst[selectedCount++] = bucketNodes[i];
+            }
+
+            // Round 2: if multiple distinct signatures exist and budget remains, grant a second representative per signature.
+            if (seenCount > 1 && selectedCount < potionDiversityQuota)
+            {
+                for (int s = 0; s < seenCount && selectedCount < potionDiversityQuota; s++)
+                {
+                    uint targetSig = seenKeys[s];
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (marks[i] != 0)
+                            continue;
+                        ref readonly HotSearchNode node = ref arena.GetRef(bucketNodes[i]);
+                        uint sig = ((uint)node.PotionMask << 16) | (ushort)node.PotionStrategicCost;
+                        if (sig == targetSig)
+                        {
+                            marks[i] = 1;
+                            dst[selectedCount++] = bucketNodes[i];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        int remainingForLanes = quota - selectedCount;
+        if (remainingForLanes <= 0)
+            return selectedCount;
+
+        // Lane budgets over remaining quota:
         // - Turn boundary: ~48% Primary, ~18% Survival, ~12% Offense, ~14% Setup, ~8% 6-dim Pareto
         // - Mid-turn:      ~44% Primary, ~14% Survival, ~10% Offense, ~12% Setup, ~12% Resource/Combo, ~8% Pareto
-        int primaryQuota = Math.Max(1, (quota * (isTurnBoundary ? 48 : 44)) / 100);
-        int survivalQuota = quota >= 6 ? Math.Max(1, (quota * (isTurnBoundary ? 18 : 14)) / 100) : 0;
-        int offenseQuota = quota >= 8 ? Math.Max(1, (quota * (isTurnBoundary ? 12 : 10)) / 100) : 0;
-        int setupQuota = quota >= 10 ? Math.Max(1, (quota * (isTurnBoundary ? 14 : 12)) / 100) : 0;
-        int comboQuota = !isTurnBoundary && quota >= 10 ? Math.Max(1, (quota * 12) / 100) : 0;
-        int paretoQuota = quota >= 12
-            ? Math.Max(1, quota - primaryQuota - survivalQuota - offenseQuota - setupQuota - comboQuota)
+        int primaryQuota = Math.Max(1, (remainingForLanes * (isTurnBoundary ? 48 : 44)) / 100);
+        int survivalQuota = remainingForLanes >= 6 ? Math.Max(1, (remainingForLanes * (isTurnBoundary ? 18 : 14)) / 100) : 0;
+        int offenseQuota = remainingForLanes >= 8 ? Math.Max(1, (remainingForLanes * (isTurnBoundary ? 12 : 10)) / 100) : 0;
+        int setupQuota = remainingForLanes >= 10 ? Math.Max(1, (remainingForLanes * (isTurnBoundary ? 14 : 12)) / 100) : 0;
+        int comboQuota = !isTurnBoundary && remainingForLanes >= 10 ? Math.Max(1, (remainingForLanes * 12) / 100) : 0;
+        int paretoQuota = remainingForLanes >= 12
+            ? Math.Max(1, remainingForLanes - primaryQuota - survivalQuota - offenseQuota - setupQuota - comboQuota)
             : 0;
 
         // 1. Primary Top-K by Score
-        for (int i = 0; i < count && selectedCount < primaryQuota; i++)
+        int primaryAdded = 0;
+        for (int i = 0; i < count && primaryAdded < primaryQuota && selectedCount < quota; i++)
         {
+            if (marks[i] != 0)
+                continue;
             marks[i] = 1;
             dst[selectedCount++] = bucketNodes[i];
+            primaryAdded++;
         }
 
-        // 2. Survival lane (min DeathSave -> min net HpDeficit -> max PlayerHp -> max Block -> max Score)
+        // 2. Survival lane (min DeathSave -> min net HpDeficit incl. MaxHpDelta -> max PlayerHp -> max Block -> max Score)
         if (survivalQuota > 0 && selectedCount < quota)
         {
             selectedCount += PickTopByCustomOrder(
@@ -281,7 +352,7 @@ internal sealed class HotBeamRetention : IDisposable
                 CompareSetup);
         }
 
-        // 5. Mid-turn Resource / Combo-Generation lane (preserves BundleOfJoy/Discovery/Dredge/Adrenaline chains!)
+        // 5. Mid-turn Resource / Combo-Generation lane (preserves BundleOfJoy/Discovery/Dredge/SwiftPotion chains!)
         if (comboQuota > 0 && selectedCount < quota)
         {
             selectedCount += PickTopByCustomOrder(
@@ -329,10 +400,6 @@ internal sealed class HotBeamRetention : IDisposable
 
     private delegate int NodeIndexComparison(in HotSearchNode a, in HotSearchNode b);
 
-    /// <summary>
-    /// Selects up to <paramref name="take"/> unmarked indices using partial selection (O(count * take) for small take)
-    /// — avoids full-array sorts for tiny diversity lanes!
-    /// </summary>
     private static int PickTopByCustomOrder(
         ReadOnlySpan<int> bucketNodes,
         Span<byte> marks,
@@ -375,12 +442,16 @@ internal sealed class HotBeamRetention : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int EffectiveNetHpLoss(in HotSearchNode n)
+        => n.HpLost - n.HpRecovered + (n.PlayerMaxHpDelta < 0 ? n.PlayerMaxHpDelta * 2 : n.PlayerMaxHpDelta);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int CompareSurvival(in HotSearchNode a, in HotSearchNode b)
     {
         int cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
         if (cmp != 0) return cmp;
-        int aNetLoss = a.HpLost - a.HpRecovered;
-        int bNetLoss = b.HpLost - b.HpRecovered;
+        int aNetLoss = EffectiveNetHpLoss(in a);
+        int bNetLoss = EffectiveNetHpLoss(in b);
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
         cmp = b.PlayerHp.CompareTo(a.PlayerHp);
@@ -411,8 +482,8 @@ internal sealed class HotBeamRetention : IDisposable
     {
         int cmp = b.SetupScore.CompareTo(a.SetupScore);
         if (cmp != 0) return cmp;
-        int aNetLoss = a.HpLost - a.HpRecovered;
-        int bNetLoss = b.HpLost - b.HpRecovered;
+        int aNetLoss = EffectiveNetHpLoss(in a);
+        int bNetLoss = EffectiveNetHpLoss(in b);
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
         return b.Score.CompareTo(a.Score);
@@ -432,7 +503,7 @@ internal sealed class HotBeamRetention : IDisposable
 
     /// <summary>
     /// 6-dimensional Pareto dominance check across:
-    /// (1) Net HpDeficit asc, (2) EnemyHp asc, (3) Alive+Reviving asc,
+    /// (1) Effective net HpLoss asc (including MaxHpGain), (2) EnemyHp asc, (3) Alive+Reviving asc,
     /// (4) SetupScore desc, (5) PotionStrategicCost asc, (6) Score desc.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -443,7 +514,7 @@ internal sealed class HotBeamRetention : IDisposable
         int candidateIdx,
         HotNodeArena arena)
     {
-        int candNetLoss = candidate.HpLost - candidate.HpRecovered;
+        int candNetLoss = EffectiveNetHpLoss(in candidate);
         int candRem = candidate.AliveEnemyCount + candidate.RevivingEnemyCount;
 
         for (int j = 0; j < scanLen; j++)
@@ -451,7 +522,7 @@ internal sealed class HotBeamRetention : IDisposable
             if (j == candidateIdx)
                 continue;
             ref readonly HotSearchNode other = ref arena.GetRef(pool[j]);
-            int otherNetLoss = other.HpLost - other.HpRecovered;
+            int otherNetLoss = EffectiveNetHpLoss(in other);
             int otherRem = other.AliveEnemyCount + other.RevivingEnemyCount;
             if (otherNetLoss <= candNetLoss
                 && other.EnemyHp <= candidate.EnemyHp

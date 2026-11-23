@@ -49,6 +49,7 @@ internal sealed class HotRules
     public HotDominionId Dominion { get; init; }
     public bool HasAnyHealOrUnknownGeneration { get; init; }
     public bool HasRenewablePotionShapedRock { get; init; }
+    public bool IsFurCoatActiveInCurrentRoom { get; init; }
     public bool IsBossEncounter { get; init; }
     public bool IsEliteEncounter { get; init; }
     public bool IsTheftEncounter { get; init; }

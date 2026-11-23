@@ -22,9 +22,28 @@ internal static class HotKernelChecks
         Console.WriteLine("=== --check-hot-layout ===");
         Stopwatch sw = Stopwatch.StartNew();
 
-        // 1. Struct sizes & offsets validation
+        // 1. Struct sizes, offsets & Phase 6 capacity limits validation
         CombatHotState.ValidateLayout();
-        Console.WriteLine("[PASS] 1. CombatHotState.ValidateLayout() (FixedCore=1128 B, Total=16232 B)");
+        Check(CombatHotState.FixedCoreSize == 1128,
+            $"Expected FixedCoreSize=1128, got {CombatHotState.FixedCoreSize}.");
+        Check(HotLimits.MaxPowers == 96,
+            $"Expected HotLimits.MaxPowers=96, got {HotLimits.MaxPowers}.");
+        Check(HotLimits.MaxRelicStates == 64,
+            $"Expected HotLimits.MaxRelicStates=64, got {HotLimits.MaxRelicStates}.");
+        Check(HotLimits.MaxChoicesPerAction == 16,
+            $"Expected HotLimits.MaxChoicesPerAction=16, got {HotLimits.MaxChoicesPerAction}.");
+        Check(HotLimits.MaxPackedStateBytes == 17_256,
+            $"Expected HotLimits.MaxPackedStateBytes=17256, got {HotLimits.MaxPackedStateBytes}.");
+        int hotStructSize = System.Runtime.CompilerServices.Unsafe.SizeOf<CombatHotState>();
+        Check(hotStructSize == 17_256,
+            $"Expected sizeof(CombatHotState)=17256, got {hotStructSize}.");
+        int potionMaskOffset = (int)System.Runtime.InteropServices.Marshal.OffsetOf<CombatHotState>(
+            nameof(CombatHotState.CombatGeneratedPotionMask));
+        Check(potionMaskOffset == 182,
+            $"Expected CombatGeneratedPotionMask offset=182, got {potionMaskOffset}.");
+        Console.WriteLine(
+            "[PASS] 1. CombatHotState.ValidateLayout() " +
+            "(FixedCore=1128 B, Total=17256 B, MaxPowers=96, MaxRelicStates=64, MaxChoicesPerAction=16, CombatGeneratedPotionMask@182)");
 
         // 2. Populated 30-card state -> Pack -> Unpack -> Pack byte-identical + packed size check
         CombatHotState populated = BuildPopulated30CardState(uidOffset: 100, dirtyPadding: false);
@@ -55,7 +74,22 @@ internal static class HotKernelChecks
             "Pack -> Unpack -> Pack was NOT byte-identical.");
         Check(hash1 == hash2 && HotHash.PackedEquals(packed1, cold, packed2, cold2),
             "Pack -> Unpack -> Pack hash/PackedEquals mismatch.");
-        Console.WriteLine($"[PASS] 2. Pack -> Unpack -> Pack byte-identical (30-card packed={packedLen1} B, hash={hash1})");
+        Check(unpacked.CombatGeneratedPotionMask == 0b0000_0101,
+            $"CombatGeneratedPotionMask did not survive Pack/Unpack: expected 0x0005, got 0x{unpacked.CombatGeneratedPotionMask:X4}.");
+
+        // Verify CombatGeneratedPotionMask is an active non-padding field (mutating an active slot bit changes packed bytes + hash)
+        CombatHotState mutatedMask = unpacked;
+        mutatedMask.CombatGeneratedPotionMask = 0b0000_0001;
+        HotColdSidecar? mutatedMaskCold = cold2;
+        byte[] mutatedMaskPacked = new byte[expectedSize];
+        int mutatedMaskLen = HotStatePacker.Pack(ref mutatedMask, ref mutatedMaskCold, mutatedMaskPacked, canonicalize: true);
+        HotHash128 mutatedMaskHash = HotHash.ComputeHash(mutatedMaskPacked.AsSpan(0, mutatedMaskLen), mutatedMaskCold);
+        Check(mutatedMaskLen == packedLen1
+            && !packed1.AsSpan().SequenceEqual(mutatedMaskPacked.AsSpan(0, mutatedMaskLen))
+            && mutatedMaskHash != hash1
+            && !HotHash.PackedEquals(packed1, cold, mutatedMaskPacked.AsSpan(0, mutatedMaskLen), mutatedMaskCold),
+            "CombatGeneratedPotionMask active-bit mutation was NOT detected by Pack/HotHash/PackedEquals.");
+        Console.WriteLine($"[PASS] 2. Pack -> Unpack -> Pack byte-identical + CombatGeneratedPotionMask active-field check (30-card packed={packedLen1} B, hash={hash1})");
 
         // 3. CardUid canonicalization dedupe + explicit padding zeroing dedupe
         CombatHotState altUid = BuildPopulated30CardState(uidOffset: 500, dirtyPadding: true);
@@ -209,9 +243,11 @@ internal static class HotKernelChecks
         s.OrbCapacity = 3;
         s.PotionSlotCount = 3;
         s.ArrowCount = 3;
+        // Potions[0]=5 (occupied) & Potions[2]=9 (occupied) are combat-generated; Potions[1]=0 (empty) & slot 5 (unused).
+        // When dirtyPadding=true, set stale bits 1 and 5 so Pack canonicalization must mask them off to 0b0000_0101.
+        s.CombatGeneratedPotionMask = dirtyPadding ? (ushort)0b0010_0111 : (ushort)0b0000_0101;
         if (dirtyPadding)
         {
-            s.PadCore0 = 0xAAAA;
             s.PadCore1 = 0xAA;
             s.PadCore2 = 0xBB;
             s.PadCore3 = 0xCC;
@@ -360,7 +396,7 @@ internal static class HotKernelChecks
         AddRange(80 + 18, 2);
         if ((s.CombatFlags & HotCombatFlags.HasOsty) == 0) AddRange(100, 20); else AddRange(100 + 18, 2);
         if ((s.CombatFlags & HotCombatFlags.HasWuppy) == 0) AddRange(120, 20); else AddRange(120 + 18, 2);
-        AddRange(182, 2);
+        // Offset 182..183 is CombatGeneratedPotionMask (active non-padding field).
         AddRange(184 + 22, 2);
         AddRange(221, 3);
         for (int i = 0; i < HotLimits.MaxRngStreams; i++)

@@ -5,70 +5,58 @@ using MegaCrit.Sts2.Core.Entities.Potions;
 namespace CombatSolver.HotSearch;
 
 /// <summary>
-/// Standalone zero-allocation source of truth for potion slot permissions, strategic HP cost,
-/// replacement credit, Ambergris threshold, and final Smart/Disabled/RequireAtLeastOne eligibility.
-/// Zero dependencies on legacy <c>PotionUsePolicy</c> or <c>SolverWeights</c>.
+/// Single unified source of truth for potion slot legality, root vs combat-generated identity,
+/// sound pre-expansion no-op pruning, transparent fixed-threshold opportunity cost (built-in catalog defaults
+/// 0 / 9 / 14 / 18 and Ambergris = max(18, ceil(40% MaxHp)), overridable per potion ID; RunEnding near-zero;
+/// WhiteBeastStatue / PredictPotionReward / Alchemize non-double-counted replacement credit),
+/// hard constraints, and exact sound Stage 2 gating.
+/// Zero contradictory post-hoc Smart/Ambergris vetoes!
 /// </summary>
 internal static class HotPotionPolicy
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ApplyReplacementCredit(
-        int optionalPotionStrategicCost,
-        int optionalPotionCount,
-        int replacementHpCredit)
-        => optionalPotionStrategicCost > 0 && optionalPotionCount > 0 && replacementHpCredit > 0
-            ? Math.Max(1, optionalPotionStrategicCost - replacementHpCredit)
-            : optionalPotionStrategicCost;
+    public static HotCustomPotionId ResolvePotionId(HotPotionDef def)
+        => def.PotionId != HotCustomPotionId.None
+            ? def.PotionId
+            : HotPotionCatalog.FindByEntry(def.Entry);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int HpSaved(int potionFreeHpDeficit, int potionRouteHpDeficit)
-        => Math.Max(0, potionFreeHpDeficit - potionRouteHpDeficit);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int SmartRequiredHpSaved(
-        int strategicHpCost,
-        BossHpRelief bossHpRelief = BossHpRelief.None)
-        => HotRouteQuality.RawHpRequiredForPersistentValue(strategicHpCost, bossHpRelief);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int AmbergrisRequiredHpSaved(int maximumHp)
-        => (int)Math.Ceiling(maximumHp * HotSearchConstants.AmbergrisMinimumHpSavedFraction);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int EffectiveStrategicHpCost(
-        int strategicHpCost,
-        int ambergrisCount,
-        int maximumHp)
-        => strategicHpCost + ambergrisCount
-            * (AmbergrisRequiredHpSaved(maximumHp) - HotSearchConstants.PotionMinimumHpSaved);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool MeetsAmbergrisRestriction(
-        bool hasPotionFreeBaseline,
-        int ambergrisCount,
-        int strategicHpCost,
-        int maximumHp,
-        int potionFreePlayerHp,
-        int potionRoutePlayerHp)
+    public static bool IsDefCombatUsable(HotPotionDef def)
     {
-        if (ambergrisCount == 0)
-            return true;
-        if (!hasPotionFreeBaseline)
-            return false;
-        int required = EffectiveStrategicHpCost(strategicHpCost, ambergrisCount, maximumHp);
-        return Math.Max(0, potionRoutePlayerHp - potionFreePlayerHp) >= required;
+        HotCustomPotionId id = ResolvePotionId(def);
+        return id != HotCustomPotionId.None
+            ? HotPotionCatalog.Get(id).IsCombatUsable
+            : def.IsCombatUsable;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int HpSavedWholeHp(in HotRouteKey baseline, in HotRouteKey candidate)
+    {
+        if (baseline.HasCentiPrecision && candidate.HasCentiPrecision)
+        {
+            int deltaCenti = candidate.NetPersistentHpDeltaCenti - baseline.NetPersistentHpDeltaCenti;
+            return deltaCenti > 0 ? HotRouteQuality.RoundCentiToHp(deltaCenti) : 0;
+        }
+        return Math.Max(0, baseline.StrategicHpDeficit - candidate.StrategicHpDeficit);
     }
 
     /// <summary>
     /// Builds a root-frozen strategic HP cost array indexed by potion slot (<c>0..HotLimits.MaxPotions-1</c>).
-    /// Uses <see cref="HotPotionDef.StrategicHpCost"/> from <see cref="HotRules"/> with root snapshot fallback.
+    /// Empty slots are initialized to <c>-1</c> sentinel (never <c>0</c>) so mid-combat generated potions
+    /// can never accidentally inherit stale root costs.
     /// </summary>
     public static short[] BuildRootSlotCosts(
         CombatRootSnapshot root,
         in CombatHotState rootState,
-        HotRules rules)
+        HotRules rules,
+        PotionHpThresholds? thresholds = null)
     {
         short[] costs = new short[HotLimits.MaxPotions];
+        Array.Fill(costs, (short)-1);
+
+        PotionHpThresholds effectiveThresholds = thresholds ?? PotionHpThresholds.Default;
+        bool hasRenewableRock = root.HasRenewablePotionShapedRock || rules.HasRenewablePotionShapedRock;
+        int initialMaxHp = Math.Max(1, rootState.Player.MaxHp > 0 ? rootState.Player.MaxHp : root.InitialPlayerMaxHp);
         int slotCount = Math.Min((int)rootState.PotionSlotCount, HotLimits.MaxPotions);
 
         for (int slot = 0; slot < slotCount; slot++)
@@ -77,121 +65,272 @@ internal static class HotPotionPolicy
             if (defId == 0 || defId >= rules.Potions.Length)
                 continue;
 
-            costs[slot] = ComputePotionDefCost(rules.Potions[defId], root.HasRenewablePotionShapedRock || rules.HasRenewablePotionShapedRock);
-        }
-
-        // Prefer exact root snapshot strategic costs when captured for the same slot.
-        for (int i = 0; i < root.SearchablePotions.Count; i++)
-        {
-            SearchablePotionSlotSnapshot snap = root.SearchablePotions[i];
-            if ((uint)snap.Slot < (uint)costs.Length)
-                costs[snap.Slot] = (short)Math.Clamp(snap.StrategicHpCost, 0, short.MaxValue);
+            costs[slot] = ComputePotionDefCost(
+                rules.Potions[defId],
+                hasRenewableRock,
+                initialMaxHp,
+                effectiveThresholds);
         }
 
         return costs;
     }
 
+    /// <summary>
+    /// Legacy 2-argument catalog cost lookup retained for <c>HotPlanMaterializer</c> telemetry compatibility.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static short ComputePotionDefCost(HotPotionDef def, bool hasRenewablePotionShapedRock)
+        => ComputePotionDefCost(def, hasRenewablePotionShapedRock, initialPlayerMaxHp: 0, PotionHpThresholds.Default);
+
+    /// <summary>
+    /// Authoritative root potion HP opportunity cost: uses the player's per-potion-ID override if configured,
+    /// otherwise falls back to built-in catalog defaults (<c>0</c> for Token / renewable <c>PotionShapedRock</c>,
+    /// <c>max(18, ceil(40% MaxHp))</c> for <c>Ambergris</c>, and <c>9 / 14 / 18</c> from <see cref="HotPotionCatalog"/>).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static short ComputePotionDefCost(
+        HotPotionDef def,
+        bool hasRenewablePotionShapedRock,
+        int initialPlayerMaxHp,
+        PotionHpThresholds thresholds)
     {
+        HotCustomPotionId id = ResolvePotionId(def);
+        string? entry = !string.IsNullOrEmpty(def.Entry)
+            ? def.Entry
+            : (id != HotCustomPotionId.None ? HotPotionCatalog.Get(id).Entry : null);
+        if (!string.IsNullOrEmpty(entry) && thresholds.TryGetOverride(entry, out int overrideHp))
+            return (short)Math.Clamp(overrideHp, PotionHpThresholds.MinValue, PotionHpThresholds.MaxValue);
+
         if (def.Rarity == PotionRarity.Token
-            || (hasRenewablePotionShapedRock && def.PotionId == HotCustomPotionId.PotionShapedRock))
+            || (hasRenewablePotionShapedRock && id == HotCustomPotionId.PotionShapedRock))
+        {
             return 0;
-        if (def.StrategicHpCost > 0)
-            return def.StrategicHpCost;
-        return (short)HotSearchConstants.PotionMinimumHpSaved;
+        }
+
+        if (id == HotCustomPotionId.Ambergris)
+            return (short)Math.Clamp(PotionHpThresholds.DefaultAmbergrisCost(initialPlayerMaxHp), 0, short.MaxValue);
+
+        short catalogBase = id != HotCustomPotionId.None
+            ? HotPotionCatalog.Get(id).BaseStrategicHpCost
+            : (def.StrategicHpCost > 0 ? def.StrategicHpCost : (short)PotionHpThresholds.DefaultStandard);
+
+        return (short)Math.Clamp((int)catalogBase, 0, short.MaxValue);
+    }
+
+    public static int ResolveEntryStrategicHpCost(
+        string? entry,
+        bool hasRenewablePotionShapedRock,
+        int initialPlayerMaxHp,
+        PotionHpThresholds thresholds)
+    {
+        if (string.IsNullOrEmpty(entry))
+            return PotionHpThresholds.DefaultStandard;
+        if (thresholds.TryGetOverride(entry, out int overrideHp))
+            return overrideHp;
+        HotCustomPotionId id = HotPotionCatalog.FindByEntry(entry);
+        if (id == HotCustomPotionId.None)
+            return PotionHpThresholds.DefaultStandard;
+        if (hasRenewablePotionShapedRock && id == HotCustomPotionId.PotionShapedRock)
+            return 0;
+        if (id == HotCustomPotionId.Ambergris)
+            return PotionHpThresholds.DefaultAmbergrisCost(initialPlayerMaxHp);
+        return HotPotionCatalog.Get(id).BaseStrategicHpCost;
     }
 
     /// <summary>
-    /// Fast O(1) bitmask check determining whether a manual potion use at <paramref name="slot"/>
-    /// is permitted during the current search pass.
+    /// Fast O(1) legality + cost classification for a manual potion use at <paramref name="slot"/>,
+    /// distinguishing original root potions from mid-combat generated potions via
+    /// <see cref="CombatHotState.CombatGeneratedPotionMask"/>.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsSlotAllowedForPass(
+    public static bool TryClassifyPotionUseForPass(
+        in CombatHotState state,
         int slot,
         ushort potionDefId,
         HotRules rules,
+        short[] rootPotionCosts,
         in HotSearchPolicy policy,
-        bool disableAllPotions,
-        bool onlyForcedPotions,
+        bool allowPaidOptionalPotions,
+        bool allowZeroCostOptionalPotions,
+        bool allowForcedPotions,
         int currentExplicitPotionCount,
-        int maxPotionUses)
+        int maxPotionUses,
+        out bool isGenerated,
+        out bool isForced,
+        out short optionalPaidCostDelta,
+        out byte optionalPaidCountDelta,
+        out ushort rootPotionSlotBit)
     {
-        if (disableAllPotions || (uint)slot >= HotLimits.MaxPotions)
+        isGenerated = false;
+        isForced = false;
+        optionalPaidCostDelta = 0;
+        optionalPaidCountDelta = 0;
+        rootPotionSlotBit = 0;
+
+        if ((uint)slot >= HotLimits.MaxPotions || (uint)slot >= (uint)state.PotionSlotCount)
             return false;
         if (maxPotionUses >= 0 && currentExplicitPotionCount >= maxPotionUses)
             return false;
         if (potionDefId == 0 || potionDefId >= rules.Potions.Length)
             return false;
-        if (!rules.Potions[potionDefId].IsCombatUsable)
+
+        HotPotionDef pDef = rules.Potions[potionDefId];
+        if (!IsDefCombatUsable(pDef))
             return false;
 
-        ushort bit = (ushort)(1 << slot);
-        if ((policy.DisabledPotionSlotMask & bit) != 0)
-            return false;
-        if (onlyForcedPotions)
-            return (policy.ForcedPotionSlotMask & bit) != 0;
-        if (policy.EffectivePotionPolicy == SolverPotionPolicy.Disabled)
-            return (policy.ForcedPotionSlotMask & bit) != 0;
+        ushort slotBit = (ushort)(1 << slot);
+        isGenerated = (state.CombatGeneratedPotionMask & slotBit) != 0;
 
+        if (isGenerated)
+        {
+            // Mid-combat generated potions (EntropicBrew / Alchemize / PetrifiedToad):
+            // 0 opportunity cost, NEVER blocked by root DisabledPotionSlotMask, NEVER satisfies root ForcedPotionSlotMask!
+            if (!allowZeroCostOptionalPotions)
+                return false;
+            return true;
+        }
+
+        // Original root potion at slot: respect root Disabled/Forced masks and root cost.
+        if ((policy.DisabledPotionSlotMask & slotBit) != 0)
+            return false;
+
+        rootPotionSlotBit = slotBit;
+        isForced = (policy.ForcedPotionSlotMask & slotBit) != 0;
+        if (isForced)
+        {
+            // Forced root potion: 0 optional opportunity cost!
+            return allowForcedPotions;
+        }
+
+        short slotCost = (uint)slot < (uint)rootPotionCosts.Length && rootPotionCosts[slot] >= 0
+            ? rootPotionCosts[slot]
+            : ComputePotionDefCost(pDef, policy.HasRenewablePotionShapedRock, policy.InitialPlayerMaxHp, policy.PotionThresholds);
+
+        if (slotCost == 0)
+        {
+            return allowZeroCostOptionalPotions;
+        }
+
+        if (!allowPaidOptionalPotions)
+            return false;
+
+        optionalPaidCostDelta = slotCost;
+        optionalPaidCountDelta = 1;
         return true;
     }
 
     /// <summary>
-    /// Computes the exact HP-equivalent opportunity cost of optional (non-forced) potions used by a route,
-    /// incorporating replacement reward credit, Ambergris 40% MaxHP threshold, and Boss HP relief scaling.
+    /// Sound pre-expansion hygiene: returns <c>true</c> only when using <paramref name="def"/> in
+    /// <paramref name="s"/> is provably a zero-effect no-op (exempting forced directives and
+    /// <c>OnPotionUsed</c> relics such as <c>ReptileTrinket</c> / <c>BeltBuckle</c>).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ComputeOptionalPotionRequiredHp(
-        int totalPotionStrategicCost,
-        int explicitPotionCount,
-        int ambergrisCount,
-        ushort usedPotionMask,
+    public static bool IsProvableNoOpPotionUse(
+        in CombatHotState s,
+        HotPotionDef def,
+        bool isForced,
         in HotSearchPolicy policy)
     {
-        int forcedUsedCount = 0;
-        int forcedUsedCost = 0;
-        int forcedUsedAmbergris = 0;
+        if (isForced || policy.HasOnPotionUsedRelic)
+            return false;
 
-        if (policy.ForcedPotionSlotMask != 0 && (usedPotionMask & policy.ForcedPotionSlotMask) != 0)
+        HotCustomPotionId id = ResolvePotionId(def);
+        return id switch
         {
-            if ((usedPotionMask & policy.ForcedPotionSlotMask) == policy.ForcedPotionSlotMask)
-            {
-                forcedUsedCount = policy.ForcedDirectiveCount;
-                forcedUsedCost = policy.ForcedStrategicHpCost;
-                forcedUsedAmbergris = policy.ForcedAmbergrisCount;
-            }
-            else
-            {
-                ushort overlap = (ushort)(usedPotionMask & policy.ForcedPotionSlotMask);
-                forcedUsedCount = System.Numerics.BitOperations.PopCount(overlap);
-                forcedUsedAmbergris = System.Numerics.BitOperations.PopCount((uint)(overlap & policy.AmbergrisSlotMask));
-                forcedUsedCost = forcedUsedCount * HotSearchConstants.PotionMinimumHpSaved;
-            }
-        }
-
-        int optionalExplicitCount = Math.Max(0, explicitPotionCount - forcedUsedCount);
-        int optionalAmbergrisCount = Math.Max(0, ambergrisCount - forcedUsedAmbergris);
-        int optionalRawCost = Math.Max(0, totalPotionStrategicCost - forcedUsedCost);
-
-        if (optionalExplicitCount == 0 && optionalRawCost == 0)
-            return 0;
-
-        int afterCredit = ApplyReplacementCredit(
-            optionalRawCost,
-            optionalExplicitCount,
-            policy.ReplacementHpCredit);
-
-        int effectiveCost = EffectiveStrategicHpCost(
-            afterCredit,
-            optionalAmbergrisCount,
-            policy.InitialPlayerMaxHp);
-
-        return SmartRequiredHpSaved(effectiveCost, policy.StrategicBossHpRelief);
+            HotCustomPotionId.Fortifier => s.Player.Block <= 0,
+            HotCustomPotionId.BloodPotion => s.Player.CurrentHp >= s.Player.MaxHp,
+            HotCustomPotionId.DropletOfPrecognition => s.DrawCount == 0,
+            HotCustomPotionId.LiquidMemories => s.DiscardCount == 0,
+            HotCustomPotionId.TouchOfInsanity => s.HandCount == 0,
+            HotCustomPotionId.EntropicBrew => policy.HasSozu,
+            _ => false,
+        };
     }
 
     /// <summary>
-    /// Checks whether a potion-allowed pass can possibly improve upon the Stage 1 baseline under Smart policy.
+    /// Single unified net opportunity cost in centi-HP (<c>100 = 1.00 Persistent HP</c>) shared identically
+    /// by <see cref="HotRouteQuality"/>, <see cref="HotEvaluator"/>, <see cref="HotIncumbentBound"/>, and
+    /// <see cref="HotSearchCoordinator"/>.
+    /// Transparent fixed-threshold pricing (no hidden low-HP or Elite/Boss multipliers):
+    /// - Forced / Token / PetrifiedToad Rock / combat-generated = <c>0</c>.
+    /// - Paid optional root potions = user-configured Standard/Elevated/High (or Ambergris <c>max(High, 40% MaxHp)</c>).
+    /// - Final Boss (<see cref="BossHpRelief.RunEnding"/>) = tiny <c>0.50 HP</c> tie-break per paid potion.
+    /// - Full-belt replacement credit subtracted ONCE per freed slot (PredictPotionReward exact cost, or
+    ///   WhiteBeastStatue deterministic Standard credit, plus Alchemize slot refill without double-counting).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ComputeNetPotionOpportunityCostCenti(
+        int optionalPaidRawHpCost,
+        int optionalPaidCount,
+        int alchemizeCount,
+        int endEmptyPotionSlots,
+        in HotSearchPolicy policy)
+    {
+        if (optionalPaidCount <= 0 || optionalPaidRawHpCost <= 0)
+            return 0;
+
+        if (policy.EncounterBossHpRelief == BossHpRelief.RunEnding)
+            return optionalPaidCount * HotSearchConstants.RunEndingPotionTieBreakCenti;
+
+        int rawCenti = optionalPaidRawHpCost * HotSearchConstants.HpFixedScale;
+
+        int replacementCenti = 0;
+        if (!policy.HasSozu)
+        {
+            bool dropLands = policy.BeltFullAtRoot
+                && policy.BaseReplacementCreditCenti > 0
+                && (endEmptyPotionSlots > 0 || alchemizeCount == 0);
+            int remainingSlots = optionalPaidCount;
+            if (dropLands)
+            {
+                replacementCenti += policy.BaseReplacementCreditCenti;
+                remainingSlots--;
+            }
+
+            int alchemizeRefills = Math.Min(
+                remainingSlots,
+                Math.Max(0, alchemizeCount - policy.EmptyRootPotionSlots));
+            if (alchemizeRefills > 0)
+            {
+                replacementCenti += alchemizeRefills
+                    * (PotionHpThresholds.DefaultStandard * HotSearchConstants.HpFixedScale);
+            }
+        }
+
+        int afterReplacementCenti = rawCenti - replacementCenti;
+        return afterReplacementCenti <= HotSearchConstants.ReplacedPotionFloorCenti
+            ? HotSearchConstants.ReplacedPotionFloorCenti
+            : afterReplacementCenti;
+    }
+
+    /// <summary>
+    /// Enforces ONLY hard constraints (forced root potion slots, Disabled, RequireAtLeastOne).
+    /// Smart potion trade-offs are governed purely by the unified economic objective
+    /// <c>V(route) = NetPersistentHpDelta - NetPotionOpportunityCost</c> — zero post-hoc vetoes!
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool SatisfiesHardConstraints(
+        in HotRouteKey candidate,
+        in HotSearchPolicy policy)
+    {
+        if (policy.ForcedPotionSlotMask != 0
+            && (candidate.PotionMask & policy.ForcedPotionSlotMask) != policy.ForcedPotionSlotMask)
+        {
+            return false;
+        }
+
+        return policy.EffectivePotionPolicy switch
+        {
+            SolverPotionPolicy.Disabled => candidate.OptionalPaidPotionCount == 0
+                && candidate.ExplicitPotionCount <= policy.ForcedDirectiveCount,
+            SolverPotionPolicy.RequireAtLeastOne => candidate.ExplicitPotionCount >= policy.MinimumRequiredPotionUses,
+            _ => true,
+        };
+    }
+
+    /// <summary>
+    /// Exact sound Stage 2 trigger: returns <c>false</c> ONLY when no optional paid potion can possibly
+    /// beat Stage 1's <paramref name="baseline"/> under the unified objective <c>V(route)</c>.
     /// </summary>
     public static bool ShouldRunSmartPotionPass(
         in HotRouteKey baseline,
@@ -199,11 +338,7 @@ internal static class HotPotionPolicy
     {
         if (policy.EffectivePotionPolicy != SolverPotionPolicy.Smart)
             return false;
-        if (policy.SearchablePotionCount == 0)
-            return false;
-
-        int availableOptional = policy.SearchablePotionCount - policy.ForcedDirectiveCount;
-        if (availableOptional <= 0)
+        if (policy.PaidOptionalPotionCount == 0)
             return false;
 
         if (!baseline.Won || !baseline.Survives || baseline.DeathSaveUseCount > 0)
@@ -213,100 +348,85 @@ internal static class HotPotionPolicy
         {
             return true;
         }
-
-        if (HotRouteQuality.MeetsVictoryStopTarget(in baseline, in policy))
-            return false;
-
-        int minBar = SmartRequiredHpSaved(
-            ApplyReplacementCredit(
-                HotSearchConstants.PotionMinimumHpSaved,
-                1,
-                policy.ReplacementHpCredit),
-            policy.StrategicBossHpRelief);
-
-        if (policy.HasRenewablePotionShapedRock && baseline.StrategicHpDeficit > 0)
+        if (policy.ForcedPotionSlotMask != 0
+            && (baseline.PotionMask & policy.ForcedPotionSlotMask) != policy.ForcedPotionSlotMask)
+        {
             return true;
+        }
 
-        return baseline.StrategicHpDeficit >= minBar;
+        return CanAnyPaidPotionImproveOn(in baseline, in policy);
     }
 
     /// <summary>
-    /// Verifies that a candidate route satisfies the configured potion policy (Disabled / RequireAtLeastOne / Smart),
-    /// all forced potion slot directives, and the Ambergris minimum-HP-saved restriction.
+    /// Sound upper-bound check: returns <c>true</c> if any allowed paid optional root potion could
+    /// theoretically produce <c>PersistentHpGain &gt;= MinNetOptionalPotionCost</c> relative to
+    /// <paramref name="key"/> (accounting for blocked damage, missing-HP healing headroom, unrealized
+    /// Growth/Relic targets, Alchemize full-belt refills, and FruitJuice permanent +MaxHp gain).
     /// </summary>
-    public static bool IsEligibleFinalRoute(
-        in HotRouteKey candidate,
-        in HotRouteKey? baseline,
-        bool anyRouteWon,
+    public static bool CanAnyPaidPotionImproveOn(
+        in HotRouteKey key,
         in HotSearchPolicy policy)
     {
-        if (policy.ForcedPotionSlotMask != 0
-            && (candidate.PotionMask & policy.ForcedPotionSlotMask) != policy.ForcedPotionSlotMask)
-        {
+        ushort remainingPaidMask = (ushort)(policy.PaidOptionalSlotMask & ~key.PotionMask);
+        if (policy.PaidOptionalPotionCount == 0 || remainingPaidMask == 0)
             return false;
-        }
+        if (!key.Won || !key.Survives || key.DeathSaveUseCount > 0)
+            return true;
+        if (policy.HasGrowthTargets)
+            return true;
 
-        int optionalAmbergris = Math.Max(0, candidate.AmbergrisCount - policy.ForcedAmbergrisCount);
-        if (optionalAmbergris > 0
-            && policy.EffectivePotionPolicy == SolverPotionPolicy.Smart
-            && baseline is { } bAmbergris)
+        int hpScale = HotRouteQuality.PersistentHpScale(policy.StrategicBossHpRelief);
+
+        // Final Boss survival priority (hpScale == 0): clean win without death saves cannot improve V via paid potions.
+        if (policy.EncounterBossHpRelief == BossHpRelief.RunEnding && hpScale == 0)
+            return false;
+
+        int minAlchemizeRefill = policy.HasAlchemizeInDeck && !policy.HasSozu ? 1 : 0;
+        int minNetCostCenti = ComputeNetPotionOpportunityCostCenti(
+            policy.MinPaidOptionalRawHpCost,
+            optionalPaidCount: 1,
+            alchemizeCount: minAlchemizeRefill,
+            endEmptyPotionSlots: 1,
+            in policy);
+
+        bool hasRemainingHeal = (remainingPaidMask & policy.PaidHealPotionSlotMask) != 0;
+        bool hasRemainingFruitJuice = (remainingPaidMask & policy.PaidFruitJuiceSlotMask) != 0;
+        bool hasRemainingEntropic = (remainingPaidMask & policy.PaidEntropicBrewSlotMask) != 0;
+
+        int endMaxHp = key.EndPlayerMaxHp > 0 ? key.EndPlayerMaxHp : policy.InitialPlayerMaxHp;
+        int endPostHealHp = key.PlayerHp + HotRouteQuality.RankedPostCombatRelicHeal(
+            policy.PostCombatRelicHeal,
+            key.Won,
+            key.PlayerHp,
+            endMaxHp);
+
+        int maxRawHpGain;
+        if (hasRemainingHeal || hasRemainingEntropic || policy.HasAnyHealOrUnknownGeneration)
         {
-            if (!bAmbergris.Won && candidate.Won)
-            {
-                // Winning where baseline could not win justifies Ambergris.
-            }
-            else if (!MeetsAmbergrisRestriction(
-                hasPotionFreeBaseline: true,
-                ambergrisCount: optionalAmbergris,
-                strategicHpCost: Math.Max(0, candidate.RawPotionStrategicCost - policy.ForcedStrategicHpCost),
-                maximumHp: policy.InitialPlayerMaxHp,
-                potionFreePlayerHp: bAmbergris.PlayerHp,
-                potionRoutePlayerHp: candidate.PlayerHp))
-            {
-                return false;
-            }
+            maxRawHpGain = Math.Max(0, policy.InitialPlayerMaxHp - endPostHealHp);
         }
-
-        switch (policy.EffectivePotionPolicy)
+        else
         {
-            case SolverPotionPolicy.Disabled:
-                return candidate.ExplicitPotionCount <= policy.ForcedDirectiveCount;
-
-            case SolverPotionPolicy.RequireAtLeastOne:
-            {
-                if (candidate.ExplicitPotionCount < policy.MinimumRequiredPotionUses)
-                    return false;
-                if (anyRouteWon && !candidate.Won)
-                    return false;
-                return true;
-            }
-
-            case SolverPotionPolicy.Smart:
-            {
-                if (candidate.ExplicitPotionCount <= policy.ForcedDirectiveCount)
-                    return true;
-                if (baseline is not { } b)
-                    return true;
-                if (candidate.Won && !b.Won)
-                    return true;
-                if (candidate.Survives && !b.Survives)
-                    return true;
-                if (candidate.DeathSaveUseCount < b.DeathSaveUseCount)
-                    return true;
-                if (policy.TheftPolicy == SolverTheftPolicy.PreserveResources
-                    && (candidate.OutstandingStolen < b.OutstandingStolen
-                        || (!candidate.ForfeitsGold && b.ForfeitsGold)))
-                {
-                    return true;
-                }
-
-                int hpSaved = HpSaved(b.StrategicHpDeficit, candidate.StrategicHpDeficit);
-                return hpSaved >= candidate.OptionalPotionStrategicCost
-                    && (candidate.OptionalPotionStrategicCost > 0 || hpSaved > 0);
-            }
-
-            default:
-                return true;
+            int bestUnhealedEndHp = Math.Min(
+                policy.InitialPlayerMaxHp,
+                policy.InitialPlayerHp + policy.PostCombatRelicHeal.UnconditionalHeal);
+            maxRawHpGain = Math.Max(0, bestUnhealedEndHp - endPostHealHp);
         }
+
+        long maxPossibleGainCenti = (long)maxRawHpGain * hpScale;
+
+        int maxHpLoss = Math.Max(0, policy.InitialPlayerMaxHp - endMaxHp);
+        if (maxHpLoss > 0 && policy.StrategicBossHpRelief != BossHpRelief.RunEnding)
+            maxPossibleGainCenti += (long)maxHpLoss * HotSearchConstants.MaxHpLossWeightCenti;
+
+        if (hasRemainingFruitJuice || hasRemainingEntropic)
+        {
+            int maxHpGainBonus = (policy.StrategicBossHpRelief != BossHpRelief.RunEnding && !policy.IgnoreLongTermRewards)
+                ? 5 * HotSearchConstants.MaxHpGainWeightCenti
+                : 0;
+            maxPossibleGainCenti += 5L * hpScale + maxHpGainBonus;
+        }
+
+        return maxPossibleGainCenti >= minNetCostCenti;
     }
 }

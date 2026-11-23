@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace CombatSolver.HotKernel;
 
@@ -192,7 +193,28 @@ internal static partial class HotCombatEngine
                 {
                     ushort powerDefId = (ushort)op.Arg0;
                     int amt = ResolvePowerOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
-                    ApplyPower(ref s, ref cold, rules, scratch, ownerSlot: 0, applierSlot: 0, powerDefId: powerDefId, amount: amt, isCardSource: isCardSource);
+                    int applied = ApplyPower(ref s, ref cold, rules, scratch, ownerSlot: 0, applierSlot: 0, powerDefId: powerDefId, amount: amt, isCardSource: isCardSource);
+                    if (cardDef != null && (cardDef.CardId == HotCustomCardId.Inferno || cardDef.CardId == HotCustomCardId.Ennui))
+                    {
+                        int pIdx = FindPowerIndex(in s, 0, powerDefId);
+                        if (pIdx >= 0)
+                            s.Powers[pIdx].Aux0++;
+                    }
+                    else if (applied != 0 && cardDef != null && cardDef.CardId == HotCustomCardId.ToricToughness)
+                    {
+                        decimal blockDec = t_lastGainBlockDecimal;
+                        int blockFloor = (int)blockDec;
+                        int blockHundredths = (int)Math.Round(blockDec * 100m, MidpointRounding.AwayFromZero);
+                        for (int pIdx = s.PowerCount - 1; pIdx >= 0; pIdx--)
+                        {
+                            if (s.Powers[pIdx].OwnerSlot == 0 && s.Powers[pIdx].PowerDefId == powerDefId)
+                            {
+                                s.Powers[pIdx].Aux0 = blockFloor;
+                                s.Powers[pIdx].Aux1 = blockHundredths;
+                                break;
+                            }
+                        }
+                    }
                     break;
                 }
 
@@ -342,6 +364,21 @@ internal static partial class HotCombatEngine
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ApplyModifyAttackHitCount(HotRules rules, ushort cardDefId, int hits)
+    {
+        // Thumbscrew relic: +1 hit on multi-hit Attack cards (Thumbscrew.cs:11-26)
+        if (hits > 1
+            && cardDefId != 0
+            && cardDefId < rules.Cards.Length
+            && rules.Cards[cardDefId].Type == CardType.Attack
+            && rules.HasRelic(HotRelicId.Thumbscrew))
+        {
+            return hits + 1;
+        }
+        return hits;
+    }
+
     internal static void ExecuteSingleTargetAttack(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
@@ -357,6 +394,7 @@ internal static partial class HotCombatEngine
             return;
 
         ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
 
         BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
@@ -391,6 +429,7 @@ internal static partial class HotCombatEngine
             return;
 
         ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
 
         BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
@@ -443,6 +482,7 @@ internal static partial class HotCombatEngine
             return;
 
         ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
 
         BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
         scratch.AttackActive = true;
@@ -482,6 +522,7 @@ internal static partial class HotCombatEngine
         }
 
         ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
 
         BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
@@ -514,6 +555,7 @@ internal static partial class HotCombatEngine
         ushort cardDefId,
         bool powered)
     {
+        scratch.AttackUnblockedEnemyMask = 0;
         if ((s.ActiveHookMask & (ulong)HotHookMask.BeforeAttack) == 0)
             return;
         HotHookArgs args = new()

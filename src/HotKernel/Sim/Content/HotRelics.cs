@@ -478,17 +478,12 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.Ocarina:
-                if (s.PlayerTurnNumber <= 1 && rules.UnlockedCharacterCardPool.Length > 0)
+                if (s.PlayerTurnNumber <= 1)
                 {
                     Span<ushort> melodyPool = stackalloc ushort[MaxStackPoolCards];
                     int mCount = 0;
-                    ushort[] pool = rules.UnlockedCharacterCardPool;
-                    for (int i = 0; i < pool.Length && mCount < melodyPool.Length; i++)
-                    {
-                        ushort cid = pool[i];
-                        if (cid != 0 && cid < rules.Cards.Length && rules.Cards[cid].MelodyTagMask != 0 && IsCombatGeneratable(rules.Cards[cid]))
-                            melodyPool[mCount++] = cid;
-                    }
+                    HotPotions.CollectMelodyCandidates(rules.UnlockedCharacterCardPool, rules, 0x07, melodyPool, ref mCount);
+                    HotPotions.CollectMelodyCandidates(rules.OtherCharacterCardPool, rules, 0x07, melodyPool, ref mCount);
                     if (mCount > 0)
                     {
                         Span<ushort> picked = stackalloc ushort[1];
@@ -950,7 +945,7 @@ internal static class HotRelics
                         s.RelicStates[stateSlot].Current = 1;
                         s.RelicStates[stateSlot].PreviousOrAux = 0;
                         HotCard clone = CloneCardWithCostOverflow(ref s, ref cold, args.CardIdx);
-                        clone.LocalKeywordsMask |= HotCardKeywordMask.Ethereal;
+                        HotCombatEngine.ApplyCardKeywordOutsideUpgrade(ref clone, HotCardKeywordMask.Ethereal);
                         HotCombatEngine.AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in clone, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
                     }
                 }
@@ -1400,7 +1395,7 @@ internal static class HotRelics
                 {
                     HotCardDef def = rules.Cards[args.CardDefId];
                     if (def.Rarity == CardRarity.Basic && (def.IsStrikeTag || def.IsDefendTag))
-                        s.Cards[args.CardIdx].LocalKeywordsMask |= HotCardKeywordMask.Ethereal;
+                        HotCombatEngine.ApplyCardKeywordOutsideUpgrade(ref s.Cards[args.CardIdx], HotCardKeywordMask.Ethereal);
                 }
                 break;
 
@@ -1900,6 +1895,7 @@ internal static class HotRelics
                             if (s.Potions[i] == 0)
                             {
                                 s.Potions[i] = rockPotionId;
+                                s.CombatGeneratedPotionMask |= (ushort)(1 << i);
                                 OnPotionProcured(ref s, ref cold, rules, scratch, rockPotionId);
                                 break;
                             }
@@ -1909,8 +1905,8 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.PowerCell:
-                if (s.PlayerTurnNumber <= 1 && s.DrawCount > 0)
-                    TriggerPowerCell(ref s, cold);
+                if (s.PlayerTurnNumber <= 1)
+                    TriggerPowerCell(ref s, rules, cold);
                 break;
         }
     }
@@ -2058,7 +2054,7 @@ internal static class HotRelics
                         {
                             int addedIdx = HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, sel.CardDefId, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
                             if (addedIdx >= 0)
-                                s.Cards[addedIdx].LocalKeywordsMask |= HotCardKeywordMask.Retain;
+                                HotCombatEngine.ApplyCardKeywordOutsideUpgrade(ref s.Cards[addedIdx], HotCardKeywordMask.Retain);
                         }
                     }
                 }
@@ -2157,26 +2153,20 @@ internal static class HotRelics
                 if (s.PlayerTurnNumber <= 1 && s.HandCount > 0)
                 {
                     int maxPicks = Math.Min((int)s.HandCount, HotLimits.MaxChoicesPerAction);
-                    int discarded = 0;
+                    Span<ushort> pickedUids = stackalloc ushort[HotLimits.MaxChoicesPerAction];
+                    int pickedCount = 0;
                     for (int pick = 0; pick < maxPicks; pick++)
                     {
-                        if (s.HandCount == 0 || HotCombatEngine.IsOverOrEnding(in s))
+                        if (pickedCount >= s.HandCount || HotCombatEngine.IsOverOrEnding(in s))
                             break;
-                        if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 0, maxCount: 1, out HotChoiceSelection sel))
+                        if (!HotCombatEngine.RequestChoiceExcluding(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 0, maxCount: 1, pickedUids[..pickedCount], out HotChoiceSelection sel))
                             return;
                         if (sel.Kind == HotChoiceKind.None || sel.CardUidOrIndex == 0)
                             break;
-                        int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
-                        if (idx >= 0)
-                        {
-                            HotCombatEngine.DiscardCard(ref s, ref cold, rules, scratch, idx);
-                            discarded++;
-                        }
-                        if (scratch.NeedsChoice)
-                            return;
+                        pickedUids[pickedCount++] = sel.CardUidOrIndex;
                     }
-                    if (discarded > 0 && !HotCombatEngine.IsOverOrEnding(in s))
-                        HotCombatEngine.DrawCards(ref s, ref cold, rules, scratch, discarded, fromHandDraw: false);
+                    if (pickedCount > 0 && !HotCombatEngine.IsOverOrEnding(in s))
+                        HotCombatEngine.DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: pickedCount);
                 }
                 break;
 
@@ -2478,21 +2468,13 @@ internal static class HotRelics
 
         int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardSelection], count);
         int chosenIdx = candidates[pick];
-        HotCostModifiers.AddEnergyModifier(
-            ref s.Cards[chosenIdx],
-            ref cold,
-            amount: -1,
-            isAbsolute: false,
-            expiration: (int)LocalCostModifierExpiration.WhenPlayed,
-            isReduceOnly: false);
+        HotCombatEngine.CostAddUntilPlayed(ref s.Cards[chosenIdx], ref cold, -1);
     }
 
-    private static void TriggerPowerCell(ref CombatHotState s, HotColdSidecar? cold)
+    private static void TriggerPowerCell(ref CombatHotState s, HotRules rules, HotColdSidecar? cold)
     {
         int drawStart = s.DrawStart;
         int drawCount = s.DrawCount;
-        if (drawCount == 0)
-            return;
 
         Span<ushort> nonInnateUids = stackalloc ushort[HotLimits.MaxCards];
         Span<ushort> innateUids = stackalloc ushort[HotLimits.MaxCards];
@@ -2512,10 +2494,13 @@ internal static class HotRelics
                 innateUids[innateCount++] = c.CardUid;
         }
 
-        if (nonInnateCount > 0)
-            HotRng.UnstableShuffle(nonInnateUids[..nonInnateCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
-        if (innateCount > 0)
-            HotRng.UnstableShuffle(innateUids[..innateCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+        // STS2 0.113.1 PowerCell.cs:27-29: StableShuffle both nonInnate and innate lists unconditionally.
+        if (nonInnateCount > 1)
+            HotCombatEngine.StableSortUidsForShuffle(in s, rules, cold, nonInnateUids[..nonInnateCount]);
+        HotRng.UnstableShuffle(nonInnateUids[..nonInnateCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
+        if (innateCount > 1)
+            HotCombatEngine.StableSortUidsForShuffle(in s, rules, cold, innateUids[..innateCount]);
+        HotRng.UnstableShuffle(innateUids[..innateCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
 
         int moved = 0;
         for (int i = 0; i < nonInnateCount && moved < 2; i++)

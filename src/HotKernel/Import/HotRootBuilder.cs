@@ -11,6 +11,7 @@ using MegaCrit.Sts2.Core.Entities.FoolArrows;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Entities.Powers;
+using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.CardPools;
@@ -167,6 +168,7 @@ internal static partial class HotRootBuilder
         hot.Stars = pcs.Stars;
         hot.Gold = player.Gold;
         hot.CurrentSide = state.CurrentSide == CombatSide.Enemy ? HotCombatSide.Enemy : HotCombatSide.Player;
+        hot.PlayerPhase = (byte)pcs.Phase;
         hot.TerminalOutcome = HotCombatOutcome.Ongoing;
 
         int maxHandSize = RitsuLibFramework.GetMaxHandSize(player);
@@ -177,9 +179,16 @@ internal static partial class HotRootBuilder
         hot.Counters[(int)HotCounterSlot.BaseHandDraw] = 5;
 
         HotCombatFlags combatFlags = HotCombatFlags.IsInProgress | HotCombatFlags.PlayerHooksActive;
+        if (pcs.Phase is PlayerTurnPhase.Start or PlayerTurnPhase.AutoPrePlay)
+            combatFlags |= HotCombatFlags.PendingTurnSetup;
         bool encounterGoldForfeited = HotImportSupport.ForfeitsEncounterGold(state);
         if (encounterGoldForfeited)
             combatFlags |= HotCombatFlags.EncounterGoldForfeited;
+        if (state.Encounter is MegaCrit.Sts2.Core.Models.Encounters.BattlewornDummyEventEncounter dummyEnc
+            && dummyEnc.RanOutOfTime)
+        {
+            combatFlags |= HotCombatFlags.BattlewornDummyTimedOut;
+        }
 
         // Player creature (slot 0)
         hot.Player = BuildCreature(player.Creature, slotIdx: 0, HotCreatureFlags.IsPlayer);
@@ -258,8 +267,8 @@ internal static partial class HotRootBuilder
             hot.Enemies[i] = BuildLiveEnemy(ctx, state, enemy, enemySlot: (byte)i, isBoss, isElite);
         }
 
-        // Pre-compile spawnable monster closure via BFS
-        ctx.PreRegisterSpawnableMonsters(isBoss, isElite);
+        // Pre-compile spawnable monster closure via Encounter.AllPossibleMonsters, enemy death-spawn powers, and BFS.
+        ctx.PreRegisterSpawnableMonsters(state.Encounter, enemies, isBoss, isElite);
 
         // Capture ally ordering for exact ContinuationStamp power grouping
         List<byte> rootAllyOwnerSlots = new(state.Allies.Count);
@@ -303,6 +312,20 @@ internal static partial class HotRootBuilder
 
         // Active player relics & stateful/tracked relic state slots
         bool hasRenewablePotionShapedRock = player.Relics.Any(static r => !r.IsMelted && r is PetrifiedToad);
+        bool isFurCoatActiveInCurrentRoom = false;
+        if (state.RunState.CurrentMapPoint != null)
+        {
+            foreach (RelicModel relic in player.Relics)
+            {
+                if (!relic.IsMelted && relic is FurCoat furCoat
+                    && furCoat.GetMarkedCoords() is { } markedCoords
+                    && markedCoords.Contains(state.RunState.CurrentMapPoint.coord))
+                {
+                    isFurCoatActiveInCurrentRoom = true;
+                    break;
+                }
+            }
+        }
         CapturePostCombatRelicHeal(player.Relics, out int postUncondHeal, out int postWoundHeal, out int postWoundPct);
 
         List<HotActiveRelic> activeRelics = [];
@@ -368,8 +391,9 @@ internal static partial class HotRootBuilder
                 if (powerCursor >= HotLimits.MaxPowers)
                     throw new HotCapacityExceededException($"Power count exceeds HotLimits.MaxPowers ({HotLimits.MaxPowers}).");
 
+                int powerIdx = powerCursor;
                 hot.Powers[powerCursor++] = BuildLivePower(
-                    ctx, power, ownerSlot, creatureToOwnerSlot, cardToUid, arrows, ref hot, ref nextCardUid, ref rootCold);
+                    ctx, state, power, powerIdx, ownerSlot, creatureToOwnerSlot, cardToUid, arrows, ref hot, ref nextCardUid, ref rootCold);
             }
         }
         hot.PowerCount = (byte)powerCursor;
@@ -377,6 +401,34 @@ internal static partial class HotRootBuilder
 
         // Combat history counters & melodies
         CaptureLiveHistoryAndMelodies(state, player, ref hot);
+
+        // HistoryCourse: capture last non-dupe Attack from last turn (during TurnSetup) or this turn (during Play).
+        if (player.Relics.Any(static r => !r.IsMelted && r is HistoryCourse)
+            && CombatManager.Instance?.History is { } hcHistory)
+        {
+            bool isPrePlay = pcs.Phase is PlayerTurnPhase.Start or PlayerTurnPhase.AutoPrePlay;
+            CardModel? hcCard = null;
+            foreach (CardPlayFinishedEntry entry in hcHistory.CardPlaysFinished)
+            {
+                if (!ReferenceEquals(entry.CardPlay.Player, player))
+                    continue;
+                if (entry.CardPlay.Card.Type != CardType.Attack || entry.CardPlay.Card.IsDupe)
+                    continue;
+                bool turnMatch = isPrePlay
+                    ? entry.HappenedLastPlayerTurn(player)
+                    : entry.HappenedThisTurn(state);
+                if (turnMatch)
+                    hcCard = entry.CardPlay.Card;
+            }
+            if (hcCard != null)
+            {
+                ushort existingUid = cardToUid.GetValueOrDefault(hcCard);
+                hot.HistoryCourseCard = BuildCard(ctx, hcCard, dupeSource: null, cardUid: existingUid, ref nextCardUid, ref rootCold);
+                hot.HistoryCourseUid = existingUid;
+                hot.CombatFlags |= HotCombatFlags.HasHistoryCourseCard;
+                hot.NextCardUid = nextCardUid;
+            }
+        }
 
         // All 10 RNG streams
         hot.Rng[(int)HotRngStream.Shuffle] = HotImportSupport.CaptureRng(state.RunState.Rng.Shuffle);
@@ -402,6 +454,7 @@ internal static partial class HotRootBuilder
             unlockedCurseCards: ModelDb.CardPool<CurseCardPool>().GetUnlockedCards(player.UnlockState, mpConstraint),
             otherCharCards: otherCharPools.SelectMany(p => p.GetUnlockedCards(player.UnlockState, mpConstraint)),
             tarotCards: TarotCards.All.Where(card => card.IsAllowedInRun(state.RunState)),
+            unlockedPotions: PotionFactory.GetPotionOptions(player),
             mpConstraint: mpConstraint,
             rulesSnapshot: rulesSnapshot,
             hasRenewablePotionShapedRock: hasRenewablePotionShapedRock);
@@ -421,6 +474,7 @@ internal static partial class HotRootBuilder
             rootAllyOwnerSlots,
             pools,
             hasRenewablePotionShapedRock,
+            isFurCoatActiveInCurrentRoom,
             isBoss,
             isElite,
             HotImportSupport.IsTheftEncounter(state),
@@ -455,6 +509,7 @@ internal static partial class HotRootBuilder
         List<byte> rootAllyOwnerSlots,
         FrozenGenerationPools pools,
         bool hasRenewablePotionShapedRock,
+        bool isFurCoatActiveInCurrentRoom,
         bool isBoss,
         bool isElite,
         bool isTheft,
@@ -642,6 +697,7 @@ internal static partial class HotRootBuilder
             Dominion = HotMonsterCatalog.FindDominionByEntry(rulesSnapshot.DominionId),
             HasAnyHealOrUnknownGeneration = hasAnyHealOrUnknown,
             HasRenewablePotionShapedRock = hasRenewablePotionShapedRock,
+            IsFurCoatActiveInCurrentRoom = isFurCoatActiveInCurrentRoom,
             IsBossEncounter = isBoss,
             IsEliteEncounter = isElite,
             IsTheftEncounter = isTheft,
@@ -704,7 +760,7 @@ internal static partial class HotRootBuilder
             if (nonOstyPets[i].Monster is MegaCrit.Sts2.Core.Models.Monsters.Wuppy)
                 return i;
         }
-        return nonOstyPets.Count > 0 ? 0 : -1;
+        return -1;
     }
 
     private static HotCreature BuildCreature(Creature creature, byte slotIdx, HotCreatureFlags roleFlags)
@@ -816,6 +872,15 @@ internal static partial class HotRootBuilder
                     "EXPLODE_MOVE" => 2,
                     _ => 0,
                 };
+                break;
+            case "Wriggler":
+                if (creature.SlotName is { Length: > 8 } wSlot
+                    && wSlot.StartsWith("wriggler", StringComparison.Ordinal)
+                    && int.TryParse(wSlot.AsSpan(8), out int wIdx)
+                    && wIdx > 0)
+                {
+                    enemy.AiRegs[0] = wIdx;
+                }
                 break;
         }
 
@@ -1014,7 +1079,9 @@ internal static partial class HotRootBuilder
 
     private static HotPower BuildLivePower(
         BuilderContext ctx,
+        CombatState state,
         PowerModel power,
+        int powerIdx,
         byte ownerSlot,
         Dictionary<Creature, byte> creatureToOwnerSlot,
         Dictionary<CardModel, ushort> cardToUid,
@@ -1044,12 +1111,23 @@ internal static partial class HotRootBuilder
                 aux0 = (int)surrounded.Facing;
                 break;
 
+            case SkittishPower skittish:
+                if (skittish.HasGainedBlockThisTurn)
+                    pFlags |= HotPowerFlags.BoolAux;
+                break;
+
             case NightmarePower nightmare:
             {
-                CardModel selected = nightmare.GetInternalData<NightmarePower.Data>().selectedCard
-                    ?? throw new InvalidOperationException("Native Nightmare has no selected card at root capture.");
-                HotCard detached = BuildCard(ctx, selected, dupeSource: null, cardUid: 0, ref nextCardUid, ref rootCold);
-                aux0 = ctx.AddDetachedCard(detached);
+                CardModel? selected = nightmare.GetInternalData<NightmarePower.Data>().selectedCard;
+                if (selected != null)
+                {
+                    HotCard detached = BuildCard(ctx, selected, dupeSource: null, cardUid: 0, ref nextCardUid, ref rootCold);
+                    aux0 = ctx.AddDetachedCard(detached);
+                }
+                else
+                {
+                    aux0 = -1;
+                }
                 break;
             }
 
@@ -1091,6 +1169,90 @@ internal static partial class HotRootBuilder
                 if (lullaby._proccdThisTurn)
                     pFlags |= HotPowerFlags.BoolAux;
                 break;
+
+            case TenderPower tender:
+                aux0 = tender.DisplayAmount;
+                break;
+
+            case DampenPower dampen:
+            {
+                // 0.113.1 DampenPower.cs:13-76: preserve active casters bitmask (Aux0) and
+                // downgradedCardsToOldUpgradeLevels (DampenOrigUpg + HotColdSidecar.DampenEntries).
+                DampenPower.Data data = dampen.GetInternalData<DampenPower.Data>();
+                foreach (Creature caster in data.casters)
+                {
+                    if (creatureToOwnerSlot.TryGetValue(caster, out byte cSlot) && cSlot >= 3)
+                    {
+                        int eSlot = cSlot - 3;
+                        if (eSlot < HotLimits.MaxEnemies)
+                            aux0 |= 1 << eSlot;
+                    }
+                }
+
+                if (data.downgradedCardsToOldUpgradeLevels.Count > 0)
+                {
+                    List<HotDampenEntry> added = new(data.downgradedCardsToOldUpgradeLevels.Count);
+                    int totalCards = hot.TotalCardCount;
+                    foreach (KeyValuePair<CardModel, int> kvp in data.downgradedCardsToOldUpgradeLevels)
+                    {
+                        if (kvp.Value <= 0 || !cardToUid.TryGetValue(kvp.Key, out ushort uid))
+                            continue;
+                        byte origUpg = (byte)Math.Clamp(kvp.Value, 0, byte.MaxValue);
+                        for (int c = 0; c < totalCards; c++)
+                        {
+                            if (hot.Cards[c].CardUid == uid)
+                            {
+                                hot.Cards[c].DampenOrigUpg = origUpg;
+                                break;
+                            }
+                        }
+                        added.Add(new HotDampenEntry(uid, origUpg, powerIdx));
+                    }
+
+                    if (added.Count > 0)
+                    {
+                        added.Sort(static (a, b) => a.CardUid.CompareTo(b.CardUid));
+                        HotDampenEntry[]? prev = rootCold?.DampenEntries;
+                        int prevLen = prev?.Length ?? 0;
+                        HotDampenEntry[] merged = new HotDampenEntry[prevLen + added.Count];
+                        if (prevLen > 0)
+                            prev!.CopyTo(merged, 0);
+                        added.CopyTo(merged, prevLen);
+                        rootCold = rootCold == null
+                            ? new HotColdSidecar(DampenEntries: merged)
+                            : rootCold with { DampenEntries = merged };
+                    }
+                }
+                break;
+            }
+
+            case NemesisPower nemesis:
+                // 0.113.1 NemesisPower.cs:14,24-28: BoolAux mirrors _shouldApplyIntangible toggle.
+                if (nemesis._shouldApplyIntangible)
+                    pFlags |= HotPowerFlags.BoolAux;
+                break;
+
+            case ChainsOfBindingPower chains:
+            {
+                // 0.113.1 ChainsOfBindingPower.cs:20-74: Aux0 = boundCardPlayed, Aux1 = this-turn Bound affliction count.
+                aux0 = chains.GetInternalData<ChainsOfBindingPower.Data>().boundCardPlayed ? 1 : 0;
+                if (CombatManager.Instance?.History is { } chainsHistory)
+                {
+                    int boundCount = 0;
+                    foreach (CombatHistoryEntry entry in chainsHistory.Entries)
+                    {
+                        if (entry is CardAfflictedEntry affl
+                            && affl.HappenedThisTurn(state)
+                            && ReferenceEquals(affl.Actor, chains.Owner)
+                            && affl.Affliction is MegaCrit.Sts2.Core.Models.Afflictions.Bound)
+                        {
+                            boundCount++;
+                        }
+                    }
+                    aux1 = boundCount;
+                }
+                break;
+            }
         }
 
         return new HotPower
@@ -1146,8 +1308,38 @@ internal static partial class HotRootBuilder
             TheScythe scythe => scythe.IncreasedDamage,
             TheShot shot => (int)shot._cardsExhaustedByFlorescence,
             ShowOff showOff => ((short)showOff.CurrentAim & 0xFFFF) | (((short)showOff.IncreasedAim & 0xFFFF) << 16),
+            Bounce bounce => CaptureBounceLastPlayTurn(bounce),
             _ => 0,
         };
+
+    private static int CaptureBounceLastPlayTurn(Bounce bounce)
+    {
+        Player? owner = bounce.Owner;
+        PlayerCombatState? pcs = owner?.PlayerCombatState;
+        ICombatState? combatState = bounce.CombatState;
+        CombatHistory? history = CombatManager.Instance?.History;
+        if (owner == null || pcs == null || combatState == null || history == null)
+            return 0;
+
+        int turn = pcs.TurnNumber;
+        bool playedThisTurn = false;
+        bool playedLastTurn = false;
+        foreach (CardPlayFinishedEntry entry in history.CardPlaysFinished)
+        {
+            if (!ReferenceEquals(entry.CardPlay.Card, bounce))
+                continue;
+            if (entry.HappenedThisTurn(combatState))
+                playedThisTurn = true;
+            else if (entry.HappenedLastPlayerTurn(owner))
+                playedLastTurn = true;
+        }
+
+        if (playedThisTurn)
+            return turn;
+        if (playedLastTurn)
+            return Math.Max(0, turn - 1);
+        return 0;
+    }
 
     private static void CapturePostCombatRelicHeal(
         IEnumerable<RelicModel> relics,
@@ -1709,6 +1901,9 @@ internal static partial class HotRootBuilder
 
             bool canReuseCanonical = dupeKey == null
                 && liveCard.CurrentUpgradeLevel <= 1
+                && liveCard.Type == canonical.Type
+                && liveCard.TargetType == canonical.Target
+                && liveCard.GainsBlock == canonical.GainsBlock
                 && canonical.OrderedVarNames.Length == liveNames.Length
                 && StringsEqual(canonical.OrderedVarStrings, liveStrings);
 
@@ -1801,7 +1996,7 @@ internal static partial class HotRootBuilder
                 Var0Index = v0,
                 Var1Index = v1,
                 IsAllowedInBlitz = liveCard.IsAllowedInBlitz,
-                GainsBlock = canonical.GainsBlock,
+                GainsBlock = liveCard.GainsBlock,
                 CanBeGeneratedInCombat = canonical.CanBeGeneratedInCombat,
                 MaxUpgradeLevel = canonical.MaxUpgradeLevel,
                 PrivateKind = canonical.PrivateKind,
@@ -2006,6 +2201,12 @@ internal static partial class HotRootBuilder
                 }
             }
 
+            if (relic is PumpkinCandle pumpkinCandle)
+            {
+                primaryVal = (short)Math.Clamp(pumpkinCandle.KindleCount, 0, short.MaxValue);
+                secondaryVal = 0;
+            }
+
             Relics.Add(new HotRelicDef
             {
                 DefId = defId,
@@ -2081,6 +2282,7 @@ internal static partial class HotRootBuilder
                 RequiresOpeningUse = pe.RequiresOpeningUse,
                 GeneratesPotionChain = pe.GeneratesPotionChain,
                 IsCombatUsable = pe.IsCombatUsable,
+                CanBeGeneratedInCombat = potion.CanBeGeneratedInCombat,
             });
             return defId;
         }
@@ -2197,7 +2399,11 @@ internal static partial class HotRootBuilder
             return defId;
         }
 
-        public void PreRegisterSpawnableMonsters(bool isBoss, bool isElite)
+        public void PreRegisterSpawnableMonsters(
+            EncounterModel? encounter,
+            IReadOnlyList<Creature> liveEnemies,
+            bool isBoss,
+            bool isElite)
         {
             Queue<HotMonsterId> queue = new();
             HashSet<HotMonsterId> seen = [];
@@ -2208,24 +2414,70 @@ internal static partial class HotRootBuilder
                     queue.Enqueue(mid);
             }
 
+            void RegisterPrototypeIfMissing(MonsterModel? canonical)
+            {
+                if (canonical == null || MonsterDefIdByEntry.ContainsKey(canonical.Id.Entry))
+                    return;
+
+                MonsterModel mutable = canonical.IsCanonical ? canonical.ToMutable() : canonical;
+                if (mutable.MoveStateMachine == null)
+                {
+                    try
+                    {
+                        mutable.SetUpForCombat();
+                    }
+                    catch
+                    {
+                        // Non-spawned encounter helper may expect live CombatState; register metadata safely.
+                    }
+                }
+
+                ushort defId = RegisterEnemyMonster(mutable, isBoss, isElite, extraMoveIds: null, out _);
+                HotMonsterId mid = Monsters[defId].MonsterId;
+                if (mid != HotMonsterId.None && seen.Add(mid))
+                    queue.Enqueue(mid);
+            }
+
+            void SeedSpawnId(HotMonsterId child)
+            {
+                if (!seen.Add(child))
+                    return;
+                queue.Enqueue(child);
+                RegisterPrototypeIfMissing(HotMonsterCatalog.TryGetCanonicalMonsterModel(child));
+            }
+
+            if (encounter != null)
+            {
+                foreach (MonsterModel possible in encounter.AllPossibleMonsters)
+                    RegisterPrototypeIfMissing(possible);
+            }
+
+            for (int i = 0; i < liveEnemies.Count; i++)
+            {
+                foreach (PowerModel power in liveEnemies[i].Powers)
+                {
+                    switch (power)
+                    {
+                        case InfestedPower:
+                            SeedSpawnId(HotMonsterId.Wriggler);
+                            break;
+                        case StockPower:
+                            SeedSpawnId(HotMonsterId.Axebot);
+                            break;
+                        case SurprisePower:
+                            SeedSpawnId(HotMonsterId.FatGremlin);
+                            SeedSpawnId(HotMonsterId.SneakyGremlin);
+                            break;
+                    }
+                }
+            }
+
             while (queue.Count > 0)
             {
                 HotMonsterId cur = queue.Dequeue();
                 ReadOnlySpan<HotMonsterId> children = HotMonsterCatalog.GetSpawnClosure(cur);
                 for (int i = 0; i < children.Length; i++)
-                {
-                    HotMonsterId child = children[i];
-                    if (!seen.Add(child))
-                        continue;
-                    queue.Enqueue(child);
-                    if (HotMonsterCatalog.TryGetCanonicalMonsterModel(child) is { } canonical)
-                    {
-                        MonsterModel mutable = canonical.IsCanonical ? canonical.ToMutable() : canonical;
-                        if (mutable.MoveStateMachine == null)
-                            mutable.SetUpForCombat();
-                        RegisterEnemyMonster(mutable, isBoss, isElite, extraMoveIds: null, out _);
-                    }
-                }
+                    SeedSpawnId(children[i]);
             }
         }
 
@@ -2235,6 +2487,7 @@ internal static partial class HotRootBuilder
             IEnumerable<CardModel> unlockedCurseCards,
             IEnumerable<CardModel> otherCharCards,
             IEnumerable<CardModel> tarotCards,
+            IEnumerable<PotionModel> unlockedPotions,
             CardMultiplayerConstraint mpConstraint,
             HotCombatRulesSnapshot rulesSnapshot,
             bool hasRenewablePotionShapedRock)
@@ -2244,6 +2497,22 @@ internal static partial class HotRootBuilder
                 EnsureCanonicalCardDef(card);
             foreach (CardModel card in ModelDb.CardPool<TokenCardPool>().AllCards)
                 EnsureCanonicalCardDef(card);
+            EnsureCanonicalCardDef(ModelDb.Card<Disintegration>());
+            EnsureCanonicalCardDef(ModelDb.Card<MindRot>());
+            EnsureCanonicalCardDef(ModelDb.Card<Sloth>());
+            EnsureCanonicalCardDef(ModelDb.Card<WasteAway>());
+            EnsureCanonicalCardDef(ModelDb.Card<Amnesia>());
+
+            // Pre-register all 7 canonical STS2 0.113.1 afflictions and mid-combat-applied enchantments (Inky)
+            // so mid-combat GetAfflictionDefId / GetEnchantmentDefId lookups never silently return 0.
+            EnsureAfflictionDef(ModelDb.Affliction<MegaCrit.Sts2.Core.Models.Afflictions.Bound>());
+            EnsureAfflictionDef(ModelDb.Affliction<MegaCrit.Sts2.Core.Models.Afflictions.Entangled>());
+            EnsureAfflictionDef(ModelDb.Affliction<MegaCrit.Sts2.Core.Models.Afflictions.Galvanized>());
+            EnsureAfflictionDef(ModelDb.Affliction<MegaCrit.Sts2.Core.Models.Afflictions.Hexed>());
+            EnsureAfflictionDef(ModelDb.Affliction<MegaCrit.Sts2.Core.Models.Afflictions.Ringing>());
+            EnsureAfflictionDef(ModelDb.Affliction<MegaCrit.Sts2.Core.Models.Afflictions.Smog>());
+            EnsureAfflictionDef(ModelDb.Affliction<MegaCrit.Sts2.Core.Models.Afflictions.Tainted>());
+            EnsureEnchantmentDef(ModelDb.Enchantment<MegaCrit.Sts2.Core.Models.Enchantments.Inky>());
 
             ushort[] RegisterPool(IEnumerable<CardModel> src)
             {
@@ -2283,8 +2552,12 @@ internal static partial class HotRootBuilder
                 }
             }
 
+            // Always register Token PotionShapedRock so PetrifiedToad can procure it even if belt starts empty.
+            EnsurePotionDef(ModelDb.Potion<PotionShapedRock>(), hasRenewablePotionShapedRock);
+
+            // Exact STS2 0.113.1 PotionFactory.GetPotionOptions(player): character unlocked + SharedPotionPool unlocked.
             List<ushort> potionPool = [];
-            foreach (PotionModel potion in ModelDb.AllPotions)
+            foreach (PotionModel potion in unlockedPotions)
             {
                 if (potion.GetType().Assembly != typeof(AbstractModel).Assembly)
                     continue;
@@ -2292,8 +2565,7 @@ internal static partial class HotRootBuilder
                 if (pid == HotCustomPotionId.None)
                     continue;
                 ushort pDefId = EnsurePotionDef(potion, hasRenewablePotionShapedRock);
-                if (Potions[pDefId].IsCombatUsable && potion.Rarity != PotionRarity.Token)
-                    potionPool.Add(pDefId);
+                potionPool.Add(pDefId);
             }
 
             return new FrozenGenerationPools(
@@ -2342,6 +2614,13 @@ internal static partial class HotRootBuilder
                 for (int i = 0; i < extraMoveIds.Length; i++)
                     AddId(extraMoveIds[i]);
             }
+
+            // Synthesize dynamic STS2 0.113.1 states not declared in GenerateMoveStateMachine():
+            // - STUNNED (CreatureCmd.Stun / Ravenous / Flutter / Whistle / Burrowed / Asleep / Slumber / Shriek / Imbalanced)
+            // - REVIVE_MOVE (IllusionPower.AfterDeath on Parafright / EyeWithTeeth)
+            AddId("STUNNED");
+            if (monsterId is HotMonsterId.Parafright or HotMonsterId.EyeWithTeeth)
+                AddId("REVIVE_MOVE");
 
             HotMonsterNode[] nodes = new HotMonsterNode[orderedIds.Count];
             for (int i = 0; i < orderedIds.Count; i++)
@@ -2484,6 +2763,8 @@ internal static partial class HotRootBuilder
                 }
                 else
                 {
+                    bool mustPerformOnce = string.Equals(id, "STUNNED", StringComparison.Ordinal)
+                        || string.Equals(id, "REVIVE_MOVE", StringComparison.Ordinal);
                     nodes[i] = new HotMonsterNode
                     {
                         NodeId = (short)i,
@@ -2498,7 +2779,7 @@ internal static partial class HotRootBuilder
                         BranchMaxTimes = [],
                         BranchCooldowns = [],
                         Cooldown = 0,
-                        MustPerformOnceBeforeRepeat = false,
+                        MustPerformOnceBeforeRepeat = mustPerformOnce,
                         CannotRepeat = false,
                         ConditionalKind = HotMonsterConditionalKind.None,
                         MoveEffects = [],

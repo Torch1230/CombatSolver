@@ -448,7 +448,7 @@ internal static partial class SolverController
         SearchPolicySnapshot policy = new(
             profile,
             settings.PotionPolicy,
-            CapturePotionStrategy(state, settings.PotionPolicy),
+            CapturePotionStrategy(state, settings.PotionPolicy, settings.PotionThresholds),
             settings.EnableDetailedDiagnosticLogs,
             UnattendedTestRunner.VerifyIncrementalSearch,
             UnattendedTestRunner.FixedSearchBudget,
@@ -1098,7 +1098,10 @@ internal static partial class SolverController
                 interaction: search.Interaction);
             search.MaxDegreeOfParallelism = searchPolicy.MaxDegreeOfParallelism;
             setupStage = "combat_root_snapshot";
-            CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(state, settings.PredictPotionReward);
+            CombatRootSnapshot rootSnapshot = CombatRootSnapshot.Capture(
+                state,
+                settings.PredictPotionReward,
+                settings.PotionThresholds);
             Entry.Logger.Info(
                 $"[CombatSolver/Test] COMBAT_ROOT_CAPTURE generation={generation} " +
                 $"elapsed_ms={rootSnapshot.CaptureElapsedMilliseconds:F3} " +
@@ -1646,7 +1649,8 @@ internal static partial class SolverController
 
     internal static PotionStrategySnapshot CapturePotionStrategy(
         CombatState state,
-        SolverPotionPolicy defaultPolicy)
+        SolverPotionPolicy defaultPolicy,
+        PotionHpThresholds? thresholds = null)
     {
         AssertMainThread();
         Player player = LocalContext.GetMe(state)
@@ -1664,7 +1668,10 @@ internal static partial class SolverController
                     persisted.Directive));
             }
         }
-        return new PotionStrategySnapshot(defaultPolicy, directives);
+        return new PotionStrategySnapshot(defaultPolicy, directives)
+        {
+            Thresholds = thresholds ?? SolverSettings.ResolvePotionThresholds(SolverSettings.Current),
+        };
     }
 
     internal static SolverPotionDirective ResolvePotionDirective(
@@ -1821,7 +1828,10 @@ internal static partial class SolverController
         for (int slot = 0; slot < player.PotionSlots.Count; slot++)
         {
             PotionModel? potion = player.GetPotionAtSlotIndex(slot);
-            if (potion == null || !PotionOnUseSupport.CanSearch(potion))
+            if (potion == null)
+                continue;
+            HotCustomPotionId catalogId = HotPotionCatalog.FindByEntry(potion.Id.Entry);
+            if (catalogId == HotCustomPotionId.None || !HotPotionCatalog.Get(catalogId).IsCombatUsable)
                 continue;
             searchable.Add(new PotionSlotDirective(
                 slot,
@@ -1840,6 +1850,85 @@ internal static partial class SolverController
         if (_combat.AutomaticSearchPaused || !AutomaticCalculationEnabled)
         {
             Entry.Logger.Info("[CombatSolver/Test] POTION_PRESET_RECALCULATION_SKIPPED reason=automatic_calculation_inactive");
+            return;
+        }
+        RequestSearch(host, state, SearchReason.Manual);
+    }
+
+    internal static void SetPotionThresholdOverride(
+        NGame? host,
+        CombatState? state,
+        string potionId,
+        int? thresholdHp,
+        int? defaultThresholdHp = null)
+    {
+        AssertMainThread();
+        if (string.IsNullOrWhiteSpace(potionId))
+            throw new ArgumentException("Potion ID must not be empty.", nameof(potionId));
+        if (_deployment != null)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_THRESHOLD_REJECT reason=deploying");
+            return;
+        }
+
+        int? normalized = thresholdHp is { } raw
+            ? Math.Clamp(raw, PotionHpThresholds.MinValue, PotionHpThresholds.MaxValue)
+            : null;
+        if (normalized is { } value && defaultThresholdHp is { } defaultValue && value == defaultValue)
+            normalized = null;
+
+        SolverSettingsData current = SolverSettings.Current;
+        SolverSettingsData updated = SolverSettings.ApplyPotionThresholdOverride(current, potionId, normalized);
+        if (ReferenceEquals(updated, current))
+            return;
+
+        SolverSettings.Update(updated);
+        Entry.Logger.Info(
+            $"[CombatSolver/Test] POTION_THRESHOLD_OVERRIDE_CHANGED " +
+            $"potion={potionId} value={(normalized?.ToString() ?? "default")}");
+
+        if (host == null || state == null || CombatManager.Instance?.IsInProgress != true)
+            return;
+
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        SolverOverlay.RefreshControls();
+        if (_combat.AutomaticSearchPaused || !AutomaticCalculationEnabled)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_THRESHOLD_RECALCULATION_SKIPPED reason=automatic_calculation_inactive");
+            return;
+        }
+        RequestSearch(host, state, SearchReason.Manual);
+    }
+
+    internal static void ResetAllPotionThresholdOverrides(
+        NGame? host,
+        CombatState? state)
+    {
+        AssertMainThread();
+        if (_deployment != null)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_THRESHOLD_REJECT reason=deploying");
+            return;
+        }
+
+        SolverSettingsData current = SolverSettings.Current;
+        SolverSettingsData updated = SolverSettings.ClearAllPotionThresholdOverrides(current);
+        if (ReferenceEquals(updated, current))
+            return;
+
+        SolverSettings.Update(updated);
+        Entry.Logger.Info("[CombatSolver/Test] POTION_THRESHOLD_OVERRIDES_RESET");
+
+        if (host == null || state == null || CombatManager.Instance?.IsInProgress != true)
+            return;
+
+        _combat.ContinuationSource = null;
+        _combat.PendingCompleteProjectionBaseline = null;
+        SolverOverlay.RefreshControls();
+        if (_combat.AutomaticSearchPaused || !AutomaticCalculationEnabled)
+        {
+            Entry.Logger.Info("[CombatSolver/Test] POTION_THRESHOLD_RECALCULATION_SKIPPED reason=automatic_calculation_inactive");
             return;
         }
         RequestSearch(host, state, SearchReason.Manual);

@@ -8,6 +8,39 @@ namespace CombatSolver.HotKernel;
 /// </summary>
 internal static class HotPiles
 {
+    [ThreadStatic]
+    private static HotRules? t_activeRules;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static HotRules? PushActiveRules(HotRules? rules)
+    {
+        HotRules? prev = t_activeRules;
+        t_activeRules = rules;
+        return prev;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void PopActiveRules(HotRules? prev)
+        => t_activeRules = prev;
+
+    /// <summary>
+    /// Exact STS2 0.113.1 <c>CardPile.AddInternal</c> (lines 108-111):
+    /// whenever any <c>CardTag.Shoot</c> card enters a combat pile during active combat while
+    /// the player has 0 arrow slots (non-Fool with <c>BaseArrowSlotCount == 0</c>), auto-grant 1 slot.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void MaybeGainArrowSlotOnPileEnter(ref CombatHotState s, ushort cardDefId, HotRules? rules = null)
+    {
+        if (s.ArrowCount != 0 || (s.CombatFlags & HotCombatFlags.IsInProgress) == 0)
+            return;
+        HotRules? r = rules ?? t_activeRules;
+        if (r != null && cardDefId < r.Cards.Length && r.Cards[cardDefId].IsShootTag)
+        {
+            s.Fool.Arrows[0] = 0; // ArrowStatus.Retrieved (0), DestroyAfterImpaled = false
+            s.ArrowCount = 1;
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ZoneStart(in CombatHotState s, HotPileKind pile) => pile switch
     {
@@ -74,6 +107,7 @@ internal static class HotPiles
             return false;
         s.HandCount++;
         s.DrawCount--;
+        MaybeGainArrowSlotOnPileEnter(ref s, s.Cards[s.HandCount - 1].CardDefId);
         return true;
     }
 
@@ -114,6 +148,7 @@ internal static class HotPiles
             cards[dstIndex] = moved;
         }
 
+        MaybeGainArrowSlotOnPileEnter(ref s, s.Cards[dstIndex].CardDefId);
         return dstIndex;
     }
 
@@ -137,6 +172,7 @@ internal static class HotPiles
             cards.Slice(dstIndex, total - dstIndex).CopyTo(cards.Slice(dstIndex + 1));
         cards[dstIndex] = card;
         AddPileCount(ref s, dstPile, +1);
+        MaybeGainArrowSlotOnPileEnter(ref s, card.CardDefId);
         return dstIndex;
     }
 
@@ -190,16 +226,62 @@ internal static class HotPiles
 
         HotRng.UnstableShuffle(buf, ref s.Rng[(int)HotRngStream.Shuffle]);
 
+        // PerfectFit enchantment (ModifyShuffleOrder, !isInitialShuffle):
+        // moves each enchanted card to the top (index 0) of the newly shuffled Draw pile.
+        if (total > 1 && rules != null)
+        {
+            byte perfectFitEnchId = rules.GetEnchantmentDefId(HotEnchantmentId.PerfectFit);
+            if (perfectFitEnchId != 0)
+            {
+                for (int i = 0; i < total; i++)
+                {
+                    if (buf[i].EnchId != perfectFitEnchId)
+                        continue;
+                    if (i > 0)
+                    {
+                        HotCard card = buf[i];
+                        buf.Slice(0, i).CopyTo(buf.Slice(1, i));
+                        buf[0] = card;
+                    }
+                }
+            }
+        }
+
         if (total > 0)
         {
             Span<HotCard> dst = MemoryMarshal.CreateSpan(ref s.Cards[0], s.TotalCardCount).Slice(drawStart, total);
             buf.CopyTo(dst);
+            if (s.ArrowCount == 0 && (s.CombatFlags & HotCombatFlags.IsInProgress) != 0)
+            {
+                HotRules? r = rules ?? t_activeRules;
+                if (r != null)
+                {
+                    for (int i = 0; i < total; i++)
+                    {
+                        ushort cid = dst[i].CardDefId;
+                        if (cid < r.Cards.Length && r.Cards[cid].IsShootTag)
+                        {
+                            s.Fool.Arrows[0] = 0;
+                            s.ArrowCount = 1;
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         s.DrawCount = (ushort)total;
         s.DiscardCount = 0;
         s.ShuffleEventCount++;
     }
+
+    [ThreadStatic]
+    private static HotRules? t_sortRules;
+
+    [ThreadStatic]
+    private static HotColdSidecar? t_sortCold;
+
+    private static readonly Comparison<HotCard> s_shuffleComparison = CompareShuffleCardsThreadStatic;
 
     private static void StableSortShuffleBuffer(
         HotExecScratch scratch,
@@ -208,56 +290,28 @@ internal static class HotPiles
         HotRules? rules,
         HotColdSidecar? cold)
     {
-        HotCard[] primary = scratch.ShuffleCards;
-        if (count <= 32)
+        // Match vanilla STS2 0.113.1 ListExtensions.StableShuffle -> List<CardModel>.Sort()
+        // bit-for-bit, including .NET IntroSort's exact partitioning for count > 16 when
+        // two cards compare equal under CardModel.CompareTo (e.g. a MusicBox Ethereal clone
+        // and its original card in Discard). Static Comparison<HotCard> + [ThreadStatic]
+        // context avoids struct IComparer boxing/delegate allocation (0 B alloc).
+        HotRules? prevRules = t_sortRules;
+        HotColdSidecar? prevCold = t_sortCold;
+        t_sortRules = rules;
+        t_sortCold = cold;
+        try
         {
-            // Insertion sort: strictly stable, zero-alloc, fast for typical STS2 deck sizes.
-            for (int i = 1; i < count; i++)
-            {
-                HotCard key = primary[i];
-                int j = i - 1;
-                while (j >= 0 && CompareShuffleCards(in primary[j], in key, in s, rules, cold) > 0)
-                {
-                    primary[j + 1] = primary[j];
-                    j--;
-                }
-                primary[j + 1] = key;
-            }
-            return;
+            scratch.ShuffleCards.AsSpan(0, count).Sort(s_shuffleComparison);
         }
-
-        // Bottom-up iterative stable merge sort using scratch.ShuffleScratch (O(n log n), zero heap alloc).
-        HotCard[] src = primary;
-        HotCard[] dst = scratch.ShuffleScratch;
-
-        for (int width = 1; width < count; width <<= 1)
+        finally
         {
-            for (int left = 0; left < count; left += width << 1)
-            {
-                int mid = Math.Min(left + width, count);
-                int right = Math.Min(left + (width << 1), count);
-                int i = left;
-                int j = mid;
-                int k = left;
-
-                while (i < mid && j < right)
-                {
-                    if (CompareShuffleCards(in src[i], in src[j], in s, rules, cold) <= 0)
-                        dst[k++] = src[i++];
-                    else
-                        dst[k++] = src[j++];
-                }
-                while (i < mid)
-                    dst[k++] = src[i++];
-                while (j < right)
-                    dst[k++] = src[j++];
-            }
-            (src, dst) = (dst, src);
+            t_sortRules = prevRules;
+            t_sortCold = prevCold;
         }
-
-        if (!ReferenceEquals(src, primary))
-            src.AsSpan(0, count).CopyTo(primary.AsSpan(0, count));
     }
+
+    private static int CompareShuffleCardsThreadStatic(HotCard a, HotCard b)
+        => CompareShuffleCards(in a, in b, in Unsafe.NullRef<CombatHotState>(), t_sortRules, t_sortCold);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int CompareShuffleCards(

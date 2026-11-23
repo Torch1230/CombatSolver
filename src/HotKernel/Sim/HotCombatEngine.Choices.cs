@@ -11,6 +11,18 @@ internal static partial class HotCombatEngine
     [ThreadStatic]
     private static int t_generatedChoiceOptionCount;
 
+    [ThreadStatic]
+    private static ushort[]? t_filteredChoiceUids;
+
+    [ThreadStatic]
+    private static int t_filteredChoiceUidCount;
+
+    [ThreadStatic]
+    private static ushort[]? t_excludedChoiceUids;
+
+    [ThreadStatic]
+    private static int t_excludedChoiceUidCount;
+
     /// <summary>
     /// Stores the generated card option DefIds rolled for the currently pending
     /// <see cref="HotChoiceKind.GeneratedCard"/> choice (zero per-step heap allocations).
@@ -22,6 +34,53 @@ internal static partial class HotCombatEngine
         if (count > 0)
             cardDefIds[..count].CopyTo(buf);
         t_generatedChoiceOptionCount = count;
+    }
+
+    internal static ReadOnlySpan<ushort> GetPendingGeneratedChoiceOptions()
+        => t_generatedChoiceOptions != null && t_generatedChoiceOptionCount > 0
+            ? t_generatedChoiceOptions.AsSpan(0, t_generatedChoiceOptionCount)
+            : ReadOnlySpan<ushort>.Empty;
+
+    /// <summary>
+    /// Returns the allowed card UIDs for the currently pending filtered pile choice
+    /// (e.g., <c>SeekerStrike</c> 3-card shuffled draw subset, <c>TouchOfInsanity</c> eligible cards).
+    /// Empty when no UID allow-list is active.
+    /// </summary>
+    internal static ReadOnlySpan<ushort> GetPendingFilteredChoiceUids()
+        => t_filteredChoiceUids != null && t_filteredChoiceUidCount > 0
+            ? t_filteredChoiceUids.AsSpan(0, t_filteredChoiceUidCount)
+            : ReadOnlySpan<ushort>.Empty;
+
+    internal static ReadOnlySpan<ushort> GetPendingExcludedChoiceUids()
+        => t_excludedChoiceUids != null && t_excludedChoiceUidCount > 0
+            ? t_excludedChoiceUids.AsSpan(0, t_excludedChoiceUidCount)
+            : ReadOnlySpan<ushort>.Empty;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void ClearPendingChoiceUidFilters()
+    {
+        t_filteredChoiceUidCount = 0;
+        t_excludedChoiceUidCount = 0;
+    }
+
+    private static void SetPendingFilteredChoiceUids(ReadOnlySpan<ushort> allowedUids)
+    {
+        ushort[] buf = t_filteredChoiceUids ??= new ushort[HotLimits.MaxCards];
+        int count = Math.Min(allowedUids.Length, buf.Length);
+        if (count > 0)
+            allowedUids[..count].CopyTo(buf);
+        t_filteredChoiceUidCount = count;
+        t_excludedChoiceUidCount = 0;
+    }
+
+    private static void SetPendingExcludedChoiceUids(ReadOnlySpan<ushort> excludedUids)
+    {
+        ushort[] buf = t_excludedChoiceUids ??= new ushort[HotLimits.MaxCards];
+        int count = Math.Min(excludedUids.Length, buf.Length);
+        if (count > 0)
+            excludedUids[..count].CopyTo(buf);
+        t_excludedChoiceUidCount = count;
+        t_filteredChoiceUidCount = 0;
     }
 
     /// <summary>
@@ -47,6 +106,67 @@ internal static partial class HotCombatEngine
             return true;
         }
 
+        ClearPendingChoiceUidFilters();
+        scratch.NeedsChoice = true;
+        scratch.PendingChoiceKind = kind;
+        scratch.PendingChoiceSourceCardDefId = sourceCardDefId;
+        scratch.PendingChoiceMin = minCount;
+        scratch.PendingChoiceMax = maxCount;
+        selected = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Variant of <see cref="RequestChoice"/> restricted to an explicit allow-list of card UIDs
+    /// (e.g., <c>SeekerStrike</c> 3-card shuffled draw subset, <c>TouchOfInsanity</c> cost filter).
+    /// </summary>
+    internal static bool RequestChoiceFiltered(
+        ref CombatHotState s,
+        HotExecScratch scratch,
+        HotChoiceKind kind,
+        ushort sourceCardDefId,
+        byte minCount,
+        byte maxCount,
+        ReadOnlySpan<ushort> allowedUids,
+        out HotChoiceSelection selected)
+    {
+        if (scratch.ChoiceCursor < scratch.ChoiceCount)
+        {
+            selected = scratch.Choices[scratch.ChoiceCursor++];
+            return true;
+        }
+
+        SetPendingFilteredChoiceUids(allowedUids);
+        scratch.NeedsChoice = true;
+        scratch.PendingChoiceKind = kind;
+        scratch.PendingChoiceSourceCardDefId = sourceCardDefId;
+        scratch.PendingChoiceMin = minCount;
+        scratch.PendingChoiceMax = maxCount;
+        selected = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Variant of <see cref="RequestChoice"/> that excludes already-picked card UIDs during
+    /// simultaneous multi-card selection (e.g., <c>Prepared</c>, <c>GamblersBrew</c>, <c>GamblingChip</c>).
+    /// </summary>
+    internal static bool RequestChoiceExcluding(
+        ref CombatHotState s,
+        HotExecScratch scratch,
+        HotChoiceKind kind,
+        ushort sourceCardDefId,
+        byte minCount,
+        byte maxCount,
+        ReadOnlySpan<ushort> excludedUids,
+        out HotChoiceSelection selected)
+    {
+        if (scratch.ChoiceCursor < scratch.ChoiceCount)
+        {
+            selected = scratch.Choices[scratch.ChoiceCursor++];
+            return true;
+        }
+
+        SetPendingExcludedChoiceUids(excludedUids);
         scratch.NeedsChoice = true;
         scratch.PendingChoiceKind = kind;
         scratch.PendingChoiceSourceCardDefId = sourceCardDefId;
@@ -143,6 +263,9 @@ internal static partial class HotCombatEngine
         Span<int> emittedCardIndices = stackalloc int[HotLimits.MaxStackAllocElements];
         int emittedCount = 0;
 
+        ReadOnlySpan<ushort> allowedUids = GetPendingFilteredChoiceUids();
+        ReadOnlySpan<ushort> excludedUids = GetPendingExcludedChoiceUids();
+
         for (int offset = 0; offset < zoneCount; offset++)
         {
             if (written >= dst.Length)
@@ -150,6 +273,10 @@ internal static partial class HotCombatEngine
 
             int cardIdx = zoneStart + offset;
             ref readonly HotCard candidate = ref s.Cards[cardIdx];
+            if (!allowedUids.IsEmpty && !ContainsUid(allowedUids, candidate.CardUid))
+                continue;
+            if (!excludedUids.IsEmpty && ContainsUid(excludedUids, candidate.CardUid))
+                continue;
             if (!MatchesChoiceFilter(in s, in candidate, rules, sourceCardId))
                 continue;
 
@@ -176,6 +303,17 @@ internal static partial class HotCombatEngine
         }
 
         return written;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool ContainsUid(ReadOnlySpan<ushort> uids, ushort uid)
+    {
+        for (int i = 0; i < uids.Length; i++)
+        {
+            if (uids[i] == uid)
+                return true;
+        }
+        return false;
     }
 
     internal static int FindCardIndexByUid(in CombatHotState s, HotPileKind pile, ushort cardUid)

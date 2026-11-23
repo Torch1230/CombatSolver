@@ -1,6 +1,8 @@
 using CombatSolver.HotKernel;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Potions;
 
 namespace CombatSolver.HotSearch;
 
@@ -99,6 +101,9 @@ internal static class HotPlanMaterializer
         int lastShuffleEvents = state.ShuffleEventCount;
         int? combatEndedTurn = null;
         int? deathTurn = null;
+        PlanCardChoice[] turnSetupChoices = Array.Empty<PlanCardChoice>();
+        ContinuationStamp? turnSetupPlayState = null;
+        bool hadTurnSetup = false;
 
         for (int stepIdx = 0; stepIdx < nodePath.Length; stepIdx++)
         {
@@ -118,6 +123,85 @@ internal static class HotPlanMaterializer
 
             ulong aliveMaskBefore = CaptureAliveEnemySlotMask(in state);
             int[] potionSlotsBefore = SnapshotPotionSlots(in state);
+            ushort generatedPotionMaskBefore = state.CombatGeneratedPotionMask;
+
+            // Depth-0 TurnSetup edge: materialize TurnSetupChoices + post-setup Play-phase ContinuationStamp,
+            // and do NOT emit a regular Turn-1 PlanAction.
+            if (stepIdx == 0 && hotAction.Kind == HotActionKind.TurnSetup)
+            {
+                hadTurnSetup = true;
+                if (choices.Length > 0)
+                {
+                    List<PlanCardChoice> setupMaterialized = MaterializeChoicesForAction(
+                        in state,
+                        cold,
+                        rules,
+                        displayNames,
+                        hotAction,
+                        choices,
+                        timingOverride: PlanChoiceTiming.PlayerTurnStart);
+                    turnSetupChoices = setupMaterialized.ToArray();
+                }
+
+                HotStepResult setupRes = HotCombatEngine.Step(ref state, ref cold, rules, scratch, hotAction, choices);
+                if (!setupRes.Executed)
+                    throw new InvalidOperationException($"HotPlanMaterializer TurnSetup replay failed at step {stepIdx} ({hotAction}).");
+
+                if (state.ShuffleEventCount != lastShuffleEvents)
+                {
+                    shufflesCrossed++;
+                    lastShuffleEvents = state.ShuffleEventCount;
+                }
+
+                if (state.Player.Block > turnPeakBlock && state.PlayerTurnNumber == actionTurn)
+                    turnPeakBlock = state.Player.Block;
+
+                RecordAutomaticPotionUses(
+                    potionSlotsBefore,
+                    generatedPotionMaskBefore,
+                    in state,
+                    explicitSlot: -1,
+                    rules,
+                    rootPotionCosts,
+                    in hotPolicy,
+                    actionTurn,
+                    potionUses,
+                    potionCountByTurn,
+                    potionCostByTurn);
+
+                bool setupVictory = state.TerminalOutcome == HotCombatOutcome.Victory
+                    && (state.Player.Flags & HotCreatureFlags.Alive) != 0
+                    && state.Player.CurrentHp > 0;
+                bool setupDefeat = state.TerminalOutcome == HotCombatOutcome.Defeat
+                    || (state.Player.Flags & HotCreatureFlags.Alive) == 0
+                    || state.Player.CurrentHp <= 0;
+
+                if (setupVictory && combatEndedTurn == null)
+                    combatEndedTurn = state.TerminalTurn > 0 ? state.TerminalTurn : actionTurn;
+                if (setupDefeat && deathTurn == null)
+                    deathTurn = state.TerminalTurn > 0 ? state.TerminalTurn : actionTurn;
+
+                // Capture Play-phase ContinuationStamp immediately after TurnSetup completes
+                // (exact boundary checked by PlayerTurnSetupPatches.cs:829 and SolverController.ActivateTurnSetupResult).
+                turnSetupPlayState = new ContinuationStamp(HotContinuationStamp.CaptureFromHot(in state, cold, rules));
+
+                if (setupVictory || setupDefeat || stepIdx == nodePath.Length - 1)
+                {
+                    int curHpLost = state.Counters[(int)HotCounterSlot.PlayerCumulativeHpLost];
+                    int curHpRecovered = state.Counters[(int)HotCounterSlot.PlayerRecoveredHp];
+                    int curEnemyHp = ComputeTotalAliveEnemyHp(in state);
+
+                    hpLostByTurn[actionTurn] = Math.Max(0, curHpLost - turnStartHpLost);
+                    hpRecoveredByTurn[actionTurn] = Math.Max(0, curHpRecovered - turnStartHpRecovered);
+                    enemyHpLostByTurn[actionTurn] = Math.Max(0, turnStartEnemyHp - curEnemyHp);
+                    soldHpByTurn[actionTurn] = 0;
+                    actualBlockByTurn[actionTurn] = state.Player.Block;
+                    maxBlockByTurn[actionTurn] = Math.Max(turnPeakBlock, state.Player.Block);
+                    energyLeftByTurn[actionTurn] = state.Energy;
+                }
+
+                continue;
+            }
 
             // Annotate action metadata & choices BEFORE executing the action on the replay state
             PlanAction planAction = BuildPlanAction(
@@ -126,6 +210,8 @@ internal static class HotPlanMaterializer
                 rules,
                 displayNames,
                 rootEnemiesByCombatId,
+                rootPotionCosts,
+                in hotPolicy,
                 hotAction,
                 choices,
                 actionTurn,
@@ -159,16 +245,18 @@ internal static class HotPlanMaterializer
 
             RecordAutomaticPotionUses(
                 potionSlotsBefore,
+                generatedPotionMaskBefore,
                 in state,
                 hotAction.Kind == HotActionKind.UsePotion ? hotAction.SlotOrHandIdx : -1,
                 rules,
+                rootPotionCosts,
                 in hotPolicy,
                 actionTurn,
                 potionUses,
                 potionCountByTurn,
                 potionCostByTurn);
 
-            // Record enemy kills caused by this action
+            // Record enemy kills caused by this action (keyed by planActions index, NOT raw stepIdx!)
             ulong aliveMaskAfter = CaptureAliveEnemySlotMask(in state);
             ulong newlyKilled = aliveMaskBefore & ~aliveMaskAfter;
             if (planAction.IsExecutable && newlyKilled != 0)
@@ -181,7 +269,7 @@ internal static class HotPlanMaterializer
                     killedNames.Add(ResolveEnemyDisplayName(in state, eSlot, rules, displayNames, rootEnemiesByCombatId));
                 }
                 if (killedNames.Count > 0)
-                    killsAfterAction[stepIdx] = killedNames;
+                    killsAfterAction[planActions.Count] = killedNames;
             }
 
             bool endedByTurn = hotAction.Kind == HotActionKind.EndTurn || state.PlayerTurnNumber > actionTurn;
@@ -254,7 +342,7 @@ internal static class HotPlanMaterializer
         }
 
         HotFastSummary finalSummary = HotEvaluator.ExtractStage1(in state, in hotPolicy);
-        bool finalWon = planActions.Count > 0 && finalSummary.IsVictory;
+        bool finalWon = (planActions.Count > 0 || hadTurnSetup) && finalSummary.IsVictory;
         bool finalDead = finalSummary.IsDefeat;
         int postCombatHeal = finalWon
             ? hotPolicy.PostCombatRelicHeal.HealFor(finalSummary.PlayerHp, finalSummary.PlayerMaxHp)
@@ -333,8 +421,8 @@ internal static class HotPlanMaterializer
             TotalGen2Collections = metrics.Gen2Collections,
             TotalGcPauseDuration = metrics.GcPauseDuration,
             StartTurnNumber = root.StartTurnNumber,
-            TurnSetupChoices = Array.Empty<PlanCardChoice>(),
-            TurnSetupPlayState = null,
+            TurnSetupChoices = turnSetupChoices,
+            TurnSetupPlayState = turnSetupPlayState,
             BestNode = selectedPlan,
             PotionUses = potionUses.ToArray(),
             Snapshot = snapshot,
@@ -424,6 +512,8 @@ internal static class HotPlanMaterializer
         HotRules rules,
         SolverDisplayNames displayNames,
         Dictionary<uint, Creature> rootEnemiesByCombatId,
+        short[] rootPotionCosts,
+        in HotSearchPolicy hotPolicy,
         HotAction action,
         ReadOnlySpan<HotChoiceSelection> choices,
         int turn,
@@ -456,20 +546,33 @@ internal static class HotPlanMaterializer
                 rules,
                 displayNames,
                 action,
-                choices);
+                choices,
+                timingOverride: null);
 
             if (action.Kind == HotActionKind.EndTurn)
             {
                 turnStartChoices = materializedChoices;
             }
-            else if (materializedChoices.Count == 1)
+            else
             {
-                primaryChoice = materializedChoices[0];
-            }
-            else if (materializedChoices.Count > 1)
-            {
-                primaryChoice = materializedChoices[0];
-                nestedChoices = materializedChoices.GetRange(1, materializedChoices.Count - 1);
+                for (int i = 0; i < materializedChoices.Count; i++)
+                {
+                    PlanCardChoice choice = materializedChoices[i];
+                    if (choice.Timing != PlanChoiceTiming.Action)
+                    {
+                        turnStartChoices ??= [];
+                        turnStartChoices.Add(choice);
+                    }
+                    else if (primaryChoice == null)
+                    {
+                        primaryChoice = choice;
+                    }
+                    else
+                    {
+                        nestedChoices ??= [];
+                        nestedChoices.Add(choice);
+                    }
+                }
             }
         }
 
@@ -485,11 +588,16 @@ internal static class HotPlanMaterializer
             case HotActionKind.UsePotion:
             {
                 int slot = action.SlotOrHandIdx;
-                ushort pDefId = slot < stateBefore.PotionSlotCount ? stateBefore.Potions[slot] : (ushort)0;
+                ushort pDefId = slot >= 0 && slot < stateBefore.PotionSlotCount ? stateBefore.Potions[slot] : (ushort)0;
                 string potionId = pDefId > 0 && pDefId < rules.Potions.Length ? rules.Potions[pDefId].Entry : string.Empty;
                 string potionTitle = string.IsNullOrEmpty(potionId) ? string.Empty : displayNames.Potion(potionId);
-                if (pDefId > 0 && pDefId < rules.Potions.Length)
-                    explicitPotionCost = HotPotionPolicy.ComputePotionDefCost(rules.Potions[pDefId], rules.HasRenewablePotionShapedRock);
+                explicitPotionCost = ResolvePotionSlotCost(
+                    slot,
+                    pDefId,
+                    stateBefore.CombatGeneratedPotionMask,
+                    rootPotionCosts,
+                    rules,
+                    in hotPolicy);
 
                 return new PlanAction(
                     Kind: PlanActionKind.UsePotion,
@@ -501,7 +609,8 @@ internal static class HotPlanMaterializer
                     NestedChoices: nestedChoices?.ToArray(),
                     PotionSlot: slot,
                     PotionId: potionId,
-                    PotionTitle: potionTitle);
+                    PotionTitle: potionTitle,
+                    TurnStartChoices: turnStartChoices?.ToArray());
             }
 
             case HotActionKind.PlayCard:
@@ -539,6 +648,7 @@ internal static class HotPlanMaterializer
                     TargetName: targetName,
                     Choice: primaryChoice,
                     NestedChoices: nestedChoices?.ToArray(),
+                    TurnStartChoices: turnStartChoices?.ToArray(),
                     ReplayCount: card.BaseReplayCount + card.ExtraReplayThisTurn,
                     CardStateKey: stateKey,
                     CardStateOccurrence: stateOccurrence,
@@ -548,16 +658,63 @@ internal static class HotPlanMaterializer
         }
     }
 
+    private readonly record struct ChoicePromptMeta(
+        string SourceId,
+        PlanChoiceEffect Effect,
+        int MaxSelect,
+        bool IsOptional,
+        bool IsTouchOfInsanity,
+        bool IsChoicesParadox,
+        int KiChantTopLimit,
+        bool ConsumesTurnStartHandQueue);
+
+    private sealed class OpenMultiSelectPrompt
+    {
+        public int ResultIndex;
+        public HotChoiceKind Kind;
+        public HotPileKind Pile;
+        public PlanChoiceTiming Timing;
+        public ushort SourceCardDefId;
+        public string SourceId = string.Empty;
+        public PlanChoiceEffect Effect;
+        public int MaxSelect;
+        public bool IsOptional;
+        public bool IsTouchOfInsanity;
+        public int KiChantTopLimit;
+        public CombatHotState StartState;
+        public HotColdSidecar? StartCold;
+        public ushort[]? AllowedUids;
+        public int StartCandidateCount;
+        public readonly List<ushort> PickedUids = new(4);
+        public readonly List<int> PickedOptionIndices = new(4);
+        public readonly List<PlanCardToken> PickedTokens = new(4);
+
+        public bool ContainsUid(ushort uid)
+        {
+            for (int i = 0; i < PickedUids.Count; i++)
+            {
+                if (PickedUids[i] == uid)
+                    return true;
+            }
+            return false;
+        }
+    }
+
     private static List<PlanCardChoice> MaterializeChoicesForAction(
         in CombatHotState stateBefore,
         HotColdSidecar? coldBefore,
         HotRules rules,
         SolverDisplayNames displayNames,
         HotAction action,
-        ReadOnlySpan<HotChoiceSelection> choices)
+        ReadOnlySpan<HotChoiceSelection> choices,
+        PlanChoiceTiming? timingOverride)
     {
         List<PlanCardChoice> result = new(choices.Length);
         HotExecScratch probeScratch = new();
+        OpenMultiSelectPrompt? openPrompt = null;
+        int turnStartHandQueueTurn = -1;
+        int turnStartHandQueueCursor = 0;
+        bool seenTurn1Toolbox = false;
 
         for (int cIdx = 0; cIdx < choices.Length; cIdx++)
         {
@@ -568,84 +725,863 @@ internal static class HotPlanMaterializer
             HotChoiceSelection sel = choices[cIdx];
             HotChoiceKind pendingKind = probeScratch.NeedsChoice ? probeScratch.PendingChoiceKind : sel.Kind;
             ushort sourceCardDefId = probeScratch.PendingChoiceSourceCardDefId;
-            string sourceId = sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
-                ? rules.Cards[sourceCardDefId].Entry
-                : string.Empty;
+            PlanChoiceTiming timing = ResolveChoiceTiming(in stateBefore, in probeState, action, timingOverride);
 
-            PlanChoiceTiming timing = action.Kind == HotActionKind.EndTurn
-                ? (probeState.CurrentSide == HotCombatSide.Player && probeState.PlayerTurnNumber > stateBefore.PlayerTurnNumber
-                    ? PlanChoiceTiming.PlayerTurnStart
-                    : PlanChoiceTiming.PlayerTurnEnd)
-                : PlanChoiceTiming.Action;
+            if (timing == PlanChoiceTiming.PlayerTurnStart && probeState.PlayerTurnNumber != turnStartHandQueueTurn)
+            {
+                turnStartHandQueueTurn = probeState.PlayerTurnNumber;
+                turnStartHandQueueCursor = 0;
+            }
 
-            PileType sourcePile = MapPileType(pendingKind);
-            PlanChoiceEffect effect = InferPlanChoiceEffect(sourceCardDefId, pendingKind, rules);
-
+            // Optional multi-select loop terminator (HotChoiceKind.None after >= 1 picks):
+            // finalize & close the active prompt without emitting a duplicate empty PlanCardChoice!
             if (sel.Kind == HotChoiceKind.None)
             {
-                result.Add(new PlanCardChoice(effect, sourcePile, Array.Empty<PlanCardToken>(), sourceId, string.Empty, timing));
+                if (openPrompt != null
+                    && openPrompt.IsOptional
+                    && openPrompt.Kind == pendingKind
+                    && openPrompt.SourceCardDefId == sourceCardDefId
+                    && openPrompt.Timing == timing)
+                {
+                    FinalizeOpenPrompt(openPrompt, result);
+                    openPrompt = null;
+                    continue;
+                }
+
+                if (openPrompt != null)
+                {
+                    FinalizeOpenPrompt(openPrompt, result);
+                    openPrompt = null;
+                }
+
+                ChoicePromptMeta emptyMeta = ResolvePromptMetadata(
+                    in stateBefore,
+                    in probeState,
+                    probeCold,
+                    rules,
+                    probeScratch,
+                    action,
+                    pendingKind,
+                    sourceCardDefId,
+                    timing,
+                    turnStartHandQueueCursor,
+                    ref seenTurn1Toolbox);
+                if (emptyMeta.ConsumesTurnStartHandQueue)
+                    turnStartHandQueueCursor++;
+
+                result.Add(new PlanCardChoice(
+                    emptyMeta.Effect,
+                    MapPileType(pendingKind),
+                    Array.Empty<PlanCardToken>(),
+                    emptyMeta.SourceId,
+                    string.Empty,
+                    timing));
                 continue;
             }
 
-            PlanCardToken token = BuildPlanCardToken(in probeState, probeCold, rules, displayNames, sel, pendingKind);
+            // Check if this pick continues an open multi-select prompt (e.g. GamblingChip, GamblersBrew,
+            // Ashwater, Purity, NeowsFury, Guards, WellLaidPlans, Prepared+, HiddenDaggers, Dredge,
+            // Charge, Seance, PhotonCut, ToolsOfTheTrade, Tyranny, Entropy, ForegoneConclusion, Stratagem).
+            if (openPrompt != null
+                && pendingKind != HotChoiceKind.GeneratedCard
+                && openPrompt.Kind == pendingKind
+                && openPrompt.SourceCardDefId == sourceCardDefId
+                && openPrompt.Timing == timing
+                && openPrompt.PickedUids.Count < openPrompt.MaxSelect
+                && sel.CardUidOrIndex != 0
+                && !openPrompt.ContainsUid(sel.CardUidOrIndex)
+                && HotCombatEngine.FindCardIndexByUid(in openPrompt.StartState, openPrompt.Pile, sel.CardUidOrIndex) >= 0)
+            {
+                // Resolve SourceOccurrence & OptionOccurrence against StartState (the initial pre-selection screen!)
+                ReadOnlySpan<ushort> contAllowedUids = openPrompt.AllowedUids != null
+                    ? openPrompt.AllowedUids.AsSpan()
+                    : ReadOnlySpan<ushort>.Empty;
+                PlanCardToken contToken = BuildPlanCardToken(
+                    in stateBefore,
+                    in openPrompt.StartState,
+                    openPrompt.StartCold,
+                    rules,
+                    displayNames,
+                    action,
+                    sel,
+                    openPrompt.Kind,
+                    openPrompt.SourceCardDefId,
+                    openPrompt.IsTouchOfInsanity,
+                    isChoicesParadox: false,
+                    openPrompt.KiChantTopLimit,
+                    contAllowedUids,
+                    out int contOptionIndex,
+                    out _);
 
-            // Group consecutive multi-select picks from the same card/pile prompt into one PlanCardChoice
-            if (result.Count > 0
-                && probeScratch.PendingChoiceMax > 1
-                && result[^1].Effect == effect
-                && result[^1].SourcePile == sourcePile
-                && result[^1].Timing == timing
-                && string.Equals(result[^1].SourceId, sourceId, StringComparison.Ordinal)
-                && result[^1].Cards.Count > 0
-                && result[^1].Cards.Count < probeScratch.PendingChoiceMax)
-            {
-                PlanCardChoice prev = result[^1];
-                PlanCardToken[] merged = new PlanCardToken[prev.Cards.Count + 1];
-                for (int t = 0; t < prev.Cards.Count; t++)
-                    merged[t] = prev.Cards[t];
-                merged[prev.Cards.Count] = token;
-                result[^1] = prev with { Cards = merged };
+                openPrompt.PickedUids.Add(sel.CardUidOrIndex);
+                openPrompt.PickedOptionIndices.Add(contOptionIndex);
+                openPrompt.PickedTokens.Add(contToken);
+
+                if (openPrompt.PickedUids.Count >= openPrompt.MaxSelect)
+                {
+                    FinalizeOpenPrompt(openPrompt, result);
+                    openPrompt = null;
+                }
+                continue;
             }
-            else
+
+            // Starting a new prompt: finalize any previously open prompt first.
+            if (openPrompt != null)
             {
-                result.Add(new PlanCardChoice(effect, sourcePile, [token], sourceId, string.Empty, timing));
+                FinalizeOpenPrompt(openPrompt, result);
+                openPrompt = null;
+            }
+
+            ChoicePromptMeta meta = ResolvePromptMetadata(
+                in stateBefore,
+                in probeState,
+                probeCold,
+                rules,
+                probeScratch,
+                action,
+                pendingKind,
+                sourceCardDefId,
+                timing,
+                turnStartHandQueueCursor,
+                ref seenTurn1Toolbox);
+            if (meta.ConsumesTurnStartHandQueue)
+                turnStartHandQueueCursor++;
+
+            ReadOnlySpan<ushort> pendingAllowedUids = pendingKind != HotChoiceKind.GeneratedCard
+                ? HotCombatEngine.GetPendingFilteredChoiceUids()
+                : ReadOnlySpan<ushort>.Empty;
+
+            PlanCardToken token = BuildPlanCardToken(
+                in stateBefore,
+                in probeState,
+                probeCold,
+                rules,
+                displayNames,
+                action,
+                sel,
+                pendingKind,
+                sourceCardDefId,
+                meta.IsTouchOfInsanity,
+                meta.IsChoicesParadox,
+                meta.KiChantTopLimit,
+                pendingAllowedUids,
+                out int optionIndex,
+                out int totalCandidates);
+
+            int resultIdx = result.Count;
+            result.Add(new PlanCardChoice(
+                meta.Effect,
+                MapPileType(pendingKind),
+                [token],
+                meta.SourceId,
+                string.Empty,
+                timing));
+
+            int effectiveMax = totalCandidates > 0 ? Math.Min(meta.MaxSelect, totalCandidates) : meta.MaxSelect;
+            if (pendingKind != HotChoiceKind.GeneratedCard && (effectiveMax > 1 || meta.IsOptional))
+            {
+                OpenMultiSelectPrompt nextPrompt = new()
+                {
+                    ResultIndex = resultIdx,
+                    Kind = pendingKind,
+                    Pile = MapHotPileKind(pendingKind),
+                    Timing = timing,
+                    SourceCardDefId = sourceCardDefId,
+                    SourceId = meta.SourceId,
+                    Effect = meta.Effect,
+                    MaxSelect = Math.Max(1, effectiveMax),
+                    IsOptional = meta.IsOptional,
+                    IsTouchOfInsanity = meta.IsTouchOfInsanity,
+                    KiChantTopLimit = meta.KiChantTopLimit,
+                    StartState = probeState,
+                    StartCold = probeCold,
+                    AllowedUids = pendingAllowedUids.IsEmpty ? null : pendingAllowedUids.ToArray(),
+                    StartCandidateCount = totalCandidates,
+                };
+                nextPrompt.PickedUids.Add(sel.CardUidOrIndex);
+                nextPrompt.PickedOptionIndices.Add(optionIndex);
+                nextPrompt.PickedTokens.Add(token);
+
+                if (!meta.IsOptional && nextPrompt.PickedUids.Count >= nextPrompt.MaxSelect)
+                {
+                    FinalizeOpenPrompt(nextPrompt, result);
+                }
+                else
+                {
+                    openPrompt = nextPrompt;
+                }
             }
         }
+
+        if (openPrompt != null)
+            FinalizeOpenPrompt(openPrompt, result);
 
         return result;
     }
 
+    private static void FinalizeOpenPrompt(OpenMultiSelectPrompt prompt, List<PlanCardChoice> result)
+    {
+        int count = prompt.PickedTokens.Count;
+        if (count == 0)
+            return;
+
+        PlanCardToken[] tokens = new PlanCardToken[count];
+        for (int i = 0; i < count; i++)
+            tokens[i] = prompt.PickedTokens[i];
+
+        // Vanilla 0.113.1 CardSelectCmd implicit all-card selection (when MinSelect == MaxSelect
+        // and eligible option count <= MinSelect) returns options in exact candidate order, which
+        // NativeChoiceRuntime.ValidateImplicitSelection asserts strictly via SequenceEqual.
+        if (!prompt.IsOptional && count > 1 && prompt.StartCandidateCount > 0 && count == prompt.StartCandidateCount)
+        {
+            int[] indices = new int[count];
+            for (int i = 0; i < count; i++)
+                indices[i] = prompt.PickedOptionIndices[i];
+
+            for (int i = 1; i < count; i++)
+            {
+                int keyIdx = indices[i];
+                PlanCardToken keyTok = tokens[i];
+                int j = i - 1;
+                while (j >= 0 && indices[j] > keyIdx)
+                {
+                    indices[j + 1] = indices[j];
+                    tokens[j + 1] = tokens[j];
+                    j--;
+                }
+                indices[j + 1] = keyIdx;
+                tokens[j + 1] = keyTok;
+            }
+        }
+
+        PlanCardChoice existing = result[prompt.ResultIndex];
+        result[prompt.ResultIndex] = existing with { Cards = tokens };
+    }
+
+    private static PlanChoiceTiming ResolveChoiceTiming(
+        in CombatHotState stateBefore,
+        in CombatHotState probeState,
+        HotAction action,
+        PlanChoiceTiming? timingOverride)
+    {
+        if (timingOverride is PlanChoiceTiming forced)
+            return forced;
+
+        if (action.Kind == HotActionKind.TurnSetup)
+            return PlanChoiceTiming.PlayerTurnStart;
+
+        if (probeState.CurrentSide == HotCombatSide.Enemy)
+            return PlanChoiceTiming.EnemyTurn;
+
+        if (probeState.PlayerTurnNumber > stateBefore.PlayerTurnNumber)
+            return PlanChoiceTiming.PlayerTurnStart;
+
+        if (action.Kind == HotActionKind.EndTurn)
+            return PlanChoiceTiming.PlayerTurnEnd;
+
+        if (probeState.PlayerPhase == (byte)PlayerTurnPhase.End
+            || probeState.PlayerPhase == (byte)PlayerTurnPhase.AutoPostPlay)
+        {
+            return PlanChoiceTiming.PlayerTurnEnd;
+        }
+
+        return PlanChoiceTiming.Action;
+    }
+
+    private static ChoicePromptMeta ResolvePromptMetadata(
+        in CombatHotState stateBefore,
+        in CombatHotState probeState,
+        HotColdSidecar? probeCold,
+        HotRules rules,
+        HotExecScratch probeScratch,
+        HotAction action,
+        HotChoiceKind pendingKind,
+        ushort sourceCardDefId,
+        PlanChoiceTiming timing,
+        int turnStartHandQueueCursor,
+        ref bool seenTurn1Toolbox)
+    {
+        bool isOptional = probeScratch.NeedsChoice && probeScratch.PendingChoiceMin == 0;
+
+        // 1. Card-sourced choice (sourceCardDefId > 0)
+        if (sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length)
+        {
+            HotCardDef cardDef = rules.Cards[sourceCardDefId];
+            HotCustomCardId cardId = cardDef.CardId;
+            string sourceId = cardDef.Entry;
+            PlanChoiceEffect effect = InferPlanChoiceEffect(sourceCardDefId, pendingKind, rules);
+
+            int maxSelect = 1;
+            int kiChantTopLimit = 0;
+
+            switch (cardId)
+            {
+                case HotCustomCardId.KiChant:
+                    maxSelect = 1;
+                    kiChantTopLimit = probeScratch.PendingChoiceMax > 0 ? probeScratch.PendingChoiceMax : 3;
+                    break;
+
+                case HotCustomCardId.WellLaidPlans:
+                    maxSelect = Math.Max(1, HotCombatEngine.GetPowerAmountById(in probeState, rules, 0, HotPowerId.WellLaidPlansPower));
+                    isOptional = true;
+                    break;
+
+                case HotCustomCardId.Guards:
+                    maxSelect = Math.Max(1, probeScratch.PendingChoiceMax > 0
+                        ? (int)probeScratch.PendingChoiceMax
+                        : Math.Min((int)probeState.HandCount, HotLimits.MaxChoicesPerAction));
+                    isOptional = true;
+                    break;
+
+                case HotCustomCardId.Purity:
+                {
+                    bool hasCard = TryFindSourceCard(in stateBefore, in probeState, action, sourceCardDefId, out HotCard played);
+                    byte upg = hasCard ? played.UpgradeLevel : (byte)0;
+                    int cardsVar = hasCard
+                        ? GetCardVarInt(in played, cardDef, "Cards", upg > 0 ? 5 : 3)
+                        : (upg > 0 ? 5 : 3);
+                    maxSelect = Math.Max(1, Math.Min(cardsVar, (int)probeState.HandCount));
+                    isOptional = true;
+                    break;
+                }
+
+                case HotCustomCardId.NeowsFury:
+                {
+                    bool hasCard = TryFindSourceCard(in stateBefore, in probeState, action, sourceCardDefId, out HotCard played);
+                    int cardsVar = hasCard ? GetCardVarInt(in played, cardDef, "Cards", 2) : 2;
+                    int maxHand = probeState.MaxHandSize > 0 ? probeState.MaxHandSize : 10;
+                    int handSpace = Math.Max(0, maxHand - probeState.HandCount);
+                    maxSelect = Math.Max(1, Math.Min(Math.Min(cardsVar, handSpace), (int)probeState.DiscardCount));
+                    isOptional = true;
+                    break;
+                }
+
+                case HotCustomCardId.Prepared:
+                {
+                    bool hasCard = TryFindSourceCard(in stateBefore, in probeState, action, sourceCardDefId, out HotCard played);
+                    int magic = hasCard ? cardDef.GetMagic(played.UpgradeLevel) : cardDef.BaseMagic;
+                    int count = hasCard ? GetCardVarInt(in played, cardDef, "Cards", magic > 0 ? magic : 1) : (magic > 0 ? magic : 1);
+                    maxSelect = Math.Max(1, Math.Min(count, (int)probeState.HandCount));
+                    break;
+                }
+
+                case HotCustomCardId.HiddenDaggers:
+                {
+                    bool hasCard = TryFindSourceCard(in stateBefore, in probeState, action, sourceCardDefId, out HotCard played);
+                    int count = hasCard ? GetCardVarInt(in played, cardDef, "Cards", 2) : 2;
+                    maxSelect = Math.Max(1, Math.Min(count, (int)probeState.HandCount));
+                    break;
+                }
+
+                case HotCustomCardId.PhotonCut:
+                case HotCustomCardId.Glimmer:
+                {
+                    bool hasCard = TryFindSourceCard(in stateBefore, in probeState, action, sourceCardDefId, out HotCard played);
+                    int putBack = hasCard ? GetCardVarInt(in played, cardDef, "PutBack", 1) : 1;
+                    maxSelect = Math.Max(1, Math.Min(putBack, (int)probeState.HandCount));
+                    break;
+                }
+
+                case HotCustomCardId.Charge:
+                {
+                    bool hasCard = TryFindSourceCard(in stateBefore, in probeState, action, sourceCardDefId, out HotCard played);
+                    int fallback = Math.Max(1, hasCard ? cardDef.GetMagic(played.UpgradeLevel) : (int)cardDef.BaseMagic);
+                    int count = hasCard ? GetCardVarInt(in played, cardDef, "Cards", fallback) : fallback;
+                    maxSelect = Math.Max(1, Math.Min(count, (int)probeState.DrawCount));
+                    break;
+                }
+
+                case HotCustomCardId.Dredge:
+                {
+                    bool hasCard = TryFindSourceCard(in stateBefore, in probeState, action, sourceCardDefId, out HotCard played);
+                    int cardsVar = hasCard ? GetCardVarInt(in played, cardDef, "Cards", 3) : 3;
+                    int maxHand = probeState.MaxHandSize > 0 ? probeState.MaxHandSize : 10;
+                    int handSpace = Math.Max(0, maxHand - probeState.HandCount);
+                    maxSelect = Math.Max(1, Math.Min(Math.Min(cardsVar, handSpace), (int)probeState.DiscardCount));
+                    break;
+                }
+
+                case HotCustomCardId.Seance:
+                {
+                    bool hasCard = TryFindSourceCard(in stateBefore, in probeState, action, sourceCardDefId, out HotCard played);
+                    int count = hasCard ? GetCardVarInt(in played, cardDef, "Cards", 1) : 1;
+                    maxSelect = Math.Max(1, Math.Min(count, (int)probeState.DrawCount));
+                    break;
+                }
+
+                default:
+                    maxSelect = Math.Max(1, (int)probeScratch.PendingChoiceMax);
+                    break;
+            }
+
+            return new ChoicePromptMeta(
+                SourceId: sourceId,
+                Effect: effect,
+                MaxSelect: maxSelect,
+                IsOptional: isOptional,
+                IsTouchOfInsanity: false,
+                IsChoicesParadox: false,
+                KiChantTopLimit: kiChantTopLimit,
+                ConsumesTurnStartHandQueue: false);
+        }
+
+        // 2. EnemyTurn choice (KnowledgeDemon curse choice)
+        if (timing == PlanChoiceTiming.EnemyTurn && pendingKind == HotChoiceKind.GeneratedCard)
+        {
+            return new ChoicePromptMeta(
+                SourceId: "KNOWLEDGE_DEMON",
+                Effect: PlanChoiceEffect.ApplyKnowledgeCurse,
+                MaxSelect: 1,
+                IsOptional: false,
+                IsTouchOfInsanity: false,
+                IsChoicesParadox: false,
+                KiChantTopLimit: 0,
+                ConsumesTurnStartHandQueue: false);
+        }
+
+        // 3. Action-phase sourceCardDefId == 0: Potions (or StratagemPower triggered by mid-action shuffle!)
+        if (timing == PlanChoiceTiming.Action && action.Kind == HotActionKind.UsePotion)
+        {
+            int slot = action.SlotOrHandIdx;
+            ushort pDefId = slot >= 0 && slot < stateBefore.PotionSlotCount ? stateBefore.Potions[slot] : (ushort)0;
+            if (pDefId > 0 && pDefId < rules.Potions.Length)
+            {
+                HotPotionDef pDef = rules.Potions[pDefId];
+                HotCustomPotionId pid = HotPotionPolicy.ResolvePotionId(pDef);
+
+                switch (pid)
+                {
+                    case HotCustomPotionId.Ashwater when pendingKind == HotChoiceKind.HandCard:
+                        return new ChoicePromptMeta(
+                            pDef.Entry,
+                            PlanChoiceEffect.Exhaust,
+                            Math.Max(1, Math.Min((int)probeState.HandCount, HotLimits.MaxChoicesPerAction)),
+                            IsOptional: true,
+                            IsTouchOfInsanity: false,
+                            IsChoicesParadox: false,
+                            KiChantTopLimit: 0,
+                            ConsumesTurnStartHandQueue: false);
+
+                    case HotCustomPotionId.GamblersBrew when pendingKind == HotChoiceKind.HandCard:
+                        return new ChoicePromptMeta(
+                            pDef.Entry,
+                            PlanChoiceEffect.DiscardAndDraw,
+                            Math.Max(1, Math.Min((int)probeState.HandCount, HotLimits.MaxChoicesPerAction)),
+                            IsOptional: true,
+                            IsTouchOfInsanity: false,
+                            IsChoicesParadox: false,
+                            KiChantTopLimit: 0,
+                            ConsumesTurnStartHandQueue: false);
+
+                    case HotCustomPotionId.TouchOfInsanity when pendingKind == HotChoiceKind.HandCard:
+                        return new ChoicePromptMeta(
+                            pDef.Entry,
+                            PlanChoiceEffect.SetFreeThisCombat,
+                            MaxSelect: 1,
+                            IsOptional: false,
+                            IsTouchOfInsanity: true,
+                            IsChoicesParadox: false,
+                            KiChantTopLimit: 0,
+                            ConsumesTurnStartHandQueue: false);
+
+                    case HotCustomPotionId.DropletOfPrecognition when pendingKind == HotChoiceKind.DrawPile:
+                        return new ChoicePromptMeta(
+                            pDef.Entry,
+                            PlanChoiceEffect.MoveToHand,
+                            MaxSelect: 1,
+                            IsOptional: false,
+                            IsTouchOfInsanity: false,
+                            IsChoicesParadox: false,
+                            KiChantTopLimit: 0,
+                            ConsumesTurnStartHandQueue: false);
+
+                    case HotCustomPotionId.LiquidMemories when pendingKind == HotChoiceKind.DiscardPile:
+                        return new ChoicePromptMeta(
+                            pDef.Entry,
+                            PlanChoiceEffect.MoveToHandFreeThisTurn,
+                            MaxSelect: 1,
+                            IsOptional: false,
+                            IsTouchOfInsanity: false,
+                            IsChoicesParadox: false,
+                            KiChantTopLimit: 0,
+                            ConsumesTurnStartHandQueue: false);
+
+                    case HotCustomPotionId.AttackPotion:
+                    case HotCustomPotionId.SkillPotion:
+                    case HotCustomPotionId.PowerPotion:
+                    case HotCustomPotionId.ColorlessPotion:
+                        if (pendingKind == HotChoiceKind.GeneratedCard)
+                        {
+                            return new ChoicePromptMeta(
+                                pDef.Entry,
+                                PlanChoiceEffect.GenerateToHand,
+                                MaxSelect: 1,
+                                IsOptional: true,
+                                IsTouchOfInsanity: false,
+                                IsChoicesParadox: false,
+                                KiChantTopLimit: 0,
+                                ConsumesTurnStartHandQueue: false);
+                        }
+                        break;
+                }
+            }
+        }
+
+        // 4. DrawPile choice with sourceCardDefId == 0: ForegoneConclusionPower (BeforeHandDraw) or StratagemPower (AfterShuffle)
+        if (pendingKind == HotChoiceKind.DrawPile)
+        {
+            if (timing == PlanChoiceTiming.PlayerTurnStart)
+            {
+                int fcAmt = HotCombatEngine.GetPowerAmountById(in probeState, rules, 0, HotPowerId.ForegoneConclusionPower);
+                if (fcAmt > 0)
+                {
+                    ushort fcDefId = rules.GetPowerDefId(HotPowerId.ForegoneConclusionPower);
+                    string fcEntry = fcDefId > 0 && fcDefId < rules.Powers.Length ? rules.Powers[fcDefId].Entry : "FOREGONE_CONCLUSION_POWER";
+                    return new ChoicePromptMeta(
+                        fcEntry,
+                        PlanChoiceEffect.MoveToHand,
+                        Math.Max(1, Math.Min(fcAmt, (int)probeState.DrawCount)),
+                        IsOptional: false,
+                        IsTouchOfInsanity: false,
+                        IsChoicesParadox: false,
+                        KiChantTopLimit: 0,
+                        ConsumesTurnStartHandQueue: false);
+                }
+            }
+
+            int stratAmt = HotCombatEngine.GetPowerAmountById(in probeState, rules, 0, HotPowerId.StratagemPower);
+            if (stratAmt > 0)
+            {
+                ushort stratDefId = rules.GetPowerDefId(HotPowerId.StratagemPower);
+                string stratEntry = stratDefId > 0 && stratDefId < rules.Powers.Length ? rules.Powers[stratDefId].Entry : "STRATAGEM_POWER";
+                return new ChoicePromptMeta(
+                    stratEntry,
+                    PlanChoiceEffect.MoveToHand,
+                    Math.Max(1, Math.Min(stratAmt, (int)probeState.DrawCount)),
+                    IsOptional: false,
+                    IsTouchOfInsanity: false,
+                    IsChoicesParadox: false,
+                    KiChantTopLimit: 0,
+                    ConsumesTurnStartHandQueue: false);
+            }
+        }
+
+        // 5. PlayerTurnStart GeneratedCard with sourceCardDefId == 0:
+        //    KnowledgeDemonDominion (BeforeHandDraw), Toolbox (BeforeHandDraw), ChoicesParadox (AfterSideTurnStart).
+        if (pendingKind == HotChoiceKind.GeneratedCard && timing == PlanChoiceTiming.PlayerTurnStart)
+        {
+            ReadOnlySpan<ushort> opts = HotCombatEngine.GetPendingGeneratedChoiceOptions();
+
+            if (rules.Dominion == HotDominionId.KnowledgeDemonDominion
+                && probeState.PlayerTurnNumber <= 1
+                && opts.Length > 0
+                && (opts[0] == rules.GetCardDefId(HotCustomCardId.Sloth)
+                    || opts[0] == rules.GetCardDefId(HotCustomCardId.Disintegration)))
+            {
+                return new ChoicePromptMeta(
+                    rules.DominionId ?? "KNOWLEDGE_DEMON_DOMINION",
+                    PlanChoiceEffect.ApplyKnowledgeCurse,
+                    MaxSelect: 1,
+                    IsOptional: false,
+                    IsTouchOfInsanity: false,
+                    IsChoicesParadox: false,
+                    KiChantTopLimit: 0,
+                    ConsumesTurnStartHandQueue: false);
+            }
+
+            bool hasToolbox = rules.HasRelic(HotRelicId.Toolbox) && probeState.PlayerTurnNumber <= 1;
+            bool hasChoicesParadox = rules.HasRelic(HotRelicId.ChoicesParadox) && probeState.PlayerTurnNumber <= 1;
+
+            if (hasToolbox && !seenTurn1Toolbox && (!hasChoicesParadox || (opts.Length <= 3 && AreAllColorlessOptions(opts, rules))))
+            {
+                seenTurn1Toolbox = true;
+                ushort tbDefId = rules.GetRelicDefId(HotRelicId.Toolbox);
+                string tbEntry = tbDefId > 0 && tbDefId < rules.Relics.Length ? rules.Relics[tbDefId].Entry : "TOOLBOX";
+                return new ChoicePromptMeta(
+                    tbEntry,
+                    PlanChoiceEffect.GenerateToHand,
+                    MaxSelect: 1,
+                    IsOptional: false,
+                    IsTouchOfInsanity: false,
+                    IsChoicesParadox: false,
+                    KiChantTopLimit: 0,
+                    ConsumesTurnStartHandQueue: false);
+            }
+
+            if (hasChoicesParadox)
+            {
+                ushort cpDefId = rules.GetRelicDefId(HotRelicId.ChoicesParadox);
+                string cpEntry = cpDefId > 0 && cpDefId < rules.Relics.Length ? rules.Relics[cpDefId].Entry : "CHOICES_PARADOX";
+                return new ChoicePromptMeta(
+                    cpEntry,
+                    PlanChoiceEffect.GenerateToHand,
+                    MaxSelect: 1,
+                    IsOptional: false,
+                    IsTouchOfInsanity: false,
+                    IsChoicesParadox: true,
+                    KiChantTopLimit: 0,
+                    ConsumesTurnStartHandQueue: false);
+            }
+        }
+
+        // 6. PlayerTurnStart HandCard with sourceCardDefId == 0:
+        //    min=0 -> GamblingChip; min=1 -> [ToolsOfTheTrade/Tyranny/Entropy in s.Powers order, then ToastyMittens?].
+        if (pendingKind == HotChoiceKind.HandCard && timing == PlanChoiceTiming.PlayerTurnStart)
+        {
+            if (isOptional)
+            {
+                ushort gcDefId = rules.GetRelicDefId(HotRelicId.GamblingChip);
+                string gcEntry = gcDefId > 0 && gcDefId < rules.Relics.Length ? rules.Relics[gcDefId].Entry : "GAMBLING_CHIP";
+                return new ChoicePromptMeta(
+                    gcEntry,
+                    PlanChoiceEffect.DiscardAndDraw,
+                    Math.Max(1, Math.Min((int)probeState.HandCount, HotLimits.MaxChoicesPerAction)),
+                    IsOptional: true,
+                    IsTouchOfInsanity: false,
+                    IsChoicesParadox: false,
+                    KiChantTopLimit: 0,
+                    ConsumesTurnStartHandQueue: false);
+            }
+
+            if (TryResolveTurnStartMandatoryHandPrompt(
+                    in probeState,
+                    rules,
+                    turnStartHandQueueCursor,
+                    out string turnStartSource,
+                    out PlanChoiceEffect turnStartEffect,
+                    out int turnStartMaxSelect))
+            {
+                return new ChoicePromptMeta(
+                    turnStartSource,
+                    turnStartEffect,
+                    Math.Max(1, Math.Min(turnStartMaxSelect, (int)probeState.HandCount)),
+                    IsOptional: false,
+                    IsTouchOfInsanity: false,
+                    IsChoicesParadox: false,
+                    KiChantTopLimit: 0,
+                    ConsumesTurnStartHandQueue: true);
+            }
+        }
+
+        return new ChoicePromptMeta(
+            SourceId: string.Empty,
+            Effect: InferPlanChoiceEffect(sourceCardDefId, pendingKind, rules),
+            MaxSelect: Math.Max(1, (int)probeScratch.PendingChoiceMax),
+            IsOptional: isOptional,
+            IsTouchOfInsanity: false,
+            IsChoicesParadox: false,
+            KiChantTopLimit: 0,
+            ConsumesTurnStartHandQueue: false);
+    }
+
+    private static bool TryResolveTurnStartMandatoryHandPrompt(
+        in CombatHotState probeState,
+        HotRules rules,
+        int cursor,
+        out string sourceId,
+        out PlanChoiceEffect effect,
+        out int maxSelect)
+    {
+        int seen = 0;
+
+        // DispatchHooks matches 0.113.1 CombatState.IterateHookListeners:
+        // Player Powers fire BEFORE Player Relics on AfterPlayerTurnStart / AfterSideTurnStart.
+        int powerCount = probeState.PowerCount;
+        for (int i = 0; i < powerCount; i++)
+        {
+            ref readonly HotPower p = ref probeState.Powers[i];
+            if (p.OwnerSlot != 0 || p.Amount <= 0 || p.PowerDefId >= rules.Powers.Length)
+                continue;
+
+            HotPowerDef pDef = rules.Powers[p.PowerDefId];
+            PlanChoiceEffect? matched = pDef.PowerId switch
+            {
+                HotPowerId.ToolsOfTheTradePower => PlanChoiceEffect.Discard,
+                HotPowerId.TyrannyPower => PlanChoiceEffect.Exhaust,
+                HotPowerId.EntropyPower => PlanChoiceEffect.Transform,
+                _ => null,
+            };
+            if (matched == null)
+                continue;
+
+            if (seen == cursor)
+            {
+                sourceId = pDef.Entry;
+                effect = matched.Value;
+                maxSelect = p.Amount;
+                return true;
+            }
+            seen++;
+        }
+
+        if (rules.HasRelic(HotRelicId.ToastyMittens))
+        {
+            if (seen == cursor)
+            {
+                ushort defId = rules.GetRelicDefId(HotRelicId.ToastyMittens);
+                sourceId = defId > 0 && defId < rules.Relics.Length ? rules.Relics[defId].Entry : "TOASTY_MITTENS";
+                effect = PlanChoiceEffect.Exhaust;
+                maxSelect = 1;
+                return true;
+            }
+            seen++;
+        }
+
+        sourceId = string.Empty;
+        effect = PlanChoiceEffect.Discard;
+        maxSelect = 1;
+        return false;
+    }
+
+    private static bool AreAllColorlessOptions(ReadOnlySpan<ushort> options, HotRules rules)
+    {
+        if (options.IsEmpty)
+            return false;
+        for (int i = 0; i < options.Length; i++)
+        {
+            ushort id = options[i];
+            if (id == 0 || id >= rules.Cards.Length || rules.Cards[id].Domain != HotCardDomain.Colorless)
+                return false;
+        }
+        return true;
+    }
+
+    private static bool TryFindSourceCard(
+        in CombatHotState stateBefore,
+        in CombatHotState pausedState,
+        HotAction action,
+        ushort sourceCardDefId,
+        out HotCard found)
+    {
+        // First check the currently executing card in PlayPile (covers replays, AutoPlay, DistilledChaos, Sly!)
+        int playStart = pausedState.PlayStart;
+        int playEnd = playStart + pausedState.PlayCount;
+        for (int i = playEnd - 1; i >= playStart; i--)
+        {
+            if (pausedState.Cards[i].CardDefId == sourceCardDefId)
+            {
+                found = pausedState.Cards[i];
+                return true;
+            }
+        }
+
+        if (action.Kind == HotActionKind.PlayCard
+            && (uint)action.SlotOrHandIdx < (uint)stateBefore.HandCount
+            && stateBefore.Cards[action.SlotOrHandIdx].CardDefId == sourceCardDefId)
+        {
+            found = stateBefore.Cards[action.SlotOrHandIdx];
+            return true;
+        }
+
+        found = default;
+        return false;
+    }
+
+    private static int GetCardVarInt(in HotCard card, HotCardDef def, string varName, int fallback)
+    {
+        string[] names = def.OrderedVarNames;
+        for (int i = 0; i < names.Length; i++)
+        {
+            if (string.Equals(names[i], varName, StringComparison.Ordinal))
+                return (int)HotRules.GetCardVarValue(in card, def, i);
+        }
+        return fallback;
+    }
+
     private static PlanCardToken BuildPlanCardToken(
+        in CombatHotState stateBefore,
         in CombatHotState pausedState,
         HotColdSidecar? pausedCold,
         HotRules rules,
         SolverDisplayNames displayNames,
+        HotAction action,
         HotChoiceSelection sel,
-        HotChoiceKind pendingKind)
+        HotChoiceKind pendingKind,
+        ushort sourceCardDefId,
+        bool isTouchOfInsanity,
+        bool isChoicesParadox,
+        int kiChantTopLimit,
+        ReadOnlySpan<ushort> allowedUids,
+        out int optionIndex,
+        out int totalCandidateCount)
     {
+        optionIndex = -1;
+        totalCandidateCount = 0;
+
+        // Fix 3: GeneratedCard tokens compute real UpgradeLevel (Abundance, Quasar+, Splash+),
+        // real StateKey (including CostsX & ChoicesParadox Retain), real OptionOccurrence, and real Title.
         if (sel.Kind == HotChoiceKind.GeneratedCard || pendingKind == HotChoiceKind.GeneratedCard)
         {
-            string genId = sel.CardDefId > 0 && sel.CardDefId < rules.Cards.Length
-                ? rules.Cards[sel.CardDefId].Entry
-                : string.Empty;
+            ReadOnlySpan<ushort> generatedOptions = HotCombatEngine.GetPendingGeneratedChoiceOptions();
+            totalCandidateCount = generatedOptions.Length;
+
+            ushort chosenDefId = sel.CardDefId;
+            if ((chosenDefId == 0 || chosenDefId >= rules.Cards.Length)
+                && sel.CardUidOrIndex < generatedOptions.Length)
+            {
+                chosenDefId = generatedOptions[sel.CardUidOrIndex];
+            }
+
+            if (chosenDefId == 0 || chosenDefId >= rules.Cards.Length)
+                return new PlanCardToken(string.Empty, 0, string.Empty, sel.CardUidOrIndex, 0, string.Empty);
+
+            HotCardDef genDef = rules.Cards[chosenDefId];
+            string genId = genDef.Entry;
+
+            bool upgradeGeneratedOptions = ShouldUpgradeGeneratedChoiceOptions(
+                in stateBefore,
+                in pausedState,
+                rules,
+                action,
+                sourceCardDefId);
+
+            int upgradeLevel = upgradeGeneratedOptions && genDef.MaxUpgradeLevel > 0 ? 1 : 0;
+            HotCard generatedCard = BuildSyntheticGeneratedChoiceCard(chosenDefId, genDef, (byte)upgradeLevel, isChoicesParadox);
+            string genStateKey = HotContinuationStamp.FormatChoiceCardKey(in generatedCard, cold: null, rules);
+
+            int resolvedOptIdx = sel.CardUidOrIndex;
+            if ((uint)resolvedOptIdx >= (uint)generatedOptions.Length || generatedOptions[resolvedOptIdx] != chosenDefId)
+            {
+                resolvedOptIdx = -1;
+                for (int i = 0; i < generatedOptions.Length; i++)
+                {
+                    if (generatedOptions[i] == chosenDefId)
+                    {
+                        resolvedOptIdx = i;
+                        break;
+                    }
+                }
+            }
+
+            int genOptionOccurrence = 0;
+            if (resolvedOptIdx > 0)
+            {
+                for (int i = 0; i < resolvedOptIdx; i++)
+                {
+                    ushort priorDefId = generatedOptions[i];
+                    if (priorDefId == 0 || priorDefId >= rules.Cards.Length)
+                        continue;
+                    HotCardDef priorDef = rules.Cards[priorDefId];
+                    int priorUpgrade = upgradeGeneratedOptions && priorDef.MaxUpgradeLevel > 0 ? 1 : 0;
+                    if (priorUpgrade == upgradeLevel && string.Equals(priorDef.Entry, genId, StringComparison.Ordinal))
+                        genOptionOccurrence++;
+                }
+            }
+
+            optionIndex = resolvedOptIdx;
             return new PlanCardToken(
                 CardId: genId,
-                UpgradeLevel: 0,
-                StateKey: genId,
-                SourceOccurrence: sel.CardUidOrIndex,
-                OptionOccurrence: 0,
-                Title: displayNames.Card(genId, 0));
+                UpgradeLevel: upgradeLevel,
+                StateKey: genStateKey,
+                SourceOccurrence: resolvedOptIdx >= 0 ? resolvedOptIdx : sel.CardUidOrIndex,
+                OptionOccurrence: genOptionOccurrence,
+                Title: displayNames.Card(genId, upgradeLevel));
         }
 
-        HotPileKind pile = pendingKind switch
-        {
-            HotChoiceKind.HandCard => HotPileKind.Hand,
-            HotChoiceKind.DrawPile => HotPileKind.Draw,
-            HotChoiceKind.DiscardPile => HotPileKind.Discard,
-            HotChoiceKind.ExhaustPile => HotPileKind.Exhaust,
-            _ => HotPileKind.Hand,
-        };
-
+        // Fix 2: Pile choices compute SourceOccurrence in the raw pile, and OptionOccurrence in the
+        // exact filtered (and for PileType.Draw, (Rarity, CardModel.CompareTo)-sorted) option list
+        // matching STS2 0.113.1 CardSelectCmd + NativeChoiceRuntime.ResolvePlannedCards!
+        HotPileKind pile = MapHotPileKind(pendingKind);
         int zoneStart = HotPiles.ZoneStart(in pausedState, pile);
         int zoneCount = HotPiles.ZoneCount(in pausedState, pile);
         int foundIdx = HotCombatEngine.FindCardIndexByUid(in pausedState, pile, sel.CardUidOrIndex);
@@ -673,14 +1609,312 @@ internal static class HotPlanMaterializer
             }
         }
 
+        HotCustomCardId sourceCardId = sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
+            ? rules.Cards[sourceCardDefId].CardId
+            : HotCustomCardId.None;
+
+        int scanCount = zoneCount;
+        if (sourceCardId == HotCustomCardId.KiChant && pile == HotPileKind.Draw && kiChantTopLimit > 0)
+        {
+            int limit = Math.Min(zoneCount, kiChantTopLimit);
+            // Only cap to top-N if foundIdx lies within the top-N window (defensive guard).
+            if (foundIdx < zoneStart + limit)
+                scanCount = limit;
+        }
+
+        Span<int> candidates = stackalloc int[HotLimits.MaxCards];
+        int candCount = 0;
+        bool foundInFiltered = false;
+        for (int offset = 0; offset < scanCount; offset++)
+        {
+            int idx = zoneStart + offset;
+            ref readonly HotCard candidate = ref pausedState.Cards[idx];
+            if (!allowedUids.IsEmpty && !ContainsUid(allowedUids, candidate.CardUid))
+                continue;
+            if (!MatchesLiveChoiceFilter(in pausedState, in candidate, pausedCold, rules, sourceCardId, isTouchOfInsanity))
+                continue;
+            candidates[candCount++] = idx;
+            if (idx == foundIdx)
+                foundInFiltered = true;
+        }
+
+        // Defensive fallback if an unexpected filter did not include foundIdx: fall back to unfiltered pile.
+        if (!foundInFiltered)
+        {
+            candCount = 0;
+            for (int offset = 0; offset < scanCount; offset++)
+                candidates[candCount++] = zoneStart + offset;
+        }
+
+        // STS2 0.113.1 CardSelectCmd.FromCombatPile sorts PileType.Draw stably by (x.Rarity, x).
+        if (pile == HotPileKind.Draw && candCount > 1)
+        {
+            StableSortDrawCandidates(candidates[..candCount], in pausedState, pausedCold, rules);
+        }
+
+        totalCandidateCount = candCount;
+        int optionOccurrence = 0;
+        for (int i = 0; i < candCount; i++)
+        {
+            int idx = candidates[i];
+            if (idx == foundIdx)
+            {
+                optionIndex = i;
+                break;
+            }
+            ref readonly HotCard prior = ref pausedState.Cards[idx];
+            if (prior.UpgradeLevel == card.UpgradeLevel
+                && string.Equals(rules.Cards[prior.CardDefId].Entry, cardId, StringComparison.Ordinal))
+            {
+                optionOccurrence++;
+            }
+        }
+
         return new PlanCardToken(
             CardId: cardId,
             UpgradeLevel: card.UpgradeLevel,
             StateKey: stateKey,
             SourceOccurrence: sourceOccurrence,
-            OptionOccurrence: sourceOccurrence,
+            OptionOccurrence: optionOccurrence,
             Title: displayNames.Card(cardId, card.UpgradeLevel));
     }
+
+    private static bool ShouldUpgradeGeneratedChoiceOptions(
+        in CombatHotState stateBefore,
+        in CombatHotState pausedState,
+        HotRules rules,
+        HotAction action,
+        ushort sourceCardDefId)
+    {
+        if (sourceCardDefId == 0 || sourceCardDefId >= rules.Cards.Length)
+            return false;
+
+        HotCustomCardId sourceCardId = rules.Cards[sourceCardDefId].CardId;
+        if (sourceCardId == HotCustomCardId.Abundance)
+            return true;
+
+        if (sourceCardId is HotCustomCardId.Quasar or HotCustomCardId.Splash)
+            return TryFindSourceCard(in stateBefore, in pausedState, action, sourceCardDefId, out HotCard played)
+                && played.UpgradeLevel > 0;
+
+        return false;
+    }
+
+    private static bool ContainsUid(ReadOnlySpan<ushort> uids, ushort target)
+    {
+        for (int i = 0; i < uids.Length; i++)
+        {
+            if (uids[i] == target)
+                return true;
+        }
+        return false;
+    }
+
+    private static HotCard BuildSyntheticGeneratedChoiceCard(
+        ushort cardDefId,
+        HotCardDef def,
+        byte upgradeLevel,
+        bool applyChoicesParadoxRetain)
+    {
+        HotCard generated = new()
+        {
+            CardDefId = cardDefId,
+            CardUid = 0,
+            UpgradeLevel = upgradeLevel,
+            BaseEnergyCost = upgradeLevel > 0 ? def.UpgradedCost : def.BaseCost,
+            BaseStarCost = def.BaseStarCost,
+            BaseReplayCount = 0,
+            ExtraReplayThisTurn = 0,
+            LocalKeywordsMask = (HotCardKeywordMask)def.BaseKeywords,
+            KeywordsAddedOutsideMask = HotCardKeywordMask.None,
+            KeywordsRemovedOutsideMask = HotCardKeywordMask.None,
+            Flags = HotCombatEngine.IsEnergyCostXCard(def.CardId) ? HotCardFlags.CostsX : HotCardFlags.None,
+        };
+        if (upgradeLevel > 0)
+            HotCombatEngine.ApplyUpgradeKeywords(ref generated, def.CardId);
+        if (applyChoicesParadoxRetain)
+        {
+            if ((generated.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0)
+            {
+                generated.LocalKeywordsMask |= HotCardKeywordMask.Retain;
+                generated.KeywordsAddedOutsideMask |= HotCardKeywordMask.Retain;
+            }
+            generated.KeywordsRemovedOutsideMask &= ~HotCardKeywordMask.Retain;
+        }
+        return generated;
+    }
+
+    private static bool MatchesLiveChoiceFilter(
+        in CombatHotState s,
+        in HotCard card,
+        HotColdSidecar? cold,
+        HotRules rules,
+        HotCustomCardId sourceCardId,
+        bool isTouchOfInsanity)
+    {
+        if (card.CardDefId == 0 || card.CardDefId >= rules.Cards.Length)
+            return false;
+
+        HotCardDef def = rules.Cards[card.CardDefId];
+
+        if (isTouchOfInsanity)
+        {
+            // STS2 0.113.1 TouchOfInsanity: c.CostsEnergyOrStars(includeGlobalModifiers: false) || c.CostsEnergyOrStars(true)
+            bool costsX = (card.Flags & HotCardFlags.CostsX) != 0;
+            bool starCostsX = (card.Flags & HotCardFlags.HasStarCostX) != 0;
+            int localEnergy = costsX ? 0 : HotCostModifiers.GetLocalEnergyCost(in card, cold);
+            int localStar = starCostsX ? 0 : HotCostModifiers.GetEffectiveStarCost(in card, cold);
+            if (localEnergy > 0 || localStar > 0)
+                return true;
+
+            int globalEnergy = costsX ? 0 : HotCombatEngine.GetEffectiveEnergyCost(in s, in card, cold, rules, isInPlayablePile: true);
+            int globalStar = starCostsX ? 0 : HotCombatEngine.GetEffectiveStarCost(in s, in card, cold, rules, isInPlayablePile: true);
+            return globalEnergy > 0 || globalStar > 0;
+        }
+
+        return sourceCardId switch
+        {
+            HotCustomCardId.Armaments => card.UpgradeLevel < def.MaxUpgradeLevel,
+            HotCustomCardId.DualWield => def.Type is CardType.Attack or CardType.Power,
+            HotCustomCardId.SecretWeapon => def.Type == CardType.Attack,
+            HotCustomCardId.SecretTechnique => def.Type == CardType.Skill,
+            HotCustomCardId.HandTrick => def.Type == CardType.Skill && (card.Flags & HotCardFlags.IsSlyThisTurn) == 0,
+            HotCustomCardId.HeirloomHammer => def.Domain == HotCardDomain.Colorless,
+            HotCustomCardId.SculptingStrike => (card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) == 0,
+            HotCustomCardId.Snap => (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0,
+            HotCustomCardId.DecisionsDecisions => def.Type == CardType.Skill && (card.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0,
+            HotCustomCardId.LockedIn or HotCustomCardId.ArrowStab => def.IsShootTag,
+            HotCustomCardId.WellLaidPlans => (card.Flags & HotCardFlags.SingleTurnRetain) == 0
+                && (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0,
+            _ => true,
+        };
+    }
+
+    private static void StableSortDrawCandidates(
+        Span<int> indices,
+        in CombatHotState s,
+        HotColdSidecar? cold,
+        HotRules rules)
+    {
+        // Insertion sort is strictly stable (preserves original DrawPile tie order) and zero-allocation.
+        for (int i = 1; i < indices.Length; i++)
+        {
+            int key = indices[i];
+            int j = i - 1;
+            while (j >= 0 && CompareDrawSelectionOrder(in s.Cards[indices[j]], in s.Cards[key], in s, cold, rules) > 0)
+            {
+                indices[j + 1] = indices[j];
+                j--;
+            }
+            indices[j + 1] = key;
+        }
+    }
+
+    /// <summary>
+    /// Exact match of STS2 0.113.1 <c>CardSelectCmd.FromCombatPile(PileType.Draw)</c>:
+    /// <c>orderby x.Rarity, x</c> using <c>CardModel.CompareTo</c>
+    /// (Rarity -> Entry Ordinal -> UpgradeLevel -> Enchantment -> Affliction -> EnergyCost.GetResolved() -> BaseReplayCount -> Ordered DynamicVars).
+    /// </summary>
+    private static int CompareDrawSelectionOrder(
+        in HotCard a,
+        in HotCard b,
+        in CombatHotState s,
+        HotColdSidecar? cold,
+        HotRules rules)
+    {
+        HotCardDef defA = rules.Cards[a.CardDefId];
+        HotCardDef defB = rules.Cards[b.CardDefId];
+
+        int cmp = defA.Rarity.CompareTo(defB.Rarity);
+        if (cmp != 0)
+            return cmp;
+
+        cmp = string.CompareOrdinal(defA.Entry, defB.Entry);
+        if (cmp != 0)
+            return cmp;
+
+        cmp = a.UpgradeLevel.CompareTo(b.UpgradeLevel);
+        if (cmp != 0)
+            return cmp;
+
+        if (a.EnchId != b.EnchId)
+        {
+            if (a.EnchId == 0)
+                return -1;
+            if (b.EnchId == 0)
+                return 1;
+            cmp = string.CompareOrdinal(rules.Enchantments[a.EnchId].Entry, rules.Enchantments[b.EnchId].Entry);
+            if (cmp != 0)
+                return cmp;
+        }
+
+        if (a.AfflId != b.AfflId)
+        {
+            if (a.AfflId == 0)
+                return -1;
+            if (b.AfflId == 0)
+                return 1;
+            cmp = string.CompareOrdinal(rules.Afflictions[a.AfflId].Entry, rules.Afflictions[b.AfflId].Entry);
+            if (cmp != 0)
+                return cmp;
+        }
+
+        int costA = (a.Flags & HotCardFlags.CostsX) != 0
+            ? a.CapturedEnergy
+            : Math.Max(0, HotCombatEngine.GetEffectiveEnergyCost(in s, in a, cold, rules, isInPlayablePile: false));
+        int costB = (b.Flags & HotCardFlags.CostsX) != 0
+            ? b.CapturedEnergy
+            : Math.Max(0, HotCombatEngine.GetEffectiveEnergyCost(in s, in b, cold, rules, isInPlayablePile: false));
+        cmp = costA.CompareTo(costB);
+        if (cmp != 0)
+            return cmp;
+
+        cmp = a.BaseReplayCount.CompareTo(b.BaseReplayCount);
+        if (cmp != 0)
+            return cmp;
+
+        string[] namesA = defA.OrderedVarNames;
+        if (namesA.Length == 0)
+            return 0;
+
+        string[] namesB = defB.OrderedVarNames;
+        if (ReferenceEquals(namesA, namesB))
+        {
+            for (int i = 0; i < namesA.Length; i++)
+            {
+                decimal valA = HotRules.GetCardVarValue(in a, defA, i);
+                decimal valB = HotRules.GetCardVarValue(in b, defB, i);
+                cmp = valA.CompareTo(valB);
+                if (cmp != 0)
+                    return cmp;
+            }
+            return 0;
+        }
+
+        for (int i = 0; i < namesA.Length; i++)
+        {
+            int idxB = Array.BinarySearch(namesB, namesA[i], StringComparer.Ordinal);
+            if (idxB < 0)
+                continue;
+            decimal valA = HotRules.GetCardVarValue(in a, defA, i);
+            decimal valB = HotRules.GetCardVarValue(in b, defB, idxB);
+            cmp = valA.CompareTo(valB);
+            if (cmp != 0)
+                return cmp;
+        }
+
+        return 0;
+    }
+
+    private static HotPileKind MapHotPileKind(HotChoiceKind kind)
+        => kind switch
+        {
+            HotChoiceKind.HandCard => HotPileKind.Hand,
+            HotChoiceKind.DrawPile => HotPileKind.Draw,
+            HotChoiceKind.DiscardPile => HotPileKind.Discard,
+            HotChoiceKind.ExhaustPile => HotPileKind.Exhaust,
+            _ => HotPileKind.Hand,
+        };
 
     private static PileType MapPileType(HotChoiceKind kind)
         => kind switch
@@ -720,7 +1954,8 @@ internal static class HotPlanMaterializer
             HotCustomCardId.Transfigure => PlanChoiceEffect.Modify,
             HotCustomCardId.HandTrick => PlanChoiceEffect.ApplySly,
             HotCustomCardId.SculptingStrike => PlanChoiceEffect.ApplyEthereal,
-            HotCustomCardId.Snap => PlanChoiceEffect.ApplyRetain,
+            HotCustomCardId.Snap or HotCustomCardId.WellLaidPlans => PlanChoiceEffect.ApplyRetain,
+            HotCustomCardId.DecisionsDecisions => PlanChoiceEffect.AutoPlayRepeated,
             _ => kind is HotChoiceKind.DrawPile or HotChoiceKind.DiscardPile or HotChoiceKind.ExhaustPile
                 ? PlanChoiceEffect.MoveToHand
                 : PlanChoiceEffect.Discard,
@@ -787,11 +2022,32 @@ internal static class HotPlanMaterializer
         return snap;
     }
 
+    private static short ResolvePotionSlotCost(
+        int slot,
+        int potionDefId,
+        ushort generatedPotionMask,
+        short[] rootPotionCosts,
+        HotRules rules,
+        in HotSearchPolicy hotPolicy)
+    {
+        if (potionDefId <= 0 || potionDefId >= rules.Potions.Length)
+            return 0;
+        if ((uint)slot < HotLimits.MaxPotions && (generatedPotionMask & (1 << slot)) != 0)
+            return 0;
+        if ((uint)slot < (uint)rootPotionCosts.Length && rootPotionCosts[slot] >= 0)
+            return rootPotionCosts[slot];
+        return HotPotionPolicy.ComputePotionDefCost(
+            rules.Potions[potionDefId],
+            hotPolicy.HasRenewablePotionShapedRock);
+    }
+
     private static void RecordAutomaticPotionUses(
         int[] beforeSlots,
+        ushort beforeGeneratedMask,
         in CombatHotState after,
         int explicitSlot,
         HotRules rules,
+        short[] rootPotionCosts,
         in HotSearchPolicy hotPolicy,
         int turn,
         List<PredictedPotionUse> potionUses,
@@ -806,9 +2062,13 @@ internal static class HotPlanMaterializer
             if (beforeDef != 0 && after.Potions[slot] == 0)
             {
                 string pId = beforeDef < rules.Potions.Length ? rules.Potions[beforeDef].Entry : string.Empty;
-                short cost = beforeDef < rules.Potions.Length
-                    ? HotPotionPolicy.ComputePotionDefCost(rules.Potions[beforeDef], hotPolicy.HasRenewablePotionShapedRock)
-                    : (short)0;
+                short cost = ResolvePotionSlotCost(
+                    slot,
+                    beforeDef,
+                    beforeGeneratedMask,
+                    rootPotionCosts,
+                    rules,
+                    in hotPolicy);
                 potionUses.Add(new PredictedPotionUse(slot, pId, cost, Automatic: true));
                 potionCountByTurn[turn] = potionCountByTurn.GetValueOrDefault(turn) + 1;
                 potionCostByTurn[turn] = potionCostByTurn.GetValueOrDefault(turn) + cost;

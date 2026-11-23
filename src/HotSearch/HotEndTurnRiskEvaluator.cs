@@ -37,12 +37,25 @@ internal static class HotEndTurnRiskEvaluator
                 PlanCardChoice choice = turnStartChoices[i];
                 if (choice.Timing is not (PlanChoiceTiming.PlayerTurnEnd or PlanChoiceTiming.EnemyTurn))
                     continue;
-                if (choice.Effect == PlanChoiceEffect.ApplyKnowledgeCurse)
-                    continue;
 
                 if (choice.Cards.Count == 0)
                 {
                     choiceBuf[choiceCount++] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+                    continue;
+                }
+
+                if (choice.Effect == PlanChoiceEffect.ApplyKnowledgeCurse
+                    || choice.SourcePile == MegaCrit.Sts2.Core.Entities.Cards.PileType.None)
+                {
+                    for (int c = 0; c < choice.Cards.Count && choiceCount < HotLimits.MaxChoicesPerAction; c++)
+                    {
+                        PlanCardToken token = choice.Cards[c];
+                        ushort cardDefId = rules.FindCardDefId(token.CardId);
+                        choiceBuf[choiceCount++] = new HotChoiceSelection(
+                            HotChoiceKind.GeneratedCard,
+                            (ushort)Math.Max(0, token.SourceOccurrence),
+                            cardDefId);
+                    }
                     continue;
                 }
 
@@ -60,6 +73,22 @@ internal static class HotEndTurnRiskEvaluator
                     PlanCardToken token = choice.Cards[c];
                     HotChoiceSelection resolved = ResolveChoiceToken(in state, cold, rules, kind, token);
                     choiceBuf[choiceCount++] = resolved;
+                }
+
+                // WellLaidPlans loops up to min(wlpAmt, eligibleHandCount) with minCount=0;
+                // when the plan retains fewer cards than both limits, append the None terminator
+                // that HotPlanMaterializer cleanly stripped for NativeChoiceRuntime.
+                if (choice.Effect == PlanChoiceEffect.ApplyRetain
+                    && kind == HotChoiceKind.HandCard
+                    && choiceCount < HotLimits.MaxChoicesPerAction)
+                {
+                    int wlpAmt = HotCombatEngine.GetPowerAmountById(in state, rules, ownerSlot: 0, HotPowerId.WellLaidPlansPower);
+                    if (choice.Cards.Count < wlpAmt)
+                    {
+                        int eligible = CountEligibleWellLaidPlansCards(in state);
+                        if (choice.Cards.Count < eligible)
+                            choiceBuf[choiceCount++] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+                    }
                 }
             }
         }
@@ -132,6 +161,7 @@ internal static class HotEndTurnRiskEvaluator
         int start = HotPiles.ZoneStart(in s, pile);
         int count = HotPiles.ZoneCount(in s, pile);
         int seen = 0;
+        HotChoiceSelection? optionFallback = null;
 
         for (int i = 0; i < count; i++)
         {
@@ -142,12 +172,33 @@ internal static class HotEndTurnRiskEvaluator
             {
                 continue;
             }
-            if (seen == token.OptionOccurrence || seen == token.SourceOccurrence)
+            if (seen == token.SourceOccurrence)
                 return new HotChoiceSelection(kind, card.CardUid, card.CardDefId);
+            if (optionFallback == null && seen == token.OptionOccurrence)
+                optionFallback = new HotChoiceSelection(kind, card.CardUid, card.CardDefId);
             seen++;
         }
 
+        if (optionFallback is HotChoiceSelection matchedFallback)
+            return matchedFallback;
+
         ushort fallbackDefId = rules.FindCardDefId(token.CardId);
         return new HotChoiceSelection(kind, 0, fallbackDefId);
+    }
+
+    private static int CountEligibleWellLaidPlansCards(in CombatHotState s)
+    {
+        int eligible = 0;
+        int handCount = s.HandCount;
+        for (int i = 0; i < handCount; i++)
+        {
+            ref readonly HotCard card = ref s.Cards[i];
+            if ((card.Flags & HotCardFlags.SingleTurnRetain) == 0
+                && (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0)
+            {
+                eligible++;
+            }
+        }
+        return eligible;
     }
 }

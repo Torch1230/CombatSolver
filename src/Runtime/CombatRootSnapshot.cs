@@ -33,8 +33,6 @@ internal sealed class CombatRootSnapshot
     public int PotionSlotCount { get; }
     public IReadOnlyList<SearchablePotionSlotSnapshot> SearchablePotions { get; }
     public int SearchablePotionCount { get; }
-    public int? MinimumSearchablePotionStrategicCost { get; }
-    public int ZeroCostSearchablePotionCount { get; }
     public ulong InitialAliveEnemyMask { get; }
     public CombatSide CurrentSide { get; }
     public PlayerTurnPhase PlayerPhase { get; }
@@ -91,11 +89,6 @@ internal sealed class CombatRootSnapshot
         PotionSlotCount = potionSlotCount;
         SearchablePotions = searchablePotions;
         SearchablePotionCount = searchablePotions.Count;
-        MinimumSearchablePotionStrategicCost = searchablePotions.Count == 0
-            ? null
-            : searchablePotions.Min(static potion => potion.StrategicHpCost);
-        ZeroCostSearchablePotionCount = searchablePotions.Count(static potion =>
-            potion.StrategicHpCost == 0);
         InitialAliveEnemyMask = initialAliveEnemyMask;
         CurrentSide = currentSide;
         PlayerPhase = playerPhase;
@@ -110,7 +103,10 @@ internal sealed class CombatRootSnapshot
         PotionRewardOutlook = potionRewardOutlook;
     }
 
-    public static CombatRootSnapshot Capture(CombatState state, bool predictPotionReward = false)
+    public static CombatRootSnapshot Capture(
+        CombatState state,
+        bool predictPotionReward = false,
+        PotionHpThresholds? potionThresholds = null)
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("Combat root snapshot must be captured on the main thread.");
@@ -133,12 +129,17 @@ internal sealed class CombatRootSnapshot
 
         HotRules rules = hotRoot.Rules;
         bool hasRenewablePotionShapedRock = rules.HasRenewablePotionShapedRock;
+        PotionHpThresholds effectiveThresholds = potionThresholds ?? SolverSettings.ResolvePotionThresholds(SolverSettings.Current);
         PostCombatRelicHealProfile postCombatRelicHeal = new(
             rules.PostCombatRelicUnconditionalHeal,
             rules.PostCombatRelicWoundedHeal,
             rules.PostCombatRelicWoundedHpPercent);
         PotionRewardOutlook potionRewardOutlook = predictPotionReward
-            ? PotionRewardOutlook.Capture(player, state, player.Relics.Where(static relic => !relic.IsMelted))
+            ? PotionRewardOutlook.Capture(
+                player,
+                state,
+                player.Relics.Where(static relic => !relic.IsMelted),
+                effectiveThresholds)
             : PotionRewardOutlook.None;
 
         List<SearchablePotionSlotSnapshot> searchablePotions = [];
@@ -149,12 +150,18 @@ internal sealed class CombatRootSnapshot
             if (defId == 0 || defId >= rules.Potions.Length)
                 continue;
             HotPotionDef def = rules.Potions[defId];
-            if (!def.IsCombatUsable)
+            HotCustomPotionId catalogId = def.PotionId != HotCustomPotionId.None
+                ? def.PotionId
+                : HotPotionCatalog.FindByEntry(def.Entry);
+            bool usable = catalogId != HotCustomPotionId.None
+                ? HotPotionCatalog.Get(catalogId).IsCombatUsable
+                : def.IsCombatUsable;
+            if (!usable)
                 continue;
             searchablePotions.Add(new SearchablePotionSlotSnapshot(
                 slot,
                 def.Entry,
-                HotPotionPolicy.ComputePotionDefCost(def, hasRenewablePotionShapedRock)));
+                HotPotionPolicy.ComputePotionDefCost(def, hasRenewablePotionShapedRock, player.Creature.MaxHp, effectiveThresholds)));
         }
 
         ulong aliveEnemyMask = 0;

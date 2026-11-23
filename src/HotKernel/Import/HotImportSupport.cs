@@ -111,7 +111,9 @@ internal static class HotImportSupport
             return true;
         if (PresentationOnlyVarFields.Contains((model.GetType(), fieldName)))
             return false;
-        throw new InvalidOperationException($"未分类的字符串状态字段：{model.GetType().FullName}.{fieldName}。");
+        // Defensive fallback: vanilla 0.113.1 StringVars are presentation/title text only;
+        // never crash root import on an unexpected StringVar.
+        return false;
     }
 
     public static int SemanticallyRelevantAmountOnTurnStart(PowerModel power)

@@ -1,77 +1,54 @@
+using CombatSolver.HotKernel;
 using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Potions;
 
 namespace CombatSolver;
 
-internal enum PotionValueTier
+/// <summary>
+/// Single-source-of-truth potion valuation adapter delegating directly to <see cref="HotPotionCatalog"/>
+/// and per-potion-ID <see cref="PotionHpThresholds"/> overrides (falling back to built-in catalog defaults
+/// 0 / 9 / 14 / 18 and Ambergris max(18, ceil(40% MaxHp))).
+/// </summary>
+internal static class PotionValuationRegistry
 {
-    Standard,
-    Elevated,
-    High,
-}
+    internal static bool IsCombatUsable(PotionModel potion)
+        => IsCombatUsable(potion.Id.Entry);
 
-internal readonly record struct PotionValuationRule(string PotionId, PotionValueTier Tier);
-
-internal sealed class PotionValuationRegistry
-{
-    // Ambergris stays at the baseline tier: its maximum-HP restriction is applied separately.
-    internal static PotionValuationRegistry Default { get; } = new(
-    [
-        new("GLOWWATER_POTION", PotionValueTier.High),
-        new("SWIFT_POTION", PotionValueTier.High),
-        new("GAMBLERS_BREW", PotionValueTier.High),
-        new("DUPLICATOR", PotionValueTier.High),
-        new("OROBIC_ACID", PotionValueTier.High),
-        new("POT_OF_GHOULS", PotionValueTier.High),
-        new("DISTILLED_CHAOS", PotionValueTier.Elevated),
-        new("CLARITY", PotionValueTier.Elevated),
-        new("RADIANT_TINCTURE", PotionValueTier.Elevated),
-        new("CURE_ALL", PotionValueTier.Elevated),
-        new("LIQUID_MEMORIES", PotionValueTier.Elevated),
-        new("BOTTLED_POTENTIAL", PotionValueTier.Elevated),
-        new("TOUCH_OF_INSANITY", PotionValueTier.Elevated),
-    ],
-    [
-        typeof(DexterityPotion),
-        typeof(FocusPotion),
-        typeof(FyshOil),
-        typeof(LiquidBronze),
-        typeof(MazalethsGift),
-        typeof(PotionOfCapacity),
-        typeof(SoldiersStew),
-        typeof(StrengthPotion),
-    ]);
-
-    private readonly IReadOnlyDictionary<string, PotionValueTier> _tiers;
-    private readonly Type[] _openingTypes;
-
-    internal PotionValuationRegistry(
-        IEnumerable<PotionValuationRule> tiers,
-        IEnumerable<Type> openingTypes)
+    internal static bool IsCombatUsable(string? potionEntry)
     {
-        _tiers = tiers.ToDictionary(rule => rule.PotionId, rule => rule.Tier,
-            StringComparer.Ordinal);
-        _openingTypes = openingTypes.ToArray();
+        if (string.IsNullOrEmpty(potionEntry))
+            return false;
+        HotCustomPotionId id = HotPotionCatalog.FindByEntry(potionEntry);
+        return id != HotCustomPotionId.None && HotPotionCatalog.Get(id).IsCombatUsable;
     }
 
-    internal int StrategicHpCost(PotionModel potion, bool renewablePotionShapedRock)
+    internal static int DefaultStrategicHpCost(
+        PotionModel potion,
+        bool renewablePotionShapedRock = false,
+        int playerMaxHp = 0)
     {
-        if (potion.Rarity == PotionRarity.Token
-            || renewablePotionShapedRock && potion is PotionShapedRock)
+        if (potion.Rarity == PotionRarity.Token)
             return 0;
-        PotionValueTier tier = _tiers.GetValueOrDefault(potion.Id.Entry);
-        return tier switch
-        {
-            PotionValueTier.High => SolverWeights.PotionHighValueHpSaved,
-            PotionValueTier.Elevated => SolverWeights.PotionElevatedValueHpSaved,
-            _ => SolverWeights.PotionMinimumHpSaved,
-        };
+
+        HotCustomPotionId id = HotPotionCatalog.FindByEntry(potion.Id.Entry);
+        if (renewablePotionShapedRock && id == HotCustomPotionId.PotionShapedRock)
+            return 0;
+        if (id == HotCustomPotionId.Ambergris)
+            return PotionHpThresholds.DefaultAmbergrisCost(playerMaxHp);
+        if (id != HotCustomPotionId.None)
+            return HotPotionCatalog.Get(id).BaseStrategicHpCost;
+        return PotionHpThresholds.DefaultStandard;
     }
 
-    internal bool RequiresOpeningUse(PotionModel potion)
-        => _openingTypes.Any(type => type.IsInstanceOfType(potion));
-
-    internal bool GeneratesPotionChain(string potionId)
-        => string.Equals(potionId, "ENTROPIC_BREW", StringComparison.Ordinal);
+    internal static int StrategicHpCost(
+        PotionModel potion,
+        bool renewablePotionShapedRock = false,
+        PotionHpThresholds? thresholds = null,
+        int playerMaxHp = 0)
+    {
+        PotionHpThresholds effective = thresholds ?? PotionHpThresholds.Default;
+        if (effective.TryGetOverride(potion.Id.Entry, out int overrideHp))
+            return overrideHp;
+        return DefaultStrategicHpCost(potion, renewablePotionShapedRock, playerMaxHp);
+    }
 }
