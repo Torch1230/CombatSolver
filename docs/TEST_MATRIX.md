@@ -2,6 +2,7 @@
 
 ## 未发布：战斗内与战前 Sts2Sim 桥接入口
 
+- Windows 女王战前 29.3 秒的界面主线程采样中，复用前 88 次同路线刷新共 492 ms，复用后 90 次共 268 ms。`--verify-controller-session-lifecycle` 断言同回合数据推进候选代次时保留画面，且原回合数据的风险变化立即可见。
 - 女王战固定 14,400 个父节点、124,141 次转移。使用同一后端比较宿主预览，旧版回放前缀 75 次，用时 1,204 ms，新版 24 次，用时 673 ms。两次最终路线均为 25 个动作、2 回合、预计损血 2，最终权威回放各 1 次。`PreCombatRequestChecks` 的嵌套轨迹用例覆盖工作计数变化时复用，以及选牌顺序、牌堆序号、动作目标、药水、回合或终局变化时重新校验。
 - 大牌组长搜对照使用 A10 静默猎手女王战，35 张牌、宽度 512、16 线程。Windows 固定 36,000 个父节点和 292,466 次转移，旧桥接与新桥接的耗时为 23.35 和 18.23 秒，峰值工作集为 14.17 和 2.87 GB；43 个动作、6 回合结算、药水和终局相同。Linux 原生宿主同设置下，BuiltIn 和新桥接的平均转移吞吐分别约为 17,340 和 6,910 次/秒，两者总工作量不同。铁甲战士 `MAWLER_NORMAL` 哨兵两版均第 4 回合击杀、损血 15。[模拟器验收记录](https://github.com/iRyougi/sts2-ai/pull/1069)
 - 战斗内真机无头合同：`--scenario-id INCOMBAT-STS2SIM-CONTRACT --encounter-id MAWLER_NORMAL --preserve-native-combat-state-for-test --verify-in-combat-sts2sim-contract --cleanup-instance-on-exit`（PowerShell 等价 `-VerifyInCombatSts2SimContract -CleanupInstanceOnExit`），验证第 1 回合 `Sts2Sim` 多核求解与标题栏徽章、第 1 回合原生部署、第 2 回合中途移植续求、`UseSts2SimInCombat = false` 关闭回退以及按插件能力（v1 回退 / v2 执行）路由 `UseNoveltyPortfolio = true`。

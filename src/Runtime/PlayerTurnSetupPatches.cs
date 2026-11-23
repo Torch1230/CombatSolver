@@ -217,17 +217,10 @@ internal static class PlayerTurnSetupCoordinator
         {
             return;
         }
-        SolverOverlaySnapshot? preview = progress.SpeculativeRoutePreview is { } speculative
-            ? SolverOverlaySnapshot.CaptureSpeculativeRoute(speculative)
-            : progress.CurrentTurnPreview is { } currentTurn
-                ? SolverOverlaySnapshot.CaptureCurrentTurn(currentTurn)
-                : null;
         SolverOverlay.ShowProgress(
             progress,
             active.DeployAfterSetup,
-            SolverController.ReviewedWorldlinesTotal,
-            preview);
-        SolverOverlay.RefreshControls();
+            SolverController.ReviewedWorldlinesTotal);
     }
 
     public static bool TryInterceptSetup(

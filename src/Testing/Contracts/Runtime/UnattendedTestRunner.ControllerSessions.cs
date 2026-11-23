@@ -301,34 +301,31 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("搜索进度区没有独立显示累计查阅世界线数量。");
         }
         double progressRatio = SolverOverlay.SearchProgressRatioForTesting;
-        SolverOverlay.ShowProgress(
-            new SolverProgress(
-                progressTurn,
-                progressTurn,
-                CompletedTurnLayers: 0,
-                PlayDepth: 0,
-                ExpandedNodes: 1,
-                ReviewedWorldlines: 40,
-                MaxNodes: 100,
-                FrontierNodes: 0,
-                EndedNodes: 0,
-                ElapsedMilliseconds: 600,
-                Phase: "正在搜索无药路线",
-                CurrentBestResult: new SolverInterimResult(
-                    Won: false,
-                    OutstandingStolenResource: 0,
-                    ProjectedBattleHpLost: 9,
-                    StrategicHpDeficit: 9,
-                    PotionStrategicCost: 0,
-                    ProjectedBattlePotionCount: 0,
-                    CombatEndedTurn: null,
-                    EnemyHp: 1,
-                    Score: 0d),
-                SpeculativeRoutePreview: progressPreview,
-                RequestBudgetMilliseconds: 10_000),
-            deployWhenReady: false,
-            reviewedWorldlinesBeforeSearch: 5,
-            bestSnapshot: SolverOverlaySnapshot.CaptureSpeculativeRoute(progressPreview));
+        SolverProgress routeProgress = new(
+            progressTurn,
+            progressTurn,
+            CompletedTurnLayers: 0,
+            PlayDepth: 0,
+            ExpandedNodes: 1,
+            ReviewedWorldlines: 40,
+            MaxNodes: 100,
+            FrontierNodes: 0,
+            EndedNodes: 0,
+            ElapsedMilliseconds: 600,
+            Phase: "正在搜索无药路线",
+            CurrentBestResult: new SolverInterimResult(
+                Won: false,
+                OutstandingStolenResource: 0,
+                ProjectedBattleHpLost: 9,
+                StrategicHpDeficit: 9,
+                PotionStrategicCost: 0,
+                ProjectedBattlePotionCount: 0,
+                CombatEndedTurn: null,
+                EnemyHp: 1,
+                Score: 0d),
+            SpeculativeRoutePreview: progressPreview,
+            RequestBudgetMilliseconds: 10_000);
+        SolverOverlay.ShowProgress(routeProgress, deployWhenReady: false, reviewedWorldlinesBeforeSearch: 5);
         if (Math.Abs(progressRatio - 0.05d) > 0.0001d
             || Math.Abs(SolverOverlay.SearchProgressRatioForTesting - 0.06d) > 0.0001d
             || SolverOverlay.ReviewSummaryTextForTesting?.Contains(
@@ -343,6 +340,21 @@ internal sealed partial class UnattendedTestRunner
         {
             throw new InvalidOperationException("搜索进度条没有按整次请求的时间预算平稳推进。");
         }
+        SolverOverlaySnapshot displayed = SolverOverlay.SearchRouteForTesting
+            ?? throw new InvalidOperationException("候选路线没有显示。");
+        SolverOverlay.ShowProgress(routeProgress with
+        {
+            ReviewedWorldlines = 41,
+            SpeculativeRoutePreview = progressPreview with { CandidateVersion = 2 },
+        }, deployWhenReady: false, reviewedWorldlinesBeforeSearch: 5);
+        if (!ReferenceEquals(displayed, SolverOverlay.SearchRouteForTesting))
+            throw new InvalidOperationException("只推进候选代次时重复构造了已显示的路线。");
+        SolverOverlay.ShowProgress(routeProgress with
+        {
+            SpeculativeRoutePreview = progressPreview with { HasRisk = true },
+        }, deployWhenReady: false, reviewedWorldlinesBeforeSearch: 5);
+        if (SolverOverlay.SearchRouteForTesting?.HasRisk != true)
+            throw new InvalidOperationException("动作相同的候选没有刷新新的风险状态。");
         SolverOverlay.ShowProgress(
             new SolverProgress(
                 progressTurn,
@@ -1753,7 +1765,7 @@ internal sealed partial class UnattendedTestRunner
             "手操后预计战损上升",
             "重算后预计战损上升",
             "搜索初始化失败",
-            "第三方 Mod 不兼容",
+            "内容性 Mod 暂未适配",
             "计算失败",
             "搜索动作回放失败",
             "搜索内存或容量错误",

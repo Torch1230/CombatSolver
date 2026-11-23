@@ -1,6 +1,7 @@
 using CombatSolver.Api;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Localization.Fonts;
 using MegaCrit.Sts2.Core.Nodes;
 
@@ -127,6 +128,8 @@ internal static class SolverOverlay
     private static SolverTheftPolicy? _renderedTheftPolicy;
     private static SolverOverlaySnapshot? _lastSnapshot;
     private static SolverOverlaySnapshot? _searchBestSnapshot;
+    private static SolverSpeculativeRoutePreview? _displayedSearchRoute;
+    private static string? _displayedSearchRouteLanguage;
     private static PotionRewardOutlook _searchPotionRewardOutlook;
     private static string? _lastMessageText;
     private static int _lastSearchingTurn;
@@ -272,6 +275,7 @@ internal static class SolverOverlay
         => _bossHpStrategyHintButton?.Visible == true;
     internal static string? BossHpStrategyHintTextForTesting => _bossHpStrategyHintButton?.Text;
     internal static string? ReviewSummaryTextForTesting => _reviewText?.Text;
+    internal static SolverOverlaySnapshot? SearchRouteForTesting => _searchBestSnapshot;
     internal static string? SearchSummaryTextForTesting => _summaryText?.Text;
     internal static double SearchProgressRatioForTesting => _lastSearchProgressRatio;
     internal static double ShownSearchProgressRatioForTesting => _shownSearchProgressRatio;
@@ -822,8 +826,7 @@ internal static class SolverOverlay
     public static void ShowProgress(
         SolverProgress progress,
         bool deployWhenReady,
-        long reviewedWorldlinesBeforeSearch,
-        SolverOverlaySnapshot? bestSnapshot = null)
+        long reviewedWorldlinesBeforeSearch)
     {
         _presentation = SolverOverlayPresentation.Searching;
         _waitingForNextTurnPlan = false;
@@ -832,12 +835,7 @@ internal static class SolverOverlay
         _deployQueued = deployWhenReady;
         _lastSearchDeployWhenReady = deployWhenReady;
         _lastReviewedWorldlinesBeforeSearch = reviewedWorldlinesBeforeSearch;
-        if (bestSnapshot != null)
-        {
-            _searchBestSnapshot = bestSnapshot;
-            PopulateRoute(bestSnapshot, resetScroll: false);
-            ShowSearchPotionReward();
-        }
+        UpdateSearchRoute(progress);
         string routeContext = _searchBestSnapshot is { Turns.Count: > 0 } routeSnapshot
             ? SolverText.Format($"已规划至第 {routeSnapshot.Turns[^1].Turn} 回合")
             : SolverText.Get("等待候选路线");
@@ -925,6 +923,43 @@ internal static class SolverOverlay
             _searchProgressBar.Value = _shownSearchProgressRatio;
         }
         RefreshControls();
+    }
+
+    private static void UpdateSearchRoute(SolverProgress progress)
+    {
+        SolverSpeculativeRoutePreview? route = progress.SpeculativeRoutePreview;
+        SolverOverlaySnapshot snapshot;
+        if (route != null)
+        {
+            // The published turns are immutable. A new adoption version can refer to the
+            // same turns while the search reports its latest counters.
+            if (_displayedSearchRoute is { } previous
+                && ReferenceEquals(previous.Turns, route.Turns)
+                && previous.StartTurnNumber == route.StartTurnNumber
+                && previous.ProjectedBattlePotionCount == route.ProjectedBattlePotionCount
+                && previous.ProjectedBattleHpLost == route.ProjectedBattleHpLost
+                && previous.CombatEnded == route.CombatEnded
+                && previous.OnlyDeathRoutesFound == route.OnlyDeathRoutesFound
+                && previous.HasRisk == route.HasRisk
+                && _displayedSearchRouteLanguage == LocManager.Instance.Language)
+            {
+                return;
+            }
+            snapshot = SolverOverlaySnapshot.CaptureSpeculativeRoute(route);
+        }
+        else if (progress.CurrentTurnPreview is { } currentTurn)
+        {
+            snapshot = SolverOverlaySnapshot.CaptureCurrentTurn(currentTurn);
+        }
+        else
+        {
+            return;
+        }
+        _searchBestSnapshot = snapshot;
+        PopulateRoute(snapshot, resetScroll: false);
+        ShowSearchPotionReward();
+        _displayedSearchRoute = route;
+        _displayedSearchRouteLanguage = LocManager.Instance.Language;
     }
 
     private static string FormatSearchReviewPhase(
@@ -1786,6 +1821,7 @@ internal static class SolverOverlay
 
     private static void Create(Node host)
     {
+        _displayedSearchRoute = null;
         if (_inputBridge == null || !GodotObject.IsInstanceValid(_inputBridge))
         {
             _inputBridge = new SolverOverlayInputBridge { Name = "CombatSolverOverlayInput" };
@@ -2901,6 +2937,7 @@ internal static class SolverOverlay
 
     private static void SetRouteVisibility(bool visible)
     {
+        _displayedSearchRoute = null;
         if (_routeHeadingRow != null)
             _routeHeadingRow.Visible = visible;
         if (_routeOutcomePanel != null)

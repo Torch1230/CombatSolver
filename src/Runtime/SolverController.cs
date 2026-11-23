@@ -2458,17 +2458,10 @@ internal static partial class SolverController
         {
             return;
         }
-        SolverOverlaySnapshot? preview = progress.SpeculativeRoutePreview is { } speculative
-            ? SolverOverlaySnapshot.CaptureSpeculativeRoute(speculative)
-            : progress.CurrentTurnPreview is { } currentTurn
-                ? SolverOverlaySnapshot.CaptureCurrentTurn(currentTurn)
-                : null;
         SolverOverlay.ShowProgress(
             progress,
             search.DeployWhenReady,
-            _combat.ReviewedWorldlinesTotal,
-            preview);
-        SolverOverlay.RefreshControls();
+            _combat.ReviewedWorldlinesTotal);
     }
 
     public static void ObserveMainThreadFrameGap(TimeSpan gap)
