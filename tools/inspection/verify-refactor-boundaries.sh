@@ -74,7 +74,16 @@ for required_file in \
     src/Search/SearchPolicySnapshot.cs \
     src/Search/PotionValuationRegistry.cs \
     src/Engine/Common/PredictionUnsupportedException.cs \
-    src/Prediction/IncompatibleGameplayModException.cs; do
+    src/Prediction/IncompatibleGameplayModException.cs \
+    src/Runtime/InCombatRustKernelBridge.cs \
+    src/Runtime/InCombatRustKernelContracts.cs \
+    src/Runtime/InCombatRustKernelEligibility.cs \
+    src/Runtime/InCombatRustKernelPolicyMapper.cs \
+    src/Runtime/InCombatRustKernelResultMaterializer.cs \
+    src/Runtime/InCombatSolverBackendState.cs \
+    tools/build/RustCombatKernel.targets \
+    rust/Cargo.toml \
+    rust/sts2-ffi/src/host_wire.rs; do
     [[ -f "$repository_root/$required_file" ]] || violations+=("Core architecture file missing: $required_file")
 done
 
@@ -136,6 +145,8 @@ done < <(find "$repository_root/src" -type f -name '*.cs' | sort)
 require_text src/Runtime/CombatRootSnapshot.cs 'main thread' 'root snapshot main-thread boundary'
 require_text src/Runtime/CombatRootSnapshot.cs 'HotRootBuilder.BuildFromLive(' 'HotKernel root capture boundary'
 require_text src/Runtime/SolverController.cs 'HotSearchCoordinator.Solve(' 'HotSearch direct solve boundary'
+require_text src/Runtime/SolverController.cs 'InCombatRustKernelBridge.' 'RustKernel host bridge boundary'
+require_text src/HotSearch/HotPlanMaterializer.cs 'MaterializeFromSteps(' 'HotPlanMaterializer step replay boundary'
 require_text src/Runtime/SolverController.cs 'SolverOverlaySnapshot.' 'overlay snapshot projection boundary'
 for session_type in 'class SolverCombatSession' 'class SolverSearchSession' 'class SolverDeploymentSession'; do
     require_text src/Runtime/SolverControllerSessions.cs "$session_type" 'controller session boundary'

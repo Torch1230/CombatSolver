@@ -1,0 +1,8 @@
+[package]
+name = "gen_metadata"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

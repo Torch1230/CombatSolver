@@ -1,0 +1,17 @@
+[package]
+name = "sts2-ffi"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "sts2_combat_rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+smallvec.workspace = true
+sts2-content = { path = "../sts2-content" }
+sts2-kernel = { path = "../sts2-kernel" }
+sts2-search = { path = "../sts2-search" }
+sts2-types = { path = "../sts2-types" }

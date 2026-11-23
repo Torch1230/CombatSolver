@@ -122,6 +122,7 @@ param(
     [switch]$VerifyForkBoundaries,
     [switch]$VerifyCombatRootSnapshot,
     [switch]$VerifyPreCombatForecastApi,
+    [switch]$VerifyInCombatRustKernelContract,
     [switch]$VerifyBaseLibCardModifierBoundary,
     [switch]$StopAfterCombatRootSnapshotAssertion,
     [switch]$VerifyIncrementalSearch,
@@ -868,6 +869,7 @@ $request = [ordered]@{
     verifyForkBoundaries = $VerifyForkBoundaries.IsPresent
     verifyCombatRootSnapshot = $VerifyCombatRootSnapshot.IsPresent
     verifyPreCombatForecastApi = $VerifyPreCombatForecastApi.IsPresent
+    verifyInCombatRustKernelContract = $VerifyInCombatRustKernelContract.IsPresent
     verifyBaseLibCardModifierBoundary = $VerifyBaseLibCardModifierBoundary.IsPresent
     stopAfterCombatRootSnapshotAssertion = $StopAfterCombatRootSnapshotAssertion.IsPresent
     verifyIncrementalSearch = $VerifyIncrementalSearch.IsPresent
@@ -1135,7 +1137,9 @@ if ($ReuseOnly) {
     }
     Write-Host "UNATTENDED_REUSE_ONLY instance=$($runtimeContext.Instance) snapshot_scan=skipped"
 } else {
-    $snapshotPlan = Get-HeadlessSnapshotPlan $runtimeContext $combatSolverDll $combatSolverManifest $memoryCleaner $resolvedRitsuWorkshopRoot $ritsuManifestSource
+    $rustKernelDir = Join-Path $buildDirectory 'rust-kernel'
+    $effectiveRustKernelDir = if (Test-Path -LiteralPath $rustKernelDir -PathType Container) { $rustKernelDir } else { "" }
+    $snapshotPlan = Get-HeadlessSnapshotPlan $runtimeContext $combatSolverDll $combatSolverManifest $memoryCleaner $resolvedRitsuWorkshopRoot $ritsuManifestSource $effectiveRustKernelDir
     Write-Host "UNATTENDED_SNAPSHOT_PLAN cache_hits=$($snapshotPlan.cacheHits) hashed=$($snapshotPlan.hashedFiles) elapsed_ms=$($snapshotPlan.elapsedMilliseconds)"
     $runtimeContext.ArtifactId = $snapshotPlan.id
     $combatSolverDllSha256 = @($snapshotPlan.files | Where-Object { $_.relative -eq 'mods\CombatSolver\CombatSolver.dll' })[0].sha256

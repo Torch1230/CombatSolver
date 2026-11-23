@@ -2,6 +2,13 @@
 
 这里只记录当前未发布的行为变化。发布定稿后将该批次完整移入历史卷。
 
+## 下一版本（开发中）：原生 Rust 战斗内核集成
+
+- 移植独立 `rust/` 原生战斗内核与并行搜索引擎（`sts2-types` / `sts2-kernel` / `sts2-content` / `sts2-search` / `sts2-ffi`），经 `tools/build/RustCombatKernel.targets` 自动构建并随 Mod 发布至 `rust-kernel/`。
+- 新增纯 Rust 战斗内主机桥接与准入链（`InCombatRustKernelBridge` / `Eligibility` / `PolicyMapper` / `InCombatLiveStateCapturer` / `InCombatSolverBackendState`），覆盖 `SolverSettings.UseRustCombatKernel`（默认开启）、全部 1.0.0 搜索/药水/成长/遗物/首领血量政策映射。
+- 新增 `InCombatRustKernelResultMaterializer` 与 `HotPlanMaterializer.MaterializeFromSteps`，在采纳前于 `HotRootBundle` 上逐动作与终局状态回放校验 Rust 最优路线；任一排除、损坏、超时或失配 fail-closed 自动回退至 `HotKernel`。
+- 性能设置页新增“战斗内优先使用 Rust 内核”开关，主界面摘要栏新增引擎状态徽章与双语本地化。
+
 1.0.0 的 HotKernel v2 新一代高速引擎、药水省血阈值与 0.113.1 全量适配见[历史卷 33](archive/development/volume-33.md)，玩家说明见[1.0.0 更新日志](releases/1.0.0-RELEASE_NOTES.md)。
 
 0.50.1 本地定稿的智能药水修复及 PR #213、#224、#226 见[历史卷22](archive/development/volume-22.md)，玩家说明见[0.50.1 更新日志](releases/0.50.1-RELEASE_NOTES.md)。外部发布状态以对应标签及发布记录为准。

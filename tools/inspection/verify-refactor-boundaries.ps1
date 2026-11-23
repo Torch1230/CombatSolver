@@ -48,7 +48,16 @@ foreach ($requiredFile in @(
     'src/Search/SearchPolicySnapshot.cs',
     'src/Search/PotionValuationRegistry.cs',
     'src/Engine/Common/PredictionUnsupportedException.cs',
-    'src/Prediction/IncompatibleGameplayModException.cs'
+    'src/Prediction/IncompatibleGameplayModException.cs',
+    'src/Runtime/InCombatRustKernelBridge.cs',
+    'src/Runtime/InCombatRustKernelContracts.cs',
+    'src/Runtime/InCombatRustKernelEligibility.cs',
+    'src/Runtime/InCombatRustKernelPolicyMapper.cs',
+    'src/Runtime/InCombatRustKernelResultMaterializer.cs',
+    'src/Runtime/InCombatSolverBackendState.cs',
+    'tools/build/RustCombatKernel.targets',
+    'rust/Cargo.toml',
+    'rust/sts2-ffi/src/host_wire.rs'
 )) {
     if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $requiredFile) -PathType Leaf)) {
         $violations.Add("Core architecture file missing: $requiredFile")
@@ -145,6 +154,8 @@ foreach ($srcFile in Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "src"
 Require-Text 'src/Runtime/CombatRootSnapshot.cs' 'main thread' 'root snapshot main-thread boundary'
 Require-Text 'src/Runtime/CombatRootSnapshot.cs' 'HotRootBuilder.BuildFromLive(' 'HotKernel root capture boundary'
 Require-Text 'src/Runtime/SolverController.cs' 'HotSearchCoordinator.Solve(' 'HotSearch direct solve boundary'
+Require-Text 'src/Runtime/SolverController.cs' 'InCombatRustKernelBridge.' 'RustKernel host bridge boundary'
+Require-Text 'src/HotSearch/HotPlanMaterializer.cs' 'MaterializeFromSteps(' 'HotPlanMaterializer step replay boundary'
 Require-Text 'src/Runtime/SolverController.cs' 'SolverOverlaySnapshot.' 'overlay snapshot projection boundary'
 foreach ($sessionType in @('class SolverCombatSession', 'class SolverSearchSession', 'class SolverDeploymentSession')) {
     Require-Text 'src/Runtime/SolverControllerSessions.cs' $sessionType 'controller session boundary'

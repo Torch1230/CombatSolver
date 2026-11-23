@@ -92,6 +92,7 @@ internal sealed class UnattendedTestRequest
     public bool ClearAllPowers { get; init; }
     public bool VerifyCombatRootSnapshot { get; init; }
     public bool VerifyPreCombatForecastApi { get; init; }
+    public bool VerifyInCombatRustKernelContract { get; init; }
     public bool StopAfterCombatRootSnapshotAssertion { get; init; }
     public bool VerifyIncrementalSearch { get; init; }
     private bool _fixedSearchBudget;

@@ -77,6 +77,7 @@ internal sealed record SolverSettingsData
     public int? LegacyDeepMaxHandChoiceBranchesPerAction { get => null; init { if (!SearchMaxHandChoiceBranchesPerAction.HasValue) SearchMaxHandChoiceBranchesPerAction = value; } }
     public bool SolverDisabled { get; init; }
     public bool AutomaticCalculationEnabled { get; init; } = true;
+    public bool UseRustCombatKernel { get; init; } = true;
     public bool AutoEnableFullAuto { get; init; }
     public bool OnlineStatisticsEnabled { get; init; } = true;
     public bool StopFullAutoOnCombatEnd { get; init; }
@@ -169,6 +170,7 @@ internal sealed record SolverSettingsSnapshot(
     public PotionHpThresholds PotionThresholds { get; init; } = PotionHpThresholds.Default;
     public int MaxHardFightThinkSeconds { get; init; } = SolverSettings.DefaultMaxHardFightThinkSeconds;
     public bool AdaptiveEscalationEnabled { get; init; } = true;
+    public bool UseRustCombatKernel { get; init; } = true;
 }
 
 internal static class SolverSettings
@@ -269,6 +271,7 @@ internal static class SolverSettings
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"potion_threshold_overrides={effective.PotionThresholds.Count} " +
             $"max_hard_fight_think_seconds={effective.MaxHardFightThinkSeconds} " +
+            $"use_rust_combat_kernel={migrated.UseRustCombatKernel} " +
             $"max_dop={effective.SearchMaxDegreeOfParallelism} " +
             $"search_budget_ms={effective.Profile.SoftTimeBudgetMilliseconds} " +
             $"deployment_fast_mode={migrated.DeploymentFastMode} " +
@@ -308,6 +311,7 @@ internal static class SolverSettings
             PotionThresholds = ResolvePotionThresholds(data),
             MaxHardFightThinkSeconds = data.MaxHardFightThinkSeconds,
             AdaptiveEscalationEnabled = true,
+            UseRustCombatKernel = data.UseRustCombatKernel,
         };
     }
 

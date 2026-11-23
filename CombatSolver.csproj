@@ -39,6 +39,7 @@
     <ModOutputDir>$(Sts2Dir)/mods/CombatSolver</ModOutputDir>
     <CopyModOnBuild Condition="'$(CopyModOnBuild)' == ''">true</CopyModOnBuild>
     <NoWarn>$(NoWarn);CS0436</NoWarn>
+    <DefaultItemExcludes>$(DefaultItemExcludes);rust/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <Import Project="$(RitsuLibReferencesProps)" Condition="Exists('$(RitsuLibReferencesProps)')" />
@@ -81,4 +82,6 @@
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModOutputDir)" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)/CombatSolver.json" DestinationFolder="$(ModOutputDir)" />
   </Target>
+
+  <Import Project="./tools/build/RustCombatKernel.targets" />
 </Project>

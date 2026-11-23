@@ -53,6 +53,8 @@ internal static class SolverOverlay
     private static Label? _usedPotionOutcomeLabel;
     private static PanelContainer? _summaryStatusBadge;
     private static Label? _summaryStateLabel;
+    private static PanelContainer? _engineBackendBadge;
+    private static Label? _engineBackendLabel;
     private static Label? _summaryContextLabel;
     private static PanelContainer? _summaryPanel;
     private static RichTextLabel? _summaryText;
@@ -243,6 +245,8 @@ internal static class SolverOverlay
     internal static string? BossHpStrategyHintTextForTesting => _bossHpStrategyHintButton?.Text;
     internal static string? ReviewSummaryTextForTesting => _reviewText?.Text;
     internal static string? SearchSummaryTextForTesting => _summaryText?.Text;
+    internal static string InCombatBackendBadgeTextForTesting => _engineBackendLabel?.Text ?? string.Empty;
+    internal static string InCombatBackendBadgeTooltipForTesting => _engineBackendBadge?.TooltipText ?? string.Empty;
     internal static double SearchProgressRatioForTesting => _lastSearchProgressRatio;
     internal static double ShownSearchProgressRatioForTesting => _shownSearchProgressRatio;
     internal static double ShownWorldlinesPerSecondForTesting => _shownWorldlinesPerSecond;
@@ -1458,6 +1462,7 @@ internal static class SolverOverlay
 
         RefreshFeedbackBanner();
         RefreshGuidanceHints();
+        RefreshInCombatBackendBadge();
 
         bool solverDisabled = SolverController.SolverDisabled;
         if (_solverEnabledButton != null)
@@ -1663,6 +1668,8 @@ internal static class SolverOverlay
         _relicStrategyPanel = null;
         Array.Clear(RouteRows);
         _viewport = null;
+        _engineBackendBadge = null;
+        _engineBackendLabel = null;
         _rightResizeHandle = null;
         _bottomResizeHandle = null;
         _cornerResizeHandle = null;
@@ -2251,6 +2258,20 @@ internal static class SolverOverlay
             FontType.Bold);
         _summaryStatusBadge.AddChild(_summaryStateLabel);
         statusRow.AddChild(_summaryStatusBadge);
+        _engineBackendBadge = new PanelContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Pass,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            CustomMinimumSize = new Vector2(0, 24),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+        };
+        _engineBackendLabel = CreateTextLabel(
+            SolverText.Get("引擎：HotKernel"),
+            SolverUiTokens.Type.Caption,
+            TextMuted,
+            FontType.Bold);
+        _engineBackendBadge.AddChild(_engineBackendLabel);
+        statusRow.AddChild(_engineBackendBadge);
         _summaryContextLabel = CreateTextLabel(
             string.Empty,
             SolverUiTokens.Type.Body,
@@ -2469,6 +2490,145 @@ internal static class SolverOverlay
             _summaryContextLabel.Text = context;
             _summaryContextLabel.Visible = !string.IsNullOrEmpty(context);
         }
+    }
+
+    private static void RefreshInCombatBackendBadge()
+    {
+        if (_engineBackendBadge == null || _engineBackendLabel == null)
+            return;
+
+        CombatState? combat = CombatManager.Instance.DebugOnlyGetState();
+        InCombatBackendDisplaySnapshot snap = InCombatSolverBackendState.CaptureDisplaySnapshot(
+            CombatManager.Instance.IsInProgress ? combat : null,
+            SolverSettings.Capture());
+
+        string text;
+        string summaryTooltip;
+        Color tone;
+        bool rustSucceededOrActive = false;
+
+        if (snap.ActiveBackend == InCombatBackendKind.RustKernel)
+        {
+            int? dop = snap.EffectiveParallelism;
+            text = dop is > 0
+                ? SolverText.Format($"引擎：Rust 内核（计算中 {dop.Value} 线程）")
+                : SolverText.Get("引擎：Rust 内核（计算中）");
+            summaryTooltip = dop is > 0
+                ? SolverText.Format($"当前正在使用原生 Rust 内核计算本场战斗（请求并行：{dop.Value} 线程）。")
+                : SolverText.Get("当前正在使用原生 Rust 内核计算本场战斗。");
+            tone = Accent;
+            rustSucceededOrActive = true;
+        }
+        else if (snap.LastUsedBackend == InCombatBackendKind.RustKernel
+                 && snap.UseRustKernel
+                 && snap.RustKernelHostEligible
+                 && string.IsNullOrEmpty(snap.LastFallbackCode))
+        {
+            int? dop = snap.EffectiveParallelism;
+            text = dop is > 0
+                ? SolverText.Format($"引擎：Rust 内核（{dop.Value} 线程）")
+                : SolverText.Get("引擎：Rust 内核");
+            summaryTooltip = dop is > 0
+                ? SolverText.Format($"本场战斗已使用原生 Rust 内核（有效并行：{dop.Value} 线程）。")
+                : SolverText.Get("原生 Rust 内核已在本场战斗启用。");
+            tone = Success;
+            rustSucceededOrActive = true;
+        }
+        else if (snap.ActiveBackend == InCombatBackendKind.None
+                 && snap.LastUsedBackend == InCombatBackendKind.None
+                 && snap.HasInstalledRustKernel
+                 && !snap.IsRustKernelCorrupt
+                 && snap.UseRustKernel
+                 && (combat == null || snap.RustKernelHostEligible)
+                 && string.IsNullOrEmpty(snap.LastFallbackCode))
+        {
+            text = SolverText.Get("引擎：Rust 内核（就绪）");
+            summaryTooltip = SolverText.Get("原生 Rust 内核已就绪，将在本场战斗计算时优先使用。");
+            tone = Accent;
+            rustSucceededOrActive = true;
+        }
+        else if (snap.IsRustKernelCorrupt && snap.UseRustKernel)
+        {
+            text = SolverText.Get("引擎：Rust 内核异常（回退）");
+            summaryTooltip = SolverText.Get("原生 Rust 内核加载或校验失败，当前战斗已自动回退至 HotKernel。");
+            tone = Danger;
+        }
+        else
+        {
+            int? dop = snap.EffectiveParallelism;
+            text = (snap.ActiveBackend == InCombatBackendKind.HotKernel || snap.LastUsedBackend == InCombatBackendKind.HotKernel)
+                   && dop is > 0
+                ? SolverText.Format($"引擎：HotKernel（{dop.Value} 线程）")
+                : SolverText.Get("引擎：HotKernel");
+            if (snap.ActiveBackend == InCombatBackendKind.HotKernel)
+            {
+                summaryTooltip = SolverText.Get("当前正在使用 HotKernel 计算本场战斗。");
+                tone = !string.IsNullOrEmpty(snap.LastFallbackCode) ? Warning : Accent;
+            }
+            else if (!snap.UseRustKernel)
+            {
+                summaryTooltip = SolverText.Get("已按设置关闭战斗内 Rust 内核，当前使用 HotKernel。");
+                tone = TextMuted;
+            }
+            else if (!snap.HasInstalledRustKernel)
+            {
+                summaryTooltip = SolverText.Get("未安装 rust-kernel 组件，当前战斗使用 HotKernel。");
+                tone = TextMuted;
+            }
+            else if (!string.IsNullOrEmpty(snap.LastFallbackCode))
+            {
+                summaryTooltip = SolverText.Get("本次战斗已回退至 HotKernel。");
+                tone = Warning;
+            }
+            else if (combat != null && !snap.RustKernelHostEligible)
+            {
+                summaryTooltip = SolverText.Get("当前战斗条件超出 Rust 内核支持范围，已自动使用 HotKernel。");
+                tone = TextMuted;
+            }
+            else
+            {
+                summaryTooltip = SolverText.Get("当前战斗使用 HotKernel。");
+                tone = TextMuted;
+            }
+        }
+
+        string installStatus = snap.IsRustKernelCorrupt
+            ? SolverText.Get("组件状态：rust-kernel 校验异常")
+            : SolverText.Get(snap.HasInstalledRustKernel
+                ? "组件状态：rust-kernel 已安装"
+                : "组件状态：rust-kernel 未安装");
+
+        string tooltip = $"{summaryTooltip}\n{installStatus}";
+        if (!rustSucceededOrActive)
+        {
+            string? reasonCode = !string.IsNullOrEmpty(snap.LastFallbackCode)
+                ? snap.LastFallbackCode
+                : !string.IsNullOrEmpty(snap.RustKernelHostExclusionCode)
+                    ? snap.RustKernelHostExclusionCode
+                    : snap.LastExclusionCode;
+            string? rawDetail = !string.IsNullOrEmpty(snap.LastFallbackCode)
+                ? snap.LastFallbackDetail
+                : !string.IsNullOrEmpty(snap.RustKernelHostExclusionCode)
+                    ? snap.RustKernelHostExclusionDetail
+                    : snap.LastExclusionDetail;
+            if (!string.IsNullOrEmpty(reasonCode))
+            {
+                string detailSuffix = string.IsNullOrWhiteSpace(rawDetail)
+                    ? reasonCode
+                    : $"{reasonCode}: {(rawDetail.Length <= 160 ? rawDetail : rawDetail[..157] + "...")}";
+                tooltip += "\n" + SolverText.Format($"回退原因：{detailSuffix}");
+            }
+        }
+
+        _engineBackendLabel.Text = text;
+        _engineBackendLabel.AddThemeColorOverride("font_color", tone);
+        _engineBackendBadge.TooltipText = tooltip;
+        _engineBackendBadge.AddThemeStyleboxOverride("panel", SolverUiTokens.CreateBox(
+            SolverUiTokens.Palette.SurfaceRaised,
+            SolverUiTokens.Palette.BorderSubtle,
+            SolverUiTokens.Radius.Small,
+            horizontalPadding: SolverUiTokens.Spacing.Sm,
+            verticalPadding: 2));
     }
 
     private static void SetMessageContent(string text)

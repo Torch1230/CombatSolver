@@ -1,5 +1,18 @@
 # CombatSolver 测试入口
 
+## 下一版本（开发中）：原生 Rust 战斗内核集成
+
+- Rust workspace（`-D warnings`）：`CARGO_BUILD_JOBS=8 RUSTFLAGS="-D warnings" cargo test --workspace --release --manifest-path rust/Cargo.toml`
+- 战斗内 Rust 内核无头合同（Turn 1 DOP4、零重算部署、Turn 2 中途捕获、`UseRustCombatKernel=false` 回退 `HotKernel`、损坏库 fail-closed 回退）：runId `42c3d2a28d324ec4baf93b9dd17b63aa` Passed（`InCombatRustKernelContract:Turn1Dop=4:Turn2Transplant=RustKernel:DisabledFallback=HotKernel:CorruptFallback=Verified`）。
+
+```bash
+./tools/testing/run-unattended-test.sh --verify-in-combat-rust-kernel-contract --cleanup-instance-on-exit
+```
+
+```powershell
+pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -VerifyInCombatRustKernelContract -CleanupInstanceOnExit
+```
+
 ## 1.0.0 新一代高速引擎与 0.113.1 适配
 
 架构/工具门禁、离线内核自洽与确定性、120 场零计划外重算部署压测、300 场差分模糊、离线提速对照及无头首战卡顿验证见[历史卷 33](archive/testing/volume-33.md)。

@@ -52,6 +52,9 @@ internal sealed partial class UnattendedTestRunner
         public void EnableAutomaticTurnSearch()
             => AutomaticTurnSearchEnabled = true;
 
+        public void SetAutomaticTurnSearchEnabledForTesting(bool enabled)
+            => AutomaticTurnSearchEnabled = enabled;
+
         public async Task ApplyScheduledStateDriftAsync(CombatState state, int turn)
         {
             if (!IsActive
