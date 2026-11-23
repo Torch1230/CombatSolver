@@ -4,7 +4,7 @@
 
 - 原生战斗内合同的 `InCombatPrivateDecimalFields` 在独立卡牌与能力实例上写入 1.75、2.5、3.25，检查实际捕获的三个字段的类型和值。Core 的公开恢复回归另检查旧整数输入及新小数输入。
 
-- 桥接评分与幕末 Boss 预算合同可运行 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release --filter "FullyQualifiedName~BeamRanking_|FullyQualifiedName~NoveltyBossBudget_"`。断言多段攻击后实际 HP、负力量评分和两种战损偏好下的探查时限。
+- 桥接评分与幕末 Boss 预算合同可运行 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release --filter "FullyQualifiedName~BeamRanking_|FullyQualifiedName~NoveltyBossBudget_|FullyQualifiedName~MawlerInflameParity_IroncladSeedCombatSolver"`。覆盖战前与战斗内的逐段 HP、Pareto 余量和中途排序，负力量评分及两种战损偏好下的探查时限。战前 Mawler 覆盖三种起始 HP 与覆盖值组合，宽度 16、5000 次尝试均须以至多 10 HP 战损取胜。
 
 - 桥接迁移可用 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release` 验证 UTF-8 ABI 与搜索合同。暂存检查对照 Core 的内嵌提交与 Git 锁定值。[构建入口](../bridge/README.md)
 

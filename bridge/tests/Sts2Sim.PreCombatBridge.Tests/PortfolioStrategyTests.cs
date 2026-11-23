@@ -874,10 +874,18 @@ public sealed class PortfolioStrategyTests
             enemy.Monster, new MoveState("MULTI", _ => Task.CompletedTask, new MultiAttackIntent(damage, hits)));
         var evaluator = new StateEvaluator(state, CombatPolicy.Default);
         BeamSearchNode node = BeamSearchNode.Create(state, null, null, evaluator);
+        var forecastEvaluator = new StateEvaluator(evaluator.Baseline with { RankByBaseAttackIntent = true });
+        BeamSearchNode forecastNode = BeamSearchNode.Create(state, null, null, forecastEvaluator);
+
+        int startingHp = player.CurrentHp;
         for (int i = 0; i < hits; i++)
             await CreatureCmd.Damage(state, [player], damage, ValueProp.Move, enemy, null, null);
         Assert.Equal(player.CurrentHp, node.ProjectedHp);
         Assert.Equal(player.CurrentHp, node.UnblockedHpMargin);
+        Assert.Equal(node.ProjectedHp, forecastNode.ProjectedHp);
+        Assert.Equal(node.UnblockedHpMargin, forecastNode.UnblockedHpMargin);
+        int received = startingHp - player.CurrentHp;
+        Assert.Equal(node.Score + (received - damage * hits) * SolverWeights.Hp, forecastNode.Score);
     }
 
     [Fact]

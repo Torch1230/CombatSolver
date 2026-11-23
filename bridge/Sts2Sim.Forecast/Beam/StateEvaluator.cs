@@ -28,6 +28,8 @@ internal readonly record struct PolicyRootOperands(
     CombatSolver.Beam.Policy.PotionRewardOutlook PotionReward,
     int TotalFloor = 0)
 {
+    public bool RankByBaseAttackIntent { get; init; }
+
     public static PolicyRootOperands Capture(CombatState root, CombatPolicy policy) =>
         new(
             BossHpPolicy.Resolve(root, policy),
@@ -55,7 +57,8 @@ internal sealed record StateEvaluatorBaseline(
     bool TheftApplicable,
     CombatSolver.Beam.Policy.BossHpRelief BossHpRelief,
     RelicCounterLedger RelicCounters,
-    CombatSolver.Beam.Policy.GrowthOpportunityTargets GrowthTargets);
+    CombatSolver.Beam.Policy.GrowthOpportunityTargets GrowthTargets,
+    bool RankByBaseAttackIntent);
 
 internal readonly record struct NodeEvalMetrics(
     int ProjectedHp,
@@ -91,6 +94,7 @@ internal sealed class StateEvaluator
 
     private readonly CombatPolicy _policy;
     private readonly BeamMemberSearchMode _memberMode;
+    private readonly bool _rankByBaseAttackIntent;
     private readonly ConcurrentDictionary<string, int> _potionCostCache = new(StringComparer.Ordinal);
     private readonly (int Slot, string Id)[] _forcedPotions;
     private readonly CombatSolver.Beam.Policy.PotionRewardOutlook _potionReward;
@@ -154,6 +158,7 @@ internal sealed class StateEvaluator
         ArgumentNullException.ThrowIfNull(baseline);
         _baseline = baseline;
         _policy = baseline.Policy;
+        _rankByBaseAttackIntent = baseline.RankByBaseAttackIntent;
         _memberMode = memberModeOverride ?? (aggressivePowerCommitment
             ? BeamMemberSearchMode.AggressivePowerCommitment
             : BeamMemberSearchMode.Default);
@@ -185,6 +190,7 @@ internal sealed class StateEvaluator
         CombatPolicy openingPolicy)
     {
         _policy = openingPolicy;
+        _rankByBaseAttackIntent = true;
         _memberMode = BeamMemberSearchMode.Default;
         CombatState openingRoot = baseline.Root;
         _initialHp = baseline.InitialHp;
@@ -237,7 +243,8 @@ internal sealed class StateEvaluator
             rootPolicyOperands?.BossHpRelief ?? CombatSolver.Beam.Policy.BossHpPolicy.Resolve(root, policy),
             RelicCounterLedger.Capture(root, policy),
             CombatSolver.Beam.Policy.GrowthOpportunityTargets.Capture(
-                root, policy.IgnoreLongTermRewards ? new GrowthBudgets() : policy.GrowthBudgets));
+                root, policy.IgnoreLongTermRewards ? new GrowthBudgets() : policy.GrowthBudgets),
+            rootPolicyOperands?.RankByBaseAttackIntent ?? false);
     }
 
     private static StateEvaluatorBaseline CaptureFromEvaluator(StateEvaluator source) => new(
@@ -258,7 +265,8 @@ internal sealed class StateEvaluator
         source._theftApplicable,
         source._bossHpRelief,
         source._relicCounters,
-        source._growthTargets);
+        source._growthTargets,
+        source._rankByBaseAttackIntent);
 
     private CombatPolicy policy => _policy;
 
@@ -680,6 +688,14 @@ internal sealed class StateEvaluator
             && SatisfiesTheftPolicy(node);
     }
 
+    private static int ExposedAfterBlockAndBuffer(int threat, int block, int bufferCharges, int incomingHits)
+    {
+        // StrategicEffectModel.BufferPrevention values each charge at the average incoming hit.
+        int averageHit = Math.Max(1, threat / Math.Max(1, incomingHits));
+        int bufferPrevention = (int)Math.Min(threat, (long)bufferCharges * averageHit);
+        return Math.Max(0, threat - block - bufferPrevention);
+    }
+
     private static double SignedPowerStacks(PowerModel power)
     {
         int amount = power.Amount;
@@ -733,6 +749,7 @@ internal sealed class StateEvaluator
         }
 
         int threat = 0;
+        int baseThreat = 0;
         int incomingHits = 0;
         double enemyRemainingHp = 0d;
         double enemyPowerScore = 0d;
@@ -755,8 +772,11 @@ internal sealed class StateEvaluator
                             // Core intents expose base damage. Apply the same attack modifiers as
                             // CreatureCmd before truncating each hit and counting its repeats.
                             int repeats = Math.Max(0, attack.Repeats);
+                            int baseDamage = attack.GetSingleDamage(targetScratch, enemy);
+                            if (_rankByBaseAttackIntent)
+                                baseThreat = (int)Math.Min(int.MaxValue, baseThreat + (long)baseDamage * repeats);
                             decimal damage = Hook.ModifyDamage(state, creature, enemy,
-                                attack.GetSingleDamage(targetScratch, enemy), ValueProp.Move, null, null, out _);
+                                baseDamage, ValueProp.Move, null, null, out _);
                             int perHit = (int)Math.Clamp(damage, 0m, int.MaxValue);
                             threat = (int)Math.Min(int.MaxValue, threat + (long)perHit * repeats);
                             if (bufferCharges > 0)
@@ -780,15 +800,18 @@ internal sealed class StateEvaluator
             ClearSingleTarget(targetScratch);
         }
 
-        // StrategicEffectModel.BufferPrevention @ d231e9e5 estimates each
-        // Buffer charge against the average incoming hit, capped by damage.
-        int averageHit = Math.Max(1, threat / Math.Max(1, incomingHits));
-        int bufferPrevention = (int)Math.Min(threat, (long)bufferCharges * averageHit);
         unblockedHpMargin = creature.CurrentHp - Math.Max(0, threat - creature.Block);
-        int exposed = Math.Max(0, threat - creature.Block - bufferPrevention);
+        int exposed = ExposedAfterBlockAndBuffer(threat, creature.Block, bufferCharges, incomingHits);
         projectedHp = (!engine.IsInProgress && engine.Won)
             ? Math.Max(0, creature.CurrentHp)
             : Math.Max(0, creature.CurrentHp - exposed);
+        // Map forecasts historically rank intermediate positions against the base intent.
+        // HP projections and Pareto margins above always include live damage modifiers.
+        if (_rankByBaseAttackIntent && threat != baseThreat)
+        {
+            threat = baseThreat;
+            exposed = ExposedAfterBlockAndBuffer(threat, creature.Block, bufferCharges, incomingHits);
+        }
         double score = (creature.CurrentHp - exposed) * SolverWeights.Hp;
         // A fully blocked or nonattack turn leaves Buffer available later.
         // Upstream values that reserve at eight prevented HP per charge when

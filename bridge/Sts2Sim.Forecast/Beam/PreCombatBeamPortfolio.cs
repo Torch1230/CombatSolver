@@ -33,7 +33,8 @@ internal static class PreCombatBeamPortfolio
             ledger,
             tracker: null,
             ct,
-            maxDegreeOfParallelism).ConfigureAwait(false);
+            maxDegreeOfParallelism,
+            rankByBaseAttackIntent: true).ConfigureAwait(false);
         return BeamSearch.BuildForecastResult(
             result.ChosenPass,
             result.CombinedCandidates,

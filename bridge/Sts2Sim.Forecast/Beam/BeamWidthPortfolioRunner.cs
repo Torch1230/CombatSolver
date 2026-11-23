@@ -28,13 +28,17 @@ internal static class BeamWidthPortfolioRunner
         SearchWorkLedger ledger,
         InCombatSearchTracker? tracker,
         CancellationToken ct,
-        int maxDegreeOfParallelism = 1)
+        int maxDegreeOfParallelism = 1,
+        bool rankByBaseAttackIntent = false)
     {
         ct.ThrowIfCancellationRequested();
         int effectiveDop = Math.Max(1, maxDegreeOfParallelism);
         using ForecastLanePool? sharedPool = effectiveDop > 1 ? new ForecastLanePool(effectiveDop) : null;
 
-        PolicyRootOperands rootPolicyOperands = PolicyRootOperands.Capture(root, policy);
+        PolicyRootOperands rootPolicyOperands = PolicyRootOperands.Capture(root, policy) with
+        {
+            RankByBaseAttackIntent = rankByBaseAttackIntent,
+        };
         var baseOptions = new BeamPassOptions
         {
             OpeningPreRootBattleHpLost = openingPreRootBattleHpLost,
