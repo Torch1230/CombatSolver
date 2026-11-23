@@ -241,6 +241,7 @@ internal sealed partial class CombatBeamSolver
 
                 List<PlanCardChoice> boundActionChoices = [];
                 List<PlanCardChoice> boundTurnStartChoices = [];
+                int? nestedBeforePotionChoice = null;
                 solver._externalBoundActionChoices = boundActionChoices;
                 solver._externalBoundTurnStartChoices = boundTurnStartChoices;
                 SimulationSnapshot nextSnapshot;
@@ -252,7 +253,12 @@ internal sealed partial class CombatBeamSolver
                         currentSnapshot.Turn,
                         index,
                         countTransition: false,
-                        allowExecutionCapture: false);
+                        allowExecutionCapture: false,
+                        onExternalPotionChoice: action.Kind != PlanActionKind.UsePotion ? null : choice =>
+                        {
+                            boundPotionChoice = choice;
+                            nestedBeforePotionChoice = boundActionChoices.Count;
+                        });
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -323,6 +329,7 @@ internal sealed partial class CombatBeamSolver
                 annotatedActions[index] = BindReplayedChoices(
                     action,
                     boundPotionChoice,
+                    nestedBeforePotionChoice,
                     boundActionChoices,
                     boundTurnStartChoices);
 
@@ -573,6 +580,7 @@ internal sealed partial class CombatBeamSolver
     private static PlanAction BindReplayedChoices(
         PlanAction action,
         PlanCardChoice? boundPotionChoice,
+        int? nestedBeforePotionChoice,
         IReadOnlyList<PlanCardChoice> boundActionChoices,
         IReadOnlyList<PlanCardChoice> boundTurnStartChoices)
     {
@@ -594,7 +602,7 @@ internal sealed partial class CombatBeamSolver
                 nestedChoices = boundActionChoices.ToArray();
                 nestedBeforePrimary = choice is null
                     ? boundActionChoices.Count
-                    : Math.Clamp(action.NestedChoicesBeforePrimary, 0, boundActionChoices.Count);
+                    : nestedBeforePotionChoice ?? Math.Clamp(action.NestedChoicesBeforePrimary, 0, boundActionChoices.Count);
                 updated = true;
             }
         }
@@ -920,6 +928,12 @@ internal sealed partial class CombatBeamSolver
     {
         boundChoice = null;
         bool requiresChoice = PotionChoiceSupport.RequiresChoice(potion);
+        // The original pile selectors bind after Prepare, from the pile actually offered by the effect.
+        if (PotionChoiceSupport.UsesNativePileChoice(potion))
+        {
+            failureReason = null;
+            return true;
+        }
         if (!requiresChoice)
         {
             if (choice is not null)

@@ -339,7 +339,8 @@ internal sealed partial class CombatBeamSolver
         PotionChoiceFrame? potionChoiceFrame = null,
         bool countTransition = true,
         bool allowExecutionCapture = true,
-        ContinuationCapture? continuationCapture = null)
+        ContinuationCapture? continuationCapture = null,
+        Action<PlanCardChoice>? onExternalPotionChoice = null)
     {
         _run.WorkPacer.YieldIfNeeded();
         CombatPredictionSimulator simulator;
@@ -455,7 +456,7 @@ internal sealed partial class CombatBeamSolver
                 int potionShuffleEvents = potionChoiceFrame?.ShuffleEventsBefore ?? simulator.ShuffleEventCount;
                 int potionHistoryEntryStart = potionChoiceFrame?.HistoryStart ?? simulator.History.Entries.Count;
                 SearchMeasurement potionMeasurement = _run.Performance.Begin();
-                simulatedCombat.BeginActionChoices(
+                TurnStartChoiceCursor nestedCursor = simulatedCombat.BeginActionChoices(
                     new TurnStartChoiceCursor(
                         action.NestedChoices,
                         _validateExternalChoicesAgainstSpec,
@@ -468,8 +469,17 @@ internal sealed partial class CombatBeamSolver
                         boundary = SearchBoundaryReason.PendingChoice;
                         break;
                     }
+                    PlanCardChoice? primary = action.Choice;
+                    if (onExternalPotionChoice is not null && PotionChoiceSupport.UsesNativePileChoice(potion))
+                    {
+                        if (primary is not null && nestedCursor.ConsumedExplicitChoiceCount != action.NestedChoicesBeforePrimary)
+                            throw new InvalidPlannedChoiceBranchException($"Wrong order of primary and nested decisions for {potion.Id.Entry}.");
+                        primary = PotionChoiceSupport.BindExternalPileChoice(simulator, potion, primary, displayNames.Card);
+                        if (primary is not null)
+                            onExternalPotionChoice(primary);
+                    }
                     if (!PotionExecutionSupport.Complete(simulator, simulatedCombat, potion, potionTarget,
-                            action.Choice, potionHistoryEntryStart, processedEnemyDeaths))
+                            primary, potionHistoryEntryStart, processedEnemyDeaths))
                     {
                         boundary = SearchBoundaryReason.PendingChoice;
                         break;
