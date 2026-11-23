@@ -3691,19 +3691,25 @@ internal static class SolverOverlay
             Dictionary<int, int> lostByTurn = new() { [1] = 0, [2] = 7 };
             Dictionary<int, int> recoveredByTurn = new() { [1] = 5, [2] = 9 };
             var initialHp = SolverOverlaySnapshot.BattleHpTotalsForDisplay(
-                0, 0, lostByTurn, recoveredByTurn, 1);
+                0, lostByTurn, recoveredByTurn, 1);
             var afterRegeneration = SolverOverlaySnapshot.BattleHpTotalsForDisplay(
-                0, BattleDamageTracker.RecoveredOrGainedForDisplay(65, 70, 0),
-                lostByTurn, recoveredByTurn, 2);
-            Check(initialHp == (7, 14) && afterRegeneration == initialHp,
-                "healing moves from future to actual without changing whole-route totals");
-            Check(SolverOverlaySnapshot.BattleHpTotalsForDisplay(2, 5,
+                0, lostByTurn, recoveredByTurn, 2);
+            Check(initialHp == (7, 14) && afterRegeneration == (7, 9),
+                "route healing includes only the displayed turns");
+            Check(SolverOverlaySnapshot.BattleHpTotalsForDisplay(2,
                     new Dictionary<int, int> { [1] = 2, [2] = 7 }, recoveredByTurn, 2)
-                == (9, 14), "observed damage remains in the projected total");
-            Check(SolverOverlaySnapshot.BattleHpTotalsForDisplay(7, 0,
+                == (9, 9), "observed damage remains in the projected total");
+            Check(SolverOverlaySnapshot.BattleHpTotalsForDisplay(7,
                     new Dictionary<int, int> { [1] = 7, [2] = 0, [3] = 2, [5] = 3 },
                     new Dictionary<int, int>(), 3).ProjectedLoss == 12,
                 "pending turn setup preserves already observed damage");
+            string deathSummary = SolverOverlaySnapshot.FormatSelectedRouteSummary(true, 7, null, 1, 7, "test");
+            string partialSummary = SolverOverlaySnapshot.FormatSelectedRouteSummary(false, null, null, 1, 7, "test");
+            Check(deathSummary != partialSummary && deathSummary.Contains(SolverUiTokens.Palette.DangerHex)
+                && deathSummary.Contains("[b]7[/b]"), "selected turn-seven death takes precedence over an unproven victory");
+            Check(SolverOverlaySnapshot.BattleHpTotalsForDisplay(0,
+                    new Dictionary<int, int> { [1] = 2, [6] = 38, [7] = 20 },
+                    new Dictionary<int, int>(), 1) == (60, 0), "a fatal route with no future healing reports zero route healing");
             SearchGcLifecycleSnapshot beforeGc = SearchGcPolicy.CaptureLifecycle();
             bool automaticGcBefore = SearchGcPolicy.AutomaticGcLifecycleUsed;
             System.Runtime.GCLatencyMode latencyBefore = System.Runtime.GCSettings.LatencyMode;

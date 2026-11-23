@@ -75,13 +75,13 @@ internal sealed record SolverOverlaySnapshot(
     string? SearchLimitWarningText)
 {
     public string? UnrecoveredLootText { get; init; }
-    internal static (int ProjectedLoss, int TotalRecovered) BattleHpTotalsForDisplay(
-        int lostSoFar, int recoveredSoFar,
+    internal static (int ProjectedLoss, int RouteRecovered) BattleHpTotalsForDisplay(
+        int lostSoFar,
         IReadOnlyDictionary<int, int> lossByTurn,
         IReadOnlyDictionary<int, int> recoveredByTurn,
         int startTurnNumber)
         => (lostSoFar + lossByTurn.Where(item => item.Key >= startTurnNumber).Sum(item => item.Value),
-            recoveredSoFar + recoveredByTurn.Where(item => item.Key >= startTurnNumber).Sum(item => item.Value));
+            recoveredByTurn.Where(item => item.Key >= startTurnNumber).Sum(item => item.Value));
     public string? RewardOutcomeText { get; init; }
     public string? UsedPotionOutcomeText { get; init; }
     public string? PlannedPotionOutcomeText { get; init; }
@@ -229,11 +229,15 @@ internal sealed record SolverOverlaySnapshot(
         }
         IReadOnlyList<string> unmirrored = result.UnmirroredDetails().ToArray();
         IReadOnlyList<string> compensated = result.CompensatedDetails().ToArray();
-        bool hasRisk = !result.Forecast.IsExactForModeledDamage
+        bool selectedRouteDies = result.Snapshot.PlayerDead;
+        bool finished = result.CombatEndedTurn.HasValue || selectedRouteDies;
+        bool hasRisk = selectedRouteDies || !result.Forecast.IsExactForModeledDamage
             || unmirrored.Count > 0
             || compensated.Count > 0;
         string confidence = ConfidenceText(result);
-        SolverOverlayTone statusTone = pendingTurnSetup
+        SolverOverlayTone statusTone = selectedRouteDies
+            ? SolverOverlayTone.Danger
+            : pendingTurnSetup
             ? SolverOverlayTone.Accent
             : result.ProjectedBattleHpLossIncrease > 0
             ? SolverOverlayTone.Danger
@@ -242,16 +246,17 @@ internal sealed record SolverOverlaySnapshot(
                 : SolverOverlayTone.Accent;
         string statusText = pendingTurnSetup
             ? SolverText.Get("等待回合开始选择")
+            : selectedRouteDies
+            ? SolverText.Get("所选路线预计死亡")
             : result.ProjectedBattleHpLossIncrease > 0
             ? SolverText.Get("重算后战损上升")
             : result.WasRestoredFromCache
                 ? SolverText.Get("路线已恢复")
             : result.WasReused
                 ? SolverText.Get("方案已复用")
-                : SolverText.Get("方案就绪");
-        string summaryText = result.CombatEndedTurn == startTurnNumber
-            ? SolverText.Format($"[color={SolverUiTokens.Palette.SuccessHex}]本回合结束战斗  │  {confidence}[/color]")
-            : SolverText.Format($"[color={SolverUiTokens.Palette.TextSecondaryHex}]预计路线 [b]{searchedTurns}[/b] 回合  │  {confidence}[/color]");
+                : SolverText.Get(finished ? "方案就绪" : "部分路线");
+        string summaryText = FormatSelectedRouteSummary(selectedRouteDies, result.DeathTurn, result.CombatEndedTurn,
+            startTurnNumber, searchedTurns, confidence);
         double searchElapsedSeconds = result.TotalSearchElapsed.TotalSeconds;
         long searchWorldlines = result.TotalExpandedNodes > 0
             ? result.TotalExpandedNodes
@@ -266,12 +271,10 @@ internal sealed record SolverOverlaySnapshot(
             : searchSpeed > 0
             ? SolverText.Format($"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线（{searchSpeed:N0} 条/s）")
             : SolverText.Format($"花费了 {result.TotalSearchElapsed.TotalSeconds:F1} 秒，共查阅了 {reviewedWorldlinesTotal:N0} 条世界线");
-        bool projectedBattleHpLossKnown = result.CombatEndedTurn.HasValue;
+        bool projectedBattleHpLossKnown = finished;
         int alreadyLost = observedBattleDamage?.HpLostSoFar ?? result.BattleHpLostSoFar;
-        int alreadyRecovered = observedBattleDamage?.HpRecoveredOrGainedSoFar
-            ?? result.BattleHpRecoveredOrGainedSoFar;
         (int projectedLost, int routeHpRecovered) = BattleHpTotalsForDisplay(
-            alreadyLost, alreadyRecovered,
+            alreadyLost,
             result.HpLostByTurn, result.HpRecoveredByTurn, startTurnNumber);
         string hpOutcomeText = !projectedBattleHpLossKnown
             ? SolverText.Get("预计战损 未知")
@@ -312,6 +315,20 @@ internal sealed record SolverOverlaySnapshot(
                 result.Snapshot.UnrecoveredGold, result.Snapshot.UnrecoveredCards,
                 result.ForfeitsEncounterGold),
         };
+    }
+
+    internal static string FormatSelectedRouteSummary(bool playerDead, int? deathTurn, int? combatEndedTurn,
+        int startTurn, int searchedTurns, string confidence)
+    {
+        if (playerDead)
+            return deathTurn is int turn
+                ? SolverText.Format($"[color={SolverUiTokens.Palette.DangerHex}]预计第 [b]{turn}[/b] 回合死亡  │  {confidence}[/color]")
+                : SolverText.Get("所选路线预计死亡");
+        if (combatEndedTurn == null)
+            return SolverText.Format($"[color={SolverUiTokens.Palette.TextSecondaryHex}]已规划 [b]{searchedTurns}[/b] 回合，尚未找到终局[/color]");
+        return combatEndedTurn == startTurn
+            ? SolverText.Format($"[color={SolverUiTokens.Palette.SuccessHex}]本回合结束战斗  │  {confidence}[/color]")
+            : SolverText.Format($"[color={SolverUiTokens.Palette.TextSecondaryHex}]预计路线 [b]{searchedTurns}[/b] 回合  │  {confidence}[/color]");
     }
 
     internal static string? DescribeUnrecoveredLoot(int outstanding, int? gold, int? cards, bool forfeitsGold)
