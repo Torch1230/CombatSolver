@@ -1,5 +1,7 @@
 # CombatSolver 文档
 
+
+[Sts2Sim 桥接构建与依赖升级](../bridge/README.md)
 持续规则见 [AGENTS.md](../AGENTS.md)，玩家介绍见 [README](../README.md)。现行指南以源码和实际验证为准；历史结果保留生成版本与局限。
 
 | 入口 | 内容 |

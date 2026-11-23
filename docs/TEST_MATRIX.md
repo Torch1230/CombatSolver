@@ -2,6 +2,8 @@
 
 ## 未发布：战斗内与战前 Sts2Sim 桥接入口
 
+- 桥接迁移可用 `dotnet test bridge/tests/Sts2Sim.PreCombatBridge.Tests -c Release` 验证 UTF-8 ABI 与搜索合同。暂存检查对照 Core 的内嵌提交与 Git 锁定值。[构建入口](../bridge/README.md)
+
 - `UI-COMPACT-QOL` 覆盖第七回合死亡、仍存活的部分路线，以及历史回血与剩余路线回血的区别。
 
 - A10 女王同根 Windows 对照中，先启动后台搜索再挂载面板，第一条可采纳路线从 1.929 秒提前到 1.404 秒。Linux 重放女王第 7 回合的同一批 512 个父节点，核对了全部 20,484 个保留后继的顺序、动作和选牌。共享队列在同根到 68,705 个父节点时保留了所有 145 批的父序、候选和工作数。[女王及 Mawler 的入口与固定工作对照](performance/sts2sim-incombat-entry-costs.md)

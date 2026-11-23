@@ -1,0 +1,105 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Sts2Sim.Solver</AssemblyName>
+    <RootNamespace>CombatSolver</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Core/Sts2Sim.Core.csproj" />
+    <InternalsVisibleTo Include="Sts2Sim.PreCombatBridge" />
+    <InternalsVisibleTo Include="Sts2Sim.PreCombatBridge.Tests" />
+    <InternalsVisibleTo Include="CombatSolver.Forecast.Tests" />
+  </ItemGroup>
+  <!-- The upstream solver supplies these generic sources. Forecast overrides and policies live here. -->
+  <ItemGroup>
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/ChoiceRequestContracts.cs" Link="Upstream/Adapter/ChoiceRequestContracts.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/CombatHistoryCounters.cs" Link="Upstream/Adapter/CombatHistoryCounters.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/CombatPredictionSimulator.cs" Link="Upstream/Adapter/CombatPredictionSimulator.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/EncounterModel.cs" Link="Upstream/Adapter/EncounterModel.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/HookStatistics.cs" Link="Upstream/Adapter/HookStatistics.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/PredictedCard.cs" Link="Upstream/Adapter/PredictedCard.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/PredictedCardExtensions.cs" Link="Upstream/Adapter/PredictedCardExtensions.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/PredictionContinuationContracts.cs" Link="Upstream/Adapter/PredictionContinuationContracts.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/PredictionTraceFrame.cs" Link="Upstream/Adapter/PredictionTraceFrame.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/SolverSelectionRequiredException.cs" Link="Upstream/Adapter/SolverSelectionRequiredException.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Adapter/TurnStartChoiceCursor.cs" Link="Upstream/Adapter/TurnStartChoiceCursor.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/BeamOpeningSelectionSource.cs" Link="Upstream/Beam/BeamOpeningSelectionSource.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/BeamRunDecisionSource.cs" Link="Upstream/Beam/BeamRunDecisionSource.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/OpeningComparisonBaseline.cs" Link="Upstream/Beam/OpeningComparisonBaseline.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/BossHpPolicy.cs" Link="Upstream/Beam/Policy/BossHpPolicy.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/CombatPolicy.cs" Link="Upstream/Beam/Policy/CombatPolicy.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/GrowthLedger.cs" Link="Upstream/Beam/Policy/GrowthLedger.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/GrowthOpportunityTargets.cs" Link="Upstream/Beam/Policy/GrowthOpportunityTargets.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/OpeningPolicyLedger.cs" Link="Upstream/Beam/Policy/OpeningPolicyLedger.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/PolicyTargetTracker.cs" Link="Upstream/Beam/Policy/PolicyTargetTracker.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Beam/Policy/PotionRewardOutlook.cs" Link="Upstream/Beam/Policy/PotionRewardOutlook.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/ActionRelicTriggerRecorder.cs" Link="Upstream/Contracts/ActionRelicTriggerRecorder.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/BattleDamageSnapshot.cs" Link="Upstream/Contracts/BattleDamageSnapshot.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/BeamPortfolioExperiment.cs" Link="Upstream/Contracts/BeamPortfolioExperiment.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/BossHpRelief.cs" Link="Upstream/Contracts/BossHpRelief.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/CombatDamageSource.cs" Link="Upstream/Contracts/CombatDamageSource.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/CombatTerminalStamp.cs" Link="Upstream/Contracts/CombatTerminalStamp.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/ContextualRankingModel.cs" Link="Upstream/Contracts/ContextualRankingModel.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/ContinuationStamp.cs" Link="Upstream/Contracts/ContinuationStamp.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/GrowthCostPolicy.cs" Link="Upstream/Contracts/GrowthCostPolicy.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/GrowthOpportunityTargets.cs" Link="Upstream/Contracts/GrowthOpportunityTargets.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/GrowthPolicy.cs" Link="Upstream/Contracts/GrowthPolicy.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/GrowthSourceMirrors.cs" Link="Upstream/Contracts/GrowthSourceMirrors.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/IntentForecast.cs" Link="Upstream/Contracts/IntentForecast.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/InvalidPlannedChoiceBranchException.cs" Link="Upstream/Contracts/InvalidPlannedChoiceBranchException.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/PotionRewardOutlook.cs" Link="Upstream/Contracts/PotionRewardOutlook.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/PotionStrategicCostLookup.cs" Link="Upstream/Contracts/PotionStrategicCostLookup.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/PotionUsePolicy.cs" Link="Upstream/Contracts/PotionUsePolicy.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/PowerCommitment.cs" Link="Upstream/Contracts/PowerCommitment.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/PredictionRiskSignature.cs" Link="Upstream/Contracts/PredictionRiskSignature.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/ReachableHandValue.cs" Link="Upstream/Contracts/ReachableHandValue.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/RelicCounterPolicy.cs" Link="Upstream/Contracts/RelicCounterPolicy.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/SearchGcLifecycleSnapshot.cs" Link="Upstream/Contracts/SearchGcLifecycleSnapshot.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/SearchInteractionState.cs" Link="Upstream/Contracts/SearchInteractionState.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/SearchMemoryPressureSignal.cs" Link="Upstream/Contracts/SearchMemoryPressureSignal.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/SolverInterimResult.cs" Link="Upstream/Contracts/SolverInterimResult.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/SolverInterimResultOrdering.cs" Link="Upstream/Contracts/SolverInterimResultOrdering.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/SolverSettingsEnums.cs" Link="Upstream/Contracts/SolverSettingsEnums.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/StrategicEffectVector.cs" Link="Upstream/Contracts/StrategicEffectVector.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/StrategicHpRecoveryBound.cs" Link="Upstream/Contracts/StrategicHpRecoveryBound.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Contracts/TheftEncounterStrategy.cs" Link="Upstream/Contracts/TheftEncounterStrategy.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/GlobalUsings.cs" Link="Upstream/GlobalUsings.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/BeamWidthPortfolioTelemetry.cs" Link="Upstream/Search/BeamWidthPortfolioTelemetry.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/CombatBeamSolver.Models.ForwardTypes.cs" Link="Upstream/Search/CombatBeamSolver.Models.ForwardTypes.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/CombatBeamSolver.Models.cs" Link="Upstream/Search/CombatBeamSolver.Models.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/CombatBeamSolver.Transpositions.cs" Link="Upstream/Search/CombatBeamSolver.Transpositions.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/CombatHistoryCounterKey.cs" Link="Upstream/Search/CombatHistoryCounterKey.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/CombatPlan.cs" Link="Upstream/Search/CombatPlan.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/NoveltyPortfolioBudget.cs" Link="Upstream/Search/NoveltyPortfolioBudget.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/NoveltySearchOptions.cs" Link="Upstream/Search/NoveltySearchOptions.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/NoveltySearchTelemetry.cs" Link="Upstream/Search/NoveltySearchTelemetry.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/OwnedExpansionBatch.cs" Link="Upstream/Search/OwnedExpansionBatch.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/ParallelExpansionWorkProfile.cs" Link="Upstream/Search/ParallelExpansionWorkProfile.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/PotionStrategySnapshot.cs" Link="Upstream/Search/PotionStrategySnapshot.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/PowerCommitmentPortfolioGate.cs" Link="Upstream/Search/PowerCommitmentPortfolioGate.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/RootCombatCardGenerationPoolSnapshot.cs" Link="Upstream/Search/RootCombatCardGenerationPoolSnapshot.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/RootCombatHistorySnapshot.cs" Link="Upstream/Search/RootCombatHistorySnapshot.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/RootCombatTransformationPoolSnapshot.cs" Link="Upstream/Search/RootCombatTransformationPoolSnapshot.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchDiagnosticsSink.cs" Link="Upstream/Search/SearchDiagnosticsSink.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchFramePressureSignal.cs" Link="Upstream/Search/SearchFramePressureSignal.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchPerformanceMetrics.cs" Link="Upstream/Search/SearchPerformanceMetrics.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchPolicySnapshot.cs" Link="Upstream/Search/SearchPolicySnapshot.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchReplayEvidence.cs" Link="Upstream/Search/SearchReplayEvidence.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchRequestWorkTotals.cs" Link="Upstream/Search/SearchRequestWorkTotals.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchTransitionException.cs" Link="Upstream/Search/SearchTransitionException.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchTransitionGuard.cs" Link="Upstream/Search/SearchTransitionGuard.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchWaveMemoryPolicy.cs" Link="Upstream/Search/SearchWaveMemoryPolicy.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SearchWorkPacer.cs" Link="Upstream/Search/SearchWorkPacer.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SnapshotListBuffer.cs" Link="Upstream/Search/SnapshotListBuffer.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SolverSearchProfile.cs" Link="Upstream/Search/SolverSearchProfile.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/SolverWeights.cs" Link="Upstream/Search/SolverWeights.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/StateFingerprint.cs" Link="Upstream/Search/StateFingerprint.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/Search/TranspositionCapDiagnostics.cs" Link="Upstream/Search/TranspositionCapDiagnostics.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/State/SolverCombatState.ActionChoices.cs" Link="Upstream/State/SolverCombatState.ActionChoices.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/State/SolverCombatState.KnowledgeDemon.cs" Link="Upstream/State/SolverCombatState.KnowledgeDemon.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/State/SolverCombatState.LongTermResources.cs" Link="Upstream/State/SolverCombatState.LongTermResources.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/State/SolverCombatState.PendingContinuations.cs" Link="Upstream/State/SolverCombatState.PendingContinuations.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/State/SolverCombatState.Theft.cs" Link="Upstream/State/SolverCombatState.Theft.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/State/SolverCombatState.TurnStartChoices.cs" Link="Upstream/State/SolverCombatState.TurnStartChoices.cs" />
+    <Compile Include="$(Sts2SimSourceRoot)/src/Sts2Sim.Solver/State/SolverCombatState.cs" Link="Upstream/State/SolverCombatState.cs" />
+  </ItemGroup>
+</Project>

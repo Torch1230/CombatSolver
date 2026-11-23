@@ -13,6 +13,8 @@ description: 重构 CombatSolver 的 Search、Runtime 会话、UI snapshot、无
 
 开始前读取 `docs/ARCHITECTURE.md`，并读取 `tools/inspection/verify-refactor-boundaries.ps1` 与 `tools/inspection/verify-refactor-boundaries.sh` 中对应边界，只读取本次涉及的源码分片。两套门禁分别服务 Windows 和 Linux，规则必须保持等价。
 
+Sts2Sim 的存档和战斗状态恢复经模拟器公开 Core API 调用。消费端 `bridge/` 维护 JSON ABI 和预测策略，正式暂存只读取锁定的模拟器版本。[构建与升级](../../../bridge/README.md)
+
 ## 1. 先定义迁移前后的所有权
 
 搜索预算仅由 `SearchPolicySnapshot.Profile` 表达；固定预算测试/API 使用 `FixedBudget`。旧 short/deep 字段只允许在设置、归档或请求反序列化边界迁移，禁止重新引入 Search 阶段或分段计数。UI 设置与请求总计必须消费单一配置；两端结构门禁同步维护。
